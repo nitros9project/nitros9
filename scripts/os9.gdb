@@ -35,12 +35,14 @@ end
 define os9_mident
 	set $m = (int*)$arg0
 	set $msize = *($m + 1)
+	set $mend = (char*) $m + $msize
 	set $mtype = *((char*) $m + 6)
 	set $mexec = *(int*)((char*) $m + 9)
 	printf "%04x %4x %2X ", $m, $msize, $mtype
+	printf "%02X%02X%02X ", *((char*)$mend-3), *((char*)$mend-2), *((char*)$mend-1)
 	os9_mname $m
 	if ($mtype & 0xf)
-		printf "\t[exec %04x] ", (char*)$m + $mexec
+		printf "\t\t[exec %04x] ", (char*)$m + $mexec
 	end
 	printf "\n"
 end
@@ -50,7 +52,7 @@ document os9_mident
 end
 
 define os9_mdir
-	printf "addr size ty name\n"
+	printf "addr size ty crc    name\n"
 	set $mt = *0x44
 	set $mte = *0x46
 	while ($mt < $mte)
