@@ -124,6 +124,7 @@ LRARAM		RMB	16	LRA ADDRESSES
 Bt.Start	EQU	$F000	Start address of the boot ROM in memory
 Bt.Size		EQU	$1000
 Bt.Track	EQU	0
+Bt.Sec  	EQU	0
 
 ;*****************************************************
 ; Parallel port protocol

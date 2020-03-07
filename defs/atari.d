@@ -98,6 +98,7 @@ TkPerSec       set       60
 Bt.Start       set       $8000
 Bt.Size        EQU       $1080               Maximum size of bootfile
 Bt.Track       EQU       $0000
+Bt.Sec         EQU       0
 HW.Page        set       $FF                 Device descriptor hardware page
 
 
