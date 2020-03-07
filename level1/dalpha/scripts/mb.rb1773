@@ -1,0 +1,29 @@
+-t
+-x
+tmode .1 pau=0
+echo * NitrOS-9 Level 1 Boot Creation Script
+echo *
+echo * This script creates a bootable floppy disk
+echo * using the standard.bl bootlist file.
+echo *
+echo * The resulting disk will boot NitrOS-9 from drive 0.
+echo *
+prompt Insert a blank disk in /d0 and press a key:
+echo *
+echo * Step 1: Format disk in /d0
+format /d0 "NitrOS-9 Level 1 Boot Disk" r
+echo *
+echo * Step 2: Create a custom boot track
+del bttemp
+merge ../MODULES/BOOTTRACK/rel ../MODULES/KERNEL/krn ../MODULES/KERNEL/krnp2 ../MODULES/SYSMODS/init ../MODULES/BOOTTRACK/boot_1773_6ms>bttemp
+echo *
+echo * Step 3: Create the bootfile and boot track
+os9gen /d0 -t=bttemp<../BOOTLISTS/standard.bl
+del bttemp
+echo *
+echo * Step 4: Populate the disk with essential files
+copy ../MODULES/SYSMODS/sysgo_dd /d0/sysgo
+makdir /d0/CMDS
+copy -w=/d0/CMDS ../CMDS/shell
+echo *
+echo * We're done
