@@ -8,6 +8,7 @@ vpath %.asm $(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09
 DEPENDS		= ./makefile
 
 BASIC09FILES	= runb.asm gfx.asm inkey.asm syscall.asm
+
 CMDS		= asm attr backup binex build cmp cobbler copy cputype \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
 		display dmode dsave dump echo edit error exbin format \
@@ -24,7 +25,7 @@ DRAGONCMDS	= asm attr backup binex build cmp cobbler_dragon copy cputype \
 		rename runb save setime shellplus shell_21 sleep \
 		tee tmode touch tsmon tuneport unlink verify xmode
 
-DRAGON525CMDS	= asm attr backup binex build cmp cobbler copy date del deldir \
+DRAGON525CMDS	= asm attr backup binex build cmp cobbler_dragon copy date del deldir \
 		dir display dmode dsave dump echo exbin format free ident link list \
 		load login makdir mdir merge mfree os9gen printerr procs pwd pxd rename \
 		save setime shell_21 sleep tee tmode tsmon unlink verify xmode

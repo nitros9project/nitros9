@@ -77,7 +77,7 @@ DIRS		= cmds modules defs sys bootfiles
 #modules bootfiles
 #DDIRS		= modules bootfiles defs
 
-CMDS		= $(shell $(CD) cmds; make --no-print-directory showcocoobjs)
+CMDS		= $(shell $(CD) cmds; make --no-print-directory showdragonobjs)
 CMDS525		= $(shell $(CD) cmds; make --no-print-directory showdragon525objs)
 CMDS525_2	= $(shell $(CD) cmds; make --no-print-directory showdragon525objs2)
 BOOTTRACK	= $(shell $(CD) modules; make --no-print-directory showboottrack)
