@@ -28,7 +28,6 @@ SYSTEXT		= $(shell $(CD) sys; make --no-print-directory showtextobjs)
 STARTUP		= startup
 STARTUP_DW	= startup.dw
 SYSGO		= sysgo_dd
-CCBKRN		= ccbkrn
 
 DSK720K		= $(DISTROVER)_80d.dsk
 LDSK720K	= $(DISTRONAME)_80d.dsk
@@ -68,7 +67,6 @@ $(DSK720K):
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
 	$(MAKDIR) $@,DEFS
-	$(OS9COPY) modules/$(CCBKRN) $@,$(CCBKRN)
 	$(OS9COPY) modules/$(SYSGO) $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
 	$(CD) cmds; $(OS9COPY) $(sort $(CMDS) $(CMDS_D2)) ../$@,CMDS
@@ -122,7 +120,6 @@ $(DSK720KXL):
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
 	$(MAKDIR) $@,DEFS
-	$(OS9COPY) modules/$(CCBKRN) $@,$(CCBKRN)
 	$(OS9COPY) modules/$(SYSGO) $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
 	$(CD) cmds; $(OS9COPY) $(sort $(CMDS) $(CMDS_D2)) ../$@,CMDS
