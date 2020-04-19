@@ -6,8 +6,8 @@ vpath %.asm $(LEVEL2)/sys
 DEPENDS		= ./makefile
 
 L1TXTFILES	= errmsg password
-L2TXTFILES	= $(LEVEL2)/sys/motd
-L2SYSGOTEXTFILES = $(LEVEL2)/sys/sysgo.cfg
+L2TXTFILES	= motd
+L2SYSGOTEXTFILES = sysgo.cfg
 BINFILES	= stdfonts stdpats_2 stdpats_4 stdpats_16 stdptrs \
 		ibmedcfont isolatin1font
 HELPFILES	= asm.hp attr.hp backup.hp binex.hp build.hp chd.hp \
@@ -44,11 +44,14 @@ $(HELPMSG): $(HELPFILES)
 $(L1TXTFILES):
 	$(SOFTLINK) -f $(LEVEL1)/sys/$@
 
+$(L2TXTFILES) $(L2SYSGOTEXTFILES):
+	$(SOFTLINK) -f $(LEVEL2)/sys/$@
+
 inetd.conf:     $(LEVEL1)/sys/inetd.conf
 	@sed -e 's/%TELNET_PORT%/$(TELNET_PORT)/' -e 's/%HTTPD_PORT%/$(HTTPD_PORT)/' $^ > $@
 
 clean:
-	$(RM) $(HELPMSG) $(L1TXTFILES) $(BINFILES) inetd.conf
+	$(RM) $(ALLOBJS)
 
 showbinobjs:
 	@$(ECHO) $(BINFILES)
