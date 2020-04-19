@@ -6,7 +6,6 @@ vpath %.asm $(LEVEL2)/sys
 DEPENDS		= ./makefile
 
 L1TXTFILES	= errmsg password
-L2TXTFILES	= motd
 L2SYSGOTEXTFILES = sysgo.cfg
 BINFILES	= stdfonts stdpats_2 stdpats_4 stdpats_16 stdptrs \
 		ibmedcfont isolatin1font
@@ -34,7 +33,7 @@ HELPMSG		= helpmsg
 
 TEXTFILES	= $(L2TXTFILES) $(HELPMSG) $(L1TXTFILES)
 SYSGOTEXTFILES = $(L2SYSGOTEXTFILES)
-ALLOBJS = $(TEXTFILES) $(SYSGOTEXTFILES) $(BINFILES) inetd.conf
+ALLOBJS = $(TEXTFILES) $(SYSGOTEXTFILES) $(BINFILES) motd inetd.conf
 
 all:	$(ALLOBJS) $(DEPENDS)
 
@@ -44,8 +43,13 @@ $(HELPMSG): $(HELPFILES)
 $(L1TXTFILES):
 	$(SOFTLINK) -f $(LEVEL1)/sys/$@
 
-$(L2TXTFILES) $(L2SYSGOTEXTFILES):
+$(L2SYSGOTEXTFILES):
 	$(SOFTLINK) -f $(LEVEL2)/sys/$@
+
+motd:
+	@$(ECHO) > $@
+	@$(ECHO) "Welcome to NitrOS-9 Level $(LEVEL) $(NITROS9VER) !" >> $@
+	@$(ECHO) >> $@
 
 inetd.conf:     $(LEVEL1)/sys/inetd.conf
 	@sed -e 's/%TELNET_PORT%/$(TELNET_PORT)/' -e 's/%HTTPD_PORT%/$(HTTPD_PORT)/' $^ > $@
@@ -57,7 +61,7 @@ showbinobjs:
 	@$(ECHO) $(BINFILES)
 
 showtextobjs:
-	@$(ECHO) $(TEXTFILES) inetd.conf
+	@$(ECHO) $(TEXTFILES) motd inetd.conf
 
 showsysgotextobjs:
 	@$(ECHO) $(SYSGOTEXTFILES)
