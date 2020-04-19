@@ -6,20 +6,34 @@ with the following command: hg log -v
 
 ----------------------------------------------------------
 
-NitrOS-9 upcoming release:
+NitrOS-9 upcoming release 3.3.1:
 
+
+New features:
 - Level 1 6309 support (Robert Gault, Tormod Volden)
 - Native CoCoSDC boot module (Darren Atkinson)
 - sdir and sdrive tools for CoCoSDC (Tim Lindner)
-- rbsuper descriptor fix (Christopher Hawks)
 - cobbler: fragmented OS9Boot support (Robert Gault)
-- deblocking IDE driver (David Ladd)
+- 20 sector per track format support (David Ladd)
+- Deblocking IDE driver (David Ladd)
 - Optional timeout for Becker port (David Ladd)
+- DriveWire CocoLINK and other disk images (David Ladd)
+- CoCoVGA support (Boisy Pitre, David Ladd)
+- Corsham 6809 System support (Boisy Pitre)
 - brainfuck interpreter (Boisy Pitre)
+- Co42 console (Luis Fantoniosi)
+- mc09 L1 & L2 hardware ports (Neal Crook)
+Fixes, improvements:
+- Console/graphics optimizations (Curtis Boyle, David Ladd)
 - grfdrv line drawing improvements (Robert Gault)
+- GSHELL (MultiVue) updates (Curtis Boyle)
+- rammer 2MB fixes (Curtis Boyle)
+- rbsuper descriptor fix (Christopher Hawks)
 - sierra text rectangle fix (Guillaume Major)
 - Build with lwtools 4.12 (William Astle)
-- Various build/makefile cleanups (Gene Heskett, Tormod Volden)
+- Various build cleanups (Gene Heskett, Tormod Volden, Bill Pierce)
+- Dragon disk image fixes (Tormod Volden)
+- Source code comments and cleanups (Neal Crook)
 
 ----------------------------------------------------------
 
