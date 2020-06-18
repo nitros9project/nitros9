@@ -1,7 +1,7 @@
 # The NitrOS-9 Project
 # Project-Wide Rules
 
-# Environment variables are now used to specify any directories other
+# Environment variables are used to specify any directories other
 # than the defaults below:
 #
 #   NITROS9DIR   - base directory of the NitrOS-9 project on your system
@@ -75,7 +75,7 @@ OS9FORMAT_SS80	= os9 format -e -t80 -ss -dd
 OS9FORMAT_DS40	= os9 format -e -t40 -ds -dd
 OS9FORMAT_DS80	= os9 format -e -t80 -ds -dd
 OS9FORMAT_DW	= os9 format -t29126 -ss -dd
-OS9FORMAT_SDC  = os9 format -e -t29126 -ss -dd
+OS9FORMAT_SDC	= os9 format -e -t29126 -ss -dd
 OS9GEN		= os9 gen
 OS9RENAME	= os9 rename
 OS9ATTR		= os9 attr -q
@@ -111,7 +111,7 @@ ID4 = -DITDRV=4
 ID5 = -DITDRV=5
 ID6 = -DITDRV=6
 ID7 = -DITDRV=7
-SLAVE = -DITDNS=1
+SLAVE  = -DITDNS=1
 MASTER = -DITDNS=0
 
 
