@@ -10,10 +10,10 @@ ALLOBJS		= $(DRVRS) $(DESCS)
 
 all:	$(ALLOBJS) $(DEPENDS)
 
-vinit.dr: VInit.asm
+vinit.dr: vinit.asm
 	$(AS) $(ASOUT)$@ $< $(AFLAGS)
 
-vdisk.dr: VDisk.asm
+vdisk.dr: vdisk.asm
 	$(AS) $(ASOUT)$@ $< $(AFLAGS)
 
 v0.dd: v0.asm
