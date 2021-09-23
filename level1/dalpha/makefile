@@ -71,7 +71,7 @@ DIRS		= cmds modules defs sys bootfiles
 #modules bootfiles
 #DDIRS		= modules bootfiles defs
 
-CMDS		= $(shell $(CD) cmds; make --no-print-directory showcocoobjs)
+CMDS		= $(shell $(CD) cmds; make --no-print-directory showdragonobjs)
 BOOTTRACK	= $(shell $(CD) modules; make --no-print-directory showboottrack)
 KERNEL		= $(shell $(CD) modules; make --no-print-directory showkernel)
 SYSMODS		= $(shell $(CD) modules; make --no-print-directory showsysmods)

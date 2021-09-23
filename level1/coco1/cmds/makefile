@@ -8,7 +8,6 @@ DEPENDS		= ./makefile
 AFLAGS		+= --includedir=$(3RDPARTY)/packages/basic09
 LFLAGS		+= -L $(NITROS9DIR)/lib -lnet -lcoco -lalib
 
-BASIC09FILES	= basic09.asm runb.asm gfx.asm inkey.asm syscall.asm
 CMDS		= asm attr backup binex build calldbg cmp cobbler copy cputype \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
 		display dmode dsave dump echo edit error exbin format \
@@ -17,13 +16,13 @@ CMDS		= asm attr backup binex build calldbg cmp cobbler copy cputype \
 		rename save setime shellplus shell_21 sleep \
 		tee tmode touch tsmon tuneport unlink verify xmode
 
-CMDS_D2		= basic09 runb gfx inkey syscall copy del echo format \
-		merge os9gen prompt tmode
+CMDS_D2		= copy del echo format merge os9gen prompt tmode
 
 CMDS_DW		= inetd telnet dw httpd
 
-SUBS		= gfx inkey syscall
-ALLOBJS		= $(CMDS) $(CMDS_D2) $(CMDS_DW) $(SUBS)
+BASIC09		= basic09 runb gfx inkey syscall
+
+ALLOBJS		= $(CMDS) $(CMDS_D2) $(CMDS_DW) $(BASIC09)
 
 all:	$(ALLOBJS)
 
@@ -49,10 +48,10 @@ showobjs:
 	@$(ECHO) $(CMDS)
 
 showobjs_d2:
-	@$(ECHO) $(CMDS_D2)
+	@$(ECHO) $(CMDS_D2) $(BASIC09)
 
 showobjs_dw:
-	@$(ECHO) $(sort $(CMDS) $(CMDS_DW))
+	@$(ECHO) $(CMDS) $(CMDS_DW)
 
 showallobjs:
 	@$(ECHO) $(ALLOBJS)
