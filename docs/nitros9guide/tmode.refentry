@@ -187,9 +187,9 @@ code for baud rate: 0=110 1=300 2=600 3=1200 4=2400 5=4800
 </refsect1>
 <refsect1><title>Examples</title>
 <screen>
-tmode -upc lf null=4 bselF pause
+tmode upc=0 alf=1 nul=4 bse=f pau=1
 
-tmode pag=24 pause bsl -echo bsp=8 bsl=C
+tmode pag=24 pau=1 bso=1 eko=0 bsp=8 bse=C
 </screen>
 <para>
 NOTE: If you use <command>tmode</command> in a procedure file, it will be necessary to
