@@ -328,7 +328,7 @@ joystick is to be tested.
 <para>
 Example:
 <programlisting>
-RUN GRX("Joystk",1,leftfire,leftx,lefty)
+RUN GFX("Joystk",1,leftfire,leftx,lefty)
 </programlisting>
 </para>
 <bridgehead renderas="sect1">A Sample Graphics Program</bridgehead>

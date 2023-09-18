@@ -266,7 +266,7 @@ represent lower-case letters. Normally they are not used, so you
 have to turn them on if you want to use them with the command:
 </para>
 <screen>
-tmode -upc
+tmode upc=0
 </screen>
 <para>
 However, the Color Computer 3 and certain models of the Color Computer 2 can also do true lowercase on the 32x16 video display.  To see if your Color Computer can do true lowercase, type the following command:
@@ -282,8 +282,8 @@ feature is on. It can be turned on or off with the <command>tmode</command> comm
 follows:
 </para>
 <screen>
-tmode -pause              turns pause mode off
-tmode pause               turns pause mode on
+tmode pau=0               turns pause mode off
+tmode pau=1               turns pause mode on
 </screen>
 <para>
 The display system also has a complete set of commands to emulate
