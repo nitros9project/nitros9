@@ -564,7 +564,6 @@ IRQJmp         jmp       [>D.IRQ]
 FIRQJmp        jmp       [>D.FIRQ]
 VectCSz        equ       *-VectCode
 
-
 * The system call table.
 SysTbl         fcb       F$Link
                fdb       FLink-*-2
