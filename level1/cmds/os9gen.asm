@@ -593,40 +593,40 @@ around         ldx       #$0000
 *         lbne  WarnUser
 *         cmpb  #'S
 *         lbne  WarnUser
-               lda       $04,x
-               cmpa      #$12                also check for NOP
-               beq       L0512
-               ldd       #Bt.Track*256+Bt.Sec+15 boot track, sector 16
+         lda   $04,x
+         cmpa  #$12			also check for NOP
+         beq   L0512
+         ldd   #Bt.Track*256+Bt.Sec+15	boot track, sector 16
 * boldly assume Bt.Sec is nowhere higher than 3 !
-               ldy       #$0003-Bt.Sec       sectors 16-18
-               lbsr      ABMClear
-               lbcs      WarnUser
-L0512          clra
-               ldb       <lsn0+DD.TKS,u      get number of sectors in D
-               ifne      Bt.Sec
-               subb      #Bt.Sec
-               endc
-               tfr       d,y
-               ldd       #Bt.Track*256+Bt.Sec boot track
-               lbsr      ABMSet
-               bra       L0531
-L0520          ldd       #Bt.Track*256+Bt.Sec+4 boot track
-               ldy       #$000E-Bt.Sec       sectors 5-18
-               lbsr      ABMClear            test rest of track
-               lbcs      WarnUser
-               bra       L0512
+         ldy   #$0003-Bt.Sec			sectors 16-18
+         lbsr  ABMClear
+         lbcs  WarnUser
+L0512    clra
+         ldb   <lsn0+DD.TKS,u	get number of sectors in D
+        IFNE Bt.Sec
+         subb  #Bt.Sec
+        ENDC
+         tfr   d,y
+         ldd   #Bt.Track*256+Bt.Sec	boot track
+         lbsr  ABMSet
+         bra   L0531
+L0520    ldd   #Bt.Track*256+Bt.Sec+4	boot track
+         ldy   #$000E-Bt.Sec		sectors 5-18
+         lbsr  ABMClear		test rest of track
+         lbcs  WarnUser
+         bra   L0512
 
 * Write altered map back to disk
 L0531
                ldd       #$0001
                lbsr      Seek2LSN
 *         leax  sectbuff,u
-               leax      bitmbuf,u
-               ldy       <lsn0+DD.MAP,u      get number of bytes in device's bitmap
-               lda       <devpath
-               os9       I$Write             write out the bitmap
-               lbcs      Bye
-               endc
+	   leax   bitmbuf,u
+         ldy   <lsn0+DD.MAP,u	get number of bytes in device's bitmap
+         lda   <devpath
+         os9   I$Write  		write out the bitmap
+         lbcs  Bye
+       ENDC
 
 * Code added to write alternate boottrack file
 * BGP - 2003/06/26
@@ -664,14 +664,14 @@ BadBTrak       leax      BadTkMsg,pcr
 
 * Read in boot track file
 * Y = proper boottrack size
-ReadBTrk       leax      u0496,u             point to sector buffer
-               os9       I$Read              read sector buffer
-               lbcs      Bye
-               os9       I$Close             close path to boot track
-               lbsr      GetDest
-               ldd       #Bt.Track*256+Bt.Sec boot track
-               lbsr      Seek2LSN
-               bra       WrBTrack
+ReadBTrk leax  u0496,u		point to sector buffer
+         os9   I$Read		read sector buffer
+         lbcs  Bye
+         os9   I$Close		close path to boot track
+         lbsr  GetDest
+         ldd   #Bt.Track*256+Bt.Sec	boot track
+         lbsr  Seek2LSN
+         bra   WrBTrack
 
 
 
@@ -679,33 +679,33 @@ BTMem
                ifgt      Level-1
 
 * OS-9 Level Two: Link to Rel, which brings in boot code
-               pshs      u
-               lda       #Systm+Objct        we want to link to a system object
-               leax      >TheRel,pcr         point to REL name
-               os9       F$Link              link to it
-               lbcs      L0724               branch if error
-               tfr       u,d
-               puls      u
-               subd      #$0006
-               std       u007B,u
-               lda       #$E0
-               anda      u007B,u
-               ora       #$1E
-               ldb       #$FF
-               subd      u007B,u
-               addd      #$0001
-               tfr       d,y
-               ldd       #Bt.Track*256+Bt.Sec boot track
-               lbsr      Seek2LSN
-               ldx       u007B,u
+         pshs  u
+         lda   #Systm+Objct		we want to link to a system object
+         leax  >TheRel,pcr		point to REL name
+         os9   F$Link   		link to it
+         lbcs  L0724			branch if error
+         tfr   u,d
+         puls  u
+         subd  #$0006
+         std   u007B,u
+         lda   #$E0
+         anda  u007B,u
+         ora   #$1E
+         ldb   #$FF
+         subd  u007B,u
+         addd  #$0001
+         tfr   d,y
+         ldd   #Bt.Track*256+Bt.Sec	boot track
+         lbsr  Seek2LSN
+         ldx   u007B,u
 
                else
 
 * OS-9 Level One: Write out boot track data
-               ldd       #Bt.Track*256+Bt.Sec
-               lbsr      Seek2LSN
-               ldx       #Bt.Start
-               ldy       #Bt.Size
+         ldd   #Bt.Track*256+Bt.Sec
+         lbsr  Seek2LSN
+         ldx   #Bt.Start
+         ldy   #Bt.Size
 
                endc
 
