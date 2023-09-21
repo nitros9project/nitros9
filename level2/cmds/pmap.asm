@@ -25,9 +25,9 @@
                nam       PMap
                ttl       Show process map information
 
-               ifp1      
+               ifp1
                use       defsfile
-               endc      
+               endc
 
 Type           set       Prgrm+Objct
 Revs           set       ReEnt+0
@@ -38,7 +38,7 @@ Stdout         set       1
 Maxnam         set       30
 Buflen         set       80
 
-               pag       
+               pag
 ***************************************************
 *
                mod       PrgSiz,Name,Type,Revs,Entry,DatSiz
@@ -73,7 +73,7 @@ Head1          fcc       / ID   0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F  
                fcb       C$CR
 
 Head2          fcc       /____  __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __  _______/
-               endc      
+               endc
 Hdrcr          fcb       C$CR
 
 SysNam         fcs       "SYSTEM"
@@ -94,9 +94,9 @@ Entry          stu       <umem
                bcs       Error
                ifeq      DAT.BlSz-8192
                cmpd      #8192               8k?
-               else      
+               else
                cmpd      #4096               4k?
-               endc      
+               endc
                bne       Error               we only do 4k/8k
 
                leax      <Hdrcr,pcr          print line
@@ -120,7 +120,7 @@ Main           ldu       <umem
                bsr       Output              print data for descriptor
                bra       Main
 
-Bye            clrb      
+Bye            clrb
 Error          os9       F$Exit
 
 * Subroutines
@@ -137,9 +137,9 @@ Output         lda       P$ID,x              process id
                leax      P$DATImg,x          point to DAT image
                ifeq      DAT.BlSz-8192
                ldb       #DAT.BlCt           set count
-               else      
+               else
                ldb       #64/4               set count
-               endc      
+               endc
                pshs      b
 
 PrntImg        ldd       ,x++                get DAT block
@@ -180,7 +180,7 @@ Copy0          ldy       <lineptr
 
 Copy           lda       ,x+
                sta       ,y+
-               decb      
+               decb
                bne       Copy
                bsr       Name2
                bra       Printlin
@@ -199,7 +199,7 @@ PrintL1        ldy       #Buflen
                lda       #Stdout
                os9       I$WritLn
                lbcs      Error
-               rts       
+               rts
 
 ** Find and print a module name
 * IN:  X - module offset
@@ -229,7 +229,7 @@ Printnam       equ       *
 Name2          pshs      x
                ldx       <lineptr
                clrb                          set length = 0
-Name3          incb      
+Name3          incb
                lda       ,x+
                bpl       Name3
                cmpb      #40
@@ -240,7 +240,7 @@ Name3          incb
                bcc       Name5
                lda       #C$SPAC
 Name4          sta       ,x+
-               incb      
+               incb
                cmpb      #9
                bcs       Name4
 Name5          stx       <lineptr
@@ -255,10 +255,10 @@ Space          lda       #C$SPAC
 
 * Print Hexidecimal Digit in A
 Hexl           tfr       a,b
-               lsra      
-               lsra      
-               lsra      
-               lsra      
+               lsra
+               lsra
+               lsra
+               lsra
                bsr       Outhex
                tfr       b,a
 Outhex         anda      #$0F
@@ -277,7 +277,7 @@ Print          pshs      x
 * Print 1 Decimal Digit in A
 *
 Outdecl        tfr       a,b                 number to B
-               clra      
+               clra
 
 * Print 2 Decimal Digits in D
 Outdec         clr       <leadflag
@@ -295,7 +295,7 @@ Ten            inc       1,x
                subd      #10
                bcc       Ten
                addd      #10
-               incb      
+               incb
                stb       2,x
                bsr       Printled
                bsr       Printled
@@ -311,13 +311,13 @@ Printled       tst       <leadflag           print leading zero?
                bne       Printnum            yes
                ldb       ,x                  is it zero?
                inc       <leadflag
-               decb      
+               decb
                bne       Printnum            no, print zeros
                clr       <leadflag
                lda       #C$SPAC
                leax      1,x
                bra       Print
 
-               emod      
+               emod
 PrgSiz         equ       *
-               end       
+               end
