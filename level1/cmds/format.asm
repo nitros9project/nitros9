@@ -609,7 +609,6 @@ L0243          stb       <interlv            save it
 ********************************************************************
 * Format option : formatting a CoCo or a Dragon disk ?
 ********************************************************************
-<<<<<<< HEAD
 
 DoFormat
                lda       ,x+                 Get next char
@@ -631,29 +630,6 @@ DoFmtDragon
                clrb
                rts
 
-=======
-                         
-DoFormat                 
-         lda   ,x+        Get next char
-         cmpa  #'D       Do a dragon disk ?
-         beq   DoFmtDragon
-         cmpa  #'d      
-         beq   DoFmtDragon
-         clr   IsDragon,u Mark it as a normal CoCo (or other) disk
-         clrb            
-         rts             
-                         
-DoFmtDragon                 
-         lda   #DragonFlag Mark as Dragon disk
-         sta   IsDragon,u
-                         
-         ldd   #DragonBootSize Setup additional system sectors
-         std   AddedSysSecs,u
-                         
-         clrb            
-         rts             
-                         
->>>>>>> 85f50ad9 (format.asm: Correctly accept lower-case (Dragon disk format) option)
 ********************************************************************
 * quoted option /cluster size/ save size in clustsiz
 * cluster size is in decimal. The number of sectors
