@@ -515,7 +515,6 @@ callerr@       comb                          set carry for error state
                ldb       #E$UnkSvc           unknown service
                bra       callexit@           perform exit
 
-
                use       fnproc.asm
                use       flink.asm
                use       fvmodul.asm
