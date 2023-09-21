@@ -91,6 +91,7 @@ edition        set       25
 * begin our data area, starts on direct page
 ********************************************************************
 
+
 savedu         rmb       2                   save the u register
 totsects       rmb       3
 tmpnum         rmb       4
@@ -242,6 +243,21 @@ Exit           os9       F$Exit              exit module
 ********************************************************************
 * clear our working memory area
 ********************************************************************
+<<<<<<< HEAD
+
+ClrWork  leay  diskpath,u point to work area
+         pshs  y          save that
+         leay  >LSN0,u    get size of area
+ClrOne   clr   ,-y        clear it down
+         cmpy  ,s         at begin?
+         bhi   ClrOne     not yet,
+         clr   IsDragon,u Assume we are not formatting a dragon disk
+         clr   IsSpec20,u Assume we are not formatting using special 20
+         clr   AddedSysSecs,u Clear aditional system sectors
+         clr   AddedSysSecs+1,u
+         puls  pc,y       done
+
+=======
 
 ClrWork        leay      diskpath,u          point to work area
                pshs      y                   save that
@@ -255,6 +271,7 @@ ClrOne         clr       ,-y                 clear it down
                clr       AddedSysSecs+1,u
                puls      pc,y                done
 
+>>>>>>> b4910370 (Working port of FNX6809 on F256 JR.)
 ********************************************************************
 * get rbf device name and open it
 ********************************************************************
