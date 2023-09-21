@@ -1,7 +1,7 @@
 ********************************************************************
 * Display - Character display utility
 *
-* $Id$
+* $Id: display.asm,v 1.5 2003/09/04 23:06:16 boisy Exp $
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
@@ -11,15 +11,17 @@
 *
 *   3      ????/??/??  Alan DeKok
 * Added decimal, text features.
+*   4      2020/07/04  L.Curtis Boyle
+* Fixed bug with '0' characters in decimal conversion
 
                nam       Display
                ttl       Character display utility
 
 * Disassembled 94/12/10 12:27:37 by Alan DeKok
 
-               ifp1      
+               ifp1
                use       defsfile
-               endc      
+               endc
 
 tylg           set       Prgrm+Objct
 atrv           set       ReEnt+rev
@@ -116,10 +118,10 @@ OK             subb      #$30                take out ascii zero, now B=nibble 0
 
 OK.0           leay      1,y
 OK.1           clra                          set to no error
-OK.2           rts       
+OK.2           rts
 
 Error          comb                          set carry
-               rts       
+               rts
 
 Do.Text        leau      <Text,pcr
                stb       <T.Delim            save text delimiter
@@ -147,7 +149,7 @@ D.One          clra                          force 1 byte (may expand to 2)
                sta       <D.Len              save length of the decimal character
 
                clra                          start off at zero
-               clrb      
+               clrb
                std       <D.Word             sav starting value of the decimal word to output
 
 D.Read         lda       ,y+                 grab a decimal digit
@@ -162,11 +164,11 @@ D.Read         lda       ,y+                 grab a decimal digit
 
                pshs      a                   save the character for later
                ldd       <D.Word             get the current word
-               aslb      
+               aslb
                rola                          N*2
-               aslb      
+               aslb
                rola                          N*4
-               aslb      
+               aslb
                rola                          N*8
                addd      <D.Word             N*8+N=N*9
                addd      <D.Word             N*9+N=N*10
@@ -183,13 +185,13 @@ D.Done         ldd       <D.Word             get the byte(s) to output
                beq       D.Exit              yes, only output low order byte
 
 D.Two          sta       ,x+                 save high byte in the output buffer
-D.Exit         clra      
-               rts       
+D.Exit         clra
+               rts
 
 D.CR           leau      Error,pcr           point to error routine: no more characters
                bra       D.Done              output these characters, and the exit
 
-               emod      
+               emod
 eom            equ       *
-               end       
+               end
 
