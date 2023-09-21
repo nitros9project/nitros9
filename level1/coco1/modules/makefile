@@ -47,7 +47,8 @@ RBF		= rbf.mn \
 		ddi0_ide.dd i0_ide.dd i1_ide.dd ih_ide.dd \
 		dds0_tc3.dd s0_tc3.dd s1_tc3.dd s2_tc3.dd s3_tc3.dd s4_tc3.dd \
                 s5_tc3.dd s6_tc3.dd sh_tc3.dd \
-		ddsd0_cocosdc.dd sd0_cocosdc.dd sd1_cocosdc.dd
+		ddsd0_cocosdc.dd sd0_cocosdc.dd sd1_cocosdc.dd \
+		emudsk.dr ddh0_emudsk.dd h0_emudsk.dd h1_emudsk.dd
 
 SCF		= scf.mn \
 		sc6551.dr vrn.dr scbbp.dr scbbt.dr scdwp.dr sspak.dr vtio.dr vtio_vga.dr \
@@ -161,6 +162,9 @@ rb1773_scii_ff74.dr:	rb1773.asm
 rb1773_scii_ff58.dr:	rb1773.asm
 	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DSCII=1 -DSCIIALT=1
 
+emudsk.dr: emudsk.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS)
+
 # TC^3 SCSI Driver
 lltc3.dr: llscsi.asm
 	$(AS) $(ASOUT)$@ $< $(TC3FLAGS)
@@ -218,6 +222,16 @@ d1_80d.dd: rb1773desc.asm
 
 d2_80d.dd: rb1773desc.asm
 	$(AS) $< $(ASOUT)$@ $(AFLAGS) $(DSDD80) -DDNum=2
+
+# Emudsk descriptors
+ddh0_emudsk.dd: emudskdesc.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0 -DDD=1
+
+h0_emudsk.dd: emudskdesc.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
+
+h1_emudsk.dd: emudskdesc.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=1
 
 # CoCoVGA SCF descriptors
 term_vga.dt: term_vdg.asm

@@ -53,7 +53,8 @@ RBF		= rbf.mn \
 		s5_tc3.dd s6_tc3.dd sh_tc3.dd \
 		ddsd0_cocosdc.dd sd0_cocosdc.dd sd1_cocosdc.dd \
 		llcoco3fpga.dr ddsd0_coco3fpga.dd sd0_coco3fpga.dd sd1_coco3fpga.dd \
-		ramd_coco3fpga.dr r0_ramd_coco3fpga.dd
+		ramd_coco3fpga.dr r0_ramd_coco3fpga.dd \
+		emudsk.dr ddh0_emudsk.dd h0_emudsk.dd h1_emudsk.dd
 
 SCF		= scf.mn \
 		vtio.dr vrn.dr scbbp.dr scbbt.dr scdwp.dr sspak.dr sc6551.dr \
@@ -165,6 +166,9 @@ rb1773_scii_ff74.dr:    rb1773.asm
 
 rb1773_scii_ff58.dr:    rb1773.asm
 	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DSCII=1 -DSCIIALT=1
+
+emudsk.dr: emudsk.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS)
 
 # REL Modules
 rel_32: rel.asm
@@ -288,6 +292,16 @@ ddr0_192k.dd: r0.asm
 # Coco3fpga ramd descriptors
 r0_ramd_coco3fpga.dd: ramddesc_coco3fpga.asm
 	$(AS) $< $(ASOUT)$@ $(AFLAGS)
+
+# Emudsk descriptors
+ddh0_emudsk.dd: emudskdesc.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0 -DDD=1
+
+h0_emudsk.dd: emudskdesc.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
+
+h1_emudsk.dd: emudskdesc.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=1
 
 # DriveWire SCF descriptors
 term_scdwv.dt: scdwvdesc.asm

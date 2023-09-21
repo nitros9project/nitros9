@@ -39,9 +39,9 @@ KERNEL_COCOSDC	= $(MD)/rel $(MD)/krn $(MD)/krnp2 $(MD)/init \
 IDE		= $(3PD)/ide
 SCSI		= $(3PD)/scsisys
 
-FLOPPY_40D	= $(MD)/rb1773.dr $(MD)/d0_40d.dd $(MD)/d1_40d.dd $(MD)/d2_40d.dd 
+FLOPPY_40D	= $(MD)/rb1773.dr $(MD)/d0_40d.dd $(MD)/d1_40d.dd $(MD)/d2_40d.dd
 
-FLOPPY_80D	= $(MD)/rb1773.dr $(MD)/d0_40d.dd $(MD)/d1_40d.dd $(MD)/d2_40d.dd 
+FLOPPY_80D	= $(MD)/rb1773.dr $(MD)/d0_40d.dd $(MD)/d1_40d.dd $(MD)/d2_40d.dd
 
 VTIO_COVDG	= $(MD)/vtio.dr $(MD)/covdg.io $(MD)/term_vdg.dt
 VTIO_COVGA	= $(MD)/vtio_vga.dr $(MD)/covga.io $(MD)/term_vga.dt
@@ -85,8 +85,10 @@ SCDWV_NET  = $(MD)/n_scdwv.dd $(MD)/n1_scdwv.dd $(MD)/n2_scdwv.dd \
 		$(MD)/n12_scdwv.dd $(MD)/n13_scdwv.dd $(MD)/midi_scdwv.dd
 SCDWV_WIN  = $(MD)/z1_scdwv.dd $(MD)/z2_scdwv.dd $(MD)/z3_scdwv.dd \
 		$(MD)/z4_scdwv.dd $(MD)/z5_scdwv.dd $(MD)/z6_scdwv.dd \
-		$(MD)/z7_scdwv.dd 
+		$(MD)/z7_scdwv.dd
 SCDWP     = $(MD)/scdwp.dr $(MD)/p_scdwp.dd
+
+EMUDSK = $(MD)/emudsk.dr $(MD)/h0_emudsk.dd $(MD)/h1_emudsk.dd
 
 BOOTFILE_COVDG	= $(MD)/ioman \
 		$(MD)/rbf.mn \
@@ -746,6 +748,19 @@ BOOTFILE_CO42_DS80	= $(MD)/ioman \
 		$(CLOCK60HZ) \
 		$(MD)/sysgo_dd
 
+BOOTFILE_EMUDSK	= $(MD)/ioman \
+		$(MD)/rbf.mn \
+		$(FLOPPY_40D) \
+		$(MD)/ddd0_40d.dd \
+		$(MD)/scf.mn \
+		$(VTIO_COVDG) \
+		$(MD)/scbbp.dr $(MD)/p_scbbp.dd \
+		$(MD)/scbbt.dr $(MD)/t1_scbbt.dd \
+		$(PIPE) \
+		$(CLOCK60HZ) \
+		$(MD)/sysgo_dd \
+		$(EMUDSK)
+
 BOOTFILES	= bootfile_covdg bootfile_cohr bootfile_co42 bootfile_cowprs \
 		bootfile_dw_headless bootfile_covdg_becker bootfile_covdg_rs232pak \
 		bootfile_covdg_cocolink bootfile_covdg_directmodempak \
@@ -763,7 +778,7 @@ BOOTFILES	= bootfile_covdg bootfile_cohr bootfile_co42 bootfile_cowprs \
 		bootfile_covga_ds80 bootfile_covga_cocosdc bootfile_covga_dw bootfile_covga_rs232pak \
 		bootfile_covga_directmodempak bootfile_covga_cocolink bootfile_covga_dw_game \
 		bootfile_covga_cocosdc_game bootfile_covga_rs232pak_game bootfile_covga_directmodempak_game \
-		bootfile_covga_cocolink_game bootfile_covga bootfile_covga_arduino
+		bootfile_covga_cocolink_game bootfile_covga bootfile_covga_arduino bootfile_emudsk
 
 KERNELS		= kernel_1773 kernel_dw kernel_becker kernel_arduino kernel_cocosdc \
 			kernel_rs232pak kernel_directmodempak kernel_cocolink
@@ -928,6 +943,9 @@ bootfile_cohr_directmodempak: $(BOOTFILE_COHR_DIRECTMODEMPAK) $(DEPENDS)
 bootfile_cohr_arduino: $(BOOTFILE_COHR_ARDUINO) $(DEPENDS)
 	$(MERGE) $(BOOTFILE_COHR_ARDUINO)>$@
 
+bootfile_emudsk: $(BOOTFILE_EMUDSK) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_EMUDSK)>$@
+
 # WD1773 Kernel
 kernel_1773: $(KERNEL_1773) $(DEPENDS)
 	$(MERGE) $(KERNEL_1773)>$@
@@ -958,7 +976,7 @@ kernel_arduino: $(KERNEL_ARDUINO) $(DEPENDS)
 	$(MERGE) $(KERNEL_ARDUINO)>$@
 	$(PADROM) 4608 $@
 
-kernel_cocosdc: $(KERNEL_COCOSDC) $(DEPENDS) 
+kernel_cocosdc: $(KERNEL_COCOSDC) $(DEPENDS)
 	$(MERGE) $(KERNEL_COCOSDC)>$@
 	$(PADROM) 4608 $@
 

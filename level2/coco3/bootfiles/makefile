@@ -2,7 +2,6 @@ include ../port.mak
 
 # Module directory
 MD		= ../modules
-THIRD   = ../../../3rdparty
 
 DEPENDS		= ./makefile
 
@@ -76,9 +75,8 @@ CLOCK50HZ  = $(MD)/clock_50hz $(MD)/clock2_soft
 CLOCK60HZ  = $(MD)/clock_60hz $(MD)/clock2_soft
 CLOCK60HZDW = $(MD)/clock_60hz $(MD)/clock2_dw
 CLOCK60HZCC3FPGA = $(MD)/clock_60hz $(MD)/clock2_coco3fpga
-EMUDSK6809 = $(THIRD)/drivers/emudsk/emudsk_6809.dr \
-		$(THIRD)/drivers/emudsk/h0.dd \
-		$(THIRD)/drivers/emudsk/h1.dd
+EMUDSK = $(MD)/emudsk.dr $(MD)/h0_emudsk.dd \
+		$(MD)/h1_emudsk.dd
 
 # NitrOS-9 disk bootfile to allow booting from DriveWire server
 # on a DE1 or Xilinx using Gary Becker's CoCo 3 FGPA
@@ -416,7 +414,7 @@ BOOTFILE_EMUDSK	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(VTIO_COGRF_80) \
 		$(PIPE) \
 		$(CLOCK60HZ) \
-		$(EMUDSK6809)
+		$(EMUDSK)
 
 BOOTFILES	= bootfile_40d bootfile_40d_50hz bootfile_80d \
 		bootfile_80d_50hz bootfile_dw bootfile_dw_headless \
