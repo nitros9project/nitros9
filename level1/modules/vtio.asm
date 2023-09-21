@@ -54,11 +54,11 @@
                nam       VTIO
                ttl       OS-9 Level One V2 CoCo I/O driver
 
-               ifp1      
+               ifp1
                use       defsfile
 ;         use   scfdefs
                use       cocovtio.d
-               endc      
+               endc
 
 tylg           set       Drivr+Objct
 atrv           set       ReEnt+rev
@@ -84,7 +84,7 @@ name           fcs       /VTIO/
 *    CC = carry set on error
 *    B  = error code
 *
-Init                     
+Init
 * MESS Debug lines for Phill
 *        pshs   y
 *       ldy     #$aa55
@@ -100,19 +100,19 @@ L002E          sta       ,x+                 clear mem
                bne       L002E               continue if more
                ifeq      PwrLnFreq-Hz60
                lda       #CFlash60hz         initialize
-               else      
+               else
                lda       #CFlash50hz         initialize
-               endc      
+               endc
                sta       >V.FlashTime,u
-               leax      <FlashCursor,pcr    Point to dummy cursor flash (just an rts). 
+               leax      <FlashCursor,pcr    Point to dummy cursor flash (just an rts).
                stx       V.Flash,u           Setup cursor flash
                coma                          A = $FF
                comb                          B = $FF
                ifeq      coco2b+coco2b_6309+deluxe-1
                clr       <V.Caps,u
-               else      
+               else
                stb       <V.Caps,u
-               endc      
+               endc
                std       <V.LKeyCd,u
                std       <V.2Key2,u
 * I presume this should also get IFEQ to specify 50 for PAL systems
@@ -142,7 +142,7 @@ L002E          sta       ,x+                 clear mem
 *    CC = carry set on error
 *    B  = error code
 *
-Read                     
+Read
 *       pshs    y
 *       ldy     #$aa57
 *       puls    y
@@ -157,8 +157,8 @@ Read
                bsr       L009D               check for tail wrap
                stb       V.IBufT,u           store updated tail
                andcc     #^(IRQMask+Carry)   unmask IRQ
-FlashCursor              
-               rts       
+FlashCursor
+               rts
 
 Put2Bed        lda       V.BUSY,u            get calling process ID
                sta       V.WAKE,u            store in V.WAKE
@@ -172,19 +172,19 @@ Put2Bed        lda       V.BUSY,u            get calling process ID
                cmpb      #S$Window           window signal?
                bhs       Read                Window signal or higher (none of the main system ones), go read
                coma                          Otherwise, return with signal code as error
-               rts       
+               rts
 
 * Check if we need to wrap around tail pointer to zero
 L009D          incb                          increment pointer
                cmpb      #$7F                at end?
                bls       L00A3               branch if not
                clrb                          else clear pointer (wrap to head)
-L00A3          rts       
+L00A3          rts
 
 *
 * IRQ routine for keyboard
 *
-AltIRQ                   
+AltIRQ
 *        pshs   y
 *       ldy     #$aa58
 *       puls    y
@@ -196,8 +196,8 @@ AltIRQ
                lda       <V.PIA1,u
                lbsr      SetDsply            set up display
 L00B7          ldx       #PIA0Base           point to PIA base
-               clra      
-               clrb      
+               clra
+               clrb
                std       <V.KySns,u          clear keysense byte
                bsr       L00E8               get bits
                bne       L00CC
@@ -206,40 +206,40 @@ L00B7          ldx       #PIA0Base           point to PIA base
                coma                          invert
                anda      #$7F                strip off hi bit
                bne       L00F1               branch if any bit set
-L00CC          clra      
-               clrb      
+L00CC          clra
+               clrb
                std       <V.KTblLC,u         clear
                coma                          A = $FF
                tst       <V.Spcl,u           special key?
                bne       l@                  branch if so
                sta       <V.LKeyCd,u
 l@             stb       <V.Spcl,u           clear for next time
-               comb      
+               comb
                sta       <V.2Key1,u
                std       <V.2Key2,u
 
-CheckFlash               
+CheckFlash
                dec       V.FlashCount,u      Dec flash counter
                bne       AltIRQEnd           Still more, just call clock module.
-FlashTime                
+FlashTime
                jsr       [V.Flash,u]         Call flash routine
 * 6809/6309 NOTE: Should add IFEQ of some sort here for CFlash50hz or CFlash60hz - but I am not
 *  sure what to compare it with
                lda       >V.FlashTime,u      Re-init count
                sta       V.FlashCount,u
-AltIRQEnd                
+AltIRQEnd
                jmp       [>D.Clock]          jump into clock module
 
-L00E8          comb      
+L00E8          comb
                stb       2,x                 strobe one column
                ldb       ,x                  read PIA #0 row states
                comb                          invert bits so 1=key pressed
                andb      #$03                mask out all but lower 2 bits
-               rts       
+               rts
 
 L00F1          bsr       L015C
                bmi       L00CC
-               clrb      
+               clrb
                bsr       L00E8               Scan keyboard?
                bne       L00CC               Key pressed, go process
                cmpa      <V.6F,u             Check flag: Same as last key pressed?
@@ -257,7 +257,7 @@ L010E          sta       <V.6F,u             Save copy of key pressed?
                ldb       #$05                Default timer to 5 tickets
                tst       <V.KySame,u         Same key as last time?
                bne       L0105               Yes, save clock tick count of 5, check for cursor flash
-               ldb       #60                 No, set clock tick count to 60 
+               ldb       #60                 No, set clock tick count to 60
 L011A          stb       <V.ClkCnt,u
                ldb       V.IBufH,u           get head pointer in B
                leax      V.InBuf,u           point X to input buffer
@@ -291,29 +291,29 @@ L0153          beq       L0158               branch if none
 L0158          clr       V.WAKE,u            clear process to wake flag
                bra       AltIRQEnd           and move along
 
-L015C          clra      
-               clrb      
+L015C          clra
+               clrb
                std       <V.ShftDn,u         SHIFT/CTRL flag; 0=NO $FF=YES
                std       <V.KeyFlg,u
 * %00000111-Column # (Output, 0-7)
 * %00111000-Row # (Input, 0-6)
-               coma      
-               comb      
+               coma
+               comb
                std       <V.Key1,u           key 1&2 flags $FF=none
                sta       <V.Key3,u           key 3     "
                deca                          lda #%11111110
                sta       2,x                 write column strobe
 L016F          lda       ,x                  read row from PIA0Base
 
-               ifne      (tano+d64+dalpha)
+               ifne      (tano+d64+dalpha+dplus)
                lbsr      DragonToCoCo        Translate Dragon keyboard layout to CoCo
-               endc      
+               endc
 
                coma                          invert so 1=key pressed
                anda      #$7F                keep only keys, bit 0=off 1=on
                beq       L0183               no keys pressed, try next column
                ldb       #$FF                preset counter to -1
-L0178          incb      
+L0178          incb
                lsra                          bit test regA
                bcc       L017F               no key, brach
                lbsr      L0221               convert column/row to matrix value and store
@@ -378,7 +378,7 @@ L01E9          ldb       <V.AltDwn,u         was ALT flagged?
                ora       #$20                convert to lower case
 L01F8          ora       #$80                set for ALT characters
 L01FA          andcc     #^Negative          not negative
-               rts       
+               rts
 
 * Flag that special key was hit
 L01FD          inc       <V.Spcl,u           Set flag
@@ -386,15 +386,15 @@ L01FD          inc       <V.Spcl,u           Set flag
                bne       L0208               Yes, set negative flag & return
                com       <V.Caps,u           No, flip state of Caps lock flag
 L0208          orcc      #Negative           set negative
-L020A          rts       
+L020A          rts
 
 * Calculate arrow keys for key sense byte
 L020B          pshs      d                   convert column into power of 2
-               clrb      
+               clrb
                orcc      #Carry
-               inca      
-L0211          rolb      
-               deca      
+               inca
+L0211          rolb
+               deca
                bne       L0211
                bra       L0219
 
@@ -412,8 +412,8 @@ L0221          pshs      d
                blt       L0230               if lt it must be a letter
                bsr       L020B               its a non letter so bsr
 L0230          lslb                          B*8 8 keys per row
-               lslb      
-               lslb      
+               lslb
+               lslb
                addb      <V.KeyFlg,u         add in the column #
                beq       L025D
                cmpb      #$33                ALT
@@ -438,7 +438,7 @@ L0252          cmpb      #$37                SHIFT key
 
 L025D          ldb       #$04
                bsr       L0217
-               clrb      
+               clrb
 * Check how many key (1-3) are currently being pressed
 * Exit: <V.Key1 entries updated (up to 3)
 *       B=# keys pressed (1,2,3)
@@ -483,7 +483,7 @@ L02A0          cmpa      ,y                  is it a match?
                bra       L02B6
 
 L02AA          leay      1,y
-               decb      
+               decb
                bne       L02A0
                lda       #$FF
                sta       ,x
@@ -499,11 +499,11 @@ L02C5          leax      <V.Key1,u           1st key table
                lda       #$03
 L02CA          ldb       ,x+
                bpl       L02DE
-               deca      
+               deca
                bne       L02CA
                ldb       <V.KTblLC,u         key table entry (can test for 3 simul keys)
                beq       L02EA
-               decb      
+               decb
                leax      <V.2Key1,u          2nd key table
                lda       b,x
                bra       L02E8
@@ -530,15 +530,15 @@ L02F8          ldb       ,x                  Get the keypress
                bne       L02F8               no, keep going
 L0301          rts                           Yes, return
 
-L0302          comb      
+L0302          comb
                stb       ,x
                inc       <V.AltDwn,u         Set flag that ALT key is pressed
-               rts       
+               rts
 
 * Sort 3 byte packet @ G.2Key1 according to sign of each byte
 * so that positive #'s are at beginning & negative #'s at end
 * NOTE: The only call to come here destroys X immediately on return (L02B6),
-* 
+*
 L0309          leax      <V.2Key1,u          2nd key table
                bsr       L0314               sort bytes 1 & 2
                leax      1,x
@@ -550,7 +550,7 @@ L0314          lda       ,x                  get current byte
                bmi       L0320               negative - no swap
                sta       1,x                 swap the bytes
                stb       ,x
-L0320          rts       
+L0320          rts
 
 ;
 ; Convert Dragon Keyboard mapping to CoCo.
@@ -558,31 +558,31 @@ L0320          rts
 ; Entry a=Dragon formatted keyboard input from PIA
 ; Exit  a=CoCo formatted keyboard input from PIA
 ;
-               ifne      (tano+d64+dalpha)
-DragonToCoCo             
+               ifne      (tano+d64+dalpha+dplus)
+DragonToCoCo
                pshs      b                   Save B
                sta       ,-s                 Save Dragon formatted keyboard on stack
                tfr       a,b                 Take a copy of keycode
                ifne      H6309
                andd      #%0100000000000011  replaces next two lines
-               else      
+               else
                anda      #%01000000          Top row same on both machines
                andb      #%00000011          shift bottom 2 rows up 4 places
-               endc      
-               lslb      
-               lslb      
-               lslb      
-               lslb      
+               endc
+               lslb
+               lslb
+               lslb
+               lslb
                pshs      b
                ora       ,s+
                ldb       ,s                  Get original dragon formatted one back (-2 cyc)
                andb      #%00111100          Shift middle 4 rows down 2 places
-               lsrb      
-               lsrb      
+               lsrb
+               lsrb
                stb       ,s                  Save shifted version on stack (-2 cyc)
                ora       ,s+                 recombine rows
                puls      b,pc                Restore original B & return
-               endc      
+               endc
 
 * Key Table
 * 1st column = key (no modifier)
@@ -676,7 +676,7 @@ L039D          jmp       b,x                 Call co-module with char to write
 
 NoIOMod        comb                          Module not found error
                ldb       #E$MNF
-               rts       
+               rts
 
 * Parameter handler - currently ONLY handles 1 or 2 bytes of parameters. Any additions that require
 *   more will require code changes here.
@@ -691,22 +691,22 @@ PrmHandl       cmpb      #2                  Still two parameters left?
 L03B0          sta       <V.NChar,u          store 1st parameter byte in V.NChar
                dec       <V.NGChr,u          decrement parameter counter
                clrb                          Return w/o error, to go get the 2nd parameter byte
-               rts       
+               rts
 
 Escape         beq       L03C5               if $1E, we conveniently ignore it
                leax      <COEscape,pcr       else it's $1F... set up to get next char
 L03BD          ldb       #$01                This entry point requests 1 byte of parameters
 L03BF          stx       <V.RTAdd,u
                stb       <V.NGChr,u
-L03C5          clrb      
-               rts       
+L03C5          clrb
+               rts
 
 COEscape       ldb       #$03                'Write' offset into CO-module
                lbra      JmpCO
 
 * Show VDG or Graphics screen. Set up as a vector (V.DspVct)
 * Entry: B = 0 for VDG, 1 for Graphics
-*        A = color setting of some sort 
+*        A = color setting of some sort
 SetDsply       pshs      x,a
                stb       <V.Alpha,u          save passed flag in B
                lda       >PIA1Base+2
@@ -716,7 +716,7 @@ SetDsply       pshs      x,a
                bne       L03DE               branch if so
                ifne      COCOVGA
                ora       #$A0                VGA - force VDG to CG2 (which CocoVGA takes control of)
-               endc      
+               endc
                ora       <V.CFlag,u          Merge in true lowercase bit as well
 L03DE          sta       >PIA1Base+2
                sta       <V.PIA1,u
@@ -729,12 +729,12 @@ L03DE          sta       >PIA1Base+2
                stb       -6,x                clear GM0
                stb       -3,x                set GM1
                stb       -2,x                clear GM2
-               else      
+               else
 * VDG - Set VDG to Alpha mode
                stb       -6,x                $FFC0  Set up for 32x16 text screen
                stb       -4,x                $FFC2
                stb       -2,x                $FFC4
-               endc      
+               endc
                lda       <V.ScrnA,u          get pointer to alpha screen
                bra       L0401
 
@@ -744,8 +744,8 @@ DoGfx          stb       -6,x                $FFC0
                stb       -1,x                $FFC5
                lda       <V.SBAdd,u          get pointer to graphics screen (just need hi byte-VDG needs 512 byte boundaries)
 L0401          ldb       #$07                7 SAM double-byte settings to do
-               lsra      
-L0407          lsra      
+               lsra
+L0407          lsra
                bcs       L0410               If bit set, store on odd byte
                sta       ,x++                bit clear, store on even byte (Faster (not important), smaller)
                bra       L0414
@@ -760,8 +760,8 @@ L0414          decb                          Done all 7 mem pairs?
 * Return key sense information
 SSKYSNS        ldb       <V.KySns,u          get key sense info
                stb       R$A,x               put in caller's A
-               clrb      
-               rts       
+               clrb
+               rts
 
 * Return screen size
 SSSCSIZ        clra                          clear upper 8 bits of D
@@ -770,7 +770,7 @@ SSSCSIZ        clra                          clear upper 8 bits of D
                ldb       <V.Row,u            get row count
                std       R$Y,x               save in Y
                clrb                          no error
-               rts       
+               rts
 
 * GetStat
 * Entry:
@@ -792,8 +792,8 @@ GetStat        sta       <V.WrChr,u          save off stat code
                suba      V.IBufT,u           num of chars ready in A
                sta       R$B,x               Save for caller
                lbeq      NotReady            If no data in keyboard buffer, return with Not Ready error
-SSEOF          clrb      
-               rts       
+SSEOF          clrb
+               rts
 
 L0439          cmpa      #SS.Joy             joystick?
                beq       SSJOY               branch if so
@@ -822,7 +822,7 @@ SSJOY          pshs      y,cc
 
 L0481          andb      #$02
                beq       L0486
-L0485          clra      
+L0485          clra
 L0486          sta       R$A,x
                lda       >PIA0Base+3
                ora       #$08
@@ -842,7 +842,7 @@ L0494          ldy       #PIA0Base+1         Point to PIA most used address in f
                ldd       #63
                subd      ,s++
                std       R$Y,x               Save Y coord of joystick
-               clrb      
+               clrb
                puls      pc,y,cc
 
 L04B3          sta       ,y                  PIA0Base+1
@@ -852,14 +852,14 @@ L04C7          pshs      b
                tst       -1,y                PIA0Base
                bpl       L04D5
                adda      ,s+
-L04BC          lsrb      
+L04BC          lsrb
                cmpb      #$01
                bhi       L04C7
-               lsra      
-               lsra      
+               lsra
+               lsra
                tfr       a,b
-               clra      
-               rts       
+               clra
+               rts
 
 L04D5          suba      ,s+
                bra       L04BC
@@ -883,7 +883,7 @@ L04E7          bita      #$01                Loop to figure out color-have we sh
                tst       <V.Mode,u           Are we in 2 color mode?
                bmi       L04E7               Yes, loop back
                lsra                          4 color mode, move both to right one more bit (2 bits per pixel)
-               lsrb      
+               lsrb
                bra       L04E7               Check if we have found active pixel yet.
 
 L04F6          pshs      b                   Save pixel color (last 1 or 2 bits)
@@ -896,8 +896,8 @@ L04F6          pshs      b                   Save pixel color (last 1 or 2 bits)
                std       R$Y,x               cursor X/Y pos in Y,
                ldd       <V.SBAdd,u
                std       R$X,x               and screen addr in X
-               clrb      
-L050E          rts       
+               clrb
+L050E          rts
 
 * This vector also gets called from Grfdrv via V.CnvVct
 * Entry: A = X coord, B = Y coord
@@ -906,13 +906,13 @@ XY2Addr        pshs      y,d                 save off regs
                ldb       <V.Mode,u           get video mode
                bpl       L0517               branch if 128x192 (divide A by 4)
                lsra                          else divide by 8
-L0517          lsra      
-               lsra      
+L0517          lsra
+               lsra
                pshs      a                   save on stack (A=horizontal byte on line pixel will be on)
                ldb       #191                get max Y
                subb      2,s                 subtract from Y on stack
                lda       #32                 bytes per line
-               mul       
+               mul
                addb      ,s+                 add offset on stack
                adca      #$00
                ldx       <V.SBAdd,u          get base address of gfx screen
@@ -949,8 +949,8 @@ SetStat        sta       <V.WrChr,u          save function code
                beq       L0558               branch if zero
                ldb       #$FF                else set all bits
 L0558          stb       <V.KySnsF,u         store value in KySnsFlag
-L055B          clrb      
-L055C          rts       
+L055B          clrb
+L055C          rts
 
 CoGetStt       ldb       #$09                CO-module setstat
 JmpCO          pshs      b
@@ -986,7 +986,7 @@ L058E          lbsr      GetMem              allocate graphics buffer memory
                rts                           and return
 
 L059E          ldb       #E$BMode
-               coma      
+               coma
 L05A1          puls      pc,a
 
 * Select a graphics buffer
@@ -1004,12 +1004,12 @@ SSSLGBF        ldb       <V.Rdy,u            was initial buffer allocated with $
                beq       L05C3               if zero, do nothing
                ldb       #$01                else set display flag
 L05C3          stb       <V.CFlg1,u          save display flag
-NoError        clrb      
-               rts       
+NoError        clrb
+               rts
 
 BadMode        comb                          Exit with Bad Mode error
                ldb       #E$BMode
-               rts       
+               rts
 
 *SS.Comst GetStat - has some features not documented
 * Entry (From caller):
@@ -1028,10 +1028,10 @@ BadMode        comb                          Exit with Bad Mode error
 *   xxx1xxxx = Use Co42 (42x25 PMODE 4)
 *   xx1xxxxx = Use CoVGA (64x32 CocoVGA adaptor)
 SSCOMST        ldd       R$Y,x               Get caller's Y
-SetupTerm                
+SetupTerm
                bita      #ModCoVDG           32x16 VDG bit flag set?
                beq       GoCoWP              No, go check next co-module type
-               ldb       #$10                assume true lower case TRUE 
+               ldb       #$10                assume true lower case TRUE
                bita      #$01                true lowercase bit set?
                bne       GoCoVDG             Yes, branch if so
                clrb                          true lower case FALSE
@@ -1049,31 +1049,46 @@ GoCoVDG        stb       <V.CFlag,u          save lowercase flag
                bne       NoError
                lbra      SetDsply
 
-* All co-modules except grfdrv
 
-CoVDG          fcs       /CoVDG/
-CoWP           fcs       /CoWP/
-CoHR           fcs       /CoHR/
-Co42           fcs       /Co42/
-CoVGA          fcs       /CoVGA/
-
-GoCoWP         bita      #ModCoWP            CoWP needed ?
-               beq       GOCoVGA             No, try next co-module
-               stb       <V.CFlag,u          allow lowercase
-               clr       <V.Caps,u           set caps off
-               lda       #ModCoWP            'CoWP is loaded' bit
-               ldx       #$5019              80x25 WordPark RS supports 25 lines
-               pshs      u,y,x,a
-               leax      <CoWP,pcr
 * 6809/6309 - Try embedding LoadCoModule since short and only called from here.
 * Entry: X=ptr to co-module name
-SetupCoModule            
-               bsr       LoadCoModule        Load Co-module if not already loaded
-               puls      u,y,x,a
-               bcs       L0600               Couldn't load/link co-module, return with error
-               stx       <V.Col,u            save screen size
-               sta       <V.CurCo,u          current module in use? ($02=CoVDG, $04=C080, etc.)
-L0600          rts       
+SetupCoModule
+         lbsr  LoadCoModule   Load Co-module if not already loaded
+         puls  u,y,x,a
+         bcs   L0600          Couldn't load/link co-module, return with error
+         stx   <V.Col,u       save screen size
+         sta   <V.CurCo,u     current module in use? ($02=CoVDG, $04=C080, etc.)
+L0600    rts
+
+* All co-modules except grfdrv
+
+CoVDG    fcs   /CoVDG/
+CoWP     fcs   /CoWP/
+CoDPlus  fcs   /CoDPlus/
+CoHR     fcs   /CoHR/
+Co42     fcs   /Co42/
+CoVGA    fcs   /CoVGA/
+
+GoCoWP   bita  #ModCoWP       CoWP needed ?
+         beq   GoCoDPlus      No, try next co-module
+         stb   <V.CFlag,u     allow lowercase
+         clr   <V.Caps,u      set caps off
+         lda   #ModCoWP       'CoWP is loaded' bit
+         ldx   #$5019         80x25 WordPark RS supports 25 lines
+         pshs  u,y,x,a
+         leax  <CoWP,pcr
+         bra   SetupCoModule
+
+GoCoDPlus
+         bita  #ModCoDPlus    Dragon Plus 80 column
+         beq   GOCoVGA
+         stb   <V.CFlag,u     allow lowercase
+         clr   <V.Caps,u      set caps off
+         lda   #ModCoDPlus    CoDPlus is loaded bit
+         ldx   #$5018         80x24
+         pshs  u,y,x,a
+         leax  <CoDPlus,pcr
+         bra   SetupCoModule
 
 GoCoVGA        bita      #ModCoVGA           64x32 CoVGA?
                beq       GoCo42              No, then try next co-module
@@ -1084,31 +1099,31 @@ GoCoVGA        bita      #ModCoVGA           64x32 CoVGA?
                leax      <CoVGA,pcr
                bra       SetupCoModule
 
-GOCo42         bita      #ModCo42            42x24 gfx term?
-               beq       GOCoHR              No, try 51 column co-module
-               ldb       #$10                Flag that we can do real lowercase
-               stb       <V.CFlag,u
-               clr       <V.Caps,u           Caps lock OFF
-               lda       #ModCo42            'Co42 is loaded' bit
-               ldx       #$2A18              42x24
-               pshs      u,y,x,a
-               leax      <Co42,pcr
-               bra       SetupCoModule
+GOCo42   bita  #ModCo42       42x24 gfx term?
+         beq   GOCoHR         No, try 51 column co-module
+         ldb   #$10           Flag that we can do real lowercase
+         stb   <V.CFlag,u
+         clr   <V.Caps,u      Caps lock OFF
+         lda   #ModCo42       'Co42 is loaded' bit
+         ldx   #$2A18         42x24
+         pshs  u,y,x,a
+         leax  <Co42,pcr
+         lbra  SetupCoModule
 
-GOCoHR         ldb       #$10
-               stb       <V.CFlag,u
-               clr       <V.Caps,u
-               lda       #ModCoHR            'CoHR is loaded' bit
-               ldx       #$3318              51x24
-               pshs      u,y,x,a
-               leax      <CoHR,pcr
-               bra       SetupCoModule
+GOCoHR   ldb   #$10
+         stb   <V.CFlag,u
+         clr   <V.Caps,u
+         lda   #ModCoHR       'CoHR is loaded' bit
+         ldx   #$3318         51x24
+         pshs  u,y,x,a
+         leax  <CoHR,pcr
+         lbra  SetupCoModule
 
-LoadCoModule             
+LoadCoModule
                bita      <V.COLoad,u         Module loaded?
                beq       L0608               No, try loading
 L0606          clrb                          Yes, return with no error
-               rts       
+               rts
 
 L0608          pshs      y,x,a               Preserve regs
                bsr       LinkSub             Try to link to Co-module
@@ -1130,13 +1145,13 @@ L061F          leax      <V.GrfDrvE,u        get base pointer to CO-entries
 ; Get module offset from V.GrfDrvE into A reg.
 ; I had to do this because the previous system would only work
 ; properly for 2 entries !
-GetModOffset             
+GetModOffset
                pshs      b
                clrb                          Calculate address offset
 AddrFind       bita      #$01                Done all shifts ?
                bne       AddrDone
                addb      #$2                 increment addr offset ptr
-               lsra      
+               lsra
                bra       AddrFind            Test again
 
 AddrDone       tfr       b,a                 output in a
@@ -1154,7 +1169,7 @@ LoadSub        pshs      u
                os9       F$Load
                puls      pc,u
 
-GfxDispatch              
+GfxDispatch
                cmpa      #$15                GrfDrv-handled code?
                bhs       GoGrfo              Yep, pass code over to it
                cmpa      #$0F                display graphics code? NEED TO FIND OUT IF COHR/CO42 SHOULD SKIP THIS
@@ -1171,7 +1186,7 @@ GfxActv        ldb       <V.Rdy,u            gfx screen allocated?
                bne       L0606               Yes, exit with no error
 NotReady       comb                          No, exit with Not Ready error
                ldb       #E$NotRdy
-L0663          rts       
+L0663          rts
 
 GoGrfo         bsr       GfxActv             Is a graphics screen already active?
                bcs       L0663               No, return with error
@@ -1217,8 +1232,8 @@ L06A1          pshs      u,a                 Save static mem ptr and high byte s
                os9       F$SRtMem            return page
                puls      u,a                 Restore regs
                bcs       L06B3               branch if error
-               clrb      
-L06B3          rts       
+               clrb
+L06B3          rts
 
 * $0F - display graphics
 Do0F           leax      <DispGfx,pcr        Get address to call after we get 2 parameter bytes
@@ -1247,7 +1262,7 @@ L06D1          lda       <V.NChr2,u          get 2nd parm (color set/foreground/
 
 L06F0          blo       L0710               branch if 256x192
 * NOTE: CHECK CO-MODULES; I DON'T SEE V.MCol or V.MCol+1 being used ANYWHERES in VTIO
-               ldd       #$C003              4 color mode; Make pixel masks for start and end pixels in a byte  
+               ldd       #$C003              4 color mode; Make pixel masks for start and end pixels in a byte
                std       <V.MCol,u           Save them for re-use
                ldd       #$E001
                stb       <V.Mode,u           128x192 4 color mode
@@ -1259,7 +1274,7 @@ L0709          ldb       #$03                Base 0 # pixels in a byte
                leax      <L0742,pcr          Point to 4 color pixel masks table
                bra       L072D
 
-L0710          ldd       #$8001              2 color mode; Make pixel masks for start and end pixels in a byte  
+L0710          ldd       #$8001              2 color mode; Make pixel masks for start and end pixels in a byte
                std       <V.MCol,u           Save them for re-use
                lda       #$FF
                tst       <V.Msk1,u
@@ -1273,13 +1288,13 @@ L072D          stb       <V.PixBt,u          Save base 0 # pixels in a byte
                stx       <V.MTabl,u          Save ptr to pixel mask table
                ldb       <V.NChr2,u
                andb      #$04
-               lslb      
+               lslb
                ifne      H6309
                orr       b,a
-               else      
+               else
                pshs      b
                ora       ,s+
-               endc      
+               endc
                ldb       #$01
 * Indicate screen is current
                lbra      SetDsply
@@ -1309,9 +1324,9 @@ L075F          lbra      L06D1
 Do12           leax      <V.GBuff,u          point to first buffer
                ifne      H6309
                tfr       0,y                 Same speed/2 bytes smaller on 6309
-               else      
+               else
                ldy       #0                  Y = 0
-               endc      
+               endc
                ldb       #3                  free 3 gfx screens max
                pshs      u,b
 L076D          ldd       #6144               size of graphics screen
@@ -1326,7 +1341,7 @@ L077A          dec       ,s                  decrement counter
                ldd       #512                else get size
                os9       F$SRtMem            and free memory
 L0788          puls      u,b                 restore regs
-               clra      
+               clra
                sta       <V.Rdy,u            gfx mem no longer allocated
                lbra      SetDsply
 
@@ -1371,10 +1386,10 @@ L07B2          pshs      b,u                 Save color code & static mem ptr
                jsr       ,y                  Call ClrBlk vector
                puls      u                   Get back static mem ptr
 * Home Graphics cursor
-Do14           clra      
-               clrb      
+Do14           clra
+               clrb
                std       <V.GCrsX,u
-               rts       
+               rts
 
 *
 * Ding - tickle CoCo's PIA to emit a sound
@@ -1388,10 +1403,10 @@ Ding           pshs      d,x
                pshs      d
                ifne      H6309
                andd      #$F7F7
-               else      
+               else
                anda      #$F7
                andb      #$F7
-               endc      
+               endc
                sta       -2,x                >PIA0Base+1
                stb       ,x                  >PIA0Base+3
                lda       >PIA1Base+3
@@ -1403,7 +1418,7 @@ L07E6          lda       #$FE
                bsr       DingDuration
                lda       #$02
                bsr       DingDuration
-               decb      
+               decb
                bne       L07E6
                puls      a
                sta       >PIA1Base+3
@@ -1412,12 +1427,12 @@ L07E6          lda       #$FE
                stb       ,x                  >PIA0Base+3
                puls      pc,x,d
 
-DingDuration             
+DingDuration
                sta       >PIA1Base
                lda       #128
-L0805          inca      
+L0805          inca
                bne       L0805
-               rts       
+               rts
 
 * Since these are called by a JSR vector, they doesn't need to be near anything, so put
 * both ClrBlk & CpyBlk at end of VTIO, and set up vectors to them in VTIO Init routine
@@ -1437,27 +1452,27 @@ L0805          inca
 *   3.5 cyc/byte in 6809 mode (except every 1,024th byte takes a few extra)
 * Since these are called by a JSR vector, they doesn't need to be near anything, so put
 * both ClrBlk & CpyBlk at end of VTIO, and set up vectors to them in VTIO Init routine
-ClrBlk                   
+ClrBlk
                ifne      H6309
                pshs      b                   Save value to clear with
                tfr       x,w                 Move size to TFM size register
                subr      w,u                 Calc start ptr of block (TFM can't do 1 location to decrementing address)
                tfm       s,u+                Clear mem
                puls      b,pc                Eat stack & return
-               else      
+               else
                tfr       b,a                 D=double copy of value to clear memory with
                exg       x,d                 D=Size to clear (in bytes), X=2 byte value to clear with
                pshs      b,x                 Save 16 bit value to clear with, & LSB of size (to check for leftover bytes)
                lsra                          Divide size by 4 (since we are doing 4 bytes at a time)
-               rorb      
-               lsra      
-               rorb      
+               rorb
+               lsra
+               rorb
                pshs      d                   Save mini-stackblast counters
                ldd       2,s                 Get A=LSB of # of bytes to clear, B=byte to clear with
                anda      #$3                 Non-even multiple of 4?
                beq       NoOdd               Even, skip single byte cleanup copy
 OverLp         stb       ,-u                 Save odd bytes
-               deca      
+               deca
                bne       OverLp
 NoOdd          ldd       ,s++                Get Mini-stack blast ctrs back
                beq       ExitClrB            No 4 byte blocks, done
@@ -1471,7 +1486,7 @@ ClrLp          pshu      x,y                 Clear 4 bytes
                deca                          Dec 1Kbyte counter
                bne       ClrLp               Still going (B has been set to 0, so inner loop is 256 now)
 ExitClrB       puls      b,x,pc              Eat temp regs & return
-               endc      
+               endc
 
 * CpyBlk - Copy contiguous block of memory with a byte value (for screen scrolling, insert/delete line,etc.)
 * New, more optimized version (I hope) as of March 12, 2018
@@ -1486,8 +1501,8 @@ ExitClrB       puls      b,x,pc              Eat temp regs & return
                ifne      H6309
 CpyBlk         tfr       d,w                 Copy size to TFM size register
                tfm       u+,y+               Copy memory
-               rts       
-               else      
+               rts
+               else
 CpyBlk         leax      d,u                 Calculate source end address
                pshs      x                   Save on stack to compare with so we know when to stop
                andb      #$03                Check if we have odd bytes leftover (1-3)
@@ -1505,7 +1520,7 @@ CpyLp          pulu      d,x                 Get 4 bytes from source (ascending 
 CpyLpSt        cmpu      ,s                  Done 4 byte blast copy?
                blo       CpyLp               No, keep doing until done
                puls      pc,d                Get end address of source copy and return
-               endc      
-               emod      
+               endc
+               emod
 eom            equ       *
-               end       
+               end

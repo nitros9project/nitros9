@@ -16,17 +16,17 @@
                nam       REL
                ttl       Relocation routine
 
-               ifp1      
+               ifp1
                use       defsfile
-               endc      
+               endc
 
 XX.Size        equ       6                   number of bytes before REL actually starts
 Offset         equ       Bt.Start+XX.Size
                ifeq      Level-1
 ScStart        equ       $8000               screen start in memory
-               else      
+               else
 ScStart        equ       $8008               screen start in memory
-               endc      
+               endc
 
 tylg           set       Systm+Objct
 atrv           set       ReEnt+rev
@@ -202,13 +202,13 @@ OutMsg         lda       VDUSTA
                beq       MsgDone
                sta       VDUDAT
                bra       OutMsg
-MsgDone        rts       
+MsgDone        rts
 
 
-BootMsg                  
+BootMsg
                fcc       /NITROS9 BOOT/
                fcb       0
-FailMsg                  
+FailMsg
                fcc       / FAILED/
                fcb       0
 
@@ -218,7 +218,7 @@ L00FD          lda       ,u+
                sta       ,y+
                leax      -1,x
                bne       L00FD
-               rts       
+               rts
 
 
 * Debug routine. Not executed here, but copied to D.Crash
@@ -246,7 +246,7 @@ DebBsy         ldb       VDUSTA
 * default to RTS <16-bit address of debug routine>
 * for debug, change the RTS ($39) to JMP ($7E)
 * Come here in high memory: $EExx
-L0101a                   
+L0101a
 *         lda   #$39       RTS
                lda       #$7E                JMP
                sta       <D.BtBug
@@ -264,7 +264,7 @@ L0101a
                jmp       d,x                 jump to it
 
 * D.Crash
-R.Crash                  
+R.Crash
 *[NAC HACK 2017Jan21] since we're not planning to crash it's OK to comment this out, for now,
 *[NAC HACK 2017Jan21] but I'm puzzled about why we'd set TR=0 (user mode??) on a crash
 *[NAC HACK 2016Dec08] L003F    clr   >$FF91     go to map type 0 - called by CC3Go from map 1
@@ -300,27 +300,27 @@ L001F          fcb       $6C                 D.HINIT  MMU, IRQ, Vector page, SCS
                fcb       $00                 D.RESV2  unused
                ifeq      TkPerSec-50
                fcb       $0B                 D.VIDMD  50Hz refresh, alphanumeric display, 8 lines/char row
-               else      
+               else
                fcb       $03                 D.VIDMD  60Hz refresh, alphanumeric display, 8 lines/char row
-               endc      
+               endc
 
                ifeq      Width-80
                fcb       $34                 D.VIDRS  200 lines, 80 column mode, no attribute byte (monochrome)
                fcb       $3F                 D.BORDR  white border
 BOOTLINE       set       11                  80-col start line for BOOT/FAIL messages
-               endc      
+               endc
 
                ifeq      Width-40
                fcb       $24                 D.VIDRS  200 lines, 40-col, no attribute byte
                fcb       $3F                 D.BORDR  white border
 BOOTLINE       set       13                  40-col start line for BOOT/FAIL messages
-               endc      
+               endc
 
                ifeq      Width-32
                fcb       $20                 D.VIDRS  200 lines, 32-col, no attribute byte
                fcb       $00                 D.BORDR  black border
 BOOTLINE       set       13                  32-col start line for BOOT/FAIL messages
-               endc      
+               endc
 
                fcb       $00                 D.RESV3  (Distro 2Byte updates) display in lower 512k bank
                fcb       $00                 D.VOFF2  vertical fine scroll set to 0
@@ -332,7 +332,7 @@ crash          lda       #'*                 signal a crash error
                jsr       <D.BtBug
                tfr       b,a                 save error code
                jsr       <D.BtBug            and dump this out, too
-               clrb      
+               clrb
                fcb       $8C                 skip 2 bytes
 
 *************************************************************************
@@ -349,9 +349,9 @@ start1         orcc      #IntMasks           turn off IRQ's
                ifne      H6309
                tfr       0,dp                set direct page to $0000
                ldmd      #3                  native mode
-               else      
+               else
                tfr       a,dp
-               endc      
+               endc
                clr       <D.CBStrt           cold boot start: don't re-boot on reset
 
 * Coco3 enters this code with TR=1 and the MMU mappings set thus:
@@ -372,7 +372,7 @@ start1         orcc      #IntMasks           turn off IRQ's
                beq       Cont                --don't clear out direct page if it's a crash
 * BGP 12/24/2009: clear out ALL of direct page (even $00-$1F)
 *         ldb   #$20       start out at $20
-               clrb      
+               clrb
                tfr       d,x                 here, too
 L0072          sta       ,x+                 clear out the direct page
                incb                          Boot won't be using any of it!
@@ -394,9 +394,9 @@ L0084          ldu       ,y++                get the bytes
 
                ifeq      Width-32
                ldd       #$1200              color 0=$12, 1=$00 i.e. black on green
-               else      
+               else
                ldd       #$3F00              color 0=$3F, 1=$00, i.e. black on white
-               endc      
+               endc
                std       >$FFB0              set only the first two palettes, B=$00 already
                lda       #Bt.Block
                sta       >$FFA4              map in the block
@@ -404,28 +404,28 @@ L0084          ldu       ,y++                get the bytes
                ldx       #$8000              start of the block
                ifne      H6309
                ldq       #Bt.Flag*65536+8
-               else      
+               else
                ldd       #Bt.Flag
-               endc      
+               endc
                tst       ,s                  check status : 0(crash) 1(reset) -1(startup)
                bmi       StoreQ              if NOT a crash or reset, start at the start...
                cmpd      ,x                  are they the same?
                beq       MoveTxt             don't bother clearing the screen if it's there
-StoreQ                   
+StoreQ
                ifne      H6309
                stq       ,x                  otherwise save the bytes on-screen
-               else      
+               else
                std       ,x
                ldd       #8
                std       2,x
-               endc      
+               endc
 
                leax      8,x                 point to the start of the screen in memory
                ifne      H6309
                ldw       #$2000-8            clear out the entire block of memory
                leau      <L00E0,pcr          point to $20, a space
                tfm       u,x+                clear out the screen
-               else      
+               else
                ldy       #$2000-8
                ldb       #$20
 ClrLoop        stb       ,x+
@@ -436,7 +436,7 @@ ClrLoop        stb       ,x+
 *ClrLoop  stu   ,x++
 *         subd  #$0002
 *         bne   ClrLoop
-               endc      
+               endc
 
 MoveTxt        leau      <L0011,pcr          point to OS-9 Welcome Message
                bsr       Move1               E=$00 already from TFM above...
@@ -454,16 +454,16 @@ Move1          ldy       ,u++                get where to put the text
                ifne      H6309
 Move           ldf       ,u+                 get the size of the block to move
 L00FD          tfm       u+,y+
-               else      
-Move           clra      
+               else
+Move           clra
                ldb       ,u+
                tfr       d,x
 L00FD          lda       ,u+
                sta       ,y+
                leax      -1,x
                bne       L00FD
-               endc      
-               rts       
+               endc
+               rts
 
 L0011          fdb       ScStart+(BOOTLINE*Width)+((Width-L1)/2)
                fcb       L1                  length of the text below
@@ -483,9 +483,9 @@ L00E2          tfr       pc,d                get the address at which we're exec
                ldu       #$2600              else move rel, Boot, krn over
                ifne      H6309
                ldw       #$1200              size of track 34 boot file
-               else      
+               else
                ldx       #$1200
-               endc      
+               endc
                ldy       #Bt.Start           where to put it
                bsr       L00FD               1 byte smaller than tfm in place
                jmp       >Offset+L0101
@@ -500,7 +500,7 @@ BtDebug        pshs      cc,d,x              save the register
                clr       >DAT.Regs+0         map block 0 in again
                puls      cc,d,x,pc           restore X and exit
 
-L0101                    
+L0101
                lda       #$7E                RTS
                sta       <D.BtBug
                leax      <BtDebug,pc         point to debug routine
@@ -512,7 +512,7 @@ L0101
                ifne      H6309
                ldmd      #$03                go to native mode, FIRQ saves all registers
                inc       <D.MDREG            0+1=1; set MD shadow register (clr'd from above)
-               endc      
+               endc
 
 *         leax  <eom,pcr   point to the end of REL
 *         ldd   M$Size,x   get size of the next module
@@ -567,7 +567,7 @@ Filler         fill      $39,$130-XX.Size-3-*
 * Entry point for Level1 (all platforms) ********************************
 *************************************************************************
 
-Start                    
+Start
                ifne      mc09
                leax      <BootMsg,pcr
 outbsy         lda       VDUSTA
@@ -578,24 +578,24 @@ outbsy         lda       VDUSTA
                sta       VDUDAT
                bra       outbsy
 
-done                     
+done
                else                          match IFNE mc09
 
                clr       PIA0Base+3
 
-               ifne      (tano+d64+dalpha)
+               ifne      (tano+d64+dalpha+dplus)
                clr       PIA0Base+1          added for Dragon, works on CoCo
-               endc      
+               endc
                ifne      H6309
                ldmd      #3                  native mode
-               endc      
+               endc
 
                sta       $FFDF               turn off ROM
 * locate Boot Text Screen at $8000
                ldb       #$06
                ldx       #$FFC6
 L262B          sta       ,x++
-               decb      
+               decb
                bne       L262B
                sta       1,x
 
@@ -607,7 +607,7 @@ L262B          sta       ,x++
                lda       $ff22
                anda      #$07
                sta       $ff22
-               endc      
+               endc
 
 * Clear VDG screen
                ldx       #ScStart
@@ -623,15 +623,15 @@ L263B          sta       ,x+
                ldb       #BootMLen
 L2649          lda       ,y+
                sta       ,x+
-               decb      
+               decb
                bne       L2649
 
-               ifne      (tano+d64+dalpha)
+               ifne      (tano+d64+dalpha+dplus)
                tst       <$72
-               else      
+               else
                ldd       #$1212
                cmpd      <$0078
-               endc      
+               endc
 
                beq       L266E
 
@@ -657,20 +657,20 @@ L266E          leax      <eom,pcr
                ldd       M$Exec,x
                jmp       d,x
 
-BootMsg                  
+BootMsg
                ifne      mc09
                fcn       / Boot /
-               else      
+               else
                ifndef                        dalpha          save some bytes on Dragon Alpha
                fcc       /NITROSy/
                fcb       $60
-               endc      
+               endc
                fcc       /BOOT/
 BootMLen       equ       *-BootMsg
                endc                          match IFNE mc09
 
                endc                          match IFGT Level-1
 
-               emod      
+               emod
 eom            equ       *
-               end       
+               end

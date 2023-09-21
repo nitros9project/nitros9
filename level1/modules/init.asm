@@ -126,6 +126,7 @@ OSStr          equ       *
                fcb       '0+NOS9MIN
                fcb       0
 
+<<<<<<< HEAD
 InstStr        equ       *
                ifne      coco1
                fcc       "Radio Shack Color Computer"
@@ -185,6 +186,67 @@ InstStr        equ       *
                endc                          match IFNE coco1
                fcb       0                   null-terminate the name string
                else
+=======
+InstStr  equ   *
+         IFNE   coco1
+         fcc    "Radio Shack Color Computer"
+         ELSE
+         IFNE   deluxe
+         fcc    "Deluxe Color Computer"
+         ELSE
+         IFNE   coco2
+         fcc    "Radio Shack Color Computer 2"
+         ELSE
+         IFNE   coco2b
+         fcc    "Tandy Color Computer 2"
+         ELSE
+         IFNE   coco3
+         fcc    "Tandy Color Computer 3"
+         ELSE
+         IFNE   tano
+         fcc    "Tano Dragon (US)"
+         ELSE
+         IFNE   d64
+         fcc    "Dragon 64 (UK)"
+         ELSE
+         IFNE   dalpha
+         fcc    "Dragon Alpha"
+         ELSE
+         IFNE   dplus
+         fcc    "Dragon Plus"
+         ELSE
+         IFNE   atari
+         fcc    "Atari XL/XE"
+         ELSE
+         IFNE   mc09
+         fcb    $1B                       text in bright blue
+         fcc    "[94mMulticomp09"
+         fcb    $1B
+         fcc    "[0m"
+         ELSE
+         IFNE   coco3fpga
+         fcc    "Gary Becker's Coco3FPGA"
+         ELSE
+         IFNE   corsham
+         fcc    "Corsham 6809"
+         ELSE
+         fcc    "Unknown Machine"
+         ENDC                             match IFNE corsham
+         ENDC                             match IFNE coco3fpga
+         ENDC                             match IFNE mc09
+         ENDC                             match IFNE atari
+         ENDC                             match IFNE dplus
+         ENDC                             match IFNE dalpha
+         ENDC                             match IFNE d64
+         ENDC                             match IFNE tano
+         ENDC                             match IFNE coco3
+         ENDC                             match IFNE coco2b
+         ENDC                             match IFNE coco2
+         ENDC                             match IFNE delux
+         ENDC                             match IFNE coco1
+         fcb   0     null-terminate the name string
+         ELSE
+>>>>>>> 509a3df2 (Adding Dragon Plus builds with native 80 column and VRAM disk support)
 * DragonAlpha
 OSStr          equ       *
 InstStr        equ       *

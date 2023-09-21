@@ -111,6 +111,7 @@ V.CoHRE        RMB       2                   CoHR entry point
 V.Co42E        RMB       2                   Co42 entry point
 V.CoVGAE       RMB       2                   CoVGA entry point
 V.Co80E        RMB       2                   Co80 entry point
+V.CoDPlusE     RMB       2                   CoDPlus entry point
 V.Flash        RMB       2                   Cursor flash routine address.
 v.FlashTime    RMB       1                   Cursor flash time
 v.FlashCount   RMB       1                   Cursor flash count
@@ -170,6 +171,7 @@ ModCoHR        EQU       %00001000           CoHR, PMODE 4 51x25 text
 ModCo42        EQU       %00010000           Co42, PMODE 4 42x25 text
 ModCoVGA       EQU       %00100000           CoVGA, 64x32 text
 ModCo80        EQU       %01000000           Co80, CRT9128 WordPak, 80x25
+ModCoDPlus     EQU       %10000000           Dragon Plus, 6545, 80x24
 
 *
 * Defs for cursor flash counter

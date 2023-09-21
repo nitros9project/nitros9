@@ -15,7 +15,7 @@ CMDS		= asm attr backup binex build cmp cobbler copy cputype \
 		free grfdrv help ident iniz irqs link list load login makdir \
 		megaread mdir merge mfree mpi os9gen padrom park printerr procs prompt pwd pxd \
 		rename runb save setime shellplus shell_21 sleep \
-		tee tmode touch tsmon tuneport unlink verify xmode
+		tee tmode touch tsmon tuneport unlink verify xmode minted
 
 DRAGONCMDS	= asm attr backup binex build cmp cobbler_dragon copy cputype \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \

@@ -63,13 +63,21 @@ else
 RBF +=		ddd0_40d.dd d0_40d.dd d1_40d.dd d2_40d.dd d3_40d.dd \
 		ddd0_40s.dd d0_40s.dd d1_40s.dd d2_40s.dd d3_40s.dd
 endif
-		
+
+ifeq ($(PORT),dplus)
+RBF +=		vinit.dr vdisk.dr v0.dd
+endif
+
 SCF		= scf.mn \
 		vrn.dr scdpp.dr sspak.dr vtio.dr \
 		covdg.io cohr.io co42.io\
 		nil.dd p_dpp.dd pipe.dd ssp.dd \
 		term_sc6551.dt t2_sc6551.dt t3_sc6551.dt \
 		term_vdg.dt term_hr.dt term_42.dt term_80.dt p1_sc6551dragon.dd
+
+ifeq ($(PORT),dplus)
+SCF +=  codplus.io term_dplus.dt
+endif
 
 PIPE		= pipeman.mn \
 		piper.dr \
@@ -190,6 +198,17 @@ sysgo_h0: sysgo.asm
 
 ddisk.dr: ddisk.asm
 	$(AS) $(AFLAGS) $(ASOUT)$@ -DUPGRADED32=$(UPGRADED32) $< 
+
+
+# compusense drivers
+vinit.dr: $(3RDPARTY)/drivers/compusense/vinit.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) 
+
+vdisk.dr: $(3RDPARTY)/drivers/compusense/vdisk.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) 
+
+v0.dd: $(3RDPARTY)/drivers/compusense/v0.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS)
 
 
 clean:

@@ -1,0 +1,4 @@
+
+MemoryPage		equ			$FFE2
+Page1			equ			$02
+Page2			equ			$06

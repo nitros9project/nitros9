@@ -1,0 +1,168 @@
+***************************************
+* NitrOS-9 Level 1 Bootlist
+*
+* $Id$
+*
+* This bootlist is presented as an example for creating custom bootfiles.
+* A module may be excluded from the bootfile if an asterisk (*) is the
+* first character of the line.
+*
+***************************************
+* Kernel/System Section
+*
+* These modules are mandatory.
+../MODULES/SYSMODS/ioman
+*
+***************************************
+* CDF Section (HawkSoft)
+*
+*../MODULES/CDF/cdf.mn
+*
+* CDF descriptors - select as needed
+* SCSI descriptors (IDs 0-6)
+*../MODULES/CDF/sc0.dd
+*../MODULES/CDF/sc1.dd
+*../MODULES/CDF/sc2.dd
+*../MODULES/CDF/sc3.dd
+*../MODULES/CDF/sc4.dd
+*../MODULES/CDF/sc5.dd
+*../MODULES/CDF/sc6.dd
+* IDE descriptors (master/slave)
+*../MODULES/CDF/ic0.dd
+*../MODULES/CDF/ic1.dd
+*
+***************************************
+* RBF Section
+*
+../MODULES/RBF/rbf.mn
+*
+* DriveWire driver (Cloud-9 product)
+*../MODULES/RBF/drivewire.dr
+* DriveWire descriptors - select as needed
+*../MODULES/RBF/ddx0.dd
+*../MODULES/RBF/x0.dd
+*../MODULES/RBF/x1.dd
+*../MODULES/RBF/x2.dd
+*../MODULES/RBF/x3.dd
+*
+* SuperDriver Package (Cloud-9 product)
+*../MODULES/RBF/rbsuper.dr
+* Select Low level SCSI and/or IDE driver
+*../MODULES/RBF/lltc3.dr
+*../MODULES/RBF/llide.dr
+* SuperDriver descriptors - select as needed
+* SCSI descriptors (IDs 0-7)
+*../MODULES/RBF/s0_tc3.dd
+*../MODULES/RBF/s1_tc3.dd
+*../MODULES/RBF/s2_tc3.dd
+*../MODULES/RBF/s3_tc3.dd
+*../MODULES/RBF/s4_tc3.dd
+*../MODULES/RBF/s5_tc3.dd
+*../MODULES/RBF/s6_tc3.dd
+* SCSI HDB-DOS descriptor
+*../MODULES/RBF/sh_ide.dd
+* IDE descriptors (master/slave)
+*../MODULES/RBF/i0_ide.dd
+*../MODULES/RBF/i1_ide.dd
+* IDE HDB-DOS descriptor
+*../MODULES/RBF/ih_ide.dd
+*
+* WD1773 floppy support for Tandy and compatible disk controllers
+../MODULES/RBF/rb1773.dr
+* WD1773 floppy support for Disto Super Controller II
+*../MODULES/RBF/rb1773_scii_ff74.dr
+*../MODULES/RBF/rb1773_scii_ff58.dr
+* Floppy device descriptors
+* DD - default device - choose one if needed
+*../MODULES/RBF/ddd0_35s.dd
+../MODULES/RBF/ddd0_40d.dd
+*../MODULES/RBF/ddd0_80d.dd
+* D0 - drive 0 - choose one if needed
+*../MODULES/RBF/d0_35s.dd
+../MODULES/RBF/d0_40d.dd
+*../MODULES/RBF/d0_80d.dd
+* D1 - drive 1 - choose one if needed
+*../MODULES/RBF/d1_35s.dd
+../MODULES/RBF/d1_40d.dd
+*../MODULES/RBF/d1_80d.dd
+* D2 - drive 2 - choose one if needed
+*../MODULES/RBF/d2_35s.dd
+../MODULES/RBF/d2_40d.dd
+*../MODULES/RBF/d2_80d.dd
+* D3 - drive 3 - choose if needed
+*../MODULES/RBF/d3_35s.dd
+* Dragon Plus VRAM disk
+../MODULES/RBF/vinit.dr
+../MODULES/RBF/vdisk.dr
+../MODULES/RBF/v0.dd
+***************************************
+* SCF Section
+*
+../MODULES/SCF/scf.mn
+*
+* Video Terminal I/O driver and subroutine modules
+../MODULES/SCF/vtio.dr
+* Choose from CoVDG (32x16 VDG) or CoHR (Hi-Res 51x24 graphics screen)
+../MODULES/SCF/codplus.io
+*../MODULES/SCF/covdg.io
+*../MODULES/SCF/cohr.io
+*
+* Select only one term descriptor
+../MODULES/SCF/term_dplus.dt
+*../MODULES/SCF/term_vdg.dt
+*../MODULES/SCF/term_hr.dt
+*../MODULES/SCF/term_bbt.dt
+*../MODULES/SCF/term_sc6551.dt
+*
+* Serial port drivers
+* CoCo Bit-Banger terminal port
+*../MODULES/SCF/scbbt.dr
+*../MODULES/SCF/t1.dd
+* 6551 ACIA
+*../MODULES/SCF/sc6551.dr
+*../MODULES/SCF/t2_sc6551.dd
+*../MODULES/SCF/t3_sc6551.dd
+*
+* Printer drivers
+* ../MODULES/SCF/scbbp.dr
+* ../MODULES/SCF/p.dd
+*
+***************************************
+* Pipe Section
+*
+* Pipes are a useful but optional part of a system.
+../MODULES/PIPE/pipeman.mn
+../MODULES/PIPE/piper.dr
+../MODULES/PIPE/pipe.dd
+*
+***************************************
+* Clock Section
+*
+* Select one clock module depending upon your power line frequency
+* (60Hz = USA/Canada; 50Hz = Europe, Australia)
+../MODULES/CLOCKS/clock_60hz
+*../MODULES/CLOCKS/clock_50hz
+* Select one clock2 module that supports your real-time clock, if any.
+* Besides support for the internal software clock, the following
+* hardware clocks are supported: Burke & Burke, Disto 2-N-1, Disto 4-N-1,
+* Eliminator, Harris, SmartWatch, Cloud-9, the MESS emulator, Jeff
+* Vavasour's CoCo emulator, and DriveWire.
+../MODULES/CLOCKS/clock2_soft
+*../MODULES/CLOCKS/clock2_bnb
+*../MODULES/CLOCKS/clock2_disto2
+*../MODULES/CLOCKS/clock2_disto4
+*../MODULES/CLOCKS/clock2_elim
+*../MODULES/CLOCKS/clock2_harris
+*../MODULES/CLOCKS/clock2_smart
+*../MODULES/CLOCKS/clock2_jvemu
+*../MODULES/CLOCKS/clock2_messemu
+*../MODULES/CLOCKS/clock2_cloud9
+*../MODULES/CLOCKS/clock2_dw
+* 
+***************************************
+* System Kick-Start Module
+*
+* Choose which startup module you wish to use. (sysgo_dd is recommended
+* for most configurations.)
+../MODULES/SYSMODS/sysgo_dd
+*../MODULES/SYSMODS/sysgo_h0

@@ -1,6 +1,6 @@
 include $(NITROS9DIR)/rules.mak
 
-dirs	= coco1 coco1_6309 deluxe coco2 coco2_6309 coco2b tano d64 dalpha atari \
+dirs	= coco1 coco1_6309 deluxe coco2 coco2_6309 coco2b tano d64 dalpha dplus atari \
 			mc09 corsham f256
 ifdef PORTS
 dirs	= $(PORTS)

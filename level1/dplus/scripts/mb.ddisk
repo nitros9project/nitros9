@@ -1,0 +1,32 @@
+-t
+-x
+tmode .1 pau=0
+echo * NitrOS-9 Level 1 Boot Creation Script
+echo *
+echo * This script creates a bootable floppy disk
+echo * using the ddisk_40d.bl bootlist file.
+echo *
+echo * The resulting disk will boot NitrOS-9 from drive 0.
+echo *
+*prompt Insert a blank disk in /d1 and press a key:
+echo * Step 1:
+echo Insert a Dragon formatted disk in /d1
+prompt (formatted using options fd 2 '40) and press a key:
+*echo *
+*echo * Step 1: Format disk in /d1
+*format /d1 "NitrOS-9 Level 1 Boot Disk" r fd 2 '40
+echo *
+echo * Step 2: Create a custom boot track
+*del bttemp
+merge ../MODULES/BOOTTRACK/rel ../MODULES/KERNEL/krn ../MODULES/KERNEL/krnp2 ../MODULES/SYSMODS/init ../MODULES/BOOTTRACK/boot_d64>bttemp
+echo *
+echo * Step 3: Create the bootfile and boot track
+os9gen /d1 -t=bttemp<../BOOTLISTS/ddisk_40d.bl
+del bttemp
+echo *
+echo * Step 4: Populate the disk with essential files
+copy ../MODULES/SYSMODS/sysgo_dd /d1/sysgo
+makdir /d1/CMDS
+copy -w=/d1/CMDS ../CMDS/shell
+echo *
+echo * We're done

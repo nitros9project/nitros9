@@ -1,0 +1,9 @@
+vinit
+* Echo welcome message
+echo * Welcome to NitrOS-9 Level 1 *
+echo *     on the Dragon Plus      *
+* Start system time from keyboard
+setime </term
+date -t
+
+
