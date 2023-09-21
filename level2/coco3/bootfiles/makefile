@@ -2,6 +2,7 @@ include ../port.mak
 
 # Module directory
 MD		= ../modules
+THIRD   = ../../../3rdparty
 
 DEPENDS		= ./makefile
 
@@ -75,6 +76,9 @@ CLOCK50HZ  = $(MD)/clock_50hz $(MD)/clock2_soft
 CLOCK60HZ  = $(MD)/clock_60hz $(MD)/clock2_soft
 CLOCK60HZDW = $(MD)/clock_60hz $(MD)/clock2_dw
 CLOCK60HZCC3FPGA = $(MD)/clock_60hz $(MD)/clock2_coco3fpga
+EMUDSK6809 = $(THIRD)/drivers/emudsk/emudsk_6809.dr \
+		$(THIRD)/drivers/emudsk/h0.dd \
+		$(THIRD)/drivers/emudsk/h1.dd
 
 # NitrOS-9 disk bootfile to allow booting from DriveWire server
 # on a DE1 or Xilinx using Gary Becker's CoCo 3 FGPA
@@ -404,6 +408,16 @@ BOOTFILE_80D_50HZ	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(PIPE) \
 		$(CLOCK50HZ)
 
+BOOTFILE_EMUDSK	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
+		$(MD)/rbf.mn \
+		$(FLOPPY_80D) \
+		$(MD)/ddd0_80d.dd \
+		$(MD)/scf.mn \
+		$(VTIO_COGRF_80) \
+		$(PIPE) \
+		$(CLOCK60HZ) \
+		$(EMUDSK6809)
+
 BOOTFILES	= bootfile_40d bootfile_40d_50hz bootfile_80d \
 		bootfile_80d_50hz bootfile_dw bootfile_dw_headless \
 		bootfile_becker bootfile_arduino bootfile_becker_headless \
@@ -411,7 +425,8 @@ BOOTFILES	= bootfile_40d bootfile_40d_50hz bootfile_80d \
 		bootfile_coco3fpga bootfile_coco3fpga_sd bootfile_coco3fpga_sd_rtc \
 		bootfile_coco3fpga_rom bootfile_coco3fpga_rom_dw bootfile_coco3fpga_rom_rtc \
 		bootfile_rs232pak bootfile_directmodempak bootfile_rs232pak_headless \
-		bootfile_directmodempak_headless bootfile_cocolink_headless bootfile_cocolink
+		bootfile_directmodempak_headless bootfile_cocolink_headless bootfile_cocolink \
+		bootfile_emudsk
 
 KERNELS		= kernel_1773 kernel_1773_50hz kernel_dw kernel_becker \
 		kernel_arduino kernel_cocosdc kernel_ide kernel_dide \
@@ -493,6 +508,9 @@ bootfile_cocosdc: $(BOOTFILE_COCOSDC) $(DEPENDS)
 
 bootfile_ide: $(BOOTFILE_IDE) $(DEPENDS)
 	$(MERGE) $(BOOTFILE_IDE)>$@
+
+bootfile_emudsk: $(BOOTFILE_EMUDSK) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_EMUDSK)>$@
 
 # Kernels
 kernel_becker: $(KERNEL_BECKER) $(DEPENDS)

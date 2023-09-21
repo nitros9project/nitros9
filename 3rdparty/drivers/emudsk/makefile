@@ -4,8 +4,8 @@ DEPENDS		= ./makefile
 
 DRIVERS		= emudsk_6809.dr emudsk_6309.dr
 DESCS		= h0.dd ddh0.dd h1.dd
-ALLOBJS		= $(DRIVERS) $(DESCS)
 DSK			= Modules_EmuDisk.dsk
+ALLOBJS		= $(DRIVERS) $(DESCS) $(DSK)
 
 all:	$(ALLOBJS) $(DEPENDS)
 

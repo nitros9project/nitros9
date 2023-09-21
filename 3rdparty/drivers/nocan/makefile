@@ -4,8 +4,8 @@ DEPENDS		= ./makefile
 
 DRIVERS		=	rammer_nocan.dr rammer_nocan_63.dr
 DESCS		= r0_nocan.dd
-ALLOBJS		= $(DRIVERS) $(DESCS)
 DSK			= Modules_NoCan_Rammer.dsk
+ALLOBJS		= $(DRIVERS) $(DESCS) $(DSK)
 
 all:	$(ALLOBJS) $(DEPENDS)
 
