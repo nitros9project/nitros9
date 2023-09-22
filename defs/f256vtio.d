@@ -22,6 +22,8 @@ V.Alt     RMB       1                   alt flag
 V.KySns   RMB       1                   key sense flags
 V.EscCh1  RMB       2                   escape vector handler
 V.EscVect RMB       2                   escape vector handler
+V.FBCol   RMB       1                   foreground and background color
+V.BordCol RMB       1                   border color
 V.KeyCodeHandler RMB       2                key code handler
 V.IBufH   RMB       1                   input buffer head
 V.IBufT   RMB       1                   input buffer tail

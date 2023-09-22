@@ -22,6 +22,7 @@ atrv           set       ReEnt+rev
 rev            set       $00
 edition        set       1
 
+* We can use a different MMU slot if we want.
 mapaddr        equ       MMU_SLOT_1
 mapstart       equ       (mapaddr-MMU_SLOT_0)*$2000
 G.ScrStart     equ       mapstart
@@ -57,46 +58,41 @@ start          lbra      Init
 *
 Init
                stu       >D.KbdSta           store devmem ptr
-               leax      ChkSpc,pcr
-               stx       V.EscVect,u
-
-* setup static vars
-               clra
-               clrb
-               std       V.CurRow,u
-
-               pshs      cc
-               orcc      #IntMasks
-
-               lbsr      ClrScrn
-
-* setup keyboard interrupt
-setupint       ldd       #INT_PENDING_0
-               leax      IRQPckt,pcr
-               leay      IRQSvc,pcr
-               os9       F$IRQ
-               bcs       bye@
-               lda       INT_MASK_0
-               anda      #^INT_PS2_KBD
-               sta       INT_MASK_0
-* clear keyboard of any data
-loop@          lda       KBD_IN
-               lda       PS2_STAT
-               bita      #KEMP
-               beq       loop@
-bye@
-               leax      ProcKeyCode,pcr
-               stx       V.KeyCodeHandler,u
-               puls      cc
-
-* clear carry and return
-               clrb
-initex         rts
+               leax      ChkSpc,pcr          point X to default character processing routine
+               stx       V.EscVect,u         store in our vector
+               ldb       #$10                assume this foreground/background
+               stb       V.FBCol,u           store in our fore/background color variable
+               clra                          set D..
+               clrb                          to $0000
+               std       V.CurRow,u          set the current row and column
+               pshs      cc                  save CC
+               orcc      #IntMasks           and mask interrupts
+               lbsr      ClrScrn             clear the screen
+* Setup keyboard interrupt. Note this is specific to the F256 Jr. and its PS/2 keyboard.
+               ldd       #INT_PENDING_0      get the pending interrupt pending address
+               leax      IRQPckt,pcr         point to the IRQ packet
+               leay      IRQSvc,pcr          and the service routine
+               os9       F$IRQ               install the interrupt handler
+               bcs       badex@              branch if we have an issue
+               lda       INT_MASK_0          else get the interrupt mask byte
+               anda      #^INT_PS2_KBD       set the PS/2 keyboard interrupt
+               sta       INT_MASK_0          and save it back
+* Clear keyboard of any residual data.
+loop@          lda       KBD_IN              get a character from the keyboard
+               lda       PS2_STAT            get the status byte
+               bita      #KEMP               is the keyboard buffer empty?
+               beq       loop@               branc if not
+               leax      ProcKeyCode,pcr     get the PS/2 keycode handler routine
+               stx       V.KeyCodeHandler,u  and store it as the current handler address
+               puls      cc                  restore CC
+               clrb                          clear the carry flag
+               rts                           and return to the caller
+badex@         puls      cc,pc               return to the caller if error
 
 IRQPckt        equ       *
-Pkt.Flip       fcb       %00000000
-Pkt.Mask       fcb       INT_PS2_KBD
-               fcb       $F1
+Pkt.Flip       fcb       %00000000           the flip byte
+Pkt.Mask       fcb       INT_PS2_KBD         the mask byte
+               fcb       $F1                 the priority byte
 
 * Term
 *
@@ -108,12 +104,11 @@ Pkt.Mask       fcb       INT_PS2_KBD
 *    B  = error code
 *
 Term
-               ldx       #$0000              remove IRQ table entry
-               leay      IRQSvc,pcr
-               os9       F$IRQ
-* clear carry and return
-               clrb
-               rts
+               ldx       #$0000              we want to remove the IRQ table entry
+               leay      IRQSvc,pcr          point to the interrupt service routine
+               os9       F$IRQ               call to remove it
+               clrb                          clear the carry
+               rts                           return to the caller
 
 
 * Read
@@ -127,39 +122,38 @@ Term
 *    CC = carry set on error
 *    B  = error code
 *
-Read
-               leax      V.InBuf,u           point X to input buffer
-               ldb       V.IBufT,u           get tail pointer
-               orcc      #IRQMask            mask IRQ
-               cmpb      V.IBufH,u           same as head pointer
-               beq       Put2Bed             if so, buffer is empty, branch to sleep
-               abx                           X now points to curr char
-               lda       ,x                  get char
+Read           leax      V.InBuf,u           point X to input buffer
+               ldb       V.IBufT,u           get the buffer tail pointer
+               orcc      #IRQMask            mask interrupts
+               cmpb      V.IBufH,u           is the tail pointer the same as the head pointer?
+               beq       nitenite@           if so, the buffer is empty, branch to sleep
+               abx                           X now points to the current character to fetch from the buffer
+               lda       ,x                  get that character now
                bsr       IncNCheck           check for tail wrap
-               stb       V.IBufT,u           store updated tail
-               andcc     #^(IRQMask+Carry)   unmask IRQ
-               rts
-
-Put2Bed        lda       V.BUSY,u            get calling process ID
-               sta       V.WAKE,u            store in V.WAKE
+               stb       V.IBufT,u           store the updated tail
+               andcc     #^(IRQMask+Carry)   unmask interrupts
+               rts                           and return to the caller
+* Here, the calling process gets put to sleep waiting for input.
+nitenite@      lda       V.BUSY,u            get the calling process ID
+               sta       V.WAKE,u            store it in V.WAKE
                andcc     #^IRQMask           clear interrupts
-               ldx       #$0000
-               os9       F$Sleep             sleep forever
-               clr       V.WAKE,u            clear wake
-               ldx       <D.Proc             get pointer to current proc desc
-               ldb       <P$Signal,x         get signal recvd
-               beq       Read                branch if no signal
-               cmpb      #S$Window           window signal?
+               ldx       #$0000              we want to..
+               os9       F$Sleep             sleep forever (until we get a wakup signal)
+               clr       V.WAKE,u            we're awake... clear our process ID
+               ldx       <D.Proc             get the current process descriptor
+               ldb       <P$Signal,x         and the signal we received
+               beq       Read                branch if there was no signal
+               cmpb      #S$Window           was it the window signal?
                bcc       Read                branch if so
-               coma
-               rts
-* Check if we need to wrap around tail pointer to zero
-IncNCHeck      incb                          increment pointer
-               cmpb      #KBufSz-1           at end?
-               bls       readex              branch if not
-* clear carry and return
-               clrb                          else clear pointer (wrap to head)
-readex         rts
+               coma                          set the carry
+               rts                           and return to the caller
+
+* Check if we need to wrap around tail pointer to zero.
+IncNCheck      incb                          increment the next character pointer
+               cmpb      #KBufSz-1           are we pointing to the end of the buffer?
+               bls       ex@                 branch if not
+               clrb                          else clear the pointer (wraps to head)
+ex@            rts                           and return
 
 
 * Write
@@ -174,76 +168,81 @@ readex         rts
 *    B  = error code
 *
 Write
-               lbsr      hidecursor
-               ldx       V.EscVect,u
-               jsr       ,x
-               lbra       drawcursor
+               lbsr      hidecursor          hide the cursor
+               ldx       V.EscVect,u         get the escape vector address
+               jsr       ,x                  branch to it
+               lbra      drawcursor          and draw the cursor when we are back
 
-ChkSpc         cmpa      #C$SPAC             space or greater?
-               lbcs      ChkESC              branch if not
-
-wchar
-               pshs      a
-               lda       V.CurRow,u
-               ldb       #G.Cols
-               mul
-               addb      V.CurCol,u
-               adca      #0
-               ldx       #G.ScrStart
-               leax      d,x
-               puls      a
-               pshs      cc
-               ldb       mapaddr
-               pshs      b
-               orcc      #IntMasks
-               ldb       #$C2
-               stb       mapaddr
-               sta       ,x
-               lda       ,s+
-               sta       mapaddr
-               puls      cc
-               ldd       V.CurRow,u
-               incb
-               cmpb      #G.Cols
-               blt       ok
-               clrb
-incrow
-               inca
-               cmpa      #G.Rows
-               blt       clrline
+ChkSpc         cmpa      #C$SPAC             is the character a space or greater?
+               lbcs      ChkESC              branch if not... check escape codes
+               pshs      a                   save the character to write
+               lda       V.CurRow,u          get the current row
+               ldb       #G.Cols             and the number of columns
+               mul                           calculate the row we should be on
+               addb      V.CurCol,u          add in the column
+               adca      #0                  and add in 0 with carry in case of overflow
+* Here, D has the location in the screen where the next character goes.
+               ldx       #G.ScrStart         get the start of the screen in X
+               leax      d,x                 advance X to where the next character goes
+               puls      a                   get the character to write
+               pshs      cc                  save CC
+               ldb       mapaddr             get the block # for the slot
+               pshs      b                   save it
+               ldb       #$C2                get the text block #
+               orcc      #IntMasks           mask interrupts
+               stb       mapaddr             set the block # to text
+               sta       ,x                  save the character there
+               ldb       #$C3                get the text attributes block #
+               stb       mapaddr             set the block # to the text attributes block
+               lda       V.FBCol,u           get the current foreground/background color
+               sta       ,x                  save it at the same location inthe text attributes
+               lda       ,s+                 recover the initial slot value
+               sta       mapaddr             and restore it
+               puls      cc                  recover CC (may unmask interrupts)
+               ldd       V.CurRow,u          get the current row and column
+               incb                          increment the column
+               cmpb      #G.Cols             compare against the number of columns
+               blt       ok                  branch if we're less than
+               clrb                          else column goes to 0
+incrow         inca                          and we increment the row
+               cmpa      #G.Rows             compare against the number of rows
+               blt       clrline             branch if we're less than (clear the new line we're on)
 SCROLL         equ       1
                ifne      SCROLL
                deca                          set A to G.Rows - 1
-               ldx       #G.ScrStart         get start of screen memory
-               ldy       #G.Cols*(G.Rows-1)  set Y to size of screen minus last row
-
-               pshs      cc,d                save off Row/Col and condition codes
-               lda       mapaddr
-               pshs      a
-               orcc      #IntMasks
-               lda       #$C2
-               sta       mapaddr
-scroll_loop
+               ldx       #G.ScrStart         get the start of screen memory
+               ldy       #G.Cols*(G.Rows-1)  set Y to the size of screen minus the last row
+               pshs      cc,d                save off row/column and CC
+               lda       mapaddr             get current slot
+               pshs      a                   save it on the stack
+               orcc      #IntMasks           mask interrupts
+scroll_loop1@  lda       #$C2                get the text block #
+               sta       mapaddr             and map it in
                ldd       G.Cols,x            get two bytes on next row
-               std       ,x++                store on this row
+               std       ,x                  store on this row
+               lda       #$C3                get the text attributes block #
+               sta       mapaddr             and map it in
+               ldd       G.Cols,x            get the bytes at G.Cols,x
+               std       ,x++                and store it
                leay      -2,y                decrement Y
-               bne       scroll_loop         branch if not 0
-               puls      a
-               sta       mapaddr
-               puls      cc,d
+               bne       scroll_loop1@       branch if not 0
+               puls      a                   recover the original slot
+               sta       mapaddr             and restore it
+               puls      cc,d                recover CC and the row/column
                else
-               clra
+               clra                          just clear the row (goes to top)
                endc
 * clear line
-clrline        std       V.CurRow,u
-               lbsr       DelLine
-               rts
-ok             std       V.CurRow,u
-ret            rts
+clrline        std       V.CurRow,u          save the current row/column value
+               lbsr      DelLine             clear the line
+               rts                           and return to the caller
+ok             std       V.CurRow,u          save the current row/column value
+ret            rts                           and return to the caller
 
-* calculates the cursor location in screen memory
+* Calculate the cursor location in screen memory.
+*
 * Exit: X = address of cursor
-*       All other regs preserved
+*       All other registers are preserved.
 calcloc
                pshs      d
                lda       V.CurRow,u
@@ -322,9 +321,14 @@ DelLine
                orcc      #IntMasks
                ldb       mapaddr
                pshs      b
+clrloop@
                ldb       #$C2
                stb       mapaddr
-clrloop@       clr       ,x+
+               clr       ,x
+               ldb       #$C3
+               stb       mapaddr
+               ldb       V.FBCol,u
+               stb       ,x+
                deca
                bne       clrloop@
                puls      b
@@ -408,10 +412,22 @@ eschandler3out
                leax      ChkSpc,pcr
                bra       eschandlerout
 
-DoFore
+DoFore         lsla
+               lsla
+               lsla
+               lsla
+               pshs      a
+               ldb       V.FBCol,u
+               andb      #$0F
+doout@         orb       ,s+
+               stb       V.FBCol,u
                bra       eschandler3out
-DoBack
-               bra       eschandler3out
+DoBack         anda      #$0F
+               pshs      a
+               ldb       V.FBCol,u
+               andb      #$F0
+               bra       doout@
+
 DoBord
                bra       eschandler3out
 
@@ -478,30 +494,30 @@ SetStat
 * ERROR OUTPUT:  none
 *
 
-RAW_KEYBOARD   equ      0
+RAW_KEYBOARD   equ       0
 
-               ifne     RAW_KEYBOARD
+               ifne      RAW_KEYBOARD
 * Input: A = byte to convert to hex
 * Output: A = ASCII character of first digit
 *         B = ASCII character of second digit
-cvt2hex        pshs     a
+cvt2hex        pshs      a
                lsra
                lsra
                lsra
                lsra
-               cmpa     #9
-               bgt      hex@
-               adda     #$30
-               bra      afthex@
-hex@           adda     #$37
+               cmpa      #9
+               bgt       hex@
+               adda      #$30
+               bra       afthex@
+hex@           adda      #$37
 afthex@
-               ldb      ,s+
-               andb     #$0F
-               cmpb     #9
-               bgt     hex2@
-               addb    #$30
-               bra      afterhex2@
-hex2@          addb    #$37
+               ldb       ,s+
+               andb      #$0F
+               cmpb      #9
+               bgt       hex2@
+               addb      #$30
+               bra       afterhex2@
+hex2@          addb      #$37
 afterhex2@     rts
                endc
 
@@ -583,12 +599,12 @@ BufferChar     ldb       V.IBufH,u           get head pointer in B
 bye@           clrb                          clear carry
                rts
 
-SpecialDown    cmpa      #$F0 Caps Lock key?
+SpecialDown    cmpa      #$F0                Caps Lock key?
                blt       next@
                beq       DoCapsDown
-               cmpa      #$F1 Shift key?
+               cmpa      #$F1                Shift key?
                beq       DoShiftDown
-               cmpa      #$F2  CTRL key?
+               cmpa      #$F2                CTRL key?
                beq       DoCtrlDown
 DoAltDown      sta       V.Alt,u
                comb
@@ -636,16 +652,16 @@ SetDefaultHandler
                stx       V.KeyCodeHandler,u
                comb
                rts
-SpecialUp      cmpa      #$F1 Shift key?
-               beq            DoShiftUp
-               cmpa           #$F2 CTRL key?
-               bne SetDefaultHandler
-DoCtrlUp clr V.Ctrl,u
-                bra SetDefaultHandler
-DoShiftUp clr V.Shift,u
-                 bra SetDefaultHandler
-DoAltUp clr V.Alt,u
- bra SetDefaultHandler
+SpecialUp      cmpa      #$F1                Shift key?
+               beq       DoShiftUp
+               cmpa      #$F2                CTRL key?
+               bne       SetDefaultHandler
+DoCtrlUp       clr       V.Ctrl,u
+               bra       SetDefaultHandler
+DoShiftUp      clr       V.Shift,u
+               bra       SetDefaultHandler
+DoAltUp        clr       V.Alt,u
+               bra       SetDefaultHandler
 
 
 * Special flags:
