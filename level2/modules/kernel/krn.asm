@@ -54,9 +54,9 @@ MName          fcs       /Krn/
                ifne      H6309
                fcc       /www.nitros9.org /
                fcc       /www.nitros9.org /
-               fcc       /www.nit/
+               fcc       /www./
                else      
-               fcc       /www.nit/
+               fcc       /www./
                endc      
 
 * Might as well have this here as just past the end of Kernel...
