@@ -24,8 +24,8 @@ STRNCPY
                lbsr      STRLEN              find length of string
                addd      #1                  move NULL also
                cmpd      ,s                  get smaller of passed/actual size
-               bls       skip                use actual leng
-               ldd       ,s                  use passed leng²²
+               bls       skip                use actual length
+               ldd       ,s                  use passed length
 skip                     
                lbsr      MEMMOVE             move it
                leas      2,s

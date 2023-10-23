@@ -152,7 +152,7 @@ name           equ       *
                fcb       $47                 G
                fcb       $16
                fcb       $01
-               fcb       $7F                 ÿ
+               fcb       $7F
                fcb       $16
                fcb       $08
                fcb       $F1                 q
@@ -185,7 +185,7 @@ name           equ       *
                fcb       $56                 V
                fcb       $16
                fcb       $0E
-               fcb       $7D                 ý
+               fcb       $7D
                fcb       $16
                fcb       $0E
                fcb       $9C

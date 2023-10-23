@@ -739,7 +739,7 @@ L0262          fcb       $34                 4
                fcb       $27                 '
                fcb       $06
                fcb       $C4                 D
-               fcb       $7F                 ÿ
+               fcb       $7F
                fcb       $CA                 J
                fcb       $01
                fcb       $E7                 g
@@ -965,7 +965,7 @@ L0262          fcb       $34                 4
                fcb       $27                 '
                fcb       $08
                fcb       $84
-               fcb       $7F                 ÿ
+               fcb       $7F
                fcb       $8A
                fcb       $01
                fcb       $A7                 '
@@ -981,7 +981,7 @@ L0262          fcb       $34                 4
                fcb       $5D                 ]
                fcb       $17
                fcb       $03
-               fcb       $7C                 ü
+               fcb       $7C
                fcb       $20
                fcb       $20
                fcb       $EC                 l
@@ -1301,7 +1301,7 @@ L0494          fcb       $34                 4
                fcb       $27                 '
                fcb       $04
                fcb       $C4                 D
-               fcb       $7E                 þ
+               fcb       $7E
                fcb       $E7                 g
                fcb       $0B
                fcb       $C5                 E
@@ -1555,7 +1555,7 @@ L0515          fcb       $64                 d
                fcb       $22                 "
                fcb       $17
                fcb       $FD
-               fcb       $7F                 ÿ
+               fcb       $7F
                fcb       $C6                 F
                fcb       $01
                fcb       $D7                 W
@@ -3421,7 +3421,7 @@ L0911          fcb       $39                 9
                fcb       $9F
                fcb       $1E
                fcb       $32                 2
-               fcb       $7F                 ÿ
+               fcb       $7F
                fcb       $33                 3
                fcb       $E4                 d
                fcb       $20
@@ -3433,7 +3433,7 @@ L0911          fcb       $39                 9
                fcb       $9F
                fcb       $1E
                fcb       $32                 2
-               fcb       $7F                 ÿ
+               fcb       $7F
                fcb       $EC                 l
                fcb       $63                 c
                fcb       $ED                 m
@@ -4077,7 +4077,7 @@ L0D64          fcb       $34                 4
                fcb       $25                 %
                fcb       $30                 0
                fcb       $32                 2
-               fcb       $7B                 û
+               fcb       $7B
                fcb       $31                 1
                fcb       $E4                 d
                fcb       $8D
@@ -5417,7 +5417,7 @@ L124C          fcb       $D6                 V
                fcb       $C1                 A
                fcb       $39                 9
                fcb       $22                 "
-               fcb       $7C                 ü
+               fcb       $7C
                fcb       $58                 X
                fcb       $30                 0
                fcb       $8C
@@ -5519,7 +5519,7 @@ L124C          fcb       $D6                 V
                fcb       $00
                fcb       $74                 t
                fcb       $00
-               fcb       $7E                 þ
+               fcb       $7E
                fcb       $00
                fcb       $74                 t
                fcb       $00
@@ -5639,7 +5639,7 @@ L124C          fcb       $D6                 V
                fcb       $E4                 d
                fcb       $16
                fcb       $03
-               fcb       $7F                 ÿ
+               fcb       $7F
                fcb       $17
                fcb       $EB                 k
                fcb       $75                 u

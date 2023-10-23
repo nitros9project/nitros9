@@ -197,7 +197,7 @@ name           equ       *
                fcb       $2A                 *
                fcb       $16
                fcb       $0C
-               fcb       $7E                 þ
+               fcb       $7E
                fcb       $9E
                fcb       $04
                fcb       $AD                 -
@@ -452,7 +452,7 @@ name           equ       *
                fcb       $14
                fcb       $16
                fcb       $0B
-               fcb       $7F                 ÿ
+               fcb       $7F
                fcb       $9E
                fcb       $16
                fcb       $D6                 V
@@ -894,17 +894,17 @@ L0219          fcb       $5D                 ]
                fcb       $09
                fcb       $C7                 G
                fcb       $32                 2
-               fcb       $7F                 ÿ
+               fcb       $7F
                fcb       $16
                fcb       $09
                fcb       $C2                 B
                fcb       $32                 2
-               fcb       $7E                 þ
+               fcb       $7E
                fcb       $16
                fcb       $09
                fcb       $BD                 =
                fcb       $32                 2
-               fcb       $7B                 û
+               fcb       $7B
                fcb       $16
                fcb       $09
                fcb       $B8                 8
@@ -964,7 +964,7 @@ L0219          fcb       $5D                 ]
                fcb       $E4                 d
                fcb       $16
                fcb       $09
-               fcb       $7F                 ÿ
+               fcb       $7F
                fcb       $EC                 l
                fcb       $E4                 d
                fcb       $A3                 #
@@ -1741,7 +1741,7 @@ L0219          fcb       $5D                 ]
                fcb       $01
                fcb       $75                 u
                fcb       $01
-               fcb       $7D                 ý
+               fcb       $7D
                fcb       $02
                fcb       $40                 @
                fcb       $00
@@ -1805,7 +1805,7 @@ L0219          fcb       $5D                 ]
                fcb       $00
                fcb       $78                 x
                fcb       $00
-               fcb       $7F                 ÿ
+               fcb       $7F
                fcb       $00
                fcb       $86
                fcb       $EC                 l
@@ -1991,7 +1991,7 @@ L0219          fcb       $5D                 ]
                fcb       $1E
                fcb       $16
                fcb       $05
-               fcb       $7C                 ü
+               fcb       $7C
                fcb       $9E
                fcb       $04
                fcb       $AD                 -

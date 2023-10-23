@@ -975,17 +975,17 @@ L0255          fcb       $5D                 ]
                fcb       $0A
                fcb       $72                 r
                fcb       $32                 2
-               fcb       $7F                 ÿ
+               fcb       $7F
                fcb       $16
                fcb       $0A
                fcb       $6D                 m
                fcb       $32                 2
-               fcb       $7E                 þ
+               fcb       $7E
                fcb       $16
                fcb       $0A
                fcb       $68                 h
                fcb       $32                 2
-               fcb       $7B                 û
+               fcb       $7B
                fcb       $16
                fcb       $0A
                fcb       $63                 c
@@ -1250,7 +1250,7 @@ L0455          fcb       $D6                 V
                fcb       $96
                fcb       $5E                 ^
                fcb       $DD                 ]
-               fcb       $7C                 ü
+               fcb       $7C
                fcb       $E3                 c
                fcb       $E4                 d
                fcb       $E3                 c
@@ -1297,7 +1297,7 @@ L0455          fcb       $D6                 V
                fcb       $27                 '
                fcb       $08
                fcb       $D3                 S
-               fcb       $7C                 ü
+               fcb       $7C
                fcb       $97
                fcb       $5D                 ]
                fcb       $D7                 W
@@ -1305,7 +1305,7 @@ L0455          fcb       $D6                 V
                fcb       $20
                fcb       $21                 !
                fcb       $DC                 \
-               fcb       $7C                 ü
+               fcb       $7C
                fcb       $34                 4
                fcb       $06
                fcb       $9E
@@ -1962,7 +1962,7 @@ L0455          fcb       $D6                 V
                fcb       $01
                fcb       $75                 u
                fcb       $01
-               fcb       $7D                 ý
+               fcb       $7D
                fcb       $02
                fcb       $40                 @
                fcb       $00
@@ -2026,7 +2026,7 @@ L0455          fcb       $D6                 V
                fcb       $00
                fcb       $78                 x
                fcb       $00
-               fcb       $7F                 ÿ
+               fcb       $7F
                fcb       $00
                fcb       $86
                fcb       $EC                 l
@@ -2244,7 +2244,7 @@ L0455          fcb       $D6                 V
                fcb       $97
                fcb       $16
                fcb       $05
-               fcb       $7B                 û
+               fcb       $7B
                fcb       $35                 5
                fcb       $04
                fcb       $D7                 W
