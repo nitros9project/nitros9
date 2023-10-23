@@ -17,4 +17,4 @@ listit() {
 }
 
 echo "#!/bin/sh -x"
-listit $1 | awk {'print("python3 asmlint.py " $0 " > /tmp/format.out; mv /tmp/format.out " $0)'}
+listit $1 | awk {'print("python3 asmprettyprint.py " $0 " > /tmp/format.out; mv /tmp/format.out " $0)'}

@@ -34,7 +34,7 @@ opcodesWithoutOperands = [
 ]
 
 opcodesWithOperandsThatCanHaveSpaces = [
-    'ttl'
+    'ttl', 'fcc', 'fcs'
 ]
 
 def isEmptyLine(l):
