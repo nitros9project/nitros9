@@ -117,8 +117,10 @@ Write
 Init
                     clrb                          clear Carry
                     pshs      y,x,cc              then push CC on stack
+                    ifeq      atari
                     bsr       DWInit
-
+                    endc
+                    
 ; allocate DW statics page
                     pshs      u
                     ldd       #$0100

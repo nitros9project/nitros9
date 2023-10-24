@@ -252,7 +252,6 @@ FTime               ldx       R$X,u
                     clrb
                     rts
 
-                    ifd
                     emod
 len                 equ       *
                     end

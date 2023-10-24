@@ -5717,4 +5717,4 @@ svcend              equ       *                   end of svc table
 ********************
                     emod
 endmod              equ       *
-                    endod     equ                 *
+                    end
