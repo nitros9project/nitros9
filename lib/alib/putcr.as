@@ -10,16 +10,16 @@
 *       B  error code if any.
 
 
-               nam       Output Carriage Return to Std. Out
-               ttl       Assembler Library Module
+                    nam       Output              Carriage Return to Std. Out
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-PUTCR                    
-               pshs      a
-               lda       #1                  std out
-               lbsr      FPUTCR
-               puls      a,pc
+PUTCR
+                    pshs      a
+                    lda       #1                  std out
+                    lbsr      FPUTCR
+                    puls      a,pc
 
-               endsect   
+                    endsect

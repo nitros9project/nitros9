@@ -15,18 +15,18 @@
 * EXIT:  all regs preserved (except cc)
 
 
-               nam       Copy sign-bit terminated String
-               ttl       Assembler Library Module
+                    nam       Copy                sign-bit terminated String
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-STRHCPY                  
-               pshs      d
-               lbsr      STRHLEN             find length of string
-               lbsr      MEMMOVE             move it
-               puls      d,pc
+STRHCPY
+                    pshs      d
+                    lbsr      STRHLEN             find length of string
+                    lbsr      MEMMOVE             move it
+                    puls      d,pc
 
-               endsect   
+                    endsect
 
 

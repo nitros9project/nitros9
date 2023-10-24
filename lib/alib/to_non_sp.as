@@ -10,16 +10,16 @@
 *       B=char at X
 
 
-               nam       Advance to non-space
-               ttl       Assembler Library Module
+                    nam       Advance             to non-space
+                    ttl       Assembler Library Module
 
-               section                       .text
+                    section   .text
 
-TO_NON_SP                
-               ldb       ,x+
-               cmpb      #$20                is it space?
-               beq       TO_NON_SP           yes, loop
-               leax      -1,x                point to non-space
-               rts       
+TO_NON_SP
+                    ldb       ,x+
+                    cmpb      #$20                is it space?
+                    beq       TO_NON_SP           yes, loop
+                    leax      -1,x                point to non-space
+                    rts
 
-               endsect   
+                    endsect

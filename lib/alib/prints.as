@@ -17,24 +17,24 @@
 *       B error code (if any)
 
 
-               nam       Print Embedded String to Std. Out
-               ttl       Assembler Library Module
+                    nam       Print               Embedded String to Std. Out
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-PRINTS                   
-               pshs      x,u
-               ldx       4,s                 get start of string (old return address)
-               tfr       x,u                 copy it
+PRINTS
+                    pshs      x,u
+                    ldx       4,s                 get start of string (old return address)
+                    tfr       x,u                 copy it
 
-loop                     
-               tst       ,u+                 advance U to end of string
-               bne       loop
+loop
+                    tst       ,u+                 advance U to end of string
+                    bne       loop
 
-               stu       4,s                 one past null=return address
-               lbsr      PUTS                print from orig pos.
-               puls      x,u,pc              return to caller
+                    stu       4,s                 one past null=return address
+                    lbsr      PUTS                print from orig pos.
+                    puls      x,u,pc              return to caller
 
-               endsect   
+                    endsect
 

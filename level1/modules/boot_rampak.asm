@@ -18,70 +18,70 @@
 *   7      2005/10/14  Boisy G. Pitre
 * Now uses boot_common.asm for fragmented bootfile support.
 
-               nam       Boot
-               ttl       Disto RAMPak Boot Module
+                    nam       Boot
+                    ttl       Disto RAMPak Boot Module
 
 * Disassembled 94/06/25 11:37:47 by Alan DeKok
 
-               ifp1      
-               use       defsfile
-               endc      
+                    ifp1
+                    use       defsfile
+                    endc
 
-tylg           set       Systm+Objct
-atrv           set       ReEnt+rev
-rev            set       $00
-edition        set       7
+tylg                set       Systm+Objct
+atrv                set       ReEnt+rev
+rev                 set       $00
+edition             set       7
 
-               mod       eom,name,tylg,atrv,start,size
+                    mod       eom,name,tylg,atrv,start,size
 
 * Common booter-required defines
-LSN24BIT       equ       0
-FLOPPY         equ       0
+LSN24BIT            equ       0
+FLOPPY              equ       0
 
 
 * on-stack buffer to use
-               org       0
-mpisave        rmb       1
+                    org       0
+mpisave             rmb       1
 * common booter required static variables
-ddtks          rmb       1
-ddfmt          rmb       1
-seglist        rmb       2
-bootsize       rmb       2
-blockloc       rmb       2
-blockimg       rmb       2
-LSN0Ptr        rmb       2                   In memory LSN0 pointer
-size           equ       .
+ddtks               rmb       1
+ddfmt               rmb       1
+seglist             rmb       2
+bootsize            rmb       2
+blockloc            rmb       2
+blockimg            rmb       2
+LSN0Ptr             rmb       2                   In memory LSN0 pointer
+size                equ       .
 
-name           equ       *
-               fcs       /Boot/
-               fcb       edition
+name                equ       *
+                    fcs       /Boot/
+                    fcb       edition
 
-               use       boot_common.asm
+                    use       boot_common.asm
 
 * HWInit - Initialize the device
 *   Entry: Y = hardware address
 *   Exit:  Carry Clear = OK, Set = Error
 *          B = error (Carry Set)
-HWInit         lda       >MPI.Slct           get current slot
-               sta       mpisave,u
-               lda       >PakSlot,pcr        get multipak slot number
-               bmi       cont                if >127, invalid slot number
-               anda      #$03                force it to be legal
-               ldb       #$11
-               mul                           put it into both nibbles
-               stb       >MPI.Slct           go to the desired slot
-cont           clrb      
-               rts       
+HWInit              lda       >MPI.Slct           get current slot
+                    sta       mpisave,u
+                    lda       >PakSlot,pcr        get multipak slot number
+                    bmi       cont                if >127, invalid slot number
+                    anda      #$03                force it to be legal
+                    ldb       #$11
+                    mul                           put it into both nibbles
+                    stb       >MPI.Slct           go to the desired slot
+cont                clrb
+                    rts
 
 
 * HWTerm - Terminate the device
 *   Entry: Y = hardware address
 *   Exit:  Carry Clear = OK, Set = Error
 *          B = error (Carry Set)
-HWTerm         lda       mpisave,u
-               sta       >MPI.Slct
-               clrb      
-               rts       
+HWTerm              lda       mpisave,u
+                    sta       >MPI.Slct
+                    clrb
+                    rts
 
 
 * HWRead - Read a 256 byte sector from the device
@@ -91,23 +91,23 @@ HWTerm         lda       mpisave,u
 *          blockloc,u = ptr to 256 byte sector
 *   Exit:  X = ptr to data (i.e. ptr in blockloc,u)
 *          Carry Clear = OK, Set = Error
-HWRead         tfr       x,d                 move 16 bit LSN into 2 8-bit registers
-               sta       2,y                 save HB LSN
-               stb       1,y                 save LB LSN
+HWRead              tfr       x,d                 move 16 bit LSN into 2 8-bit registers
+                    sta       2,y                 save HB LSN
+                    stb       1,y                 save LB LSN
 
-               ldx       blockloc,u
-               clrb                          and start out at byte zero
+                    ldx       blockloc,u
+                    clrb                          and start out at byte zero
 
-ReadLp         stb       ,y                  save byte number
-               lda       3,y                 grab the byte
-               sta       ,x+                 save in the buffer
-               incb                          go to the next byte
-               bne       ReadLp
-               leax      -256,x
-               clrb                          no errors
-               rts       
+ReadLp              stb       ,y                  save byte number
+                    lda       3,y                 grab the byte
+                    sta       ,x+                 save in the buffer
+                    incb                          go to the next byte
+                    bne       ReadLp
+                    leax      -256,x
+                    clrb                          no errors
+                    rts
 
-               ifgt      Level-1
+                    ifgt      Level-1
 * L2 kernel file is composed of rel, boot, krn. The size of each of these
 * is controlled with filler, so that (after relocation):
 * rel  starts at $ED00 and is $130 bytes in size
@@ -117,12 +117,12 @@ ReadLp         stb       ,y                  save byte number
 *
 * Filler to get to a total size of $1D0. 3, 2, 1 represent bytes after
 * the filler: the end boilerplate for the module, fdb and fcb respectively.
-Pad            fill      $39,$1D0-3-2-1-*
-               endc      
+Pad                 fill      $39,$1D0-3-2-1-*
+                    endc
 
-Address        fdb       $FF40               address of the device to boot from
-PakSlot        fcb       $01                 multipak slot number
+Address             fdb       $FF40               address of the device to boot from
+PakSlot             fcb       $01                 multipak slot number
 
-               emod      
-eom            equ       *
-               end       
+                    emod
+eom                 equ       *
+                    end

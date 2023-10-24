@@ -9,21 +9,21 @@
 * EXIT: CC zero=1 if alphanumeric, 0 if not
 
 
-               nam       Is Char AlphaNumeric?
-               ttl       Assembler Library Module
+                    nam       Is                  Char AlphaNumeric?
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
 
-IS_ALNUM                 
-               lbsr      IS_ALPHA
-               beq       yes                 upper/lowercase letters are alphanumeric
-               lbsr      IS_DIGIT            last chance to set flags.
+IS_ALNUM
+                    lbsr      IS_ALPHA
+                    beq       yes                 upper/lowercase letters are alphanumeric
+                    lbsr      IS_DIGIT            last chance to set flags.
 
-yes                      
-               rts       
+yes
+                    rts
 
 
-               endsect   
+                    endsect
 

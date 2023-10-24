@@ -1,19 +1,19 @@
-               ifne      1
+                    ifne      1
 
 * Checksum routine - D returns as the sum of all bytes of the sector
 * Entry: X = address of sector
 * Exit : D = checksum value
-DoCSum         equ       *
-               clr       ,-s
-               clra      
-               clrb      
-c2@            addb      ,x+
-               adca      #0
-               dec       ,s
-               bne       c2@
-               leas      1,s
+DoCSum              equ       *
+                    clr       ,-s
+                    clra
+                    clrb
+c2@                 addb      ,x+
+                    adca      #0
+                    dec       ,s
+                    bne       c2@
+                    leas      1,s
 *         exg   a,b		do endian conversion to match Server's checksum
-               rts       
+                    rts
 
 
 * Weak but fast CRC Computation Routine
@@ -40,7 +40,7 @@ c2@            addb      ,x+
 *         rts
 
 
-               else      
+                    else
 
 * CCITT CRC-16 Computation Routine
 *
@@ -190,41 +190,41 @@ c2@            addb      ,x+
 * output: D - 16 bit CRC
 * uses: X, D, CC, and two bytes of stack
 
-DoCRC          equ       *
-               ifne      H6309
+DoCRC               equ       *
+                    ifne      H6309
 
-               clre      
-               clrd      
-nextbyte       ldf       #8
-               eora      ,x+
-nextbit        lsld      
-               bcc       loop
-               eord      #$1021
-loop           decf      
-               bne       nextbit
-               dece      
-               bne       nextbyte
-               rts       
+                    clre
+                    clrd
+nextbyte            ldf       #8
+                    eora      ,x+
+nextbit             lsld
+                    bcc       loop
+                    eord      #$1021
+loop                decf
+                    bne       nextbit
+                    dece
+                    bne       nextbyte
+                    rts
 
-               else      
+                    else
 
-               clra      
-               clrb      
-               pshs      y,b
-nextbyte       ldy       #8
-               eora      ,x+
-nextbit        lslb      
-               rola      
-               bcc       loop
-               eora      #$10
-               eorb      #$21
-loop           leay      -1,y
-               bne       nextbit
-               dec       ,s
-               bne       nextbyte
-               leas      1,s
-               puls      y,pc
+                    clra
+                    clrb
+                    pshs      y,b
+nextbyte            ldy       #8
+                    eora      ,x+
+nextbit             lslb
+                    rola
+                    bcc       loop
+                    eora      #$10
+                    eorb      #$21
+loop                leay      -1,y
+                    bne       nextbit
+                    dec       ,s
+                    bne       nextbyte
+                    leas      1,s
+                    puls      y,pc
 
-               endc      
-               endc      
+                    endc
+                    endc
 

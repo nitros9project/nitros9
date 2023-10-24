@@ -16,32 +16,32 @@
 *          carry + zero clear if 1>2 (bhi)
 *          carry set if 1<2 (blo)
 
-               nam       Compare 2 Strings
-               ttl       Assembler Library Module
+                    nam       Compare             2 Strings
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
 
-STRNCMP                  
-               pshs      d,x,y,u
+STRNCMP
+                    pshs      d,x,y,u
 
-               tfr       y,u                 U=string2
-               tfr       d,y                 use Y for counter
-               leay      1,y                 comp for initial dec.
+                    tfr       y,u                 U=string2
+                    tfr       d,y                 use Y for counter
+                    leay      1,y                 comp for initial dec.
 
-loop                     
-               leay      -1,y                count down
-               beq       exit                no miss-matches
-               lda       ,x+                 get 2 to compare
-               ldb       ,u+
-               lbsr      COMPARE             go compare chars.
-               beq       loop                chars match, do more
+loop
+                    leay      -1,y                count down
+                    beq       exit                no miss-matches
+                    lda       ,x+                 get 2 to compare
+                    ldb       ,u+
+                    lbsr      COMPARE             go compare chars.
+                    beq       loop                chars match, do more
 
 * exit with flags set. Do a beq, bhi or blo to correct
 * routines....
 
-exit                     
-               puls      d,x,y,u,pc
+exit
+                    puls      d,x,y,u,pc
 
-               endsect   
+                    endsect

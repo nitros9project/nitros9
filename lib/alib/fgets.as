@@ -17,31 +17,31 @@
 *       handling.
 
 
-               nam       Input Null Terminated String
-               ttl       Assembler Library Module
+                    nam       Input               Null Terminated String
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-FGETS_NOCR               
-               pshs      d,x
-               bsr       FGETS
-               bcs       bye
-               tfr       y,d
-               leax      -1,x
-               clr       d,x
-bye            puls      d,x,pc
+FGETS_NOCR
+                    pshs      d,x
+                    bsr       FGETS
+                    bcs       bye
+                    tfr       y,d
+                    leax      -1,x
+                    clr       d,x
+bye                 puls      d,x,pc
 
-FGETS                    
-               pshs      a,x
-               os9       I$ReadLn            get line
-               bcs       exit                return error code
-               tfr       y,d
-               clr       d,x                 add null
-               clrb                          no error..
+FGETS
+                    pshs      a,x
+                    os9       I$ReadLn            get line
+                    bcs       exit                return error code
+                    tfr       y,d
+                    clr       d,x                 add null
+                    clrb                          no error..
 
-exit                     
-               puls      a,x,pc
+exit
+                    puls      a,x,pc
 
-               endsect   
+                    endsect
 

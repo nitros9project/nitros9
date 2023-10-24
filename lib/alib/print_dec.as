@@ -8,20 +8,20 @@
 *       B error code, if any
 
 
-               nam       Print # as Decimal String to Std Out
-               ttl       Assembler Library Module
+                    nam       Print               # as Decimal String to Std Out
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-PRINT_DEC                
-               pshs      a,x
-               leas      -8,s                buffer
-               tfr       s,x
-               lbsr      BIN_DEC             convert to decimal 
-               lbsr      PUTS                print to standard out
-               leas      8,s                 clean stack
-               puls      a,x,pc              return with error in B
+PRINT_DEC
+                    pshs      a,x
+                    leas      -8,s                buffer
+                    tfr       s,x
+                    lbsr      BIN_DEC             convert to decimal
+                    lbsr      PUTS                print to standard out
+                    leas      8,s                 clean stack
+                    puls      a,x,pc              return with error in B
 
-               endsect   
+                    endsect
 

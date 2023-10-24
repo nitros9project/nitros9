@@ -9,17 +9,17 @@
 * EXIT: CC carry set if error
 *       B=error code if any
 
-               nam       Print Char to Std. Out
-               ttl       Assembler Library Module
+                    nam       Print               Char to Std. Out
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-PUTC                     
-               pshs      a
-               lda       #1                  stn out
-               lbsr      FPUTC
-               puls      a,pc
+PUTC
+                    pshs      a
+                    lda       #1                  stn out
+                    lbsr      FPUTC
+                    puls      a,pc
 
-               endsect   
+                    endsect
 

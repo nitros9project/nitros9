@@ -11,15 +11,15 @@
 *        CC carry set if error (from I$Read)
 *        B  error code if any
 
-               nam       Input Single Character
-               ttl       Assembler Library Module
+                    nam       Input               Single Character
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-GETC                     
-               clra                          std in
-               lbra      FGETC
+GETC
+                    clra                          std in
+                    lbra      FGETC
 
-               endsect   
+                    endsect
 

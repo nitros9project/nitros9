@@ -4,14 +4,14 @@
 * routines.
 
 
-               nam       Decimal Number Table
-               ttl       Assembler Library Module
+                    nam       Decimal             Number Table
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-DECTAB$                  
-               fdb       10000,1000,100,10,1,0
+DECTAB$
+                    fdb       10000,1000,100,10,1,0
 
-               endsect   
+                    endsect
 

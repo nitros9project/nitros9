@@ -13,37 +13,37 @@
 * Created for Corsham 6809
 *
 
-               nam       REL
-               ttl       Relocation routine
+                    nam       REL
+                    ttl       Relocation routine
 
-               ifp1      
-               use       defsfile
-               endc      
+                    ifp1
+                    use       defsfile
+                    endc
 
-tylg           set       Systm+Objct
-atrv           set       ReEnt+rev
-rev            set       $05
-edition        set       5
+tylg                set       Systm+Objct
+atrv                set       ReEnt+rev
+rev                 set       $05
+edition             set       5
 
-Begin          mod       eom,name,tylg,atrv,start,size
+Begin               mod       eom,name,tylg,atrv,start,size
 
-               org       0
-size           equ       .                   REL doesn't require any memory
+                    org       0
+size                equ       .                   REL doesn't require any memory
 
-name           fcs       /REL/
-               fcb       edition
+name                fcs       /REL/
+                    fcb       edition
 
 *************************************************************************
 * Entry point for Level 1
 
-Start                    
+Start
 * Initialize UART
-               ldx       #UARTBase           POINT TO CONTROL PORT ADDRESS
-               lda       #3                  RESET ACIA PORT CODE
-               sta       ,x                  STORE IN CONTROL REGISTER
-               lda       #$11                SET 8 DATA, 2 STOP AN 0 PARITY
-               sta       ,x                  STORE IN CONTROL REGISTER
-               tst       1,x                 ANYTHING IN DATA REGISTER?
+                    ldx       #UARTBase           POINT TO CONTROL PORT ADDRESS
+                    lda       #3                  RESET ACIA PORT CODE
+                    sta       ,x                  STORE IN CONTROL REGISTER
+                    lda       #$11                SET 8 DATA, 2 STOP AN 0 PARITY
+                    sta       ,x                  STORE IN CONTROL REGISTER
+                    tst       1,x                 ANYTHING IN DATA REGISTER?
 
 * INITIALIZE DAT RAM --- LOADS $F-$0 IN LOCATIONS $0-$F
 * OF DAT RAM, THUS STORING COMPLEMENT OF MSB OF ADDRESS
@@ -55,30 +55,30 @@ Start
 ; bank number for extended addressing.  This loop sets up all
 ; translations to point to block 0, which is good.
 ;
-InitDAT        ldx       #DATREGS            point to DAT RAM
-               lda       #$0F                get complement of zero
-datlp@         sta       ,x+                 STORE & POINT TO NEXT RAM LOCATION
-               deca                          GET COMP. VALUE FOR NEXT LOCATION
-               bne       datlp@              ALL 16 LOCATIONS INITIALIZED ?
+InitDAT             ldx       #DATREGS            point to DAT RAM
+                    lda       #$0F                get complement of zero
+datlp@              sta       ,x+                 STORE & POINT TO NEXT RAM LOCATION
+                    deca                          GET COMP. VALUE FOR NEXT LOCATION
+                    bne       datlp@              ALL 16 LOCATIONS INITIALIZED ?
 
 
 * NOTE: IX NOW CONTAINS $0000, DAT RAM IS NO LONGER
 *       ADDRESSED, AND LOGICAL ADDRESSES NOW EQUAL
 *       PHYSICAL ADDRESSES.
-TSTPAT         equ       $55AA               TEST PATTERN
+TSTPAT              equ       $55AA               TEST PATTERN
 
-               lda       #$F0
-               sta       ,x                  STORE $F0 AT $FFFF
-               ldx       #$D0A0              ASSUME RAM TO BE AT $D000-$DFFF
-               ldy       #TSTPAT             LOAD TEST DATA PATTERN INTO "Y"
-tstram@        ldu       ,x                  SAVE DATA FROM TEST LOCATION
-               sty       ,x                  STORE TEST PATTERN AT $D0A0
-               cmpy      ,x                  IS THERE RAM AT THIS LOCATION ?
-               beq       CNVADR              IF MATCH THERE'S RAM, SO SKIP
-               leax      -$1000,x            ELSE POINT 4K LOWER
-               cmpx      #$F0A0              DECREMENTED PAST ZER0 YET ?
-               bne       tstram@             IF NOT CONTINUE TESTING FOR RAM
-               bra       InitDAT             ELSE START ALL OVER AGAIN
+                    lda       #$F0
+                    sta       ,x                  STORE $F0 AT $FFFF
+                    ldx       #$D0A0              ASSUME RAM TO BE AT $D000-$DFFF
+                    ldy       #TSTPAT             LOAD TEST DATA PATTERN INTO "Y"
+tstram@             ldu       ,x                  SAVE DATA FROM TEST LOCATION
+                    sty       ,x                  STORE TEST PATTERN AT $D0A0
+                    cmpy      ,x                  IS THERE RAM AT THIS LOCATION ?
+                    beq       CNVADR              IF MATCH THERE'S RAM, SO SKIP
+                    leax      -$1000,x            ELSE POINT 4K LOWER
+                    cmpx      #$F0A0              DECREMENTED PAST ZER0 YET ?
+                    bne       tstram@             IF NOT CONTINUE TESTING FOR RAM
+                    bra       InitDAT             ELSE START ALL OVER AGAIN
 
 * THE FOLLOWING CODE STORES THE COMPLEMENT OF
 * THE MS CHARACTER OF THE FOUR CHARACTER HEX
@@ -102,14 +102,14 @@ tstram@        ldu       ,x                  SAVE DATA FROM TEST LOCATION
 * OF RAM RESPONDS.
 
 
-CNVADR         stu       ,x                  RESTORE DATA AT TEST LOCATION
-               tfr       x,d                 PUT ADDR. OF PRESENT 4K BLOCK IN D
-               coma                          COMPLEMENT MSB OF THAT ADDRESS
-               lsra                          PUT MS 4 BITS OF ADDRESS IN
-               lsra                          LOCATION D0-D3 TO ALLOW STORING
-               lsra                          IT IN THE DYNAMIC ADDRESS
-               lsra                          TRANSLATION RAM.
-               sta       $FFFD               STORE XLATION FACTOR IN DAT "D"
+CNVADR              stu       ,x                  RESTORE DATA AT TEST LOCATION
+                    tfr       x,d                 PUT ADDR. OF PRESENT 4K BLOCK IN D
+                    coma                          COMPLEMENT MSB OF THAT ADDRESS
+                    lsra                          PUT MS 4 BITS OF ADDRESS IN
+                    lsra                          LOCATION D0-D3 TO ALLOW STORING
+                    lsra                          IT IN THE DYNAMIC ADDRESS
+                    lsra                          TRANSLATION RAM.
+                    sta       $FFFD               STORE XLATION FACTOR IN DAT "D"
 
 
 * THE FOLLOWING CHECKS TO FIND THE REAL PHYSICAL ADDRESSES
@@ -143,37 +143,37 @@ CNVADR         stu       ,x                  RESTORE DATA AT TEST LOCATION
 * 4K 4K 4K 4K 4K 4K 4K 4K 4K 4K -- -- 4K 4K -- --
 
 
-               ldy       #LRARAM             ;POINT TO LOGICAL/REAL ADDR. TABLE
-               sta       13,y                ;STORE $D--- XLATION FACTOR AT $DFDD
-               clr       14,y                ;CLEAR $DFDE
-               lda       #$F0                ;DESTINED FOR IC8 AN MEM EXPANSION ?
-               sta       15,y                ;STORE AT $DFDF
-               lda       #$0C                ;PRESET NUMBER OF BYTES TO CLEAR
-CLRLRT         clr       a,y                 ;CLEAR $DFDC THRU $DFD0
-               deca                          ;. 1 FROM BYTES LEFT TO CLEAR
-               bpl       CLRLRT              ;CONTINUE IF NOT DONE CLEARING
-FNDRAM         leax      -$1000,x            ;POINT TO NEXT LOWER 4K OF RAM
-               cmpx      #$F0A0              ;TEST FOR DECREMENT PAST ZERO
-               beq       FINTAB              ;SKIP IF FINISHED
-               ldu       ,x                  ;SAVE DATA AT CURRENT TEST LOCATION
-               ldy       #TSTPAT             ;LOAD TEST DATA PATTERN INTO Y REG.
-               sty       ,x                  ;STORE TEST PATT. INTO RAM TEST LOC.
-               cmpy      ,x                  ;VERIFY RAM AT TEST LOCATION
-               bne       FNDRAM              ;IF NO RAM GO LOOK 4K LOWER
-               stu       ,x                  ;ELSE RESTORE DATA TO TEST LOCATION
-               ldy       #LRARAM             ;POINT TO LOGICAL/REAL ADDR. TABLE
-               tfr       x,d                 ;PUT ADDR. OF PRESENT 4K BLOCK IN D
-               lsra                          ;PUT MS 4 BITS OF ADDR. IN LOC. D0-D3
-               lsra                          ;TO ALLOW STORING IT IN THE DAT RAM.
-               lsra      
-               lsra      
-               tfr       a,b                 ;SAVE OFFSET INTO LRARAM TABLE
-               eora      #$0F                ;INVERT MSB OF ADDR. OF CURRENT 4K BLK
-               sta       b,y                 ;SAVE TRANSLATION FACTOR IN LRARAM TABLE
-               bra       FNDRAM              ;GO TRANSLATE ADDR. OF NEXT 4K BLK
-FINTAB         lda       #$F1                ;DESTINED FOR IC8 AND MEM EXPANSION ?
-               ldy       #LRARAM             ;POINT TO LRARAM TABLE
-               sta       14,y                ;STORE $F1 AT $DFCE
+                    ldy       #LRARAM             ;POINT TO LOGICAL/REAL ADDR. TABLE
+                    sta       13,y                ;STORE $D--- XLATION FACTOR AT $DFDD
+                    clr       14,y                ;CLEAR $DFDE
+                    lda       #$F0                ;DESTINED FOR IC8 AN MEM EXPANSION ?
+                    sta       15,y                ;STORE AT $DFDF
+                    lda       #$0C                ;PRESET NUMBER OF BYTES TO CLEAR
+CLRLRT              clr       a,y                 ;CLEAR $DFDC THRU $DFD0
+                    deca                          ;. 1 FROM BYTES LEFT TO CLEAR
+                    bpl       CLRLRT              ;CONTINUE IF NOT DONE CLEARING
+FNDRAM              leax      -$1000,x            ;POINT TO NEXT LOWER 4K OF RAM
+                    cmpx      #$F0A0              ;TEST FOR DECREMENT PAST ZERO
+                    beq       FINTAB              ;SKIP IF FINISHED
+                    ldu       ,x                  ;SAVE DATA AT CURRENT TEST LOCATION
+                    ldy       #TSTPAT             ;LOAD TEST DATA PATTERN INTO Y REG.
+                    sty       ,x                  ;STORE TEST PATT. INTO RAM TEST LOC.
+                    cmpy      ,x                  ;VERIFY RAM AT TEST LOCATION
+                    bne       FNDRAM              ;IF NO RAM GO LOOK 4K LOWER
+                    stu       ,x                  ;ELSE RESTORE DATA TO TEST LOCATION
+                    ldy       #LRARAM             ;POINT TO LOGICAL/REAL ADDR. TABLE
+                    tfr       x,d                 ;PUT ADDR. OF PRESENT 4K BLOCK IN D
+                    lsra                          ;PUT MS 4 BITS OF ADDR. IN LOC. D0-D3
+                    lsra                          ;TO ALLOW STORING IT IN THE DAT RAM.
+                    lsra
+                    lsra
+                    tfr       a,b                 ;SAVE OFFSET INTO LRARAM TABLE
+                    eora      #$0F                ;INVERT MSB OF ADDR. OF CURRENT 4K BLK
+                    sta       b,y                 ;SAVE TRANSLATION FACTOR IN LRARAM TABLE
+                    bra       FNDRAM              ;GO TRANSLATE ADDR. OF NEXT 4K BLK
+FINTAB              lda       #$F1                ;DESTINED FOR IC8 AND MEM EXPANSION ?
+                    ldy       #LRARAM             ;POINT TO LRARAM TABLE
+                    sta       14,y                ;STORE $F1 AT $DFCE
 
 * THE FOLLOWING CHECKS TO SEE IF THERE IS A 4K BLK OF
 * RAM LOCATED AT $C000-$CFFF. IF NONE THERE IT LOCATES
@@ -181,83 +181,83 @@ FINTAB         lda       #$F1                ;DESTINED FOR IC8 AND MEM EXPANSION
 * LOGICALLY RESPONDS TO THE ADDRESS $C---.
 
 
-               lda       #$0C                ;PRESET NUMBER HEX "C"
-FINDC          ldb       a,y                 ;GET ENTRY FROM LRARAM TABLE
-               bne       FOUNDC              ;BRANCH IF RAM THIS PHYSICAL ADDR.
-               deca                          ;ELSE POINT 4K LOWER
-               bpl       FINDC               ;GO TRY AGAIN
-               bra       XFERTF
-FOUNDC         clr       a,y                 ;CLR XLATION FACTOR OF 4K BLOCK FOUND
-               stb       $C,y                ;GIVE IT XLATION FACTOR MOVING IT TO $C---
+                    lda       #$0C                ;PRESET NUMBER HEX "C"
+FINDC               ldb       a,y                 ;GET ENTRY FROM LRARAM TABLE
+                    bne       FOUNDC              ;BRANCH IF RAM THIS PHYSICAL ADDR.
+                    deca                          ;ELSE POINT 4K LOWER
+                    bpl       FINDC               ;GO TRY AGAIN
+                    bra       XFERTF
+FOUNDC              clr       a,y                 ;CLR XLATION FACTOR OF 4K BLOCK FOUND
+                    stb       $C,y                ;GIVE IT XLATION FACTOR MOVING IT TO $C---
 
 * THE FOLLOWING CODE ADJUSTS THE TRANSLATION
 * FACTORS SUCH THAT ALL REMAINING RAM WILL
 * RESPOND TO A CONTIGUOUS BLOCK OF LOGICAL
 * ADDRESSES FROM $0000 AND UP....
 
-               clra                          ;START AT ZERO
-               tfr       y,x                 ;START POINTER "X" START OF "LRARAM" TABLE.
-COMPRS         ldb       a,y                 ;GET ENTRY FROM "LRARAM" TABLE
-               beq       PNTNXT              ;IF IT'S ZER0 SKIP
-               clr       a,y                 ;ELSE ERASE FROM TABLE
-               stb       ,x+                 ;AND ENTER ABOVE LAST ENTRY- BUMP
-PNTNXT         inca                          ;GET OFFSET TO NEXT ENTRY
-               cmpa      #$0C                ;LAST ENTRY YET ?
-               blt       COMPRS
+                    clra                          ;START AT ZERO
+                    tfr       y,x                 ;START POINTER "X" START OF "LRARAM" TABLE.
+COMPRS              ldb       a,y                 ;GET ENTRY FROM "LRARAM" TABLE
+                    beq       PNTNXT              ;IF IT'S ZER0 SKIP
+                    clr       a,y                 ;ELSE ERASE FROM TABLE
+                    stb       ,x+                 ;AND ENTER ABOVE LAST ENTRY- BUMP
+PNTNXT              inca                          ;GET OFFSET TO NEXT ENTRY
+                    cmpa      #$0C                ;LAST ENTRY YET ?
+                    blt       COMPRS
 
 * THE FOLLOWING CODE TRANSFER THE TRANSLATION
 * FACTORS FROM THE LRARAM TABLE TO IC11 ON
 * THE MP-09 CPU CARD.
 
-XFERTF         ldx       #DATREGS            ;POINT TO DAT RAM
-               ldb       #$10                ;GET NO. OF BYTES TO MOVE
-FETCH          lda       ,y+                 ;GET BYTE AND POINT TO NEXT
-               sta       ,x+                 ;POKE XLATION FACTOR IN IC11
-               decb                          ;SUB 1 FROM BYTES TO MOVE
-               bne       FETCH               ;CONTINUE UNTIL 16 MOVED
+XFERTF              ldx       #DATREGS            ;POINT TO DAT RAM
+                    ldb       #$10                ;GET NO. OF BYTES TO MOVE
+FETCH               lda       ,y+                 ;GET BYTE AND POINT TO NEXT
+                    sta       ,x+                 ;POKE XLATION FACTOR IN IC11
+                    decb                          ;SUB 1 FROM BYTES TO MOVE
+                    bne       FETCH               ;CONTINUE UNTIL 16 MOVED
 
 * Initialization is complete at this point
 * Jump into Kernel at $F011
-               jmp       $F011               jump into Krn
+                    jmp       $F011               jump into Krn
 
 * Entry
 * A = character to output
-CharOut        pshs      b                   SAVE A ACCUM AND IX
-fetch@         ldb       UARTBase            FETCH PORT STATUS
-               bitb      #2                  TEST TDRE, OK TO XMIT ?
-               beq       fetch@              IF NOT LOOP UNTIL RDY
-               sta       UARTBase+1          XMIT CHAR.
-               puls      b,pc                restore and leave
+CharOut             pshs      b                   SAVE A ACCUM AND IX
+fetch@              ldb       UARTBase            FETCH PORT STATUS
+                    bitb      #2                  TEST TDRE, OK TO XMIT ?
+                    beq       fetch@              IF NOT LOOP UNTIL RDY
+                    sta       UARTBase+1          XMIT CHAR.
+                    puls      b,pc                restore and leave
 
 * Entry
 * X = nil terminated string
-StringOut      pshs      a,x
-loop@          lda       ,x+
-               beq       done@
-               bsr       CharOut
-               bra       loop@
-done@          puls      a,x,pc
+StringOut           pshs      a,x
+loop@               lda       ,x+
+                    beq       done@
+                    bsr       CharOut
+                    bra       loop@
+done@               puls      a,x,pc
 
-               fill      $39,$100-*-EOMSize
+                    fill      $39,$100-*-EOMSize
 
-EOMTop         equ       *
+EOMTop              equ       *
 
 * I/O routines jump table (known locations)
-LFFE9          fdb       $FF00+CharOut
-LFFEB          fdb       $FF00+StringOut
+LFFE9               fdb       $FF00+CharOut
+LFFEB               fdb       $FF00+StringOut
 
-               emod      
-eom            equ       *
+                    emod
+eom                 equ       *
 
-               fdb       $0000
-Vectors        fdb       $0100               SWI3
-               fdb       $0103               SWI2
-               fdb       $010F               FIRQ
-               fdb       $010C               IRQ
-               fdb       $0106               SWI
-               fdb       $0109               NMI
-               fdb       $FF00+Start         start of REL
+                    fdb       $0000
+Vectors             fdb       $0100               SWI3
+                    fdb       $0103               SWI2
+                    fdb       $010F               FIRQ
+                    fdb       $010C               IRQ
+                    fdb       $0106               SWI
+                    fdb       $0109               NMI
+                    fdb       $FF00+Start         start of REL
 
-EOMSize        equ       *-EOMTop
+EOMSize             equ       *-EOMTop
 
-               end       
+                    end

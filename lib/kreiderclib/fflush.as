@@ -1,8 +1,8 @@
 * Disassembly by Os9disasm of fflush.r
 
-               section                       code
+                    section   code
 
-fflush         rts       
+fflush              rts
 
-               endsect   
+                    endsect
 

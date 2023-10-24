@@ -14,17 +14,17 @@
 *       (usually a $0D), the null is appended for ease in string
 *       handling.
 
-               nam       Input Null Terminated String from Std. In
-               ttl       Assembler Library Module
+                    nam       Input               Null Terminated String from Std. In
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-GETS                     
-               pshs      a
-               clra                          std in.
-               lbsr      FGETS
-               puls      a,pc
+GETS
+                    pshs      a
+                    clra                          std in.
+                    lbsr      FGETS
+                    puls      a,pc
 
-               endsect   
+                    endsect
 

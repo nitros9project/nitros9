@@ -13,24 +13,24 @@
 *       all other regs (except cc) preserved
 
 
-               nam       Find sign-bit term. String Length
-               ttl       Assembler Library Module
+                    nam       Find                sign-bit term. String Length
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-STRHLEN                  
-               pshs      x
-               clra                          it'll be at least one byte long
-               clrb      
+STRHLEN
+                    pshs      x
+                    clra                          it'll be at least one byte long
+                    clrb
 
-loop                     
-               addd      #1                  bump count
-               tst       ,x+                 end?
-               bpl       loop
+loop
+                    addd      #1                  bump count
+                    tst       ,x+                 end?
+                    bpl       loop
 
-               puls      x,pc
+                    puls      x,pc
 
-               endsect   
+                    endsect
 
 

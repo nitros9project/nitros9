@@ -12,26 +12,26 @@
 *       All other regs (except cc) preserved
 
 
-               nam       Parse sign-bit terminated string
-               ttl       Assembler Library Module
+                    nam       Parse               sign-bit terminated string
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
 
-PARSNSTR                 
-               pshs      x
-               lbsr      STRHCPY             copy string
-               tfr       y,x                 point to moved string
-               lbsr      STRHLEN             find length of string
-               pshs      d                   size
-               leax      d,x
-               lda       ,-x                 get final byte
-               anda      #%01111111          clear sign bit
-               clrb                          add null terminator
-               std       ,x
-               puls      d,x,pc
+PARSNSTR
+                    pshs      x
+                    lbsr      STRHCPY             copy string
+                    tfr       y,x                 point to moved string
+                    lbsr      STRHLEN             find length of string
+                    pshs      d                   size
+                    leax      d,x
+                    lda       ,-x                 get final byte
+                    anda      #%01111111          clear sign bit
+                    clrb                          add null terminator
+                    std       ,x
+                    puls      d,x,pc
 
 
-               endsect   
+                    endsect
 

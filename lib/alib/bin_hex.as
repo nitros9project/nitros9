@@ -13,23 +13,23 @@
 
 * EXIT all registers (except CC) preserved.
 
-               nam       Convert # to Hex String
-               ttl       Assembler Library Module
+                    nam       Convert             # to Hex String
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-BIN_HEX                  
-               pshs      d,x
-               ldb       ,s
-               lbsr      BIN2HEX             convert 1 byte
-               std       ,x++
-               ldb       1,s
-               lbsr      BIN2HEX             convert 2nd byte
-               std       ,x++
-               clr       ,x                  term with null
-               puls      d,x
+BIN_HEX
+                    pshs      d,x
+                    ldb       ,s
+                    lbsr      BIN2HEX             convert 1 byte
+                    std       ,x++
+                    ldb       1,s
+                    lbsr      BIN2HEX             convert 2nd byte
+                    std       ,x++
+                    clr       ,x                  term with null
+                    puls      d,x
 
-               endsect   
+                    endsect
 
 

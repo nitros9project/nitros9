@@ -8,20 +8,20 @@
 *       B error code, if any
 
 
-               nam       Print # as Hex String to Std Out
-               ttl       Assembler Library Module
+                    nam       Print               # as Hex String to Std Out
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-PRINT_HEX                
-               pshs      a,x
-               leas      -6,s                buffer
-               tfr       s,x
-               lbsr      BIN_HEX             convert to hex
-               lbsr      PUTS                print to standard out
-               leas      6,s                 clean stack
-               puls      a,x,pc              return with error in B
+PRINT_HEX
+                    pshs      a,x
+                    leas      -6,s                buffer
+                    tfr       s,x
+                    lbsr      BIN_HEX             convert to hex
+                    lbsr      PUTS                print to standard out
+                    leas      6,s                 clean stack
+                    puls      a,x,pc              return with error in B
 
-               endsect   
+                    endsect
 
