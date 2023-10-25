@@ -9,16 +9,16 @@
 * EXIT: CC carry set if error (from I$WritLn)
 *       B  error code if any.
 
-               nam       Output One Space Char. to Std. Out
-               ttl       Assembler Library Module
+                    nam       Output              One Space Char. to Std. Out
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-PUTSPACE                 
-               pshs      a
-               lda       #1
-               lbsr      FPUTSPACE
-               puls      a,pc
+PUTSPACE
+                    pshs      a
+                    lda       #1
+                    lbsr      FPUTSPACE
+                    puls      a,pc
 
-               endsect   
+                    endsect

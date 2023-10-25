@@ -12,16 +12,16 @@
 * EXIT: CC zero=1 if space, 0 if not
 
 
-               nam       Is Char a Space?
-               ttl       Assembler Library Module
+                    nam       Is                  Char a Space?
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
 
-IS_SPACE                 
-               cmpb      #$20
-               rts       
+IS_SPACE
+                    cmpb      #$20
+                    rts
 
-               endsect   
+                    endsect
 

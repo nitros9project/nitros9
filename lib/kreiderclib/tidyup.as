@@ -1,8 +1,8 @@
 * Disassembly by Os9disasm of tidyup.r
 
-               section                       code
+                    section   code
 
-_tidyup        rts       
+_tidyup             rts
 
-               endsect   
+                    endsect
 

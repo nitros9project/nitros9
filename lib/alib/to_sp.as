@@ -9,18 +9,18 @@
 * EXIT: X=1st space character in string
 
 
-               nam       Advance to space
-               ttl       Assembler Library Module
+                    nam       Advance             to space
+                    ttl       Assembler Library Module
 
-               section                       .text
+                    section   .text
 
-TO_SP                    
-               pshs      b
-spl                      
-               ldb       ,x+
-               cmpb      #$20                is it space?
-               bne       spl                 no, loop
-               leax      -1,x                point to space
-               puls      b,pc
+TO_SP
+                    pshs      b
+spl
+                    ldb       ,x+
+                    cmpb      #$20                is it space?
+                    bne       spl                 no, loop
+                    leax      -1,x                point to space
+                    puls      b,pc
 
-               endsect   
+                    endsect

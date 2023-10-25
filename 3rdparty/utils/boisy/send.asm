@@ -33,52 +33,52 @@
 * System Manual's "Technical Reference" section, page 2-15.
 *
 
-               nam       Send
-               ttl       Signaler utility
+                    nam       Send
+                    ttl       Signaler utility
 
 
-               ifp1      
-               use       defsfile
-               endc      
+                    ifp1
+                    use       defsfile
+                    endc
 
-               mod       Size,Name,Prgrm+Objct,ReEnt+1,Start,Finish
+                    mod       Size,Name,Prgrm+Objct,ReEnt+1,Start,Finish
 
-Name           fcs       /Send/
-               fcb       $02
+Name                fcs       /Send/
+                    fcb       $02
 
-XPlace         rmb       1
-Signal         rmb       1                   Holds current signal
-stack          rmb       200
-params         rmb       200
-Finish         equ       .
+XPlace              rmb       1
+Signal              rmb       1                   Holds current signal
+stack               rmb       200
+params              rmb       200
+Finish              equ       .
 
-Start          decb                          Check for no params
-               beq       Help                If not, show help
-               clr       Signal              else clear signal (assume signal 0)
+Start               decb                          Check for no params
+                    beq       Help                If not, show help
+                    clr       Signal              else clear signal (assume signal 0)
 
-Parse          lda       ,x+                 get char
-               cmpa      #'-                 dash?
-               beq       GetSig              yeah, get signal no
-               cmpa      #C$SPAC             space?
-               beq       Parse               yeah, get next char
-               cmpa      #C$CR               eol?
-               beq       Done                yeah, exit
+Parse               lda       ,x+                 get char
+                    cmpa      #'-                 dash?
+                    beq       GetSig              yeah, get signal no
+                    cmpa      #C$SPAC             space?
+                    beq       Parse               yeah, get next char
+                    cmpa      #C$CR               eol?
+                    beq       Done                yeah, exit
 
-KillIt         leax      -1,x                backup on char.. must be a pid
-               bsr       Str2Byte            convert to byte
-               tfr       b,a                 put B (pid) in A
-               ldb       Signal              load B with current signal
-               os9       F$Send              and send it to the process
-               bcc       Parse
-               os9       F$PErr              else print the error
-               bra       Parse               and continue parsing
+KillIt              leax      -1,x                backup on char.. must be a pid
+                    bsr       Str2Byte            convert to byte
+                    tfr       b,a                 put B (pid) in A
+                    ldb       Signal              load B with current signal
+                    os9       F$Send              and send it to the process
+                    bcc       Parse
+                    os9       F$PErr              else print the error
+                    bra       Parse               and continue parsing
 
-Done           clrb                          clear, no error
-Error          os9       F$Exit              exit
+Done                clrb                          clear, no error
+Error               os9       F$Exit              exit
 
-GetSig         bsr       Str2Byte            convert to byte
-               stb       Signal              save the new signal
-               bra       Parse               and resume parsing
+GetSig              bsr       Str2Byte            convert to byte
+                    stb       Signal              save the new signal
+                    bra       Parse               and resume parsing
 
 *******************************************
 * Str2Byte - Converts an ASCII string to a single byte
@@ -89,31 +89,31 @@ GetSig         bsr       Str2Byte            convert to byte
 *        X - Last number in string + 1
 *
 
-Str2Byte       clrb      
-cnvloop        lda       ,x+
-               cmpa      #'9
-               bhi       cnvdone
-               suba      #'0
-               blo       cnvdone
-               pshs      a
-               lda       #10
-               mul       
-               addb      ,s+
-               bra       cnvloop
-cnvdone        leax      -1,x
-               rts       
+Str2Byte            clrb
+cnvloop             lda       ,x+
+                    cmpa      #'9
+                    bhi       cnvdone
+                    suba      #'0
+                    blo       cnvdone
+                    pshs      a
+                    lda       #10
+                    mul
+                    addb      ,s+
+                    bra       cnvloop
+cnvdone             leax      -1,x
+                    rts
 
-Help           leax      HelpMsg,pcr
-               lda       #2
-               ldy       #200
-               os9       I$WritLn
-               bcs       Error
-               bra       Done
+Help                leax      HelpMsg,pcr
+                    lda       #2
+                    ldy       #200
+                    os9       I$WritLn
+                    bcs       Error
+                    bra       Done
 
-HelpMsg        fcc       /Usage:  Send [-signal] procID [...]/
-               fcb       C$CR
+HelpMsg             fcc       /Usage:  Send [-signal] procID [...]/
+                    fcb       C$CR
 
-               emod      
-Size           equ       *
-               end       
+                    emod
+Size                equ       *
+                    end
 

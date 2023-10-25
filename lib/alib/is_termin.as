@@ -13,24 +13,24 @@
 * EXIT: CC zero=1 if space, 0 if not
 
 
-               nam       Is Char a Terminator?
-               ttl       Assembler Library Module
+                    nam       Is                  Char a Terminator?
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
 
-IS_TERMIN                
-               tstb                          null?
-               beq       exit
-               cmpb      #$20                space
-               beq       exit
-               cmpb      #$0d                carriage return
-               beq       exit
-               cmpb      #',                 comma?
+IS_TERMIN
+                    tstb                          null?
+                    beq       exit
+                    cmpb      #$20                space
+                    beq       exit
+                    cmpb      #$0d                carriage return
+                    beq       exit
+                    cmpb      #',                 comma?
 
-exit                     
-               rts       
+exit
+                    rts
 
-               endsect   
+                    endsect
 

@@ -8,22 +8,22 @@
 
 * EXIT: CC zero=1 if uppercase, 0 if not
 
-               nam       Is Char Uppercase?
-               ttl       Assembler Library Module
+                    nam       Is                  Char Uppercase?
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
 
-IS_UPPER                 
-               cmpb      #'A
-               blo       no                  not uppercase, zero cleared
-               cmpb      #'Z                 if equal, zero set
-               bhi       no                  not upperc, zero cleared
-               orcc      #%00000100          set zero
+IS_UPPER
+                    cmpb      #'A
+                    blo       no                  not uppercase, zero cleared
+                    cmpb      #'Z                 if equal, zero set
+                    bhi       no                  not upperc, zero cleared
+                    orcc      #%00000100          set zero
 
-no                       
-               rts       
+no
+                    rts
 
-               endsect   
+                    endsect
 

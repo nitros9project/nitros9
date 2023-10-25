@@ -13,15 +13,15 @@
 ;;; table that contains the function codes and offsets for system call routines. The table has the following format:
 ;;;
 ;;; Relative
-;;; Address      Use	 
+;;; Address      Use
 ;;; ----------------------------------
 ;;;| $00	       Function code        |<-- First entry
 ;;;| $01         Offset from byte 3   |
-;;;| $02         to function handler  | 
+;;;| $02         to function handler  |
 ;;;|..................................|
 ;;;| $03	       Function code        |	<-- Second entry
 ;;;| $04         Offset From byte 6   |
-;;;| $05         to function handler  | 
+;;;| $05         to function handler  |
 ;;;|..................................|
 ;;;|                                  |
 ;;;|             More Entries         |
@@ -29,7 +29,7 @@
 ;;;|..................................|
 ;;;|             $80                  | End-of-table mark
 ;;; ----------------------------------
-;;; 
+;;;
 ;;; If the most significant bit of the function code is set, the kernel updates the system table only; otherwise, both
 ;;; system and user tables are updated.
 ;;; The function request codes are in the range $29-$34. I/O calls are in the range $80-$90.
@@ -50,26 +50,26 @@
 ;;;        U        $08       R$U
 ;;;       PC        $0A       R$PC
 
-FSSvc          ldy       R$Y,u               get the system call initialization table
-               bra       InstallSvc          install the service
-loop@          tfr       b,a                 put the system call code in A
-               anda      #$7F                kill the high bit
-               cmpa      #$7F                is the system call code $7F? (I/O handler)
-               beq       ok@                 branch if so
-               cmpa      #$37                compare against highest call allowed
-               bcs       ok@                 branch if less than or equal to the highest call
-               comb                          else set the carry flag
-               ldb       #E$ISWI             and indicate an illegal code
-               rts                           return to the caller
-ok@            lslb                          B = B * 2
-               ldu       <D.SysDis           get the system dispatch table pointer
-               leau      b,u                 U points to entry in table
-               ldd       ,y++                get the address of the routine in the table
-               leax      d,y                 set X to the absolute address
-               stx       ,u                  and store in the system table
-               bcs       InstallSvc          branch if this is a system service call only
-               stx       <$70,u              else store in user table also
-InstallSvc     ldb       ,y+                 get the system call code in B
-               cmpb      #$80                are we at the end of the table?
-               bne       loop@               branch if not
-               rts                           return to the caller
+FSSvc               ldy       R$Y,u               get the system call initialization table
+                    bra       InstallSvc          install the service
+loop@               tfr       b,a                 put the system call code in A
+                    anda      #$7F                kill the high bit
+                    cmpa      #$7F                is the system call code $7F? (I/O handler)
+                    beq       ok@                 branch if so
+                    cmpa      #$37                compare against highest call allowed
+                    bcs       ok@                 branch if less than or equal to the highest call
+                    comb                          else set the carry flag
+                    ldb       #E$ISWI             and indicate an illegal code
+                    rts                           return to the caller
+ok@                 lslb                          B = B * 2
+                    ldu       <D.SysDis           get the system dispatch table pointer
+                    leau      b,u                 U points to entry in table
+                    ldd       ,y++                get the address of the routine in the table
+                    leax      d,y                 set X to the absolute address
+                    stx       ,u                  and store in the system table
+                    bcs       InstallSvc          branch if this is a system service call only
+                    stx       <$70,u              else store in user table also
+InstallSvc          ldb       ,y+                 get the system call code in B
+                    cmpb      #$80                are we at the end of the table?
+                    bne       loop@               branch if not
+                    rts                           return to the caller

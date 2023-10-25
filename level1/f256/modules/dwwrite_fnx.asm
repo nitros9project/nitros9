@@ -14,12 +14,12 @@
 *    All others preserved
 *
 
-DWWrite        pshs      a                   preserve registers
-tx@            lda       ,x+                 get byte from buffer
-               sta       UART_TRHB           put it to PIA
-loop@          lda       UART_LSR            get the LSR register value
-               bita      #$20                test for ready
-               beq       loop@               loop if not set
-               leay      -1,y                decrement byte counter
-               bne       tx@                 loop if more to send
-               puls      a,pc                restore registers and return
+DWWrite             pshs      a                   preserve registers
+tx@                 lda       ,x+                 get byte from buffer
+                    sta       UART_TRHB           put it to PIA
+loop@               lda       UART_LSR            get the LSR register value
+                    bita      #$20                test for ready
+                    beq       loop@               loop if not set
+                    leay      -1,y                decrement byte counter
+                    bne       tx@                 loop if more to send
+                    puls      a,pc                restore registers and return

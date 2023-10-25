@@ -1,30 +1,30 @@
-               ifp1      
-               use       defsfile
-               endc      
+                    ifp1
+                    use       defsfile
+                    endc
 
-Type           set       Prgrm+Objct
-Revs           set       ReEnt+1
-edition        set       $01
+Type                set       Prgrm+Objct
+Revs                set       ReEnt+1
+edition             set       $01
 
-               mod       OS9End,OS9Name,Type,Revs,start,256
+                    mod       OS9End,OS9Name,Type,Revs,start,256
 
-OS9Name        fcs       "TSayHi"
-               fcb       edition
+OS9Name             fcs       "TSayHi"
+                    fcb       edition
 
-F$SAYHI        equ       $25
+F$SAYHI             equ       $25
 
 * routine cold
-start          equ       *
-               lda       ,x
-               cmpa      #$0D
-               bne       SayHi
-               ldx       #$0000
-SayHi          os9       F$SAYHI
-               bcs       error
-               clrb      
-error          os9       F$Exit
+start               equ       *
+                    lda       ,x
+                    cmpa      #$0D
+                    bne       SayHi
+                    ldx       #$0000
+SayHi               os9       F$SAYHI
+                    bcs       error
+                    clrb
+error               os9       F$Exit
 
-               emod      
+                    emod
 
-OS9End         equ       *
-               end       
+OS9End              equ       *
+                    end

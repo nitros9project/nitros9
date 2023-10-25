@@ -10,17 +10,17 @@
 *       B error code (if any)
 
 
-               nam       Print String to Std. Out
-               ttl       Assembler Library Module
+                    nam       Print               String to Std. Out
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-PUTS                     
-               pshs      a
-               lda       #1                  std out
-               lbsr      FPUTS
-               puls      a,pc
+PUTS
+                    pshs      a
+                    lda       #1                  std out
+                    lbsr      FPUTS
+                    puls      a,pc
 
-               endsect   
+                    endsect
 

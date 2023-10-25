@@ -8,23 +8,23 @@
 
 * EXIT:  all registers  preserved
 
-               nam       Convert String to Lowercase
-               ttl       Assembler Library Module
+                    nam       Convert             String to Lowercase
+                    ttl       Assembler Library Module
 
-               section                       .text
+                    section   .text
 
-TO_LOWRS                 
-               pshs      cc,b,x
+TO_LOWRS
+                    pshs      cc,b,x
 
-loop                     
-               ldb       ,x                  get char to check
-               beq       exit                exit if all done
-               lbsr      TO_LOWER            convert to upper 
-               stb       ,x+                 put back in string
-               bra       loop                loop till done
+loop
+                    ldb       ,x                  get char to check
+                    beq       exit                exit if all done
+                    lbsr      TO_LOWER            convert to upper
+                    stb       ,x+                 put back in string
+                    bra       loop                loop till done
 
-exit                     
-               puls      cc,b,x,pc
+exit
+                    puls      cc,b,x,pc
 
-               endsect   
+                    endsect
 

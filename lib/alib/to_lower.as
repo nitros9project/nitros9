@@ -11,20 +11,20 @@
 * Note: control codes, etc. are not effected.
 
 
-               nam       Convert Char to Lowercase
-               ttl       Assembler Library Module
+                    nam       Convert             Char to Lowercase
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-TO_LOWER                 
-               pshs      cc
-               lbsr      IS_UPPER            only uppercase can be converted
-               bne       tolox               no upper, exit
-               addb      #$20                make lowercase
+TO_LOWER
+                    pshs      cc
+                    lbsr      IS_UPPER            only uppercase can be converted
+                    bne       tolox               no upper, exit
+                    addb      #$20                make lowercase
 
-tolox                    
-               puls      cc,pc
+tolox
+                    puls      cc,pc
 
-               endsect   
+                    endsect
 

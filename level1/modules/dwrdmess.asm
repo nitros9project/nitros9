@@ -15,27 +15,27 @@
 *    U is preserved.  All accumulators are clobbered
 *
 
-DWRead         clra                          ; clear Carry (no framing error)
-               pshs      u,x,cc              ; preserve registers, push timeout msb
-               orcc      #$50                ; mask interrupts
+DWRead              clra                          ; clear Carry (no framing error)
+                    pshs      u,x,cc              ; preserve registers, push timeout msb
+                    orcc      #$50                ; mask interrupts
 
-               leau      ,x                  ; U = storage ptr
-               ldx       #0                  ; initialize checksum
+                    leau      ,x                  ; U = storage ptr
+                    ldx       #0                  ; initialize checksum
 
 * Read a byte
-rxByte         ldb       $ffe1               ; check for data in FIFO
-               beq       rxByte              ; loop while empty
-               ldb       $ffe0               ; read data value
+rxByte              ldb       $ffe1               ; check for data in FIFO
+                    beq       rxByte              ; loop while empty
+                    ldb       $ffe0               ; read data value
 
-               stb       ,u+                 ; store received byte to memory
-               abx                           ; update checksum
-               leay      ,-y                 ; decrement request count
-               bne       rxByte              ; loop if another byte wanted
+                    stb       ,u+                 ; store received byte to memory
+                    abx                           ; update checksum
+                    leay      ,-y                 ; decrement request count
+                    bne       rxByte              ; loop if another byte wanted
 
 
 * Clean up, set status and return
-rxExit         leay      ,x                  ; return checksum in Y
-               puls      cc,x,u,pc           ; restore registers and return
-               setdp     $00
+rxExit              leay      ,x                  ; return checksum in Y
+                    puls      cc,x,u,pc           ; restore registers and return
+                    setdp     $00
 
 

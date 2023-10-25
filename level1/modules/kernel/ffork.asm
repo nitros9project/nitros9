@@ -11,7 +11,7 @@
 ;;; Exit:   A = New process I/O number.
 ;;;         X = Address of the last byte of the name plus 1.
 ;;;        CC = Carry flag clear to indicate success.
-;;;         
+;;;
 ;;; Error:  B = A non-zero error code.
 ;;;        CC = Carry flag set to indicate error.
 ;;;
@@ -46,11 +46,11 @@
 ;;;
 ;;;   ------------------  <- Y (Highest address)
 ;;;  |  Parameter area  |
-;;;  |------------------| <- X, SP 
+;;;  |------------------| <- X, SP
 ;;;  |                  |
 ;;;  |     Data area    |
 ;;;  |                  |
-;;;  |------------------| 
+;;;  |------------------|
 ;;;  |                  |
 ;;;  |    Direct page   |
 ;;;  |                  |
@@ -81,66 +81,66 @@
 ;;;
 ;;; Don't call F$Fork with a memory size of zero.
 
-FFork          ldx       <D.PrcDBT           get the pointer to the process descriptor table               
-               os9       F$All64             allocate a 64 byte page of RAM
-               bcs       errex@              branch if error
-               ldx       <D.Proc             get the parent (current) process descriptor
-               pshs      x                   save it on the stack
-               ldd       P$User,x            get the user ID of the parent process
-               std       P$User,y            save it in the child process descriptor
-               lda       P$Prior,x           get the priority of the parent process
-               clrb                          B = 0
-               std       P$Prior,y           store it in the child process descriptor
-               ldb       #SysState           get system state flag into B
-               stb       P$State,y           set the System State flag in the child process descriptor
-               sty       <D.Proc             make the child process the current process
+FFork               ldx       <D.PrcDBT           get the pointer to the process descriptor table
+                    os9       F$All64             allocate a 64 byte page of RAM
+                    bcs       errex@              branch if error
+                    ldx       <D.Proc             get the parent (current) process descriptor
+                    pshs      x                   save it on the stack
+                    ldd       P$User,x            get the user ID of the parent process
+                    std       P$User,y            save it in the child process descriptor
+                    lda       P$Prior,x           get the priority of the parent process
+                    clrb                          B = 0
+                    std       P$Prior,y           store it in the child process descriptor
+                    ldb       #SysState           get system state flag into B
+                    stb       P$State,y           set the System State flag in the child process descriptor
+                    sty       <D.Proc             make the child process the current process
 **** I/O related process descriptor setup
-               ldd       <P$NIO,x            get the parent process' Net I/O pointer
-               std       <P$NIO,y            save it in the child process descriptor
-               ldd       <P$NIO+2,x          copy next two bytes
-               std       <P$NIO+2,y          over to child process descriptor
-               leax      <P$DIO,x            point X to the the parent process' Disk I/O section
-               leay      <P$DIO,y            point Y to the child process' Disk I/O section
-               ldb       #DefIOSiz           get the size of the section
-loop@          lda       ,x+                 get byte at x and increment
-               sta       ,y+                 save byte at y and increment
-               decb                          decrement loop counter
-               bne       loop@               branch if not done
+                    ldd       <P$NIO,x            get the parent process' Net I/O pointer
+                    std       <P$NIO,y            save it in the child process descriptor
+                    ldd       <P$NIO+2,x          copy next two bytes
+                    std       <P$NIO+2,y          over to child process descriptor
+                    leax      <P$DIO,x            point X to the the parent process' Disk I/O section
+                    leay      <P$DIO,y            point Y to the child process' Disk I/O section
+                    ldb       #DefIOSiz           get the size of the section
+loop@               lda       ,x+                 get byte at x and increment
+                    sta       ,y+                 save byte at y and increment
+                    decb                          decrement loop counter
+                    bne       loop@               branch if not done
 * It so happens that X and Y are now pointing to P$PATH in the process descriptor, so
 * there's no need to load them explicitly.
 * Duplicate stdin/stdout/stderr.
-               ldb       #$03                copy first three paths from parent to child
-duploop@       lda       ,x+                 get next available path in parent process descriptor   
-               pshs      b                   save the count (fixes a bug where I$Dup will continue forever if IOMan is not installed)              
-               os9       I$Dup               duplicate it
-               bcc       dupok@              branch if ok
-               clra                          else if error, just make it zero
-dupok@         sta       ,y+                 store it in the child process descriptor
-               puls      b                   restore the count
-               decb                          decrement the counter
-               bne       duploop@            and branch back if not done
+                    ldb       #$03                copy first three paths from parent to child
+duploop@            lda       ,x+                 get next available path in parent process descriptor
+                    pshs      b                   save the count (fixes a bug where I$Dup will continue forever if IOMan is not installed)
+                    os9       I$Dup               duplicate it
+                    bcc       dupok@              branch if ok
+                    clra                          else if error, just make it zero
+dupok@              sta       ,y+                 store it in the child process descriptor
+                    puls      b                   restore the count
+                    decb                          decrement the counter
+                    bne       duploop@            and branch back if not done
 **** I/O related process descriptor setup
-               bsr       SetupPrc            set up process
-               bcs       ex@                 branch if an error occured
-               puls      y                   get the parent process descriptor
-               sty       <D.Proc             and make it the current process
-               lda       P$ID,x              get the process ID of child process descriptor
-               sta       R$A,u               store it in caller's A
-               ldb       P$CID,y             get child ID of parent process descriptor
-               sta       P$CID,y             store child process ID in parent's child process ID
-               lda       P$ID,y              get process ID of parent process
-               std       P$PID,x             store it in child's process descriptor
-               ldb       P$State,x           update state of the child process descriptor
-               andb      #^SysState          turn off system state
-               stb       P$State,x           save back to process descriptor
-               os9       F$AProc             insert the child process into active queue
-               rts                           return to the caller
-ex@            pshs      b                   save off B to stack
-               os9       F$Exit              and exit
-               comb                          set carry
-               puls      x,b                 restore X and B
-               stx       <D.Proc             save X to process descriptor
-               rts                           return
-errex@         comb                          set carry
-               ldb       #E$PrcFul           error is process table is full
-               rts                           and return
+                    bsr       SetupPrc            set up process
+                    bcs       ex@                 branch if an error occured
+                    puls      y                   get the parent process descriptor
+                    sty       <D.Proc             and make it the current process
+                    lda       P$ID,x              get the process ID of child process descriptor
+                    sta       R$A,u               store it in caller's A
+                    ldb       P$CID,y             get child ID of parent process descriptor
+                    sta       P$CID,y             store child process ID in parent's child process ID
+                    lda       P$ID,y              get process ID of parent process
+                    std       P$PID,x             store it in child's process descriptor
+                    ldb       P$State,x           update state of the child process descriptor
+                    andb      #^SysState          turn off system state
+                    stb       P$State,x           save back to process descriptor
+                    os9       F$AProc             insert the child process into active queue
+                    rts                           return to the caller
+ex@                 pshs      b                   save off B to stack
+                    os9       F$Exit              and exit
+                    comb                          set carry
+                    puls      x,b                 restore X and B
+                    stx       <D.Proc             save X to process descriptor
+                    rts                           return
+errex@              comb                          set carry
+                    ldb       #E$PrcFul           error is process table is full
+                    rts                           and return

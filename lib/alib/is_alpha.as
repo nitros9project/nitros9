@@ -8,21 +8,21 @@
 
 * EXIT: CC zero=1 if alpha, 0 if not
 
-               nam       Is Char Alphabetic?
-               ttl       Assembler Library Module
+                    nam       Is                  Char Alphabetic?
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
 
-IS_ALPHA                 
-               lbsr      IS_UPPER
-               beq       yes                 uppercase letters are alpha
-               lbsr      IS_LOWER            last chance to set flags.
+IS_ALPHA
+                    lbsr      IS_UPPER
+                    beq       yes                 uppercase letters are alpha
+                    lbsr      IS_LOWER            last chance to set flags.
 
-yes                      
-               rts       
+yes
+                    rts
 
 
-               endsect   
+                    endsect
 

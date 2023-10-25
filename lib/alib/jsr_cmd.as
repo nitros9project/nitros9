@@ -7,7 +7,7 @@
 * ENTRY: A=1 char command
 *        X=start of jump table
 
-* EXIT:  CC carry set if entry not found 
+* EXIT:  CC carry set if entry not found
 *        all other regs can be modified by subs
 
 * Note format of table: each entry is three bytes
@@ -22,36 +22,36 @@
 *                fdb routineA-*
 *                fcc /B/
 *                fdb routineB-*
-*                fcb 0 
+*                fcb 0
 
 
-               nam       Jsr to 1 char Command
-               ttl       Assembler Library Module
+                    nam       Jsr                 to 1 char Command
+                    ttl       Assembler Library Module
 
-               section                       .text
+                    section   .text
 
-JSR_CMD                  
-               tst       ,x                  end of table?
-               beq       jsrerr
+JSR_CMD
+                    tst       ,x                  end of table?
+                    beq       jsrerr
 
-               cmpa      ,x+                 found match?
-               beq       docmd               yes, go do it
+                    cmpa      ,x+                 found match?
+                    beq       docmd               yes, go do it
 
-               leax      2,x                 next entry
-               bra       JSR_CMD
+                    leax      2,x                 next entry
+                    bra       JSR_CMD
 
 * no match found, return with carry set
 
-jsrerr                   
-               coma                          set error flag
-               rts       
+jsrerr
+                    coma                          set error flag
+                    rts
 
 * command found, do call and return
 
-docmd                    
-               ldd       ,x                  get offset to routine
-               jsr       d,x
-               andcc     #%11111110          clear carry
-               rts       
+docmd
+                    ldd       ,x                  get offset to routine
+                    jsr       d,x
+                    andcc     #%11111110          clear carry
+                    rts
 
-               endsect   
+                    endsect

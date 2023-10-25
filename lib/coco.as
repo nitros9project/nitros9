@@ -1,8 +1,8 @@
-               use       sys6809l2.as
+                    use       sys6809l2.as
 
-               section                       _constant
+                    section   _constant
 
-               use       ../defs/coco.d
-               use       ../defs/cocovtio.d
+                    use       ../defs/coco.d
+                    use       ../defs/cocovtio.d
 
-               endsect   
+                    endsect

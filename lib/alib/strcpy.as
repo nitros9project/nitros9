@@ -11,18 +11,18 @@
 * EXIT: all regs preserved (except cc)
 
 
-               nam       Copy Null Term. String
-               ttl       Assembler Library Module
+                    nam       Copy                Null Term. String
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-STRCPY                   
-               pshs      d
-               ldd       #$ffff              pass very long value to STRNCPY
-               lbsr      STRNCPY             move it
-               puls      d,pc
+STRCPY
+                    pshs      d
+                    ldd       #$ffff              pass very long value to STRNCPY
+                    lbsr      STRNCPY             move it
+                    puls      d,pc
 
-               endsect   
+                    endsect
 
 

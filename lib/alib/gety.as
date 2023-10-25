@@ -11,16 +11,16 @@
 *        CC carry set if error (from I$Read)
 *        B  error code if any
 
-               nam       Input Word for stdin
-               ttl       Assembler Library Module
+                    nam       Input               Word for stdin
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-GETY                     
-               pshs      a
-               clra                          std in
-               lbsr      FGETY
-               puls      a,pc
+GETY
+                    pshs      a
+                    clra                          std in
+                    lbsr      FGETY
+                    puls      a,pc
 
-               endsect   
+                    endsect

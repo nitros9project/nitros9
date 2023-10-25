@@ -16,17 +16,17 @@
 *    U is preserved.  All accumulators are clobbered
 *
 
-DWRead         clra                          clear Carry (no framing error)
-               pshs      u,x,cc              preserve registers
-               leau      ,x
-               ldx       #$0000
-loop@          lda       UART_LSR            get the LSR register value
-               bita      #$01                test for data available
-               beq       loop@               loop if not set
-               lda       UART_TRHB           get the data byte
-               stb       ,u+                 save off acquired byte
-               abx                           update checksum
-               leay      ,-y                 decrement Y
-               bne       loop@               branch if more to obtain
-               leay      ,x                  return checksum in Y
-               puls      cc,x,u,pc           restore registers and return
+DWRead              clra                          clear Carry (no framing error)
+                    pshs      u,x,cc              preserve registers
+                    leau      ,x
+                    ldx       #$0000
+loop@               lda       UART_LSR            get the LSR register value
+                    bita      #$01                test for data available
+                    beq       loop@               loop if not set
+                    lda       UART_TRHB           get the data byte
+                    stb       ,u+                 save off acquired byte
+                    abx                           update checksum
+                    leay      ,-y                 decrement Y
+                    bne       loop@               branch if more to obtain
+                    leay      ,x                  return checksum in Y
+                    puls      cc,x,u,pc           restore registers and return

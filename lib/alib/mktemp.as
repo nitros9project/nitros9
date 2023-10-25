@@ -14,27 +14,27 @@
 * EXIT: no registers (expect cc) modified
 *       filename ends in ".processid",$0d
 
-               nam       Make Unique Filename
-               ttl       Assembler Library Module
+                    nam       Make                Unique Filename
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-MKTEMP                   
-               pshs      d,x,y
+MKTEMP
+                    pshs      d,x,y
 
-               os9       F$PrsNam            find end of name
-               tfr       y,x
+                    os9       F$PrsNam            find end of name
+                    tfr       y,x
 
-               lda       #'.
-               sta       ,x+                 put "." in name
+                    lda       #'.
+                    sta       ,x+                 put "." in name
 
-               os9       F$ID
-               tfr       a,b                 convert to 4 digit hex
-               lbsr      BIN2HEX
-               std       ,x++
-               lda       #$0d                end name with cr
-               sta       ,x
-               puls      d,x,y,pc
+                    os9       F$ID
+                    tfr       a,b                 convert to 4 digit hex
+                    lbsr      BIN2HEX
+                    std       ,x++
+                    lda       #$0d                end name with cr
+                    sta       ,x
+                    puls      d,x,y,pc
 
-               endsect   
+                    endsect

@@ -54,135 +54,135 @@
 * would overwrite the bottom portion of the module directory table and corrupt
 * it (it's already setup by krn before boot is called!)
 
-start          orcc      #IntMasks           ensure IRQs are off (necessary?)
+start               orcc      #IntMasks           ensure IRQs are off (necessary?)
 * allocate memory on stack for vars and sector buffer
-               ifeq      Level-1
+                    ifeq      Level-1
 * Level 1: stack is only 256 bytes and its bottom runs against moddir ptrs..
 * so cheat and use free page just above stack as 256-byte disk buffer
-               leas      -size,s
-               tfr       s,u                 get pointer to data area
-               ldx       #$500
-               else      
-               leas      -size-256,s
-               tfr       s,u                 get pointer to data area
-               leax      size,u              point U to 256 byte sector buffer
-               endc      
-               pshs      u                   save pointer to data area
-               stx       blockloc,u
+                    leas      -size,s
+                    tfr       s,u                 get pointer to data area
+                    ldx       #$500
+                    else
+                    leas      -size-256,s
+                    tfr       s,u                 get pointer to data area
+                    leax      size,u              point U to 256 byte sector buffer
+                    endc
+                    pshs      u                   save pointer to data area
+                    stx       blockloc,u
 
 * Initialize Hardware
-               ldy       Address,pcr         get hardware address
-               lbsr      HWInit
+                    ldy       Address,pcr         get hardware address
+                    lbsr      HWInit
 
 * Read LSN0
-               ifne      LSN24BIT
-               clrb                          MSB sector
-               endc      
-               ldx       #0                  LSW sector
-               lbsr      HWRead              read LSN 0
-               bcs       error               branch if error
+                    ifne      LSN24BIT
+                    clrb                          MSB sector
+                    endc
+                    ldx       #0                  LSW sector
+                    lbsr      HWRead              read LSN 0
+                    bcs       error               branch if error
 
-               ifgt      Level-1
-               lda       #'0                 --- loaded in LSN0'
-               jsr       <D.BtBug            ---
-               endc      
+                    ifgt      Level-1
+                    lda       #'0                 --- loaded in LSN0'
+                    jsr       <D.BtBug            ---
+                    endc
 
-               stx       LSN0Ptr,u           Save LSN0 pointer
+                    stx       LSN0Ptr,u           Save LSN0 pointer
 * Pull relevant values from LSN0
-               ifne      FLOPPY
-               lda       DD.TKS,x            number of tracks on this disk
-               ldb       DD.FMT,x            disk format byte
-               std       ddtks,u             TAKE NOTE!  ASSUMES ADJACENT VARS!
-               endc      
-               ldd       DD.BSZ,x            os9boot size in bytes
-               beq       FragBoot            if zero, do frag boot
-               std       bootsize,u
+                    ifne      FLOPPY
+                    lda       DD.TKS,x            number of tracks on this disk
+                    ldb       DD.FMT,x            disk format byte
+                    std       ddtks,u             TAKE NOTE!  ASSUMES ADJACENT VARS!
+                    endc
+                    ldd       DD.BSZ,x            os9boot size in bytes
+                    beq       FragBoot            if zero, do frag boot
+                    std       bootsize,u
 * Old style boot -- make a fake FD segment right from LSN0!
-               leax      DD.BT,x
-               addd      #$00FF              round up to next page
+                    leax      DD.BT,x
+                    addd      #$00FF              round up to next page
 * Important note: We are making an assumption that the upper 8 bits of the
 * FDSL.B field will always be zero.  That is a safe assumption, since an
 * FDSL.B value of $00FF would mean the file is 65280 bytes.  A bootfile
 * under NitrOS-9 cannot be this large, and therefore this assumption
 * is safe.
-               sta       FDSL.B+1,x          save file size
-               ifne      LSN24BIT
-               clr       FDSL.S,x            make next segment entry 0
-               endc      
-               clr       FDSL.S+1,x
-               clr       FDSL.S+2,x
-               subd      #$00FF              undo previous add #$00FF
-               bra       GrabBootMem
+                    sta       FDSL.B+1,x          save file size
+                    ifne      LSN24BIT
+                    clr       FDSL.S,x            make next segment entry 0
+                    endc
+                    clr       FDSL.S+1,x
+                    clr       FDSL.S+2,x
+                    subd      #$00FF              undo previous add #$00FF
+                    bra       GrabBootMem
 
-Back2Krn       lbsr      HWTerm              call HW termination routine
-               ldx       blockimg,u          pointer to start of os9boot in memory
-               clrb                          clear carry
-               ldd       bootsize,u
-error                    
-               ifeq      Level-1
-               leas      2+size,s            reset the stack    same as PULS U
-               else      
-               leas      2+size+256,s        reset the stack    same as PULS U
-               endc      
-               rts                           return to kernel
+Back2Krn            lbsr      HWTerm              call HW termination routine
+                    ldx       blockimg,u          pointer to start of os9boot in memory
+                    clrb                          clear carry
+                    ldd       bootsize,u
+error
+                    ifeq      Level-1
+                    leas      2+size,s            reset the stack    same as PULS U
+                    else
+                    leas      2+size+256,s        reset the stack    same as PULS U
+                    endc
+                    rts                           return to kernel
 
 
 * NEW! Fragmented boot support!
 *FragBoot ldb   bootloc,u  MSB fd sector location
 *         ldx   bootloc+1,u LSW fd sector location
-FragBoot       ldb       DD.BT,x             MSB fd sector location
-               ldx       DD.BT+1,x           LSW fd sector location
-               lbsr      HWRead              get fd sector
-               ldd       FD.SIZ+2,x          get file size (we skip first two bytes)
-               std       bootsize,u
-               leax      FD.SEG,x            point to segment table
+FragBoot            ldb       DD.BT,x             MSB fd sector location
+                    ldx       DD.BT+1,x           LSW fd sector location
+                    lbsr      HWRead              get fd sector
+                    ldd       FD.SIZ+2,x          get file size (we skip first two bytes)
+                    std       bootsize,u
+                    leax      FD.SEG,x            point to segment table
 
-GrabBootMem              
-               ifgt      Level-1
-               os9       F$BtMem
-               else      
-               os9       F$SRqMem
-               endc      
-               bcs       error
+GrabBootMem
+                    ifgt      Level-1
+                    os9       F$BtMem
+                    else
+                    os9       F$SRqMem
+                    endc
+                    bcs       error
 * Save off alloced mem from F$SRqMem into blockloc,u and restore
 * the statics pointer in U
-               tfr       u,d                 save pointer to requested memory
-               ldu       ,s                  recover pointer to data stack
-               std       blockloc,u
-               std       blockimg,u
+                    tfr       u,d                 save pointer to requested memory
+                    ldu       ,s                  recover pointer to data stack
+                    std       blockloc,u
+                    std       blockimg,u
 
 * Get os9boot into memory
-BootLoop       stx       seglist,u           update segment list
-               ifne      LSN24BIT
-               ldb       FDSL.A,x            MSB sector location
-               endc      
-BL2            ldx       FDSL.A+1,x          LSW sector location
-               ifne      LSN24BIT
-               bne       BL3
-               tstb      
-               endc      
-               beq       Back2Krn
-BL3            lbsr      HWRead
-               inc       blockloc,u          point to next input sector in mem
+BootLoop            stx       seglist,u           update segment list
+                    ifne      LSN24BIT
+                    ldb       FDSL.A,x            MSB sector location
+                    endc
+BL2                 ldx       FDSL.A+1,x          LSW sector location
+                    ifne      LSN24BIT
+                    bne       BL3
+                    tstb
+                    endc
+                    beq       Back2Krn
+BL3                 lbsr      HWRead
+                    inc       blockloc,u          point to next input sector in mem
 
-               ifgt      Level-1
-               lda       #'.                 show .'
-               jsr       <D.BtBug
-               endc      
+                    ifgt      Level-1
+                    lda       #'.                 show .'
+                    jsr       <D.BtBug
+                    endc
 
-               ldx       seglist,u           get pointer to segment list
-               dec       FDSL.B+1,x          get segment size
-               beq       NextSeg             if <=0, get next segment
+                    ldx       seglist,u           get pointer to segment list
+                    dec       FDSL.B+1,x          get segment size
+                    beq       NextSeg             if <=0, get next segment
 
-               ldd       FDSL.A+1,x          update sector location by one
-               addd      #1
-               std       FDSL.A+1,x
-               ifne      LSN24BIT
-               ldb       FDSL.A,x
-               adcb      #0
-               stb       FDSL.A,x
-               endc      
-               bra       BL2
+                    ldd       FDSL.A+1,x          update sector location by one
+                    addd      #1
+                    std       FDSL.A+1,x
+                    ifne      LSN24BIT
+                    ldb       FDSL.A,x
+                    adcb      #0
+                    stb       FDSL.A,x
+                    endc
+                    bra       BL2
 
-NextSeg        leax      FDSL.S,x            advance to next segment entry
-               bra       BootLoop
+NextSeg             leax      FDSL.S,x            advance to next segment entry
+                    bra       BootLoop

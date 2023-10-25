@@ -9,16 +9,16 @@
 * EXIT: CC carry set if error
 *       B=error code if any
 
-               nam       Save word to std out
-               ttl       Assembler Library Module
+                    nam       Save                word to std out
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-PUTY                     
-               pshs      a
-               lda       #1                  stn out
-               lbsr      FPUTY
-               puls      a,pc
+PUTY
+                    pshs      a
+                    lda       #1                  stn out
+                    lbsr      FPUTY
+                    puls      a,pc
 
-               endsect   
+                    endsect

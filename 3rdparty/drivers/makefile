@@ -1,5 +1,6 @@
 include ../../rules.mak
 
+dirs	= burke disto ide mmc s16550 sdisk sdisk3 tccc nocan 
 dirs	= burke disto ide mmc s16550 sdisk sdisk3 tccc nocan #compusense
 
 # Make all components

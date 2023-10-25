@@ -10,21 +10,21 @@
 * EXIT: CC zero=1 if printable, 0 if not
 
 
-               nam       Is Char Printable?
-               ttl       Assembler Library Module
+                    nam       Is                  Char Printable?
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-IS_PRINT                 
-               lbsr      IS_CNTRL
-               beq       no
-               orcc      #%00000100          set zero
-               rts       
+IS_PRINT
+                    lbsr      IS_CNTRL
+                    beq       no
+                    orcc      #%00000100          set zero
+                    rts
 
-no                       
-               andcc     #%11111011          clear zero
-               rts       
+no
+                    andcc     #%11111011          clear zero
+                    rts
 
-               endsect   
+                    endsect
 

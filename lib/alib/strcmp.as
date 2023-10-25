@@ -17,27 +17,27 @@
 *          carry set if 1<2 (blo)
 
 
-               nam       Compare Strings
-               ttl       Assembler Library Module
+                    nam       Compare             Strings
+                    ttl       Assembler Library Module
 
 
-               section                       .text
+                    section   .text
 
-STRCMP                   
-               pshs      d
-               lbsr      STRLEN              find len of str1
-               pshs      d
-               exg       y,x                 find len of str2
-               lbsr      STRLEN
-               exg       y,x                 restore ptrs
-               cmpd      ,s
-               bhi       ok
-               ldd       ,s                  get bigger value
+STRCMP
+                    pshs      d
+                    lbsr      STRLEN              find len of str1
+                    pshs      d
+                    exg       y,x                 find len of str2
+                    lbsr      STRLEN
+                    exg       y,x                 restore ptrs
+                    cmpd      ,s
+                    bhi       ok
+                    ldd       ,s                  get bigger value
 
-ok                       
-               leas      2,s                 clean stack
-               lbsr      STRNCMP             go compare
-               puls      d,pc                go home
+ok
+                    leas      2,s                 clean stack
+                    lbsr      STRNCMP             go compare
+                    puls      d,pc                go home
 
-               endsect   
+                    endsect
 
