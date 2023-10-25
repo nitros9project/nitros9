@@ -5714,7 +5714,6 @@ svctab              equ       *
                     fcc       'I$DeletX'          90 added by color comp level 1.1 version 2.00
 * endc
 svcend              equ       *                   end of svc table
-********************
                     emod
 endmod              equ       *
                     end
