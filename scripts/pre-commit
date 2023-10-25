@@ -1,0 +1,22 @@
+#!/bin/sh
+
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -e "\.asm\$" -e "\.as\$" -e "\.d\$")
+
+if [ "$STAGED_FILES" = "" ]; then
+  exit 0
+fi
+
+FAILED=0
+for FILE in $STAGED_FILES; do
+  python3 asmlint.py "$FILE" > /tmp/asmlint.out
+  mv /tmp/asmlint.out "$FILE"
+
+  if [ $? -ne 0 ]; then
+    FAILED=1
+  fi
+done
+
+if [ $FAILED -eq 1 ]; then
+  echo "\n\nLinting failed, commit denied!\n"
+  exit 1
+fi

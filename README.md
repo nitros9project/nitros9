@@ -33,3 +33,16 @@ make
 
 The result is a number of disk images (ending in .dsk) that can be used on real floppy drives, emulators, and DriveWire.
 
+# Contributing
+
+If you wish to contribute, please fork the repository and submit pull requests.
+
+Also, assembly source code is formatted to the following specifications:
+
+- Spaces only (no tabs)
+- Labels start at column 1
+- Opcodes start at column 20
+- Operands start at column 30
+- Comments start at column 50
+
+Put [this file](https://github.com/nitros9project/nitros9/blob/main/scripts/pre-commit) in your .git/hooks folder to ensure that any source code you submit is automatically formatted.
