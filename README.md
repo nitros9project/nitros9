@@ -14,8 +14,9 @@ Here are the current ports of NitrOS-9 available:
 | CoCo 3 FPGA | NitrOS-9 Level 2 | 6809 |
 | Dragon 64 & Tano Dragon | NitrOS-9 Level 1 | 6809 |
 | Dragon Alpha | NitrOS-9 Level 1 | 6809 |
-| Atari w/ Liber809 | NitrOS-9 Level 1 | 6809 |
-| Corsham 6809 SS-50 | NitrOS-9 Level 1 | 6809 |
+| [Atari w/ Liber809](http://www.github.com/boisy/liber809) | NitrOS-9 Level 1 | 6809 |
+| [Corsham 6809 SS-50](https://www.corshamtech.com/product/ss-50-6809-cpu-board/) | NitrOS-9 Level 1 | 6809 |
+| [Foenix F256 with FNX6809](https://www.c256foenix.com/) | NitrOS-9 Level 1 & 2 | 6809 |
 
 # Downloading and Building
 
