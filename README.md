@@ -1,6 +1,6 @@
 # The NitrOS-9 Repository (on GitHub)
 
-NitrOS-9 is a community-based distribution of the Microware OS-9 operating system for the 6809 that was introduced in the late 1970s and sold into the 1980s.
+NitrOS-9 is a community-based distribution of the [Microware OS-9 operating system](https://en.wikipedia.org/wiki/OS-9) for the [Motorola 6809](https://en.wikipedia.org/wiki/Motorola_6809) that was introduced in the late 1970s and sold into the 1980s.
 
 The Hitachi 6309, which contains additional registers and enhanced instructions, is also supported.
 
