@@ -2,9 +2,9 @@
 
 NitrOS-9 is a community-based distribution of the [Microware OS-9 operating system](https://en.wikipedia.org/wiki/OS-9) for the [Motorola 6809](https://en.wikipedia.org/wiki/Motorola_6809) that was introduced in the late 1970s and sold into the 1980s.
 
-The Hitachi 6309, which contains additional registers and enhanced instructions, is also supported.
+The [Hitachi 6309](https://en.wikipedia.org/wiki/Hitachi_6309), which contains additional registers and enhanced instructions, is also supported.
 
-Here are the current ports of NitrOS-9 available:
+Here are the current ports of NitrOS-9:
 
 | Computer  | Port | Processor |
 | ------------- | ------------- |  ------------- |
@@ -20,7 +20,7 @@ Here are the current ports of NitrOS-9 available:
 
 # Downloading and Building
 
-In order to build NitrOS-9, you need the following:
+To build NitrOS-9, you need the following:
 
 - [lwtools](http://lwtools.projects.l-w.ca). This package contains the required 6809 assembler and linker.
 - [ToolShed](https://github.com/n6il/toolshed). ToolShed provides file system tools for creating disk images, copying files to and from those disk images, and more.
