@@ -11,7 +11,7 @@ Here are the current ports of NitrOS-9 available:
 | TRS-80 Color Computer  | NitrOS-9 Level 1 | 6809 & 6309 |
 | Radio Shack Color Computer 2 | NitrOS-9 Level 1 | 6809 & 6309 |
 | Tandy Color Computer 3 | NitrOS-9 Level 2 | 6809 & 6309 |
-| CoCo 3 FPGA | NitrOS-9 Level 2 | 6809 |
+| [CoCo3FPGA](https://groups.io/g/CoCo3FPGA) | NitrOS-9 Level 2 | 6809 |
 | Dragon 64 & Tano Dragon | NitrOS-9 Level 1 | 6809 |
 | Dragon Alpha | NitrOS-9 Level 1 | 6809 |
 | [Atari w/ Liber809](http://www.github.com/boisy/liber809) | NitrOS-9 Level 1 | 6809 |
