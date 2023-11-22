@@ -75,32 +75,21 @@ Read
                     ifne      atari
                     jmp       [$FFE0]
                     else
-                    ifne      f256
-                    use       dwread_fnx.asm
-                    else
                     use       dwread.asm
-                    endc
                     endc
 
 Write
                     ifne      atari
                     jmp       [$FFE2]
                     else
-                    ifne      f256
-                    use       dwwrite_fnx.asm
-                    else
                     use       dwwrite.asm
                     endc
-                    endc
 
+DWInitM
                     ifne      atari
-                    rts
-                    else
-                    ifne      f256
-                    use       dwinit_fnx.asm
+                    use       dwinit/dwinit_none.asm
                     else
                     use       dwinit.asm
-                    endc
                     endc
 
 * Init
