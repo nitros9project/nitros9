@@ -26,7 +26,7 @@ BOOTERS		= boot_1773_6ms boot_1773_30ms \
 		boot_tc3 boot_ide boot_rom boot_dw_becker \
 		boot_dw_rs232pak boot_dw_directmodempak \
 		boot_dw_arduino boot_dw_38400 boot_dw_cocolink \
-		boot_sdc
+		boot_sdc boot_dw_mmmpiu1 boot_dw_mmmpiu2
 BOOTTRACK	= rel $(BOOTERS)
 KERNEL		= krn krnp2 wbug
 SYSMODS		= ioman init sysgo_dd sysgo_h0 rominfo rominfo_pak vectors
@@ -38,6 +38,7 @@ CLOCKS          = clock_60hz clock_50hz \
 RBF		= rbf.mn \
 		rbdw.dr dwio.sb dwio_38400.sb dwio_becker.sb dwio_arduino.sb \
 		dwio_rs232pak.sb dwio_directmodempak.sb dwio_cocolink.sb \
+		dwio_mmmpiu1.sb dwio_mmmpiu2.sb \
 		rb1773.dr rb1773_scii_ff74.dr rb1773_scii_ff58.dr \
 		ddd0_35s.dd d0_35s.dd d1_35s.dd d2_35s.dd d3_35s.dd \
 		ddd0_40d.dd d0_40d.dd d1_40d.dd d2_40d.dd \
@@ -117,6 +118,14 @@ boot_dw_cocolink:	boot_dw.asm
 boot_dw_directmodempak:	boot_dw.asm
 	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DSY6551N=1 -DSY6551B=65388
 
+# DriveWire MegaMiniMpi Uart 1 Booter
+boot_dw_mmmpiu1: boot_dw.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DMEGAMINIMPI=1 -DMMMUART=1
+
+# DriveWire MegaMiniMpi Uart 2 Booter
+boot_dw_mmmpiu2: boot_dw.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DMEGAMINIMPI=1 -DMMMUART=2
+
 # DriveWire Becker Submodule
 dwio_becker.sb:	dwio.asm
 	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DBECKER=1
@@ -132,6 +141,14 @@ dwio_cocolink.sb:	dwio.asm
 # DriveWire Direct Modem Pak Submodule
 dwio_directmodempak.sb:	dwio.asm
 	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DSY6551N=1 -DSY6551B=65388
+
+# DriveWire Mega-Mini-MPI Submodule
+dwio_mmmpiu1.sb: dwio.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DMEGAMINIMPI=1 -DMMMUART=1
+
+# DriveWire Mega-Mini-MPI Submodule
+dwio_mmmpiu2.sb: dwio.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DMEGAMINIMPI=1 -DMMMUART=2
 
 # DriveWire Arduino Booter
 boot_dw_arduino:	boot_dw.asm

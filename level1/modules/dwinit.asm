@@ -3,6 +3,10 @@
 * DWInit
 *    Initialize DriveWire for CoCo Bit Banger
     
+                    ifne      MEGAMINIMPI
+                    use dwinit/dwinit_mmmpi.asm
+                    endc
+
                     ifne      f256
                     use dwinit_fnx.asm
                     endc
@@ -27,6 +31,6 @@
                     use dwinit/dwinit_none.asm
                     endc
 
-                    ifeq      BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+f256
+                    ifeq      BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+f256+MEGAMINIMPI
                     use dwinit/dwinit_bb.asm
                     endc
