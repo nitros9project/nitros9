@@ -36,9 +36,6 @@ KERNEL_MMMPIU1	= $(MD)/rel $(MD)/krn $(MD)/krnp2 $(MD)/init \
 KERNEL_MMMPIU2	= $(MD)/rel $(MD)/krn $(MD)/krnp2 $(MD)/init \
 		$(MD)/boot_dw_mmmpiu2
 
-KERNEL_DIRECTMODEMPAK	= $(MD)/rel $(MD)/krn $(MD)/krnp2 $(MD)/init \
-		$(MD)/boot_dw_directmodempak
-
 KERNEL_ARDUINO	= $(MD)/rel $(MD)/krn $(MD)/krnp2 $(MD)/init \
 		$(MD)/boot_dw_arduino
 
