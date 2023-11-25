@@ -19,8 +19,6 @@ atrv                set       ReEnt+rev
 rev                 set       $00
 edition             set       1
 
-RTC.Base            equ       RTC_SEC
-
                     mod       len,name,Sbrtn+Objct,ReEnt+0,JmpTable,RTC.Base
 
 name                fcs       "Clock2"
@@ -33,60 +31,60 @@ JmpTable            rts                           Init
                     nop
                     bra       SetTime             Write
 
-GetTime             ldx       #RTC.Base
-                    lda       RTC_CTRL-RTC.Base,x get the RTC control byte
-                    ora       #$04                turn on UTI bit to update external registers
-                    sta       RTC_CTRL-RTC.Base,x and save it back
-                    lda       RTC_SEC-RTC.Base,x  get the RTC value
+GetTime             ldx       M$Mem,pcr           get RTC base address
+                    lda       RTC_CTRL,x          get the RTC control byte
+                    ora       #(RTC_UTI|RTC_24HR) turn on UTI bit to update external registers
+                    sta       RTC_CTRL,x          and save it back
+                    lda       RTC_SEC,x           get the RTC value
                     bsr       bcd2bin             convert from BCD to binary
                     stb       <D.Sec              save in globals
-                    lda       RTC_MIN-RTC.Base,x  get the RTC value
+                    lda       RTC_MIN,x           get the RTC value
                     bsr       bcd2bin             convert from BCD to binary
                     stb       <D.Min              save in globals
-                    lda       RTC_HRS-RTC.Base,x  get the RTC value
+                    lda       RTC_HRS,x           get the RTC value
                     bsr       bcd2bin             convert from BCD to binary
                     stb       <D.Hour             save in globals
-                    lda       RTC_DAY-RTC.Base,x  get the RTC value
+                    lda       RTC_DAY,x           get the RTC value
                     bsr       bcd2bin             convert from BCD to binary
                     stb       <D.Day              save in globals
-                    lda       RTC_MONTH-RTC.Base,x get the RTC value
+                    lda       RTC_MONTH,x         get the RTC value
                     bsr       bcd2bin             convert from BCD to binary
                     stb       <D.Month            save in globals
-                    lda       RTC_YEAR-RTC.Base,x get the RTC value
+                    lda       RTC_YEAR,x          get the RTC value
                     bsr       bcd2bin             convert from BCD to binary
                     addb      #100                assume we're always in 20th century
                     stb       <D.Year             save in globals
-                    lda       RTC_CTRL-RTC.Base,x get the RTC control byte
-                    anda      #^$04               turn off UTI bit to update external registers
-                    sta       RTC_CTRL-RTC.Base,x and save it back
+                    lda       RTC_CTRL,x          get the RTC control byte
+                    anda      #^(RTC_UTI|RTC_24HR) turn off UTI bit to update external registers
+                    sta       RTC_CTRL,x          and save it back
                     rts                           return to the caller
 
-SetTime             ldx       #RTC.Base
-                    lda       RTC_CTRL-RTC.Base,x get the RTC control byte
-                    ora       #$04                turn on UTI bit to update external registers
-                    sta       RTC_CTRL-RTC.Base,x and save it back
+SetTime             ldx       M$Mem,pcr           get RTC base address
+                    lda       RTC_CTRL,x          get the RTC control byte
+                    ora       #(RTC_UTI|RTC_24HR) turn on UTI bit to update external registers
+                    sta       RTC_CTRL,x          and save it back
                     lda       <D.Sec              get the globals value
                     bsr       bin2bcd             convert from binary to BCD
-                    stb       RTC_SEC-RTC.Base,x  save in RTC
+                    stb       RTC_SEC,x           save in RTC
                     lda       <D.Min              get the globals value
                     bsr       bin2bcd             convert from binary to BCD
-                    stb       RTC_MIN-RTC.Base,x  save in RTC
+                    stb       RTC_MIN,x           save in RTC
                     lda       <D.Hour             get the globals value
                     bsr       bin2bcd             convert from binary to BCD
-                    stb       RTC_HRS-RTC.Base,x  save in RTC
+                    stb       RTC_HRS,x           save in RTC
                     lda       <D.Day              get the globals value
                     bsr       bin2bcd             convert from binary to BCD
-                    stb       RTC_DAY-RTC.Base,x  save in RTC
+                    stb       RTC_DAY,x           save in RTC
                     lda       <D.Month            get the globals value
                     bsr       bin2bcd             convert from binary to BCD
-                    stb       RTC_MONTH-RTC.Base,x save in RTC
+                    stb       RTC_MONTH,x         save in RTC
                     lda       <D.Year             get the globals value
                     suba      #100                assume we're always in 20th century
                     bsr       bin2bcd             convert from binary to BCD
-                    stb       RTC_YEAR-RTC.Base,x save in RTC
-                    lda       RTC_CTRL-RTC.Base,x get the RTC control byte
-                    anda      #^$04               turn off UTI bit to update external registers
-                    sta       RTC_CTRL-RTC.Base,x and save it back
+                    stb       RTC_YEAR,x          save in RTC
+                    lda       RTC_CTRL,x          get the RTC control byte
+                    anda      #^(RTC_UTI|RTC_24HR) turn off UTI bit to update external registers
+                    sta       RTC_CTRL,x          and save it back
                     rts                           return to the caller
 
 * Convert BCD to binary

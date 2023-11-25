@@ -1,6 +1,6 @@
 * Echo welcome message
 echo * Welcome to NitrOS-9 Level 1 *
-echo *       on the FNX6809        *
+echo *     on the Foenix F256      *
 echo
 date -t
 

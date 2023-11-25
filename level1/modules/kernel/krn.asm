@@ -85,6 +85,9 @@ name                fcs       /Krn/
 **************************
 * Kernel entry point
 *
+* Entry (Foenix Port):
+*     X = The starting address of the bootfile.
+*     Y = The size of the bootfile in bytes.
 OS9Cold             equ       *
                     ifne      f256
 *>>>>>>>>>> F256 PORT
@@ -99,10 +102,10 @@ OS9Cold             equ       *
 *    $E000-$FFFF - RAM at $00E000-$00FFFF
 * F256-specific initialization to get the F256 to a sane state.
                     orcc      #IntMasks           mask interrupts
-                    clra                          clear A
-                    tfr       a,dp                transfer to DP
-                    clr       MMU_IO_CTRL         map I/O into bank 6
-                    lda       #$FF                set all bits in A
+                    lds       #$500               set the system stack
+                    pshs      x,y                 save the bootfile pointer and size
+                    ldd       #$FF00              A = 255, B = 0
+                    tfr       b,dp                transfer to DP
                     sta       INT_MASK_0          mask all set 0 interrupts
                     sta       INT_MASK_1          mask all set 1 interrupts
                     sta       INT_PENDING_0       clear any pending set 0 interrupts
@@ -110,18 +113,9 @@ OS9Cold             equ       *
 *<<<<<<<<<< F256 PORT
                     endc
 
-* Clear out system globals from $D.FMBM-$0400.
-                    ifne      f256
-*>>>>>>>>>> F256 PORT
-                    ldx       #D.FMBM             start clearing memory at D.FMBM
-                    ldy       #$400-D.FMBM        get the number of bytes to clear
-*<<<<<<<<<< F256 PORT
-                    else
-*>>>>>>>>>> NOT(F256 PORT)
+* Clear out system globals from $0000-$0400.
                     ldx       #$0000              start clearing memory at $0000
-                    ldy       #$400               get the number of bytes to clear
-*<<<<<<<<<< NOT(F256 PORT)
-                    endc
+                    ldy       #$0400              get the number of bytes to clear
                     clra                          clear A
                     clrb                          clear B (D now $0000)
 loop@               std       ,x++                save off at X and increment
@@ -143,7 +137,6 @@ loop@               std       ,x++                save off at X and increment
                     inca                          D = $300
                     std       <D.ModDir           $300 = module directory starting address
                     stx       <D.ModDir+2         X = $400 = module directory ending address
-                    leas      >$0100,x            S = $500 = system stack
 
 * This routine checks for RAM by writing a pattern at an address
 * then reading it back for validation. It may not be needed, so it's
@@ -152,7 +145,7 @@ loop@               std       ,x++                save off at X and increment
 *>>>>>>>>>> CHECK_FOR_VALID_RAM
                     ifne      f256
 *>>>>>>>>>> F256 PORT
-                    leax      ModTop,pcr          end at top of this module
+                    ldx       ,s                  get start of bootfile
 *<<<<<<<<<< F256 PORT
                     else
 *>>>>>>>>>> NOT(F256 PORT)
@@ -184,7 +177,11 @@ EndOfRAM@           leax      ,y                  X = end of RAM
                     ifne      f256
 *>>>>>>>>>> F256 PORT
 * NOTE: Krn must be the FIRST module in the bootlist.
-                    leax      ModTop,pcr
+                    puls      x                   get bootfile start
+                    tfr       x,d                 transfer it to D
+                    addd      ,s++                add the bootfile length to D
+                    std       <D.BTHI             save as the bootfile high marker
+                    stx       <D.BTLO             and x as the bootfile low marker
 *<<<<<<<<<< F256 PORT
                     else
 *>>>>>>>>>> NOT(F256 PORT)
@@ -192,6 +189,7 @@ EndOfRAM@           leax      ,y                  X = end of RAM
                     ldx       #Bt.Start           end at bootfile start
 *<<<<<<<<<< NOT(F256 PORT)
 *<<<<<<<<<< NOT(CHECK_FOR_VALID_RAM)
+                    endc
                     endc
                     stx       <D.MLIM             save off as the memory limit
 
@@ -563,6 +561,7 @@ NMIJmp              jmp       [>D.NMI]
 IRQJmp              jmp       [>D.IRQ]
 FIRQJmp             jmp       [>D.FIRQ]
 VectCSz             equ       *-VectCode
+
 
 * The system call table.
 SysTbl              fcb       F$Link

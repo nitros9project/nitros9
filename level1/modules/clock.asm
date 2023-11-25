@@ -95,8 +95,10 @@ FSTime              equ       *
                     lda       #TkPerSec           reset to start of second
                     sta       <D.Tick
                     ldx       <D.Clock2           get entry point to Clock2
+                    beq       around@             branch if it doesn't exist
                     clra                          clear carry
                     jmp       $06,x               and call SetTime entry point
+around@             rts
 
 *--------------------------------------------------
 *
@@ -119,9 +121,7 @@ init
                     lda       #Sbrtn+Objct
                     os9       F$Link
                     bcc       LinkOk
-
-                    jmp       >$FFFE              level 1: jump to reset vector
-
+                    ldy       #$0000              no Clock2, set vector to 0
 LinkOk
                     puls      cc,dp               ; Restore saved dp and cc
                     sty       <D.Clock2           save entry point
@@ -134,15 +134,10 @@ InitCont
                     ldb       #TkPerTS            get ticks per time slice
                     stb       <D.TSlice           set ticks per time slice
                     stb       <D.Slice            set first time slice
-                    ifne      atari
                     leax      SvcIRQ,pcr          set IRQ handler
                     ifne      USENMI
                     stx       <D.NMI
                     else
-                    stx       <D.IRQ
-                    endc
-                    else
-                    leax      SvcIRQ,pcr          set IRQ handler
                     stx       <D.IRQ
                     endc
 
@@ -151,14 +146,15 @@ InitCont
 
 * Call Clock2 init routine
                     ldy       <D.Clock2           get entry point to Clock2
+                    beq       around@             branch if it doesn't exist
                     jsr       ,y                  call init entry point of Clock2
+around@
 
 * Initialize clock hardware
                     ifne      f256
 * Use the SOF to get a 1/60th or 1/70th interrupt
                     pshs      cc
                     orcc      #IntMasks
-                    clr       MMU_IO_CTRL
                     lda       #$FF
                     sta       INT_PENDING_0
                     sta       INT_PENDING_1
@@ -292,7 +288,6 @@ SvcIRQ
                     clra
                     tfr       a,dp                set direct page to zero
                     ifne      f256
-                    clr       MMU_IO_CTRL
                     lda       INT_PENDING_0
                     bita      #INT_VKY_SOF
                     bne       ClearInt            it's a clock interrupt -- clear it
@@ -300,7 +295,6 @@ SvcIRQ
 ClearInt
                     lda       #INT_VKY_SOF
                     sta       INT_PENDING_0       clear clock interrupt by writing bit back
-                    clr       MMU_IO_CTRL
                     else
                     ifne      corsham
                     tst       PIA0Base+3
@@ -347,6 +341,7 @@ L0032               tst       PIA0Base+2          clear interrupt
 * Call GetTime entry point in Clock2
 *
                     ldx       <D.Clock2           get entry point to Clock2
+                    beq       L007B               branch if it doesn't exist
                     jsr       $03,x               call GetTime entry point
                     fcb       $8C                 skip next 2 bytes
 L0079               stb       <D.Sec              update sec

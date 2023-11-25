@@ -1,0 +1,9 @@
+#!/bin/sh
+if [[ $OSTYPE == 'darwin'* ]]; then
+     export padding=`stat -f "(%z + 255) / 256 * 256" $1 | bc`
+else
+     export padding=`stat -c "(%s + 255) / 256 * 256" $1 | bc`
+fi
+ls -l $@
+os9 padrom -b $padding $1
+ls -l $@
