@@ -17,6 +17,10 @@
 *    U is preserved.  All accumulators are clobbered
 *
 
+                    ifne      MEGAMINIMPI
+                    use dwread/dwread_mmmpi.asm
+                    endc
+
                     ifne      f256
                     use dwread_f256.asm
                     endc
@@ -45,7 +49,7 @@
                     use dwread/dwread_bb38400.asm
                     endc
 
-                    ifeq      BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+BAUD38400+f256
+                    ifeq      BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+BAUD38400+f256+MEGAMINIMPI
                     ifeq      H6309
                     use dwread/dwread_bb6809.asm
                     else

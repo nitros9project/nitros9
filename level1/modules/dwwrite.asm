@@ -16,6 +16,10 @@
 *
 
 
+                    ifne      MEGAMINIMPI
+                    use dwwrite/dwwrite_mmmpi.asm
+                    endc
+
                     ifne      f256
                     use dwwrite_f256.asm
                     endc
@@ -40,7 +44,7 @@
 		    use dwwrite/dwwrite_bb38400.asm
                     endc
 
-                    ifeq      BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+BAUD38400+f256
+                    ifeq      BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+BAUD38400+f256+MEGAMINIMPI
                     ifeq      H6309
                     use dwwrite/dwwrite_bb6809.asm
                     else

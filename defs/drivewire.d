@@ -17,6 +17,99 @@ DRIVEWIRE.D         SET       1
 BBOUT               equ       $FF20
 BBIN                equ       $FF22
 
+ IFNE MEGAMINIMPI
+MPIREG      equ    $FF7F        MPI Register
+CTSMASK     equ    $F0          Get CTS
+CTSSHIFT    equ    $4           Number of shifts for CTS
+SCSMASK     equ    $0F          Get SCS
+
+MMMSLT      equ    $05          MPI Slot(SCS) for MegaMiniMPI
+
+* Uart Base Address
+MMMU1A      equ    $FF40        Address for UART 1
+MMMU2A      equ    $FF50        Address for UART 2
+ IFEQ MMMUART-1
+MMMUARTB    equ    MMMU1A
+ ENDC
+ IFEQ MMMUART-2
+MMMUARTB    equ    MMMU2A
+ ENDC
+ IFNDEF MMMUARTB
+ ERROR MMMUART not defined, build with -DMMMUART=1 or -DMMMUART-2
+ ENDC
+
+* 16550 Register offsets
+THR         equ    $00          Transmit Holding Register
+RHR         equ    $00          Recieve Holding Resister
+IER         equ    $01          Interrupt Enable Register
+IIR         equ    $02          Interrupt Identification Register
+FCR         equ    $02          FIFO Control Register
+LCR         equ    $03          Line Control Register
+MCR         equ    $04          Modem Control Register
+LSR         equ    $05          Line Status Register
+MSR         equ    $06          Modem Status Register
+SCR         equ    $07          Scratch Register
+RST         equ    $08          Reset
+DLL         equ    $00          Divisor Latch LSB
+DLM         equ    $01          Divisor Latch MSB
+DL16        equ    $0A          16-bit divisor window
+
+* 16550 Line Control Register
+LCR5BIT     equ    %00000000
+LCR6BIT     equ    %00000001
+LCR7BIT     equ    %00000010
+LCR8BIT     equ    %00000011
+LCRPARN     equ    %00000000
+LCRPARE     equ    %00000100
+LCRPARO     equ    %00001100
+* BREAK
+BRKEN       equ    %01000000
+BRKDIS      equ    %10111111
+* 16550 DLAB
+DLABEN      equ    %10000000
+DLABDIS     equ    %01111111
+
+* 16550 Baud Rate Definitions
+MMMB600        equ    3072
+MMMB1200       equ    1536
+MMMB2400       equ    768
+MMMB4800       equ    384
+MMMB9600       equ    192
+MMMB19200      equ    96
+MMMB38400      equ    48
+MMMB57600      equ    32
+MMMB115200     equ    16
+MMMB230400     equ    8
+MMMB460800     equ    4
+MMMB921600     equ    2
+MMMB1843200    equ    1
+
+* 16550 Line Status Register Defs
+LSRDR       equ    %00000001    LSR:Data Ready
+LSRTHRE     equ    %00100000    LSR:Transmit Holding Register Empty
+LSRTE       equ    %01000000    LSR:Transmit Empty
+
+* 16550 Fifo Control Register
+FCRFEN     equ    %00000001    Enable RX and TX FIFOs
+FCRFDIS    equ    %11111110    Disable RX and TX FIFOs
+FCRRXFCLR  equ    %00000010    Clear RX FIFO
+FCRTXFCLR  equ    %00000100    Clear TX FIFO
+FCRTRG1B   equ    %00000000    1-Byte FIFO Trigger
+FCRTRG4B   equ    %01000000    4-Byte FIFO Trigger
+FCRTRG8B   equ    %10000000    8-Byte FIFO Trigger
+FCRTRG14B  equ    %11000000    14-Byte FIFO Trigger
+
+* 16550 Modem Control Register
+MCRDTREN   equ    %00000001    Enable DTR Output
+MCRDTRDIS  equ    %11111110    Disable DTR Output
+MCRRTSEN   equ    %00000010    Enable RTS Output
+MCRRTSDIS  equ    %11111101    Disable RTS Output
+MCRAFEEN   equ    %00100000    Enable Auto Flow Control
+MCRAFEDIS  equ    %11011111    Disable Auto Flow Control
+ ENDC
+
+
+
 * Opcodes
 OP_NAMEOBJ_MOUNT    equ       $01                 Named Object Mount
 OP_NAMEOBJ_CREATE   equ       $02                 Named Object Create
