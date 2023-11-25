@@ -3,7 +3,8 @@ include ../port.mak
 vpath %.as $(LEVEL2)/cmds:$(LEVEL1)/cmds
 vpath %.asm $(LEVEL2)/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09
 
-DEPENDS		= ./makefile
+DEPENDS		= ./makefile $(NOSLIB)/net.o
+
 AFLAGS          += --includedir=$(3RDPARTY)/packages/basic09
 AFLAGS          += --includedir=../defs
 LFLAGS		+= -L$(NITROS9DIR)/lib
@@ -33,8 +34,12 @@ UTILPAK1	= attr build copy del deldir dir display list makdir mdir \
 		merge mfree procs rename tmode
 
 # Files not compilable by os9asm: config
-all:	$(CMDS) $(CMDS_D2) $(CMDS_DW) shell utilpak1 $(DEPENDS)
+all:	$(DEPENDS) $(CMDS) $(CMDS_D2) $(CMDS_DW) shell utilpak1 $(DEPENDS)
 
+# Some commands depend on net.o
+$(NOSLIB)/net.o:
+	cd $(NOSLIB); make
+	
 runb:	runb.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 	$(MERGE) $@ $(SUBS)>$@.tmp

@@ -4,7 +4,7 @@
 *    Initialize DriveWire for CoCo Bit Banger
     
                     ifne      f256
-                    use dwinit_fnx.asm
+                    use dwinit_f256.asm
                     endc
 
                     ifne      ARDUINO
@@ -15,7 +15,7 @@
                     use dwinit/dwinit_none.asm
                     endc
 
-                    ifne      JMCPBCK
+                    ifne      JMCPBCK+atari
                     use dwinit/dwinit_none.asm
                     endc
 
@@ -27,6 +27,6 @@
                     use dwinit/dwinit_none.asm
                     endc
 
-                    ifeq      BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+f256
+                    ifeq      BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+f256+atari
                     use dwinit/dwinit_bb.asm
                     endc

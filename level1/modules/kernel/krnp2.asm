@@ -96,6 +96,8 @@ open@               bsr       OpenCons            try to open the console
 * we need it for the console device.
                     lbsr      LoadBoot            else attempt to load bootfile
                     bsr       OpenCons            try to open the console again
+                    bcc       ChainProg
+forever@            bra       forever@
 
 * Hmm. No check for success. Probably should "bcs fatalerr" here?
 

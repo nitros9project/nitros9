@@ -43,29 +43,12 @@ F256.D              set       1
                     nam       F256Defs
                     ttl       NitrOS-9 System Definitions for the Foenix F256
 
-
-
-********************************************************************
-* Power Line Frequency Definitions
-*
-Hz50                equ       1                   Assemble clock for 50 hz power
-Hz60                equ       2                   Assemble clock for 60 hz power
-                    ifndef    PwrLnFrq
-PwrLnFrq            set       Hz60                Set to Appropriate freq
-                    endc
-
-
 ********************************************************************
 * Ticks per second
 *
-                    ifndef    TkPerSec
-                    ifeq      PwrLnFrq-Hz60
 TkPerSec            set       60
-                    else
-TkPerSec            set       70
-                    endc
-                    endc
 
+                    ifeq      Level-1
 
 ********************************************************************
 *
@@ -79,22 +62,89 @@ TkPerSec            set       70
 * These definitions are not strictly for 'Boot', but are for booting the
 * system.
 *
-Bt.Start            set       $8000
-Bt.Size             equ       $1080               Maximum size of bootfile
-Bt.Track            equ       $0000
-Bt.Sec              equ       0
 HW.Page             set       $FF                 Device descriptor hardware page
 
+                    else
+
+Bt.Start            set       $EE00               start address of where KRN is in memory
+
+*************************************************
+*
+* NitrOS-9 Level 2 Section
+*
+*************************************************
+
+****************************************
+* Dynamic Address Translator Definitions
+*
+DAT.BlCt            EQU       8                   D.A.T. blocks/address space
+DAT.BlSz            EQU       (256/DAT.BlCt)*256  D.A.T. block size
+DAT.ImSz            EQU       DAT.BlCt*2          D.A.T. Image size
+DAT.Addr            EQU       -(DAT.BlSz/256)     D.A.T. MSB Address bits
+DAT.Task            EQU       $FFA0               Task Register address
+DAT.TkCt            EQU       32                  Number of DAT Tasks
+DAT.Regs            EQU       $FFA8               DAT Block Registers base address
+DAT.Free            EQU       $333E               Free Block Number
+DAT.BlMx            EQU       $3F                 Maximum Block number
+DAT.BMSz            EQU       $40                 Memory Block Map size
+DAT.WrPr            EQU       0                   no write protect
+DAT.WrEn            EQU       0                   no write enable
+SysTask             EQU       0                   Coco System Task number
+IOBlock             EQU       $3F
+ROMBlock            EQU       $3F
+IOAddr              EQU       $7F
+ROMCount            EQU       1                   number of blocks of ROM (High RAM Block)
+RAMCount            EQU       1                   initial blocks of RAM
+MoveBlks            EQU       DAT.BlCt-ROMCount-2 Block numbers used for copies
+BlockTyp            EQU       1                   chk only first bytes of RAM block
+ByteType            EQU       2                   chk entire block of RAM
+Limited             EQU       1                   chk only upper memory for ROM modules
+UnLimitd            EQU       2                   chk all NotRAM for modules
+* NOTE: this check assumes any NotRAM with a module will
+*       always start with $87CD in first two bytes of block
+RAMCheck            EQU       BlockTyp            chk only beg bytes of block
+ROMCheck            EQU       Limited             chk only upper few blocks for ROM
+LastRAM             EQU       IOBlock             maximum RAM block number
+
+HW.Page             SET       $7                  device descriptor hardware page
+
+* KrnBlk defines the block number of the 8K RAM block that is mapped to
+* the top of CPU address space ($E000-$FFFF) for the system process, and
+* which holds the Kernel. The top 3 pages of this CPU address space ($FD00-
+* $FFFF) have two special properties. First, $FE00-$FFFF contains the I/O space.
+* Second, $FD00-$FDFFF isn't affected by the DAT mappings but, instead,
+* remains constant regardless of what block is mapped in at slot 7.
+* When a user process is mapped in, and requests enough memory, it will end up
+* with its own block assigned for CPU address space $E000-
+* $FFFF but $FD00-$FFFF is unusable by the user process.
+KrnBlk              SET       $7
+
+                    endc
 
 ********************************************************************
-* NitrOS-9 Screen Definitions for the F256
+* System control definitions
 *
-G.Cols              equ       80
-                    ifeq      PwrLnFrq-Hz60
-G.Rows              equ       60
-                    else
-G.Rows              equ       70
-                    endc
+SYS0                equ       $FE00
+SYS1                equ       $FE01
+RST0                equ       $FE02
+RST1                equ       $FE03
+
+SYS_RESET           equ       %10000000
+SYS_CAP_EN          equ       %00100000
+SYS_BUZZ            equ       %00010000
+SYS_L1              equ       %00001000
+SYS_L0              equ       %00000100
+SYS_SD_L            equ       %00000010
+SYS_PWR_L           equ       %00000001
+
+SYS_SD_WP           equ       %10000000
+SYS_SD_CD           equ       %01000000
+SYS_L1_RATE         equ       %11000000
+SYS_L0_RATE         equ       %00110000
+SYS_SID_ST          equ       %00001000
+SYS_PSG_ST          equ       %00000100
+SYS_L1_MN           equ       %00000010
+SYS_L0_MN           equ       %00000001
 
 ********************************************************************
 * F256 MMU Definitions
@@ -111,7 +161,6 @@ MMU_SLOT_6          equ       $FFAE               $C000-$DFFF
 MMU_SLOT_7          equ       $FFAF               $E000-$FFFF
 
 * MMU_MEM_CTRL bits
-EDIT_EN             equ       %10000000
 EDIT_LUT            equ       %00110000
 EDIT_LUT_0          equ       %00000000
 EDIT_LUT_1          equ       %00010000
@@ -133,11 +182,20 @@ LUT_BANK_6          equ       $000E
 LUT_BANK_7          equ       $000F
 
 * MMU_IO_CTRL bits
-IO_DISABLE          equ       %00000100
-IO_PAGE             equ       %00000011
+* $FFA1 has 2 bits:
+*    FFA1[0] =
+*        1 = Enable internal RAM for segment $FD00-$FDFF.
+*        0 = Disable; RAM/FLASH is accessible.
+*
+*    FFA1[1] =
+*        1 = Enable internal RAM for segment $FFF0-$FFFF
+*        0 = Disable; RAM/FLASH is accessible.
+* When enabled, the areas supercede RAM/flash, but will be disabled by RESET. When the system resets,
+* those regions rever to RAM/flash. Also, at REET, the contents of RAM retain the old values until the
+* system powers off.
 
 ********************************************************************
-* F256 Interrupt Definitions
+* F256 interrupt definitions
 *
 * Interrupt Addresses
 INT_PENDING_0       equ       $FE20
@@ -183,7 +241,7 @@ IEC_ATN_i           equ       %00000100           IEC ATN In
 IEC_SREQ_i          equ       %00001000           IEC SREQ In
 
 ********************************************************************
-* F256 Keyboard Definitions
+* F256 keyboard definitions
 *
 PS2_CTRL            equ       $FE50
 PS2_OUT             equ       $FE51
@@ -204,7 +262,7 @@ MEMP                equ       %00000010
 KEMP                equ       %00000001
 
 ********************************************************************
-* F256 Timer Definitions
+* F256 timer definitions
 *
 * Timer Addresses
 T0_CTR              equ       $FE30               Timer 0 Counter (Write)
@@ -219,7 +277,7 @@ T1_CMP_CTR          equ       $FE3C               Timer 1 Compare Counter (Read/
 T1_CMP              equ       $FE3D               Timer 1 Compare Value (Read/Write)
 
 ********************************************************************
-* F256 VIA Definitions
+* F256 VIA definitions
 *
 * VIA Addresses
 IORB                equ       $FFB0               Port B Data
@@ -239,20 +297,20 @@ IFR                 equ       $FFBD               Interrupt Flag Register
 IER                 equ       $FFBE               Interrupt Enable Register
 IORA2               equ       $FFBF               Port A Data (no handshake)
 
-* ACR Control Register Values
+* ACR control register values
 T1_CTRL             equ       %11000000
 T2_CTRL             equ       %00100000
 SR_CTRL             equ       %00011100
 PBL_EN              equ       %00000010
 PAL_EN              equ       %00000001
 
-* PCR Control Register Values
+* PCR control register values
 CB2_CTRL            equ       %11100000
 CB1_CTRL            equ       %00010000
 CA2_CTRL            equ       %00001110
 CA1_CTRL            equ       %00000001
 
-* IFR Control Register Values
+* IFR control register values
 IRQF                equ       %10000000
 T1F                 equ       %01000000
 T2F                 equ       %00100000
@@ -262,7 +320,7 @@ SRF                 equ       %00000100
 CA1F                equ       %00000010
 CA2F                equ       %00000001
 
-* IER Control Register Values
+* IER control register values
 IERSET              equ       %10000000
 T1E                 equ       %01000000
 T2E                 equ       %00100000
@@ -275,23 +333,27 @@ CA2E                equ       %00000001
 ********************************************************************
 * F256 real-time clock definitions
 *
-RTC_SEC             equ       0xFE40              ;Seconds Register
-RTC_SEC_ALARM       equ       0xFE41              ;Seconds Alarm Register
-RTC_MIN             equ       0xFE42              ;Minutes Register
-RTC_MIN_ALARM       equ       0xFE43              ;Minutes Alarm Register
-RTC_HRS             equ       0xFE44              ;Hours Register
-RTC_HRS_ALARM       equ       0xFE45              ;Hours Alarm Register
-RTC_DAY             equ       0xFE46              ;Day Register
-RTC_DAY_ALARM       equ       0xFE47              ;Day Alarm Register
-RTC_DOW             equ       0xFE48              ;Day of Week Register
-RTC_MONTH           equ       0xFE49              ;Month Register
-RTC_YEAR            equ       0xFE4A              ;Year Register
-RTC_RATES           equ       0xFE4B              ;Rates Register
-RTC_ENABLE          equ       0xFE4C              ;Enables Register
-RTC_FLAGS           equ       0xFE4D              ;Flags Register
-RTC_CTRL            equ       0xFE4E              ;Control Register
-RTC_CENTURY         equ       0xFE4F              ;Century Register
+RTC.Base            equ       0xFE40
+RTC_SEC             equ       0x00                seconds register
+RTC_SEC_ALARM       equ       0x01                seconds alarm register
+RTC_MIN             equ       0x02                minutes register
+RTC_MIN_ALARM       equ       0x03                minutes alarm register
+RTC_HRS             equ       0x04                hours register
+RTC_HRS_ALARM       equ       0x05                hours alarm register
+RTC_DAY             equ       0x06                day register
+RTC_DAY_ALARM       equ       0x07                day alarm register
+RTC_DOW             equ       0x08                day of week register
+RTC_MONTH           equ       0x09                month register
+RTC_YEAR            equ       0x0A                year register
+RTC_RATES           equ       0x0B                rates register
+RTC_ENABLE          equ       0x0C                enables register
+RTC_FLAGS           equ       0x0D                flags register
+RTC_CTRL            equ       0x0E                control register
+RTC_CENTURY         equ       0x0F                century register
 
+RTC_24HR            equ       $02                 12/24 hour flag (1 = 24 Hr, 0 = 12 Hr)
+RTC_STOP            equ       $04                 0 = STOP when power off, 1 = run from battery when power off
+RTC_UTI             equ       $08                 update transfer inhibit
 ********************************************************************
 * F256 W65C22S definitions
 *
@@ -391,7 +453,7 @@ LCR_DATABITS_6      equ       0x01                ; Data Bits: 6
 LCR_DATABITS_7      equ       0x02                ; Data Bits: 7
 LCR_DATABITS_8      equ       0x03                ; Data Bits: 8
 
-LSR_ERR_RECIEVE     equ       0x80                ; Error in Received FIFO
+LSR_ERR_RECEIVE     equ       0x80                ; Error in Received FIFO
 LSR_XMIT_DONE       equ       0x40                ; All data has been transmitted
 LSR_XMIT_EMPTY      equ       0x20                ; Empty transmit holding register
 LSR_BREAK_INT       equ       0x10                ; Break interrupt
@@ -401,17 +463,19 @@ LSR_ERR_OVERRUN     equ       0x02                ; Overrun error
 LSR_DATA_AVAIL      equ       0x01                ; Data is ready in the receive buffer
 
 ********************************************************************
-* F256 Text lookup definitions
+* F256 text lookup definitions
 *
 TEXT_LUT_FG         equ       $FF00
 TEXT_LUT_BG         equ       $FF40
 
 ********************************************************************
-* F256 SD Card Interface Definitions
+* F256 SD Card interface definitions
 *
-SDC_STAT            equ       $FE90
-SDC_DATA            equ       $FE91
+SDC_BASE_ADDR       equ       $FE90
+SDC_STAT            equ       0
+SDC_DATA            equ       1
 
+* SDC status bits
 SPI_BUSY            equ       %10000000
 SPI_CLK             equ       %00000010
 CS_EN               equ       %00000001
@@ -427,6 +491,13 @@ Mstr_Ctrl_Sprite_En equ       $20                 ; Enable the Sprite Module in 
 Mstr_Ctrl_GAMMA_En  equ       $40                 ; this Enable the GAMMA correction - The Analog and DVI have different color value, the GAMMA is great to correct the difference
 Mstr_Ctrl_Disable_Vid equ       $80                 ; This will disable the Scanning of the Video hence giving 100% bandwith to the CPU
 MASTER_CTRL_REG_H   equ       $FFC1
+FON_SET             equ       %0010000
+FON_OVLY            equ       %00010000
+MON_SLP             equ       %00001000
+DBL_Y               equ       %00000100
+DBL_X               equ       %00000010
+CLK_70              equ       %00000001
+
 ; Reserved - TBD
 VKY_RESERVED_00     equ       $FFC2
 VKY_RESERVED_01     equ       $FFC3
@@ -497,7 +568,7 @@ TyVKY_BM2_START_ADDY_M equ       $F012
 TyVKY_BM2_START_ADDY_H equ       $F013
 
 
-; Tile Map
+; Tile map
 TyVKY_TL_CTRL0      equ       $F100
 ; Bit Field Definition for the Control Register
 TILE_Enable         equ       $01
@@ -507,7 +578,7 @@ TILE_LUT2           equ       $08
 TILE_SIZE           equ       $10                 ; 0 -> 16x16, 0 -> 8x8
 
 ;
-;Tile MAP Layer 0 Registers
+;Tile mao layer 0 registers
 TL0_CONTROL_REG     equ       $F100               ; Bit[0] - Enable, Bit[3:1] - LUT Select,
 TL0_START_ADDY_L    equ       $F101               ; Not USed right now - Starting Address to where is the MAP
 TL0_START_ADDY_M    equ       $F102
@@ -576,7 +647,7 @@ XYMATH_ABS_ADDY_L   equ       $D30B               ; Low Absolute Results
 XYMATH_ABS_ADDY_M   equ       $D30C               ; Mid Absolute Results
 XYMATH_ABS_ADDY_H   equ       $D30D               ; Hi Absolute Results
 
-; Sprite Block0
+; Sprite block0
 SPRITE_Ctrl_Enable  equ       $01
 SPRITE_LUT0         equ       $02
 SPRITE_LUT1         equ       $04
@@ -658,7 +729,7 @@ DMA_STATUS_TRF_IP   equ       $80                 ; Transfer in Progress
 DMA_RESERVED_0      equ       $FEE2
 DMA_RESERVED_1      equ       $FEE3
 
-; Source Addy
+; Source addy
 DMA_SOURCE_ADDY_L   equ       $FEE4
 DMA_SOURCE_ADDY_M   equ       $FEE5
 DMA_SOURCE_ADDY_H   equ       $FEE6
@@ -688,4 +759,4 @@ DMA_RESERVED_5      equ       $FEF4
 DMA_RESERVED_6      equ       $FEF5
 DMA_RESERVED_7      equ       $FEF6
 DMA_RESERVED_8      equ       $FEF7
-                    endc                          $FEF7
+                    endc

@@ -17,7 +17,7 @@
 
 
                     ifne      f256
-                    use dwwrite_fnx.asm
+                    use dwwrite_f256.asm
                     endc
 
                     ifne      ARDUINO

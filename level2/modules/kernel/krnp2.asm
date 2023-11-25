@@ -177,7 +177,6 @@ Uday                lda       ,x+
 
 krnp2               lda       #'2                 debug: signal that we made it into krnp2
                     jsr       <D.BtBug
-
                     leay      SvcTab,pc           install system calls
                     os9       F$SSvc
                     ifeq      TC9-1
@@ -195,9 +194,6 @@ L003A               ldu       <D.Init             get init module pointer
 
                     lda       #(EXEC.+READ.)      get file mode
                     os9       I$ChgDir            change to it
-                    bcc       L004F               went ok, go on
-                    os9       F$Boot              try & load boot file
-                    bcc       L003A               go try again
 L004F               ldu       <D.Init             get init module pointer
                     ldd       <StdStr,u           point to default device (usually '/Term')
                     beq       L0077               don't exist go do OS9P3
@@ -209,13 +205,6 @@ L004F               ldu       <D.Init             get init module pointer
                     lda       #UPDAT.             get file mode
                     os9       I$Open              open path to it
                     bcc       L0066               went ok, save path #
-*         os9    F$Boot      try & re-boot
-                    nop
-                    nop
-                    nop
-*         bcc    L004F       go try again
-                    nop
-                    nop
                     bra       L009B               crash machine
 L0066               ldx       <D.Proc             get current process pointer
                     sta       <P$Path,x           save stdin path

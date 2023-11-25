@@ -3,7 +3,7 @@ include ../port.mak
 vpath %.as $(LEVEL1)/cmds
 vpath %.asm $(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09
 
-DEPENDS		= ./makefile
+DEPENDS		= ./makefile $(NOSLIB)/net.o
 
 AFLAGS		+= --includedir=$(3RDPARTY)/packages/basic09
 LFLAGS		+= -L $(NITROS9DIR)/lib -lnet -lcoco -lalib
@@ -24,8 +24,12 @@ BASIC09		= basic09 runb gfx inkey syscall
 
 ALLOBJS		= $(CMDS) $(CMDS_D2) $(CMDS_DW) $(BASIC09)
 
-all:	$(ALLOBJS)
+all:	$(DEPENDS) $(ALLOBJS)
 
+# Some commands depend on net.o
+$(NOSLIB)/net.o:
+	cd $(NOSLIB); make
+	
 pwd:	pd.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DPWD=1
 

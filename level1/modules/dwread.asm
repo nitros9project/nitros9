@@ -18,7 +18,7 @@
 *
 
                     ifne      f256
-                    use dwread_fnx.asm
+                    use dwread_f256.asm
                     endc
 
                     ifne      ARDUINO
