@@ -1,6 +1,13 @@
 *******************************************************************
 * llfnxsd - Foenix low-level SDHC/SD/MMC driver
 *
+* This driver works with the following cards:
+*
+*  - Samsung 32GB EVO Select (microSDXC card using an SD card adapter)
+*  - Samsung 256GB EVO Select (microSDXC card using an SD card adapter)
+*  - Kingston 32GB Canvas Select Plus SDHC (verified by Stefany Allaire)
+*  - Sandisk 64GB ImageMate Plus (after consulting with https://electronics.stackexchange.com/questions/303745/sd-card-initialization-problem-cmd8-wrong-response)
+*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
@@ -16,6 +23,9 @@ rev                 set       0
 edition             set       4
 
                     mod       eom,name,tylg,atrv,start,0
+
+* Set to 1 to get verbose debugging (not recommended).
+SD_DEBUG            equ       0
 
                     org       V.LLMem
 * Low-level driver static memory area.
@@ -107,11 +117,11 @@ lphr                lda       SEC_CNT,u           get our sector count
 * We make 256 loops of 2 reads, or 512 bytes.
                     bsr       TurnLEDON           turn LED ON
                     clrb                          load the counter
-p@                  bsr       GetSDByte           get a byte
+p@                  lbsr      GetSDByte           get a byte
                     cmpa      #$FE                is it the marker?
                     bne       p@                  branch if not
 * Read the 512 Byte sector.
-l@                  bsr       GetSDByte           get a byte
+l@                  lbsr      GetSDByte           get a byte
                     sta       ,y+                 save it in our buffer
                     bsr       GetSDByte           get another byte
                     sta       ,y+                 store it in our buffer
@@ -168,8 +178,15 @@ LSNMap1             leay      CMDStorage,u        point to the command buffer
 *         Y = The address of the first byte of the command sequence.
 * Exit:
 * Registers preserved: all but A/B/X
-SendCmd             ldb       #6                  get the number of bytes to send
+SendCmd
+                    ldb       #4                  set blast count
+                    bsr       BlastSD             blast bytes
+
+                    ldb       #6                  get the number of bytes to send
 l@                  lda       ,y+                 get the byte from the command
+                    ifne      SD_DEBUG
+                    lbsr      phexOut
+                    endc
                     bsr       xfer                transfer it to the SD card
                     decb                          decrement the counter
                     bne       l@                  branch if more
@@ -178,7 +195,7 @@ l@                  lda       ,y+                 get the byte from the command
 *
 * Entry:  X = The hardware address.
 *
-* Exit:   A = The resonse byte.
+* Exit:   A = The response byte.
 *         CC.C = 0 OK
 *         CC.C = 1 ERROR
 * Registers preserved: all but A/B
@@ -208,12 +225,23 @@ xfer                sta       SDC_DATA,x          store the byte to the SD card
 l@                  tst       SDC_STAT,x          get the SPI status bit
                     bmi       l@                  branch if SPI is busy
                     lda       SDC_DATA,x          get the data from the SD card
+                    ifne      SD_DEBUG
+                    lbsr      phexIn
+                    endc
                     rts                           return
 
 EWP                 comb                          set the carry
                     ldb       #E$WP               write protect error
                     rts                           return
 
+* Blast data to the SD card.
+* Entry:  B = number of times to blast
+BlastSD             pshs      d,x,y
+l0@                 lbsr      GetSDByte           sends $FF
+                    decb                          decrement the counter
+                    bne       l0@                 branch if there's more
+                    puls      d,x,y,pc
+                                        
 * ll_write - Low level write routine
 *
 * Entry:
@@ -270,7 +298,7 @@ l@                  lda       ,y+                 get a byte from our buffer
                     bsr       GetSDByte           send a second $FF (send 0 to check)
                     cmpa      #$E5                get the response - data accepted token
                     beq       fnd0                first byte? if not, check four more bytes
-                    bsr       TurnLEDOFF          turn LED OFF
+                    lbsr      TurnLEDOFF          turn LED OFF
 * Make sure the response was accepted.
                     lbsr      GetR1               this should be the data we got back during the write of the last CRC
                     cmpa      #$E5                response - data accepted token
@@ -320,6 +348,56 @@ BMODE               comb                          set the carry
                     ldb       #E$BMode            bad mode error
                     rts                           return
 
+                    ifne      SD_DEBUG
+* A = byte to convert to HEX
+convtohex           cmpa      #$09
+                    bgt       o@
+                    adda      #$30
+                    rts
+o@                  adda      #$37                   
+                    rts
+                    
+pMarker             pshs      d,x,y
+                    leax      ,s
+                    ldy       #1
+                    lda       #1
+                    os9       I$Write
+                    puls      d,x,y,pc
+                    
+phexIn              pshs      d,x,y
+                    lda       #'<
+                    bsr       pMarker
+                    lda       ,s
+                    bsr       pHex
+                    puls      d,x,y,pc
+        
+phexOut             pshs      d,x,y
+                    lda       #'>
+                    bsr       pMarker
+                    lda       ,s
+                    bsr       pHex
+                    puls      d,x,y,pc
+        
+phex                pshs      d,x,y
+                    pshs      d
+                    lsra
+                    lsra
+                    lsra
+                    lsra
+                    bsr       convtohex
+                    sta       ,s
+                    lda       2,s
+                    anda      #%00001111
+                    bsr       convtohex
+                    sta       1,s
+                    leax      ,s
+                    ldy       #2
+                    lda       #1
+                    os9       I$Write
+                    puls      d
+                    puls      d,x,y,pc
+                    endc
+
 * ll_init - Low level init routine
 * Entry:
 *    Y  = address of device descriptor
@@ -337,13 +415,13 @@ ll_init             ldx       V.PORT-UOFFSET,u    load X with the hardware addre
                     anda      #SYS_SD_CD          is an SD card inserted?
                     bne       NOTRDY              branch if not
 
-                    ldd       #SPI_CLK*256+16     get the slow clock bit in A and counter in B
-                    sta       SDC_STAT,x          set the slow clock in the hardware
+                    ldd       #(CS_EN|SPI_CLK)*256+64     get the enable and slow clock bit in A and blast count in B
+                    sta       SDC_STAT,x          set the hardware
+                    lbsr      BlastSD             blast bytes
 
-* Blast $FFs to the SD card.
-l0@                 lbsr      GetSDByte           sends $FF
-                    decb                          decrement the counter
-                    bne       l0@                 branch if there's more
+                    ldd       #(SPI_CLK)*256+64   get the slow clock bit in A and blast count in B
+                    sta       SDC_STAT,x          set the hardware
+                    lbsr      BlastSD             blast bytes
 
 * Select the card (keep speed low).
                     lda       #CS_EN|SPI_CLK      set the card enable and slow SPI clock
@@ -353,49 +431,52 @@ l0@                 lbsr      GetSDByte           sends $FF
 * Send CMD0.
                     leay      CMD0,pcr            point to the command stream
                     lbsr      SendCmd             send the command
-                    bcs       NOTRDY              branch if error
+                    lbcs       NOTRDY              branch if error
                     anda      #$7E                check if all but bits 7 and 1 are clear
-                    bne       NOTRDY              branch if not
+                    lbne       NOTRDY              branch if not
 
 * Send CMD8.
                     leay      CMD8,pcr            point to the command stream
                     lbsr      SendCmd             send the command
-                    bcs       NOTRDY              branch if error
-                    anda      #$7E                are bits 6-1 clear?
-                    bne       SDV1                branch if not
+                    lbcs       NOTRDY              branch if error
+                    anda      #$7E                clear bits 7 and 0
+                    cmpa      #$04                illegal command?
+                    lbeq       SDV1                branch if so
+                    tsta                          is it 0 (no error)?
+                    lbne       NOTRDY              no, something else... bail
                     lbsr      GetR1               get the response
-                    bcs       NOTRDY              branch if error
+                    lbcs       NOTRDY              branch if error
                     tsta                          is the response 0?
-                    bne       BMODE               branch if not
+                    lbne       BMODE               branch if not
                     lbsr      GetR1               get the response
-                    bcs       NOTRDY              branch if error
+                    lbcs       NOTRDY              branch if error
                     tsta                          is the response 0?
-                    bne       BMODE               branch if not
+                    lbne       BMODE               branch if not
                     lbsr      GetR1               get the response
-                    bcs       NOTRDY              branch if error
+                    lbcs       NOTRDY              branch if error
                     cmpa      #1                  is the response 1?
-                    bne       BMODE               branch if not
+                    lbne       BMODE               branch if not
                     lbsr      GetR1               get the response
-                    bcs       NOTRDY              branch if error
+                    lbcs       NOTRDY              branch if error
                     cmpa      #$AA                is the response $AA?
-                    bne       BMODE               branch if not
+                    lbne       BMODE               branch if not
 
 * Send ACMD41 by first CMD55.
 loop41V2            leay      CMD55,pcr           point to the command stream
                     lbsr      SendCmd             send the command
-                    bcs       NOTRDY              branch if error
+                    lbcs      NOTRDY              branch if error
                     anda      #$7E                are bits 6-1 clear?
-                    bne       BMODE               branch if not
+                    lbne      BMODE               branch if not
 
 * Then send ACMD41.
                     leay      ACMD41V2,pcr        point to the command stream
                     lbsr      SendCmd             send the command
-                    bcs       NOTRDY              branch if error
+                    lbcs      NOTRDY              branch if error
                     tsta                          is the response 0?
                     beq       Send58              if so, then send CMD58
                     cmpa      #$01                is it 1?
                     beq       loop41V2            if so, then try again
-                    bra       BMODE               else indicate an error
+                    lbra      BMODE               else indicate an error
 
 * Send CMD58 to V2 cards to read the OCR.
 Send58              leay      CMD58,pcr           point to the command stream
