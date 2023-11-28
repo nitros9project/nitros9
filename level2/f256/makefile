@@ -55,6 +55,9 @@ dsk: all $(DSKS)
 dskcopy: $(DSKS)
 	$(CP) $(DSKS) $(DSKDIR)
 
+reload:
+	osascript -e 'tell application "DriveWire"' -e 'tell server of first document' -e 'reload drive 0' -e 'end tell' -e 'end tell'
+
 rogue:
 	$(CD) $(3RDPARTY)/packages/rogue; make
 

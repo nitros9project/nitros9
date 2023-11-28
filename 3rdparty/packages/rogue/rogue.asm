@@ -163,6 +163,7 @@ L0088               lda       ,y+
                     os9       I$GetStt
                     clr       >$0004              Turn echo off
                     os9       I$SetStt
+                    ifne      coco
 * Not sure why all the PIA stuff here is necessary? It looks like the sound used for
 *  text overflow, hitting a trap, etc. actually hits the PIA directly. We could replace
 *  with the BEL ($07) later, or SS.Tone
@@ -175,6 +176,7 @@ L0088               lda       ,y+
                     lda       >$FF23              Get PIA settings
                     ora       #$08                Enable 6 bit sound
                     sta       >$FF23
+                    endc
                     leax      <L00DC,pc           Intercept routine (just return)
                     ldu       #$0000              Intercept routine data mem area
                     os9       F$Icpt
@@ -285,10 +287,12 @@ L01A6               lda       >$37CC              Get cursor Y coord
                     clrb                          X coord to 0
                     lbsr      L6CDE               CurXY to b,a
 L01AF               lbsr      L6D42
-                    lbsr      L6421
+                    lbsr      CurOn
+                    ifne      coco
                     lda       >$FF23              Shut 6 bit sound off?
                     anda      #$F7
                     sta       >$FF23
+                    endc
                     clra                          Get SS.Opt options block
                     clrb
                     ldx       #$0000              We are saving it to $0-$1f
@@ -296,6 +300,7 @@ L01AF               lbsr      L6D42
                     lda       #$01                Turn echo back on
                     sta       <$0004
                     os9       I$SetStt
+                    lbsr      CurOn
                     tst       >$14AF              Did user use -x option (chain to rogue, rather than fork)?
                     bne       L01D7               Yes, go chain to shell
                     clrb                          No, a simple exit will suffice
@@ -8968,7 +8973,7 @@ L4DA1               cmpx      #$0000              Is the current object block em
                     pshs      x                   Save object block ptr
                     leax      ,u
                     lbsr      L6D07               Write out string @ X (NUL terminated)
-                    lbsr      L5010               Write out LFCR
+                    lbsr      PutLFCR             Write out LFCR
                     puls      x                   Get object block ptr back
                     ldx       ,x                  Get ptr to next object block
                     bra       L4DA1               Go do that one (or exit if $0000)
@@ -9002,7 +9007,7 @@ L4DD9               cmpx      #$0000              Done list? (next monster is em
                     tfr       d,x                 Move monster definition ptr to X
                     ldx       ,x                  Get ptr to full monster name
                     lbsr      L6D07               Write it out (string @ X (NUL terminated)
-                    lbsr      L5010               Write out LFCR
+                    lbsr      PutLFCR             Write out LFCR
                     puls      x                   Get back monster object ptr
                     ldd       <$1D,x              Get ???
                     beq       L4E2C               Empty, skip ahead
@@ -9025,7 +9030,7 @@ L4E31               pshs      x
 * for table @ $EED, and secondary tbl @ u0DBB. I THINK THESE ARE ROOM TABLES
 L4E43               pshs      u,y,x,d
                     lbsr      L6D6F               Clear the window
-                    lbsr      L5010               Write out LFCR
+                    lbsr      PutLFCR             Write out LFCR
                     ldx       #$0EED              Point to start of table
 L4E4E               cmpx      #$10A7              Are we done all 13 entries of the table?
                     beq       L4E6A               Yes, skip ahead
@@ -9035,7 +9040,7 @@ L4E4E               cmpx      #$10A7              Are we done all 13 entries of 
                     lbsr      L6CF5
                     lda       8,x                 Get ?? from table
                     lbsr      L4FDA               Write single byte to screen in hex
-                    lbsr      L5010               Write out LFCR
+                    lbsr      PutLFCR             Write out LFCR
                     leax      <34,x               Point to next entry in table
                     bra       L4E4E               Keep going until all 13 entries are done
 
@@ -9046,7 +9051,7 @@ L4E6A               pshs      x                   Save ptr to current entry
                     puls      x                   Get ptr back
                     lbsr      L61C2               Check for keypress amongst other things
                     lbsr      L6D6F               Clear the window
-                    lbsr      L5010               Write out LFCR
+                    lbsr      PutLFCR             Write out LFCR
                     ldy       #$0DBB              Point to another table of nine 34 byte entries
 L4E81               cmpy      #$0EED              Are we done the secondary table?
                     beq       L4EBC               Yes, skip ahead
@@ -9068,7 +9073,7 @@ L4E81               cmpy      #$0EED              Are we done the secondary tabl
                     puls      x
                     ldd       2,y                 Get ?? from secondary ptr
                     lbsr      L4FCE               Write 16 bit num to screen in hex
-                    lbsr      L5010               Write out LFCR
+                    lbsr      PutLFCR             Write out LFCR
                     leay      <34,y               Point to next entry in secondary table
                     bra       L4E81               Keep going until secondary tbl done
 
@@ -9161,9 +9166,9 @@ L4F59               pshs      x
 * DEBUG: UNUSED CODE, NEVER CALLED
 * Entry: X=ptr to string (NUL terminated)
 L4F68               pshs      u,y,x,d
-                    lbsr      L501F               Get length of string @ X, write it to screen
-                    lbsr      L502F               Read 1 char from keyboard into A
-                    lbsr      L5010               Write out LFCR
+                    lbsr      PutStr              Get length of string @ X, write it to screen
+                    lbsr      GetChar             Read 1 char from keyboard into A
+                    lbsr      PutLFCR             Write out LFCR
                     puls      pc,u,y,x,d
 
 * DEBUG: UNUSED CODE, NEVER CALLED
@@ -9176,30 +9181,30 @@ L4F75               pshs      d
                     pshs      cc
 * Register dump
                     ldx       #$28FC              ' D:'
-                    lbsr      L501F
+                    lbsr      PutStr
                     ldd       7,s
                     bsr       L4FCE
                     ldx       #$2900              ' X:'
-                    lbsr      L501F
+                    lbsr      PutStr
                     ldd       5,s
                     bsr       L4FCE
                     ldx       #$2904              ' Y:'
-                    bsr       L501F
+                    bsr       PutStr
                     ldd       3,s
                     bsr       L4FCE
                     ldx       #$2908              ' U:'
-                    bsr       L501F
+                    bsr       PutStr
                     ldd       1,s
                     bsr       L4FCE
                     ldx       #$290C              ' CC:'
-                    bsr       L501F
+                    bsr       PutStr
                     lda       ,s
                     bsr       L4FDA
                     ldx       #$2911              ' S:'
-                    bsr       L501F
+                    bsr       PutStr
                     tfr       s,d
                     bsr       L4FCE
-                    bsr       L5010
+                    bsr       PutLFCR
 * 6809/6309 - if not separate entry points, combine puls cc,u
                     puls      cc
                     puls      u
@@ -9226,18 +9231,18 @@ L4FDA               pshs      u,y,x,d
                     cmpa      #$3A                Past 9?
                     blo       L4FEA               Nope, go print
                     adda      #$07                Yep, bump it up to A-F (for hex)
-L4FEA               bsr       L4FFE               Write digit out
+L4FEA               bsr       PutChar             Write digit out
                     puls      a                   Get original digit back
                     anda      #%00001111          Keep low nibble only
                     adda      #$30                ASCIIfy #
                     cmpa      #$3A                Past 9?
                     blo       L4FF9               No, go print
                     adda      #$07                Make into A-F hex digit
-L4FF9               bsr       L4FFE               Print digit out
+L4FF9               bsr       PutChar             Print digit out
                     puls      pc,u,y,x,d          Restore regs & return
 
 * Write single char at <u2915 out to screen
-L4FFE               pshs      y,x,d
+PutChar             pshs      y,x,d
                     sta       >$2915              Save char to write out
                     ldx       #$2915              Point to it
                     ldy       #$0001              1 char
@@ -9246,14 +9251,14 @@ L4FFE               pshs      y,x,d
                     puls      pc,y,x,d
 
 * Write out LFCR to screen
-L5010               pshs      y,x,d
+PutLFCR             pshs      y,x,d
                     ldx       #$2916              Point to LFCR
                     ldy       #$0002
                     clra
                     os9       I$Write             Write to screen
                     puls      pc,y,x,d
 
-L501F               pshs      u,y,x,d
+PutStr              pshs      u,y,x,d
                     lbsr      L3FE7               Get length of string @ X (NUL terminated)
                     tfr       a,b
                     clra
@@ -9263,7 +9268,7 @@ L501F               pshs      u,y,x,d
                     puls      pc,u,y,x,d
 
 * Read 1 char from keyboard, return with key in A
-L502F               pshs      y,x,b
+GetChar             pshs      y,x,b
                     ldx       #$2918
                     ldy       #$0001
                     clra
@@ -11448,12 +11453,12 @@ L6266               puls      pc,d
 * Entry: X=keyboard buffer ptr
 *        A=Max # of chars to read
 L6268               pshs      u,y,x,b
-                    lbsr      L6421               Write 2 bytes @ u2DEF to the screen
+                    lbsr      CurOn               Write 2 bytes @ u2DEF to the screen
                     sta       >$2D74              Save max # chars allowed
                     clr       >$2D77              Clear # chars read so far
                     stx       >$2D75              Save ptr within keyboard buffer
                     clr       ,x                  NUL for first char
-                    lbsr      L6421               Write out two chars @ u$2DEF to screen
+                    lbsr      CurOn               Write out two chars @ u$2DEF to screen
 L627B               lbsr      L632D               Check for keypress
                     tsta                          Any pressed?
                     beq       L627B               No, try again
@@ -11501,7 +11506,7 @@ L62CC               sta       ,x+                 Save char in buffer
                     inc       >$2D77
                     bra       L627B
 
-L62D6               lbsr      L6430
+L62D6               lbsr      CurOff
                     puls      pc,u,y,x,b
 
 L62DB               pshs      u,y,x,d
@@ -11660,7 +11665,7 @@ L63DD               pshs      u,y,x,d
                     tfr       y,d                 Move Y size to D
                     stb       >$37CC              Save copy
                     lbsr      L6D6F
-                    bsr       L6430
+                    bsr       CurOff
                     lbsr      L6D30
                     lbsr      L6C3B
                     lbsr      L6A96
@@ -11685,7 +11690,7 @@ L6411               pshs      u,y,x,d
 
 * Write 2 bytes @ >$2DEF to screen
 * 6809/6309 - Don't think we need to save U here.
-L6421               pshs      u,y,x,d
+CurOn               pshs      u,y,x,d
                     ldx       #$2DEF
                     ldy       #$0002
                     clra
@@ -11694,7 +11699,7 @@ L6421               pshs      u,y,x,d
 
 * Write 2 bytes @ >$2DF1 to screen
 * 6809/6309 - Don't think we need to save U here.
-L6430               pshs      u,y,x,d
+CurOff              pshs      u,y,x,d
                     ldx       #$2DF1
                     ldy       #$0002
                     clra
