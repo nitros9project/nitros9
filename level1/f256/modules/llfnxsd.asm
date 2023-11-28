@@ -179,9 +179,7 @@ LSNMap1             leay      CMDStorage,u        point to the command buffer
 * Exit:
 * Registers preserved: all but A/B/X
 SendCmd
-                    ldb       #4                  set blast count
-                    bsr       BlastSD             blast bytes
-
+                    bsr       GetSDByte           get a byte from the SD (needed for SanDisk)
                     ldb       #6                  get the number of bytes to send
 l@                  lda       ,y+                 get the byte from the command
                     ifne      SD_DEBUG
