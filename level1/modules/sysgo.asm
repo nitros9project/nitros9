@@ -45,11 +45,48 @@ name                fcs       /SysGo/
                     fcb       edition
 
 * Default process priority
-DefPrior            set       128
-
+DefPrior       set       128
+Banner         equ       *
+               ifne      f256
+               fcb       $1B,$20,$02,$00,$00,$50,$18,$01,$00,$00
+               fcb       $1B,$32,$03
+               fcc       " *****   *****       *****"
+               fcb       C$CR,C$LF
+               fcc       "**   ** **   **     **   **"
+               fcb       C$CR,C$LF
+               fcc       "**   ** **          **   **" 
+               fcb       C$CR,C$LF
+               fcc       "**   **  *****  ***  ******"
+               fcb       C$CR,C$LF
+               fcc       "**   **      **          **"
+               fcb       C$CR,C$LF
+               fcc       "**   ** **   **     **   **"
+               fcb       C$CR,C$LF
+               fcc       " *****   *****       *****"
+CrRtn          fcb       C$CR,C$LF
+               fcb       $02,$20+30,$20+1
+               fcb       $1B,$32,$04
+               fcc       "LEVEL "
+               fcb       Level+'0
+               fcc       " Vr. "
+               fcb       NOS9VER+'0
+               fcc       "."
+               fcb       NOS9MAJ+'0
+               fcc       "."
+               fcb       NOS9MIN+'0
+               fcb       $02,$20+33,$20+2
+               fcb       $1B,$32,$05
+               fcc       "for the F256"
+               fcb       $02,$20+33,$20+4
+               fcb       $1B,$32,$07
+               fcc       "Port by BGP"
+               fcb       $02,$20+0,$20+7
+               fcb       $1B,$32,$01
+               else
 Banner              equ       *
                     fcc       /(C) 2014 The NitrOS-9 Project/
 CrRtn               fcb       C$CR,C$LF
+               endc
 
                     ifeq      ROM
                     ifne      NOS9DBG
