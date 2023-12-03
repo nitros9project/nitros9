@@ -61,7 +61,7 @@ reload:
 rogue:
 	$(CD) $(3RDPARTY)/packages/rogue; make
 
-bf:
+bfp:
 	$(CD) $(3RDPARTY)/packages/brainfuck; make
 
 ROGUE_OBJS = $(shell $(CD) $(3RDPARTY)/packages/rogue; make --no-print-directory showobjs)
@@ -69,7 +69,7 @@ ROGUE_FILES = $(shell $(CD) $(3RDPARTY)/packages/rogue; make --no-print-director
 BF_OBJS = $(shell $(CD) $(3RDPARTY)/packages/brainfuck; make --no-print-directory showobjs)
 BF_FILES = $(shell $(CD) $(3RDPARTY)/packages/brainfuck; make --no-print-directory showfiles)
 
-$(DSKSD): rogue bf
+$(DSKSD): rogue bfp
 	$(RM) $@
 	$(OS9FORMAT_F256SD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9COPY) bootfiles/bootfile_sd $@,OS9Boot
@@ -100,7 +100,7 @@ $(DSKSD): rogue bf
 	$(RM) $(LDSKSD)
 	$(SOFTLINK) $@ $(LDSKSD)
 
-$(DSKDW): rogue bf
+$(DSKDW): rogue bfp
 	$(RM) $@
 	$(OS9FORMAT_DW) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9COPY) bootfiles/bootfile_dw $@,OS9Boot
