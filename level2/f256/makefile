@@ -58,18 +58,23 @@ dskcopy: $(DSKS)
 reload:
 	osascript -e 'tell application "DriveWire"' -e 'tell server of first document' -e 'reload drive 0' -e 'end tell' -e 'end tell'
 
+basic09:
+	$(CD) $(3RDPARTY)/packages/basic09; make
+
 rogue:
 	$(CD) $(3RDPARTY)/packages/rogue; make
 
 bf:
 	$(CD) $(3RDPARTY)/packages/brainfuck; make
 
+BASIC09_OBJS = $(shell $(CD) $(3RDPARTY)/packages/basic09; make --no-print-directory show6809objs)
+BASIC09_FILES = $(shell $(CD) $(3RDPARTY)/packages/basic09; make --no-print-directory showfiles)
 ROGUE_OBJS = $(shell $(CD) $(3RDPARTY)/packages/rogue; make --no-print-directory showobjs)
 ROGUE_FILES = $(shell $(CD) $(3RDPARTY)/packages/rogue; make --no-print-directory showfiles)
 BF_OBJS = $(shell $(CD) $(3RDPARTY)/packages/brainfuck; make --no-print-directory showobjs)
 BF_FILES = $(shell $(CD) $(3RDPARTY)/packages/brainfuck; make --no-print-directory showfiles)
 
-$(DSKSD): rogue bf
+$(DSKSD): basic09 rogue bf
 	$(RM) $@
 	$(OS9FORMAT_F256SD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9COPY) bootfiles/bootfile_sd $@,OS9Boot
@@ -89,6 +94,13 @@ $(DSKSD): rogue bf
 	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
+	$(MAKDIR) $@,BASIC09
+	$(CD) $(3RDPARTY)/packages/basic09; $(OS9COPY) $(BASIC09_OBJS) ../../../level2/f256/$@,CMDS
+	$(OS9COPY) $(3RDPARTY)/packages/basic09/basic09_6809 $@,CMDS/basic09
+	$(OS9COPY) $(3RDPARTY)/packages/basic09/runb_6809 $@,CMDS/runb
+	$(OS9ATTR_EXEC) $@,CMDS/basic09
+	$(OS9ATTR_EXEC) $@,CMDS/runb
+	$(CD) $(3RDPARTY)/packages/basic09; $(OS9COPY) $(BASIC09_FILES) ../../../level2/f256/$@,BASIC09
 	$(MAKDIR) $@,ROGUE
 	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_OBJS) ../../../level2/f256/$@,CMDS
 	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_FILES) ../../../level2/f256/$@,ROGUE
@@ -100,7 +112,7 @@ $(DSKSD): rogue bf
 	$(RM) $(LDSKSD)
 	$(SOFTLINK) $@ $(LDSKSD)
 
-$(DSKDW): rogue bf
+$(DSKDW): basic09 rogue bf
 	$(RM) $@
 	$(OS9FORMAT_DW) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9COPY) bootfiles/bootfile_dw $@,OS9Boot
@@ -120,6 +132,11 @@ $(DSKDW): rogue bf
 	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
 	$(CPL) $(STARTUP_DW) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
+	$(MAKDIR) $@,BASIC09
+	$(OS9COPY) $(3RDPARTY)/packages/basic09/basic09_6809 $@,CMDS/basic09
+	$(OS9COPY) $(3RDPARTY)/packages/basic09/runb_6809 $@,CMDS/runb
+	$(OS9ATTR_EXEC) $@,CMDS/basic09
+	$(OS9ATTR_EXEC) $@,CMDS/runb
 	$(MAKDIR) $@,ROGUE
 	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_OBJS) ../../../level2/f256/$@,CMDS
 	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_FILES) ../../../level2/f256/$@,ROGUE

@@ -16,6 +16,7 @@ OBJS		= gfx gfx2 inkey syscall
 OBJS6809	= basic09_6809 runb_6809
 OBJS6309	= basic09_6309 runb_6309
 ALLOBJS		= $(DEFOBJS) $(OBJS) $(OBJS6809) $(OBJS6309)
+SOURCEFILES	= 
 
 all:	banner $(ALLOBJS) $(DEPENDS)
 
@@ -67,6 +68,12 @@ dskcopy: $(DSK)
 dskclean:
 	$(RM) $(DSK)
 
+showfiles:
+	@$(ECHO) $(SOURCEFILES)
+	
+showobjs:
+	@$(ECHO) $(ALLOBJS)
+	
 info:
 	@$(ECHO) "*** Basic09 ***"
 	@$(ECHO) $(DSK)

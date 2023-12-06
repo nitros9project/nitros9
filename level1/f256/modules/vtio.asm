@@ -3,13 +3,16 @@
 *
 * $Id$
 *
+* https://wiki.osdev.org/PS2_Keyboard
+*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
 *  1       2013/08/20  Boisy G. Pitre
 * Started.
 *
-* https://wiki.osdev.org/PS2_Keyboard
+*  2       2013/12/-6  Boisy G. Pitre
+* Added SS.Joy support.
 
                     nam       VTIO
                     ttl       NitrOS-9 video terminal I/O driver for the Foenix F256
@@ -20,7 +23,7 @@
 tylg                set       Drivr+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       1
+edition             set       2
 
 * We can use a different MMU slot if we want.
 MAPSLOT             equ       MMU_SLOT_1
@@ -856,6 +859,8 @@ GetStat             cmpa      #SS.EOF             is this the EOF call?
                     beq       SSReady             branch if so
                     cmpa      #SS.ScSiz           get screen size?
                     beq       SSScSiz             branch if so
+                    cmpa      #SS.Joy             get joystick position?
+                    beq       SSJoy               branch if so
                     cmpa      #SS.Palet           get palettes?
                     beq       SSPalet             yes, go process
                     cmpa      #SS.FBRgs           get colors?
@@ -911,6 +916,40 @@ SSScSiz             clra                          clear the upper 8 bits of D
                     std       R$X,x               save it in X
                     ldb       V.WHeight,u         get the row count
                     std       R$Y,x               save it in Y
+;;; SS.Joy
+;;;
+;;; Returns the joystick information.
+;;;
+;;; Entry:  X = Joystick to read.
+;;;         B = SS.Joy ($13)
+;;;
+;;; Exit:   A = Button state.
+;;;         X = Horizontal position (0 = left, 255 = right).
+;;;         Y = Vertical position (0 = top, 255 = bottom).
+;;;        CC = Carry flag clear to indicate success.
+;;;
+;;; Error:  B = A non-zero error code.
+;;;        CC = Carry flag set to indicate error.
+SSJoy               lda         IORA              get the joystick value
+                    ldx         #0                initialize left/top value in X
+                    ldy         #255              initialize right/bottom value in Y
+                    lsra                          shift out UP
+                    bcc         s1@               branch if carry clear
+                    stx         R$Y,u             else store left value in caller's Y
+s1@                 lsra                          shift out DOWN
+                    bcc         s2@               branch if carry clear
+                    sty         R$Y,u             else store right value in caller's Y
+s2@                 lsra                          shift out LEFT
+                    bcc         s3@               branch if carry clear
+                    stx         R$X,u             else store up value in caller's X
+s3@                 lsra                          shift out RIGHT
+                    bcc         s4@               branch if carry clear
+                    sty         R$X,u             else store right value in caller's X
+* A now contains (BUTTON 2 | BUTTON 1 | BUTTON 0) in lower 3 bits
+s4@                 sta         R$A,u             store buttons in caller's A
+                    clrb                          clear carry
+                    rts                           return
+
 ;;; SS.Palet
 ;;;
 ;;; Return palette information.
@@ -950,22 +989,6 @@ SSFBRGs
 ;;; and shouldn't be used by general applications.
 SSDfPal
 
-;;; SS.DfPal
-;;;
-;;; Returns the foreground, background, and border palette registers for a window.
-;;;
-;;; Entry:  A = The path number.
-;;;         B = SS.DfPal ($97)
-;;;         X = A pointer to user-provided 16-byte palette data.
-;;;
-;;; Exit:   X = The default palette data moved to user space.
-;;;        CC = Carry flag clear to indicate success.
-;;;
-;;; Error:  B = A non-zero error code.
-;;;
-;;; Use this call to find the values of the default palette registers when a new screen is allocated.
-;;; The corresponding SetStat alters the default registers. This is for system configuration utilities
-;;; and shouldn't be used by general applications.
                     clrb                          no error
                     rts                           return
 
