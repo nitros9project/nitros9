@@ -75,7 +75,9 @@ nextbyte            lda       ,x+                 get the byte in the bitmap
                     ldb       <totalfree          get the total number of free pages
                     bsr       bDeci               convert it to decimal
                     bsr       print               print the line
+                    ifeq      f256
                     lbsr      displaygfx          show graphics memory usage
+                    endc
                     clrb                          clear carry and error code
                     os9       F$Exit              then exit
 *
@@ -180,6 +182,7 @@ dodigit@            pshs      a                   preserve registers
                     puls      a                   restore the register we pushed earlier
 convdigit@          anda      #$0F                clear the upper 4 bits of A
                     bra       setlead@            set the leading digit
+                    ifeq      f256
 displaygfx          pshs      y,x                 preserve registers
                     leay      >gfxmem,pcr         point to graphics memory label
                     bsr       ApndStr             append the string to the buffer
@@ -196,7 +199,8 @@ dogfx@              leay      >ataddr,pcr         point to the "allocated at" me
                     bsr       dHexa               and convert it into hex
 goprint@            puls      y,x                 restore the registers we pushed earlier
                     lbra      print               and go print the buffer
-
+                    endc
+                    
                     emod
 eom                 equ       *
                     end
