@@ -9,8 +9,10 @@ M6809		= $(AFLAGS)
 
 DEPENDS		= ./makefile
 
-TEXTFILES	= ReadMe inout.bf helloworld.bf donothing.bf
-OBJS		= bf
+#SOURCEFILES = inout.bf helloworld.bf donothing.bf
+SOURCEFILES = $(shell echo *.bf)
+TEXTFILES	= ReadMe $(SOURCEFILES)
+OBJS		= bfp
 ALLOBJS		= $(OBJS)
 
 all:	banner $(ALLOBJS) $(DEPENDS)
@@ -22,7 +24,7 @@ banner:
 	@$(ECHO) "*                                                *"
 	@$(ECHO) "**************************************************"
 
-bf: bf.asm
+bfp: bfp.asm
 	$(AS) $(ASOUT)$@ $< $(H6309)
 
 clean: dskclean
@@ -44,6 +46,14 @@ dskcopy: $(DSK)
 
 dskclean:
 	$(RM) $(DSK)
+
+# Only $(CMDS) are shown here
+showobjs:
+	@$(ECHO) bfp
+
+# Only $(CMDS) are shown here
+showfiles:
+	@$(ECHO) $(SOURCEFILES)
 
 info:
 	@$(ECHO) "*** brainfuck ***"
