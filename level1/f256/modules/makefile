@@ -45,6 +45,9 @@ krn krnp2:
 	$(CD) kernel; make $@
 	$(CP) kernel/$@ .
 
+sysgo: sysgo.asm
+	$(AS) $(AFLAGS) $(ASOUT)$@ $< -DDD=1
+	
 # SD card descriptors
 dds0.dd: rbfnxsddesc.asm
 	$(AS) $(ASOUT)$@ $< $(FNXSDFLAGS) -DDD=1
