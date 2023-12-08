@@ -12,7 +12,7 @@ DEPENDS		= ./makefile
 #SOURCEFILES = inout.bf helloworld.bf donothing.bf
 SOURCEFILES = $(shell echo *.bf)
 TEXTFILES	= ReadMe $(SOURCEFILES)
-OBJS		= bfp
+OBJS		= bf
 ALLOBJS		= $(OBJS)
 
 all:	banner $(ALLOBJS) $(DEPENDS)
@@ -24,7 +24,7 @@ banner:
 	@$(ECHO) "*                                                *"
 	@$(ECHO) "**************************************************"
 
-bfp: bfp.asm
+bf: bf.asm
 	$(AS) $(ASOUT)$@ $< $(H6309)
 
 clean: dskclean
@@ -49,7 +49,7 @@ dskclean:
 
 # Only $(CMDS) are shown here
 showobjs:
-	@$(ECHO) bfp
+	@$(ECHO) bf
 
 # Only $(CMDS) are shown here
 showfiles:
