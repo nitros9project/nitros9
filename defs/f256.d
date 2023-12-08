@@ -190,8 +190,8 @@ LUT_BANK_7          equ       $000F
 *    FFA1[1] =
 *        1 = Enable internal RAM for segment $FFF0-$FFFF
 *        0 = Disable; RAM/FLASH is accessible.
-* When enabled, the areas supercede RAM/flash, but will be disabled by RESET. When the system resets,
-* those regions rever to RAM/flash. Also, at REET, the contents of RAM retain the old values until the
+* When enabled, the areas supersede RAM/flash, but will be disabled by RESET. When the system resets,
+* those regions revert to RAM/flash. Also at RESET, the contents of RAM retain the old values until the
 * system powers off.
 
 ********************************************************************
