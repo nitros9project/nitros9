@@ -33,7 +33,7 @@ dmem                rmb       dSize
 stack               rmb       200
 size                equ       .
 
-name                fcs       /bfp/
+name                fcs       /bf/
                     fcb       edition
 
 * initialize interpreter
