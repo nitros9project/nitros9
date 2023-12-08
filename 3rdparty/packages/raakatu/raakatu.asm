@@ -203,63 +203,57 @@ u01E1               rmb       1                   tmp1E1                used in 
 u01E2               rmb       1                   tmp1E2                used in input processing
 u01E3               rmb       1                   tillMORE              rows left until MORE prompt (not used here)
 ;
-u01E4               rmb       $21b                inputTokens           input token buffer
+u01E4,u               rmb       $21b                inputTokens           input token buffer
 u03FF               equ       .                   stack                 top of stack (just below screen memory)
 size                equ       .
 
 name                equ       *
-                    fcs       /Raaka-Tu/
+                    fcs       /raakatu/
                     fcb       $00
 
 ;##Start
 start               equ       *
-                    clra                          ; 256 word (512 bytes on screen)
-                    ldx       #$0400              ; Start of screen
-                    ldu       #$6060              ; Space-space
-L0607               stu       ,X++                ; Clear ...
-                    deca                          ; ... text ...
-                    bne       L0607               ; ... screen
-L060C               lds       #$03FF              ; Stack starts just below screen
                     lda       #$1D                ; Player object ...
-                    sta       u01D2               ; ... is the active object number
-                    ldx       #$05E0              ; Set cursor to ...
-                    stx       >$88                ; ... bottom row of screen
+                    sta       u01D2,u               ; ... is the active object number
                     ldb       #$96                ; Starting ...
-                    stb       u01D5               ; ... room
+                    stb       u01D5,u               ; ... room
                     leax      L1523,pc            ; Room descriptions
                     lbsr      L0A1F               ; Find room data
-                    stx       u01D6               ; Store current room data
+                    stx       u01D6,u               ; Store current room data
                     lbsr      L0D4A               ; Print room description
                     lda       #$0D                ; Print ...
                     lbsr      L1184               ; ... CR
 
+ os9 F$Exit
+ 
 ;##MainLoop
-L0630               lds       #$03FF              ; Initialize stack
+L0630
                     lbsr      L0ACC               ; Get user input
-L0637               clr       u01B7               ; Adjective word number
-                    clr       u01BA               ; LSB of 1st adjective in buffer (not used)
-                    clr       u01BB               ; LSB of verb
-                    clr       u01B2               ; Misc
-                    clr       u01B3               ; Verb word number
-                    clr       u01B9               ; Never used again
-                    clr       u01B8               ; Target object of command (not used)
-                    clr       u01B4               ; Preposition number
-                    clr       u01B5               ; Preposition given flag (not 0 if given)
-                    clr       u01BF               ; VAR object number
-                    clr       u01C3               ; 1st noun word number
-                    clr       u01C9               ; 2nd noun word number
+L0637               clr       u01B7,u               ; Adjective word number
+                    clr       u01BA,u               ; LSB of 1st adjective in buffer (not used)
+                    clr       u01BB,u               ; LSB of verb
+                    clr       u01B2,u               ; Misc
+                    clr       u01B3,u               ; Verb word number
+                    clr       u01B9,u               ; Never used again
+                    clr       u01B8,u               ; Target object of command (not used)
+                    clr       u01B4,u               ; Preposition number
+                    clr       u01B5,u               ; Preposition given flag (not 0 if given)
+                    clr       u01BF,u               ; VAR object number
+                    clr       u01C3,u               ; 1st noun word number
+                    clr       u01C9,u               ; 2nd noun word number
                     ldb       #$1D                ; Player object ...
-                    stb       u01D2               ; ... is active object
+                    stb       u01D2,u               ; ... is active object
                     lbsr      L1133               ; Get player object data
-                    stx       u01D3               ; Active object's data
+                    stx       u01D3,u               ; Active object's data
                     lbsr      L0A42               ; Skip length
                     ldb       ,X                  ; Get player location
-                    stb       u01D5               ; Current room
+                    stb       u01D5,u               ; Current room
                     leax      L1523,pc            ; Room scripts
                     lbsr      L0A1F               ; Find sublist ... script for room
-                    stx       u01D6               ; Script for current room
-                    ldx       #u01E3              ; Input token list area
-                    stx       u01D8               ; Where decoder fills in
+                    stx       u01D6,u               ; Script for current room
+*                    ldx       #u01E3,u              ; Input token list area
+                    leax      u01E3,u              ; Input token list area
+                    stx       u01D8,u               ; Where decoder fills in
                     clr       ,X                  ; Empty token ... clear the list
                     ldx       #$05E0              ; Bottom row is input buffer
 L0682               lbsr      L0B42               ; Decode input word
@@ -272,8 +266,9 @@ L0687               lda       ,X+                 ; Next character
 L0692               cmpx      #$0600              ; End of input buffer?
 
                     bne       L0682               ; No ... keep looking
-                    clr       [u01D8]             ; Terminate token list
-                    ldx       #u01E3              ; Input buffer
+                    clr       [u01D8,u]             ; Terminate token list
+*                    ldx       #u01E3,u              ; Input buffer
+                    leax       u01E3,u              ; Input buffer
                     lda       ,X                  ; List number of first word
                     lbeq      L0736               ; Nothing entered
                     cmpa      #$02                ; First word a noun?
@@ -285,7 +280,7 @@ L0692               cmpx      #$0600              ; End of input buffer?
                     cmpa      #$06                ; Living things (people, dogs, etc) are <6
 
                     bcc       L06B7               ; Not a living thing
-                    sta       u01B8               ; Remember living thing. We are giving them a command so process normally
+                    sta       u01B8,u               ; Remember living thing. We are giving them a command so process normally
                     leax      3,X                 ; Next word
 
 L06B7               lda       ,X+                 ; Word list
@@ -317,96 +312,100 @@ L06CF               lbsr      L0A58               ;  End of list?
                     bcc       L06DF               ;  Reached end of list. This input is the verb.
                     ldb       ,X+                 ;  ??
                     lda       ,X+                 ;  ?? ... A is mangled here?
-                    cmpb      u01B3               ;  ?? Compare to 01B3 ...
+                    cmpb      u01B3,u               ;  ?? Compare to 01B3 ...
 
                     bne       L06CF               ;  Continue running list
-L06DF               stb       u01B3               ;  ?? ... then store if equal?
+L06DF               stb       u01B3,u               ;  ?? ... then store if equal?
                     lbra      L0731               ;  Continue with next word
 
 L06E5               deca                          ;  List 2 Noun
                     bne       L071E               ;  Not a noun
-                    tst       u01B5               ;  Has prepostion been given?
+                    tst       u01B5,u               ;  Has prepostion been given?
 
                     beq       L070D               ;  No ... this is first noun
-                    ldx       #u01C9              ;  2nd noun area
+*                    ldx       #u01C9,u              ;  2nd noun area
+                    leax       u01C9,u              ;  2nd noun area
 L06F0               stb       ,X+                 ;  Store word number
-                    lda       u01B7               ;  Last adjective
+                    lda       u01B7,u               ;  Last adjective
                     sta       ,X+                 ;  Keep with noun
-                    lda       u01BA               ;  LSB of adjective
+                    lda       u01BA,u               ;  LSB of adjective
                     sta       ,X                  ;  Keep with noun
 
                     bne       L0702               ;  There was one ... go on
                     tfr       U,D                 ;  Use LSB of ...
                     stb       ,X                  ;  ... noun if no adjective
-L0702               clr       u01B7               ;  Adjective moved
-                    clr       u01B5               ;  Preposition moved
-                    clr       u01BA               ;  LSB moved
+L0702               clr       u01B7,u               ;  Adjective moved
+                    clr       u01B5,u               ;  Preposition moved
+                    clr       u01BA,u               ;  LSB moved
 
                     bra       L0731               ;  Continue with next word
 
-L070D               ldx       u01C3               ;  Copy ...
-                    stx       u01C9               ;  ... any ...
-                    ldx       u01C5               ;  ... first noun ...
-                    stx       u01CB               ;  ... to second
-                    ldx       #u01C3              ;  First word area
+L070D               ldx       u01C3,u               ;  Copy ...
+                    stx       u01C9,u               ;  ... any ...
+                    ldx       u01C5,u               ;  ... first noun ...
+                    stx       u01CB,u               ;  ... to second
+*                    ldx       #u01C3,u              ;  First word area
+                    leax       u01C3,u              ;  First word area
 
                     bra       L06F0               ;  Go fill out first word
 
 L071E               deca                          ;  List 3 Adjective
 
                     bne       L072B               ;  Not a proposition
-                    stb       u01B7               ;  Store adjective number
+                    stb       u01B7,u               ;  Store adjective number
                     tfr       U,D                 ;  Store ...
-                    stb       u01BA               ;  ... adjective LSB in buffer
+                    stb       u01BA,u               ;  ... adjective LSB in buffer
 
                     bra       L0731               ;  Continue with next word
 
-L072B               stb       u01B4               ;  Preposition
-                    stb       u01B5               ;  Preoposition given (noun should follow)
+L072B               stb       u01B4,u               ;  Preposition
+                    stb       u01B5,u               ;  Preoposition given (noun should follow)
 L0731               puls      X                   ;  Restore token pointer
                     lbra      L06B7               ;  Next word
 
 
-L0736               tst       u01B3               ;  Verb given?
+L0736               tst       u01B3,u               ;  Verb given?
                     lbeq      L0995               ;  No ... ?VERB? error
-                    ldx       #u01C9              ;  Second noun
+*                    ldx       #u01C9,u              ;  Second noun
+                    leax       u01C9,u              ;  Second noun
                     lbsr      L0822               ;  Decode it (only returns if OK)
-                    sta       u01C9               ;  Hold target object index
-                    stx       u01CC               ;  Hold target object pointer
-                    ldx       #u01C3              ;  First noun
+                    sta       u01C9,u               ;  Hold target object index
+                    stx       u01CC,u               ;  Hold target object pointer
+*                    ldx       #u01C3,u              ;  First noun
+                    leax       u01C3,u              ;  First noun
                     lbsr      L0822               ;  Decode it (only returns if OK)
-                    sta       u01C3               ;  Hold target object index
-                    stx       u01C6               ;  Hold target object pointer
-                    clr       u01B5               ;  Clear preposition flag
+                    sta       u01C3,u               ;  Hold target object index
+                    stx       u01C6,u               ;  Hold target object pointer
+                    clr       u01B5,u               ;  Clear preposition flag
 
-                    ldx       u01C6               ;  Pointer to first noun object data
-                    lda       u01C3               ;  First noun index
+                    ldx       u01C6,u               ;  Pointer to first noun object data
+                    lda       u01C3,u               ;  First noun index
 
                     beq       L0767               ;  No first noun ... store a 0
                     lbsr      L0A42               ;  Skip ID and load end
                     leax      2,X                 ;  Skip 2 bytes
                     lda       ,X                  ;  Object parameter bits
-L0767               sta       u01C8               ;  Hold first noun's parameter bits
+L0767               sta       u01C8,u               ;  Hold first noun's parameter bits
 
-                    ldx       u01CC               ;  Pointer to second noun object data
-                    lda       u01C9               ;  Second noun number
+                    ldx       u01CC,u               ;  Pointer to second noun object data
+                    lda       u01C9,u               ;  Second noun number
 
                     beq       L0779               ;  No second noun ... store 0
                     lbsr      L0A42               ;  Skip ID and load end
                     leax      2,X                 ;  Skip 2 bytes
                     lda       ,X                  ;  Object parameter bits
-L0779               sta       u01CE               ;  Hold second noun's parameter bits
+L0779               sta       u01CE,u               ;  Hold second noun's parameter bits
 
                     leax      L135B,pc            ;  Syntax list
 L077F               lda       ,X                  ;  End of list?
                     lbeq      L0951               ;  Yes ... "?PHRASE?"
-                    lda       u01B3               ;  Verb ...
+                    lda       u01B3,u               ;  Verb ...
                     cmpa      ,X+                 ;  ... matches?
 
                     bne       L07E7               ;  No ... move to next entry
                     lda       ,X                  ;  Phrase's proposition
-                    sta       u01B6               ;  Hold it
-                    lda       u01B4               ;  Preposition word number
+                    sta       u01B6,u               ;  Hold it
+                    lda       u01B4,u               ;  Preposition word number
 
                     beq       L079A               ;  None given ... skip prep check
                     cmpa      ,X                  ;  Given prep matches?
@@ -416,35 +415,37 @@ L079A               leax      1,X                 ;  Skip to next phrase compone
                     lda       ,X                  ;  First noun required by phrase
 
                     beq       L07B4               ;  Not given in phrase ... skip check
-                    lda       u01C3               ;  1st noun index
+                    lda       u01C3,u               ;  1st noun index
 
                     bne       L07BB               ;  Requested by phrase but not given by user ... next phrase
-                    lda       u01BB               ;  LSB of verb ...
-                    sta       u01BD               ;  ... to location of error
-                    ldy       #u01C3              ;  Descriptor for 1st noun
+                    lda       u01BB,u               ;  LSB of verb ...
+                    sta       u01BD,u               ;  ... to location of error
+*                    ldy       #u01C3,u              ;  Descriptor for 1st noun
+                    leay       u01C3,u              ;  Descriptor for 1st noun
                     lbsr      L08D2               ;  Decode 1st noun as per phrase
 
                     bra       L07BB               ;  We just processed a first one. We know it is there.
-L07B4               lda       u01C3               ;  Is there a 1st noun?
+L07B4               lda       u01C3,u               ;  Is there a 1st noun?
 
                     lbne      L0951               ; No ... next entry
 L07BB               leax      1,X                 ; Next in phrase
                     lda       ,X                  ; Phrase wants a second noun?
 
                     beq       L07DA               ; No ... skip
-                    lda       u01C9               ; User given 2nd noun
+                    lda       u01C9,u               ; User given 2nd noun
 
                     bne       L07E1               ; Yes ... use this phrase
-                    lda       u01BC               ; Location of ...
-                    sta       u01BD               ; ... error on screen
+                    lda       u01BC,u               ; Location of ...
+                    sta       u01BD,u               ; ... error on screen
                     lda       #$01                ; Set preposition ...
-                    sta       u01B5               ; ... flag to YES
-                    ldy       #u01C9              ; 2nd noun index
+                    sta       u01B5,u               ; ... flag to YES
+*                    ldy       #u01C9,u              ; 2nd noun index
+                    leay       u01C9,u              ; 2nd noun index
                     lbsr      L08D2               ; Decode 2nd noun as per phrase
 
                     bra       L07E1               ; Use this
 
-L07DA               lda       u01C9               ; Is there a second noun?
+L07DA               lda       u01C9,u               ; Is there a second noun?
                     lbne      L0951               ; No ... phrase error
 L07E1               leax      1,X                 ; Get matched ...
                     lda       ,X                  ; ... phrase number
@@ -458,18 +459,18 @@ L07E7               leax      1,X                 ; Skip ...
 ; Unlike BEDLAM, there is no giving a command to something else. Just
 ; ignore any commanded object and give the phrase to the user.
 
-L07F0               sta       u01D1               ; Store the phrase number
+L07F0               sta       u01D1,u               ; Store the phrase number
                     ldx       #$05FF              ; Move cursor to ...
                     stx       >$88                ; ... end of line
                     lda       #$0D                ; Print ...
                     lbsr      L1184               ; ... CR
-                    lda       u01C3               ; First noun given?
+                    lda       u01C3,u               ; First noun given?
 
                     bne       L080E               ; Yes ... keep what we have
-                    ldx       u01CC               ; Move 2nd ...
-                    stx       u01C6               ; ... noun to ...
-                    lda       u01C9               ; ... first ...
-                    sta       u01C3               ; ... descriptor
+                    ldx       u01CC,u               ; Move 2nd ...
+                    stx       u01C6,u               ; ... noun to ...
+                    lda       u01C9,u               ; ... first ...
+                    sta       u01C3,u               ; ... descriptor
 L080E               leax      L323C,pc            ; General command scripts
                     lbsr      L0A42               ; Skip over end delta
                     lbsr      L0C03               ; Execute script
@@ -490,29 +491,29 @@ L080E               leax      L323C,pc            ; General command scripts
 ; @return A index of target object
 ; @return X pointer to target object data
 ;
-L0822               clr       u01BF               ; Input object number
+L0822               clr       u01BF,u               ; Input object number
                     ldb       ,X+                 ; Word number of noun
-                    stb       u01B2               ; Hold it
+                    stb       u01B2,u               ; Hold it
 
                     bne       L082E               ; Real object ... go decode
                     clra                          ; Not found
                     rts                           ; Out
 L082E               lda       ,X+                 ; Noun's adjective
-                    sta       u01B7               ; Hold it
+                    sta       u01B7,u               ; Hold it
                     lda       ,X                  ; LSB of word in buffer
-                    sta       u01CF               ; Hold it
+                    sta       u01CF,u               ; Hold it
                     leax      L20FF,pc            ; Object data
                     lbsr      L0A1F               ; Get pointer to next object that matches word
 
                     bcc       L089A               ; Not found
 L0840               pshs      Y                   ; Hold end of object data
                     pshs      X                   ; Hold pointer to noun descriptor
-                    lda       u01E1               ; Index of object in the object list
-                    sta       u01E2               ; Remember this
+                    lda       u01E1,u               ; Index of object in the object list
+                    sta       u01E2,u               ; Remember this
                     lbsr      L08AA               ; Is object in this room or on player?
 
                     bne       L08A6               ; No ... can't be target ... out
-                    lda       u01B7               ; Noun's adjective
+                    lda       u01B7,u               ; Noun's adjective
 
                     beq       L0873               ; No adjective ... skip this
                     puls      X                   ; Restore pointer to noun descriptor
@@ -527,27 +528,27 @@ L0840               pshs      Y                   ; Hold end of object data
 L0867               lbsr      L0A58               ; End of adjective list?
 
                     bcc       L08A6               ; Yes ... no match ... next object
-                    lda       u01B7               ; Adjective
+                    lda       u01B7,u               ; Adjective
                     cmpa      ,X+                 ; In this list?
 
                     bne       L0867               ; No ... keep searching list
 L0873               puls      X                   ; Restore object pointer
-                    lda       u01BF               ; Last object index that matched
+                    lda       u01BF,u               ; Last object index that matched
                     lbne      L098C               ; Multiple matches ... do "?WHICH?"
-                    lda       u01E2               ; Object index
-                    sta       u01BF               ; Current guess at matching object index
-                    stx       u01C0               ; Input object data
+                    lda       u01E2,u               ; Object index
+                    sta       u01BF,u               ; Current guess at matching object index
+                    stx       u01C0,u               ; Input object data
 L0885               lbsr      L0A42               ; Skip id and end
                     tfr       Y,X                 ; Next object
                     puls      Y                   ; End of object data
-                    ldb       u01B2               ; Restore word number of noun
-                    lda       u01E2               ; Current object index
-                    sta       u01E1               ; Start count for next pass
+                    ldb       u01B2,u               ; Restore word number of noun
+                    lda       u01E2,u               ; Current object index
+                    sta       u01E1,u               ; Start count for next pass
                     lbsr      L0A27               ; Find next matching object
 
                     bcs       L0840               ; Got one ... go test it
-L089A               ldx       u01C0               ; Object data to X
-                    lda       u01BF               ; Object found?
+L089A               ldx       u01C0,u               ; Object data to X
+                    lda       u01BF,u               ; Object found?
 
                     bne       L08A5               ; Yes ...  out
                     lbra      L0948               ; No ... "?WHAT?"
@@ -563,7 +564,7 @@ L08A6               puls      X                   ; Restore object pointer
 ; @return Z=1 for yes or Z=0 for no
 ;
 L08AA               lbsr      L0A42               ; Skip size
-                    lda       u01D5               ; Current room number
+                    lda       u01D5,u               ; Current room number
                     cmpa      ,X                  ; Is object in room?
 
                     beq       L08A5               ; Yes ... return OK
@@ -577,7 +578,7 @@ L08AA               lbsr      L0A42               ; Skip size
 
                     bne       L08CF               ; ... then fail
                     ldb       ,X                  ; Location again
-                    cmpb      u01D2               ; Being held by the active object?
+                    cmpb      u01D2,u               ; Being held by the active object?
 
                     beq       L08A5               ; Yes ... return OK
                     leax      L20FF,pc            ; Strange. 117D does this too.
@@ -598,17 +599,17 @@ L08CF               ora       #$01                ; Mark failure
 ; @return descriptor filled out with object
 ;
 L08D2               pshs      X                   ; Hold phrase data pointer
-                    clr       u01B2               ; Found word flag
-                    clr       u01E1               ; Object index starts at 0
+                    clr       u01B2,u               ; Found word flag
+                    clr       u01E1,u               ; Object index starts at 0
                     pshs      Y                   ; Hold noun descriptor
                     lda       ,X                  ; Object parameter mask bits
-                    sta       u01AB               ; Hold
+                    sta       u01AB,u               ; Hold
                     leax      L20FF,pc            ; Object data
                     lbsr      L0A42               ; Skip ID and load end
 L08E7               lbsr      L0A58               ; At end of object data?
 
                     bcc       L092C               ; Yes ... done
-                    inc       u01E1               ; Bump object index
+                    inc       u01E1,u               ; Bump object index
                     pshs      Y                   ; Hold end of object
                     pshs      X                   ; Hold pointer to object
                     lbsr      L08AA               ; Is object in room or on player?
@@ -616,22 +617,22 @@ L08E7               lbsr      L0A58               ; At end of object data?
 
                     bne       L0927               ; No ... next object
                     ldb       ,X                  ; Object word number
-                    stx       u01D8               ; Pointer to object data
+                    stx       u01D8,u               ; Pointer to object data
                     lbsr      L0A42               ; Skip ID and load end
                     leax      2,X                 ; Point to object parameters
                     lda       ,X                  ; Get parameters
-                    anda      u01AB               ; Compare to phrase data ...
-                    cmpa      u01AB               ; ... this is a strange way to do it
+                    anda      u01AB,u               ; Compare to phrase data ...
+                    cmpa      u01AB,u               ; ... this is a strange way to do it
 
                     bne       L0921               ; Not a match ... next word
-                    lda       u01B2               ; Already got a word number?
+                    lda       u01B2,u               ; Already got a word number?
 
                     bne       L095A               ; Yes ... error
-                    stb       u01B2               ; Found word number
+                    stb       u01B2,u               ; Found word number
                     lda       ,X                  ; Remember ...
-                    sta       u01B7               ; ... object parameters
-                    ldx       u01D8               ; Remember ...
-                    stx       u01AD               ; ... object pointer
+                    sta       u01B7,u               ; ... object parameters
+                    ldx       u01D8,u               ; Remember ...
+                    stx       u01AD,u               ; ... object pointer
 L0921               exg       X,Y                 ; Start of next object to X
                     puls      Y                   ; Restore end of object pointer
 
@@ -639,35 +640,35 @@ L0921               exg       X,Y                 ; Start of next object to X
 L0927               lbsr      L0A42               ; Skip ID and load end
 
                     bra       L0921               ; Try next object
-L092C               lda       u01B2               ; Did we find an object word?
+L092C               lda       u01B2,u               ; Did we find an object word?
 
                     beq       L095A               ; No .... error
                     puls      Y                   ; Noun descriptor
-                    ldx       u01AD               ; Object data pointer
-                    lda       u01E1               ; New ...
+                    ldx       u01AD,u               ; Object data pointer
+                    lda       u01E1,u               ; New ...
                     sta       ,Y                  ; ... object number
                     leay      3,Y                 ; New ...
                     stx       ,Y++                ; ... pointer to object data
-                    lda       u01B7               ; New ...
+                    lda       u01B7,u               ; New ...
                     sta       ,Y                  ; ... object parameters
                     puls      X                   ; Restore phrase data pointer
                     clra                          ; Set Z=1
                     rts                           ; Done
 
 L0948               leay      L1343,pc            ; "?WHAT?"
-                    lda       u01CF               ; LSB of screen location
+                    lda       u01CF,u               ; LSB of screen location
 
                     bra       L099B               ; Go flash error and try again
 
 L0951               leay      L1352,pc            ; "?PHRASE?"
-                    lda       u01BC               ; LSB of screen location
+                    lda       u01BC,u               ; LSB of screen location
 
                     bra       L099B               ; Go flash error and try again
 
-L095A               lda       u01B5               ; Preposition given?
+L095A               lda       u01B5,u               ; Preposition given?
 
                     beq       L0983               ; No ... just plain "?WHAT?"
-                    lda       u01B4               ; Preposition word number?
+                    lda       u01B4,u               ; Preposition word number?
 
                     bne       L0983               ; No word ... just plain "?WHAT?"
                     leax      L3ECF,pc            ; Prepositions list
@@ -677,7 +678,7 @@ L0967               ldb       ,X                  ; Length of word
                     pshs      X                   ; Hold start of word
                     ldb       ,X+                 ; Get length again
                     abx                           ; Point to end of word
-                    lda       u01B6               ; Target preposition
+                    lda       u01B6,u               ; Target preposition
                     cmpa      ,X+                 ; Matches?
 
                     beq       L097B               ; Yes ... error includes this word
@@ -685,28 +686,29 @@ L0967               ldb       ,X                  ; Length of word
 
                     bra       L0967               ; Next word
 L097B               puls      Y                   ; Word text to Y
-                    lda       u01BD               ; LSB of error message
+                    lda       u01BD,u               ; LSB of error message
                     lbsr      L09E1               ; Push preposition word
 L0983               leay      L1343,pc            ; "?WHAT?"
-                    lda       u01BD               ; LSB of screen location
+                    lda       u01BD,u               ; LSB of screen location
 
                     bra       L099B               ; Go flash error and try again
 L098C               leay      L134A,pc            ; "?WHICH"?
-                    lda       u01CF               ; LSB of screen location
+                    lda       u01CF,u               ; LSB of screen location
 
                     bra       L099B               ; Go flash error and try again
 L0995               leay      L133C,pc            ; "?VERB?"
 
                     lda       #$E0                ; LSB of start of input line
-L099B               lds       #$03FF              ; Reset the stack (we jump back into the main loop)
+L099B
+*               lds       #$03FF              ; Reset the stack (we jump back into the main loop)
                     ldx       #$05E0              ; Error goes at start of line
                     lbsr      L09E1               ; Push error message on and pause
 L09A5               lda       ,Y                  ; Get length
-                    sta       u01AB               ; Hold in counter
+                    sta       u01AB,u               ; Hold in counter
                     pshs      X                   ; Hold X
 L09AC               lda       #$60                ; SPACE
                     sta       ,X+                 ; Flash off ...
-                    dec       u01AB               ; ... error ...
+                    dec       u01AB,u               ; ... error ...
 
                     bne       L09AC               ; ... word
                     lbsr      L09D6               ; Long delay
@@ -716,9 +718,9 @@ L09AC               lda       #$60                ; SPACE
                     bne       L09D1               ; No ... keep flashing error word
                     lda       ,Y                  ; Size of error word
                     inca                          ; Plus the extra space
-                    sta       u01AB               ; Hold counter
+                    sta       u01AB,u               ; Hold counter
 L09C3               lbsr      L0ADB               ; Close up the ...
-                    dec       u01AB               ; ... error ...
+                    dec       u01AB,u               ; ... error ...
 
                     bne       L09C3               ; ... word
                     lbsr      L0A63               ; Get input line
@@ -729,7 +731,7 @@ L09D1               lbsr      L0A00               ; Flash message and pause
 
 ;Long delay
 L09D6               lda       #$32                ; Outer loop counts
-L09D8               dec       u01AB               ; Decrease inner count (doesn't matter what's there)
+L09D8               dec       u01AB,u               ; Decrease inner count (doesn't matter what's there)
 
                     bne       L09D8               ; Kill inner time
                     deca                          ; All 256 loops done?
@@ -737,32 +739,32 @@ L09D8               dec       u01AB               ; Decrease inner count (doesn'
                     bne       L09D8               ; No ... keep pausing
                     rts                           ; Done
 
-L09E1               sta       u01AB               ; Hold LSB of cursor
+L09E1               sta       u01AB,u               ; Hold LSB of cursor
                     ldd       #$05E0              ; Start of input line
-                    ldb       u01AB               ; Replace LSB
+                    ldb       u01AB,u               ; Replace LSB
                     tfr       D,X                 ; Place for error word in X
                     lda       ,Y                  ; Get length of message
                     inca                          ; Plus a space after
-                    sta       u01AB               ; Store length
+                    sta       u01AB,u               ; Store length
                     pshs      Y                   ; Hold message
 L09F4               lbsr      L0B06               ; Slide right past insertion point
-                    dec       u01AB               ; Space opened up?
+                    dec       u01AB,u               ; Space opened up?
 
                     bne       L09F4               ; No ... open all the spaces for the error word
                     puls      Y                   ; Restore pointer
                     ldb       #$08                ; 8 flashes
 L0A00               lda       ,Y                  ; Count again
-                    sta       u01AB               ; Size of word
+                    sta       u01AB,u               ; Size of word
                     pshs      Y,X,B               ; Hold all
                     leay      1,Y                 ; Skip size
 L0A09               lda       ,Y+                 ; Copy error word ...
                     sta       ,X+                 ; ... to screen
-                    dec       u01AB               ; All done?
+                    dec       u01AB,u               ; All done?
 
                     bne       L0A09               ; No ... go back and do all
                     leax      1,X                 ; Bump ...
                     tfr       X,D                 ; ... LSB ...
-                    stb       u01BD               ; ... of screen pointer
+                    stb       u01BD,u               ; ... of screen pointer
                     lbsr      L09D6               ; Long pause
                     puls      B,X,Y               ; Restore
                     rts                           ; Done
@@ -775,12 +777,12 @@ L0A09               lda       ,Y+                 ; Copy error word ...
 ; Return C=0 if not found, C=1 if found
 L0A1F               leax      1,X                 ; Skip list ID
                     lbsr      L0A44               ; Read end of list to Y
-                    clr       u01E1               ; Clear index of sublist
+                    clr       u01E1,u               ; Clear index of sublist
 L0A27               lbsr      L0A58               ; Compare X to Y
 
                     bcs       L0A2D               ; X is smaller ... keep going
                     rts                           ; Done (C=0 not found)
-L0A2D               inc       u01E1               ; Keep up with index of sublist
+L0A2D               inc       u01E1,u               ; Keep up with index of sublist
                     cmpb      ,X                  ; Is this the sublist we want?
 
                     beq       L0A3F               ; Found ... C=1 and out
@@ -815,8 +817,8 @@ L0A53               leay      D,X                 ; Offset script
 
 ;##CompareXY
 ; Compare X to Y (flags = X - Y)
-L0A58               sty       u01A9               ; Do compare ...
-                    cmpx      u01A9               ; X - Y
+L0A58               sty       u01A9,u               ; Do compare ...
+                    cmpx      u01A9,u               ; X - Y
                     rts                           ; Done
 
 ;##GetInputLine
@@ -926,12 +928,12 @@ L0AF5               lda       ,Y+                 ; Back ...
 L0B06               cmpx      #$0600              ; Past end of screen?
 
                     beq       L0B22               ; Yes ... out
-                    stx       u01A7               ; Hold insertion point
+                    stx       u01A7,u               ; Hold insertion point
                     ldx       #$0600              ; End+1
                     ldy       #$05FF              ; End
 L0B15               ldb       ,-Y                 ; Slide bottom row ...
                     stb       ,-X                 ; ... to the right
-                    cmpx      u01A7               ; At the insertion point?
+                    cmpx      u01A7,u               ; At the insertion point?
 
                     bne       L0B15               ; No ... slide all
                     ldb       #$60                ; SPACE
@@ -974,7 +976,7 @@ L0B3F               rts                           ; Done
 L0B40               leax      1,X                 ; Next in buffer
 ;
 L0B42               tfr       X,D                 ; Hold ...
-                    stb       u01CF               ; ... LSB of first word (could be ignored)
+                    stb       u01CF,u               ; ... LSB of first word (could be ignored)
                     cmpx      #$0600              ; End of buffer?
 
                     beq       L0B3F               ; Yes ... out
@@ -999,18 +1001,18 @@ L0B5D               leay      1,Y                 ; Next list of words
                     rts                           ; Done
 
 L0B6C               exg       X,Y                 ; X to Y
-                    ldx       u01D8               ; Current result token pointer
+                    ldx       u01D8,u               ; Current result token pointer
                     stb       ,X+                 ; Store list number
                     sta       ,X+                 ; Store word number
-                    lda       u01CF               ; Start of word
+                    lda       u01CF,u               ; Start of word
                     sta       ,X+                 ; Store word start
-                    stx       u01D8               ; Bump result token pointer
+                    stx       u01D8,u               ; Bump result token pointer
                     exg       X,Y                 ; Restore X
                     cmpb      #$01                ; Is this the first (VERB) list?
 
                     bne       L0B89               ; No ... skip marking
-                    lda       u01BC               ; Mark the input buffer location ...
-                    sta       u01BB               ; ... of the verb
+                    lda       u01BC,u               ; Mark the input buffer location ...
+                    sta       u01BB,u               ; ... of the verb
 L0B89               clra                          ; OK
                     rts                           ; Return
 
@@ -1031,8 +1033,8 @@ L0B8B               lda       ,Y                  ; Length of word
                     bne       L0B92               ; It is a word ... go check it
                     ora       #$01                ; End of list ...
                     rts                           ; ... return not-zero
-L0B92               sta       u01AB               ; Temporary
-                    sta       u01D0               ; Temporary
+L0B92               sta       u01AB,u               ; Temporary
+                    sta       u01D0,u               ; Temporary
                     pshs      X                   ; Hold pointer to input word
                     leay      1,Y                 ; Skip over word length in table
 L0B9C               lda       ,X                  ; Character from input (from screen)
@@ -1053,10 +1055,10 @@ L0BAF               cmpa      ,Y                  ; Matches target word?
                     bne       L0BF5               ; No ... next word
                     leax      1,X                 ; Next in input
                     leay      1,Y                 ; Next in match
-                    dec       u01AB               ; All done?
+                    dec       u01AB,u               ; All done?
 
                     bne       L0B9C               ; No ... keep looking
-                    lda       u01D0               ; Original length
+                    lda       u01D0,u               ; Original length
                     cmpa      #$06                ; Six letter input?
 
                     beq       L0BC9               ; Yes ... could be truncated. That's enough of a match.
@@ -1066,28 +1068,28 @@ L0BAF               cmpa      ,Y                  ; Matches target word?
                     bcs       L0BFC               ; No. Try next word
 L0BC9               lda       ,Y                  ; Get the word data
                     puls      Y                   ; Drop the input buffer pointer
-                    sta       u01AB               ; Hold the word data
+                    sta       u01AB,u               ; Hold the word data
 L0BD0               lda       ,X                  ; Next in input buffer?
                     cmpa      #$60                ; Is it a space?
 
                     beq       L0BE2               ; Yes ... ready for next word
-                    stx       u01A7               ; Start of next word (in case end of buffer)
+                    stx       u01A7,u               ; Start of next word (in case end of buffer)
                     cmpx      #$0600              ; Is this the end of the input buffer?
 
                     beq       L0BE8               ; Yes. Done
                     leax      1,X                 ; Skip to next input word
 
                     bra       L0BD0               ; Keep looking for input
-L0BE2               stx       u01A7               ; Pointer to ending space
-                    inc       u01A8               ; Point to next character past space (start of next word)
-L0BE8               lda       u01A8               ; Keep ...
-                    sta       u01BC               ; ... only LSB
-                    lda       u01AB               ; Return word data in A
-                    clr       u01A7               ; return is-zero for found
+L0BE2               stx       u01A7,u               ; Pointer to ending space
+                    inc       u01A8,u               ; Point to next character past space (start of next word)
+L0BE8               lda       u01A8,u               ; Keep ...
+                    sta       u01BC,u               ; ... only LSB
+                    lda       u01AB,u               ; Return word data in A
+                    clr       u01A7,u               ; return is-zero for found
                     rts                           ; Done
 ;
 L0BF5               leay      1,Y                 ; Skip next in word data
-                    dec       u01AB               ; All skipped
+                    dec       u01AB,u               ; All skipped
 
                     bne       L0BF5               ; No ... skip all
 L0BFC               puls      X                   ; Restore pointer to word
@@ -1186,100 +1188,100 @@ L0C81               lbsr      L0C8D               ; Move active object to new ro
 ;##Com19_MoveActiveObjectToRoom
 L0C8D               lda       ,X+                 ; New room number
                     pshs      X                   ; Hold script
-                    sta       u01D5               ; Store new actvie room number
+                    sta       u01D5,u               ; Store new actvie room number
                     tfr       A,B                 ; Store ...
                     leax      L1523,pc            ; ... pointer ...
                     lbsr      L0A1F               ; ... to ...
-                    stx       u01D6               ; ... new room
-                    ldx       u01D3               ; Active object
+                    stx       u01D6,u               ; ... new room
+                    ldx       u01D3,u               ; Active object
                     lbsr      L0A42               ; Skip size
-                    lda       u01D5               ; New location
+                    lda       u01D5,u               ; New location
                     sta       ,X                  ; Move object to active room
                     puls      X                   ; Restore script
                     clra                          ; OK
                     rts                           ; Done
 
 ;##Com1A_SetVarObjectTo1stNoun
-L0CAE               ldu       u01C6               ; Copy 1st noun ...
-                    stu       u01C0               ; ... data pointer
-                    lda       u01C3               ; Copy 1st noun ...
-                    sta       u01BF               ; ... object number
+L0CAE               ldu       u01C6,u               ; Copy 1st noun ...
+                    stu       u01C0,u               ; ... data pointer
+                    lda       u01C3,u               ; Copy 1st noun ...
+                    sta       u01BF,u               ; ... object number
                     clra                          ; Z=1 for OK
                     rts                           ; Done
 
 ;##Com1B_SetVarObjectTo2ndNoun
-L0CBC               ldu       u01CC               ; Copy 2nd noun ...
-                    stu       u01C0               ; ... data pointer
-                    lda       u01C9               ; Copy 2nd noun ...
-                    sta       u01BF               ; ... object number
+L0CBC               ldu       u01CC,u               ; Copy 2nd noun ...
+                    stu       u01C0,u               ; ... data pointer
+                    lda       u01C9,u               ; Copy 2nd noun ...
+                    sta       u01BF,u               ; ... object number
                     clra                          ; Z=1 for OK
                     rts                           ; Done
 
 ;##Com1C_SetVarObject
 L0CCA               ldb       ,X+                 ; Get object number from script
                     pshs      X                   ; Hold script pointer
-                    stb       u01BF               ; Store target object number
+                    stb       u01BF,u               ; Store target object number
 
                     beq       L0CD9               ; 0 ... no-object
                     lbsr      L1133               ; Find object data
-                    stx       u01C0               ; Store target object data
+                    stx       u01C0,u               ; Store target object data
 L0CD9               puls      X                   ; Restore script
                     clra                          ; Return OK
                     rts                           ; Done
 
 ;##Com21_RunGeneralWithTempPhrase
-L0CDD               ldu       u01C6               ; 1st noun data ...
+L0CDD               ldu       u01C6,u               ; 1st noun data ...
                     pshs      U                   ; ... on stack
-                    ldu       u01CC               ; 2nd noun data ...
+                    ldu       u01CC,u               ; 2nd noun data ...
                     pshs      U                   ; ... on stack
-                    lda       u01C9               ; 2nd noun number
-                    ldb       u01C3               ; 1st noun number
+                    lda       u01C9,u               ; 2nd noun number
+                    ldb       u01C3,u               ; 1st noun number
                     pshs      B,A                 ; Hold these
-                    lda       u01D1               ; Phrase number
+                    lda       u01D1,u               ; Phrase number
                     pshs      A                   ; Hold it
                     lda       ,X+                 ; New temporary ...
-                    sta       u01D1               ; ... phrase number
+                    sta       u01D1,u               ; ... phrase number
                     ldd       ,X++                ; Temporary 1st and 2nd noun numbers
-                    stb       u01AB               ; Hold 2nd noun for now
+                    stb       u01AB,u               ; Hold 2nd noun for now
                     pshs      X                   ; Hold script
-                    sta       u01C3               ; Temporary 1st noun
+                    sta       u01C3,u               ; Temporary 1st noun
                     tfr       A,B                 ; To B (for lookup)
 
                     beq       L0D0D               ; Not one ... skip
                     lbsr      L1133               ; Lookup object in B
-                    stx       u01C6               ; Temporary 1st noun data
-L0D0D               ldb       u01AB               ; Temporary 2nd noun ...
-                    stb       u01C9               ; ... index
+                    stx       u01C6,u               ; Temporary 1st noun data
+L0D0D               ldb       u01AB,u               ; Temporary 2nd noun ...
+                    stb       u01C9,u               ; ... index
 
                     beq       L0D1B               ; There isn't one ... skip
                     lbsr      L1133               ; Lookup object in B
-                    stx       u01CC               ; Temporary 2nd noun
+                    stx       u01CC,u               ; Temporary 2nd noun
 L0D1B               leax      L323C,pc            ; General commands
                     lbsr      L0A42               ; Skip ID and length
                     lbsr      L0C03               ; Execute general script
                     tfr       CC,A                ; Hold the result ...
-                    sta       u01AB               ; ... for a moment
+                    sta       u01AB,u               ; ... for a moment
                     puls      Y                   ;
                     puls      A                   ;
-                    sta       u01D1               ; Restore ...
+                    sta       u01D1,u               ; Restore ...
                     puls      A,B                 ; ... phrase ...
-                    stb       u01C3               ; ... and ...
-                    sta       u01C9               ; ... nouns
+                    stb       u01C3,u               ; ... and ...
+                    sta       u01C9,u               ; ... nouns
                     puls      U                   ;
-                    stu       u01CC               ;
+                    stu       u01CC,u               ;
                     puls      U                   ;
-                    stu       u01C6               ;
+                    stu       u01C6,u               ;
                     exg       X,Y                 ;
-                    lda       u01AB               ;
+                    lda       u01AB,u               ;
                     tfr       A,CC                ; Restore result
 L0D49               rts                           ; Done
 
 ; Print room description
-L0D4A               lda       u01D2               ; Actiuve object number
+L0D4A               lda       u01D2,u               ; Actiuve object number
                     cmpa      #$1D                ; Is this the SYSTEM object?
 
                     bne       L0D49               ; No ... return
-                    ldx       u01D6               ; Current room script
+                    ldx       u01D6,u               ; Current room script
                     lbsr      L0A42               ; Skip length
                     leax      1,X                 ;
                     ldb       #$03                ; You are in DESCRIPTION script
@@ -1295,7 +1297,7 @@ L0D65               leax      L20FF,pc            ; Object data
                     lbsr      L0A42               ; Skip length
 L0D6B               pshs      Y                   ; Hold end
                     lbsr      L0A42               ; Skip this object's length
-                    lda       u01D5               ; Current room
+                    lda       u01D5,u               ; Current room
                     cmpa      ,X                  ; Object in room?
 
                     bne       L0D89               ; No ... next object
@@ -1324,7 +1326,7 @@ L0D93               ldb       ,X+                 ; Get object number from scrip
                     rts                           ; Out
 
 ;##Com20_CheckActiveObject
-L0DA0               lda       u01D2               ; Active object
+L0DA0               lda       u01D2,u               ; Active object
                     cmpa      ,X+                 ; Matches target?
                     rts                           ; Done
 
@@ -1336,11 +1338,11 @@ L0DA6               ldb       ,X+
 ; Check to see if an object is at a target location.
 L0DAB               ldd       ,X++                ; Room and object
                     pshs      X                   ; Hold script
-                    sta       u01AB               ; Remember the room
+                    sta       u01AB,u               ; Remember the room
                     lbsr      L1133               ; Locate the object
                     lbsr      L0A42               ; Skip the length
                     ldd       ,X++                ; Get the room to A
-                    cmpa      u01AB               ; Is this object in the target place?
+                    cmpa      u01AB,u               ; Is this object in the target place?
                     puls      X                   ; Restore script
                     rts                           ; Out
 
@@ -1350,7 +1352,7 @@ L0DC0               ora       #$01                ; Set the fail flag
                     rts                           ; Done
 
 ;##Com04_PrintSYSTEMOrPlayerMessage
-L0DC3               lda       u01D2               ; Active object
+L0DC3               lda       u01D2,u               ; Active object
                     cmpa      #$1D                ; Is this the player?
 
 
@@ -1390,7 +1392,7 @@ L0DF6               lbsr      L0A58               ; CompareXY
                     pshs      Y                   ; Hold end of master list of objects
                     lbsr      L0A42               ; Get pointer to next object
                     ldb       ,X                  ; Object location
-                    cmpb      u01D2               ; Active object?
+                    cmpb      u01D2,u               ; Active object?
 
                     bne       L0E19               ; No ... skip this object
                     leax      3,X                 ; Skip data
@@ -1411,10 +1413,10 @@ L0E1F               clra                          ; Success
                     rts                           ; Done
 
 ;##Com08_CompareObjectToFirstNoun
-L0E23               ldu       u01C6               ; 1st noun data
-                    lda       u01C3               ; 1st noun number
+L0E23               ldu       u01C6,u               ; 1st noun data
+                    lda       u01C3,u               ; 1st noun number
 ;
-L0E29               stu       u01D8               ; Hold
+L0E29               stu       u01D8,u               ; Hold
                     tsta                          ; Is there an object?
 
                     beq       L0E3F               ; No ... error
@@ -1423,28 +1425,28 @@ L0E29               stu       u01D8               ; Hold
                     lbsr      L1133               ; Find object
                     exg       X,Y                 ; Pointer of found object to Y
                     puls      X                   ; Restore script pointer
-                    cmpy      u01D8               ; Object the same?
+                    cmpy      u01D8,u               ; Object the same?
                     rts                           ; Done
 L0E3F               tstb                          ; B can't be 0 ... Z=0 error
                     rts                           ; Done
 
 ;##Com09_CompareObjectToSecondNoun
-L0E41               ldu       u01CC               ; 2nd noun data
-                    lda       u01C9               ; 2nd noun number
+L0E41               ldu       u01CC,u               ; 2nd noun data
+                    lda       u01C9,u               ; 2nd noun number
 
                     bra       L0E29               ; Do compare
 
 ;##Com0A_CompareToPhraseForm
 L0E49               ldb       ,X+                 ; Compare from script ...
-                    cmpb      u01D1               ; ... to phrase form
+                    cmpb      u01D1,u               ; ... to phrase form
                     rts                           ; Done
 
 ;##Com0F_PickUpObject
 ; Move noun object to pack.
 L0E4F               pshs      X                   ; Hold script
-                    ldx       u01C0               ; Pointer to noun object
+                    ldx       u01C0,u               ; Pointer to noun object
                     lbsr      L0A42               ; Skip length
-                    lda       u01D2               ; Back pack "location" value
+                    lda       u01D2,u               ; Back pack "location" value
                     sta       ,X                  ; Move object to pack
                     clra                          ; OK
                     puls      X                   ; Restore script
@@ -1453,9 +1455,9 @@ L0E4F               pshs      X                   ; Hold script
 ;##Com10_DropObject
 ; Move noun object to current room.
 L0E60               pshs      X                   ; Hold script
-                    ldx       u01C0               ; Pointer to noun object
+                    ldx       u01C0,u               ; Pointer to noun object
                     lbsr      L0A42               ; Skip length
-                    lda       u01D5               ; Current room
+                    lda       u01D5,u               ; Current room
                     sta       ,X                  ; Move object to room
                     puls      X                   ; Restore script
                     clra                          ; Done
@@ -1463,7 +1465,7 @@ L0E60               pshs      X                   ; Hold script
 
 ;##Com13_PhraseWithRoom1st2nd
 L0E71               pshs      X                   ; Save script
-                    ldx       u01D6               ; Current room script
+                    ldx       u01D6,u               ; Current room script
                     lbsr      L0A42               ; Skip id and length
                     leax      1,X                 ; Skip
                     ldb       #$04                ; Get ...
@@ -1474,10 +1476,10 @@ L0E71               pshs      X                   ; Save script
                     lbsr      L0C03               ; Execute
 
                     beq       L0EC5               ; Move passed ... OK and out
-L0E8A               lda       u01C9               ; Is there a 2nd noun?
+L0E8A               lda       u01C9,u               ; Is there a 2nd noun?
 
                     beq       L0EA6               ; No ... skip
-                    ldx       u01CC               ; Second noun data
+                    ldx       u01CC,u               ; Second noun data
                     lbsr      L0A42               ; Skip ...
                     leax      3,X                 ; ... object header
                     ldb       #$06                ; Get "noun is second" ...
@@ -1488,13 +1490,13 @@ L0E8A               lda       u01C9               ; Is there a 2nd noun?
                     lbsr      L0C03               ; Execute script
 
                     beq       L0EC5               ; Script passed ... OK and out
-L0EA6               lda       u01C3               ; Is there a 1st noun?
+L0EA6               lda       u01C3,u               ; Is there a 1st noun?
 
                     bne       L0EB0               ; Yes ... go do it
 L0EAB               puls      X                   ; Restore script
                     ora       #$01                ; Nobody took the phrase ..
                     rts                           ; .. error and and out
-L0EB0               ldx       u01C6               ; First noun data
+L0EB0               ldx       u01C6,u               ; First noun data
                     lbsr      L0A42               ; Skip ...
                     leax      3,X                 ; ... object header
                     ldb       #$07                ; Get "noun is first" ...
@@ -1508,15 +1510,15 @@ L0EC5               puls      X                   ; Restore script pointer
 
 ;##Com16_PrintVarShortName
 L0EC8               pshs      X                   ; Save script pointer
-                    ldx       u01C0               ; Var noun data
-                    lda       u01BF               ; Var noun index
+                    ldx       u01C0,u               ; Var noun data
+                    lda       u01BF,u               ; Var noun index
 
                     bra       L0EDA               ; Print short name
 
 ;##Com11_Print1stNounShortName
 L0ED2               pshs      X                   ; Save script pointer
-                    ldx       u01C6               ; 1st noun data
-                    lda       u01C3               ; 1st noun index
+                    ldx       u01C6,u               ; 1st noun data
+                    lda       u01C3,u               ; 1st noun index
 ;
 
 L0EDA               beq       L0EC5               ; Return Z=1 return
@@ -1541,16 +1543,16 @@ L0EFB               puls      X                   ; Restore script
 
 ;##Com12_Print2ndNounShortName
 L0EFF               pshs      X                   ; Save script pointer
-                    ldx       u01CC               ; 2nd noun data
-                    lda       u01C9               ; 2nd noun index
+                    ldx       u01CC,u               ; 2nd noun data
+                    lda       u01C9,u               ; 2nd noun index
 
                     bra       L0EDA               ; Print short name
 
 ;##Com15_CheckObjBits
 ; Check target bits in an object.
 L0F09               pshs      X                   ; Hold script pointer
-                    ldx       u01C0               ; Input object pointer
-                    lda       u01BF               ; Var object number
+                    ldx       u01C0,u               ; Input object pointer
+                    lda       u01BF,u               ; Var object number
 
                     beq       L0F21               ; No object ... return error
                     lbsr      L0A42               ; Skip the pointer-to-next object
@@ -1589,12 +1591,12 @@ L0F45               rts                           ; Done
 
 ;##Com18_CheckVarOwnedByActiveObject
 L0F46               pshs      X                   ; Save script pointer
-                    ldx       u01C0               ; Var object data
+                    ldx       u01C0,u               ; Var object data
 L0F4B               lbsr      L0A42               ; Skip length
                     ldb       ,X                  ; Location
                     puls      X                   ; Restore script
                     lbeq      L08CF               ; Out-of-game ... error and out
-                    cmpb      u01D2               ; Is this the active object?
+                    cmpb      u01D2,u               ; Is this the active object?
 
                     beq       L0F45               ; Yes ... return OK
                     bitb      #$80                ; Test upper bit
@@ -1608,16 +1610,16 @@ L0F5F               pshs      X                   ; Hold script
 
 ; Execute any turn-scripts on the objects
 L0F66               leax      L20FF,pc            ; Start of object data
-                    clr       u01D0               ; Object number
+                    clr       u01D0,u               ; Object number
                     lbsr      L0A42               ; Skip length
 L0F6F               lbsr      L0A58               ; End of objects?
 
                     bcc       L0F45               ; Yes ... out
-                    inc       u01D0               ; Next object number
+                    inc       u01D0,u               ; Next object number
                     pshs      Y                   ; Hold end-of-objects
                     lbsr      L0A42               ; Skip length
                     lda       ,X                  ; Location
-                    sta       u01AB               ; Hold
+                    sta       u01AB,u               ; Hold
                     pshs      Y                   ; End of object
                     lda       ,X                  ; Location
 
@@ -1630,11 +1632,11 @@ L0F6F               lbsr      L0A58               ; End of objects?
                     lbsr      L0A42               ; Skip length
                     pshs      X                   ; Hold pointer
                     lbsr      L12A8               ; Generate random number
-                    ldb       u01D0               ; Current object number ...
-                    stb       u01D2               ; ... is now the active object
+                    ldb       u01D0,u               ; Current object number ...
+                    stb       u01D2,u               ; ... is now the active object
                     lbsr      L1133               ; Get its data pointer
-                    stx       u01D3               ; Hold pointer to active object data
-                    ldb       u01AB               ; Object's location
+                    stx       u01D3,u               ; Hold pointer to active object data
+                    ldb       u01AB,u               ; Object's location
 L0FA7               tstb                          ; Check upper bit
 
                     bmi       L0FB8               ; If in a room ... go handle
@@ -1646,10 +1648,10 @@ L0FA7               tstb                          ; Check upper bit
                     puls      X                   ; Restore pointer
 
                     bra       L0FC9               ; Next object
-L0FB8               stb       u01D5               ; Objects location
+L0FB8               stb       u01D5,u               ; Objects location
                     leax      L1523,pc            ; Get room ...
                     lbsr      L0A1F               ; ... scripts for object
-                    stx       u01D6               ; Hold
+                    stx       u01D6,u               ; Hold
                     puls      X                   ; Restore turn-script
                     lbsr      L0C03               ; Execute turn-script
 L0FC9               puls      X                   ; Restore
@@ -1675,9 +1677,9 @@ L0FDB               clra                          ; Less than or equal ... OK
 
 ;##Com1D_AttackObject
 L0FDD               lda       ,X+                 ; Get attack value
-                    sta       u01AB               ; Hold attack value
+                    sta       u01AB,u               ; Hold attack value
                     pshs      X                   ; Hold script
-                    ldx       u01C0               ; Target object data
+                    ldx       u01C0,u               ; Target object data
                     lbsr      L0A42               ; Skip length
                     leax      3,X                 ; Skip object data
                     pshs      X                   ; Hold X ...
@@ -1689,7 +1691,7 @@ L0FDD               lda       ,X+                 ; Get attack value
                     lbsr      L0A42               ; Skip length
                     leax      1,X                 ; Hit points
                     lda       ,X                  ; Hit points
-                    suba      u01AB               ; Subtract attack from hit points
+                    suba      u01AB,u               ; Subtract attack from hit points
 
                     bcc       L1004               ; Not negative ... keep it
                     clra                          ; Floor the hit points
@@ -1721,12 +1723,12 @@ L1020               puls      Y                   ; Reset ...
 ;##Com1E_SwapObjects
 L1026               ldb       ,X+                 ; 1st object number
                     lda       ,X+                 ; 2nd object
-                    sta       u01AB               ; Hold second object
+                    sta       u01AB,u               ; Hold second object
                     pshs      X                   ; Hold script
                     lbsr      L1133               ; Look up object
                     lbsr      L0A42               ; Skip length
                     tfr       X,U                 ; 1st object pointer to U
-                    ldb       u01AB               ; 2nd object
+                    ldb       u01AB,u               ; 2nd object
                     lbsr      L1133               ; Look up object
                     lbsr      L0A42               ; Skip length
                     lda       ,X                  ; Swap ...
@@ -1741,8 +1743,8 @@ L1026               ldb       ,X+                 ; 1st object number
 ;##Com22_CompareHealthToValue
 L104C               lda       ,X+                 ; Get value
                     pshs      X                   ; Hold script pointer
-                    sta       u01AB               ; Hold value
-                    ldx       u01C0               ; Var object data
+                    sta       u01AB,u               ; Hold value
+                    ldx       u01C0,u               ; Var object data
                     lbsr      L0A42               ; Skip length
                     leax      3,X                 ; Skip data
                     ldb       #$09                ; Get object ...
@@ -1752,7 +1754,7 @@ L104C               lda       ,X+                 ; Get value
                     lbsr      L0A42               ; Skip length
                     leax      1,X                 ; Get current ...
                     lda       ,X                  ; ... hit points
-                    cmpa      u01AB               ; Compare hit points to value
+                    cmpa      u01AB,u               ; Compare hit points to value
 
                     bcs       L1075               ; Less than ..
 
@@ -1766,9 +1768,9 @@ L1075               puls      X                   ; Restore script
 
 ;##Com23_HealVarObject
 L1079               lda       ,X+                 ; Get healing value
-                    sta       u01AB               ; Hold it
+                    sta       u01AB,u               ; Hold it
                     pshs      X                   ; Hold script
-                    ldx       u01C0               ; Var object data
+                    ldx       u01C0,u               ; Var object data
                     lbsr      L0A42               ; Skip length
                     leax      3,X                 ; Skip data
                     ldb       #$09                ; Get object ...
@@ -1777,12 +1779,12 @@ L1079               lda       ,X+                 ; Get healing value
                     bcc       L1075               ; No entry ... do nothing (but OK)
                     lbsr      L0A42               ; Skip length
                     ldd       ,X                  ; Get HP info
-                    addb      u01AB               ; Add to health
-                    sta       u01AB               ; Max value
-                    cmpb      u01AB               ; Over the max?
+                    addb      u01AB,u               ; Add to health
+                    sta       u01AB,u               ; Max value
+                    cmpb      u01AB,u               ; Over the max?
 
                     bcs       L10A2               ; No ... keep it
-                    ldb       u01AB               ; Use max value
+                    ldb       u01AB,u               ; Use max value
 L10A2               leax      1,X                 ; Store ...
                     stb       ,X                  ; ... new health
 
@@ -1794,7 +1796,7 @@ L10A8               lda       #$0D                ; Print first ...
                     lbsr      L1184               ; ... CR
                     lda       #$0D                ; Print second ...
                     lbsr      L1184               ; ... CR
-                    lbra      L060C               ; Restart game
+                    lbra      start               ; Restart game
 
 ;##Com24_EndlessLoop
 
@@ -1818,13 +1820,13 @@ L10C4               rts                           ; Done
 ; Second byte of object data is points. If the object is in the
 ; treasure room (dropped or carried) it counts double.
 L10C5               pshs      X
-                    clr       u01AF               ; Score tally
-                    clr       u01B0
-                    lda       u01D5               ; Player location
+                    clr       u01AF,u               ; Score tally
+                    clr       u01B0,u
+                    lda       u01D5,u               ; Player location
                     cmpa      #$96                ; Player in the treasure room?
 
                     bne       L10D7               ; No ... regular score
-                    inc       u01B0               ; Yes ... carried objects count double
+                    inc       u01B0,u               ; Yes ... carried objects count double
 L10D7               leax      L20FF,pc            ; Object data
                     lbsr      L0A42               ; Skip header
 L10DD               lbsr      L0A58               ; Reached end?
@@ -1839,32 +1841,32 @@ L10DD               lbsr      L0A58               ; Reached end?
                     cmpb      #$1D                ; Carried by user?
 
                     bne       L1109               ; No ... next object
-L10F1               lda       u01AF               ; Score tally
+L10F1               lda       u01AF,u               ; Score tally
                     adda      ,X                  ; Add to score value
                     daa                           ; Decimal adjust
-                    sta       u01AF               ; New score
+                    sta       u01AF,u               ; New score
                     cmpb      #$96                ; Treasure room?
 
                     beq       L1103               ; Yes ... counts double
-                    tst       u01B0               ; Player in treasure room?
+                    tst       u01B0,u               ; Player in treasure room?
 
                     beq       L1109               ; No ... just count once
 L1103               adda      ,X                  ; Double ...
                     daa                           ; ... the ...
-                    sta       u01AF               ; ... score value
+                    sta       u01AF,u               ; ... score value
 L1109               tfr       Y,X                 ; Next object
                     puls      Y                   ; Restore end of list
 
                     bra       L10DD               ; Do all objects
 ;
-L110F               lda       u01AF               ; Score value
+L110F               lda       u01AF,u               ; Score value
                     asra                          ; Left ...
                     asra                          ; ... most ...
                     asra                          ; ... digit ...
                     asra                          ; ... value
                     adda      #$30                ; Convert to ASCII
                     lbsr      L1184               ; Print the left digit
-                    lda       u01AF               ; Score value
+                    lda       u01AF,u               ; Score value
                     anda      #$0F                ; Mask off the right digit
                     adda      #$30                ; Convert ot ASCII
                     lbsr      L1184               ; Print the right digit
@@ -1903,15 +1905,15 @@ L114C               clra                          ; Assume MSB is 0
                     lda       ,X+                 ; Get the ...
                     anda      #$7F                ; ... MSB and ...
 L1157               ldb       ,X+                 ; ... LSB
-                    std       u01AB               ; Store byte count
-L115C               ldd       u01AB               ; Number of bytes left in message
+                    std       u01AB,u               ; Store byte count
+L115C               ldd       u01AB,u               ; Number of bytes left in message
                     cmpd      #$0002              ; Less than 2?
 
                     bcs       L1173               ; Yes ... these aren't compressed
                     lbsr      L11EC               ; Decompress and print two bytes pointed to by X
-                    ldd       u01AB               ; Get byte count
+                    ldd       u01AB,u               ; Get byte count
                     subd      #$0002              ; Handled 2
-                    std       u01AB               ; Store count
+                    std       u01AB,u               ; Store count
 
                     bra       L115C               ; Keep decompressing
 L1173               tstb                          ; Any characters on the end to print?
@@ -1931,7 +1933,7 @@ L117E               lda       #$20                ; Print ...
 ; auto MORE prompting.
 ;
 L1184               pshs      B,A                 ; Hold B and A
-                    lda       u01BE               ; Last printed character
+                    lda       u01BE,u               ; Last printed character
                     cmpa      #$20                ; Last printed a space?
                     bne       L11A7               ; No ... print this
                     puls      A,B                 ; Hold
@@ -1948,7 +1950,7 @@ L119F               ldu       >$88                ; Back screen ...
                     stu       >$88                ; ... over ignored space
                     bra       L11A9               ; Store and print
 L11A7               puls      A,B                 ; Restore A and B
-L11A9               sta       u01BE               ; Last printed character
+L11A9               sta       u01BE,u               ; Last printed character
 *L11AC          jsr       [$A002]             ; Output character
                     lbsr      os9write
                     lda       >$89                ; LSB of screen position
@@ -1975,14 +1977,14 @@ L11CB               leau      1,U                 ; Now pointing to last word on
                     cmpa      #$60                ; Make sure ...
                     bcs       L11E1               ; ... upper ...
                     suba      #$40                ; ... case
-L11E1               sta       u01BE               ; Last printed character
+L11E1               sta       u01BE,u               ; Last printed character
 *L11E4          jsr       [$A002]             ; Output to screen
                     lbsr      os9write
                     bra       L11CB               ; Move overhang to next line
 L11EA               rts                           ; Done
                     rts                           ; OOPS
 
-;##UnpackBytes
+; UnpackBytes
 ; Unpack three characters stored in 2 bytes pointed to by X and print to screen.
 ; Every 2 bytes holds 3 characters. Each character can be from 0 to 39.
 ; 40*40*40 = 64000 ... totally ingenious.
@@ -1994,9 +1996,9 @@ L11EC               leay      L12A4,pc            ;
                     stb       ,x
                     puls      x
                     lda       ,X+                 ;
-                    sta       u01DE               ;
+                    sta       u01DE,u               ;
                     lda       ,X+                 ;
-                    sta       u01DD               ;
+                    sta       u01DD,u               ;
                     leay      3,Y                 ;
 L1201               ldu       #$0028              ;
                     pshs      x
@@ -2004,42 +2006,42 @@ L1201               ldu       #$0028              ;
                     stu       ,x
                     puls      x
                     lda       #$11                ;
-                    sta       u01DA               ;
-                    clr       u01DB               ;
-                    clr       u01DC               ;
-L1212               rol       u01DE               ;
-                    rol       u01DD               ;
-                    dec       u01DA               ;
+                    sta       u01DA,u               ;
+                    clr       u01DB,u               ;
+                    clr       u01DC,u               ;
+L1212               rol       u01DE,u               ;
+                    rol       u01DD,u               ;
+                    dec       u01DA,u               ;
 
                     beq       L1256               ;
                     lda       #$00                ;
                     adca      #$00                ; This algorithm is identical to the decompression
-                    asl       u01DC               ; used in Pyramid2000. Check the comments there for
-                    rol       u01DB               ; more detail.
-                    adda      u01DC               ;
+                    asl       u01DC,u               ; used in Pyramid2000. Check the comments there for
+                    rol       u01DB,u               ; more detail.
+                    adda      u01DC,u               ;
                     pshs      x
                     leax      L12A3,pc
                     suba      ,x
                     puls      x
-                    sta       u01E0               ;
-L1230               lda       u01DB               ;
+                    sta       u01E0,u               ;
+L1230               lda       u01DB,u               ;
                     pshs      x
                     leax      L12A2,pc
                     sbca      ,x
                     puls      x
-                    sta       u01DF               ;
+                    sta       u01DF,u               ;
                     bcc       L1246               ;
-                    ldd       u01DF
+                    ldd       u01DF,u
 
                     pshs      x
                     leax      L12A2,pc
-                    addd      u01DF
+                    addd      u01DF,u
                     puls      x
 
-                    std       u01DB               ;
+                    std       u01DB,u               ;
                     bra       L124C               ;
-L1246               ldd       u01DF               ;
-                    std       u01DB               ;
+L1246               ldd       u01DF,u               ;
+                    std       u01DB,u               ;
 ; Compliment C flag and continue
 L124C               bcs       L1252               ;
                     orcc      #$01                ;
@@ -2047,7 +2049,7 @@ L124C               bcs       L1252               ;
 L1252               andcc     #$FE                ;
                     bra       L1212               ;
 ; Process the result of the division
-L1256               ldd       u01DB
+L1256               ldd       u01DB,u
                     pshs      x
                     leax      L1279,pc
                     addd      ,x
@@ -2067,7 +2069,7 @@ L126D               lda       ,Y+                 ;
                     decb                          ;
 
                     bne       L126D               ;
-                    ldd       u01AB               ;
+                    ldd       u01AB,u               ;
                     rts                           ;
 
 ; Character translation table
