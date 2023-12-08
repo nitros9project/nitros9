@@ -27,7 +27,7 @@ RBFNXCART = $(MD)/rbfnxcart.dr $(MD)/c0.dd
 RBSUPER   = $(MD)/rbsuper.dr
 
 # RBF Foenix SD card low level driver
-RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/dds0.dd $(MD)/s0.dd
+RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd
 
 # SCF
 SCF		 = $(MD)/scf.mn
@@ -60,24 +60,37 @@ SCDWP     = $(MD)/scdwp.dr $(MD)/p_scdwp.dd
 # Clock driver
 CLOCK	= $(MD)/clock $(MD)/clock2_f256
 
-BOOTFILE = $(KERNEL) $(DWIO) \
+BOOTFILE_SD = $(KERNEL) $(DWIO) \
 		$(RBF) $(RBFDW) \
 		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
+		$(MD)/dds0.dd \
 		$(SCF) $(SCVT) $(FONT) $(PALETTE) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(CMDSDIR)/shell_21
 
-ALLOBJS		= bootfile
-
+BOOTFILE_DW = $(KERNEL) $(DWIO) \
+		$(RBF) $(RBFDW) \
+		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
+		$(MD)/ddx0.dd \
+		$(SCF) $(SCVT) $(FONT) $(PALETTE) \
+		$(CLOCK) \
+		$(MD)/sysgo \
+		$(CMDSDIR)/shell_21
+		
+ALLOBJS		= bootfile_sd bootfile_dw
+		
 all: $(ALLOBJS)
 
 # Level 1 bootfiles require that krn be the first module in the bootfile. 
 # It also requires that the bootfile be padded out to a multiple of 256
 # bytes. Finally, the trampoline code is borrowed from Level 2 but is only
 # necessary to fill the areas between $FD00-$FFFF.
-bootfile: $(BOOTFILE) $(DEPENDS)
-	$(MERGE) $(BOOTFILE)>$@
+bootfile_sd: $(BOOTFILE_SD) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_SD)>$@
+
+bootfile_dw: $(BOOTFILE_DW) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_DW)>$@
 
 clean:
-	$(RM) $(ALLOBJS) bootfile
+	$(RM) $(ALLOBJS)

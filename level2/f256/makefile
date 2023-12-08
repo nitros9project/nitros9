@@ -100,7 +100,6 @@ $(DSKSD): basic09 rogue bf
 	$(OS9COPY) $(3RDPARTY)/packages/basic09/runb_6809 $@,CMDS/runb
 	$(OS9ATTR_EXEC) $@,CMDS/basic09
 	$(OS9ATTR_EXEC) $@,CMDS/runb
-	$(CD) $(3RDPARTY)/packages/basic09; $(OS9COPY) $(BASIC09_FILES) ../../../level2/f256/$@,BASIC09
 	$(MAKDIR) $@,ROGUE
 	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_OBJS) ../../../level2/f256/$@,CMDS
 	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_FILES) ../../../level2/f256/$@,ROGUE
