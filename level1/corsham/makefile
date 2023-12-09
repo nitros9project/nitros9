@@ -13,7 +13,8 @@ DIRS		= cmds modules defs sys bootfiles
 
 CMDS		= $(shell $(CD) cmds; make --no-print-directory showobjs)
 CMDS_DEMO = $(shell $(CD) cmds; make --no-print-directory showobjs_demo)
-SYS		= $(shell $(CD) sys; make --no-print-directory showobjs)
+SYSTEXT		= $(shell $(CD) sys; make --no-print-directory showtextfiles)
+SYSBIN		= $(shell $(CD) sys; make --no-print-directory showbinfiles)
 DEFS		= $(shell $(CD) defs; make --no-print-directory showobjs)
 STARTUP		= startup
 
@@ -56,8 +57,9 @@ $(DSK):
 	$(CD) cmds; $(OS9COPY) $(CMDS) ../$@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 	$(OS9RENAME) $@,CMDS/$(WHICHSHELL) shell
-	$(CD) sys; $(CPL) $(SYS) ../$@,SYS
-	$(OS9ATTR_TEXT) $(foreach file,$(SYS),$@,SYS/$(file))
+	$(CD) sys; $(CPL) $(SYSTEXT) ../$@,SYS
+	$(OS9ATTR_TEXT) $(foreach file,$(SYSTEXT),$@,SYS/$(file))
+	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
 	$(CD) defs; $(CPL) $(DEFS) ../$@,DEFS
 	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
 	$(CPL) $(STARTUP) $@,startup

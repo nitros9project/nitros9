@@ -1,11 +1,10 @@
 include ../port.mak
 
 vpath %.as $(LEVEL1)/cmds
-vpath %.asm $(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09
+vpath %.asm $(LEVEL1)/cmds
 
 DEPENDS		= ./makefile $(NOSLIB)/net.o
 
-AFLAGS         += --includedir=$(3RDPARTY)/packages/basic09
 LFLAGS         += -L $(NITROS9DIR)/lib -lnet -lf256 -lalib
 
 CMDS		= asm attr backup binex build cmp copy \
@@ -14,13 +13,10 @@ CMDS		= asm attr backup binex build cmp copy \
 		free help ident iniz irqs link list load login makdir \
 		megaread mdir merge mfree padrom park printerr procs prompt pwd pxd \
 		rename save setime shellplus shell_21 sleep \
-		tee tmode touch tsmon unlink verify xmode
+		tee tmode touch tsmon unlink verify xmode \
+		inetd telnet dw httpd
 
-CMDS_DW		= inetd telnet dw httpd
-
-BASIC09		= basic09 runb inkey syscall
-
-ALLOBJS		= $(CMDS) $(CMDS_DW) $(BASIC09)
+ALLOBJS		= $(CMDS)
 
 all:	$(DEPENDS) $(ALLOBJS)
 
@@ -47,10 +43,10 @@ identify:
 	$(IDENT_SHORT) $(ALLOBJS)
 
 showobjs:
-	@$(ECHO) $(CMDS) $(BASIC09)
+	@$(ECHO) $(CMDS)
 
 showobjs_dw:
-	@$(ECHO) $(CMDS) $(BASIC09) $(CMDS_DW)
+	@$(ECHO) $(CMDS)
 
 showallobjs:
 	@$(ECHO) $(ALLOBJS)

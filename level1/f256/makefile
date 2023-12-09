@@ -7,7 +7,6 @@ BOOTFILE_DW	= bootfiles/bootfile_dw
 DIRS		= defs cmds modules sys bootfiles wwwroot
 
 CMDS		= $(shell $(CD) cmds; make --no-print-directory showobjs)
-CMDS_DW		= $(shell $(CD) cmds; make --no-print-directory showobjs_dw)
 KERNEL		= $(shell $(CD) modules; make --no-print-directory showkernel)
 SYSMODS		= $(shell $(CD) modules; make --no-print-directory showsysmods)
 CLOCKS		= $(shell $(CD) modules; make --no-print-directory showclocks)
@@ -16,8 +15,8 @@ SCF		= $(shell $(CD) modules; make --no-print-directory showscf)
 PIPE		= $(shell $(CD) modules; make --no-print-directory showpipe)
 
 DEFS		= $(shell $(CD) defs; make --no-print-directory showobjs)
-SYSBIN		= $(shell $(CD) sys; make --no-print-directory showbinobjs)
-SYSTEXT		= $(shell $(CD) sys; make --no-print-directory showtextobjs)
+SYSBIN		= $(shell $(CD) sys; make --no-print-directory showbinfiles)
+SYSTEXT		= $(shell $(CD) sys; make --no-print-directory showtextfiles)
 STARTUP		= startup
 STARTUP_DW	= startup.dw
 SYSGO		= sysgo_dd
@@ -80,11 +79,9 @@ $(DSKSD): basic09 bf
 	$(OS9ATTR_EXEC) $@,sysgo
 	$(CD) cmds; $(OS9COPY) $(CMDS) ../$@,CMDS
 	$(CD) cmds; $(OS9COPY) -r shellplus ../$@,CMDS/shell
-	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
-	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
-	$(OS9ATTR_TEXT) $(foreach file,$(SYSBIN),$@,SYS/$(file))
 	$(CD) sys; $(CPL) $(SYSTEXT) ../$@,SYS
-	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
+	$(OS9ATTR_TEXT) $(foreach file,$(SYSTEXT),$@,SYS/$(file))
+	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
 	$(CD) defs; $(CPL) $(DEFS) ../$@,DEFS
 	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
 	$(CPL) $(STARTUP) $@,startup
@@ -111,13 +108,12 @@ $(DSKDW): basic09 bf
 	$(MAKDIR) $@,DEFS
 	$(OS9COPY) modules/$(SYSGO) $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
-	$(CD) cmds; $(OS9COPY) $(CMDS_DW) ../$@,CMDS
+	$(CD) cmds; $(OS9COPY) $(CMDS) ../$@,CMDS
 	$(CD) cmds; $(OS9COPY) -r shellplus ../$@,CMDS/shell
-	$(OS9ATTR_EXEC) $(foreach file,$(CMDS_DW),$@,CMDS/$(file))
-	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
-	$(OS9ATTR_TEXT) $(foreach file,$(SYSBIN),$@,SYS/$(file))
+	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 	$(CD) sys; $(CPL) $(SYSTEXT) ../$@,SYS
-	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
+	$(OS9ATTR_TEXT) $(foreach file,$(SYSTEXT),$@,SYS/$(file))
+	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
 	$(CD) defs; $(CPL) $(DEFS) ../$@,DEFS
 	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
 	$(CPL) $(STARTUP_DW) $@,startup

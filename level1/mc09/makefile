@@ -25,7 +25,8 @@ SCF		= $(shell $(CD) modules; make --no-print-directory showscf)
 PIPE		= $(shell $(CD) modules; make --no-print-directory showpipe)
 MODULECMDS	= $(WHICHSHELL) del echo format makdir merge os9gen prompt tmode
 
-SYS		= $(shell $(CD) sys; make --no-print-directory showobjs)
+SYSTEXT		= $(shell $(CD) sys; make --no-print-directory showtextfiles)
+SYSBIN		= $(shell $(CD) sys; make --no-print-directory showbinfiles)
 WWWROOT		= $(shell $(CD) wwwroot; make --no-print-directory showobjs)
 DEFS		= $(shell $(CD) defs; make --no-print-directory showobjs)
 STARTUP		= startup
@@ -68,8 +69,9 @@ $(DSK720K):
 	$(CD) cmds; $(OS9COPY) $(sort $(CMDS) $(CMDS_D2)) ../$@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(sort $(CMDS) $(CMDS_D2)),$@,CMDS/$(file))
 	$(OS9RENAME) $@,CMDS/$(WHICHSHELL) shell
-	$(CD) sys; $(CPL) $(SYS) ../$@,SYS
-	$(OS9ATTR_TEXT) $(foreach file,$(SYS),$@,SYS/$(file))
+	$(CD) sys; $(CPL) $(SYSTEXT) ../$@,SYS
+	$(OS9ATTR_TEXT) $(foreach file,$(SYSTEXT),$@,SYS/$(file))
+	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
 	$(CD) defs; $(CPL) $(DEFS) ../$@,DEFS
 	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
 	$(CPL) $(STARTUP) $@,startup
