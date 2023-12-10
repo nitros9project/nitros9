@@ -121,7 +121,6 @@ OS9Cold             equ       *
 loop@               std       ,x++                save off at X and increment
                     leay      -2,y                decrement counter
                     bne       loop@               continue if not zero
-*>>>>>>>>>> F256 PORT
 
 * Set up the system globals area.
                     inca                          D = $100
@@ -611,12 +610,6 @@ eom                 equ       *
 *<<<<<<<<<< NOT(CORSHAM PORT | F256 PORT)
                     endc
 
-                    ifne      atari
-*>>>>>>>>>> ATARI LIBER809 PORT
-                    fdb       $F3FE-(*-OS9Cold)
-*<<<<<<<<<< ATARI LIBER809 PORT
-                    endc
-
 Vectors             fdb       D.XSWI3
                     fdb       D.XSWI2
                     fdb       D.XFIRQ
@@ -626,6 +619,12 @@ Vectors             fdb       D.XSWI3
                     ifne      f256
                     endc
 
+                    ifne      atari
+*>>>>>>>>>> ATARI LIBER809 PORT
+                    fdb       $F3FE-(*-OS9Cold)
+*<<<<<<<<<< ATARI LIBER809 PORT
+                    endc
+                    
                     ifne      corsham+f256
 *>>>>>>>>>> CORSHAM PORT | F256 PORT
                     emod
