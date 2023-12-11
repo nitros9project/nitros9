@@ -246,9 +246,16 @@ loop@               lda       ,x+                 get source byte
                     ifne      atari
 * Atari: look for more modules at $D800-$F3FF.
 *>>>>>>>>>> ATARI LIBER809 PORT
-                    ldx       #$D800
-                    ldy       #$F400
-                    lbsr      ValMods
+* The next three lines reset the low memory and boot start areas so that we can use
+* free RAM above $8000. This code works because we just validated modules above and
+* the first module found above $8000 is the start of the bootfile.
+                    ldx       <D.ModDir           get the pointer to the module diretory
+                    ldx       ,x                  get the pointer to the first module entry
+                    stx       <D.MLIM             store its address as the low memory limit
+                    stx       <D.BTLO             and the bootfile low memory start
+                    ldx       #$D800              point to the area past I/O
+                    ldy       #$F400              and up to this
+                    lbsr      ValMods             validate mods here
 *<<<<<<<<<< ATARI LIBER809 PORT
                     endc
 
