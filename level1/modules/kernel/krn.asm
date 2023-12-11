@@ -610,14 +610,12 @@ eom                 equ       *
 *<<<<<<<<<< NOT(CORSHAM PORT | F256 PORT)
                     endc
 
-Vectors             fdb       D.XSWI3
-                    fdb       D.XSWI2
-                    fdb       D.XFIRQ
-                    fdb       D.XIRQ
-                    fdb       D.XSWI
-                    fdb       D.XNMI
-                    ifne      f256
-                    endc
+Vectors		        fdb	       SWI3		SWI3
+                    fdb	       SWI2		SWI2
+                    fdb	       DUMMY		FIRQ
+                    fdb	       SVCIRQ		IRQ
+                    fdb	       SWI		SWI
+                    fdb	       SVCNMI		NMI
 
                     ifne      atari
 *>>>>>>>>>> ATARI LIBER809 PORT

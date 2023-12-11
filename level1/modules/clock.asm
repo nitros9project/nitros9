@@ -252,7 +252,6 @@ ClkEx
                     lda       #$FF
                     sta       AUDF1
                     sta       STIMER
-                    puls      cc,pc
                     endc
                     else
                     ldx       #PIA0Base           point to PIA0
