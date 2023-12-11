@@ -12,17 +12,16 @@ CMDS		= asm attr backup binex build calldbg cmp copy cputype \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
 		display dmode dsave dump echo edit error exbin format \
 		free help ident iniz irqs link list load login makdir \
-		megaread mdir merge mfree os9gen padrom park printerr procs prompt pwd pxd \
+		megaread mdir merge mfree padrom park printerr procs prompt pwd pxd \
 		rename save setime shellplus shell_21 sleep \
-		tee tmode touch tsmon tuneport unlink verify xmode
-
-CMDS_DW		= inetd telnet dw httpd
+		tee tmode touch tsmon unlink verify xmode \
+		inetd telnet dw httpd
 
 CMDS_DEMO      = fuji
 
-BASIC09		= basic09 runb gfx inkey syscall
+BASIC09		= basic09 runb inkey syscall
 
-ALLOBJS		= $(CMDS) $(CMDS_DW) $(CMDS_DEMO) $(BASIC09)
+ALLOBJS		= $(CMDS) $(CMDS_DEMO) $(BASIC09)
 
 all:	$(ALLOBJS)
 
@@ -48,7 +47,7 @@ showobjs:
 	@$(ECHO) $(CMDS) $(BASIC09)
 
 showobjs_dw:
-	@$(ECHO) $(CMDS) $(BASIC09) $(CMDS_DW)
+	@$(ECHO) $(CMDS) $(BASIC09)
 
 showobjs_demo:
 	@$(ECHO) $(CMDS_DEMO)
