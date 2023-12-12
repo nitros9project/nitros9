@@ -1,0 +1,938 @@
+PROCEDURE STARTREK
+(* https://www.roug.org/retrocomputing/languages/basic/basic09/superstartrek
+REM SUPER STARTREK - MAY 16,1978 - REQUIRES 24K MEMORY
+REM
+REM ****        **** STAR TREK ****        ****
+REM **** SIMULATION OF A MISSION OF THE STARSHIP ENTERPRISE,
+REM **** AS SEEN ON THE STAR TREK TV SHOW.
+REM **** ORIGINAL PROGRAM BY MIKE MAYFIELD, MODIFIED VERSION
+REM **** PUBLISHED IN DEC'S "101 BASIC GAMES", BY DAVE AHL.
+REM **** MODIFICATIONS TO THE LATTER (PLUS DEBUGGING) BY BOB
+REM *** LEEDOM - APRIL & DECEMBER 1974,
+REM *** WITH A LITTLE HELP FROM HIS FRIENDS . . .
+10 PRINT \ PRINT \ PRINT \ PRINT \ PRINT
+PRINT \ PRINT \ PRINT \ PRINT \ PRINT \ PRINT
+PRINT "                                    ,------*------,"
+PRINT "                    ,-------------   '---  ------'"
+PRINT "                     '-------- --'      / /"
+PRINT "                         ,---' '-------/ /--,"
+PRINT "                          '----------------'"
+PRINT
+PRINT "                    THE USS ENTERPRISE --- NCC-1701"
+PRINT \ PRINT \ PRINT \ PRINT \ PRINT
+Z$="                         "
+TYPE klingon_t=sectx,secty,energy:REAL
+DIM Q$:STRING[192]
+DIM O1$:STRING[52]
+DIM G(8,8),C(9,2),N(3),Z(8,8):INTEGER
+DIM K(3):klingon_t
+DIM DMG(8), W1, TIME:REAL
+DIM Z3, S, P, ORGTORPS, E, ENEED, KLINGONS,STARTDATE,DURATION,STARBASES:INTEGER
+DIM K3,S3,B3,S1,S2,SB1,SB2,I,J,RD:INTEGER
+DIM Q1,Q2,Q4,Q5:INTEGER
+DIM D1,H8,DOCKED:BOOLEAN
+RUN RANDOMIZE
+TIME = INT(RND(20)+20)*100
+STARTDATE=TIME
+DURATION=25 + INT(RND(10))
+DOCKED=FALSE
+E=3000
+E0=E
+P=10
+ORGTORPS=P
+S9=200
+S=0
+STARBASES=0
+KLINGONS=0 \ X$="" \ X0$=" is "
+
+RUN RAND8I(Q1)
+RUN RAND8I(Q2)
+RUN RAND8I(S1)
+RUN RAND8I(S2)
+
+DATA 0,1, -1,1, -1,0, -1,-1, 0,-1, 1,-1, 1,0, 1,1, 0,1
+RESTORE
+FOR I=1 TO 9
+READ C(I,1), C(I,2)
+NEXT I
+
+FOR I=1 TO 8 \ DMG(I)=0 \ NEXT I
+
+A1$="navsrslrsphatorshedamcomxxx"
+
+REM SETUP WHAT EXISTS IN GALAXY . . .
+REM K3= # KLINGONS  B3= # STARBASES  S3 = # STARS
+FOR I=1 TO 8
+FOR J=1 TO 8
+K3=0
+Z(I,J)=0
+T1=RND(1)
+IF T1>.98 THEN
+K3=K3+1
+KLINGONS=KLINGONS+1
+ENDIF
+IF T1>.95 THEN
+K3=K3+1
+KLINGONS=KLINGONS+1
+ENDIF
+IF T1>.80 THEN
+K3=K3+1
+KLINGONS=KLINGONS+1
+ENDIF
+B3=0
+IF RND(1)>.96 THEN
+B3=1
+STARBASES=STARBASES+1
+ENDIF
+RUN RAND8I(S3)
+G(I,J)=K3*100 + B3*10 + S3
+NEXT J
+NEXT I
+IF KLINGONS > DURATION THEN DURATION=KLINGONS+1 \ ENDIF
+IF STARBASES<>0 THEN 1200
+REM ADD A kLINGON TO THE SECTOR WITH THE ONLY STARBASE
+IF G(Q1,Q2)<200 THEN
+G(Q1,Q2)=G(Q1,Q2)+100
+KLINGONS=KLINGONS+1
+ENDIF
+STARBASES=1
+G(Q1,Q2)=G(Q1,Q2)+10
+RUN RAND8I(Q1)
+RUN RAND8I(Q2)
+1200 ORGKLINGS=KLINGONS
+IF STARBASES<>1 THEN
+X$="s"
+X0$=" are "
+ENDIF
+PRINT "Your orders are as follows:"
+PRINT "'Destroy the ";KLINGONS;" Klingon warships which have invaded"
+PRINT "the galaxy before they can attack federation"
+PRINT "headquarters on stardate ";STARTDATE+DURATION;". This gives you ";DURATION
+PRINT "days. There";X0$;STARBASES;" starbase";X$;" in the galaxy for"
+PRINT "resupplying your ship.'"
+PRINT
+GOSUB 2200
+GOSUB 6430
+
+1990 IF S+E>10 THEN
+IF E>10 OR DMG(7)=0 THEN 2060
+ENDIF
+PRINT
+PRINT "** FATAL ERROR **   You've just stranded your ship in space."
+PRINT "You have insufficient maneuvering energy, and shield control"
+PRINT "is presently incapable of cross-circuiting to engine room!!"
+GOTO 6220
+
+2060 INPUT "Command ",A$
+FOR I=1 TO 9
+IF LEFT$(A$,3) = MID$(A1$,3*I-2, 3) THEN
+ON I GOSUB 2300,6430,4000,4260,4700,5530,5690,7290,6270
+GOTO 1990
+ENDIF
+NEXT I
+PRINT "Enter one of the following:"
+PRINT "  nav  (To set course)"
+PRINT "  srs  (For short range sensor scan)"
+PRINT "  lrs  (For long range sensor scan)"
+PRINT "  pha  (To fire phasers)"
+PRINT "  tor  (To fire photon torpedoes)"
+PRINT "  she  (To raise or lower shields)"
+PRINT "  dam  (For damage control reports)"
+PRINT "  com  (To call on library-computer)"
+PRINT "  xxx  (To resign your command)"
+PRINT
+GOTO 1990
+
+REM HERE ANY TIME NEW QUADRANT ENTERED
+2200 K3=0
+B3=0
+S3=0
+D4=.5*RND(1)
+Z(Q1,Q2)=G(Q1,Q2)
+IF Q1<1 OR Q1>8 OR Q2<1 OR Q2>8 THEN 2210 \ REM HUH?
+RUN QUADRANT(Q1, Q2, 0, G2$)
+PRINT
+IF STARTDATE<>TIME THEN
+PRINT "Now entering ";G2$;" quadrant . . ."
+ELSE
+PRINT "Your mission begins with your starship located"
+PRINT "in the galactic quadrant, '";G2$;"'."
+ENDIF
+PRINT
+K3=INT(G(Q1,Q2)/100)
+B3=INT(G(Q1,Q2)/10) - 10*K3
+S3=G(Q1,Q2) - 100*K3 - 10*B3
+IF K3>0 THEN
+PRINT "Combat area      Condition RED"
+IF S<=200 THEN
+PRINT "   Shields dangerously low"
+ENDIF
+ENDIF
+FOR I=1 TO 3
+K(I).sectx=0
+K(I).secty=0
+NEXT I
+2210 FOR I=1 TO 3
+K(I).energy=0
+NEXT I
+Q$=Z$+Z$+Z$+Z$+Z$+Z$+Z$+LEFT$(Z$,17)
+REM Position Enterprise in quadrant, then place "K3" klingons, &
+REM "B3" starbases, & "S3" stars elsewhere.
+RUN INSERTFEATURE(Q$, "<*>", INT(S1), INT(S2))
+IF K3>0 THEN
+FOR I=1 TO K3
+GOSUB 8590
+RUN INSERTFEATURE(Q$, "+K+", R1, R2)
+K(I).sectx=R1
+K(I).secty=R2
+K(I).energy=S9*(0.5+RND(1))
+NEXT I
+ENDIF
+IF B3>0 THEN
+GOSUB 8590
+SB1=R1
+SB2=R2
+RUN INSERTFEATURE(Q$, ">!<", R1, R2)
+ENDIF
+FOR I=1 TO S3
+GOSUB 8590
+RUN INSERTFEATURE(Q$, " * ", R1, R2)
+NEXT I
+RETURN
+
+REM COURSE CONTROL BEGINS HERE
+2300 INPUT "Course (0-9) ",C1
+IF C1=9 THEN C1=1 \ ENDIF
+IF C1<1 OR C1>9 THEN
+PRINT "   Lt. Sulu reports, 'Incorrect course data, sir!'"
+RETURN
+ENDIF
+X$="8"
+IF DMG(1)<0 THEN X$="0.2" \ ENDIF
+PRINT "Warp factor (0-";X$;"): ";
+INPUT W1
+IF DMG(1) < 0 AND W1 > .2 THEN
+PRINT "Warp engines are damaged.  Maxium speed = warp 0.2"
+RETURN
+ENDIF
+IF W1 = 0 THEN
+RETURN
+ENDIF
+IF W1 < 0 OR W1 > 8 THEN
+PRINT "   Chief engineer scott reports 'The engines won't take warp ";W1;"!'"
+RETURN
+ENDIF
+LET ENEED = FIX(W1 * 8)
+IF E-ENEED < 0 THEN
+PRINT "Engineering reports   'Insufficient energy available"
+PRINT "                       for maneuvering at warp ";W1;"!'"
+IF S < ENEED-E OR DMG(7) < 0 THEN
+RETURN
+ENDIF
+PRINT "Deflector control room acknowledges ";S;" units of energy"
+PRINT "                         presently deployed to shields."
+RETURN
+ENDIF
+
+REM KLINGONS MOVE/FIRE ON MOVING STARSHIP . . .
+FOR I=1 TO K3
+IF K(I).energy <> 0 THEN
+RUN INSERTFEATURE(Q$, "   ", K(I).sectx, K(I).secty)
+GOSUB 8590
+K(I).sectx=R1
+K(I).secty=R2
+RUN INSERTFEATURE(Q$, "+K+", R1, R2)
+ENDIF
+NEXT I
+GOSUB 6000
+D1=FALSE
+D6=W1
+IF W1 >= 1 THEN D6=1 \ ENDIF
+2770 FOR I=1 TO 8
+IF DMG(I)>=0 THEN 2880
+DMG(I)=DMG(I)+D6
+IF DMG(I) > -.1 AND DMG(I)<0 THEN
+DMG(I)=-.1
+GOTO 2880
+ENDIF
+IF DMG(I)<0 THEN 2880
+IF D1=FALSE THEN
+D1=TRUE
+PRINT "Damage control report:  ";
+ENDIF
+PRINT TAB(8);
+RD=I
+GOSUB 8790
+PRINT G2$;" repair completed."
+2880 NEXT I
+
+IF RND(1) < .2 THEN
+RUN RAND8I(RD)
+PRINT "Damage control report:  ";
+GOSUB 8790
+IF RND(1) >= .6 THEN
+DMG(RD)=DMG(RD)+RND(3)+1
+PRINT G2$;" state of repair improved"
+ELSE
+DMG(RD)=DMG(RD)-(RND(5)+1)
+PRINT G2$;" damaged"
+ENDIF
+PRINT
+ENDIF
+
+REM BEGIN MOVING STARSHIP
+RUN INSERTFEATURE(Q$, "   ", INT(S1), INT(S2))
+X=S1
+Y=S2
+C1I = INT(C1)
+X1=C(C1I,1) + (C(C1I+1,1)-C(C1I,1)) * (C1-C1I)
+X2=C(C1I,2) + (C(C1I+1,2)-C(C1I,2)) * (C1-C1I)
+Q4=Q1
+Q5=Q2
+FOR I=1 TO ENEED
+X=X+X1
+Y=Y+X2
+IF X<1 OR X>=9 OR Y<1 OR Y>=9 THEN 3500
+RUN CHECKFEATURE(Q$, "   ", INT(X), INT(Y), Z3)
+EXITIF Z3=0 THEN
+X=INT(X-X1)
+Y=INT(Y-X2)
+PRINT "Warp engines shut down at ";
+PRINT "sector ";FIX(X);",";FIX(Y);" due to bad navigation"
+ENDEXIT
+NEXT I
+S1=INT(X)
+S2=INT(Y)
+3370 RUN INSERTFEATURE(Q$, "<*>", INT(S1), INT(S2))
+GOSUB 3910
+T8=1
+IF W1<1 THEN
+T8=.1 * INT(10*W1)
+ENDIF
+TIME=TIME+T8
+IF TIME > STARTDATE + DURATION THEN 6220
+REM SEE IF DOCKED, THEN GET COMMAND
+GOSUB 6430
+RETURN
+
+3500 REM EXCEEDED QUADRANT LIMITS
+X=8*Q1 + S1 + ENEED*X1
+Y=8*Q2 + S2 + ENEED*X2
+Q1=INT(X/8)
+Q2=INT(Y/8)
+S1=INT(X-Q1*8)
+S2=INT(Y-Q2*8)
+IF S1=0 THEN Q1=Q1-1 \ S1=8 \ ENDIF
+IF S2=0 THEN Q2=Q2-1 \ S2=8 \ ENDIF
+DIM X5:BOOLEAN
+X5=FALSE
+IF Q1<1 THEN X5=TRUE \ Q1=1 \ S1=1 \ ENDIF
+IF Q1>8 THEN X5=TRUE \ Q1=8 \ S1=8 \ ENDIF
+IF Q2<1 THEN X5=TRUE \ Q2=1 \ S2=1 \ ENDIF
+IF Q2>8 THEN X5=TRUE \ Q2=8 \ S2=8 \ ENDIF
+IF X5=TRUE THEN
+PRINT "Lt. Uhura reports message from starfleet command:"
+PRINT "  'Permission to attempt crossing of galactic perimeter"
+PRINT "  is hereby *DENIED*.  Shut down your engines.'"
+PRINT "Chief engineer Scott reports  'Warp engines shut down"
+PRINT "  at sector ";S1;",";S2;" of quadrant ";Q1;",";Q2;".'"
+IF TIME > STARTDATE + DURATION THEN 6220
+ENDIF
+IF 8*Q1+Q2 = 8*Q4+Q5 THEN 3370
+TIME=TIME+1
+GOSUB 3910
+GOSUB 2200
+GOSUB 6430
+RETURN
+
+REM MANEUVER ENERGY S/R **
+3910 E=E-ENEED-10
+IF E>=0 THEN RETURN
+ENDIF
+PRINT "Shield control supplies energy to complete the maneuver."
+S=S+E
+E=0
+IF S<=0 THEN S=0
+ENDIF
+RETURN
+
+REM LONG RANGE SENSOR SCAN CODE
+4000 IF DMG(3)<0 THEN
+PRINT "Long range sensors are inoperable"
+RETURN
+ENDIF
+PRINT "Long range scan for quadrant ";Q1;",";Q2
+O1$="-------------------"
+PRINT O1$
+FOR I=Q1-1 TO Q1+1
+N(1)=-1
+N(2)=-2
+N(3)=-3
+FOR J=Q2-1 TO Q2+1
+IF I>0 AND I<9 AND J>0 AND J<9 THEN
+N(J-Q2+2)=G(I,J)
+Z(I,J)=G(I,J)
+ENDIF
+NEXT J
+FOR L=1 TO 3
+PRINT ": ";
+IF N(L)<0 THEN
+PRINT "*** ";
+ELSE
+PRINT RIGHT$(STR$(N(L)+1000),3);" ";
+ENDIF
+NEXT L
+PRINT ":" \ PRINT O1$
+NEXT I
+RETURN
+
+REM PHASER CONTROL CODE BEGINS HERE
+4260 IF DMG(4)<0 THEN PRINT "Phasers inoperative" \ RETURN
+ENDIF
+IF K3<=0 THEN
+4270 PRINT "Science officer Spock reports  'Sensors show no enemy ships"
+PRINT "                                in this quadrant'"
+RETURN
+ENDIF
+IF DMG(8)<0 THEN PRINT "Computer failure hampers accuracy" \ ENDIF
+PRINT "Phasers locked on target;  ";
+4360 PRINT "Energy available = ";E;" units"
+INPUT "Number of units to fire ",X
+IF X<=0 THEN
+PRINT "Phaser fire cancelled"
+RETURN
+ENDIF
+IF E-X < 0 THEN 4360
+E=E-X
+IF DMG(7)<0 THEN X=X*RND(1) \ ENDIF
+H1=INT(X/K3)
+FOR I=1 TO 3
+IF K(I).energy <= 0 THEN 4670
+XSQ = SQ(K(I).sectx - S1)
+YSQ = SQ(K(I).secty - S2)
+H=INT((H1/SQR(XSQ + YSQ))*(RND(1)+2))
+IF H <= .15 * K(I).energy THEN
+PRINT "Sensors show no damage to enemy at ";FIX(K(I).sectx);",";FIX(K(I).secty)
+ELSE
+K(I).energy = K(I).energy - H
+PRINT FIX(H);" Unit hit on klingon at sector ";FIX(K(I).sectx);",";FIX(K(I).secty)
+IF K(I).energy <= 0 THEN
+PRINT "*** KLINGON DESTROYED ***"
+K3=K3-1
+KLINGONS=KLINGONS-1
+RUN INSERTFEATURE(Q$, "   ", K(I).sectx, K(I).secty)
+K(I).energy=0
+G(Q1,Q2)=G(Q1,Q2)-100
+Z(Q1,Q2)=G(Q1,Q2)
+IF KLINGONS<=0 THEN 6370
+ENDIF
+PRINT "   (Sensors show ";FIX(K(I).energy);" units remaining)"
+ENDIF
+4670 NEXT I
+GOSUB 6000
+RETURN
+
+REM PHOTON TORPEDO CODE BEGINS HERE
+4700 IF P<=0 THEN
+PRINT "All photon torpedoes expended"
+RETURN
+ENDIF
+4730 IF DMG(5)<0 THEN
+PRINT "Photon tubes are not operational"
+RETURN
+ENDIF
+4760 INPUT "Photon torpedo course (1-9) ",C1
+IF C1=9 THEN C1=1
+ENDIF
+IF C1<1 OR C1>9 THEN
+PRINT "Ensign Chekov reports,  'Incorrect course data, sir!'"
+RETURN
+ENDIF
+E=E-2
+P=P-1
+J = INT(C1)
+X1=C(J,1) + (C(J+1,1)-C(J,1)) * (C1-J)
+X2=C(J,2) + (C(J+1,2)-C(J,2)) * (C1-J)
+X=S1
+Y=S2
+PRINT "Torpedo track:"
+REPEAT
+X = X + X1
+Y = Y + X2
+X3=FIX(X)
+Y3=FIX(Y)
+IF X3<1 OR X3>8 OR Y3<1 OR Y3>8 THEN
+PRINT "Torpedo missed"
+GOSUB 6000
+RETURN
+ENDIF
+PRINT "               ";FIX(X3);",";FIX(Y3)
+RUN CHECKFEATURE(Q$, "   ", X3, Y3, Z3)
+UNTIL Z3=0
+(* We have now hit something *)
+RUN CHECKFEATURE(Q$, "+K+", X3, Y3, Z3)
+IF Z3=1 THEN
+PRINT "*** KLINGON DESTROYED ***"
+K3=K3-1
+KLINGONS=KLINGONS-1
+IF KLINGONS<=0 THEN 6370
+FOR I=1 TO 3
+IF X3=K(I).sectx AND Y3=K(I).secty THEN 5190
+NEXT I
+I=3
+5190 K(I).energy=0
+GOTO 5430
+ENDIF
+RUN CHECKFEATURE(Q$, " * ", X3, Y3, Z3)
+IF Z3=1 THEN
+PRINT "Star at ";FIX(X3);",";FIX(Y3);" absorbed torpedo energy."
+GOSUB 6000
+RETURN
+ENDIF
+RUN CHECKFEATURE(Q$, ">!<", X3, Y3, Z3)
+IF Z3=0 THEN 4760
+PRINT "*** STARBASE DESTROYED ***"
+B3=B3-1
+STARBASES=STARBASES-1
+IF STARBASES > 0 OR KLINGONS > TIME - STARTDATE - DURATION THEN
+PRINT "Starfleet command reviewing your record to consider"
+PRINT "court martial!"
+DOCKED=FALSE
+ELSE
+PRINT "That does it, captain!!  You are hereby relieved of command"
+PRINT "and sentenced to 99 stardates at hard labor on cygnus 12!!"
+GOTO 6270
+ENDIF
+5430 RUN INSERTFEATURE(Q$, "   ", X3, Y3)
+G(Q1,Q2)=K3*100+B3*10+S3
+Z(Q1,Q2)=G(Q1,Q2)
+GOSUB 6000
+RETURN
+
+5520 REM SHIELD CONTROL
+5530 IF DMG(7)<0 THEN
+PRINT "Shield control inoperable"
+RETURN
+ENDIF
+5560 PRINT "Energy available = ";E+S;
+INPUT " Number of units to shields ",X
+IF X<0 OR S=X THEN
+PRINT "<SHIELDS UNCHANGED>"
+RETURN
+ENDIF
+IF X > E+S THEN
+PRINT "Shield control reports  'This is not the federation treasury.'"
+PRINT "<SHIELDS UNCHANGED>"
+RETURN
+ENDIF
+E=E+S-X
+S=X
+PRINT "Deflector control room report:"
+PRINT "  'Shields now at ";FIX(S);" units per your command.'"
+RETURN
+
+REM DAMAGE CONTROL
+5690 IF DMG(6)>=0 THEN 5910
+PRINT "Damage control report not available"
+IF DOCKED=FALSE THEN
+RETURN
+ENDIF
+5720 D3=0
+FOR I=1 TO 8
+IF DMG(I)<0 THEN D3=D3+.1
+ENDIF
+NEXT I
+IF D3=0 THEN
+RETURN
+ENDIF
+PRINT
+D3=D3+D4
+IF D3>=1 THEN D3=.9
+ENDIF
+PRINT "Technicians standing by to effect repairs to your ship;"
+PRINT "Estimated time to repair: ";.01*INT(100*D3);" stardates."
+INPUT "Will you authorize the repair order (y/n) ",A$
+IF A$<>"y" THEN
+RETURN
+ENDIF
+FOR I=1 TO 8
+IF DMG(I)<0 THEN DMG(I)=0
+ENDIF
+NEXT I
+TIME=TIME+D3+.1
+5910 PRINT \ PRINT "Device             State of repair"
+FOR RD=1 TO 8
+GOSUB 8790
+PRINT G2$;LEFT$(Z$,25-LEN(G2$));INT(DMG(RD)*100)*.01
+NEXT RD
+PRINT
+IF DOCKED=TRUE THEN 5720
+RETURN
+
+REM KLINGONS SHOOTING
+6000 IF K3<=0 THEN RETURN
+ENDIF
+IF DOCKED=TRUE THEN
+PRINT "Starbase shields protect the enterprise" \ RETURN
+ENDIF
+FOR I=1 TO 3
+IF K(I).energy<=0 THEN 6200
+XSQ = SQ(K(I).sectx - S1)
+YSQ = SQ(K(I).secty - S2)
+H=INT((K(I).energy/SQR(XSQ + YSQ))*(RND(1)+2))
+S=S-H
+K(I).energy=INT(K(I).energy/(3+RND(0)))
+PRINT FIX(H);" unit hit on Enterprise from sector ";FIX(K(I).sectx);",";FIX(K(I).secty)
+IF S<=0 THEN 6210
+PRINT "      <SHIELDS DOWN TO ";S;" UNITS>"
+IF H<20 THEN 6200
+IF RND(1)>.6 OR H/S <= .02 THEN 6200
+RUN RAND8I(RD)
+DMG(RD)=DMG(RD)-H/S-.5*RND(1)
+GOSUB 8790
+PRINT "Damage control reports:"
+PRINT "    '";G2$;" damaged by the hit'"
+6200 NEXT I
+RETURN
+
+REM END OF GAME
+6210 PRINT
+PRINT "The Enterprise has been destroyed.  Then federation will be conquered."
+6220 PRINT "It is stardate ";TIME;"."
+6270 PRINT "There were ";KLINGONS;" Klingon battle cruisers left at"
+PRINT "the end of your mission."
+6290 PRINT \ PRINT
+IF STARBASES>0 THEN
+PRINT "The federation is in need of a new starship commander"
+PRINT "for a similar mission -- If there is a volunteer,"
+INPUT "let him step forward and enter 'aye' ",A$
+IF A$="aye" THEN 10
+ENDIF
+END
+
+6370 PRINT "Congratulation, captain!  The last Klingon battle cruiser"
+PRINT "menacing the federation has been destroyed."
+PRINT
+PRINT "Your efficiency rating is ";1000*(ORGKLINGS/(TIME - STARTDATE))^2
+GOTO 6290
+
+REM SHORT RANGE SENSOR SCAN & STARTUP SUBROUTINE
+6430 FOR I=S1-1 TO S1+1
+FOR J=S2-1 TO S2+1
+IF I<1 OR I>8 OR J<1 OR J>8 THEN 6540
+RUN CHECKFEATURE(Q$, ">!<", INT(I), INT(J), Z3)
+IF Z3=1 THEN
+DOCKED=TRUE \ C$="DOCKED"
+E=E0
+P=ORGTORPS
+PRINT "Shields dropped for docking purposes"
+S=0
+GOTO 6720
+ENDIF
+6540 NEXT J
+NEXT I
+DOCKED=FALSE
+IF K3>0 THEN
+C$="*RED*"
+ELSE
+C$="GREEN"
+IF E < E0 * .1 THEN C$="YELLOW" \ ENDIF
+ENDIF
+6720 IF DMG(2)<0 THEN
+PRINT
+PRINT "*** SHORT RANGE SENSORS ARE OUT ***"
+PRINT
+RETURN
+ENDIF
+O1$="---1---2---3---4---5---6---7---8---"
+PRINT O1$
+FOR I=1 TO 8
+PRINT I;
+FOR J=(I-1)*24+1 TO (I-1)*24+22 STEP 3
+PRINT " ";MID$(Q$,J,3);
+NEXT J
+PRINT " ";I
+NEXT I
+PRINT O1$
+FOR I=1 TO 8
+ON I GOSUB 6850,6900,6960,7020,7070,7120,7180,7240
+NEXT I
+RETURN
+
+6850 PRINT USING "'     Stardate          ',R7.1",TIME \ RETURN
+6900 PRINT "     Condition          ";C$ \ RETURN
+6960 PRINT "     Quadrant           ";Q1;",";Q2 \ RETURN
+7020 PRINT "     Sector             ";S1;",";S2 \ RETURN
+7070 PRINT "     Photon torpedoes   ";P \ RETURN
+7120 PRINT USING "'     Total energy      ',I6<",E+S \ RETURN
+7180 PRINT USING "'     Shields           ',I4<",S \ RETURN
+7240 PRINT USING "'     Klingons remaining',I3<",KLINGONS \ RETURN
+
+REM LIBRARY COMPUTER CODE
+7290 IF DMG(8)<0 THEN
+PRINT "Computer disabled"
+RETURN
+ENDIF
+LOOP
+INPUT "Computer active and awaiting command ",A
+IF A < 0 THEN
+RETURN
+ENDIF
+PRINT
+H8=TRUE
+ON A+1 GOTO 7540,7900,8070,8500,8150,7400
+PRINT "Functions available from library-computer:"
+PRINT "   0 = Cumulative galactic record"
+PRINT "   1 = Status report"
+PRINT "   2 = Photon torpedo data"
+PRINT "   3 = Starbase nav data"
+PRINT "   4 = Direction/distance calculator"
+PRINT "   5 = Galaxy 'region name' map"
+PRINT
+ENDLOOP
+
+REM SETUP TO CHANGE CUM GAL RECORD TO GALAXY MAP
+7400 H8=FALSE
+PRINT "                        The galaxy"
+GOTO 7550
+7540 PRINT \ PRINT "     ";
+PRINT "Computer record of galaxy for quadrant ";Q1;",";Q2
+PRINT
+7550 PRINT "     1     2     3     4     5     6     7     8"
+O1$="   ----- ----- ----- ----- ----- ----- ----- -----"
+PRINT O1$
+FOR I=1 TO 8
+PRINT I;
+IF H8 THEN
+FOR J=1 TO 8
+PRINT "   ";
+IF Z(I,J)=0 THEN
+PRINT "***";
+ELSE
+PRINT RIGHT$(STR$(Z(I,J)+1000),3);
+ENDIF
+NEXT J
+ELSE
+RUN QUADRANT(I, 1, 1, G2$)
+J0=INT(15-.5*LEN(G2$))
+PRINT TAB(J0);G2$;
+RUN QUADRANT(I, 5, 1, G2$)
+J0=INT(39-.5*LEN(G2$))
+PRINT TAB(J0);G2$;
+ENDIF
+PRINT
+PRINT O1$
+NEXT I
+PRINT
+RETURN
+
+REM STATUS REPORT
+7900 PRINT "   Status report:"
+X$="" \ IF KLINGONS>1 THEN X$="s" \ ENDIF
+PRINT "Klingon";X$;" left: ";KLINGONS
+PRINT "Mission must be completed in ";FIX(.1*INT((STARTDATE + DURATION - TIME)*10));" stardates"
+X$="s"
+IF STARBASES<2 THEN \ X$="" \ ENDIF
+IF STARBASES<1 THEN
+PRINT "Your stupidity has left you on your own in"
+PRINT "  the galaxy -- You have no starbases left!"
+ELSE
+PRINT "The federation is maintaining ";STARBASES;" starbase";X$;" in the galaxy"
+ENDIF
+GOTO 5690
+
+REM TORPEDO, BASE NAV, D/D CALCULATOR
+8070 IF K3<=0 THEN 4270
+X$=""
+IF K3>1 THEN X$="s"
+ENDIF
+PRINT "From enterprise to Klingon battle cruiser";X$
+H8=FALSE
+FOR I=1 TO 3
+IF K(I).energy > 0 THEN
+RUN DIRECTION(S1-K(I).sectx, S2-K(I).secty)
+ENDIF
+NEXT I
+RETURN
+
+8150 PRINT "Direction/distance calculator:"
+PRINT "You are at quadrant ";Q1;",";Q2;" sector ";S1;",";S2
+PRINT "Please enter"
+INPUT "  Initial coordinates (x,y) ",C1,A
+INPUT "  Final coordinates (x,y) ",W1,X
+RUN DIRECTION(C1-W1, A-X)
+RETURN
+
+8500 IF B3<>0 THEN
+PRINT "From enterprise to starbase:"
+RUN DIRECTION(INT(S1-SB1), INT(S2-SB2))
+ELSE
+PRINT "Mr. Spock reports,  'Sensors show no starbases in this quadrant.'"
+ENDIF
+RETURN
+
+8590 REM FIND EMPTY PLACE IN QUADRANT (FOR THINGS)
+REPEAT
+RUN RAND8(R1)
+RUN RAND8(R2)
+RUN CHECKFEATURE(Q$, "   ", R1, R2, Z3)
+UNTIL Z3=1
+RETURN
+
+REM PRINT S DEVICE NAME
+8790 ON RD GOTO 8792,8794,8796,8798,8800,8802,8804,8806
+8792 G2$="Warp engines" \ RETURN
+8794 G2$="Short range sensors" \ RETURN
+8796 G2$="Long range sensors" \ RETURN
+8798 G2$="Phaser control" \ RETURN
+8800 G2$="Photon tubes" \ RETURN
+8802 G2$="Damage control" \ RETURN
+8804 G2$="Shield control" \ RETURN
+8806 G2$="Library-computer" \ RETURN
+
+PROCEDURE RAND8
+PARAM RES:REAL
+RES = INT(RND(8)+1)
+END
+
+PROCEDURE RAND8I
+PARAM RES:INTEGER
+RES = INT(RND(8)+1)
+END
+
+PROCEDURE INSERTFEATURE
+REM Insert in string array for quadrant
+PARAM Q$:STRING[192]
+PARAM A$:STRING
+PARAM Z1,Z2:REAL
+DIM S8:INTEGER
+IF LEN(A$)<>3 THEN
+PRINT "ERROR"
+STOP
+ENDIF
+
+S8=INT(Z2 - .5) * 3 + INT(Z1 - .5) * 24 + 1
+IF S8=1 THEN
+Q$=A$+RIGHT$(Q$,189)
+ELSE
+IF S8=190 THEN
+Q$=LEFT$(Q$,189)+A$
+ELSE
+Q$=LEFT$(Q$,S8-1)+A$+RIGHT$(Q$,190-S8)
+ENDIF
+ENDIF
+END
+
+PROCEDURE CHECKFEATURE
+PARAM Q$:STRING[192]
+PARAM A$:STRING
+PARAM Z1,Z2:REAL
+PARAM Z3:INTEGER
+DIM X1,X2,S8:INTEGER
+X1=FIX(Z1)
+X2=FIX(Z2)
+S8=(X2-1)*3 + (X1-1)*24 + 1
+Z3=0
+IF MID$(Q$,S8,3)=A$ THEN
+Z3=1
+ENDIF
+END
+
+PROCEDURE DIRECTION
+PARAM dX,dY:REAL
+DIM RES:REAL
+dY=-dY
+H=1
+IF dY<0 THEN
+IF dX>0 THEN
+H=3
+GOTO 20
+ENDIF
+IF dY<>0 THEN
+H=5
+GOTO 10
+ELSE
+H=7
+GOTO 20
+ENDIF
+ENDIF
+IF dX<0 THEN
+H=7
+GOTO 20
+ENDIF
+
+IF dY>0 THEN
+H=1
+ELSE
+IF dX=0 THEN
+H=5
+ENDIF
+ENDIF
+
+10 IF ABS(dX)<=ABS(dY) THEN
+RES = H+(ABS(dX)/ABS(dY))
+ELSE
+RES = H+(((ABS(dX)-ABS(dY))+ABS(dX)) / ABS(dX))
+ENDIF
+GOTO 30
+
+20 IF ABS(dX)>=ABS(dY) THEN
+RES = H+(ABS(dY)/ABS(dX))
+ELSE
+RES = H+(((ABS(dY)-ABS(dX))+ABS(dY)) / ABS(dY))
+ENDIF
+
+30 PRINT "Direction = ";RES
+PRINT "Distance = ";SQR(SQ(dY) + SQ(dX))
+END
+
+PROCEDURE QUADRANT
+REM Return quadrant name in G2$ from Q1,Q2
+REM Call with NAMEONLY=1 to get region name only
+PARAM Q1,Q2:INTEGER
+PARAM NAMEONLY:INTEGER
+PARAM G2$:STRING
+
+IF Q2<=4 THEN
+ON Q1 GOSUB 40,50,60,70,80,90,100,110
+ELSE
+ON Q1 GOSUB 130,140,150,160,170,180,190,200
+ENDIF
+IF NAMEONLY<>1 THEN
+ON Q2 GOSUB 230,240,250,260,230,240,250,260
+ENDIF
+END
+
+40 G2$="ANTARES" \ RETURN
+50 G2$="RIGEL" \ RETURN
+60 G2$="PROCYON" \ RETURN
+70 G2$="VEGA" \ RETURN
+80 G2$="CANOPUS" \ RETURN
+90 G2$="ALTAIR" \ RETURN
+100 G2$="SAGITTARIUS" \ RETURN
+110 G2$="POLLUX" \ RETURN
+
+130 G2$="SIRIUS" \ RETURN
+140 G2$="DENEB" \ RETURN
+150 G2$="CAPELLA" \ RETURN
+160 G2$="BETELGEUSE" \ RETURN
+170 G2$="ALDEBARAN" \ RETURN
+180 G2$="REGULUS" \ RETURN
+190 G2$="ARCTURUS" \ RETURN
+200 G2$="SPICA" \ RETURN
+
+230 G2$=G2$+" I" \ RETURN
+240 G2$=G2$+" II" \ RETURN
+250 G2$=G2$+" III" \ RETURN
+260 G2$=G2$+" IV" \ RETURN
+END
+
+PROCEDURE RANDOMIZE
+DIM SEC,MIN,HOU:STRING[2]
+D$=DATE$
+SEC=RIGHT$(D$,2)
+MIN=MID$(D$,13,2)
+HOU=MID$(D$,10,2)
+SEED = VAL(HOU)* 3600 + VAL(MIN) * 60 + VAL(SEC)
+R = RND(0 - SEED)
+END

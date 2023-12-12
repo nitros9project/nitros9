@@ -1,0 +1,86 @@
+Though RunB (the I-CODE interpreter) came on the OS-9 disks,
+Basic09 was not distributed as part of the OS-9 system.
+You had to purchase it separately. I therefore considered it
+more appropiate to treat both applications as a united
+3rd party package.
+
+The Basic09 I own was purchased from Dragon Data Ltd. They
+had changed the welcome message, but otherwise I think it
+is exactly the same Basic09 as was distributed by Microware.
+This Basic09 is the basic09-d64.asm file.
+
+            BASIC09
+COPYRIGHT 1980 BY MOTOROLA INC.
+  AND MICROWARE SYSTEMS CORP.
+   REPRODUCED UNDER LICENSE
+     TO DRAGON DATA LTD.
+    ALL RIGHTS RESERVED.
+
+Basic09
+Ready
+B:
+
+Identification
+---------------------------------
+Header for:  Basic09
+Module size: $5AB5    #23221
+Module CRC:  $E3C48D (Good)
+Hdr parity:  $d1 (Good)
+Exec. off:   $07AA    #1962
+Data size:   $1000    #4096
+Edition:     $16      #22
+Ty/La At/Rv: $11 $81
+Prog mod, 6809 obj, re-en
+
+A slightly different Basic09 was found in the level2 directory.
+This Basic09 is the basic09-cc.asm file.
+
+            BASIC09
+      RS VERSION 01.00.01
+COPYRIGHT 1980 BY MOTOROLA INC.
+  AND MICROWARE SYSTEMS CORP.
+   REPRODUCED UNDER LICENSE
+       TO TANDY CORP.
+    ALL RIGHTS RESERVED.
+
+Basic09
+Ready
+B:
+
+Identification
+---------------------------------
+Header for:  Basic09
+Module size: $5ACC    #23244
+Module CRC:  $F0388C (Good)
+Hdr parity:  $a8 (Good)
+Exec. off:   $07C1    #1985
+Data size:   $2000    #8192
+Edition:     $16      #22
+Ty/La At/Rv: $11 $81
+Prog mod, 6809 obj, re-en
+
+
+But, for both distributions is, that RunB is exactly the same:
+
+Header for:  RunB
+Module size: $2F99    #12185
+Module CRC:  $A4D050 (Good)
+Hdr parity:  $88 (Good)
+Exec. off:   $0195    #405
+Data size:   $1000    #4096
+Edition:     $16      #22
+Ty/La At/Rv: $11 $81
+Prog mod, 6809 obj, re-en
+
+.. as well as for edit:
+
+Header for:  Edit
+Module size: $1516    #5398
+Module CRC:  $04652B (Good)
+Hdr parity:  $2b (Good)
+Exec. off:   $0161    #353
+Data size:   $0C1F    #3103
+Edition:     $03      #3
+Ty/La At/Rv: $11 $81
+Prog mod, 6809 obj, re-en
+

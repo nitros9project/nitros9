@@ -1,0 +1,193 @@
+PROCEDURE hammurabi
+(* https://www.roug.org/retrocomputing/languages/basic/basic09/hammurabi
+PRINT TAB(32);"HAMURABI"
+PRINT TAB(15);"CREATIVE COMPUTING  MORRISTOWN, NEW JERSEY"
+PRINT
+PRINT
+PRINT
+PRINT "Try your hand at governing ancient Sumeria"
+PRINT "for a ten-year term of office."
+PRINT
+DIM ACRES,YEAR,D,DIED,INCREASE:INTEGER
+DIM LOSS,HARVEST,STORED,YIELD:INTEGER
+DIEDTOT=0
+DIEDAVG=0
+YEAR=0
+POPULATION=95
+STORED=2800
+HARVEST=3000
+LOSS=HARVEST-STORED
+YIELD=3
+ACRES=HARVEST/YIELD
+INCREASE=5
+PLAGUE=1
+DIED=0
+215 PRINT
+PRINT
+PRINT "Hamurabi:  I beg to report to you,"
+YEAR=YEAR+1
+PRINT "in year ";YEAR;", ";DIED;" people starved, ";INCREASE;" came to the city,"
+POPULATION = POPULATION + INCREASE
+IF PLAGUE <= 0 THEN
+POPULATION = POPULATION / 2
+PRINT "a horrible plague struck!  Half the people died."
+ENDIF
+PRINT "Population is now ";POPULATION
+PRINT "The city now owns ";ACRES;" acres."
+PRINT "You harvested ";YIELD;" bushels per acre."
+PRINT "The rats ate ";LOSS;" bushels."
+PRINT "You now have ";STORED;" bushels in store."
+PRINT
+IF YEAR=11 THEN 860
+C=INT(10*RND(1))
+YIELD=C+17
+PRINT "Land is trading at ";YIELD;" bushels per acre."
+LOOP
+PRINT "How many acres do you wish to buy";
+INPUT Q
+IF Q < 0 THEN 850
+EXITIF YIELD * Q <= STORED THEN ENDEXIT
+GOSUB 710
+ENDLOOP
+
+IF Q > 0 THEN
+ACRES = ACRES + Q
+STORED = STORED - YIELD * Q
+C=0
+GOTO 400
+ENDIF
+
+LOOP
+PRINT "How many acres do you wish to sell";
+INPUT Q
+IF Q < 0 THEN 850
+EXITIF Q < ACRES THEN ENDEXIT
+GOSUB 720
+ENDLOOP
+
+ACRES = ACRES - Q
+STORED = STORED + YIELD * Q
+C = 0
+
+400 PRINT
+LOOP
+PRINT "How many bushels do you wish to feed your people";
+INPUT FOOD
+IF FOOD < 0 THEN 850
+REM *** TRYING TO USE MORE GRAIN THAN IS IN SILOS?
+EXITIF FOOD <= STORED THEN ENDEXIT
+GOSUB 710
+ENDLOOP
+
+STORED = STORED - FOOD
+C = 1
+PRINT
+440 PRINT "How many acres do you wish to plant with seed";
+INPUT D
+IF D<0 THEN 850
+IF D>0 THEN
+REM *** TRYING TO PLANT MORE ACRES THAN YOU OWN?
+IF D > ACRES THEN
+GOSUB 720
+GOTO 440
+ENDIF
+REM *** ENOUGH GRAIN FOR SEED?
+IF INT(D/2) > STORED THEN
+GOSUB 710
+GOTO 440
+ENDIF
+REM *** ENOUGH PEOPLE TO TEND THE CROPS?
+IF D >= 10 * POPULATION THEN
+PRINT "But you have only ";POPULATION;" people to tend the fields!  Now then,"
+GOTO 440
+ENDIF
+STORED = STORED - INT(D/2)
+ENDIF
+
+GOSUB 800
+REM *** A BOUNTIFUL HARVEST!
+YIELD=C
+HARVEST = D * YIELD
+LOSS=0
+GOSUB 800
+IF INT(C/2) = C/2 THEN
+REM *** RATS ARE RUNNING WILD!!
+LOSS=INT(STORED / C)
+ENDIF
+STORED = STORED - LOSS + HARVEST
+GOSUB 800
+REM *** LET'S HAVE SOME BABIES
+INCREASE = INT(C * (20 * ACRES + STORED) / POPULATION / 100 + 1)
+REM *** HOW MANY PEOPLE HAD FULL TUMMIES?
+FEDPPL =INT(FOOD / 20)
+REM *** HORRORS, A 15% CHANCE OF PLAGUE
+PLAGUE = INT(10 * (2 * RND(1) - .3))
+IF POPULATION < FEDPPL THEN
+DIED = 0
+ELSE
+REM *** STARVE ENOUGH FOR IMPEACHMENT?
+DIED = POPULATION - FEDPPL
+IF DIED > .45 * POPULATION THEN
+PRINT
+PRINT "You starved ";DIED;" people in one year!!!"
+GOSUB 560
+GOTO 990
+ENDIF
+DIEDAVG=((YEAR-1) * DIEDAVG + DIED * 100 / POPULATION) / YEAR
+POPULATION=FEDPPL
+DIEDTOT = DIEDTOT + DIED
+ENDIF
+GOTO 215
+
+560 PRINT "Due to this extreme mismanagement you have not only"
+PRINT "been impeached and thrown out of office but you have"
+PRINT "also been declared national fink!!!!"
+RETURN
+
+710 PRINT "Hamurabi:  Think again.  You have only"
+PRINT STORED;" bushels of grain.  Now then,"
+RETURN
+
+720 PRINT "Hamurabi:  Think again.  You own only ";ACRES;" acres.  Now then,"
+RETURN
+
+800 C = INT(RND(1)*5)+1
+RETURN
+
+850 PRINT
+PRINT "Hamurabi:  I cannot do what you wish."
+PRINT "Get yourself another steward!!!!!"
+GOTO 990
+
+860 PRINT "In your 10-year term of office, ";DIEDAVG;" percent of the"
+PRINT "population starved per year on the average, I.e. a total of"
+PRINT DIEDTOT;" people died!!"
+L = ACRES / POPULATION
+PRINT "You started with 10 acres per person and ended with"
+PRINT L;" acres per person."
+PRINT
+IF DIEDAVG > 33 OR L < 7 THEN
+GOSUB 560
+GOTO 990
+ENDIF
+IF DIEDAVG > 10 OR L < 9 THEN
+PRINT "Your heavy-handed performance smacks of Nero and Ivan IV."
+PRINT "The people (remaining) find you an unpleasant ruler, and,"
+PRINT "frankly, hate your guts!!"
+GOTO 990
+ENDIF
+IF DIEDAVG > 3 OR L < 10 THEN
+PRINT "Your performance could have been somewhat better, but"
+PRINT "really wasn't too bad at all. ";FIX(POPULATION * .8 * RND(1));" people"
+PRINT "would dearly like to see you assassinated but we all have our"
+PRINT "trivial problems."
+GOTO 990
+ENDIF
+PRINT "A fantastic performance!!!  Charlemagne, Disraeli, and"
+PRINT "Jefferson combined could not have done better!"
+
+
+990 PRINT "****************"
+PRINT "So long for now."
+PRINT
+END
