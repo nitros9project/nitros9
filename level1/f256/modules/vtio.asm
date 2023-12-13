@@ -182,6 +182,12 @@ Init                stu       >D.KbdSta           store the device memory pointe
                     anda      #^INT_PS2_KBD       set the PS/2 keyboard interrupt
                     sta       INT_MASK_0          and save it back
 
+* Turn off all keyboard LEDs.
+                    lda       #$ED                get the PS/2 keyboard LED command
+                    lbsr      SendToPS2           send it to the PS/2
+                    clra                          clear all LEDs
+                    lbsr      SendToPS2           send it to the PS/2
+
                     clrb                          clear the carry flag
                     rts                           return to the caller
 ErrExit             orcc      #Carry              set the carry flag
