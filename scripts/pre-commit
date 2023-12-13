@@ -8,8 +8,8 @@ fi
 
 FAILED=0
 for FILE in $STAGED_FILES; do
-  python3 asmlint.py "$FILE" > /tmp/asmlint.out
-  mv /tmp/asmlint.out "$FILE"
+  python3 scripts/asmprettyprint.py "$FILE" > /tmp/asmprettyprint.out
+  mv /tmp/asmprettyprint.out "$FILE"
 
   if [ $? -ne 0 ]; then
     FAILED=1
