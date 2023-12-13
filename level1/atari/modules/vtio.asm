@@ -174,7 +174,7 @@ ex@                 rts                           return
 *    B  = error code
 *
 Write
-* Hide cursor.               
+* Hide cursor.
                     pshs      a
                     bsr       calcloc
                     lda       V.CurChr,u
@@ -443,7 +443,7 @@ Do05XX              cmpa      #$20
                     cmpa      #$23
                     beq       crate@
                     bra       ResetHandler
-crate@              
+crate@
                     bra       c@
 cchar@              leax      CurChar,pcr
                     bra       c@
@@ -601,7 +601,6 @@ Do1B20TTXXYYWWHHFFBB
 ;;; PRN2 = background color.
 ;;; PRN3 = border color.
 DWSet               lbsr      ClrScrn
-                    lbra      ResetHandler
 
 * These do nothing for now.
 DefColr
@@ -849,45 +848,45 @@ Pkt.Mask            fcb       (IRQST.BREAKDOWN|IRQST.KEYDOWN) mask byte
 
 
 *
-* IRQ routine for keyboard
+* IRQ routine for Atari keyboards.
 *
 IRQSvc
 * check if BREAK key pressed; if so, it's a C$QUIT char
-                    ldb       IRQST
-                    bitb      #IRQST.BREAKDOWN
-                    bne       getcode
-                    lda       #C$QUIT
-                    bra       noctrl@
+                    ldb       IRQST               get the IRQ status byte
+                    bitb      #IRQST.BREAKDOWN    is the BREAK key down?
+                    bne       getcode             branch if not
+                    lda       #C$QUIT             else load the QUIT character
+                    bra       noctrl@             and continue
 getcode
-                    ldb       KBCODE              get keyboard code from POKEY
+                    ldb       KBCODE              get the keyboard code from POKEY
 gotcode
-                    pshs      b
-                    andb      #$7F                mask out potential CTRL key
-                    leax      ATASCI,pcr
-                    lda       b,x                 fetch character for code
-                    tst       ,s+                 CTRL key down?
+                    pshs      b                   save the code
+                    andb      #$7F                mask out a potential CTRL key
+                    leax      ATASCII,pcr         point to the ATASCII table
+                    lda       b,x                 fetch the character for the code
+                    tst       ,s+                 is the CTRL key down?
                     bpl       noctrl@             branch if not
-                    cmpa      #$40
-                    bcs       noctrl@
-                    anda      #$5F
-                    suba      #$40
+                    cmpa      #$40                is the character at A or greater?
+                    bcs       noctrl@             branch if not
+                    anda      #$5F                else make the character uppercase
+                    suba      #$40                and subtract to get the CTRL value
 noctrl@
 * check for caps lock
-                    cmpa      #$82
-                    bne       tst4caps@
-                    tst       V.CapsLck,u
-                    beq       turnon@
-                    clra
-turnon@             sta       V.CapsLck,u
-                    bra       KeyLeave
+                    cmpa      #$82                is this CAPS Lock?
+                    bne       tst4caps@           branch if not
+                    tst       V.CapsLck,u         is the CAPS Lock off?
+                    beq       turnon@             yes, go turn it on
+                    clra                          else turn it off
+turnon@             sta       V.CapsLck,u         set the CAPS Lock state
+                    bra       KeyLeave            and leave
 tst4caps@
-                    tst       V.CapsLck,u
-                    beq       goon@
-                    cmpa      #$61
-                    blt       goon@
-                    cmpa      #$7a
-                    bgt       goon@
-                    suba      #$20
+                    tst       V.CapsLck,u         is the CAPS Lock state on?
+                    beq       goon@               branch if not
+                    cmpa      #$61                is this lowercase?
+                    blt       goon@               branch if not
+                    cmpa      #$7a                are we in lowercase range?
+                    bgt       goon@               branch if not
+                    suba      #$20                else make lowercase
 goon@
                     ldb       V.IBufH,u           get head pointer in B
                     leax      V.InBuf,u           point X to input buffer
@@ -895,7 +894,7 @@ goon@
                     lbsr      IncNCheck           check for tail wrap
                     cmpb      V.IBufT,u           B at tail?
                     beq       L012F               branch if so
-                    stb       V.IBufH,u
+                    stb       V.IBufH,u           store the pointer in the head
 L012F               sta       ,x                  store our char at ,X
                     beq       WakeIt              if nul, do wake-up
                     cmpa      V.PCHR,u            pause character?
@@ -903,7 +902,7 @@ L012F               sta       ,x                  store our char at ,X
                     ldx       V.DEV2,u            else get dev2 statics
                     beq       WakeIt              branch if none
                     sta       V.PAUS,x            else set pause request
-                    bra       WakeIt
+                    bra       WakeIt              go wake up
 L013F               ldb       #S$Intrpt           get interrupt signal
                     cmpa      V.INTR,u            our char same as intr?
                     beq       L014B               branch if same
@@ -921,18 +920,18 @@ L0158               clr       V.WAKE,u            clear process to wake flag
 * Update the shadow register then the real register to disable and
 * re-enable the keyboard interrupt
 KeyLeave
-                    pshs      cc
-                    orcc      #IntMasks
-                    lda       >D.IRQENShdw
-                    tfr       a,b
-                    anda      #^(IRQST.BREAKDOWN|IRQST.KEYDOWN)
-                    orb       #(IRQST.BREAKDOWN|IRQST.KEYDOWN)
-                    sta       IRQEN
-                    stb       >D.IRQENShdw
-                    stb       IRQEN
-                    puls      cc,pc
+                    pshs      cc                  save CC
+                    orcc      #IntMasks           mask interrupts
+                    lda       >D.IRQENShdw        get the IRQ shadow register
+                    tfr       a,b                 copy it into B
+                    anda      #^(IRQST.BREAKDOWN|IRQST.KEYDOWN) clear the BREAK and KEY down bits in B
+                    orb       #(IRQST.BREAKDOWN|IRQST.KEYDOWN) or them in A
+                    sta       IRQEN               update the hardware to show the interrupts have been serviced
+                    stb       >D.IRQENShdw        store the final value in the shadow
+                    stb       IRQEN               and re-enable the bits in the hardware
+                    puls      cc,pc               restore CC and return
 
-ATASCI              fcb       $6C,$6A,$3B,$80,$80,$6B,$2B,$2A ;LOWER CASE
+ATASCII             fcb       $6C,$6A,$3B,$80,$80,$6B,$2B,$2A ;LOWER CASE
                     fcb       $6F,$80,$70,$75,$0D,$69,$2D,$3D
 
                     fcb       $76,$80,$63,$80,$80,$62,$78,$7A
