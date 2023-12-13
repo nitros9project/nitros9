@@ -181,6 +181,7 @@ Init                stu       >D.KbdSta           store the device memory pointe
                     lda       INT_MASK_0          else get the interrupt mask byte
                     anda      #^INT_PS2_KBD       set the PS/2 keyboard interrupt
                     sta       INT_MASK_0          and save it back
+
                     clrb                          clear the carry flag
                     rts                           return to the caller
 ErrExit             orcc      #Carry              set the carry flag
@@ -930,23 +931,23 @@ SSScSiz             clra                          clear the upper 8 bits of D
 ;;;
 ;;; Error:  B = A non-zero error code.
 ;;;        CC = Carry flag set to indicate error.
-SSJoy               lda         IORA              get the joystick value
-                    ldx         #0                initialize left/top value in X
-                    ldy         #255              initialize right/bottom value in Y
+SSJoy               lda       IORA                get the joystick value
+                    ldx       #0                  initialize left/top value in X
+                    ldy       #255                initialize right/bottom value in Y
                     lsra                          shift out UP
-                    bcc         s1@               branch if carry clear
-                    stx         R$Y,u             else store left value in caller's Y
+                    bcc       s1@                 branch if carry clear
+                    stx       R$Y,u               else store left value in caller's Y
 s1@                 lsra                          shift out DOWN
-                    bcc         s2@               branch if carry clear
-                    sty         R$Y,u             else store right value in caller's Y
+                    bcc       s2@                 branch if carry clear
+                    sty       R$Y,u               else store right value in caller's Y
 s2@                 lsra                          shift out LEFT
-                    bcc         s3@               branch if carry clear
-                    stx         R$X,u             else store up value in caller's X
+                    bcc       s3@                 branch if carry clear
+                    stx       R$X,u               else store up value in caller's X
 s3@                 lsra                          shift out RIGHT
-                    bcc         s4@               branch if carry clear
-                    sty         R$X,u             else store right value in caller's X
+                    bcc       s4@                 branch if carry clear
+                    sty       R$X,u               else store right value in caller's X
 * A now contains (BUTTON 2 | BUTTON 1 | BUTTON 0) in lower 3 bits
-s4@                 sta         R$A,u             store buttons in caller's A
+s4@                 sta       R$A,u               store buttons in caller's A
                     clrb                          clear carry
                     rts                           return
 
@@ -1071,6 +1072,31 @@ hex2@               addb      #$37
 afterhex2@          rts
                     endc
 
+* Send a byte to the PS/2 keyboard.
+*
+* Entry: A = The byte to send to the keyboard.
+SendToPS2           sta       PS2_OUT             send the byte out to the keyboard
+                    lda       #K_WR               load the "write" bit
+                    sta       PS2_CTRL            send it to the control register
+                    clr       PS2_CTRL            then clear the bit in the control register
+                    lda       #$FA
+* Entry: A = Response to expect from the keyboard.
+* Destroys X.
+ReadFromPS2         ldx       #$0000
+                    pshs      a,x
+l@                  ldx       1,s
+                    leax      -1,x
+                    stx       1,s
+                    cmpx      #$0000
+                    beq       e@
+                    lda       KBD_IN              load a byte from the keyboard
+                    cmpa      ,s                  is it what we expect?
+                    bne       l@                  branch if not
+                    clra                          clear carry
+                    puls      a,x,pc              return
+e@                  comb
+                    puls      a,x,pc              return
+
 IRQSvc              ldb       #INT_PS2_KBD        get the PS/2 keyboard interrupt flag
                     stb       INT_PENDING_0       clear the interrupt
 getcode             lda       KBD_IN              get the key code
@@ -1164,7 +1190,16 @@ DoALTDown           sta       V.ALT,u             it must be the ALT key then
 DoCTRLDown          sta       V.CTRL,u            it's the CTRL key
                     comb                          clear the carry so that the read routine just returns
                     rts                           return
-DoCapsDown          com       V.CAPSLck,u         it's the CAPS Lock key
+DoCapsDown
+                    lda       #$ED                get the PS/2 keyboard LED command
+                    lbsr      SendToPS2           send it to the PS/2
+                    lda       V.PS2LED,u          get the PS/2 LED flags in static memory
+                    com       V.CAPSLck,u         complement the CAPS lock flag in our static memory
+                    beq       ledoff@             branch if the result is 0 (LED should be turned off)
+                    ora       #$04                set the CAPS Lock LED bit
+                    bra       send@               and send it to the keyboard
+ledoff@             anda      #^$04               clear the CAPS Lock LED bit
+send@               lbsr      SendToPS2           send the byte to the keyboard
                     comb                          clear the carry so that the read routine just returns
                     rts                           return
 DoSHIFTDown         sta       V.SHIFT,u           its the SHIFT key
@@ -1203,11 +1238,11 @@ E0Handler           cmpa      #$F0                is this the $F0 key code?
                     comb                          else set the carry
                     rts                           return
 DoUpArrowDown       lda       #$0C                load up arrow character
-                    bra       BufferChar          add it to the input buffer
+                    lbra      BufferChar          add it to the input buffer
 DoDownArrowDown     lda       #$0A                load down arrow character
-                    bra       BufferChar          add it to the input buffer
+                    lbra      BufferChar          add it to the input buffer
 DoLeftArrowDown     lda       #$08                load left arrow character
-                    bra       BufferChar          add it to the input buffer
+                    lbra      BufferChar          add it to the input buffer
 DoRightArrowDown    lda       #$09                load right arrow character
                     lbra      BufferChar          add it to the input buffer
 E0HandlerUp         cmpa      #$11                is this the right ALT key going up?
