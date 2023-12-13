@@ -600,8 +600,8 @@ Do1B20TTXXYYWWHHFFBB
 ;;; PRN1 = foreground color.
 ;;; PRN2 = background color.
 ;;; PRN3 = border color.
-DWSet               rts
-
+DWSet               lbsr      ClrScrn
+                    lbra      ResetHandler
 
 * These do nothing for now.
 DefColr
