@@ -10,7 +10,6 @@ DISTROVER	= $(DISTRONAME)_$(NITROS9VER)_$(PORT)
 BOOTFILE	= bootfiles/bootfile
 DIRS		= cmds modules defs sys bootfiles wwwroot
 
-
 CMDS		= $(shell $(CD) cmds; make --no-print-directory showobjs_dw)
 CMDS_DEMO = $(shell $(CD) cmds; make --no-print-directory showobjs_demo)
 SYSTEXT		= $(shell $(CD) sys; make --no-print-directory showtextfiles)
@@ -18,6 +17,8 @@ SYSBIN		= $(shell $(CD) sys; make --no-print-directory showbinfiles)
 WWWROOT		= $(shell $(CD) wwwroot; make --no-print-directory showobjs)
 DEFS		= $(shell $(CD) defs; make --no-print-directory showobjs)
 STARTUP		= startup
+
+BASIC09_FILES = $(foreach file,$(3RDPARTY)/packages/basic09/*.b09,$(file))
 
 DSK		= $(DISTROVER).dsk
 DSK_DEMO	= ataridemo.dsk
@@ -65,6 +66,8 @@ $(DSK):
 	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
+	$(MAKDIR) $@,BASIC09
+	$(CPL) $(BASIC09_FILES) $@,BASIC09
 
 $(DSK_DEMO):
 	$(RM) $@

@@ -1,0 +1,362 @@
+PROCEDURE fibonacci
+REM computes the first ten Fibonacci numbers
+DIM x,y,i,temp:INTEGER
+
+x:=0 \y:=0
+FOR i=0 TO 10
+temp:=y
+
+IF i<>0 THEN
+y:=y+x
+ELSE y:=1
+ENDIF
+
+x:=temp
+PRINT i,y
+NEXT i
+
+PROCEDURE fractions
+REM by T.F. Ritter
+REM finds increasingly-close rational approximations
+REM to the desired real value
+DIM m:INTEGER
+
+desired:=PI
+last:=0
+
+FOR m=1 TO 30000
+n:=INT(.5+m*desired)
+trial:=n/m
+IF ABS(trial-desired)<ABS(last-desired) THEN
+PRINT n; "/"; m; " = "; trial,
+PRINT "difference = "; trial-desired;
+PRINT
+last:=trial
+ENDIF
+NEXT m
+
+PROCEDURE prinbi
+REM by T.F. Ritter
+REM prints the integer parameter value in binary
+PARAM n:INTEGER
+DIM i:INTEGER
+
+FOR i=15 TO 0 STEP -1
+IF n<0 THEN
+PRINT "1";
+ELSE PRINT "0";
+ENDIF
+n:=n+n
+NEXT i
+PRINT
+
+END
+
+PROCEDURE hanoi
+REM by T.F. Ritter
+REM move n discs in Tower of Hanoi game
+REM See BYTE Magazine, Oct 1980, pg. 279
+
+PARAM n:INTEGER; from,to_,other:STRING[8]
+
+IF n=1 THEN
+PRINT "move #"; n; " from "; from; " to "; to_
+ELSE
+RUN hanoi(n-1,from,other,to_)
+PRINT "move #"; n; " from "; from; " to "; to_
+RUN hanoi(n-1,other,to_,from)
+ENDIF
+
+END
+
+PROCEDURE roman
+REM prints integer parameter as Roman Numeral
+PARAM x:INTEGER
+DIM value,svalu,i:INTEGER
+DIM char,subs:STRING
+
+char:="MDCLXVI"
+subs:="CCXXII "
+DATA 1000,100,500,100,100,10,50,10,10,1,5,1,1,0
+
+FOR i=1 TO 7
+READ value
+READ svalu
+
+WHILE x>=value DO
+PRINT MID$(char,i,1);
+x:=x-value
+ENDWHILE
+
+IF x>=value-svalu THEN
+PRINT MID$(subs,i,1); MID$(char,i,1);
+x:=x-value+svalu
+ENDIF
+
+NEXT i
+END
+
+PROCEDURE eightqueens
+REM originally by N. Wirth; here re-coded from Pascal
+REM finds the arrangements by which eight queens
+REM can be placed on a chess board without conflict
+DIM n,k,x(8):INTEGER
+DIM col(8),up(15),down(15):BOOLEAN
+BASE 0
+
+(* initialize empty board *)
+n:=0
+FOR k:=0 TO 7 \col(k):=TRUE \NEXT k
+FOR k:=0 TO 14 \up(k):=TRUE \down(k):=TRUE \NEXT k
+RUN generate(n,x,col,up,down)
+END
+
+PROCEDURE generate
+PARAM n,x(8):INTEGER
+PARAM col(8),up(15),down(15):BOOLEAN
+DIM h,k:INTEGER \h:=0
+BASE 0
+
+REPEAT
+IF col(h) AND up(n-h+7) AND down(n+h) THEN
+(* set queen on square [n,h] *)
+x(n):=h
+col(h):=FALSE \up(n-h+7):=FALSE \down(n+h) := FALSE
+n:=n+1
+IF n=8 THEN
+(* board full; print configuration *)
+FOR k=0 TO 7
+PRINT x(k); "   ";
+NEXT k
+PRINT
+ELSE RUN generate(n,x,col,up,down)
+ENDIF
+
+(* remove queen from square [n,h] *)
+n:=n-1
+col(h):=TRUE \up(n-h+7):=TRUE \down(n+h):=TRUE
+ENDIF
+h:=h+1
+UNTIL h=8
+END
+
+PROCEDURE electric
+REM re-programmed from "ELECTRIC"
+REM by Dwyer and Critchfield
+REM Basic and the Personal Computer (Addison-Wesley, 1978)
+REM provides a pictorial representation of the
+REM resultant electrical field around charged points
+DIM a(10),b(10),c(10)
+DIM x,y,i,j:INTEGER
+xscale:=50./78.
+yscale:=50./32.
+
+INPUT "How many charges do you have? ",n
+PRINT "The field of view is 0-50,0-50 (x,y)"
+FOR i=1 TO n
+PRINT "type in the x and y positions of charge ";
+PRINT i;
+INPUT a(i),b(i)
+NEXT i
+PRINT "type in the size of each charge:"
+FOR i=1 TO n
+PRINT "charge "; i;
+INPUT c(i)
+NEXT i
+
+REM visit each screen position
+FOR y=32 TO 0 STEP -1
+FOR x=0 TO 78
+REM compute field strength into v
+GOSUB 10
+z:=v*50.
+REM map z to valid ASCII in b$
+GOSUB 20
+REM print char (proportional to field)
+PRINT b$;
+NEXT x
+PRINT
+NEXT y
+END
+
+10   v=1.
+FOR i=1 TO n
+r:=SQRT(SQ(xscale*x-a(i))+SQ(yscale*y-b(i)))
+EXITIF r=.0 THEN
+v:=99999.
+ENDEXIT
+v:=v+c(i)/r
+NEXT i
+RETURN
+
+20   IF z<32 THEN b$:=" "
+ELSE
+IF z>57 THEN z:=z+8
+ENDIF
+IF z>90 THEN b$:="*"
+ELSE
+IF z>INT(z)+.5 THEN b$:=" "
+ELSE b$:=CHR$(z)
+ENDIF
+ENDIF
+ENDIF
+RETURN
+
+PROCEDURE qsort1
+REM quicksort, by T.F. Ritter
+PARAM bot,top,d(1000):INTEGER
+DIM n,m:INTEGER; btemp:BOOLEAN
+
+n:=bot
+m:=top
+
+LOOP  \REM each element gets the once over
+REPEAT  \REM this is a post-inc instruction
+btemp:=d(n)<d(top)
+n:=n+1
+UNTIL NOT (btemp)
+n:=n-1 \REM point at the tested element
+EXITIF n=m THEN
+ENDEXIT
+
+REPEAT  \REM this is a post-dec instruction
+m:=m-1
+UNTIL d(m)<=d(top) OR m=n
+EXITIF n=m THEN
+ENDEXIT
+
+RUN exchange(d(m),d(n))
+n:=n+1 \REM prepare for post-inc
+EXITIF n=m THEN
+ENDEXIT
+
+ENDLOOP
+
+IF n<>top THEN
+IF d(n)<>d(top) THEN
+RUN exchange(d(n),d(top))
+ENDIF
+ENDIF
+
+IF bot<n-1 THEN
+RUN qsort1(bot,n-1,d)
+ENDIF
+IF n+1<top THEN
+RUN qsort1(n+1,top,d)
+ENDIF
+
+END
+
+PROCEDURE exchange
+PARAM a,b:INTEGER
+DIM temp:INTEGER
+
+temp:=a
+a:=b
+b:=temp
+
+END
+
+PROCEDURE prin
+PARAM n,m,d(1000):INTEGER
+DIM i:INTEGER
+
+FOR i=n TO m
+PRINT d(i);
+NEXT i
+PRINT
+
+END
+
+PROCEDURE sortest
+REM This procedure is used to test Quicksort
+REM It fills the array "d" with randomly generated
+REM numbers and sorts them.
+DIM i,d(1000):INTEGER
+
+FOR i=1 TO 1000
+d(i):=INT(RND(100))
+NEXT i
+
+RUN prin(1,1000,d)
+
+RUN qsort1(1,1000,d)
+
+RUN prin(1,1000,d)
+
+END
+
+PROCEDURE structst
+
+REM example of intermixed array and record structures
+REM note that structure d contains 200 real elements
+
+TYPE a=one(2):REAL
+TYPE b=two(10):a
+TYPE c=three(10):b
+DIM d,e:c
+
+FOR i=1 TO 10
+FOR j=1 TO 10
+FOR k=1 TO 2
+PRINT d.three(i).two(j).one(k)
+d.three(i).two(j).one(k):=0.
+PRINT e.three(i).two(j).one(k)
+PRINT
+NEXT k
+NEXT j
+NEXT i
+
+REM this is a complete structure assignment
+e:=d
+
+FOR i=1 TO 10
+FOR j=1 TO 10
+FOR k=1 TO 2
+PRINT e.three(i).two(j).one(k);
+NEXT k
+PRINT
+NEXT j
+NEXT i
+
+END
+
+PROCEDURE pialook
+REM display PIA at address (T.F. Ritte)
+REM made understandable by K. Kaplan
+
+DIM address:INTEGER
+INPUT "Enter PIA address:  "; address
+RUN side(address)
+RUN side(adress+2)
+END
+
+PROCEDURE side
+REM display side of PIA at address
+PARAM address:INTEGER
+DIM data:INTEGER
+
+(* loop until control register input strobe
+(* flag (bit 7) is set
+REPEAT \ UNTIL LAND(PEEK(address+1),$80) <> 0
+(* now read the data register
+data := PEEK(address)
+(* display data in binary
+RUN prinbyte(data)
+END
+
+PROCEDURE prinbyte
+REM print a byte as binary
+PARAM n: INTEGER
+DIM i: INTEGER
+
+n:= n*256
+FOR i = 7 TO 0 STEP -1
+IF n < 0 THEN PRINT "1";
+ELSE PRINT "0";
+ENDIF
+n:= n + 1
+NEXT i
+
+PRINT
+END

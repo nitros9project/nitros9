@@ -1,0 +1,252 @@
+PROCEDURE mpadd
+REM a+b=>c:five_integer_number (T.F. Ritter)
+PARAM a(5),b(5),c(5):INTEGER
+DIM i,carry:INTEGER
+
+carry:=0
+FOR i=5 TO 1 STEP -1
+c(i):=a(i)+b(i)+carry
+IF c(i)>=10000 THEN
+c(i):=c(i)-10000
+carry:=1
+ELSE carry:=0
+ENDIF
+NEXT i
+
+PROCEDURE mpsub
+PARAM a(5),b(5),c(5):INTEGER
+DIM i,borrow:INTEGER
+
+borrow:=0
+FOR i=5 TO 1 STEP -1
+c(i):=a(i)-b(i)-borrow
+IF c(i)<0 THEN
+c(i):=c(i)+10000
+borrow:=1
+ELSE borrow:=0
+ENDIF
+NEXT i
+
+PROCEDURE mprint
+PARAM a(5):INTEGER
+DIM i:INTEGER; s:STRING
+
+FOR i=1 TO 5
+IF i=5 THEN PRINT ".";
+ENDIF
+s:=STR$(a(i))
+PRINT MID$("0000"+s,LEN(s)+1,4);
+NEXT i
+
+PROCEDURE mpinput
+PARAM a(5):INTEGER
+DIM n,i:INTEGER
+
+INPUT "input ultra-precision number: ",b$
+n:=SUBSTR(".",b$)
+
+IF n<>0 THEN
+a(5):=VAL(MID$(b$+"0000",n+1,4))
+b$:=LEFT$(b$,n-1)
+ELSE a(5):=0
+ENDIF
+
+b$:="00000000000000000000"+b$
+n:=1+LEN(b$)
+FOR i=4 TO 1 STEP -1
+n:=n-4
+a(i):=VAL(MID$(b$,n,4))
+NEXT i
+
+PROCEDURE mptoreal
+PARAM a(5):INTEGER; b:REAL
+DIM i:INTEGER
+
+b:=a(1)
+FOR i=2 TO 4
+b:=b*10000
+b:=b+a(i)
+NEXT i
+b:=b+a(5)*.0001
+
+PROCEDURE Patch
+(* Program to examine and patch any byte of a disk file *)
+(* Written by L. Crane *)
+DIM buffer(256):BYTE
+DIM path,offset,modloc:INTEGER; loc:REAL
+DIM rewrite:STRING
+INPUT "pathlist? ",rewrite
+OPEN #path,rewrite:UPDATE
+LOOP
+INPUT "sector number? ",rewrite
+EXITIF rewrite="" THEN ENDEXIT
+loc=VAL(rewrite)*256
+SEEK #path,loc
+GET #path,buffer
+RUN DumpBuffer(loc,buffer)
+LOOP
+INPUT "change (sector offset)? ",rewrite
+EXITIF rewrite="" THEN
+RUN DumpBuffer(loc,buffer)
+ENDEXIT
+EXITIF rewrite="S" OR rewrite="s" THEN ENDEXIT
+offset=VAL(rewrite)+1
+LOOP
+EXITIF offset>256 THEN ENDEXIT
+modloc=loc+offset-1
+PRINT USING "h4,' - ',h2",modloc,buffer(offset);
+INPUT ":",rewrite
+EXITIF rewrite="" THEN ENDEXIT
+IF rewrite<>" " THEN
+buffer(offset)=VAL(rewrite)
+ENDIF
+offset=offset+1
+ENDLOOP
+ENDLOOP
+INPUT "rewrite sector? ",rewrite
+IF LEFT$(rewrite,1)="Y" OR LEFT$(rewrite,1)="y" THEN
+SEEK #path,loc
+PUT #path,buffer
+ENDIF
+ENDLOOP
+CLOSE #path
+BYE
+
+PROCEDURE DumpBuffer
+(* Called by PATCH *)
+TYPE buffer=char(8):INTEGER
+PARAM loc:REAL; line(16):buffer
+DIM i,j:INTEGER
+WHILE loc>65535. DO
+loc=loc-65536.
+ENDWHILE
+FOR j=1 TO 16
+PRINT USING "h4",FIX(INT(loc))+(j-1)*16;
+PRINT ":";
+FOR i=1 TO 8
+PRINT USING "X1,H4",line(j).char(i);
+NEXT i
+RUN printascii(line(j))
+PRINT
+NEXT j
+
+PROCEDURE PrintASCII
+TYPE buffer=char(16):BYTE
+PARAM line:buffer
+DIM ascii:STRING; nextchar:BYTE; i:INTEGER
+ascii=""
+FOR i=1 TO 16
+nextchar=line.char(i)
+IF nextchar>127 THEN
+nextchar=nextchar-128
+ENDIF
+IF nextchar<32 OR nextchar>125 THEN
+ascii=ascii+" "
+ELSE
+ascii=ascii+CHR$(nextchar)
+ENDIF
+NEXT i
+PRINT "  "; ascii;
+
+PROCEDURE MakeProc
+(* Generates an OS-9 command file to apply a command *)
+(* Such as copy, del, etc., to all files in a directory *)
+(* or directory system.  Author: L. Crane *)
+
+DIM DirPath,ProcPath,i,j,k:INTEGER
+DIM CopyAll,CopyFile:BOOLEAN
+DIM ProcName,FileName,ReInput,ReOutput,response:STRING
+DIM SrcDir,DestDir,DirLine:STRING[80]
+DIM Function,Options:STRING[60]
+DIM ProcLine:STRING[160]
+
+ProcName="CopyDir"
+Function="Copy"
+Options="#32k"
+REPEAT
+PRINT "Proc name ("; ProcName; ")";
+INPUT response
+IF response<>"" THEN
+ProcName=TRIM$(response)
+ENDIF
+
+ON ERROR GOTO 100
+SHELL "del "+ProcName
+100    ON ERROR
+INPUT "Source Directory? ",SrcDir
+SrcDir=TRIM$(SrcDir)
+ON ERROR GOTO 200
+SHELL "del procmaker...dir"
+200    ON ERROR
+SHELL "dir "+SrcDir+" >procmaker...dir"
+OPEN #DirPath,"procmaker...dir":READ
+CREATE #ProcPath,ProcName:WRITE
+PRINT "Function ("; Function; ")";
+INPUT response
+IF response<>"" THEN
+Function=TRIM$(response)
+ENDIF
+INPUT "Redirect Input? ",response
+IF response="y" OR response="Y" THEN
+ReInput="<" \ ELSE  \ReInput=""
+ENDIF
+INPUT "Redirect Output? ",response
+IF response="y" OR response="Y" THEN
+ReOutput=">" \ ELSE  \ReOutput=""
+ENDIF
+PRINT "Options ("; Options; ")";
+INPUT response
+IF response<>"" THEN
+Options=TRIM$(response)
+ENDIF
+INPUT "Destination Directory? ",DestDir
+DestDir=TRIM$(DestDir)
+WRITE #ProcPath,"t"
+WRITE #ProcPath,"TMode .1 -pause"
+READ #DirPath,DirLine
+INPUT "Use all files? ",response
+CopyAll=response="y" OR response="Y"
+WHILE NOT(EOF(#DirPath)) DO
+READ #DirPath,DirLine
+i=LEN(TRIM$(DirLine))
+IF i>0 THEN
+j=1
+REPEAT
+k=j
+WHILE j<=i AND MID$(DirLine,j,1)<>" " DO
+j=j+1
+ENDWHILE
+FileName=MID$(DirLine,k,j-k)
+IF NOT(CopyAll) THEN
+PRINT "Use "; FileName;
+INPUT response
+CopyFile=response="y" OR response="Y"
+ENDIF
+IF CopyAll OR CopyFile THEN
+ProcLine=Function+" "+ReInput+SrcDir+"/"+FileName
+IF DestDir<>"" THEN
+ProcLine=ProcLine+" "+ReOutput+DestDir+"/"+FileName
+ENDIF
+ProcLine=ProcLine+" "+Options
+WRITE #ProcPath,ProcLine
+ENDIF
+WHILE j<i AND MID$(DirLine,j,1)=" " DO
+j=j+1
+ENDWHILE
+UNTIL j>=i
+ENDIF
+ENDWHILE
+WRITE #ProcPath,"TMode .1 pause"
+WRITE #ProcPath,"Dir e "+SrcDir
+IF DestDir<>"" THEN
+WRITE #ProcPath,"Dir e "+DestDir
+ENDIF
+CLOSE #DirPath
+CLOSE #ProcPath
+SHELL "del procmaker...dir"
+PRINT
+INPUT "Another ? ",response
+UNTIL response<>"Y" AND response<>"y"
+IF response<>"B" AND response<>"b" THEN
+BYE
+ENDIF

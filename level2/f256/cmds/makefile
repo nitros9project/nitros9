@@ -5,22 +5,21 @@ vpath %.asm $(LEVEL2)/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09
 
 DEPENDS		= ./makefile $(NOSLIB)/net.o
 
-AFLAGS          += --includedir=$(3RDPARTY)/packages/basic09
-AFLAGS          += --includedir=../defs
+AFLAGS      += --includedir=$(3RDPARTY)/packages/basic09
+AFLAGS      += --includedir=../defs
 LFLAGS		+= -L$(NITROS9DIR)/lib
 LFLAGS		+= -lf256
 LFLAGS		+= -lnet -lalib
 
-CMDS		= asm attr backup binex build cmp copy \
+BASIC09	= basic09 runb inkey syscall
+CMDS    = asm attr backup binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
 		display dmem dmode dsave dump echo edit error exbin \
 		format free help ident iniz irqs link list load login \
 		makdir mdir megaread merge mfree minted mmap modpatch padrom park \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
-		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode
-
-CMDS_D2         = basic09 runb inkey syscall copy del echo format \
-                merge prompt tmode
+		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
+		$(BASIC09)
 
 CMDS_DW		= inetd dw telnet httpd
 
@@ -30,7 +29,7 @@ UTILPAK1	= attr build copy del deldir dir display list makdir mdir \
 		merge mfree procs rename tmode
 
 # Files not compilable by os9asm: config
-all:	$(DEPENDS) $(CMDS) $(CMDS_D2) $(CMDS_DW) shell utilpak1
+all:	$(DEPENDS) $(CMDS) $(CMDS_DW) shell utilpak1
 
 # Some commands depend on net.o
 $(NOSLIB)/net.o:
@@ -67,17 +66,14 @@ utilpak1:  $(UTILPAK1) $(DEPENDS)
 	@$(ECHO) ""
 
 clean:
-	$(RM) shell utilpak1 $(SUBS) $(SHELLMODS) $(CMDS) $(CMDS_D2) $(CMDS_DW)
+	$(RM) shell utilpak1 $(SUBS) $(SHELLMODS) $(CMDS) $(CMDS_DW)
 
 # Only $(CMDS) are shown here
 showobjs:
 	@$(ECHO) shell utilpak1 $(CMDS)
 
 showobjs_dw:
-	@$(ECHO) shell utilpak1 $(sort $(CMDS) $(CMDS_D2) $(CMDS_DW))
-
-showobjs_d2:
-	@$(ECHO) $(CMDS_D2)
+	@$(ECHO) shell utilpak1 $(sort $(CMDS) $(CMDS_DW))
 
 identify:
 	$(IDENT_SHORT) $(ALLOBJS)
