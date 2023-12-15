@@ -4,7 +4,7 @@ DISTRO		= $(CPU)L$(LEVEL)
 DISTRONAME	= NOS9_$(CPU)_L$(LEVEL)
 DISTROVER	= $(DISTRONAME)_$(NITROS9VER)_$(PORT)
 BOOTFILE_DW	= bootfiles/bootfile_dw
-DIRS		= defs cmds modules sys bootfiles wwwroot
+DIRS		= defs cmds modules sys bootfiles wwwroot feu
 
 CMDS		= $(shell $(CD) cmds; make --no-print-directory showobjs)
 KERNEL		= $(shell $(CD) modules; make --no-print-directory showkernel)
