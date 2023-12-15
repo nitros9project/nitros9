@@ -1,0 +1,1 @@
+PROCEDURE sieveDIM flags(8191):BOOLEAN; i,k,prime,count:INTEGERBASE 0PRINT "only one iteration"count:=0FOR i:=0 TO 8190 \flags(i):=TRUE \NEXT iFOR i:=0 TO 8190IF flags(i) THEN prime:=i+i+3FOR k:=i+prime TO 8190 STEP prime \flags(k):=FALSE \NEXT kcount:=count+1ENDIF NEXT iPRINT count; " primes"

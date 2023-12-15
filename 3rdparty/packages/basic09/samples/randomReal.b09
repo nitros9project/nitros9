@@ -1,0 +1,1 @@
+PROCEDURE randomRealPARAM rawBytes(5):BYTEDIM i:INTEGER; allZero:BOOLEANallZero:=TRUEFOR i:=1 TO 5rawBytes(i):=INT(RND(256))IF rawBytes(i)<>0 THEN allZero:=FALSEENDIF NEXT i(* Ensure normalizationIF NOT(allZero) THEN rawBytes(2):=LOR(rawBytes(2),$80)ENDIF 
