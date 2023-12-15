@@ -61,16 +61,12 @@ reload:
 rogue:
 	$(CD) $(3RDPARTY)/packages/rogue; make
 
-bf:
-	$(CD) $(3RDPARTY)/packages/brainfuck; make
-
-BASIC09_FILES = $(foreach file,$(3RDPARTY)/packages/basic09/*.b09,$(file))
+BASIC09_FILES = $(foreach file,$(3RDPARTY)/packages/basic09/samples/*.b09,$(file))
 ROGUE_OBJS = $(shell $(CD) $(3RDPARTY)/packages/rogue; make --no-print-directory showobjs)
 ROGUE_FILES = $(shell $(CD) $(3RDPARTY)/packages/rogue; make --no-print-directory showfiles)
-BF_OBJS = $(shell $(CD) $(3RDPARTY)/packages/brainfuck; make --no-print-directory showobjs)
-BF_FILES = $(shell $(CD) $(3RDPARTY)/packages/brainfuck; make --no-print-directory showfiles)
+BF_FILES = $(foreach file,$(3RDPARTY)/packages/brainfuck/*.bf,$(file))
 
-$(DSKSD): rogue bf
+$(DSKSD): rogue
 	$(RM) $@
 	$(OS9FORMAT_F256SD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9COPY) bootfiles/bootfile_sd $@,OS9Boot
@@ -97,13 +93,11 @@ $(DSKSD): rogue bf
 	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_FILES) ../../../level2/f256/$@,ROGUE
 	$(OS9ATTR_EXEC) $(foreach file,$(ROGUE_OBJS),$@,CMDS/$(file))
 	$(MAKDIR) $@,BRAINFUCK
-	$(CD) $(3RDPARTY)/packages/brainfuck; $(OS9COPY) $(BF_OBJS) ../../../level2/f256/$@,CMDS
-	$(CD) $(3RDPARTY)/packages/brainfuck; $(OS9COPY) $(BF_FILES) ../../../level2/f256/$@,BRAINFUCK
-	$(OS9ATTR_EXEC) $(foreach file,$(BF_OBJS),$@,CMDS/$(file))
+	$(CPL) $(BF_FILES) $@,BRAINFUCK
 	$(RM) $(LDSKSD)
 	$(SOFTLINK) $@ $(LDSKSD)
 
-$(DSKDW): rogue bf
+$(DSKDW): rogue
 	$(RM) $@
 	$(OS9FORMAT_DW) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9COPY) bootfiles/bootfile_dw $@,OS9Boot
@@ -130,9 +124,7 @@ $(DSKDW): rogue bf
 	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_FILES) ../../../level2/f256/$@,ROGUE
 	$(OS9ATTR_EXEC) $(foreach file,$(ROGUE_OBJS),$@,CMDS/$(file))
 	$(MAKDIR) $@,BRAINFUCK
-	$(CD) $(3RDPARTY)/packages/brainfuck; $(OS9COPY) $(BF_OBJS) ../../../level2/f256/$@,CMDS
-	$(CD) $(3RDPARTY)/packages/brainfuck; $(CPL) $(BF_FILES) ../../../level2/f256/$@,BRAINFUCK
-	$(OS9ATTR_EXEC) $(foreach file,$(BF_OBJS),$@,CMDS/$(file))
+	$(CPL) $(BF_FILES) $@,BRAINFUCK
 	$(RM) $(LDSKDW)
 	$(SOFTLINK) $@ $(LDSKDW)
 

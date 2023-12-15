@@ -18,7 +18,8 @@ WWWROOT		= $(shell $(CD) wwwroot; make --no-print-directory showobjs)
 DEFS		= $(shell $(CD) defs; make --no-print-directory showobjs)
 STARTUP		= startup
 
-BASIC09_FILES = $(foreach file,$(3RDPARTY)/packages/basic09/*.b09,$(file))
+BASIC09_FILES = $(foreach file,$(3RDPARTY)/packages/basic09/samples/*.b09,$(file))
+BF_FILES = $(foreach file,$(3RDPARTY)/packages/brainfuck/*.bf,$(file))
 
 DSK		= $(DISTROVER).dsk
 DSK_DEMO	= ataridemo.dsk
@@ -68,6 +69,8 @@ $(DSK):
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
+	$(MAKDIR) $@,BRAINFUCK
+	$(CPL) $(BF_FILES) $@,BRAINFUCK
 
 $(DSK_DEMO):
 	$(RM) $@
