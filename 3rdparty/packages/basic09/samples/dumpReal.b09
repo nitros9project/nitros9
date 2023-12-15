@@ -1,0 +1,1 @@
+PROCEDURE dumpRealTYPE RealInnards=exponent:BYTE; mantissa(4):BYTEPARAM x:RealInnardsDIM i:INTEGERPRINT USING "h2,s1",x.exponent," "; FOR i:=1 TO 4PRINT USING "h2",x.mantissa(i); NEXT iPRINT 

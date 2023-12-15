@@ -57,18 +57,10 @@ dskcopy: $(DSKS)
 reload:
 	osascript -e 'tell application "DriveWire"' -e 'tell server of first document' -e 'reload drive 0' -e 'end tell' -e 'end tell'
 
-basic09:
-	$(CD) $(3RDPARTY)/packages/basic09; make
+BASIC09_FILES = $(foreach file,$(3RDPARTY)/packages/basic09/samples/*.b09,$(file))
+BF_FILES = $(foreach file,$(3RDPARTY)/packages/brainfuck/*.bf,$(file))
 
-bf:
-	$(CD) $(3RDPARTY)/packages/brainfuck; make
-
-BASIC09_OBJS = $(shell $(CD) $(3RDPARTY)/packages/basic09; make --no-print-directory show6809objs)
-BASIC09_FILES = $(shell $(CD) $(3RDPARTY)/packages/basic09; make --no-print-directory showfiles)
-BF_OBJS = $(shell $(CD) $(3RDPARTY)/packages/brainfuck; make --no-print-directory showobjs)
-BF_FILES = $(shell $(CD) $(3RDPARTY)/packages/brainfuck; make --no-print-directory showfiles)
-
-$(DSKSD): basic09 bf
+$(DSKSD):
 	$(RM) $@
 	$(OS9FORMAT_F256SD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9COPY) bootfiles/bootfile_sd $@,OS9Boot
@@ -87,19 +79,13 @@ $(DSKSD): basic09 bf
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
-	$(CD) $(3RDPARTY)/packages/basic09; $(OS9COPY) $(BASIC09_OBJS) ../../../level1/f256/$@,CMDS
-	$(OS9COPY) $(3RDPARTY)/packages/basic09/basic09_6809 $@,CMDS/basic09
-	$(OS9COPY) $(3RDPARTY)/packages/basic09/runb_6809 $@,CMDS/runb
-	$(OS9ATTR_EXEC) $@,CMDS/basic09
-	$(OS9ATTR_EXEC) $@,CMDS/runb
+	$(CPL) $(BASIC09_FILES) $@,BASIC09
 	$(MAKDIR) $@,BRAINFUCK
-	$(CD) $(3RDPARTY)/packages/brainfuck; $(OS9COPY) $(BF_OBJS) ../../../level1/f256/$@,CMDS
-	$(CD) $(3RDPARTY)/packages/brainfuck; $(OS9COPY) $(BF_FILES) ../../../level1/f256/$@,BRAINFUCK
-	$(OS9ATTR_EXEC) $(foreach file,$(BF_OBJS),$@,CMDS/$(file))
+	$(CPL) $(BF_FILES) $@,BRAINFUCK
 	$(RM) $(LDSKSD)
 	$(SOFTLINK) $@ $(LDSKSD)
 
-$(DSKDW): basic09 bf
+$(DSKDW):
 	$(RM) $@
 	$(OS9FORMAT_DW) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9COPY) bootfiles/bootfile_dw $@,OS9Boot
@@ -119,14 +105,9 @@ $(DSKDW): basic09 bf
 	$(CPL) $(STARTUP_DW) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
-	$(OS9COPY) $(3RDPARTY)/packages/basic09/basic09_6809 $@,CMDS/basic09
-	$(OS9COPY) $(3RDPARTY)/packages/basic09/runb_6809 $@,CMDS/runb
-	$(OS9ATTR_EXEC) $@,CMDS/basic09
-	$(OS9ATTR_EXEC) $@,CMDS/runb
+	$(CPL) $(BASIC09_FILES) $@,BASIC09
 	$(MAKDIR) $@,BRAINFUCK
-	$(CD) $(3RDPARTY)/packages/brainfuck; $(OS9COPY) $(BF_OBJS) ../../../level1/f256/$@,CMDS
-	$(CD) $(3RDPARTY)/packages/brainfuck; $(CPL) $(BF_FILES) ../../../level1/f256/$@,BRAINFUCK
-	$(OS9ATTR_EXEC) $(foreach file,$(BF_OBJS),$@,CMDS/$(file))
+	$(CPL) $(BF_FILES) $@,BRAINFUCK
 	$(RM) $(LDSKDW)
 	$(SOFTLINK) $@ $(LDSKDW)
 
