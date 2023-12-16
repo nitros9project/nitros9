@@ -676,7 +676,7 @@ SysCalls            fcb       F$Link
                     fcb       F$AllImg+SysState
                     fdb       FAllImg-*-2
                     fcb       F$SetImg+SysState
-                    fdb       FFreeLB-*-2
+                    fdb       FSetImg-*-2
                     fcb       F$FreeLB+SysState
                     fdb       FSFreeLB-*-2
                     fcb       F$FreeHB+SysState
