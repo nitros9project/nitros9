@@ -1,4 +1,4 @@
-               *******************************************************
+                    *******************************************************
 *
 * DWWrite
 *    Send a packet to the DriveWire server.
@@ -14,13 +14,13 @@
 *    All others preserved
 *
 
-DWWrite        pshs      u,a,cc              preserve registers
-               orcc      #IntMasks           mask interupts
-loop@          lda       UART_LSR            get status register
-               anda      #LSR_XMIT_DONE      is transmit FIFO empty?
-               beq       loop@               branch if not
-               lda       ,x+                 get byte from buffer
-               sta       UART_TRHB           put it to PIA
-               leay      -1,y                decrement byte counter
-               bne       loop@               loop if more to send
-               puls      cc,a,u,pc           restore registers and return
+DWWrite             pshs      u,a,cc              preserve registers
+                    orcc      #IntMasks           mask interupts
+loop@               lda       UART.Base+UART_LSR  get status register
+                    anda      #LSR_XMIT_DONE      is transmit FIFO empty?
+                    beq       loop@               branch if not
+                    lda       ,x+                 get byte from buffer
+                    sta       UART.Base+UART_TRHB put it to PIA
+                    leay      -1,y                decrement byte counter
+                    bne       loop@               loop if more to send
+                    puls      cc,a,u,pc           restore registers and return
