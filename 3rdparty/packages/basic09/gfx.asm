@@ -235,7 +235,7 @@ setpoint@           lda       #$18                load the "set point" code
 
 ;;; CLEAR - Reset all points on the screen.
 ;;;
-;;; Calling sytnax: RUN GFX("Clear")
+;;; Calling syntax: RUN GFX("Clear")
 ;;;                 RUN GFX("Clear", color)
 ;;;
 ;;; CLEAR resets all points on the screen to the background color, or if the optional
