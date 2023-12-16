@@ -42,7 +42,7 @@ F256.D              set       1
 * Modified to address new memory map that Stefany created.
 
 ********************************************************************
-* Ticks per second
+* Ticks per second.
 *
 TkPerSec            set       60
 
@@ -217,7 +217,7 @@ INT_POLARITY_3      equ       $FE27               not used
 INT_EDGE_3          equ       $FE2B               not used
 INT_MASK_3          equ       $FE2F               not used
 
-* Interrupt Group 0 Flags
+* Interrupt group 0 flags
 INT_VKY_SOF         equ       %00000001           TinyVicky start of frame interrupt
 INT_VKY_SOL         equ       %00000010           TinyVicky start of line interrupt
 INT_PS2_KBD         equ       %00000100           PS/2 keyboard event
@@ -226,14 +226,14 @@ INT_TIMER_0         equ       %00010000           TIMER0 has reached its target 
 INT_TIMER_1         equ       %00010000           TIMER1 has reached its target value
 INT_CARTRIDGE       equ       %10000000           Interrupt asserted by the cartridge
 
-* Interrupt Group 1 Flags
+* Interrupt group 1 flags
 INT_UART            equ       %00000001           UART is ready to receive or send data
 INT_RTC             equ       %00010000           event from the real time clock chip
 INT_VIA0            equ       %00100000           event from the 65C22 VIA chip
 INT_VIA1            equ       %01000000           F256K Only: local keyboard
 INT_SDC_INS         equ       %01000000           yser has inserted an SD card
 
-* Interrupt Group 2 Flags
+* Interrupt group 2 flags
 IEC_DATA_i          equ       %00000001           IEC data in
 IEC_CLK_i           equ       %00000010           IEC clock in
 IEC_ATN_i           equ       %00000100           IEC ATN in
@@ -276,25 +276,27 @@ T1_CMP_CTR          equ       $FE3C               timer 1 compare counter (read/
 T1_CMP              equ       $FE3D               timer 1 compare value (read/write)
 
 ********************************************************************
-* F256 VIA definitions
+* F256 VIA (W65C22S) definitions
 *
 * VIA addresses
-IORB                equ       $FFB0               port b data
-IORA                equ       $FFB1               port a data
-DDRB                equ       $FFB2               port b data direction register
-DDRA                equ       $FFB3               port a data direction register
-T1C_L               equ       $FFB4               timer 1 counter low
-T1C_H               equ       $FFB5               timer 1 counter high
-T1L_L               equ       $FFB6               timer 1 latch low
-T1L_H               equ       $FFB7               timer 1 latch high
-T2C_L               equ       $FFB8               timer 2 counter low
-T2C_H               equ       $FFB9               timer 2 counter high
-SDR                 equ       $FFBA               serial data register
-ACR                 equ       $FFBB               auxiliary control register
-PCR                 equ       $FFBC               peripheral control register
-IFR                 equ       $FFBD               interrupt flag register
-IER                 equ       $FFBE               interrupt enable register
-IORA2               equ       $FFBF               port a data (no handshake)
+VIA.Base            equ       $FFB0
+                    org       0
+VIA_ORB_IRB         rmb       1                   port b data
+VIA_ORA_IRA         rmb       1                   port a data
+VIA_DDRB            rmb       1                   port b data direction register
+VIA_DDRA            rmb       1                   port a data direction register
+VIA_T1CL            rmb       1                   timer 1 counter low
+VIA_T1CH            rmb       1                   timer 1 counter high
+VIA_T1LL            rmb       1                   timer 1 latch low
+VIA_T1LH            rmb       1                   timer 1 latch high
+VIA_T2CL            rmb       1                   timer 2 counter low
+VIA_T2CH            rmb       1                   timer 2 counter high
+VIA_SR              rmb       1                   serial data register
+VIA_ACR             rmb       1                   auxiliary control register
+VIA_PCR             rmb       1                   peripheral control register
+VIA_IFR             rmb       1                   interrupt flag register
+VIA_IER             rmb       1                   interrupt enable register
+VIA_ORA_IRA_AUX     rmb       1                   port a data (no handshake)
 
 * ACR control register values
 T1_CTRL             equ       %11000000
@@ -333,46 +335,32 @@ CA2E                equ       %00000001
 * F256 real-time clock definitions
 *
 RTC.Base            equ       0xFE40
-RTC_SEC             equ       0x00                seconds register
-RTC_SEC_ALARM       equ       0x01                seconds alarm register
-RTC_MIN             equ       0x02                minutes register
-RTC_MIN_ALARM       equ       0x03                minutes alarm register
-RTC_HRS             equ       0x04                hours register
-RTC_HRS_ALARM       equ       0x05                hours alarm register
-RTC_DAY             equ       0x06                day register
-RTC_DAY_ALARM       equ       0x07                day alarm register
-RTC_DOW             equ       0x08                day of week register
-RTC_MONTH           equ       0x09                month register
-RTC_YEAR            equ       0x0A                year register
-RTC_RATES           equ       0x0B                rates register
-RTC_ENABLE          equ       0x0C                enables register
-RTC_FLAGS           equ       0x0D                flags register
-RTC_CTRL            equ       0x0E                control register
-RTC_CENTURY         equ       0x0F                century register
+                    org       0
+RTC_SEC             rmb       1                   seconds register
+RTC_SEC_ALARM       rmb       1                   seconds alarm register
+RTC_MIN             rmb       1                   minutes register
+RTC_MIN_ALARM       rmb       1                   minutes alarm register
+RTC_HRS             rmb       1                   hours register
+RTC_HRS_ALARM       rmb       1                   hours alarm register
+RTC_DAY             rmb       1                   day register
+RTC_DAY_ALARM       rmb       1                   day alarm register
+RTC_DOW             rmb       1                   day of week register
+RTC_MONTH           rmb       1                   month register
+RTC_YEAR            rmb       1                   year register
+RTC_RATES           rmb       1                   rates register
+RTC_ENABLE          rmb       1                   enables register
+RTC_FLAGS           rmb       1                   flags register
+RTC_CTRL            rmb       1                   control register
+RTC_CENTURY         rmb       1                   century register
 
 RTC_24HR            equ       $02                 12/24 hour flag (1 = 24 Hr, 0 = 12 Hr)
 RTC_STOP            equ       $04                 0 = STOP when power off, 1 = run from battery when power off
 RTC_UTI             equ       $08                 update transfer inhibit
+
 ********************************************************************
-* F256 W65C22S definitions
+* F256 joystick port definitions
 *
-VIA_ORB_IRB         equ       0xFFB0              output/input register port B
-VIA_ORA_IRA         equ       0xFFB1              output/input register port B
-VIA_DDRB            equ       0xFFB2              data direction port B
-VIA_DDRA            equ       0xFFB3              data direction port A
-VIA_T1CL            equ       0xFFB4              T1C-L
-VIA_T1CH            equ       0xFFB5              T1C-H
-VIA_T1LL            equ       0xFFB6              T1L-L
-VIA_T1LH            equ       0xFFB7              T1L-H
-VIA_T2CL            equ       0xFFB8              T2C-L
-VIA_T2CH            equ       0xFFB9              T2C-H
-VIA_SR              equ       0xFFBA              SR
-VIA_ACR             equ       0xFFBB              ACR
-VIA_PCR             equ       0xFFBC              PCR
-VIA_IFR             equ       0xFFBD              IFR
-VIA_IER             equ       0xFFBE              IER
-VIA_ORA_IRA_AUX     equ       0xFFBF              ORA/IRA
-* Definition for where the Joystick Ports are
+
 * Port A (Joystick Port 1)
 JOYA_UP             equ       0x01
 JOYA_DWN            equ       0x02
@@ -381,6 +369,7 @@ JOTA_RGT            equ       0x08
 JOTA_BUT0           equ       0x10
 JOYA_BUT1           equ       0x20
 JOYA_BUT2           equ       0x40
+
 * Port B (Joystick Port 0)
 JOYB_UP             equ       0x01
 JOYB_DWN            equ       0x02
@@ -393,17 +382,19 @@ JOYB_BUT2           equ       0x40
 ********************************************************************
 * F256 UART definitions
 *
-UART_TRHB           equ       0xFE60              transmit/receive hold buffer
-UART_DLL            equ       0xFE60              divisor latch low byte
-UART_DLH            equ       0xFE61              divisor latch high byte
-UART_IER            equ       0xFE61              interrupt enable register
-UART_FCR            equ       0xFE62              FIFO control register
-UART_IIR            equ       0xFE62              interrupt identification register
-UART_LCR            equ       0xFE63              line control register
-UART_MCR            equ       0xFE64              modem control register
-UART_LSR            equ       0xFE65              line status register
-UART_MSR            equ       0xFE66              modem status register
-UART_SR             equ       0xFE67              scratch register
+UART.Base           equ       0xFE60
+                    org       0
+UART_TRHB           rmb       1                   transmit/receive hold buffer
+UART_DLL            equ       UART_TRHB           divisor latch low byte
+UART_DLH            rmb       1                   divisor latch high byte
+UART_IER            equ       UART_DLH            interrupt enable register
+UART_FCR            rmb       1                   FIFO control register
+UART_IIR            equ       UART_FCR            interrupt identification register
+UART_LCR            rmb       1                   line control register
+UART_MCR            rmb       1                   modem control register
+UART_LSR            rmb       1                   line status register
+UART_MSR            rmb       1                   modem status register
+UART_SR             rmb       1                   scratch register
 
 * FCR register definitions
 FCR_RXT_5           equ       0x00
@@ -415,7 +406,7 @@ FCR_TXR             equ       0x04
 FCR_RXR             equ       0x02
 FCR_FIFOE           equ       0x01
 
-* Interrupt Enable Flags
+* Interrupt enable flags
 UINT_LOW_POWER      equ       0x20                enable low power mode (16750)
 UINT_SLEEP_MODE     equ       0x10                enable sleep mode (16750)
 UINT_MODEM_STATUS   equ       0x08                enable modem status interrupt
@@ -423,7 +414,7 @@ UINT_LINE_STATUS    equ       0x04                enable receiver line status in
 UINT_THR_EMPTY      equ       0x02                enable transmit holding register empty interrupt
 UINT_DATA_AVAIL     equ       0x01                enable receive data available interrupt
 
-; Interrupt Identification Register Codes
+* Interrupt identification register codes
 IIR_FIFO_ENABLED    equ       0x80                FIFO is enabled
 IIR_FIFO_NONFUNC    equ       0x40                FIFO is not functioning
 IIR_FIFO_64BYTE     equ       0x20                64 byte FIFO enabled (16750)
@@ -432,9 +423,9 @@ IIR_THR_EMPTY       equ       0x02                transmit holding register empt
 IIR_DATA_AVAIL      equ       0x04                data available interrupt
 IIR_LINE_STATUS     equ       0x06                line status interrupt
 IIR_TIMEOUT         equ       0x0C                time-out interrupt (16550 and later)
-IIR_INTERRUPT_PENDING equ       0x01              interrupt pending flag
+IIR_INTERRUPT_PENDING equ       0x01                interrupt pending flag
 
-; Line Control Register Codes
+* Line control register codes
 LCR_DLB             equ       0x80                divisor latch access bit
 LCR_SBE             equ       0x60                set break enable
 
@@ -470,18 +461,59 @@ TEXT_LUT_BG         equ       $FF40
 ********************************************************************
 * F256 SD card interface definitions
 *
-SDC_BASE_ADDR       equ       $FE90
-SDC_STAT            equ       0
-SDC_DATA            equ       1
+SDC.Base            equ       $FE90
+                    org       0
+SDC_STAT            rmb       1
+SDC_DATA            rmb       1
 
 * SDC status bits
 SPI_BUSY            equ       %10000000
 SPI_CLK             equ       %00000010
 CS_EN               equ       %00000001
 
-MASTER_CTRL_REG_L   equ       $FFC0
-;Control Bits Fields
-Mstr_Ctrl_Text_Mode_En equ       $01                  enable the text mode
+********************************************************************
+* F256 text screen definitions
+*
+TXT.Base            equ       $FFC0
+                    org       0
+MASTER_CTRL_REG_L   rmb       1
+MASTER_CTRL_REG_H   rmb       1
+VKY_RESERVED_00     rmb       1
+VKY_RESERVED_01     rmb       1
+BORDER_CTRL_REG     rmb       1                   bit[0] - enable (1 by default)  bit[4..6]: X scroll offset (will scroll left) (acceptable values: 0..7)
+BORDER_COLOR_B      rmb       1
+BORDER_COLOR_G      rmb       1
+BORDER_COLOR_R      rmb       1
+BORDER_X_SIZE       rmb       1                   X values: 0 - 32 (default: 32)
+BORDER_Y_SIZE       rmb       1                   Y values: 0 - 32 (default: 32)
+VKY_RESERVED_02     rmb       1
+VKY_RESERVED_03     rmb       1
+VKY_RESERVED_04     rmb       1
+* Valid in graphics mode only
+BACKGROUND_COLOR_B  rmb       1                   when in graphic mode, if a pixel is "0" then the background pixel is chosen
+BACKGROUND_COLOR_G  rmb       1
+BACKGROUND_COLOR_R  rmb       1
+* Cursor registers
+VKY_TXT_CURSOR_CTRL_REG rmb       1                   [0] Enable Text Mode
+VKY_TXT_START_ADD_PTR rmb       1                   this is an offset to change the starting address of the text mode Buffer (in X)
+VKY_TXT_CURSOR_CHAR_REG rmb       1
+VKY_TXT_CURSOR_COLR_REG rmb       1
+VKY_TXT_CURSOR_X_REG_L rmb       1
+VKY_TXT_CURSOR_X_REG_H rmb       1
+VKY_TXT_CURSOR_Y_REG_L rmb       1
+VKY_TXT_CURSOR_Y_REG_H rmb       1
+; Line interrupt
+VKY_LINE_IRQ_CTRL_REG rmb       1                   [0] - enable line 0 - write only
+VKY_LINE_CMP_VALUE_LO rmb       1                   write only [7:0]
+VKY_LINE_CMP_VALUE_HI rmb       1                   write only [3:0]
+
+VKY_PIXEL_X_POS_LO  equ       VKY_LINE_IRQ_CTRL_REG this is where on the video line is the pixel
+VKY_PIXEL_X_POS_HI  equ       VKY_LINE_CMP_VALUE_LO or what pixel is being displayed when the register is read
+VKY_LINE_Y_POS_LO   equ       VKY_LINE_CMP_VALUE_HI this is the line value of the raster
+VKY_LINE_Y_POS_HI   rmb       1
+
+* Text control bit definitions
+Mstr_Ctrl_Text_Mode_En equ       $01                 enable the text mode
 Mstr_Ctrl_Text_Overlay equ       $02                 enable the overlay of the text mode on top of graphic mode (the background color is ignored)
 Mstr_Ctrl_Graph_Mode_En equ       $04                 enable the graphic mode
 Mstr_Ctrl_Bitmap_En equ       $08                 enable the bitmap module in Vicky
@@ -489,7 +521,13 @@ Mstr_Ctrl_TileMap_En equ       $10                 enable the tile module in Vic
 Mstr_Ctrl_Sprite_En equ       $20                 enable the sprite module in Vicky
 Mstr_Ctrl_GAMMA_En  equ       $40                 this enables the gamma correction - the analog and DVI have different color values; the gamma is great to correct the difference
 Mstr_Ctrl_Disable_Vid equ       $80                 this will disable the scanning of the video hence giving 100% bandwidth to the CPU
-MASTER_CTRL_REG_H   equ       $FFC1
+
+* Cursor control bit definitions
+Vky_Cursor_Enable   equ       $01
+Vky_Cursor_Flash_Rate0 equ       $02
+Vky_Cursor_Flash_Rate1 equ       $04
+Vky_Cursor_Flash_Disable equ       $08
+
 FON_SET             equ       %0010000
 FON_OVLY            equ       %00010000
 MON_SLP             equ       %00001000
@@ -497,47 +535,8 @@ DBL_Y               equ       %00000100
 DBL_X               equ       %00000010
 CLK_70              equ       %00000001
 
-; Reserved - TBD
-VKY_RESERVED_00     equ       $FFC2
-VKY_RESERVED_01     equ       $FFC3
-;
-BORDER_CTRL_REG     equ       $FFC4               bit[0] - enable (1 by default)  bit[4..6]: X scroll offset (will scroll left) (acceptable values: 0..7)
+* Border control bit definitions
 Border_Ctrl_Enable  equ       $01
-BORDER_COLOR_B      equ       $FFC5
-BORDER_COLOR_G      equ       $FFC6
-BORDER_COLOR_R      equ       $FFC7
-BORDER_X_SIZE       equ       $FFC8               X values: 0 - 32 (default: 32)
-BORDER_Y_SIZE       equ       $FFC9               Y values: 0 - 32 (default: 32)
-; Reserved - TBD
-VKY_RESERVED_02     equ       $FFCA
-VKY_RESERVED_03     equ       $FFCB
-VKY_RESERVED_04     equ       $FFCC
-; Valid in Graphics Mode Only
-BACKGROUND_COLOR_B  equ       $FFCD               when in graphic mode, if a pixel is "0" then the background pixel is chosen
-BACKGROUND_COLOR_G  equ       $FFCE
-BACKGROUND_COLOR_R  equ       $FFCF               
-; Cursor Registers
-VKY_TXT_CURSOR_CTRL_REG equ       $FFD0               [0] Enable Text Mode
-Vky_Cursor_Enable   equ       $01
-Vky_Cursor_Flash_Rate0 equ       $02
-Vky_Cursor_Flash_Rate1 equ       $04
-Vky_Cursor_Flash_Disable equ       $08
-VKY_TXT_START_ADD_PTR equ       $FFD1               this is an offset to change the starting address of the text mode Buffer (in X)
-VKY_TXT_CURSOR_CHAR_REG equ       $FFD2
-VKY_TXT_CURSOR_COLR_REG equ       $FFD3
-VKY_TXT_CURSOR_X_REG_L equ       $FFD4
-VKY_TXT_CURSOR_X_REG_H equ       $FFD5
-VKY_TXT_CURSOR_Y_REG_L equ       $FFD6
-VKY_TXT_CURSOR_Y_REG_H equ       $FFD7
-; Line interrupt
-VKY_LINE_IRQ_CTRL_REG equ       $FFD8               [0] - enable line 0 - write only
-VKY_LINE_CMP_VALUE_LO equ       $FFD9               write only [7:0]
-VKY_LINE_CMP_VALUE_HI equ       $FFDA               write only [3:0]
-
-VKY_PIXEL_X_POS_LO  equ       $FFD8               this is where on the video line is the pixel
-VKY_PIXEL_X_POS_HI  equ       $FFD9               or what pixel is being displayed when the register is read
-VKY_LINE_Y_POS_LO   equ       $FFDA               this is the line value of the raster
-VKY_LINE_Y_POS_HI   equ       $FFDB               
 
 ; Bitmap
 ;BM0
@@ -711,8 +710,48 @@ TyVKY_LUT2          equ       $F000               -$d800 - $dbff
 TyVKY_LUT3          equ       $F400               -$dc00 - $dfff
 
 
-;DMA
-DMA_CTRL_REG        equ       $FEE0
+********************************************************************
+* F256 Direct Memory Access (DMA) definitions
+*
+DMA.Base            equ       $FEE0
+
+                    org       0
+DMA_CTRL_REG        rmb       1
+DMA_STATUS_REG      rmb       1                   read only
+DMA_DATA_2_WRITE    equ       DMA_STATUS_REG      write only
+DMA_RESERVED_0      rmb       1
+DMA_RESERVED_1      rmb       1
+* Source address.
+DMA_SOURCE_ADDR_L   rmb       1
+DMA_SOURCE_ADDR_M   rmb       1
+DMA_SOURCE_ADDR_H   rmb       1
+DMA_RESERVED_2      rmb       1
+* Destination address.
+DMA_DEST_ADDR_L     rmb       1
+DMA_DEST_ADDR_M     rmb       1
+DMA_DEST_ADDR_H     rmb       1
+DMA_RESERVED_3      rmb       1
+* Size in 1D mode.
+DMA_SIZE_1D_L       rmb       1
+DMA_SIZE_1D_M       rmb       1
+DMA_SIZE_1D_H       rmb       1
+DMA_RESERVED_4      rmb       1
+* Size in 1D mode.
+DMA_SIZE_X_L        equ       DMA_SIZE_1D_L
+DMA_SIZE_X_M        equ       DMA_SIZE_1D_M
+DMA_SIZE_Y_L        equ       DMA_SIZE_1D_H
+DMA_SIZE_Y_H        equ       DMA_RESERVED_4
+* Stride in 2D mode.
+DMA_SRC_STRIDE_X_L  rmb       1
+DMA_SRC_STRIDE_X_H  rmb       1
+DMA_DST_STRIDE_Y_L  rmb       1
+DMA_DST_STRIDE_Y_H  rmb       1
+DMA_RESERVED_5      rmb       1
+DMA_RESERVED_6      rmb       1
+DMA_RESERVED_7      rmb       1
+DMA_RESERVED_8      rmb       1
+
+* DMA_CTRL_REG bit definitions
 DMA_CTRL_Enable     equ       $01
 DMA_CTRL_1D_2D      equ       $02
 DMA_CTRL_Fill       equ       $04
@@ -722,40 +761,7 @@ DMA_CTRL_NotUsed1   equ       $20
 DMA_CTRL_NotUsed2   equ       $40
 DMA_CTRL_Start_Trf  equ       $80
 
-DMA_DATA_2_WRITE    equ       $FEE1               write only
-DMA_STATUS_REG      equ       $FEE1               read only
+* DMA_STATUS_REG bit definitions
 DMA_STATUS_TRF_IP   equ       $80                 transfer in progress
-DMA_RESERVED_0      equ       $FEE2
-DMA_RESERVED_1      equ       $FEE3
 
-; Source addy
-DMA_SOURCE_ADDY_L   equ       $FEE4
-DMA_SOURCE_ADDY_M   equ       $FEE5
-DMA_SOURCE_ADDY_H   equ       $FEE6
-DMA_RESERVED_2      equ       $FEE7
-; Destination Addy
-DMA_DEST_ADDY_L     equ       $FEE8
-DMA_DEST_ADDY_M     equ       $FEE9
-DMA_DEST_ADDY_H     equ       $FEEA
-DMA_RESERVED_3      equ       $FEEB
-; Size in 1D Mode
-DMA_SIZE_1D_L       equ       $FEEC
-DMA_SIZE_1D_M       equ       $FEED
-DMA_SIZE_1D_H       equ       $FEEE
-DMA_RESERVED_4      equ       $FEEF
-; Size in 2D Mode
-DMA_SIZE_X_L        equ       $FEEC
-DMA_SIZE_X_H        equ       $FEED
-DMA_SIZE_Y_L        equ       $FEEE
-DMA_SIZE_Y_H        equ       $FEEF
-; Stride in 2D Mode
-DMA_SRC_STRIDE_X_L  equ       $FEF0
-DMA_SRC_STRIDE_X_H  equ       $FEF1
-DMA_DST_STRIDE_Y_L  equ       $FEF2
-DMA_DST_STRIDE_Y_H  equ       $FEF3
-
-DMA_RESERVED_5      equ       $FEF4
-DMA_RESERVED_6      equ       $FEF5
-DMA_RESERVED_7      equ       $FEF6
-DMA_RESERVED_8      equ       $FEF7
                     endc

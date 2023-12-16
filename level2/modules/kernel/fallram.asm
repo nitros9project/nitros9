@@ -9,35 +9,35 @@
 *
 * Error:  CC = C bit set; B = error code
 *
-FAllRAM        ldb       R$B,u               Get # blocks requested
-               pshs      b,x,y               Save regs
-               ldx       <D.BlkMap           Get ptr to start of block map
-L0974          leay      ,x                  Point Y to current block
-               ldb       ,s                  Get # blocks requested
-srchblk        cmpx      <D.BlkMap+2         Hit end of map yet?
-               bhs       L0995               Yes, exit with No RAM error
-               lda       ,x+                 Get block marker
-               bne       L0974               Already used, start over with next block up
-               decb                          Dec # blocks still needed
-               bne       srchblk             Still more, keep checking
-* Entry: Y=ptr to start of memory found
+FAllRAM             ldb       R$B,u               get the number blocks requested
+                    pshs      b,x,y               save registers
+                    ldx       <D.BlkMap           get pointer to the start of the block map
+L0974               leay      ,x                  point Y to the current block
+                    ldb       ,s                  get the number of blocks requested
+srchblk             cmpx      <D.BlkMap+2         hit end of map yet?
+                    bhs       L0995               yes, exit with No RAM error
+                    lda       ,x+                 get the block marker
+                    bne       L0974               already used, start over with the next block up
+                    decb                          decrement the number blocks still needed
+                    bne       srchblk             still more, keep checking
+* Entry: Y=pointer to start of memory found
 * Note: Due to fact that block map always starts @ $200 (up to $2FF), we
-*       don't need to calc A
-L0983          tfr       y,d                 Copy start of requested block mem ptr to D (B)
-               lda       ,s                  Get # blocks requested
-               stb       ,s                  Save start block #
-L098D          inc       ,y+                 Flag blocks as used
-               deca                          (for all blocks allocated)
-               bne       L098D               Do until done
-               puls      b                   Get start block #
-               clra                          (allow for D as per original calls)
-               std       R$D,u               Save for caller
-               puls      x,y,pc              Restore regs & return
+*       don't need to calculate A
+L0983               tfr       y,d                 copy the start of the requested block memory pointer to D (B)
+                    lda       ,s                  get the number blocks requested
+                    stb       ,s                  save the starting block number
+L098D               inc       ,y+                 flag the blocks as used
+                    deca                          (for all blocks allocated)
+                    bne       L098D               do this until done
+                    puls      b                   get the starting block number
+                    clra                          (allow for D as per original calls)
+                    std       R$D,u               save for the caller
+                    puls      x,y,pc              restore the registers and return
 
-L0995          comb                          Exit with No RAM error
-               ldb       #E$NoRAM
-               stb       ,s
-               puls      b,x,y,pc
+L0995               comb                          set the carry
+                    ldb       #E$NoRAM            exit with No RAM error
+                    stb       ,s                  save B on the stack for the caller
+                    puls      b,x,y,pc            restore the registers and return
 
 
 **************************************************
@@ -51,15 +51,15 @@ L0995          comb                          Exit with No RAM error
 *
 * Error:  CC = C bit set; B = error code
 *
-FAlHRAM        ldb       R$B,u               Get # blocks to allocate
-               pshs      b,x,y               Preserve regs
-               ldx       <D.BlkMap+2         Get ptr to end of block map
-L09A9          ldb       ,s                  Get # blocks requested
-L09AB          cmpx      <D.BlkMap           Are we at beginning of RAM yet?
-               bls       L0995               Yes, exit with No RAM error
-               lda       ,-x                 Get RAM block marker
-               bne       L09A9               If not free, start checking next one down
-               decb                          Free block, dec # blocks left to find count
-               bne       L09AB               Still more needed, keep checking
-               tfr       x,y                 Found enough contigous blocks, move ptr to Y
-               bra       L0983               Go mark blocks as used, & return info to caller
+FAlHRAM             ldb       R$B,u               get the number blocks to allocate
+                    pshs      b,x,y               preserve registers
+                    ldx       <D.BlkMap+2         get the pointer to the end of block map
+L09A9               ldb       ,s                  get the number blocks requested
+L09AB               cmpx      <D.BlkMap           are we at the beginning of RAM yet?
+                    bls       L0995               yes, exit with No RAM error
+                    lda       ,-x                 get the RAM block marker
+                    bne       L09A9               if not free, start checking the next one down
+                    decb                          free block; decrement the number blocks left to find the count
+                    bne       L09AB               still more needed, so keep checking
+                    tfr       x,y                 found enough contiguous blocks, so move the pointer to Y
+                    bra       L0983               go mark then blocks as used and return the information to caller
