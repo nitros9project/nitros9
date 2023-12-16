@@ -456,18 +456,18 @@ L02D5               tst       -1,u                was hi bit set on matching cha
                     leax      1,s                 point to temp write buffer we are building
 
                     lda       #$1B                start it with an ESCAPE code (most functions use this)
-                    sta       ,x+                           store it in the output buffer
+                    sta       ,x+                 store it in the output buffer
                     ldd       <stkdepth+PCount,s  get # of params again including path (if present) & function name pointer
                     jmp       ,y                  call function subroutine & return from there
 
-L02F0               leas      4,s clean the stack
+L02F0               leas      4,s                 clean the stack
                     ldb       #E$NoRout           unimplemented routine error
                     bra       L02F8
 
 L02F6               ldb       #E$ParmEr           parameter error
-L02F8               coma set the carry
-                    leas      <stkdepth,s clean the stack
-                    rts      return to the caller
+L02F8               coma                          set the carry
+                    leas      <stkdepth,s         clean the stack
+                    rts                           return to the caller
 
 * For all calls from table, entry is:
 *   Y=Address of routine
@@ -484,7 +484,7 @@ L02FD               os9       F$ID                get process ID # into D
                     std       [,u]                save in caller's parameter 1 variable
 L0305               clrb                          no error, eat temp stack & return
                     leas      <stkdepth,s
-                    rts      return to the caller
+                    rts                           return to the caller
 
 ;;; TITLE - Set menu title.
 ;;;
@@ -508,15 +508,15 @@ L030A               ldy       ,u                  get pointer to parameter 1 (po
 * Copy string until high bit set ($FF marker), and change end in destination to NUL $00
 L0332               pshs      y                   save Y
 L0334               lda       ,x+                 copy string from X...
-                    sta       ,y+                     ... to Y until...
-                    bpl       L0334 ... to Y until hi bit set on a byte ($FF marker)
+                    sta       ,y+                 ... to Y until...
+                    bpl       L0334               ... to Y until hi bit set on a byte ($FF marker)
 * 6809/6309 - wouldn't clr -1,y be 1 cycles faster (since Y is being pulled immediately after?)
                     clr       ,-y                 flag end of string with NUL in destination
-                    puls      pc,y      return to the caller
+                    puls      pc,y                return to the caller
 
 ;;; MENU - Enable/disable menu.
 ;;;
-;;; Calling syntax: RUN GFX2([path,] "MENU", windesc, menuID, menuTitle, id, columns, items, midesc, enable)
+;;; Calling syntax: RUN GFX2([path,] "MENU", windesc, menuID, menuTitle, id, columns, items, midesc, enabled)
 L033E               ldy       ,u                  get pointer to parameter 1 (pointer to the window descriptor array)
                     leay      <WN.SIZ,y           point to start of array of menu descriptors
                     ldd       [<$04,u]            get menu ID #
@@ -564,7 +564,7 @@ L038A               ldy       [,u]                get window type (framed, shado
                     ldb       #SS.WnSet           set up Multi-Vue style window
                     os9       I$SetStt
                     leas      <stkdepth,s         eat temp stack & return
-                    rts      return to the caller
+                    rts                           return to the caller
 
 ;;; GETSEL - Get menu selection.
 ;;;
@@ -686,7 +686,7 @@ L043F               cmpb      #7                  7 parameters?
                     stx       [<$14,u]            save border color to caller
 L0478               clrb                          no error, eat temp stack, & return
 L0479               leas      <stkdepth,s
-                    rts      return to the caller
+                    rts                           return to the caller
 
 ;;; SETMOUSE - Set the mouse scan rate.
 ;;;
@@ -1037,7 +1037,7 @@ L062E               lbne      L02F6               no, exit with parameter error
 ;;; Calling syntax: RUN GFX2([path,] "FCIRCLE" [,xcor, ycor], xrad, yrad))
 FCircle             lda       #$53                FCircle code
                     fcb       $8c                 skip 2 bytes (CMPX)
-                    
+
 ;;; CIRCLE - Draw an circle.
 ;;;
 ;;; Calling syntax: RUN GFX2([path,] "CIRCLE" [,xcor, ycor], xrad, yrad))
@@ -1098,7 +1098,7 @@ L0697               leas      6,s                 eat 2ndary temp stack
 L069B               leas      2,s                 eat temp 16 bit variable
                     puls      u,x                 restore registers
                     leas      <stkdepth,s         eat temp stack & return
-                    rts      return to the caller
+                    rts                           return to the caller
 
 * 'A'xis rotate
 L06A3               lbsr      L0745               get signed parameter value into D
@@ -1244,7 +1244,7 @@ L0776               cmpu      2,s                 are we at beginning of current
                     bne       L0786               not negative, skip ahead
                     bsr       L07C8               yes, make binary version negative
 L0786               leas      2,s                 eat start string pointer & return
-                    rts      return to the caller
+                    rts                           return to the caller
 
 L0789               leas      $C,s                eat temp stack, return with parameter error
                     lbra      L02F6
@@ -1269,7 +1269,7 @@ L078E               ldd       2,s                 get Axis angle
                     std       -4,x                save overtop original X
                     puls      d                   get negated X back
 L07AA               std       -2,x                save overtop original Y & return
-L07AC               rts      return to the caller
+L07AC               rts                           return to the caller
 
 * 90 degree rotate
 L07AD               ldd       -2,x                get original X value from output buffer
@@ -1279,7 +1279,7 @@ L07AD               ldd       -2,x                get original X value from outp
                     std       -2,x                save over original X coord
                     puls      d                   get negated X value back
                     std       -4,x                save over original Y coord
-                    rts      return to the caller
+                    rts                           return to the caller
 
 * 180 degree rotate
 L07BC               ldd       -4,x                get original X coord
@@ -1293,7 +1293,7 @@ L07BC               ldd       -4,x                get original X coord
 L07C8               nega                          6309 - NEGD for next three lines
                     negb
                     sbca      #$00
-                    rts      return to the caller
+                    rts                           return to the caller
 
 * Write output buffer based on current output buffer pointer
 * Entry: X=current output buffer position pointer
@@ -1307,7 +1307,7 @@ L07CD               pshs      y,x                 preserve registers
                     os9       I$Write             write it out
                     puls      y,x                 restore registers
                     ldx       4,s                 get start of output buffer pointer back & return
-                    rts      return to the caller
+                    rts                           return to the caller
 
 ;;; FELLIPSE - Draw a filled ellipse.
 ;;;
@@ -1363,7 +1363,7 @@ L0811               pshs      y,d                 save registers
                     lbne      L091B               no, eat temp stack, return with parameter error
                     addb      #$20                replace coord in output buffer with LSB of INTEGER parameter
                     stb       -1,x
-L0829               puls      pc,y,d      return to the caller
+L0829               puls      pc,y,d              return to the caller
 
 ;;; ERLINE - Delete the line of text the cursor is on.
 ;;;
@@ -1532,7 +1532,7 @@ L08BA               clra                          clear carry
                     bra       L08C0
 
 L08BF               coma                          no match found, exit with carry set
-L08C0               puls      pc,x      return to the caller
+L08C0               puls      pc,x                return to the caller
 
 * Append BYTE or INTEGER value from caller as 16 bit value to output buffer
 AppendParam         pshs      y,d                 save registers
@@ -1557,7 +1557,7 @@ L08DA               pshs      y,d                 save registers
                     leay      -1,y                2 byte value (INTEGER) from caller?
                     bne       L0917               not BYTE or INTEGER, exit with parameter error (& eat 15 byte temp stack)
 L08E4               std       ,x++                append value to output buffer
-L08E6               puls      pc,y,d return to the caller
+L08E6               puls      pc,y,d              return to the caller
 
 * Append 16 bit value from caller to output buffer. Original from caller is unsigned, can be BYTE or INTEGER
 L08E8               ldd       [,u++]              get 16 bit value from caller (INTEGER)
@@ -1566,7 +1566,7 @@ L08E8               ldd       [,u++]              get 16 bit value from caller (
                     bne       L08F4               yes, return
                     sta       1,x                 no, BYTE, save BYTE as 16 bit value (note: NOT SIGNED)
                     clr       ,x++
-L08F4               rts return to the caller
+L08F4               rts                           return to the caller
 
 L08F5               bsr       AppendParam         append 16 bit value to output buffer (6 16 bit parameters)
                     bsr       AppendParam         append 16 bit value to output buffer
@@ -1576,7 +1576,7 @@ L08FD               bsr       AppendParam         append 16 bit value to output 
 L08FF               bsr       AppendParam         append 16 bit value to output buffer (1 16 bit parameter)
 L0901               bsr       L0907               write output buffer out
                     leas      <stkdepth,s         eat main temp stack & return
-                    rts      return to the caller
+                    rts                           return to the caller
 
 * Write output buffer out
 L0907               tfr       x,d
@@ -1586,7 +1586,7 @@ L0907               tfr       x,d
                     tfr       d,y                 move length to Y for Write
                     lda       2,s                 get path, write out buffer
                     os9       I$Write
-                    rts      return to the caller
+                    rts                           return to the caller
 
 L0917               leas      6,s                 eat extra temp stack (15 bytes)
 L0919               leas      3,s                 eat extra temp stack (9 bytes)
@@ -1615,7 +1615,7 @@ L0932               pshs      y,d                 save registers
                     leay      -1,y
                     bne       L091B               not an INTEGER either, return with parameter error
                     stb       -1,x                save LSB overtop original one (which would have been 0 to get here)
-L0944               puls      pc,y,d      return to the caller
+L0944               puls      pc,y,d              return to the caller
 
                     emod
 eom                 equ       *
