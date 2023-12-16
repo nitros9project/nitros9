@@ -28,7 +28,7 @@ size                equ       .
 name                fcs       /GFX/
                     fcb       edition
 
-* Offsets for parameters accessed directly (there can be more, but they are handled in loops)
+* Offsets for parameters accessed directly (there can be more, but they are handled in loops).
                     org       0
 Return              rmb       2                   $00 Return address of caller
 PCount              rmb       2                   $02 # of parameters following
@@ -98,20 +98,20 @@ FuncTbl             fdb       Alpha-FuncTbl
 stkdepth            set       9
 
 * All functions (from the call table) are entered with the following parameters:
-* Y = pointer to function subroutine
-* X = pointer to "stkdepth" byte scratch variable area (same as stack pointer, which has allocated that extra memory)
-* U = pointer to 2nd parameter (first parameter after name itself)
-* D = # of parameters (NOTE: function name itself is always parameter 1)
+*   Y = pointer to function subroutine
+*   X = pointer to "stkdepth" byte scratch variable area (same as stack pointer, which has allocated that extra memory)
+*   U = pointer to 2nd parameter (first parameter after name itself)
+*   D = # of parameters (NOTE: function name itself is always parameter 1)
 
-* Stack on entry to every function routine:
-*$00-$08 / 00-08,s - temporary scratch var area
-*$09-$0A / 09-10,s - RTS address to BASIC09/RUNB
-*$0B-$0C / 11-12,s - # of parameters (including function name itself)
-*$0D-$0E / 13-14,s - pointer to 1st parameter's data (function name)
-*$0F-$10 / 15-16,s - length of first parameter
+* Stack on entry to every function routine (with stkdepth set to 9):
+*   $00-$08 / 00-08,s - temporary scratch var area
+*   $09-$0A / 09-10,s - RTS address to BASIC09/RUNB
+*   $0B-$0C / 11-12,s - # of parameters (including function name itself)
+*   $0D-$0E / 13-14,s - pointer to 1st parameter's data (function name)
+*   $0F-$10 / 15-16,s - length of first parameter
 * From here on is optional, depending on the function being called, there can be up to 9 parameter pairs
-* (pointer/value and length)
-* The temp stack used 0,s as the path #, and 1,s + as the output buffer
+* (pointer/value and length).
+* The temporary stack uses 0,s as the path #, and 1,s + as the output buffer.
 
 start               leas      -stkdepth,s         allocate room on the stack
                     ldd       PCount+stkdepth,s   get parameter count
@@ -150,12 +150,12 @@ err@                coma                          set carry
                     leas      stkdepth,s          reset S
                     rts                           return to the caller
 
-* Each subroutine enters with the following parameters
-* B = parameter count
-* X = temporary stack
-* U = pointer to size of first parameter
+* Each subroutine enters with the following parameters:
+*    B = parameter count
+*    X = temporary stack
+*    U = pointer to size of first parameter
 
-;;; MODE
+;;; MODE - Set the graphics mode.
 ;;;
 ;;; Calling syntax: RUN GFX("Mode",Format,Color)
 ;;;
@@ -166,7 +166,7 @@ err@                coma                          set carry
 ;;; foreground color and color set.
 ;;;
 ;;; This command must be given before any other graphics command is
-;;; used. The first time MODE is called, it requests 6K bytes of memory
+;;; used. The first time MODE is called, it requests 6KB of memory
 ;;; from OS-9 for use as the graphics display memory. MODE will return
 ;;; an error if sufficient free memory is not available.
 ;;;
@@ -177,7 +177,7 @@ err@                coma                          set carry
 Mode                lda       #$0F                load the function code
                     bra       ThreeParms          process the parameters
 
-;;; MOVE
+;;; MOVE - Move the graphics cursor.
 ;;;
 ;;; Calling syntax: RUN GFX("Move",X,Y)
 ;;;
@@ -193,7 +193,7 @@ ThreeParms          cmpb      #$03                this number of parameters?
                     bne       BadFunc             branch if not (error out)
                     bra       StoreAppend2Write   write it out
 
-;;; COLOR
+;;; COLOR - Set the foreground color.
 ;;;
 ;;; Calling syntax: RUN GFX("Color",Color)
 ;;;
@@ -208,9 +208,9 @@ ThreeParms          cmpb      #$03                this number of parameters?
 CColor              lda       #$11                load the "color" code
                     bra       TwoParms            process two parameters
 
-;;; POINT
+;;; POINT - Set a pixel at a point.
 ;;;
-;;; Calling syntax: RUN GFX("Point",X,Y) or
+;;; Calling syntax: RUN GFX("Point",X,Y)
 ;;;                 RUN GFX("Point",X,Y,Color)
 ;;;
 ;;; POINT moves the graphics cursor to the specified X,Y coordinate and
@@ -233,7 +233,7 @@ Point               cmpb      #$03                this number of parameters?
 setpoint@           lda       #$18                load the "set point" code
                     bra       StoreAppend2Write   write it out
 
-;;; CLEAR
+;;; CLEAR - Reset all points on the screen.
 ;;;
 ;;; Calling sytnax: RUN GFX("Clear")
 ;;;                 RUN GFX("Clear", color)
@@ -250,7 +250,7 @@ TwoParms            cmpb      #$02                is the parameter count two?
 got1@               lda       #$13                load the function code
                     bra       StoreAndWrite       store it and write it
 
-;;; LINE
+;;; LINE - Draw a line.
 ;;;
 ;;; Calling syntax: RUN GFX("Line",x2,y2)
 ;;;                 RUN GFX("Line",x2,y2,Color)
@@ -293,7 +293,7 @@ StoreAppend2Write   sta       ,x+                 store function code in our out
                     bsr       AppendParameter     append the next parameter
                     bra       WriteAndRecover     go write it
 
-;;; CIRCLE
+;;; CIRCLE - Draw a circle.
 ;;;
 ;;; Calling syntax: RUN GFX("Circle",Radius)
 ;;;                 RUN GFX("Circle",Radius,Color)
@@ -302,7 +302,7 @@ StoreAppend2Write   sta       ,x+                 store function code in our out
 ;;;
 ;;; CIRCLE draws a circle of the given radius. The current graphics
 ;;; cursor position is assumed if no X,Y value is given. The current
-;;; foreground color is assumed if the Color parameter is not used, The
+;;; foreground color is assumed if the Color parameter is not used. The
 ;;; center of the circle must be on the screen.
 Circle              cmpb      #$05                this number of parameters?
                     bhi       XBadFunc            branch if higher (error out)
@@ -324,7 +324,7 @@ StoreAppend1Write   sta       ,x+                 store it in our output buffer
                     bsr       AppendParameter     append the next parameter
                     bra       WriteAndRecover     write it
 
-;;; ALPHA
+;;; ALPHA - Put screen in alphanumeric mode.
 ;;;
 ;;; Calling syntax: RUN GFX("Alpha")
 ;;;
@@ -334,11 +334,11 @@ StoreAppend1Write   sta       ,x+                 store it in our output buffer
 Alpha               lda       #$0E                load the function code
                     bra       StoreAndWrite       write it
 
-;;; QUIT
+;;; QUIT - Return to alphanumeric mode and return graphics memory.
 ;;;
 ;;; Calling syntax: RUN GFX("Quit")
 ;;;
-;;; QUIT switches the screen back to alpha mode and returns the 6K byte
+;;; QUIT switches the screen back to alpha mode and returns the 6KB
 ;;; graphics display memory to OS-9.
 Quit                lda       #$12                load the function code
 StoreAndWrite       sta       ,x+                 store the code in the buffer
@@ -384,7 +384,7 @@ AppendParameter     pshs      y,b,a               save off registers
                     stb       -1,x                store the byte in our output buffer
 ret@                puls      pc,y,b,a            restore registers and return to the caller
 
-;;; GLOC
+;;; GLOC - Get the address of video memory.
 ;;;
 ;;; Calling syntax: RUN GFX("Gloc",Vdisp)
 ;;;
@@ -406,7 +406,7 @@ GLoc                cmpb      #$02                correct number of parameters?
 RecoverAndRTS       leas      stkdepth,s          recover the stack
                     rts                           return to the caller
 
-;;; GCOLR
+;;; GCOLR - Get a pixel color at the current graphics cursor.
 ;;;
 ;;; Calling syntax: RUN GFX("Gcolr",Color)
 ;;;                 RUN GFX("Gcolr",X,Y,Color)
@@ -441,7 +441,7 @@ SaveBYTEParam       leau      4,u                 advance to next parameter
 ret@                stb       ,u+                 and store B in lower 8 bits
                     puls      pc,u,x              restore and return to the caller
 
-;;; JOYSTK
+;;; JOYSTK - Read the joystick values.
 ;;;
 ;;; Calling syntax: RUN GFX("Joystk",Stick,Fire,X,Y)
 ;;;
