@@ -576,7 +576,7 @@ TILE_LUT2           equ       $08
 TILE_SIZE           equ       $10                 0 -> 16x16, 0 -> 8x8
 
 ;
-;Tile mao layer 0 registers
+;Tile map layer 0 registers
 TL0_CONTROL_REG     equ       $F100               bit[0] - enable, bit[3:1] - LUT select
 TL0_START_ADDY_L    equ       $F101               not used right now - starting address to where is the map
 TL0_START_ADDY_M    equ       $F102
