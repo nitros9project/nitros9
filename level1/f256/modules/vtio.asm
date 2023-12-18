@@ -58,16 +58,17 @@ InitDisplay         pshs      u                   save important registers
                     pshs      a                   save it on the stack
 
 * Put F256 graphics into text mode.
+                    ldx       #TXT.Base
                     ldd       #80*256+60
                     std       V.WWidth,u
                     lda       #Mstr_Ctrl_Text_Mode_En enable text mode
-                    sta       MASTER_CTRL_REG_L
-                    clr       MASTER_CTRL_REG_H
-                    clr       BORDER_CTRL_REG
-                    clr       BORDER_COLOR_R
-                    clr       BORDER_COLOR_G
-                    clr       BORDER_COLOR_B
-                    clr       VKY_TXT_CURSOR_CTRL_REG
+                    sta       MASTER_CTRL_REG_L,x
+                    clr       MASTER_CTRL_REG_H,x
+                    clr       BORDER_CTRL_REG,x
+                    clr       BORDER_COLOR_R,x
+                    clr       BORDER_COLOR_G,x
+                    clr       BORDER_COLOR_B,x
+                    clr       VKY_TXT_CURSOR_CTRL_REG,x
 
 * Initialize the gamma.
                     lda       #$C0                get the gamma MMU block
@@ -109,14 +110,15 @@ loop@               ldd       ,x++                get two bytes of font data
                     bne       loop@               branch if not
 
 * Initialize the cursor.
+                    ldx       #TXT.Base
                     lda       #Vky_Cursor_Enable|Vky_Cursor_Flash_Rate0|Vky_Cursor_Flash_Rate1
-                    sta       VKY_TXT_CURSOR_CTRL_REG
+                    sta       VKY_TXT_CURSOR_CTRL_REG,x
                     clra
                     clrb
-                    std       VKY_TXT_CURSOR_Y_REG_L
-                    std       VKY_TXT_CURSOR_X_REG_L
+                    std       VKY_TXT_CURSOR_Y_REG_L,x
+                    std       VKY_TXT_CURSOR_X_REG_L,x
                     lda       #'_
-                    sta       VKY_TXT_CURSOR_CHAR_REG
+                    sta       VKY_TXT_CURSOR_CHAR_REG,x
 
 * Set foreground/background character LUT values.
 SetForeBack         lda       #$C3                get the foreground/background LUT MMU block
@@ -277,9 +279,10 @@ Write
                     jsr       ,x                  branch to it
                     pshs      d                   save D since we modify it here
                     lda       V.CurCol,u          get the current row in A
-                    sta       VKY_TXT_CURSOR_X_REG_L
+                    ldx       #TXT.Base
+                    sta       VKY_TXT_CURSOR_X_REG_L,x
                     lda       V.CurRow,u          get the current row in A
-                    sta       VKY_TXT_CURSOR_Y_REG_L
+                    sta       VKY_TXT_CURSOR_Y_REG_L,x
                     ldb       V.WWidth,u          and the current column in B
                     mul                           get the product
                     addb      V.CurCol,u          add it to the current column
@@ -366,9 +369,10 @@ ret                 rts                           and return to the caller
 ;;; Turns the cursor on.
 ;;;
 ;;; Code: 05 21
-CurOn               lda       VKY_TXT_CURSOR_CTRL_REG
+CurOn               ldx       #TXT.Base
+                    lda       VKY_TXT_CURSOR_CTRL_REG,x
                     ora       #Vky_Cursor_Enable
-                    sta       VKY_TXT_CURSOR_CTRL_REG
+                    sta       VKY_TXT_CURSOR_CTRL_REG,x
                     rts
 
 ;;; CurOff
@@ -376,9 +380,10 @@ CurOn               lda       VKY_TXT_CURSOR_CTRL_REG
 ;;; Turns the cursor off.
 ;;;
 ;;; Code: 05 20
-CurOff              ldb       VKY_TXT_CURSOR_CTRL_REG
+CurOff              ldx       #TXT.Base
+                    ldb       VKY_TXT_CURSOR_CTRL_REG,x
                     andb      #~Vky_Cursor_Enable
-                    stb       VKY_TXT_CURSOR_CTRL_REG
+                    stb       VKY_TXT_CURSOR_CTRL_REG,x
                     rts
 
 ChkESC              cmpa      #$1B                is the character ESC?
@@ -591,12 +596,13 @@ show@               lbsr      CurOn
 ;;;   XXXXX001 = .5 second flash interval
 ;;;   XXXXX010 = .25 second flash interval
 ;;;   XXXXX011 = .2 second flash interval
-CurRate             ldb       VKY_TXT_CURSOR_CTRL_REG
+CurRate             ldx       #TXT.Base
+                    ldb       VKY_TXT_CURSOR_CTRL_REG,x
                     andb      #$01                preserve the cursor enable bit
                     lsla                          shift bits to the left
                     pshs      a                   save the value to OR in on the stack
                     orb       ,s+                 OR it in with the contents of the register
-                    stb       VKY_TXT_CURSOR_CTRL_REG save it to the hardware
+                    stb       VKY_TXT_CURSOR_CTRL_REG,x save it to the hardware
                     bra       ResetHandler        reset the handler
 
 ;;; CurChar
@@ -608,7 +614,8 @@ CurRate             ldb       VKY_TXT_CURSOR_CTRL_REG
 ;;; Parameter: CHR
 ;;;
 ;;; CHR can be any character from 0 - 255.
-CurChar             sta       VKY_TXT_CURSOR_CHAR_REG
+CurChar             ldx       #TXT.Base
+                    sta       VKY_TXT_CURSOR_CHAR_REG,x
                     bra       ResetHandler
 
 Bell
@@ -769,10 +776,11 @@ SetWin40x30         ldb       #DBL_Y|DBL_X
                     ldx       #40*256+30
 SetWin              stx       V.WWidth,u
                     pshs      b
-                    ldb       MASTER_CTRL_REG_H
+                    ldx       #TXT.Base
+                    ldb       MASTER_CTRL_REG_H,x
                     andb      #~(DBL_Y|DBL_X|CLK_70)
                     orb       ,s+
-                    stb       MASTER_CTRL_REG_H
+                    stb       MASTER_CTRL_REG_H,x
                     rts
 
 SetWin80x30         ldb       #DBL_Y
@@ -937,7 +945,7 @@ SSScSiz             clra                          clear the upper 8 bits of D
 ;;;
 ;;; Error:  B = A non-zero error code.
 ;;;        CC = Carry flag set to indicate error.
-SSJoy               lda       IORA                get the joystick value
+SSJoy               lda       VIA.Base+VIA_ORA_IRA get the joystick value
                     ldx       #0                  initialize left/top value in X
                     ldy       #255                initialize right/bottom value in Y
                     lsra                          shift out UP
@@ -1011,12 +1019,45 @@ SSDfPal
 *    CC = carry set on error
 *    B  = error code
 *
+SS.DMAFill          equ       $B0
 SetStat
                     cmpa      #SS.SSig            send signal on data ready?
                     beq       SSSig               yes, go process
+                    cmpa      #SS.DMAFill         DMA Fill?
+                    beq       SSDMAFill
                     comb                          set the carry
                     ldb       #E$UnkSvc           load the "unknown service" error
                     rts                           return
+
+* SS.DMAFill - fill memory
+DMF$DstAddrHi       equ       0
+DMF$DstAddrMid      equ       1
+DMF$DstAddrLow      equ       2
+DMF$DstSizeHi       equ       3
+DMF$DstSizeMid      equ       4
+DMF$DstSizeLow      equ       5
+DMF$FillValue       equ       6
+
+SSDMAFill           ldy       #DMA.Base
+                    lda       #DMA_CTRL_Fill|DMA_CTRL_Start_Trf
+                    sta       DMA_CTRL_REG,y
+                    ldx       R$X,u               get pointer to the DMA control block
+                    ldd       DMF$DstAddrHi,x
+                    sta       DMA_DEST_ADDR_H,y
+                    stb       DMA_DEST_ADDR_M,y
+                    lda       DMF$DstAddrLow,x
+                    stb       DMA_DEST_ADDR_L,y
+                    ldd       DMF$DstSizeHi,x
+                    sta       DMA_SIZE_1D_H,y
+                    stb       DMA_SIZE_1D_M,y
+                    ldd       DMF$DstSizeLow,x
+                    sta       DMA_SIZE_1D_L,y
+                    stb       DMA_DATA_2_WRITE
+                    lda       DMA_CTRL_REG,y
+                    ora       #DMA_CTRL_Start_Trf
+                    sta       DMA_CTRL_REG,y
+* The CPU halts here until the transfer is complete.
+                    rts
 
 * SS.SSig - send signal on data ready
 SSSig               pshs      cc                  save interrupt status
