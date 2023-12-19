@@ -12,9 +12,9 @@
 
 stackbuff           set       DAT.BlCt*2
 
-FMapBlk             lda       R$B,u               get the number blocks from the caller's B
+FMapBlk             lda       R$B,u               get the number of blocks from the caller's B
                     beq       IllBlkErr           if zero, we can't map 0 blocks, so return an error
-                    cmpa      #DAT.BlCt           is the blck count within range of DAT image?
+                    cmpa      #DAT.BlCt           is the block count within range of DAT image?
                     bhi       IllBlkErr           no, return an error
                     leas      -stackbuff,s        make a buffer on the stack to hold the DAT image
                     ldx       R$X,u               get the start block number from the caller's X
@@ -27,9 +27,9 @@ loop@               stx       ,w++                save the block number to the b
                     tfr       s,y                 point to the buffer
 loop@               stx       ,y++                save the block number to the buffer
                     endc
-                    abx                           go to next block
-                    deca                          done?
-                    bne       loop@               no, keep going
+                    abx                           add the block increment
+                    deca                          decrement the number of blocks we need
+                    bne       loop@               branch if we need more
                     ldb       R$B,u               get the block count again
                     ldx       <D.Proc             get the current process pointer
                     leay      <P$DATImg,x         point to the DAT image

@@ -64,6 +64,16 @@ OS9.D               SET       1
 *
 *	       2006/03/03  Boisy G. Pitre
 * Added F$Debug and D.DbgMem areas, common to all levels of NitrOS-9
+*
+*        2019/10/30  Bill Nobel, from discussions with L. Curtis Boyle
+* Added I$ModDsc call (modify device descriptor in system memory) BN/LCB
+*
+*        2019/12/27 L. Curtis Boyle
+* Added D.IRQTmp for faster temp vars (currently used in Krn F$Move/6809,
+*   can be used elsewheres later, in small routines with IRQ's turned off).
+*
+*        2019/10/30  Bill Nobel, from discussions with L. Curtis Boyle
+* Added S$FS2Sig & S$KQ3Sig (both $80) FS2 & KQ3 (VRN) signal codes added (LCB).
 
                     NAM       os9.d
                     IFEQ      Level-1
@@ -239,6 +249,7 @@ I$GetStt            RMB       1                   Get Path Status
 I$SetStt            RMB       1                   Set Path Status
 I$Close             RMB       1                   Close Path
 I$DeletX            RMB       1                   Delete from current exec dir
+I$ModDsc            RMB       1                   Modify SCF/RBF Descriptor in Memory
 
 *******************
 * File Access Modes
@@ -265,6 +276,12 @@ S$Intrpt            RMB       1                   Keyboard Interrupt
 S$Window            RMB       1                   Window Change
 S$HUP               EQU       S$Window            Hang Up
 S$Alarm             RMB       1                   CoCo individual process' alarm signal
+
+                    ifgt      Level-1
+                    ORG       $80
+S$FS2Sig            RMB       1                   FS2 VIRQ Signal code (VRN)
+S$KQ3Sig            EQU       S$FS2Sig            KQ3 VIRQ Signal code (VRN)
+                    endc
 
                     PAG
 **********************************
@@ -423,6 +440,7 @@ D.DbgMem            RMB       2                   Debug memory pointer
 D.DWSubAddr         RMB       2                   DriveWire subroutine module pointer
 D.DWStat            RMB       2                   DriveWire statics page
 D.DWSrvID           RMB       1                   DriveWire server ID
+D.IRQTmp            RMB       2                   1 or 2 byte DP scratch var (for when IRQ's are off)
 
                     ORG       $20
 
@@ -791,6 +809,14 @@ RevsMask            EQU       %00001111           Revision Level Field
 ReEnt               EQU       %10000000           Re-Entrant Module
 ModProt             EQU       %01000000           Gimix Module protect bit (0=protected, 1=write enable)
 ModNat              EQU       %00100000           6309 native mode attribute
+BufWrits            EQU       ModProt             SCF buffered read supported (Coco only at this point)
+BufReads            EQU       %00010000           SCF buffered write supported (Coco only at this point)
+* LCB - propose we add Buffered Read/Buffered Write attribute bits for Coco (in descriptors and
+*   drivers for SCF), with one of them replacing ModProt. SCF would check Read/ReadLn and Write/WritLn
+*   calls, and if both the driver and descriptor have the appropriate bit set, it would do buffered 32
+*   byte (for now) reads/writes like the Grfdrv write call does now, for all bytes that are ASCII >$1F
+*   (ie non-control chars, which need special processing)
+
 
 ********************
 * Device Type Values

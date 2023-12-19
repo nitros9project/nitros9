@@ -55,23 +55,57 @@
 * Now, if the error returned from linking CoWin is not E$MNF, we don't bother to look
 * for CoGrf... we just return immediately.
 *
-*   3      2020/04/26  L. Curtis Boyle
+*   3      2020/04/26 (EOU Beta 5)  L. Curtis Boyle
 * Changed SS.GIP call (should be backwards compatible) to allow individual $FF settings
 *   (leave current setting alone) to work for all 4 parameters independently.
+* Also moved start branch table to allow short branches to Write and Getstat-they get called
+*   a lot more often than Terminate
+*   4      2020/06/20 (EOU Beta 6)  L. Curtis Boyle
+* - Minor size/speed optimizations as mentioned in my earlier comments from Beta 5
+* - Also fixed SS.ComSt SetStat - goes straight to CoVDG module, and now works.
+* - Minor SS.Joy optimization
+* - To facilitate other planned changes, Global Keyboard mouse is removed, with local
+*     keyboard mouse only (also greatly helps beginners who don't understand why simple
+*     things like backspace don't work anymore on other windows).
+*   2020/07/15 LCB - started adding SS.GIP2 call.
+*   2020/07/20 LCB - removed KeyMem 8 byte static mem buffer and references to it; it was
+*     never used and just taking up space (and time to set it up)
+*   2020/07/22 LCB - merged KeyDrv back into VTIO (only had 2 functions, and no static RAM
+*     usage). Will save some module space, and saves 10 bytes of global mem total.
+*   2020/07/22 LCB - Keyclick (local to each window) toggle working in SS.GIP2 call
+*   2020/09/16 LCB - Enable/disable 2nd mouse button on active mouse port to be CLEAR
+*     equivalent working (needs updated JoyDrv_Joy) option enabled in SS.GIP2 call.
+*     Both Keyclick & CLEAR are 2 bits per setting:
+*     0x = leave current setting
+*     10 = disable feature
+*     11 = enable feature
+*   2020/12/18 LCB - still had text 'KeyDrv' in code, now removed (saves 6 bytes)
+
+** PROPOSED in SS.GIP2 call - Use low byte of X for default font # (boot default is 1). $00
+**  means leave alone
+
 
                     nam       VTIO
                     ttl       Video Terminal I/O Driver for CoCo 3
-
+* Need to fix up ISR routine to handle Animate Palette. NOTE: the "screen hardware settings"
+*   flag forces a call to SelNewWindow in the Co-driver, which should actually update:
+*   1) screen mode
+*   2) screen address
+*   3) palettes
 * Disassembled 98/09/09 08:29:24 by Disasm v1.6 (C) 1988 by RML
 
                     ifp1
-                    use       /dd/defs/deffile
+* EOU build
+*         use   /dd/defs/deffile
+* Repo build
+                    use       defsfile
+                    use       cocovtio.d
                     endc
 
 tylg                set       Drivr+Objct
 atrv                set       ReEnt+rev
 rev                 set       0
-edition             set       3
+edition             set       4
 
 * LCB NOTE: Need to change this so that code always uses V.ULCASE static mem keyboard mouse flag,
 * but code will copy current state to all terminals if Global settings is on (and this could
@@ -85,12 +119,7 @@ edition             set       3
 * that we can use 3 colors of LED on the Boomerang E2 2 MB board (add BOOMERANG equ) to signify
 * Caps Lock on, Keyboard mouse on, and Caps Lock AND keyboard mouse on, for each window.
 * currently proposing Red for keyboard mouse, green for capslock, and either Blue or White for Both.
-* Maybe half intensity? (so AAx10000 where AA: 00="all", 01=Red, 10=Grn, 11=Blue
-* Also, I am not sure local window keyboard mouse is fully working - it looks the keysense check
-*  routine is checking the global setting only? Not tested yet, though.
-* Comment out next line for global keyboard mouse; otherwise, it's on/off
-* on a per-window basis.
-GLOBALKEYMOUSE      equ       0                   0=Local to window keyboard mouse, 1=Global keyboard mouse
+* Maybe half intensity? (so AAx10000 where AA: 00="all", 01=Red, 10=Grn, 11=Blue)
 
                     mod       eom,name,tylg,atrv,start,CC3DSiz
 
@@ -112,12 +141,12 @@ name                fcs       /VTIO/
 Term                ldx       <D.CCMem            get ptr to CC memory
                     cmpu      G.CurDev,x          device to be terminated is current?
                     bne       noterm              no, execute terminate routine in co-module
-                    lbsr      SHFTCLR             get last window memory pointer
-                    cmpu      G.CurDev,x          device to be terminated is current?
+                    lbsr      SHFTCLR             get ptr to previous window in window list
+                    cmpu      G.CurDev,x          Still us? (IE we are only window active?)
                     bne       noterm              no, execute terminate routine in co-module
 * We are last device that VTIO has active; terminate ourself
 * 6809/6309 - I don't think we need to pshs/puls CC - it's not using any of the flags after.
-* Just orcc and then replace puls cc with andcc
+* Just orcc and then replace puls cc with andcc. Would need testing
                     pshs      cc                  Save flags
                     orcc      #IRQMask            Shut IRQ's off
                     IFNE      H6309
@@ -130,17 +159,17 @@ Term                ldx       <D.CCMem            get ptr to CC memory
                     ldx       G.OrgAlt,x          get original D.AltIRQ address
                     stx       <D.AltIRQ           Save as current D.AltIRQ
 * for above change
-*         andcc #^IRQMask      Turn IRQ's back on
+*         andcc #^IRQMask    Turn IRQ's back on
                     puls      cc                  restore IRQs
                     pshs      u,x                 Save regs
                     ldx       #(WGlobal+G.JoyEnt) Point to start of JoyDrv entry/static mem block
                     bsr       TermSub             Terminate JoyDrv
                     ldx       #(WGlobal+G.SndEnt) Point to start of SndDrv entry/static mem block
                     bsr       TermSub             Terminate SndDrv
-                    ldx       #(WGlobal+G.KeyEnt) Point to start of KeyDrv entry/static mem block
-                    bsr       TermSub             Terminate KeyDrv
+*         ldx   #(WGlobal+G.KeyEnt)  Point to start of KeyDrv entry/static mem block
+*         bsr   TermSub      Terminate KeyDrv
                     puls      u,x                 Restore regs
-noterm              ldb       #$0C                branch table offset for terminate
+noterm              ldb       #CoTerm             ($0C) branch table offset for terminate
                     lbra      CallCo              go to terminate in co-module
 
 * Call terminate routine in subroutine module (KeyDrv/JoyDrv/SndDrv)
@@ -154,17 +183,16 @@ TermSub             leau      2,x                 point U to static area for sub
 *        U = address of device static memory area
 * Exit:  CC = carry set on error
 *        B  = error code
-
+* NOTE: Uses some settings from the INIT module from OS9Boot as well, for setting defaults
 Init                ldx       <D.CCMem            get ptr to CC mem
                     ldd       <G.CurDev,x         has VTIO itself been initialized?
-* 6809/6309 - change to BNE
                     lbne      PerWinInit          yes, don't bother doing it again, just do new window (or VDG) init
                     leax      >SHFTCLR,pcr        point to SHIFT-CLEAR subroutine
                     pshs      x                   save it on stack
                     leax      >setmouse,pcr       get address of setmouse routine
                     tfr       x,d                 Move to D
                     ldx       <D.CCMem            get ptr to CC mem again
-                    std       >G.MsInit,x         Save setmouse routine vector
+                    std       >G.MsInit,x         Save setmouse routine vector (used by CoWin)
                     puls      d                   get address of SHIFT-CLEAR subroutine back
                     std       >G.WindBk,x         save its vector
                     stu       <G.CurDev,x         Save current device's static mem ptr
@@ -181,8 +209,6 @@ Init                ldx       <D.CCMem            get ptr to CC mem
                     pshs      u,y,x,d             save regs
 * Added to allow patching for RGB/CMP/Mono and Key info - BGP
 * Uses new init module format to get monitor type and key info
-* LCB 6809/6309 - Define another bit in Feature Byte 1 or 2 for global vs. local window keyboard
-*  mouse, and set that up here.
                     ldy       <D.Init             get ptr to INIT module
                     lda       MonType,y           get monitor type byte 0,1,2
                     sta       <G.MonTyp,x         save in global memory
@@ -194,20 +220,21 @@ Init                ldx       <D.CCMem            get ptr to CC mem
                     std       <G.KyDly,x          set initial and 2ndary constants
                     ldd       <D.SysPrc           get system process desc ptr
                     std       <D.Proc             make current process
-* 6809/6309 use < addressing
-                    leax      >KeyDrv,pcr         point to keyboard driver sub module name
-                    bsr       LinkSys             link to it (restores U to D.CCMem)
-                    sty       >G.KeyEnt,u         save the entry point
-                    leau      >G.KeyMem,u         point U to keydrv statics
-                    jsr       ,y                  call init routine of sub module (K$Init)
-* 6809/6309 use < addressing
-                    leax      >JoyDrv,pcr         point to joystick driver sub module name
+
+* KeyDrv merged back into VTIO; next lines not needed anymore
+*         leax  <KeyDrv,pcr  point to keyboard driver sub module name
+*         bsr   LinkSys      link to it (restores U to D.CCMem)
+*         sty   >G.KeyEnt,u  save the entry point
+* removed; was never used in Keydrv anyways
+*         leau  >G.KeyMem,u  point U to keydrv statics
+*         jsr   ,y           call init routine of sub module (K$Init)
+
+                    leax      <JoyDrv,pcr         point to joystick driver sub module name
                     bsr       LinkSys             link to it (restores U to D.CCMem)
                     sty       >G.JoyEnt,u         and save the entry point
                     leau      >G.JoyMem,u         point U to joydrv statics
                     jsr       ,y                  call init routine of sub module (J$Init)
-* 6809/6309 use < addressing
-                    leax      >SndDrv,pcr         point to sound driver sub module name
+                    leax      <SndDrv,pcr         point to sound driver sub module name
                     bsr       LinkSys             link to it (restores U to D.CCMem)
                     sty       >G.SndEnt,u         and save the entry point
                     leau      >G.SndMem,u         point U to sound statics
@@ -226,9 +253,9 @@ PerWinInit          ldd       #$0078              Default mouse sample rate (0) 
                     std       <V.DevPar,u         save it off in our static (hi bit=window device)
                     lbra      FindCoMod           go find and init co-module
 
-KeyDrv              fcs       /KeyDrv/       Name of keyboard driver subroutine module
-JoyDrv              fcs       /JoyDrv/       Name of joystick driver subroutine module
-SndDrv              fcs       /SndDrv/       Name of sound driver subroutine module
+*KeyDrv   fcs   /KeyDrv/     Name of keyboard driver subroutine module
+JoyDrv              fcs       /JoyDrv/     Name of joystick driver subroutine module
+SndDrv              fcs       /SndDrv/     Name of sound driver subroutine module
 
 * Link to subroutine module
 * Entry: X=ptr to module name
@@ -237,6 +264,10 @@ LinkSys             lda       #Systm+Objct        system module
                     ldu       <D.CCMem            Get ptr to CC mem back
                     rts
 
+* 6809/6309 - moved here since READ called much more often than SS.Ready, and we can bne vs lbne
+NotReady            comb                          Return with Not Ready error
+                    ldb       #E$NotRdy
+                    rts
 * Read
 *
 * NOTE:
@@ -252,13 +283,11 @@ LinkSys             lda       #Systm+Objct        system module
 *    CC = carry set on error
 *    B  = error code
 *
-* 6809/6309 - use lda instead of tst (same size/faster)
-Read                tst       V.PAUS,u            device paused?
+Read                lda       V.PAUS,u            device paused?
                     bpl       read1               no, do normal read
 * Here, device is paused; check for mouse button down
 * If it is down, we simply return without error.
-* 6809/6309 - use lda instead of tst (same size/faster)
-                    tst       >(WGlobal+G.Mouse+Pt.CBSA) test current button state A
+                    lda       >(WGlobal+G.Mouse+Pt.CBSA) test current button state A
                     beq       read1               button isn't pressed, do normal read
                     clra                          Button pressed, return w/o error
                     rts
@@ -266,7 +295,7 @@ Read                tst       V.PAUS,u            device paused?
 * Check to see if there is a signal-on-data-ready set for this path.
 * If so, we return a Not Ready error.
 read1               lda       <V.SSigID,u         data ready signal trap set up?
-                    lbne      NotReady            yes, exit with not ready error
+                    bne       NotReady            yes, exit with not ready error
                     leax      >ReadBuf,u          point to keyboard buffer (up to 128 chars)
                     ldb       <V.InpPtr,u         get current position in keyboard buffer
                     orcc      #IRQMask            disable IRQs
@@ -333,18 +362,30 @@ L017D               rts
 
 
 * Main keyboard scan (after PIA has been read)
-* Check keyboard mouse arrows
+* 1) Updates keyboard mouse (if enabled), flags that mouse moved
+* 2) Checks for CLEAR/SHIFT CLEAR as well (and CTRL-CLEAR keyboard mouse toggle)
 * Entry: U=Global mem ptr
-*        X=???
 *        A=Key that was pressed
-* Exit:  E=0 if key was pressed, 1 if none pressed
+* Exit:  B: Flag that special update is needed:
+*          B=1: No special update is needed
+*          B=0: Special update needed; flagged as such if one or more of the following:
+*             - Keyboard mouse on & a mouse move key or mouse button key pressed (regular/SHIFT/CTRL arrow,F1,F2)
+*             - CTRL-CLEAR capslock toggled
+*             - CLEAR or SHIFT-CLEAR (select next or previous window)
+*        CC: Zero bit set if special update needed; cleared if not
+*        X,Y,U are preserved
 * Updated for localized keyboard mouse similar to TC9IO
-*
+* CHECK IF Y IS STILL DATA MEM PTR, SO WE CAN CHECK CURRENT WINDOWS KEYBOARD MOUSE FLAG
+* ONLY CALLED FROM L03ED
 L017E               ldb       #$01                flag that no mouse movement happened as default
                     pshs      u,y,x,d             save registers used & flag (and A=key pressed)
-                    ldb       <G.KyMse,u          get global keyboard mouse enabled flag
+* CHANGE G.KYMSE,X TO USE V.ULCase in static mem instead
+*         ldb   <G.KyMse,u   get global keyboard mouse enabled flag
+                    ldx       <G.CurDev,u         get current device's static mem pointer
+                    ldb       V.ULCase,x          Get local window keyboard flags
+                    andb      #KeyMse             Keyboard mouse on?
                     beq       L01E6               Not on, skip keyboard mouse processing
-* Keyboard mouse is on
+* Keyboard mouse is on - check for keyboard mouse movement keys
                     lda       <G.KySns,u          Keyboard mouse on, get Key Sense byte
                     bita      #%01111000          any arrow key pressed?
                     beq       L01DF               No, skip arrow key processing
@@ -353,7 +394,7 @@ L017E               ldb       #$01                flag that no mouse movement ha
                     sta       <G.MseMv,u
                     ldd       #%00001000*256+3    start at up arrow flag bit, 4 to check for (0-3)
                     pshs      d                   Save check bit & ctr
-                    leax      >L0160,pcr          point to keyboard mouse deltas
+                    leax      <L0160,pcr          point to keyboard mouse deltas
                     leay      <G.Mouse+Pt.AcY,u   Point to actual mouse Y coord in mouse packet
 * Update keyboard mouse co-ordinates according to arrow key pressed
 L01A2               bita      <G.KySns,u          desired arrow key down?
@@ -391,18 +432,22 @@ L01CD               std       ,s                  Save arrow key bit (keysense) 
                     leay      2,y                 move to Y coordinate
                     ldd       #MaxLine            get maximum Y coordinate
                     bsr       L0170               If we went past, set to maximum
-* Non-arrow key comes here
+* Keyboard mouse on - Non-arrow key comes here (to check F1/F2 fire buttons)
 L01DF               lda       <G.KyButt,u         Either F1 or F2 (keyboard mouse fire buttons) down?
                     bne       L0223               yes, clear flag byte on stack & return
-                    lda       ,s                  no, get back key pressed
-L01E6               tst       <G.Clear,u          CLEAR key down?
-                    beq       L0225               yes, get mouse moved flag into B & return
-                    clr       <G.Clear,u          no, clear out clear key flag
+                    lda       ,s                  no, get back key pressed (not arrow or F1/F2)
+* If keyboard mouse disabled, it comes here
+* 6809/6309 note - finish tracking each possible branch from this, but may be able to use LDB instead of TST
+L01E6               tst       <G.Clear,u          CLEAR key down? (apparently also flags CTRL-0)
+                    beq       L0225               No, exit with current status
+                    clr       <G.Clear,u          Yes; clear out clear key flag (since we processing it)
 * Check CTRL-0 (CAPS-Lock)
-                    cmpa      #%10000001          CTRL-0? (capslock toggle)
+* 6809/6309 note: Should be able to SUBA #$81 here, then DECA's at L01FF, L0208, L0211 (smaller both CPU's+
+*   faster on 6309)
+                    cmpa      #$81                CTRL-0? (capslock toggle)
                     bne       L01FF               no, keep checking
                     ldb       <G.KySame,u         Yes, same key press we had last run through?
-                    bne       L0223               Yes,flag no update & return
+                    bne       L0223               Yes, leave flag alone & return
                     ldx       <G.CurDev,u         get current device's static mem pointer
                     IFNE      H6309
                     eim       #CapsLck,<V.ULCase,x Toggle Capslock enabled/disabled bit
@@ -411,31 +456,28 @@ L01E6               tst       <G.Clear,u          CLEAR key down?
                     eorb      #CapsLck            Toggle current CapsLock status
                     stb       <V.ULCase,x         Save it back
                     ENDC
-                    bra       L0223               Flag no mouse/cursor change & return
+                    bra       L0223               Flag special update (mouse/cursor change) & return
 
-* Check CLEAR key
-L01FF               cmpa      #%10000010          was key pressed CLEAR key?
+* Check CLEAR key (select next window in linked list)
+L01FF               cmpa      #$82                was key pressed CLEAR key?
                     bne       L0208               no, check next
-                    lbsr      CLEAR               find next window & return with no change flag
-                    bra       L0223
+                    lbsr      CLEAR               find next window
+                    bra       L0223               Flag special update change & return
 
-* Check SHIFT-CLEAR
-L0208               cmpa      #%10000011          was it SHIFT-CLEAR?
+* Check SHIFT-CLEAR (select previous window in linked list)
+L0208               cmpa      #$83                was it SHIFT-CLEAR?
                     bne       L0211               no, check next
                     lbsr      SHFTCLR             yes, find previous window & return with no change flag
-                    bra       L0223
+                    bra       L0223               Flag special update change & return
 
-* Check CTRL-CLEAR
-L0211               cmpa      #%10000100          keyboard mouse toggle key (CTRL-CLEAR>?
+* Check CTRL-CLEAR (keyboard mouse on/off toggle)
+L0211               cmpa      #$84                keyboard mouse toggle key (CTRL-CLEAR>?
                     bne       L0225               no, return leaving change flag as is
-                    ldb       <G.KySame,u         Yes, same key as last pressed?
-                    bne       L0223               yes, clear change flag & return
-* 6809/6309 - see notes in cocovtio.d for using a new SS.GIP2 call to allow setting global
-* vs. local keyboard mouse while NitrOS9 is running, vs. having to assemble each version separately
-* LCB (not implemented yet)
-                    IFNE      GLOBALKEYMOUSE
-                    com       <G.KyMse,u          Toggle global keyboard mouse setting
-                    ELSE
+                    ldb       <G.KySame,u         Yes, get same key as last pressed flag
+                    bne       L0223               It is the same, flag special update change & return
+* EOU is going to have local to window keyboard mouse only - far too much confusion why
+*   backspace, etc. no longer work for beginning users. Pro's don't seem to use GUI's and
+*   mice at all anyways, and won't miss it either way.
                     ldx       <G.CurDev,u         Get current device's static mem ptr
                     clra                          default keyboard mouse disabled
                     IFNE      H6309
@@ -445,19 +487,20 @@ L0211               cmpa      #%10000100          keyboard mouse toggle key (CTR
                     eorb      #KeyMse             toggle current local Keyboard Mouse status bit
                     stb       <V.ULCase,x         Save new setting
                     ENDC
-                    beq       KeyMOff             Leave A=0 if keyboards mouse OFF
-                    deca                          else A=$FF (for ON)
-KeyMOff             sta       <G.KyMse,u          Copy window's local keyboard mouse flag into global version
-                    ENDC
-L0223               clr       1,s                 Clear move flag
-L0225               ldb       1,s                 Get current state of move flag, restore regs & return
+L0223               clr       1,s                 Flag that a special update (mouse moved or window changed) has happened
+L0225               ldb       1,s                 Get current state of move flag (Zero flag set or cleared), restore regs & return
                     puls      pc,u,y,x,d
 
-* Update a bounch of mouse packet stuff
+* Update a bunch of mouse packet stuff (timers, signals)
 * Entry: X=PIA address
 *        A=keyboard mouse button flags
 *        B=mouse button status
 *        U=global mem ptr
+*        Y=static mem ptr
+* Exit:  X,B preserved
+*        U=global mem ptr
+*        Y=static mem ptr
+*        A=modified
 L0229               pshs      x,b                 save external mouse button status & PIA addr
                     leax      <G.Mouse,u          Point to mouse packet in Global mem
                     tst       Pt.ToTm,x           Is timeout INIT value 0 (ie off)?
@@ -470,12 +513,13 @@ L0229               pshs      x,b                 save external mouse button sta
 * 3,s = toggled version Pt.CBSA (the previous button 1 state)
 * 4,s = toggled version Pt.CBSB (the previous button 2 state)
                     tfr       a,b                 move keyboard button flags to B
-                    tst       <G.KyMse,u          Global keyboard mouse activated?
+                    lda       V.ULCase,y          Get local keyboard flags
+                    bita      #KeyMse             Keyboard mouse active?
                     bne       L024E               yes, go on
                     ldb       #%00000101          Default mask for button 1 & 2 on right mouse/joystick
                     lda       Pt.Actv,x           get active mouse side
                     anda      #%00000010          clear all but left side select
-                    sta       ,s                  Save side flag
+                    sta       ,s                  Save side flag (0=right, 2=left)
                     beq       L0248               If right, bit mask is already correct
                     lslb                          Left, change button 1 & 2 mask for left mouse
 L0248               andb      5,s                 check with external mouse button status type
@@ -522,7 +566,7 @@ L0276               lda       Pt.ToTm,x           Re-initialize time till timeou
                     bsr       L02CA               Either fire button change state?
                     beq       L02AB               No, update last state counts
                     bsr       L02D3               Yes, update fire button states, timeouts & counters
-                    inc       >WGlobal+G.MsSig    flag mouse signal
+                    inc       >WGlobal+G.MsSig    flag mouse button signal
                     IFNE      H6309
                     ldq       <Pt.AcX,x           get actual X & Y coordinates
                     stq       <Pt.BDX,x           copy it to button down X & Y coordinates
@@ -534,7 +578,7 @@ L0276               lda       Pt.ToTm,x           Re-initialize time till timeou
                     ENDC
                     pshs      u                   save ptr to CC mem
                     ldu       <G.CurDev,u         get current device static mem ptr
-                    lda       <V.MSigID,u         get process ID requesting mouse signal
+                    lda       <V.MSigID,u         get process ID requesting mouse button signal
                     beq       L02A9               None, don't set up a signal
                     ldb       <V.MSigSg,u         Get signal code we need to send
                     os9       F$Send              and send it to process
@@ -572,7 +616,7 @@ L02CA               ldd       Pt.CBSA,x           get previous button states
                     eorb      4,s
                     ENDC
                     std       5,s                 Save them back & return
-                    rts                           return
+                    rts
 
 * Update mouse button clock counts & timeouts (happens if either button state has changed)
 * Stack is +2 from my note above, due to RTS address being 0-1,s
@@ -614,6 +658,8 @@ NullIRQ             rts
 *   - Updating graphics cursors if needed
 *   - Checking for mouse update
 * 6809/6309 - Need to add support for Animate Palette system call as well - LCB
+* Also screen hardware changes (new mode, new screen RAM location, palette updates) should all be here as well
+*   (or use a VRN based VIRQ?)
 ISR                 ldu       <D.CCMem            get ptr to CC mem
                     ldy       <G.CurDev,u         get current device's static mem ptr
                     lbeq      CheckAutoMouse      branch if none (meaning no window is currently created)
@@ -635,7 +681,7 @@ CheckScrChange
                     ora       G.WIBusy,u          0 = CoWin free, 1 = CoWin busy
                     bne       L034F               one of the two is busy, can't update, skip
 SelNewWindow
-                    clra                          special function: select new active window
+                    clra                          WnSpSlct - Select new active window
                     lbsr      L05DA               go execute co-module
                     clr       <V.ScrChg,y         clear screen change flag in device mem
 * CHECK IF GFX/TEXT CURSORS NEED TO BE UPDATED
@@ -643,7 +689,7 @@ SelNewWindow
 * G.WIBusy = 1 CoWin is busy processing something else
 * g0000 = # of clock ticks/cursor update constant (2) for 3 ticks: 2,1,0
 * G.CntTik = current clock tick for cursor update
-L0337               tst       G.CntTik,u          get current clock tick count for cursor updates
+L0337               lda       G.CntTik,u          get current clock tick count for cursor updates
                     beq       L034F               if 0, no update required
                     dec       G.CntTik,u          decrement the tick count
                     bne       L034F               if still not 0, don't do update
@@ -653,20 +699,15 @@ L0337               tst       G.CntTik,u          get current clock tick count f
                     inc       G.CntTik,u          otherwise bump tick count up again
                     bra       L034F               and don't update
 
-L034A               lda       #$02                update cursors sub-function code
+L034A               lda       #WnSpUpCr           ($02) update text & mouse cursors
                     lbsr      L05DA               go update cursors through co-module
 * Check for mouse update
 L034F               equ       *
-* Major error here. Used regU which points to D.CCMem not G.CurDev. RG
-                    IFNE      GLOBALKEYMOUSE
-                    tst       <G.KyMse,u          keyboard mouse?
-                    ELSE
                     IFNE      H6309
                     tim       #KeyMse,<V.ULCase,y keyboard mouse?
                     ELSE
                     lda       <V.ULCase,y         keyboard mouse?
                     bita      #KeyMse
-                    ENDC
                     ENDC
                     bne       L0369               branch if so
                     lda       <G.MSmpRt,u         get # ticks until next mouse read
@@ -684,85 +725,76 @@ L0369               equ       *
                     IFNE      H6309
                     clrd                          initialize keysense & same key flag
                     ELSE
-                    clra
+                    clra                          initialize keysense & same key flag
                     clrb
                     ENDC
-                    std       <G.KySns,u          initialize keysense & same key flag
-* Major error here. Was regU; see above. RG
-                    IFNE      GLOBALKEYMOUSE
-                    tst       <G.KyMse,u
-                    ELSE
+                    std       <G.KySns,u          zero out both G.KySns (key sense bits) & same key flag (G.KySame)
                     IFNE      H6309
-                    tim       #KeyMse,>V.ULCase,y
+                    tim       #KeyMse,<V.ULCase,y Is the keyboard mouse enabled?
                     ELSE
                     pshs      a
-                    lda       >V.ULCase,y         is the keyboard mouse enabled?
+                    lda       <V.ULCase,y         is the keyboard mouse enabled?
                     bita      #KeyMse
                     puls      a
                     ENDC
-                    ENDC
                     beq       L0381               no, try joystick
-                    ldx       >WGlobal+G.KeyEnt   else get ptr to keydrv
-                    leau      >G.KeyMem,u         and ptr to its statics
-                    jsr       K$FnKey,x           call into it
-                    ldu       <D.CCMem            get ptr to CC mem
+                    lbsr      FuncKeys            Get status of F1/F2 keys into A
                     sta       <G.KyButt,u         save keyboard/button state
-L0381               ldx       >WGlobal+G.JoyEnt   get ptr to joydrv
-* 6809/6309 - since other references know that G.JoyMem is G.JoyEnt+2, we could do leau 2,x
-* (smaller/faster)
+L0381               ldx       >WGlobal+G.JoyEnt   get ptr to joydrv Entry point
                     leau      >G.JoyMem,u         and ptr to its statics
-                    jsr       J$MsBtn,x           get mouse button info
-* Here, B now holds the value from the MsBtn routine in JoyDrv. Which is a table lookup.
-                    ldu       <D.CCMem            get ptr to CC mem
-                    lda       #%10000010          A = $82
-                    cmpb      #%10000000          If joystick/mouse left of center & right button 1, flag forward CLEAR key
-                    beq       L0397
-                    inca                          A now = $83
-                    cmpb      #%11000000          If joystick/mouse right of center & right button 1, flag forward CLEAR key
-                    bne       L039C               nope, skip ahead
-L0397               inc       <G.Clear,u          Flag that CLEAR key is pressed (go to next window)
-                    bra       L03C8
-
+                    jsr       J$MsBtn,x           get mouse button (extended) info
+* Here, B now holds the button state of the active mouse side (originally right port only):
+*   %10xxxxxx Window Forward flag (button 2 clicked & released, joystick X on right side)
+*   %11xxxxxx Window Backward flag (button 2 clicked & released, joystick X on left side) EXPERIMENTAL
+*   %00xxbbbb BBBB is the four buttons states from PIA (buttons currently held down)
+* High bit set=CLEAR key equivalent, otherwise max of 2 bits set in least sig 4 bits
+                    ldu       <D.CCMem            get ptr to CC mem back
+                    lda       #$82                Default A to be CLEAR key code (see KL00F6)
+                    bitb      #%10000000          Has a window change been requested (either CLEAR or SHIFT-CLEAR equivalent)?
+                    beq       L039C               No, check for other things
+                    bitb      #%01000000          Backwards?
+                    beq       L0397               No, leave A as CLEAR
+                    inca                          A=$83 (SHIFT-CLEAR)
+L0397               inc       <G.Clear,u          Flag that a CLEAR key is pressed (go to next window or previous window)
+                    clr       <G.LastCh,u         Clear repeated key ASCII value
+                    bra       n@                  Process as key press
+* 6809/6309 - LDA should work (saves a 1 cycle or 2)
 L039C               tst       V.PAUS,y            pause screen on?
                     bpl       L03A8               branch if not
-                    bitb      #%00000011          any mouse buttons down?
-                    beq       L03A8               branch if not
-                    lda       #C$CR               load A with carriage return
-* 6809/6309 - since we just loaded A with $0D, skip jumping to L03C8 and go straight to
-*  n@ (slightly faster)
-                    bra       L03C8
-
-L03A8               lda       <G.KyButt,u         Get keyboard mouse fire buttons (F1/F2)
-                    lbsr      L0229
-                    tstb
-                    lbne      L044E
-                    pshs      u,y,x
-                    ldx       >WGlobal+G.KeyEnt
-                    leau      >G.KeyMem,u
-                    jsr       K$RdKey,x           call Read Key routine
-                    puls      u,y,x
-                    bpl       L03C8               branch if valid char received
+                    bitb      #%00000011          any mouse button 1's down? (we can only get here with active mouse side)
+                    beq       L03A8               No, check keyboard mouse buttons
+                    lda       #C$CR               Yes, load A with carriage return (to unpause)
+                    bra       n@                  Treat mouse button 1 press like hitting a key to unpause
+* Entry: B=mouse buttons for active mouse side
+* ADDED LCB 09/23/2020 - if 2nd button down AND high bit of G.Bt2Clr is set, go to CheckAutoMouse
+L03A8               lda       <G.Bt2Clr,u         Is 2nd button to function as CLEAR?
+                    bpl       Normal              No, process buttons normally
+                    bitb      #%00001100          Yes, Is 2nd button down?
+                    lbne      CheckAutoMouse      Yes, skip updating mouse packet, go update mouse cursor
+Normal              lda       <G.KyButt,u         Get keyboard mouse fire buttons (F1/F2)
+                    lbsr      L0229               Update mouse packet timers, etc. (and signals if needed)
+                    tstb                          Any mouse buttons clicked?
+                    lbne      CheckAutoMouse      Yes, skip ahead
+                    pshs      y,x                 No, save regs
+                    lbsr      ReadKys             Get keypress into A (or high bit set in B if button pressed)
+                    puls      y,x                 Restore regs
+                    bpl       L03C8               branch if normal char received
                     clr       <G.LastCh,u         else clear last character var
-* 6809/6309 - would a BRA work?
-                    lbra      L044E
-
+                    lbra      CheckAutoMouse      and skip ahead
 *** Inserted detection of debugger invocation key sequence here...
 L03C8               cmpa      #$9B                CTRL+ALT+BREAK?
                     bne       n@                  no, move on
                     jsr       [>WGlobal+G.BelVec] Yes, Beep
                     os9       F$Debug             And call debugger routine
-* 6809/6309 - would a BRA work?
                     lbra      L044E               go update cursors, clean up & return
-n@
-***
-                    cmpa      <G.LastCh,u         is current ASCII code same as last one pressed?
+n@                  cmpa      <G.LastCh,u         is current ASCII code same as last one pressed?
                     bne       L03DF               no, no keyboard repeat, skip ahead
                     ldb       <G.KyRept,u         get repeat delay constant
-                    beq       L044E               if keyboard repeat shut off, skip repeat code
+                    lbeq      CheckAutoMouse      if keyboard repeat shut off, skip repeat code
                     decb                          repeat delay up?
                     beq       L03DA               branch if so and reset
 L03D5               stb       <G.KyRept,u         update delay
-                    bra       L044E               go update cursors, clean up & return
+                    lbra      CheckAutoMouse      go update cursors, clean up & return
 
 L03DA               ldb       <G.KySpd,u          get reset value for repeat delay
                     bra       L03ED               go update it
@@ -773,23 +805,35 @@ L03DF               sta       <G.LastCh,u         store last keyboard character
                     bne       L03D5               no, go reset repeat delay
                     ldb       <G.KyDly,u          get time remaining
 L03ED               stb       <G.KyRept,u         save updated repeat delay
-                    lbsr      L017E
-                    beq       L044E
-                    ldb       #$01                This may be wrong because regB was created in sub RG
-                    stb       >g00BF,u            menu keypress flag
+                    lbsr      L017E               Check for special key updates (keyboard mouse keys, capslock toggle, CLEAR/SHIFT-CLEAR)
+                    beq       CheckAutoMouse      Yes, do special update
+                    stb       >g00BF,u            No special update, set menu keypress flag
                     ldu       <G.CurDev,u         get ptr to statics in U
-                    ldb       <V.EndPtr,u
-                    leax      >ReadBuf,u          point to keyboard buffer
-                    abx                           move to proper offset
-                    incb                          inc keyboard buffer ptr
+                    ldb       <V.EndPtr,u         Get offset to last character read in keyboard buffer
+                    leax      >ReadBuf,u          point to start keyboard buffer (128 byte buffer currently)
+                    abx                           point to last character in keyboard buffer
+                    incb                          And bump that offset by 1 for new key
                     bpl       bumpdon2            hasn't wrapped, skip ahead
-                    clrb                          reset pointer
-bumpdon2            cmpb      <V.InpPtr,u         same as start?
-                    beq       L0411               yep, go on
-                    stb       <V.EndPtr,u         save updated pointer
-L0411               sta       ,x                  save key in buffer
-                    beq       L0431               go on if it was 0
+                    clrb                          wrapped, reset pointer to start of 128 byte keyboard buffer
+bumpdon2            cmpb      <V.InpPtr,u         same as start offset?
+                    beq       L0411               yes, don't save updated end pointer (keyboard buffer full)
+                    stb       <V.EndPtr,u         no, save updated end pointer
+* see if key click set through SS.GIP2 call. We can use B now, as it gets reloaded with something
+* else below
+ClickChk            ldb       <V.ULCase,u         Get current devices keyboard flags
+                    bitb      #KeyClick           Key Click on?
+                    beq       L0411               No, go write the character
+* Do JSR [>WGlobal+G.BelVec] to do key click, but set up an entry parameter to make it
+*   the shortest length, and different pitch than the regular bell. Note that the Bell vector
+*   destroys D & Y
+                    pshs      a                   Save key
+                    jsr       [>WGlobal+G.BelVec] Yes, do special Bell (entry: B=#KeyClick (%00001000)) first
+                    puls      a                   restore key
+L0411               sta       ,x                  save key in keyboard buffer
+                    beq       L0431               skip ahead if keypress is 0 (?Maybe some special keys clear value out?)
 * Check for special characters
+* LCB NOTE: Since buffered Grfdrv (and hopefully soon CoVDG) is based on "special characters"
+*   being ASCII $1F or lower ONLY, we could do that compare here and bypass the special checks
                     cmpa      V.PCHR,u            pause character?
                     bne       L0421               no, keep checking
                     ldx       V.DEV2,u            is there an output path?
@@ -797,21 +841,21 @@ L0411               sta       ,x                  save key in buffer
                     sta       V.PAUS,x            set immediate pause request on device
                     bra       L0443               wake up the process
 
-L0421               ldb       #S$Intrpt           get signal code for key interrupt
+L0421               ldb       #S$Intrpt           get signal code (3) for key interrupt
                     cmpa      V.INTR,u            is key an interrupt?
-                    beq       L042D               branch if so (go send signal)
-                    ldb       #S$Abort            get signal code for key abort
+                    beq       L042D               yes, send signal
+                    decb                          (2) S$Abort signal code for key abort
                     cmpa      V.QUIT,u            is it a key abort?
                     bne       L0431               no, check data ready signal
 L042D               lda       V.LPRC,u            get last process ID
-                    bra       L0447               go send the signal
+                    bra       L0447               send the signal to that process
 
 L0431               lda       <V.SSigID,u         send signal on data ready?
                     beq       L0443               no, just go wake up process
                     ldb       <V.SSigSg,u         else get signal code
-                    os9       F$Send
-                    bcs       L044E
-                    clr       <V.SSigID,u         clear signal ID
+                    os9       F$Send              Send to process expecting it
+                    bcs       L044E               Error; skip ahead
+                    clr       <V.SSigID,u         Success, clear signal ID & return
                     bra       L044E               return
 
 L0443               ldb       #S$Wake             get signal code for wakeup
@@ -828,15 +872,16 @@ CheckAutoMouse      lda       <G.AutoMs,u         Are we auto-following the mous
                     lda       G.GfBusy,u          Check if GrfDrv is busy
                     ora       G.WIBusy,u          and CoWin too
                     bne       L046B               If either is busy, skip updating mouse cursor, etc.
-                    lda       #$03
+                    lda       #WnSpAMse           ($03) update auto-follow mouse cursor
                     lbsr      L05DA
                     clr       <G.MseMv,u          clear mouse move flag
 L046B               orcc      #IntMasks           mask interrupts
                     leax      >ISR,pcr            get IRQ vector
-                    stx       <D.AltIRQ           and store in AltIRQ
-                    rts                           return
+                    stx       <D.AltIRQ           store in AltIRQ & return
+                    rts
 
-
+* Stack offsets used by window search routine
+* Eventually want to have "click to activate window"; probably will be in here
                     org       4
 f.nbyte             rmb       1                   # of bytes to next entry in table (signed #)
 f.tblend            rmb       2                   ptr to end of device table + 1
@@ -883,10 +928,8 @@ SHFTCLR             pshs      u,y,x,d             preserve registers
                     leax      -DEVSIZ,x           bump X back for start of loop
                     stx       f.ptrstr,s          save it
 * FindWin - Find the next (or previous) window in the device table
-*
 * The search takes place just before or after the current window's
 * device table entry.
-*
 * NOTE: SS.OPEN for current window has changed V.PORT to be the ptr to the
 *   current window's entry in the device table
 FindWin             ldx       <D.CCMem            get ptr to CC mem
@@ -941,6 +984,7 @@ L04FE               decb                          decrement
                     bne       L04FA               branch if valid
                     puls      x                   else restore X
                     bra       L0536
+
 L050F               puls      x
                     lda       ,s
 L0513               sta       ,s
@@ -970,17 +1014,18 @@ L052D               lda       ,s                  get local path # we started on
 
 L0536               ldx       <D.CCMem            get ptr to CC mem
                     stu       <G.CurDev,x         save new active device
-                    clr       g000A,x             flag that we are not on active device anymore
+                    clr       G.CrDvFl,x          flag that we are not on active device anymore
                     clr       >g00BF,x            clear CoWin's key was pressed flag (new window)
 * If there is only one window, it comes here to allow the text/mouse cursors
 * to blink so you know you hit CLEAR or SHIFT-CLEAR
 L0541               inc       <V.ScrChg,u         flag device for a screen change
-                    bsr       setmouse            check mouse
+                    bsr       setmouse            Set some mouse defaults (sampling rates, autofollow, device type)
 L0546               leas      <f.end,s            purge stack buffer
                     clrb                          clear carry
                     puls      pc,u,y,x,d          restore regs and return
 
-* Initialize mouse
+* Initialize mouse (sets global settings for mouse sampling rate, auto follow & device type,
+*  based on newly selected window)
 * Also called when CLEARing to a new window.
 setmouse            pshs      x                   save register used
                     ldd       <V.MSmpl,u          get sample and timeout from win devmem
@@ -992,20 +1037,6 @@ setmouse            pshs      x                   save register used
                     stb       <G.AutoMs,x         and set auto follow flag in global mem
                     lda       V.TYPE,u            get device type
                     sta       <G.WinType,x        set it
-                    IFEQ      GLOBALKEYMOUSE
-* Added: get window's keyboard mouse flag and update global keyboard mouse
-                    IFNE      H6309
-                    tim       #KeyMse,<V.ULCase,u keyboard mouse?
-                    ELSE
-                    lda       <V.ULCase,u         keyboard mouse?
-                    bita      #KeyMse
-                    ENDC
-                    bne       setmous2
-                    clra
-                    fcb       $8c                 CMPX opcode (skip 2 bytes)
-setmous2            lda       #$FF
-                    sta       <G.KyMse,x
-                    ENDC
                     clra
                     puls      pc,x                restore and return
 
@@ -1017,7 +1048,6 @@ start               lbra      Init
                     lbra      GetStat
                     lbra      SetStat
                     lbra      Term
-
 
 * Write
 * Entry:
@@ -1032,7 +1062,7 @@ Write               ldb       <V.ParmCnt,u        are we in the process of getti
                     lbne      L0600               yes, get next param byte
                     sta       <V.DevPar,u         save off character
                     cmpa      #C$SPAC             space or higher?
-                    bhs       CoWrite             yes, normal write
+                    bhs       CoWrit              yes, normal write
                     cmpa      #$1E                1E or $1F escape code?
                     bhs       L05EF               yes, go process
                     cmpa      #$1B                $1B escape code?
@@ -1040,10 +1070,10 @@ Write               ldb       <V.ParmCnt,u        are we in the process of getti
                     cmpa      #$05                $05 escape code? (cursor on/off)
                     beq       L05F3               yep, go handle it
                     cmpa      #C$BELL             Bell?
-                    bne       CoWrite             no, control char, process in co-driver
+                    bne       CoWrit              no, control char, process in co-driver
                     jmp       [>WGlobal+G.BelVec] Yes, call bell vector routine
 
-CoWrite             ldb       #$03                write entry point in co-module
+CoWrit              ldb       #CoWrite            ($03) write entry point in co-module
 CallCo              lda       <V.DevPar,u         get character stored earlier
 L0593               ldx       <D.CCMem            get ptr to CC mem
                     stu       G.CurDvM,x          save dev mem ptr for current device
@@ -1092,7 +1122,7 @@ L05D8               puls      pc,x,b              Restore regs & return
 * A=sub-function to call from Window Special Processing branch table in CoGrf/CoWin
 L05DA               pshs      u,y,x               Save regs
                     ldu       <G.CurDev,u         get current device mem ptr
-L05DF               ldb       #$0F                Window special processing table offset in CoGrf/CoWin
+L05DF               ldb       #CoWinSpc           ($0F) Window special processing table offset in CoGrf/CoWin
                     ldx       <D.CCMem            get ptr to CC memory in X
                     bsr       L0597
                     puls      pc,u,y,x            restore regs and return
@@ -1117,7 +1147,7 @@ L05EF               cmpa      #$1E                $1E code?
 *  but leaves the initial <ESC> ($1b) code there. The co-module checks it
 *  to see it as an ESC, and then checks for the first parameter byte for the
 *  required action.
-L05F3               leax      <CoWrite,pcr        point to parameter vector entry point
+L05F3               leax      <CoWrit,pcr         point to parameter vector entry point
                     ldb       #$01                get parameter count (need 1 to determine code)
                     stx       <V.ParmVct,u        save vector
                     stb       <V.ParmCnt,u        save # param bytes needed before exec'ing vect.
@@ -1126,7 +1156,7 @@ Do1E                clrb                          no error & return
 
 * Processing parameters
 * A=parameter byte from SCF
-* B=# parameter bytes left (not including one in A)
+* B=# parameter bytes left (not including one in A) (can be large with things like GPLoad)
 * U=device mem ptr
 L0600               ldx       <V.NxtPrm,u         get ptr of where to put next param byte
                     sta       ,x+                 put it there
@@ -1137,8 +1167,8 @@ L0600               ldx       <V.NxtPrm,u         get ptr of where to put next p
 * B=0, flag to say we are not current device
 * We have all parameter bytes we need at this point.
                     ldx       <D.CCMem            get ptr to CC mem
-                    bsr       L05C0
-                    stu       G.CurDvM,x
+                    bsr       L05C0               Flag CoWin busy (if appropriate) & flag we are current device
+                    stu       G.CurDvM,x          Save current device mem ptr
                     ldx       <V.PrmStrt,u        reset next param ptr to start
                     stx       <V.NxtPrm,u
                     ldb       <V.WinType,u        is this device using CoWin?
@@ -1155,38 +1185,40 @@ L0624               jsr       [<V.ParmVct,u]
 *    A  = function code
 *    Y  = address of path descriptor
 *    U  = address of device memory area
-*
+*    X  = Ptr to callers register stack
 * Exit:
 *    CC = carry set on error
 *    B  = error code
 *
-GetStat             cmpa      #SS.EOF
+GetStat             cmpa      #SS.EOF             ($06) EOF check always exits without error
                     beq       SSEOF
-                    ldx       PD.RGS,y
-                    cmpa      #SS.ComSt
+                    ldx       PD.RGS,y            All other GetStat's we need caller's registers
+                    cmpa      #SS.ComSt           ($28) Get device configuration?
                     beq       GSComSt
-                    cmpa      #SS.Joy
+                    cmpa      #SS.Joy             ($13) Read joystick? (values/buttons only)
                     beq       GSJoy
-                    cmpa      #SS.Mouse
+                    cmpa      #SS.Mouse           ($89) Read mouse (entire mouse packet)
                     lbeq      GSMouse
-                    cmpa      #SS.Ready
+                    cmpa      #SS.Ready           ($01) Device ready? (means any keys in keyboard buffer in this case)
                     beq       GSReady
-                    cmpa      #SS.KySns
+                    cmpa      #SS.KySns           ($27) Special keys downs stauts?
                     beq       GSKySns
-                    cmpa      #SS.Montr
+                    cmpa      #SS.Montr           ($92) Get current monitor type?
                     beq       GSMontr
-                    ldb       #$06                carry over to co-module
+                    ldb       #CoGetStt           GetStat offset ($06) to carry over to co-module
                     lbra      L0593
 
-* SS.ComSt - get baud/parity info
-GSComSt             lda       V.TYPE,u            get device type
+* SS.ComSt GetStat- get baud/parity info. For VTIO devices, the baud byte is always 0 (unused), but the parity
+* byte uses the most significant bit: %0xxxxxxx = CoVDG device, %1xxxxxxx = CoWin/CoGrf device
+GSComSt             lda       V.TYPE,u            get device type (VTIO device type bit flag)
                     clrb                          clear parity, etc.
                     std       R$Y,x               save in caller's register Y & return
                     rts
 
+* SS.Ready - Return Not Ready error if no keys in keyboard buffer, or B=# of chars in buffer.
 GSReady             ldb       <V.EndPtr,u         get input buffer end pointer
                     cmpb      <V.InpPtr,u         anything there?
-                    beq       NotReady            nope, exit with error
+                    lbeq      NotReady            nope, exit with error
                     bhi       L0660               higher?
                     addb      #$80                nope, add 128 to count
 L0660               subb      <V.InpPtr,u         calculate number of characters there
@@ -1194,12 +1226,7 @@ L0660               subb      <V.InpPtr,u         calculate number of characters
 SSEOF               clrb                          clear errors & return
                     rts
 
-NotReady            comb                          Return with Not Ready error
-                    ldb       #E$NotRdy
-                    rts
-
 * Return special key status
-*        X = pointer to caller's register stack
 GSKySns             ldy       <D.CCMem            get ptr to CC mem
                     clrb                          clear key code
                     cmpu      <G.CurDev,y         are we the active device?
@@ -1210,54 +1237,66 @@ L0678               stb       R$A,x               save to caller reg
                     rts
 
 * GetStat: SS.Montr (get Monitor type)
-*        X = pointer to caller's register stack
 GSMontr             ldb       >WGlobal+G.MonTyp   get monitor type into D
                     clra
                     std       R$X,x               save in caller's X & return
                     rts
 
-* GetStat: SS.JOY (get joystick X/Y/button values)
-*        X = pointer to caller's register stack
+* GetStat: SS.Joy (get joystick X/Y/button values)
+* NOTE: While the J$xxx calls may update the first two bytes of special 8 byte device memory,
+*  SS.Joy
 GSJoy               clrb                          default to no errors
                     leay      ,x                  transfer caller's register ptr to Y (6809/6309 faster than tfr x,y)
                     ldx       <D.CCMem            get ptr to CC mem
                     cmpu      <G.CurDev,x         are we the current active device?
                     beq       GetJoy              if so, go read joysticks
-                    clra                          else D = 0
-                    std       R$X,y               X pos = 0
-                    std       R$Y,y               Y pos = 0
-                    sta       R$A,y               no buttons held down
+                    clra                          else not buttons down, set X&Y to 0 & return
+                    std       R$X,y
+                    std       R$Y,y
+                    sta       R$A,y
                     rts
 
 * Get button status first
-GetJoy              ldx       >WGlobal+G.JoyEnt
+GetJoy              ldx       >WGlobal+G.JoyEnt   Get entry point to JoyDrv co-module
                     pshs      u                   save driver static
                     ldu       <D.CCMem            get ptr to CC mem
-                    leau      >G.JoyMem,u         point to subroutine module's static mem
-                    jsr       J$JyBtn,x           call entry point to get button
-* Joysticks button states returned in B
-                    puls      u                   restore driver static
-                    lda       R$X+1,y             left or right?
+                    leau      >G.JoyMem,u         point to JoyDrv's special 8 byte static mem
+                    jsr       J$JyBtn,x           call entry point to get button (NOTE: This gets all 4 buttons (both sides))
+* Joysticks button states returned in B (least sig 4 bits)
+                    puls      u                   restore co-driver static
+                    lda       R$X+1,y             Did caller ask for left or right joystick?
                     beq       L06AB               branch if right joystick
                     lsrb                          shift over so same range as if right joystick
-L06AB               andb      #$05                preserve button bits
+L06AB               andb      #%00000101          preserve button bits for current joystick
                     lsrb                          button 1 down? (shifts button 2 to bit 2 too)
                     bcc       L06B2               no, go on
-                    orb       #$01                turn on button 1
-L06B2               stb       R$A,y               save button status to caller
+                    orb       #$01                turn on button 1 (if button 2 pressed, both least sig bits now set)
+L06B2               stb       R$A,y               save button status to caller (now in lowest two bits)
 * Now get actual joystick values (note: IRQs still off)
                     pshs      y                   save ptr to caller's regs
-                    lda       R$X+1,y             get switch to indicate left or right joystick
-                    inca                          now 1 or 2
-                    ldy       #$0000              force low res??
+                    lda       R$X+1,y             get switch to indicate right or left joystick (base 0)
+                    inca                          now 1 (right) or 2 (left)
+                    IFNE      H6309
+                    tfr       0,y                 force low res (6 bit read) (same speed, 2 bytes smaller)
+                    ELSE
+                    ldy       #$0000              force low res (6 bit read)
+                    ENDC
                     pshs      u                   save driver static mem
                     ldu       <D.CCMem            get ptr to CC mem
-                    ldx       >WGlobal+G.JoyEnt   get address of joystick sub module
+                    ldx       >WGlobal+G.JoyEnt   get address of joystick sub module again
                     leau      >G.JoyMem,u         get ptr to sub module's static mem
-                    jsr       J$JyXY,x            call routine in sub module to get joy X/Y
-* X = joystick X pos, Y = joystick Y pos
+                    jsr       J$JyXY,x            call routine in sub module to get 6 bit joystick X/Y
+* Now, X = joystick X pos, Y = joystick Y pos
                     puls      u                   restore driver static mem
-* 6309 - don't pshs y, do ldw #63 / subr y,w and stw R$Y,y instead
+                    IFNE      H6309
+                    ldw       #63                 Y is 63-Y
+                    subr      y,w                 W is new Y coord
+                    puls      y                   Get ptr to callers regs back
+                    stx       R$X,y               Save joystick X in caller's X
+                    stw       R$Y,y               Save joystick Y in caller's Y
+                    clrb                          No error & return
+                    rts
+                    ELSE
                     pshs      y                   save joystick Y
                     ldy       2,s                 get ptr to caller's regs
                     stx       R$X,y               save joystick X in caller's X
@@ -1266,25 +1305,32 @@ L06B2               stb       R$A,y               save button status to caller
                     std       R$Y,y               save joystick Y in caller's Y
                     clrb                          No error & return
                     puls      pc,y
+                    ENDC
 
 * GetStat: SS.Mouse (get mouse info)
-*        X = pointer to caller's register stack
-GSMouse             pshs      u,y,x               Save U, Y and ptr to caller's register stack
+* Entry:  Y  = address of path descriptor
+*         U  = address of device memory area
+*         X = pointer to caller's register stack
+GSMouse             pshs      u,y,x               Save pointers
                     ldx       <D.CCMem            get ptr to CC mem
-                    cmpu      <G.CurDev,x         is caller in current window?
-                    beq       L06FA               branch if so
-                    ldy       ,s                  get ptr to caller's regs
-                    ldb       #Pt.Siz             size of packet
-L06EC               clr       ,-s                 make room on stack
+                    cmpu      <G.CurDev,x         Are we current active window?
+                    beq       L06FA               Yes, skip ahead
+* LCB: 6809/6309 - mini stack blast or tfm to clear 32 byte dummy mouse packet instead
+* (Or use clear block vector once that is set up)
+                    ldy       ,s                  No, get ptr to caller's regs
+                    ldb       #Pt.Siz             Init dummy mouse packet on stack to 0's
+L06EC               clr       ,-s
                     decb
                     bne       L06EC
-                    leax      ,s                  point X to temp mouse buffer on stack
+                    leax      ,s                  point X to temp zeroed mouse buffer on stack
                     bsr       MovMsPkt
                     leas      <Pt.Siz,s           clean up stack
                     puls      pc,u,y,x            and return
 
 * here the caller is in the current window
-L06FA               tst       <G.KyMse,x          Keyboard mouse active?
+* CHANGE G.KYMSE,X TO USE V.ULCase in static mem instead
+L06FA               lda       <V.ULCase,u         Get current window bit flags
+                    bita      #KeyMse             Keyboard mouse active?
                     bne       L071A               Yes, skip ahead
                     lda       <G.MSmpRV,x         ready to sample?
                     bne       L071A               no, return packet
@@ -1306,6 +1352,7 @@ L071A               lda       #$01                'special' co-mod function code
 
 * Move mouse packet to process
 * Entry: Y = ptr to caller's register stack
+*        X = ptr to 32 byte mouse packet to send to caller
 * Exit: Pt.AcX/Pt.AcY updated, and
 MovMsPkt            ldu       R$X,y               get destination pointer
                     ldy       <D.Proc             get process descriptor pointer
@@ -1346,7 +1393,7 @@ L0764               cmpd      ,y++                compare mouse's current X to P
 L0770               rts
 
 SSTone              ldx       >WGlobal+G.SndEnt   get address of sound sub module
-                    jmp       S$SetStt,x          go  execute routine in sub module
+                    jmp       S$SetStt,x          go  execute sound Setstat routine in sub module
 
 * Animate Palette?  This obviously isn't implemented yet
 SSAnPal             ldx       >WGlobal+G.SndEnt
@@ -1364,8 +1411,6 @@ SSAnPal             ldx       >WGlobal+G.SndEnt
 *    B  = error code
 *
 SetStat             ldx       PD.RGS,y
-                    cmpa      #SS.ComSt
-                    lbeq      SSComSt
                     cmpa      #SS.Montr
                     lbeq      SSMontr
                     cmpa      #SS.KySns
@@ -1384,6 +1429,8 @@ SetStat             ldx       PD.RGS,y
                     beq       SSMouse
                     cmpa      #SS.GIP
                     lbeq      SSGIP
+                    cmpa      #SS.GIP2
+                    lbeq      SSGIP               Will branch off once current device test finished
                     cmpa      #SS.Open
                     bne       L07B5
 SSOpen              ldx       PD.DEV,y            get device table entry
@@ -1419,13 +1466,13 @@ L07E7               std       <V.MSigID,u         save ID & signal code
 
 L07EC               orcc      #IntMasks           disable interrupts
                     lda       PD.CPR,y            get curr proc #
-                    ldb       R$X+1,x             get user signal code
-                    rts                           return
+                    ldb       R$X+1,x             get user signal code & return
+                    rts
 
 L07F3               clr       >G.MsSig,x          clear mouse button down flag
 L07F7               puls      cc                  restore interrupts
-                    os9       F$Send              send the signal
-                    rts                           return
+                    os9       F$Send              send the signal & return
+                    rts
 
 * SS.Relea - release a path from SS.SSig
 SSRelea             lda       PD.CPR,y            get curr proc #
@@ -1433,12 +1480,11 @@ SSRelea             lda       PD.CPR,y            get curr proc #
                     bne       L0807               branch if not
                     clr       <V.SSigID,u         clear process ID
 L0807               cmpa      <V.MSigID,u         same as mouse?
-                    bne       L0871               no, return
-                    clr       <V.MSigID,u         else clear process ID
-                    rts                           return
+                    bne       L083D               no, return
+                    clr       <V.MSigID,u         else clear process ID & return
+                    rts
 
 * SS.Mouse - set mouse sample rate and button timeout
-*
 * Entry:
 *    R$X = mouse sample rate and timeout
 *          MSB = mouse sample rate
@@ -1451,14 +1497,14 @@ L0807               cmpa      <V.MSigID,u         same as mouse?
 *       It modifies the static mem variables (for caller's window) first, and
 *       then modifies global memory only if we are the current active device.
 SSMouse             ldd       R$X,x               get sample rate & timeout from caller
-                    cmpa      #$FF                sample rate 256?
-                    beq       L0819               yes, can't have it so go on
-                    sta       <V.MSmpl,u          save new timeout
-L0819               cmpb      #$FF                timeout 256?
-                    beq       L0820               yes, can't have it so go on
-                    stb       <V.MTime,u          save new timeout
+                    cmpa      #$FF                Leave sample rate as is?
+                    beq       L0819               yes, skip ahead
+                    sta       <V.MSmpl,u          save new sample rate timeout
+L0819               cmpb      #$FF                Leave button timeout as is?
+                    beq       L0820               yes, skip ahead
+                    stb       <V.MTime,u          save new button timeout
 L0820               ldb       R$Y+1,x             get auto-follow flag
-                    stb       <V.MAutoF,u         save it was MS.Side wrong RG
+                    stb       <V.MAutoF,u         save it
                     ldy       <D.CCMem            get ptr to CC mem
                     cmpu      <G.CurDev,y         are we current device?
                     bne       L083D               no, exit without error
@@ -1474,10 +1520,14 @@ L083D               clrb                          exit without error
 * Added individual settings checking for $FF to leave current setting alone. This way,
 * one change change mouse resolution w/o changing the port (or vice versa), change the
 * keyboard settings while leaving the mouse alone, etc.
+* NOTE: If this system call is called while not on active window, it is ignored & returns
+*   without error.
 SSGIP               ldy       <D.CCMem            get ptr to CC mem
                     cmpu      <G.CurDev,y         current window?
-                    bne       L0866               branch if not
-                    ldd       R$Y,x               get caller's Y (key repeat info)
+                    bne       L0866               No, exit w/o error, and w/o changing anything
+                    cmpa      #SS.GIP2            Are we doing SS.GIP2 call?
+                    beq       SSGIP2              Yes, go do that
+                    ldd       R$Y,x               plain SS.GIP; get caller's Y (key repeat info)
                     cmpa      #$FF                Start constant "don't change"?
                     beq       ChkKSpd             Yes, skip to check keyboard delay
                     sta       <G.KyDly,y          Save new keyboard delay setting
@@ -1498,18 +1548,88 @@ ChkMPrt             cmpb      #$FF                Leave mouse port alone?
                     cmpb      #2                  side below legal value?
                     bgt       L088F               no, exit with error
                     stb       <G.Mouse+Pt.Actv,y  save new side
-L0866               clrb                          clear errors
-                    rts                           and return
+L0866               clrb                          clear errors & return
+                    rts
 
-* SS.KySns - setstat???
-SSKySns             ldd       R$X,x               get monitor type requested
-                    beq       L086E               below legal value?
-                    ldb       #$FF                no, exit with error
+* SS.GIP2 - additional global parameters. NOTE: As of now, not all proposed features are enabled
+* each option is a 2 bit packet, to allow "leave setting alone" option
+* X MSB: 0xxxxxxx = Leave current 2nd button function alone
+*        10xxxxxx = disable Mouse 2nd button as CLEAR key
+*        11xxxxxx = enable Mouse 2nd button as CLEAR key
+*        xx0xxxxx = Leave current key click setting alone
+*        xx10xxxx = Disable key click on current window
+*        xx11xxxx = Enable key click on current window
+*   All other bits in X are reserved, and should be set to 0 on entry for now
+* Y=$0000 (for now - reserved for screensaver timer in ticks, with $0000 being disabled)
+* U=$0000 for now (Ptr to process desc. or suspended process # (maybe?) for screensaver (which uses Y for timer)
+*     U=0 means just monitor dimout. This would only be active if Y above is <>0)
+* Entry: X=callers register stack ptr
+*        Y=VTIO Global mem ptr
+*        U=static mem ptr for current window
+SSGIP2              lda       R$X,x               Get MSB of X (2nd mouse button feature & keyclick)
+                    bita      #%00100000          Leave Key click alone?
+                    beq       ChkMsClr            Yes, skip ahead to check for 2nd button as CLEAR
+                    bita      #%00010000          Turn it off?
+                    beq       NoKyClk             Yes, go turn it off
+                    IFNE      H6309
+                    oim       #KeyClick,<V.ULCase,u Turn Key click flag on
+                    ELSE
+                    ldb       <V.ULCase,u         Turn Key click flag on
+                    orb       #KeyClick
+                    stb       <V.ULCase,u
+                    ENDC
+                    bra       ChkMsClr            Now check for right Mouse button as CLEAR equivalent
+
+NoKyClk
+                    IFNE      H6309
+                    aim       #^KeyClick,<V.ULCase,u Turn Key click flag off
+                    ELSE
+                    ldb       <V.ULCase,u         Turn Key click flag off
+                    andb      #^KeyClick
+                    stb       <V.ULCase,u
+                    ENDC
+ChkMsClr            bita      #%10000000          Leave 2nd mouse button function alone?
+                    beq       NxGP2Opt            Yes, exit without error
+                    bita      #%01000000          Caller want 2nd mouse button function as window change?
+                    beq       NoBt2Clr            No, force it off
+                    IFNE      H6309
+                    oim       #MseCLEAR,<G.Bt2Clr,y Yes, set button 2 as CLEAR flag
+                    ELSE
+                    ldb       <G.Bt2Clr,y         Yes, set button 2 as CLEAR flag
+                    orb       #MseCLEAR
+                    stb       <G.Bt2Clr,y
+                    ENDC
+                    bra       NxGP2Opt            Check next option
+
+NoBt2Clr
+                    IFNE      H6309
+                    aim       #^MseCLEAR,<G.Bt2Clr,y No, clear right mouse button as CLEAR Key flag
+                    ELSE
+                    ldb       <G.Bt2Clr,y         No, clear right mouse button as CLEAR Key flag
+                    andb      #^MseCLEAR
+                    stb       <G.Bt2Clr,y
+                    ENDC
+* Later, options for screensave autodim, etc. will go here using Y and U registers. Call should
+*  set both to 0 for now.
+NxGP2Opt            clrb                          Since we are just checking specific bit flags, no possible error
+                    rts
+
+
+
+* SS.KySns (SetStat)
+*   X=0 = normal key operation
+*   X=1 = key sense operation. This suspends any keys being transmitted through SCF, and they
+*         can only be read through the equivalent GetStat SS.KySns call. Usually used to speed
+*         up response in games, it only checks for: SHIFT,CTRL/CLEAR, ALT/@, the four arrow
+*         keys and the spacebar
+SSKySns             ldd       R$X,x               get Keysense mode user requested
+                    beq       L086E               0=normal key operation, save that flag
+                    ldb       #$FF                anything else is Key Sense operation
 L086E               stb       <V.KySnsFlg,u       save new sense mode
 L0871               clrb                          clear errors & return
                     rts
 
-* SS.Montr - change monitor type
+* SS.Montr (SetStat) change monitor type
 SSMontr             ldd       R$X,x               get monitor type requested
                     cmpd      #$0002              below legal value?
                     bhi       L088F               no, exit with error
@@ -1525,40 +1645,27 @@ L0885               sta       <D.VIDMD            update video mode register
                     rts
 
 * Illegal argument error handler
-L088F               comb                          set carry for error
-                    ldb       #E$IllArg           get illegal argument error code
-                    rts                           return with it
+L088F               comb                          Exit with Illegal Argument error
+                    ldb       #E$IllArg
+                    rts
 
-* SS.ComSt - set baud/parity params
-SSComSt             ldd       R$Y,x               get requested window type
-                    eora      V.TYPE,u            same type as now?
-                    anda      #$80                trying to flip from window to VDG?
-                    bne       L088F               yes, error
-                    lda       R$Y,x               no, get requested window type again
-                    bsr       FindCoMod           go make sure co-module for new type exists
-                    lbcc      L07B5               carry it over to co-module
-                    rts                           return
+CoVDGNm             fcs       /CoVDG/
 
-CoVDG               fcs       /CoVDG/
-
-*
 * Link to proper co-module
-* Try CoVDG first
-*
 * Entry: A = window type (If bit 7 is set, it's a window, else VDG screen)
-*
+* Exit: Carry clear if co-module found, carry set if not
 FindCoMod
                     sta       V.TYPE,u            save new type
                     bmi       FindWind            if hi-bit if A is set, we're a window
                     pshs      u,y,a               ..else VDG
                     lda       #$02                get code for VDG type window
                     sta       <V.WinType,u        save it
-                    leax      <CoVDG,pcr          point to CoVDG name
+                    leax      <CoVDGNm,pcr        point to CoVDG name
                     bsr       L08D4               link to it if it exists
                     puls      pc,u,y,a            restore regs & return
 
-CoWin               fcs       /CoWin/
-CoGrf               fcs       /CoGrf/ ++
+CoWinNm             fcs       /CoWin/
+CoGrfNm             fcs       /CoGrf/      ++
 *CC3GfxInt fcs   /CC3GfxInt/ ++
 
 *
@@ -1567,10 +1674,9 @@ CoGrf               fcs       /CoGrf/ ++
 FindWind            pshs      u,y                 preserve regs
                     clra                          set window type
                     sta       <V.WinType,u
-                    leax      <CoWin,pcr          point to CoWin name
+                    leax      <CoWinNm,pcr        point to CoWin name
                     lda       #$80                get driver type code
                     bsr       L08D4               try and link it
-
 *++
                     bcc       ok
 
@@ -1583,16 +1689,14 @@ FindWind            pshs      u,y                 preserve regs
                     cmpb      #E$MNF              compare the error to what we expect
                     orcc      #Carry              set the carry again (cmpb above clears it)
                     bne       ok                  if the error in B is not E$MNF, just leave this routine
-
-                    leax      <CoGrf,pcr          point to CoGrf name
+                    leax      <CoGrfNm,pcr        point to CoGrf name
                     lda       #$80
                     bsr       L08D4
 *++
-
 ok                  puls      pc,u,y              restore regs and return
+
 L08D2               clrb
                     rts
-
 *
 * Check if co-module is in memory
 *
@@ -1618,7 +1722,7 @@ L08F0               puls      a                   restore vector offset
                     puls      y                   restore path descriptor pointer
                     cmpa      #$02                was it CoWin?
                     bgt       L08D2               no, return
-L0900               clrb
+L0900               clrb                          CoInit ($0)
                     lbra      CallCo              send it to co-module
 
 *
@@ -1638,6 +1742,358 @@ L091B               puls      u,x,d               restore regs
                     std       <D.Proc             restore current process descriptor
                     lbcs      L05EB               exit if error from load or link, else return
                     rts
+
+* Keydrv merged into here (2 functions)
+* K$FnKey
+* This entry point tests for the F1/F2 function keys on a CoCo 3
+* keyboard.
+* Entry: U=Global mem ptr
+* Exit: A = Function keys pressed (Bit 0 = F1, Bit 2 = F2)
+*       X = PIA0Base address
+*       U = CC Global mem ptr ($1000)
+* NOTE: This function does NOT use the KeyDrv 8 byte data area at all.
+FuncKeys            ldx       #PIA0Base           get address of PIA #0
+                    ldd       #%11011111          A=0 (no F keys default) and strobe column 6 of PIA #0
+                    stb       2,x
+                    IFNE      H6309
+                    tim       #%01000000,0,x      F1 down?
+                    ELSE
+                    ldb       ,x                  read PIA #0
+                    bitb      #%01000000          test for F1 function key
+                    ENDC
+                    bne       CheckF2             branch if set (key not down)
+                    inca                          flag F1 as down
+CheckF2             ldb       #%10111111          strobe column #7 PIA #0
+                    stb       $02,x
+                    IFNE      H6309
+                    tim       #%01000000,0,x      F2 down?
+                    ELSE
+                    ldb       ,x                  read PIA #0
+                    bitb      #%01000000          test for F2 function key
+                    ENDC
+                    bne       L024C
+                    ora       #$04                flag F2 as down
+L024C               rts
+
+
+* K$RdKey - read keys if pressed
+* Entry: U=Global mem ptr
+* Exit: A = key pressed
+*       B = $FF (hi bit set actually) is error (like any joystick button pressed instead of a key)
+*       U is preserved (Global mem ptr)
+*       Y may be modified
+*       X is modified
+ReadKys             ldx       #PIA0Base           base address of PIA #0
+                    ldb       #$FF
+                    stb       $02,x               clear all row strobes
+                    ldb       ,x                  read Joystick buttons
+                    comb                          invert bits so 1=pressed
+                    andb      #%00001111          keep only buttons
+                    bne       KL0059              branch if button pushed; error routine
+                    clr       $02,x               enable all strobe lines
+                    lda       ,x                  read PIA #0
+                    coma
+* Check to see if ANY key is down
+                    anda      #%01111111          mask only the joystick comparator
+                    beq       NoKey               branch if no keys pressed
+* Here, a key is down on the keyboard
+                    pshs      dp                  save our DP
+                    tfr       u,d                 move global mem ptr to D
+                    tfr       a,dp                set DP to the address in regU
+                    bsr       EvalMatrix          evaluate the found key matrix
+                    puls      dp                  return to system DP
+                    bpl       KL005B              normal key, return
+NoKey               clra                          Clear out keypress to return to caller
+                    ldb       <G.CapLok,u         Get CapsLock key down flag
+                    bne       KL0056              branch if down
+                    clr       <G.KTblLC,u         Key table entry# last checked (1-3)
+                    IFNE      H6309
+                    comd
+                    ELSE
+                    coma
+                    comb
+                    ENDC
+                    sta       <G.LKeyCd,u         last keyboard code
+                    sta       <G.2Key1,u          2nd key table storage; $FF=none
+                    std       <G.2Key2,u          format (Row/Column)
+KL0056              clr       <G.CapLok,u         see above
+KL0059              ldb       #$FF
+KL005B              rts
+
+
+* Evaluates the keyboard matrix for a key
+* Entry: DP = ptr to CC3 global memory
+*        U  = ptr to CC3 global memory (used for index mode references)
+* Exit:  X is modified
+*        key variables in global mem updated
+*        A - key hit
+*        CC Negative bit set if key is an ALT key (high bit set in A)
+EvalMatrix
+                    ldx       #PIA0Base           base value of PIA #0
+                    IFNE      H6309
+                    clrd
+                    ELSE
+                    clra
+                    clrb
+                    ENDC
+                    std       <G.ShftDn           shift/CTRL flag; 0=NO $FF=YES
+                    std       <G.KeyFlg           PIA bits/ALT flag
+* %00000111-Column # (Output, 0-7)
+* %00111000-Row # (Input, 0-6)
+                    IFNE      H6309
+                    comd                          set D to $FFFF
+                    ELSE
+                    coma
+                    comb                          set primary key table
+                    ENDC
+                    std       <G.Key1             key 1&2 flags $FF=none
+                    sta       <G.Key3             key 3     "
+                    deca                          ie. lda #%11111110
+                    sta       $02,x               strobe one column
+KL006E              lda       ,x                  read PIA #0 row states
+                    coma                          invert bits so 1=key pressed
+                    anda      #$7F                keep only keys, bit 0=off 1=on
+                    beq       KL0082              no keys pressed, try next column
+                    ldb       #-1                 preset counter to -1
+KL0077              incb
+                    lsra                          bit test regA
+                    bcc       KL007E              no key so branch
+                    lbsr      KL010E              convert column/row to matrix value and store it
+KL007E              cmpb      #$06                max counter
+                    blo       KL0077              loop if more bits to test
+KL0082              inc       <G.KeyFlg           counter; used here for column
+                    orcc      #Carry              bit marker; disable strobe
+                    rol       $02,x               shift to next column
+                    bcs       KL006E              not finished with columns so loop
+                    lbsr      KL0166              simultaneous check; recover key matrix value
+                    bmi       KL00F5              invalid so go
+                    cmpa      <G.LKeyCd           last keyboard code
+                    bne       KL0095
+                    inc       <G.KySame           set same key flag
+KL0095              sta       <G.LKeyCd           setup for last key pressed
+                    beq       KL00B5              if @ key, use lookup table
+                    suba      #$1A                the key value (matrix) of Z
+                    bhi       KL00B5              not a letter so go
+                    adda      #$1A                restore regA
+                    ldb       <G.CntlDn           CTRL flag
+                    bne       KL00E0              CTRL is down so go
+                    adda      #$40                convert to ASCII value; all caps
+                    ldb       <G.ShftDn           shift key flag
+                    ldy       <G.CurDev           get current device static memory pointer
+                    eorb      <V.ULCase,y         caps lock and keyboard mouse flags
+                    andb      #CapsLck            test caps flag
+                    bne       KL00E0              not shifted so go
+                    adda      #$20                convert to ASCII lower case
+                    bra       KL00E0
+
+* not a letter key, use the special keycode lookup table at KL01DC.
+* Entry: regA = table index (matrix scancode-26)
+KL00B5              ldb       #$03                three entries per key (normal,shift,ctrl)
+                    mul                           convert index to table offset
+                    lda       <G.ShftDn           shift key flag
+                    beq       KL00BF              not shifted so go
+                    incb                          adjust offset for SHIFTed entry
+                    bra       KL00C5
+
+KL00BF              lda       <G.CntlDn           CTRL flag
+                    beq       KL00C5              adjust offset for CONTROL entry
+                    addb      #$02
+KL00C5              ldx       <G.CurDev           point X to device's static memory
+                    lda       <V.KySnsFlg,x       key sense flag
+                    beq       KL00D0              not set so go
+                    cmpb      #$11                spacebar
+                    ble       KL00F3              must be an arrow so go
+KL00D0              cmpb      #$4B                ALT key? (was cmpb #$4C)
+                    blt       KL00D8              not ALT, CTRL, F1, F2, or SHIFT so go
+                    inc       <G.AltDwn           flag special keys (ALT,CTRL)
+                    subb      #$06                and adjust offset to skip them
+KL00D8              leax      >KL01DC,pcr         decode table
+                    lda       b,x
+                    bmi       KL00F6              if regA = $81 - $84, special key
+* several entries to this routine from any key press; regA is already ASCII
+KL00E0              ldb       <G.AltDwn           was ALT flagged?
+                    beq       KL00F0              no so go
+                    cmpa      #$3F                '?'
+                    bls       KL00EE              # or code
+                    cmpa      #$5B                '['
+                    bhs       KL00EE              capital letter so go
+                    ora       #$20                convert to lower case
+KL00EE              ora       #$80                set for ALT characters
+KL00F0              andcc     #^Negative          not negative
+                    rts
+
+KL00F3              orcc      #Negative           set negative
+KL00F5              rts
+
+* Flag that a special key was hit (CLEAR, SHIFT-CLEAR, CTRL-CLEAR, CTRL-0)
+KL00F6              inc       <G.Clear            Flag special key hit
+                    bra       KL00F0
+
+* Calculate arrow keys for key sense byte
+KL00FC              pshs      d                   convert column into power of 2
+                    clrb
+                    orcc      #Carry
+                    inca
+KL0102              rolb
+                    deca
+                    bne       KL0102
+KL0108              orb       <G.KySns            Merge key to previous value of column
+                    stb       <G.KySns
+                    puls      pc,d
+
+* Check special keys (Shift, Cntrl, Alt)
+KL010E              pshs      d
+                    cmpb      #$03                is it row 3?
+                    bne       KL011C
+                    lda       <G.KeyFlg           get column #
+                    cmpa      #$03                is it column 3?; ie up arrow
+                    blt       KL011C              if lt must be a letter
+                    bsr       KL00FC              its a non letter so bsr
+KL011C              lslb                          B*8  8 keys per row
+                    lslb
+                    lslb
+                    addb      <G.KeyFlg           add in the column #
+                    cmpb      #$33                ALT?
+                    bne       KL012B
+                    inc       <G.AltDwn           ALT down flag
+                    ldb       #$04
+                    bra       KL0108
+
+KL012B              cmpb      #$34                CTRL?
+                    bne       KL0135
+                    inc       <G.CntlDn           CTRL down flag
+                    ldb       #$02
+                    bra       KL0108
+
+KL0135              cmpb      #$37                SHIFT?
+                    bne       KL013F
+                    com       <G.ShftDn           SHIFT down flag
+                    ldb       #$01
+                    bra       KL0108
+
+* check how many key (1-3) are currently being pressed
+KL013F              pshs      x
+                    leax      <G.Key1,u           $2D 1st key table
+                    bsr       KL014A
+                    puls      x
+                    puls      pc,d
+
+KL014A              pshs      a
+                    lda       ,x
+                    bpl       KL0156
+                    stb       ,x
+                    ldb       #1
+                    puls      pc,a
+
+KL0156              lda       1,x
+                    bpl       KL0160
+                    stb       1,x
+                    ldb       #2
+                    puls      pc,a
+
+KL0160              stb       2,x
+                    ldb       #3
+                    puls      pc,a
+
+* simultaneous key test.
+* 6309: Might be able to use E/F as 0 and $FF for some flags? (like clr ,y/com ,y)
+* Entry: U=CC3 Global Mem ptr
+*        X=PIA0Base ($FF00)
+*       DP=CC3 Global Mem
+KL0166              pshs      y,x,b
+                    ldb       <G.KTblLC           key table entry #
+                    beq       KL019D
+                    leax      <G.2Key1,u          ($2A) point to 2nd key table
+                    pshs      b
+KL0171              leay      <G.Key1,u           ($2D) point to 1st key table
+                    ldb       #$03
+                    lda       ,x                  get key #1
+                    bmi       KL018F              go if invalid? (no key)
+KL017A              cmpa      ,y                  is it a match?
+                    bne       KL0184              go if not a matched key
+                    clr       ,y
+                    com       ,y                  set value to $FF
+                    bra       KL018F
+
+KL0184              leay      1,y
+                    decb
+                    bne       KL017A
+                    lda       #$FF
+                    sta       ,x
+                    dec       <G.KTblLC           key table entry#
+KL018F              leax      1,x
+                    dec       ,s                  column counter
+                    bne       KL0171
+                    leas      1,s
+                    ldb       <G.KTblLC           key table entry (can test for 3 simul keys)
+                    beq       KL019D
+                    bsr       KL01C4
+KL019D              leax      <G.Key1,u           $2D 1st key table
+                    lda       #$03
+KL01A2              ldb       ,x+
+                    bpl       KL01B5
+                    deca
+                    bne       KL01A2
+                    ldb       <G.KTblLC           key table entry (can test for 3 simul keys)
+                    beq       KL01C0
+                    decb
+                    leax      <G.2Key1,u          $2A 2nd key table
+                    lda       b,x
+                    bra       KL01BE
+
+KL01B5              tfr       b,a
+                    leax      <G.2Key1,u          $2A 2nd key table
+                    bsr       KL014A
+                    stb       <G.KTblLC
+KL01BE              puls      pc,y,x,b
+
+KL01C0              orcc      #Negative           flag negative
+                    puls      pc,y,x,b
+
+* Sort 3 byte packet @ G.2Key1 according to sign of each byte
+* so that positive #'s are at beginning & negative #'s at end
+KL01C4              leax      <G.2Key1,u          $2A 2nd key table
+                    bsr       KL01CF              sort bytes 1 & 2
+                    leax      1,x
+                    bsr       KL01CF              sort bytes 2 & 3
+                    leax      -1,x                sort 1 & 2 again (fall thru for third pass)
+KL01CF              ldb       ,x                  get current byte
+                    bpl       KL01DB              positive - no swap
+                    lda       1,x                 get next byte
+                    bmi       KL01DB              negative - no swap
+                    std       ,x                  swap the bytes
+KL01DB              rts
+
+* Special Key Codes Table : 3 entries per key - Normal, Shift, Control
+* They are in COCO keyboard scan matrix order; the alphabetic and meta
+* control keys are handled elsewhere.  See INSIDE OS9 LEVEL II p.4-1-7
+KL01DC              fcb       $40,$60,$00         '@,'`,null
+                    fcb       $0c,$1c,$13         UP ARROW:    FF, FS,DC3
+                    fcb       $0a,$1a,$12         DOWN ARROW:  LF,SUB,DC2
+                    fcb       $08,$18,$10         LEFT ARROW:  BS,CAN,DLE
+                    fcb       $09,$19,$11         RIGHT ARROW: HT, EM,DC1
+                    fcb       $20,$20,$20         SPACEBAR
+                    fcb       $30,$30,$81         '0,'0,$81 (caps lock toggle)
+                    fcb       $31,$21,$7c         '1,'!,'|
+                    fcb       $32,$22,$00         '2,'",null
+                    fcb       $33,$23,$7e         '3,'#,'~
+                    fcb       $34,$24,$1d         '4,'$,GS (was null)
+                    fcb       $35,$25,$1e         '5,'%,RS (was null)
+                    fcb       $36,$26,$1f         '6,'&,US (was null)
+                    fcb       $37,$27,$5e         '7,'','^
+                    fcb       $38,$28,$5b         '8,'(,'[
+                    fcb       $39,$29,$5d         '9,'),']
+                    fcb       $3a,$2a,$00         ':,'*,null
+                    fcb       $3b,$2b,$7f         ';,'+,DEL
+                    fcb       $2c,$3c,$7b         ',,'<,'{
+                    fcb       $2d,$3d,$5f         '-,'=,'_
+                    fcb       $2e,$3e,$7d         '.,'>,'}
+                    fcb       $2f,$3f,$5c         '/,'?,'\
+                    fcb       $0d,$0d,$0d         ENTER key
+                    fcb       $82,$83,$84         CLEAR key (NextWin, PrevWin, KbdMouse toggle)
+                    fcb       $05,$03,$1b         BREAK key (ENQ,ETX,ESC)
+                    fcb       $31,$33,$35         F1 key (converts to $B1,$B3,$B5)
+                    fcb       $32,$34,$36         F2 key (converts to $B2,$B4,$B6)
 
                     emod
 eom                 equ       *

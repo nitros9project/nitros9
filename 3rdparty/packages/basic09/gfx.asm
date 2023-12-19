@@ -3,11 +3,21 @@
 *
 * $Id$
 *
+* NOTE: GCOLR is mentioned in the level 2 manual (in the index of level 1
+*   Basic09 text/graphics functions), but there is no manual specific page
+*   for it. Should add in to new version of manual.
+* Finish Fill (with startx,starty) options, and optimize similar to GFX2,if possible.
+*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
 *   1      ????/??/??
 * From Tandy OS-9 Level One VR 02.00.00.
+*
+*   2      2018/04/16-2018/??/??
+* Added FFill command (no parameters, uses current graphics cursor location and
+*   current foreground color), minor optimizations (LCB)
+
 
                     nam       GFX
                     ttl       CoCo 2 graphics subroutine module
@@ -19,7 +29,7 @@
 tylg                set       Sbrtn+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       1
+edition             set       2
 
                     mod       eom,name,tylg,atrv,start,size
 u0000               rmb       0
@@ -93,6 +103,10 @@ FuncTbl             fdb       Alpha-FuncTbl
                     fcc       "Quit"
                     fcb       $FF
 
+* Added Flood Fill - LCB
+                    fdb       Fill-FuncTbl
+                    fcc       "Fill"
+                    fcb       $FF
                     fdb       $0000
 
 stkdepth            set       9
@@ -474,6 +488,17 @@ JoyStk              cmpb      #5                  this number of parameters?
 SaveBYTEandRTS      bsr       SaveBYTEParam       save it in the parameter
                     leas      stkdepth,s          recover the stack
                     rts                           return to the caller
+
+*
+* ("FILL") Fill (with current foreground color) overtop adjacent pixels
+*   that are the same color as under the gfx cursor
+* Later, we will add optional X,Y gfx cursor set, and maybe setting foreground color
+Fill                cmpb      #1                  Just FILL parm itself?
+*         beq   Fill.2       Yes, go do  (START OF CODE FOR SETTING POSITION AND COLOR-NOT DONE YET)
+*         cmpb  #2+1         2 parms (xcor,ycor) additional?
+                    lbne      BadFunc             neither, exit with Parameter Error
+Fill.2              lda       #$1D                FILL display code
+                    lbra      StoreAndWrite       Send it
 
                     emod
 eom                 equ       *

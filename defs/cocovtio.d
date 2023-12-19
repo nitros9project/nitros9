@@ -23,6 +23,12 @@ COCOVTIO.D          SET       1
 *	       2005/04/24  P.Harvey-Smith.
 * Added variables for cursor flash, currently only implemented in co51
 *
+*          2020/07/14  L. Curtis Boyle
+* EOU Beta 6 added defs, removed G.KeyEnt (2 bytes), G.KeyMem (8 bytes) static mem buffer,
+*   as Keydrv has been merged back into VTIO to save some system RAM and CC3 Global Mem.
+*   Added labels for the buffered write routines for SCF and GRFDRV as well.
+*   (There appears to still be room for a CoVDG buffer as well, if we want to add one)
+
                     NAM       VTIODefs
                     TTL       Video               Terminal I/O Definitions for CoCo 1/2
 
@@ -192,9 +198,26 @@ CFlash60Hz          EQU       30                  * 60Hz flash counter
 * ------------------------------------------------------------------
 *          2004/07/18  Boisy G. Pitre
 * Started from systype
-
+*          2020/07/14  L. Curtis Boyle
+* EOU Beta 6 added defs, removed G.KeyEnt (2 bytes), G.KeyMem (8 bytes) static mem buffer,
+*   as Keydrv has been merged back into VTIO to save some system RAM and CC3 Global Mem.
+*   Added labels for the buffered write routines for SCF and GRFDRV as well.
+*   (There appears to still be room for a CoVDG buffer as well, if we want to add one)
                     NAM       VTIODefs
                     TTL       Video               Terminal I/O Definitions for CoCo 3
+
+* Max size of Get/Put buffer to copy between user and grfdrv. There is room for up to 128, but
+*   we may use some of that for other things. Leaving at OS-9 Level II default (72) for now.
+* May try increasing to higher (maybe 96?) to see if it makes a noticable difference GPLoading
+* fonts, etc. in EOU bootup.
+
+gb0000              EQU       72                  Size of get/put buffer ($48)
+FstGrfBf            EQU       $0180               Address of fast grfdrv text buffer
+                    IFNE      H6309
+FstGrfSz            EQU       64                  Size of fast grfdrv text buffer (6309)
+                    ELSE
+FstGrfSz            EQU       32                  Size of fast grfdrv text buffer (6809)
+                    ENDC
 
 ****************
 * Window Devices
@@ -267,25 +290,39 @@ Grp.Ptr             RMB       1                   pointer group
 Grp.Pat2            RMB       1                   pattern group 2 color
 Grp.Pat4            RMB       1                   pattern group 4 color
 Grp.Pat6            RMB       1                   pattern group 16 color
+Grp.Wnd             RMB       1                   Special 4 color GShell chars (scroll arrows, etc.)
+Grp.Cd16            RMB       1                   16 color playing card set (courtesy Paul Shoemaker)
+* Card buffers are: 1=card back, 2-14=A to K Diamonds, 15-27=A to K Hearts,
+*   28-40=A to K Spades, 41-53=A to K Clubs, 54=Joker, 55=Empty card slot.
+
 *
-* font buffer numbers
+* font buffer numbers (standard 3 - others are in /dd/sys/fontlist.txt)
 *
                     ORG       1
 Fnt.S8x8            RMB       1                   standard 8x8 font
 Fnt.S6x8            RMB       1                   standard 6x8 font
 Fnt.G8x8            RMB       1                   standard graphics 8x8 font
 *
-* pattern buffer numbers
+* pattern buffer numbers - 1-8 are stock system, 9-16 are MVCanvas extended ones.
 *
                     ORG       1
-Pat.Dot             RMB       1
-Pat.Vrt             RMB       1
-Pat.Hrz             RMB       1
-Pat.XHtc            RMB       1
-Pat.LSnt            RMB       1
-Pat.RSnt            RMB       1
-Pat.SDot            RMB       1
-Pat.BDot            RMB       1
+Pat.Dot             RMB       1                   dot pattern
+Pat.Vrt             RMB       1                   vertical line pattern
+Pat.Hrz             RMB       1                   horizontal line pattern
+Pat.XHtc            RMB       1                   cross hatch pattern
+Pat.LSnt            RMB       1                   left slanted lines
+Pat.RSnt            RMB       1                   right slanted lines
+Pat.SDot            RMB       1                   small dot pattern
+Pat.BDot            RMB       1                   large dot pattern
+* MVCanvas extended set
+Pat.Bubl            RMB       1                   bubble pattern
+Pat.Bskt            RMB       1                   basket weave pattern
+Pat.Wafl            RMB       1                   waffle iron pattern
+Pat.Shng            RMB       1                   shingle pattern
+Pat.Bric            RMB       1                   brick pattern
+Pat.SmGr            RMB       1                   small grid pattern
+Pat.Dmnd            RMB       1                   diamond floor
+Pat.Flor            RMB       1                   floor tile pattern
 *
 * pointer buffer numbers
 *
@@ -297,14 +334,44 @@ Ptr.Slp             RMB       1                   Wait timer pointer
 Ptr.Ill             RMB       1                   Illegal action pointer
 Ptr.Txt             RMB       1                   Text pointer
 Ptr.SCH             RMB       1                   Small cross hair pointer
+*
+* GShell window 3D look 4 color character buffer numbers
+*
+                    ORG       1
+Wnd.UpAr            RMB       1                   Up arrow 3D look
+Wnd.DnAr            RMB       1                   Down arrow 3D look
+Wnd.LtAr            RMB       1                   Left arrow 3D look
+Wnd.RtAr            RMB       1                   Right arrow 3D look
+Wnd.VBar            RMB       1                   Vertical scroll bar marker 3D look
+Wnd.HBar            RMB       1                   Horizontal scroll bar marker 3D look
+**********************
+* Co(name) - Co-module screen driver entry points (CoWin, CoGrf, CoVDG, etc)
+                    ORG       0
+CoInit              RMB       3                   $00 = Init Co-module entry
+CoWrite             RMB       3                   $03 = Write Co-module entry
+CoGetStt            RMB       3                   $06 = GetStat Co-module entry
+CoSetStt            RMB       3                   $09 = SetStat Co-module entry
+CoTerm              RMB       3                   $0C = Term Co-module entry
+CoWinSpc            RMB       3                   $0F = Window special processing functions (see below)
+*                                                  (sub function # in A on entry)
 
 **********************
-* KeyDrv Entry Points
+* CoWinSpc special functions (in A when CoWinSpc called)
                     ORG       0
-K$Init              RMB       3                   joystick initialization
-K$Term              RMB       3                   joystick termination
-K$FnKey             RMB       3                   get function key states
-K$RdKey             RMB       3                   get key states
+WnSpSlct            RMB       1                   $00 = Select different window
+WnSpStat            RMB       1                   $01 = Update Pt.Stat (mouse in content,control,external regions)
+WnSpUpCr            RMB       1                   $02 = Update text & mouse cursors
+WnSpAMse            RMB       1                   $03 = Update auto-follow mouse cursor
+
+* NOTE: KeyDrv merged back into VTIO in EOU Beta 6 (saves memory in OS9Boot, and 10 bytes
+*  in CC3 Global mem. And all third party keyboards plug into regular Coco keyboard anyways)
+**********************
+* KeyDrv Entry Points
+*               ORG       0
+*K$Init         RMB       3                   keyboard initialization (does nothing)
+*K$Term         RMB       3                   keyboard termination (does nothing)
+*K$FnKey        RMB       3                   get function key states (Gets F1/F2 key state)
+*K$RdKey        RMB       3                   get key states (Gets all other key states)
 
 **********************
 * JoyDrv Entry Points
@@ -312,17 +379,17 @@ K$RdKey             RMB       3                   get key states
 J$Init              RMB       3                   joystick initialization
 J$Term              RMB       3                   joystick termination
 J$MsBtn             RMB       3                   get mouse button states
-J$MsXY              RMB       3                   get mouse X/Y coordinates
+J$MsXY              RMB       3                   get mouse X/Y coordinates (returns high res values)
 J$JyBtn             RMB       3                   get joystick button states
-J$JyXY              RMB       3                   get joystick X/Y coordinates
+J$JyXY              RMB       3                   get joystick X/Y coordinates (returns low res values)
 
 **********************
 * SndDrv Entry Points
                     ORG       0
-S$Init              RMB       3                   joystick initialization
-S$GetStt            RMB       3                   joystick termination
-S$SetStt            RMB       3                   joystick termination
-S$Term              RMB       3                   get joystick X/Y coordinates
+S$Init              RMB       3                   sound initialization
+S$GetStt            RMB       3                   sound GetStats
+S$SetStt            RMB       3                   sound SetStats
+S$Term              RMB       3                   sound termination
 
 ********************************
 * Window/Menu Bar Data Structure
@@ -424,10 +491,14 @@ MId.Fnt             RMB       1                   Font menu
 ** $0010-$001F : unused (User definable)                                    **
 ** $0020-$00FF : system direct page & some IRQ vectors                      **
 ** $0100-$011F : Task usage table                                           **
-** $0120-$01FF : Virtual DAT tasks (pointed to by <D.TskIPt)                **
+** $0120-$017F : Virtual DAT tasks (pointed to by <D.TskIPt)                **
+** $0180-$019F : Grfdrv direct screen write buffer (6809)                   **
+** $0180-$01BF : Grfdrv direct screen write buffer (6309)                   **
+** $01A0-$01FF : Unused? (6809)                                             **
+** $01C0-$01FF : Unused? (6309)                                             **
 ** $0200-$02FF : memory block usage map ($80=Not RAM,$01=in use,$02=module) **
 ** $0300-$03FF : system's system call dispatch table                        **
-** $0400-$04FF : user's system call dispatch table                          **
+** $0400-$04FF : user's sysem call dispatch table                           **
 ** $0500-$05FF : process descriptor pointer table                           **
 ** $0600-$07FF : System task (Task 0, ID 1) process descriptor              **
 ** $0800-$08FF : System's stack space (initial ptr is $0900)                **
@@ -436,7 +507,7 @@ MId.Fnt             RMB       1                   Font menu
 ** $1000-$10FF : System Global memory (pointed to by D.CCMem)               **
 ** $1100-$11FF : GRFDRV global memory (DP=$11 in GRFDRV)                    **
 ** $1200-$1247 : shared buffer between Grf/WindInt & GRFDRV (GP buffers)    **
-** $1248-$127F : ????                                                       **
+** $1248-$127F : ????  (unused)                                             **
 ** $1280-$1A7F : the window tables (32 of $40 bytes each)                   **
 ** $1A80-$1C7F : the screen tables (16 of $20 bytes each)                   **
 ** $1C80-$2000 : the CC3 global mem stack (for windowing)                   **
@@ -454,10 +525,25 @@ MONO                EQU       2                   monochrome monitor
 
 Monitor             SET       RGB
 
-* Global definitions
+* EOU Beta 6 - expanded bit flags
+* These are in V.ULCase in static mem for each window
 KeyMse              EQU       %00000001           keyboard mouse enabled
 NumLck              EQU       %00000010           Numlock enabled (TC-9 use only)
 CapsLck             EQU       %00000100           Capslock enabled
+KeyClick            EQU       %00001000           Key click enabled
+* reserved     EQU       %1111xxxx             Reserved for future use
+
+* EOU Beta 6 new global definitions added for EOU Beta 6
+* Repurpose old G.KyMse in CC3 Global mem ($1063) for system wide setting
+MseCLEAR            EQU       %10000000           Right mouse button active as clear
+* Current experiments show that this is working, and I have replaced left/right mouse to change
+* Button 2 window change direction to use button 1. Leavingt this in if beta testers find the new
+* method too hard to use (although it allows you to change direction at any time; the older mouse
+* x/y only let you change direction on a graphics window).
+*MsePreCl       EQU       %01000000           * EXPERIMENTAL * - if left mouse button down, then
+*                                              tapping right button is Previous Window
+
+* Global Definitions
 MaxRows             EQU       640                 maximum X co-ordinate allowed on mouse
                     IFEQ      MaxLines-25
 MaxLine             EQU       198                 maximum Y co-ordinate allowed on mouse
@@ -522,8 +608,8 @@ G.CrDvFl            RMB       1                   Are we current device flag (on
 *                           0=We are not on our device
 *                           1=We are the current device
 *                           (Used by comod (GRF/WIND/VDGInt) to determine
-*                           whether or not to update GIME regs themselves
-*                           If not current device, they don't.)
+*                            whether or not to update GIME regs themselves
+*                            If not current device, they don't.)
 G.WinType           RMB       1                   current device's V.TYPE
 G.CurDvM            RMB       2                   current device memory pointer for co-module use
 G.WIBusy            RMB       1                   WindInt is busy flag (1=busy)
@@ -582,7 +668,7 @@ G.KySpd             RMB       1                   secondary key repeat delay con
 *         IFEQ  TC9-true
 *KeyParm  rmb   1          keyboard command parameter byte
 *         ELSE
-G.KyMse             RMB       1                   keyboard mouse flag ($63)
+G.Bt2Clr            RMB       1                   WAS G.KyMse (keyboard mouse flag), now right click as CLEAR ($63)
 *         ENDC
 G.Clear             RMB       1                   "one-shot" CapsLock/SysRq key flag ($64)
 G.KyButt            RMB       1                   keyboard F1 and F2 "fire" button info ($65)
@@ -606,8 +692,9 @@ G.MsInit            RMB       2                   set mouse routine vector
 G.MsSig             RMB       1                   mouse signal flag
 G.DefPls            RMB       16                  Default palettes (2 repeats of 8 is default) ($C7)
 g00D7               RMB       9
-G.KeyEnt            RMB       2                   entry to keydrv subroutine module ($E0)
-G.KeyMem            RMB       8                   static memory for keydrv subroutine module
+* KeyMem was never used. EOU Beta 6 merges KeyDrv back into VTIO, so these are unneeded
+* G.KeyEnt       RMB       2                   entry to keydrv subroutine module ($E0)
+* G.KeyMem       RMB       8                   static memory for keydrv subroutine module
 G.JoyEnt            RMB       2                   entry to joydrv subroutine module ($EA)
 G.JoyMem            RMB       8                   static memory for joydrv subroutine module
 G.SndEnt            RMB       2                   entry to snddrv subroutine module ($F4)
@@ -628,13 +715,16 @@ gr0007              RMB       1                   # of pixels used in last byte 
 gr0008              RMB       1                   Bit mask that is common to both screen & GP buffer
 gr0009              RMB       1                   # bytes for width of overlay window
 gr000A              RMB       1                   # bytes to offset to get to next line after
-*                             overlay width has been copied
-gr000B              RMB       1
+*                                              overlay width has been copied
+gr000B              RMB       1                   Temp for flush left font byte being worked on
 gr000C              RMB       2                   Cursor address for proportional spacing?
-gr000E              RMB       1
+gr000E              RMB       1                   Copy of attribute byte for quick access
 gr000F              RMB       1                   Left-based bit mask for proportional spacing?
 gr0010              RMB       2                   Vector for text to gfx screen (either prop. or normal)
-gr0012              RMB       6
+gr0012              RMB       1                   Flag for left (<>0) or right (=0) movement in LINE
+gr0013              RMB       2                   dX in LINE
+gr0015              RMB       2                   dY in LINE
+gr0017              RMB       1                   bytes per line in LINE routine (uses 16 bit with gr0018)
 gr0018              RMB       2                   Working Center X coord for Circle/Ellipse
 gr001A              RMB       2                   Working Center Y coord for Circle/Ellipse
 gr001C              RMB       2                   Some variable for Circle/Ellipse (initially 0)
@@ -645,9 +735,10 @@ gr0024              RMB       2                   Arc 'clip line' X02
 gr0026              RMB       2                   Arc 'clip line' Y02
 gr0028              RMB       1                   full-byte background color to FFILL on mask
 gr0029              RMB       1                   pixels per byte: set up by FFILL
-gr002A              RMB       1                   Flag for FFill: 1=no error, 0=Stack overflow error
+gr002A              RMB       1                   UNUSED (Was Flag for FFill: 1=no error, 0=Stack overflow error)
 gr002B              RMB       1                   current Y-direction to travel in FFILL
-gr002C              RMB       2
+gr002C              RMB       1                   pixel mask for current pixel being checked in FFILL
+gr002D              RMB       1                   UNUSED
 gr002E              RMB       2                   current window table entry
 gr0030              RMB       2                   current screen table ptr
 gr0032              RMB       1                   Last block # we used for buffers
@@ -692,7 +783,7 @@ gr006E              RMB       2                   X pixel count
 gr0070              RMB       2                   Y pixel count
 gr0072              RMB       2                   Screen address of pixel we are doing
 gr0074              RMB       1                   Pixel mask for pixel we are doing
-gr0075              RMB       2                   ??? Pixel mask for last byte of GP buffer?
+gr0075              RMB       2                   Error term used in LINE
 gr0077              RMB       2                   Vector for right direction FFill
 gr0079              RMB       1                   bit mask for 1st pixel in byte for right dir. FFill
 gr007A              RMB       2                   Vector for left direction FFill
@@ -708,35 +799,44 @@ gr0098              RMB       1                   temp
 * In ARC, 97-98 is the width of the clip line in pixels (after scaling)
 gr0099              RMB       2                   temp
 * In ARC, 99-9A is the height of the clip line in pixels (after scaling)
-gr009B              RMB       1                   counter temp
-gr009C              RMB       1
+gr009B              RMB       1                   MSB of temp
+gr009C              RMB       1                   LSB of temp
 gr009D              RMB       2                   offset to buffer in block
-gr009F              RMB       1
+gr009F              RMB       1                   # of MMU blocks used for GP buffer
 gr00A0              RMB       1                   # lines left to do of GP buffer onto screen
 gr00A1              RMB       2                   vector routine for (changes lots)
 * In ARC A1-A2 is the vector to the proper clipping routine
 gr00A3              RMB       2                   Vector for shifting GP buffers
 gr00A5              RMB       2                   Vector for shifting GP buffers (can dupe A1)
-gr00A7              RMB       2
+gr00A7              RMB       2                   Stack overflow counter in FFill (was UNUSED)
 gr00A9              RMB       2                   NEW: Window tbl ptr for last window GRFDRV used
 grBigFnt            RMB       2                   Flag for 224 char font/gfx mode on (0=No) V2.00a
-gr00AD              RMB       2                   FFill:orig. start X coord|Circ/Ell saved start X
+gr00AD              RMB       2                   FFill:orig. start left X coord|Circ/Ell saved start X
 gr00AF              RMB       2                   FFill:orig. start Y coord|Circ/Ell saved end X
 gr00B1              RMB       1                   Flag in FFill: 1=1st time through, 0=not 1st time
 gr00B2              RMB       1                   Filled (circle,ellipse) flag 0=Not filled
-*gr00B3   rmb    256-.       ??? UNUSED
 gr00B3              RMB       1                   temp variable grfdrv
 gr00B4              RMB       1                   temp variable grfdrv
-gr00B5              RMB       1                   regW for grfdrv
-gr00B6              RMB       1
-gr00B7              RMB       2
+gr00B5              RMB       1                   regE for grfdrv/6809
+gr00B6              RMB       1                   regF for grfdrv/6809
+gr00B7              RMB       2                   UNUSED
 gr00B9              RMB       2                   previously used in grfdrv at $B2 but not for Filled Flag
 gr00BB              RMB       2                   previously used in grfdrv at $B4
 gr00BD              RMB       2                   previously used in grfdrv at $B6
-gr00BF              RMB       256-.
-* GPLoad buffer - $1200 in system block 0
-GPBuf               RMB       72                  common move buffer for gpload/get/put
-gb0000              EQU       72                  Size of get/put buffer ($48)
+* EOU Beta 2 & up
+grScrtch            RMB       2                   Scratch var for Grfdrv - use DP instead of stack for
+*                                            anything that does immediate calculations
+* EOU Beta 6 & up
+grResv01            RMB       1                   1 byte reserved for future use
+grOrgLtX            RMB       2                   Fill: orig. left X coord
+grOrgRtX            RMB       2                   Fill: orig. right X coord
+grCrPMsk            RMB       1                   Used in font routine - Current pixel mask
+grDbCMsk            RMB       2                   Used for word size color mask for Logic routines
+grRsrved            RMB       256-.               Reserved for future use
+
+* GPLoad buffer - $1200 in system block    . Currently ends at $1247, and $1248-$127f is unused
+GPBuf               EQU       $1200               Useful address (start of GP buffer copy memory)
+GPBufSz             RMB       gb0000              common move buffer for gpload/get/put (72 bytes default)
 
 *****************************************************************************
 * Window table entry structure
@@ -777,7 +877,7 @@ Wt.PVec             RMB       2                   PSet vector                   
 Wt.GBlk             RMB       1                   GCursor memory block #                       $18
 Wt.GOff             RMB       2                   GCursor offset in block                      $19
 Wt.MaxX             RMB       2                   Maximum X cord. (0-79,0-639)                 $1B
-Wt.MaxY             RMB       2                   Maximum Y cord. (0-24,0-191)                 $1D
+Wt.MaxY             RMB       2                   Maximum Y cord. (0-24/25,0-191/199)          $1D
 Wt.BLen             RMB       2                   bytes left in GPLoad block below             $1F
 Wt.NBlk             RMB       1                   memory block # for next GPLoad               $21
 Wt.NOff             RMB       2                   Offset in block for next GPLoad              $22
@@ -814,6 +914,8 @@ St.Res              RMB       7                   UNUSED???                     
 * TABLES THAT ARE USING THIS SCREEN TABLE. DWSET & DWEND WOULD KEEP TRACK OF
 * THESE, AND THE WINDINT TITLE BAR ROUTINE WOULD CHECK IT. IF IT IS ONLY 1,
 * IT WON'T BOTHER CHANGING THE TITLE BAR WHEN SELECTING WINDOWS
+* Other possibilities: Offset into screen to display (if we enable screens taller than
+*   a single screen), etc.
 St.Pals             RMB       16                  Palette register contents           $10
 St.Siz              EQU       .
 
@@ -834,7 +936,11 @@ Grf.LfPx            RMB       1                   # pixels used in first byte of
 Grf.RtPx            RMB       1                   # pixels used in last byte of line  $0D
 Grf.STY             RMB       1                   Screen type buffer intended for     $0E
 Grf.NBlk            RMB       1                   number blocks used                  $0F
-Grf.Pal             RMB       16                  Copy of palette registers?          $10
+Grf.Pal             RMB       16                  THIS IS NOT PALETTE REGISTERS.      $10
+* Grf.Pal seems to be "reserved for future use", and we can use for the 8 char font names
+* that the level 2 upgrade used, with 8 reserved for future use? Could it be used for other
+* purposes with general get/put buffers as well, like block link #/offset to background masks
+* etc for sprites?
 Grf.Siz             EQU       .                   $20
 
 *****************************************************************************
@@ -865,10 +971,10 @@ GTabSz              EQU       .
 *  OF THE BELOW SO WE CAN SPEED UP ACCESS BY NOT HAVING TO DO A LOAD/LEAx
 *  COMBINATION EVERY TIME
                     ORG       $0240
-                    RMB       WN.SIZ              copy of last accessed window descriptor
-                    RMB       MN.SIZ              copy of last accessed menu descriptor
-                    RMB       MI.SIZ              copy of last accessed item descriptor
-                    RMB       65                  menu handling table (16 entrys of 4 bytes)
+                    RMB       WN.SIZ              (+$240) copy of last accessed window descriptor
+                    RMB       MN.SIZ              (+$262) copy of last accessed menu descriptor
+                    RMB       MI.SIZ              (+$279) copy of last accessed item descriptor
+                    RMB       65                  (+$28E) menu handling table (16 entrys of 4 bytes)
 
 *****************************************************************************
 * WindInt menu handling table entry definition
@@ -881,14 +987,15 @@ MnuHSiz             EQU       .
 
 *****************************************************************************
 * Character binary switches
-TChr                EQU       %10000000           transparent characters
-Under               EQU       %01000000           underline characters
-Bold                EQU       %00100000           bold characters
-Prop                EQU       %00010000           proportional spacing of characters
-Scale               EQU       %00001000           automatic window scaling
-Invers              EQU       %00000100           inverse characters
-NoCurs              EQU       %00000010           no cursor display
-Protect             EQU       %00000001           device window protection
+Blink               EQU       %10000000           Blink characters (hardware text only)
+TChr                EQU       %10000000           transparent characters (both currently)
+Under               EQU       %01000000           underline characters (both)
+Bold                EQU       %00100000           bold characters (gfx only, maybe txt with color changes?)
+Prop                EQU       %00010000           proportional spacing of characters (gfx only)
+Scale               EQU       %00001000           automatic window scaling (gfx only)
+Invers              EQU       %00000100           inverse characters (both)
+NoCurs              EQU       %00000010           no cursor display (both)
+Protect             EQU       %00000001           device window protection (both)
 
 *****************************************************************************
 * Screen types (high bit set=hardware text, else graphics) in GRFDRV
@@ -913,5 +1020,4 @@ Yellow.             RMB       1
 Magenta.            RMB       1
 Cyan.               RMB       1
 
-                    ENDC
                     ENDC

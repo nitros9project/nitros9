@@ -273,7 +273,7 @@ Dopoll.i
 * Reset GIME to avoid missed IRQs
 *
 DoToggle
-               ifne      coco
+               ifne      coco3
                lda       #^GI.Toggl          Mask off CART* bit
                anda      <D.IRQS
                sta       <D.IRQS
@@ -460,7 +460,7 @@ Init           ldx       <D.Proc             save user proc
                jmp       <D.Crash
 LinkOk         sty       <D.Clock2           save entry point
 InitCont
-               ifne      coco
+               ifne      coco3
                ldx       #PIA0Base           point to PIA0
                endc
                clra                          no error for return...

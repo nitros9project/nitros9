@@ -42,7 +42,7 @@
 * Disassembled 02/04/29 23:10:07 by Disasm v1.6 (C) 1988 by RML
 
                     ifp1
-                    use       deffile
+                    use       defsfile
                     endc
 
 tylg                set       Systm+Objct

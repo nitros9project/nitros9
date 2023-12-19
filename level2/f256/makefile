@@ -47,9 +47,6 @@ clean: dskclean
 dskclean:
 	$(RM) $(DSKS) $(LDSKS)
 
-redisk:
-	osascript -e 'tell application "DriveWire"' -e 'tell server of first document' -e 'reload drive 0' -e 'end tell' -e 'end tell'
-	
 dsk: all $(DSKS)
 
 dskcopy: $(DSKS)

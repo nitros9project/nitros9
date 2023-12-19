@@ -32,86 +32,10 @@
 *
 *   7      2003/06/06  Rodney V. Hamilton
 * Restored Rubout processing for terminals.
-
-;;; dump
-;;;
-;;; Syntax:	`dump [filename]`
-;;; Usage: Displays the physical contents of the specified file or device in both ASCII and hexadecimal form.
-;;; Parameters:
-;;;     filename    An optional file pathlist or a device name.
-;;;
-;;; Use `dump` to examine the contents of non-text files. If you don't specify a file or device, `dump` displays the
-;;; standard input path (the keyboard). It writes output to the standard output path (the video display).
-;;; The command adjusts to the type of screen you are using. On 32 and 40 column screens, `dump` displays 8
-;;; bytes per line. On 80 column screens, it displays 16 bytes per line.
-;;; Data appears in both hexadecimal and ASCII character format. If data bytes have non-displayable values,
-;;; `dump` displays them as periods (.).
-;;;
-;;; The addresses are relative to the beginning of the file. Because memory modules are
-;;; position-independent and are stored in files exactly as they exist in memory, the addresses shown
-;;; correspond to the relative load addresses of memory module files.
-;;;
-;;; # Examples
-;;;
-;;; To display keyboard input in hexadecimal, type the following command. Press [CTRL][BREAK] to return to the
-;;;  shell.
-;;;
-;;;     `dump` [ENTER]
-;;;
-;;; To display the raw contents of the diskette in Drive /D1, type:
-;;;
-;;;     `dump /d1@` [ENTER]
-;;;
-;;; The @ symbol causes OS-9 to treat the entire disk as a file.
-;;;
-;;; Here's sample output on a 32 column screen:
-;;;
-;;; ```dump SYS/password >/p [ENTER]
-;;;
-;;;      0 1 2 3 4 5 6 7  0 2 4 6
-;;; ADDR 8 9 A B C D E F  8 A C E
-;;; ==== +-+-+-+-+-+-+-+- + + + +
-;;; 0000 2C2C302C3132382C ,,0,128,
-;;; 0008 2F44302F434D4453 /D0/CMDS
-;;; 0010 2C2D2C5348454C4C ,.,SHELL
-;;; 0018 0D55534552312C2C .USER1,,
-;;; 0020 312C3132382C3E2C 1,128,.,
-;;; 0028 2E2C5348454C4C0D .,SHELL.
-;;; 0030 55534552322C2C32 USER2,,2
-;;; 0038 2C3132382C232C23 ,128,.,.
-;;;
-;;;      0 1 2 3 4 5 6 7  0 2 4 6
-;;; ADDR 8 9 A B C D E F  8 A C E
-;;; ==== +-+-+-+-+-+-+-+- + + + +
-;;; 0040 2C5348454C4C0D55 ,SHELL.U
-;;; 0048 534552332C2C332C SER3,,3,
-;;; 0050 3132382C232C2E2C 128,.,.,
-;;; 0058 5348454C4C0D5553 SHELL.US
-;;; 0060 4552342C2C342C31 ER4,,4,1
-;;; 0068 32382C2E2C2E2C53 28,.,.,S
-;;; 0070 48454C4C0D       HELL.
-;;; ```
-;;;
-;;; The first column indicates the starting address. The next eight columns (00-EF) display data bytes in hexadecimal
-;;; format. The columns (0-E) display data bytes in ASCII format. Non-ASCII appear as periods in the ASCII character
-;;; display section.
-;;;
-;;; Here's sample output on an 80 column screen:
-;;;
-;;; ```
-;;; dump SYS/password >/p [ENTER]
-;;;
-;;; ADDR  0 1  2 3  4 5  6 7  8 9  A B  C D  E F 0 2 4 6 9 A C E
-;;; ---- ---- ---- ---- ---- ---- ---- ---- ---- ----------------
-;;; 0000 2C2C 302C 3132 382C 2F44 302F 434D 4453 ,,0,128,/D0/CMDS
-;;; 0010 2C2D 2C53 4845 4C4C 0D55 5345 5231 2C2C ,.,SHELL.USER1,,
-;;; 0020 312C 3132 382C 3E2C 2E2C 5348 454C 4C0D 1,128,.,.,SHELL.
-;;; 0030 5553 4552 322C 2C32 2C31 3238 2C23 2C23 USER2,,2,128,.,.
-;;; 0040 2C53 4845 4C4C 0D55 5345 5233 2C2C 332C ,SHELL.USER3,,3,
-;;; 0050 3132 382C 232C 2E2C 5348 454C 4C0D 5553 128,.,.,SHELL.US
-;;; 0060 4552 342C 2C34 2C31 3238 2C2E 2C2E 2C53 ER4,,4,128,.,.,S
-;;; 0070 4845 4C4C 0D                            HELL.
-;;; ```
+*
+*   8      2022/11/21-27  L. Curtis Boyle
+* Fixed bug where it will not allow filenames with '-' chars in them to open
+* Also shrunk option parsing code & more fully commented source
 
                     nam       Dump
                     ttl       Show file contents in hex
@@ -123,31 +47,32 @@
 * Tweakable options
 DOSCSIZ             set       1                   1 = include SS.ScSiz code, 0 = leave out
 DOHELP              set       0                   1 = include help message, 0 = leave out
-BUFSZ               set       80
+BUFSZ               set       80                  (max 127)
 
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       1
-edition             set       7
+edition             set       8
 
                     org       0
-nonopts             rmb       1
-D.Prm               rmb       2
-D.Hdr               rmb       1
-D.Mem               rmb       1
-                    ifne      DOSCSIZ
-narrow              rmb       1
-                    endc
-Mode                rmb       1
+nonopts             rmb       1                   0=No file/module names found, <>0=at least 1 file/module name found
+D.Prm               rmb       2                   Ptr to parameters we were passed (filename(s), options)
+D.Hdr               rmb       1                   0=print header line, <>0=do NOT print header line
+D.Mem               rmb       1                   0=dump from file on disk, <>0=dump from file in Module directory (RAM)
+                    IFNE      DOSCSIZ
+narrow              rmb       1                   0=80 column, <>0=32 column
+                    ENDC
+Mode                rmb       1                   I$Open Mode bit flags (READ. or READ.+EXEC.)
 D.Opn               rmb       1
-D.Beg               rmb       2
-D.End               rmb       2
-D.Adr               rmb       4
+D.Beg               rmb       2                   Ptr to start of module in memory (if doing -m)
+D.End               rmb       2                   Ptr to end of module in memory (if doing -m)
+AddrMSW             rmb       2                   MSW of 32 bit Address in file
+AddrLSW             rmb       2                   LSW of 32 bit Address in file
 D.Len               rmb       2
-D.Ptr               rmb       2
-D.Txt               rmb       2
+HexPtr              rmb       2                   Ptr to current position in TxtBuf for HEX chars
+ASCIIPtr            rmb       2                   Ptr to current position in TxtBuf for ASCII chars
 Datbuf              rmb       16
-Txtbuf              rmb       BUFSZ
+Txtbuf              rmb       BUFSZ               text buffer to build output lines in
                     rmb       128
 datsz               equ       .
 
@@ -156,347 +81,375 @@ datsz               equ       .
 name                fcs       /Dump/
                     fcb       edition
 
+* 80 column header
 title               fcc       /Address   0 1  2 3  4 5  6 7  8 9  A B  C D  E F  0 2 4 6 8 A C E/
 titlelen            equ       *-title
+
 caret               fcb       C$CR
 flund               fcc       /-------- ---- ---- ---- ---- ---- ---- ---- ----  ----------------/
                     fcb       C$CR
-                    ifne      DOSCSIZ
+                    IFNE      DOSCSIZ
+* 32 column header
 short               fcc       /     0 1 2 3 4 5 6 7  0 2 4 6/
                     fcb       C$LF
                     fcc       /Addr 8 9 A B C D E F  8 A C E/
                     fcb       C$CR
 shund               fcc       /==== +-+-+-+-+-+-+-+- +-+-+-+-/
                     fcb       C$CR
-                    endc
+                    ENDC
 
-start               stx       <D.Prm
+start               stx       <D.Prm              Save ptr to parm area
                     clra
-                    sta       <D.Hdr
-                    sta       <D.Mem
-                    sta       <nonopts            assume no non-opts
+                    sta       <D.Hdr              Default to print header line ON
+                    sta       <D.Mem              Default to dump file from DISK
+                    sta       <nonopts            Flag that NO file or modules names have been found yet
                     inca
-                    sta       <Mode               READ.
-
-                    ifne      DOSCSIZ
+                    sta       <Mode               I$OPEN mode bit flags (set to READ. or READ.+EXEC.)
+                    IFNE      DOSCSIZ
                     clr       <narrow             assume wide
-
 * Check screen size
-                    ldb       #SS.ScSiz
+                    ldb       #SS.ScSiz           Ask for our screen size
                     os9       I$GetStt
                     bcs       Pass1
-
-                    cmpx      #titlelen+1
-                    bge       PrePass
-
-                    sta       <narrow
-
+                    cmpx      #titlelen+1         Is our current screen width big enough for 80 column?
+                    bge       PrePass             Yes, continue
+                    sta       <narrow             No, set flag to use narrow 32 column
 PrePass             ldx       <D.Prm
-                    endc
+                    ENDC
 
-* Pass1 - process any options
+* Pass1 - process any options. This handles multiple option flags following a
+*  single '-' or multiple '-' options
+* LCB change - wipe them out with spaces as they are flagged.
 * Entry: X = ptr to cmd line
-Pass1
 * Skip over spaces
-                    lda       ,x+
-                    cmpa      #C$SPAC
-                    beq       Pass1
-
+Pass1               lda       ,x+                 Get char from parms
+                    cmpa      #C$SPAC             Space?
+                    beq       Pass1               Yes, skip to next parm char
 * Check for EOL
-                    cmpa      #C$CR
-                    beq       Pass2
-
+                    cmpa      #C$CR               End of parameters?
+                    beq       Pass2               Yes, go do second pass (for filenames)
 * Check for option
-                    cmpa      #'-
-                    bne       Pass1
-
+                    cmpa      #'-                 No, is it a '-' (for an option flag)?
+                    bne       Pass1               No, must be part of a filename (which we are skipping for now)
+                    pshs      x                   Save current ptr into parms
+                    leax      -1,x                Drop back 1
+                    cmpx      <D.Prm              Is '-' the very first char in parms?
+                    puls      x                   Restore parm ptr w/o changing CMPX flags
+                    beq       OptPass0            Very first parm char is '-', skip checking for a leading space
+* Make sure we aren't dealing with a filename with a '-' in it
+                    lda       -2,x                Get char previous to '-'
+                    cmpa      #C$SPAC             Was it a space (indicating option, not filename)?
+                    bne       Pass1               No, must be part of a filename, go onto next character in parms
+OptPass0            ldb       #C$SPAC             Yes, change '-' to space for 2nd pass
+                    stb       -1,x
+* Checking option flags
 * Here, X points to an option char
-OptPass             lda       ,x+
-                    cmpa      #C$SPAC
-                    beq       Pass1
-                    cmpa      #C$CR
-                    beq       Pass2
-
-                    anda      #$DF
-
-IsItH               cmpa      #'H
-                    bne       IsItM
-
+OptPass             lda       ,x+                 Get option char from parms
+                    cmpa      #C$SPAC             Is it a space? (ie we are done current block of option flags)?
+                    beq       Pass1               Yes, go back to check for parm OR filename
+                    cmpa      #C$CR               No, is it the end of the parameter chars?
+                    beq       Pass2               Yes, done all options, now process filenames
+                    anda      #$DF                No, force uppercase for parm character
+                    stb       -1,x                Replace option letter in parm buffer with space for pass2
+IsItH               cmpa      #'H                 Is it -H for no header?
+                    bne       IsItM               No, check next
 * Process H here
-                    sta       <D.Hdr
-                    bra       OptPass
+                    sta       <D.Hdr              Flag that we do NOT want header line
+                    bra       OptPass             Check if any more parm characters in current block
 
-IsItM               cmpa      #'M
-                    bne       IsItX
-
+IsItM               cmpa      #'M                 Is it -M for dump module in memory?
+                    bne       IsItX               No, check next
 * Process M here
-                    sta       <D.Mem
-                    bra       OptPass
+                    sta       <D.Mem              Flag the we are dumping module from memory (not file)
+                    bra       OptPass             Check if any more parm characters in current block
 
-IsItX               cmpa      #'X
-                    bne       ShowHelp
-
+IsItX               cmpa      #'X                 Is it -X for file is in eXecution directory?
+                    bne       ShowHelp            No, illegal option so print help (if present)
 * Process X here
-                    lda       <Mode
-                    ora       #EXEC.
-                    sta       <Mode
-                    bra       OptPass
+                    lda       <Mode               Get current MODE bit flags (set to READ. right now)
+                    ora       #EXEC.              Add in the EXEC. bit
+                    sta       <Mode               Save it back
+                    bra       OptPass             Check if any more parm characters in current block
 
-                    ifne      DOHELP
-ShowHelp            leax      HelpMsg,pcr
-                    lda       #2
-                    ldy       #HelpLen
-                    os9       I$Write
-                    bra       ExitOk
-                    endc
+                    IFNE      DOHELP
+ShowHelp            leax      HelpMsg,pcr         Point to help message
+                    lda       #2                  Std error path
+                    ldy       #HelpLen            Length of help message
+                    os9       I$Write             Print help out
+                    bra       ExitOk              Exit w/o error
+                    ENDC
 
-* Pass2 - process any non-options
+* Pass2 - process any non-options (ie module or filenames)
+* At this point, all '-' and actual parameters replaced with spaces
 * Entry: X = ptr to cmd line
-Pass2
-                    ldx       <D.Prm
-Pass21
+Pass2               ldx       <D.Prm              Get ptr to parameter buffer again
 * Skip over spaces
-                    lda       ,x+
-                    cmpa      #C$SPAC
-                    beq       Pass21
-                    cmpa      #'-
-                    bne       Pass22
-
-EatOpts             lda       ,x+
-                    cmpa      #C$SPAC
-                    beq       Pass21
-                    cmpa      #C$CR
-                    bne       EatOpts
-
+Pass21              lda       ,x+                 Get char from parms
+                    cmpa      #C$SPAC             Space?
+                    beq       Pass21              Yes, eat it and get next character
 * Check for EOL
-Pass22              cmpa      #C$CR
-                    beq       EndOfL
+Pass22              cmpa      #C$CR               End of parms?
+                    beq       EndOfL              Yes, process file/module names & any options that we have
+                    leax      -1,x                No, Move ptr back to SPACE
+                    sta       <nonopts            Since <>0, flag that we have at least 1 file/module name present
+                    bsr       DumpFile            Dump file data to screen
+                    bra       Pass21              Find next filename
 
-Call                leax      -1,x
-                    sta       nonopts,u
-                    bsr       DumpFile
-                    bra       Pass21
-
-EndOfL              tst       <nonopts            any non-options on cmd line?
-                    bne       ExitOk
-                    tst       <D.Mem              memory option specified?
-                    bne       ShowHelp            yes, no module specified, show help
-                    clra                          stdin
-                    bsr       DumpIn
-                    ifeq      DOHELP
+EndOfL              tst       <nonopts            any file/module names found?
+                    bne       ExitOk              Yes, exit w/o error
+                    tst       <D.Mem              No, was memory option specified?
+                    bne       ShowHelp            yes but no module name specified, show help
+                    clra                          No, assume live typing via stdin path
+                    bsr       DumpIn              And go do that
+                    IFEQ      DOHELP
 ShowHelp
-                    endc
-ExitOk              clrb
+                    ENDC
+ExitOk              clrb                          Exit w/o error
 DoExit              os9       F$Exit
 
-mlink               clra
-                    pshs      u
-                    os9       F$Link
-                    stu       <D.Beg
-                    puls      u
-                    bcc       DumpIn
-                    bra       DoExit
+* Dumping in memory module; link it into our process space
+mlink               clra                          Wildcard - any language/type module is allowed
+                    pshs      u                   Save data mem ptr
+                    os9       F$Link              Link the module into our process
+                    stu       <D.Beg              Save ptr to where the module got mapped to
+                    puls      u                   Restore data mem ptr
+                    bcc       DumpIn              Successful F$Link, go dump module from memory
+                    bra       DoExit              Unsuccessful, return with error code from F$Link
 
-DumpFile            tst       <D.Mem
-                    bne       mlink
-                    lda       <Mode
-opath               tfr       x,y
+DumpFile            tst       <D.Mem              Are we dumping a memory module?
+                    bne       mlink               Yes, go map it into our process and dump from there
+* Dump file from disk
+                    lda       <Mode               No, get mode byte (READ. or READ.+EXEC.)
+                    tfr       x,y                 copy ptr to filename in parms to Y (make copy of it?)
+                    os9       I$Open              Open the file to be DUMPed
+                    bcc       DumpIn              No error, go dump
+                    tfr       y,x                 Get ptr to filename from parms back into X
+                    ora       #DIR.               Try opening file as a directory
                     os9       I$Open
-                    bcc       DumpIn
-                    tfr       y,x
-                    ora       #DIR.               try directory mode
-                    os9       I$Open              open it
-                    bcs       DoExit              branch if error
-DumpIn              stx       <D.Prm
-                    sta       <D.Opn
-                    ldx       <D.Beg
-                    ldd       M$Size,x
-                    leax      d,x
-                    stx       <D.End
-                    clra
+                    bcs       DoExit              Error, exit with it
+* Memory or stdin reads come here
+DumpIn              stx       <D.Prm              Save ptr to next parm block (after current file/module name)
+                    sta       <D.Opn              Save path to file ($00 if F$Link'd)
+* NOTE: If we opened a file from disk, we haven't read anything in yet?!? Or set <D.Beg?
+                    ldx       <D.Beg              Get ptr to start of module in memory
+                    ldd       M$Size,x            Get module size
+                    leax      d,x                 Point to end of the module
+                    stx       <D.End              Save it
+                    clra                          Init Address offset to 0 (X:D)
                     clrb
-                    tfr       d,x
-onpas               std       <D.Adr+2
-                    bcc       notbg
-                    leax      1,x
-notbg               stx       <D.Adr
-                    tst       <D.Hdr
-                    bne       nohed
-                    ifne      DOSCSIZ
-                    tst       <narrow
-                    beq       flpag
-                    aslb
-                    endc
-flpag               tstb
-                    bne       nohed
-                    lbsr      iseof
-                    bcc       flpag2
-                    ldx       <D.Prm
+                    tfr       d,x                 X=0
+* Entry here: X:D is 32 bit Address value (first column). Only LSW used on 32 column DUMP
+onpas               std       <AddrLSW            Save least sig 16 bits for new value for "Address" column
+                    bhs       notbg               If updated address did not wrap $FFFF, we are done
+                    leax      1,x                 >$FFFF, so inc MSW of address as well
+notbg               stx       <AddrMSW            Save updated MSW
+                    tst       <D.Hdr              Are we printing header lines?
+                    bne       nohed               No, skip ahead
+                    IFNE      DOSCSIZ
+                    tst       <narrow             Yes, are we only doing 32 columns?
+                    beq       flpag               No, 80 column so skip ahead
+                    aslb                          B=B*2
+                    ENDC
+flpag               tstb                          Check B (Y line #)
+                    bne       nohed               If not on line 0, skip printing header line
+                    lbsr      iseof               Are we at the end of the file (or in memory module)?
+                    bcc       flpag2              No, go print header line
+                    ldx       <D.Prm              Get ptr to file/module name in parameters & return
                     rts
-flpag2              leax      caret,pcr
+
+flpag2              leax      caret,pcr           Print first header line
                     lbsr      print
-                    ldb       #16
-                    leax      title,pcr
-                    leay      flund,pcr
-                    ifne      DOSCSIZ
-                    tst       <narrow
-                    beq       doprt
-                    ldb       #8
-                    leax      short,pcr
-                    leay      shund,pcr
-                    endc
-doprt               pshs      y
-                    clra
-                    std       <D.Len
-                    bsr       print
-                    puls      x
-                    bsr       print
-nohed               leax      Txtbuf,u
-                    stx       <D.Ptr
-                    ldb       <D.Len+1
-                    lda       #3
+                    ldb       #16                 default to 16 source bytes per output line to dump
+                    leax      title,pcr           Point to header text
+                    leay      flund,pcr           Point to full 80 column line underlines for header text
+                    IFNE      DOSCSIZ
+                    tst       <narrow             Are we only printing 32 columns?
+                    beq       doprt               No, full 80, so go print both lines
+* 6809/6309 - could be lsrb instead. LCB
+                    ldb       #8                  Yes, only dump 8 source bytes per output line
+                    leax      short,pcr           Point to short header text
+                    leay      shund,pcr           & short 32 column underlines for header text
+                    ENDC
+doprt               pshs      y                   Save underline text ptr
+                    clra                          D=B
+                    std       <D.Len              Save # of source bytes to dump out per line
+                    bsr       print               Print header text line
+                    puls      x                   Get ptr to underline text
+                    bsr       print               Print that too
+nohed               leax      Txtbuf,u            Point to our output text buffer
+                    stx       <HexPtr             Save as current output buffer ptr
+                    ldb       <D.Len+1            Get # of source bytes/line (to calc size of output buffer we use)
+                    lda       #3                  *3 (2 bytes for hex value, 1 for ascii)
                     mul
-                    addd      #2
-                    ifne      DOSCSIZ
-                    tst       <narrow
-                    beq       leayit
-                    subd      #4
-                    endc
-leayit              leay      d,x
-                    sty       <D.Txt
-                    lda       #C$SPAC
+                    addd      #2                  And add 2 more (for space between hex and ASCII)
+                    IFNE      DOSCSIZ
+                    tst       <narrow             only doing 32 column?
+                    beq       leayit              No, full 80 so skip ahead
+                    subd      #4                  32 column, subtract 4 from offset
+                    ENDC
+leayit              leay      d,x                 Point Y (as offset) to where ASCII part of dump will be
+                    sty       <ASCIIPtr           Save it
+                    lda       #C$SPAC             Prefill output text buffer with spaces
                     ldb       #BUFSZ-1
 clbuf               sta       b,x
                     decb
                     bpl       clbuf
-                    ldb       #D.Adr
-                    ifne      DOSCSIZ
-                    tst       <narrow
-                    beq       adlop
-                    incb                          we  skip first two bytes ...
-                    incb                          ...  if on a narrow screen
-                    endc
-adlop               lda       b,u
-                    lbsr      onbyt
+                    ldb       #AddrMSW            Offset to start of 32 bit Address in DP
+                    IFNE      DOSCSIZ
+                    tst       <narrow             Are we formatting for 32 column?
+                    beq       adlop               No, continue
+                    incb                          Yes, bump to LSW of Address in DP (we only print LSW of Address)
                     incb
-                    cmpb      #D.Adr+4
-                    bne       adlop
-                    ldx       <D.Ptr
+                    ENDC
+* Append address to output buffer. 32 bit/8 chars for 80 columns, least sig 16 bits/4 chars <80 columns
+adlop               lda       b,u                 Get byte from 32 bit address value
+                    lbsr      onbyt               Output 2 digit hex part of address to output buffer
+                    incb                          Point to next byte of 32 byte address value
+                    cmpb      #AddrMSW+4          Are we done the entire 32 bit address?
+                    bne       adlop               No, keep doing until all done.
+                    ldx       <HexPtr             Bump hex output ptr up 1 (add space before hex dump on output line)
                     leax      1,x
-                    stx       <D.Ptr
-                    bsr       readi
-                    bcs       eofck
-onlin               lbsr      onchr
-                    decb
-                    ble       enlin
-                    lbsr      onchr
-                    decb
-                    ble       enlin
-                    ifne      DOSCSIZ
-                    tst       <narrow
+                    stx       <HexPtr
+                    bsr       readi               Get next block of data from file (returns B=# of bytes read)
+                    bcs       eofck               If error reading next block, go handle (return from there)
+* Do 2 source bytes at a time so we can add spacing between (if 80 column)
+onlin               lbsr      onchr               Output Hex & ASCII chars to output buffer
+                    decb                          Dec # of bytes left to process in current source block
+                    ble       enlin               Done all of them, do end of line & print to screen
+                    lbsr      onchr               Output next source byte as Hex & ASCII chars to output buffer
+                    decb                          Dec # of bytes left to process in current source block
+                    ble       enlin               Done all of them, do end of line & print to screen
+                    IFNE      DOSCSIZ
+                    tst       <narrow             If <80 columns, go straight to next source bytes
                     bne       onlin
-                    endc
-                    lda       #C$SPAC
+                    ENDC
+                    lda       #C$SPAC             If 80 columns, add a space between every 4 hex chars
                     lbsr      savec
-                    bra       onlin
+                    bra       onlin               On to next source buffer byte
+
 enlin               lda       #C$CR
-                    ldx       <D.Txt
+                    ldx       <ASCIIPtr           Put a CR into current position in output buffer
                     sta       ,x
-                    leax      Txtbuf,u
-                    bsr       print
-                    ldd       <D.Adr+2
-                    ldx       <D.Adr
-                    addd      <D.Len
-                    lbra      onpas
-print               ldy       #BUFSZ
-                    lda       #1
-                    os9       I$WritLn
-                    lbcs      DoExit
+                    leax      Txtbuf,u            Point to start of text buffer
+                    bsr       print               Flush output line to screen
+                    ldd       <AddrLSW            Get LSW of current address
+                    ldx       <AddrMSW            Get MSW of current address
+                    addd      <D.Len              Add # of source bytes/per line to address to LSW
+                    lbra      onpas               Start on next line on screen
+
+* Write buffer to screen
+* Entry: X=ptr to text to print
+* pointed to by X, up to maximum of 80 chars (or CR)
+print               ldy       #BUFSZ              Max 80 chars
+                    lda       #1                  Std out
+                    os9       I$WritLn            Write to screen
+                    lbcs      DoExit              Error, exit with it
                     rts
-readi               ldy       <D.Len
+
+* Read next block of source bytes (enough for next output line)
+* Exit: Y & B=8,16 (if full block) or 1-16 if EOF
+readi               ldy       <D.Len              Get # of source bytes that we are printing per line
                     clrb
-                    tst       <D.Mem
-                    bne       redad
-                    leax      Datbuf,u
-                    lda       <D.Opn
-                    os9       I$Read
-                    bcs       reded
-                    tfr       y,d
+                    tst       <D.Mem              Are we dumping from memory instead of file?
+                    bne       redad               Yes, set up for next block in memory module
+                    leax      Datbuf,u            Reading from file; point to file buffer
+                    lda       <D.Opn              Get path to file (or stdin)
+                    os9       I$Read              Read in enough bytes to do output next line
+                    bcs       reded               If error, exit with it
+                    tfr       y,d                 D=# of bytes actually read (may be smaller if end of file)
 reded               rts
 
-redad               bsr       iseofm
-                    bcc       setct
-                    rts
-setct               subd      <D.Len
-                    bcs       redof
-                    clra
+* Read next block from mapped in memory module
+* Entry: D=size of next source block to read
+*        X=ptr to current position in source buffer
+redad               bsr       iseofm              Check if we are done the memory module
+                    bcc       setct               No, set up for next read block from memory module
+                    rts                           Yes, return with EOF error
+
+setct               subd      <D.Len              Are we at end of module?
+                    bcs       redof               Yes, size of read = # of bytes left
+                    clra                          No, init size to read to 0 (so it ends up being read buffer size)
                     clrb
-redof               addd      <D.Len
-                    clr       -1,s
-                    leay      d,x
-                    sty       <D.Beg
+redof               addd      <D.Len              D=size to read
+                    clr       -1,s                Force carry to be clear
+                    leay      d,x                 Point Y to next source chunk in module
+                    sty       <D.Beg              Save that as source position to start reading from
                     rts
 
-eofck               cmpb      #E$EOF
-                    orcc      #Carry
-                    lbne      DoExit
-                    clrb
-                    ldx       <D.Prm
+eofck               cmpb      #E$EOF              Was the error and EOF error?
+                    orcc      #Carry              Force carry flag (but leave BEQ flag)
+                    lbne      DoExit              No, just abort
+                    clrb                          Yes, clear error
+                    ldx       <D.Prm              And point X to where we left off in parmeters
                     rts
 
-iseof               tst       <D.Mem
-                    bne       iseofm
-                    lda       <D.Opn
-                    ldb       #SS.EOF
+* Check for end of file/module
+iseof               tst       <D.Mem              Dumping module in memory?
+                    bne       iseofm              Yes, handle in memory module
+                    lda       <D.Opn              Disk file, get file path
+                    ldb       #SS.EOF             Check if we are at end of file
                     os9       I$GetStt
                     cmpb      #E$EOF
                     beq       iseofex
-                    clrb
+                    clrb                          Not at end of file, return with no error
 iseofok             rts
-iseofex             orcc      #Carry
+
+iseofex             orcc      #Carry              Exit with end of File error
                     ldb       #E$EOF
                     rts
-iseofm              ldd       <D.End
-                    ldx       <D.Beg
-                    subd      <D.Beg
-                    beq       iseofex
-                    andcc     #^Carry
+
+* Check for end of DUMP for module in memory
+* Exit: D=# bytes left or EOF error
+iseofm              ldd       <D.End              Get ptr to end of module in memory
+                    ldx       <D.Beg              Get ptr to start of module in memory
+                    subd      <D.Beg              D=end-start (Size) of module
+                    beq       iseofex             End of memory module, return with EOF error
+                    andcc     #^Carry             More to go, exit w/o error
                     rts
 
-onibl               anda      #$0F
-                    cmpa      #9
-                    bls       nocom
-                    adda      #7
-nocom               adda      #'0
-savec               pshs      x
-                    ldx       <D.Ptr
-                    sta       ,x+
-                    stx       <D.Ptr
-                    puls      x,pc
-onchr               lda       ,x+
-                    bsr       onbyt
-                    pshs      x,a
-                    anda      #$7F
+* convert low nibble in A to hex digit & append that to output text buffer
+onibl               anda      #$0F                Only keep lower nibble
+                    cmpa      #9                  ASCII numeric digit?
+                    bls       nocom               Yes, skip ahead
+                    adda      #7                  No, offset value to do A-F
+nocom               adda      #'0                 ASCII-fy digit
+* If called here, append char in A to hex part of output buffer
+savec               pshs      x                   Save X
+                    ldx       <HexPtr             Get current output buffer ptr
+                    sta       ,x+                 Save ASCII hex digit to buffer
+                    stx       <HexPtr             Save updated output buffer ptr
+                    puls      x,pc                Restore X & return
+
+* Append char at current input buffer position to both Hex & ASCII parts of output buffer
+* Exit: B is preserved
+*       X updated to point to next byte in source buffer
+onchr               lda       ,x+                 Get char from input buffer
+                    bsr       onbyt               Append hex value for byte to output buffer
+                    pshs      x,a                 Save output buffer ptr & char
+                    anda      #$7F                Mask off high bit
                     cmpa      #C$SPAC             control char?
-                    blo       cntrl
+                    blo       cntrl               Yes, change to a '.' for ASCII output
                     cmpa      #$7F                rubout?
-                    blo       savet
-cntrl               lda       #'.                 make printable
-savet               ldx       <D.Txt
-                    sta       ,x+
-                    stx       <D.Txt
-                    puls      a,x,pc
-onbyt               pshs      a
+                    blo       savet               No, output ASCII as is
+cntrl               lda       #'.                 change non-printable char to '.'
+savet               ldx       <ASCIIPtr           Get current ptr in txtbuf
+                    sta       ,x+                 Save ASCII char
+                    stx       <ASCIIPtr           Save updated ptr
+                    puls      a,x,pc              Restore source ptr, current byte & return
+
+* Add byte in A to output stream as 2 hex digits
+onbyt               pshs      a                   Save original value
+                    lsra                          Shift high nibble to low
                     lsra
                     lsra
                     lsra
-                    lsra
-                    bsr       onibl
-                    lda       ,s
-                    bsr       onibl
+                    bsr       onibl               Append hex char for high nibble to output buffer
+* 6809/6309 - could do puls a here, then rts instead of puls. Or save A in DP (faster)
+                    lda       ,s                  Get original value back
+                    bsr       onibl               Append hex char for low nibble to output buffer
                     puls      a,pc
 
-                    ifne      DOHELP
+                    IFNE      DOHELP
 HelpMsg             fcc       "Use: Dump [opts] [<path>] [opts]"
                     fcb       C$CR,C$LF
                     fcc       "  -h = no header"
@@ -506,7 +459,7 @@ HelpMsg             fcc       "Use: Dump [opts] [<path>] [opts]"
                     fcc       "  -x = file in exec dir"
                     fcb       C$CR,C$LF
 HelpLen             equ       *-HelpMsg
-                    endc
+                    ENDC
 
                     emod
 length              equ       *

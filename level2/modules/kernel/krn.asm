@@ -22,11 +22,22 @@
 * F$SRqMem now properly scans the DAT images of the system to update
 * the D.SysMem map.
 *
-*  19r10   2019/11/15  L. Curtis Boyle
-* Optimized register stack copies on 6809 in 3 spots (Loop5, RtiLoop & Looper)
+*  19r10   2019/11/15-2019/12/26  L. Curtis Boyle
+* Optimized register stack copies on 6809 in 4 spots (Loop5, RtiLoop, Looper
+*   & Loop4)
 *   Saves over 70 cycles per system call that switches between user &
 *   system states
-*
+* Changed F$Move to use D.IRQTmp to eliminate some TFR's, and changed it so
+*   pshs cc/puls cc replace with orc #IntMask/andcc ^#IntMasks (faster)
+* Also changed it to pulu routine again (for >64 byte copies, 14 cycles
+*   faster per 8 bytes copied)
+* Shrunk 6309 code by 1 byte in F$VModul
+* 6309-Removed 2 BRN's from F$LDAXY, as they were not 2.01 source, and
+*   don't appear to useful since F$LDDDXY does the same type of MMU mapping
+*   without delays.
+* Moved F$CpyMem from KrnP2, which allows shortcut bsr calls to F$Move,etc. Much,
+*   much faster. (6809)
+
 *  20r00   2023/10/17  Boisy Gene Pitre
 * Ported to the Foenix F256.
 
@@ -54,16 +65,15 @@ MName               fcs       /Krn/
                     fcb       Edition
 
 * FILL - all unused bytes are now here
-                    fcc       /www.nitros9.org /
-                    fcc       /www.nitros9.org /
-                    fcc       /www.nitros9.org /
-                    fcc       /www.nitros9.org /
-                    fcc       /www.nitros9.org /
-                    fcc       /www.nitros9.org /
                     ifne      H6309
                     fcc       /www.nitros9.org /
                     fcc       /www.nitros9.org /
-                    fcc       /www.nit/
+                    fcc       /www.nitros9.org /
+                    fcc       /www.nitros9.org /
+                    fcc       /www.nitros9.org /
+                    fcc       /www.nitros9.org /
+                    fcc       /www.nitros9.org /
+                    fcc       /www/
                     else
                     ifne      f256
                     fcc       /www.nitros9.org /
@@ -73,18 +83,15 @@ MName               fcs       /Krn/
                     fcc       /www.nitros9.org /
                     fcc       /www.nitros9.org /
                     fcc       /www.nitros9.org /
-                    fcc       /www.nitros9.org /
-                    fcc       /www.nitros9.org /
-                    fcc       /www./
+                    fcc       /www.nitros/
                     else
-                    fcc       /www./
+                    fcc       /www.nitr/
                     endc
                     endc
 
 * The dispatch table.
 * The kernel copies this to low RAM starting at D.Clock.
-DisTable
-                    fdb       L0CD2+Where         D.Clock absolute address at the start
+DisTable            fdb       L0CD2+Where         D.Clock absolute address at the start
                     fdb       XSWI3+Where         D.XSWI3
                     fdb       XSWI2+Where         D.XSWI2
                     fdb       D.Crash             D.XFIRQ crash on an FIRQ
@@ -94,14 +101,11 @@ DisTable
                     fdb       $0055               D.ErrRst ??? Not used as far as I can tell
                     fdb       Sys.Vec+Where       Initial Kernel system call vector
 DisSize             equ       *-DisTable
-* ^
-* Code using 'SubSiz', below, assumes that SubStrt follows on directly after
-* the end of DisTable.
-* DO NOT ADD ADD ANYTHING BETWEEN THESE 2 LABELS!
-* v
+
+* DO NOT ADD ANYTHING BETWEEN THESE 2 TABLES: see code using 'SubSiz', below
 LowSub              equ       $0160               start of low memory subroutines
 SubStrt             equ       *
-* D.Flip0 - Switch to system task 0.
+* D.Flip0 - switch to system task 0.
 R.Flip0             equ       *
                     ifne      H6309
                     aim       #$FE,<D.TINIT       map type 0
@@ -119,11 +123,8 @@ R.Flip0             equ       *
                     tfr       x,s                 transfer X to the stack
                     tfr       a,cc                and A to CC
                     rts
+* Don't add any code here: See L0065, below.
 SubSiz              equ       *-SubStrt
-* ^
-* Code around L0065, below, assumes that Vectors follows on directly after
-* the end of R.Flip0. Therefore, DO NOT ADD ADD ANYTHING BETWEEN THESE 2 LABELS
-* v
 * Interrupt service routine
 Vectors             jmp       [<-(D.SWI3-D.XSWI3),x] (-$10) (Jmp to 2ndary vector)
 
@@ -214,9 +215,6 @@ done@               ldx       #$0000              start clearing at this address
                     else
                     ldx       #$100               start clearing at this address
                     ldy       #$2000-$100         for this many bytes
-                    endc
-                    endc
-
                     clra                          set D
                     clrb                          to $0000
 l@                  std       ,x++                now clear memory 16 bits at a time
@@ -224,6 +222,8 @@ l@                  std       ,x++                now clear memory 16 bits at a 
                     bne       l@                  and continue until done
                     stx       <D.CCStk            set pointer to top of global memory to $2000
                     inca                          set D to $0100
+                    endc
+                    endc
 
 *>>>>>>>>>> F256 PORT
 * Use <D.Crash to store a crash routine that we can use for debugging.
@@ -337,7 +337,7 @@ l@                  lda       ,y+                 load a byte from the source
 
 * Initialize secondary interrupt vectors to all point to vectors for now.
 * ASSUME: Y is left pointing to vectors by the previous copy loop.
-                    tfr       y,u                 move the pointer to a faster register
+                    leau      ,y                  move the pointer to a faster register
 l@                  stu       ,x++                set all IRQ vectors to go to vectors for now
                     cmpx      #D.NMI              are we at the end?
                     bls       l@                  branch if not
@@ -347,38 +347,30 @@ l@                  stu       ,x++                set all IRQ vectors to go to v
                     stx       <D.UsrSvc           save it as the user service routine pointer
                     ldx       <D.XIRQ             get the IRQ service routine pointer
                     stx       <D.UsrIRQ           save it as the user IRQ routine pointer
-
                     leax      >SysCall,pc         get the system state call entry point
                     stx       <D.SysSvc           store it in the system state service routine vector
                     stx       <D.XSWI2            and in the cross-SWI2 vector
-
                     leax      >S.SysIRQ,pc        get the system state IRQ entry point
                     stx       <D.SysIRQ           store it in the system state IRQ service routine vector
                     stx       <D.XIRQ             and in the cross-IRQ vctor
-
                     leax      >S.SvcIRQ,pc        get the user state IRQ entry point
                     stx       <D.SvcIRQ           store it in the user state RIQ service routine vector
                     leax      >S.Poll,pc          get the IRQ polling routine entry point
                     stx       <D.Poll             and store it in the IRQ polling routine vector
                     leax      >S.AltIRQ,pc        get the alternate IRQ entry point
                     stx       <D.AltIRQ           and store it in the alternate IRQ polling routine vector
-
                     ifeq      f256
                     lda       #'K                 debug: signal that we are in Kernel
                     jsr       <D.BtBug            ---
                     endc
-
                     leax      >S.Flip1,pc         get the "flip 1" entry point
                     stx       <D.Flip1            and store it in the "flip 1" vector
-
 * Setup system calls.
                     leay      >SysCalls,pc        point to the system call address table
                     lbsr      InstallSvc          and perform the installation
-
 * Initialize the system process descriptor.
                     ldu       <D.PrcDBT           get the process table pointer
                     ldx       <D.SysPrc           and the system process pointer
-
 * These overlap because it is quicker than trying to strip the high byte from X.
                     stx       ,u                  save it as the first process in table
                     stx       1,u                 save it as the second as well
@@ -568,19 +560,19 @@ L0170
                     lbsr      I.VBlock            perform module validation
                     bsr       L01D2               then mark the system map
 
-* See if the init module is in memory already.
-L01B0               leax      <init,pc            point to 'Init' module name
+* BGP - Load bootfile and link to init. We no longer try to link to init first and then
+* call F$Boot. This saves bytes.
+                    os9       F$Boot              load bootfile here +BGP+
+                    bcs       L01CE               error, go crash +BGP+
+                    leax      <init,pc            point to 'Init' module name
                     bsr       link                try & link it
-*>>>>>>>>>> F256 PORT
-                    ifne      f256
                     bcs       L01CE               error, go crash
-                    else
-*<<<<<<<<<< F256 PORT
-                    bcc       L01BF               no error, go on
-L01B8               os9       F$Boot              error linking init, try & load boot file
-                    bcc       L01B0               got it, try init again
-                    bra       L01CE               error, re-booting do D.Crash
-                    endc
+
+* BGP - Commented out the following lines since I moved F$Boot above
+*                    bcc       L01BF               no error, go on
+*L01B8               os9       F$Boot              error linking init, try & load boot file
+*                    bcc       L01B0               got it, try init again
+*                    bra       L01CE               error, re-booting do D.Crash
 
 * So far, so good. Save the pointer to the init module and execute krnp2.
 L01BF               stu       <D.Init             save the init module pointer
@@ -597,19 +589,20 @@ ShowI
 
 L01C1               leax      <krnp2,pc           point to krnp2's name
                     bsr       link                try to link it
-*>>>>>>>>>> F256 PORT
-                    ifne      f256
-                    bcc       L01D0               krnp2 found... jump to it
-                    else
-*<<<<<<<<<< F256 PORT
-                    bcc       L01D0               branch if it worked
-                    os9       F$Boot              else it doesn't exist; try re-booting
+
+* BGP - Removed the following lines as krnp2 is ALWAYS in the bootfile and F$Boot is called above.
+* Also saves needed critical space since F$CpyMem is now part of krn.
+*                    bcc       L01D0               branch if it worked
+*                    os9       F$Boot              else it doesn't exist; try re-booting
 * WARNING: the next line has the potential to infinitely loop if krnp2 is not in the
 * bootfile that F$Boot loaded.
-                    bcc       L01C1               branch if no error, let's try to link it again
-                    endc
-L01CE               jmp       <D.Crash            obviously can't do it, crash machine
+*                    bcc       L01C1               branch if no error, let's try to link it again
+*
+
 L01D0               jmp       ,y                  jump into krnp2
+
+* BGP - This line was above L01D0 but now moved below since above lines are commented.
+L01CE               jmp       <D.Crash            obviously can't do it, crash machine
 
 * Update the system memory map to reserve the area the kernel uses.
 L01D2               ldx       <D.SysMem           get the system memory map pointer
@@ -667,10 +660,8 @@ SysCalls            fcb       F$Link
                     fdb       FBoot-*-2
                     fcb       F$BtMem+SysState
                     fdb       FSRqMem-*-2
-                    ifne      H6309
                     fcb       F$CpyMem
                     fdb       FCpyMem-*-2
-                    endc
                     fcb       F$Move+SysState
                     fdb       FMove-*-2
                     fcb       F$AllImg+SysState
@@ -707,10 +698,10 @@ SysCalls            fcb       F$Link
                     fdb       FFModul-*-2
                     fcb       F$VBlock+SysState
                     fdb       FVBlock-*-2
-                    ifne      H6309
+                    IFNE      H6309+F256
                     fcb       F$DelRAM
                     fdb       FDelRAM-*-2
-                    endc
+                    ENDC
                     fcb       $80
 
 * SWI3 vector entry
@@ -747,7 +738,6 @@ L028E               ldu       <D.SysSvc           get the system call service ve
 * Copy the register stack to the process descriptor.
                     sts       P$SP,x              save the stack pointer
                     leas      (P$Stack-R$Size),x  point S to the register stack destination
-
                     ifne      H6309
                     leau      R$Size-1,s          point to the last byte of the destination register stack
                     leay      -1,y                point to the caller's register stack in $FEE1
@@ -814,6 +804,8 @@ AllClr              equ       *
                     anda      #$1F                clear these bits
                     sta       <D.QCnt             and save it back
                     beq       DoFull              branch if zero
+* NOTE: Need to preserve X here - needed for BackTo1 routine
+*   (Currently in fnproc.asm). 145 cycles vs. original 213 cycles
                     ldb       #R$Size             else get the size of the register stack
                     ldy       #Where+SWIStack     and the stack at the top of memory
                     orcc      #IntMasks           mask interrupts
@@ -943,12 +935,9 @@ L0345
 
                     use       fsrqmem.asm
 
-*         use   fallram.asm
-
-
-                    ifne      H6309
+                    IFNE      H6309+F256
                     use       fdelram.asm
-                    endc
+                    ENDC
 
                     use       fallimg.asm
 
@@ -958,9 +947,7 @@ L0345
 
                     use       fld.asm
 
-                    ifne      H6309
                     use       fcpymem.asm
-                    endc
 
                     use       fmove.asm
 
@@ -1080,7 +1067,6 @@ L0E4C               equ       *
                     leas      ,y                  point to the new stack
                     tstb                          is the stack at SWISTACK?
                     bne       MyRTI               no, we're doing a system-state rti
-
                     ifne      H6309
                     ldf       #R$Size             E=0 from call to L0E8D before
                     ldu       #Where+SWIStack     point to the stack
@@ -1164,7 +1150,9 @@ L0E9B               lda       ,u++                get a bank
                     endc
                     bne       L0E9B               no, keep going
                     ifeq      H6309
-                    leas      1,s                 done; tidy up the stack
+* 6809 - 10 cyc down to 8
+*                   leas      1,s                 eat temporary stack
+                    puls      a,pc                eat temporary stack and return
                     endc
 *>>>>>>>>>> F256 PORT
                     ifne      f256

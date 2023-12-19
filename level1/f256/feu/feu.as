@@ -25,13 +25,6 @@ DWSetLen            equ       *-DWSet
 Banner              equ       *
                     fcc       /FEU - Foenix Executive Utility/
                     fcb       C$CR
-                    fcc       /Version /
-                    fcb       VMAJOR+$30
-                    fcc       "."
-                    fcb       VMINOR+$30
-                    fcb       C$CR
-                    fcc       /2023 Boisy Gene Pitre/
-                    fcb       C$CR
                     fcb       0
 
 FlashMsg            fcc       / - Flash Mode/
@@ -148,6 +141,39 @@ BootOS9Help         fcc       "Boot OS-9"
                     fcb       C$CR
                     fcb       0
 
+BuildDate           dtb
+
+PrintVersionInfo
+                    lbsr      PRINTS
+                    fcc       /Build /
+                    fcb       0
+                    leax      BuildDate,pcr
+                    clra
+                    ldb       ,x+
+                    addd      #1900
+                    lbsr      PRINT_DEC
+                    ldb       #'-
+                    lbsr      PUTC
+                    clra
+                    ldb       ,x+
+                    lbsr      PRINT_DEC
+                    ldb       #'-
+                    lbsr      PUTC
+                    clra
+                    ldb       ,x+
+                    lbsr      PRINT_DEC
+                    ldb       #C$SPAC
+                    lbsr      PUTC
+                    clra
+                    ldb       ,x+
+                    lbsr      PRINT_DEC
+                    ldb       #':
+                    lbsr      PUTC
+                    clra
+                    ldb       ,x+
+                    lbsr      PRINT_DEC
+                    rts
+
 PrintMBoardInfo     ldx       #SYS0
                     lda       7,x
                     cmpa      #$02
@@ -174,6 +200,8 @@ __start             leax      >IcptRtn,pcr        point to the intercept routine
                     os9       I$Write
                     leax      >Banner,pcr         point to the banner
                     lbsr      PUTS                print it
+                    lbsr      PrintVersionInfo
+                    lbsr      PUTCR
                     lbsr      PrintMBoardInfo
                     clr       isflash,u           clear the flash flag (assume we're RAM)
                     lda       $FFAF               get MMU slot 7

@@ -57,18 +57,19 @@
 * Fixed bug where PSHU/PULU would try and push/pull U onto itself. (chk.f7)
 * Also, changed edition # since _so_ many changes (including 6309 support)
 *  have been added since edition 5
+*   6r1   2020/12/08  L. Curtis Boyle
+* Added I$ModDsc to I/O SWI2 call names
 
                     nam       Disasm
                     ttl       6809/6309 disassembler
 
                     ifp1
-*         use   /dd/defs/deffile
                     use       defsfile
                     endc
 
 typ                 set       Prgrm+Objct
 attrev              set       ReEnt+revision
-revision            set       $00
+revision            set       $01
 edtn                set       6                   edition
 edition             equ       $30+edtn            ascii edition
 
@@ -267,6 +268,7 @@ os9i$tab            equ       *
                     fcc       /I$SetStt/
                     fcc       /I$Close /
                     fcc       /I$DeletX/
+                    fcc       /I$ModDsc/
 bados9op            fcc       /????????/
 
 * Mnemonic table: 1st byte =Opcode
@@ -3795,7 +3797,7 @@ chkos9              cmpb      #$3f
                     bra       getos9
 
 i$os9               cmpa      #$91
-                    bhs       bados9
+                    bhi       bados9
                     leay      os9i$tab,pcr
                     suba      #$80
                     bra       getos9

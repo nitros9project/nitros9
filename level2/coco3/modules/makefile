@@ -60,7 +60,7 @@ RBF		= rbf.mn \
 SCF		= scf.mn \
 		vtio.dr vrn.dr scbbp.dr scbbt.dr scdwp.dr sspak.dr sc6551.dr \
 		cowin.io cogrf.io covdg.io covdg_small.io \
-		keydrv_cc3.sb snddrv_cc3.sb \
+		snddrv_cc3.sb \
 		joydrv_joy.sb joydrv_6551L.sb joydrv_6552L.sb \
 		joydrv_6551M.sb joydrv_6552M.sb \
 		nil.dd p_scbbp.dd p_scdwp.dd \

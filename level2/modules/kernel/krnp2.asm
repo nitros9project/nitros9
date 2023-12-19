@@ -63,6 +63,15 @@
 *
 *  19      2013/05/29  Boisy G. Pitre
 * F$Debug now incorporated, allows for reboot.
+*
+*  20      2019/12/08-25  L. Curtis Boyle
+* Krn/KrnP2 6809: Moved F$CpyMem code back into KRN, and direct calls to Move,
+*   ala 6309 version (several times faster)
+* 6809: Optimized F$Chain- speed up copying Process descriptor data (saves
+*    saves 750 cycles)
+* 6809: Optimized F$AllPrc- speed up clearing Process descriptor data (saves
+*    350 cycles
+* 6809/6309: Shrunk/sped up REBOOT copy code loop
 
                     nam       krnp2
                     ttl       NitrOS-9 Level 2 Kernel Part 2
@@ -76,7 +85,7 @@ Network             equ       0                   Set to 1 to enable network I/O
                     endc
 
 TC9                 set       false               "true" use TC-9 6309 trap vector
-Edition             equ       19
+Edition             equ       20
 Revision            equ       0
 
                     mod       eom,MName,Systm,ReEnt+Revision,krnp2,$0100
@@ -95,21 +104,12 @@ Trap                bitmd     #%01000000          illegal instruction?
 
 * Process illegal instruction trap
 BadIns              bsr       SetProc             move the register stack here
-
-
-
-
-
                     ldb       #18                 get error code for F$Exit
                     bra       TrapDone
+
 * Process division by 0 trap
 Div0                bsr       SetProc             move the register stack
-
-
-
-
                     ldb       #45                 get error code for F$Exit
-
 * Return to system after the trap
 * Entry: B=Error code
 *        U=Pointer to register stack
@@ -177,7 +177,11 @@ Uday                lda       ,x+
 
 krnp2               lda       #'2                 debug: signal that we made it into krnp2
                     jsr       <D.BtBug
+                    ifne      H6309
+                    leay      <SvcTab,pc          install system calls
+                    else
                     leay      SvcTab,pc           install system calls
+                    endc
                     os9       F$SSvc
                     ifeq      TC9-1
                     leax      Trap,pc
@@ -188,24 +192,32 @@ L003A               ldu       <D.Init             get init module pointer
                     ldd       SysStr,u            get pointer to system device name (usually '/DD')
                     beq       L004F               don't exist, open std device
                     leax      d,u                 point to name
-
                     lda       #'x                 debug: signal that we tried chd'ing
                     jsr       <D.BtBug
-
                     lda       #(EXEC.+READ.)      get file mode
                     os9       I$ChgDir            change to it
+                    bcc       L004F               went ok, go on
+                    os9       F$Boot              try & load boot file
+                    bcc       L003A               go try again
 L004F               ldu       <D.Init             get init module pointer
                     ldd       <StdStr,u           point to default device (usually '/Term')
                     beq       L0077               don't exist go do OS9P3
                     leax      d,u                 point to it
-
                     lda       #'o                 debug: signal that we tried opening output window
                     jsr       <D.BtBug
-
                     lda       #UPDAT.             get file mode
                     os9       I$Open              open path to it
                     bcc       L0066               went ok, save path #
+* LCB - not sure why this is remarked out and replaced with NOP's?
+*         os9    F$Boot      try & re-boot
+* nop
+* nop
+* nop
+*         bcc    L004F       go try again
+* nop
+* nop
                     bra       L009B               crash machine
+
 L0066               ldx       <D.Proc             get current process pointer
                     sta       <P$Path,x           save stdin path
                     os9       I$Dup               dupe it
@@ -221,10 +233,8 @@ L0077               leax      <L0096,pc           point to 'krnp3'
 L0083               ldu       <D.Init             get init module pointer
                     ldd       InitStr,u           get offset to name of first module
                     leax      d,u                 point to it
-
                     lda       #'C                 debug: signal that we tried to go to SysGo
                     jsr       <D.BtBug
-
                     lda       #Objct              get module type
                     clrb                          get mem size
                     ifne      H6309
@@ -288,12 +298,10 @@ svctab              fcb       F$UnLink
                     fdb       FGBlkMp-*-2
                     fcb       F$GModDr
                     fdb       FGModDr-*-2
-                    ifeq      H6309
-                    fcb       F$CpyMem
-                    fdb       FCpyMem-*-2
+                    IFEQ      H6309+F256
                     fcb       F$DelRAM
                     fdb       FDelRAM-*-2
-                    endc
+                    ENDC
                     fcb       F$SUser             Added back here for room in OS9p1
                     fdb       FSUser-*-2
                     fcb       F$UnLoad
@@ -380,9 +388,7 @@ IOMan               fcs       /IOMan/
 
                     use       fid.asm
 
-                    ifeq      H6309
-                    use       fcpymem.asm
-
+                    ifeq      H6309+F256
                     use       fdelram.asm
                     endc
 
@@ -419,4 +425,3 @@ IOMan               fcs       /IOMan/
                     emod
 eom                 equ       *
                     end
-

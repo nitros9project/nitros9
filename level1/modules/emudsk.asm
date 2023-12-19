@@ -68,8 +68,7 @@ vhdnum              equ       $FF86
                     ttl       os9 device driver
 
                     ifp1
-                    use       os9.d
-                    use       rbf.d
+                    use       defsfile
                     endc
 
 tylg                set       Drivr+Objct
@@ -181,7 +180,8 @@ READ                clra                          READ command value=0
                     bne       noerr               if not sector 0, return
                     leax      ,x                  sets CC.Z bit if lsw of LSN not $0000
                     bne       noerr               if not sector zero, return
-* Copy LSN0 data to the drive table each time LSN0 is read
+* Copy LSN0 data to the drive table each time LSN0 is
+* read because emulators allow drive swaps on the fly
                     ldx       PD.BUF,y            get ptr to sector buffer
                     leau      DRVBEG,u            point to first drive table
                     lda       PD.DRV,y            get vhd drive number from descriptor RG
@@ -242,7 +242,7 @@ reterr              tfr       a,b                 Move error code to reg B
 *  Put buffer address from PD.BUF
 *  Put drive from PD.DRV
 *  Put LSN from B,X
-*  Put command to cause emulator to do syncronous DMA transfer
+*  Put command to cause emulator to do synchronous DMA transfer
 *  Translate and return error code
 **************************************************************************
 
@@ -270,10 +270,10 @@ gs.1                stb       >LSN                Tell emulator which LSN
                     bne       FixErr              if non-zero translate the error and return
                     rts                           return with LSN intact and no error
 
-* Translate emulator error code to OS-9 code and return to caller.
+* Translate emulator error code to OS-9 error code and return.
 
-DriveErr            puls      x,a                 restore regs
-                    bra       NotRdy              not ready
+DriveErr            puls      x,a                 restore stack
+                    bra       NotRdy              return with not ready error
 
 * Entry: A=error code from emulator
 FixErr              cmpa      #02                 not enabled

@@ -38,19 +38,23 @@
 *  11      2019/03/25-2019/04/14  L. Curtis Boyle
 * Minor optimizations, -O= will overwrite existing output file
 * Expanded source line max length to 127 - I think it may work up to 132 fine (not tested)
-* 6309 specific optimazations as well
+* 6309 specific optimizations as well
+*
+*  11r1    2020/08/25-2020/08/30  L. Curtis Boyle
+* Fixed bug in generating CRC's in programs that have lead in bytes before the module
+*   header (like REL)
+* Fixed bug on last line of mult-line listing if G option turned on and size >4 bytes
 
                     nam       Asm
                     ttl       6809/6309 Assembler
 
                     ifp1
-*         use   /dd/defs/deffile
                     use       defsfile
                     endc
 
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
-rev                 set       $01
+rev                 set       $02                 Rev 2 to fix CRC when block starts before MOD pseudo op (like REL)
 edition             set       11                  11 adds -o doing overwrite (I hope)
 DOCASE              equ       1                   enable case-sensitive symbols
 NEWDEF              equ       1                   enable IFDEF/IFNDF conditionals
@@ -68,11 +72,11 @@ NoObjct             equ       %00000100           No object code to print
 PrintPC             equ       %00000001           Print PC flag
 DoNothng            equ       %00000000           Do nothing (no flags set)
 
-                    ifne      NEWDEF
+                    IFNE      NEWDEF
 Numop               equ       162                 # of opcodes in table (including pseudo-ops)
-                    else
+                    ELSE
 Numop               equ       160                 # of opcodes in table (including pseudo-ops)
-                    endc                          NEWDEF
+                    ENDC      NEWDEF
 
 * Notes on symbol table entries:
 * There are two tables - one is pointed to by <u0010 (which is either 26 or 52 entries), each of which
@@ -92,11 +96,11 @@ u0006               rmb       2                   Ptr to open file path stack   
 u0008               rmb       2                   Ptr to Title buffer (TTL, 79 chars + nul)
 u000A               rmb       2                   Ptr to Name buffer  (NAM, 39 chars + nul)
 u000C               rmb       1                   temp postbyte storage for 6309 bit ops
-                    ifne      DOCASE
+                    IFNE      DOCASE
 u000D               rmb       1                   symbol case mask (was unused)
-                    else
+                    ELSE
 u000D               rmb       1                   unused
-                    endc                          DOCASE
+                    ENDC      DOCASE
 u000E               rmb       2                   Ptr to object code buffer (256 bytes)
 u0010               rmb       2                   Ptr to symbol first letter index table (26 or 52 entries, depending)
 u0012               rmb       2                   Ptr to end of symbol table
@@ -113,7 +117,7 @@ u0022               rmb       2                   Total warnings
 u0024               rmb       2                   Total program bytes generated
 u0026               rmb       2                   Total data bytes allocated
 u0028               rmb       2                   Total errors
-u002A               rmb       1
+u002A               rmb       1                   For long data lines (fcb,fdb,fcc, etc.), the # of 4 byte blocks generate (for listing)
 u002B               rmb       1                   Listing Print Control Bit flags
 u002C               rmb       1                   Data space ops in current line
 u002D               rmb       2                   Ptr to last symbol found/added (scratch)
@@ -166,10 +170,11 @@ u0065               rmb       2
 TmpNum              rmb       2                   1 or 2 byte scratch area to use instead of stack for speed.
 OpTable             rmb       2                   Pointer to L03B8 (opcode) table, for slightly faster access
 SkipCRC             rmb       1                   Flag:0=calculate CRC, <>0=don't calculate. Will be<>0 if L1323 is called from L159F
+StartCRC            rmb       2                   Ptr to 1st byte in output buffer to start calculating CRC (for things like REL)
                     rmb       4096-.              Main buffer area
 size                equ       .
-name                equ       *
-                    fcs       /Asm/
+
+name                fcs       /Asm/
                     fcb       edition
 
 asm                 tfr       u,d
@@ -199,11 +204,11 @@ asm                 tfr       u,d
                     std       <u000E
                     adda      #1                  allocate 256-byte code buffer
                     std       <u0010
-                    ifne      DOCASE
+                    IFNE      DOCASE
                     addd      #52*2               52 symbol vectors, A-Za-z
-                    else
+                    ELSE
                     addd      #26*2               26 symbol vectors, A-Z
-                    endc                          DOCASE
+                    ENDC      DOCASE
                     std       <u001D              start of symbol table
                     leau      >L03B8,pc           Point to opcode table
                     stu       <OpTable            Save in DP for slightly faster access later
@@ -218,6 +223,7 @@ asm                 tfr       u,d
                     std       <u0018              Input path # & Output path # =0
                     sta       <u003E              Pass ctr=0
                     sta       <u0060              N opt =0
+                    std       <StartCRC           Init buffer ptr to start CRC calcs on to 0 (no CRC yet)
                     incb                          B=1 now
                     std       <u005B              G opt=0, E opt=1
                     stb       <u005F              C opt=1
@@ -226,10 +232,10 @@ asm                 tfr       u,d
                     sta       <u0056              L opt flag=$FF
                     ldd       #66*256+79          Default page height=66, page width=79
                     std       <u0036
-                    ifne      DOCASE
+                    IFNE      DOCASE
                     ldb       #$7F                Default symbol case mask
                     stb       <u000D
-                    endc                          DOCASE
+                    ENDC      DOCASE
                     lbsr      L1696               Parse command line args
                     lda       <u0056
                     bmi       L0081
@@ -321,13 +327,13 @@ L00D5               clra
                     cmpa      #C$SPAC             Space? (No label field)
                     beq       L0125               Yes, go somewhere else
 * Label field found
-                    ifne      H6309
+                    IFNE      H6309
                     oim       #Label,<u002B       Flag Label Present in Listing print control flags
-                    else
+                    ELSE
                     ldb       <u002B              Flag Label Present in Listing print control flags
                     orb       #Label
                     stb       <u002B
-                    endc
+                    ENDC
                     lbsr      L0368               copy label to symbol name buffer
                     bcc       L0119
                     ldb       #01                 'bad label' error
@@ -374,13 +380,13 @@ L015F               ldb       #02                 'bad instr' error
                     lbsr      L02FA               Print error message
                     ldb       #$03                Set # bytes of current instruction to 3???
                     stb       <u0046
-                    ifne      H6309
+                    IFNE      H6309
                     aim       #^Operand,<u002B    Shut off operand present flag
-                    else
+                    ELSE
                     lda       <u002B
                     anda      #^Operand           Shut off operand present flag
                     sta       <u002B
-                    endc
+                    ENDC
                     ldx       <u0031              Get ptr to next field & skip ahead
                     bra       L01C4
 
@@ -435,6 +441,12 @@ L01AB               leay      >L0780,pc           Point to 'opcode type' index
 L01C4               lbsr      L1164               Find next field
                     cmpa      #C$CR               End of line?
                     beq       L01D3               Yes, skip ahead
+* Bugfix LCB 08/30/2020 - L and G combo on source lines that contain actual code bytes
+*  will no longer make a spurious comment on the last line of the block if it isn't an
+*  even 4 bytes.
+* UNFORTUNATELY IT IS CURRENTLY EATING ANY COMMENT ADDED TO THE FIRST LINE NOW.
+                    ldb       <u002A              Is this the first block of a multi-line list (ex. longer FCB,FDB)?
+                    bne       L01D3               No, we already printed comment on first block, don't do again
                     ldb       <u002B              Get flags
                     beq       L01D3               If do nothing, skip ahead
                     orb       #Comment            Set Comment field present flag
@@ -538,6 +550,8 @@ L0240               ldb       <u002B              Get flags
                     tfr       d,u                 U=ptr to instruction buffer
                     ldb       ,u+                 Is there a prebyte?
                     bne       L0256               Yes, start there
+* Main generating loop - appends up to 4 bytes to output buffer and/or list buffer (in ASCII)
+* controlled by <u0046 decing each byte added until done
 L0254               ldb       ,u+                 Get next byte of instruction
 L0256               pshs      b                   Save copy
                     lbsr      L106B               Append hex version to output buffer (2 digit)
@@ -550,7 +564,7 @@ L0265               lbsr      L130D               add byte to the code buffer
                     inc       <u0024+1            update generated bytecount lsb
                     bne       L026E
                     inc       <u0024              and msb
-L026E               dec       <u0046              Dec # of bytes in current instruction
+L026E               dec       <u0046              Dec # of bytes left in current instruction (max 4, not including prebyte)
                     bne       L0254
 L0272               ldy       <u0000              Get ptr to source line buffer
                     ldb       <u002B              Get listing control bit flags
@@ -574,8 +588,8 @@ L028F               bitb      #Operand            Operand field to print?
                     ldb       #39                 Yes, set to column 39
                     bsr       L02E2               Update listing ptr
                     ldy       <u0031              Get ptr to next field (or operand start)
-                    lbsr      L11BD
-                    ldb       <u002B
+                    lbsr      L11BD               Append string @,y to ,x until NUL or CR hit
+                    ldb       <u002B              Get listing control bit flags
 * LCB - moved L02A3 label down 1 instruction to skip redundant ldb <u002B (only called from L028F)
 L02A3               bitb      #Comment            Comment field to print?
                     beq       L02B9
@@ -610,6 +624,9 @@ L02DF               leay      -1,y                rewind to terminating char
                     rts
 
 * Move listing buffer ptr to column [B], ignore if already past
+* Entry: X=current position in list line buffer (0-131 max)
+*        B=column requested
+* Exit:  X=new position in list line buffer (0-131 max)
 L02E2               pshs      u
                     leax      1,x                 Force at least ONE space
                     tst       <u0060              Narrow listing?
@@ -625,11 +642,11 @@ L02F8               puls      pc,u
 * Error printing routine
 * Entry: B=Internal error # (table entry #)
 L02FA               pshs      u,y,x,d             Preserve regs
-                    lda       <u005C              Check ? (lda faster than tst; L11BD immediately destroys A)
-                    beq       L0325
-                    leay      <L061C,pc           Point to '***** Error' string
-                    ldx       <u0004
-                    lbsr      L11BD               Append to write buffer
+                    lda       <u005C              Error messages flag on?
+                    beq       L0325               No, skip ahead
+                    leay      <L061C,pc           Yes, point to '***** Error' string
+                    ldx       <u0004              Get ptr to start of write buffer
+                    lbsr      L11BD               Append to write buffer (now Y points to error message table @L062A
                     clra                          Table offset is B-1
                     decb
                     lslb                          Adjust for 2 byte entries
@@ -643,8 +660,8 @@ L02FA               pshs      u,y,x,d             Preserve regs
                     ldy       2,s
                     lbsr      L11BD
 L0322               lbsr      L1368               Something to do with page end
-L0325               inc       <u0021
-                    inc       <u0028+1            lsb
+L0325               inc       <u0021              Inc error count for current line
+                    inc       <u0028+1            Inc total error count (16 bit number)
                     bne       L032D
                     inc       <u0028              msb
 L032D               puls      pc,u,y,x,d          Restore regs & return
@@ -988,7 +1005,7 @@ L03B8               fcs       "ORG"
                     fcb       $37,$08
 * Normal long branches (except LBRA & LBSR) - probably sets flag & then
 * carries on through short branch table below
-                    fcs       "LB"                for long branches?
+                    fcs       "LB"            for long branches?
                     fcb       $00,$19
 
 * Short branches
@@ -1083,12 +1100,12 @@ L0530               fcs       "BSR"
                     fcb       $05,$0D
                     fcs       "IFP1"
                     fcb       $06,$0D
-                    ifne      NEWDEF
-                    fcs       "IFDEF"             =ifdef
+                    IFNE      NEWDEF
+                    fcs       "IFDEF"  =ifdef
                     fcb       $07,$0D
-                    fcs       "IFNDF"             =ifndef
+                    fcs       "IFNDF"  =ifndef
                     fcb       $08,$0D
-                    endc                          NEWDEF
+                    ENDC      NEWDEF
                     fcs       "ELSE"
                     fcb       $01,$0E
 
@@ -1222,7 +1239,6 @@ L07B9               inc       <u0046              Add 1 to # bytes needed for in
                     std       <u0063              Save 16 bit result after opcode
                     inc       <u0046              Add 2 to # bytes needed for instruction
                     inc       <u0046
-*         lbra  L0941          Make sure immediate mode is legal & exit
 * Immediate mode check - moved here for fall through
 L0941               ldb       <u0047              Get current opcode's flag byte
                     bitb      #%01000000          Immediate mode legal?
@@ -1284,12 +1300,12 @@ dodec32             lbsr      L113B               convert from ascii
                     addd      4,s                 add #*2 +#*8= #*10
                     std       4,s
                     ldd       2,s
-                    ifne      H6309
+                    IFNE      H6309
                     adcd      #0
-                    else
+                    ELSE
                     adcb      #0
                     adca      #0
-                    endc
+                    ENDC
                     bcs       ovflow
                     addd      6,s
                     bcs       ovflow
@@ -1299,12 +1315,12 @@ dodec32             lbsr      L113B               convert from ascii
                     adca      #0
                     std       4,s
                     ldd       2,s
-                    ifne      H6309
+                    IFNE      H6309
                     adcd      #0
-                    else
+                    ELSE
                     adcb      #0
                     adca      #0
-                    endc
+                    ENDC
                     bcs       ovflow
                     std       2,s
                     inc       1,s
@@ -1358,12 +1374,12 @@ notAF               stb       ,s
                     adca      #0
                     std       4,s
                     ldd       2,s
-                    ifne      H6309
+                    IFNE      H6309
                     adcd      #0
-                    else
+                    ELSE
                     adcb      #0
                     adca      #0
-                    endc
+                    ENDC
                     bcs       ovflow
                     std       2,s
                     inc       1,s
@@ -1497,13 +1513,13 @@ L0819               orb       <u0062              Merge Mask for new inherent mo
                     stb       <u0062              Save new opcode
                     leax      1,x                 Bump source code ptr up to next char
 * 6309 - aim #%11011111,<u002B
-                    ifne      H6309
+                    IFNE      H6309
                     aim       #%11011111,<u002B   Shut off 'operand field in src line' flag
-                    else
+                    ELSE
                     ldb       #%11011111          Shut off 'operand field in src line' flag
                     andb      <u002B              And save new flag byte
                     stb       <u002B
-                    endc
+                    ENDC
 L0825               rts
 
 * RVH - adding 6309 bitfield ops (OIM,etc/BAND,etc) as new type F
@@ -1584,13 +1600,13 @@ BTable              fcb       'E,00,$C0
 * type 5 - 'fixed' inherent commands (no options for registers, etc.)
 L0826               inc       <u0046              Add 1 to # bytes this instruction
 * 6309 - aim #%11011111,<u002B
-                    ifne      H6309
+                    IFNE      H6309
                     aim       #%11011111,<u002B   Shut off 'operand present' flag
-                    else
+                    ELSE
                     ldb       <u002B
                     andb      #%11011111          Shut off 'operand present' flag
                     stb       <u002B
-                    endc
+                    ENDC
 L082E               rts
 
 * type 6 - LEA* (indexed mode ONLY)
@@ -1782,10 +1798,10 @@ L0924               fdb       L0EE3-L0924         IFEQ
                     fdb       L0EF7-L0924         IFGE
                     fdb       L0EFC-L0924         IFGT
                     fdb       L0F01-L0924         IFP1
-                    ifne      NEWDEF
+                    IFNE      NEWDEF
                     fdb       Lidef-L0924         IFDEF
                     fdb       Lndef-L0924         IFNDF
-                    endc                          NEWDEF
+                    ENDC      NEWDEF
 
 * Long Relative address calculation for LBRA/LBSR, etc
 L0951               lbsr      L12F1
@@ -1967,13 +1983,13 @@ L0A35               ldd       <u004A              Get 16 bit address
                     bne       L0A4A               Yes, Need to add $9F postbyte first
                     std       <u0063              Save extended address
 * 6309 - OIM #%00110000,<u0062 (I don't think B needs preserved on exit)
-                    ifne      H6309
+                    IFNE      H6309
                     oim       #%00110000,<u0062   Mask in bit flags for extended mode & return
-                    else
+                    ELSE
                     ldb       #%00110000          Mask in bit flags for extended mode & return
                     orb       <u0062
                     stb       <u0062
-                    endc
+                    ENDC
                     rts
 
 * Extended indirect (ex. JMP [<$2000])
@@ -2141,11 +2157,11 @@ L0B22               ldd       <u004A              Get address/offset word
                     bmi       L0B5A               Extended/16 bit, skip ahead
                     bne       L0B52               Direct page/8 bit, skip ahead
 * 6309 - TSTD
-                    ifne      H6309
+                    IFNE      H6309
                     tstd                          If offset 0?
-                    else
+                    ELSE
                     ldd       <u004A              Is offset 0?
-                    endc
+                    ENDC
                     bne       L0B32               <>0, skip ahead
                     ldb       #$84                Force post byte to no offset (leaving register bits to 0 for now)
                     bra       L0B62
@@ -2177,13 +2193,12 @@ L0B62               orb       <u0063              Merge with register bits we al
                     bra       L0AEA               Finish processing indexed instruction (indirect, etc.)
 
 L0B68               ldd       ,x                  Get next 2 chars from source
-* 6309 - ANDD #$5F5F
-                    ifne      H6309
+                    IFNE      H6309
                     andd      #$5F5F              Force case
-                    else
+                    ELSE
                     anda      #$5F                Force case
                     andb      #$5F
-                    endc
+                    ENDC
                     cmpd      #$5043              'PC' reg?
                     beq       GotPC               Yes, do PC addressing
                     cmpa      #'W                 Is it 'W'?
@@ -2449,43 +2464,47 @@ L0CD7               lbsr      L12F1
                     sta       ,x
 L0CEA               puls      pc,x
 
+* Add byte to output stream
 L0CEC               ldb       <u0046              Get # bytes in current instruction
-                    cmpb      #4
-                    blo       L0CF4
-                    bsr       L0D03
-L0CF4               std       <TmpNum
+                    cmpb      #4                  0-3?
+                    blo       L0CF4               Yes, Add to output stream
+                    bsr       L0D03               >=4, call sub first
+L0CF4               std       <TmpNum             Save regs
                     tfr       dp,a
                     ldb       #u0062              Point U to Current instruction's opcode
                     tfr       d,u
-                    ldd       <TmpNum
+                    ldd       <TmpNum             Get byte value to add, and offset into output stream back
                     sta       b,u
-                    inc       <u0046
+                    inc       <u0046              Inc # bytes in current instruction
                     rts
 
-L0D03               pshs      x,d
-                    ldb       <u002A
-                    bne       L0D14
-                    ldx       <u0033
-                    lbsr      L01C4
-                    tst       <u005B
-                    beq       L0D27
-                    bra       L0D30
+* Called if # bytes in current instruction is >=4 and we are adding byte to output stream
+* (I am assuming this is used to split FCB's, etc. onto multiple lines especially with G option
+L0D03               pshs      x,d                 Save regs
+                    ldb       <u002A              Get ??? (may be 4 byte block # we are working on for current source line?)
+                    bne       L0D14               If <>0, skip ahead
+                    ldx       <u0033              Get ??? ptr (part of source line being processed)
+                    lbsr      L01C4               Find next field, etc.
+                    tst       <u005B              All constant lines to be generated ('G' option flag)?
+                    beq       L0D27               No, just set No object code tor print flag
+                    bra       L0D30               Yes, set NoObject & PrintPC flags
 
-L0D14               tst       <u005B
-                    bne       L0D2D
-                    lda       <u0056
-                    pshs      a
-                    clr       <u0056
+L0D14               tst       <u005B              Is G option flag (all constant lines to be generated) set?
+                    bne       L0D2D               Yes, skip ahead
+                    lda       <u0056              No, get 'L'ist option flag
+                    pshs      a                   Save on stack
+* 6809/6309 note: B is immediately reloaded in L01D3, so a ldb #$FF / stb <u0056 should work here,and faster
+                    clr       <u0056              Temporarily set L flag to -1
                     com       <u0056
-                    lbsr      L01D3
-                    puls      a
-                    sta       <u0056
-L0D27               ldb       #NoObjct
+                    lbsr      L01D3               check for errors, build output line for listing
+                    puls      a                   Get original 'L' option flag
+                    sta       <u0056              Save it back
+L0D27               ldb       #NoObjct            Flag no object code to print
                     stb       <u002B
                     bra       L0D34
 
 L0D2D               lbsr      L01D3
-L0D30               ldb       #NoObjct+PrintPC
+L0D30               ldb       #NoObjct+PrintPC    Set NoObject Code & Print PC flags in flags byte
                     stb       <u002B
 L0D34               ldd       <u0040              Get current code address ('*')
                     std       <u0044              Save copy
@@ -2505,13 +2524,13 @@ L0D40               lbsr      L1322               First, update CRC (& write out
                     ldb       <u0051+2            third byte too
                     comb
 * 6309 - unless A needed later, AIM #^Operand,<u002B replaces 3 lines
-                    ifne      H6309
+                    IFNE      H6309
                     aim       #^Operand,<u002B    clear "Operand field" bit
-                    else
+                    ELSE
                     lda       <u002B              clear "Operand field" bit
                     anda      #^Operand
                     sta       <u002B
-                    endc
+                    ENDC
                     bra       L0D59
 
 ** OS9 pseudo op
@@ -2523,29 +2542,33 @@ L0D59               stb       <u0064              Save system call # (or last by
                     stb       <u0046
                     rts
 
-** MOD pseudo op
-L0D60               clra
+** MOD pseudo op - slight mod 08/25/2020 LCB
+L0D60               ldd       <u001B              Get current write buffer position
+                    cmpd      <u000E              Same as start?
+                    beq       NoAdjst             Yes, proceed normally
+                    std       <StartCRC           No, save where we actually will start CRC calcs
+NoAdjst             clra
                     clrb
-                    stb       <u0050
-                    std       <u0040
+                    stb       <u0050              Init header parity byte
+                    std       <u0040              Init current code address
                     std       <u0044
-                    std       <u0042
-                    lbsr      L1360               Init CRC value
-                    lbsr      L0CD5
+                    std       <u0042              Init current data address
+                    lbsr      L1360               Init CRC value to $FFFFFF
+                    lbsr      L0CD5               Call expression evaluator
                     ldd       #$87CD              Module ID bytes
                     bsr       L0D93               Update with 2 bytes (including header parity)
-                    bsr       L0D90
-                    bsr       L0D8E
+                    bsr       L0D90               Add other header bytes
+                    bsr       L0D8E               This builds the output line list buffer @ u029F (calls L02FA)
                     bsr       L0DA9
                     bsr       L0DA4
                     bsr       L0DA9
                     bsr       L0DA4
                     lda       <u0050              Get header parity byte
-                    coma                          Flip the bits
+                    coma                          Flip the bits (to create final header parity)
                     bsr       L0DA1
                     lda       ,x
                     cmpa      #',                 comma?
-                    bne       L0DB8
+                    bne       L0DB8               No, return
                     bsr       L0D8E
 L0D8E               bsr       L0DA9
 L0D90               lbsr      L12F1
@@ -2662,7 +2685,7 @@ L0E4A               cmpa      ,u++                Same as first 1/2 of table ent
                     beq       L0E90
                     cmpa      #'N
                     beq       L0E9B
-                    ifne      DOCASE
+                    IFNE      DOCASE
 * NEW! Symbol case control flag "U"
                     cmpa      #'U
                     bne       L0E63
@@ -2672,7 +2695,7 @@ L0E4A               cmpa      ,u++                Same as first 1/2 of table ent
                     lda       #$7F                "-U" flag, upper+lower OK
 u.opt               sta       <u000D              store new symbol case mask
                     bra       L0E73
-                    endc                          DOCASE
+                    ENDC      DOCASE
 
 * unknown command line flag
 L0E63               ldb       #22                 'opt list' error
@@ -2827,7 +2850,7 @@ L0F21               tst       <u005F              'C'onditional flag on?
 L0F26               stb       <u002B              Update list control flags
                     rts
 
-                    ifne      NEWDEF
+                    IFNE      NEWDEF
 Lidef               bsr       chkdef              IFDEF (ifdef label)
                     bls       L0F0C               label NOT defined, set FALSE
                     rts
@@ -2848,7 +2871,7 @@ chkdef              inc       <u0055              update IF count
 
 bad.sym             ldb       #01                 'bad label' error
                     lbra      L1304               report error and return carry set
-                    endc                          NEWDEF
+                    ENDC      NEWDEF
 
 ** ENDC/ELSE pseudo ops
 L0F29               ldb       #Command
@@ -3195,11 +3218,11 @@ L116D               pshs      x,d
 * Binary 16-bit Divide:  returns X/D (D=quotient, X=remainder)
 L118E               pshs      y,x,d               Save X/D and reserve 2 extra bytes on stack
 * 6309 - tstd
-                    ifne      H6309
+                    IFNE      H6309
                     tstd                          Get dividend
-                    else
+                    ELSE
                     ldd       ,s                  Get dividend
-                    endc
+                    ENDC
                     bne       L1198               <>0, do the divide
                     orcc      #$01                /0 error, so exit with carry set
                     bra       L11B8
@@ -3241,13 +3264,13 @@ L11D4               lda       ,x                  Get char from source
                     bne       L11E2               No, check text
                     bsr       L120F
 * 6309 - NEGD replaces next 3 lines
-                    ifne      H6309
+                    IFNE      H6309
                     negd
-                    else
+                    ELSE
                     nega
                     negb
                     sbca      #$00
-                    endc
+                    ENDC
                     bra       L11E8
 
 L11E2               cmpa      #'+                 Plus?
@@ -3308,36 +3331,36 @@ L1243               lda       ,x
                     bne       L1251               No, check next
                     bsr       L126B
 * 6309 - ANDD
-                    ifne      H6309
+                    IFNE      H6309
                     andd      ,s
-                    else
+                    ELSE
                     andb      $01,s
                     anda      ,s
-                    endc
+                    ENDC
                     bra       L1267
 
 L1251               cmpa      #'!                 Logical OR?
                     bne       L125D               No, check next
                     bsr       L126B
 * 6309 - ORD
-                    ifne      H6309
+                    IFNE      H6309
                     ord       ,s
-                    else
+                    ELSE
                     orb       $01,s
                     ora       ,s
-                    endc
+                    ENDC
                     bra       L1267
 
 L125D               cmpa      #'?                 Logical EOR?
                     bne       L120D               No, return
                     bsr       L126B
 * 6309 - EORD
-                    ifne      H6309
+                    IFNE      H6309
                     eord      ,s
-                    else
+                    ELSE
                     eorb      $01,s
                     eora      ,s
-                    endc
+                    ENDC
 L1267               std       ,s
                     bra       L1243
 
@@ -3347,25 +3370,25 @@ L126D               lda       ,x                  Get char from source code
                     bne       L1279               No, check next
                     bsr       L1284               check if next char is some special symbols
 * 6309 - COMD
-                    ifne      H6309
+                    IFNE      H6309
                     comd
-                    else
+                    ELSE
                     comb
                     coma
-                    endc
+                    ENDC
                     bra       L1283
 
 L1279               cmpa      #'-                 Is it negative?
                     bne       L1288               No, check next
                     bsr       L1284
 * 6309 - NEGD
-                    ifne      H6309
+                    IFNE      H6309
                     negd
-                    else
+                    ELSE
                     nega
                     negb
                     sbca      #$00
-                    endc
+                    ENDC
 L1283               rts
 
 L1284               leax      1,x
@@ -3471,11 +3494,11 @@ L03A7               cmpa      #'z                 Lowercase or less?
                     bhi       L03B5               No, above 'z'
                     cmpa      #'a                 lowercase letter?
                     blo       L03B7               No, between 'Z' & 'a'
-                    ifne      DOCASE
+                    IFNE      DOCASE
                     anda      <u000D              Apply case mask
-                    else
+                    ELSE
                     anda      #$5F                Force to uppercase
-                    endc                          DOCASE
+                    ENDC      DOCASE
                     rts
 
 L03B5               orcc      #$01                Non-alphabetic, set carry & return
@@ -3485,15 +3508,6 @@ L03B7               rts
 * Entry: A=byte to add
 * update running CRC value - NOTE ONLY CALLED FROM L130D, SO INLINE
 L130D               pshs      x,d                 Update CRC with byte in A:Save regs that we need again below
-*         pshs  u,y            Save regs we just need preserved for F$CRC call
-*         leax  4,s            X = addr of new code byte (A on stack)
-*         ldy   #$0001         just one byte
-*         tfr   dp,a           MSB of CRC buf
-*         ldb   #u0051         LSB of CRC buf
-*         tfr   d,u            U = addr of CRC buffer
-*         os9   F$CRC          Update CRC
-*         puls  u,y            Restore regs used in F$CRC
-*         lda   ,s             Get byte being added back
                     ldx       <u001B              current loc
                     sta       ,x+                 write new byte
                     stx       <u001B              update ptr
@@ -3512,27 +3526,36 @@ L1323               pshs      u,y,x,d             Save regs
 * it irregardless so it shows up in a listing with no object file), and do
 * whole buffer size in one call
 * --- start of new code
-                    ldd       <u001B              Get current object file code ptr
+                    ldd       <u001B              Get current object file buffer position
                     subd      <u000E              still at start of buffer? (ie 0 bytes to write?)
                     beq       L1340               Nothing to write, so no CRC update either
-                    tfr       d,y                 Save # of bytes to CRC update/write into Y
-                    ldx       <u000E              Get ptr to start of buffer for update/write
+* Edition 11, Rev 2: hopefully fixes bug with code generated BEFORE 'mod' encountered (like REL) LCB 08/25/20
+* D is now the size of the buffer to Write, so save it (in case CRC is different size)
+                    pshs      d                   Save size to write
+                    ldx       <StartCRC           Have something to write, see if we have an alt start position for CRC calc ('mod')
+                    beq       NoAltCRC            No alternate, use current settings
+                    ldd       <u001B              Get current position in buffer
+                    subd      <StartCRC           Subtract position to start CRC calc (size of CRC calc)
+                    ldx       <StartCRC           Get ptr to start CRC part of buffer
+                    clr       <StartCRC           Zero out Alt start (only 1 MOD statement per file)
+                    clr       <StartCRC+1
+                    bra       AltCRC              Do CRC skipping bytes before MOD
+
+NoAltCRC            ldx       <u000E              Get ptr to start of buffer for update/write
+AltCRC              tfr       d,y                 Save # of bytes to CRC update/write into Y
                     lda       <SkipCRC            Are we updating CRC?
                     bne       WritOnly            No, skip that (we are on final block)
-                    tfr       dp,a                MSB of CRC buffer ptr
+StCRCGd             tfr       dp,a                MSB of CRC buffer ptr
                     ldb       #u0051              LSB of CRC buffer ptr
                     tfr       d,u                 Put in proper register for F$CRC
                     os9       F$CRC               Update CRC for whole object file buffer in 1 shot
 * --- end of new code
-WritOnly            lda       <u0058              O flag?
+WritOnly            puls      y                   Get write size back, this time into Y for I$Write call
+                    lda       <u0058              O flag?
                     beq       L1340               no, exit (no outfile)
                     lda       <u003E              code generation (second) pass?
                     beq       L1340               no, exit
-*         ldd   <u001B         is code ptr
-*         subd  <u000E         still at start of buffer?
-*         beq   L1340          yes, exit (it's empty)
-*         tfr   d,y            Y=byte count
-*         ldx   <u000E         X=buffer addr
+                    ldx       <u000E              Get start of write buffer
                     lda       <u0019              A=outfile path #
                     beq       L1340               if path=0, no outfile, exit
                     os9       I$Write             write the buffer
@@ -3548,20 +3571,20 @@ L1342               os9       F$PErr              yes, print OS9 error message
 *
 L1368               lda       <u0057
                     beq       L139A
-                    lda       <u0056
-                    bmi       L139A
+                    lda       <u0056              Get 'L'ist option flag
+                    bmi       L139A               -1 means NO listing, so skip listing line
 L1370               lda       <u0035              Get # of lines until end of current page
                     bne       L137B               Still some, skip ahead
                     pshs      x
                     lbsr      L1408               Start next page (form feed or series of CR's)
                     puls      x
 L137B               bsr       L138A
-                    lda       <u003E
-                    beq       L1387
-                    lda       <u0056              Get L option flag
-                    bmi       L1387               If hi bit set, reset listing output buffer ptr & return
+                    lda       <u003E              Get pass counter
+                    beq       L1387               1st pass, skip ahead
+                    lda       <u0056              2nd pass, Get L option flag
+                    bmi       L1387               If -1, no listing wanted, reset listing output buffer ptr & return
                     dec       <u0035              Dec # lines left to end of page
-L1387               ldx       <u0004              X=ptr to start of listing output buffer
+L1387               ldx       <u0004              X=ptr to start of listing output buffer & return
                     rts
 
 L138A               lda       <u0057
@@ -3569,7 +3592,7 @@ L138A               lda       <u0057
                     lda       <u0056              Get L opt flag
                     bpl       L139A
 L1392               lda       <u005C              Get E opt flag
-                    beq       L1387
+                    beq       L1387               Reset output line buffer to start & return
                     lda       <u0021              Get error count for current line
                     beq       L1387               No errors, reset listing output buffer ptr & return
 L139A               lda       <u003E              Get pass counter
@@ -3858,11 +3881,11 @@ L1612               ldb       <u0037              Get page width
                     stb       <u003C
                     bsr       L149A
                     ldu       <u0010              Get ptr to index of "first letter" table
-                    ifne      DOCASE
+                    IFNE      DOCASE
                     ldb       #52                 number of vectors in "first letter" table
-                    else
+                    ELSE
                     ldb       #26                 number of vectors in "first letter" table
-                    endc                          DOCASE
+                    ENDC      DOCASE
                     pshs      b                   Save ctr
 L1629               ldy       ,u++                fetch link to chain for next letter
                     beq       L1656               if null, no symbol starts with this letter
@@ -4004,11 +4027,11 @@ GdCreate            leas      2,s                 Eat copy of X
 *    and jump straight to either NormClr. You do have to add 3 bytes to the stack first
 StkBlClr            tfr       b,a                 D=double copy of value to clear memory with
 StkBlCl2            exg       x,d                 D=Size to clear (in bytes), X=2 byte value to clear with
-                    ifne      H6309
+                    IFNE      H6309
                     addr      d,u                 Point to end of clear area for stack blast
-                    else
+                    ELSE
                     leau      d,u                 Point to end of clear area for stack blast
-                    endc
+                    ENDC
                     pshs      b,x                 Save 16 bit value to clear with, & LSB of size (to check for leftover bytes)
                     lsra                          Divide size by 4 (since we are doing 4 bytes at a time)
                     rorb
