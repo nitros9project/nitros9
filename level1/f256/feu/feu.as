@@ -10,9 +10,6 @@
                     nam       FEU
                     ttl       Foenix Executive Utility
 
-VMAJOR              equ       0
-VMINOR              equ       4
-
                     section   bss
 abortautoboot       rmb       1
 isflash             rmb       1
@@ -24,13 +21,6 @@ DWSet               fcb       $1b,$20,$02,$00,$00,$50,$18,$01,$00,$00
 DWSetLen            equ       *-DWSet
 Banner              equ       *
                     fcc       /FEU - Foenix Executive Utility/
-                    fcb       C$CR
-                    fcc       /Version /
-                    fcb       VMAJOR+$30
-                    fcc       "."
-                    fcb       VMINOR+$30
-                    fcb       C$CR
-                    fcc       /2023 Boisy Gene Pitre/
                     fcb       C$CR
                     fcb       0
 
@@ -148,6 +138,21 @@ BootOS9Help         fcc       "Boot OS-9"
                     fcb       C$CR
                     fcb       0
 
+BuildDate           dtb
+
+PrintVersionInfo
+                    lbsr      PRINTS
+                    fcc       /Build date: /
+                    fcb       0
+                    leax      BuildDate,pcr
+                    leas      -24,s
+                    leay      ,s
+                    lbsr      DATESTR
+                    tfr       y,x
+                    lbsr      PUTS
+                    leas      24,s
+                    rts
+
 PrintMBoardInfo     ldx       #SYS0
                     lda       7,x
                     cmpa      #$02
@@ -174,6 +179,8 @@ __start             leax      >IcptRtn,pcr        point to the intercept routine
                     os9       I$Write
                     leax      >Banner,pcr         point to the banner
                     lbsr      PUTS                print it
+                    lbsr      PrintVersionInfo
+                    lbsr      PUTCR
                     lbsr      PrintMBoardInfo
                     clr       isflash,u           clear the flash flag (assume we're RAM)
                     lda       $FFAF               get MMU slot 7
