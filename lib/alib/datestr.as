@@ -26,15 +26,19 @@ DATESTR
 * BGP - 2023/12/19: made Y2K compliant and print a 4 digit year
                     clra                          clear upper 8 bits
                     ldb       ,x+                 get year byte in B
-                    pshs      x                   save X
+                    pshs      u,x                 save registers
                     addd      #1900               add base year
                     leax      ,y                  transfer y to x
+                    ldu       10,s                get static storage pointer on stack
                     lbsr      BIN_DEC             convert value in D to decimal string at X
-                    puls      x                   recover old x
+                    puls      u,x                 recover registers
                     leay      4,y                 advance Y past 4 characters
                     bra       loop2               get the delimiter and go
 loop
+                    pshs      u
+                    ldu       8,s
                     bsr       get1                convert a byte
+                    puls      u
 loop2               lda       ,u+                 get next delimiter
                     sta       ,y+                 add to ascii buffer
                     bne       loop                not end yet
