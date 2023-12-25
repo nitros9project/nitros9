@@ -29,7 +29,8 @@ V.BordCol           RMB       1                   currently selected border colo
 V.KCVect            RMB       2                   PS/2 key code handler
 V.IBufH             RMB       1                   input buffer head pointer
 V.IBufT             RMB       1                   input buffer tail pointer
-
+V.SSigID            RMB       1                   data ready process ID
+V.SSigSg            RMB       1                   data ready signal code
 V.WWidth            RMB       1                   window width
 V.WHeight           RMB       1                   window height
 

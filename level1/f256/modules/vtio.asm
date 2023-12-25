@@ -229,7 +229,12 @@ Term
 *    CC = carry set on error
 *    B  = error code
 *
-Read                leax      V.InBuf,u           point X to the input buffer
+Read
+* Check to see if there is a signal-on-data-ready set for this path.
+* If so, we return E$NotRdy.
+read1               lda       <V.SSigID,u         data ready signal trap set up?
+                    lbne      NotReady            yes, exit with not ready error
+                    leax      V.InBuf,u           point X to the input buffer
                     ldb       V.IBufT,u           get the buffer tail pointer
                     orcc      #IRQMask            mask interrupts
                     cmpb      V.IBufH,u           is the tail pointer the same as the head pointer?
@@ -901,7 +906,7 @@ GetStat             cmpa      #SS.EOF             is this the EOF call?
 SSReady             lda       V.IBufH,u           else get get the buffer tail ptr
                     suba      V.IBufT,u           A = the number of characters ready to read
                     sta       R$B,x               save in the caller's B
-                    lbeq      NotReady            if there's no data in keyboard buffer, return the "not ready" error
+                    beq       NotReady            if there's no data in keyboard buffer, return the "not ready" error
 SSEOF               clrb                          clear the error code and carry
                     rts                           return
 NotReady            comb                          set the carry
@@ -1020,9 +1025,11 @@ SSDfPal
 *    B  = error code
 *
 SS.DMAFill          equ       $B0
-SetStat
+SetStat             ldx       PD.RGS,y            get caller's regsiters in X
                     cmpa      #SS.SSig            send signal on data ready?
                     beq       SSSig               yes, go process
+                    cmpa      #SS.Relea           release signal on data ready?
+                    beq       SSRelea             yes, go process
                     cmpa      #SS.DMAFill         DMA Fill?
                     beq       SSDMAFill
                     comb                          set the carry
@@ -1041,7 +1048,7 @@ DMF$FillValue       equ       6
 SSDMAFill           ldy       #DMA.Base
                     lda       #DMA_CTRL_Fill|DMA_CTRL_Start_Trf
                     sta       DMA_CTRL_REG,y
-                    ldx       R$X,u               get pointer to the DMA control block
+                    ldx       R$X,x               get pointer to the DMA control block
                     ldd       DMF$DstAddrHi,x
                     sta       DMA_DEST_ADDR_H,y
                     stb       DMA_DEST_ADDR_M,y
@@ -1067,7 +1074,7 @@ SSSig               pshs      cc                  save interrupt status
                     bsr       GetCPR              get current process ID
                     tst       ,s+                 anything in buffer?
                     bne       SendSig             yes, go send the signal
-*               std       <V.SSigID,u         save process ID & signal
+                    std       <V.SSigID,u         save process ID & signal
                     puls      pc,cc               restore interrupts & return
 
 GetCPR              orcc      #IntMasks           disable interrupts
@@ -1078,6 +1085,13 @@ GetCPR              orcc      #IntMasks           disable interrupts
 SendSig             puls      cc                  restore interrupts
                     os9       F$Send              send the signal
                     rts                           return
+
+* SS.Relea - release a path from SS.SSig
+SSRelea             lda       PD.CPR,y            get the current process ID
+                    cmpa      <V.SSigID,u         is it the same as the keyboard?
+                    bne       ex@                 branch if not
+                    clr       <V.SSigID,u         else clear process the ID
+ex@                 rts
 
 ***
 * IRQ routine for keyboard
@@ -1161,7 +1175,7 @@ getcode             lda       KBD_IN              get the key code
                     bsr       BufferChar          buffer it
                     puls      a                   get the character
                     bsr       BufferChar          buffer it
-                    bra       WakeIt              wake up any sleeping process waiting on input
+                    bra       CheckSig            wake up any sleeping process waiting on input
                     endc
 
 * A = key code
@@ -1179,19 +1193,24 @@ pastshift@          ldx       V.KCVect,u          get the current key code handl
                     beq       getlproc@           branch if it's the same
                     ldb       #S$Abort            get the abort signal
                     cmpa      V.QUIT,u            is our character same as the abort signal?
-                    bne       WakeIt              branch if it isn't
+                    bne       CheckSig            branch if it isn't
 getlproc@           lda       V.LPRC,u            else get the ID of the last process to use this device
                     bra       noproc@             branch
+CheckSig            lda       <V.SSigID,u         send signal on data ready?
+                    beq       WakeIt              no, just go wake up the process
+                    ldb       <V.SSigSg,u         else get the signal code
+                    clr       <V.SSigID,u         clear signal ID
+                    bra       send@
 * Wake up any process if it's sleeping waiting for input.
 WakeIt              ldb       #S$Wake             get the wake signal
                     lda       V.WAKE,u            is there a process asleep waiting for input?
 noproc@             beq       IRQExit             branch if not
                     clr       V.WAKE,u            else clear the wake flag
-                    os9       F$Send              and send the signal in B
+send@               os9       F$Send              and send the signal in B
 IRQExit             lsr       PS2_STAT            shift the PS/2 status bit 0 into the carry
                     bcc       getcode             branch if the carry is 0 (meaning there's more key data to read)
-                    clrb                          else the clear carry
-                    rts                           return
+ex@                 clrb                          else the clear carry
+ex2@                rts                           return
 
 * Entry:  A = PS/2 key code
 *
@@ -1257,11 +1276,12 @@ next@               anda      #^$80               clear the high bit
 
 ProcE0              leax      E0Handler,pcr       get the $E0 handler routine
                     stx       V.KCVect,u          store it in the vector
+                    comb
                     rts                           return
 
 ProcF0              leax      F0Handler,pcr       get the $F0 handler routine
                     stx       V.KCVect,u          store it in the vector
-                    clrb                          clear the carry so that the read routine handles other work
+                    comb                          clear the carry so that the read routine handles other work
                     rts                           return
 
 * A = key code

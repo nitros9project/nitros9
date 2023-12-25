@@ -10,11 +10,16 @@
                     nam       FEU
                     ttl       Foenix Executive Utility
 
+VMAJOR              equ       0
+VMINOR              equ       4
+
                     section   bss
-abortautoboot       rmb       1
+keypressed          rmb       1
 isflash             rmb       1
 buffer              rmb       200
                     endsect
+
+KeySig              equ       $84
 
                     section   code
 DWSet               fcb       $1b,$20,$02,$00,$00,$50,$18,$01,$00,$00
@@ -74,31 +79,48 @@ l@                  fcb       'r'
 
 SecondsToWait       equ       5
 PromptForAutoAbort
-                    ifgt      SecondsToWait
-                    clr       abortautoboot,u
-                    lbsr      PRINTS
-                    fcc       "Press ESC to abort autoboot in "
-                    fcb       $00
                     ldb       #SecondsToWait-1
-loop@               pshs      b
+                    pshs      b
+                    ifgt      SecondsToWait
+                    lda       #1
+                    lbsr      SaveOpts
+                    clrb
+                    lbsr      SetQuitChar
+                    lbsr      SetEcho
+                    lbsr      PRINTS
+                    fcc       "Press SPACE to continue or ESC to abort in "
+                    fcb       $00
+                    lda       #1
+loop@               ldb       ,s
                     addb      #$31
                     lbsr      PUTC
                     lbsr      PRINTS
                     fcc       "... "
                     fcb       $00
                     ldx       #60
-                    os9       F$Sleep
-                    puls      b
-                    tst       abortautoboot,u
-                    bne       abort@
-                    decb
+s@                  os9       F$Sleep
+                    lda       keypressed,u
+                    beq       cont@
+                    cmpa      #C$SPAC             is it space?
+                    beq       ex@
+                    cmpa      #5                  CTRL-E?
+                    beq       abort@
+                    lbsr      SetKeySignal        set signal on keyboard input
+                    bra       s@
+cont@               dec       ,s
                     bpl       loop@
-                    clrb
-                    rts
-abort@              clr       abortautoboot,u
+ex@                 lda       #1
+                    lbsr      RestoreOpts
+                    clra
+                    ldb       #SS.Relea
+                    os9       I$SetStt
+                    puls      b,pc
+abort@              lbsr      PUTCR
+                    lda       #1
+                    lbsr      RestoreOpts
                     comb
                     endc
-                    rts
+                    puls      b,pc
 
 ShellHelp           fcc       "OS-9 shell"
                     fcb       C$CR
@@ -142,15 +164,33 @@ BuildDate           dtb
 
 PrintVersionInfo
                     lbsr      PRINTS
-                    fcc       /Build date: /
+                    fcc       /Build /
                     fcb       0
                     leax      BuildDate,pcr
-                    leas      -24,s
-                    leay      ,s
-                    lbsr      DATESTR
-                    tfr       y,x
-                    lbsr      PUTS
-                    leas      24,s
+                    clra
+                    ldb       ,x+
+                    addd      #1900
+                    lbsr      PRINT_DEC
+                    ldb       #'-
+                    lbsr      PUTC
+                    clra
+                    ldb       ,x+
+                    lbsr      PRINT_DEC
+                    ldb       #'-
+                    lbsr      PUTC
+                    clra
+                    ldb       ,x+
+                    lbsr      PRINT_DEC
+                    ldb       #C$SPAC
+                    lbsr      PUTC
+                    clra
+                    ldb       ,x+
+                    lbsr      PRINT_DEC
+                    ldb       #':
+                    lbsr      PUTC
+                    clra
+                    ldb       ,x+
+                    lbsr      PRINT_DEC
                     rts
 
 PrintMBoardInfo     ldx       #SYS0
@@ -168,13 +208,20 @@ isItF256K           cmpa      #$12
                     fcb       $0
 cont@               rts
 
+SetKeySignal        pshs      d,x
+                    clr       keypressed,u
+                    ldd       #0*256+SS.SSig      load path and SS.Sig
+                    ldx       #KeySig             load the signal to receive when data arrives
+                    os9       I$SetStt            call the driver
+                    puls      d,x,pc
+
 **********************************************************
 * Entry Point
 **********************************************************
 __start             leax      >IcptRtn,pcr        point to the intercept routine
                     os9       F$Icpt              install it
+                    bsr       SetKeySignal        set signal on keyboard input
                     leax      DWSet,pcr
-                    lda       #1
                     ldy       #DWSetLen
                     os9       I$Write
                     leax      >Banner,pcr         point to the banner
@@ -191,6 +238,7 @@ __start             leax      >IcptRtn,pcr        point to the intercept routine
                     bra       next@               and go print it
 ram@                leax      >RAMMsg,pcr         point to the RAM message
 next@               lbsr      PUTS                print it
+                    lda       #1
                     lbsr      PromptForAutoAbort  prompt the user to abort autoboot
                     bcs       loop@
                     lbsr      AutoexecGo          attempt to run "autoexec" first
@@ -257,9 +305,9 @@ norm@               leax      MENU_ENTRY_LEN,x    advance to the next menu entry
                     bra       show@               show it
 done@               lbra      PUTCR               go put a carriage return
 
-IcptRtn             inc       abortautoboot,u     increment the autoboot flag
-                    lbsr      PUTCR
+IcptRtn
                     lbsr      GETC
+                    sta       keypressed,u
                     rti                           our interrupt routine does nothing.
 
                     endsection
