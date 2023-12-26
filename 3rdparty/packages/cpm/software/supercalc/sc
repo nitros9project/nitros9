@@ -1,0 +1,1 @@
+(display 63 68 78 20 ;pwd;echo load cpm) ! shell(display 1b 20 2 0 0 50 18 3 2 2 1b 21; shell i=/1 cpm -v sc.com&) >/w 
