@@ -284,7 +284,7 @@ L001F               fcb       $6C                 D.HINIT  MMU, IRQ, Vector page
                     fcb       $03                 D.VIDMD  60Hz refresh, alphanumeric display, 8 lines/char row
                     ENDC
                     IFEQ      Width-80
-                    fcb       $16                 D.VIDRS  200 lines, 80 column mode, no attribute byte (monochrome)
+                    fcb       $34                 D.VIDRS  200 lines, 80 column mode, no attribute byte (monochrome)
                     fcb       $01                 D.BORDR  dark blue border
 BOOTLINE            set       11                  80-col start line for BOOT/FAIL messages
                     ENDC
