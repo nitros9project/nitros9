@@ -79,7 +79,7 @@ bindc5
                     beq       bindc7              yes, don't do leading 0s
 
 bindc6
-                    inc       2,s                 indidicate at least 1 digit
+                    inc       2,s                 indicate at least 1 digit
                     sta       ,x+                 save in buffer
 
 bindc7

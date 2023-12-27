@@ -62,8 +62,9 @@ BASIC09_FILES = $(foreach file,$(3RDPARTY)/packages/basic09/samples/*.b09,$(file
 ROGUE_OBJS = $(shell $(CD) $(3RDPARTY)/packages/rogue; make --no-print-directory showobjs)
 ROGUE_FILES = $(shell $(CD) $(3RDPARTY)/packages/rogue; make --no-print-directory showfiles)
 BF_FILES = $(foreach file,$(3RDPARTY)/packages/brainfuck/*.bf,$(file))
+CPM_FILES = $(3RDPARTY)/packages/cpm/software
 
-$(DSKSD): rogue
+$(DSKSD):
 	$(RM) $@
 	$(OS9FORMAT_F256SD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9COPY) bootfiles/bootfile_sd $@,OS9Boot
@@ -91,10 +92,11 @@ $(DSKSD): rogue
 	$(OS9ATTR_EXEC) $(foreach file,$(ROGUE_OBJS),$@,CMDS/$(file))
 	$(MAKDIR) $@,BRAINFUCK
 	$(CPL) $(BF_FILES) $@,BRAINFUCK
+	os9 dsave -e $(CPM_FILES) $@,CPM
 	$(RM) $(LDSKSD)
 	$(SOFTLINK) $@ $(LDSKSD)
 
-$(DSKDW): rogue
+$(DSKDW):
 	$(RM) $@
 	$(OS9FORMAT_DW) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9COPY) bootfiles/bootfile_dw $@,OS9Boot
@@ -122,6 +124,7 @@ $(DSKDW): rogue
 	$(OS9ATTR_EXEC) $(foreach file,$(ROGUE_OBJS),$@,CMDS/$(file))
 	$(MAKDIR) $@,BRAINFUCK
 	$(CPL) $(BF_FILES) $@,BRAINFUCK
+	os9 dsave -e $(CPM_FILES) $@,CPM	
 	$(RM) $(LDSKDW)
 	$(SOFTLINK) $@ $(LDSKDW)
 

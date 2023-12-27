@@ -1,11 +1,13 @@
 include ../port.mak
 
 vpath %.as $(LEVEL2)/cmds:$(LEVEL1)/cmds
-vpath %.asm $(LEVEL2)/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09::$(3RDPARTY)/packages/brainfuck
+vpath %.asm $(LEVEL2)/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/brainfuck:$(3RDPARTY)/packages/cpm
 
 DEPENDS		= ./makefile $(NOSLIB)/net.o
 
-AFLAGS      += --includedir=$(3RDPARTY)/packages/basic09 --includedir=$(3RDPARTY)/packages/brainfuck
+AFLAGS      += --includedir=$(3RDPARTY)/packages/basic09
+AFLAGS      += --includedir=$(3RDPARTY)/packages/brainfuck
+AFLAGS      += --includedir=$(3RDPARTY)/packages/cpm
 AFLAGS      += --includedir=../defs
 LFLAGS		+= -L$(NITROS9DIR)/lib
 LFLAGS		+= -lf256
@@ -13,6 +15,7 @@ LFLAGS		+= -lnet -lalib
 
 BASIC09	= basic09 runb inkey syscall
 BF      = bf
+CPM     = cpm
 CMDS_DW = inetd dw telnet httpd
 CMDS    = asm attr backup binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
@@ -21,7 +24,7 @@ CMDS    = asm attr backup binex build cmp copy \
 		makdir mdir megaread merge mfree minted mmap modpatch padrom park \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
-		$(CMDS_DW) $(BASIC09) $(BF)
+		$(CMDS_DW) $(BASIC09) $(BF) $(CPM)
 
 SHELLMODS	= shellplus date deiniz echo iniz link load save unlink
 

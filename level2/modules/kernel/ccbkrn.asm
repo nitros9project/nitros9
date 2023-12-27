@@ -785,7 +785,9 @@ L0345
 
                     use       fld.asm
 
+                    ifne      H6309
                     use       fcpymem.asm
+                    endc
 
                     use       fmove.asm
 
@@ -853,7 +855,7 @@ L0D83               bsr       L0D11               activate next process
 * CCB: this code (after pad) start assembling *before* 0xfe00, it's too big to
 * fit into the memory as stated above!!!!
 
-PAD                 fill      $00,($0e12-*)       fill memory to ensure the above happens
+PAD                 fill      $00,($0df1-*)       fill memory to ensure the above happens
 * Default routine for D.SysIRQ
 S.SysIRQ
                     lda       <D.SSTskN           Get current task's GIME task # (0 or 1)
