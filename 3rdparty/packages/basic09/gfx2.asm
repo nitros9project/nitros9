@@ -1151,7 +1151,11 @@ L06C6               ldd       #$1B47              RLineM (Relative Draw Line and
 L06DF               leau      1,u                 bump up source string pointer
                     bsr       L0745               get signed X offset caller specified
                     std       ,x++                append X offset to output buffer
+                    ifne      H6309
+L06E5               negd
+                    else
 L06E5               lbsr      L07C8               NEGD
+                    endc
 L06E8               std       ,x++                append Y offset to output buffer
 L06EA               lbsr      L078E               adjust X,Y coords based on current ANGLE setting (if <>0)
                     lbsr      L07CD               write output buffer
