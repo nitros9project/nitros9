@@ -51,15 +51,13 @@
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
-*   1      1987/06/23  Peter E. Durham
-* First release.
-*   2      2017/11/26  L. Curtis Boyle
-*          Speed and size optimizations
-*
-*   3      2018/01/26  L. Curtis Boyle
-*          More speed optimizations (MoveBuf only copies 15 bytes,not 80,
-*          since it never needs more than that, and other minor mods.) Also
-*          shrank it some more.
+*   1 1987/06/23  Peter E. Durham
+*     First release.
+*   2 2017/11/26  L. Curtis Boyle
+*     Speed and size optimizations
+*   3 2018/01/26  L. Curtis Boyle
+*     More speed optimizations (MoveBuf only copies 15 bytes,not 80,
+*     since it never needs more than that, and other minor mods.)
 
                     nam       krnp3
                     ttl       Printerr functionality for Level 2
@@ -88,10 +86,10 @@ P4Name              fcc       "krnp4"
 *+
 *  Initialization routine and table
 *-
-Entry               leay      SvcTbl,pcr          ;Get address of table
+Entry               leay      <SvcTbl,pc          ;Get address of table
                     os9       F$SSvc              ;Install services in table
                     lda       #Type               ;Get system module type for KrnP4
-                    leax      P4Name,pcr          ;Get name for KrnP4
+                    leax      <P4Name,pc          ;Get name for KrnP4
                     os9       F$Link              ;Try to link to it
                     bcs       PErrBye             ;If not found, exit
                     jmp       ,y                  ;Execute it, return from there
@@ -129,7 +127,7 @@ PErr                ldb       R$B,u               ;Get error code
                     ldy       D.Proc              ;Get user's process descriptor
                     ldu       P$SP,y              ;Get user's stack pointer
                     leau      -DataMem,u          ;Reserve a little space (89 bytes) to build string
-                    leax      ErrMsg,pcr          ;Get pointer to "Error #000"
+                    leax      <ErrMsg,pc          ;Get pointer to "Error #000"
                     bsr       MoveBuf             ;Go copy it over
                     bsr       WritNum             ;Go copy the number into it
                     pshs      x,y                 ;Save regs
@@ -139,7 +137,7 @@ PErr                ldb       R$B,u               ;Get error code
                     os9       I$Write             ;Write out Error message
                     puls      x,y                 ;Restore regs
                     bcs       PErrBye             ;If error, abort
-                    leax      FilNam,pcr          ;Get pointer to "/dd/sys/errmsg"
+                    leax      <FilNam,pc          ;Get pointer to "/dd/sys/errmsg"
 * Tried skipping copy to Buf, but does not work
 *  and using direct ptr
                     bsr       MoveBuf             ;Go copy it over
@@ -162,12 +160,14 @@ Loop                pshs      y                   ;Save users prc dsc ptr
                     bra       Close               ;Done, so close the file
 
 * should be able to only preserve A (path to errmsg file)
+*Error    pshs  x,d        ;Save registers
 Error               pshs      a                   ;Save path to errmsg file
                     ldb       P$Task,y            ;Get user task number
                     lda       #C$CR               ;Load A with a CR
                     leax      Buf,u               ;Get pointer to buffer
                     os9       F$STABX             ;Move the CR to the buffer
                     bsr       PrinBuf             ;Go print it
+*         puls  d,x        ;Restore registers
                     puls      a                   ;Restore path to errmsg file
 Close               os9       I$Close             ;Close the file
 PErrBye             rts                           ;Return from system call
@@ -219,6 +219,8 @@ TenDone             leax      TenDig,u            ;Where to put digit
 *  PURPOSE      Copy digit into user space
 *  TAKES        A = digit to copy (not in ASCII yet)
 *               X = where to put digit
+* Mod attempt - since A destroyd on return every time, and we never
+*  B for errors, remove pshs d / chg puls d,pc to rts
 WritDig             pshs      b                   ;Save working byte
                     adda      #'0                 ;Convert A to ASCII
                     ldb       P$Task,y            ;Get task number

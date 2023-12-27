@@ -20,6 +20,10 @@
 * Commented source code, couple of minor optimizations, added FCircle & FEllipse commands
 * (keeping to <=8 character function name limits of original). Also documented option X,Y start
 * coord for DRAW command (not in manual)
+*
+*  5       2022/05/28  L. Curtis Boyle
+* Changed OnMouse to check set BOTH MsSig & SSig (keypress & mouse button). Also minor
+* optimizations. (Particularly DRAW statement and some 6309 stuff).
 
                     nam       gfx2
                     ttl       subroutine module
@@ -33,7 +37,7 @@
 tylg                set       Sbrtn+Objct
 atrv                set       ReEnt+rev
 rev                 set       $01
-edition             set       $04                 4 is Kevin Darling/Kent Meyers updates plus LCB's FCircle / FEllipse
+edition             set       $05
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -357,7 +361,7 @@ FuncTbl             fdb       L03AE-FuncTbl
                     fcc       "ID"
                     fcb       $FF
 
-* Test by sending non-existant function name - this may have to be an FDB
+* Test by sending non-existant function name
                     fcb       $00                 End of table marker
 
 L0268               fcc       "OFF"
@@ -506,22 +510,21 @@ L030A               ldy       ,u                  get pointer to parameter 1 (po
                     bra       L0305               return w/o error
 
 * Copy string until high bit set ($FF marker), and change end in destination to NUL $00
-L0332               pshs      y                   save Y
-L0334               lda       ,x+                 copy string from X...
-                    sta       ,y+                 ... to Y until...
-                    bpl       L0334               ... to Y until hi bit set on a byte ($FF marker)
-* 6809/6309 - wouldn't clr -1,y be 1 cycles faster (since Y is being pulled immediately after?)
-                    clr       ,-y                 flag end of string with NUL in destination
-                    puls      pc,y                return to the caller
+L0332               pshs      y                   Save Y
+L0334               lda       ,x+                 Copy string from X to Y until hi bit set on a byte ($FF marker)
+                    sta       ,y+
+                    bpl       L0334
+                    clr       -1,y                Flag end of string with NUL in destination
+                    puls      pc,y
 
 ;;; MENU - Enable/disable menu.
 ;;;
 ;;; Calling syntax: RUN GFX2([path,] "MENU", windesc, menuID, menuTitle, id, columns, items, midesc, enabled)
-L033E               ldy       ,u                  get pointer to parameter 1 (pointer to the window descriptor array)
-                    leay      <WN.SIZ,y           point to start of array of menu descriptors
-                    ldd       [<$04,u]            get menu ID #
-                    decb                          base 0, only 8 bits
-                    lda       #MN.SIZ             calculate offset to menu descriptor for menu ID #
+L033E               ldy       ,u                  Get ptr to Parm 1 (Ptr to Window descriptor array)
+                    leay      <WN.SIZ,y           Point to start of array of menu descriptors
+                    ldd       [<$04,u]            Get menu ID #
+                    decb                          Base 0, only 8 bits
+                    lda       #MN.SIZ             Calc offset to menu descriptor for menu ID #
                     mul
                     leay      d,y                 point to the specific menu descriptor we are creating
                     ldx       8,u                 get pointer to Menu title
@@ -586,70 +589,78 @@ L039A               lda       ,s                  get path
 L03AE               cmpb      #5                  5 parameters?
                     beq       L03B8               yes, go read mouse
                     cmpb      #8                  8 parameters?
-                    lbne      L02F6               no, exit with parameter error
-L03B8               lda       ,s                  get path #
-                    leas      <-$20,s             make 32 byte buffer on stack for mouse packet
-                    leax      ,s                  point to buffer to receive mouse packet
-                    pshs      b                   save # of parameters
-                    ldb       #SS.Mouse           read mouse packet call
-                    ldy       #$0000              auto selection of mouse side
-                    os9       I$GetStt            go get mouse packet
-                    puls      b                   restore # of parameters
-                    bcs       L03FE               if error from reading mouse, eat temp stacks and return
-                    cmpb      #5                  just 5?
-                    beq       L03E4               yes, skip copying the other 3 variables to caller
-                    ldd       <Pt.AcX,x           get X coord of mouse on full screen (unscaled)
-                    std       [<$14,u]            save to caller
-                    ldd       <Pt.AcY,x           get Y coord of mouse on full screen (unscaled)
-                    std       [<$18,u]            save to caller
-                    ldb       <Pt.Stat,x          get mouse pointer status (0=working area, 1=menu region (non-working area), 2=off window)
-                    std       [<$10,u]            save to caller
-* 4 standard parameters from SS.Mouse
+                    lbne      L02F6               No, exit with Parameter Error
+L03B8               lda       ,s                  Get path #
+                    leas      <-$20,s             Make 32 byte buffer on stack for Mouse packet
+                    leax      ,s                  Point to buffer to receive mouse packet
+                    pshs      b                   Save # of parms
+                    ldb       #SS.Mouse           Read Mouse packet call
+                    os9       I$GetStt            Go get mouse packet
+                    puls      b                   Restore # of parms
+                    bcs       L03FE               If error from reading mouse, eat temp stacks and return
+                    cmpb      #5                  Just 5?
+                    beq       L03E4               Yes, skip copying the other 3 vars to caller
+                    ldd       <Pt.AcX,x           Get X coord of mouse on full screen (unscaled)
+                    std       [<$14,u]            Save to caller
+                    ldd       <Pt.AcY,x           Get Y coord of mouse on full screen (unscaled)
+                    std       [<$18,u]            Save to caller
+                    ldb       <Pt.Stat,x          Get mouse ptr status (0=working area, 1=menu region (non-working area), 2=off window)
+                    std       [<$10,u]            Save to caller
+* 4 standard parms from SS.Mouse
 L03E4               clra
-                    ldb       ,x                  get Pt.Valid flag (are we on the current screen?)
-                    std       [,u]                save back to caller
-                    ldb       Pt.CBSB,x           get current button state of button #2
-                    lslb                          shift to bit 2
-                    orb       Pt.CBSA,x           merge in current button state of button #1
-                    std       [<$04,u]            save button state to caller (0=none,1=button #1,2=button #2, 3=both buttons)
-                    ldd       <Pt.WRX,x           get window relative, scaled X coord
-                    std       [<$08,u]            save back to caller
-                    ldd       <Pt.WRY,x           get window relative, scaled Y coord
-                    std       [<$0C,u]            save back to caller
-                    clrb                          no error
-L03FE               leas      <$41,s              eat temp stacks
-                    rts                           return to the caller
+                    ldb       ,x                  Get Pt.Valid flag (are we on the current screen?)
+                    std       [,u]                Save back to caller
+                    ldb       Pt.CBSB,x           Get current button state of button #2
+                    lslb                          Shift to bit 2
+                    orb       Pt.CBSA,x           Merge in current button state of button #1
+                    std       [<$04,u]            Save button state to caller (0=none,1=button #1,2=button #2, 3=both buttons)
+                    ldd       <Pt.WRX,x           Get window relative, scaled X coord
+                    std       [<$08,u]            Save back to caller
+                    ldd       <Pt.WRY,x           Get window relative, scaled Y coord
+                    std       [<$0C,u]            Save back to caller
+                    clrb                          No error
+L03FE               leas      <$41,s              Eat temp stacks & return
+                    rts
 
+* ONMOUSE
+* Now sets up both MsSig (mouse button click signal) and SSig (key hit signal)
+* It sets both up to do an S$Wake signal (1), so it it just wakes us from the F$Sleep
+* (if entry param is 0). Currently will do same signal number (if user specified) for
+* both signals - may want to change that so that they are unique in the future (will
+* require one more parameter)
 ;;; ONMOUSE - Set up a mouse signal.
 ;;;
 ;;; Calling syntax: RUN GFX2([path,] "ONMOUSE", signal)
-L0402               ldx       [,u]                test signal # caller wants to send on mouse button press
-                    bne       L0409               there is one, use it in SetStt call
-                    ldx       #$0001              0=sleep until button pushed, use signal code 1
-L0409               lda       ,s                  get path
-                    ldb       #SS.MsSig           set up mouse button signal
+L0402               ldx       [,u]                Get signal # caller wants to send on mouse button press
+                    bne       L0409               There is one, use it in SetStt call
+                    ldx       #S$Wake             0=sleep until button pushed, use signal code 1
+L0409               lda       ,s                  Get path
+                    ldb       #SS.MsSig           Set up mouse button signal
                     os9       I$SetStt
-                    bcs       L041A               if error, eat stack and return (NOTE: could be bcs L043B, faster)
-                    leax      -1,x                bump signal code down by 1
-                    bne       L0419               legitimate code, return w/o error
-                    os9       F$Sleep             X=0, sleep indefinitely (until signal received)
-L0419               clrb                          no error, eat temp stack & return
+                    bcs       L043B               If error, eat stack and return
+                    ldb       #SS.SSig            Now set up keyboard input signal
+                    os9       I$SetStt
+                    bcs       L043B               If error, eat stack and return
+                    leax      -1,x                Was it an S$Wake signal?
+                    bne       L0419               No, skip the sleep call and return to BASIC09
+                    os9       F$Sleep             Yes, sleep until signal received
+                    lda       ,s                  Get path
+                    ldb       #SS.Relea           Release both keyboard & mouse signals (1 will still be enabled)
+                    os9       I$SetStt
+L0419               clrb                          No error, eat temp stack & return
 L041A               bra       L043B
 
 ;;; TONE - Generate a sound.
 ;;;
 ;;; Calling syntax: RUN GFX2([path,] "TONE", frequency, duration, volume)
 L041C               cmpb      #4                  4 parameters?
-                    lbne      L02F6               no, exit with parameter error
-* 6809/6309 - can't we ldy [,u] to replace next two lines?
-                    ldy       [,u]                get frequency (0-4095)
-*         ldd   [,u]           Get frequency (0-4095)
-*         tfr   d,y            Move to Y
-                    ldd       [<$04,u]            get duration (1/60th second count) 0-255
-                    pshs      b                   save it (only 8 bit)
-                    ldd       [<$08,u]            get volume (amplitude) (0-63)
-                    tfr       b,a                 move to high byte
-                    puls      b                   get duration back
+                    lbne      L02F6               No, exit with Parameter Error
+                    ldy       [,u]                Get frequency (0-4095)
+                    ldd       [<$04,u]            Get duration (1/60th second count) 0-255
+                    pshs      b                   Save it (only 8 bit)
+                    ldd       [<$08,u]            Get volume (amplitude) (0-63)
+                    tfr       b,a                 Move to high byte
+                    puls      b                   Get duration back
                     tfr       d,x                 X is now set up for SS.Tone
                     lda       ,s                  get path
                     ldb       #SS.Tone            play tone
@@ -720,7 +731,7 @@ L04A6               bra       L0479               eat stack & return
 L04A8               lda       ,s                  get path
                     ldb       #SS.UMBar           update menu bar
                     os9       I$SetStt
-                    bra       L04A6
+                    bra       L0479
 
 ;;; DWSET - Define a device window.
 ;;;
@@ -1149,7 +1160,11 @@ L06EA               lbsr      L078E               adjust X,Y coords based on cur
 * 'NW' (northwest, up and left)
 L06F3               leau      1,u                 bump up source string pointer
                     bsr       L0745               get signed X offset caller specified
-                    lbsr      L07C8               NEGD
+                    IFNE      H6309
+                    negd
+                    ELSE
+                    bsr       L07C8               NEGD
+                    ENDC
 L06FA               std       ,x++                append X offset to output buffer
                     bra       L06E8               append same value as Y offset to output buffer, write it out & continue
 
@@ -1173,15 +1188,16 @@ L0717               leau      1,u                 bump up source string pointer
                     bra       L06FA               append as both X & Y offsets
 
 * SW (southwest, down and left)
-L071D               leau      1,u                 bump up source string pointer
+L071D               leau      1,u                 bump up source string ptr
                     bsr       L0745               get signed offset caller specified
                     std       2,x                 save as Y offset
-                    lbsr      L07C8               NEGD
-* 6809/6309 - change next two lines to std ,x/leax 4,x (same size, saves 2 or 1 cycles)
-*         std   ,x++           save as X offset
-*         leax  2,x            bump up output buffer pointer
+                    IFNE      H6309
+                    negd
+                    ELSE
+                    bsr       L07C8               NEGD
+                    ENDC
                     std       ,x                  save as X offset
-                    leax      4,x                 bump up output buffer pointer
+                    leax      4,x                 bump up output buffer ptr
                     bra       L06EA
 
 * E (East, right)
@@ -1194,59 +1210,73 @@ L072C               ldd       #$1B47              RLineM (Relative Draw Line and
 L0735               ldd       #$1B47              RLineM (Relative Draw Line and Move)
                     std       ,x++                append to output buffer
                     bsr       L0745               get signed offset caller specified
-                    lbsr      L07C8               NEGD
+                    IFNE      H6309
+                    negd
+                    ELSE
+                    bsr       L07C8               NEGD
+                    ENDC
 L073F               std       ,x++                append X offset to output buffer
                     clra                          Y offset=0
                     clrb
                     bra       L06E8               append to output buffer and write it out
 
+* 6809 - May be able to this up so more use BSR instead of LBSR (faster/shorter)
+                    IFEQ      H6309
+* NegD
+L07C8               nega                          NEGD
+                    negb
+                    sbca      #$00
+                    rts
+                    ENDC
+
+******************
 * Process parameter for a specific DRAW command. Gets numeric string, converts to signed
 *   16 bit #. Stops on first non-numeric character encountered (decimal only)
 * Entry: U=pointer to start of parameter section of current DRAW string command
 * Exit:  D=signed binary version of parameter
-L0745               clra                          D=0 (used for which ASCII digit we are processing -1's, 10's, 100's)
+* Change to use MUL * 10. This will work up to 2550 and then give inaccurate results,
+*  but that high is illegal anyways.
+L0745               clra                          Init running total to 0
                     clrb
-                    pshs      u,d                 save that & U
-                    ldb       ,u                  get 1st byte of DRAW command parameter
-                    cmpb      #'-                 negative sign?
-                    bne       L0751               no, use current byte as numeric data byte
-                    leau      1,u                 yes, bump source pointer up by 1
-L0751               clra                          A=0
-                    ldb       ,u                  get parameter byte (String)
-                    subb      #'0                 subtract ASCII to make binary value
-                    bcs       L0776               if wrapped negative, skip ahead
-                    cmpb      #9                  outside of 0-9
-                    bhi       L0776               yes, skip ahead
-                    pshs      d                   D=numeric value of single character parameter
-                    ldd       2,s                 get original D (inited to 0)
-                    lslb                          multiply by 8
-                    rola
-                    lslb
-                    rola
-                    lslb
-                    rola
-                    pshs      d                   save *8 result on stack
-                    ldd       4,s                 get original D (inited to 0)
-                    lslb                          multiply by 2
-                    rola
-                    addd      ,s++                add *8 value
-                    addd      ,s++                add original numeric value
-                    std       ,s                  save over scratch variable
-                    leau      1,u                 bump up source string pointer
-                    bra       L0751               check next character
+                    pshs      u,d                 Save that & start of current DRAW substring ptr
+                    ldb       ,u+                 Get 1st byte of DRAW command parameter
+                    cmpb      #'-                 Negative sign?
+                    bne       L0753               No, use current byte as numeric data byte
+* Also - using MUL (previous result by 10 or 100) and adding new may be faster
+* Negatives are post processed in L0776, so that shouldn't affect this either
+* the current routine will allow 1000's and I think even 10000's, which are illegal for
+* every parameter that comes in here (I think)
+L0751               ldb       ,u+                 Get parameter byte (String)
+L0753               subb      #'0                 Subtract ASCII to make binary value
+                    bcs       L0776               If wrapped negative, done processing numeric
+                    cmpb      #9                  Outside of 0-9?
+                    bhi       L0776               Yes, done processing numeric
+                    clra                          make 16 bit for adds below
+                    pshs      d                   Save numeric value of current digit
+                    ldb       2+1,s               5 Get LSB of current cumulative value into B (32 cyc to next save)
+                    lda       #10                 2 Multiply by 10 (shift digits over)
+                    mul                           11
+                    addd      ,s++                9 Add current digit value
+                    std       ,s                  5 Save new cumulative value
+                    bra       L0751               Check next char
 
-* parameter character from draw string is not '0'-'9'
-L0776               cmpu      2,s                 are we at beginning of current draw string command's parameters?
-                    beq       L0789               yes, no parameters, so eat temp stack & exit with parameter error
-                    lda       [<$02,s]            get first character from current draw string command's parameters again
-                    cmpa      #'-                 was it a dash (negative)?
-                    puls      d                   get current binary version of number string we processed
-                    bne       L0786               not negative, skip ahead
-                    bsr       L07C8               yes, make binary version negative
-L0786               leas      2,s                 eat start string pointer & return
-                    rts                           return to the caller
+* parm char from draw string is not '0'-'9'
+L0776               leau      -1,u                Point back to last legit char
+                    cmpu      2,s                 Are we at beginning of current draw string command's parameters?
+                    beq       L0789               Yes, no parameters, so eat temp stack & exit with Parameter Error
+                    lda       [<$02,s]            Get first char from current draw string command's parameters again
+                    cmpa      #'-                 Was it a dash (negative)?
+                    puls      d                   Get current binary version of number string we processed
+                    bne       L0786               Not negative, skip ahead
+                    IFNE      H6309
+                    negd
+                    ELSE
+                    bsr       L07C8               NEGD
+                    ENDC
+L0786               leas      2,s                 Eat start string ptr & return
+                    rts
 
-L0789               leas      $C,s                eat temp stack, return with parameter error
+L0789               leas      $C,s                Eat temp stack, return with Parameter Error
                     lbra      L02F6
 
 * Adjust draw command based on Axis angle (0=no rotate/no changes)
@@ -1262,58 +1292,75 @@ L078E               ldd       2,s                 get Axis angle
                     decb                          3 (270 degrees)?
                     bne       L07AC               no, return
 * 270 degree rotate
-                    ldd       -4,x                get original X value from output buffer
-                    bsr       L07C8               NEGate it
-                    pshs      d                   save on stack
-                    ldd       -2,x                get original Y value from output buffer
-                    std       -4,x                save overtop original X
-                    puls      d                   get negated X back
-L07AA               std       -2,x                save overtop original Y & return
-L07AC               rts                           return to the caller
+                    ldd       -4,x                Get original X value from output buffer
+                    IFNE      H6309
+                    negd
+                    ELSE
+                    bsr       L07C8               NEGD
+                    ENDC
+                    pshs      d                   Save on stack
+                    ldd       -2,x                Get original Y value from output buffer
+                    std       -4,x                Save overtop original X
+                    puls      d                   Get negated X back
+L07AA               std       -2,x                Save overtop original Y & return
+L07AC               rts
 
 * 90 degree rotate
-L07AD               ldd       -2,x                get original X value from output buffer
-                    bsr       L07C8               NEGate it
-                    pshs      d                   save on stack
-                    ldd       -4,x                get original y coord
-                    std       -2,x                save over original X coord
-                    puls      d                   get negated X value back
-                    std       -4,x                save over original Y coord
-                    rts                           return to the caller
+L07AD               ldd       -2,x                Get original X value from output buffer
+                    IFNE      H6309
+                    negd
+                    ELSE
+                    bsr       L07C8               NEGD
+                    ENDC
+                    pshs      d                   Save on stack
+                    ldd       -4,x                Get original y coord
+                    std       -2,x                Save over original X coord
+                    puls      d                   Get negated X value back
+                    std       -4,x                Save over original Y coord
+                    rts
 
 * 180 degree rotate
-L07BC               ldd       -4,x                get original X coord
-                    bsr       L07C8               negate it
-                    std       -4,x                save overtop original X coord
-                    ldd       -2,x                get original Y coord
-                    bsr       L07C8               negate it
-                    bra       L07AA               save overtop original Y & return
+L07BC               ldd       -4,x                Get original X coord
+                    IFNE      H6309
+                    negd
+                    ELSE
+                    bsr       L07C8               NEGD
+                    ENDC
+                    std       -4,x                Save overtop original X coord
+                    ldd       -2,x                Get original Y coord
+                    IFNE      H6309
+                    negd
+                    ELSE
+                    bsr       L07C8               NEGD
+                    ENDC
+                    bra       L07AA               Save overtop original Y & return
 
-* NegD
-L07C8               nega                          6309 - NEGD for next three lines
-                    negb
-                    sbca      #$00
-                    rts                           return to the caller
-
-* Write output buffer based on current output buffer pointer
-* Entry: X=current output buffer position pointer
-*        2,s = output buffer start pointer
-L07CD               pshs      y,x                 preserve registers
-                    tfr       x,d                 move current position in output buffer pointer to D
-                    subd      8,s                 calc size of string to write
-                    tfr       d,y                 move for I$Write
-                    ldx       8,s                 get pointer to start of output buffer
-                    lda       $C,s                get path
-                    os9       I$Write             write it out
-                    puls      y,x                 restore registers
-                    ldx       4,s                 get start of output buffer pointer back & return
-                    rts                           return to the caller
+* Write output buffer based on current output buffer ptr (for DRAW commands)
+* Entry: X=current output buffer position ptr
+*        2,s = output buffer start ptr
+*        4,s = output buffer end ptr (used to calculate buffer write size)
+L07CD               pshs      y                   Preserve Y
+                    IFNE      H6309
+                    leay      ,x                  Y=end buffer ptr
+                    ldx       6,s                 Get start buffer ptr
+                    subr      x,y                 Y=size of buffer to write
+                    ELSE
+                    tfr       x,d                 Move current position in output buffer ptr to D
+                    subd      6,s                 Calc size of string to write
+                    tfr       d,y                 Move for I$Write
+                    ldx       6,s                 Get ptr to start of output buffer
+                    ENDC
+                    lda       $A,s                Get path
+                    os9       I$Write             Write it out
+                    ldx       6,s                 Get start of output buffer ptr back & return
+                    puls      y,pc                Restore Y & return
 
 ;;; FELLIPSE - Draw a filled ellipse.
 ;;;
 ;;; Calling syntax: RUN GFX2([path,] "FELLIPSE", [,xcor, ycor], xrad, yrad))
 FEllipse            lda       #$54                FEllipse code
                     fcb       $8c                 skip 2 bytes (CMPX)
+
 ;;; ELLIPSE - Draw an ellipse.
 ;;;
 ;;; Calling syntax: RUN GFX2([path,] "ELLIPSE", [,xcor, ycor], xrad, yrad))
@@ -1579,12 +1626,18 @@ L0901               bsr       L0907               write output buffer out
                     rts                           return to the caller
 
 * Write output buffer out
-L0907               tfr       x,d
-                    leax      3,s                 point to buffer to write out
-                    pshs      x                   save start of buffer
-                    subd      ,s++                subtract end of buffer to get length
-                    tfr       d,y                 move length to Y for Write
-                    lda       2,s                 get path, write out buffer
+                    IFNE      H6309
+L0907               leay      ,x                  4 Y=end buffer ptr
+                    leax      3,s                 5 Point to start of buffer to write out
+                    subr      x,y                 4 Calc size of write
+                    ELSE
+L0907               tfr       x,d                 4 Move buffer end ptr to write out to D
+                    leax      3,s                 5 Point to buffer to write out
+                    pshs      x                   6 Save start of buffer
+                    subd      ,s++                7 End buffer ptr-Start buffer ptr=length
+                    tfr       d,y                 4 Move length to Y for Write
+                    ENDC
+                    lda       2,s                 Get path, write out buffer
                     os9       I$Write
                     rts                           return to the caller
 
@@ -1620,3 +1673,4 @@ L0944               puls      pc,y,d              return to the caller
                     emod
 eom                 equ       *
                     end
+

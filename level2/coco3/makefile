@@ -144,6 +144,9 @@ dsk: all $(DSKS)
 dskcopy: $(DSKS)
 	$(CP) $(DSKS) $(DSKDIR)
 
+reload:
+	osascript -e 'tell application "DriveWire"' -e 'tell server of first document' -e 'reload drive 0' -e 'end tell' -e 'end tell'
+	
 $(DSKDW):
 	$(RM) $@
 	$(OS9FORMAT_DW) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
@@ -1068,7 +1071,6 @@ $(DSK360K_1):
 	$(OS9GEN) $@ -b=$(BOOTFILE_40D) -t=$(KERNELFILE)
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
-	$(MAKDIR) $@,DEFS
 	$(OS9COPY) modules/$(CCBKRN) $@,$(CCBKRN)
 	$(OS9COPY) modules/$(SYSGO) $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
@@ -1078,8 +1080,6 @@ $(DSK360K_1):
 	$(OS9ATTR_TEXT) $(foreach file,$(SYSBIN),$@,SYS/$(file))
 	$(CD) sys; $(CPL) $(SYSTEXT) ../$@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
-	$(CD) defs; $(CPL) $(DEFS) ../$@,DEFS
-	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 	$(RM) $(LDSK360K_1)

@@ -26,9 +26,9 @@
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $01
-edition             set       3
+edition             set       4
 
-                    mod       eom,name,tylg,atrv,start,size
+                    mod       eom,name,tylg,atrv,Start,size
 
                     org       0
 T.Delim             rmb       1                   text delimiter
@@ -42,7 +42,7 @@ name                fcs       /Display/
 
 Start               pshs      x                   save start address of text to output
                     leay      ,x                  destination buffer=input buffer (always shrinks it)
-                    leau      Hex,pcr             point to routine to ouput hex characters
+                    leau      <Hex,pcr            point to routine to ouput hex characters
 
 Loop                jsr       ,u                  grab a character
                     bcs       S.01                if error, dump it
@@ -157,7 +157,8 @@ D.Read              lda       ,y+                 grab a decimal digit
                     beq       D.CR                yes, output the characters and then exit
 
                     cmpa      #'0                 smaller than zero?
-                    bls       D.Done0             yes, we're done this decimal digit
+* BUG FIX 07/04/2020 LCB - was bls
+                    blo       D.Done0             yes, we're done this decimal digit
                     cmpa      #'9
                     bhi       Error
                     suba      #'0                 convert ascii to number
@@ -188,7 +189,7 @@ D.Two               sta       ,x+                 save high byte in the output b
 D.Exit              clra
                     rts
 
-D.CR                leau      Error,pcr           point to error routine: no more characters
+D.CR                leau      <Error,pcr          point to error routine: no more characters
                     bra       D.Done              output these characters, and the exit
 
                     emod

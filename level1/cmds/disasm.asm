@@ -53,6 +53,12 @@
 *
 *         2005/10/13  Robert Gault
 * Forced to shrink labeltab size so that os9boot could be disassembled.
+*   6     2019/07/25  L. Curtis Boyle
+* Fixed bug where PSHU/PULU would try and push/pull U onto itself. (chk.f7)
+* Also, changed edition # since _so_ many changes (including 6309 support)
+*  have been added since edition 5
+*   6r1   2020/12/08  L. Curtis Boyle
+* Added I$ModDsc to I/O SWI2 call names
 
                     nam       Disasm
                     ttl       6809/6309 disassembler
@@ -63,8 +69,8 @@
 
 typ                 set       Prgrm+Objct
 attrev              set       ReEnt+revision
-revision            set       $00
-edtn                set       5                   edition
+revision            set       $01
+edtn                set       6                   edition
 edition             equ       $30+edtn            ascii edition
 
                     mod       eom,mname,typ,attrev,start,datend
@@ -262,6 +268,7 @@ os9i$tab            equ       *
                     fcc       /I$SetStt/
                     fcc       /I$Close /
                     fcc       /I$DeletX/
+                    fcc       /I$ModDsc/
 bados9op            fcc       /????????/
 
 * Mnemonic table: 1st byte =Opcode
@@ -1442,6 +1449,7 @@ tabfx               equ       *
 testing             equ       0                   (0=no,1=yes)
 regtab              fcc       /d x y u s pcw v a b ccdp0 0 e f /
 stackreg            fcc       /pcu y x dpb a cc/
+ustckreg            fcc       /pcs y x dpb a cc/
 timesplt            fcc       '// :: '
 title               equ       *
                     fcc       /program module       /
@@ -2030,6 +2038,7 @@ open                os9       I$Open
                     sta       <path
 *         lbsr  getbyte       no longer needed, RG
                     bra       gotmod
+
 memmod              equ       *
 mem010              lda       ,x+
                     cmpa      #$20
@@ -2074,7 +2083,7 @@ gotmod3             lbsr      clrline
                     tfr       b,a
                     lbsr      moveobj
                     leay      holdadr,u
-                    lda       #$30
+                    lda       #'0                 Store 4 ASCII 0's
                     sta       ,y+
                     sta       ,y+
                     sta       ,y+
@@ -2811,34 +2820,43 @@ notbit              lbsr      writline            Send the line out
 
 isub010             lbsr      mvchr003            Add ','
                     bra       isub025             skip ahead
+
 isub020             lbsr      mvchr009            Add '-'
 isub025             lda       <register           Get register name
+* LCB - lbra movechar, remove RTS
                     lbsr      movechar            Add it too
                     rts
 
+* Entry: <testbyte has actual opcode ($34-$37). We need to know if $36-$37, and change
+* 'u' to 's' if it is
 chk.f7              equ       *
 * inherent addr - 1 byte
 * (used for psh and pul only)
-                    lbsr      getbyte
-                    lda       #$80
+                    lbsr      getbyte             Get the bit flags byte part of PSH/PUL (into B & <byte)
+                    leay      stackreg,pcr        Point to list of 2 byte register names for psh/pul
+                    lda       <testbyte           Get opcode
+                    cmpa      #$36                PSHU/PULU?
+                    blo       SStack              No, use regs for PSHS/PULS
+                    leay      ustckreg-stackreg,y Yes, point to PSHU/PULU version instead
+SStack              lda       #%10000000          Init check for which regs are being pushed/pulled to 1st bit
                     sta       <testbyte
-                    lda       #8
-                    leay      stackreg,pcr
-f7.010              pshs      a
-                    ldx       ,y++
-                    ldb       <byte
+                    lda       #8                  # of bits to check ctr
+f7.010              pshs      a                   Save # of bits to check ctr
+                    ldx       ,y++                Get 1 or 2 char name of register
+                    ldb       <byte               Is this register turned on in post byte?
                     andb      <testbyte
-                    beq       f7.020
-                    tfr       x,d
-                    lbsr      movereg
-                    lbsr      mvchr003
-f7.020              lda       <testbyte
+                    beq       f7.020              No, skip to next
+                    tfr       x,d                 Yes, move name to D
+* INSERT CHECK HERE - IF WE DOING PSHU/PULU, CHANGE A TO 's ($	73)
+                    lbsr      movereg             Copy reg name to output buffer
+                    lbsr      mvchr003            Add a comma to output buffer
+f7.020              lda       <testbyte           Shift check bit to next one
                     lsra
                     sta       <testbyte
-                    puls      a
-                    deca
-                    bne       f7.010
-                    ldx       <lineadr
+                    puls      a                   Get # of bits left to check ctr
+                    deca                          We finished one
+                    bne       f7.010              Still more left, try next
+                    ldx       <lineadr            Done, move output buffer end ptr back one (eat last comma)
                     leax      -1,x
                     stx       <lineadr
                     lbra      chk.fd
@@ -3421,45 +3439,47 @@ chkdecln            decb
 
 *
 * read 1 byte
-*
-getbyte             pshs      x,y,a
-                    ldx       <address
+* Exit: B=next byte from program being disassembled (also stored in <byte)
+getbyte             pshs      x,y,a               Save regs
+                    ldx       <address            Bump address up by 1
                     leax      1,x
                     stx       <address
-                    leax      3,x
-                    cmpx      <modend
-                    lbhs      endit
-                    tst       <diskio
-                    bne       getdisk
-                    ldx       <crntadr
-                    ldb       ,x+                 puts "in memory" in sync with disk i/o, RG
+                    leax      3,x                 Bump up size of CRC
+                    cmpx      <modend             Are we at the CRC bytes now?
+                    lbhs      endit               Yes, we are finished disassembling
+                    tst       <diskio             Are we disassembling from disk?
+                    bne       getdisk             Yes, get byte from disk path instead of memory
+                    ldx       <crntadr            Get ptr to current position in module in memory
+                    ldb       ,x+                 Get next byte (puts "in memory" in sync with disk i/o, RG)
 *         leax  1,x
-                    stx       <crntadr
+                    stx       <crntadr            Save updated ptr
 *        ldb   ,x           here it throws disk and memory out of sync
-                    stb       <byte
+                    stb       <byte               Save byte
                     bra       gotbyte
 *
 * read byte from disk
 *
-getdisk             leax      byte,u
-                    ldy       #1
-                    lda       <path
-                    os9       I$Read
-                    lbcs      endit
-                    ldb       <byte
-gotbyte             lda       <byte
-                    bsr       moveobj
-                    ldb       <byte
-                    ldx       <readpos
+getdisk             leax      byte,u              Point to where byte will go
+                    ldy       #1                  1 byte to read
+                    lda       <path               Get path to disk file we are disassemlbing
+                    os9       I$Read              Read next byte
+                    lbcs      endit               Error, we are done
+                    ldb       <byte               Get byte into B
+gotbyte             lda       <byte               And into A
+                    bsr       moveobj             Convert to hex, append to object code listing
+* Isn't this redundant? we have b with <byte from both entry points, and it's preserved in
+* moveobj. (LCB)
+                    ldb       <byte               Get byte back
+                    ldx       <readpos            Update read position
                     stb       ,x+
                     stx       <readpos
-                    inc       <readcnt
-                    puls      x,y,a,pc
+                    inc       <readcnt            Bump up read byte count
+                    puls      x,y,a,pc            restore regs & return
 
 *
 * convert 'a' to hex,merge with object code listing
-*
-moveobj             pshs      x,y,b
+* Entry: A=byte we are converting
+moveobj             pshs      x,y,b               Save regs
                     ldb       <objcnt
                     cmpb      #4
                     bhs       moverts
@@ -3721,7 +3741,7 @@ fdbline             pshs      d
 
 
 *
-* convert 'a' to uppper case if its a letter
+* convert 'a' to upper case if its a letter
 *
 getupc              cmpa      #'z
                     bls       getup010
@@ -3739,28 +3759,27 @@ send                tst       <pass
                     lbcs      exit
 send010             lbsr      clrline
                     rts
+
 ********* get op ******************
 *  entry: opcode in a / a&b for 2 ops
-*
-
-getop               sta       <testbyte
-                    tstb
-                    bne       chkos9
-                    ldb       #6
+getop               sta       <testbyte           Save opcode
+                    tstb                          Check if special
+                    bne       chkos9              Yes, check for os9 system call
+                    ldb       #6                  No, 6 bytes/entry (type byte, 5 char string per entry)
                     mul
-                    leay      optable,pcr
-                    leay      d,y
+                    leay      optable,pcr         Point to opcode table
+                    leay      d,y                 Point to entry for our opcode
 getrest             leay      1,y
                     lda       ,y+
                     tfr       a,b
                     pshs      b
-                    ldb       #5
-moveop              lda       ,y+
-                    lbsr      movechar
-                    decb
-                    bne       moveop
+                    ldb       #5                  Size of opcode string
+moveop              lda       ,y+                 Get char from opcode name
+                    lbsr      movechar            Copy to output
+                    decb                          Done whole string?
+                    bne       moveop              No, keep copying until done
                     pshs      a
-                    lda       #$20
+                    lda       #$20                Done, add a space to output
                     lbsr      movechar
                     puls      a
                     puls      b,pc
@@ -3778,7 +3797,7 @@ chkos9              cmpb      #$3f
                     bra       getos9
 
 i$os9               cmpa      #$91
-                    bhs       bados9
+                    bhi       bados9
                     leay      os9i$tab,pcr
                     suba      #$80
                     bra       getos9

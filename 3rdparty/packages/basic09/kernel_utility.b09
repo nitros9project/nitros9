@@ -1,0 +1,169 @@
+PROCEDURE kernel_utility
+TYPE registers=cc,a,b,dp:BYTE;x,y,u:INTEGER
+DIM regs:registers
+DIM rel($130),boot($1D0),krn($F00):BYTE
+DIM c,option:INTEGER
+DIM prompt,filenames(4):STRING[256]
+DIM modulenames(3):STRING[8]
+DIM files(4):BYTE
+DIM errormessage:STRING[79]
+modulenames(1)="REL"
+modulenames(2)="BOOT"
+modulenames(3)="KRN"
+filenames(4)=""
+INPUT "Type in existing kernel track filename, or <ENTER> to create new one:";filenames(4)
+IF filenames(4)="" THEN
+  PRINT "Initializing REL space..."
+  FOR c=1 to $130
+    rel(c)=0
+  NEXT c
+  PRINT "Initializing BOOT space..."
+  FOR c=1 to $1D0
+    boot(c)=0
+  NEXT c
+  PRINT "Initializing KRN space..."
+  FOR c=1 to $F00
+    krn(c)=0
+  NEXT c
+ELSE
+  PRINT "Buffering kernel track file '";filenames(4);"'"
+  OPEN #files(4),filenames(4):UPDATE
+  regs.x=ADDR(rel)
+  regs.y=SIZE(rel)
+  regs.a=files(4)
+  RUN syscall($89,regs)
+  IF LAND(regs.cc,1)<>0 THEN
+    PRINT "ERROR #";regs.b;" trying to read REL part of kernel boot rack file"
+    END
+  ENDIF
+  regs.x=ADDR(boot)
+  regs.y=SIZE(boot)
+  regs.a=files(4)
+  RUN syscall($89,regs)
+  IF LAND(regs.cc,1)<>0 THEN
+    PRINT "ERROR #";regs.b;" trying to read BOOT part of kernel boot track file"
+    END
+  ENDIF
+  regs.x=ADDR(krn)
+  regs.y=SIZE(krn)
+  regs.a=files(4)
+  RUN syscall($89,regs)
+  IF LAND(regs.cc,1)<>0 THEN
+    PRINT "ERROR #";regs.b;" trying to read KRN part of kernel boot track file"
+    END
+  ENDIF
+ENDIF
+
+option=0
+errormessage=""
+WHILE option>=0 AND option<=4 DO
+  ? CHR$(12);errormessage
+  ? "Kernel track editor V0.1"
+  ? "By L. Curtis Boyle for NitrOS-9 EOU"
+  ? "<1> Replace REL module";
+  IF rel(1)<>0 THEN
+    ? USING "S6,H2,H2,H2"," CRC:$",rel($12E),rel($12F),rel($130)
+  ELSE
+    ?
+  ENDIF
+  ? "<2> Replace BOOT module";
+  IF boot(1)<>0 THEN
+    ? USING "S6,H2,H2,H2"," CRC:$",boot($1CE),boot($1CF),boot($1D0)
+  ELSE
+    ?
+  ENDIF
+  ? "<3> Replace KRN module";
+  IF krn(1)<>0 THEN
+    ? USING "S6,H2,H2,H2"," CRC:$",krn($EDD),krn($EDE),krn($EDF)
+  ELSE
+    ?
+  ENDIF
+  ? "<4> Write out new kernel track file"
+  ? "    (NOTE: All 3 modules must be present!)"
+  INPUT "Select <1-4>:";option
+  IF option=4 THEN
+    IF rel(1)=0 OR boot(1)=0 OR krn(1)=0 THEN
+      option=0
+      errormessage="ERROR: Incomplete boot track:"
+      IF rel(1)=0 THEN
+        errormessage=errormessage+"REL,"
+      ENDIF
+      IF boot(1)=0 THEN
+        errormessage=errormessage+"BOOT,"
+      ENDIF
+      IF krn(1)=0 THEN
+        errormessage=errormessage+"KRN,"
+      ENDIF
+      errormessage=LEFT$(errormessage,LEN(errormessage)-1)+" Missing!"
+    ELSE
+      IF filenames(4)<>"" THEN
+        PRINT "Overwrite ";filenames(4);" (Y,N or new filename):";
+        INPUT prompt
+        prompt=TRIM$(prompt)
+        IF prompt="N" or prompt="n" THEN
+          option=0
+        ELSE
+          IF prompt="Y" or prompt="y" THEN
+            SEEK #files(4),0
+            PUT #files(4),rel
+            PUT #files(4),boot
+            PUT #files(4),krn
+            CLOSE #files(4)
+            option=-1
+          ELSE
+            IF filenames(4)<>"" THEN
+              CLOSE #files(4)
+            ENDIF
+            PRINT "Creating kernel track '";prompt;"'"
+            CREATE #files(4),prompt:WRITE
+            PUT #files(4),rel
+            PUT #files(4),boot
+            PUT #files(4),krn
+            CLOSE #files(4)            
+            option=-1
+          ENDIF
+        ENDIF
+      ELSE
+        INPUT "Enter name of new kernel track file:";filenames(4)
+        IF filenames(4)<>"" THEN
+          PRINT "Creating ";filenames(4)
+          CREATE #files(4),filenames(4):WRITE
+          PUT #files(4),rel
+          PUT #files(4),boot
+          PUT #files(4),krn
+          CLOSE #files(4)
+          option=-1
+        ELSE
+          option=0
+        ENDIF
+      ENDIF
+    ENDIF
+  ELSE
+    IF option<1 OR option>3 THEN
+      option=0
+    ELSE
+      PRINT "Enter path/filename for ";modulenames(option);":";
+      INPUT filenames(option)
+      OPEN #files(option),filenames(option):READ
+      regs.a=files(option)
+      IF option=1 THEN
+        regs.x=ADDR(rel)
+        regs.y=SIZE(rel)
+      ELSE
+        IF option=2 THEN
+          regs.x=ADDR(boot)
+          regs.y=SIZE(boot)
+        ELSE
+          regs.x=ADDR(krn)
+          regs.y=SIZE(krn)
+        ENDIF
+      ENDIF
+      RUN syscall($89,regs)
+      IF LAND(regs.cc,1)<>0 THEN
+        ? "ERROR #";regs.b;" trying to read ";modulenames(option);" part of kernel boot track file"
+        END
+      ENDIF
+    ENDIF
+  ENDIF
+ENDWHILE
+END
