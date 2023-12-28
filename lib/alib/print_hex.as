@@ -1,21 +1,15 @@
-***************************************
-
-* Print hex number to standard out.
-
-* ENTRY: D=value to print
-
-* EXIT: CC carry set if error (from I$WritLn)
-*       B error code, if any
-
-
-                    nam       Print               # as Hex String to Std Out
-                    ttl       Assembler Library Module
-
+;;; PRINT_HEX
+;;;
+;;; Print a hexadecimal number to the standard output.
+;;;
+;;; Entry:  D = The value to print.
+;;;
+;;; Error:  B = A non-zero error code.
+;;;        CC = Carry flag set to indicate error.
 
                     section   .text
 
-PRINT_HEX
-                    pshs      a,x
+PRINT_HEX:          pshs      a,x
                     leas      -6,s                buffer
                     tfr       s,x
                     lbsr      BIN_HEX             convert to hex

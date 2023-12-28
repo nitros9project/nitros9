@@ -1,27 +1,23 @@
-******************************************
-*
-* This subroutine creates a temorary filename
-* by adding a "." and a 2digit hex value based
-* on the process id.
-* IMPORTANT: there must be room after the filename
-* for at least 6 bytes!! Filename must be variable
-* area, not parameter or program sections!!!
-
-* OTHER MODULES NEEDED: BIN_HEX
-
-* ENTRY: X= filename
-
-* EXIT: no registers (expect cc) modified
-*       filename ends in ".processid",$0d
-
-                    nam       Make                Unique Filename
-                    ttl       Assembler Library Module
-
+;;; MKTEMP
+;;;
+;;; Create a temporary file.
+;;;
+;;; Other modules needed: BIN_HEX
+;;;
+;;; Entry:  D = The address of the filename.
+;;;
+;;; All registers except CC are preserved.
+;;;
+;;; This subroutine creates a temporary filename by adding a "." and a two digit hexadecimal
+;;; value based on the process ID.
+;;;
+;;; IMPORTANT: there must be room after the filename
+;;; for at least 6 bytes. Filenames must be in variable
+;;; area, not parameter or program sections.
 
                     section   .text
 
-MKTEMP
-                    pshs      d,x,y
+MKTEMP:             pshs      d,x,y
 
                     os9       F$PrsNam            find end of name
                     tfr       y,x

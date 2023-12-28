@@ -1,22 +1,18 @@
-*****************************************
-
-* Get current system time as an ascii string.
-
-
-* OTHER MODULES NEEDED: DATESTR
-
-* ENTRY:  X=buffer for ascii
-
-* EXIT: all registers preserved (except cc)
-
-                    nam       Get                 System Time String
-                    ttl       Assembler Library Module
-
+;;; STIMESTR
+;;;
+;;; Get the system time as an ASCII string.
+;;;
+;;; Other modules needed: DATESTR
+;;;
+;;; Entry:  X = The buffer for the ASCII string.
+;;;
+;;; Exit:   None.
+;;;
+;;; All registers except CC are preserved.
 
                     section   .text
 
-STIMESTR
-                    pshs      x,y
+STIMESTR:           pshs      x,y
                     tfr       x,y                 ascii buffer to Y
                     leas      -7,s                buffer for time packet
                     tfr       s,x

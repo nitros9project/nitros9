@@ -1,28 +1,18 @@
-*****************************************
-
-* See if character in "B" is a alpha letter a..z or A..Z
-
-* OTHER MODULES NEEDED: IS_LOWER, IS_UPPER
-
-* ENTRY: B=character to test
-
-* EXIT: CC zero=1 if alpha, 0 if not
-
-                    nam       Is                  Char Alphabetic?
-                    ttl       Assembler Library Module
-
+;;; IS_ALPHA
+;;;
+;;; Test if a character is a letter from a-z or A-Z.
+;;;
+;;; Entry:  B = The character to test.
+;;;
+;;; Exit:  CC = Zero is 1 if the character is alphabetic; otherwise, 0.
+;;;
 
                     section   .text
 
-
-IS_ALPHA
-                    lbsr      IS_UPPER
+IS_ALPHA:           lbsr      IS_UPPER
                     beq       yes                 uppercase letters are alpha
                     lbsr      IS_LOWER            last chance to set flags.
 
-yes
-                    rts
-
+yes                 rts
 
                     endsect
-

@@ -1,23 +1,15 @@
-****************************************
-
-* Subroutine to print a carriage return
-
-* OTHER MODULES REQUIRED: FPUTC
-
-* ENTRY: A=path
-
-* EXIT: CC carry set if error (from I$WritLn)
-*       B  error code if any.
-
-
-                    nam       Output              Carriage Return
-                    ttl       Assembler Library Module
-
+;;; FPUTCR
+;;;
+;;; Prints a carriage return to a device.
+;;;
+;;; Entry:  A = The path to print to.
+;;;
+;;; Error:  B = A non-zero error code.
+;;;        CC = Carry flag set to indicate error.
 
                     section   .text
 
-FPUTCR
-                    ldb       #$0d
+FPUTCR:             ldb       #$0d
                     lbra      FPUTC
 
                     endsect

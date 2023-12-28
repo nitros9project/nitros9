@@ -1,21 +1,15 @@
-************************************
-
-* Display the 6809 registers to standard error
-
-* OTHER MODULES NEEDED: BIN2HEX, BIN_HEX,  PUTS
-
-
-* ENTRY: none
-* EXIT: none
-
-
-* NOTE: The value used for PC is that of the calling routine
-*       S is assumed to be 2 greater than actual to comp for
-*       the subroutine call...
-
-
-                    nam       Show                Register Values
-                    ttl       Assembler Library Module
+;;; SHO_REGS
+;;;
+;;; Display the 6809 registers to the standard error.
+;;;
+;;; Other modules needed: BIN2HEX, BIN_HEX, PUTS
+;;;
+;;; Entry:  None.
+;;;
+;;; Exit:   None.
+;;;
+;;; The value used for PC is that of the calling routine S is assumed to be 2 greater
+;;; than actual to compensate for the subroutine call.
 
 
                     section   .data
@@ -36,8 +30,7 @@ pc.r                rmb       2
 
                     section   .text
 
-SHO_REGS
-                    leas      -2,s                room for copy of <S>
+SHO_REGS:           leas      -2,s                room for copy of <S>
                     pshs      cc,a,b,dp,x,y,u     save rest
                     leas      -cc.r,s             room for ascii strings
                     tfr       s,x
@@ -49,8 +42,7 @@ SHO_REGS
 
 * now we loop and display all the registers
 
-loop1
-                    leax      buffer,s            point to ascii buffer
+loop1               leax      buffer,s            point to ascii buffer
                     ldd       ,u++                get reg. name
                     std       ,x++
                     lda       #'=                 add a "="
@@ -63,16 +55,14 @@ loop1
                     std       ,x                  save ascii number
                     clr       2,x
                     bra       report              go report
-loop2
-                    cmpa      #9                  done all?
+loop2               cmpa      #9                  done all?
                     bhs       exit                yes, go home
                     ldd       ,y++                get reg value
                     lbsr      BIN_HEX             convert it
 
 * report reg. value
 
-report
-                    leax      buffer,s            start of buffer
+report              leax      buffer,s            start of buffer
                     lda       #2                  std err
                     lbsr      FPUTS               print it
                     ldb       #$20                space
@@ -80,8 +70,7 @@ report
                     inc       count,s             do next reg
                     bra       loop1
 
-exit
-                    ldb       #$0d
+exit                ldb       #$0d
                     lda       #2
                     lbsr      FPUTC               start new line
                     leas      cc.r,s              clear up stack
@@ -89,8 +78,7 @@ exit
                     leas      2,s
                     rts                           go home
 
-text
-                    fcc       /cc/
+text                fcc       /cc/
                     fcc       / a/
                     fcc       / b/
                     fcc       /dp/

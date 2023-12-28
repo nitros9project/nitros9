@@ -1,23 +1,16 @@
-***********************************
-
-* 16 x 8 Multiply (24 bit result)
-
-* OTHER MODULES NEEDED: none
-
-* ENTRY: A = multiplier
-*        X = multiplicand
-
-*  EXIT: A = product byte 1
-*        X = product bytes 2 & 3
-
-                    nam       16x8                bit Multiply
-                    ttl       Assembler Library Module
-
+;;; MULT168
+;;;
+;;; 16x8 multiplication.
+;;;
+;;; Entry:  A = The multiplier.
+;;;         X = The multiplicand.
+;;;
+;;; Exit:   A = Bits 23-16 of the product.
+;;;         X = Bits 15-0 of the product.
 
                     section   .text
 
-MULT168
-                    pshs      A,X                 save numbers
+MULT168:            pshs      A,X                 save numbers
                     leas      -3,S                room for product
                     ldb       5,S                 get lsb of multiplicand
                     mul
