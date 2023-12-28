@@ -1,8 +1,8 @@
 include ../port.mak
 
-vpath %.asm $(LEVEL1)/modules
+vpath %.asm $(LEVEL1)/coco1/modules:$(LEVEL1)/modules
 
-AFLAGS		+= -I$(LEVEL1)/modules
+AFLAGS		+= -I$(LEVEL1)/coco1/modules -I$(LEVEL1)/modules
 
 CLOCKELIM       = -DRTCElim=1
 CLOCKDISTO2     = -DRTCDsto2=1
