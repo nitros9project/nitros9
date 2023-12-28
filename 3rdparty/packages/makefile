@@ -1,6 +1,6 @@
 include $(NITROS9DIR)/rules.mak
 
-dirs	= arcadepak basic09 brainfuck cpm deskmate3 ccompiler flightsim2 koronis kyumgai mmission multivue os9l2bbs pacos9 raakatu rescueof rogue sierra subsim uucpbb
+dirs	= arcadepak basic09 brainfuck cpm deskmate3 ccompiler flightsim2 koronis kyumgai mmission multivue os9l2bbs pacos9 rescueof rogue sierra subsim uucpbb #raakatu
 
 # Make all components
 all:
