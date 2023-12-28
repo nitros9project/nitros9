@@ -10,3 +10,5 @@ clean:
 	rm -f cpm 
 	
 dsk:
+
+dskcopy:
