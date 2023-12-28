@@ -1091,7 +1091,6 @@ $(DSK360K_1_50HZ):
 	$(OS9GEN) $@ -b=$(BOOTFILE_40D_50HZ) -t=$(KERNELFILE_50HZ)
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
-	$(MAKDIR) $@,DEFS
 	$(OS9COPY) modules/$(CCBKRN) $@,$(CCBKRN)
 	$(OS9COPY) modules/$(SYSGO) $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
@@ -1101,8 +1100,6 @@ $(DSK360K_1_50HZ):
 	$(OS9ATTR_TEXT) $(foreach file,$(SYSBIN),$@,SYS/$(file))
 	$(CD) sys; $(CPL) $(SYSTEXT) ../$@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
-	$(CD) defs; $(CPL) $(DEFS) ../$@,DEFS
-	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 	$(RM) $(LDSK360K_1_50HZ)
@@ -1112,6 +1109,9 @@ $(DSK360K_2):
 	$(RM) $@
 	$(OS9FORMAT_DS40) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL) Disk 2"
 	$(MAKDIR) $@,CMDS
+	$(MAKDIR) $@,DEFS
+	$(CD) defs; $(CPL) $(DEFS) ../$@,DEFS
+	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
 	$(CD) cmds; $(OS9COPY) $(CMDS_D2) ../$@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS_D2),$@,CMDS/$(file))
 	$(MAKDIR) $@,NITROS9
