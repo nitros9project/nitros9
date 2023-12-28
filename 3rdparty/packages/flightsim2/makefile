@@ -20,7 +20,7 @@ BOOTFILE_FLOPPY	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/rbf.mn \
 		$(MD)/rb1773.dr $(MD)/ddd0_40d.dd \
 		$(MD)/scf.mn $(MD)/vtio.dr \
-		$(MD)/keydrv_cc3.sb $(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
+		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/ftdd.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft \
@@ -30,7 +30,7 @@ BOOTFILE_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/rbf.mn \
 		$(MD)/rbdw.dr $(MD)/dwio.sb $(MD)/ddx0.dd \
 		$(MD)/scf.mn $(MD)/vtio.dr \
-		$(MD)/keydrv_cc3.sb $(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
+		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/ftdd.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw \
@@ -40,7 +40,7 @@ BOOTFILE_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/rbf.mn \
 		$(MD)/rbdw.dr $(MD)/dwio_becker.sb $(MD)/ddx0.dd \
 		$(MD)/scf.mn $(MD)/vtio.dr \
-		$(MD)/keydrv_cc3.sb $(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
+		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/ftdd.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw \

@@ -32,7 +32,7 @@ BOOTFILE68_FLOPPY	= $(MD68)/krnp2 $(MD68)/ioman $(MD68)/init \
 		$(MD68)/rb1773.dr $(MD68)/ddd0_40d.dd \
 		$(MD68)/d0_40d.dd $(MD68)/d1_40d.dd \
 		$(MD68)/scf.mn $(MD68)/vtio.dr \
-		$(MD68)/keydrv_cc3.sb $(MD68)/joydrv_joy.sb $(MD68)/snddrv_cc3.sb \
+		$(MD68)/joydrv_joy.sb $(MD68)/snddrv_cc3.sb \
 		$(MD68)/cowin.io $(MD68)/term_win40.dt \
 		$(MD68)/w.dw $(MD68)/w1.dw $(MD68)/w2.dw $(MD68)/w3.dw \
 		$(MD68)/w4.dw $(MD68)/w5.dw $(MD68)/w6.dw $(MD68)/w7.dw \
@@ -44,7 +44,7 @@ BOOTFILE63_FLOPPY	= $(MD63)/krnp2 $(MD63)/ioman $(MD63)/init \
 		$(MD63)/rb1773.dr $(MD63)/ddd0_40d.dd \
 		$(MD63)/d0_40d.dd $(MD63)/d1_40d.dd \
 		$(MD63)/scf.mn $(MD63)/vtio.dr \
-		$(MD63)/keydrv_cc3.sb $(MD63)/joydrv_joy.sb $(MD63)/snddrv_cc3.sb \
+		$(MD63)/joydrv_joy.sb $(MD63)/snddrv_cc3.sb \
 		$(MD63)/cowin.io $(MD63)/term_win40.dt \
 		$(MD63)/w.dw $(MD63)/w1.dw $(MD63)/w2.dw $(MD63)/w3.dw \
 		$(MD63)/w4.dw $(MD63)/w5.dw $(MD63)/w6.dw $(MD63)/w7.dw \
@@ -56,7 +56,7 @@ BOOTFILE68_DW	= $(MD68)/krnp2 $(MD68)/ioman $(MD68)/init \
 		$(MD68)/rbdw.dr $(MD68)/dwio.sb $(MD68)/ddx0.dd \
 		$(MD68)/rb1773.dr $(MD68)/d0_40d.dd $(MD68)/d1_40d.dd \
 		$(MD68)/scf.mn $(MD68)/vtio.dr \
-		$(MD68)/keydrv_cc3.sb $(MD68)/joydrv_joy.sb $(MD68)/snddrv_cc3.sb \
+		$(MD68)/joydrv_joy.sb $(MD68)/snddrv_cc3.sb \
 		$(MD68)/cowin.io $(MD68)/term_win40.dt \
 		$(MD68)/w.dw $(MD68)/w1.dw $(MD68)/w2.dw $(MD68)/w3.dw \
 		$(MD68)/w4.dw $(MD68)/w5.dw $(MD68)/w6.dw $(MD68)/w7.dw \
@@ -68,7 +68,7 @@ BOOTFILE68_DW_BECKER	= $(MD68)/krnp2 $(MD68)/ioman $(MD68)/init \
 		$(MD68)/rbdw.dr $(MD68)/dwio_becker.sb $(MD68)/ddx0.dd \
 		$(MD68)/rb1773.dr $(MD68)/d0_40d.dd $(MD68)/d1_40d.dd \
 		$(MD68)/scf.mn $(MD68)/vtio.dr \
-		$(MD68)/keydrv_cc3.sb $(MD68)/joydrv_joy.sb $(MD68)/snddrv_cc3.sb \
+		$(MD68)/joydrv_joy.sb $(MD68)/snddrv_cc3.sb \
 		$(MD68)/cowin.io $(MD68)/term_win40.dt \
 		$(MD68)/w.dw $(MD68)/w1.dw $(MD68)/w2.dw $(MD68)/w3.dw \
 		$(MD68)/w4.dw $(MD68)/w5.dw $(MD68)/w6.dw $(MD68)/w7.dw \
@@ -80,7 +80,7 @@ BOOTFILE63_DW	= $(MD63)/krnp2 $(MD63)/ioman $(MD63)/init \
 		$(MD63)/rbdw.dr $(MD63)/dwio.sb $(MD63)/ddx0.dd \
 		$(MD68)/rb1773.dr $(MD68)/d0_40d.dd $(MD68)/d1_40d.dd \
 		$(MD63)/scf.mn $(MD63)/vtio.dr \
-		$(MD63)/keydrv_cc3.sb $(MD63)/joydrv_joy.sb $(MD63)/snddrv_cc3.sb \
+		$(MD63)/joydrv_joy.sb $(MD63)/snddrv_cc3.sb \
 		$(MD63)/cowin.io $(MD63)/term_win40.dt \
 		$(MD63)/w.dw $(MD63)/w1.dw $(MD63)/w2.dw $(MD63)/w3.dw \
 		$(MD63)/w4.dw $(MD63)/w5.dw $(MD63)/w6.dw $(MD63)/w7.dw \
@@ -92,7 +92,7 @@ BOOTFILE63_DW_BECKER	= $(MD63)/krnp2 $(MD63)/ioman $(MD63)/init \
 		$(MD63)/rbdw.dr $(MD63)/dwio_becker.sb $(MD63)/ddx0.dd \
 		$(MD68)/rb1773.dr $(MD68)/d0_40d.dd $(MD68)/d1_40d.dd \
 		$(MD63)/scf.mn $(MD63)/vtio.dr \
-		$(MD63)/keydrv_cc3.sb $(MD63)/joydrv_joy.sb $(MD63)/snddrv_cc3.sb \
+		$(MD63)/joydrv_joy.sb $(MD63)/snddrv_cc3.sb \
 		$(MD63)/cowin.io $(MD63)/term_win40.dt \
 		$(MD63)/w.dw $(MD63)/w1.dw $(MD63)/w2.dw $(MD63)/w3.dw \
 		$(MD63)/w4.dw $(MD63)/w5.dw $(MD63)/w6.dw $(MD63)/w7.dw \

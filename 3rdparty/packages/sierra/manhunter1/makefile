@@ -30,7 +30,7 @@ OS9BOOT_80D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/rbf.mn \
 		$(MD)/rb1773.dr $(MD)/ddd0_80d.dd \
 		$(MD)/scf.mn $(MD)/vtio.dr \
-		$(MD)/keydrv_cc3.sb $(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
+		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft $(MD)/sysgo_dd
@@ -39,7 +39,7 @@ OS9BOOT_DW = $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/rbf.mn \
 		$(MD)/rbdw.dr $(MD)/dwio.sb $(MD)/ddx0.dd \
 		$(MD)/scf.mn $(MD)/vtio.dr \
-		$(MD)/keydrv_cc3.sb $(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
+		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
@@ -48,7 +48,7 @@ OS9BOOT_DW_BECKER = $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/rbf.mn \
 		$(MD)/rbdw.dr $(MD)/dwio_becker.sb $(MD)/ddx0.dd \
 		$(MD)/scf.mn $(MD)/vtio.dr \
-		$(MD)/keydrv_cc3.sb $(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
+		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd

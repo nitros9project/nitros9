@@ -31,7 +31,7 @@ OS9BOOT_40D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/rbf.mn \
 		$(MD)/rb1773.dr $(MD)/ddd0_40d.dd \
 		$(MD)/scf.mn $(MD)/vtio.dr \
-		$(MD)/keydrv_cc3.sb $(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
+		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/cogrf.io $(MD)/term_win40.dt $(MD)/w.dw $(MD)/w1.dw \
 		$(MD)/w2.dw $(MD)/w3.dw $(MD)/w4.dw $(MD)/w5.dw \
 		$(MD)/w6.dw $(MD)/w7.dw \
@@ -41,7 +41,7 @@ OS9BOOT_80D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/rbf.mn \
 		$(MD)/rb1773.dr $(MD)/ddd0_80d.dd \
 		$(MD)/scf.mn $(MD)/vtio.dr \
-		$(MD)/keydrv_cc3.sb $(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
+		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/cogrf.io $(MD)/term_win40.dt $(MD)/w.dw $(MD)/w1.dw \
 		$(MD)/w2.dw $(MD)/w3.dw $(MD)/w4.dw $(MD)/w5.dw \
 		$(MD)/w6.dw $(MD)/w7.dw \
@@ -51,7 +51,7 @@ OS9BOOT_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/rbf.mn \
 		$(MD)/rbdw.dr $(MD)/dwio.sb $(MD)/ddx0.dd \
 		$(MD)/scf.mn $(MD)/vtio.dr \
-		$(MD)/keydrv_cc3.sb $(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
+		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/cogrf.io $(MD)/term_win40.dt $(MD)/w.dw $(MD)/w1.dw \
 		$(MD)/w2.dw $(MD)/w3.dw $(MD)/w4.dw $(MD)/w5.dw \
 		$(MD)/w6.dw $(MD)/w7.dw \
@@ -61,7 +61,7 @@ OS9BOOT_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/rbf.mn \
 		$(MD)/rbdw.dr $(MD)/dwio_becker.sb $(MD)/ddx0.dd \
 		$(MD)/scf.mn $(MD)/vtio.dr \
-		$(MD)/keydrv_cc3.sb $(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
+		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/cogrf.io $(MD)/term_win40.dt $(MD)/w.dw $(MD)/w1.dw \
 		$(MD)/w2.dw $(MD)/w3.dw $(MD)/w4.dw $(MD)/w5.dw \
 		$(MD)/w6.dw $(MD)/w7.dw \

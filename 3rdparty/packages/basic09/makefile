@@ -11,7 +11,7 @@ DEFOPTS         = --preprocess -DLevel=2
 DEPENDS		= ./makefile
 
 DEFOBJS		= coco3vtio.d
-TEXTFILES	= ReadMe install6809 install6309
+TEXTFILES	= ReadMe2 install6809 install6309
 OBJS		= gfx gfx2 inkey syscall
 OBJS6809	= basic09_6809 runb_6809
 OBJS6309	= basic09_6309 runb_6309

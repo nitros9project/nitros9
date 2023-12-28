@@ -19,7 +19,7 @@ OS9BOOT68	= $(MD68)/krnp2 $(MD68)/ioman $(MD68)/init \
 		$(MD68)/rb1773.dr $(MD68)/ddd0_40d.dd \
 		$(MD68)/d0_40d.dd $(MD68)/d1_40d.dd $(MD68)/d2_40d.dd \
 		$(MD68)/scf.mn $(MD68)/vtio.dr \
-		$(MD68)/keydrv_cc3.sb $(MD68)/joydrv_joy.sb $(MD68)/snddrv_cc3.sb \
+		$(MD68)/joydrv_joy.sb $(MD68)/snddrv_cc3.sb \
 		$(MD68)/covdg.io $(MD68)/term_vdg.dt \
 		$(MD68)/sc6551.dr $(MD68)/t2_sc6551.dd \
 		$(MD68)/clock_60hz $(MD68)/clock2_soft \
