@@ -1,6 +1,6 @@
 include ../port.mak
 
-vpath %.asm kernel:$(LEVEL2)/modules:$(LEVEL1)/modules
+vpath %.asm $(LEVEL2)/coco3/modules/kernel:$(LEVEL2)/coco3/modules:$(LEVEL2)/modules:$(LEVEL1)/modules
 
 AFLAGS		+= -I$(LEVEL1)/modules
 
