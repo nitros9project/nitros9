@@ -107,7 +107,9 @@ CRtn                fcb       C$CR
 ShellPL             equ       *-ShellPrm
 
 * Default time packet
-DefTime             fcb       86,1,1,0,0,0
+* Set to 59 seconds so that at 00 seconds, the RTC (if any) can set the time.
+* If no RTC is available, then the soft clock starts at January 1 of the new year.
+DefTime             fcb       85,12,31,23,59,59
 
                     ifeq      atari+corsham+f256
                     ifeq      Level-1
