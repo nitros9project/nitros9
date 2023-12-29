@@ -5,7 +5,8 @@ vpath %.asm $(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09
 
 DEPENDS		= ./makefile $(NOSLIB)/net.o
 
-AFLAGS		+= --includedir=$(3RDPARTY)/packages/basic09
+AFLAGS		+= -I$(LEVEL1)/$(PORT)
+AFLAGS		+= -I$(3RDPARTY)/packages/basic09
 LFLAGS		+= -L $(NITROS9DIR)/lib -lnet -lcoco -lalib
 
 CMDS		= asm attr backup binex build calldbg cmp cobbler copy cputype \

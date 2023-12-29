@@ -4,7 +4,9 @@ include $(NITROS9DIR)/rules.mak
 vpath %.asm $(LEVEL2)/modules/kernel:$(LEVEL1)/modules/kernel
 
 DEPENDS		= ./makefile
-AFLAGS		+= -I$(LEVEL2)/modules/kernel -I$(LEVEL1)/modules/kernel
+AFLAGS		+= -I$(LEVEL2)/$(PORT)
+AFLAGS		+= -I$(LEVEL2)/modules/kernel
+AFLAGS      += -I$(LEVEL1)/modules/kernel
 
 KERNEL		= krn
 KERNEL_MC09     = mc09krn

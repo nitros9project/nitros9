@@ -27,8 +27,8 @@ edition             set       2
 
 * We can use a different MMU slot if we want.
 MAPSLOT             equ       MMU_SLOT_1
-IOADDR              equ       (MAPSLOT-MMU_SLOT_0)*$2000
-G.ScrStart          equ       IOADDR
+MAPADDR             equ       (MAPSLOT-MMU_SLOT_0)*$2000
+G.ScrStart          equ       MAPADDR
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -75,9 +75,9 @@ InitDisplay         pshs      u                   save important registers
                     sta       MAPSLOT             store it in the MMU slot to map it in
                     ldd       #0                  get the clear value
 x1@                 tfr       d,x                 transfer it to X
-                    stb       IOADDR,x            store at $0000 off of X
-                    stb       IOADDR+$400,x       store at $0400 off of X
-                    stb       IOADDR+$800,x       store at $0800 off of X
+                    stb       MAPADDR,x           store at $0000 off of X
+                    stb       MAPADDR+$400,x      store at $0400 off of X
+                    stb       MAPADDR+$800,x      store at $0800 off of X
                     incb                          increment the counter
                     bne       x1@                 loop until complete
 
@@ -103,10 +103,10 @@ InstallFont         leax      fontmod,pcr         point to the font module
                     tfr       y,x                 transfer Y to X
                     lda       #$C1                get the font MMU block
                     sta       MAPSLOT             store it in the MMU slot to map it in
-                    ldy       #IOADDR             get the address to write to
+                    ldy       #MAPADDR            get the address to write to
 loop@               ldd       ,x++                get two bytes of font data
                     std       ,y++                and store it
-                    cmpy      #IOADDR+2048        are we at the end?
+                    cmpy      #MAPADDR+2048       are we at the end?
                     bne       loop@               branch if not
 
 * Initialize the cursor.
@@ -146,10 +146,10 @@ loop@               ldd       ,x++                get two bytes from the source
                     bne       loop@               branch if not
                     rts                           return
 
-* Clear memory at IOADDR with the contents of D.
-clr                 ldx       #IOADDR
+* Clear memory at MAPADDR with the contents of D.
+clr                 ldx       #MAPADDR
 loop@               std       ,x++
-                    cmpx      #IOADDR+80*61
+                    cmpx      #MAPADDR+80*61
                     bne       loop@
                     rts
 
@@ -163,8 +163,7 @@ loop@               std       ,x++
 *    CC = carry set on error
 *    B  = error code
 *
-Init                stu       >D.KbdSta           store the device memory pointer
-                    leax      DefaultHandler,pcr  get the default character processing routine
+Init                leax      DefaultHandler,pcr  get the default character processing routine
                     stx       V.EscVect,u         store it in the vector
                     ldb       #$10                assume this foreground/background
                     stb       V.FBCol,u           store it in our foreground/background color variable

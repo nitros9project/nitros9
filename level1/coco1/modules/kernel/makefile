@@ -5,6 +5,8 @@ include $(NITROS9DIR)/rules.mak
 
 vpath %.asm $(LEVEL1)/modules/kernel
 
+AFLAGS		+= -I$(LEVEL1)/$(PORT)
+
 DEPENDS		= ./makefile
 
 KERNEL		= krn

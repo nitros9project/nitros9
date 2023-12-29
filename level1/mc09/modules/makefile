@@ -1,7 +1,8 @@
 include ../port.mak
 
-vpath %.asm $(LEVEL1)/modules
+vpath %.asm $(LEVEL1)/modules $(LEVEL1)/coco1/modules
 
+AFLAGS		+= -I$(LEVEL1)/$(PORT)
 AFLAGS		+= -I$(LEVEL1)/modules
 
 CLOCKSOFT       = -DRTCSoft=1

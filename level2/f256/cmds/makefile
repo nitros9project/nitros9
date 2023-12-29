@@ -5,10 +5,11 @@ vpath %.asm $(LEVEL2)/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPART
 
 DEPENDS		= ./makefile $(NOSLIB)/net.o
 
-AFLAGS      += --includedir=$(3RDPARTY)/packages/basic09
-AFLAGS      += --includedir=$(3RDPARTY)/packages/brainfuck
-AFLAGS      += --includedir=$(3RDPARTY)/packages/cpm
-AFLAGS      += --includedir=../defs
+AFLAGS      += -I$(LEVEL2)/$(PORT)
+AFLAGS      += -I$(3RDPARTY)/packages/basic09
+AFLAGS      += -I$(3RDPARTY)/packages/brainfuck
+AFLAGS      += -I$(3RDPARTY)/packages/cpm
+AFLAGS      += -I../defs
 LFLAGS		+= -L$(NITROS9DIR)/lib
 LFLAGS		+= -lf256
 LFLAGS		+= -lnet -lalib
