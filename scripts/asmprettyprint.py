@@ -1,10 +1,5 @@
+import argparse
 import sys
-
-# The widths for the componets of an assembly line
-labelWidth = 20-1
-opcodeWidth = 10-1
-operandWidth = 20-1
-commentWidth = 0
 
 # parameters
 stripWhitesSpaceAtEnd = True
@@ -63,13 +58,13 @@ def showLine(label, opcode, operand, comment, debug):
         if label == "" and opcode == "" and operand == "":
             line = comment
         else:
-            formatString = f"{label:<{labelWidth}} {opcode:<{opcodeWidth}} {operand:<{operandWidth}} {comment:<{commentWidth}}"
+            formatString = f"{label:<{args.labelWidth-1}} {opcode:<{args.opcodeWidth-1}} {operand:<{args.operandWidth-1}} {comment:<{0}}"
             line = formatString
     if stripWhitesSpaceAtEnd == True:
         line = line.rstrip()
     print(line)
 
-def processLine(l):
+def processLine(args, l):
     line = ""
     label = ""
     opcode = ""
@@ -106,14 +101,20 @@ def processLine(l):
 
     showLine(label, opcode, operand, comment, False)
 
-if len(sys.argv) < 2:
-    print("Please provide a filename as an argument.")
-    sys.exit(1)
+parser = argparse.ArgumentParser(description='Command line parser.')
 
-filename = sys.argv[1]
+parser.add_argument('filename')           # positional argument
+
+parser.add_argument("--labelWidth", type=int, help="Label width", default=20)
+
+parser.add_argument("--opcodeWidth", type=int, help="Opcode width", default=10)
+
+parser.add_argument("--operandWidth", type=int, help="Operand width", default=10)
+
+args = parser.parse_args()
 
 # Using the 'with' statement ensures that the file is properly closed after its suite finishes.
-with open(filename, 'r') as file:
+with open(args.filename, 'r') as file:
     for line in file:
-        processLine(line)
+        processLine(args, line)
 
