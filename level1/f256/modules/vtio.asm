@@ -175,14 +175,14 @@ Init                leax      DefaultHandler,pcr  get the default character proc
 * Tell the keyboard to start scanning.
 * Do this FIRST before turning off LEDs, or else keyboard fails to respond after
 * a reset. +BGP+
+*
+                    lda       #$FF                load the RESET command
+                    lbsr       SendToPS2           send it to the keyboard
+                    lda       #$AA                we expect an $AA response
+                    lbsr       ReadFromPS2         read from the keyboard
+                    
                     lda       #$F4                load the start scanning command
                     lbsr      SendToPS2           send it to the keyboard
-                    
-* Turn off all keyboard LEDs.
-                    lda       #$ED                get the PS/2 keyboard LED command
-                    lbsr      SendToPS2           send it to the PS/2
-                    clra                          clear all LEDs
-                    lbsr      SendToPS2           send it to the PS/2
                     
                     leax      ProcKeyCode,pcr     get the PS/2 key code handler routine
                     stx       V.KCVect,u          and store it as the current handler address

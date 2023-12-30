@@ -56,40 +56,10 @@ l2@                 leax      -1,x
                     deca
                     bne       l1@
 
-                    lda       #$FF                load the RESET command
-                    bsr       SendToPS2           send it to the keyboard
-                    lda       #$AA                we expect an $AA response
-                    bsr       ReadFromPS2         read from the keyboard
-                    lda       #$F4                load the start scanning command
-                    bsr       SendToPS2           send it to the keyboard
-
 * Jump to the kernel.
                     ldx       #$8000
                     ldy       #$7D00
                     jmp       $11,x               jump to the kernel
-
-* Entry: A = The byte to send to the keyboard.
-SendToPS2           sta       PS2_OUT             send the byte out to the keyboard
-                    lda       #K_WR               load the "write" bit
-                    sta       PS2_CTRL            send it to the control register
-                    clr       PS2_CTRL            then clear the bit in the control register
-                    lda       #$FA
-* Entry: A = Response to expect from the keyboard.
-* Destroys X.
-ReadFromPS2         ldx       #$0000
-                    pshs      a,x
-l@                  ldx       1,s
-                    leax      -1,x
-                    stx       1,s
-                    cmpx      #$0000
-                    beq       e@
-                    lda       KBD_IN              load a byte from the keyboard
-                    cmpa      ,s                  is it what we expect?
-                    bne       l@                  branch if not
-                    clra                          clear carry
-                    puls      a,x,pc              return
-e@                  comb
-                    puls      a,x,pc              return
 
 MMUValues
                     ifeq      FLASH-1

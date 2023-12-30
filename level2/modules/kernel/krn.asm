@@ -83,8 +83,7 @@ MName               fcs       /Krn/
                     fcc       /www.nitros9.org /
                     fcc       /www.nitros9.org /
                     fcc       /www.nitros9.org /
-                    fcc       /www.nitros9.org /
-                    fcc       /www.n/
+                    fcc       /www.nitros9.org/
                     else
                     fcc       /www.nitr/
                     endc
@@ -216,6 +215,9 @@ done@               ldx       #$0000              start clearing at this address
                     else
                     ldx       #$100               start clearing at this address
                     ldy       #$2000-$100         for this many bytes
+                    endc
+                    endc
+
                     clra                          set D
                     clrb                          to $0000
 l@                  std       ,x++                now clear memory 16 bits at a time
@@ -223,8 +225,6 @@ l@                  std       ,x++                now clear memory 16 bits at a 
                     bne       l@                  and continue until done
                     stx       <D.CCStk            set pointer to top of global memory to $2000
                     inca                          set D to $0100
-                    endc
-                    endc
 
 *>>>>>>>>>> F256 PORT
 * Use <D.Crash to store a crash routine that we can use for debugging.
@@ -561,10 +561,12 @@ L0170
                     lbsr      I.VBlock            perform module validation
                     bsr       L01D2               then mark the system map
 
+                    ifeq      f256
 * BGP - Load bootfile and link to init. We no longer try to link to init first and then
 * call F$Boot. This saves bytes.
                     os9       F$Boot              load bootfile here +BGP+
                     bcs       L01CE               error, go crash +BGP+
+                    endc
                     leax      <init,pc            point to 'Init' module name
                     bsr       link                try & link it
                     bcs       L01CE               error, go crash
