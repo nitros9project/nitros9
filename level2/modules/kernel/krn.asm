@@ -83,7 +83,8 @@ MName               fcs       /Krn/
                     fcc       /www.nitros9.org /
                     fcc       /www.nitros9.org /
                     fcc       /www.nitros9.org /
-                    fcc       /www.nitros/
+                    fcc       /www.nitros9.org /
+                    fcc       /www.n/
                     else
                     fcc       /www.nitr/
                     endc
