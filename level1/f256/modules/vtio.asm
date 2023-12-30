@@ -172,6 +172,18 @@ Init                leax      DefaultHandler,pcr  get the default character proc
                     std       V.CurRow,u          set the current row and column
                     lbsr      InitDisplay         initialize the display
 
+* Tell the keyboard to start scanning.
+* Do this FIRST before turning off LEDs, or else keyboard fails to respond after
+* a reset. +BGP+
+                    lda       #$F4                load the start scanning command
+                    lbsr      SendToPS2           send it to the keyboard
+                    
+* Turn off all keyboard LEDs.
+                    lda       #$ED                get the PS/2 keyboard LED command
+                    lbsr      SendToPS2           send it to the PS/2
+                    clra                          clear all LEDs
+                    lbsr      SendToPS2           send it to the PS/2
+                    
                     leax      ProcKeyCode,pcr     get the PS/2 key code handler routine
                     stx       V.KCVect,u          and store it as the current handler address
                     ldd       #INT_PENDING_0      get the pending interrupt pending address
@@ -182,12 +194,6 @@ Init                leax      DefaultHandler,pcr  get the default character proc
                     lda       INT_MASK_0          else get the interrupt mask byte
                     anda      #^INT_PS2_KBD       set the PS/2 keyboard interrupt
                     sta       INT_MASK_0          and save it back
-
-* Turn off all keyboard LEDs.
-                    lda       #$ED                get the PS/2 keyboard LED command
-                    lbsr      SendToPS2           send it to the PS/2
-                    clra                          clear all LEDs
-                    lbsr      SendToPS2           send it to the PS/2
 
                     clrb                          clear the carry flag
                     rts                           return to the caller
