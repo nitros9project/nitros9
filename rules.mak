@@ -92,6 +92,7 @@ LINK		= ln
 SOFTLINK	= $(LINK) -s
 ARCHIVE		= zip -D -9 -j
 MKDSKINDEX	= perl $(NITROS9DIR)/scripts/mkdskindex
+DROP_EXTRA_SPACES = sed --in-place=.tmp -e 's/  */ /g'
 
 # Directories
 3RDPARTY	= $(NITROS9DIR)/3rdparty

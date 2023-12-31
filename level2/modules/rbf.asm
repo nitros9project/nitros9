@@ -1,7 +1,7 @@
 ********************************************************************
 * RBF - Random Block File Manager
 *
-* $Id$
+* nitros9/level2/modules/rbf.asm
 *
 * Modified for 6309 Native mode by Bill Nobel, L. Curtis Boyle & Wes Gale
 *
