@@ -28,6 +28,10 @@ opcodesWithoutOperands = [
     'ifp1', 'else', 'endc'
 ]
 
+pseudoOpcodes = ['ifp1', 'ifgt', 'iflt', 'ifge', 'ifle', 'ifeq', 'ifne',
+    'else', 'endc'
+]
+
 opcodesWithOperandsThatCanHaveSpaces = [
     'ttl', 'fcc', 'fcs'
 ]
@@ -51,14 +55,14 @@ def hasLabel(l):
         result = True
     return result
 
-def showLine(label, opcode, operand, comment, debug):
+def showLine(label, opcode, operand, comment, labelWidth, opcodeWidth, operandWidth, debug):
     if debug == True:
         line = [label, opcode, operand, comment]
     else:
         if label == "" and opcode == "" and operand == "":
             line = comment
         else:
-            formatString = f"{label:<{args.labelWidth-1}} {opcode:<{args.opcodeWidth-1}} {operand:<{args.operandWidth-1}} {comment:<{0}}"
+            formatString = f"{label:<{labelWidth}} {opcode:<{opcodeWidth}} {operand:<{operandWidth}} {comment:<{0}}"
             line = formatString
     if stripWhitesSpaceAtEnd == True:
         line = line.rstrip()
@@ -70,6 +74,10 @@ def processLine(args, l):
     opcode = ""
     operand = ""
     comment = ""
+    labelWidth = args.labelWidth - 1
+    opcodeWidth = args.opcodeWidth - 1
+    operandWidth = args.operandWidth - 1
+    
     l = l.rstrip('\n')
     if isEmptyLine(l) == True:
         comment = ""
@@ -85,6 +93,12 @@ def processLine(args, l):
         # the first token will be the opcode
         if len(tokens) > startIndex:
             opcode = tokens[startIndex]
+            # if the opcode is in the pseudo-op table, indent it less and make it uppercase
+            if opcode.lower() in pseudoOpcodes:
+                opcode = opcode.upper()
+                labelWidth -= 2
+                opcodeWidth -=2
+                operandWidth -= 2
             # if there's a second token AND the first token takes an operand, the second token is an operand
             if len(tokens) > startIndex + 1 and opcode not in opcodesWithoutOperands:
                 operand = tokens[startIndex + 1]
@@ -99,7 +113,7 @@ def processLine(args, l):
                 if len(tokens) > startIndex + 1:
                     comment = l.split(None, startIndex + 1)[startIndex + 1]
 
-    showLine(label, opcode, operand, comment, False)
+    showLine(label, opcode, operand, comment, labelWidth, opcodeWidth, operandWidth, False)
 
 parser = argparse.ArgumentParser(description='Command line parser.')
 
