@@ -2904,7 +2904,7 @@ L1053               ldu       <D.Proc             get current process pointer
                     ldb       P$Signal,u          get pending signal
                     cmpb      #S$Wake             is it what we're looking for?
                     bls       L1060               yes, skip ahead
-                    cmpb      #S$Intrpt           is it a keyboard interrupt/
+                    cmpb      #S$Intrpt           is it a keyboard interrupt?
                     bls       L1067               no, return error [B]=Error code
 L1060               clra                          clear error status
 
