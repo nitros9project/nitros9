@@ -1,25 +1,21 @@
-**********************************
-
-* String Length: find length of null terminated string.
-*  note:null NOT included in count.
-
-* ENTRY: X=start of string
-
-* EXIT: D=length
-*       all other regs (except cc) preserved
-
-                    nam       Find                String Length
-                    ttl       Assembler Library Module
-
+;;; STRLEN
+;;;
+;;; Find the length of a null-terminated string.
+;;;
+;;; Entry:  X = The address of the string.
+;;;
+;;; Exit:   D = The length of the string.
+;;;
+;;; All registers except CC are preserved.
+;;;
+;;; The null byte is not included in the count.
 
                     section   .text
 
-STRLEN
-                    pshs      x
+STRLEN:             pshs      x
                     ldd       #-1                 comp for inital inc
 
-loop
-                    addd      #1                  bump count
+loop                addd      #1                  bump count
                     tst       ,x+                 end?
                     bne       loop
 

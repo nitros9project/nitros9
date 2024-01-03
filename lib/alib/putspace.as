@@ -1,22 +1,17 @@
-****************************************
-
-* Subroutine to print a space to std. out
-
-* OTHER MODULES REQUIRED: FPUTSPACE
-
-* ENTRY: none
-
-* EXIT: CC carry set if error (from I$WritLn)
-*       B  error code if any.
-
-                    nam       Output              One Space Char. to Std. Out
-                    ttl       Assembler Library Module
-
+;;; FPUTSPACE
+;;;
+;;; Prints a space to the standard output.
+;;;
+;;; Other modules needed: FPUTSPACE
+;;;
+;;; Entry:  None.
+;;;
+;;; Error:  B = A non-zero error code.
+;;;        CC = Carry flag set to indicate error.
 
                     section   .text
 
-PUTSPACE
-                    pshs      a
+PUTSPACE:           pshs      a
                     lda       #1
                     lbsr      FPUTSPACE
                     puls      a,pc

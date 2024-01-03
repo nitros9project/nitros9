@@ -1,25 +1,18 @@
-******************************************
-*
-* ASCII String to binary byte conversion
-
-* OTHER MODULES NEEDED: IS_TERMIN
-
-* ENTRY: X = start of string of binary digits (001101)
-*            terminated by space, comma, CR or null.
-
-*  EXIT: D = value
-*        CC carry set if error (string too long, not binary digits)
-*        Y = terminator or error pos.
-
-
-                    nam       ASCII               String to Binary Conversion
-                    ttl       Assembler Library Module
-
+;;; ASC_BIN
+;;;
+;;; ASCII string to binary byte conversion.
+;;;
+;;; OTHER MODULES NEEDED: IS_TERMIN
+;;;
+;;; Entry:  X = Start of string of binary digits (001101) terminated by space, comma, CR or null.
+;;;
+;;; Exit:   D = The binary value.
+;;;         Y = The terminator or error position.
+;;;        CC = Carry set if error (string too long, not binary digits).
 
                     section   .text
 
-ASC_BIN
-                    clra                          msb/lsb=0
+ASC_BIN:            clra                          msb/lsb=0
                     clrb
                     pshs      a,b,x
 
@@ -39,22 +32,17 @@ ascbn1
                     bls       ascbn1              length ok, loop
                     bra       error
 
-ascbn2
-                    clrb                          = no errors
+ascbn2              clrb                          = no errors
                     tsta                          len = 0?
                     bne       done                no, skip
 
 * error -- too long or null
 
-error
-                    clr       ,S                  force data to 0
+error               clr       ,S                  force data to 0
                     clr       1,S
                     orcc      #1                  set carry flag
 
-done
-                    leay      -1,x                end of string/error char
+done                leay      -1,x                end of string/error char
                     puls      A,B,X,PC            get data; restore & return
 
                     endsect
-
-

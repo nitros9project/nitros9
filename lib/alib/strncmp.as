@@ -1,37 +1,28 @@
-*************************************
-
-* STRNCMP: compare 2 null terminated strings
-*          maximum number of bytes to compare in D
-*
-* OTHER MODULES NEEDED: COMPARE
-
-* ENTRY: X=start of 1st string
-*        Y=start of 2nd string
-*        D=number of bytes to compare
-*        CASEMTCH:(a global variable in COMPARE)
-*                 0=match for case
-*                -1=ignore case differences
-
-* EXIT: CC zero set  if equal (beq)
-*          carry + zero clear if 1>2 (bhi)
-*          carry set if 1<2 (blo)
-
-                    nam       Compare             2 Strings
-                    ttl       Assembler Library Module
-
+;;; STRNCMP
+;;;
+;;; Compare two null-terminated strings up to a maximum length.
+;;;
+;;; Other modules needed: COMPARE
+;;;
+;;; Entry:  D = The number of characters to compare.
+;;;         X = The address of the first string.
+;;;         Y = The address of the second string.
+;;;
+;;; Exit:  CC = Zero set if the strings are equal.
+;;;        CC = Carry set and Zero clear if the first string is greater than the second.
+;;;        CC = Carry set and Zero set if the first string is less than the second.
+;;;
+;;; Set CASEMTCH = 0 for non-case comparison, or -1 for case comparison.
 
                     section   .text
 
-
-STRNCMP
-                    pshs      d,x,y,u
+STRNCMP:            pshs      d,x,y,u
 
                     tfr       y,u                 U=string2
                     tfr       d,y                 use Y for counter
                     leay      1,y                 comp for initial dec.
 
-loop
-                    leay      -1,y                count down
+loop                leay      -1,y                count down
                     beq       exit                no miss-matches
                     lda       ,x+                 get 2 to compare
                     ldb       ,u+
@@ -41,7 +32,6 @@ loop
 * exit with flags set. Do a beq, bhi or blo to correct
 * routines....
 
-exit
-                    puls      d,x,y,u,pc
+exit                puls      d,x,y,u,pc
 
                     endsect

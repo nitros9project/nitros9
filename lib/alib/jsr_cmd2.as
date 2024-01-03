@@ -1,38 +1,33 @@
-***************************************
-
-* Subroutine to jsr to subroutine from 2 character command table
-
-* OTHER MODULES NEEDED: none
-
-* ENTRY: D=2 char command
-*        X=start of jump table
-
-* EXIT:  CC carry set if entry not found
-*        all other regs can be modified by subs
-*        D and X always modified
-
-* Note format of table: each entry is four bytes
-*                       0..1-match characters (command)
-*                       2..3-offset to routine
-
-* It is the user's job to set commands to proper case for matching...
-
-* end of table=NULL
-
-* sample table:  fcc /A1/
-*                fdb routineA-*
-*                fcc /B1/
-*                fdb routineB-*
-*                fcb 0
-
-
-                    nam       Jsr                 to 2 char Command
-                    ttl       Assembler Library Module
+;;; JSR_CMD
+;;;
+;;; Jump to a subroutine from a two character command table.
+;;;
+;;; Entry:  D = Two character command.
+;;;         X = The start of the jump table.
+;;;
+;;; Exit:  CC = Carry set if entry isn't found.
+;;;
+;;; Each table entry is composed of four bytes:
+;;;     - Byte 0: The first command character.
+;;;     - Byte 1: The second command character.
+;;;     - Byte 2: The upper 8 bits of the address of the routine.
+;;;     - Byte 3: The lower 8 bits of the address of the routine.
+;;;
+;;; Mark the end of the table with a null byte.
+;;;
+;;; The commands are case significant.
+;;;
+;;; Here's an example:
+;;;
+;;;    fcc /A1/
+;;;    fdb routineA-*
+;;;    fcc /B1/
+;;;    fdb routineB-*
+;;;    fcb 0
 
                     section   .text
 
-JSR_CMD2
-                    tst       ,x                  end of table?
+JSR_CMD2:           tst       ,x                  end of table?
                     beq       jsrerr
 
                     cmpd      ,x++                found match?
@@ -43,14 +38,12 @@ JSR_CMD2
 
 * no match found, return with carry set
 
-jsrerr
-                    coma                          set error flag
+jsrerr              coma                          set error flag
                     rts
 
 * command found, do call and return
 
-docmd
-                    ldd       ,x                  get offset to routine
+docmd               ldd       ,x                  get offset to routine
                     jsr       d,x
                     andcc     #%11111110          clear carry
                     rts

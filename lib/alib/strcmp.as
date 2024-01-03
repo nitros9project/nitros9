@@ -1,30 +1,23 @@
-**************************************
-
-* STRCMP: compare two null terminated strings.
-
-* NOTE: This routine first finds the length of both
-*       strings and passes the length of the longer
-*       one to strncmp.
-
-* OTHER MODULES NEEDED: STRNCMP, STRLEN
-
-
-* ENTRY: X=start of 1st string
-*        Y=start of 2nd string
-
-* EXIT: CC zero set  if equal (beq)
-*          carry + zero clear if 1>2 (bhi)
-*          carry set if 1<2 (blo)
-
-
-                    nam       Compare             Strings
-                    ttl       Assembler Library Module
-
+;;; STRCMP
+;;;
+;;; Compare two null-terminated strings.
+;;;
+;;; Other modules needed: STRNCMP, STRLEN
+;;;
+;;; Entry:  X = The address of the first string.
+;;;         Y = The address of the second string.
+;;;
+;;; Exit:  CC = Zero set if the strings are equal.
+;;;        CC = Carry set and Zero clear if the first string is greater than the second.
+;;;        CC = Carry set and Zero set if the first string is less than the second.
+;;;
+;;; All registers except CC are preserved.
+;;;
+;;; This routine first finds the length of both strings and passes the length of the longer one to STRNCMP.
 
                     section   .text
 
-STRCMP
-                    pshs      d
+STRCMP:             pshs      d
                     lbsr      STRLEN              find len of str1
                     pshs      d
                     exg       y,x                 find len of str2
@@ -34,8 +27,7 @@ STRCMP
                     bhi       ok
                     ldd       ,s                  get bigger value
 
-ok
-                    leas      2,s                 clean stack
+ok                  leas      2,s                 clean stack
                     lbsr      STRNCMP             go compare
                     puls      d,pc                go home
 
