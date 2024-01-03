@@ -1,21 +1,15 @@
-***************************************
-
-* Print decimal number to standard out.
-
-* ENTRY: D=value to print
-
-* EXIT: CC carry set if error (from I$WritLn)
-*       B error code, if any
-
-
-                    nam       Print               # as Decimal String to Std Out
-                    ttl       Assembler Library Module
-
+;;; PRINT_DEC
+;;;
+;;; Print a decimal number to the standard output.
+;;;
+;;; Entry:  D = The value to print.
+;;;
+;;; Error:  B = A non-zero error code.
+;;;        CC = Carry flag set to indicate error.
 
                     section   .text
 
-PRINT_DEC
-                    pshs      a,x
+PRINT_DEC:          pshs      a,x
                     leas      -8,s                buffer
                     tfr       s,x
                     lbsr      BIN_DEC             convert to decimal

@@ -1,33 +1,27 @@
-***************************************
-
-* Subroutine to convert binary number to roman numerals
-
-* OTHER MODULES NEEDED: none
-
-* ENTRY: D=number to convert
-*        X=start of buffer (20 bytes)
-
-
-* EXIT:  all registers preserved
-
-* Note: the buffer should be set to 20 bytes. This permits the
-* longest possible number to be converted without a buffer overflow.
-* This routine trunates any numbers >8191 to ensure that no number
-* is longer than 19 characters (plus null terminator).
-* The number 7888 converts to a 19 character string. To permit larger
-* number conversions one could delete the anda #%00011111 statement.
+;;; BIN_HEX
+;;;
+;;; Binary to Roman number string conversion.
+;;;
+;;; Entry:  D = The binary value to convert.
+;;;         X = The address of the 20-byte buffer that holds the roman numerals.
+;;;
+;;; Exit:  None.
+;;;
+;;; Note: the buffer should be set to 20 bytes. This permits the
+;;; longest possible number to be converted without a buffer overflow.
+;;; This routine truncates any numbers >8191 to ensure that no number
+;;; is longer than 19 characters (plus the null terminator).
+;;; The number 7888 converts to a 19 character string. To permit larger
+;;; number conversions one could delete the anda #%00011111 statement.
+;;;
+;;; All registers (except CC) are preserved.
 
 * This routine has been converted from the BASIC09 sample in
 * the Basic09 Reference Manual (Microware) page a-3.
 
-                    nam       Binary              to Roman numberal conversion
-                    ttl       Assembler Library Module
-
-
                     section   .text
 
-
-BIN_ROM
+BIN_ROM:
                     pshs      d,x,y,u
 
                     leau      nums,pcr            number conversion table

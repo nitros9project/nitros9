@@ -1,13 +1,11 @@
 ************************************
 *
 * This file contains the names for the various window
-* commands avail for CoCo3 Level 2 OS9.
+* commands available for OS-9 Level 2 on the CoCo 3.
 
 * History: File created 88/04/24 - Bob van der Poel
 
 * Note that all these constants begin with a "W"
-
-                    ttl       Window Definitions
 
                     section   .text
 
@@ -87,7 +85,4 @@ WBlnkOff            equ       $1f25               blinking off
 WInsLn              equ       $1f30               insert line at cursor
 WDelLn              equ       $1f31               delete current line
 
-
                     endsect
-
-

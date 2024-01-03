@@ -1,28 +1,20 @@
-***************************************
-
-* Edit/input line.
-
-* This routine does not use cursor positioning,
-* instead it uses backspacing, etc. This means it
-* can be used without a GOTOXY module, however it
-* is a bit slow, especially when lines get longer than
-* one line. If the buffer contains data, you will be
-* able to edit; to enter new data pass a buffer of
-* blanks.
-
-* OTHER MODULES NEEDED: STRLEN,IS_PRINT, FPUTS, FPUTC, FGETC, MEMMOVE
-
-* ENTRY: X=null terminated string to edit
-*        A=input path (normally 0)
-*        B=output path (normally 1)
-
-* EXIT: B=key used to end editing
-*       CC carry set if error (GetStt, Setstt, Write, Read, etc.)
-*         B=error code, if any
-
-                    nam       Edit/Input          Line
-                    ttl       Assembler Library Module
-
+;;; LINEDIT
+;;;
+;;; A line editor routine.
+;;;
+;;; Other modules needed: STRLEN,IS_PRINT, FPUTS, FPUTC, FGETC, MEMMOVE
+;;;
+;;; Entry:  A = The input path.
+;;;         B = The output path.
+;;;         X = The null terminated string to edit.
+;;;
+;;; Exit:   B = The key that ended the editing.
+;;;
+;;; This routine does not use cursor positioning. It uses backspacing, so you can use
+;;; it without requiring special GOTO XY commands.
+;;; It is slow, especially when lines get longer than one line.
+;;; If the buffer contains data, you will be able to edit.
+;;; To enter new data pass a buffer of blanks.
 
                     section   .text
 
@@ -46,8 +38,7 @@ strptr              equ       vsize+2             x on stack
 inpath              equ       vsize+0             a on stack
 outpath             equ       inpath+1            b on stack
 
-LINEDIT
-                    pshs      a,b,x,y,u
+LINEDIT:            pshs      a,b,x,y,u
                     leas      -vsize,s            variable storage area
                     tfr       s,u                 point U to var. area
                     lbsr      STRLEN
@@ -72,13 +63,11 @@ LINEDIT
                     clr       qut,u               ignore quit
                     clr       bso,u               backspace overstrike
                     os9       I$SetStt
-err1
-                    lbcs      exit
+err1                lbcs      exit
 
 * parse string and change all controls to space
 
-fixloop
-                    lda       ,x+
+fixloop             lda       ,x+
                     beq       fixx
                     lbsr      IS_PRINT            is it printable?
                     beq       fixloop             yes, test next
@@ -95,8 +84,7 @@ fixx
                     lbsr      FPUTS               print string
                     bra       shiftl1             go to line start
 
-loop
-                    pshs      a                   save outpath
+loop                pshs      a                   save outpath
                     lda       inpath,u
                     lbsr      FGETC               get one char
                     tfr       a,b                 keypress to B
@@ -115,8 +103,7 @@ loop
 
 * Delete char at cursor
 
-delete
-                    cmpb      #$10                delete char?
+delete              cmpb      #$10                delete char?
                     bne       inspace             no, try next
                     pshs      d,x,y
                     ldd       maxsize,u           max leng
@@ -129,26 +116,21 @@ delete
                     sta       -1,x
                     tfr       y,x
 
-del1
-                    puls      d                   get outpath and char
+del1                puls      d                   get outpath and char
                     lbsr      FPUTS               reprint string
                     ldy       maxsize,u
 
-del2
-                    cmpy      2,s                 back up to current cur pos
+del2                cmpy      2,s                 back up to current cur pos
                     beq       del3
                     lbsr      bs
                     bra       del2
 
-del3
-                    puls      x,y                 clean up and loop
+del3                puls      x,y                 clean up and loop
 
-del4
-                    bra       loop
+del4                bra       loop
 
 
-inspace
-                    cmpb      #$11                insert space?
+inspace             cmpb      #$11                insert space?
                     bne       shiftl              no, try next
                     pshs      d,x,y
                     ldd       maxsize,u
@@ -162,23 +144,19 @@ inspace
 
 * move cursor to start of line
 
-shiftl
-                    cmpb      #$18                shift left?
+shiftl              cmpb      #$18                shift left?
                     bne       shiftr              no, try next
 
-shiftl1
-                    bsr       startln             backup to start of line
+shiftl1             bsr       startln             backup to start of line
                     ldx       strptr,u            reset x to start of line
                     bra       asciix              go loop
 
 * move cursor to end of line
 
-shiftr
-                    cmpb      #$19                shift right?
+shiftr              cmpb      #$19                shift right?
                     bne       right
 
-shiftr1
-                    cmpy      maxsize,u
+shiftr1             cmpy      maxsize,u
                     bhs       del4                back to loop
                     ldb       ,x+                 move to end by printing string
                     lbsr      FPUTC
@@ -187,16 +165,14 @@ shiftr1
 
 * move 1 pos right
 
-right
-                    cmpb      #$09
+right               cmpb      #$09
                     bne       maybasci
                     ldb       ,x                  get current char and insert it
                     lbeq      loop                at end, don't move
 
 * insert ascii char into buffer
 
-maybasci
-                    tstb                          insert ascii into buffer
+maybasci            tstb                          insert ascii into buffer
                     lbmi      out                 not ascii
                     cmpb      #$20
                     lblo      out
@@ -206,19 +182,15 @@ maybasci
                     lbsr      FPUTC
                     bra       asciix              to main loop
 
-ascii
-                    stb       ,x+
+ascii               stb       ,x+
                     lbsr      FPUTC
                     leay      1,y
-asciix
-                    lbra      loop
+asciix              lbra      loop
 
-out
-                    pshs      b                   save keypress
+out                 pshs      b                   save keypress
                     bsr       startln
                     ldx       strptr,u
                     lbsr      FPUTS
-
 
                     leax      dupPD,u             get original pd
                     lda       outpath,u
@@ -227,30 +199,24 @@ out
                     puls      a                   get keypress
                     bcc       out1
                     tfr       b,a                 set error to A
-out1
-                    sta       outpath,s           set B to error/keypress
+out1                sta       outpath,s           set B to error/keypress
 
 * when exiting CARRY will be set if error. B will contain
 * either the keypress or the error code.
 
-exit
-                    leas      vsize,s
+exit                leas      vsize,s
                     puls      a,b,x,y,u,pc
 
 * move cursor to start of line
 
-startln
-                    sty       -2,s
+startln             sty       -2,s
                     beq       startlnx            exit if at start
-startln1
-                    bsr       bs
+startln1            bsr       bs
                     bne       startln1
 
-startlnx
-                    rts
+startlnx            rts
 
-bs
-                    pshs      b
+bs                  pshs      b
                     ldb       bse,u
                     lbsr      FPUTC
                     leay      -1,y

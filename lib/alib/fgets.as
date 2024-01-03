@@ -1,30 +1,19 @@
-***************************************
-
-* Subroutine to input a null terminated string.
-
-* OTHER MODULES NEEDED: none
-
-* ENTRY: A=path
-*        X=buffer for string
-*        Y=max buffer size (leave room for null!!)
-
-* EXIT:  CC carry set if error (from I$ReadLn)
-*        B  error code if any
-
-
-* NOTE: The string entered must end with an end-of-record char
-*       (usually a $0D), the null is appended for ease in string
-*       handling.
-
-
-                    nam       Input               Null Terminated String
-                    ttl       Assembler Library Module
-
-
                     section   .text
 
-FGETS_NOCR
-                    pshs      d,x
+;;; FGETC_NOCR
+;;;
+;;; Read a string from a device and removes the carriage return from the input.
+;;;
+;;; Entry:  A = The path to read the string from.
+;;;         X = The address of the buffer that holds the string.
+;;;         Y = The maximum buffer size minus 1 (for the null character).
+;;;
+;;; Error:  B = A non-zero error code.
+;;;        CC = Carry flag set to indicate error.
+;;;
+;;; The string entered must end with an end-of-record char (usually a $0D). The null is appended for ease in string handling.
+
+FGETS_NOCR:         pshs      d,x
                     bsr       FGETS
                     bcs       bye
                     tfr       y,d
@@ -32,16 +21,27 @@ FGETS_NOCR
                     clr       d,x
 bye                 puls      d,x,pc
 
-FGETS
-                    pshs      a,x
+;;; FGETC
+;;;
+;;; Read a string from a device.
+;;;
+;;; Entry:  A = The path to read the string from.
+;;;         X = The address of the buffer that holds the string.
+;;;         Y = The maximum buffer size minus 1 (for the null character).
+;;;
+;;; Error:  B = A non-zero error code.
+;;;        CC = Carry flag set to indicate error.
+;;;
+;;; The string entered must end with an end-of-record char (usually a $0D). The null is appended for ease in string handling.
+
+FGETS:              pshs      a,x
                     os9       I$ReadLn            get line
                     bcs       exit                return error code
                     tfr       y,d
                     clr       d,x                 add null
                     clrb                          no error..
 
-exit
-                    puls      a,x,pc
+exit                puls      a,x,pc
 
                     endsect
 

@@ -1,24 +1,17 @@
-**************************************
-
-* COMPARE: Subroutine for string comparsion routines.
-*          Compares chars in A/B, will convert both to
-*          uppercase first if CASEMTCH is set (negative)
-
-
-* OTHER MODULES NEEDED: TO_UPPER
-
-* ENTRY: A/B=characters to compare
-*        CASEMTCH=0 (or positive value) if A<>a
-*                -1 (or neg value) if A=a
-
-
-* EXIT: CC zero set if characters match.
-*       All other registers preserved.
-
-
-                    nam       Compare             2 Chars
-                    ttl       Assembler Library Module
-
+;;; COMPARE
+;;;
+;;; Compares two characters.
+;;;
+;;; Other modules needed: TO_UPPER
+;;;
+;;; Entry:  A = The first comparison value.
+;;;         B = The second comparison value.
+;;;
+;;; Exit:  CC = Zero bit set if the characters match.
+;;;
+;;; Set CASEMTCH = 0 for non-case comparison, or -1 for case comparison.
+;;;
+;;; All registers (except CC) are preserved.
 
                     section   .bss
 
@@ -28,16 +21,13 @@ CASEMTCH            rmb       1
 
                     section   .text
 
-
-COMPARE
-                    pshs      d
+COMPARE:            pshs      d
                     tst       CASEMTCH            need to covert to upper?
                     bpl       no
                     lbsr      TO_UPPER
                     exg       a,b
                     lbsr      TO_UPPER
-no
-                    pshs      a                   somewhere to compare it
+no                  pshs      a                   somewhere to compare it
                     cmpb      ,s+                 do compare, set zero
                     puls      d,pc                go home
 

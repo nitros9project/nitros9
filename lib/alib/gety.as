@@ -1,24 +1,17 @@
-***************************************
-
-* Subroutine to input a word in Y
-
-* OTHER MODULES NEEDED: FGETY
-
-* ENTRY: none
-
-
-* EXIT:  Y  value
-*        CC carry set if error (from I$Read)
-*        B  error code if any
-
-                    nam       Input               Word for stdin
-                    ttl       Assembler Library Module
-
+;;; GETY
+;;;
+;;; Read a single word from the standard input
+;;;
+;;; Entry:  None
+;;;
+;;; Exit:   Y = The read value.
+;;;
+;;; Error:  B = A non-zero error code.
+;;;        CC = Carry flag set to indicate error.
 
                     section   .text
 
-GETY
-                    pshs      a
+GETY:               pshs      a
                     clra                          std in
                     lbsr      FGETY
                     puls      a,pc

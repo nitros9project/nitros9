@@ -1,24 +1,19 @@
-***************************************
-
-* Subroutine to input one character from std in.
-
-* OTHER MODULES NEEDED: FGETC
-
-* ENTRY: none
-
-
-* EXIT:  A  character
-*        CC carry set if error (from I$Read)
-*        B  error code if any
-
-                    nam       Input               Single Character
-                    ttl       Assembler Library Module
-
+;;; GETC
+;;;
+;;; Read a character from the standard input.
+;;
+;;; Other modules needed: FGETC
+;;;
+;;; Entry:  None.
+;;;
+;;; Exit:   A = The character read from the standard input.
+;;;
+;;; Error:  B = A non-zero error code.
+;;;        CC = Carry flag set to indicate error.
 
                     section   .text
 
-GETC
-                    clra                          std in
+GETC:               clra                          std in
                     lbra      FGETC
 
                     endsect

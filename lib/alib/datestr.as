@@ -1,26 +1,23 @@
-*****************************************
-
-* Convert a date to a string. This can be used
-* for converting the system time as well as
-* modify/create dates from files. The date must
-* be 6 bytes -- null pad file dates.
-
-
-* OTHER MODULES NEEDED: BIN_ASC
-
-* ENTRY: X=binary date
-*        Y=buffer for ascii
-
-* EXIT: all registers preserved (except cc)
-
-                    nam       Get                 ASCII Date
-                    ttl       Assembler Library Module
-
+;;; DATESTR
+;;;
+;;; Convert a date to a string.
+;;;
+;;; Other modules needed: BIN_ASC
+;;;
+;;; Entry:  X = The address of the 6-byte binary date/time.
+;;;         Y = The buffer that holds the ASCII representation.
+;;;
+;;; Exit:   None.
+;;;
+;;; All registers (except CC) are preserved.
+;;;
+;;;  Use this routine to convert time from the system and files.
+;;;
+;;;  The date must be 6 bytes.
 
                     section   .text
 
-DATESTR
-                    pshs      d,x,y,u             save registers
+DATESTR:            pshs      d,x,y,u             save registers
                     leau      delims,pcr          point to delimiters
 
 * BGP - 2023/12/19: made Y2K compliant and print a 4 digit year
@@ -34,8 +31,7 @@ DATESTR
                     puls      u,x                 recover registers
                     leay      4,y                 advance Y past 4 characters
                     bra       loop2               get the delimiter and go
-loop
-                    pshs      u
+loop                pshs      u
                     ldu       8,s
                     bsr       get1                convert a byte
                     puls      u
@@ -44,8 +40,7 @@ loop2               lda       ,u+                 get next delimiter
                     bne       loop                not end yet
                     puls      d,x,y,u,pc
 
-get1
-                    ldb       ,x+                 get next byte to convert
+get1                ldb       ,x+                 get next byte to convert
 get11               clra                          only doing one byte value
                     pshs      x                   save ptr to date packet
                     leas      -8,s                buffer for ascii number
@@ -57,13 +52,11 @@ get11               clra                          only doing one byte value
                     tfr       a,b
                     lda       #'0                 leading "0"
 
-get2
-                    std       ,y++                to buffer
+get2                std       ,y++                to buffer
                     leas      8,s
                     puls      x,pc
 
-delims
-                    fcc       '// ::'
+delims              fcc       '// ::'
                     fcb       0
 
                     endsect

@@ -1,20 +1,15 @@
-***************************************
+;;; RND
+;;;
+;;; Generate a random number.
+;;;
+;;; Entry:  D = The maximum value of the random number.
+;;;
+;;; Exit:   D = The random number.
 
 * Subroutine to calc. a random number
 * Based on routine by L.A. Middaugh
 *                     The Rainbow Jan/85 p. 277
-
 * Value truncated so that it is =>0 and <=passed value in D.
-
-* OTHER MODULES NEEDED: none
-
-* ENTRY: D=max value of number to be returned
-* EXIT:  D = value
-
-
-                    nam       Rnd
-                    ttl       Assembler Library Module
-
 
                     section   .bss
 
@@ -24,14 +19,11 @@ SEED                rmb       4
 
                     section   .text
 
-RND
-                    pshs      d,x,u
+RND:                pshs      d,x,u
 
-rnd0
-                    ldx       #SEED               point to seed
+rnd0                ldx       #SEED               point to seed
                     ldb       #8                  number of shifts
-loop
-                    lda       3,x                 exclusive or bit 28 with 31
+loop                lda       3,x                 exclusive or bit 28 with 31
                     rora
                     rora
                     rora
@@ -50,27 +42,24 @@ loop
                     inc       3,x
                     bra       rnd0
 
-trunc
-                    cmpd      ,s                  in range specified?
+trunc               cmpd      ,s                  in range specified?
                     bls       exit                yes
                     subd      ,s
                     bra       trunc
 
-exit
-                    leas      2,s                 forget original D
+exit                leas      2,s                 forget original D
                     puls      x,u,pc
 
 
-**********************************************
-*
-* Subroutine to seed the random number buffer
-* with the current system date
+;;; SEEDRND
+;;;
+;;; Seed the random number generator.
+;;;
+;;; Entry:  None.
+;;;
+;;; Exit:   None.
 
-* ENTRY: none
-* EXIT:  none
-
-SEEDRND
-                    pshs      d,x
+SEEDRND:            pshs      d,x
                     leas      -6,s                make room for date
                     tfr       s,x                 point X to buffer
                     os9       F$Time
