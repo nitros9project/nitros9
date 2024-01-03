@@ -1,7 +1,21 @@
 ********************************************************************
 * RBF - Random Block File Manager
 *
-* $Id$
+* nitros9/level2/modules/rbf.asm
+*
+* 2024-01-02 by strick:
+* This version of level2/modules/rbf.asm has been altered slightly
+* to minimize diffs with the level1 version of rbf.asm.
+*
+* So far, we've been careful that level2 rbf assembles to exactly
+* the same binary as before, both for the M6809 and the H6309 case.
+*
+* As you edit either level1 or level2 rbf.asm, please minimize
+* diffs between the two, in case we decide to do the work to
+* unite them.  If possible, edit them in parallel with something
+* like vimdiff.
+*
+* ******** LEVEL TWO HISTORY ********
 *
 * Modified for 6309 Native mode by Bill Nobel, L. Curtis Boyle & Wes Gale
 *
@@ -94,6 +108,8 @@
 * Moved SS.VarSect code down to fix a problem where code to call driver
 * expected PD.Exten to be allocated when it wasn't, and that caused
 * a write to PE.Prior to go into the system globals area (address $0016).
+*
+* ------------------------------------------------------------------
 
                     nam       RBF
                     ttl       Random Block File Manager
@@ -123,6 +139,10 @@ name                fcs       /RBF/
 
 *L0012    fcb   DRVMEM
 
+****************************
+* All routines are entered with
+* (Y) = Path descriptor pointer
+* (U) = Caller's register stack pointer
 
 ****************************
 *
@@ -166,9 +186,9 @@ Create
                     ifne      H6309
                     aim       #^DIR.,R$B,u
                     else
-                    lda       R$B,u               force directory bit off
-                    anda      #^DIR.
-                    sta       R$B,u
+                    lda       R$B,u               get perms
+                    anda      #^DIR.              mask off dir bit
+                    sta       R$B,u               save perms back
                     endc
                     lbsr      FindFile            try & find it in directory
                     bcs       Creat47             branch if doesn't exist
@@ -184,7 +204,6 @@ Creat47             cmpb      #E$PNNF             not found?
                     pshs      x                   preserve filename pointer
                     ldx       PD.RGS,y            get register stack pointer
                     stu       R$X,x               save updated pathname pointer
-* These 4 did have < in front, made 3 byte cmnds but some are 2!
                     ldb       PD.SBP,y            get physical sector # of segment list
                     ldx       PD.SBP+1,y
                     lda       PD.SSZ,y            get size of segment list in bytes
@@ -288,7 +307,7 @@ CreatD9             clra                          move length to Y
                     ldx       <D.Proc             get process pointer
                     ldd       P$User,x            get user #
                     std       FD.OWN,u            save creation user
-                    lbsr      L02D1               place date & time into file descriptor
+                    lbsr      SetMTime            place date & time into file descriptor
                     ldd       FD.DAT,u            get date last modified
                     std       FD.Creat,u          save it as creation date (since we just made it)
                     ldb       FD.DAT+2,u
@@ -421,7 +440,7 @@ Open1BB             lda       PD.MOD,y            get file mode
                     bcs       RtnMemry            no, return no permission error
                     bita      #WRITE.             open for write?
                     beq       Open1CC             no, skip ahead
-                    lbsr      L02D1               update last date modified to current
+                    lbsr      SetMTime            update last date modified to current
                     lbsr      L11FD               update file descriptor on disk
 Open1CC             puls      y                   restore path descriptor pointer
 
@@ -433,6 +452,7 @@ Open1CE
                     clra
                     clrb
                     endc
+* the following two lines are swapped, between level1 and level2.
                     std       PD.CP+2,y           set seek pointer to start of file
                     std       PD.CP,y
                     std       PD.SBL,y            set segment start
@@ -590,7 +610,7 @@ Rt100Mem            pshs      b,cc                preserve error status
 RtMem2CF            puls      pc,b,cc             restore error status & return
 
 * Place date & time into file descriptor
-L02D1               lbsr      RdFlDscr            read in file descriptor sector
+SetMTime            lbsr      RdFlDscr            read in file descriptor sector
                     ldu       PD.BUF,y            get pointer to it
                     lda       FD.LNK,u            get link count
                     ldx       <D.Proc             get current process pointer
@@ -623,11 +643,11 @@ L02D1               lbsr      RdFlDscr            read in file descriptor sector
 *
 ChgDir              pshs      y                   preserve path descriptor pointer
                     ifne      H6309
-                    oim       #$80,PD.MOD,y       ensure the directory bit is set
+                    oim       #DIR.,PD.MOD,y      ensure the directory bit is set
                     else
-                    lda       PD.MOD,y
-                    ora       #$80
-                    sta       PD.MOD,y
+                    lda       PD.MOD,y            get mode from caller,
+                    ora       #DIR.               add the directory bit,
+                    sta       PD.MOD,y            and save back to pd.
                     endc
                     lbsr      Open                go open the directory
                     bcs       Clos2A0             exit on error
@@ -1747,7 +1767,8 @@ L0918               pshs      d
                     bne       L0940
                     bra       L0928               fewer clock cycles
 L0926               pshs      d
-L0928               stx       $06,s
+L0928
+                    stx       $06,s
                     lda       PD.FD,y
                     sta       PD.DFD,y
                     ldd       PD.FD+1,y
@@ -1894,6 +1915,7 @@ L0A0C               leas      $02,s               purge attributes from stack
 L0A11               ldb       #E$Share            get shareable file error
                     bra       L0A0C               return
 
+* Check directory bits.
 L0A15               ldb       1,s                 get directory bits
                     orb       FD.ATT,u            mask in with current
                     bitb      #SHARE.             shareable bit set?
@@ -1906,7 +1928,8 @@ L0A15               ldb       1,s                 get directory bits
 L0A28               puls      pc,x,b,a
 
 
-L0A2A               pshs      u,y,x
+L0A2A
+                    pshs      u,y,x
                     ifne      H6309
                     clrd
                     else
@@ -2219,6 +2242,7 @@ L0C43               ldd       PE.HiLck,x
 L0C53               comb
 L0C54               puls      pc,u,y,b,a
 
+* "wake up the process"
 L0C56               pshs      y,x,b,a
                     ldx       <D.Proc
                     lda       P$IOQN,x            get I/O queue next ptr
@@ -2485,6 +2509,7 @@ L0DF5               equ       *
                     lsra
                     rorb
                     endc
+
 L0DF7               lsr       $0A,s
                     ror       $0B,s
                     bcc       L0DF5               loop, and continue
@@ -2650,6 +2675,7 @@ L0EFE               clra                          clear the carry
                     lda       PD.MOD,y            access mode
                     bita      #DIR.               directory?
                     bne       L0F6F               yes (bit set), exit immediately
+
                     ifne      H6309
                     ldq       PD.SIZ,y            grab size of the file
                     stq       PD.CP,y             make it the current position
@@ -2659,6 +2685,7 @@ L0EFE               clra                          clear the carry
                     ldd       PD.SIZ+2,y
                     std       PD.CP+2,y
                     endc
+
                     ldd       #$FFFF
                     tfr       d,x
                     lbsr      L0B1B
@@ -2877,15 +2904,17 @@ L1053               ldu       <D.Proc             get current process pointer
                     ldb       P$Signal,u          get pending signal
                     cmpb      #S$Wake             is it what we're looking for?
                     bls       L1060               yes, skip ahead
-                    cmpb      #S$Intrpt           is it a keyboard interrupt/
+                    cmpb      #S$Intrpt           is it a keyboard interrupt?
                     bls       L1067               no, return error [B]=Error code
 L1060               clra                          clear error status
+
                     ifne      H6309
                     tim       #Condem,P$State,u   is process dead?
                     else
                     lda       P$State,u
                     bita      #Condem
                     endc
+
                     beq       L1068               no, skip ahead
 L1067               coma                          flag error
 L1068               rts                           return
@@ -3019,6 +3048,7 @@ RdFlDscr
                     ifne      H6309
                     oim       #FDBUF,PD.SMF,y
                     else
+* TODO(strick): Level1 uses B, Level2 uses A, next 3 instructions.
                     lda       PD.SMF,y
                     ora       #FDBUF
                     sta       PD.SMF,y
