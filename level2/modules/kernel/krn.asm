@@ -37,27 +37,30 @@
 *   without delays.
 * Moved F$CpyMem from KrnP2, which allows shortcut bsr calls to F$Move,etc. Much,
 *   much faster. (6809)
-
+*
 *  20r00   2023/10/17  Boisy Gene Pitre
 * Ported to the Foenix F256.
+*
+*  20r01   2024/01/05  E. J. Jaquay
+* Correct overlapping ifne f256 and ifne H6308 conditionals near line 163
 
                     nam       krn
                     ttl       NitrOS-9 Level 2 Kernel
 
                     ifp1
                     use       defsfile
-                    endc
+                  ENDC
 
 * defines for customizations
 Revision            set       00                  module revision
 Edition             set       20                  module Edition
 
 * The absolute address of where Kernel starts in memory.
-                    ifne      f256
+                  IFNE        f256
 Where               equ       $EE00               F256
-                    else
+                  ELSE
 Where               equ       $F000               CoCo 3
-                    endc
+                  ENDC
 
                     mod       eom,MName,Systm,ReEnt+Revision,entry,0
 
@@ -65,7 +68,7 @@ MName               fcs       /Krn/
                     fcb       Edition
 
 * FILL - all unused bytes are now here
-                    ifne      H6309
+                  IFNE        H6309
                     fcc       /www.nitros9.org /
                     fcc       /www.nitros9.org /
                     fcc       /www.nitros9.org /
@@ -74,8 +77,8 @@ MName               fcs       /Krn/
                     fcc       /www.nitros9.org /
                     fcc       /www.nitros9.org /
                     fcc       /www/
-                    else
-                    ifne      f256
+                  ELSE
+                  IFNE        f256
                     fcc       /www.nitros9.org /
                     fcc       /www.nitros9.org /
                     fcc       /www.nitros9.org /
@@ -84,10 +87,10 @@ MName               fcs       /Krn/
                     fcc       /www.nitros9.org /
                     fcc       /www.nitros9.org /
                     fcc       /www.nitros9.org/
-                    else
+                  ELSE
                     fcc       /www.nitr/
-                    endc
-                    endc
+                  ENDC
+                  ENDC
 
 * The dispatch table.
 * The kernel copies this to low RAM starting at D.Clock.
@@ -107,18 +110,18 @@ LowSub              equ       $0160               start of low memory subroutine
 SubStrt             equ       *
 * D.Flip0 - switch to system task 0.
 R.Flip0             equ       *
-                    ifne      H6309
+                  IFNE        H6309
                     aim       #$FE,<D.TINIT       map type 0
                     lde       <D.TINIT            another 2 bytes saved if GrfDrv does: tfr cc,e
                     ste       >DAT.Task           and we can use A here, instead of E
-                    else
+                  ELSE
                     pshs      a                   save off A
                     lda       <D.TINIT            get the value from the shadow register
                     anda      #$FE                force the task register to 0
                     sta       <D.TINIT            save it back to the shadow register
                     sta       >DAT.Task           and to the DAT hardware
                     puls      a                   recover A
-                    endc
+                  ENDC
                     clr       <D.SSTskN           clear the system task number
                     tfr       x,s                 transfer X to the stack
                     tfr       a,cc                and A to CC
@@ -129,7 +132,7 @@ SubSiz              equ       *-SubStrt
 Vectors             jmp       [<-(D.SWI3-D.XSWI3),x] (-$10) (Jmp to 2ndary vector)
 
 *>>>>>>>>>> F256 PORT
-                    ifne      f256
+                  IFNE        f256
 * F256 crash code dumps the registers at the shadow RAM page in $FDXX and
 * then loops forever
 CrashCode
@@ -152,14 +155,14 @@ loop@               ldd       ,x++                get two source bytes
                     blt       loop@               branch if not
 * Branch forever.
 forever@            bra       forever@            simply branch forever
-                    endc
+                  ENDC
 *<<<<<<<<<< F256 PORT
 
 * The Kernel entry point.
 entry               equ       *
 * Initialize the system block (the lowest 8KB of memory).
 *>>>>>>>>>> F256 PORT
-                    ifne      f256
+                  IFNE        f256
 * F256-specific initialization to get the F256 to a sane state.
                     orcc      #IntMasks           mask interrupts
                     stx       $2000               stash pointer to bootfile in memory
@@ -204,20 +207,20 @@ l@                  std       ,x++                store the vector value in the 
 done@               ldx       #$0000              start clearing at this address
                     ldy       #$2000              for this many bytes
 *<<<<<<<<<< F256 PORT
-                    else
+                  ELSE
 * REL has cleared page 0 already, so start at address $100.
-                    ifne      H6309
+                  IFNE        H6309
                     ldq       #$01001f00          start address to clear & # bytes to clear
                     leay      <entry+2,pc         point to a 0
                     tfm       y,d+
                     std       <D.CCStk            set pointer to top of global memory to $2000
                     lda       #$01                set task user table to $0100
-                    else
+                  ELSE
                     ldx       #$100               start clearing at this address
                     ldy       #$2000-$100         for this many bytes
-                    endc
-                    endc
-
+                  ENDC
+                  ENDC
+                  IFEQ        H6309
                     clra                          set D
                     clrb                          to $0000
 l@                  std       ,x++                now clear memory 16 bits at a time
@@ -225,10 +228,11 @@ l@                  std       ,x++                now clear memory 16 bits at a 
                     bne       l@                  and continue until done
                     stx       <D.CCStk            set pointer to top of global memory to $2000
                     inca                          set D to $0100
+                  ENDC
 
 *>>>>>>>>>> F256 PORT
 * Use <D.Crash to store a crash routine that we can use for debugging.
-                    ifne      f256
+                  IFNE        f256
                     pshs      b                   save B onto the stack
                     ldb       #$7E                get the JMP instruction op-code
                     stb       <D.Crash            and save it at D.Crash
@@ -238,7 +242,7 @@ l@                  std       ,x++                now clear memory 16 bits at a 
                     ldb       #$39                put RTS instruction
                     stb       <D.BtBug            in D.BtBug since we don't use it
                     puls      b                   recover B from the stack
-                    endc
+                  ENDC
 *<<<<<<<<<< F256 PORT
 
 * Set up system variables in DP
@@ -293,48 +297,48 @@ l@                  std       ,x++                now clear memory 16 bits at a 
                     stb       <D.CRC              set the CRC checking flag to off
 
 *>>>>>>>>>> F256 PORT
-                    ifne      f256
+                  IFNE        f256
                     ldx       $2000               get pointer to bootfile in memory stashed earlier
                     stx       <D.BtPtr            save it in globals
                     ldx       $2002               get bootfile size stashed earlier
                     stx       <D.BtSz             save it in globals
-                    endc
+                  ENDC
 *<<<<<<<<<< F256 PORT
 
 * Initialize the interrupt vector tables, and move pointer data down to page 0.
 *>>>>>>>>>> F256 PORT
-                    ifne      f256
+                  IFNE        f256
                     leay      >DisTable,pcr       point to the table of absolute vector addresses
-                    else
+                  ELSE
 *<<<<<<<<<< F256 PORT
                     leay      <DisTable,pcr       point to the table of absolute vector addresses
-                    endc
+                  ENDC
                     ldx       #D.Clock            and get the address to put it in memory
-                    ifne      H6309
+                  IFNE        H6309
                     ldf       #DisSize            get the size of the table; E=0 from TFM, above
                     tfm       y+,x+               move it over
-                    else
+                  ELSE
                     ldb       #DisSize            get the size of the table
 l@                  lda       ,y+                 load a byte from the source
                     sta       ,x+                 store a byte to the destination
                     decb                          bump up the counter
                     bne       l@                  loop if we're not done
-                    endc
+                  ENDC
 
 * Initialize D.Flip0 routine in low memory by copying the lump of code down from R.Flip0.
 * ASSUME: Y is left pointing to R.Flip0 by the previous copy loop.
                     ldu       #LowSub             somewhere in block 0 that's never modified
                     stu       <D.Flip0            switch to system task 0
-                    ifne      H6309
+                  IFNE        H6309
                     ldf       #SubSiz             get the code size to copy
                     tfm       y+,u+               then copy it over
-                    else
+                  ELSE
                     ldb       #SubSiz             get the code size to copy
 l@                  lda       ,y+                 load a byte from the source
                     sta       ,u+                 store a byte to the destination
                     decb                          bump up the countercounter
                     bne       l@                  loop if not done
-                    endc
+                  ENDC
 
 * Initialize secondary interrupt vectors to all point to vectors for now.
 * ASSUME: Y is left pointing to vectors by the previous copy loop.
@@ -363,7 +367,7 @@ l@                  stu       ,x++                set all IRQ vectors to go to v
                     ifeq      f256
                     lda       #'K                 debug: signal that we are in Kernel
                     jsr       <D.BtBug            ---
-                    endc
+                  ENDC
                     leax      >S.Flip1,pc         get the "flip 1" entry point
                     stx       <D.Flip1            and store it in the "flip 1" vector
 * Setup system calls.
@@ -375,14 +379,14 @@ l@                  stu       ,x++                set all IRQ vectors to go to v
 * These overlap because it is quicker than trying to strip the high byte from X.
                     stx       ,u                  save it as the first process in table
                     stx       1,u                 save it as the second as well
-                    ifne      H6309
+                  IFNE        H6309
                     oim       #$01,P$ID,x         set process ID to 1 (inited to 0)
                     oim       #SysState,P$State,x set to system state (inited to 0)
-                    else
+                  ELSE
                     ldd       #$01*256+SysState   get the PID and system state flags
                     sta       P$ID,x              set the PID
                     stb       P$State,x           set state to system
-                    endc
+                  ENDC
                     clra                          A = 0
                     sta       <D.SysTsk           set the system task as task #0
                     sta       P$Task,x            and in the system process descriptor
@@ -391,13 +395,13 @@ l@                  stu       ,x++                set all IRQ vectors to go to v
                     sta       P$Age,x             and the age
                     leax      <P$DATImg,x         point to the DAT image
                     stx       <D.SysDAT           save it as a pointer in page 0
-                    ifne      H6309
+                  IFNE        H6309
 * actually, since block 0 is tfm'd to be zero, we can skip the next 2 lines
                     clrd                          D = 0
-                    else
+                  ELSE
                     clra                          A = 0
                     clrb                          B = 0
-                    endc
+                  ENDC
                     std       ,x++                initialize the first block to 0 (for this DP)
 
 ********************************************************************
@@ -405,13 +409,13 @@ l@                  stu       ,x++                set all IRQ vectors to go to v
 * Dynamic Address Translator (DAT) mapping registers are in use.
 *>>>>>>>>>> F256 PORT
 * Dat.BlCt-ROMCount-RAMCount = 8 - 1 = 7
-                    ifne      f256
+                  IFNE        f256
                     lda       #$07                initialize all rest of the blocks to be free
-                    else
+                  ELSE
 *<<<<<<<<<< F256 PORT
 * Dat.BlCt-ROMCount-RAMCount = 8 - 1 - 1 = 6
                     lda       #$06                initialize the rest of the blocks to be free
-                    endc
+                  ENDC
                     ldu       #DAT.Free           load the free marker
 l@                  stu       ,x++                store it
                     deca                          bump up the counter
@@ -422,7 +426,7 @@ l@                  stu       ,x++                store it
                     ifeq      f256
                     ldu       #KrnBlk             get the block where the kernel resides
                     stu       ,x                  and save it in the last 8K slot
-                    endc
+                  ENDC
 
                     ldx       <D.Tasks            point to the task user table
                     inc       ,x                  mark the 1st entry as used (system)
@@ -451,7 +455,7 @@ L0104               inc       ,x+                 mark it as used
                     bne       L0104               no, go back till done
 
 *>>>>>>>>>> F256 PORT
-                    ifne      f256
+                  IFNE        f256
 * We already know we have 512K of RAM, so we won't go through a memory
 * sizing check.
                     ldx       <D.BlkMap           get the pointer to 8KB block map
@@ -488,7 +492,7 @@ l@                  sta       b,x                 store the flag in the appropri
                     bne       l@                  branch if more
                     ldx       <D.BtPtr            get start address of the bootfile in memory
                     ldd       <D.BtSz             get MSB of bootfile size
-                    else
+                  ELSE
 *<<<<<<<<<< F256 PORT
 ********************************************************************
 * Determine how many 8KB blocks of physical memory are available and
@@ -501,7 +505,7 @@ l@                  sta       b,x                 store the flag in the appropri
                     ldx       <D.BlkMap           get the pointer to 8KB block map
                     inc       <KrnBlk,x           mark the block holding kernel as used
 
-                    ifne      H6309
+                  IFNE        H6309
                     ldq       #$00080100          E=Marker, D=Block # to check
 L0111               asld                          get next block #
                     stb       >DAT.Regs+5         map block into block 6 of my task
@@ -510,7 +514,7 @@ L0111               asld                          get next block #
                     bne       L0111               no, keep going till ghost is found
                     stb       <D.MemSz            save # of 8KB memory blocks that exist
                     addr      x,d                 add number of blocks to block map start
-                    else
+                  ELSE
                     ldd       #$0008              load the initial value
 L0111               aslb                          B <= 1 (hi bit goes into carry, 0 goes into low bit)
                     rola                          A <= 1 (carry goes into low bit, hi bit goes into carry)
@@ -524,7 +528,7 @@ L0111               aslb                          B <= 1 (hi bit goes into carry
                     stb       <D.MemSz            else we have our memory size now
                     pshs      x                   save X
                     addd      ,s++                add X into D and recover the stack
-                    endc
+                  ENDC
                     std       <D.BlkMap+2         save the newly computed memory block map end pointer
 
 ********************************************************************
@@ -555,7 +559,7 @@ l@                  sta       ,x+                 mark them all
 L0170
                     ldx       #Bt.Start           start address of the boot track in memory
                     lda       #18                 size of the boot track is $1800
-                    endc
+                  ENDC
 
 * Verify the modules in the boot area and update/build a module index.
                     lbsr      I.VBlock            perform module validation
@@ -566,7 +570,7 @@ L0170
 * call F$Boot. This saves bytes.
                     os9       F$Boot              load bootfile here +BGP+
                     bcs       L01CE               error, go crash +BGP+
-                    endc
+                  ENDC
                     leax      <init,pc            point to 'Init' module name
                     bsr       link                try & link it
                     bcs       L01CE               error, go crash
@@ -588,7 +592,7 @@ ShowI
                     ifeq      f256
                     lda       #'i                 debug: signal that we found the init module
                     jsr       <D.BtBug            perform the action
-                    endc
+                  ENDC
 
 L01C1               leax      <krnp2,pc           point to krnp2's name
                     bsr       link                try to link it
@@ -609,12 +613,12 @@ L01CE               jmp       <D.Crash            obviously can't do it, crash m
 
 * Update the system memory map to reserve the area the kernel uses.
 L01D2               ldx       <D.SysMem           get the system memory map pointer
-                    ifne      f256
+                  IFNE        f256
                     lda       #NotRAM             get the "not RAM" flag
                     ldb       <D.BtPtr            and the boot pointer MSB
-                    else
+                  ELSE
                     ldd       #NotRAM*256+(Bt.Start/256) B = MSB of start of the boot area
-                    endc
+                  ENDC
                     abx                           point to Bt.Start - start of the boot area
                     comb                          we have $FF-$ED pages to mark as "RAM in use"
                     sta       b,x                 mark I/O as not RAM
@@ -731,23 +735,23 @@ L028E               ldu       <D.SysSvc           get the system call service ve
                     stu       <D.XSWI2            set the cross-SWI2 vector
                     ldu       <D.SysIRQ           get the interrupt service vector
                     stu       <D.XIRQ             set the cross-IRQ vector
-                    ifne      H6309
+                  IFNE        H6309
                     oim       #SysState,P$State,x mark the process as in system state
-                    else
+                  ELSE
                     lda       P$State,x           get the process' state
                     ora       #SysState           set the system state flag
                     sta       P$State,x           store it back in the process descriptor
-                    endc
+                  ENDC
 * Copy the register stack to the process descriptor.
                     sts       P$SP,x              save the stack pointer
                     leas      (P$Stack-R$Size),x  point S to the register stack destination
-                    ifne      H6309
+                  IFNE        H6309
                     leau      R$Size-1,s          point to the last byte of the destination register stack
                     leay      -1,y                point to the caller's register stack in $FEE1
                     ldw       #R$Size             get size of the register stack
                     tfm       y-,u-               perform the transfer
                     leau      ,s                  needed because the TFM is u-, not -u (post, not pre)
-                    else
+                  ELSE
 * Note! R$Size MUST BE an EVEN number of bytes for this to work!
                     leau      R$Size,s            point to the last byte of the destination register stack
                     lda       #R$Size/2           get the number of words to copy in A
@@ -755,7 +759,7 @@ l@                  ldx       ,--y                get the source bytes
                     stx       ,--u                save them in the destination
                     deca                          decrement the counter
                     bne       l@                  branch until done
-                    endc
+                  ENDC
                     andcc     #^IntMasks          unmask interrupts
 * B = the function code already from calling process: DON'T USE IT!
                     ldx       R$PC,u              get where the program counter was from the process
@@ -764,21 +768,21 @@ l@                  ldx       ,--y                get the source bytes
 * Execute the system call.
                     ldy       <D.UsrDis           get the user dispatch table pointer
                     lbsr      L033B               go execute the op-code
-                    ifne      H6309
+                  IFNE        H6309
                     aim       #^IntMasks,R$CC,u   unmask interrupts in the caller's CC
-                    else
+                  ELSE
                     lda       R$CC,u              get the caller's CC
                     anda      #^IntMasks          unmask interrupts
                     sta       R$CC,u              and save it back
-                    endc
+                  ENDC
                     ldx       <D.Proc             get the current process descriptor
-                    ifne      H6309
+                  IFNE        H6309
                     aim       #^(SysState+TimOut),P$State,x turn off the system state and timeout flags
-                    else
+                  ELSE
                     lda       P$State,x           get the process state
                     anda      #^(SysState+TimOut) turn off the system state and timeout flags
                     sta       P$State,x           and save it back
-                    endc
+                  ENDC
 
 * Check for image change now, which lets stuff like F$MapBlk and F$ClrBlk
 * do the short-circuit thing, too. Adds about 20 cycles to each system call.
@@ -793,7 +797,7 @@ DoFull              bsr       L02DA               move the stack frame back to u
 
 * add ldu P$SP,x, etc...
 AllClr              equ       *
-                    ifne      H6309
+                  IFNE        H6309
                     inc       <D.QCnt             increment the flag
                     aim       #$1F,<D.QCnt
                     beq       DoFull              every 32 system calls, do the full check
@@ -801,7 +805,7 @@ AllClr              equ       *
                     ldy       #Where+SWIStack     and the stack at top of memory
                     orcc      #IntMasks           mask interrupts
                     tfm       u+,y+               move the stack to the top of memory
-                    else
+                  ELSE
                     lda       <D.QCnt             get the flag
                     inca                          increment it
                     anda      #$1F                clear these bits
@@ -816,7 +820,7 @@ l@                  lda       ,u+                 get the source byte
                     sta       ,y+                 save it at the destination
                     decb                          decrement the counter
                     bne       l@                  branch if not done
-                    endc
+                  ENDC
                     lbra      BackTo1             return to the user
 
 * Copy the register stack from user to system.
@@ -850,16 +854,16 @@ L02E9               leau      a,u                 point to the block number wher
                     ldb       3,u                 get a second just in case of overlap
                     orcc      #IntMasks           shutdown interrupts while we do this
                     std       >DAT.Regs+5         map in the blocks
-                    ifne      H6309
+                  IFNE        H6309
                     ldw       #R$Size             get the size of register stack
                     tfm       x+,y+               copy it
-                    else
+                  ELSE
                     ldb       #R$Size/2           get the size of the register stack
 l@                  ldu       ,x++                get the source bytes
                     stu       ,y++                and save them in the destination
                     decb                          decrement the counter
                     bne       l@                  branch if not done
-                    endc
+                  ENDC
                     ldx       <D.SysDAT           get the system DAT pointer
                     lda       $0B,x               get the first block we took out
                     ldb       $0D,x               and the second
@@ -903,15 +907,15 @@ L0355               tfr       cc,a                move CC to A for a stack updat
                     bcc       L035B               go update it if no error from call
                     stb       R$B,u               save the error code to caller's B
 L035B               ldb       R$CC,u              get the caller's CC, R$CC = $00
-                    ifne      H6309
+                  IFNE        H6309
                     andd      #$2FD0              [A]=H,N,Z,V,C [B]=E,F,I
                     orr       b,a                 merge them together
-                    else
+                  ELSE
                     anda      #$2F                [A]=H,N,Z,V,C
                     andb      #$D0                [B]=E,F,I
                     pshs      b                   save B on the stack
                     ora       ,s+                 OR A with it
-                    endc
+                  ENDC
                     sta       R$CC,u              store it in the caller's CC, R$CC = $00
                     rts                           return
 
@@ -1031,13 +1035,13 @@ S.SysIRQ
 
 FastIRQ             jsr       [>D.SvcIRQ]         call the orutine (normally Clock calling D.Poll)
 DoneIRQ             bcc       L0E28               no error on IRQ, so exit
-                    ifne      H6309
+                  IFNE        H6309
                     oim       #IntMasks,0,s       setup RTI to shut interrupts off again
-                    else
+                  ELSE
                     lda       ,s                  get the CC on the stack
                     ora       #IntMasks           mask interrupts
                     sta       ,s                  and store it back
-                    endc
+                  ENDC
 L0E28               rti                           return
 
 * Return from a system call.
@@ -1058,44 +1062,44 @@ Fst2                leas      ,u                  put stack ptr into U
 * Entry: X = The Process descriptor pointer.
 *        U = The stack pointer.
 L0E4C               equ       *
-                    ifne      H6309
+                  IFNE        H6309
                     oim       #$01,<D.TINIT       switch the shadow register to task 1
                     lda       <D.TINIT            get the shadow register
-                    else
+                  ELSE
                     lda       <D.TINIT            get the shadow register
                     ora       #$01                set it to task 1
                     sta       <D.TINIT            save it back
-                    endc
+                  ENDC
                     sta       >DAT.Task           save it to the DAT
                     leas      ,y                  point to the new stack
                     tstb                          is the stack at SWISTACK?
                     bne       MyRTI               no, we're doing a system-state rti
-                    ifne      H6309
+                  IFNE        H6309
                     ldf       #R$Size             E=0 from call to L0E8D before
                     ldu       #Where+SWIStack     point to the stack
                     tfm       u+,y+               move the stack from the top of memory to user memory
-                    else
+                  ELSE
                     ldb       #R$Size/2           get the number of bytes to move
                     ldu       #Where+SWIStack     point to the stack
 l@                  ldx       ,u++                get the bytes
                     stx       ,y++                and store them in the destination
                     decb                          decrement the counter
                     bne       l@                  branch if not done
-                    endc
+                  ENDC
 MyRTI               rti                           return from IRQ
 
 
 * Execute routine in task 1 pointed to by U.
 * This comes from user requested SWI vectors.
 L0E5E               equ       *
-                    ifne      H6309
+                  IFNE        H6309
                     oim       #$01,<D.TINIT       switch the shadow register to task 1
                     ldb       <D.TINIT            get the shadow register
-                    else
+                  ELSE
                     ldb       <D.TINIT            get the shadow register
                     orb       #$01                set it to task 1
                     stb       <D.TINIT            save it back
-                    endc
+                  ENDC
                     stb       >DAT.Task           save it to the DAT
                     jmp       ,u                  jump to the routine
 
@@ -1103,14 +1107,14 @@ L0E5E               equ       *
 *  by <D.Flip1). All registers are already preserved on stack for the RTI.
 S.Flip1             ldb       #2                  get the tsk image entry number x2 for Grfdrv (task 1)
                     bsr       L0E8D               copy over the DAT image
-                    ifne      H6309
+                  IFNE        H6309
                     oim       #$01,<D.TINIT       switch the shadow register to task 1
                     lda       <D.TINIT            get a copy of the shadow register
-                    else
+                  ELSE
                     lda       <D.TINIT            get a copy of the shadow register
                     ora       #$01                force task register to 1
                     sta       <D.TINIT            save it back
-                    endc
+                  ENDC
                     sta       >DAT.Task           save it to the DAT
                     inc       <D.SSTskN           increment the system state task number
                     rti                           return
@@ -1120,16 +1124,16 @@ L0E8D               cmpb      <D.Task1N           are we going back to the same 
                     beq       L0EA3               without the DAT image changing?
                     stb       <D.Task1N           no, save current task in map type 1
 *>>>>>>>>>> F256 PORT
-                    ifne      f256
+                  IFNE        f256
                     lda       MMU_MEM_CTRL        get the memory control register
                     anda      #~EDIT_LUT          turn off all EDIT_LUT bits
                     ora       #EDIT_LUT_1         and OR with EDIT_LUT_1
                     sta       MMU_MEM_CTRL        save it back to the memory control register
                     ldx       #DAT.Regs           get the MMU start register for the process
 *<<<<<<<<<< F256 PORT
-                    else
+                  ELSE
                     ldx       #DAT.Regs+8         get the MMU start register for process
-                    endc
+                  ENDC
                     ldu       <D.TskIPt           get the task image pointer table
                     ldu       b,u                 and the address of the DAT image
 * COME HERE FROM FALLTSK
@@ -1137,37 +1141,37 @@ L0E8D               cmpb      <D.Task1N           are we going back to the same 
 * X = address of 1st DAT MMU register to update
 * U = address of DAT image to update into MMU
 L0E93               leau      1,u                 point to the actual MMU block
-                    ifne      H6309
+                  IFNE        H6309
                     lde       #4                  get the number of banks/2 for the task
-                    else
+                  ELSE
                     lda       #4                  get the number of banks/2 for the task
                     pshs      a                   save A
-                    endc
+                  ENDC
 L0E9B               lda       ,u++                get a bank
                     ldb       ,u++                and next one
                     std       ,x++                save it to MMU
-                    ifne      H6309
+                  IFNE        H6309
                     dece                          done?
-                    else
+                  ELSE
                     dec       ,s                  done?
-                    endc
+                  ENDC
                     bne       L0E9B               no, keep going
                     ifeq      H6309
 * 6809 - 10 cyc down to 8
 *                   leas      1,s                 eat temporary stack
                     puls      a,pc                eat temporary stack and return
-                    endc
+                  ENDC
 *>>>>>>>>>> F256 PORT
-                    ifne      f256
+                  IFNE        f256
                     clr       MMU_MEM_CTRL        clear the DAT control flags
-                    endc
+                  ENDC
 *<<<<<<<<<< F256 PORT
 L0EA3               rts                           return
 
 *>>>>>>>>>> F256 PORT
-                    ifne      f256
+                  IFNE        f256
 CrashDump           fill      255,32
-                    endc
+                  ENDC
 *<<<<<<<<<< F256 PORT
 
 * Execute FIRQ vector (called from $FEF4)
@@ -1181,20 +1185,20 @@ IRQVCT              orcc      #IntMasks           disable interrupts
 * Execute interrupt vector, B=DP Vector offset
 L0EB8               clra                          (faster than CLR >$xxxx)
                     sta       >DAT.Task           force to task 0 (system state)
-                    ifne      H6309
+                  IFNE        H6309
                     tfr       0,dp                setup the DP
-                    else
+                  ELSE
                     tfr       a,dp                ASSUME: A=0 from earlier
-                    endc
+                  ENDC
 MapGrf              equ       *                   come here from elsewhere, too
-                    ifne      H6309
+                  IFNE        H6309
                     aim       #$FE,<D.TINIT       switch the shadow register to system state
                     lda       <D.TINIT            set the DAT again just in case timer is used
-                    else
+                  ELSE
                     lda       <D.TINIT            get the shadow register
                     anda      #$FE                clear the task 0 bit
                     sta       <D.TINIT            and save it back
-                    endc
+                  ENDC
 MapT0               sta       >DAT.Task           come here from elsewhere, too
                     jmp       [,x]                execute it
 
@@ -1217,11 +1221,11 @@ SWICall             ldb       [R$PC,s]            get the op-code of the system 
 *         clr   >DAT.Task       go to map type 1
                     clra                          clear A
                     sta       >DAT.Task           and save it in the DAT
-                    ifne      H6309
+                  IFNE        H6309
                     tfr       0,dp                set the direct page to 0
-                    else
+                  ELSE
                     tfr       a,dp                set the direct page to 0 (assume A = 0)
-                    endc
+                  ENDC
 
 * These lines add a total of 81 addition cycles to each SWI(2,3) call,
 * and 36 bytes+12 for R$Size in the constant page at the constant page.
@@ -1246,10 +1250,10 @@ SWICall             ldb       [R$PC,s]            get the op-code of the system 
 * a byte less, a cycle more than ldy #$FEED-R$Size, or ldy #$F000+SWIStack
                     leay      <SWIStack,pc        where to put the register stack: to $DF in the constant page
                     tfr       s,u                 get a copy of where the stack is
-                    ifne      H6309
+                  IFNE        H6309
                     ldw       #R$Size             get the size of the stack
                     tfm       u+,y+               move the stack to the top of memory
-                    else
+                  ELSE
                     pshs      x                   save X
                     lda       #R$Size/2           move stack to top of memory (A is reset in L0EB8, no need to preserve)
 l@                  ldx       ,u++                get the bytes
@@ -1257,7 +1261,7 @@ l@                  ldx       ,u++                get the bytes
                     deca                          decrement the counter
                     bne       l@                  branch if not done
                     puls      x                   restore X
-                    endc
+                  ENDC
                     bra       L0EB8               go from map type 1 to map type 0
 
 * Execute SWI vector (called from $FEFA)
@@ -1277,15 +1281,15 @@ eom                 equ       *
 * The kernel uses this register stack area to save the caller's registers in
 * the constant page because it doesn't get "switched out" no matter the
 * contents of the MMU registers.
-                    ifne      f256
+                  IFNE        f256
                     fdb       Where+CrashCode
-                    endc
+                  ENDC
 
 SWIStack
                     fcc       /REGISTER STACK/    same # bytes as R$Size for 6809
-                    ifne      H6309
+                  IFNE        H6309
                     fcc       /63/                if 6309, add two more spaces
-                    endc
+                  ENDC
 
                     fcb       $55                 D.ErrRst
 
