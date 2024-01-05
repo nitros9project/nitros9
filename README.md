@@ -69,7 +69,7 @@ Instead of this:
 do this:
 
 ```
-     clra        set the path to standard input`
+     clra        set the path to standard input
 ```      
 
 ## Keep comments in lowercase and don't use punctuation
@@ -103,4 +103,22 @@ do this:
 ```
      pshs  d,x,y,u      save the registers on the stack
      leax  ,u           load the path descriptor pointer in X
+```
+
+## Ensure an empty line is at the end of a source file
+
+Adding an empty line to the end of a source file ensures that some programs that parse
+the input do not abandon any important information on the last line.
+
+Instead of this:
+
+```
+     rts
+```
+
+do this:
+
+```
+     rts
+
 ```
