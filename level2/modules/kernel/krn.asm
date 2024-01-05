@@ -37,9 +37,12 @@
 *   without delays.
 * Moved F$CpyMem from KrnP2, which allows shortcut bsr calls to F$Move,etc. Much,
 *   much faster. (6809)
-
+*
 *  20r00   2023/10/17  Boisy Gene Pitre
 * Ported to the Foenix F256.
+*
+*  20r01   2024/01/05  E. J. Jaquay
+* Correct overlapping ifne f256 and ifne H6308 conditionals near line 163
 
                     nam       krn
                     ttl       NitrOS-9 Level 2 Kernel
@@ -203,6 +206,13 @@ l@                  std       ,x++                store the vector value in the 
                     bra       l@                  and do again
 done@               ldx       #$0000              start clearing at this address
                     ldy       #$2000              for this many bytes
+                    clra                          set D
+                    clrb                          to $0000
+l@                  std       ,x++                now clear memory 16 bits at a time
+                    leay      -2,y                decrement the counter
+                    bne       l@                  and continue until done
+                    stx       <D.CCStk            set pointer to top of global memory to $2000
+                    inca                          set D to $0100
 *<<<<<<<<<< F256 PORT
                     else
 * REL has cleared page 0 already, so start at address $100.
@@ -215,9 +225,6 @@ done@               ldx       #$0000              start clearing at this address
                     else
                     ldx       #$100               start clearing at this address
                     ldy       #$2000-$100         for this many bytes
-                    endc
-                    endc
-
                     clra                          set D
                     clrb                          to $0000
 l@                  std       ,x++                now clear memory 16 bits at a time
@@ -225,6 +232,8 @@ l@                  std       ,x++                now clear memory 16 bits at a 
                     bne       l@                  and continue until done
                     stx       <D.CCStk            set pointer to top of global memory to $2000
                     inca                          set D to $0100
+                    endc
+                    endc
 
 *>>>>>>>>>> F256 PORT
 * Use <D.Crash to store a crash routine that we can use for debugging.
