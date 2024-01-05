@@ -72,7 +72,7 @@ do this:
      clra        set the path to standard input
 ```      
 
-## Keep comments in lowercase and don't use punctuation
+## Write comments in lowercase and don't use punctuation
 
 Comments may or may not be complete sentences; as such, dispense with the formalism of capitalization and punctuation.
 
@@ -89,7 +89,7 @@ do this:
 ```      
 ## Use full words
 
-Avoid abbreviations to increase the readability.
+Avoid abbreviations. Spelling out words increases the readability of the comments.
 
 Instead of this:
 
