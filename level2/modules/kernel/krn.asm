@@ -162,6 +162,7 @@ forever@            bra       forever@            simply branch forever
 entry               equ       *
 * Initialize the system block (the lowest 8KB of memory).
 *>>>>>>>>>> F256 PORT
+====if f256
                     ifne      f256
 * F256-specific initialization to get the F256 to a sane state.
                     orcc      #IntMasks           mask interrupts
@@ -214,14 +215,17 @@ l@                  std       ,x++                now clear memory 16 bits at a 
                     stx       <D.CCStk            set pointer to top of global memory to $2000
                     inca                          set D to $0100
 *<<<<<<<<<< F256 PORT
+*====else
                     else
 * REL has cleared page 0 already, so start at address $100.
+*========if H6309
                     ifne      H6309
                     ldq       #$01001f00          start address to clear & # bytes to clear
                     leay      <entry+2,pc         point to a 0
                     tfm       y,d+
                     std       <D.CCStk            set pointer to top of global memory to $2000
                     lda       #$01                set task user table to $0100
+*========else
                     else
                     ldx       #$100               start clearing at this address
                     ldy       #$2000-$100         for this many bytes
@@ -232,7 +236,9 @@ l@                  std       ,x++                now clear memory 16 bits at a 
                     bne       l@                  and continue until done
                     stx       <D.CCStk            set pointer to top of global memory to $2000
                     inca                          set D to $0100
+*========end if H6309
                     endc
+*====end if f256
                     endc
 
 *>>>>>>>>>> F256 PORT
