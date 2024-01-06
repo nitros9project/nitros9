@@ -220,6 +220,7 @@ done@               ldx       #$0000              start clearing at this address
                     ldy       #$2000-$100         for this many bytes
                   ENDC
                   ENDC
+
                   IFEQ        H6309
                     clra                          set D
                     clrb                          to $0000
