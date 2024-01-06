@@ -47,3 +47,78 @@ Also, assembly source code is formatted to the following specifications:
 - Comments start at column 51
 
 Put [this file](https://github.com/nitros9project/nitros9/blob/main/scripts/pre-commit) in your .git/hooks folder to ensure that any source code you submit is automatically formatted.
+
+# Coding Style Guidelines
+
+Here are some general coding guidelines for the project.
+
+## Add a comment to every line of assembly
+
+Having a comment on each line of assembly may seem excessive, but doing so keeps the meaning behind flow of the code intact and gives the reader a clear understanding of what is happening.
+
+## Make comments meaningful
+
+Take time to write clearly about what a line of code is doing. Avoid repeating the obvious, if possible.
+
+Instead of this:
+
+```
+     clra        clear A
+```
+
+do this:
+
+```
+     clra        set the path to standard input
+```      
+
+## Write comments in lowercase and don't use punctuation
+
+Comments may or may not be complete sentences; as such, dispense with the formalism of capitalization and punctuation.
+
+Instead of this:
+
+```
+     ldb   #E$PNNF      Prepare the "pathname not found" error.
+```
+
+do this:
+
+```
+     ldb   #E$PNNF      prepare the "pathname not found" error
+```      
+## Use full words
+
+Avoid abbreviations. Spelling out words increases the readability of the comments.
+
+Instead of this:
+
+```
+     pshs  d,x,y,u      push regs
+     leax  ,u           load path desc ptr in X
+```
+
+do this:
+
+```
+     pshs  d,x,y,u      save the registers on the stack
+     leax  ,u           load the path descriptor pointer in X
+```
+
+## Ensure an empty line is at the end of a source file
+
+Adding an empty line to the end of a source file ensures that some programs that parse
+the input do not abandon any important information on the last line.
+
+Instead of this:
+
+```
+     rts
+```
+
+do this:
+
+```
+     rts
+
+```
