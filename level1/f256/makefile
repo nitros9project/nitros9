@@ -59,6 +59,7 @@ reload:
 
 BASIC09_FILES = $(foreach file,$(3RDPARTY)/packages/basic09/samples/*.b09,$(file))
 BF_FILES = $(foreach file,$(3RDPARTY)/packages/brainfuck/*.bf,$(file))
+SOUND_FILES = $(foreach file,sound/*,$(file))
 
 $(DSKSD):
 	$(RM) $@
@@ -82,6 +83,8 @@ $(DSKSD):
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
 	$(MAKDIR) $@,BRAINFUCK
 	$(CPL) $(BF_FILES) $@,BRAINFUCK
+	$(MAKDIR) $@,SOUNDS
+	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
 	$(RM) $(LDSKSD)
 	$(SOFTLINK) $@ $(LDSKSD)
 
@@ -108,6 +111,8 @@ $(DSKDW):
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
 	$(MAKDIR) $@,BRAINFUCK
 	$(CPL) $(BF_FILES) $@,BRAINFUCK
+	$(MAKDIR) $@,SOUNDS
+	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
 	$(RM) $(LDSKDW)
 	$(SOFTLINK) $@ $(LDSKDW)
 
