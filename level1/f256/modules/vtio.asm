@@ -66,6 +66,11 @@ palettemod          fcs       /palette/
 *   - checking for mouse update (when that time comes)
 
 * F256K table
+*     $F0 = CAPS Lock key pressed
+*     $F1 = SHIFT key pressed
+*     $F2 = CTRL key pressed
+*     $F3 = ALT key pressed
+
 HOME set   'A'-64
 END set    'E'-64
 UP set     'P'-64
@@ -88,11 +93,11 @@ F6 set 6
 F7 set 7
 F8 set 8        
 LMeta set 9
-RALT set 10
-LSHIFT set 11
+RALT set $F3
+LSHIFT set $F1
 RSHIFT set LSHIFT
-CAPS set 13
-LCTRL set 14
+CAPS set $F0
+LCTRL set $F2
 INS set 15
 
 F256KKeys fcb  BREAK,'q,LMETA,$20,'2,LCTRL,BKSP,'1
@@ -123,7 +128,7 @@ Report              pshs      d,x,y
 kl@                 lsla shift leftmost bit into the carry
                     bcs       kchg@ branch if carry set (key state changed)
                     lsl       1,s     shift B on stack (up/down state)
-n@                  decb  decrement the counter
+nextbit                  decb  decrement the counter
                     bne       kl@ continue if more
                     puls      d,x,y,pc restore and return
 kchg@                                                            
@@ -153,23 +158,38 @@ g@
 keyup@              cmpa      #LSHIFT
                     bne       isitctrl@
                     clr       V.SHIFT,u                    
-                    bra       f@
+                    bra       repex
 isitctrl@           cmpa      #LCTRL
                     bne       isitalt@
-                    bra       f@
+                    clr       V.CTRL,u
+                    bra       repex
 isitalt@            cmpa      #RALT                                    
-                    bne       f@
-                    bra       f@
+                    bne       repex
+                    clr       V.ALT,u
+                    bra       repex
 * key is down -- process character
 keydown@            tsta
-                    beq       a@
+                    beq       checksignal
+
                     cmpa      #LSHIFT
+                    bne       isitctrl@
+                    sta       V.SHIFT,u                    
+                    bra       repex
+isitctrl@           cmpa      #LCTRL
+                    bne       isitalt@
+                    sta       V.CTRL,u
+                    bra       repex
+isitalt@            cmpa      #RALT                                    
+                    bne       isitcaps@
+                    sta       V.ALT,u
+                    bra       repex
+isitcaps@           cmpa      #CAPS
                     bne       z@
-                    sta       V.SHIFT,u
-                    bra       f@                
+                    com       V.CAPSLck,u
+                    bra       repex                    
 z@                  lbsr      BufferChar
-a@                  
 * Check signal
+checksignal
                     lda       <V.SSigID,u         send signal on data ready?
                     beq       wake@               no, just go wake up the process
                     ldb       <V.SSigSg,u         else get the signal code
@@ -178,11 +198,11 @@ a@
 * Wake up any process if it's sleeping waiting for input.
 wake@               ldb       #S$Wake             get the wake signal
                     lda       V.WAKE,u            is there a process asleep waiting for input?
-noproc@             beq       f@                 branch if not
+noproc@             beq       repex                 branch if not
                     clr       V.WAKE,u            else clear the wake flag
 send@               os9       F$Send              and send the signal in B
-f@                  puls      d
-                    bra       n@
+repex                  puls      d
+                    lbra       nextbit
 
 AltISR              
                     ldu       D.KbdSta
