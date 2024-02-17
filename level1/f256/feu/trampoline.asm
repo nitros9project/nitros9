@@ -35,6 +35,7 @@ loop@               lda       ,x+                 get the source value
                     sta       $10C                store in vector
                     sta       $10F                store in vector
 
+                    ifne      F256K-1
 * Turn on interrupts so that we can "eat" the keyboard interrupt that we can't
 * seem to clear or turn off.
                     andcc     #^IntMasks
@@ -55,7 +56,8 @@ l2@                 leax      -1,x
                     bne       l2@
                     deca
                     bne       l1@
-
+                    endc
+                    
 * Jump to the kernel.
                     ldx       #$8000
                     ldy       #$7D00

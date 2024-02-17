@@ -6,7 +6,7 @@ vpath %.asm $(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/bra
 DEPENDS		= ./makefile $(NOSLIB)/net.o
 
 AFLAGS         += --includedir=$(3RDPARTY)/packages/basic09 --includedir=$(3RDPARTY)/packages/brainfuck
-LFLAGS         += -L $(NITROS9DIR)/lib -lnet -lf256 -lalib
+LFLAGS         += -L $(NITROS9DIR)/lib -lnet -lf256 -lalib -lf256snd
 
 BASIC09		= basic09 runb inkey syscall
 BF  		= bf
@@ -17,7 +17,7 @@ CMDS		= asm attr backup binex build cmp copy \
 		megaread mdir merge mfree padrom park printerr procs prompt pwd pxd \
 		rename save setime shellplus shell_21 sleep \
 		tee tmode touch tsmon unlink verify xmode \
-		inetd telnet dw httpd $(BASIC09) $(BF)
+		inetd telnet dw httpd $(BASIC09) $(BF) play
 
 ALLOBJS		= $(CMDS)
 
