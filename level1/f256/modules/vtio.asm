@@ -73,7 +73,7 @@ DOWN set   'N'-64
 LEFT set   'B'-64
 RIGHT set  'F'-64
 DEL set    'D'-64
-ESC set    27
+ESC set    05
 TAB set    'I'-64
 ENTER set  'M'-64
 BKSP set   'H'-64
@@ -90,7 +90,7 @@ F8 set 8
 LMeta set 9
 RALT set 10
 LSHIFT set 11
-RSHIFT set 12
+RSHIFT set LSHIFT
 CAPS set 13
 LCTRL set 14
 INS set 15
@@ -127,10 +127,6 @@ n@                  decb  decrement the counter
                     bne       kl@ continue if more
                     puls      d,x,y,pc restore and return
 kchg@                                                            
-* is it key up or key down?
-                    lsl       1,s     shift B on stack (up/down state)
-                    bcs       n@ if carry set, key is going up -- ignore it
-* key is down -- process character
                     pshs      d
 * Get character from table
                     tfr       y,d
@@ -138,7 +134,10 @@ kchg@
                     lda       #8
                     mul
                     leax      F256KKeys,pcr
-                    abx
+                    tst       V.SHIFT,u           is the SHIFT key down?
+                    beq       noshift@              branch of so
+                    leax      F256KShiftKeys,pcr
+noshift@                    abx
                     lda       2,s
 r@                  rola
                     bcs       g@
@@ -146,8 +145,29 @@ r@                  rola
                     bra       r@
 g@
                     lda       ,x
+* A = ASCII character
+* is it key up or key down?
+                    lsl       3,s     shift B on stack (up/down state)
+                    bcc       keydown@ if carry set, key is going up -- ignore it
+* key is up -- process character
+keyup@              cmpa      #LSHIFT
+                    bne       isitctrl@
+                    clr       V.SHIFT,u                    
+                    bra       f@
+isitctrl@           cmpa      #LCTRL
+                    bne       isitalt@
+                    bra       f@
+isitalt@            cmpa      #RALT                                    
+                    bne       f@
+                    bra       f@
+* key is down -- process character
+keydown@            tsta
                     beq       a@
-                    lbsr      BufferChar
+                    cmpa      #LSHIFT
+                    bne       z@
+                    sta       V.SHIFT,u
+                    bra       f@                
+z@                  lbsr      BufferChar
 a@                  
 * Check signal
                     lda       <V.SSigID,u         send signal on data ready?
@@ -177,7 +197,7 @@ loop@
                     tfr       a,b
                     eora      ,y
                     beq       next@
-                    bsr       Report
+                    lbsr      Report
 next@               leay      1,y
                     puls      a
                     orcc      #Carry
