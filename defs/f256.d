@@ -279,7 +279,8 @@ T1_CMP              equ       $FE3D               timer 1 compare value (read/wr
 * F256 VIA (W65C22S) definitions
 *
 * VIA addresses
-VIA.Base            equ       $FFB0
+VIA0.Base           equ       $FEB0
+VIA1.Base           equ       $FFB0
                     org       0
 VIA_ORB_IRB         rmb       1                   port b data
 VIA_ORA_IRA         rmb       1                   port a data
@@ -451,6 +452,16 @@ LSR_ERR_FRAME       equ       0x08                framing error
 LSR_ERR_PARITY      equ       0x04                parity error
 LSR_ERR_OVERRUN     equ       0x02                overrun error
 LSR_DATA_AVAIL      equ       0x01                data is ready in the receive buffer
+
+********************************************************************
+* F256 CODEC definitions
+*
+CODEC.Base         equ        $FE70
+                   org        0
+CODECCmdLo         rmb        1
+CODECCmdHi         rmb        1
+CODECStat          rmb        1
+CODECCtrl          equ        CODECStat 
 
 ******************************************************************
 * F256 text lookup definitions
@@ -709,6 +720,17 @@ TyVKY_LUT1          equ       $EC00               -$d400 - $d7ff
 TyVKY_LUT2          equ       $F000               -$d800 - $dbff
 TyVKY_LUT3          equ       $F400               -$dc00 - $dfff
 
+
+********************************************************************
+* F256 sound definitions (MMU Page $C4)
+*
+SND.Base            equ       $0000
+SIDL.Base           equ       SND.Base+$0000
+SIDM.Base           equ       SND.Base+$0080
+SIDR.Base           equ       SND.Base+$0100
+PSGL.Base           equ       SND.Base+$0200
+PSGM.Base           equ       SND.Base+$0208
+PSGR.Base           equ       SND.Base+$0210
 
 ********************************************************************
 * F256 Direct Memory Access (DMA) definitions
