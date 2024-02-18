@@ -33,7 +33,8 @@ RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd
 SCF		 = $(MD)/scf.mn
 
 # SCF video terminal
-SCVT		 = $(MD)/vtio.dr $(MD)/term.dt
+SCVT_JR      = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/term.dt
+SCVT_K   	 = $(MD)/vtio.dr $(MD)/keydrv_f256k.sb $(MD)/term.dt
 
 # Font & palette
 FONT		 = $(MD)/phoenixegafont.sb
@@ -66,7 +67,7 @@ CLOCK	= $(MD)/clock $(MD)/clock2_f256
 BOOTFILE = $(KERNEL) $(DWIO) \
 		$(RBF) $(RBFDW) \
 		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
-		$(SCF) $(SCVT) $(FONT) $(PALETTE) \
+		$(SCF) $(SCVT_K) $(FONT) $(PALETTE) \
 		$(PIPE) \
 		$(CLOCK) \
 		sysgo autoex \

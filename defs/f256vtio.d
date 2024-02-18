@@ -31,8 +31,10 @@ V.SSigSg            RMB       1                   data ready signal code
 V.WWidth            RMB       1                   window width
 V.WHeight           RMB       1                   window height
 
-* F256 Jr. PS/2 specific section
-V.KCVect            RMB       2                   PS/2 key code handler
+V.KeyDrv            RMB       2                   keydrv entry point address
+
+V.KeyDrvStat        equ       .
+                    RMB       8
 
 V.EscParms          RMB       20
 * DWSet Parameters

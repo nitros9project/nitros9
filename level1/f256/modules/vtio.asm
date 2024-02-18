@@ -54,175 +54,24 @@ start               lbra      Init
 * These are the module names.
 fontmod             fcs       /font/
 palettemod          fcs       /palette/
+keydrvmod           fcs       /keydrv/
 
 *
 * VTIO Alternate IRQ routine - Entered from Clock every 1/60th of a second
 *
 * The interrupt service routine is responsible for:
-*   - handling the F256K keyboard
+*   - handling the F256K keyboard (if available)
 *   - decrementing the tone counter
 *   - select the new active window if needed (when that time comes)
 *   - updating graphics cursors if needed (when that time comes)
 *   - checking for mouse update (when that time comes)
 
-* F256K table
-*     $F0 = CAPS Lock key pressed
-*     $F1 = SHIFT key pressed
-*     $F2 = CTRL key pressed
-*     $F3 = ALT key pressed
-
-HOME set   'A'-64
-END set    'E'-64
-UP set     'P'-64
-DOWN set   'N'-64
-LEFT set   'B'-64
-RIGHT set  'F'-64
-DEL set    'D'-64
-ESC set    05
-TAB set    'I'-64
-ENTER set  'M'-64
-BKSP set   'H'-64
-BREAK set  'C'-64
-
-F1 set 1
-F2 set 2
-F3 set 3
-F4 set 4
-F5 set 5
-F6 set 6
-F7 set 7
-F8 set 8        
-LMeta set 9
-RALT set $F3
-LSHIFT set $F1
-RSHIFT set LSHIFT
-CAPS set $F0
-LCTRL set $F2
-INS set 15
-
-F256KKeys fcb  BREAK,'q,LMETA,$20,'2,LCTRL,BKSP,'1
-        fcb  '/,TAB,RALT,RSHIFT,HOME,'','],'=
-        fcb  ',,'[,';,'.,CAPS,'l,'p,'-
-        fcc  "nokm0ji9"
-        fcc  "vuhb8gy7"
-        fcc  "xtfc6dr5"
-        fcb  LSHIFT,'e,'s,'z,'4,'a,'w,'3
-        fcb  UP,F5,F3,F1,F7,LEFT,ENTER,BKSP
-        fcb  DOWN,RIGHT,0,0,0,0,RIGHT,DOWN
-
-F256KShiftKeys  fcb  ESC,'Q,LMETA,32,'@,LCTRL,0,'!
-        fcb  '?,RALT,LEFT,RSHIFT,END,34,'},'+
-        fcb  '<,'{,':,'>,CAPS,'L,'P,'_
-        fcc  "NOKM)JI("
-        fcc  "VUHB*GY&"
-        fcc  "XTFC^DR%"
-        fcb  LSHIFT,'E,'S,'Z,'$,'A,'W,'#
-        fcb   UP,F6,F4,F2,F8,LEFT,ENTER,INS
-        fcb  DOWN,RIGHT,0,0,0,0,RIGHT,DOWN
-
-* A = keys in row that have changed
-* B = up/down state of keys in row                    
-Report              pshs      d,x,y
-                    stb       ,y        save off new state to current row
-                    ldb       #8       load counter
-kl@                 lsla shift leftmost bit into the carry
-                    bcs       kchg@ branch if carry set (key state changed)
-                    lsl       1,s     shift B on stack (up/down state)
-nextbit                  decb  decrement the counter
-                    bne       kl@ continue if more
-                    puls      d,x,y,pc restore and return
-kchg@                                                            
-                    pshs      d
-* Get character from table
-                    tfr       y,d
-                    subd      #D.RowState
-                    lda       #8
-                    mul
-                    leax      F256KKeys,pcr
-                    tst       V.SHIFT,u           is the SHIFT key down?
-                    beq       noshift@              branch of so
-                    leax      F256KShiftKeys,pcr
-noshift@                    abx
-                    lda       2,s
-r@                  rola
-                    bcs       g@
-                    leax      1,x
-                    bra       r@
-g@
-                    lda       ,x
-* A = ASCII character
-* is it key up or key down?
-                    lsl       3,s     shift B on stack (up/down state)
-                    bcc       keydown@ if carry set, key is going up -- ignore it
-* key is up -- process character
-keyup@              cmpa      #LSHIFT
-                    bne       isitctrl@
-                    clr       V.SHIFT,u                    
-                    bra       repex
-isitctrl@           cmpa      #LCTRL
-                    bne       isitalt@
-                    clr       V.CTRL,u
-                    bra       repex
-isitalt@            cmpa      #RALT                                    
-                    bne       repex
-                    clr       V.ALT,u
-                    bra       repex
-* key is down -- process character
-keydown@            tsta
-                    beq       checksignal
-
-                    cmpa      #LSHIFT
-                    bne       isitctrl@
-                    sta       V.SHIFT,u                    
-                    bra       repex
-isitctrl@           cmpa      #LCTRL
-                    bne       isitalt@
-                    sta       V.CTRL,u
-                    bra       repex
-isitalt@            cmpa      #RALT                                    
-                    bne       isitcaps@
-                    sta       V.ALT,u
-                    bra       repex
-isitcaps@           cmpa      #CAPS
-                    bne       z@
-                    com       V.CAPSLck,u
-                    bra       repex                    
-z@                  lbsr      BufferChar
-* Check signal
-checksignal
-                    lda       <V.SSigID,u         send signal on data ready?
-                    beq       wake@               no, just go wake up the process
-                    ldb       <V.SSigSg,u         else get the signal code
-                    clr       <V.SSigID,u         clear signal ID
-                    bra       send@
-* Wake up any process if it's sleeping waiting for input.
-wake@               ldb       #S$Wake             get the wake signal
-                    lda       V.WAKE,u            is there a process asleep waiting for input?
-noproc@             beq       repex                 branch if not
-                    clr       V.WAKE,u            else clear the wake flag
-send@               os9       F$Send              and send the signal in B
-repex                  puls      d
-                    lbra       nextbit
-
 AltISR              
                     ldu       D.KbdSta
-* Handle keyboard (F256K)
-                    ldx       #VIA1.Base
-                    ldy       #D.RowState
-                    lda       #$7F
-loop@
-                    sta       VIA_ORA_IRA,x
-                    pshs      a
-                    lda       VIA_ORB_IRB,x
-                    tfr       a,b
-                    eora      ,y
-                    beq       next@
-                    lbsr      Report
-next@               leay      1,y
-                    puls      a
-                    orcc      #Carry
-                    rora
-                    bcs       loop@
+* Handle keyboard (if available)
+                    ldx       V.KeyDrv,u
+                    beq       HandleSound
+                    jsr       6,x call AltIRQ routine in keydrv
                     
 * Handle sound.
 HandleSound
@@ -466,6 +315,19 @@ l@               std       ,x++
                     bne       l@
                     rts
 
+* Keyboard initialization                    
+InitKeyboard        leax      keydrvmod,pcr         point to the keydrv module name
+                    lda       #Systm+Objct               it's a system module
+                    pshs      u
+                    os9       F$Link              link to it
+                    puls      u
+                    bcs       ex@         branch if the link failed
+                    sty       V.KeyDrv,u
+                    jsr       ,y                  call Init entry point
+                    rts                           return to the caller
+ex@                 ldd        #0
+                    std       V.KeyDrv,u
+                    rts
 * Init
 *
 * Entry:
@@ -487,64 +349,15 @@ Init                stu       D.KbdSta
                     
                     lbsr      InitDisplay         initialize the display
                     lbsr      InitSound           initialize the sound
-                    
-* F256K keyboard initialization                    
-*                    
-                    ldx     #VIA1.Base
-                    clr     VIA_IER,x
-                    lda     #$FF    
-                    sta     VIA_DDRA,x
-                    sta     VIA_ORA_IRA,x                    
-                    clr     VIA_DDRB,x
-                    ldx     #D.RowState
-                    ldd     #$FF*256+8
-l@                  sta     ,x+
-                    decb
-                    bne     l@
-                    
-* F256 Jr. PS/2 keyboard initialization                    
-*
-* Tell the keyboard to start scanning.
-* Do this FIRST before turning off LEDs, or else keyboard fails to respond after
-* a reset. +BGP+
-*
-                    lda       #$FF                load the RESET command
-                    lbsr       SendToPS2           send it to the keyboard
-                    lda       #$AA                we expect an $AA response
-                    lbsr       ReadFromPS2         read from the keyboard
-                    
-                    lda       #$F4                load the start scanning command
-                    lbsr      SendToPS2           send it to the keyboard
-                    
-                    leax      ProcKeyCode,pcr     get the PS/2 key code handler routine
-                    stx       V.KCVect,u          and store it as the current handler address
-                    ldd       #INT_PENDING_0      get the pending interrupt pending address
-                    leax      IRQPckt,pcr         point to the IRQ packet
-                    leay      IRQSvc,pcr          and the service routine
-                    os9       F$IRQ               install the interrupt handler
-                    bcs       ErrExit             branch if we have an issue
-                    lda       INT_MASK_0          else get the interrupt mask byte
-                    anda      #^INT_PS2_KBD       set the PS/2 keyboard interrupt
-                    sta       INT_MASK_0          and save it back
-                    
-* Set up the alternate IRQ vector for sound and other processing at the timer interval.
-                    ldx       <D.AltIRQ           get original D.AltIRQ address
-                    stx       >D.OrgAlt   save in globals for later recovery
-                    leax      AltISR,pcr
-                    stx       <D.AltIRQ
-                    
-                    clrb                          clear the carry flag
-                    rts                           return to the caller
-                    
-ErrExit             orcc      #Carry              set the carry flag
-                    rts                           return to the caller
+                    lbsr      InitKeyboard        initialize the keyboad                    
 
-* The F$IRQ packet.
-IRQPckt             equ       *
-Pkt.Flip            fcb       %00000000           the flip byte
-Pkt.Mask            fcb       INT_PS2_KBD         the mask byte
-                    fcb       $F1                 the priority byte
-
+                    ldx       >D.AltIRQ           get the current alternate IRQ vector
+                    stx       >D.OrgAlt           save it off in the original vector
+                    leax      AltISR,pcr          get our alternate interrupt service routine
+                    stx       >D.AltIRQ           and place it in the global vector
+                    
+                    rts
+                    
 * Term
 *
 * Entry:
@@ -554,20 +367,14 @@ Pkt.Mask            fcb       INT_PS2_KBD         the mask byte
 *    CC = carry set on error
 *    B  = error code
 *
-Term
-* F256K keyboard termination
-*                    
-
-* F256 Jr. PS/2 keyboard termination
-*
-                     
-                    ldx       #$0000              we want to remove the IRQ table entry
-                    leay      IRQSvc,pcr          point to the interrupt service routine
-                    os9       F$IRQ               call to remove it
-
-                    ldx       >D.OrgAlt   get the original alternate IRQ vector
-                    stx       <D.AltIRQ           save it back to the D.AltIRQ address
-                    
+Term                ldx       V.KeyDrv,u
+                    cmpx      #0000
+                    beq       n@
+                    jsr       3,x               call Term entry point
+                    ldd       #0
+                    std       V.KeyDrv,u          and zero out the vector
+n@                  ldx       >D.OrgAlt   get the original alternate IRQ vector
+                    stx       <D.AltIRQ           save it back to the D.AltIRQ address              
                     clrb                          clear the carry
                     rts                           return to the caller
 
@@ -1458,273 +1265,6 @@ SSRelea             lda       PD.CPR,y            get the current process ID
                     bne       ex@                 branch if not
                     clr       <V.SSigID,u         else clear process the ID
 ex@                 rts
-
-***
-* IRQ routine for the F256 Jr. PS/2 keyboard
-*
-* INPUT:  A = flipped and masked device status byte
-*         U = keyboard data area address
-*
-* OUTPUT:
-*          CC Carry clear
-*          D, X, Y, and U registers may be altered
-*
-* ERROR OUTPUT:  none
-*
-
-RAW_KEYBOARD        equ       0
-
-                    ifne      RAW_KEYBOARD
-* Input: A = byte to convert to hex
-* Output: A = ASCII character of first digit
-*         B = ASCII character of second digit
-cvt2hex             pshs      a
-                    lsra
-                    lsra
-                    lsra
-                    lsra
-                    cmpa      #9
-                    bgt       hex@
-                    adda      #$30
-                    bra       afthex@
-hex@                adda      #$37
-afthex@
-                    ldb       ,s+
-                    andb      #$0F
-                    cmpb      #9
-                    bgt       hex2@
-                    addb      #$30
-                    bra       afterhex2@
-hex2@               addb      #$37
-afterhex2@          rts
-                    endc
-
-* Send a byte to the PS/2 keyboard.
-*
-* Entry: A = The byte to send to the keyboard.
-SendToPS2           sta       PS2_OUT             send the byte out to the keyboard
-                    lda       #K_WR               load the "write" bit
-                    sta       PS2_CTRL            send it to the control register
-                    clr       PS2_CTRL            then clear the bit in the control register
-                    lda       #$FA
-* Entry: A = Response to expect from the keyboard.
-* Destroys X.
-ReadFromPS2         ldx       #$0000
-                    pshs      a,x
-l@                  ldx       1,s
-                    leax      -1,x
-                    stx       1,s
-                    cmpx      #$0000
-                    beq       e@
-                    lda       KBD_IN              load a byte from the keyboard
-                    cmpa      ,s                  is it what we expect?
-                    bne       l@                  branch if not
-                    clra                          clear carry
-                    puls      a,x,pc              return
-e@                  comb
-                    puls      a,x,pc              return
-
-IRQSvc              ldb       #INT_PS2_KBD        get the PS/2 keyboard interrupt flag
-                    stb       INT_PENDING_0       clear the interrupt
-getcode             lda       KBD_IN              get the key code
-                    beq       IRQExit             if it's a zero, ignore
-
-* These next two lines get around an issue where an interrupt occurs even after
-* clearing it and reading all data from the keyboard at initialization.
-* This may be a hardware issue.
-                    cmpa      #$FA                is it the acknowledge byte?
-                    beq       IRQExit             branch if so
-
-                    ifne      RAW_KEYBOARD
-                    bsr       cvt2hex             convert the key code to hexadecimal
-                    pshs      b                   save the hexadecimal character
-                    bsr       BufferChar          buffer it
-                    puls      a                   get the character
-                    bsr       BufferChar          buffer it
-                    bra       CheckSig            wake up any sleeping process waiting on input
-                    endc
-
-* A = key code
-* point Y to appropriate key table (SHIFT vs Non-SHIFT)
-                    tst       V.SHIFT,u           is the SHIFT key down?
-                    bne       shift@              branch of so
-                    leay      ScanMap,pcr         else point to the non-SHIFT scan map
-                    bra       pastshift@          and branch
-shift@              leay      SHIFTScanMap,pcr    point to the SHIFT scan map
-pastshift@          ldx       V.KCVect,u          get the current key code handler
-                    jsr       ,x                  branch into it
-                    bcs       IRQExit             if the carry is set, don't wake process
-                    ldb       #S$Intrpt           get the interrupt signal
-                    cmpa      V.INTR,u            is our character same as the interrupt signal?
-                    beq       getlproc@           branch if it's the same
-                    ldb       #S$Abort            get the abort signal
-                    cmpa      V.QUIT,u            is our character same as the abort signal?
-                    bne       CheckSig            branch if it isn't
-getlproc@           lda       V.LPRC,u            else get the ID of the last process to use this device
-                    bra       noproc@             branch
-CheckSig            lda       <V.SSigID,u         send signal on data ready?
-                    beq       WakeIt              no, just go wake up the process
-                    ldb       <V.SSigSg,u         else get the signal code
-                    clr       <V.SSigID,u         clear signal ID
-                    bra       send@
-* Wake up any process if it's sleeping waiting for input.
-WakeIt              ldb       #S$Wake             get the wake signal
-                    lda       V.WAKE,u            is there a process asleep waiting for input?
-noproc@             beq       IRQExit             branch if not
-                    clr       V.WAKE,u            else clear the wake flag
-send@               os9       F$Send              and send the signal in B
-IRQExit             lsr       PS2_STAT            shift the PS/2 status bit 0 into the carry
-                    bcc       getcode             branch if the carry is 0 (meaning there's more key data to read)
-ex@                 clrb                          else the clear carry
-ex2@                rts                           return
-
-* Entry:  A = PS/2 key code
-*
-* Exit:  CC = carry clear: wake up a sleeping process waiting on input
-*             carry set: don't wake up a sleeping process waiting on input
-ProcKeyCode         cmpa      #$E0                is it the $E0 preface byte?
-                    beq       ProcE0              branch if so
-                    cmpa      #$F0                is it the $F0 preface byte?
-                    beq       ProcF0              branch if so
-                    lda       a,y                 else pull the key character from the scan code table
-                    bmi       SpecialDown         if the high bit is set, handle this special case
-* Check for the CTRL key.
-                    tst       V.CTRL,u            is the CTRL key down?
-                    beq       CheckCAPSLock       branch if not
-                    suba      #$60                else subtract $60 from the character in A
-CheckCAPSLock       tst       V.CAPSLck,u         is the CAPS Lock on?
-                    beq       BufferChar          branch if not
-                    cmpa      #'a                 else compare the character to lowercase "a"
-                    blt       BufferChar          branch if the character is less than
-                    suba      #$20                else make the character uppercase
-* Advance the circular buffer one character.
-BufferChar          ldb       V.IBufH,u           get buffer head pointer in B
-                    leax      V.InBuf,u           point X to the input buffer
-                    abx                           X now holds address of the head pointer
-                    lbsr      IncNCheck           increment the pointer and check for tail wrap
-                    cmpb      V.IBufT,u           is B at the tail? (if so, the input buffer is full)
-                    beq       bye@                branch if the input buffer is full (drop the character)
-                    stb       V.IBufH,u           update the buffer head pointer
-                    sta       ,x                  place the character in the buffer
-bye@                clrb                          clear carry
-                    rts                           return
-
-SpecialDown         cmpa      #$F0                is this the CAPS Lock key?
-                    blt       next@               branch if not
-                    beq       DoCapsDown          branch if it is
-                    cmpa      #$F1                is this the SHIFT key?
-                    beq       DoSHIFTDown         branch if it is
-                    cmpa      #$F2                is this the CTRL key?
-                    beq       DoCTRLDown          branch if it is
-DoALTDown           sta       V.ALT,u             it must be the ALT key then
-                    comb                          clear the carry so that the read routine just returns
-                    rts                           return
-DoCTRLDown          sta       V.CTRL,u            it's the CTRL key
-                    comb                          clear the carry so that the read routine just returns
-                    rts                           return
-DoCapsDown
-                    lda       #$ED                get the PS/2 keyboard LED command
-                    lbsr      SendToPS2           send it to the PS/2
-                    lda       V.LEDStates,u       get the PS/2 LED flags in static memory
-                    com       V.CAPSLck,u         complement the CAPS lock flag in our static memory
-                    beq       ledoff@             branch if the result is 0 (LED should be turned off)
-                    ora       #$04                set the CAPS Lock LED bit
-                    bra       send@               and send it to the keyboard
-ledoff@             anda      #^$04               clear the CAPS Lock LED bit
-send@               lbsr      SendToPS2           send the byte to the keyboard
-                    comb                          clear the carry so that the read routine just returns
-                    rts                           return
-DoSHIFTDown         sta       V.SHIFT,u           its the SHIFT key
-                    comb                          clear the carry so that the read routine just returns
-                    rts                           return
-next@               anda      #^$80               clear the high bit
-                    bra       BufferChar          go store the character
-
-ProcE0              leax      E0Handler,pcr       get the $E0 handler routine
-                    stx       V.KCVect,u          store it in the vector
-                    comb
-                    rts                           return
-
-ProcF0              leax      F0Handler,pcr       get the $F0 handler routine
-                    stx       V.KCVect,u          store it in the vector
-                    comb                          clear the carry so that the read routine handles other work
-                    rts                           return
-
-* A = key code
-* Y = scan table
-E0Handler           cmpa      #$F0                is this the $F0 key code?
-                    beq       ProcF0              branch if so
-                    leax      ProcKeyCode,pcr     else point to the key code processor
-                    stx       V.KCVect,u          store it in the vector
-                    cmpa      #$11                is this the right ALT key?
-                    beq       DoALTDown           if so, handle the ALT key
-                    cmpa      #$14                is this the right CTRL key?
-                    beq       DoCTRLDown          if so, handle the CTRL key
-                    cmpa      #$75                is this the up arrow key?
-                    beq       DoUpArrowDown       if so, handle it
-                    cmpa      #$6B                is this the left arrow key?
-                    beq       DoLeftArrowDown     if so, handle it
-                    cmpa      #$72                is this the down arrow key?
-                    beq       doDownArrowDown     if so, handle it
-                    cmpa      #$74                is this the right arrow key?
-                    beq       doRightArrowDown    if so, handle it
-                    comb                          else set the carry
-                    rts                           return
-DoUpArrowDown       lda       #$0C                load up arrow character
-                    lbra      BufferChar          add it to the input buffer
-DoDownArrowDown     lda       #$0A                load down arrow character
-                    lbra      BufferChar          add it to the input buffer
-DoLeftArrowDown     lda       #$08                load left arrow character
-                    lbra      BufferChar          add it to the input buffer
-DoRightArrowDown    lda       #$09                load right arrow character
-                    lbra      BufferChar          add it to the input buffer
-E0HandlerUp         cmpa      #$11                is this the right ALT key going up?
-                    beq       DoALTUp             if so, handle that case
-                    cmpa      #$14                is this the right CTRL key going up?
-                    beq       DoCTRLUp            if so, handle that case
-                    bra       SetDefaultHandler   set the default handler
-F0Handler           lda       a,y                 get the routine
-                    bmi       SpecialUp           and perform key up processing
-SetDefaultHandler
-                    leax      ProcKeyCode,pcr     point to default key code processor
-                    stx       V.KCVect,u          save it in the key code vector
-                    comb
-                    rts
-SpecialUp           cmpa      #$F1                is this the SHIFT key going up?
-                    beq       DoSHIFTUp           branch if so
-                    cmpa      #$F2                is this the CTRL key going up?
-                    bne       SetDefaultHandler   branch if not
-DoCTRLUp            clr       V.CTRL,u            clear the CTRL key state
-                    bra       SetDefaultHandler   and branch to set the default handler
-DoSHIFTUp           clr       V.SHIFT,u           clear the SHIFT key state
-                    bra       SetDefaultHandler   and branch to set the default handler
-DoALTUp             clr       V.ALT,u             clear the ALT key state
-                    bra       SetDefaultHandler   and branch to set the default handler
-
-* These tables map PS/2 key codes to characters in both non-SHIFT and SHIFT cases.
-* If the high bit of a character is set, it is a special flag and therefore
-* is handled differently. The special flags are:
-*     $F0 = CAPS Lock key pressed
-*     $F1 = SHIFT key pressed
-*     $F2 = CTRL key pressed
-*     $F3 = ALT key pressed
-ScanMap             fcb       0,0,0,0,0,0,0,0,0,0,0,0,0,0,'`,0
-                    fcb       0,$F3,$F1,0,$F2,'q,'1,0,0,0,'z,'s,'a,'w,'2,0
-                    fcb       0,'c,'x,'d,'e,'4,'3,0,0,C$SPAC,'v,'f,'t,'r,'5,0
-                    fcb       0,'n,'b,'h,'g,'y,'6,0,0,0,'m,'j,'u,'7,'8,0
-                    fcb       0,C$COMA,'k,'i,'o,'0,'9,0,0,'.,'/,'l,';,'p,'-,0
-                    fcb       0,0,'',0,'[,'=,0,0,$F0,$F1,C$CR,'],0,'\,0,0
-                    fcb       0,0,0,0,0,0,$88,0,0,'1,0,'4,'7,0,0,0
-                    fcb       '0,'.,'2,'5,'6,'8,$05,0,0,'+,'3,'-,'*,'9,0,0
-
-SHIFTScanMap        fcb       0,0,0,0,0,0,0,0,0,0,0,0,0,0,'~,0
-                    fcb       0,$F3,$F1,0,$F2,'Q,'!,0,0,0,'Z,'S,'A,'W,'@,0
-                    fcb       0,'C,'X,'D,'E,'$,'#,0,0,C$SPAC,'V,'F,'T,'R,'%,0
-                    fcb       0,'N,'B,'H,'G,'Y,'^,0,0,0,'M,'J,'U,'&,'*,0
-                    fcb       0,'<,'K,'I,'O,'),'(,0,0,'>,'?,'L,':,'P,'_,0
-                    fcb       0,0,'",0,'{,'+,0,0,$F0,$F1,C$CR,'},0,'|,0,0
-                    fcb       0,0,0,0,0,0,$98,0,0,'1,0,'4,'7,0,0,0
-                    fcb       '0,'.,'2,'5,'6,'8,$05,0,0,'+,'3,'-,'*,'9,0,0
 
                     emod
 eom                 equ       *
