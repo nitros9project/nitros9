@@ -31,7 +31,8 @@ V.SSigSg            RMB       1                   data ready signal code
 V.WWidth            RMB       1                   window width
 V.WHeight           RMB       1                   window height
 
-V.KeyDrv            RMB       2                   keydrv entry point address
+V.KeyDrvMPtr        RMB       2                   keydrv module address
+V.KeyDrvEPtr        RMB       2                   keydrv entry point address
 
 V.KeyDrvStat        equ       .
                     RMB       8
@@ -58,8 +59,7 @@ D.TnCnt             rmb       1
 D.OrgAlt            rmb       2
 D.SndPrcID          rmb       1
 * F256K specific section
-D.RowState          RMB       8
-D.Hold              RMB       1
+D.RowState          RMB       9
 
 
                     ENDC
