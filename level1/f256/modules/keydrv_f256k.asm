@@ -39,30 +39,23 @@ start               lbra      Init
 AltISR              ldx       #VIA1.Base get the VIA1 base address
                     ldy       #D.RowState point to the row state global area
                     lda       #%01111111 initialize the accumulator with the row scan value
+                    bsr       loop@
+* Handle down and right arrow                    
+                    ldx       #VIA0.Base
+                    lda       #%10000000
 loop@               sta       VIA_ORA_IRA,x save the row scan value to the VIA1 output
                     pshs      a save it on the stack for now
                     lda       VIA_ORB_IRB,x get the column value for this row
                     tfr       a,b save a copy to B
                     eora      ,y XOR with the last row state value
                     beq       next@ branch if there's no change
-                    bsr      HandleRow else one or more keys for this row have changed direction - handle it
+                    bsr       HandleRow else one or more keys for this row have changed direction - handle it
 next@               leay      1,y advance to the next row state value
                     puls      a restore the row scan value we read from VIA1
                     orcc      #Carry set the carry flag so it will rotate in the upper 8 bits
                     rora rotate A to the right
                     bcs       loop@ branch if the carry is set to continue
-* Handle down and right arrow                    
-                    ldx       #VIA0.Base
-                    lda       #%10000000
-                    sta       VIA_ORA_IRA,x
-                    pshs      a
-                    lda       VIA_ORB_IRB,x
-                    tfr       a,b
-                    eora      ,y
-                    beq       ex@
-                    bsr       HandleRow
-ex@                 puls      a
-                    rts return to the caller
+ex@                 rts return to the caller
 
 * Entry:
 *    A = The keys in the row that have changed since the last scan.
@@ -87,7 +80,7 @@ kchg@
                     tst       V.SHIFT,u           is the SHIFT key down?
                     beq       noshift@              branch of so
                     leax      F256KShiftKeys,pcr
-noshift@                    abx
+noshift@            abx
                     lda       2,s
 r@                  rola
                     bcs       g@
@@ -160,22 +153,14 @@ z2@                 tst       V.ALT,u
                     adda      #$40
 * Handle META down
 z3@                 tst       V.META,u
-                    beq       zz@
-                    cmpa      #'8
-                    bne       z31@
-                    lda       #'`
-                    bra       zz@
-z31@                cmpa      #'9
-                    bne       z32@
-                    lda       #'|
-                    bra       zz@                    
-z32@                cmpa      #'0
-                    bne       z33@
-                    lda       #'\
-z33@                cmpa      #'7
-                    bne       zz@
-                    lda       #'~
-zz@                 
+                    beq       BufferChar
+                    leax      MetaTab,pcr
+zl@                 tst       ,x
+                    beq       BufferChar
+                    cmpa      ,x++
+                    bne       zl@
+                    lda       -1,x
+
 * Advance the circular buffer one character.
 BufferChar          ldb       V.IBufH,u           get buffer head pointer in B
                     leax      V.InBuf,u           point X to the input buffer
@@ -215,6 +200,12 @@ send@               os9       F$Send              and send the signal in B
 repex               puls      d
                     lbra       nextbit
 
+MetaTab             fcb       '7,'~
+                    fcb       '8,'`
+                    fcb       '9,'|
+                    fcb       '0,'\
+                    fcb       0
+                    
 * Init
 *
 * Entry:
@@ -257,6 +248,7 @@ TAB set    'I'-64
 ENTER set  'M'-64
 BKSP set   'H'-64
 BREAK set  'E'-64
+XLINE  set    'X'-64
 
 F1 set $F1
 F2 set $F2
@@ -284,7 +276,7 @@ F256KKeys fcb  BREAK,'q,META,$20,'2,LCTRL,BKSP,'1
         fcb  UP,F5,F3,F1,F7,LEFT,ENTER,BKSP
         fcb  DOWN,RIGHT,0,0,0,0,RIGHT,DOWN
 
-F256KShiftKeys  fcb  ESC,'Q,META,32,'@,LCTRL,0,'!
+F256KShiftKeys  fcb  ESC,'Q,META,32,'@,LCTRL,XLINE,'!
         fcb  '?,RALT,LEFT,RSHIFT,END,34,'},'+
         fcb  '<,'{,':,'>,CAPS,'L,'P,'_
         fcc  "NOKM)JI("
