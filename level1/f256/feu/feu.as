@@ -88,7 +88,11 @@ PromptForAutoAbort
                     lbsr      SETQUITCHAR
                     lbsr      SETECHO
                     lbsr      PRINTS
-                    fcc       "Press SPACE to continue or ESC to abort in "
+                    fcc       "Press SPACE to continue or "
+                    fcb       $00
+                    lbsr      PrintESCorSTOP
+                    lbsr      PRINTS
+                    fcc       " to abort in "
                     fcb       $00
                     lda       #1
 loop@               ldb       ,s
@@ -193,15 +197,35 @@ PrintVersionInfo
                     lbsr      PRINT_DEC
                     rts
 
-PrintMBoardInfo     ldx       #SYS0
+* F256 identity routine
+* Exit: A = $02 (F256K), $12 (F256 Jr.)
+F256Type            pshs      x
+                    ldx       #SYS0
                     lda       7,x
+                    puls      x,pc
+
+PrintESCorSTOP      bsr       F256Type
                     cmpa      #$02
-                    bne       isItF256K
+                    bne       isItF256K@
+f256k@              lbsr      PRINTS
+                    fcc       "ESC"
+                    fcb       $0
+                    bra       cont@
+isItF256K@          cmpa      #$12
+                    bne       cont@
+                    lbsr      PRINTS
+                    fcc       "STOP"
+                    fcb       $0
+cont@               rts
+                    
+PrintMBoardInfo     bsr       F256Type
+                    cmpa      #$02
+                    bne       isItF256K@
 f256k@              lbsr      PRINTS
                     fcc       "F256 Jr."
                     fcb       $0
                     bra       cont@
-isItF256K           cmpa      #$12
+isItF256K@          cmpa      #$12
                     bne       cont@
                     lbsr      PRINTS
                     fcc       "F256K"

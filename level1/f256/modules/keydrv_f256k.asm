@@ -119,8 +119,26 @@ isitalt@            cmpa      #RALT
 isitcaps@           cmpa      #CAPS
                     bne       z@
                     com       V.CAPSLck,u
-                    bra       repex                    
-z@                  lbsr      BufferChar
+                    bra       repex     
+* Handle CAPS LOCK engaged
+z@                  tst       V.CAPSLck,u
+                    beq       z1@
+                    cmpa      #'a
+                    blo       z1@
+                    cmpa      #'z
+                    bhi       z1@
+                    suba      #$20
+* Handle CTRL down                    
+z1@                 tst       V.CTRL,u
+                    beq       z2@
+                    anda      #$5F
+                    suba      #$40
+* Handle ALT down
+z2@                 tst       V.ALT,u
+                    beq       zz@
+                    anda      #$5F
+                    adda      #$40
+zz@                 lbsr      BufferChar
 * Check signal
 checksignal
                     lda       <V.SSigID,u         send signal on data ready?
@@ -134,7 +152,7 @@ wake@               ldb       #S$Wake             get the wake signal
 noproc@             beq       repex                 branch if not
                     clr       V.WAKE,u            else clear the wake flag
 send@               os9       F$Send              and send the signal in B
-repex                  puls      d
+repex               puls      d
                     lbra       nextbit
 
 * Advance the circular buffer one character.
@@ -187,21 +205,21 @@ DOWN set   'N'-64
 LEFT set   'B'-64
 RIGHT set  'F'-64
 DEL set    'D'-64
-ESC set    05
+ESC set    'E'-64
 TAB set    'I'-64
 ENTER set  'M'-64
 BKSP set   'H'-64
 BREAK set  'C'-64
 
-F1 set 1
-F2 set 2
-F3 set 3
-F4 set 4
-F5 set 5
-F6 set 6
-F7 set 7
-F8 set 8        
-LMeta set 9
+F1 set $F1
+F2 set $F2
+F3 set $F3
+F4 set $F4
+F5 set $F5
+F6 set $F6
+F7 set $F7
+F8 set $F8        
+LMeta set $F9
 RALT set $FF
 LSHIFT set $FE
 RSHIFT set LSHIFT
