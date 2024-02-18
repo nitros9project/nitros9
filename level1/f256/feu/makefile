@@ -64,7 +64,7 @@ PIPE	= $(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd
 # Clock driver
 CLOCK	= $(MD)/clock $(MD)/clock2_f256
 
-BOOTFILE = $(KERNEL) $(DWIO) \
+BOOTFILE_F256K = $(KERNEL) $(DWIO) \
 		$(RBF) $(RBFDW) \
 		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
 		$(SCF) $(SCVT_K) $(FONT) $(PALETTE) \
@@ -77,9 +77,24 @@ BOOTFILE = $(KERNEL) $(DWIO) \
 		$(CMDSDIR)/mfree $(CMDSDIR)/mdir \
 		$(CMDSDIR)/display $(CMDSDIR)/iniz \
 		$(CMDSDIR)/deiniz $(CMDSDIR)/link \
+		$(CMDSDIR)/unlink $(CMDSDIR)/tmode
+
+BOOTFILE_F256JR = $(KERNEL) $(DWIO) \
+		$(RBF) $(RBFDW) \
+		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
+		$(SCF) $(SCVT_JR) $(FONT) $(PALETTE) \
+		$(PIPE) \
+		$(CLOCK) \
+		sysgo autoex \
+		$(CMDSDIR)/shell_21 $(CMDSDIR)/debug \
+		$(CMDSDIR)/date $(CMDSDIR)/devs \
+		$(CMDSDIR)/irqs $(CMDSDIR)/procs \
+		$(CMDSDIR)/mfree $(CMDSDIR)/mdir \
+		$(CMDSDIR)/display $(CMDSDIR)/iniz \
+		$(CMDSDIR)/deiniz $(CMDSDIR)/link \
 		$(CMDSDIR)/unlink
 
-ALLOBJS		= init sysgo autoex bootfile booter_ram booter_flash
+ALLOBJS		= init sysgo autoex bootfile_f256k bootfile_f256jr booter_ram booter_flash
 
 all: $(DEPENDS) $(ALLOBJS)
 	
@@ -87,27 +102,30 @@ all: $(DEPENDS) $(ALLOBJS)
 $(NOSLIB)/net.o:
 	cd $(NOSLIB); make
 	
-bootfile: sysgo autoex $(BOOTFILE) $(DEPENDS)
-	$(MERGE) $(BOOTFILE)>$@
+bootfile_f256k: sysgo autoex $(BOOTFILE_F256K) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_F256K)>$@
 
-booter_ram: bootfile
-	$(MERGE) $(BOOTFILE)>bootfile
-	$(PADROM) 31744 bootfile
+bootfile_f256jr: sysgo autoex $(BOOTFILE_F256JR) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_F256JR)>$@
+
+booter_ram_f256k: bootfile_f256k
+	$(MERGE) $(BOOTFILE_F256K)>bootfile_f256k
+	$(PADROM) 31744 bootfile_f256k
 	$(AS) -DFLASH=0 --output=raw trampoline.asm -otrampoline
-	cat bootfile trampoline > $@
+	cat bootfile_f256k trampoline > $@
 	$(RM) trampoline
 
-booter_flash: bootfile
-	$(MERGE) $(BOOTFILE)>bootfile
-	$(PADROM) 31744 bootfile
+booter_flash_f256k: bootfile_f256k
+	$(MERGE) $(BOOTFILE_F256K)>bootfile_f256k
+	$(PADROM) 31744 bootfile_f256k
 	$(AS) -DFLASH=1 --output=raw trampoline.asm -otrampoline
-	cat bootfile trampoline > $@
+	cat bootfile_f256k trampoline > $@
 	$(RM) trampoline
 
-upload: booter_ram
+upload_f256k: booter_ram_f256k
 	upload $^ 8000
 
-flash: booter_flash
+flash_f256k: booter_flash_f256k
 	dd status=none bs=8k skip=0 count=1 if=$^ of=booter_0
 	dd status=none bs=8k skip=1 count=1 if=$^ of=booter_1
 	dd status=none bs=8k skip=2 count=1 if=$^ of=booter_2

@@ -167,34 +167,18 @@ BootOS9Help         fcc       "Boot OS-9"
 BuildDate           dtb
 
 PrintVersionInfo
+datestacksize       equ       32
                     lbsr      PRINTS
                     fcc       /Build /
                     fcb       0
+                    leas      -datestacksize,s
+                    tfr       s,y
                     leax      BuildDate,pcr
-                    clra
-                    ldb       ,x+
-                    addd      #1900
-                    lbsr      PRINT_DEC
-                    ldb       #'-
-                    lbsr      PUTC
-                    clra
-                    ldb       ,x+
-                    lbsr      PRINT_DEC
-                    ldb       #'-
-                    lbsr      PUTC
-                    clra
-                    ldb       ,x+
-                    lbsr      PRINT_DEC
-                    ldb       #C$SPAC
-                    lbsr      PUTC
-                    clra
-                    ldb       ,x+
-                    lbsr      PRINT_DEC
-                    ldb       #':
-                    lbsr      PUTC
-                    clra
-                    ldb       ,x+
-                    lbsr      PRINT_DEC
+                    lbsr      DATESTR
+                    tfr       s,x
+                    lda       #1
+                    lbsr      PUTS
+                    leas      datestacksize,s
                     rts
 
 * F256 identity routine

@@ -69,7 +69,8 @@ keydrvmod           fcs       /keydrv/
 AltISR              
                     ldu       D.KbdSta
 * Handle keyboard (if available)
-                    ldx       V.KeyDrv,u
+                    ldx       V.KeyDrvEPtr,u
+                    cmpx      #$0000
                     beq       HandleSound
                     jsr       6,x call AltIRQ routine in keydrv
                     
@@ -315,19 +316,24 @@ l@               std       ,x++
                     bne       l@
                     rts
 
-* Keyboard initialization                    
+* Keyboard initialization  
+* NOTE: If we fail to find the 'keydrv' module, carry is returned set, but
+* the caller can chose to ignore the error condition.
 InitKeyboard        leax      keydrvmod,pcr         point to the keydrv module name
                     lda       #Systm+Objct               it's a system module
-                    pshs      u
+                    pshs      u save U on the stack
                     os9       F$Link              link to it
-                    puls      u
+                    tfr       u,x move the module address to X
+                    puls      u restore U from the stack
                     bcs       ex@         branch if the link failed
-                    sty       V.KeyDrv,u
-                    jsr       ,y                  call Init entry point
+                    stx       V.KeyDrvMPtr,u save the module pointer
+                    sty       V.KeyDrvEPtr,u save the entry pointer
+                    jsr       ,y                  call the subroutine's Init entry point
                     rts                           return to the caller
-ex@                 ldd        #0
-                    std       V.KeyDrv,u
-                    rts
+ex@                 ldd        #0 set D to 0
+                    std       V.KeyDrvMPtr,u clear the module pointer
+                    std       V.KeyDrvEPtr,u clear the entry pointer
+                    rts return to the caller
 * Init
 *
 * Entry:
@@ -355,8 +361,9 @@ Init                stu       D.KbdSta
                     stx       >D.OrgAlt           save it off in the original vector
                     leax      AltISR,pcr          get our alternate interrupt service routine
                     stx       >D.AltIRQ           and place it in the global vector
-                    
-                    rts
+
+                    clrb                          clear the carry and error code
+                    rts return to the caller
                     
 * Term
 *
@@ -367,15 +374,20 @@ Init                stu       D.KbdSta
 *    CC = carry set on error
 *    B  = error code
 *
-Term                ldx       V.KeyDrv,u
+Term                ldx       >D.OrgAlt   get the original alternate IRQ vector
+                    stx       <D.AltIRQ           save it back to the D.AltIRQ address              
+                    ldx       V.KeyDrvEPtr,u
                     cmpx      #0000
-                    beq       n@
+                    beq       ex@
                     jsr       3,x               call Term entry point
                     ldd       #0
-                    std       V.KeyDrv,u          and zero out the vector
-n@                  ldx       >D.OrgAlt   get the original alternate IRQ vector
-                    stx       <D.AltIRQ           save it back to the D.AltIRQ address              
-                    clrb                          clear the carry
+                    std       V.KeyDrvEPtr,u          and zero out the vector
+                    pshs      u
+                    ldu       V.KeyDrvMPtr,u
+                    os9       F$Unlink
+                    puls      u                    
+                    std       V.KeyDrvMPtr,u
+ex@                  clrb                          clear the carry
                     rts                           return to the caller
 
 * Read

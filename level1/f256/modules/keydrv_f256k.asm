@@ -25,11 +25,12 @@ name                fcs       /keydrv/
                     fcb       edition
 
                     org       V.KeyDrvStat
+V.META              rmb       1
                    
 * keydrv has three 3-byte entry points:
-* - Init                  
-* - Term
-* - AltISR (called by VTIO at the 60Hz interval)  
+*   - Init                  
+*   - Term
+*   - AltISR (called by VTIO at the 60Hz interval)  
 start               lbra      Init
                     lbra      Term
 *                    lbra      AltISR
@@ -38,24 +39,35 @@ start               lbra      Init
 AltISR              ldx       #VIA1.Base get the VIA1 base address
                     ldy       #D.RowState point to the row state global area
                     lda       #%01111111 initialize the accumulator with the row scan value
-loop@
+loop@               sta       VIA_ORA_IRA,x save the row scan value to the VIA1 output
+                    pshs      a save it on the stack for now
+                    lda       VIA_ORB_IRB,x get the column value for this row
+                    tfr       a,b save a copy to B
+                    eora      ,y XOR with the last row state value
+                    beq       next@ branch if there's no change
+                    bsr      HandleRow else one or more keys for this row have changed direction - handle it
+next@               leay      1,y advance to the next row state value
+                    puls      a restore the row scan value we read from VIA1
+                    orcc      #Carry set the carry flag so it will rotate in the upper 8 bits
+                    rora rotate A to the right
+                    bcs       loop@ branch if the carry is set to continue
+* Handle down and right arrow                    
+                    ldx       #VIA0.Base
+                    lda       #%10000000
                     sta       VIA_ORA_IRA,x
                     pshs      a
                     lda       VIA_ORB_IRB,x
                     tfr       a,b
                     eora      ,y
-                    beq       next@
-                    lbsr      Report
-next@               leay      1,y
-                    puls      a
-                    orcc      #Carry
-                    rora
-                    bcs       loop@
-                    rts
+                    beq       ex@
+                    bsr       HandleRow
+ex@                 puls      a
+                    rts return to the caller
 
-* A = keys in row that have changed
-* B = up/down state of keys in row                    
-Report              pshs      d,x,y
+* Entry:
+*    A = The keys in the row that have changed since the last scan.
+*    B = The up/down state of keys in the row.
+HandleRow              pshs      d,x,y
                     stb       ,y        save off new state to current row
                     ldb       #8       load counter
 kl@                 lsla shift leftmost bit into the carry
@@ -89,37 +101,45 @@ g@
                     bcc       keydown@ if carry set, key is going up -- ignore it
 * key is up -- process character
 keyup@              cmpa      #LSHIFT
-                    bne       isitctrl@
+                    bne       isitmeta@
                     clr       V.SHIFT,u                    
-                    bra       repex
+                    lbra       repex
+isitmeta@           cmpa      #META
+                    bne       isitctrl@
+                    clr       V.META,u
+                    lbra      repex
 isitctrl@           cmpa      #LCTRL
                     bne       isitalt@
                     clr       V.CTRL,u
-                    bra       repex
+                    ;bra       repex
 isitalt@            cmpa      #RALT                                    
-                    bne       repex
+                    lbne       repex
                     clr       V.ALT,u
-                    bra       repex
+                    lbra       repex
 * key is down -- process character
 keydown@            tsta
-                    beq       checksignal
+                    lbeq       CheckSig
 
                     cmpa      #LSHIFT
-                    bne       isitctrl@
+                    bne       isitmeta@
                     sta       V.SHIFT,u                    
-                    bra       repex
+                    lbra       repex
+isitmeta@           cmpa      #META
+                    bne       isitctrl@
+                    sta       V.META,u
+                    lbra       repex
 isitctrl@           cmpa      #LCTRL
                     bne       isitalt@
                     sta       V.CTRL,u
-                    bra       repex
+                    lbra       repex
 isitalt@            cmpa      #RALT                                    
                     bne       isitcaps@
                     sta       V.ALT,u
-                    bra       repex
+                    lbra       repex
 isitcaps@           cmpa      #CAPS
                     bne       z@
                     com       V.CAPSLck,u
-                    bra       repex     
+                    lbra       repex     
 * Handle CAPS LOCK engaged
 z@                  tst       V.CAPSLck,u
                     beq       z1@
@@ -135,12 +155,52 @@ z1@                 tst       V.CTRL,u
                     suba      #$40
 * Handle ALT down
 z2@                 tst       V.ALT,u
-                    beq       zz@
+                    beq       z3@
                     anda      #$5F
                     adda      #$40
-zz@                 lbsr      BufferChar
+* Handle META down
+z3@                 tst       V.META,u
+                    beq       zz@
+                    cmpa      #'8
+                    bne       z31@
+                    lda       #'`
+                    bra       zz@
+z31@                cmpa      #'9
+                    bne       z32@
+                    lda       #'|
+                    bra       zz@                    
+z32@                cmpa      #'0
+                    bne       z33@
+                    lda       #'\
+z33@                cmpa      #'7
+                    bne       zz@
+                    lda       #'~
+zz@                 
+* Advance the circular buffer one character.
+BufferChar          ldb       V.IBufH,u           get buffer head pointer in B
+                    leax      V.InBuf,u           point X to the input buffer
+                    abx                           X now holds address of the head pointer
+* Check if we need to wrap around tail pointer to zero.
+IncNCheck           incb                          increment the next character pointer
+                    cmpb      #KBufSz-1           are we pointing to the end of the buffer?
+                    bls       next@               branch if not
+                    clrb                          else clear the pointer (wraps to head)
+next@               cmpb      V.IBufT,u           is B at the tail? (if so, the input buffer is full)
+                    beq       bye@                branch if the input buffer is full (drop the character)
+                    stb       V.IBufH,u           update the buffer head pointer
+                    sta       ,x                  place the character in the buffer
+bye@                
+
+                    ldb       #S$Intrpt           get the interrupt signal
+                    cmpa      V.INTR,u            is our character same as the interrupt signal?
+                    beq       getlproc@           branch if it's the same
+                    ldb       #S$Abort            get the abort signal
+                    cmpa      V.QUIT,u            is our character same as the abort signal?
+                    bne       CheckSig            branch if it isn't
+getlproc@           lda       V.LPRC,u            else get the ID of the last process to use this device
+                    bra       noproc@             branch
 * Check signal
-checksignal
+CheckSig
                     lda       <V.SSigID,u         send signal on data ready?
                     beq       wake@               no, just go wake up the process
                     ldb       <V.SSigSg,u         else get the signal code
@@ -154,25 +214,6 @@ noproc@             beq       repex                 branch if not
 send@               os9       F$Send              and send the signal in B
 repex               puls      d
                     lbra       nextbit
-
-* Advance the circular buffer one character.
-BufferChar          ldb       V.IBufH,u           get buffer head pointer in B
-                    leax      V.InBuf,u           point X to the input buffer
-                    abx                           X now holds address of the head pointer
-                    lbsr      IncNCheck           increment the pointer and check for tail wrap
-                    cmpb      V.IBufT,u           is B at the tail? (if so, the input buffer is full)
-                    beq       bye@                branch if the input buffer is full (drop the character)
-                    stb       V.IBufH,u           update the buffer head pointer
-                    sta       ,x                  place the character in the buffer
-bye@                clrb                          clear carry
-                    rts                           return
-
-* Check if we need to wrap around tail pointer to zero.
-IncNCheck           incb                          increment the next character pointer
-                    cmpb      #KBufSz-1           are we pointing to the end of the buffer?
-                    bls       ex@                 branch if not
-                    clrb                          else clear the pointer (wraps to head)
-ex@                 rts                           return
 
 * Init
 *
@@ -190,8 +231,14 @@ Init                ldx     #VIA1.Base
                     sta     VIA_DDRA,x
                     sta     VIA_ORA_IRA,x                    
                     clr     VIA_DDRB,x
+                    ldx     #VIA0.Base
+                    clr     VIA_IER,x
+                    lda     #$80    
+                    sta     VIA_DDRA,x
+                    sta     VIA_ORA_IRA,x                    
+                    clr     VIA_DDRB,x                 
                     ldx     #D.RowState
-                    ldd     #$FF*256+8
+                    ldd     #$FF*256+9
 l@                  sta     ,x+
                     decb
                     bne     l@
@@ -205,11 +252,11 @@ DOWN set   'N'-64
 LEFT set   'B'-64
 RIGHT set  'F'-64
 DEL set    'D'-64
-ESC set    'E'-64
+ESC set    'C'-64
 TAB set    'I'-64
 ENTER set  'M'-64
 BKSP set   'H'-64
-BREAK set  'C'-64
+BREAK set  'E'-64
 
 F1 set $F1
 F2 set $F2
@@ -219,15 +266,15 @@ F5 set $F5
 F6 set $F6
 F7 set $F7
 F8 set $F8        
-LMeta set $F9
-RALT set $FF
-LSHIFT set $FE
 RSHIFT set LSHIFT
-CAPS set $FD
+META set $FB
 LCTRL set $FC
+CAPS set $FD
+LSHIFT set $FE
+RALT set $FF
 INS set 15
 
-F256KKeys fcb  BREAK,'q,LMETA,$20,'2,LCTRL,BKSP,'1
+F256KKeys fcb  BREAK,'q,META,$20,'2,LCTRL,BKSP,'1
         fcb  '/,TAB,RALT,RSHIFT,HOME,'','],'=
         fcb  ',,'[,';,'.,CAPS,'l,'p,'-
         fcc  "nokm0ji9"
@@ -237,7 +284,7 @@ F256KKeys fcb  BREAK,'q,LMETA,$20,'2,LCTRL,BKSP,'1
         fcb  UP,F5,F3,F1,F7,LEFT,ENTER,BKSP
         fcb  DOWN,RIGHT,0,0,0,0,RIGHT,DOWN
 
-F256KShiftKeys  fcb  ESC,'Q,LMETA,32,'@,LCTRL,0,'!
+F256KShiftKeys  fcb  ESC,'Q,META,32,'@,LCTRL,0,'!
         fcb  '?,RALT,LEFT,RSHIFT,END,34,'},'+
         fcb  '<,'{,':,'>,CAPS,'L,'P,'_
         fcc  "NOKM)JI("
