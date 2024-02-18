@@ -77,7 +77,7 @@ BOOTFILE_F256K = $(KERNEL) $(DWIO) \
 		$(CMDSDIR)/mfree $(CMDSDIR)/mdir \
 		$(CMDSDIR)/display $(CMDSDIR)/iniz \
 		$(CMDSDIR)/deiniz $(CMDSDIR)/link \
-		$(CMDSDIR)/unlink $(CMDSDIR)/tmode
+		$(CMDSDIR)/unlink $(CMDSDIR)/basban
 
 BOOTFILE_F256JR = $(KERNEL) $(DWIO) \
 		$(RBF) $(RBFDW) \
