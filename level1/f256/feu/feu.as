@@ -29,12 +29,12 @@ Banner              equ       *
                     fcb       C$CR
                     fcb       0
 
-FlashMsg            fcc       / - Flash Mode/
+FlashMsg            fcc       / (Flash Mode) /
                     fcb       C$CR
                     fcb       C$CR
                     fcb       $0
 
-RAMMsg              fcc       / - RAM Mode/
+RAMMsg              fcc       / (RAM Mode) /
                     fcb       C$CR
                     fcb       C$CR
                     fcb       $0
@@ -188,6 +188,13 @@ F256Type            pshs      x
                     lda       7,x
                     puls      x,pc
 
+* F256 motherboard identity routine
+* Exit: D = Two-byte ASCII PCB ID
+F256MBType          pshs      x
+                    ldx       #SYS0
+                    ldd       8,x
+                    puls      x,pc
+
 PrintESCorSTOP      bsr       F256Type
                     cmpa      #$02
                     bne       isItF256K@
@@ -214,7 +221,56 @@ isItF256K@          cmpa      #$12
                     lbsr      PRINTS
                     fcc       "F256K"
                     fcb       $0
-cont@               rts
+cont@               lbsr      PRINTS
+                    fcc       " - PCBID "
+                    fcb       $0
+                    bsr       F256MBType
+                    exg       a,b
+                    lbsr      PUTC
+                    exg       a,b
+                    lbsr      PUTC
+                    lbsr      PRINTS
+                    fcc       " - TinyVicky "
+                    fcb       $0
+                    ldx       #SYS0
+                    lda       $0F,x
+                    bsr       PutBCD
+                    lda       $0E,x
+                    bsr       PutBCD
+                    lda       $0D,x
+                    bsr       PutBCD
+                    lda       $0C,x
+                    bsr       PutBCD
+                    lda       $0B,x
+                    bsr       PutBCD
+                    lda       $0A,x
+                    bsr       PutBCD
+                    rts
+PutBCD                    
+                    bsr       BCD2ASCII
+                    exg       a,b
+                    lbsr      PUTC
+                    exg       a,b
+                    lbsr      PUTC
+                    rts
+
+* Entry:
+*   A = BCD byte
+*
+* Exit:
+*   A = ASCII of upper 4 bits of BCD in A
+*   B = ASCII of lower 4 bits of BCD in A
+BCD2ASCII           pshs      a
+                    anda      #$F0
+                    lsra
+                    lsra
+                    lsra
+                    lsra
+                    adda      #'0
+                    puls      b
+                    andb      #$0F
+                    addb      #'0
+                    rts
 
 SetKeySignal        pshs      d,x
                     clr       keypressed,u
