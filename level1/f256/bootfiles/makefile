@@ -33,7 +33,8 @@ RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd
 SCF		 = $(MD)/scf.mn
 
 # SCF video terminal
-SCVT		 = $(MD)/vtio.dr $(MD)/term.dt
+SCVT_F256K  = $(MD)/vtio.dr $(MD)/keydrv_f256k.sb $(MD)/term.dt
+SCVT_F256JR = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/term.dt
 
 # Font & palette
 FONT		 = $(MD)/phoenixegafont.sb
@@ -60,25 +61,44 @@ SCDWP     = $(MD)/scdwp.dr $(MD)/p_scdwp.dd
 # Clock driver
 CLOCK	= $(MD)/clock $(MD)/clock2_f256
 
-BOOTFILE_SD = $(KERNEL) $(DWIO) \
+BOOTFILE_SD_F256K = $(KERNEL) $(DWIO) \
 		$(RBF) $(RBFDW) \
 		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
 		$(MD)/dds0.dd \
-		$(SCF) $(SCVT) $(FONT) $(PALETTE) \
+		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(CMDSDIR)/shell_21
 
-BOOTFILE_DW = $(KERNEL) $(DWIO) \
+BOOTFILE_SD_F256JR = $(KERNEL) $(DWIO) \
+		$(RBF) $(RBFDW) \
+		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
+		$(MD)/dds0.dd \
+		$(SCF) $(SCVT_F256JR) $(FONT) $(PALETTE) \
+		$(CLOCK) \
+		$(MD)/sysgo \
+		$(CMDSDIR)/shell_21
+
+BOOTFILE_DW_F256K = $(KERNEL) $(DWIO) \
 		$(RBF) $(RBFDW) \
 		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
 		$(MD)/ddx0.dd \
-		$(SCF) $(SCVT) $(FONT) $(PALETTE) \
+		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(CMDSDIR)/shell_21
 		
-ALLOBJS		= bootfile_sd bootfile_dw
+BOOTFILE_DW_F256JR = $(KERNEL) $(DWIO) \
+		$(RBF) $(RBFDW) \
+		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
+		$(MD)/ddx0.dd \
+		$(SCF) $(SCVT_F256JR) $(FONT) $(PALETTE) \
+		$(CLOCK) \
+		$(MD)/sysgo \
+		$(CMDSDIR)/shell_21
+		
+ALLOBJS		= bootfile_sd_f256k bootfile_sd_f256jr \
+			 bootfile_dw_f256k bootfile_dw_f256jr
 		
 all: $(ALLOBJS)
 
@@ -86,11 +106,17 @@ all: $(ALLOBJS)
 # It also requires that the bootfile be padded out to a multiple of 256
 # bytes. Finally, the trampoline code is borrowed from Level 2 but is only
 # necessary to fill the areas between $FD00-$FFFF.
-bootfile_sd: $(BOOTFILE_SD) $(DEPENDS)
-	$(MERGE) $(BOOTFILE_SD)>$@
+bootfile_sd_f256k: $(BOOTFILE_SD_F256K) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_SD_F256K)>$@
 
-bootfile_dw: $(BOOTFILE_DW) $(DEPENDS)
-	$(MERGE) $(BOOTFILE_DW)>$@
+bootfile_sd_f256jr: $(BOOTFILE_SD_F256JR) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_SD_F256JR)>$@
+
+bootfile_dw_f256k: $(BOOTFILE_DW_F256K) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_DW_F256K)>$@
+
+bootfile_dw_f256jr: $(BOOTFILE_DW_F256JR) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_DW_F256JR)>$@
 
 clean:
 	$(RM) $(ALLOBJS)
