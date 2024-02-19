@@ -94,7 +94,8 @@ BOOTFILE_F256JR = $(KERNEL) $(DWIO) \
 		$(CMDSDIR)/deiniz $(CMDSDIR)/link \
 		$(CMDSDIR)/unlink
 
-ALLOBJS		= init sysgo autoex bootfile_f256k bootfile_f256jr booter_ram booter_flash
+ALLOBJS		= init sysgo autoex bootfile_f256k bootfile_f256jr booter_ram_f256k booter_flash_f256k \
+				booter_ram_f256jr booter_flash_f256jr
 
 all: $(DEPENDS) $(ALLOBJS)
 	
@@ -115,6 +116,13 @@ booter_ram_f256k: bootfile_f256k
 	cat bootfile_f256k trampoline > $@
 	$(RM) trampoline
 
+booter_ram_f256jr: bootfile_f256jr
+	$(MERGE) $(BOOTFILE_F256K)>bootfile_f256jr
+	$(PADROM) 31744 bootfile_f256jr
+	$(AS) -DFLASH=0 --output=raw trampoline.asm -otrampoline
+	cat bootfile_f256jr trampoline > $@
+	$(RM) trampoline
+
 booter_flash_f256k: bootfile_f256k
 	$(MERGE) $(BOOTFILE_F256K)>bootfile_f256k
 	$(PADROM) 31744 bootfile_f256k
@@ -122,10 +130,32 @@ booter_flash_f256k: bootfile_f256k
 	cat bootfile_f256k trampoline > $@
 	$(RM) trampoline
 
+booter_flash_f256jr: bootfile_f256jr
+	$(MERGE) $(BOOTFILE_F256JR)>bootfile_f256jr
+	$(PADROM) 31744 bootfile_f256jr
+	$(AS) -DFLASH=1 --output=raw trampoline.asm -otrampoline
+	cat bootfile_f256jr trampoline > $@
+	$(RM) trampoline
+
 upload_f256k: booter_ram_f256k
 	upload $^ 8000
 
+upload_f256jr: booter_ram_f256jr
+	upload $^ 8000
+
 flash_f256k: booter_flash_f256k
+	dd status=none bs=8k skip=0 count=1 if=$^ of=booter_0
+	dd status=none bs=8k skip=1 count=1 if=$^ of=booter_1
+	dd status=none bs=8k skip=2 count=1 if=$^ of=booter_2
+	dd status=none bs=8k skip=3 count=1 if=$^ of=booter_3
+	echo "3c,booter_0" > bulk.csv
+	echo "3d,booter_1" >> bulk.csv
+	echo "3e,booter_2" >> bulk.csv
+	echo "3f,booter_3" >> bulk.csv
+	bulk_flash bulk.csv
+	rm booter_? bulk.csv
+
+flash_f256jr: booter_flash_f256jr
 	dd status=none bs=8k skip=0 count=1 if=$^ of=booter_0
 	dd status=none bs=8k skip=1 count=1 if=$^ of=booter_1
 	dd status=none bs=8k skip=2 count=1 if=$^ of=booter_2
