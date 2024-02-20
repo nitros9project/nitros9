@@ -33,7 +33,8 @@ RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd
 SCF		 = $(MD)/scf.mn
 
 # SCF video terminal
-SCVT		 = $(MD)/vtio.dr $(MD)/term.dt
+SCVT_F256K	 = $(MD)/vtio.dr $(MD)/term.dt
+SCVT_F256JR  = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/term.dt
 
 # Font & palette
 FONT		 = $(MD)/phoenixegafont.sb
@@ -60,8 +61,8 @@ SCDWP     = $(MD)/scdwp.dr $(MD)/p_scdwp.dd
 # Clock driver
 CLOCK	= $(MD)/clock $(MD)/clock2_f256
 
-BOOTFILE_SD = $(KERNELP2) \
-		$(SCF) $(SCVT) \
+BOOTFILE_SD_F256K = $(KERNELP2) \
+		$(SCF) $(SCVT_F256K) \
 		$(FONT) $(PALETTE) \
 		$(DWIO) \
 		$(RBF) $(RBDW) $(RBSUPER) $(RBFNXCART) $(RBFNXSD) \
@@ -70,8 +71,8 @@ BOOTFILE_SD = $(KERNELP2) \
 		$(MD)/sysgo \
 		$(MD)/kernel/krn
 
-BOOTFILE_DW = $(KERNELP2) \
-		$(SCF) $(SCVT) \
+BOOTFILE_DW_F256K = $(KERNELP2) \
+		$(SCF) $(SCVT_F256K) \
 		$(FONT) $(PALETTE) \
 		$(DWIO) \
 		$(RBF) $(RBDW) $(RBSUPER) $(RBFNXCART) $(RBFNXSD) \
@@ -80,20 +81,51 @@ BOOTFILE_DW = $(KERNELP2) \
 		$(MD)/sysgo \
 		$(MD)/kernel/krn
 
-ALLOBJS		= bootfile_sd bootfile_dw
+BOOTFILE_SD_F256JR = $(KERNELP2) \
+		$(SCF) $(SCVT_F256JR) \
+		$(FONT) $(PALETTE) \
+		$(DWIO) \
+		$(RBF) $(RBDW) $(RBSUPER) $(RBFNXCART) $(RBFNXSD) \
+		$(MD)/dds0.dd \
+		$(CLOCK) \
+		$(MD)/sysgo \
+		$(MD)/kernel/krn
+
+BOOTFILE_DW_F256JR = $(KERNELP2) \
+		$(SCF) $(SCVT_F256JR) \
+		$(FONT) $(PALETTE) \
+		$(DWIO) \
+		$(RBF) $(RBDW) $(RBSUPER) $(RBFNXCART) $(RBFNXSD) \
+		$(MD)/ddx0.dd \
+		$(CLOCK) \
+		$(MD)/sysgo \
+		$(MD)/kernel/krn
+
+ALLOBJS		= bootfile_sd_f256k bootfile_dw_f256k bootfile_sd_f256jr bootfile_dw_f256jr
 
 all:	$(ALLOBJS)
 
-bootfile_sd: $(BOOTFILE_SD) $(DEPENDS)
-	$(MERGE) $(BOOTFILE_SD)>$@
+bootfile_sd_f256k: $(BOOTFILE_SD_F256K) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_SD_F256K)>$@
 	./padup256 $@
 
-bootfile_dw: $(BOOTFILE_DW) $(DEPENDS)
-	$(MERGE) $(BOOTFILE_DW)>$@
+bootfile_dw_f256k: $(BOOTFILE_DW_F256K) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_DW_F256K)>$@
 	./padup256 $@
 
-upload: bootfile_dw
-	upload bootfile 8000
+upload_f256jr: bootfile_dw_f256jr
+	upload bootfile_f256kr 8000
+
+bootfile_sd_f256jr: $(BOOTFILE_SD_F256JR) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_SD_F256JR)>$@
+	./padup256 $@
+
+bootfile_dw_f256jr: $(BOOTFILE_DW_F256JR) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_DW_F256JR)>$@
+	./padup256 $@
+
+upload_f256jr: bootfile_dw_f256jr
+	upload bootfile_f256jr 8000
 
 trace:
 	@dump 0 20

@@ -20,7 +20,7 @@ RBF		= rbf.mn rbdw.dr dwio.sb ddx0.dd x0.dd x1.dd x2.dd x3.dd \
 
 SCF		= scf.mn \
 		vrn.dr nil.dd \
-		vtio.dr term.dt \
+		vtio.dr keydrv_f256k.sb keydrv_ps2.sb term.dt \
 		scdwp.dr p_scdwp.dd \
 		scdwv.dr term_scdwv.dt n_scdwv.dd \
 		n0_scdwv.dd n1_scdwv.dd n2_scdwv.dd \

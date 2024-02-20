@@ -53,7 +53,7 @@ V.InBuf             RMB       KBufSz              the input buffer
 V.Last              EQU       .
 
 * Borrow 11 bytes (16 bytes available in Level 1) from "CoCo" specific area of system globals for F256's use.
-                    org       D.CBStrt
+                    org       D.IRQTmp
 D.Bell              rmb       2
 D.TnCnt             rmb       1
 D.OrgAlt            rmb       2
