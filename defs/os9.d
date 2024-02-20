@@ -539,6 +539,7 @@ D.Tick              RMB       1
 D.Slice             RMB       1                   current slice remaining
 D.TSlice            RMB       1                   Ticks per Slice
 D.Boot              RMB       1                   Bootstrap attempted flag
+D.KbdSta            EQU       .                   Keyboard scanner static storage (F256 vtio)
 D.MotOn             RMB       1                   Floppy Disk Motor-On time out
 D.ErrCod            RMB       1                   Reset Error Code
 D.Daywk             RMB       1                   day of week, com-trol clock
