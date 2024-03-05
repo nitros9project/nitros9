@@ -1,7 +1,7 @@
 ********************************************************************
 * Basic09 Banner
 * 2024/01/2024-03-04-2024
-* Matt Massie
+* Matt Massie - 
 ********************************************************************
 
                     nam      basban
@@ -148,12 +148,11 @@ BASL2               fcb       $1b,$32,$07,$de,$db,$1b,$32,$06,$db,$db
                     fcb       $db,$db,$1b,$32,$0f,$bb,$db,$db,$db,$db
                     fcb       $db,$b4,$1b,$32,$06,$db,$db,$1b,$32
                     fcb       $01,$b9,$db,$db,$db,$db,$b8,$1b,$32,$06
-                    fcb       $db,$db,$db
-                    fcb       $db,$db,$db,$db,$db,$1b,$32,$01,$40,$4d
-                    fcb       $61,$74,$74,$20,$4d,$61,$73,$73,$69,$65
-                    fcb       $1b,$32,$01
+                    fcb       $db,$db,$db,$db,$db,$db,$db,$db,$1b,$32
+                    fcb       $01,$40,$4d,$61,$74,$74,$20,$4d,$61,$73
+                    fcb       $73,$69,$65,$1b,$32,$01
 BASLEN2             equ       *-BASL2
-NEWLN               fcb       $1B,$33,$06,$0C,$0D
+NEWLN               fcb       $1b,$33,$06,$0c,$0d
 NEWLNLEN            equ	*-NEWLN
 FONTS               fcb       $01,$03,$07,$0f,$1f,$3f,$7f,$ff          char 179 left forward slant
                     fcb       $ff,$fe,$fc,$f8,$f0,$e0,$c0,$80          char 180 right forward slant
