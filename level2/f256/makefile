@@ -18,7 +18,6 @@ DEFS		= $(shell $(CD) defs; make --no-print-directory showobjs)
 SYSBIN		= $(shell $(CD) sys; make --no-print-directory showbinobjs)
 SYSTEXT		= $(shell $(CD) sys; make --no-print-directory showtextobjs)
 STARTUP		= startup
-STARTUP_DW	= startup.dw
 SYSGO		= sysgo_dd
 
 DSKSD_F256K		= $(DISTROVER)_sd_f256k.dsk
@@ -74,7 +73,7 @@ $(DSKSD_F256K):
 	$(OS9COPY) modules/$(SYSGO) $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
 	$(CD) cmds; $(OS9COPY) $(CMDS) ../$@,CMDS
-	$(CD) cmds; $(OS9COPY) -r shellplus ../$@,CMDS/shell
+	$(CD) cmds; $(OS9COPY) -r shell ../$@,CMDS/shell
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(SYSBIN),$@,SYS/$(file))
@@ -106,7 +105,7 @@ $(DSKDW_F256K):
 	$(OS9COPY) modules/$(SYSGO) $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
 	$(CD) cmds; $(OS9COPY) $(CMDS_DW) ../$@,CMDS
-	$(CD) cmds; $(OS9COPY) -r shellplus ../$@,CMDS/shell
+	$(CD) cmds; $(OS9COPY) -r shell ../$@,CMDS/shell
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS_DW),$@,CMDS/$(file))
 	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(SYSBIN),$@,SYS/$(file))
@@ -114,7 +113,7 @@ $(DSKDW_F256K):
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
 	$(CD) defs; $(CPL) $(DEFS) ../$@,DEFS
 	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
-	$(CPL) $(STARTUP_DW) $@,startup
+	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
@@ -138,7 +137,7 @@ $(DSKSD_F256JR):
 	$(OS9COPY) modules/$(SYSGO) $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
 	$(CD) cmds; $(OS9COPY) $(CMDS) ../$@,CMDS
-	$(CD) cmds; $(OS9COPY) -r shellplus ../$@,CMDS/shell
+	$(CD) cmds; $(OS9COPY) -r shell ../$@,CMDS/shell
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(SYSBIN),$@,SYS/$(file))
@@ -170,7 +169,7 @@ $(DSKDW_F256JR):
 	$(OS9COPY) modules/$(SYSGO) $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
 	$(CD) cmds; $(OS9COPY) $(CMDS_DW) ../$@,CMDS
-	$(CD) cmds; $(OS9COPY) -r shellplus ../$@,CMDS/shell
+	$(CD) cmds; $(OS9COPY) -r shell ../$@,CMDS/shell
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS_DW),$@,CMDS/$(file))
 	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(SYSBIN),$@,SYS/$(file))
@@ -178,7 +177,7 @@ $(DSKDW_F256JR):
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
 	$(CD) defs; $(CPL) $(DEFS) ../$@,DEFS
 	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
-	$(CPL) $(STARTUP_DW) $@,startup
+	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
 	$(CPL) $(BASIC09_FILES) $@,BASIC09

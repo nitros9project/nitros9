@@ -305,7 +305,7 @@ next@               lbsr      PUTS                print it
                     lda       #1
                     lbsr      PromptForAutoAbort  prompt the user to abort autoboot
                     bcs       loop@
-                    lbsr      AutoexecGo          attempt to run "autoexec" first
+*                    lbsr      AutoexecGo          attempt to run "autoexec" first
                     leax      Menu,pcr            point to the menu
                     bsr       ExecAutoMenu        perform the automatic execution
 loop@               leax      Menu,pcr            point to the menu

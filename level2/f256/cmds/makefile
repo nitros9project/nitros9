@@ -27,10 +27,10 @@ CMDS    = asm attr backup binex build cmp copy \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
 		$(CMDS_DW) $(BASIC09) $(BF) $(CPM)
 
-SHELLMODS	= shellplus date deiniz echo iniz link load save unlink
+SHELLMODS	= shellplus echo iniz link load save unlink
 
-UTILPAK1	= attr build copy del deldir dir display list makdir mdir \
-		merge mfree procs rename tmode
+UTILPAK1	= attr copy date del deiniz dir display list makdir mdir \
+		merge mfree procs rename tmode unlink
 
 # Files not compilable by os9asm: config
 all:	$(DEPENDS) $(CMDS) shell utilpak1
