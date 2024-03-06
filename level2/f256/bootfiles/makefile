@@ -33,7 +33,7 @@ RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd
 SCF		 = $(MD)/scf.mn
 
 # SCF video terminal
-SCVT_F256K	 = $(MD)/vtio.dr $(MD)/term.dt
+SCVT_F256K	 = $(MD)/vtio.dr $(MD)/keydrv_f256k.sb $(MD)/term.dt
 SCVT_F256JR  = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/term.dt
 
 # Font & palette
