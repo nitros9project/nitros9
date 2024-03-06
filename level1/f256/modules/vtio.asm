@@ -101,7 +101,7 @@ ex@                 jmp       [D.OrgAlt] branch to the original alternate IRQ ro
 *******************************************************
 * Bell ($07) (called via Bell vector D.Bell):
 *
-Bell                ldd       #$3FFF              A = start volume (48), B = duration counter
+Bell                ldd       #$3F1F              A = start volume (48), B = duration counter
                     ldy       #%0000000100000011              bell frequency
 
 * Common SS.Tone and Bell routine
