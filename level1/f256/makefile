@@ -17,21 +17,16 @@ DEFS		= $(shell $(CD) defs; make --no-print-directory showobjs)
 SYSBIN		= $(shell $(CD) sys; make --no-print-directory showbinfiles)
 SYSTEXT		= $(shell $(CD) sys; make --no-print-directory showtextfiles)
 STARTUP		= startup
-STARTUP_DW	= startup.dw
-SYSGO		= sysgo_dd
+SCRIPTS     = $(shell $(CD) scripts; echo *)
+SYSGO		= sysgo
 
-DSKSD_F256K		= $(DISTROVER)_sd_f256k.dsk
-LDSKSD_F256K		= $(DISTRONAME)_sd_f256k.dsk
-DSKDW_F256K		= $(DISTROVER)_dw_f256k.dsk
-LDSKDW_F256K		= $(DISTRONAME)_dw_f256k.dsk
+DSKSD_F256K		= $(DISTROVER)k_sd.dsk
+DSKDW_F256K		= $(DISTROVER)k_dw.dsk
 
-DSKSD_F256JR		= $(DISTROVER)_sd_f256jr.dsk
-LDSKSD_F256JR		= $(DISTRONAME)_sd_f256jr.dsk
-DSKDW_F256JR		= $(DISTROVER)_dw_f256jr.dsk
-LDSKDW_F256JR		= $(DISTRONAME)_dw_f256jr.dsk
+DSKSD_F256JR		= $(DISTROVER)jr_sd.dsk
+DSKDW_F256JR		= $(DISTROVER)jr_dw.dsk
 
 DSKS		= $(DSKSD_F256K) $(DSKDW_F256K) $(DSKSD_F256JR) $(DSKDW_F256JR)
-LDSKS	= $(LDSKSD_F256K) $(LDSKDW_F256K) $(LDSKSD_F256JR) $(LDSKDW_F256JR)
 
 # Make all components
 all:
@@ -48,7 +43,7 @@ clean: dskclean
 	$(foreach dir,$(DIRS),$(MAKE) -C $(dir) clean &&) :
 
 dskclean:
-	$(RM) $(DSKS) $(LDSKS)
+	$(RM) $(DSKS)
 
 redisk:
 	osascript -e 'tell application "DriveWire"' -e 'tell server of first document' -e 'reload drive 0' -e 'end tell' -e 'end tell'
@@ -89,8 +84,8 @@ $(DSKSD_F256K):
 	$(CPL) $(BF_FILES) $@,BRAINFUCK
 	$(MAKDIR) $@,SOUNDS
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
-	$(RM) $(LDSKSD_F256K)
-	$(SOFTLINK) $@ $(LDSKSD_F256K)
+	$(MAKDIR) $@,SCRIPTS
+	$(CD) scripts; $(CPL) $(SCRIPTS) ../$@,SCRIPTS
 
 $(DSKDW_F256K):
 	$(RM) $@
@@ -109,7 +104,7 @@ $(DSKDW_F256K):
 	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
 	$(CD) defs; $(CPL) $(DEFS) ../$@,DEFS
 	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
-	$(CPL) $(STARTUP_DW) $@,startup
+	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
@@ -117,8 +112,8 @@ $(DSKDW_F256K):
 	$(CPL) $(BF_FILES) $@,BRAINFUCK
 	$(MAKDIR) $@,SOUNDS
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
-	$(RM) $(LDSKDW_F256K)
-	$(SOFTLINK) $@ $(LDSKDW_F256K)
+	$(MAKDIR) $@,SCRIPTS
+	$(CD) scripts; $(CPL) $(SCRIPTS) ../$@,SCRIPTS
 
 $(DSKSD_F256JR):
 	$(RM) $@
@@ -144,8 +139,8 @@ $(DSKSD_F256JR):
 	$(CPL) $(BF_FILES) $@,BRAINFUCK
 	$(MAKDIR) $@,SOUNDS
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
-	$(RM) $(LDSKSD_F256JR)
-	$(SOFTLINK) $@ $(LDSKSD_F256JR)
+	$(MAKDIR) $@,SCRIPTS
+	$(CD) scripts; $(CPL) $(SCRIPTS) ../$@,SCRIPTS
 
 $(DSKDW_F256JR):
 	$(RM) $@
@@ -164,7 +159,7 @@ $(DSKDW_F256JR):
 	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
 	$(CD) defs; $(CPL) $(DEFS) ../$@,DEFS
 	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
-	$(CPL) $(STARTUP_DW) $@,startup
+	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
@@ -172,8 +167,8 @@ $(DSKDW_F256JR):
 	$(CPL) $(BF_FILES) $@,BRAINFUCK
 	$(MAKDIR) $@,SOUNDS
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
-	$(RM) $(LDSKDW_F256JR)
-	$(SOFTLINK) $@ $(LDSKDW_F256JR)
+	$(MAKDIR) $@,SCRIPTS
+	$(CD) scripts; $(CPL) $(SCRIPTS) ../$@,SCRIPTS
 
 info:
 	@$(ECHO) "*** NitrOS-9/$(CPU) Level $(LEVEL) for the $(MACHINE) ***"
