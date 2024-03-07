@@ -238,18 +238,18 @@ InitDisplay         pshs      u                   save important registers
                     lda       #$C0                get the gamma MMU block
                     sta       MAPSLOT             store it in the MMU slot to map it in
                     ldd       #0                  get the clear value
-l@                 tfr       d,x                 transfer it to X
+l@                  tfr       d,x                 transfer it to X
                     stb       MAPADDR,x           store at $0000 off of X
                     stb       MAPADDR+$400,x      store at $0400 off of X
                     stb       MAPADDR+$800,x      store at $0800 off of X
                     incb                          increment the counter
-                    bne       l@                 loop until complete
+                    bne       l@                  loop until complete
 
 * Initialize the palette.
                     leax      palettemod,pcr      point to the palette module
                     lda       #Data               it's a data module
                     os9       F$Link              link to it
-                    bcs       installfont        branch if the link failed
+                    bcs       installfont         branch if the link failed
                     pshs      y                   save Y
                     tfr       y,x                 transfer it to X
                     ldy       #TEXT_LUT_FG        load Y with the LUT foreground
@@ -259,7 +259,7 @@ l@                 tfr       d,x                 transfer it to X
                     bsr       copypal             copy the palette data for the background
 
 * Install the font.
-installfont        leax      fontmod,pcr         point to the font module
+installfont         leax      fontmod,pcr         point to the font module
                     lda       #Data               it's a data module
                     os9       F$Link              link to it
                     bcs       setforeback         branch if the link failed
@@ -267,10 +267,10 @@ installfont        leax      fontmod,pcr         point to the font module
                     lda       #$C1                get the font MMU block
                     sta       MAPSLOT             store it in the MMU slot to map it in
                     ldy       #MAPADDR            get the address to write to
-l@               ldd       ,x++                get two bytes of font data
+l@                  ldd       ,x++                get two bytes of font data
                     std       ,y++                and store it
                     cmpy      #MAPADDR+2048       are we at the end?
-                    bne       l@               branch if not
+                    bne       l@                  branch if not
 
 * Initialize the cursor.
                     ldx       #TXT.Base
@@ -300,7 +300,7 @@ setforeback         lda       #$C3                get the foreground/background 
 
 * Copy palette bytes from X to Y.
 copypal             ldu       #64                 use a loop counter of 64 times
-l@               ldd       ,x++                get two bytes from the source
+l@                  ldd       ,x++                get two bytes from the source
                     std       ,y++                and save it to the destination
                     ldd       ,x++                get two more bytes from the source
                     std       ,y++                and save it to the destination
@@ -967,6 +967,75 @@ SetWin80x60         clrb
                     ldx       #80*256+60
                     bra       SetWin
 
+;;; ChgForePal
+;;;
+;;; Change a foreground palette register.
+;;;
+;;; Code: 1B 60
+;;;
+;;; Parameters: PRN RVA GVA BVA AVA
+;;;
+;;; PRN = foreground palette register number (0-15).
+;;; RVA = red component.
+;;; GVA = green component.
+;;; BVA = blue component.
+;;; AVA = alpha component.
+ChgForePal          ldx       #TEXT_LUT_FG
+ChgPal              stx       V.EscParms+4,u
+                    leax      Do1B60_Param0,pcr
+                    lbra      SetHandler
+                    
+Do1B60_Param0
+                    sta       V.EscParms+0,u
+                    leax      Do1B60_Param1,pcr
+                    lbra      SetHandler
+
+Do1B60_Param1
+                    sta       V.EscParms+1,u
+                    leax      Do1B60_Param2,pcr
+                    lbra      SetHandler
+
+Do1B60_Param2
+                    sta       V.EscParms+2,u
+                    leax      Do1B60_Param3,pcr
+                    lbra      SetHandler
+
+Do1B60_Param3
+                    sta       V.EscParms+3,u
+                    leax      Do1B60_Param4,pcr
+                    lbra      SetHandler
+
+Do1B60_Param4
+                    ldx       V.EscParms+4,u
+                    ldb       V.EscParms+0,u
+                    lslb
+                    lslb
+                    abx       
+                    sta       3,x
+                    lda       V.EscParms+3,u get blue component
+                    sta       0,x
+                    lda       V.EscParms+2,u get green component
+                    sta       1,x
+                    lda       V.EscParms+1,u get red component
+                    sta       2,x
+                    lbra      ResetHandler
+
+;;; ChgBackPal
+;;;
+;;; Change a foreground palette register.
+;;;
+;;; Code: 1B 61
+;;;
+;;; Parameters: PRN RVA GVA BVA AVA
+;;;
+;;; PRN = background palette register number (0-15).
+;;; RVA = red component.
+;;; GVA = green component.
+;;; BVA = blue component.
+;;; AVA = alpha component.
+ChgBackPal          ldx       #TEXT_LUT_BG
+                    bra       ChgPal
+
 * These do nothing for now.
 DefColr
 DWSelect
@@ -983,8 +1052,14 @@ IsIt24              cmpa      #$24                is it DWEnd?
                     bne       IsIt30              branch if not
                     lbra      DWEnd
 IsIt30              cmpa      #$30                is it DefColr?
-                    bne       IsIt32              branch if not
+                    bne       IsIt60              branch if not
                     lbra      DefColr
+IsIt60              cmpa      #$60                is it ChgForePal?
+                    bne       IsIt61              branch if not
+                    lbra      ChgForePal
+IsIt61              cmpa      #$61                is it ChgBackPal?
+                    bne       IsIt32              branch if not
+                    lbra      ChgBackPal
 IsIt32              cmpa      #$32                is it the foreground color code?
                     bne       IsIt33              branch if not
                     leax      FColor,pcr          else point to the vector
