@@ -8,6 +8,9 @@
 * ------------------------------------------------------------------
 *  1       2024/02/17  Boisy G. Pitre
 * Started.
+*
+*  2       2024/03/16  Boisy G. Pitre
+* Added F256 reset when Sys Rq key pressed.
 
                     use       defsfile
                     use       f256vtio.d
@@ -311,9 +314,27 @@ ProcE0              leax      E0Handler,pcr       get the $E0 handler routine
                     rts                           return
 
 ProcF0              leax      F0Handler,pcr       get the $F0 handler routine
-                    stx       V.KCVect,u          store it in the vector
+StoreNEx            stx       V.KCVect,u          store it in the vector
                     comb                          clear the carry so that the read routine handles other work
                     rts                           return
+
+DoPrtScr            leax      PrtScrCode3,pcr
+                    bra       StoreNEx                    
+                    
+PrtScrCode3         cmpa      #$E0                is this the second $E0?
+                    bne       SetDefaultHandler
+                    leax      PrtScrCode4,pcr
+                    bra       StoreNEx                    
+
+PrtScrCode4         
+* This performs a proper reset of the F256.
+ResetGo             ldd       #$DEAD              get the sentinel values
+                    sta       RST0                store the first value
+                    stb       RST1                and the second value
+                    lda       #$80                set the high bit
+                    sta       SYS0                store the high bit in the register
+                    clr       SYS0                then clear the high bit in the register
+l@                  bra       l@                  wait for the reset condition
 
 * A = key code
 * Y = scan table
@@ -333,6 +354,8 @@ E0Handler           cmpa      #$F0                is this the $F0 key code?
                     beq       doDownArrowDown     if so, handle it
                     cmpa      #$74                is this the right arrow key?
                     beq       doRightArrowDown    if so, handle it
+                    cmpa      #$12                is this the Prt Scr key?
+                    beq       DoPrtScr
                     comb                          else set the carry
                     rts                           return
 DoUpArrowDown       lda       #$0C                load up arrow character
