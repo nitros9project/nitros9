@@ -319,7 +319,8 @@ l@               std       ,x++
 * Keyboard initialization  
 * NOTE: If we fail to find the 'keydrv' module, carry is returned set, but
 * the caller can chose to ignore the error condition.
-InitKeyboard        leax      keydrvmod,pcr         point to the keydrv module name
+InitKeyboard        clr       D.KySns
+                    leax      keydrvmod,pcr         point to the keydrv module name
                     lda       #Systm+Objct               it's a system module
                     pshs      u save U on the stack
                     os9       F$Link              link to it
@@ -921,7 +922,7 @@ Do1B20TTXXYYWWHHFFBB
 ;;;
 ;;; Parameters: STY CPX CPY SZX SZY PRN1 PRN2 PRN3
 ;;;
-;;; STY = screen type: $01 = 40x30, $02 = 80x30, $03 = 80x60.
+;;; STY = screen type: $01 = 40x30, $02 = 80x30, $03 = 40x60, $04 = 80x60.
 ;;; CPX = starting position X.
 ;;; CPY = starting position Y.
 ;;; SZX = width starting at X.
@@ -935,10 +936,14 @@ DWSet               lda       V.DWType,u
                     bsr       SetWin40x30
                     bra       setcols@
 IsIt80x30           cmpa      #$02
-                    bne       IsIt80x60
+                    bne       IsIt40x60
                     bsr       SetWin80x30
                     bra       setcols@
-IsIt80x60           bsr       SetWin80x60
+IsIt40x60           cmpa      #$03
+                    bne       IsIt80x60
+                    bsr       SetWin40x60
+                    bra       setcols@
+IsIt80x60           bsr       SetWin80x60                    
 setcols@            lda       V.DWFore,u
                     lbsr      SetForeColor
                     lda       V.DWBack,u
@@ -958,6 +963,10 @@ SetWin              stx       V.WWidth,u
                     orb       ,s+
                     stb       MASTER_CTRL_REG_H,x
                     rts
+
+SetWin40x60         ldb       #DBL_X
+                    ldx       #40*256+60
+                    bra       SetWin
 
 SetWin80x30         ldb       #DBL_Y
                     ldx       #80*256+30
@@ -1104,6 +1113,16 @@ SetBackColor        anda      #$0F                mask out the upper 4 bits
                     andb      #$F0                mask out the lower 4 bits
                     bra       doout@              and do the OR
 
+* Return special key status
+GSKySns             ldy       <D.CCMem            get ptr to CC mem
+                    clrb                          clear key code
+*                    cmpu      <G.CurDev,y         are we the active device?
+*                    bne       actv@               branch if not
+                    ldb       D.KySns          get key codes
+actv@               stb       R$A,x               save to caller reg
+                    clrb                          return w/o error
+                    rts
+
 * GetStat
 *
 * Entry:
@@ -1125,6 +1144,8 @@ GetStat             cmpa      #SS.EOF             is this the EOF call?
                     beq       SSReady             branch if so
                     cmpa      #SS.ScSiz           get screen size?
                     beq       SSScSiz             branch if so
+                    cmpa      #SS.KySns
+                    lbeq      GSKySns
                     cmpa      #SS.Joy             get joystick position?
                     beq       SSJoy               branch if so
                     cmpa      #SS.Palet           get palettes?

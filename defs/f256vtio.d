@@ -58,8 +58,18 @@ D.Bell              rmb       2
 D.TnCnt             rmb       1
 D.OrgAlt            rmb       2
 D.SndPrcID          rmb       1
+D.KySns             rmb       1
 * F256K specific section
 D.RowState          RMB       9
 
+* SS.KySns bit locations
+SHIFTBIT	equ	 %00000001
+CTRLBIT	equ	 %00000010
+ALTBIT	equ	 %00000100
+UPBIT	equ	 %00001000
+DOWNBIT	equ	 %00010000
+LEFTBIT	equ	 %00100000
+RIGHTBIT	equ	 %01000000
+SPACEBIT	equ	 %10000000
 
                     ENDC

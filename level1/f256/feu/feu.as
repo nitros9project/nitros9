@@ -267,10 +267,16 @@ BCD2ASCII           pshs      a
                     lsra
                     lsra
                     adda      #'0
-                    puls      b
+                    cmpa      #$39
+                    ble       lo@
+                    adda      #$07
+lo@                 puls      b
                     andb      #$0F
                     addb      #'0
-                    rts
+                    cmpb      #$39
+                    ble       ex@
+                    addb      #$07
+ex@                 rts
 
 SetKeySignal        pshs      d,x
                     clr       keypressed,u

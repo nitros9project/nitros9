@@ -8,7 +8,7 @@ DEPENDS		= ./makefile $(NOSLIB)/net.o
 AFLAGS         += --includedir=$(3RDPARTY)/packages/basic09 --includedir=$(3RDPARTY)/packages/brainfuck
 LFLAGS         += -L $(NITROS9DIR)/lib -lnet -lf256 -lalib -lf256snd
 
-BASIC09		= basic09 runb inkey syscall
+BASIC09		= basic09 runb inkey syscall foenix
 BF  		= bf
 CMDS		= asm attr backup binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \

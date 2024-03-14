@@ -19,6 +19,7 @@ SYSBIN		= $(shell $(CD) sys; make --no-print-directory showbinobjs)
 SYSTEXT		= $(shell $(CD) sys; make --no-print-directory showtextobjs)
 STARTUP		= startup
 SCRIPTS     = $(shell $(CD) ../../level1/f256/scripts; echo *)
+TESTS       = $(shell $(CD) ../../level1/f256/tests; echo *)
 SYSGO		= sysgo
 
 DSKSD_F256K		= $(DISTROVER)k_sd.dsk
@@ -90,6 +91,8 @@ $(DSKSD_F256K):
 	os9 dsave -e $(CPM_FILES) $@,CPM
 	$(MAKDIR) $@,SCRIPTS
 	$(foreach file,$(SCRIPTS),$(CPL) ../../level1/f256/scripts/$(file) $@,SCRIPTS;)
+	$(MAKDIR) $@,TESTS
+	$(foreach file,$(TESTS),$(CPL) ../../level1/f256/tests/$(file) $@,TESTS;)
 
 $(DSKDW_F256K):
 	$(RM) $@
@@ -122,6 +125,8 @@ $(DSKDW_F256K):
 	os9 dsave -e $(CPM_FILES) $@,CPM	
 	$(MAKDIR) $@,SCRIPTS
 	$(foreach file,$(SCRIPTS),$(CPL) ../../level1/f256/scripts/$(file) $@,SCRIPTS;)
+	$(MAKDIR) $@,TESTS
+	$(foreach file,$(TESTS),$(CPL) ../../level1/f256/tests/$(file) $@,TESTS;)
 
 $(DSKSD_F256JR):
 	$(RM) $@
@@ -154,6 +159,8 @@ $(DSKSD_F256JR):
 	os9 dsave -e $(CPM_FILES) $@,CPM
 	$(MAKDIR) $@,SCRIPTS
 	$(foreach file,$(SCRIPTS),$(CPL) ../../level1/f256/scripts/$(file) $@,SCRIPTS;)
+	$(MAKDIR) $@,TESTS
+	$(foreach file,$(TESTS),$(CPL) ../../level1/f256/tests/$(file) $@,TESTS;)
 
 $(DSKDW_F256JR):
 	$(RM) $@
@@ -186,6 +193,8 @@ $(DSKDW_F256JR):
 	os9 dsave -e $(CPM_FILES) $@,CPM	
 	$(MAKDIR) $@,SCRIPTS
 	$(foreach file,$(SCRIPTS),$(CPL) ../../level1/f256/scripts/$(file) $@,SCRIPTS;)
+	$(MAKDIR) $@,TESTS
+	$(foreach file,$(TESTS),$(CPL) ../../level1/f256/tests/$(file) $@,TESTS;)
 
 info:
 	@$(ECHO) "*** NitrOS-9/$(CPU) Level $(LEVEL) for the $(MACHINE) ***"
