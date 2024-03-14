@@ -72,7 +72,7 @@ Init
                     lda       #$F4                load the start scanning command
                     lbsr      SendToPS2           send it to the keyboard
                     
-                    leax      ProcKeyCode,pcr     get the PS/2 key code handler routine
+                    leax      KCHandler,pcr       get the PS/2 key code handler routine
                     stx       V.KCVect,u          and store it as the current handler address
                     ldd       #INT_PENDING_0      get the pending interrupt pending address
                     leax      IRQPckt,pcr         point to the IRQ packet
@@ -199,15 +199,16 @@ getcode             lda       KBD_IN              get the key code
                     ifne      RAW_KEYBOARD
                     bsr       cvt2hex             convert the key code to hexadecimal
                     pshs      b                   save the hexadecimal character
-                    bsr       BufferChar          buffer it
+                    lbsr      BufferChar          buffer it
                     puls      a                   get the character
-                    bsr       BufferChar          buffer it
+                    lbsr      BufferChar          buffer it
                     bra       CheckSig            wake up any sleeping process waiting on input
                     endc
 
 * A = key code
 * point Y to appropriate key table (SHIFT vs Non-SHIFT)
-                    tst       V.SHIFT,u           is the SHIFT key down?
+                    ldb       D.KySns             B = Key Sense byte
+                    bitb      #SHIFTBIT           is the SHIFT key down?
                     bne       shift@              branch of so
                     leay      ScanMap,pcr         else point to the non-SHIFT scan map
                     bra       pastshift@          and branch
@@ -250,14 +251,28 @@ ex@                 rts                           return
 *
 * Exit:  CC = carry clear: wake up a sleeping process waiting on input
 *             carry set: don't wake up a sleeping process waiting on input
-ProcKeyCode         cmpa      #$E0                is it the $E0 preface byte?
+KCHandler
+                    cmpa      #$E0                is it the $E0 preface byte?
                     beq       ProcE0              branch if so
                     cmpa      #$F0                is it the $F0 preface byte?
                     beq       ProcF0              branch if so
+                    cmpa      #$58                is this the Caps Lock byte?
+                    beq       DoCapsLockDown      branch if so                    
+                    cmpa      #$11                is this the Left Alt byte?
+                    beq       DoLeftAltDown       branch if so                    
+                    cmpa      #$12                is this the Left Shift byte?
+                    beq       DoLeftShiftDown     branch if so                    
+                    cmpa      #$59                is this the Right Shift byte?
+                    beq       DoRightShiftDown    branch if so                    
+                    cmpa      #$14                is this the Left Ctrl byte?
+                    beq       DoLeftCtrlDown      branch if so                    
                     lda       a,y                 else pull the key character from the scan code table
-                    bmi       SpecialDown         if the high bit is set, handle this special case
+                    cmpa      #C$SPAC             is this space key?
+                    bne       ctrlck@
+                    orb       #SPACEBIT
+                    stb       D.KySns
 * Check for the CTRL key.
-                    tst       V.CTRL,u            is the CTRL key down?
+ctrlck@             bitb      #CTRLBIT            is the CTRL key down?
                     beq       CheckCAPSLock       branch if not
                     suba      #$60                else subtract $60 from the character in A
 CheckCAPSLock       tst       V.CAPSLck,u         is the CAPS Lock on?
@@ -277,20 +292,7 @@ BufferChar          ldb       V.IBufH,u           get buffer head pointer in B
 bye@                clrb                          clear carry
                     rts                           return
 
-SpecialDown         cmpa      #$F0                is this the CAPS Lock key?
-                    blt       next@               branch if not
-                    beq       DoCapsDown          branch if it is
-                    cmpa      #$F1                is this the SHIFT key?
-                    beq       DoSHIFTDown         branch if it is
-                    cmpa      #$F2                is this the CTRL key?
-                    beq       DoCTRLDown          branch if it is
-DoALTDown           sta       V.ALT,u             it must be the ALT key then
-                    comb                          clear the carry so that the read routine just returns
-                    rts                           return
-DoCTRLDown          sta       V.CTRL,u            it's the CTRL key
-                    comb                          clear the carry so that the read routine just returns
-                    rts                           return
-DoCapsDown
+DoCapsLockDown
                     lda       #$ED                get the PS/2 keyboard LED command
                     lbsr      SendToPS2           send it to the PS/2
                     lda       V.LEDStates,u       get the PS/2 LED flags in static memory
@@ -302,16 +304,24 @@ ledoff@             anda      #^$04               clear the CAPS Lock LED bit
 send@               lbsr      SendToPS2           send the byte to the keyboard
                     comb                          clear the carry so that the read routine just returns
                     rts                           return
-DoSHIFTDown         sta       V.SHIFT,u           its the SHIFT key
-                    comb                          clear the carry so that the read routine just returns
-                    rts                           return
-next@               anda      #^$80               clear the high bit
-                    bra       BufferChar          go store the character
+
+DoLeftAltDown
+DoRightAltDown
+                    orb       #ALTBIT
+                    lbra      StoreKySns
+DoLeftCtrlDown
+DoRightCtrlDown
+                    orb       #CTRLBIT
+                    lbra      StoreKySns
+DoLeftShiftDown
+DoRightShiftDown    orb       #SHIFTBIT
+                    lbra      StoreKySns
 
 ProcE0              leax      E0Handler,pcr       get the $E0 handler routine
-                    stx       V.KCVect,u          store it in the vector
-                    comb
-                    rts                           return
+                    bra       StoreNEx
+
+ProcE0F0            leax      E0F0Handler,pcr     get the $E0F0 handler routine
+                    bra       StoreNEx
 
 ProcF0              leax      F0Handler,pcr       get the $F0 handler routine
 StoreNEx            stx       V.KCVect,u          store it in the vector
@@ -321,12 +331,15 @@ StoreNEx            stx       V.KCVect,u          store it in the vector
 DoPrtScr            leax      PrtScrCode3,pcr
                     bra       StoreNEx                    
                     
-PrtScrCode3         cmpa      #$E0                is this the second $E0?
-                    bne       SetDefaultHandler
+PrtScrCode3         cmpa      #$F0                is this an $F0?
+                    beq       ProcF0              handle weird case where $E012F012 comes up when hitting LEFT SHIFT DOWN, RIGHT ARROW DOWN, RIGHT ARROW UP, LEFT SHIFT UP
+                    cmpa      #$E0                is this the second $E0?
+                    lbne      SetDefaultHandler
                     leax      PrtScrCode4,pcr
                     bra       StoreNEx                    
 
-PrtScrCode4         
+PrtScrCode4         cmpa      #$7C                is this the full Prt Scr?
+                    lbne      SetDefaultHandler      
 * This performs a proper reset of the F256.
 ResetGo             ldd       #$DEAD              get the sentinel values
                     sta       RST0                store the first value
@@ -338,80 +351,116 @@ l@                  bra       l@                  wait for the reset condition
 
 * A = key code
 * Y = scan table
-E0Handler           cmpa      #$F0                is this the $F0 key code?
-                    beq       ProcF0              branch if so
-                    leax      ProcKeyCode,pcr     else point to the key code processor
-                    stx       V.KCVect,u          store it in the vector
-                    cmpa      #$11                is this the right ALT key?
-                    beq       DoALTDown           if so, handle the ALT key
-                    cmpa      #$14                is this the right CTRL key?
-                    beq       DoCTRLDown          if so, handle the CTRL key
+E0Handler
+                    cmpa      #$F0                is this the $F0 key code?
+                    beq       ProcE0F0            branch if so
+                    cmpa      #$11                is this the right Alt key?
+                    beq       DoRightAltDown      if so, handle the Alt key
+                    cmpa      #$14                is this the right Ctrl key?
+                    beq       DoRightCtrlDown     if so, handle the Ctrl key
                     cmpa      #$75                is this the up arrow key?
                     beq       DoUpArrowDown       if so, handle it
                     cmpa      #$6B                is this the left arrow key?
                     beq       DoLeftArrowDown     if so, handle it
                     cmpa      #$72                is this the down arrow key?
-                    beq       doDownArrowDown     if so, handle it
+                    beq       DoDownArrowDown     if so, handle it
                     cmpa      #$74                is this the right arrow key?
-                    beq       doRightArrowDown    if so, handle it
+                    beq       DoRightArrowDown    if so, handle it
                     cmpa      #$12                is this the Prt Scr key?
                     beq       DoPrtScr
-                    comb                          else set the carry
-                    rts                           return
+                    lbra      SetDefaultHandler
 DoUpArrowDown       lda       #$0C                load up arrow character
-                    lbra      BufferChar          add it to the input buffer
+                    orb       #UPBIT
+                    bra       StoreKySnsAndReport
 DoDownArrowDown     lda       #$0A                load down arrow character
-                    lbra      BufferChar          add it to the input buffer
+                    orb       #DOWNBIT
+                    bra       StoreKySnsAndReport
 DoLeftArrowDown     lda       #$08                load left arrow character
-                    lbra      BufferChar          add it to the input buffer
+                    orb       #LEFTBIT
+                    bra       StoreKySnsAndReport
 DoRightArrowDown    lda       #$09                load right arrow character
+                    orb       #RIGHTBIT
+StoreKySnsAndReport
+                    stb       D.KySns
+                    bsr       SetDefaultHandler
                     lbra      BufferChar          add it to the input buffer
-E0HandlerUp         cmpa      #$11                is this the right ALT key going up?
-                    beq       DoALTUp             if so, handle that case
-                    cmpa      #$14                is this the right CTRL key going up?
-                    beq       DoCTRLUp            if so, handle that case
-                    bra       SetDefaultHandler   set the default handler
-F0Handler           lda       a,y                 get the routine
-                    bmi       SpecialUp           and perform key up processing
+
+F0Handler
+                    cmpa      #$14                is this the left Ctrl key going up?
+                    beq       DoLeftCtrlUp        if so, handle that case
+                    cmpa      #$59                is this the right Shift key going up?
+                    beq       DoRightShiftUp      if so, handle that case
+                    cmpa      #$12                is this the left Shift key going up?                    
+                    beq       DoLeftShiftUp
+                    cmpa      #$11                is this the left Alt key going up?                    
+                    beq       DoLeftAltUp
+                    cmpa      #$29                is this space key?
+                    beq       DoSpaceUp           if so, handle it
+                    bra       SetDefaultHandler
+                    
+DoLeftCtrlUp
+DoRightCtrlUp
+                    andb      #^CTRLBIT
+                    bra       StoreKySns
+DoLeftShiftUp
+DoRightShiftUp
+                    andb      #^SHIFTBIT
+                    bra       StoreKySns
+DoLeftAltUp                    
+DoRightAltUp
+                    andb      #^ALTBIT
+StoreKySns          stb       D.KySns
+                    bra       SetDefaultHandler   and branch to set the default handler
+DoSpaceUp
+                    andb      #^SPACEBIT
+                    bra       StoreKySns
+DoUpArrowUp         andb      #^UPBIT
+                    bra       StoreKySns
+DoDownArrowUp       andb      #^DOWNBIT
+                    bra       StoreKySns
+DoLeftArrowUp       andb      #^LEFTBIT
+                    bra       StoreKySns
+DoRightArrowUp      andb      #^RIGHTBIT
+                    bra       StoreKySns
+                    
+E0F0Handler
+                    cmpa      #$14                is this the right Ctrl key going up?
+                    beq       DoRightCtrlUp       if so, handle that case
+                    cmpa      #$11                is this the right Alt key going up?
+                    beq       DoRightAltUp        if so, handle that case
+                    cmpa      #$75                is this the up arrow key?
+                    beq       DoUpArrowUp         if so, handle it
+                    cmpa      #$6B                is this the left arrow key?
+                    beq       DoLeftArrowUp       if so, handle it
+                    cmpa      #$72                is this the down arrow key?
+                    beq       DoDownArrowUp       if so, handle it
+                    cmpa      #$74                is this the right arrow key?
+                    beq       DoRightArrowUp      if so, handle it
 SetDefaultHandler
-                    leax      ProcKeyCode,pcr     point to default key code processor
+                    leax      KCHandler,pcr       point to default key code processor
                     stx       V.KCVect,u          save it in the key code vector
                     comb
                     rts
-SpecialUp           cmpa      #$F1                is this the SHIFT key going up?
-                    beq       DoSHIFTUp           branch if so
-                    cmpa      #$F2                is this the CTRL key going up?
-                    bne       SetDefaultHandler   branch if not
-DoCTRLUp            clr       V.CTRL,u            clear the CTRL key state
-                    bra       SetDefaultHandler   and branch to set the default handler
-DoSHIFTUp           clr       V.SHIFT,u           clear the SHIFT key state
-                    bra       SetDefaultHandler   and branch to set the default handler
-DoALTUp             clr       V.ALT,u             clear the ALT key state
-                    bra       SetDefaultHandler   and branch to set the default handler
 
 * These tables map PS/2 key codes to characters in both non-SHIFT and SHIFT cases.
 * If the high bit of a character is set, it is a special flag and therefore
-* is handled differently. The special flags are:
-*     $F0 = CAPS Lock key pressed
-*     $F1 = SHIFT key pressed
-*     $F2 = CTRL key pressed
-*     $F3 = ALT key pressed
+* is handled differently.
 ScanMap             fcb       0,0,0,0,0,0,0,0,0,0,0,0,0,0,'`,0
-                    fcb       0,$F3,$F1,0,$F2,'q,'1,0,0,0,'z,'s,'a,'w,'2,0
+                    fcb       0,0,0,0,0,'q,'1,0,0,0,'z,'s,'a,'w,'2,0
                     fcb       0,'c,'x,'d,'e,'4,'3,0,0,C$SPAC,'v,'f,'t,'r,'5,0
                     fcb       0,'n,'b,'h,'g,'y,'6,0,0,0,'m,'j,'u,'7,'8,0
                     fcb       0,C$COMA,'k,'i,'o,'0,'9,0,0,'.,'/,'l,';,'p,'-,0
-                    fcb       0,0,'',0,'[,'=,0,0,$F0,$F1,C$CR,'],0,'\,0,0
-                    fcb       0,0,0,0,0,0,$88,0,0,'1,0,'4,'7,0,0,0
+                    fcb       0,0,'',0,'[,'=,0,0,0,0,C$CR,'],0,'\,0,0
+                    fcb       0,0,0,0,0,0,$8,0,0,'1,0,'4,'7,0,0,0
                     fcb       '0,'.,'2,'5,'6,'8,$05,0,0,'+,'3,'-,'*,'9,0,0
 
 SHIFTScanMap        fcb       0,0,0,0,0,0,0,0,0,0,0,0,0,0,'~,0
-                    fcb       0,$F3,$F1,0,$F2,'Q,'!,0,0,0,'Z,'S,'A,'W,'@,0
+                    fcb       0,0,0,0,0,'Q,'!,0,0,0,'Z,'S,'A,'W,'@,0
                     fcb       0,'C,'X,'D,'E,'$,'#,0,0,C$SPAC,'V,'F,'T,'R,'%,0
                     fcb       0,'N,'B,'H,'G,'Y,'^,0,0,0,'M,'J,'U,'&,'*,0
                     fcb       0,'<,'K,'I,'O,'),'(,0,0,'>,'?,'L,':,'P,'_,0
-                    fcb       0,0,'",0,'{,'+,0,0,$F0,$F1,C$CR,'},0,'|,0,0
-                    fcb       0,0,0,0,0,0,$98,0,0,'1,0,'4,'7,0,0,0
+                    fcb       0,0,'",0,'{,'+,0,0,0,0,C$CR,'},0,'|,0,0
+                    fcb       0,0,0,0,0,0,$18,0,0,'1,0,'4,'7,0,0,0
                     fcb       '0,'.,'2,'5,'6,'8,$05,0,0,'+,'3,'-,'*,'9,0,0
 
                     emod

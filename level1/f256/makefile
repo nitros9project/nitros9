@@ -18,6 +18,7 @@ SYSBIN		= $(shell $(CD) sys; make --no-print-directory showbinfiles)
 SYSTEXT		= $(shell $(CD) sys; make --no-print-directory showtextfiles)
 STARTUP		= startup
 SCRIPTS     = $(shell $(CD) scripts; echo *)
+TESTS       = $(shell $(CD) tests; echo *)
 SYSGO		= sysgo
 
 DSKSD_F256K		= $(DISTROVER)k_sd.dsk
@@ -86,6 +87,8 @@ $(DSKSD_F256K):
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
 	$(MAKDIR) $@,SCRIPTS
 	$(CD) scripts; $(CPL) $(SCRIPTS) ../$@,SCRIPTS
+	$(MAKDIR) $@,TESTS
+	$(CD) tests; $(CPL) $(TESTS) ../$@,TESTS
 
 $(DSKDW_F256K):
 	$(RM) $@
@@ -114,6 +117,8 @@ $(DSKDW_F256K):
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
 	$(MAKDIR) $@,SCRIPTS
 	$(CD) scripts; $(CPL) $(SCRIPTS) ../$@,SCRIPTS
+	$(MAKDIR) $@,TESTS
+	$(CD) tests; $(CPL) $(TESTS) ../$@,TESTS
 
 $(DSKSD_F256JR):
 	$(RM) $@
@@ -141,6 +146,8 @@ $(DSKSD_F256JR):
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
 	$(MAKDIR) $@,SCRIPTS
 	$(CD) scripts; $(CPL) $(SCRIPTS) ../$@,SCRIPTS
+	$(MAKDIR) $@,TESTS
+	$(CD) tests; $(CPL) $(TESTS) ../$@,TESTS
 
 $(DSKDW_F256JR):
 	$(RM) $@
@@ -169,6 +176,8 @@ $(DSKDW_F256JR):
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
 	$(MAKDIR) $@,SCRIPTS
 	$(CD) scripts; $(CPL) $(SCRIPTS) ../$@,SCRIPTS
+	$(MAKDIR) $@,TESTS
+	$(CD) tests; $(CPL) $(TESTS) ../$@,TESTS
 
 info:
 	@$(ECHO) "*** NitrOS-9/$(CPU) Level $(LEVEL) for the $(MACHINE) ***"

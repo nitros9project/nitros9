@@ -1,7 +1,7 @@
 include ../port.mak
 
 vpath %.as $(LEVEL2)/cmds:$(LEVEL1)/cmds
-vpath %.asm $(LEVEL2)/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/brainfuck:$(3RDPARTY)/packages/cpm
+vpath %.asm $(LEVEL1)/f256/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/brainfuck:$(3RDPARTY)/packages/cpm
 
 DEPENDS		= ./makefile $(NOSLIB)/net.o
 
@@ -14,7 +14,7 @@ LFLAGS		+= -L$(NITROS9DIR)/lib
 LFLAGS		+= -lf256
 LFLAGS		+= -lnet -lalib
 
-BASIC09	= basic09 runb inkey syscall
+BASIC09	= basic09 runb inkey syscall foenix
 BF      = bf
 CPM     = cpm
 CMDS_DW = inetd dw telnet httpd
