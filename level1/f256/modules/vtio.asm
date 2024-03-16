@@ -27,7 +27,7 @@ atrv                set       ReEnt+rev
 rev                 set       $00
 edition             set       2
 
-PSG.Base            equ       PSGL.Base
+PSG.Base            equ       PSGM.Base
 
 * We can use a different MMU slot if we want.
 MAPSLOT             equ       MMU_SLOT_1
@@ -101,7 +101,7 @@ ex@                 jmp       [D.OrgAlt] branch to the original alternate IRQ ro
 *******************************************************
 * Bell ($07) (called via Bell vector D.Bell):
 *
-Bell                ldd       #$3F1F              A = start volume (48), B = duration counter
+Bell                ldd       #$0F1F              A = start volume (15), B = duration counter
                     ldy       #%0000000100000011              bell frequency
 
 * Common SS.Tone and Bell routine
@@ -117,10 +117,17 @@ BellTone            tst       D.SndPrcID
                     orcc      #IntMasks mask interrupts
                     ldb       MAPSLOT             get the MMU slot we'll map to
                     sta       MAPSLOT             store it in the MMU slot to map it in
+* Turn off attenuation for tones 2, 3, and noise channel.
+                    lda       #%10011111
+                    sta       MAPADDR+PSG.Base
+                    lda       #%10111111
+                    sta       MAPADDR+PSG.Base
+                    lda       #%11111111
+                    sta       MAPADDR+PSG.Base
 * Turn on PSG.
                     lda       1,s                 get the volume byte from the stack
                     coma                          complement since attenuation is inverted on the PSG
-                    anda      #%00001111          turn off all but attenuation bits
+                    anda      #%00001111          turn off all but attenuation bits for tone 1
                     ora       #%10010000          set latch bit and attenuation bit
                     sta       MAPADDR+PSG.Base           store in PSG hardware
 
@@ -128,10 +135,9 @@ BellTone            tst       D.SndPrcID
                     pshs      b save original MAP slot value
                     
                     tfr       y,d transfer frequency over
-                    anda      #%00000011 preserve bits 9-8 only
                     pshs      d           only 10 bits are significant
                     andb      #%00001111  clear all but bits 0-3
-                    orb       #%10000000  set the latch to 1 for channel 00
+                    orb       #%10000000  set the latch to 1 for tone 1         
                     stb       MAPADDR+PSG.Base send it to the hardware
                     puls      d obtain the value again
                     lsrb shift the...
@@ -931,6 +937,7 @@ Do1B20TTXXYYWWHHFFBB
 ;;; PRN2 = background color.
 ;;; PRN3 = border color.
 DWSet               lda       V.DWType,u
+                    sta       V.ScTyp,u
                     cmpa      #$01                40x30?
                     bne       IsIt80x30
                     bsr       SetWin40x30
@@ -1144,8 +1151,10 @@ GetStat             cmpa      #SS.EOF             is this the EOF call?
                     beq       SSReady             branch if so
                     cmpa      #SS.ScSiz           get screen size?
                     beq       SSScSiz             branch if so
-                    cmpa      #SS.KySns
-                    lbeq      GSKySns
+                    cmpa      #SS.ScTyp           get screen type?
+                    beq       SSScTyp             branch if so
+                    cmpa      #SS.KySns           get key sense info?
+                    lbeq      GSKySns             branch if so
                     cmpa      #SS.Joy             get joystick position?
                     beq       SSJoy               branch if so
                     cmpa      #SS.Palet           get palettes?
@@ -1157,6 +1166,26 @@ GetStat             cmpa      #SS.EOF             is this the EOF call?
                     comb                          set the carry
                     ldb       #E$UnkSvc           load the "unknown service" error
                     rts                           return
+
+;;; SS.ScTyp
+;;;
+;;; Returns information about the current video screen.
+;;;
+;;; Entry:  A = The path number.
+;;;         B = SS.ScTyp ($93)
+;;;
+;;; Exit:   A = The screen type.
+;;;              1 = 40x30 text screen
+;;;              2 = 80x30 text screen
+;;;              3 = 40x60 text screen
+;;;              4 = 80x60 text screen
+;;;        CC = Carry flag clear to indicate success.
+;;;
+;;; Error:  B = A non-zero error code.
+;;;        CC = Carry flag set to indicate error.
+SSScTyp             lda       V.ScTyp,u            get the screen type
+                    sta       R$A,x
+                    rts
 
 ;;; SS.Ready
 ;;;
@@ -1251,12 +1280,22 @@ SSPalet
 ;;;
 ;;; Exit:   A = The foreground palette register number.
 ;;;         B = The background palette register number.
-;;;         X = The least significant byte of the border paletter register number.
+;;;         X = The least significant byte of the border palette register number.
 ;;;        CC = Carry flag clear to indicate success.
 ;;;
 ;;; Error:  B = A non-zero error code.
 ;;;        CC = Carry flag set to indicate error.
-SSFBRGs
+SSFBRGs             lda                 V.FBCol,u
+                    tfr                 a,b
+                    lsra
+                    lsra
+                    lsra
+                    lsra
+                    andb                #$0F
+                    std                 R$D,x
+                    ldd                 #0
+                    std                 R$X,x
+                    rts
 
 ;;; SS.DfPal
 ;;;

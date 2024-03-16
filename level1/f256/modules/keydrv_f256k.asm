@@ -77,7 +77,8 @@ kchg@
                     lda       #8
                     mul
                     leax      F256KKeys,pcr
-                    tst       V.SHIFT,u           is the SHIFT key down?
+                    lda       V.KySns,u
+                    bita      #SHIFTBIT
                     beq       noshift@              branch of so
                     leax      F256KShiftKeys,pcr
 noshift@            abx
@@ -95,7 +96,9 @@ g@
 * key is up -- process character
 keyup@              cmpa      #LSHIFT
                     bne       isitmeta@
-                    clr       V.SHIFT,u                    
+                    ldb       V.KySns,u
+                    andb      #^SHIFTBIT
+                    stb       V.KySns,u
                     lbra       repex
 isitmeta@           cmpa      #META
                     bne       isitctrl@
@@ -103,11 +106,15 @@ isitmeta@           cmpa      #META
                     lbra      repex
 isitctrl@           cmpa      #LCTRL
                     bne       isitalt@
-                    clr       V.CTRL,u
+                    ldb       V.KySns,u
+                    andb      #^CTRLBIT
+                    stb       V.KySns,u
                     ;bra       repex
 isitalt@            cmpa      #RALT                                    
                     lbne       repex
-                    clr       V.ALT,u
+                    ldb       V.KySns,u
+                    andb      #^ALTBIT
+                    stb       V.KySns,u
                     lbra       repex
 * key is down -- process character
 keydown@            tsta
@@ -115,7 +122,9 @@ keydown@            tsta
 
                     cmpa      #LSHIFT
                     bne       isitmeta@
-                    sta       V.SHIFT,u                    
+                    ldb       V.KySns,u
+                    andb      #^SHIFTBIT
+                    stb       V.KySns,u
                     lbra       repex
 isitmeta@           cmpa      #META
                     bne       isitctrl@
@@ -123,11 +132,15 @@ isitmeta@           cmpa      #META
                     lbra       repex
 isitctrl@           cmpa      #LCTRL
                     bne       isitalt@
-                    sta       V.CTRL,u
+                    ldb       V.KySns,u
+                    andb      #^CTRLBIT
+                    stb       V.KySns,u
                     lbra       repex
 isitalt@            cmpa      #RALT                                    
                     bne       isitcaps@
-                    sta       V.ALT,u
+                    ldb       V.KySns,u
+                    andb      #^ALTBIT
+                    stb       V.KySns,u
                     lbra       repex
 isitcaps@           cmpa      #CAPS
                     bne       z@
@@ -142,12 +155,14 @@ z@                  tst       V.CAPSLck,u
                     bhi       z1@
                     suba      #$20
 * Handle CTRL down                    
-z1@                 tst       V.CTRL,u
+z1@                 ldb       V.KySns,u
+                    bitb      #CTRLBIT
                     beq       z2@
                     anda      #$5F
                     suba      #$40
 * Handle ALT down
-z2@                 tst       V.ALT,u
+z2@                 ldb       V.KySns,u
+                    bitb      #ALTBIT
                     beq       z3@
                     anda      #$5F
                     adda      #$40

@@ -15,22 +15,19 @@ KBufSz              EQU       8                   the circular buffer size
 V.CurRow            RMB       1                   current row where the next character goes
 V.CurCol            RMB       1                   current column where the next character goes
 V.CapsLck           RMB       1                   CAPS LOCK key up/down flag ($00 = up)
-V.SHIFT             RMB       1                   SHIFT key up/down flag ($00 = up)
-V.CTRL              RMB       1                   CTRL key up/down flag ($00 = up)
-V.ALT               RMB       1                   ALT key up/down flag ($00 = up)
 V.KySns             RMB       1                   key sense flags
 V.LEDStates         RMB       1                   PS/2 LED flags (bit 2 = CAPS Lock, bit 1 = NUM Lock, bit 0 = Scroll Lock)
 V.EscVect           RMB       2                   escape vector handle
 V.Reverse           RMB       1                   reverse video flag ($00 = off, $FF = on)
-V.FBCol             RMB       1                   currently selected foreground and background color
-V.BordCol           RMB       1                   currently selected border color
 V.IBufH             RMB       1                   input buffer head pointer
 V.IBufT             RMB       1                   input buffer tail pointer
 V.SSigID            RMB       1                   data ready process ID
 V.SSigSg            RMB       1                   data ready signal code
+V.ScTyp             RMB       1                   screen type
 V.WWidth            RMB       1                   window width
 V.WHeight           RMB       1                   window height
-
+V.FBCol             RMB       1                   currently selected foreground and background color
+V.BordCol           RMB       1                   currently selected border color
 V.KeyDrvMPtr        RMB       2                   keydrv module address
 V.KeyDrvEPtr        RMB       2                   keydrv entry point address
 
