@@ -17,8 +17,6 @@
                     nam       VTIO
                     ttl       NitrOS-9 video terminal I/O driver for the Foenix F256
 
-F256K               equ       0
-
                     use       defsfile
                     use       f256vtio.d
 
@@ -1121,7 +1119,8 @@ SetBackColor        anda      #$0F                mask out the upper 4 bits
                     bra       doout@              and do the OR
 
 * Return special key status
-GSKySns             ldy       <D.CCMem            get ptr to CC mem
+GSKySns 
+*            ldy       <D.CCMem            get ptr to CC mem
                     clrb                          clear key code
 *                    cmpu      <G.CurDev,y         are we the active device?
 *                    bne       actv@               branch if not
