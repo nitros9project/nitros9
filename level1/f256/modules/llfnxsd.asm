@@ -269,7 +269,7 @@ ll_write            ldx       V.Port-UOFFSET,u    get the hardware address
                     lbne      NOTRDY              branch if not
                     anda      #SYS_SD_WP
                     bne       EWP                 write protected, then exit with WP error
-* The big read sector loop comes to here.
+* The big write sector loop comes to here.
 lphw                ldd       #CMDWrite           get the write command bytes
                     std       CMDStorage,u        save them to the command buffer
                     ldd       #CMDEnd             get the ending bytes
@@ -517,6 +517,9 @@ Send16              lbsr      SendCmd             send the command
                     lbne      NOTRDY              branch if error
 
 InitEx
+* Select the card (put in high speed).
+                    lda       #CS_EN              set the card enable and fast SPI clock
+                    sta       SDC_STAT,x          update the hardware
 
 * Finished with initialization
 * Use the stat routine to return
