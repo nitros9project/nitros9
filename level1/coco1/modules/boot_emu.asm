@@ -53,6 +53,8 @@ HWInit              ldb       #13                 Forced interrupt command
                     clrb
 delay@              decb                          Delay for NMI
                     bne       delay@              loop 256 times
+                    lda       $FF48               clear controller
+                    clr       $FF40               Motor off and clear drive select
 
 * HWTerm - nothing to do
 HWTerm              clrb
