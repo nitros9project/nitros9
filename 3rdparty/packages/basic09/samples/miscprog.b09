@@ -334,15 +334,15 @@ END
 PROCEDURE side
 REM display side of PIA at address
 PARAM address:INTEGER
-DIM data:INTEGER
+DIM d:INTEGER
 
 (* loop until control register input strobe
 (* flag (bit 7) is set
 REPEAT \ UNTIL LAND(PEEK(address+1),$80) <> 0
 (* now read the data register
-data := PEEK(address)
+d := PEEK(address)
 (* display data in binary
-RUN prinbyte(data)
+RUN prinbyte(d)
 END
 
 PROCEDURE prinbyte
