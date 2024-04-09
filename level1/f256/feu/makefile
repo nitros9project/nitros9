@@ -33,8 +33,8 @@ RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd
 SCF		 = $(MD)/scf.mn
 
 # SCF video terminal
-SCVT_JR      = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/term.dt
-SCVT_K   	 = $(MD)/vtio.dr $(MD)/keydrv_f256k.sb $(MD)/term.dt
+SCVT_F256JR  = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/term.dt
+SCVT_F256K   = $(MD)/vtio.dr $(MD)/keydrv_f256k.sb $(MD)/term.dt
 
 # Font & palette
 FONT		 = $(MD)/phoenixegafont.sb
@@ -67,7 +67,7 @@ CLOCK	= $(MD)/clock $(MD)/clock2_f256
 BOOTFILE_F256K = $(KERNEL) $(DWIO) \
 		$(RBF) $(RBFDW) \
 		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
-		$(SCF) $(SCVT_K) $(FONT) $(PALETTE) \
+		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
 		$(PIPE) \
 		$(CLOCK) \
 		sysgo autoex \
@@ -82,7 +82,7 @@ BOOTFILE_F256K = $(KERNEL) $(DWIO) \
 BOOTFILE_F256JR = $(KERNEL) $(DWIO) \
 		$(RBF) $(RBFDW) \
 		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
-		$(SCF) $(SCVT_JR) $(FONT) $(PALETTE) \
+		$(SCF) $(SCVT_F256JR) $(FONT) $(PALETTE) \
 		$(PIPE) \
 		$(CLOCK) \
 		sysgo autoex \
@@ -117,7 +117,7 @@ booter_ram_f256k: bootfile_f256k
 	$(RM) trampoline
 
 booter_ram_f256jr: bootfile_f256jr
-	$(MERGE) $(BOOTFILE_F256K)>bootfile_f256jr
+	$(MERGE) $(BOOTFILE_F256JR)>bootfile_f256jr
 	$(PADROM) 31744 bootfile_f256jr
 	$(AS) -DFLASH=0 --output=raw trampoline.asm -otrampoline
 	cat bootfile_f256jr trampoline > $@

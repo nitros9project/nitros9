@@ -31,7 +31,39 @@ size                equ       .
 RFMName             fcs       /RFM/
                     fcb       edition
 
-
+******************************
+* Sends the RFM Header to the server
+*
+* The RFM header consists of:
+* - Byte 0: OP_RFM
+* - Byte 1: RFM transaction code
+* - Byte 2: Process ID of the process
+* - Byte 3: Path number (0-15)
+* - Byte 4: Path descriptor address (MSB)
+* - Byte 5: Path descriptor address (LSB)
+*
+* Entry: B = RFM transaction code
+*        Y = Path descriptor
+*        U = Caller's registers
+SendRFMHeader       pshs      d,x,y,u
+                    ldb       PD.PD,y             get PD.PD into B
+                    ldx       <D.Proc             get calling process descriptor
+                    lda       P$ID,x              get the process ID
+                    pshs      d,y
+                    ldb       4,s
+                    lda       #OP_VFM
+                    pshs      d
+                    leax      ,s
+                    ldy       #6
+                    ifgt      Level-1
+                    ldu       <D.DWSubAddr
+                    else
+                    ldu       >D.DWSubAddr
+                    endc
+                    jsr       6,u
+                    leas      6,s                    
+                    puls      d,x,y,u,pc
+                    
 ******************************
 *
 * file manager entry point
@@ -66,6 +98,17 @@ create              ldb       #DW.create
 *
 * Open - opens a file on the remote device
 *
+* Send the RFM Header plus: 
+* - Byte 6: Mode byte
+* - Byte 7: Pathname length (MSB)
+* - Byte 8: Pathname length (LSB)
+* - Bytes 9-n: Pathname
+*
+* Get back:
+* error number, 4 bytes
+* If error number is = 0, 3 bytes is the unique identifier of the directory.
+* If error number is != 0, 3 bytes are ignored.
+*
 * Entry: Y = Path descriptor pointer
 *        U = Callers register stack pointer
 *
@@ -73,17 +116,16 @@ create              ldb       #DW.create
 *        B = error code (if CC.Carry == 1)
 *
 open                ldb       #DW.open
-create1
+create1             bsr       SendRFMHeader
                     ldx       PD.DEV,y            ; get ptr to our device memory
                     ldx       V$STAT,x            ; get ptr to our static storage
                     pshs      x,y,u               ; save all on stack
-                    stb       V.DWCMD,x
 
 * TODO lets not create multiple buffers when multiple open/create on same path
 * get system mem
                     ldd       #256
                     os9       F$SRqMem            ; ask for D bytes (# bytes server said is coming)
-                    lbcs      open2
+                    lbcs      openerr
                     stu       V.BUF,x
 
 * use PrsNam to validate pathlist and count length
@@ -92,7 +134,7 @@ create1
                     sty       V.PATHNAME,x
                     tfr       y,x
 prsloop             os9       F$PrsNam
-                    bcs       open2
+                    lbcs      openerr
                     tfr       y,x
                     anda      #$7F
                     cmpa      #PENTIR
@@ -113,22 +155,12 @@ chkdelim            cmpa      #PDELIM
                     std       V.PATHNAMELEN,x     ; save the length
 
 * put the mode byte on the stack
-                    pshs      cc
-                    lda       R$A,u
-                    pshs      a
-
-* put command byte & path # on stack
-                    lda       V.DWCMD,x
-                    ldy       4,s
-                    ldb       PD.PD,y
-                    pshs      d                   ; p# PD.PD Regs
-
-* put rfm op and DW op on stack
-                    lda       #OP_VFM
-                    pshs      a                   ; DWOP RFMOP p# PD.PD Regs
-
-                    leax      ,s                  ; point X to stack
-                    ldy       #4                  ; 3 bytes to send
+                    pshs      cc                  save CC
+                    tfr       d,y
+                    ldb       R$A,u               get caller's mode byte
+                    pshs      b,y
+                    leax      ,s                  point X to stack
+                    ldy       #3                  send mode byte and pathname length
 
                     ifgt      Level-1
                     ldu       <D.DWSubAddr
@@ -138,7 +170,7 @@ chkdelim            cmpa      #PDELIM
 
                     orcc      #IntMasks
                     jsr       6,u
-                    leas      4,s                 ;clean stack   PD.PD Regs
+                    leas      3,s                 clean up the stack
 
                     ifgt      Level-1
 * now send path string
@@ -159,21 +191,18 @@ chkdelim            cmpa      #PDELIM
 
                     ifgt      Level-1
 *  F$Move the bytes (seems to work)
+                    pshs      x,y
                     os9       F$Move
+                    puls      x,y
                     bcs       moverr
                     endc
 
-* Add carriage return
                     ifgt      Level-1
                     tfr       u,x
                     else
                     tfr       x,u
                     endc
-                    tfr       y,d
-                    leau      d,u
-                    lda       #C$CR
-                    sta       ,u
-                    leay      1,y
+                    pshs      x,y                   save pointer to pathname and length of pathname on stack
 
 * send to server
                     ifgt      Level-1
@@ -181,22 +210,30 @@ chkdelim            cmpa      #PDELIM
                     else
                     ldu       >D.DWSubAddr
                     endc
+                    ldy       #2
+                    leax      2,s
                     jsr       6,u
-
-* read response from server -> B
-                    clr       ,-s
+                    puls      x,y
+                    jsr       6,u
+                    
+* read response from server -> B + 3 byte unique ID
+                    leas      -4,s
                     leax      ,s
-                    ldy       #1
+                    ldy       #4
                     jsr       3,u
 
 * pull server's response into B
                     puls      b                   ; PD.PD Regs
+                    puls      a,x
 moverr              puls      cc
                     tstb
-                    beq       open2
-
+                    bne       openerr
+                    ldy       2,s         recover path descriptor pointer
+                    sta       PD.FD,y
+                    stx       PD.FD+1,y
+                    bra       ex@
 openerr             coma                          ; set error
-open2               puls      x,y,u,pc
+ex@                 puls      x,y,u,pc
 
 
 ******************************
@@ -210,7 +247,7 @@ open2               puls      x,y,u,pc
 *        B = error code (if CC.Carry == 1)
 *
 makdir              lda       #DW.makdir
-                    lbra      sendit
+                    lbra      SendRFMHeader
 
 ******************************
 *
@@ -222,8 +259,43 @@ makdir              lda       #DW.makdir
 * Exit:  CC.Carry = 0 (no error), 1 (error)
 *        B = error code (if CC.Carry == 1)
 *
-chgdir              lda       #DW.chgdir
-                    lbra      sendit
+ChgDir              pshs      y                   preserve path descriptor pointer
+                    ifne      H6309
+                    oim       #DIR.,PD.MOD,y      ensure the directory bit is set
+                    else
+                    lda       PD.MOD,y            get mode from caller,
+                    ora       #DIR.               add the directory bit,
+                    sta       PD.MOD,y            and save back to pd.
+                    endc
+                    ldb       #DW.chgdir
+                    lbsr      create1
+                    bcs       Clos2A0             exit on error
+                    ldx       <D.Proc             get current process pointer
+                    ldu       PD.FD+1,y           get LSW of file descriptor sector #
+                    ldb       PD.MOD,y            get current file mode
+                    bitb      #UPDAT.             read or write mode?
+                    beq       CD30D               no, skip ahead
+* Change current data dir
+                    ldb       PD.FD,y
+                    stb       P$DIO+3,x
+                    stu       P$DIO+4,x
+CD30D               ldb       PD.MOD,y            get current file mode
+                    bitb      #EXEC.              is it execution dir?
+                    beq       CD31C               no, skip ahead
+* Change current execution directory
+                    ldb       PD.FD,y
+                    stb       P$DIO+9,x
+                    stu       P$DIO+10,x
+CD31C               clrb                          clear errors
+Clos2A0             puls      y
+
+* Generalized return to system
+Rt100Mem            pshs      b,cc                preserve error status
+                    ldu       PD.BUF,y            get sector buffer pointer
+                    beq       RtMem2CF            none, skip ahead
+                    ldd       #$0100              get size of sector buffer
+                    os9       F$SRtMem            return the memory to system
+RtMem2CF            puls      pc,b,cc             restore error status & return
 
 ******************************
 *
@@ -236,7 +308,7 @@ chgdir              lda       #DW.chgdir
 *        B = error code (if CC.Carry == 1)
 *
 delete              lda       #DW.delete
-                    lbra      sendit
+                    lbra      SendRFMHeader
 
 
 ******************************
@@ -249,7 +321,15 @@ delete              lda       #DW.delete
 * Exit:  CC.Carry = 0 (no error), 1 (error)
 *        B = error code (if CC.Carry == 1)
 *
-* seek = send dwop, rfmop, path, caller's X + U
+* Byte 0: OP_VFM
+* Byte 1: DW.Seek
+* Byte 2: PD Pointer (MSB)
+* Byte 3: PD Pointer (LSB)
+* Byte 4: Path number
+* Byte 5: Bits 31-24 of the seek position
+* Byte 6: Bits 23-16 of the seek position
+* Byte 7: Bits 15-8 of the seek position
+* Byte 8: Bits 7-0 of the seek position
 seek                pshs      y,u
 
                     ldx       R$U,u
@@ -258,11 +338,12 @@ seek                pshs      y,u
                     pshs      x
                     lda       PD.PD,y
                     pshs      a
+                    pshs      y
                     ldd       #OP_VFM*256+DW.seek
                     pshs      d
 
                     leax      ,s                  ; point X to stack
-                    ldy       #7                  ; 7 bytes to send
+                    ldy       #9                  ; 7 bytes to send
 
 * set U to dwsub
                     ifgt      Level-1
@@ -273,7 +354,7 @@ seek                pshs      y,u
 
 * send dw op, rfm op, path #
                     jsr       6,u
-                    leas      6,s                 ;clean stack - PD.PD Regs
+                    leas      8,s                 ;clean stack - PD.PD Regs
 
 * read response from server
                     leax      ,s
@@ -299,7 +380,8 @@ notok@              puls      y,u,pc
 * Exit:  CC.Carry = 0 (no error), 1 (error)
 *        B = error code (if CC.Carry == 1)
 *
-read                ldb       #DW.read
+read                
+                    ldb       #DW.read
                     bra       read1               ; join readln routine
 
 
@@ -330,22 +412,51 @@ write               ldb       #DW.write
 *        B = error code (if CC.Carry == 1)
 *
 readln              ldb       #DW.readln
-read1               ldx       PD.DEV,y            ; to our static storage
+read1
+                    pshs      b
+                    ldd       R$Y,u            get bytes to read
+* read in increments of no more than 256 bytes
+l@                  pshs      d
+                    cmpd      #256             greater than max to read?
+                    ble       go@
+                    ldd       #256
+go@                 std       R$Y,u
+                    ldb       2,s
+                    bsr       readcore
+                    bcs       ex2@
+                    puls      d
+                    subd      R$Y,u
+                    cmpd      #0000
+                    beq       ex@
+                    pshs      d
+                    ldd       R$X,u
+                    addd      R$Y,u
+                    std       R$X,u
+                    puls      d
+                    bra       l@
+ex@                 leas      1,s
+                    rts
+ex2@                leas      3,s
+                    rts
+                    
+readcore
+                    ldx       PD.DEV,y            ; to our static storage
                     ldx       V$STAT,x
                     pshs      x,y,u
-
 * put path # on stack
+                    ldx       PD.RGS,y
+                    ldx       R$Y,x     get number of bytes to read
+                    pshs      x   put on the stack
                     lda       PD.PD,y
-                    pshs      cc
                     pshs      a                   ; p# PD.PD Regs
-
+                    pshs      y                   push path descriptor on stack
 * put rfm op and DW op on stack
 
                     lda       #OP_VFM
                     pshs      d                   ; DWOP RFMOP p# PD.PD Regs
 
                     leax      ,s                  ; point X to stack
-                    ldy       #3                  ; 3 bytes to send
+                    ldy       #7                  ; 7 bytes to send
 
 * set U to dwsub
                     ifgt      Level-1
@@ -355,50 +466,44 @@ read1               ldx       PD.DEV,y            ; to our static storage
                     endc
 
 * send dw op, rfm op, path #
-                    orcc      #IntMasks
-                    jsr       6,u
-                    leas      3,s                 ;clean stack - PD.PD Regs
-
-* put caller's Y on stack (maximum allowed bytes)
-                    ldx       5,s
-                    ldx       R$Y,x
-                    pshs      x
-
-* send 2 bytes from stack
-                    leax      ,s
-                    ldy       #2
                     jsr       6,u
 
-                    leas      1,s                 ; leave 1 byte for server response in next section
+                    leas      4,s                 ; leave 3 bytes for server response in next section
 
-* read # bytes coming (0 = eof) from server
+* read 1 byte error code and 2 byte read count from the host
                     leax      ,s
-                    ldy       #1
+                    ldy       #3
                     jsr       3,u
 
-* store size
-                    clra
-                    puls      b                   ;PD.PD Regs
+                    puls      b,y               get error in B and count in Y
 
 
-* check for 0
-                    tstb
-                    beq       readln1             ; 0 bytes = EOF
+* check for error
+                    tstb                        error code 0?
+                    bne       readlnerr         branch if not -- error
 
 * read the data from server if > 0
-go_on               pshs      d                   ;xfersz PD.PD Regs
-
 * load data from server into mem block
+                    ldx       2,s                 get path descriptor in X
+                    ldx       PD.RGS,x            get caller's registers in X
                     ifgt      Level-1
-                    ldx       3,s                 ; V$STAT
-                    ldx       V.BUF,x
+                    ldx       ,s                  get V$STAT
+                    ldx       V.BUF,x             get pointer to our allocated buffer in X
                     else
-                    ldx       7,s                 ; caller regs
-                    std       R$Y,x
-                    ldx       R$X,x
+                    ldx       R$X,x               get caller's X (buffer pointer) in X
                     endc
-                    ldy       ,s                  ;xfersz
-                    jsr       3,u
+                    sty       R$Y,x               update read length to caller's Y
+
+* Send ACK byte (doesn't matter what it is, just alerts the server that we're ready to receive the data)
+                    lda       #66
+                    pshs      a,x,y               save off A (junk), X (buffer pointer), Y (read length)
+                    leax      ,s                  point X to the stack to write an ack byte
+                    ldy       #1                  write one byte
+                    jsr       6,u                 write that byte
+
+* Now read the data                    
+                    puls      a,x,y               recover A (junk), X (buffer pointer), Y (read length)
+                    jsr       3,u                 read Y bytes
 
 * F$Move
 * a = my task #
@@ -409,13 +514,11 @@ go_on               pshs      d                   ;xfersz PD.PD Regs
 
 * move from our mem to caller
 
-                    puls      y                   ;Y = byte count (already set?)    -  PD.PD Regs
-                    puls      cc
-
                     ifgt      Level-1
-                    ldx       4,s
-                    ldu       R$X,x               ; U = caller's X = dest ptr
-                    sty       R$Y,x
+                    ldx       2,s                 get path descriptor in X
+                    ldx       PD.RGS,x            get caller's registers in X
+                    ldu       R$X,x               get caller's X (buffer pointer) in U
+                    ldy       R$Y,x               gert caller's Y (updated read length) in Y
 
                     lda       <D.SysTsk           ; A = system task #
 
@@ -428,15 +531,10 @@ go_on               pshs      d                   ;xfersz PD.PD Regs
 *  F$Move the bytes (seems to work)
                     os9       F$Move
                     endc
-* assume everything worked (not good)
-                    clrb
-                    bra       readln2
-
-readln1
-                    puls      cc
-                    comb
-                    ldb       #E$EOF
-readln2             puls      x,y,u,pc
+                    puls      x,y,u,pc
+readlnerr
+                    coma
+                    puls      x,y,u,pc
 
 
 
@@ -604,9 +702,28 @@ GstReady
 *       B = SS.SIZ
 * Exit  X = msw of files size
 *       U = lsw of files size
-GstSize
+GstSize             pshs   x,y,u
+                    leas   -5,s
+                    leax   ,s
+                    ldy    #5
+                    ifgt      Level-1
+                    ldu       <D.DWSubAddr
+                    else
+                    ldu       >D.DWSubAddr
+                    endc
+                    jsr       3,u
+                    puls      b
+                    tstb
+                    bne       err@
+                    puls      x,y
+                    ldu       4,s
+                    stx       R$X,u
+                    sty       R$U,u
+                    puls   x,y,u,pc
+err@                leas   10,s                    
+                    coma
                     rts
-
+                    
 * SS.Pos - Return the current position in the file
 * Entry A = path
 *       B = SS.Pos
@@ -766,7 +883,7 @@ GstDirEnt
 *
 setstt
                     lda       #DW.setstt
-                    lbsr      sendit
+                    lbsr      SendRFMHeader
 
                     ldb       R$B,u
                     beq       SstOpt
@@ -863,6 +980,7 @@ SstLock
 SstRsBit
 SstAttr
 SstFSig
+PlainRTS
                     rts
 
 
@@ -877,29 +995,19 @@ SstFSig
 *        B = error code (if CC.Carry == 1)
 *
 close
-                    pshs      y,u
+                    tst       PD.CNT,y            any open paths?
+                    bne       PlainRTS            yes, return
 
-* put path # on stack
-                    lda       PD.PD,y
-                    pshs      a
-
-* put rfm op and DW op on stack
                     ldb       #DW.close
-                    lda       #OP_VFM
-                    pshs      d
 
-                    leax      ,s                  ; point X to stack
-                    ldy       #3                  ; 3 bytes to send
                     ifgt      Level-1
                     ldu       <D.DWSubAddr
                     else
                     ldu       >D.DWSubAddr
                     endc
 
-                    jsr       6,u
-                    leas      2,s                 ;clean stack (leave 1 byte)
-
 * read server response
+                    pshs      a
                     leax      ,s
                     ldy       #1
                     jsr       3,u
@@ -919,17 +1027,22 @@ close
 close1              puls      u,y,pc
 
 
-* send dwop, rfmop, path, set/getstat op   (path is in A)
+* Byte 0: OP_VFM
+* Byte 1: DW.Seek
+* Byte 2: PD Pointer (MSB)
+* Byte 3: PD Pointer (LSB)
+* Byte 4: Path number
+* Byte 5: Status code
 sendgstt            pshs      x,y,u
 
                     ldb       R$B,u
                     pshs      d
-
+                    pshs      y
                     lda       #OP_VFM             ; load command
                     ldb       #DW.getstt
                     pshs      d                   ; command store on stack
                     leax      ,s                  ; point X to stack
-                    ldy       #4                  ; 2 byte to send
+                    ldy       #6
                     ifgt      Level-1
                     ldu       <D.DWSubAddr
                     else
@@ -937,30 +1050,7 @@ sendgstt            pshs      x,y,u
                     endc
 
                     jsr       6,u
-                    leas      4,s                 ;clean stack
-
-                    clrb
-                    puls      x,y,u,pc
-
-
-
-
-
-* just send OP_VMF + vfmop
-sendit              pshs      a,x,y,u
-
-                    lda       #OP_VFM             ; load command
-                    pshs      a                   ; command store on stack
-                    leax      ,s                  ; point X to stack
-                    ldy       #2                  ; 2 byte to send
-                    ifgt      Level-1
-                    ldu       <D.DWSubAddr
-                    else
-                    ldu       >D.DWSubAddr
-                    endc
-
-                    jsr       6,u
-                    leas      2,s                 ;clean stack
+                    leas      6,s                 ;clean stack
 
                     clrb
                     puls      x,y,u,pc
