@@ -276,6 +276,7 @@ BOOTFILE_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/ddx0.dd \
 		$(FLOPPY_40D) \
 		$(MD)/scf.mn \
+		$(MD)/rfm.mn $(MD)/rfmdrv.dr $(MD)/y0.dd \
 		$(VTIO_COGRF_80) \
 		$(MD)/scdwv.dr \
 		$(SCDWV_NET) \

@@ -60,14 +60,14 @@ ex@                 rts return to the caller
 * Entry:
 *    A = The keys in the row that have changed since the last scan.
 *    B = The up/down state of keys in the row.
-HandleRow              pshs      d,x,y
-                    stb       ,y        save off new state to current row
+HandleRow           pshs      d,x,y
+                    stb       ,y       save off new state to current row
                     ldb       #8       load counter
-kl@                 lsla shift leftmost bit into the carry
-                    bcs       kchg@ branch if carry set (key state changed)
-                    lsl       1,s     shift B on stack (up/down state)
-nextbit                  decb  decrement the counter
-                    bne       kl@ continue if more
+kl@                 lsla               shift leftmost bit into the carry
+                    bcs       kchg@    branch if carry set (key state changed)
+                    lsl       1,s      shift B on stack (up/down state)
+nextbit             decb               decrement the counter
+                    bne       kl@      continue if more
                     puls      d,x,y,pc restore and return
 kchg@                                                            
                     pshs      d
@@ -77,7 +77,7 @@ kchg@
                     lda       #8
                     mul
                     leax      F256KKeys,pcr
-                    lda       V.KySns,u
+                    lda       D.KySns
                     bita      #SHIFTBIT
                     beq       noshift@              branch of so
                     leax      F256KShiftKeys,pcr
@@ -96,56 +96,65 @@ g@
 * key is up -- process character
 keyup@              cmpa      #LSHIFT
                     bne       isitmeta@
-                    ldb       V.KySns,u
+                    ldb       D.KySns
                     andb      #^SHIFTBIT
-                    stb       V.KySns,u
-                    lbra       repex
+                    stb       D.KySns
+                    lbra      repex
 isitmeta@           cmpa      #META
                     bne       isitctrl@
                     clr       V.META,u
                     lbra      repex
 isitctrl@           cmpa      #LCTRL
                     bne       isitalt@
-                    ldb       V.KySns,u
+                    ldb       D.KySns
                     andb      #^CTRLBIT
-                    stb       V.KySns,u
-                    ;bra       repex
+                    stb       D.KySns
+                    lbra      repex
 isitalt@            cmpa      #RALT                                    
-                    lbne       repex
-                    ldb       V.KySns,u
+                    lbne      repex
+                    ldb       D.KySns
                     andb      #^ALTBIT
-                    stb       V.KySns,u
-                    lbra       repex
+                    stb       D.KySns
+                    lbra      repex
 * key is down -- process character
 keydown@            tsta
                     lbeq       CheckSig
-
                     cmpa      #LSHIFT
+                    
                     bne       isitmeta@
-                    ldb       V.KySns,u
-                    andb      #^SHIFTBIT
-                    stb       V.KySns,u
-                    lbra       repex
+                    ldb       D.KySns
+                    orb       #SHIFTBIT
+                    stb       D.KySns
+                    lbra      repex
 isitmeta@           cmpa      #META
                     bne       isitctrl@
                     sta       V.META,u
-                    lbra       repex
+                    lbra      repex
 isitctrl@           cmpa      #LCTRL
                     bne       isitalt@
-                    ldb       V.KySns,u
-                    andb      #^CTRLBIT
-                    stb       V.KySns,u
-                    lbra       repex
+                    ldb       D.KySns
+                    orb       #CTRLBIT
+                    stb       D.KySns
+                    lbra      repex
 isitalt@            cmpa      #RALT                                    
                     bne       isitcaps@
-                    ldb       V.KySns,u
-                    andb      #^ALTBIT
-                    stb       V.KySns,u
-                    lbra       repex
+                    ldb       D.KySns
+                    orb       #ALTBIT
+                    stb       D.KySns
+                    lbra      repex
 isitcaps@           cmpa      #CAPS
                     bne       z@
                     com       V.CAPSLck,u
-                    lbra       repex     
+* Set/Clear CAPS Lock LED
+                    ldx       #SYS0          
+                    ldb       ,x
+                    tst       V.CAPSLck,u
+                    beq       ledoff@
+ledon@              orb       #SYS_CAP_EN
+                    bra       ledsave@
+ledoff@             andb      #^SYS_CAP_EN
+ledsave@            stb       ,x
+                    lbra      repex     
 * Handle CAPS LOCK engaged
 z@                  tst       V.CAPSLck,u
                     beq       z1@
@@ -155,13 +164,13 @@ z@                  tst       V.CAPSLck,u
                     bhi       z1@
                     suba      #$20
 * Handle CTRL down                    
-z1@                 ldb       V.KySns,u
+z1@                 ldb       D.KySns
                     bitb      #CTRLBIT
                     beq       z2@
                     anda      #$5F
                     suba      #$40
 * Handle ALT down
-z2@                 ldb       V.KySns,u
+z2@                 ldb       D.KySns
                     bitb      #ALTBIT
                     beq       z3@
                     anda      #$5F

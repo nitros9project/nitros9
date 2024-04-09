@@ -49,14 +49,17 @@ V.InBuf             RMB       KBufSz              the input buffer
                     RMB       250-.
 V.Last              EQU       .
 
-* Borrow 11 bytes (16 bytes available in Level 1) from "CoCo" specific area of system globals for F256's use.
+* Borrow 7 bytes (16 bytes available in Level 1) from "CoCo" specific area of system globals for F256's use.
                     org       D.IRQTmp
 D.Bell              rmb       2
 D.TnCnt             rmb       1
 D.OrgAlt            rmb       2
 D.SndPrcID          rmb       1
 D.KySns             rmb       1
-* F256K specific section
+
+* F256K-specific section
+* Borrow 9 bytes from "CoCo" specific area of system globals for F256's use.
+                    org       D.WDAddr
 D.RowState          RMB       9
 
 * SS.KySns bit locations
