@@ -130,8 +130,7 @@ BellTone            tst       D.SndPrcID
                     sta       MAPADDR+PSG.Base           store in PSG hardware
 
 * Set frequency of tone
-                    pshs      b save original MAP slot value
-                    
+                    pshs      b save original MAP slot value                    
                     tfr       y,d transfer frequency over
                     pshs      d           only 10 bits are significant
                     andb      #%00001111  clear all but bits 0-3

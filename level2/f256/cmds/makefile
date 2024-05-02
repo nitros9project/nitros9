@@ -1,6 +1,6 @@
 include ../port.mak
 
-vpath %.as $(LEVEL2)/cmds:$(LEVEL1)/cmds
+vpath %.as $(LEVEL1)/f256/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds
 vpath %.asm $(LEVEL1)/f256/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/brainfuck:$(3RDPARTY)/packages/cpm
 
 DEPENDS		= ./makefile $(NOSLIB)/net.o
@@ -11,7 +11,7 @@ AFLAGS      += -I$(3RDPARTY)/packages/brainfuck
 AFLAGS      += -I$(3RDPARTY)/packages/cpm
 AFLAGS      += -I../defs
 LFLAGS		+= -L$(NITROS9DIR)/lib
-LFLAGS		+= -lf256
+LFLAGS		+= -lf256 -lf256snd
 LFLAGS		+= -lnet -lalib
 
 BASIC09	= basic09 runb inkey syscall foenix
@@ -25,7 +25,7 @@ CMDS    = asm attr backup binex build cmp copy \
 		makdir mdir megaread merge mfree minted mmap modpatch padrom park \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
-		$(CMDS_DW) $(BASIC09) $(BF) $(CPM)
+		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) play
 
 SHELLMODS	= shellplus echo iniz link load save unlink
 
