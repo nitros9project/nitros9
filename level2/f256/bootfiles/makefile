@@ -37,7 +37,7 @@ SCVT_F256K	 = $(MD)/vtio.dr $(MD)/keydrv_f256k.sb $(MD)/term.dt
 SCVT_F256JR  = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/term.dt
 
 # Font & palette
-FONT		 = $(MD)/phoenixegafont.sb
+FONT		 = $(MD)/bannerfont.sb
 PALETTE	 = $(MD)/palette.sb
 
 # SCF DriveWire virtual networking/window driver
