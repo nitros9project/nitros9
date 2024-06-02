@@ -196,7 +196,9 @@ DeadEnd             bra       DeadEnd             else loop forever
 
 IcptRtn             rti
 
-Logo                fcb        $1B,$33,$06,$1B,$32,$01,$0C                   set BG blue,FG wht, CLS, NewLine
+Logo                
+                    fcb $1B,$20,$02,$00,$00,$50,$18,$01,$06,$04
+*                    fcb $1B,$33,$06,$1B,$32,$01,$0C                   set BG blue,FG wht, CLS, NewLine
                     fcb	$1B,$32,$06,$DB,$DB,$DB,$DB,$DB,$DB,$DB
                     fcb	$DB,$DB					center outline
                     fcb	$1B,$32,$00,$5F,$5F,$5F,$1B,$32,$06,$5F	outline
