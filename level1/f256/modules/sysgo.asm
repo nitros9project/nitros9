@@ -96,11 +96,11 @@ start               leax      >IcptRtn,pcr
                     os9       F$SPrior
 
 * Show banner
-SignOn              leax      Logo,pcr            point to NitrOS-9 banner
+SignOn              leax      Logo,pcr            point to Nitros-9 banner
                     ldy       #LogoLen
                     lda       #$01                standard output
                     os9       I$Write
-                    leax      BLogo,pcr           new line
+                    leax      BLogo,pcr           newline
                     ldy       #BLogoLen
                     os9       I$Writln
                     leax      ColorBar,pcr        point to color bar
@@ -195,127 +195,363 @@ DeadEnd             bra       DeadEnd             else loop forever
 
 IcptRtn             rti
 
-Logo                fcb        $1B,$33,$06,$1B,$32,$01,$0C                   set BG blue,FG wht, CLS, NewLine
-                    fcb	$1B,$32,$06,$DB,$DB,$DB,$DB,$DB,$DB,$DB
+Logo                fcb $1B,$20,$02,$00,$00,$50,$18,$01,$06,$00
+                    fcb	$1B,$32,$06
+                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB
                     fcb	$DB,$DB					center outline
-                    fcb	$1B,$32,$00,$5F,$5F,$5F,$1B,$32,$06,$5F	outline
-                    fcb	$5F,$5F,$5F,$1B,$32,$00,$5F,$5F,$1B,$32
-                    fcb	$06,$5F,$1B,$32,$00,$5F,$5F,$1B,$32,$06
-                    fcb	$5F,$5F,$5F,$5F,$1B,$32,$00,$5F,$5F,$1B
-                    fcb	$32,$06,$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F        
-                    fcb	$1B,$32,$06,$5F,$5F,$5F,$5F,$1B,$32,$00
-                    fcb	$5F,$5F,$5F,$5F,$5F,$5F,$1B,$32,$0B,$5F
-                    fcb	$1B,$32,$06,$5F,$5F,$1B,$32,$00,$5F,$5F        
-                    fcb	$5F,$5F,$5F,$1B,$32,$0B,$5F,$1B,$32,$06
-                    fcb	$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F,$1B
-                    fcb	$32,$00,$5F,$5F,$5F,$5F,$5F,$1B,$32,$0B
-                    fcb	$5F,$1B,$32,$06,$5F,$5F,$5F,$DD,$DD,$DD
-                    fcb	$DD,$DD,$DD,$DD,$DD
-                    fcb	$1B,$32,$06,$DB,$DB,$DB,$DB,$DB,$DB,$DB
-                    fcb	$DB,$DB					center line
-                    fcb	$1B,$32,$02,$DB,$DB,$DB,$BC,$1B,$32,$06
-                    fcb	$DB,$DB,$DB,$1B,$32,$02,$DB,$DB,$1B,$32
-                    fcb	$00,$B3,$1B,$32,$08,$DB,$DB,$1B,$32,$00
-                    fcb	$B3,$1B,$32,$06,$DB,$1B,$32,$00,$5F,$5F	
-                    fcb	$1B,$32,$07,$DB,$DB,$1B,$32,$00,$B4,$5F
-                    fcb	$5F,$1B,$32,$06,$DB,$DB,$DB,$DB,$DB,$DB
-                    fcb	$DB,$DB,$1B,$32,$01,$B5,$DB,$DB,$DB,$DB
-                    fcb	$DB,$DB,$1B,$33,$0B,$B7,$1B,$33,$06,$1B
-                    fcb	$32,$0B,$B3,$1B,$32,$01,$B5,$DB,$DB,$DB
-                    fcb	$DB,$DB,$1B,$33,$0B,$B7,$1B,$33,$06,$1B
-                    fcb	$32,$0B,$B3,$1B,$32,$06,$DB,$DB,$DB,$DB
-                    fcb	$DB,$DB,$DB,$1B,$32,$01,$B5,$DB,$DB,$DB
-                    fcb	$DB,$DB,$1B,$33,$0B,$B7,$1B,$33,$06,$1B
-                    fcb	$32,$0B,$B3,$1B,$32,$06,$DB,$DB,$DB,$DB
-                    fcb	$DB,$1B,$32					end line 1
-                    fcb	$06,$DD,$DD,$DB,$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb	$1B,$32,$00
+                    fcb $5F,$5F,$5F
+                    fcb $1B,$32,$06
+                    fcb	$5F,$5F,$5F,$5F
+                    fcb $1B,$32,$00
+                    fcb $5F,$5F outline
+                    fcb $1B,$32,$06
+                    fcb	$5F
+                    fcb $1B,$32,$00
+                    fcb $5F,$5F
+                    fcb $1B,$32,$06
+                    fcb	$5F,$5F,$5F,$5F
+                    fcb $1B,$32,$00
+                    fcb $5F,$5F
+                    fcb $1B,$32,$06
+                    fcb $5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F        
+                    fcb	$1B,$32,$06
+                    fcb $5F,$5F,$5F,$5F
+                    fcb $1B,$32,$00
+                    fcb	$5F,$5F,$5F,$5F,$5F,$5F
+                    fcb $1B,$32,$0B
+                    fcb $5F
+                    fcb	$1B,$32,$06
+                    fcb $5F,$5F
+                    fcb $1B,$32,$00
+                    fcb $5F,$5F        
+                    fcb	$5F,$5F,$5F
+                    fcb $1B,$32,$0B
+                    fcb $5F
+                    fcb $1B,$32,$06
+                    fcb	$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F
+                    fcb $1B,$32,$00
+                    fcb $5F,$5F,$5F,$5F,$5F
+                    fcb $1B,$32,$0B
+                    fcb	$5F
+                    fcb $1B,$32,$06
+                    fcb $5F,$5F,$5F,$DD,$DD,$DD,$DD,$DD,$DD,$DD,$DD
+                    fcb	$1B,$32,$06
+                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB					center line
+                    fcb	$1B,$32,$02
+                    fcb $DB,$DB,$DB,$BC
+                    fcb $1B,$32,$06
+                    fcb	$DB,$DB,$DB
+                    fcb $1B,$32,$02
+                    fcb $DB,$DB
+                    fcb $1B,$32,$00,$B3
+                    fcb $1B,$32,$08
+                    fcb $DB,$DB
+                    fcb $1B,$32,$00
+                    fcb	$B3
+                    fcb $1B,$32,$06
+                    fcb $DB
+                    fcb $1B,$32,$00
+                    fcb $5F,$5F	
+                    fcb	$1B,$32,$07
+                    fcb $DB,$DB
+                    fcb $1B,$32,$00
+                    fcb $B4,$5F,$5F
+                    fcb $1B,$32,$06
+                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb $1B,$32,$01
+                    fcb $B5,$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb $1B,$33,$0B
+                    fcb $B7
+                    fcb $1B,$33,$06
+                    fcb $1B,$32,$0B
+                    fcb $B3
+                    fcb $1B,$32,$01
+                    fcb $B5,$DB,$DB,$DB,$DB,$DB
+                    fcb $1B,$33,$0B
+                    fcb $B7
+                    fcb $1B,$33,$06
+                    fcb $1B,$32,$0B
+                    fcb $B3
+                    fcb $1B,$32,$06
+                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb $1B,$32,$01
+                    fcb $B5,$DB,$DB,$DB,$DB,$DB
+                    fcb $1B,$33,$0B
+                    fcb $B7
+                    fcb $1B,$33,$06
+                    fcb $1B,$32,$0B
+                    fcb $B3
+                    fcb $1B,$32,$06
+                    fcb $DB,$DB,$DB,$DB,$DB
+                    fcb $1B,$32,$06					end line 1
+                    fcb	$DD,$DD,$DB,$DB,$DB,$DB,$DB,$DB,$DB
                     fcb	$DB,$DB,$DB,$DB,$DB				center line
-                    fcb	$1B,$32,$02,$DB,$DB,$BB,$DB,$BC,$1B,$32
-                    fcb	$06,$DB,$DB,$1B,$32,$02,$DB,$DB,$1B,$32
-                    fcb	$00,$B3,$5F,$5F,$1B,$32,$06,$DB,$1B,$32
-                    fcb	$00,$1B,$32,$07,$B9,$DB,$DB,$DB,$DB,$DB
-                    fcb	$DB,$DB,$1B,$32,$00,$B3,$1B,$32,$06,$DB
-                    fcb	$1B,$32,$00,$5F,$5F,$5F,$5F,$1B,$32,$0B
-                    fcb	$5F,$1B,$32,$06,$DB,$1B,$32,$01,$DB,$DB
-                    fcb	$1B,$32,$00,$B3,$1B,$32,$06,$DB,$DB,$DB
-                    fcb	$1B,$32,$01,$DB,$DB,$1B,$32,$0B,$B3,$1B
-                    fcb	$32,$01,$DB,$DB,$1B,$32,$00,$B4,$5F,$5F
-                    fcb	$5F,$1B,$32,$0B,$5F,$1B,$32,$06,$DB,$1B
-                    fcb	$32,$00,$5F,$5F,$5F,$5F,$5F,$5F,$1B,$32
-                    fcb	$06,$DB,$1B,$32,$01,$DB,$DB,$1B,$32,$00
-                    fcb	$B4,$5F,$5F,$1B,$32,$01,$DB,$DB,$1B,$32
-                    fcb	$0B,$B3					end line 2
-                    fcb	$1B,$32,$06,$DB,$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb	$1B,$32,$02
+                    fcb $DB,$DB,$BB,$DB,$BC
+                    fcb $1B,$32,$06
+                    fcb $DB,$DB
+                    fcb $1B,$32,$02
+                    fcb $DB,$DB
+                    fcb $1B,$32,$00
+                    fcb $B3,$5F,$5F
+                    fcb $1B,$32,$06
+                    fcb $DB
+                    fcb $1B,$32,$00
+                    fcb $1B,$32,$07
+                    fcb $B9,$DB,$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb $1B,$32,$00
+                    fcb $B3
+                    fcb $1B,$32,$06
+                    fcb $DB
+                    fcb	$1B,$32,$00
+                    fcb $5F,$5F,$5F,$5F
+                    fcb $1B,$32,$0B
+                    fcb	$5F
+                    fcb $1B,$32,$06
+                    fcb $DB
+                    fcb $1B,$32,$01
+                    fcb $DB,$DB
+                    fcb	$1B,$32,$00
+                    fcb $B3
+                    fcb $1B,$32,$06
+                    fcb $DB,$DB,$DB
+                    fcb	$1B,$32,$01
+                    fcb $DB,$DB
+                    fcb $1B,$32,$0B
+                    fcb $B3
+                    fcb $1B,$32,$01
+                    fcb $DB,$DB
+                    fcb $1B,$32,$00
+                    fcb $B4,$5F,$5F,$5F
+                    fcb $1B,$32,$0B
+                    fcb $5F
+                    fcb $1B,$32,$06
+                    fcb $DB
+                    fcb $1B,$32,$00
+                    fcb $5F,$5F,$5F,$5F,$5F,$5F
+                    fcb $1B,$32,$06
+                    fcb $DB
+                    fcb $1B,$32,$01
+                    fcb $DB,$DB
+                    fcb $1B,$32,$00
+                    fcb	$B4,$5F,$5F
+                    fcb $1B,$32,$01
+                    fcb $DB,$DB
+                    fcb $1B,$32,$0B
+                    fcb $B3					end line 2
+                    fcb	$1B,$32,$06
+                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB
                     fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB	center line
-                    fcb	$DB,$DB,$1B,$32,$02,$DB,$DB,$1B,$32,$06
-                    fcb	$DB,$1B,$32,$02,$BB,$DB,$BC,$1B,$32,$06
-                    fcb	$DB,$1B,$32,$02,$DB,$DB,$1B,$32,$00,$B3
-                    fcb	$1B,$32,$08,$DB,$DB,$1B,$32,$00,$B3,$1B
-                    fcb	$32,$06,$DB,$DB,$DB,$1B,$32,$07,$DB,$DB
-                    fcb	$1B,$32,$00,$B3,$1B,$32,$06,$DB,$DB,$DB
-                    fcb	$1B,$32,$05,$B5,$DB,$DB,$DB,$DB,$1B,$33
-                    fcb	$06,$1B,$33,$0B,$B7,$1B,$33,$06,$1B,$32
-                    fcb	$0B,$B3,$1B,$32,$01,$DB,$DB,$1B,$32,$00
-                    fcb	$B3,$1B,$32,$06,$DB,$DB,$DB,$1B,$32,$01
-                    fcb	$DB,$DB,$1B,$32,$0B,$B3,$1B,$32,$01,$B6
-                    fcb	$DB,$DB,$DB,$DB,$DB,$1B,$33,$0B,$B7,$1B
-                    fcb	$33,$06,$1B,$32,$0B,$B3,$1B,$32,$01,$DB
-                    fcb	$DB,$1B,$32,$0F,$DB,$1B,$32,$0C,$DB,$1B
-                    fcb	$32,$0B,$DB,$1B,$32,$00,$DB,$1B,$32,$06
-                    fcb	$DB,$1B,$32,$01,$B6,$DB,$DB,$DB,$DB,$DB
-                    fcb	$DB,$1B,$32,$0B,$B3				end line 3
-                    fcb	$1B,$32,$06,$DB,$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb	$DB,$DB
+                    fcb $1B,$32,$02
+                    fcb $DB,$DB
+                    fcb $1B,$32,$06
+                    fcb	$DB
+                    fcb $1B,$32,$02
+                    fcb $BB,$DB,$BC
+                    fcb $1B,$32,$06
+                    fcb	$DB
+                    fcb $1B,$32,$02
+                    fcb $DB,$DB
+                    fcb $1B,$32,$00,$B3
+                    fcb	$1B,$32,$08
+                    fcb $DB,$DB
+                    fcb $1B,$32,$00
+                    fcb $B3
+                    fcb $1B,$32,$06
+                    fcb $DB,$DB,$DB
+                    fcb $1B,$32,$07
+                    fcb $DB,$DB
+                    fcb	$1B,$32,$00
+                    fcb $B3
+                    fcb $1B,$32,$06
+                    fcb $DB,$DB,$DB
+                    fcb	$1B,$32,$05
+                    fcb $B5,$DB,$DB,$DB,$DB
+                    fcb $1B,$33,$06
+                    fcb $1B,$33,$0B
+                    fcb $B7
+                    fcb $1B,$33,$06
+                    fcb $1B,$32,$0B
+                    fcb $B3
+                    fcb $1B,$32,$01
+                    fcb $DB,$DB
+                    fcb $1B,$32,$00
+                    fcb	$B3
+                    fcb $1B,$32,$06
+                    fcb $DB,$DB,$DB
+                    fcb $1B,$32,$01
+                    fcb	$DB,$DB
+                    fcb $1B,$32,$0B
+                    fcb $B3
+                    fcb $1B,$32,$01
+                    fcb $B6
+                    fcb	$DB,$DB,$DB,$DB,$DB
+                    fcb $1B,$33,$0B
+                    fcb $B7
+                    fcb $1B,$33,$06
+                    fcb $1B,$32,$0B
+                    fcb $B3
+                    fcb $1B,$32,$01
+                    fcb $DB,$DB
+                    fcb $1B,$32,$0F
+                    fcb $DB
+                    fcb $1B,$32,$0C
+                    fcb $DB
+                    fcb $1B,$32,$0B
+                    fcb $DB
+                    fcb $1B,$32,$00
+                    fcb $DB
+                    fcb $1B,$32,$06
+                    fcb	$DB
+                    fcb $1B,$32,$01
+                    fcb $B6,$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb $1B,$32,$0B
+                    fcb $B3				end line 3
+                    fcb	$1B,$32,$06
+                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB
                     fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB	center line
-                    fcb	$DB,$DB,$1B,$32,$02,$DB,$DB,$1B,$32,$06
-                    fcb	$DB,$DB,$1B,$32,$02,$BB,$DB,$BC,$DB,$DB
-                    fcb	$1B,$32,$00,$B3,$1B,$32,$08,$DB,$DB,$1B
-                    fcb	$32,$00,$B3,$1B,$32,$06,$DB,$DB,$DB,$1B
-                    fcb	$32,$07,$DB,$DB,$1B,$32,$00,$B4,$5F,$1B
-                    fcb	$32,$06,$DB,$DB,$1B,$32,$05,$DB,$DB,$1B
-                    fcb	$32,$00,$B3,$1B,$32,$06,$DB,$DB,$1B,$32
-                    fcb	$05,$DF,$1B,$32,$06,$DB,$1B,$32,$01,$DB
-                    fcb	$DB,$1B,$32,$00,$B4,$5F,$5F,$5F,$1B,$32
-                    fcb	$01,$DB,$DB,$1B,$32,$0B,$B3,$1B,$32,$06
-                    fcb	$DB,$1B,$32,$00,$5F,$5F,$5F,$5F,$1B,$32
-                    fcb	$01,$DB,$DB,$1B,$32,$0B,$B3,$1B,$32,$06
-                    fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$1B,$32
-                    fcb	$00,$5F,$5F,$5F,$5F,$1B,$32,$01,$DB,$DB
-                    fcb	$1B,$32,$0B,$B3				end line 4
-                    fcb	$1B,$32,$06,$DB,$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb	$DB,$DB
+                    fcb $1B,$32,$02
+                    fcb $DB,$DB
+                    fcb $1B,$32,$06
+                    fcb	$DB,$DB
+                    fcb $1B,$32,$02
+                    fcb $BB,$DB,$BC,$DB,$DB
+                    fcb	$1B,$32,$00
+                    fcb $B3
+                    fcb $1B,$32,$08
+                    fcb $DB,$DB
+                    fcb $1B,$32,$00
+                    fcb $B3
+                    fcb $1B,$32,$06
+                    fcb $DB,$DB,$DB
+                    fcb $1B,$32,$07
+                    fcb $DB,$DB
+                    fcb $1B,$32,$00
+                    fcb $B4,$5F
+                    fcb $1B,$32,$06
+                    fcb $DB,$DB
+                    fcb $1B,$32,$05
+                    fcb $DB,$DB
+                    fcb $1B,$32,$00
+                    fcb $B3
+                    fcb $1B,$32,$06
+                    fcb $DB,$DB
+                    fcb $1B,$32,$05
+                    fcb $DF
+                    fcb $1B,$32,$06
+                    fcb $DB
+                    fcb $1B,$32,$01
+                    fcb $DB,$DB
+                    fcb $1B,$32,$00
+                    fcb $B4,$5F,$5F,$5F
+                    fcb $1B,$32,$01
+                    fcb $DB,$DB
+                    fcb $1B,$32,$0B
+                    fcb $B3
+                    fcb $1B,$32,$06
+                    fcb	$DB
+                    fcb $1B,$32,$00
+                    fcb $5F,$5F,$5F,$5F
+                    fcb $1B,$32,$01
+                    fcb $DB,$DB
+                    fcb $1B,$32,$0B
+                    fcb $B3
+                    fcb $1B,$32,$06
+                    fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb $1B,$32,$00
+                    fcb $5F,$5F,$5F,$5F
+                    fcb $1B,$32,$01
+                    fcb $DB,$DB
+                    fcb	$1B,$32,$0B
+                    fcb $B3				end line 4
+                    fcb	$1B,$32,$06
+                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB
                     fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB	
                     fcb	$DB,$DB					center font
-                    fcb	$1B,$32,$02,$DB,$DB,$1B,$32,$06,$DB,$DB
-                    fcb	$DB,$1B,$32,$02,$BB,$DB,$DB,$DB,$1B,$32
-                    fcb	$00,$B3,$1B,$32,$08,$DB,$DB,$1B,$32,$00
-                    fcb	$B3,$1B,$32,$06,$DB,$DB,$DB,$1B,$32,$07
-                    fcb	$DB,$DB,$DB,$BA,$1B,$32,$06,$DB,$DB,$1B
-                    fcb	$32,$05,$DB,$DB,$1B,$32,$00,$B3,$1B,$32
-                    fcb	$06,$DB,$DB,$DB,$DB,$1B,$32,$01,$B6,$DB
-                    fcb	$DB,$DB,$DB,$DB,$DB,$B8,$1B,$32,$06,$DB
-                    fcb	$1B,$32,$01,$B9,$DB,$DB,$DB,$DB,$DB,$B8
-                    fcb	$1B,$32,$06,$DB,$DB,$DB,$DB,$DB,$DB,$DB
-                    fcb	$DB,$1B,$32,$01,$B9,$DB,$DB,$DB,$DB,$DB
+                    fcb	$1B,$32,$02
+                    fcb $DB,$DB
+                    fcb $1B,$32,$06
+                    fcb $DB,$DB
+                    fcb	$DB
+                    fcb $1B,$32,$02
+                    fcb $BB,$DB,$DB,$DB
+                    fcb $1B,$32,$00
+                    fcb $B3
+                    fcb $1B,$32,$08
+                    fcb $DB,$DB
+                    fcb $1B,$32,$00
+                    fcb	$B3
+                    fcb $1B,$32,$06
+                    fcb $DB,$DB,$DB
+                    fcb $1B,$32,$07
+                    fcb	$DB,$DB,$DB,$BA
+                    fcb $1B,$32,$06
+                    fcb $DB,$DB
+                    fcb $1B,$32,$05
+                    fcb $DB,$DB
+                    fcb $1B,$32,$00
+                    fcb $B3
+                    fcb $1B,$32,$06
+                    fcb $DB,$DB,$DB,$DB
+                    fcb $1B,$32,$01
+                    fcb $B6,$DB,$DB,$DB,$DB,$DB,$DB,$B8
+                    fcb $1B,$32,$06
+                    fcb $DB
+                    fcb	$1B,$32,$01
+                    fcb $B9,$DB,$DB,$DB,$DB,$DB,$B8
+                    fcb	$1B,$32,$06
+                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb $1B,$32,$01
+                    fcb $B9,$DB,$DB,$DB,$DB,$DB
                     fcb	$B8						end line 5
-                    fcb	$1B,$32,$06,$DB,$DB,$DB,$DB,$DB
-                    fcb	$DB,$DB,$DB,$DB,$DB,$DB,$1B,$32,$01		reset FG white	
+                    fcb	$1B,$32,$06
+                    fcb $DB,$DB,$DB,$DB,$DB
+                    fcb	$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb $1B,$32,$01		reset FG white	
 LogoLen             equ	*-Logo
 ColorBar            fcb	$1B,$32,$06
                     fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB	center bar
                     fcb	$DB,$DB,$DB,$DB,$DB,$DB
-                    fcb	$1B,$32,$02,$DF,$DF,$DF,$1B,$32,$08,$DF	color bar
-                    fcb	$DF,$DF,$1B,$32,$07,$DF,$DF,$DF,$1B,$32
-                    fcb	$05,$DF,$DF,$DF,$1B,$32,$0E,$DF,$DF,$DF
-                    fcb	$1B,$32,$04,$DF,$DF,$DF,$1B,$32,$01,$DF
-                    fcb	$DF,$DF,$1B,$32,$0F,$DF,$DF,$DF,$1B,$32
-                    fcb	$0C,$DF,$DF,$DF,$1B,$32,$0B,$DF,$DF,$DF
-                    fcb	$1B,$32,$03,$DF,$DF,$DF,$1B,$32,$0A,$DF
-                    fcb	$DF,$DF,$1B,$32,$0D,$DF,$DF,$DF,$1B,$32
-                    fcb	$09,$DF,$DF,$DF,$1B,$32,$00,$DF,$DF,$DF
+                    fcb	$1B,$32,$02
+                    fcb $DF,$DF,$DF
+                    fcb $1B,$32,$08
+                    fcb $DF,$DF,$DF	color bar
+                    fcb $1B,$32,$07
+                    fcb $DF,$DF,$DF
+                    fcb $1B,$32,$05
+                    fcb $DF,$DF,$DF
+                    fcb $1B,$32,$0E
+                    fcb $DF,$DF,$DF
+                    fcb	$1B,$32,$04
+                    fcb $DF,$DF,$DF
+                    fcb $1B,$32,$01
+                    fcb $DF,$DF,$DF
+                    fcb $1B,$32,$0F
+                    fcb $DF,$DF,$DF
+                    fcb $1B,$32,$0C
+                    fcb $DF,$DF,$DF
+                    fcb $1B,$32,$0B
+                    fcb $DF,$DF,$DF
+                    fcb	$1B,$32,$03
+                    fcb $DF,$DF,$DF
+                    fcb $1B,$32,$0A
+                    fcb $DF,$DF,$DF
+                    fcb $1B,$32,$0D
+                    fcb $DF,$DF,$DF
+                    fcb $1B,$32,$09
+                    fcb $DF,$DF,$DF
+                    fcb $1B,$32,$00
+                    fcb $DF,$DF,$DF
                     fcb	$1B,$32,$01					reset FG White
 CBLen               equ	*-ColorBar
-BLogo               fcb	$1B,$32,$06,$DB,$DB,$DB,$DB,$DB,$DB,$DB
+BLogo               fcb	$1B,$32,$06
+                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB
                     fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB		center line
-                    fcb	$1B,$32,$00,$5F,$5F,$5F,$5F,$5F,$5F,$5F
+                    fcb	$1B,$32,$00
+                    fcb $5F,$5F,$5F,$5F,$5F,$5F,$5F
                     fcb	$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F
                     fcb	$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F
                     fcb	$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F
