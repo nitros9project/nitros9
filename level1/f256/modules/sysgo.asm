@@ -89,19 +89,18 @@ WriteCR             pshs      y
 **********************************************************
 start               leax      >IcptRtn,pcr
                     os9       F$Icpt
+
 * Set priority of this process
                     os9       F$ID
                     ldb       #DefPrior
                     os9       F$SPrior
 
 * Show banner
-SignOn
-                    puls      u
-                    leax      Logo,pcr            point to Nitros-9 banner
+SignOn              leax      Logo,pcr            point to NitrOS-9 banner
                     ldy       #LogoLen
                     lda       #$01                standard output
                     os9       I$Write
-                    leax      BLogo,pcr           newline
+                    leax      BLogo,pcr           new line
                     ldy       #BLogoLen
                     os9       I$Writln
                     leax      ColorBar,pcr        point to color bar
@@ -196,9 +195,7 @@ DeadEnd             bra       DeadEnd             else loop forever
 
 IcptRtn             rti
 
-Logo                
-                    fcb $1B,$20,$02,$00,$00,$50,$18,$01,$06,$04
-*                    fcb $1B,$33,$06,$1B,$32,$01,$0C                   set BG blue,FG wht, CLS, NewLine
+Logo                fcb        $1B,$33,$06,$1B,$32,$01,$0C                   set BG blue,FG wht, CLS, NewLine
                     fcb	$1B,$32,$06,$DB,$DB,$DB,$DB,$DB,$DB,$DB
                     fcb	$DB,$DB					center outline
                     fcb	$1B,$32,$00,$5F,$5F,$5F,$1B,$32,$06,$5F	outline
