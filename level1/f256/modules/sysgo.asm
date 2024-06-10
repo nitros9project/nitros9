@@ -102,13 +102,36 @@ SignOn              leax      Logo,pcr            point to Nitros-9 banner
                     os9       I$Write
                     leax      BLogo,pcr           newline
                     ldy       #BLogoLen
-                    os9       I$Writln
+                    os9       I$Write
                     leax      ColorBar,pcr        point to color bar
                     ldy       #CBLen
                     os9       I$Write
                     leax      CrRtn,pcr
                     ldy       #$0001
                     os9       I$WritLn
+
+* Write OS name and Machine name strings
+                    leax      Init,pcr
+                    clra
+                    pshs      u
+                    os9       F$Link
+                    bcs       SignOn
+                    stx       <InitAddr
+                    ldd       OSName,u            point to OS name in INIT module
+                    leax      d,u                 point to install name in INIT module
+                    bsr       strlen
+                    tfr       d,y
+                    lda       #$01
+                    os9       I$Write
+                    bsr       WriteCR
+                    ldd       InstallName,u
+                    leax      d,u                 point to install name in INIT module
+                    bsr       strlen
+                    tfr       d,y
+                    lda       #$01
+                    os9       I$Write
+                    bsr       WriteCR
+                    puls      u
 
 * Set default time
                     leax      >DefTime,pcr
@@ -195,52 +218,60 @@ DeadEnd             bra       DeadEnd             else loop forever
 
 IcptRtn             rti
 
-Logo                fcb $1B,$20,$02,$00,$00,$50,$18,$01,$06,$00
-                    fcb	$1B,$32,$06
-                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB
-                    fcb	$DB,$DB					center outline
+
+BGC                 set $0A
+
+UCH                 set $5F
+
+Logo                
+* Set up 80x30 window with foreground and background colors as same
+                    fcb $1B,$20,$02,$00,$00,$50,$18,BGC,BGC,$00
+                    fcb $1B,$60,BGC,$50,$00,$00,$FF
+                    fcb $1B,$61,BGC,$50,$00,$00,$FF
+* Draw first line
+                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB					center outline
                     fcb	$1B,$32,$00
-                    fcb $5F,$5F,$5F
-                    fcb $1B,$32,$06
-                    fcb	$5F,$5F,$5F,$5F
+                    fcb UCH,UCH,UCH
+                    fcb $1B,$32,BGC
+                    fcb	UCH,UCH,UCH,UCH
                     fcb $1B,$32,$00
-                    fcb $5F,$5F outline
-                    fcb $1B,$32,$06
-                    fcb	$5F
+                    fcb UCH,UCH                                             outline
+                    fcb $1B,$32,BGC
+                    fcb	UCH
                     fcb $1B,$32,$00
-                    fcb $5F,$5F
-                    fcb $1B,$32,$06
-                    fcb	$5F,$5F,$5F,$5F
+                    fcb UCH,UCH
+                    fcb $1B,$32,BGC
+                    fcb	UCH,UCH,UCH,UCH
                     fcb $1B,$32,$00
-                    fcb $5F,$5F
-                    fcb $1B,$32,$06
-                    fcb $5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F        
-                    fcb	$1B,$32,$06
-                    fcb $5F,$5F,$5F,$5F
+                    fcb UCH,UCH
+                    fcb $1B,$32,BGC
+                    fcb UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH        
+                    fcb	$1B,$32,BGC
+                    fcb UCH,UCH,UCH,UCH
                     fcb $1B,$32,$00
-                    fcb	$5F,$5F,$5F,$5F,$5F,$5F
+                    fcb	UCH,UCH,UCH,UCH,UCH,UCH
                     fcb $1B,$32,$0B
-                    fcb $5F
-                    fcb	$1B,$32,$06
-                    fcb $5F,$5F
+                    fcb UCH
+                    fcb	$1B,$32,BGC
+                    fcb UCH,UCH
                     fcb $1B,$32,$00
-                    fcb $5F,$5F        
-                    fcb	$5F,$5F,$5F
+                    fcb UCH,UCH        
+                    fcb	UCH,UCH,UCH
                     fcb $1B,$32,$0B
-                    fcb $5F
-                    fcb $1B,$32,$06
-                    fcb	$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F
+                    fcb UCH
+                    fcb $1B,$32,BGC
+                    fcb	UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH
                     fcb $1B,$32,$00
-                    fcb $5F,$5F,$5F,$5F,$5F
+                    fcb UCH,UCH,UCH,UCH,UCH
                     fcb $1B,$32,$0B
-                    fcb	$5F
-                    fcb $1B,$32,$06
-                    fcb $5F,$5F,$5F,$DD,$DD,$DD,$DD,$DD,$DD,$DD,$DD
-                    fcb	$1B,$32,$06
+                    fcb	UCH
+                    fcb $1B,$32,BGC
+                    fcb UCH,UCH,UCH,$DD,$DD,$DD,$DD,$DD,$DD,$DD,$DD
+                    fcb	$1B,$32,BGC
                     fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB					center line
                     fcb	$1B,$32,$02
                     fcb $DB,$DB,$DB,$BC
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb	$DB,$DB,$DB
                     fcb $1B,$32,$02
                     fcb $DB,$DB
@@ -249,72 +280,72 @@ Logo                fcb $1B,$20,$02,$00,$00,$50,$18,$01,$06,$00
                     fcb $DB,$DB
                     fcb $1B,$32,$00
                     fcb	$B3
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb $DB
                     fcb $1B,$32,$00
-                    fcb $5F,$5F	
+                    fcb UCH,UCH	
                     fcb	$1B,$32,$07
                     fcb $DB,$DB
                     fcb $1B,$32,$00
-                    fcb $B4,$5F,$5F
-                    fcb $1B,$32,$06
+                    fcb $B4,UCH,UCH
+                    fcb $1B,$32,BGC
                     fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB
                     fcb $1B,$32,$01
                     fcb $B5,$DB,$DB,$DB,$DB,$DB,$DB
                     fcb $1B,$33,$0B
                     fcb $B7
-                    fcb $1B,$33,$06
+                    fcb $1B,$33,BGC
                     fcb $1B,$32,$0B
                     fcb $B3
                     fcb $1B,$32,$01
                     fcb $B5,$DB,$DB,$DB,$DB,$DB
                     fcb $1B,$33,$0B
                     fcb $B7
-                    fcb $1B,$33,$06
+                    fcb $1B,$33,BGC
                     fcb $1B,$32,$0B
                     fcb $B3
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB
                     fcb $1B,$32,$01
                     fcb $B5,$DB,$DB,$DB,$DB,$DB
                     fcb $1B,$33,$0B
                     fcb $B7
-                    fcb $1B,$33,$06
+                    fcb $1B,$33,BGC
                     fcb $1B,$32,$0B
                     fcb $B3
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb $DB,$DB,$DB,$DB,$DB
-                    fcb $1B,$32,$06					end line 1
+                    fcb $1B,$32,BGC					end line 1
                     fcb	$DD,$DD,$DB,$DB,$DB,$DB,$DB,$DB,$DB
                     fcb	$DB,$DB,$DB,$DB,$DB				center line
                     fcb	$1B,$32,$02
                     fcb $DB,$DB,$BB,$DB,$BC
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb $DB,$DB
                     fcb $1B,$32,$02
                     fcb $DB,$DB
                     fcb $1B,$32,$00
-                    fcb $B3,$5F,$5F
-                    fcb $1B,$32,$06
+                    fcb $B3,UCH,UCH
+                    fcb $1B,$32,BGC
                     fcb $DB
                     fcb $1B,$32,$00
                     fcb $1B,$32,$07
                     fcb $B9,$DB,$DB,$DB,$DB,$DB,$DB,$DB
                     fcb $1B,$32,$00
                     fcb $B3
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb $DB
                     fcb	$1B,$32,$00
-                    fcb $5F,$5F,$5F,$5F
+                    fcb UCH,UCH,UCH,UCH
                     fcb $1B,$32,$0B
-                    fcb	$5F
-                    fcb $1B,$32,$06
+                    fcb	UCH
+                    fcb $1B,$32,BGC
                     fcb $DB
                     fcb $1B,$32,$01
                     fcb $DB,$DB
                     fcb	$1B,$32,$00
                     fcb $B3
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb $DB,$DB,$DB
                     fcb	$1B,$32,$01
                     fcb $DB,$DB
@@ -323,34 +354,34 @@ Logo                fcb $1B,$20,$02,$00,$00,$50,$18,$01,$06,$00
                     fcb $1B,$32,$01
                     fcb $DB,$DB
                     fcb $1B,$32,$00
-                    fcb $B4,$5F,$5F,$5F
+                    fcb $B4,UCH,UCH,UCH
                     fcb $1B,$32,$0B
-                    fcb $5F
-                    fcb $1B,$32,$06
+                    fcb UCH
+                    fcb $1B,$32,BGC
                     fcb $DB
                     fcb $1B,$32,$00
-                    fcb $5F,$5F,$5F,$5F,$5F,$5F
-                    fcb $1B,$32,$06
+                    fcb UCH,UCH,UCH,UCH,UCH,UCH
+                    fcb $1B,$32,BGC
                     fcb $DB
                     fcb $1B,$32,$01
                     fcb $DB,$DB
                     fcb $1B,$32,$00
-                    fcb	$B4,$5F,$5F
+                    fcb	$B4,UCH,UCH
                     fcb $1B,$32,$01
                     fcb $DB,$DB
                     fcb $1B,$32,$0B
                     fcb $B3					end line 2
-                    fcb	$1B,$32,$06
+                    fcb	$1B,$32,BGC
                     fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB
                     fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB	center line
                     fcb	$DB,$DB
                     fcb $1B,$32,$02
                     fcb $DB,$DB
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb	$DB
                     fcb $1B,$32,$02
                     fcb $BB,$DB,$BC
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb	$DB
                     fcb $1B,$32,$02
                     fcb $DB,$DB
@@ -359,27 +390,27 @@ Logo                fcb $1B,$20,$02,$00,$00,$50,$18,$01,$06,$00
                     fcb $DB,$DB
                     fcb $1B,$32,$00
                     fcb $B3
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb $DB,$DB,$DB
                     fcb $1B,$32,$07
                     fcb $DB,$DB
                     fcb	$1B,$32,$00
                     fcb $B3
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb $DB,$DB,$DB
                     fcb	$1B,$32,$05
                     fcb $B5,$DB,$DB,$DB,$DB
-                    fcb $1B,$33,$06
+                    fcb $1B,$33,BGC
                     fcb $1B,$33,$0B
                     fcb $B7
-                    fcb $1B,$33,$06
+                    fcb $1B,$33,BGC
                     fcb $1B,$32,$0B
                     fcb $B3
                     fcb $1B,$32,$01
                     fcb $DB,$DB
                     fcb $1B,$32,$00
                     fcb	$B3
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb $DB,$DB,$DB
                     fcb $1B,$32,$01
                     fcb	$DB,$DB
@@ -390,7 +421,7 @@ Logo                fcb $1B,$20,$02,$00,$00,$50,$18,$01,$06,$00
                     fcb	$DB,$DB,$DB,$DB,$DB
                     fcb $1B,$33,$0B
                     fcb $B7
-                    fcb $1B,$33,$06
+                    fcb $1B,$33,BGC
                     fcb $1B,$32,$0B
                     fcb $B3
                     fcb $1B,$32,$01
@@ -403,19 +434,19 @@ Logo                fcb $1B,$20,$02,$00,$00,$50,$18,$01,$06,$00
                     fcb $DB
                     fcb $1B,$32,$00
                     fcb $DB
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb	$DB
                     fcb $1B,$32,$01
                     fcb $B6,$DB,$DB,$DB,$DB,$DB,$DB
                     fcb $1B,$32,$0B
                     fcb $B3				end line 3
-                    fcb	$1B,$32,$06
+                    fcb	$1B,$32,BGC
                     fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB
                     fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB	center line
                     fcb	$DB,$DB
                     fcb $1B,$32,$02
                     fcb $DB,$DB
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb	$DB,$DB
                     fcb $1B,$32,$02
                     fcb $BB,$DB,$BC,$DB,$DB
@@ -425,55 +456,55 @@ Logo                fcb $1B,$20,$02,$00,$00,$50,$18,$01,$06,$00
                     fcb $DB,$DB
                     fcb $1B,$32,$00
                     fcb $B3
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb $DB,$DB,$DB
                     fcb $1B,$32,$07
                     fcb $DB,$DB
                     fcb $1B,$32,$00
-                    fcb $B4,$5F
-                    fcb $1B,$32,$06
+                    fcb $B4,UCH
+                    fcb $1B,$32,BGC
                     fcb $DB,$DB
                     fcb $1B,$32,$05
                     fcb $DB,$DB
                     fcb $1B,$32,$00
                     fcb $B3
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb $DB,$DB
                     fcb $1B,$32,$05
                     fcb $DF
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb $DB
                     fcb $1B,$32,$01
                     fcb $DB,$DB
                     fcb $1B,$32,$00
-                    fcb $B4,$5F,$5F,$5F
+                    fcb $B4,UCH,UCH,UCH
                     fcb $1B,$32,$01
                     fcb $DB,$DB
                     fcb $1B,$32,$0B
                     fcb $B3
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb	$DB
                     fcb $1B,$32,$00
-                    fcb $5F,$5F,$5F,$5F
+                    fcb UCH,UCH,UCH,UCH
                     fcb $1B,$32,$01
                     fcb $DB,$DB
                     fcb $1B,$32,$0B
                     fcb $B3
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB
                     fcb $1B,$32,$00
-                    fcb $5F,$5F,$5F,$5F
+                    fcb UCH,UCH,UCH,UCH
                     fcb $1B,$32,$01
                     fcb $DB,$DB
                     fcb	$1B,$32,$0B
                     fcb $B3				end line 4
-                    fcb	$1B,$32,$06
+                    fcb	$1B,$32,BGC
                     fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB
                     fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB	
                     fcb	$DB,$DB					center font
                     fcb	$1B,$32,$02
                     fcb $DB,$DB
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb $DB,$DB
                     fcb	$DB
                     fcb $1B,$32,$02
@@ -484,35 +515,50 @@ Logo                fcb $1B,$20,$02,$00,$00,$50,$18,$01,$06,$00
                     fcb $DB,$DB
                     fcb $1B,$32,$00
                     fcb	$B3
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb $DB,$DB,$DB
                     fcb $1B,$32,$07
                     fcb	$DB,$DB,$DB,$BA
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb $DB,$DB
                     fcb $1B,$32,$05
                     fcb $DB,$DB
                     fcb $1B,$32,$00
                     fcb $B3
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb $DB,$DB,$DB,$DB
                     fcb $1B,$32,$01
                     fcb $B6,$DB,$DB,$DB,$DB,$DB,$DB,$B8
-                    fcb $1B,$32,$06
+                    fcb $1B,$32,BGC
                     fcb $DB
                     fcb	$1B,$32,$01
                     fcb $B9,$DB,$DB,$DB,$DB,$DB,$B8
-                    fcb	$1B,$32,$06
+                    fcb	$1B,$32,BGC
                     fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB
                     fcb $1B,$32,$01
                     fcb $B9,$DB,$DB,$DB,$DB,$DB
                     fcb	$B8						end line 5
-                    fcb	$1B,$32,$06
+                    fcb	$1B,$32,BGC
                     fcb $DB,$DB,$DB,$DB,$DB
                     fcb	$DB,$DB,$DB,$DB,$DB,$DB
-                    fcb $1B,$32,$01		reset FG white	
+                    fcb $1B,$32,$07	            reset FG
 LogoLen             equ	*-Logo
-ColorBar            fcb	$1B,$32,$06
+
+* Line above color bar
+BLogo               fcb	$1B,$32,BGC
+                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB		center line
+                    fcb	$1B,$32,$00
+                    fcb UCH,UCH,UCH,UCH,UCH,UCH,UCH
+                    fcb	UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH
+                    fcb	UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH
+                    fcb	UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH
+                    fcb	UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH
+                    fcb	C$CR,C$LF
+BLogoLen            equ	*-BLogo
+
+* Color bar
+ColorBar            fcb	$1B,$32,BGC
                     fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB	center bar
                     fcb	$DB,$DB,$DB,$DB,$DB,$DB
                     fcb	$1B,$32,$02
@@ -545,19 +591,8 @@ ColorBar            fcb	$1B,$32,$06
                     fcb $DF,$DF,$DF
                     fcb $1B,$32,$00
                     fcb $DF,$DF,$DF
-                    fcb	$1B,$32,$01					reset FG White
+                    fcb	$1B,$32,$07					reset FG
 CBLen               equ	*-ColorBar
-BLogo               fcb	$1B,$32,$06
-                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB
-                    fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB		center line
-                    fcb	$1B,$32,$00
-                    fcb $5F,$5F,$5F,$5F,$5F,$5F,$5F
-                    fcb	$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F
-                    fcb	$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F
-                    fcb	$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F
-                    fcb	$5F,$5F,$5F,$5F,$5F,$5F,$5F,$5F
-                    fcb	C$CR,C$LF
-BLogoLen            equ	*-BLogo
 
                     emod
 eom                 equ       *
