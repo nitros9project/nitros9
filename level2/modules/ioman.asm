@@ -1541,6 +1541,28 @@ L067E               ldu       Q$STAT,y            get device static storage
                     rts                           return
 
                     IFGT      Level-1
+;;; F$NMLoad
+;;;
+;;; Loads one or more modules from a file without mapping them in the caller's address space.
+;;;
+;;; Entry: A = The desired type/language byte.
+;;;        X = The address of the pathlist.
+;;;
+;;; Exit:  A = The module's type/language byte.
+;;;        B = The module's attributes/revision byte.
+;;;        X = The address of the last byte of the module name, plus 1.
+;;;        Y = The storage requirement for the module.
+;;;       CC = Carry flag clear to indicate no error.
+;;;
+;;; Error:  B = A non-zero error code.
+;;;        CC = Carry flag set to indicate error.
+;;;
+;;; This call is similar to F$Load, except it doesn't map the specified module into the caller’s address space.
+;;; It returns the memory requirement for the module. A calling process can use this memory requirement
+;;; information to fork a program with a maximum amount of space. F$NMLoad can fork larger programs than
+;;; can be forked by F$Link.
+;;; If you do not provide a full pathlist for this call, it attempts to load from a file in the current
+;;; execution directory.
 FNMLoad             pshs      u                   save caller's regs ptr
                     ldx       R$X,u               Get ptr to module name
                     lbsr      LoadMod             Load module (allocates fake proc desc)
@@ -1555,6 +1577,26 @@ FNMLoad             pshs      u                   save caller's regs ptr
                     puls      u
                     bra       L06BF
 
+;;; F$NMLink
+;;;
+;;; Link to a module without mapping it in the caller's address space.
+;;;
+;;; Entry: A = The desired type/language byte.
+;;;        X = The address of the desired module name.
+;;;
+;;; Exit:  A = The module's type/language byte.
+;;;        B = The module's attributes/revision byte.
+;;;        X = The address of the last byte of the module name, plus 1.
+;;;        Y = The storage requirement for the module.
+;;;       CC = Carry flag clear to indicate no error.
+;;;
+;;; Error:  B = A non-zero error code.
+;;;        CC = Carry flag set to indicate error.
+;;;
+;;; This call is similar to F$Link, except it doesn't map the specified module into the caller’s address space.
+;;; It returns the memory requirement for the module. A calling process can use this memory requirement
+;;; information to fork a program with a maximum amount of space. F$NMLink can fork larger programs than
+;;; can be forked by F$Link.
 FNMLink             ldx       <D.Proc             Get ptr to current process descriptor
                     leay      <P$DATImg,x         Point to its DAT image
                     pshs      u                   Preserve callers register stack ptr
