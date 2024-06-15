@@ -53,10 +53,6 @@ PrmLen6             rmb       2                   $1A length of 6th parameter
 *  single $00 byte as the high byte to designate the end of a table
 
 FuncTbl
-*                    fdb       L03AE-FuncTbl
-*                    fcc       "Mouse"
-*                    fcb       $FF
-
                     fdb       Random-FuncTbl
                     fcc       "Random"
                     fcb       $FF
@@ -65,293 +61,96 @@ FuncTbl
                     fcc       "Seed"
                     fcb       $FF
 
-                    fdb       L0605-FuncTbl
-                    fcc       "Point"
-                    fcb       $FF
-
-                    fdb       L060D-FuncTbl
-                    fcc       "Line"
-                    fcb       $FF
-
-                    fdb       L0622-FuncTbl
-                    fcc       "Box"
-                    fcb       $FF
-
-                    fdb       L0626-FuncTbl
-                    fcc       "Bar"
-                    fcb       $FF
-
-                    fdb       L062A-FuncTbl
-                    fcc       "PutGC"
-                    fcb       $FF
-
-                    fdb       L04CF-FuncTbl
-                    fcc       "Fill"
-                    fcb       $FF
-
-                    fdb       L0634-FuncTbl
-                    fcc       "Circle"
-                    fcb       $FF
-
-                    fdb       FCircle-FuncTbl
-                    fcc       "FCircle"
-                    fcb       $FF
-
-                    fdb       L04B1-FuncTbl
+                    fdb       DWSet-FuncTbl
                     fcc       "DWSet"
                     fcb       $FF
 
-                    fdb       L04E2-FuncTbl
-                    fcc       "Select"
-                    fcb       $FF
-
-                    fdb       L04ED-FuncTbl
-                    fcc       "OWSet"
-                    fcb       $FF
-
-                    fdb       L04F8-FuncTbl
-                    fcc       "OWEnd"
-                    fcb       $FF
-
-                    fdb       L04FC-FuncTbl
-                    fcc       "DWEnd"
-                    fcb       $FF
-
-                    fdb       L0500-FuncTbl
-                    fcc       "CWArea"
-                    fcb       $FF
-
-                    fdb       L050B-FuncTbl
-                    fcc       "DefBuff"
-                    fcb       $FF
-
-                    fdb       L0524-FuncTbl
-                    fcc       "KillBuff"
-                    fcb       $FF
-
-                    fdb       L0531-FuncTbl
-                    fcc       "GPLoad"
-                    fcb       $FF
-
-                    fdb       L0545-FuncTbl
-                    fcc       "Get"
-                    fcb       $FF
-
-                    fdb       L0556-FuncTbl
-                    fcc       "Put"
-                    fcb       $FF
-
-                    fdb       L0567-FuncTbl
-                    fcc       "Pattern"
-                    fcb       $FF
-
-                    fdb       L056B-FuncTbl
-                    fcc       "Logic"
-                    fcb       $FF
-
-                    fdb       L088E-FuncTbl
-                    fcc       "DefCol"
-                    fcb       $FF
-
-                    fdb       L0585-FuncTbl
+                    fdb       Palette-FuncTbl
                     fcc       "Palette"
                     fcb       $FF
 
-                    fdb       L0589-FuncTbl
+                    fdb       Color-FuncTbl
                     fcc       "Color"
                     fcb       $FF
 
-                    fdb       L05C1-FuncTbl
-                    fcc       "Border"
-                    fcb       $FF
-
-                    fdb       L05CE-FuncTbl
-                    fcc       "ScaleSw"
-                    fcb       $FF
-
-                    fdb       L05DE-FuncTbl
-                    fcc       "DWProtSw"
-                    fcb       $FF
-
-                    fdb       L051C-FuncTbl
-                    fcc       "GCSet"
-                    fcb       $FF
-
-                    fdb       L0520-FuncTbl
-                    fcc       "Font"
-                    fcb       $FF
-
-                    fdb       L05E2-FuncTbl
-                    fcc       "TCharSw"
-                    fcb       $FF
-
-                    fdb       L05E6-FuncTbl
-                    fcc       "BoldSw"
-                    fcb       $FF
-
-                    fdb       L05EA-FuncTbl
-                    fcc       "PropSw"
-                    fcb       $FF
-
-                    fdb       L05EE-FuncTbl
-                    fcc       "SetDPtr"
-                    fcb       $FF
-
-                    fdb       L0649-FuncTbl
-                    fcc       "Draw"
-                    fcb       $FF
-
-                    fdb       L07E1-FuncTbl
-                    fcc       "Ellipse"
-                    fcb       $FF
-
-                    fdb       FEllipse-FuncTbl
-                    fcc       "FEllipse"
-                    fcb       $FF
-
-                    fdb       L07E6-FuncTbl
-                    fcc       "Arc"
-                    fcb       $FF
-
-                    fdb       L07FC-FuncTbl
+                    fdb       CurHome-FuncTbl
                     fcc       "CurHome"
                     fcb       $FF
 
-                    fdb       L0800-FuncTbl
+                    fdb       CurXY-FuncTbl
                     fcc       "CurXY"
                     fcb       $FF
 
-                    fdb       L082B-FuncTbl
+                    fdb       ErLine-FuncTbl
                     fcc       "ErLine"
                     fcb       $FF
 
-                    fdb       L082F-FuncTbl
+                    fdb       ErEOLine-FuncTbl
                     fcc       "ErEOLine"
                     fcb       $FF
 
-                    fdb       L0833-FuncTbl
+                    fdb       CurOff-FuncTbl
                     fcc       "CurOff"
                     fcb       $FF
 
-                    fdb       L083B-FuncTbl
+                    fdb       CurOn-FuncTbl
                     fcc       "CurOn"
                     fcb       $FF
 
-                    fdb       L0843-FuncTbl
+                    fdb       CurRgt-FuncTbl
                     fcc       "CurRgt"
                     fcb       $FF
 
-                    fdb       L0847-FuncTbl
+                    fdb       Bell-FuncTbl
                     fcc       "Bell"
                     fcb       $FF
 
-                    fdb       L084B-FuncTbl
+                    fdb       CurLft-FuncTbl
                     fcc       "CurLft"
                     fcb       $FF
 
-                    fdb       L084F-FuncTbl
+                    fdb       CurUp-FuncTbl
                     fcc       "CurUp"
                     fcb       $FF
 
-                    fdb       L0853-FuncTbl
+                    fdb       CurDwn-FuncTbl
                     fcc       "CurDwn"
                     fcb       $FF
 
-                    fdb       L0857-FuncTbl
+                    fdb       ErEOWndw-FuncTbl
                     fcc       "ErEOWndw"
                     fcb       $FF
 
-                    fdb       L085D-FuncTbl
+                    fdb       Clear-FuncTbl
                     fcc       "Clear"
                     fcb       $FF
 
-                    fdb       L0861-FuncTbl
+                    fdb       CrRtn-FuncTbl
                     fcc       "CrRtn"
                     fcb       $FF
 
-                    fdb       L0865-FuncTbl
-                    fcc       "ReVOn"
-                    fcb       $FF
-
-                    fdb       L0869-FuncTbl
-                    fcc       "ReVOff"
-                    fcb       $FF
-
-                    fdb       L086D-FuncTbl
-                    fcc       "UndlnOn"
-                    fcb       $FF
-
-                    fdb       L0871-FuncTbl
-                    fcc       "UndlnOff"
-                    fcb       $FF
-
-                    fdb       L087E-FuncTbl
-                    fcc       "BlnkOn"
-                    fcb       $FF
-
-                    fdb       L0882-FuncTbl
-                    fcc       "BlnkOff"
-                    fcb       $FF
-
-                    fdb       L0886-FuncTbl
+                    fdb       InsLin-FuncTbl
                     fcc       "InsLin"
                     fcb       $FF
 
-                    fdb       L088A-FuncTbl
+                    fdb       DelLin-FuncTbl
                     fcc       "DelLin"
                     fcb       $FF
 
-                    fdb       L041C-FuncTbl
+                    fdb       Tone-FuncTbl
                     fcc       "Tone"
                     fcb       $FF
 
-                    fdb       L043F-FuncTbl
+                    fdb       WInfo-FuncTbl
                     fcc       "WInfo"
                     fcb       $FF
 
-                    fdb       L047D-FuncTbl
-                    fcc       "SetMouse"
-                    fcb       $FF
-
-
-                    fdb       L0402-FuncTbl
-                    fcc       "OnMouse"
-                    fcb       $FF
-
-                    fdb       L02FD-FuncTbl
+                    fdb       ID-FuncTbl
                     fcc       "ID"
                     fcb       $FF
 
 * Test by sending non-existant function name
-                    fcb       $00                 End of table marker
-
-L0268               fcc       "OFF"
-                    fcb       $FF
-                    fcb       $00
-
-                    fcc       "AND"
-                    fcb       $FF
-                    fcb       $01
-
-                    fcc       "OR"
-                    fcb       $FF
-                    fcb       $02
-
-                    fcc       "XOR"
-                    fcb       $FF
-                    fcb       $03
-
-                    fcb       $00                 End of table marker
-
-L027C               fcc       "OFF"
-                    fcb       $FF
-                    fcb       $00
-
-                    fcc       "ON"
-                    fcb       $FF
-                    fcb       $01
-
-                    fcb       $00                 End of table marker
+                    fcb       $00                 end of table marker
 
 stkdepth            equ       $21
 
@@ -374,24 +173,23 @@ stkdepth            equ       $21
 start               leas      <-stkdepth,s        reserve bytes on stack
                     clr       ,s                  clear optional path # is BYTE or INTEGER flag
                     ldd       <stkdepth+PCount,s  get # of parameters
-                    beq       L02F6               if 0, exit with parameter error
+                    beq       ParamErr            if 0, exit with parameter error
                     tsta                          if >255, exit with parameter error
-                    bne       L02F6               branch if >255
+                    bne       ParamErr            branch if >255
                     ldd       [<stkdepth+PrmPtr1,s] get value from first parameter (optional path #)
                     ldx       <stkdepth+PrmLen1,s get length of 1st parameter
                     leax      -1,x                decrement length
-                    beq       L02A3               if zero, it's a BYTE value, so save path #
+                    beq       byte@               if zero, it's a BYTE value, so save path #
                     leax      -1,x                decrement length again
-                    bne       L02B0               if not INTEGER value, no optional path, 1st parameter is keyword
+                    bne       nopath@             if not INTEGER value, no optional path, 1st parameter is keyword
                     tfr       b,a                 it's an INTEGER value, so save LSB as path #
-L02A3               sta       ,s                  save on stack
+byte@               sta       ,s                  save on stack
                     dec       <stkdepth+PCount+1,s decrement # of parameters (to skip path #)
                     ldx       <stkdepth+PrmPtr2,s X = pointer to function name we received
                     leau      <stkdepth+PrmPtr3,s U = pointer to (possible) 1st parameter for function
                     bra       L02B8
-
 * No optional path, set path to Std Out, and point X/U to function name and 1st parameter for it.
-L02B0               inc       ,s                  no optional path # specified, set path to 1 (Std Out)
+nopath@             inc       ,s                  no optional path # specified, set path to 1 (Std Out)
                     ldx       <stkdepth+PrmPtr1,s point to function name
                     leau      <stkdepth+PrmPtr2,s point to first parameter of function
 * Entry here: X=pointer to function name passed from caller
@@ -429,120 +227,51 @@ L02F0               leas      4,s                 clean the stack
                     ldb       #E$NoRout           unimplemented routine error
                     bra       L02F8
 
-L02F6               ldb       #E$ParmEr           parameter error
+ParamErr            ldb       #E$ParmEr           parameter error
 L02F8               coma                          set the carry
                     leas      <stkdepth,s         clean the stack
                     rts                           return to the caller
 
 * For all calls from table, entry is:
-*   Y=Address of routine
-*   X=Output buffer pointer ($1B is preloaded)
-*   U=Pointer to 1st parameter for function
-*   D=# of parameters being passed (including optional path #, and function name pointer)
+*   Y = The address of routine.
+*   X = Output buffer pointer ($1B is preloaded).
+*   U = Pointer to 1st parameter for function.
+*   D = # of parameters being passed (including optional path #, and function name pointer).
 
-;;; ID - Get user ID
+;;; ID - Get the calling process' user ID.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "ID", id)
-L02FD               os9       F$ID                get process ID # into D
-                    tfr       a,b
-                    clra
-                    std       [,u]                save in caller's parameter 1 variable
-L0305               clrb                          no error, eat temp stack & return
-                    leas      <stkdepth,s
+ID                  os9       F$ID                get process ID # into D
+                    tfr       a,b                 put process ID in B
+                    clra                          and clear A (D = process ID)
+                    std       [,u]                save it in caller's parameter 1 variable
+L0305               clrb                          no error
+                    leas      <stkdepth,s	     eat temporary stack
                     rts                           return to the caller
-
-                    ifeq      1
-;;; MOUSE - Read mouse.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "MOUSE", valid, fire, x, y)
-;;;                 RUN FOENIX([path,] "MOUSE", valid, fire, x, y, area, xsize, ysize)
-L03AE               cmpb      #5                  5 parameters?
-                    beq       L03B8               yes, go read mouse
-                    cmpb      #8                  8 parameters?
-                    lbne      L02F6               No, exit with Parameter Error
-L03B8               lda       ,s                  Get path #
-                    leas      <-$20,s             Make 32 byte buffer on stack for Mouse packet
-                    leax      ,s                  Point to buffer to receive mouse packet
-                    pshs      b                   Save # of parms
-                    ldb       #SS.Mouse           Read Mouse packet call
-                    os9       I$GetStt            Go get mouse packet
-                    puls      b                   Restore # of parms
-                    bcs       L03FE               If error from reading mouse, eat temp stacks and return
-                    cmpb      #5                  Just 5?
-                    beq       L03E4               Yes, skip copying the other 3 vars to caller
-                    ldd       <Pt.AcX,x           Get X coord of mouse on full screen (unscaled)
-                    std       [<$14,u]            Save to caller
-                    ldd       <Pt.AcY,x           Get Y coord of mouse on full screen (unscaled)
-                    std       [<$18,u]            Save to caller
-                    ldb       <Pt.Stat,x          Get mouse ptr status (0=working area, 1=menu region (non-working area), 2=off window)
-                    std       [<$10,u]            Save to caller
-* 4 standard parms from SS.Mouse
-L03E4               clra
-                    ldb       ,x                  Get Pt.Valid flag (are we on the current screen?)
-                    std       [,u]                Save back to caller
-                    ldb       Pt.CBSB,x           Get current button state of button #2
-                    lslb                          Shift to bit 2
-                    orb       Pt.CBSA,x           Merge in current button state of button #1
-                    std       [<$04,u]            Save button state to caller (0=none,1=button #1,2=button #2, 3=both buttons)
-                    ldd       <Pt.WRX,x           Get window relative, scaled X coord
-                    std       [<$08,u]            Save back to caller
-                    ldd       <Pt.WRY,x           Get window relative, scaled Y coord
-                    std       [<$0C,u]            Save back to caller
-                    clrb                          No error
-L03FE               leas      <$41,s              Eat temp stacks & return
-                    rts
-                    endc
-* ONMOUSE
-* Now sets up both MsSig (mouse button click signal) and SSig (key hit signal)
-* It sets both up to do an S$Wake signal (1), so it it just wakes us from the F$Sleep
-* (if entry param is 0). Currently will do same signal number (if user specified) for
-* both signals - may want to change that so that they are unique in the future (will
-* require one more parameter)
-;;; ONMOUSE - Set up a mouse signal.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "ONMOUSE", signal)
-L0402               ldx       [,u]                Get signal # caller wants to send on mouse button press
-                    bne       L0409               There is one, use it in SetStt call
-                    ldx       #S$Wake             0=sleep until button pushed, use signal code 1
-L0409               lda       ,s                  Get path
-                    ldb       #SS.MsSig           Set up mouse button signal
-                    os9       I$SetStt
-                    bcs       L043B               If error, eat stack and return
-                    ldb       #SS.SSig            Now set up keyboard input signal
-                    os9       I$SetStt
-                    bcs       L043B               If error, eat stack and return
-                    leax      -1,x                Was it an S$Wake signal?
-                    bne       L0419               No, skip the sleep call and return to BASIC09
-                    os9       F$Sleep             Yes, sleep until signal received
-                    lda       ,s                  Get path
-                    ldb       #SS.Relea           Release both keyboard & mouse signals (1 will still be enabled)
-                    os9       I$SetStt
-L0419               clrb                          No error, eat temp stack & return
-L041A               bra       L043B
 
 ;;; TONE - Generate a sound.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "TONE", frequency, duration, volume)
-L041C               cmpb      #4                  4 parameters?
-                    lbne      L02F6               No, exit with Parameter Error
-                    ldy       [,u]                Get frequency (0-1023)
-                    ldd       [<$04,u]            Get duration (1/60th second count) 0-255
-                    pshs      b                   Save it (only 8 bit)
-                    ldd       [<$08,u]            Get volume (amplitude) (0-15)
-                    tfr       b,a                 Move to high byte
-                    puls      b                   Get duration back
+Tone                cmpb      #4                  4 parameters?
+                    lbne      ParamErr            no, exit with Parameter Error
+                    ldy       [,u]                get frequency (0-1023)
+                    ldd       [<$04,u]            get duration (1/60th second count) 0-255
+                    pshs      b                   save it (only 8 bit)
+                    ldd       [<$08,u]            get volume (amplitude) (0-15)
+                    tfr       b,a                 move to high byte
+                    puls      b                   get duration back
                     tfr       d,x                 X is now set up for SS.Tone
                     lda       ,s                  get path
-                    ldb       #SS.Tone            play tone
-                    os9       I$SetStt
-L043B               leas      <stkdepth,s         eat temp stack
+                    ldb       #SS.Tone            load tone code
+                    os9       I$SetStt            perform the command
+L043B               leas      <stkdepth,s         eat temporary stack
                     rts                           return to the caller
 
 ;;; WINFO - Get window information.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "WINFO", format, width, height, foreground, background, border)
-L043F               cmpb      #7                  7 parameters?
-                    lbne      L02F6               no, exit with parameter error
+WInfo               cmpb      #7                  7 parameters?
+                    lbne      ParamErr            no, exit with parameter error
                     lda       ,s                  get path
                     ldb       #SS.ScTyp           get screen type system call
                     os9       I$GetStt
@@ -551,44 +280,28 @@ L043F               cmpb      #7                  7 parameters?
                     clra
                     std       [,u]                save to caller
                     lda       ,s                  get path again
-                    ldb       #SS.ScSiz           get screen size GetStat call
-                    os9       I$GetStt
-                    bcs       L0479               error, eat temp stack & exit
+                    ldb       #SS.ScSiz           load screen size code
+                    os9       I$GetStt            perform the command
+                    bcs       L0479               error, eat temporary stack & exit
                     stx       [<$04,u]            save # of columns in current working area
                     sty       [<$08,u]            save # of rows in current working area
-                    ldb       #SS.FBRgs           get foreground,background,border color GetStat call
-                    os9       I$GetStt
-                    bcs       L0479               error, eat temp stack & exit
+                    ldb       #SS.FBRgs           load foreground/background/border color call
+                    os9       I$GetStt			perform the command
+                    bcs       L0479               error, eat temporary stack & exit
                     pshs      a                   save foreground color on stack
                     clra                          D=background color
                     std       [<$10,u]            save to caller
                     puls      b                   D=foreground color
                     std       [<$0C,u]            save to caller
                     stx       [<$14,u]            save border color to caller
-L0478               clrb                          no error, eat temp stack, & return
-L0479               leas      <stkdepth,s
+L0478               clrb                          no error
+L0479               leas      <stkdepth,s         eat temporary stack
                     rts                           return to the caller
-
-;;; SETMOUSE - Set the mouse scan rate.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "SETMOUSE", rate)
-L047D               ldd       [<$04,u]            get timeout value from caller
-                    pshs      b                   save it (only 8 bits)
-                    ldd       [,u]                mouse scan rate (# of 1/60th sec ticks between reads)
-                    tfr       b,a                 move to high byte
-                    puls      b                   merge with timeout
-                    tfr       d,x                 mouse sample rate (high byte) and Mouse timeout (low byte)
-                    ldy       [<$08,u]            get auto-follow setting from caller
-                    lda       ,s                  get path
-                    ldb       #SS.Mouse           set mouse parameters
-                    os9       I$SetStt
-                    bcc       L0478               no error, clear B, eat stack & return
-                    bra       L0479               error, eat stack & return
 
 ;;; DWSET - Define a device window.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "DWSET", format, xcor, ycor, width, height, foreground, background, border)
-L04B1               lda       #$20                load device window set code
+DWSet               lda       #$20                load device window set code
                     pshs      x,d                 save output string memory pointer, # of parameters & display code
                     ldx       2,u                 get size of 1st parameter (to see if optional path #)
                     cmpx      #2                  INTEGER?
@@ -604,139 +317,21 @@ L04C2               puls      x,d                 restore output memory string p
                     sta       ,x+                 save code to output stream
                     lbra      L0920               append next 8 parameters to output stream (either byte or integer) & write it out
 
-;;; FILL - Fill an area with the foreground color.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "FILL" [,xcor ,ycor])
-L04CF               lda       #$4F                fill code
-                    cmpb      #1                  1 parameter?
-                    beq       L04E0               yes, just append fill code & write buffer out
-                    cmpb      #3                  3 parameters (x,y)?
-                    bne       L0528               no, exit with parameter error
-                    lbsr      L05F7               yes, append SetDPtr with X,Y coords from caller
-                    ldb       #$1B                ESC code
-                    stb       ,x+                 save in output buffer
-L04E0               bra       L04E8               append fill code & write it out
-
-;;; SELECT - Select the active window.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "SELECT")
-L04E2               lda       #$21                Select code
 L04E4               cmpb      #1                  1 parameter?
                     bne       L0528               no, exit with parameter error
 L04E8               sta       ,x+                 append command code, and write output buffer out
                     lbra      L0901
 
-;;; OWSET - Create an overlay window.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "OWSET", save switch, xpos, ypos, xsize, ysize, foreground, background)
-L04ED               lda       #$22                Overlay Window Set code
 L04EF               cmpb      #8                  8 parameters?
                     bne       L0528               no, exit with parameter error
                     sta       ,x+                 append OWSet code to output buffer
                     lbra      L0922               append the next 7 parameters (BYTE or INTEGER) to the output buffer & write it out
 
-;;; OWEND - Deallocate and destroy an overlay window.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "OWEND")
-L04F8               lda       #$23                Overlay Window End code
-                    bra       L04E4               write it out or parameter error
-
-;;; DWEND - Deallocate and destroy a window.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "DWEND")
-L04FC               lda       #$24                Device Window End code
-                    bra       L04E4               write it out or parameter error
-
-;;; CWArea - Change a window's working area.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "CWAREA", xcor, ycor, xsize, ysize)
-L0500               lda       #$25                Change Working Area code
-                    cmpb      #5                  5 parameters
-                    bne       L0528               no, exit with parameter error
-                    sta       ,x+                 append CWArea code to output buffer
-                    lbra      L0928               append the next 4 parameters (BYTE or INTEGER) to the output buffer & write it out
-
-;;; DEFBUFF - Define a GET/PUT buffer.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "DEFBUFF", group, buffer, size)
-L050B               lda       #$29                Define Buffer code
-                    cmpb      #4                  4 parameters?
-                    bne       L0528               no, exit with parameter error
-                    sta       ,x+                 yes, append Define Buffer code to output buffer
-                    lbsr      L0932               append next parameter to output buffer (BYTE or INTEGER) - group #
-                    lbsr      L0932               append next parameter to output buffer (BYTE or INTEGER) - buffer #
-                    lbra      L08FF               append 16 bit length to output stream & write it out
-
-;;; GCSET - Select a graphics cursor.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "GCSET", group, buffer)
-L051C               lda       #$39                Graphic Cursor Set code
-                    bra       L0526               process
-
-;;; FONT - Define which buffer to use for graphic text characters.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "FONT", group, buffer)
-L0520               lda       #$3A                Font code
-                    bra       L0526               process
-
-;;; KILLBUF - Deallocate a GET/PUT buffer.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "KILLBUFF", group, buffer)
-L0524               lda       #$2A                Kill Buffer code
 L0526               cmpb      #3                  3 parameters?
-L0528               lbne      L02F6               no, exit with parameter error
+L0528               lbne      ParamErr            no, exit with parameter error
                     sta       ,x+                 yes, append code
                     lbra      L092C               append 2 BYTE/INTEGER parameters
 
-;;; GPLOAD - Load a GET/PUT buffer with image data.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "GPLOAD", group, buffer, format, xdim, ydim, size)
-L0531               lda       #$2B                Get/Put Buffer Load code
-                    cmpb      #7                  7 parameters?
-                    bne       L0528               no, exit with parameter error
-                    sta       ,x+                 yes, append code
-                    lbsr      L0932               append BYTE/INTEGER parameter to output buffer - Group #
-                    lbsr      L0932               append BYTE/INTEGER parameter to output buffer - Buffer #
-                    lbsr      L0932               append BYTE/INTEGER parameter to output buffer - Type
-                    lbra      L08FB               append 3 16 bit parameters (X dimension, Y dimension, size in bytes)
-
-;;; GET - Store a portion of the window in a GET/PUT buffer.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "GET", group, buffer, xcor, ycor, xsize, ysize)
-L0545               lda       #$2C                GetBlk code
-                    cmpb      #7                  7 parameters?
-                    bne       L0528               no, exit with parameter error
-                    sta       ,x+                 yes, append code
-                    lbsr      L0932               append BYTE/INTEGER parameter to output buffer - Group #
-                    lbsr      L0932               append BYTE/INTEGER parameter to output buffer - Buffer #
-                    lbra      L08F9               append 4 16 bit parameters (startx, starty,sizex,sizey)
-
-;;; PUT - Place a GET/PUT buffer on a window.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "PUT", group, buffer, xcor, ycor)
-L0556               lda       #$2D                PutBlk code
-                    cmpb      #5                  5 parameters?
-                    bne       L0528               no, exit with parameter error
-                    sta       ,x+                 yes, append code
-                    lbsr      L0932               append BYTE/INTEGER parameter to output buffer - Group #
-                    lbsr      L0932               append BYTE/INTEGER parameter to output buffer - Buffer #
-                    lbra      L08FD               append 2 16 bit parameters (startx,starty)
-
-;;; PATTERN - Select a pattern buffer.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "PATTERN", group, buffer)
-L0567               lda       #$2E                PSet code
-                    bra       L0526               append 3 parameters or exit with parameter error
-
-;;; LOGIC - Set the drawing logic type.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "LOGIC", "function")
-L056B               lda       #$2F                LSet code
-                    cmpb      #2                  2 parameters?
-                    bne       L0528               no, exit with parameter error
-                    sta       ,x+                 append code
-                    pshs      y,x                 save registers
-                    leay      >L0268,pcr          point to OFF,AND,OR,XOR table
 L0579               ldx       ,u                  get parameter pointer for string caller sent
                     lbsr      L0892               go find match, and get code to send for that string
                     puls      y,x                 restore registers
@@ -744,102 +339,48 @@ L0579               ldx       ,u                  get parameter pointer for stri
                     lbra      L04E8               append code & write out
 
 * Palette
-L0585               lda       #$31                Palette code
+Palette             lda       #$31                palette code
                     bra       L0526               append 3 parameters or exit with parameter error
 
 ;;; COLOR - Set the window colors.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "COLOR", foreground [,background] [,border])
-L0589               cmpb      #2                  2 parameters? (foreground only, no path)
-                    beq       L0597               yes, do that
+Color               cmpb      #2                  2 parameters? (foreground only, no path)
+                    beq       color2@             yes, do that
                     cmpb      #3                  3 parameters? (foreground/background only)?
-                    beq       L059B               yes, do that
+                    beq       color3@             yes, do that
                     cmpb      #4                  4 parameters? (foreground/background/border)?
                     bne       L0528               no, exit with parameter error
-                    bra       L05A5               yes, send all 3 color setting sequences out
-
+                    bra       color4@             yes, send all 3 color setting sequences out
 * Build FColor sequence & write it out
-L0597               bsr       L05B6               build foreground color sequence
+color2@             bsr       L05B6               build foreground color sequence
                     bra       L05B3               write it out
-
 *  Build FColor and BColor command sequences & write them out
-L059B               bsr       L05B6               build foreground color sequence first
+color3@              bsr       L05B6               build foreground color sequence first
                     ldb       #$1B                add ESC code
                     stb       ,x+
                     bsr       L05BA               build background color sequence
                     bra       L05B3               write it out
-
 * Build FColor, BColor, Border
-L05A5               bsr       L05B6               append foreground color sequence
+color4@             bsr       L05B6               append foreground color sequence
                     ldb       #$1B                add ESC to output buffer
                     stb       ,x+
                     bsr       L05BA               append background color sequence
                     ldb       #$1B                add ESC to output buffer
                     stb       ,x+
-                    bsr       L05CA               append Border color sequence
+                    bsr       L05CA               append border color sequence
 L05B3               lbra      L0901               write output buffer
 
-L05B6               lda       #$32                wppend FColor code
+L05B6               lda       #$32                append foreground color code
                     bra       L05BC               and BYTE/INTEGER parameter from caller
 
 * Build BColor
-L05BA               lda       #$33                append Background Color code
+L05BA               lda       #$33                append background color code
 L05BC               sta       ,x+
                     lbra      L0932               append background color (BYTE/INTEGER) from caller
 
-;;; BORDER - Set the border color palette.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "BORDER" , color)
-L05C1               cmpb      #2                  2 parameters?
-                    lbne      L062E               no, exit with parameter error
-                    bsr       L05CA               add Border color sequence
-                    lbra      L0901               write output buffer
-
-L05CA               lda       #$34                append Border color
+L05CA               lda       #$34                append border color
                     bra       L05BC
-
-;;; SCALESW - Set/reset the draw scaling switch.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "SCALESW", "switch")
-L05CE               lda       #$35                ScaleSw code
-L05D0               cmpb      #2                  2 parameters?
-                    lbne       L062E               no, exit with parameter error
-                    sta       ,x+                 append code to output buffer
-                    pshs      y,x                 save registers
-                    leay      >L027C,pcr          point to OFF/ON table
-                    bra       L0579               append proper code depending on caller's ON/OFF parameter, or error
-
-;;; DWPROTSW - Set/reset the device window protection switch.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "DWPROTSW", "switch")
-L05DE               lda       #$36                Device Window Protect Switch code
-                    bra       L05D0               get switch value & write out, or return with error
-
-;;; TCHARSW - Set/reset the transparent character switch.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "TCHARSW", "switch")
-L05E2               lda       #$3C                Transparent Character Switch code
-                    bra       L05D0               get switch value & write out, or return with error
-
-;;; BOLDSW - Set/reset the bold text switch.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "BOLDSW", "switch")
-L05E6               lda       #$3D                Bold Switch code
-                    bra       L05D0               get switch value & write out, or return with error
-
-;;; PROPSW - Set/reset the proportional text switch.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "PROPSW", "switch")
-L05EA               lda       #$3F                Proportional character Switch code
-                    bra       L05D0               get switch value & write out, or return with error
-
-;;; SETDPTR - Position the drawing pointer.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "SETDPTR" ,xcor, ycor)
-L05EE               cmpb      #3                  3 parameters?
-                    bne       L062E               no, exit with parameter error
-                    bsr       L05F7               yes, do SetDPTr with x,y coords
-                    lbra      L0901               write sequence out
 
 * Entry: U=pointer to current parameter pointer
 *        X=pointer to current position in output buffer
@@ -857,7 +398,7 @@ L05F7               pshs      a                   save A (original display code)
 Seed
                     lda       3,u                 get the length of the 1st parameter
                     cmpa      #2                  is it an integer?
-                    lbne      L02F6               no, return an error 
+                    lbne      ParamErr            no, return an error 
                     ldx       #$FE00              load the base address   
                     lda       #1                  load the start flag
                     sta       6,x                 enable the random number generator           
@@ -874,7 +415,7 @@ Seed
 Random
                     lda       3,u                 get the length of the 1st parameter
                     cmpa      #2                  is it an integer?
-                    lbne      L02F6               no, return an error 
+                    lbne      ParamErr            no, return an error 
                     ldx       #$FE00              load the base address   
                     lda       #1                  load the start flag
                     sta       6,x                 enable the random number generator           
@@ -884,20 +425,6 @@ Random
                     clrb                          no error, eat temp stack & return
                     leas      <stkdepth,s
                     rts                           return to the caller
-                    
-;;; POINT - Set a point to the current foreground color.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "POINT" [,xcor, ycor])
-L0605               lda       #$42                point code
-                    cmpb      #3                  3 parameters?
-                    bne       L062E               no, exit with parameter error
-                    bra       L061D               append code, and two 16 bit parameters for X,Y
-
-
-;;; LINEM - Draw a line and move the draw pointer.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "LINEM" [,xcor1, ycor1], xcor2, ycor2))
-L060D               lda       #$46                LineM code
 L060F               cmpb      #3                  3 parameters?
                     beq       L061D               yes, process (just end point)
                     cmpb      #5                  5 parameters?
@@ -908,381 +435,21 @@ L060F               cmpb      #3                  3 parameters?
 L061D               sta       ,x+                 save code in output buffer
                     lbra      L08FD               append two 16 bit parameters from caller (X endpoint, Y endpoint)
 
-;;; BOX - Draw a rectangle.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "BOX" [,xcor1, ycor1], xcor2, ycor2))
-L0622               lda       #$48                Box code
-                    bra       L060F               process
-
-;;; BAR - Draw a filled rectangle.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "BAR" [,xcor1, ycor1], xcor2, ycor2))
-L0626               lda       #$4A                Bar code (filled box)
-                    bra       L060F               process
-
-;;; PUTGC - Put a graphics cursor.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "PUTGC", xcor, ycor)
-L062A               lda       #$4E                Put Graphics Cursor code
-                    cmpb      #3                  3 parameters?
-L062E               lbne      L02F6               no, exit with parameter error
+L062E               lbne      ParamErr            no, exit with parameter error
                     bra       L061D               yes, add X,Y coords from caller & write out
-
-
-;;; FCIRCLE - Draw a filled circle.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "FCIRCLE" [,xcor, ycor], xrad, yrad))
-FCircle             lda       #$53                FCircle code
-                    fcb       $8c                 skip 2 bytes (CMPX)
-
-;;; CIRCLE - Draw an circle.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "CIRCLE" [,xcor, ycor], xrad, yrad))
-L0634               lda       #$50                Circle code
-                    cmpb      #2                  2 parameters? (Just radius)
-                    beq       L0644               yes, skip ahead
-                    cmpb      #4                  4 parameters (X,Y center coords)?
-                    bne       L062E               no, exit with parameter error
-                    lbsr       L05F7               yes, do SetDPtr first
-                    ldb       #$1B                ESC
-                    stb       ,x+                 append to output buffer
-L0644               sta       ,x+                 add code to output buffer
-                    lbra      L08FF               append one 16 bit value (radius) from caller to output buffer & write out
-
-* Draw - This adds new start x,y coords not mentioned in the manual
-* So now RUN FOENIX([#path][,start X,start Y],draw string)
-* Also - I think the commas between commands (not coords) are optional. Test.
-L0649               cmpb      #2                  2 parameters?
-                    beq       L0663               yes, get draw string from caller and build output buffer based on it
-                    cmpb      #4                  4 parameters (start x,y coord added)?
-                    bne       L062E               no, exit with parameter error
-                    pshs      u,x,d               save registers
-                    ldd       #$1B40              add esc sequence for SetDPPtr
-                    std       ,x++
-                    lbsr      L08DA               append 16 bit X start coord from caller
-                    lbsr      L08DA               append 16 bit Y start coord from caller
-                    lbsr      L07CD               send SetDPPtr sequence, and reset output buffer pointer to beginning
-                    bra       L0665               now process draw string
-
-* 6809/6309 - may be able to move some draw routine stuff around to make more short branches?
-L0663               pshs      u,x,d               save registers (D is just to reserve 2 bytes on the stack-contents not preserved)
-L0665               ldu       ,u                  get pointer to string data from caller
-                    clr       1,s                 clear 2 bytes on stack (allocated by D in the PSHS above)
-                    clr       ,s                  (angle # 0-3 from 'A'xis command. Defaults to 0)
-L066B               lda       ,u+                 get byte from draw string
-                    cmpa      #',                 comma?
-                    beq       L066B               yes, skip to next character
-                    cmpa      #$FF                End of string?
-                    beq       L069B               yes, exit
-                    anda      #$DF                force to uppercase
-                    cmpa      #'A                 axis rotate?
-                    beq       L06A3               yes, process
-                    cmpa      #'B                 blank line (move gfx draw pointer w/o drawing)?
-                    beq       L06AA               yes, process
-                    cmpa      #'U                 relative vector draw?
-                    beq       L06BF               yes, process
-                    cmpa      #'N                 north (up) draw?
-                    beq       L06C6               yes, process
-                    cmpa      #'S                 south (down) draw?
-                    beq       L06FE               yes, process
-                    cmpa      #'E                 east (right) draw?
-                    lbeq      L072C               yes, process
-                    cmpa      #'W                 west (left) draw?
-                    lbeq      L0735               yes, process
-L0697               leas      6,s                 eat 2ndary temp stack
-                    bra       L062E               exit with parameter error
-
-L069B               leas      2,s                 eat temp 16 bit variable
-                    puls      u,x                 restore registers
-                    leas      <stkdepth,s         eat temp stack & return
-                    rts                           return to the caller
-
-* 'A'xis rotate
-L06A3               lbsr      L0745               get signed parameter value into D
-                    std       ,s                  save value as angle 0-3
-                    bra       L066B               continue processing draw string
-
-* 'B'lank line move (moves cursor, doesn't draw). Offsets draw pointer by values specified
-L06AA               ldd       #$1B41              RSetDPtr (Relative Set Draw Ptr)
-                    std       ,x++                append to temp buffer
-L06AF               lbsr      L0745               get signed parameter value into D
-                    std       ,x++                save signed X offset in output buffer
-                    lda       ,u+                 get next byte from DRAW string
-                    cmpa      #',                 comma?
-                    bne       L0697               no, since no Y coord offset, exit with parameter error
-                    lbsr      L0745               get signed Y offset into D
-                    bra       L06E8               append to output buffer
-
-* 'U' draw relative vector w/o updating draw pointer position
-L06BF               ldd       #$1B45              RLine (Relative Draw Line)
-                    std       ,x++                append to output buffer
-                    bra       L06AF               process/append X,Y offsets
-
-* 'N' North (up) draw
-L06C6               ldd       #$1B47              RLineM (Relative Draw Line and Move)
-                    std       ,x++                append to output buffer
-                    lda       ,u                  get next byte from draw string
-                    anda      #$DF                force case
-                    cmpa      #'E                 east (right)?
-                    beq       L06DF               yes, NE so skip ahead (up and to right)
-                    cmpa      #'W                 west (left)?
-                    beq       L06F3               yes, NW so skip ahead (up and to left)
-                    clra                          straight up, so X offset=0
-                    clrb
-                    std       ,x++                append to output buffer
-                    bsr       L0745               get signed Y offset caller specified
-                    bra       L06E5               use negative value of that as Y offset
-
-* 'NE' (northeast, up and right)
-L06DF               leau      1,u                 bump up source string pointer
-                    bsr       L0745               get signed X offset caller specified
-                    std       ,x++                append X offset to output buffer
-                    ifne      H6309
-L06E5               negd
-                    else
-L06E5               lbsr      L07C8               NEGD
-                    endc
-L06E8               std       ,x++                append Y offset to output buffer
-L06EA               lbsr      L078E               adjust X,Y coords based on current ANGLE setting (if <>0)
-                    lbsr      L07CD               write output buffer
-                    lbra      L066B               process next DRAW command sequence
-
-* 'NW' (northwest, up and left)
-L06F3               leau      1,u                 bump up source string pointer
-                    bsr       L0745               get signed X offset caller specified
-                    IFNE      H6309
-                    negd
-                    ELSE
-                    bsr       L07C8               NEGD
-                    ENDC
-L06FA               std       ,x++                append X offset to output buffer
-                    bra       L06E8               append same value as Y offset to output buffer, write it out & continue
-
-* S (south, down)
-L06FE               ldd       #$1B47              RLineM (Relative Draw Line and Move)
-                    std       ,x++                append to output buffer
-                    lda       ,u                  get next character from draw string
-                    anda      #$DF                force case
-                    cmpa      #'E                 east (Right?)
-                    beq       L0717               yes, SE so skip ahead (down and right)
-                    cmpa      #'W                 west (Left?)
-                    beq       L071D               yes, SW so skip ahead (down and left)
-                    clra                          X offset=0
-                    clrb
-                    std       ,x++                append to output buffer
-                    bsr       L0745               get signed Y offset caller specified
-                    bra       L06E8               append to output buffer, adjust for ANGLE (if needed), write it out
-
-L0717               leau      1,u                 bump up source string pointer
-                    bsr       L0745               get signed offset from caller
-                    bra       L06FA               append as both X & Y offsets
-
-* SW (southwest, down and left)
-L071D               leau      1,u                 bump up source string ptr
-                    bsr       L0745               get signed offset caller specified
-                    std       2,x                 save as Y offset
-                    IFNE      H6309
-                    negd
-                    ELSE
-                    bsr       L07C8               NEGD
-                    ENDC
-                    std       ,x                  save as X offset
-                    leax      4,x                 bump up output buffer ptr
-                    bra       L06EA
-
-* E (East, right)
-L072C               ldd       #$1B47              RLineM (Relative Draw Line and Move)
-                    std       ,x++                append to output buffer
-                    bsr       L0745
-                    bra       L073F
-
-* W (West, left)
-L0735               ldd       #$1B47              RLineM (Relative Draw Line and Move)
-                    std       ,x++                append to output buffer
-                    bsr       L0745               get signed offset caller specified
-                    IFNE      H6309
-                    negd
-                    ELSE
-                    bsr       L07C8               NEGD
-                    ENDC
-L073F               std       ,x++                append X offset to output buffer
-                    clra                          Y offset=0
-                    clrb
-                    bra       L06E8               append to output buffer and write it out
-
-* 6809 - May be able to this up so more use BSR instead of LBSR (faster/shorter)
-                    IFEQ      H6309
-* NegD
-L07C8               nega                          NEGD
-                    negb
-                    sbca      #$00
-                    rts
-                    ENDC
-
-******************
-* Process parameter for a specific DRAW command. Gets numeric string, converts to signed
-*   16 bit #. Stops on first non-numeric character encountered (decimal only)
-* Entry: U=pointer to start of parameter section of current DRAW string command
-* Exit:  D=signed binary version of parameter
-* Change to use MUL * 10. This will work up to 2550 and then give inaccurate results,
-*  but that high is illegal anyways.
-L0745               clra                          Init running total to 0
-                    clrb
-                    pshs      u,d                 Save that & start of current DRAW substring ptr
-                    ldb       ,u+                 Get 1st byte of DRAW command parameter
-                    cmpb      #'-                 Negative sign?
-                    bne       L0753               No, use current byte as numeric data byte
-* Also - using MUL (previous result by 10 or 100) and adding new may be faster
-* Negatives are post processed in L0776, so that shouldn't affect this either
-* the current routine will allow 1000's and I think even 10000's, which are illegal for
-* every parameter that comes in here (I think)
-L0751               ldb       ,u+                 Get parameter byte (String)
-L0753               subb      #'0                 Subtract ASCII to make binary value
-                    bcs       L0776               If wrapped negative, done processing numeric
-                    cmpb      #9                  Outside of 0-9?
-                    bhi       L0776               Yes, done processing numeric
-                    clra                          make 16 bit for adds below
-                    pshs      d                   Save numeric value of current digit
-                    ldb       2+1,s               5 Get LSB of current cumulative value into B (32 cyc to next save)
-                    lda       #10                 2 Multiply by 10 (shift digits over)
-                    mul                           11
-                    addd      ,s++                9 Add current digit value
-                    std       ,s                  5 Save new cumulative value
-                    bra       L0751               Check next char
-
-* parm char from draw string is not '0'-'9'
-L0776               leau      -1,u                Point back to last legit char
-                    cmpu      2,s                 Are we at beginning of current draw string command's parameters?
-                    beq       L0789               Yes, no parameters, so eat temp stack & exit with Parameter Error
-                    lda       [<$02,s]            Get first char from current draw string command's parameters again
-                    cmpa      #'-                 Was it a dash (negative)?
-                    puls      d                   Get current binary version of number string we processed
-                    bne       L0786               Not negative, skip ahead
-                    IFNE      H6309
-                    negd
-                    ELSE
-                    bsr       L07C8               NEGD
-                    ENDC
-L0786               leas      2,s                 Eat start string ptr & return
-                    rts
-
-L0789               leas      $C,s                Eat temp stack, return with Parameter Error
-                    lbra      L02F6
-
-* Adjust draw command based on Axis angle (0=no rotate/no changes)
-* 1,2,3 make adjustments. All other values leave coords alone
-L078E               ldd       2,s                 get Axis angle
-                    beq       L07AC               if 0 (normal), return
-                    tsta                          if >255, exit
-                    bne       L07AC
-                    decb                          1 (90 degrees)?
-                    beq       L07AD               yes, skip ahead
-                    decb                          2 (180 degrees)?
-                    beq       L07BC               yes, skip ahead
-                    decb                          3 (270 degrees)?
-                    bne       L07AC               no, return
-* 270 degree rotate
-                    ldd       -4,x                Get original X value from output buffer
-                    IFNE      H6309
-                    negd
-                    ELSE
-                    bsr       L07C8               NEGD
-                    ENDC
-                    pshs      d                   Save on stack
-                    ldd       -2,x                Get original Y value from output buffer
-                    std       -4,x                Save overtop original X
-                    puls      d                   Get negated X back
-L07AA               std       -2,x                Save overtop original Y & return
-L07AC               rts
-
-* 90 degree rotate
-L07AD               ldd       -2,x                Get original X value from output buffer
-                    IFNE      H6309
-                    negd
-                    ELSE
-                    bsr       L07C8               NEGD
-                    ENDC
-                    pshs      d                   Save on stack
-                    ldd       -4,x                Get original y coord
-                    std       -2,x                Save over original X coord
-                    puls      d                   Get negated X value back
-                    std       -4,x                Save over original Y coord
-                    rts
-
-* 180 degree rotate
-L07BC               ldd       -4,x                Get original X coord
-                    IFNE      H6309
-                    negd
-                    ELSE
-                    bsr       L07C8               NEGD
-                    ENDC
-                    std       -4,x                Save overtop original X coord
-                    ldd       -2,x                Get original Y coord
-                    IFNE      H6309
-                    negd
-                    ELSE
-                    bsr       L07C8               NEGD
-                    ENDC
-                    bra       L07AA               Save overtop original Y & return
-
-* Write output buffer based on current output buffer ptr (for DRAW commands)
-* Entry: X=current output buffer position ptr
-*        2,s = output buffer start ptr
-*        4,s = output buffer end ptr (used to calculate buffer write size)
-L07CD               pshs      y                   Preserve Y
-                    IFNE      H6309
-                    leay      ,x                  Y=end buffer ptr
-                    ldx       6,s                 Get start buffer ptr
-                    subr      x,y                 Y=size of buffer to write
-                    ELSE
-                    tfr       x,d                 Move current position in output buffer ptr to D
-                    subd      6,s                 Calc size of string to write
-                    tfr       d,y                 Move for I$Write
-                    ldx       6,s                 Get ptr to start of output buffer
-                    ENDC
-                    lda       $A,s                Get path
-                    os9       I$Write             Write it out
-                    ldx       6,s                 Get start of output buffer ptr back & return
-                    puls      y,pc                Restore Y & return
-
-;;; FELLIPSE - Draw a filled ellipse.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "FELLIPSE", [,xcor, ycor], xrad, yrad))
-FEllipse            lda       #$54                FEllipse code
-                    fcb       $8c                 skip 2 bytes (CMPX)
-
-;;; ELLIPSE - Draw an ellipse.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "ELLIPSE", [,xcor, ycor], xrad, yrad))
-L07E1               lda       #$51                Ellipse code
-                    lbra      L060F               process for 3 or 5 parameters
-
-;;; ARC - Draw an arc.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "ARC" [,mx, my], xrad, yrad, xcor1, ycor1, xcor2, ycor2)
-L07E6               lda       #$52                Arc code
-                    cmpb      #7                  7 parameters?
-                    beq       L07F7               yes, skip setting center coords
-                    cmpb      #9                  9 parameters?
-                    bne       L0804               no, exit with parameter error
-                    lbsr      L05F7               yes, append SetDPtr with callers center X,Y coord to output buffer
-                    ldb       #$1B                append ESC code
-                    stb       ,x+
-L07F7               sta       ,x+                 append ARC code
-                    lbra      L08F5               process remaining 6 16 bit parameters (X radius, Y radius, startx, starty, endx,endy)
 
 ;;; CURHOME - Home the cursor.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "CURHOME")
-L07FC               lda       #$01                Home Cursor code
+CurHome             lda       #$01                home cursor code
                     bra       L0859               overwrite default ESC code in output buffer with new code, write it out
 
 ;;; CURXY - Move the cursor to a column and row.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "CURXY", column, row)
-L0800               lda       #$02                CurXY code
+CurXY               lda       #$02                CurXY code
                     cmpb      #3                  3 parameters?
-L0804               lbne      L02F6               no, exit with parameter error
+L0804               lbne      ParamErr            no, exit with parameter error
                     sta       -1,x                yes, overwrite original ESC code in output buffer
                     bsr       L0811               append X coord from caller (with $20 offset)
                     bsr       L0811               append Y coord from caller (with $20 offset)
@@ -1305,19 +472,19 @@ L0829               puls      pc,y,d              return to the caller
 ;;; ERLINE - Delete the line of text the cursor is on.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "ERLINE")
-L082B               lda       #$03                Erase Line code
+ErLine              lda       #$03                erase line code
                     bra       L0859               overwrite default ESC code in output buffer with new code, write it out
 
 ;;; EREOLINE - Delete text from the cursor to the end of the current line.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "EREOLINE")
-L082F               lda       #$04                Erase to End of Line code
+ErEOLine            lda       #$04                erase to end of Line code
                     bra       L0859               overwrite default ESC code in output buffer with new code, write it out
 
 ;;; CUROFF - Make the cursor invisible
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "CUROFF")
-L0833               lda       #5                  Cursor on/off code
+CurOff              lda       #5                  cursor on/off code
                     sta       -1,x                save over original ESC
                     lda       #$20                off value
                     bra       L087B               append to output buffer, write it out
@@ -1325,7 +492,7 @@ L0833               lda       #5                  Cursor on/off code
 ;;; CURON - Make the cursor visible
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "CURON")
-L083B               lda       #5                  Cursor on/off code
+CurOn               lda       #5                  cursor on/off code
                     sta       -1,x                save over original ESC
                     lda       #$21                on value
                     bra       L087B               append to output buffer, write it out
@@ -1333,108 +500,74 @@ L083B               lda       #5                  Cursor on/off code
 ;;; CURRGT - Move the cursor one character to the right.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "CURRGT")
-L0843               lda       #6                  Cursor Right code
+CurRgt              lda       #6                  cursor Right code
                     bra       L0859               overwrite default ESC code in output buffer with new code, write it out
 
 ;;; BELL - Produce a beep through the terminal's speaker.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "BELL")
-L0847               lda       #7                  Bell code
+Bell                lda       #7                  bell code
                     bra       L0859               overwrite default ESC code in output buffer with new code, write it out
 
 ;;; CURLFT - Move the cursor one character to the left.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "CURLFT")
-L084B               lda       #8                  Cursor Left code
+CurLft              lda       #8                  cursor Left code
                     bra       L0859               overwrite default ESC code in output buffer with new code, write it out
 
 ;;; CURUP - Move the cursor one line up.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "CURUP")
-L084F               lda       #9                  Cursor Right code
-                    bra       L0859               Overwrite default ESC code in output buffer with new code, write it out
+CurUp               lda       #9                  cursor Right code
+                    bra       L0859               overwrite default ESC code in output buffer with new code, write it out
 
 ;;; CURDWN - Move the cursor one line down.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "CURDWN")
-L0853               lda       #$A                 Cursor Down code
+CurDwn              lda       #$A                 cursor Down code
                     bra       L0859               overwrite default ESC code in output buffer with new code, write it out
 
 ;;; EREOWNDW - Delete text from the current cursor position to the end of the window.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "EREOWNDW")
-L0857               lda       #$B                 Erase to end of Window code
+ErEOWndw            lda       #$B                 erase to end of Window code
 L0859               leax      -1,x                bump back output buffer pointer
                     bra       L087B               overwrite default ESC code in output buffer with new code, write it out
 
 ;;; Clear - Clear the screen.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "CLEAR")
-L085D               lda       #$C                 Clear window code
+Clear               lda       #$C                 clear window code
                     bra       L0859               overwrite default ESC code in output buffer with new code, write it out
 
 ;;; CRRTN - Send a carriage return.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "CRRTN")
-L0861               lda       #$D                 Carriage return code
+CrRtn               lda       #C$CR               carriage return code
                     bra       L0859               overwrite default ESC code in output buffer with new code, write it out
 
-;;; REVON - Turn on reverse video characters.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "REVON")
-L0865               lda       #$20                Reverse video ON sub-code for $1F code
-                    bra       L0873               append both to output buffer & write out
-
-;;; REVOFF - Turn off reverse video characters.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "REVOFF")
-L0869               lda       #$21                Reverse video OFF sub-code for $1F code
-                    bra       L0873               append both to output buffer & write out
-
-;;; UNDLNON - Turn on underlined video characters.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "UNDLNON")
-L086D               lda       #$22                Underline ON sub-code for $1F code
-                    bra       L0873               append both to output buffer & write out
-
-;;; UNDLNOFF - Turn off underlined video characters.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "UNDLNOFF")
-L0871               lda       #$23                Underline OFF sub-code for $1F code
 L0873               pshs      a                   save sub-code
                     lda       #$1F                put $1F code overtop original ESC first
                     sta       -1,x
                     puls      a                   get sub-code back
 L087B               lbra      L04E4               append to output buffer & write out
 
-;;; BLNKON - Turn on blinking video characters.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "BLNKON")
-L087E               lda       #$24                Blink ON sub-code for $1F code
-                    bra       L0873               append both to output buffer & write out
-
-;;; BLNKOFF - Turn off blinking video characters.
-;;;
-;;; Calling syntax: RUN FOENIX([path,] "BLNKOFF")
-L0882               lda       #$25                Blink OFF sub-code for $1F code
-                    bra       L0873               append both to output buffer & write out
-
 ;;; INSLIN - Insert a blank line at the current cursor.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "INSLIN")
-L0886               lda       #$30                Insert Line sub-code for $1F code
+InsLin              lda       #$30                insert Line sub-code for $1F code
                     bra       L0873               append both to output buffer & write out
 
 ;;; DELLIN - Delete the line at the current cursor.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "DELLIN")
-L088A               lda       #$31                Delete Line sub-code for $1FG code
+DelLin              lda       #$31                delete Line sub-code for $1FG code
                     bra       L0873               append both to output buffer & write out
 
 ;;; DEFCOL - Set palette registers to the default values.
 ;;;
 ;;; Calling syntax: RUN FOENIX([path,] "DEFCOL")
-L088E               lda       #$30                Default color code
+L088E               lda       #$30                default color code
                     bra       L087B               append to output buffer & write out
 
 * Compare string from caller to string in table (used for ON, OFF, etc) case insensitive
@@ -1485,7 +618,7 @@ L08CE               pshs      y,d                 save registers
                     beq       L08E6               if 8 bit value was expanded to 16 bit, we are done, return
                     leay      -1,y                2 byte value (INTEGER) from caller?
                     bne       L0919               not BYTE or INTEGER, exit with parameter error (& eat 9 byte temp stack)
-                    bra       L08E4               If INTEGER, append to output buffer & return
+                    bra       L08E4               if INTEGER, append to output buffer & return
 
 * Append BYTE or INTEGER value from caller as 16 bit value to output buffer (and eat 15 byte temp stack)
 L08DA               pshs      y,d                 save registers
@@ -1534,7 +667,7 @@ L0907               tfr       x,d                 4 Move buffer end ptr to write
 L0917               leas      6,s                 eat extra temp stack (15 bytes)
 L0919               leas      3,s                 eat extra temp stack (9 bytes)
 L091B               leas      6,s                 eat extra temp stack  (6 bytes)
-                    lbra      L02F6               exit with parameter error
+                    lbra      ParamErr            exit with parameter error
 
 L0920               bsr       L0932               append BYTE or INTEGER parameter to output stream (append 8 parameters)
 L0922               bsr       L0932               append BYTE or INTEGER parameter to output stream (append 7 parameters)
