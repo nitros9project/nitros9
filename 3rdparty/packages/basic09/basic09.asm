@@ -478,8 +478,11 @@ L0022               fdb       $1607               Edition #22 ($16)
 
 * Intro screen
 
+                    ifne      F256
+L0024               fcb       $0A
+				else
 L0024               fcb       $0C
-                    fcc       '            BASIC09'
+L0025               fcc       '            BASIC09'
                     fcb       $0A
                     ifne      H6309
                     fcc       '     6309 VERSION 0'
@@ -501,6 +504,7 @@ L0024               fcb       $0C
                     fcc       '       TO TANDY CORP.'
                     fcb       $0A
                     fcc       '    ALL RIGHTS RESERVED.'
+				endc
                     fcb       $8A
 
 * Jump vector @ $1B goes here
@@ -1675,7 +1679,11 @@ L082E               lda       #$7E                Opcode for JMP Extended instru
                     stx       <u009E              Save it
                     ldb       ,y                  Get char from params
                     cmpb      #C$CR               Carriage return?
-                    beq       L08A6               Yes, go print the title screen
+                    ifne      F256
+                    lbeq      BannerGo               Yes, go print the title screen L08A6
+				else
+				beq       L08A6
+				endc
 * Optional filename specified when BASIC09 called
                     leax      <L0860,pc           No, point to initial entry of routine
                     pshs      y                   Preserve param ptr
@@ -12762,6 +12770,122 @@ L5AC3               ldb       #48                 Unimplemented routine error
                     stb       <u0036              Save error code
                     coma                          Exit with error
                     rts
+
+				ifne		F256
+BannerGo            leax      NEWLN,pcr
+                    ldy       #NEWLNLEN
+                    lda       #1
+                    os9       I$Writln
+                    bcs       ERROR
+                    leax      OUTSTR,pcr
+                    ldy       #STRLEN
+                    lda       #1
+                    os9       I$Write
+                    bcs       ERROR
+                    ldx       #$FE00
+                    lda       7,x
+                    cmpa      #$02
+                    bne       isItF256K
+                    leax      OUTSTR2,pcr
+                    ldy       #STRLEN2
+                    lda       #1
+                    os9       I$Writln
+                    bcs       ERROR
+                    bra       CONT
+isItF256K           cmpa      #$12
+                    bne       ERROR
+                    leax      OUTSTR3,pcr
+                    ldy       #STRLEN3
+                    lda       #1
+                    os9       I$Writln
+                    bcs       ERROR
+CONT                leax      BASL2,pcr
+                    ldy       #BASLEN2
+                    lda       #1
+                    os9       I$Write
+                    bcs       ERROR
+DONE                ldb       #0
+ERROR               lbra      L08A6
+OUTSTR              fcb       $1b,$32,$07,$de,$db,$db,$db,$db,$db,$b7
+                    fcb       $1b,$32,$06,$db,$db,$1b,$32,$08,$c2,$db
+                    fcb       $db,$db,$bc,$1b,$32,$06,$db,$db,$1b,$32
+                    fcb       $04,$b5,$db,$db,$db,$db,$db,$b7,$1b,$32
+                    fcb       $06,$db,$1b,$32,$0e,$db,$dd,$1b,$32,$06
+                    fcb       $db,$1b,$32,$05,$b5,$db,$db,$db,$db,$b7
+                    fcb       $1b,$32,$06,$db,$db,$1b,$32,$0f,$c2,$db
+                    fcb       $db,$db,$db,$db,$bc,$1b,$32,$06,$db,$db
+                    fcb       $1b,$32,$01,$b5,$db,$db,$db,$db,$b7,$1b
+                    fcb       $32,$06,$db,$db,$db,$db,$db,$db,$db,$db
+                    fcb       $db,$db,$1b,$32,$01
+STRLEN              equ       *-OUTSTR
+OUTSTR2             fcc       /F256 Jr./
+                    fcb       $0D
+STRLEN2             equ       *-OUTSTR2
+OUTSTR3             fcc       / F256K/
+                    fcb       $0D
+STRLEN3             equ       *-OUTSTR3
+BASL2               fcb       $1b,$32,$07,$de,$db,$1b,$32,$06,$db,$db
+                    fcb       $db,$1b,$32,$07,$de,$db,$1b,$32,$06,$db
+                    fcb       $1b,$32,$08,$c2,$db,$c3,$1b,$32,$06,$db
+                    fcb       $1b,$32,$08,$bb,$db,$bc,$1b,$32,$06,$db
+                    fcb       $1b,$32,$04,$db,$dd,$1b,$32,$06,$db,$db
+                    fcb       $db,$db,$db,$db,$1b,$32,$0e,$db,$dd,$1b
+                    fcb       $32,$06,$db,$1b,$32,$05,$db,$dd,$1b,$32
+                    fcb       $06,$db,$db,$db,$db,$db,$db,$1b,$32,$0f
+                    fcb       $db,$be,$1b,$32,$06,$db,$1b,$32,$0f,$c2
+                    fcb       $c3,$c1,$db,$1b,$32,$06,$db,$db,$1b,$32
+                    fcb       $01,$db,$dd
+                    fcb       $1b,$32,$06,$db,$db,$1b,$32,$01,$de,$db
+                    fcb       $1b,$32,$06,$db,$db,$db,$db,$db,$db,$db
+                    fcb       $db,$db,$db,$db,$db,$db,$db,$db,$db,$db
+                    fcb       $db,$db,$db,$db,$db,$db,$db,$db,$db,$db
+                    fcb       $db,$db,$db
+                    fcb       $1b,$32,$07,$de,$db,$db,$db,$db,$db,$bd
+                    fcb       $1b,$32,$06,$db,$1b,$32,$08,$db,$db,$db
+                    fcb       $db,$db,$db,$db,$1b,$32,$06,$db,$1b,$32
+                    fcb       $04,$b6,$db,$db,$db,$db,$db,$b7,$1b,$32
+                    fcb       $06,$db,$1b,$32,$0e,$db,$dd,$1b,$32,$06
+                    fcb       $db,$1b,$32,$05,$db,$dd,$1b,$32,$06,$db
+                    fcb       $db,$db,$db,$db,$db,$1b,$32,$0f,$db,$dd
+                    fcb       $1b,$32,$0f,$c2,$db,$c3,$de,$db,$1b,$32
+                    fcb       $06,$db,$db,$1b,$32,$01,$b6,$db,$db,$db
+                    fcb       $db,$db,$1b,$32,$06,$db,$db,$db,$db,$db
+                    fcb       $db,$db,$db,$db,$db,$1b,$32,$01,$40,$4d
+                    fcb       $72,$50,$69,$74,$72,$65,$1b,$32,$06,$db
+                    fcb       $db
+                    fcb       $db,$db,$db,$db,$db,$db,$db,$db,$db,$db
+                    fcb       $1b,$32,$07,$de,$db,$1b,$32,$06,$db,$db
+                    fcb       $db,$1b,$32,$07,$de,$db,$1b,$32,$06,$db
+                    fcb       $1b,$32,$08,$db,$db,$1b,$32,$06,$db,$db
+                    fcb       $db,$1b,$32,$08,$db,$db,$1b,$32,$06,$db
+                    fcb       $db,$db,$db,$db,$db,$1b,$32,$04,$de,$db
+                    fcb       $1b,$32,$06,$db,$1b,$32,$0e,$db,$dd,$1b
+                    fcb       $32,$06,$db,$1b,$32,$05,$db,$dd,$1b,$32
+                    fcb       $06,$db,$db,$db,$db,$db,$db,$1b,$32,$0f
+                    fcb       $db,$c0,$c2,$c3,$1b,$32,$06,$db,$1b,$32
+                    fcb       $0f,$bf,$db,$1b,$32,$06,$db,$db,$db,$db
+                    fcb       $db,$db,$1b,$32,$01,$de,$db
+                    fcb       $1b,$32,$06,$db,$db,$db,$db,$db,$db,$db
+                    fcb       $db,$db,$db,$db,$1b,$32,$01,$40,$4a,$46
+                    fcb       $65,$64,$1b,$32,$06,$db,$db,$db,$db,$db
+                    fcb       $db,$db,$db,$db,$db,$db,$db,$db,$db
+                    fcb       $1b,$32,$07,$de,$db,$db,$db,$db,$db,$b8
+                    fcb       $1b,$32,$06,$db,$1b,$32,$08,$db,$c3
+                    fcb       $1b,$32,$06,$db,$db,$db,$1b,$32,$08,$bb
+                    fcb       $db,$1b,$32,$06,$db,$1b,$32,$04,$b9,$db
+                    fcb       $db,$db,$db,$db,$b8,$1b,$32,$06,$db,$1b
+                    fcb       $32,$0e,$db,$dd,$1b,$32,$06,$db,$1b,$32
+                    fcb       $05,$b6,$db,$db,$db,$db,$b8,$1b,$32,$06
+                    fcb       $db,$db,$1b,$32,$0f,$bb,$db,$db,$db,$db
+                    fcb       $db,$c3,$1b,$32,$06,$db,$db,$1b,$32
+                    fcb       $01,$b9,$db,$db,$db,$db,$b8,$1b,$32,$06
+                    fcb       $db,$db,$db,$db,$db,$db,$db,$db,$1b,$32
+                    fcb       $01,$40,$4d,$61,$74,$74,$20,$4d,$61,$73
+                    fcb       $73,$69,$65,$1b,$32,$01
+BASLEN2             equ       *-BASL2
+NEWLN               fcb       $1b,$33,$06,$0c,$0d
+NEWLNLEN            equ	*-NEWLN
+				endc
 
                     emod
 eom                 equ       *
