@@ -6,6 +6,10 @@
 * ------------------------------------------------------------------
 *  1       2024/02/17  Boisy G. Pitre
 * Started.
+*
+*  2        2024/06/17  Boisy G. Pitre (Waco, TX)
+* Fixed the SS.KySns routine to properly set/clear D.KySns bits for supported keys,
+* and added support for V.PAU.
 
                     use       defsfile
                     use       f256vtio.d
@@ -66,7 +70,7 @@ HandleRow           pshs      d,x,y
 kl@                 lsla                shift leftmost bit into the carry
                     bcs       kchg@     branch if carry set (key state changed)
                     lsl       1,s       shift B on stack (up/down state)
-nextbit             decb                decrement the counter
+handleloop          decb                decrement the counter
                     bne       kl@       continue if more
                     puls      d,x,y,pc  restore and return
 kchg@
@@ -89,101 +93,89 @@ r@                  rola
                     bra       r@
 g@
                     lda       ,x
-* A = ASCII character
+* A = Key character
 * is it key up or key down?
                     lsl       3,s       shift B on stack (up/down state)
                     bcc       keydown@  if carry set, key is going up -- ignore it
-* key is up -- process character
-keyup@              cmpa      #LSHIFT
-                    bne       isitmeta@
-                    ldb       D.KySns
-                    andb      #^SHIFTBIT
-                    stb       D.KySns
-                    lbra      repex
-isitmeta@           cmpa      #META
-                    bne       isitctrl@
-                    clr       V.META,u
-                    lbra      repex
-isitctrl@           cmpa      #LCTRL
-                    bne       isitalt@
-                    ldb       D.KySns
-                    andb      #^CTRLBIT
-                    stb       D.KySns
-                    lbra      repex
-isitalt@            cmpa      #RALT
-                    lbne      repex
-                    ldb       D.KySns
-                    andb      #^ALTBIT
-                    stb       D.KySns
-                    lbra      repex
-* key is down -- process character
-keydown@            tsta
-                    lbeq      CheckSig
-                    cmpa      #LSHIFT
+* Key is going UP
+keyup@              cmpa      #META			is this the META key
+                    bne       snsup@			branch if not
+				clr       V.META,u			else clear the META flag
+				lbra      nextbit			and continue processing
+snsup@				
+                    leax      KySnsTbl,pcr		point to the key sense UP table
+l@                  tst       ,x+				are we at the end of the table?
+				lbeq      nextbit			branch if so
+				cmpa      -1,x				else compare key character against first byte in table entry
+				bne       l@	 			branch if not the same (go to the top and process the next table entry)
+* Process the key character in A relative to the key sense table byte at X
+				ldb       ,x				get the key sense bit in the table entry
+				comb						complement it
+                    andb      D.KySns			AND it with the key sense flag
+				stb       D.KySns			and save it back
+				lbra      nextbit			continue processing
+* Key is going DOWN
+keydown@            cmpa      #META			is this the META key?
+                    bne       snsdn@			branch if not
+				sta       V.META,u			else set the META flag
+				lbra      nextbit			and continue processing
+snsdn@				
 
-                    bne       isitmeta@
-                    ldb       D.KySns
-                    orb       #SHIFTBIT
-                    stb       D.KySns
-                    lbra      repex
-isitmeta@           cmpa      #META
-                    bne       isitctrl@
-                    sta       V.META,u
-                    lbra      repex
-isitctrl@           cmpa      #LCTRL
-                    bne       isitalt@
-                    ldb       D.KySns
-                    orb       #CTRLBIT
-                    stb       D.KySns
-                    lbra      repex
-isitalt@            cmpa      #RALT
-                    bne       isitcaps@
-                    ldb       D.KySns
-                    orb       #ALTBIT
-                    stb       D.KySns
-                    lbra      repex
-isitcaps@           cmpa      #CAPS
-                    bne       z@
-                    com       V.CAPSLck,u
+                    leax      KySnsTbl,pcr		point to the key sense DOWN table
+l@                  tst       ,x+				are we at the end of the table?
+				lbeq      isitcaps@			branch if so
+				cmpa      -1,x				else compare key character against first byte in table entry
+				bne       l@				branch if not the same (go to the top and process the next table entry)
+proc@               ldb       D.KySns			get the key sense flag
+                    orb       ,x				OR it with the table byte at X
+				stb       D.KySns			and save it back
+				cmpa      #$F0				is this key character >= $F0 (modifier key)
+				lbhs      nextbit			if so, continue processing
+* Up/Down/Left/Right keys are marked with special values between $E0 and $EF
+                    cmpa      #$E0				is the key code < $E0
+				blt       isitcaps@			yes, keep processing it
+				suba      #$E0				else subtract $E0 from it to get true value
+isitcaps@           cmpa      #CAPS			is the key code the CAPS Lock key?
+                    bne       z@				branch if not
+                    com       V.CAPSLck,u		else complement the state
 * Set/Clear CAPS Lock LED
-                    ldx       #SYS0
-                    ldb       ,x
-                    tst       V.CAPSLck,u
-                    beq       ledoff@
-ledon@              orb       #SYS_CAP_EN
-                    bra       ledsave@
-ledoff@             andb      #^SYS_CAP_EN
-ledsave@            stb       ,x
-                    lbra      repex
+                    ldx       #SYS0			point to the hardware for changing the LED
+                    ldb       ,x				get the value
+                    tst       V.CAPSLck,u		did CAPS Lock get turned off?
+                    beq       ledoff@			branch if so to turn off LED
+ledon@              orb       #SYS_CAP_EN		else set the hardware CAPS Lock enable bit
+                    bra       ledsave@			and save it
+ledoff@             andb      #^SYS_CAP_EN		clear the hardware CAPS Lock enable bit
+ledsave@            stb       ,x				and save it
+                    lbra      nextbit			continue processing
 * Handle CAPS LOCK engaged
-z@                  tst       V.CAPSLck,u
-                    beq       z1@
-                    cmpa      #'a
-                    blo       z1@
-                    cmpa      #'z
-                    bhi       z1@
-                    suba      #$20
+z@                  tst       V.CAPSLck,u		is CAPS Lock engaged?
+                    beq       z1@				branch if not
+                    cmpa      #'a				else compare key character to 'a'
+                    blo       z1@				branch if it's lower (not eligible for CAPS modification)
+                    cmpa      #'z				compare key character to 'z'
+                    bhi       z1@				branch if it's higher (not eligible for CAPS modification)
+                    suba      #$20				convert the lowercase character to uppercase
 * Handle CTRL down
-z1@                 ldb       D.KySns
-                    bitb      #CTRLBIT
-                    beq       z2@
-                    anda      #$5F
-                    suba      #$40
+z1@                 ldb       D.KySns			get the key sense flags
+                    bitb      #CTRLBIT			is CTRL down?
+                    beq       z2@				branch if not
+                    anda      #$5F				else make the character an uppercase one
+                    suba      #$40				and subtract to get the key's CTRL value
 * Handle ALT down
-z2@                 ldb       D.KySns
-                    bitb      #ALTBIT
-                    beq       z3@
-                    anda      #$5F
-                    adda      #$40
+z2@                 bitb      #ALTBIT			is ALT down?
+                    beq       z3@				branch if not
+                    anda      #$5F				else make the character an uppercase one
+                    adda      #$40				and add to get the key's ALT value
 * Handle META down
-z3@                 tst       V.META,u
-                    beq       BufferChar
-                    leax      MetaTab,pcr
-zl@                 tst       ,x
-                    beq       BufferChar
-                    cmpa      ,x++
-                    bne       zl@
-                    lda       -1,x
+z3@                 tst       V.META,u			is META down?
+                    beq       BufferChar		branch if not
+                    leax      MetaTab,pcr		else point to the META table
+zl@                 tst       ,x				is the character at X zero?
+                    beq       BufferChar		branch if so
+                    cmpa      ,x++				else compare the key character to the entry
+                    bne       zl@				branch if not the same
+                    lda       -1,x				load A with corresponding entry
 
 * Advance the circular buffer one character.
 BufferChar          ldb       V.IBufH,u get buffer head pointer in B
@@ -224,11 +216,11 @@ CheckSig
 * Wake up any process if it's sleeping waiting for input.
 wake@               ldb       #S$Wake   get the wake signal
                     lda       V.WAKE,u  is there a process asleep waiting for input?
-noproc@             beq       repex     branch if not
+noproc@             beq       nextbit     branch if not
                     clr       V.WAKE,u  else clear the wake flag
 send@               os9       F$Send    and send the signal in B
-repex               puls      d
-                    lbra      nextbit
+nextbit             puls      d
+                    lbra      handleloop
 
 MetaTab             fcb       '7,'~
                     fcb       '8,'`
@@ -268,10 +260,6 @@ Term                rts                 return to the caller
 * F256K key table
 HOME                set       'A'-64
 END                 set       'E'-64
-UP                  set       'P'-64
-DOWN                set       'N'-64
-LEFT                set       'B'-64
-RIGHT               set       'F'-64
 DEL                 set       'D'-64
 ESC                 set       'C'-64
 TAB                 set       'I'-64
@@ -280,23 +268,43 @@ BKSP                set       'H'-64
 BREAK               set       'E'-64
 XLINE               set       'X'-64
 
-F1                  set       $F1
-F2                  set       $F2
-F3                  set       $F3
-F4                  set       $F4
-F5                  set       $F5
-F6                  set       $F6
-F7                  set       $F7
-F8                  set       $F8
+
+* Arrow keys reside in $E0-$EF and are treated special by the code.
+UP                  set       $EC
+DOWN                set       $EA
+LEFT                set       $E8
+RIGHT               set       $E9
+
+* Function keys just return some ASCII value
+F1                  set       $A1
+F2                  set       $A2
+F3                  set       $A3
+F4                  set       $A4
+F5                  set       $A5
+F6                  set       $A6
+F7                  set       $A7
+F8                  set       $A8
+
+* Any key code above $EF is considered a modifier key
+META                set       $F0
+LCTRL               set       $F1
+CAPS                set       $F2
+LSHIFT              set       $F3
+RALT                set       $F4
 RSHIFT              set       LSHIFT
-META                set       $FB
-LCTRL               set       $FC
-CAPS                set       $FD
-LSHIFT              set       $FE
-RALT                set       $FF
 INS                 set       15
 
-F256KKeys           fcb       BREAK,'q,META,$20,'2,LCTRL,BKSP,'1
+KySnsTbl            fcb       LSHIFT,SHIFTBIT
+			     fcb       RALT,ALTBIT
+				fcb       LCTRL,CTRLBIT
+				fcb       C$SPAC,SPACEBIT
+				fcb       UP,UPBIT
+				fcb       DOWN,DOWNBIT
+				fcb       LEFT,LEFTBIT
+				fcb       RIGHT,RIGHTBIT
+				fcb       0
+				
+F256KKeys           fcb       BREAK,'q,META,C$SPAC,'2,LCTRL,BKSP,'1
                     fcb       '/,TAB,RALT,RSHIFT,HOME,'','],'=
                     fcb       ',,'[,';,'.,CAPS,'l,'p,'-
                     fcc       "nokm0ji9"
@@ -306,7 +314,7 @@ F256KKeys           fcb       BREAK,'q,META,$20,'2,LCTRL,BKSP,'1
                     fcb       UP,F5,F3,F1,F7,LEFT,ENTER,BKSP
                     fcb       DOWN,RIGHT,0,0,0,0,0,0
 
-F256KShiftKeys      fcb       ESC,'Q,META,32,'@,LCTRL,XLINE,'!
+F256KShiftKeys      fcb       ESC,'Q,META,C$SPAC,'@,LCTRL,XLINE,'!
                     fcb       '?,RALT,LEFT,RSHIFT,END,34,'},'+
                     fcb       '<,'{,':,'>,CAPS,'L,'P,'_
                     fcc       "NOKM)JI("

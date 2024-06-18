@@ -11,6 +11,9 @@
 *
 *  2       2024/03/16  Boisy G. Pitre
 * Added F256 reset when Sys Rq key pressed.
+*
+*  3        2024/06/17  Boisy G. Pitre (Waco, TX)
+* Added support for V.PAU.
 
                     use       defsfile
                     use       f256vtio.d
@@ -18,7 +21,7 @@
 tylg                set       Systm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       2
+edition             set       3
 
 
 * We can use a different MMU slot if we want.
@@ -216,6 +219,13 @@ shift@              leay      SHIFTScanMap,pcr    point to the SHIFT scan map
 pastshift@          ldx       V.KCVect,u          get the current key code handler
                     jsr       ,x                  branch into it
                     bcs       IRQExit             if the carry is set, don't wake process
+                    cmpa      V.PCHR,u  pause character?
+                    bne       int@      branch if not
+                    ldx       V.DEV2,u  else get dev2 statics
+                    beq       WakeIt     branch if none
+                    sta       V.PAUS,x  else set pause request
+                    bra       WakeIt
+int@
                     ldb       #S$Intrpt           get the interrupt signal
                     cmpa      V.INTR,u            is our character same as the interrupt signal?
                     beq       getlproc@           branch if it's the same
