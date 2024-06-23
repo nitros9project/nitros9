@@ -45,11 +45,19 @@ AltISR              ldx       #VIA1.Base get the VIA1 base address
                     lda       #%01111111 initialize the accumulator with the row scan value
                     bsr       loop@
 * Handle down and right arrow
-                    ldx       #VIA0.Base
-                    lda       #%11111110
-loop@               sta       VIA_ORB_IRB,x save the row scan value to the VIA1 output
+                    sta       VIA_ORA_IRA,x
+                    lda       D.RowState+9
+                    tfr       a,b
+                    eora      ,y
+                    bne       HandleRow
+                    rts
+loop@               sta       VIA_ORA_IRA,x save the row scan value to the VIA1 output
                     pshs      a         save it on the stack for now
-                    lda       VIA_ORA_IRA,x get the column value for this row
+* handle extra column here
+                    lda       VIA0.Base+VIA_ORB_IRB
+                    rola
+                    rol       D.RowState+9
+                    lda       VIA_ORB_IRB,x get the column value for this row
                     tfr       a,b       save a copy to B
                     eora      ,y        XOR with the last row state value
                     beq       next@     branch if there's no change
@@ -64,6 +72,7 @@ ex@                 rts                 return to the caller
 * Entry:
 *    A = The keys in the row that have changed since the last scan.
 *    B = The up/down state of keys in the row.
+*    Y = The row state that we keep to know which keys are up or down.
 HandleRow           pshs      d,x,y
                     stb       ,y        save off new state to current row
                     ldb       #8        load counter
@@ -240,15 +249,16 @@ MetaTab             fcb       '7,'~
 Init                ldx       #VIA1.Base
                     clr       VIA_IER,x
                     lda       #%11111111
-                    sta       VIA_DDRB,x
-                    sta       VIA_ORB_IRB,x
-                    clr       VIA_DDRA,x
+                    sta       VIA_DDRA,x
+                    sta       VIA_ORA_IRA,x
+                    clr       VIA_DDRB,x
                     ldx       #VIA0.Base
                     clr       VIA_IER,x
-                    lda       #%00000011
-                    sta       VIA_DDRB,x
-                    sta       VIA_ORB_IRB,x
-                    clr       VIA_DDRA,x
+                    lda       #%0111111
+                    sta       VIA_DDRA,x
+                    sta       VIA_ORA_IRA,x
+                    clr       VIA_DDRB,x
+                    clr       VIA_ORB_IRB,x
                     ldx       #D.RowState
                     ldd       #$FF*256+9
 l@                  sta       ,x+
@@ -304,24 +314,26 @@ KySnsTbl            fcb       LSHIFT,SHIFTBIT
 				fcb       0
 				
 F256KKeys
-                    fcb       BREAK,'/,',,'n,'v,'x,LSHIFT,UP
-                    fcb       'q,TAB,'[,'o,'u,'t,'e,F5
-                    fcb       META,RALT,';,'k,'h,'f,'s,F3
-                    fcb       C$SPAC,RSHIFT,'.,'m,'b,'c,'z,F1
-                    fcb       '2,HOME,CAPS,'0,'8,'6,'4,F7
-                    fcb       LCTRL,'','l,'j,'g,'d,'a,LEFT
-                    fcb       BKSP,'],'p,'i,'y,'r,'w,ENTER
-                    fcb       '1,'=,'-,'9,'7,'5,'3,BKSP
+                    fcb       BREAK,'q,META,C$SPAC,'2,LCTRL,BKSP,'1
+                    fcb       '/,TAB,RALT,RSHIFT,$01,'','],'=
+                    fcb       ',,'[,';,'.,CAPS,'l,'p,'-
+                    fcb       'n,'o,'k,'m,'0,'j,'i,'9
+                    fcb       'v,'u,'h,'b,'8,'g,'y,'7
+                    fcb       'x,'t,'f,'c,'6,'d,'r,'5
+                    fcb       LSHIFT,'e,'s,'z,'4,'a,'w,'3
+                    fcb       UP,F5,F3,F1,F7,LEFT,ENTER,BKSP
+                    fcb       0,RIGHT,0,0,0,0,0,DOWN
 
 F256KShiftKeys 
-                    fcb       BREAK,'?,'<,'n,'v,'x,LSHIFT,UP
-                    fcb       'Q,TAB,'{,'O,'U,'T,'E,F6
-                    fcb       META,RALT,':,'K,'H,'F,'S,F4
-                    fcb       C$SPAC,RSHIFT,'>,'M,'B,'C,'Z,F2
-                    fcb       '@,HOME,CAPS,'),'*,'^,'$,F8
-                    fcb       LCTRL,'",'L,'J,'G,'D,'A,$18
-                    fcb       $18,'},'P,'I,'Y,'R,'W,ENTER
-                    fcb       '!,'+,'_,'(,'&,'%,'#,DEL
+                    fcb       BREAK,'Q,META,C$SPAC,'@,LCTRL,$18,'!
+                    fcb       '?,TAB,RALT,RSHIFT,$01,'",'},'+
+                    fcb       '<,'{,':,'>,CAPS,'L,'P,'_
+                    fcb       'N,'O,'K,'M,'),'J,'I,'(
+                    fcb       'V,'U,'H,'B,'*,'G,'Y,'&
+                    fcb       'X,'T,'F,'C,'^,'D,'R,'%
+                    fcb       LSHIFT,'E,'S,'Z,'$,'A,'W,'#
+                    fcb       UP,F6,F4,F2,F8,LEFT,ENTER,$18
+                    fcb       0,RIGHT,0,0,0,0,0,DOWN
 
                     emod
 eom                 equ       *
