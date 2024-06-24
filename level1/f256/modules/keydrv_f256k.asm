@@ -29,7 +29,8 @@ name                fcs       /keydrv/
                     fcb       edition
 
                     org       V.KeyDrvStat
-V.META              rmb       1
+V.META              rmb       1                 the state of the Foenix "META" key
+DownRightStates     rmb       1                 the state of the down and right arrow keys during polling
 
 * keydrv has three 3-byte entry points:
 *   - Init
@@ -45,18 +46,18 @@ AltISR              ldx       #VIA1.Base get the VIA1 base address
                     lda       #%01111111 initialize the accumulator with the row scan value
                     bsr       loop@
 * Handle down and right arrow
-                    sta       VIA_ORA_IRA,x
-                    lda       D.RowState+9
-                    tfr       a,b
-                    eora      ,y
-                    bne       HandleRow
-                    rts
+                    sta       VIA_ORA_IRA,x store A in VIA #1's port A
+                    lda       DownRightStates,u  get the down/right state byte
+                    tfr       a,b save into B
+                    eora      ,y XOR A with the row state at Y
+                    bne       HandleRow if non-zero, either down/right changed positions -- go handle it
+                    rts       else return from the ISR
 loop@               sta       VIA_ORA_IRA,x save the row scan value to the VIA1 output
                     pshs      a         save it on the stack for now
 * handle extra column here
-                    lda       VIA0.Base+VIA_ORB_IRB
-                    rola
-                    rol       D.RowState+9
+                    lda       VIA0.Base+VIA_ORB_IRB load A with VIA #0's port B
+                    rola                            rotate A to the left (hi bit goes in carry)
+                    rol       DownRightStates,u          rotate the carry into bit 0 of down/right state byte
                     lda       VIA_ORB_IRB,x get the column value for this row
                     tfr       a,b       save a copy to B
                     eora      ,y        XOR with the last row state value
@@ -83,25 +84,24 @@ handleloop          decb                decrement the counter
                     bne       kl@       continue if more
                     puls      d,x,y,pc  restore and return
 kchg@
-                    pshs      d
+                    pshs      d          save D on the stack
 * Get character from table
-                    tfr       y,d
-                    subd      #D.RowState
-                    lda       #8
-                    mul
-                    leax      F256KKeys,pcr
-                    lda       D.KySns
-                    bita      #SHIFTBIT
-                    beq       noshift@  branch of so
-                    leax      F256KShiftKeys,pcr
-noshift@            abx
-                    lda       2,s
-r@                  rola
-                    bcs       g@
-                    leax      1,x
-                    bra       r@
-g@
-                    lda       ,x
+                    tfr       y,d        bring the row pointer into D
+                    subd      #D.RowState B now holds the row we're interested in
+                    lda       #8         load A with 8
+                    mul                  B = offset into the key table for the row we want
+                    leax      F256KKeys,pcr point to the non-SHIFT key table
+                    lda       D.KySns    get the key sense values
+                    bita      #SHIFTBIT  check for SHIFT down
+                    beq       noshift@   branch of SHIFT is UP
+                    leax      F256KShiftKeys,pcr else point to the SHIFT key table
+noshift@            abx                  X = pointer to desired row in key table
+                    lda       2,s        get the byte that holds the changed keys
+r@                  rola                 roll bit 7 of A into the carry
+                    bcs       g@         branch if set
+                    leax      1,x        else advance X
+                    bra       r@         and continue
+g@                  lda       ,x         load A with the key character at X -- this is the key we want!
 * A = Key character
 * is it key up or key down?
                     lsl       3,s       shift B on stack (up/down state)
@@ -230,6 +230,7 @@ CheckSig
                     clr       <V.SSigID,u clear signal ID
                     bra       send@
 
+* This small table handles the META characters on the F256K keyboard.
 MetaTab             fcb       '7,'~
                     fcb       '8,'`
                     fcb       '9,'|
@@ -246,24 +247,24 @@ MetaTab             fcb       '7,'~
 *    CC = carry set on error
 *    B  = error code
 *
-Init                ldx       #VIA1.Base
-                    clr       VIA_IER,x
-                    lda       #%11111111
-                    sta       VIA_DDRA,x
-                    sta       VIA_ORA_IRA,x
-                    clr       VIA_DDRB,x
-                    ldx       #VIA0.Base
-                    clr       VIA_IER,x
-                    lda       #%0111111
-                    sta       VIA_DDRA,x
-                    sta       VIA_ORA_IRA,x
-                    clr       VIA_DDRB,x
-                    clr       VIA_ORB_IRB,x
-                    ldx       #D.RowState
-                    ldd       #$FF*256+9
-l@                  sta       ,x+
-                    decb
-                    bne       l@
+Init                ldx       #VIA1.Base        point X to the VIA1
+                    clr       VIA_IER,x         clear interrupts
+                    lda       #%11111111        load A with $FF
+                    sta       VIA_DDRA,x        set all bits of port A (outputs)
+                    sta       VIA_ORA_IRA,x     and set the corresponding values to 1
+                    clr       VIA_DDRB,x        clear all bits of port B (inputs)
+                    ldx       #VIA0.Base        point X to the VIA0
+                    clr       VIA_IER,x         clear interrupts
+                    lda       #%0111111         load A with $7F
+                    sta       VIA_DDRA,x        set bits 6-0 of port A (outputs)
+                    sta       VIA_ORA_IRA,x     and set the corresponding values to 1
+                    clr       VIA_DDRB,x        clear all bits of port B (inputs)
+                    clr       VIA_ORB_IRB,x     and set the corresonding values to 0
+                    ldx       #D.RowState       point to the row state globals
+                    ldd       #$FF*256+9        A = $FF, B = 9 (bytes to set)
+l@                  sta       ,x+               set byte at X with $FF and increment X
+                    decb                        decrement B
+                    bne       l@                keep doing until B is 0
 Term                rts                 return to the caller
 
 * F256K key table
