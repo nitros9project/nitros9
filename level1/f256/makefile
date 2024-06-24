@@ -58,7 +58,7 @@ reload:
 	osascript -e 'tell application "DriveWire"' -e 'tell server of first document' -e 'reload drive 0' -e 'end tell' -e 'end tell'
 
 BASIC09_FILES = $(foreach file,$(3RDPARTY)/packages/basic09/samples/*.b09,$(file))
-BF_FILES = $(foreach file,$(3RDPARTY)/packages/brainfuck/*.bf,$(file))
+BF_FILES = $(foreach file,$(3RDPARTY)/packages/bf/*.bf,$(file))
 SOUND_FILES = $(foreach file,sound/*,$(file))
 
 $(DSKSD_F256K):
@@ -81,8 +81,8 @@ $(DSKSD_F256K):
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
-	$(MAKDIR) $@,BRAINFUCK
-	$(CPL) $(BF_FILES) $@,BRAINFUCK
+	$(MAKDIR) $@,BF
+	$(CPL) $(BF_FILES) $@,BF
 	$(MAKDIR) $@,SOUNDS
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
 	$(MAKDIR) $@,SCRIPTS
@@ -111,8 +111,8 @@ $(DSKDW_F256K):
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
-	$(MAKDIR) $@,BRAINFUCK
-	$(CPL) $(BF_FILES) $@,BRAINFUCK
+	$(MAKDIR) $@,BF
+	$(CPL) $(BF_FILES) $@,BF
 	$(MAKDIR) $@,SOUNDS
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
 	$(MAKDIR) $@,SCRIPTS
@@ -140,8 +140,8 @@ $(DSKSD_F256JR):
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
-	$(MAKDIR) $@,BRAINFUCK
-	$(CPL) $(BF_FILES) $@,BRAINFUCK
+	$(MAKDIR) $@,BF
+	$(CPL) $(BF_FILES) $@,BF
 	$(MAKDIR) $@,SOUNDS
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
 	$(MAKDIR) $@,SCRIPTS
@@ -170,8 +170,8 @@ $(DSKDW_F256JR):
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
-	$(MAKDIR) $@,BRAINFUCK
-	$(CPL) $(BF_FILES) $@,BRAINFUCK
+	$(MAKDIR) $@,BF
+	$(CPL) $(BF_FILES) $@,BF
 	$(MAKDIR) $@,SOUNDS
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
 	$(MAKDIR) $@,SCRIPTS
