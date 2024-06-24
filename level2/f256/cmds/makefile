@@ -12,7 +12,7 @@ AFLAGS      += -I$(3RDPARTY)/packages/cpm
 AFLAGS      += -I../defs
 LFLAGS		+= -L$(NITROS9DIR)/lib
 LFLAGS		+= -lf256 -lf256snd
-LFLAGS		+= -lnet -lalib
+LFLAGS		+= -lnet -lalib -lnos96809l2
 
 BASIC09	= basic09 runb inkey syscall foenix
 BF      = bf
@@ -25,7 +25,7 @@ CMDS    = asm attr backup binex build cmp copy \
 		makdir mdir megaread merge mfree minted mmap modpatch padrom park \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
-		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) play
+		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) play fstatus
 
 SHELLMODS	= shellplus echo iniz link load save unlink
 
