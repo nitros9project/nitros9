@@ -43,6 +43,8 @@ PALETTE	 = $(MD)/palette.sb
 # SCF DriveWire virtual networking/window driver
 SCDWV = 	$(MD)/scdwv.dr $(SCDWV_NET) $(SCDWV_WIN)
 
+SC16550 =   $(MD)/sc16550.dr $(MD)/t2_sc16550.dd
+
 # SCF DriveWire virtual networking descriptors
 SCDWV_NET  = $(MD)/n_scdwv.dd $(MD)/n1_scdwv.dd \
 		$(MD)/n2_scdwv.dd $(MD)/n3_scdwv.dd $(MD)/n4_scdwv.dd \
@@ -66,6 +68,7 @@ BOOTFILE_SD_F256K = $(KERNEL) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
 		$(MD)/dds0.dd \
 		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
+		$(SC16550) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(CMDSDIR)/shell_21
@@ -75,6 +78,7 @@ BOOTFILE_SD_F256JR = $(KERNEL) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
 		$(MD)/dds0.dd \
 		$(SCF) $(SCVT_F256JR) $(FONT) $(PALETTE) \
+		$(SC16550) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(CMDSDIR)/shell_21
@@ -84,6 +88,7 @@ BOOTFILE_DW_F256K = $(KERNEL) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
 		$(MD)/ddx0.dd \
 		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
+		$(SC16550) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(CMDSDIR)/shell_21
@@ -93,6 +98,7 @@ BOOTFILE_DW_F256JR = $(KERNEL) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
 		$(MD)/ddx0.dd \
 		$(SCF) $(SCVT_F256JR) $(FONT) $(PALETTE) \
+		$(SC16550) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(CMDSDIR)/shell_21
