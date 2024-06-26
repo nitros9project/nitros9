@@ -42,6 +42,15 @@ start               lbra      Init
 
 * Alternate IRQ routine - Called from vtio at 60Hz to scan the keyboard.
 AltISR              ldx       #VIA1.Base get the VIA1 base address
+**** Optimization: see if there's ANY key down (thanks for the idea, @gadget!)
+                    clr       VIA_ORA_IRA,x		set all outputs to 0
+				lda       #$FF				check for all bits set...
+				cmpa      VIA_ORB_IRB,x		...on port B
+				bne       scan@			if not equal, scan needs done
+				tst       VIA0.Base+VIA_ORB_IRB test for bit 7 (down/right key)
+				bmi       ex@                 if bit set, no key down -- exit
+scan@
+****				
                     ldy       #D.RowState point to the row state global area
                     lda       #%01111111 initialize the accumulator with the row scan value
                     bsr       loop@
