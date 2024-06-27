@@ -68,7 +68,6 @@ BOOTFILE_SD_F256K = $(KERNEL) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
 		$(MD)/dds0.dd \
 		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
-		$(SC16550) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(CMDSDIR)/shell_21
@@ -78,7 +77,6 @@ BOOTFILE_SD_F256JR = $(KERNEL) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
 		$(MD)/dds0.dd \
 		$(SCF) $(SCVT_F256JR) $(FONT) $(PALETTE) \
-		$(SC16550) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(CMDSDIR)/shell_21
@@ -88,7 +86,6 @@ BOOTFILE_DW_F256K = $(KERNEL) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
 		$(MD)/ddx0.dd \
 		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
-		$(SC16550) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(CMDSDIR)/shell_21
@@ -98,7 +95,6 @@ BOOTFILE_DW_F256JR = $(KERNEL) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
 		$(MD)/ddx0.dd \
 		$(SCF) $(SCVT_F256JR) $(FONT) $(PALETTE) \
-		$(SC16550) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(CMDSDIR)/shell_21
