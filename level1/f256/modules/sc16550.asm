@@ -1146,15 +1146,15 @@ L0678    fcb   $28,$e9,FCEn,1        110 baud, 1 byte FIFO, 1 byte counter
        ifne    f256
 * 25.175 MHz crystal based table - F256
 L0678    fcb   $37,$df,FCEn,1        110 baud, 1 byte FIFO, 1 byte counter
-         fcb   $0f,$00,FCEn,1        300 baud, 1 byte FIFO, 1 byte counter
-         fcb   $14,$7c,FCEn+FRT4,4   600 baud, 4 byte FIFO, 4 byte counter
-         fcb   $0a,$3e,FCEn+FRT8,8   1200 baud, 8 byte FIFO, 8 byte counter
-         fcb   $05,$1f,FCEn+FRT14,14 2400 baud, 14 byte FIFO, 14 byte counter
-         fcb   $02,$8f,FCEn+FRT14,14 4800 baud, 14 byte FIFO, 14 byte counter
-         fcb   $01,$47,FCEn+FRT14,14 9600 baud, 14 byte FIFO, 14 byte counter
-         fcb   $00,$a3,FCEn+FRT8,8   19200 baud, 8 byte FIFO, 8 byte counter
-         fcb   $00,$51,FCEn+FRT8,8   38400 baud, 8 byte FIFO, 8 byte counter
-         fcb   $00,$28,FCEn+FRT8,8   57600 baud, 8 byte FIFO, 8 byte counter (shouldn't Divs be $000F?)
+         fcb   $14,$7c,FCEn,1        300 baud, 1 byte FIFO, 1 byte counter
+         fcb   $0a,$3e,FCEn+FRT4,4   600 baud, 4 byte FIFO, 4 byte counter
+         fcb   $05,$1f,FCEn+FRT8,8   1200 baud, 8 byte FIFO, 8 byte counter
+         fcb   $02,$8f,FCEn+FRT14,14 2400 baud, 14 byte FIFO, 14 byte counter
+         fcb   $01,$47,FCEn+FRT14,14 4800 baud, 14 byte FIFO, 14 byte counter
+         fcb   $00,$a3,FCEn+FRT14,14 9600 baud, 14 byte FIFO, 14 byte counter
+         fcb   $00,$51,FCEn+FRT8,8   19200 baud, 8 byte FIFO, 8 byte counter
+         fcb   $00,$28,FCEn+FRT8,8   38400 baud, 8 byte FIFO, 8 byte counter
+         fcb   $00,$1b,FCEn+FRT8,8   57600 baud, 8 byte FIFO, 8 byte counter (shouldn't Divs be $000F?)
          fcb   $00,$0d,FCEn+FRT8,8   115200 baud, 8 byte FIFO, 8 byte counter (shouldn't Divs be $0007?)
          fcb   $00,$0a,FCEn+FRT8,8   undefined baud, 8 byte FIFO, 8 byte counter
          fcb   $00,$0a,FCEn+FRT8,8   undefined baud, 8 byte FIFO, 8 byte counter
