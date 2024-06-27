@@ -296,6 +296,10 @@ L00E8    lda   >$FF23       Get control register B from PIA1
          sta   >$FF92       And to actual GIME itself
          endc
          ifne  f256
+* Turn on interrupt controller's interrupt for the UART         
+         lda   INT_MASK_1
+         anda  #~INT_UART
+         sta   INT_MASK_1
          endc
          puls  pc,dp,b,cc   Restore regs, reenable IRQ's & return
 
@@ -1140,23 +1144,23 @@ L0678    fcb   $28,$e9,FCEn,1        110 baud, 1 byte FIFO, 1 byte counter
          fcb   $00,$25,FCEn+FRT8,8   31125 baud, 8 byte FIFO, 8 byte counter (for MIDI)
        else
        ifne    f256
-* 25.432 MHz crystal based table - F256
-L0678    fcb   $28,$e9,FCEn,1        110 baud, 1 byte FIFO, 1 byte counter
+* 25.175 MHz crystal based table - F256
+L0678    fcb   $37,$df,FCEn,1        110 baud, 1 byte FIFO, 1 byte counter
          fcb   $0f,$00,FCEn,1        300 baud, 1 byte FIFO, 1 byte counter
-         fcb   $07,$80,FCEn+FRT4,4   600 baud, 4 byte FIFO, 4 byte counter
-         fcb   $03,$c0,FCEn+FRT8,8   1200 baud, 8 byte FIFO, 8 byte counter
-         fcb   $01,$e0,FCEn+FRT14,14 2400 baud, 14 byte FIFO, 14 byte counter
-         fcb   $00,$f0,FCEn+FRT14,14 4800 baud, 14 byte FIFO, 14 byte counter
-         fcb   $00,$78,FCEn+FRT14,14 9600 baud, 14 byte FIFO, 14 byte counter
-         fcb   $00,$3c,FCEn+FRT8,8   19200 baud, 8 byte FIFO, 8 byte counter
-         fcb   $00,$1e,FCEn+FRT8,8   38400 baud, 8 byte FIFO, 8 byte counter
-         fcb   $00,$14,FCEn+FRT8,8   57600 baud, 8 byte FIFO, 8 byte counter (shouldn't Divs be $000F?)
-         fcb   $00,$0f,FCEn+FRT8,8   115200 baud, 8 byte FIFO, 8 byte counter (shouldn't Divs be $0007?)
+         fcb   $14,$7c,FCEn+FRT4,4   600 baud, 4 byte FIFO, 4 byte counter
+         fcb   $0a,$3e,FCEn+FRT8,8   1200 baud, 8 byte FIFO, 8 byte counter
+         fcb   $05,$1f,FCEn+FRT14,14 2400 baud, 14 byte FIFO, 14 byte counter
+         fcb   $02,$8f,FCEn+FRT14,14 4800 baud, 14 byte FIFO, 14 byte counter
+         fcb   $01,$47,FCEn+FRT14,14 9600 baud, 14 byte FIFO, 14 byte counter
+         fcb   $00,$a3,FCEn+FRT8,8   19200 baud, 8 byte FIFO, 8 byte counter
+         fcb   $00,$51,FCEn+FRT8,8   38400 baud, 8 byte FIFO, 8 byte counter
+         fcb   $00,$28,FCEn+FRT8,8   57600 baud, 8 byte FIFO, 8 byte counter (shouldn't Divs be $000F?)
+         fcb   $00,$0d,FCEn+FRT8,8   115200 baud, 8 byte FIFO, 8 byte counter (shouldn't Divs be $0007?)
          fcb   $00,$0a,FCEn+FRT8,8   undefined baud, 8 byte FIFO, 8 byte counter
          fcb   $00,$0a,FCEn+FRT8,8   undefined baud, 8 byte FIFO, 8 byte counter
          fcb   $00,$0a,FCEn+FRT8,8   undefined baud, 8 byte FIFO, 8 byte counter
          fcb   $00,$0a,FCEn+FRT8,8   undefined baud, 8 byte FIFO, 8 byte counter
-         fcb   $00,$25,FCEn+FRT8,8   31125 baud, 8 byte FIFO, 8 byte counter (for MIDI)
+         fcb   $00,$32,FCEn+FRT8,8   31125 baud, 8 byte FIFO, 8 byte counter (for MIDI)
        else
 * 29.4912 MHz crystal based table - Zippsterzone MegaMiniMPI - Deek's experimental settings.
 L0678    fcb   $41,74,$01,01  * 16756
