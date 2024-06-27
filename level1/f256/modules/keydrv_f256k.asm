@@ -10,6 +10,11 @@
 *  2        2024/06/17  Boisy G. Pitre (Waco, TX)
 * Fixed the SS.KySns routine to properly set/clear D.KySns bits for supported keys,
 * and added support for V.PAU.
+*
+*  3        2024/06/26  Boisy G. Pitre
+* Added an optimization check to prevent needing to do a full scan every SOF interrupt
+* thanks to a suggestion by @gadget.
+
 
                     use       defsfile
                     use       f256vtio.d
@@ -43,7 +48,10 @@ start               lbra      Init
 * Alternate IRQ routine - Called from vtio at 60Hz to scan the keyboard.
 AltISR              ldx       #VIA1.Base get the VIA1 base address
 **** Optimization: see if there's ANY key down (thanks for the idea, @gadget!)
-                    clr       VIA_ORA_IRA,x		set all outputs to 0
+**** Requires a new global to keep track of how many keys are down.
+                tst       D.F256KKyDn       one or more keys currently down?
+                bne       scan@             scan if so
+                clr       VIA_ORA_IRA,x		set all outputs to 0
 				lda       #$FF				check for all bits set...
 				cmpa      VIA_ORB_IRB,x		...on port B
 				bne       scan@			if not equal, scan needs done
@@ -116,7 +124,9 @@ g@                  lda       ,x         load A with the key character at X -- t
                     lsl       3,s       shift B on stack (up/down state)
                     bcc       keydown@  if carry set, key is going up -- ignore it
 * Key is going UP
-keyup@              cmpa      #META			is this the META key
+keyup@
+                    dec      D.F256KKyDn    decrement the key down count
+                    cmpa      #META			is this the META key
                     bne       snsup@			branch if not
 				clr       V.META,u			else clear the META flag
 				lbra      nextrow			and continue processing
@@ -133,8 +143,10 @@ l@                  tst       ,x+				are we at the end of the table?
 				stb       D.KySns			and save it back
 				lbra      nextrow			continue processing
 * Key is going DOWN
-keydown@            cmpa      #META			is this the META key?
-                    bne       snsdn@			branch if not
+keydown@
+                inc       D.F256KKyDn   increment the key down count
+                cmpa      #META			is this the META key?
+                bne       snsdn@			branch if not
 				sta       V.META,u			else set the META flag
 				lbra      nextrow			and continue processing
 snsdn@				

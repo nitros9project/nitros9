@@ -61,6 +61,7 @@ D.KySns             rmb       1
 * Borrow 9 bytes from "CoCo" specific area of system globals for F256's use.
                     org       D.WDAddr
 D.RowState          RMB       9
+D.F256KKyDn         RMB       1
 
 * SS.KySns bit locations
 SHIFTBIT	equ	 %00000001
