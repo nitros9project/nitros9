@@ -42,7 +42,7 @@ rev                 set       $07
                     fcb       C$BSP               backspace echo character
                     fcb       C$BELL              line overflow character (bell)
                     fcb       $00                 mode byte for terminal descriptor
-                    fcb       B2400               baud rate
+                    fcb       B9600               baud rate
                     fdb       name                copy of descriptor name address
                     fcb       $00                 acia xon char (not used, maybe future assignment?)
                     fcb       $00                 acia xoff char (not used, maybe future assignment?)
