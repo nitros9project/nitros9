@@ -72,12 +72,12 @@ BOOTFILE_F256K = $(KERNEL) $(DWIO) \
 		$(CLOCK) \
 		sysgo autoex \
 		$(CMDSDIR)/shell_21 $(CMDSDIR)/debug \
-		$(CMDSDIR)/date $(CMDSDIR)/devs \
-		$(CMDSDIR)/irqs $(CMDSDIR)/procs \
+		$(CMDSDIR)/date $(CMDSDIR)/procs \
 		$(CMDSDIR)/mfree $(CMDSDIR)/mdir \
 		$(CMDSDIR)/display $(CMDSDIR)/iniz \
 		$(CMDSDIR)/deiniz $(CMDSDIR)/link \
-		$(CMDSDIR)/unlink $(CMDSDIR)/tmode
+		$(CMDSDIR)/unlink $(CMDSDIR)/tmode \
+		$(CMDSDIR)/bootos9
 
 BOOTFILE_F256JR = $(KERNEL) $(DWIO) \
 		$(RBF) $(RBFDW) \
@@ -87,12 +87,12 @@ BOOTFILE_F256JR = $(KERNEL) $(DWIO) \
 		$(CLOCK) \
 		sysgo autoex \
 		$(CMDSDIR)/shell_21 $(CMDSDIR)/debug \
-		$(CMDSDIR)/date $(CMDSDIR)/devs \
-		$(CMDSDIR)/irqs $(CMDSDIR)/procs \
+		$(CMDSDIR)/date $(CMDSDIR)/procs \
 		$(CMDSDIR)/mfree $(CMDSDIR)/mdir \
 		$(CMDSDIR)/display $(CMDSDIR)/iniz \
 		$(CMDSDIR)/deiniz $(CMDSDIR)/link \
-		$(CMDSDIR)/unlink
+		$(CMDSDIR)/unlink \
+		$(CMDSDIR)/bootos9
 
 ALLOBJS		= init sysgo autoex bootfile_f256k bootfile_f256jr booter_ram_f256k booter_flash_f256k \
 				booter_ram_f256jr booter_flash_f256jr

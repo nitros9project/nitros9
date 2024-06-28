@@ -126,7 +126,7 @@ UnkOptL             equ       *-UnkOpt
 *   !   Direct Page   !
 *   +-----------------+  <-- U, DP       (lowest address)
 *
-*   D = parameter area size
+*   B = parameter area size
 *  PC = module entry point abs. address
 *  CC = F=0, I=0, others undefined
 

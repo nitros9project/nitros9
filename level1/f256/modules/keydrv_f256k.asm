@@ -10,6 +10,11 @@
 *  2        2024/06/17  Boisy G. Pitre (Waco, TX)
 * Fixed the SS.KySns routine to properly set/clear D.KySns bits for supported keys,
 * and added support for V.PAU.
+*
+*  3        2024/06/26  Boisy G. Pitre
+* Added an optimization check to prevent needing to do a full scan every SOF interrupt
+* thanks to a suggestion by @gadget.
+
 
                     use       defsfile
                     use       f256vtio.d
@@ -17,7 +22,7 @@
 tylg                set       Systm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       2
+edition             set       3
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -29,8 +34,8 @@ name                fcs       /keydrv/
                     fcb       edition
 
                     org       V.KeyDrvStat
-V.META              rmb       1         the state of the Foenix "META" key
-DownRightStates     rmb       1         the state of the down and right arrow keys during polling
+V.META              rmb       1                 the state of the Foenix "META" key
+DownRightStates     rmb       1                 the state of the down and right arrow keys during polling
 
 * keydrv has three 3-byte entry points:
 *   - Init
@@ -43,30 +48,33 @@ start               lbra      Init
 * Alternate IRQ routine - Called from vtio at 60Hz to scan the keyboard.
 AltISR              ldx       #VIA1.Base get the VIA1 base address
 **** Optimization: see if there's ANY key down (thanks for the idea, @gadget!)
-                    clr       VIA_ORA_IRA,x set all outputs to 0
-                    lda       #$FF      check for all bits set...
-                    cmpa      VIA_ORB_IRB,x ...on port B
-                    bne       scan@     if not equal, scan needs done
-                    tst       VIA0.Base+VIA_ORB_IRB test for bit 7 (down/right key)
-                    bmi       ex@       if hi bit set, no key changed -- exit
+**** Requires a new global to keep track of how many keys are down.
+                tst       D.F256KKyDn       one or more keys currently down?
+                bne       scan@             scan if so
+                clr       VIA_ORA_IRA,x		set all outputs to 0
+				lda       #$FF				check for all bits set...
+				cmpa      VIA_ORB_IRB,x		...on port B
+				bne       scan@			if not equal, scan needs done
+				tst       VIA0.Base+VIA_ORB_IRB test for bit 7 (down/right key)
+				bmi       ex@                 if bit set, no key down -- exit
 scan@
-****
+****				
                     ldy       #D.RowState point to the row state global area
                     lda       #%01111111 initialize the accumulator with the row scan value
                     bsr       loop@
 * Handle down and right arrow
                     sta       VIA_ORA_IRA,x store A in VIA #1's port A
-                    lda       DownRightStates,u get the down/right state byte
-                    tfr       a,b       save into B
-                    eora      ,y        XOR A with the row state at Y
+                    lda       DownRightStates,u  get the down/right state byte
+                    tfr       a,b save into B
+                    eora      ,y XOR A with the row state at Y
                     bne       HandleRow if non-zero, either down/right changed positions -- go handle it
-                    rts                 else return from the ISR
+                    rts       else return from the ISR
 loop@               sta       VIA_ORA_IRA,x save the row scan value to the VIA1 output
                     pshs      a         save it on the stack for now
 * handle extra column here
                     lda       VIA0.Base+VIA_ORB_IRB load A with VIA #0's port B
-                    rola                rotate A to the left (hi bit goes in carry)
-                    rol       DownRightStates,u rotate the carry into bit 0 of down/right state byte
+                    rola                            rotate A to the left (hi bit goes in carry)
+                    rol       DownRightStates,u          rotate the carry into bit 0 of down/right state byte
                     lda       VIA_ORB_IRB,x get the column value for this row
                     tfr       a,b       save a copy to B
                     eora      ,y        XOR with the last row state value
@@ -93,107 +101,111 @@ handleloop          decb                decrement the counter
                     bne       kl@       continue if more
                     puls      d,x,y,pc  restore and return
 kchg@
-                    pshs      d         save D on the stack
+                    pshs      d          save D on the stack
 * Get character from table
-                    tfr       y,d       bring the row pointer into D
+                    tfr       y,d        bring the row pointer into D
                     subd      #D.RowState B now holds the row we're interested in
-                    lda       #8        load A with 8
-                    mul                 B = offset into the key table for the row we want
+                    lda       #8         load A with 8
+                    mul                  B = offset into the key table for the row we want
                     leax      F256KKeys,pcr point to the non-SHIFT key table
-                    lda       D.KySns   get the key sense values
-                    bita      #SHIFTBIT check for SHIFT down
-                    beq       noshift@  branch of SHIFT is UP
+                    lda       D.KySns    get the key sense values
+                    bita      #SHIFTBIT  check for SHIFT down
+                    beq       noshift@   branch of SHIFT is UP
                     leax      F256KShiftKeys,pcr else point to the SHIFT key table
-noshift@            abx                 X = pointer to desired row in key table
-                    lda       2,s       get the byte that holds the changed keys
-r@                  rola                roll bit 7 of A into the carry
-                    bcs       g@        branch if set
-                    leax      1,x       else advance X
-                    bra       r@        and continue
-g@                  lda       ,x        load A with the key character at X -- this is the key we want!
+noshift@            abx                  X = pointer to desired row in key table
+                    lda       2,s        get the byte that holds the changed keys
+r@                  rola                 roll bit 7 of A into the carry
+                    bcs       g@         branch if set
+                    leax      1,x        else advance X
+                    bra       r@         and continue
+g@                  lda       ,x         load A with the key character at X -- this is the key we want!
 * A = Key character
 * is it key up or key down?
                     lsl       3,s       shift B on stack (up/down state)
                     bcc       keydown@  if carry set, key is going up -- ignore it
 * Key is going UP
-keyup@              cmpa      #META     is this the META key
-                    bne       snsup@    branch if not
-                    clr       V.META,u  else clear the META flag
-                    lbra      nextrow   and continue processing
-snsup@
-                    leax      KySnsTbl,pcr point to the key sense UP table
-l@                  tst       ,x+       are we at the end of the table?
-                    lbeq      nextrow   branch if so
-                    cmpa      -1,x      else compare key character against first byte in table entry
-                    bne       l@        branch if not the same (go to the top and process the next table entry)
+keyup@
+                    dec      D.F256KKyDn    decrement the key down count
+                    cmpa      #META			is this the META key
+                    bne       snsup@			branch if not
+				clr       V.META,u			else clear the META flag
+				lbra      nextrow			and continue processing
+snsup@				
+                    leax      KySnsTbl,pcr		point to the key sense UP table
+l@                  tst       ,x+				are we at the end of the table?
+				lbeq      nextrow			branch if so
+				cmpa      -1,x				else compare key character against first byte in table entry
+				bne       l@	 			branch if not the same (go to the top and process the next table entry)
 * Process the key character in A relative to the key sense table byte at X
-                    ldb       ,x        get the key sense bit in the table entry
-                    comb                complement it
-                    andb      D.KySns   AND it with the key sense flag
-                    stb       D.KySns   and save it back
-                    lbra      nextrow   continue processing
+				ldb       ,x				get the key sense bit in the table entry
+				comb						complement it
+                    andb      D.KySns			AND it with the key sense flag
+				stb       D.KySns			and save it back
+				lbra      nextrow			continue processing
 * Key is going DOWN
-keydown@            cmpa      #META     is this the META key?
-                    bne       snsdn@    branch if not
-                    sta       V.META,u  else set the META flag
-                    lbra      nextrow   and continue processing
-snsdn@
+keydown@
+                inc       D.F256KKyDn   increment the key down count
+                cmpa      #META			is this the META key?
+                bne       snsdn@			branch if not
+				sta       V.META,u			else set the META flag
+				lbra      nextrow			and continue processing
+snsdn@				
 
-                    leax      KySnsTbl,pcr point to the key sense DOWN table
-l@                  tst       ,x++      are we at the end of the table?
-                    beq       isitcaps@ branch if so
-                    cmpa      -2,x      else compare key character against first byte of previous table entry
-                    bne       l@        branch if not the same (go to the top and process the next table entry)
-                    ldb       D.KySns   get the key sense flag
-                    orb       -1,x      OR it with the table byte at -1,X
-                    stb       D.KySns   and save it back
-                    cmpa      #$F0      is this key character >= $F0 (modifier key)
-                    lbhs      nextrow   if so, continue processing
+                    leax      KySnsTbl,pcr		point to the key sense DOWN table
+l@                  tst       ,x++				are we at the end of the table?
+				beq      isitcaps@			branch if so
+				cmpa      -2,x				else compare key character against first byte of previous table entry
+				bne       l@				branch if not the same (go to the top and process the next table entry)
+                ldb       D.KySns			get the key sense flag
+                    orb       -1,x				OR it with the table byte at -1,X
+				stb       D.KySns			and save it back
+				cmpa      #$F0				is this key character >= $F0 (modifier key)
+				lbhs      nextrow			if so, continue processing
 * Up/Down/Left/Right keys are marked with special values between $E0 and $EF
-                    cmpa      #$E0      is the key code < $E0
-                    blo       isitcaps@ yes, keep processing it
-                    suba      #$E0      else subtract $E0 from it to get true value
-isitcaps@           cmpa      #CAPS     is the key code the CAPS Lock key?
-                    bne       z@        branch if not
-                    com       V.CAPSLck,u else complement the state
+                    cmpa      #$E0				is the key code < $E0
+				blo       isitcaps@			yes, keep processing it
+				suba      #$E0				else subtract $E0 from it to get true value
+isitcaps@           cmpa      #CAPS			is the key code the CAPS Lock key?
+                    bne       z@				branch if not
+                    com       V.CAPSLck,u		else complement the state
 * Set/Clear CAPS Lock LED
-                    ldx       #SYS0     point to the hardware for changing the LED
-                    ldb       ,x        get the value
-                    tst       V.CAPSLck,u did CAPS Lock get turned off?
-                    beq       ledoff@   branch if so to turn off LED
-ledon@              orb       #SYS_CAP_EN else set the hardware CAPS Lock enable bit
-                    bra       ledsave@  and save it
-ledoff@             andb      #^SYS_CAP_EN clear the hardware CAPS Lock enable bit
-ledsave@            stb       ,x        and save it
-                    lbra      nextrow   continue processing
+                    ldx       #SYS0			point to the hardware for changing the LED
+                    ldb       ,x				get the value
+                    tst       V.CAPSLck,u		did CAPS Lock get turned off?
+                    beq       ledoff@			branch if so to turn off LED
+ledon@              orb       #SYS_CAP_EN		else set the hardware CAPS Lock enable bit
+                    bra       ledsave@			and save it
+ledoff@             andb      #^SYS_CAP_EN		clear the hardware CAPS Lock enable bit
+ledsave@            stb       ,x				and save it
+                    lbra      nextrow			continue processing
 * Handle CAPS LOCK engaged
-z@                  tst       V.CAPSLck,u is CAPS Lock engaged?
-                    beq       z1@       branch if not
-                    cmpa      #'a       else compare key character to 'a'
-                    blo       z1@       branch if it's lower (not eligible for CAPS modification)
-                    cmpa      #'z       compare key character to 'z'
-                    bhi       z1@       branch if it's higher (not eligible for CAPS modification)
-                    suba      #$20      convert the lowercase character to uppercase
+z@                  tst       V.CAPSLck,u		is CAPS Lock engaged?
+                    beq       z1@				branch if not
+                    cmpa      #'a				else compare key character to 'a'
+                    blo       z1@				branch if it's lower (not eligible for CAPS modification)
+                    cmpa      #'z				compare key character to 'z'
+                    bhi       z1@				branch if it's higher (not eligible for CAPS modification)
+                    suba      #$20				convert the lowercase character to uppercase
 * Handle CTRL down
-z1@                 ldb       D.KySns   get the key sense flags
-                    bitb      #CTRLBIT  is CTRL down?
-                    beq       z2@       branch if not
-                    anda      #$5F      else make the character an uppercase one
-                    suba      #$40      and subtract to get the key's CTRL value
+z1@                 ldb       D.KySns			get the key sense flags
+                    bitb      #CTRLBIT			is CTRL down?
+                    beq       z2@				branch if not
+                    anda      #$5F				else make the character an uppercase one
+                    suba      #$40				and subtract to get the key's CTRL value
 * Handle ALT down
-z2@                 bitb      #ALTBIT   is ALT down?
-                    beq       z3@       branch if not
-                    anda      #$5F      else make the character an uppercase one
-                    adda      #$40      and add to get the key's ALT value
+z2@                 bitb      #ALTBIT			is ALT down?
+                    beq       z3@				branch if not
+                    anda      #$5F				else make the character an uppercase one
+                    adda      #$40				and add to get the key's ALT value
 * Handle META down
-z3@                 tst       V.META,u  is META down?
-                    beq       BufferChar branch if not
-                    leax      MetaTab,pcr else point to the META table
-zl@                 tst       ,x        is the character at X zero?
-                    beq       BufferChar branch if so
-                    cmpa      ,x++      else compare the key character to the entry
-                    bne       zl@       branch if not the same
-                    lda       -1,x      load A with corresponding entry
+z3@                 tst       V.META,u			is META down?
+                    beq       BufferChar		branch if not
+                    leax      MetaTab,pcr		else point to the META table
+zl@                 tst       ,x				is the character at X zero?
+                    beq       BufferChar		branch if so
+                    cmpa      ,x++				else compare the key character to the entry
+                    bne       zl@				branch if not the same
+                    lda       -1,x				load A with corresponding entry
 
 * Advance the circular buffer one character.
 BufferChar          ldb       V.IBufH,u get buffer head pointer in B
@@ -217,7 +229,7 @@ bye@
 * Wake up any process if it's sleeping waiting for input.
 wake@               ldb       #S$Wake   get the wake signal
                     lda       V.WAKE,u  is there a process asleep waiting for input?
-noproc@             beq       nextrow   branch if not
+noproc@             beq       nextrow     branch if not
                     clr       V.WAKE,u  else clear the wake flag
 send@               os9       F$Send    and send the signal in B
 nextrow             puls      d
@@ -256,24 +268,24 @@ MetaTab             fcb       '7,'~
 *    CC = carry set on error
 *    B  = error code
 *
-Init                ldx       #VIA1.Base point X to the VIA1
-                    clr       VIA_IER,x clear interrupts
-                    lda       #%11111111 load A with $FF
-                    sta       VIA_DDRA,x set all bits of port A (outputs)
-                    sta       VIA_ORA_IRA,x and set the corresponding values to 1
-                    clr       VIA_DDRB,x clear all bits of port B (inputs)
-                    ldx       #VIA0.Base point X to the VIA0
-                    clr       VIA_IER,x clear interrupts
-                    lda       #%0111111 load A with $7F
-                    sta       VIA_DDRA,x set bits 6-0 of port A (outputs)
-                    sta       VIA_ORA_IRA,x and set the corresponding values to 1
-                    clr       VIA_DDRB,x clear all bits of port B (inputs)
-                    clr       VIA_ORB_IRB,x and set the corresonding values to 0
-                    ldx       #D.RowState point to the row state globals
-                    ldd       #$FF*256+9 A = $FF, B = 9 (bytes to set)
-l@                  sta       ,x+       set byte at X with $FF and increment X
-                    decb                decrement B
-                    bne       l@        keep doing until B is 0
+Init                ldx       #VIA1.Base        point X to the VIA1
+                    clr       VIA_IER,x         clear interrupts
+                    lda       #%11111111        load A with $FF
+                    sta       VIA_DDRA,x        set all bits of port A (outputs)
+                    sta       VIA_ORA_IRA,x     and set the corresponding values to 1
+                    clr       VIA_DDRB,x        clear all bits of port B (inputs)
+                    ldx       #VIA0.Base        point X to the VIA0
+                    clr       VIA_IER,x         clear interrupts
+                    lda       #%0111111         load A with $7F
+                    sta       VIA_DDRA,x        set bits 6-0 of port A (outputs)
+                    sta       VIA_ORA_IRA,x     and set the corresponding values to 1
+                    clr       VIA_DDRB,x        clear all bits of port B (inputs)
+                    clr       VIA_ORB_IRB,x     and set the corresonding values to 0
+                    ldx       #D.RowState       point to the row state globals
+                    ldd       #$FF*256+9        A = $FF, B = 9 (bytes to set)
+l@                  sta       ,x+               set byte at X with $FF and increment X
+                    decb                        decrement B
+                    bne       l@                keep doing until B is 0
 Term                rts                 return to the caller
 
 * F256K key table
@@ -314,15 +326,15 @@ RSHIFT              set       LSHIFT
 INS                 set       15
 
 KySnsTbl            fcb       LSHIFT,SHIFTBIT
-                    fcb       RALT,ALTBIT
-                    fcb       LCTRL,CTRLBIT
-                    fcb       C$SPAC,SPACEBIT
-                    fcb       UP,UPBIT
-                    fcb       DOWN,DOWNBIT
-                    fcb       LEFT,LEFTBIT
-                    fcb       RIGHT,RIGHTBIT
-                    fcb       0
-
+			     fcb       RALT,ALTBIT
+				fcb       LCTRL,CTRLBIT
+				fcb       C$SPAC,SPACEBIT
+				fcb       UP,UPBIT
+				fcb       DOWN,DOWNBIT
+				fcb       LEFT,LEFTBIT
+				fcb       RIGHT,RIGHTBIT
+				fcb       0
+				
 F256KKeys
                     fcb       BREAK,'q,META,C$SPAC,'2,LCTRL,BKSP,'1
                     fcb       '/,TAB,RALT,RSHIFT,$01,'','],'=
@@ -334,7 +346,7 @@ F256KKeys
                     fcb       UP,F5,F3,F1,F7,LEFT,ENTER,BKSP
                     fcb       0,RIGHT,0,0,0,0,0,DOWN
 
-F256KShiftKeys
+F256KShiftKeys 
                     fcb       BREAK,'Q,META,C$SPAC,'@,LCTRL,$18,'!
                     fcb       '?,TAB,RALT,RSHIFT,$01,'",'},'+
                     fcb       '<,'{,':,'>,CAPS,'L,'P,'_
