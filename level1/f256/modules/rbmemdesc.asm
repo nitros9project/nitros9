@@ -1,5 +1,5 @@
 ********************************************************************
-* c0 - rbfnxcart device descriptor
+* rbmemdesc device descriptor
 *
 * $Id$
 *
@@ -17,16 +17,28 @@ SAS                 equ       4
 
                     mod       eom,name,tylg,atrv,mgrnam,drvnam
 
-                    fcb       DIR.+SHARE.+PREAD.+PWRIT.+PEXEC.+READ.+WRITE.+EXEC. mode byte
+                    ifdef     CART
+* Geometry values equals the size of the cartridge memory: 32 8K blocks (262,144 bytes)
+tracks              equ       256                 number of tracks
+blockstart          equ       $80                 starting block number
+modes               equ       DIR.+SHARE.+PREAD.+PWRIT.+PEXEC.+READ.+WRITE.+EXEC.
+                    else
+* Geometry values equals the size of the flash area: 60 8K blocks (491,520 bytes)
+tracks              equ       480                 number of tracks
+blockstart          equ       $40                 starting block number
+modes               equ       DIR.+SHARE.+PREAD.+PEXEC.+READ.+EXEC.
+                    endc
+
+                    fcb       modes
                     fcb       HW.Page             extended controller address
-                    fdb       $FFE0               physical controller address
+                    fcb       $FF00+blockstart    physical controller address (lower 8 bits used for start block)
                     fcb       initsize-*-1        initialization table size
                     fcb       DT.RBF              device type:0=scf,1=rbf,2=pipe,3=scf
                     fcb       $00                 drive number
                     fcb       $00                 step rate
                     fcb       $20                 drive device type
                     fcb       $01                 media density:0=single,1=double
-                    fdb       256                 number of tracks
+                    fdb       tracks              number of tracks
                     fcb       $01                 number of sides
                     fcb       $01                 verify disk writes:0=on
                     fdb       4                   # of sectors per track
@@ -35,13 +47,13 @@ SAS                 equ       4
                     fcb       SAS                 minimum size of sector allocation
 initsize            equ       *
 
-                    ifne      DD
-name                fcs       /dd/
-                    else
+                    ifne      CART
 name                fcs       /c0/
+                    else
+name                fcs       /f0/
                     endc
 mgrnam              fcs       /rbf/
-drvnam              fcs       /rbfnxcart/
+drvnam              fcs       /rbmem/
 
                     emod
 eom                 equ       *

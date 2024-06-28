@@ -16,7 +16,7 @@ SYSMODS		= ioman init sysgo
 CLOCKS      = clock clock2_f256
 
 RBF		= rbf.mn rbdw.dr dwio.sb ddx0.dd x0.dd x1.dd x2.dd x3.dd \
-          rbfnxcart.dr ddc0.dd c0.dd \
+          rbmem.dr c0.dd f0.dd \
 		rbsuper.dr \
           llfnxsd.sb dds0.dd s0.dd
 
@@ -58,11 +58,11 @@ dds0.dd: rbfnxsddesc.asm
 s0.dd: rbfnxsddesc.asm
 	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(FNXSDFLAGS)
 
-# rbfnxcart descriptors
-ddc0.dd: rbfnxcartdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDD=1 -DDNum=0
+# rbmem descriptors
+c0.dd: rbmemdesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DCART=1 -DDNum=0
 
-c0.dd: rbfnxcartdesc.asm
+f0.dd: rbmemdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
 
 # DriveWire 3 RBF descriptors
@@ -80,6 +80,10 @@ x2.dd: dwdesc.asm
 
 x3.dd: dwdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=3
+
+# 16550 descriptors
+t2_sc16550.dd: sc16550desc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
 
 # DriveWire 3 SCF descriptors
 term_scdwv.dt: scdwvdesc.asm
@@ -132,9 +136,6 @@ n13_scdwv.dd: scdwvdesc.asm
 
 midi_scdwv.dd: scdwvdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=14
-
-t2_sc16550.dd: sc16550desc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
 
 term_z_scdwv.dt: scdwvdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=16
