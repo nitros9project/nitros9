@@ -759,7 +759,7 @@ L041C    orcc  #IntMasks    No empty, shut IRQ's off
          std   <u0034       Save it into static mem
          bra   L040C        Keep going until transmit buffer is empty
 
-* transitter holding register on 16550 is empty
+* transmitter holding register on 16550 is empty
 L042B    leas  4,s          Eat temp stack
          clr   IrEn,x       1,x - Disable 16550 Interrupt enable
          clr   MCtrl,x      4,x - Clear Modem control register on 16550
@@ -773,9 +773,9 @@ L042B    leas  4,s          Eat temp stack
 
 * Suspend current process
          ifgt  Level-1
-L0442    ldd   >D.Proc      Get current process ptr
+L0442    ldx   >D.Proc      Get current process ptr
+         lda   P$ID,x       Get process status
          sta   <V.WAKE      Save process # as one to wake up upon I/O completion
-         tfr   d,x          Move process ptr to X
          lda   P$State,x    Get process status
          ora   #Suspend     Set Suspend state
          sta   P$State,x    And save it back
@@ -787,7 +787,7 @@ L0442    ldd   >D.Proc      Get current process ptr
 L0442    ldx   >D.Proc      Get current process ptr
          lda   P$ID,x
          sta   <V.WAKE      Save process # as one to wake up upon I/O completion
-         ldx   #$0000       Sleep forever
+         ldx   #$0001       Sleep remainder of current time slice
          os9   F$Sleep  
          rts   
          endc

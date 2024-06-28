@@ -20,8 +20,8 @@ RBF		= $(MD)/rbf.mn
 # RBF DriveWire driver
 RBFDW     = $(MD)/rbdw.dr $(MD)/x0.dd $(MD)/x1.dd $(MD)/x2.dd $(MD)/x3.dd
 
-# RBF Foenix Flash/RAM disk driver
-RBFNXCART = $(MD)/rbfnxcart.dr $(MD)/c0.dd
+# RBF Foenix Cartridge/RAM disk driver
+RBMEM = $(MD)/rbmem.dr $(MD)/c0.dd $(MD)/f0.dd
 
 # RBF RBSuper driver
 RBSUPER   = $(MD)/rbsuper.dr
@@ -66,7 +66,7 @@ CLOCK	= $(MD)/clock $(MD)/clock2_f256
 
 BOOTFILE_F256K = $(KERNEL) $(DWIO) \
 		$(RBF) $(RBFDW) \
-		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
+		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
 		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
 		$(PIPE) \
 		$(CLOCK) \
@@ -81,7 +81,7 @@ BOOTFILE_F256K = $(KERNEL) $(DWIO) \
 
 BOOTFILE_F256JR = $(KERNEL) $(DWIO) \
 		$(RBF) $(RBFDW) \
-		$(RBSUPER) $(RBFNXSD) $(RBFNXCART) \
+		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
 		$(SCF) $(SCVT_F256JR) $(FONT) $(PALETTE) \
 		$(PIPE) \
 		$(CLOCK) \

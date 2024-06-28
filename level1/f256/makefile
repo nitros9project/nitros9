@@ -182,3 +182,21 @@ $(DSKDW_F256JR):
 info:
 	@$(ECHO) "*** NitrOS-9/$(CPU) Level $(LEVEL) for the $(MACHINE) ***"
 	@$(foreach dsk, $(DSKS), $(ECHO) $(dsk);)
+
+
+c1.dsk:
+	$(OS9FORMAT) -q -t120 -st16 $@ -n"F256 Flash Disk"
+	$(MAKDIR) $@,CMDS
+	$(CD) cmds; $(OS9COPY) $(CMDS) ../$@,CMDS
+	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
+
+flash_c1: c1.dsk
+	rm bulk.csv
+	i=0; while [ "$$i" -le 59 ]; do \
+		vv=`printf "%02x" $$i`; \
+		dd status=none bs=8k skip=$$i count=1 if=$^ of=c1_$$vv; \
+		echo "$$vv,c1_$$vv" >> bulk.csv; \
+		i=$$((i + 1));\
+	done	
+	bulk_flash bulk.csv
+	rm c1_* bulk.csv
