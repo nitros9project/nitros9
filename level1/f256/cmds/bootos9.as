@@ -40,13 +40,6 @@ PrintSearch         lbsr      PRINTS
                     ldb       #'.
                     lbra      PUTC
 
-PrintPathNotFound   ldx       bootpath,u
-                    lbsr      PUTS
-                    lbsr      PRINTS
-                    fcc       " not found."
-                    fcb       C$CR,0
-                    lbra      PUTS
-
 **********************************************************
 * Entry Point
 *
@@ -61,7 +54,7 @@ PrintPathNotFound   ldx       bootpath,u
 *   !   Direct Page   !
 *   +-----------------+  <-- U, DP       (lowest address)
 *
-*   D = parameter area size
+*   B = parameter area size
 *  PC = module entry point abs. address
 *  CC = F=0, I=0, others undefined
 *
@@ -74,7 +67,8 @@ __start
                     beq       ram@      branch if so
 * We're in FLASH mode... continue.
 * Nil out the CR at the end of the parameter string.
-                    clr       d,x       clear byte at D,X (nil out carriage return)
+                    decb
+                    clr       b,x       clear byte at D,X (nil out carriage return)
                     tst       ,x        any parameters?
                     beq       ex@       no... just exit
                     stx       bootpath,u save the boot pathlist pointer
@@ -88,7 +82,7 @@ ex@                 os9       F$Exit    exit
 *
 * Entry: X = The pointer to the path of the bootfile to load.
 *
-* Exit:  X = address to jump to if no error.
+* Exit:  X = The address to jump to if no error.
 *       CC = carry clear indicating no error; or set indicating error.
 BootOS9             bsr       PrintSearch print the message
                     ldx       bootpath,u point to the boot pathlist
@@ -96,11 +90,11 @@ BootOS9             bsr       PrintSearch print the message
                     os9       I$Open    open it
                     bcc       FoundIt   branch if found
 print_and_bye
-                    pshs      b
+                    pshs      b,cc
                     lbsr      PUTCR     put a CR
-                    puls      b
+                    puls      b,cc
                     cmpb      #E$PNNF   is it a pathname not found error?
-                    beq       PrintPathNotFound yes, go print
+                    lbeq      PrintPathNotFound yes, go print
                     cmpb      #E$MNF    is it a module (kernel) not found error?
                     lbeq      PrintKrnNotFound yes, go print
                     cmpb      #E$Unit   is it a unit (device) error?
@@ -111,7 +105,6 @@ print_and_bye
                     lbeq      PrintReadError yes, go print
                     cmpb      #E$Sect   is it a bad sector error?
                     lbeq      PrintBadSectorError yes, go print
-n@                  os9       F$PErr    show the OS-9 error
 ret                 rts                 return
 
 * Get the bootfile size.
@@ -328,28 +321,36 @@ Page2Block          tfr       a,b       copy A to b
 PrintDeviceError    lbsr      PRINTS
                     fcc       "The device has an error."
                     fcb       C$CR,0
-                    rts
+                    bra       badex
 
 PrintNotReadyError  lbsr      PRINTS
                     fcc       "The device isn't ready or available."
                     fcb       C$CR,0
-                    rts
+                    bra       badex
 
 PrintBadSectorError lbsr      PRINTS
                     fcc       "A sector error occurred."
                     fcb       C$CR,0
+badex               orcc      #Carry
                     rts
 
 PrintReadError      lbsr      PRINTS
                     fcc       "A read error occurred."
                     fcb       C$CR,0
-                    rts
+                    bra       badex
 
 PrintKrnNotFound    lbsr      PRINTS
                     fcc       "Can't locate the kernel in the bootfile."
                     fcb       C$CR,0
-                    rts
+                    bra       badex
 
+PrintPathNotFound   ldx       bootpath,u
+                    lbsr      PUTS
+                    lbsr      PRINTS
+                    fcc       " not found."
+                    fcb       C$CR,0
+                    bra       badex
+                    
 PrintFound          ldx       bootpath,u
                     lbsr      PUTS
                     lbsr      PRINTS
