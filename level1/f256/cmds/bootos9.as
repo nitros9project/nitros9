@@ -149,9 +149,8 @@ shift@              lsra                A = A / 2
                     inca                else increment A
 * A = the number of 8KB blocks we need to hold the bootfile.
 cont@               sta       bootblocks,u save the 8KB block count
-                    ldd       #$FFB0    point to end of F256 MMU image registers
-                    subb      bootblocks,u subtract the number of 8KB blocks needed
-                    subb      #$A8
+                    lda       #$8       start with 8 8K blocks (64K)
+                    suba      bootblocks,u subtract the number of 8KB blocks needed
                     stb       startblock,u
                     ldd       bootsize,u get the bootfile size in D
                     ldy       bootaddr,u and the bootfile starting address in Y
@@ -280,7 +279,7 @@ RelocSize           equ       *-RelocStart
 *        Y = Address in 64K address space to copy to.
 *
 * Exit:  X = X + 256
-MMU_COPY_BLOCK      equ       3
+MMU_COPY_BLOCK      equ       1
 MMUCopy             pshs      cc,y,u    save registers
                     lda       $FFA8+MMU_COPY_BLOCK get the MMU slot value
                     pshs      a         save it

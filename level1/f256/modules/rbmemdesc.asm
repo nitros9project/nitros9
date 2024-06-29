@@ -23,9 +23,9 @@ tracks              equ       256                 number of tracks
 blockstart          equ       $80                 starting block number
 modes               equ       DIR.+SHARE.+PREAD.+PWRIT.+PEXEC.+READ.+WRITE.+EXEC.
                     else
-* Geometry values equals the size of the flash area: 60 8K blocks (491,520 bytes)
-tracks              equ       480                 number of tracks
-blockstart          equ       $40                 starting block number
+* Geometry values equals the size of the flash area: 5 8K blocks (40,960 bytes)
+tracks              equ       40                  number of tracks
+blockstart          equ       $78                 starting block number
 modes               equ       DIR.+SHARE.+PREAD.+PEXEC.+READ.+EXEC.
                     endc
 
