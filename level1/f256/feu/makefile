@@ -72,7 +72,7 @@ BOOTFILE_F256K = $(KERNEL) $(DWIO) \
 		$(CLOCK) \
 		sysgo $(CMDSDIR)/shell_21 \
 		$(CMDSDIR)/date $(CMDSDIR)/display \
-		$(CMDSDIR)/echo \
+		$(CMDSDIR)/echo $(CMDSDIR)/fnxreset \
 		$(CMDSDIR)/iniz $(CMDSDIR)/deiniz \
 		$(CMDSDIR)/load $(CMDSDIR)/link $(CMDSDIR)/unlink \
 		$(CMDSDIR)/bootos9
@@ -85,7 +85,7 @@ BOOTFILE_F256JR = $(KERNEL) $(DWIO) \
 		$(CLOCK) \
 		sysgo $(CMDSDIR)/shell_21 \
 		$(CMDSDIR)/date $(CMDSDIR)/display \
-		$(CMDSDIR)/echo \
+		$(CMDSDIR)/echo $(CMDSDIR)/fnxreset \
 		$(CMDSDIR)/iniz $(CMDSDIR)/deiniz \
 		$(CMDSDIR)/load $(CMDSDIR)/link $(CMDSDIR)/unlink \
 		$(CMDSDIR)/bootos9
