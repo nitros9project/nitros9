@@ -18,7 +18,7 @@ CMDS		= asm attr backup binex build cmp copy \
 		rename save setime shellplus shell_21 sleep \
 		tee tmode touch tsmon unlink verify xmode \
 		inetd telnet dw httpd $(BASIC09) $(BF) play \
-		bootos9 fnxinfo
+		bootos9 fnxinfo fnxreset
 
 ALLOBJS		= $(CMDS)
 
