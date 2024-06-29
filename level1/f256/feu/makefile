@@ -70,14 +70,16 @@ BOOTFILE_F256K = $(KERNEL) $(DWIO) \
 		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
 		$(PIPE) \
 		$(CLOCK) \
-		sysgo autoex \
+		sysgo \
 		$(CMDSDIR)/shell_21 $(CMDSDIR)/debug \
-		$(CMDSDIR)/date $(CMDSDIR)/procs \
+		$(CMDSDIR)/date $(CMDSDIR)/echo \
+		$(CMDSDIR)/procs \
 		$(CMDSDIR)/mfree $(CMDSDIR)/mdir \
 		$(CMDSDIR)/display $(CMDSDIR)/iniz \
 		$(CMDSDIR)/deiniz $(CMDSDIR)/link \
-		$(CMDSDIR)/unlink $(CMDSDIR)/tmode \
-		$(CMDSDIR)/bootos9
+		$(CMDSDIR)/sleep \
+		$(CMDSDIR)/unlink \
+		$(CMDSDIR)/bootos9 $(CMDSDIR)/fnxinfo
 
 BOOTFILE_F256JR = $(KERNEL) $(DWIO) \
 		$(RBF) $(RBFDW) \
@@ -85,7 +87,7 @@ BOOTFILE_F256JR = $(KERNEL) $(DWIO) \
 		$(SCF) $(SCVT_F256JR) $(FONT) $(PALETTE) \
 		$(PIPE) \
 		$(CLOCK) \
-		sysgo autoex \
+		sysgo \
 		$(CMDSDIR)/shell_21 $(CMDSDIR)/debug \
 		$(CMDSDIR)/date $(CMDSDIR)/procs \
 		$(CMDSDIR)/mfree $(CMDSDIR)/mdir \
@@ -167,8 +169,17 @@ flash_f256jr: booter_flash_f256jr
 	bulk_flash bulk.csv
 	rm booter_? bulk.csv
 
+startup.feu:
+	echo "display 1b 60 0 ff ff 20 ff 1b 61 1 ff 0 0 ff 5 22 f0 1b 20 2 0 0 50 18 0 1 0" > $@
+	echo "echo FEU - Foenix Executive Utility" >> $@
+	echo "fnxinfo" >> $@
+	echo "echo" >> $@
+	echo "bootos9 /c0/OS9Boot" >> $@
+	echo "bootos9 /s0/OS9Boot" >> $@
+	echo "bootos9 /x0/OS9Boot" >> $@
+
 clean:
-	$(RM) $(ALLOBJS) *.o *.tmp vectors autoex trampoline
+	$(RM) $(ALLOBJS) *.o *.tmp vectors autoex trampoline startup.feu *.list *.map
 
 autoex: feu.o os9boot.o autoexec.o
 	$(LINKER) $(LFLAGS) $^ -o$@
