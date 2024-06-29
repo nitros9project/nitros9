@@ -31,7 +31,7 @@ modes               equ       DIR.+SHARE.+PREAD.+PEXEC.+READ.+EXEC.
 
                     fcb       modes
                     fcb       HW.Page             extended controller address
-                    fcb       $FF00+blockstart    physical controller address (lower 8 bits used for start block)
+                    fdb       $FF00+blockstart    physical controller address (lower 8 bits used for start block)
                     fcb       initsize-*-1        initialization table size
                     fcb       DT.RBF              device type:0=scf,1=rbf,2=pipe,3=scf
                     fcb       $00                 drive number

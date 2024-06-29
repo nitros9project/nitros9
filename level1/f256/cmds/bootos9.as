@@ -32,7 +32,6 @@ PrintModeFailure    lbsr      PRINTS
                     rts
 
 PrintSearch         lbsr      PRINTS
-                    fcb       C$CR
                     fcc       "Searching for "
                     fcb       0
                     ldx       bootpath,u

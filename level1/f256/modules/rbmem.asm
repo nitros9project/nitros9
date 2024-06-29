@@ -47,7 +47,7 @@ Init                lda       #1                  only can handle 1 drive descri
                     ldd       #$FFFF              set initialization value
                     std       DD.TOT,x            set DD.TOT
                     stb       DD.TOT+2,x          to this value
-                    ldd       M$Port,y            get port address in device descriptor
+                    ldd       M$Port+1,y          get port address in device descriptor
                     std       V.PORT,u            and save to device memory (used by CalcMMUBlock)
                     clrb                          clear error code and carry flag
                     rts                           return
