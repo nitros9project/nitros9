@@ -1,10 +1,12 @@
 include ../port.mak
 
+vpath %.as $(LEVEL1)/f256/modules
 vpath %.asm $(LEVEL1)/f256/modules:$(LEVEL1)/modules
 
 AFLAGS		+= -I$(LEVEL1)/$(PORT)
 AFLAGS		+= -I$(LEVEL1)/$(PORT)/modules
 AFLAGS		+= -I$(LEVEL1)/modules
+LFLAGS      += -L $(NITROS9DIR)/lib -lnet -lf256 -lalib -lf256snd
 
 CLOCKSOFT       = -DRTCSoft=1
 
@@ -48,9 +50,8 @@ krn krnp2:
 	$(CD) kernel; make $@
 	$(CP) kernel/$@ .
 
-sysgo: sysgo.asm
-	$(AS) $(AFLAGS) $(ASOUT)$@ $< -DDD=1
-	
+sysgo.o: sysgo.as
+
 # SD card descriptors
 dds0.dd: rbfnxsddesc.asm
 	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(FNXSDFLAGS) -DDD=1

@@ -70,16 +70,12 @@ BOOTFILE_F256K = $(KERNEL) $(DWIO) \
 		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
 		$(PIPE) \
 		$(CLOCK) \
-		sysgo \
-		$(CMDSDIR)/shell_21 $(CMDSDIR)/debug \
-		$(CMDSDIR)/date $(CMDSDIR)/echo \
-		$(CMDSDIR)/procs \
-		$(CMDSDIR)/mfree $(CMDSDIR)/mdir \
-		$(CMDSDIR)/display $(CMDSDIR)/iniz \
-		$(CMDSDIR)/deiniz $(CMDSDIR)/link \
-		$(CMDSDIR)/sleep \
-		$(CMDSDIR)/unlink \
-		$(CMDSDIR)/bootos9 $(CMDSDIR)/fnxinfo
+		sysgo $(CMDSDIR)/shell_21 \
+		$(CMDSDIR)/date $(CMDSDIR)/display \
+		$(CMDSDIR)/echo \
+		$(CMDSDIR)/iniz $(CMDSDIR)/deiniz \
+		$(CMDSDIR)/load $(CMDSDIR)/link $(CMDSDIR)/unlink \
+		$(CMDSDIR)/bootos9
 
 BOOTFILE_F256JR = $(KERNEL) $(DWIO) \
 		$(RBF) $(RBFDW) \
@@ -87,16 +83,30 @@ BOOTFILE_F256JR = $(KERNEL) $(DWIO) \
 		$(SCF) $(SCVT_F256JR) $(FONT) $(PALETTE) \
 		$(PIPE) \
 		$(CLOCK) \
-		sysgo \
-		$(CMDSDIR)/shell_21 $(CMDSDIR)/debug \
-		$(CMDSDIR)/date $(CMDSDIR)/procs \
-		$(CMDSDIR)/mfree $(CMDSDIR)/mdir \
-		$(CMDSDIR)/display $(CMDSDIR)/iniz \
-		$(CMDSDIR)/deiniz $(CMDSDIR)/link \
-		$(CMDSDIR)/unlink \
+		sysgo $(CMDSDIR)/shell_21 \
+		$(CMDSDIR)/date $(CMDSDIR)/display \
+		$(CMDSDIR)/echo \
+		$(CMDSDIR)/iniz $(CMDSDIR)/deiniz \
+		$(CMDSDIR)/load $(CMDSDIR)/link $(CMDSDIR)/unlink \
 		$(CMDSDIR)/bootos9
 
-ALLOBJS		= init sysgo autoex bootfile_f256k bootfile_f256jr booter_ram_f256k booter_flash_f256k \
+F0_CMDS = $(CMDSDIR)/attr \
+		$(CMDSDIR)/build \
+		$(CMDSDIR)/copy \
+		$(CMDSDIR)/debug $(CMDSDIR)/del $(CMDSDIR)/deldir \
+		$(CMDSDIR)/devs $(CMDSDIR)/dir $(CMDSDIR)/dump \
+		$(CMDSDIR)/edit \
+		$(CMDSDIR)/fnxinfo \
+		$(CMDSDIR)/ident $(CMDSDIR)/irqs \
+		$(CMDSDIR)/list \
+		$(CMDSDIR)/makdir $(CMDSDIR)/mfree $(CMDSDIR)/mdir \
+		$(CMDSDIR)/prompt $(CMDSDIR)/procs $(CMDSDIR)/pwd $(CMDSDIR)/pxd \
+		$(CMDSDIR)/rename \
+		$(CMDSDIR)/setime $(CMDSDIR)/sleep \
+		$(CMDSDIR)/tmode \
+		$(CMDSDIR)/xmode
+
+ALLOBJS		= init sysgo bootfile_f256k bootfile_f256jr booter_ram_f256k booter_flash_f256k \
 				booter_ram_f256jr booter_flash_f256jr
 
 all: $(DEPENDS) $(ALLOBJS)
@@ -105,36 +115,36 @@ all: $(DEPENDS) $(ALLOBJS)
 $(NOSLIB)/net.o:
 	cd $(NOSLIB); make
 	
-bootfile_f256k: sysgo autoex $(BOOTFILE_F256K) $(DEPENDS)
+bootfile_f256k: sysgo $(BOOTFILE_F256K) $(DEPENDS)
 	$(MERGE) $(BOOTFILE_F256K)>$@
 
-bootfile_f256jr: sysgo autoex $(BOOTFILE_F256JR) $(DEPENDS)
+bootfile_f256jr: sysgo $(BOOTFILE_F256JR) $(DEPENDS)
 	$(MERGE) $(BOOTFILE_F256JR)>$@
 
 booter_ram_f256k: bootfile_f256k
 	$(MERGE) $(BOOTFILE_F256K)>bootfile_f256k
-	$(PADROM) 31744 bootfile_f256k
+	$(PADROM) 23552 bootfile_f256k
 	$(AS) -DFLASH=0 --output=raw trampoline.asm -otrampoline
 	cat bootfile_f256k trampoline > $@
 	$(RM) trampoline
 
 booter_ram_f256jr: bootfile_f256jr
 	$(MERGE) $(BOOTFILE_F256JR)>bootfile_f256jr
-	$(PADROM) 31744 bootfile_f256jr
+	$(PADROM) 23552 bootfile_f256jr
 	$(AS) -DFLASH=0 --output=raw trampoline.asm -otrampoline
 	cat bootfile_f256jr trampoline > $@
 	$(RM) trampoline
 
 booter_flash_f256k: bootfile_f256k
 	$(MERGE) $(BOOTFILE_F256K)>bootfile_f256k
-	$(PADROM) 31744 bootfile_f256k
+	$(PADROM) 23552 bootfile_f256k
 	$(AS) -DFLASH=1 --output=raw trampoline.asm -otrampoline
 	cat bootfile_f256k trampoline > $@
 	$(RM) trampoline
 
 booter_flash_f256jr: bootfile_f256jr
 	$(MERGE) $(BOOTFILE_F256JR)>bootfile_f256jr
-	$(PADROM) 31744 bootfile_f256jr
+	$(PADROM) 23552 bootfile_f256jr
 	$(AS) -DFLASH=1 --output=raw trampoline.asm -otrampoline
 	cat bootfile_f256jr trampoline > $@
 	$(RM) trampoline
@@ -149,11 +159,9 @@ flash_f256k: booter_flash_f256k
 	dd status=none bs=8k skip=0 count=1 if=$^ of=booter_0
 	dd status=none bs=8k skip=1 count=1 if=$^ of=booter_1
 	dd status=none bs=8k skip=2 count=1 if=$^ of=booter_2
-	dd status=none bs=8k skip=3 count=1 if=$^ of=booter_3
-	echo "3c,booter_0" > bulk.csv
-	echo "3d,booter_1" >> bulk.csv
-	echo "3e,booter_2" >> bulk.csv
-	echo "3f,booter_3" >> bulk.csv
+	echo "3d,booter_0" > bulk.csv
+	echo "3e,booter_1" >> bulk.csv
+	echo "3f,booter_2" >> bulk.csv
 	bulk_flash bulk.csv
 	rm booter_? bulk.csv
 
@@ -161,13 +169,32 @@ flash_f256jr: booter_flash_f256jr
 	dd status=none bs=8k skip=0 count=1 if=$^ of=booter_0
 	dd status=none bs=8k skip=1 count=1 if=$^ of=booter_1
 	dd status=none bs=8k skip=2 count=1 if=$^ of=booter_2
-	dd status=none bs=8k skip=3 count=1 if=$^ of=booter_3
-	echo "3c,booter_0" > bulk.csv
-	echo "3d,booter_1" >> bulk.csv
-	echo "3e,booter_2" >> bulk.csv
-	echo "3f,booter_3" >> bulk.csv
+	echo "3d,booter_0" > bulk.csv
+	echo "3e,booter_1" >> bulk.csv
+	echo "3f,booter_2" >> bulk.csv
 	bulk_flash bulk.csv
 	rm booter_? bulk.csv
+
+flash_f0: f0.dsk
+	dd status=none bs=8k skip=0 count=1 if=$^ of=f0_0
+	dd status=none bs=8k skip=1 count=1 if=$^ of=f0_1
+	dd status=none bs=8k skip=2 count=1 if=$^ of=f0_2
+	dd status=none bs=8k skip=3 count=1 if=$^ of=f0_3
+	dd status=none bs=8k skip=4 count=1 if=$^ of=f0_4
+	echo "38,f0_0" > bulk.csv
+	echo "39,f0_1" >> bulk.csv
+	echo "3a,f0_2" >> bulk.csv
+	echo "3b,f0_3" >> bulk.csv
+	echo "3c,f0_4" >> bulk.csv
+	bulk_flash bulk.csv
+	rm f0_? bulk.csv
+
+f0.dsk: startup.feu
+	$(OS9FORMAT) -q -t10 -st16 $@ -n"FEU"
+	$(MAKDIR) $@,CMDS
+	$(OS9COPY) $(F0_CMDS) $@,CMDS
+	$(OS9ATTR_EXEC) $(foreach file,$(F0_CMDS),$@,CMDS/$(file))
+	$(OS9COPY) -l $^ $@,
 
 startup.feu:
 	echo "display 1b 60 0 ff ff 20 ff 1b 61 1 ff 0 0 ff 5 22 f0 1b 20 2 0 0 50 18 0 1 0" > $@
@@ -179,7 +206,7 @@ startup.feu:
 	echo "bootos9 /x0/OS9Boot" >> $@
 
 clean:
-	$(RM) $(ALLOBJS) *.o *.tmp vectors autoex trampoline startup.feu *.list *.map
+	$(RM) $(ALLOBJS) *.o *.tmp vectors trampoline startup.feu *.list *.map *.dsk
 
 autoex: feu.o os9boot.o autoexec.o
 	$(LINKER) $(LFLAGS) $^ -o$@

@@ -9,34 +9,14 @@
 *   1      2024/03/06  Boisy G. Pitre
 * Forked from CoCo 3 specific port.
 
-                    nam       SysGo
-                    ttl       Kickstart program module
-
-                    ifp1
-                    use       defsfile
-                    endc
-
-tylg                set       Prgrm+Objct
-atrv                set       ReEnt+rev
-rev                 set       $00
-edition             set       $01
-
-                    mod       eom,name,tylg,atrv,start,size
-
-
-                    org       0
-InitAddr            rmb       2
-                    rmb       250
-size                equ       .
-
-name                fcs       /SysGo/
-                    fcb       edition
-
+                    section   bss
+                    rmb       100
+                    endsect
+                    
 * Default process priority
 DefPrior            set       128
                     
-CrRtn               fcb       C$CR,C$LF
-
+                    section   code
 DefDev              fcc       "/DD"
                     fcb       C$CR
 ExecDir             fcc       "/DD/CMDS"
@@ -75,22 +55,15 @@ F256Type            pshs      x
                     lda       7,x
                     puls      x,pc
 
-FKMsg               fcc       "K"
-FKMsgLen            equ       *-FKMsg
-FJrMsg              fcc       " Jr"
-FJrMsgLen           equ       *-FJrMsg
-
 ShowMachType        bsr       F256Type
                     cmpa      #$02                          F256 Jr?
                     beq       @showJr
-@showK              leax      FKMsg,pcr
-                    ldy       #FKMsgLen
-                    bra       show@
-@showJr             leax      FJrMsg,pcr
-                    ldy       #FJrMsgLen
-show@               lda       #1
-                    os9       I$Write
-                    bra       WriteCR
+@showK              ldb       #'K
+                    lbra      PUTC
+@showJr             lbsr      PRINTS
+                    fcc       " Jr"
+                    fcb       0
+                    rts
 
 SetupPalette        bsr       F256Type
                     cmpa      #$02                          F256 Jr?
@@ -102,29 +75,12 @@ SetupPalette        bsr       F256Type
                     ldy       #JrPalLen
 show@               lda       #1
                     os9       I$Write
-                    bra       WriteCR
-
+                    lbra      PUTCR
                                                                                 
-* Display carriage-return/line-feed.
-WriteCR             pshs      y
-                    leax      CrRtn,pcr
-                    ldy       #$0001
-                    os9       I$WritLn
-                    puls      y,pc
-
-* Entry: X = pointer to start of nul terminated string
-* Exit:  D = length of string
-strlen              pshs      x
-                    ldd       #-1
-l@                  addd      #$0001
-                    tst       ,x+
-                    bne       l@
-                    puls      x,pc
-
 **********************************************************
 * SysGo Entry Point
 **********************************************************
-start               leax      >IcptRtn,pcr
+__start             leax      >IcptRtn,pcr
                     os9       F$Icpt
 
 * Set priority of this process
@@ -144,34 +100,26 @@ SignOn              bsr       SetupPalette
                     leax      ColorBar,pcr        point to color bar
                     ldy       #CBLen
                     os9       I$Write
-                    leax      CrRtn,pcr
-                    ldy       #$0001
-                    os9       I$WritLn
+                    lbsr      PUTCR
 
 * Write OS name and Machine name strings
                     leax      Init,pcr
                     clra
                     pshs      u
                     os9       F$Link
-                    bcs       SignOn
-                    stx       <InitAddr
+                    bcs       SetDefTime
                     ldd       OSName,u            point to OS name in INIT module
-                    leax      d,u                 point to install name in INIT module
-                    bsr       strlen
-                    tfr       d,y
-                    lda       #$01
-                    os9       I$Write
-                    bsr       WriteCR
-                    ldd       InstallName,u
-                    leax      d,u                 point to install name in INIT module
-                    bsr       strlen
-                    tfr       d,y
-                    lda       #$01
-                    os9       I$Write
+                    leax      d,u                 
+                    lbsr      PUTS
+                    lbsr      PUTCR
+                    ldd       InstallName,u       point to install name in INIT module
+                    leax      d,u
+                    lbsr      PUTS
                     lbsr      ShowMachType
-                    puls      u
+                    lbsr      PUTCR
 
 * Set default time
+SetDefTime          puls      u
                     leax      >DefTime,pcr
                     os9       F$STime             set time to default
 
@@ -645,6 +593,4 @@ ColorBar            fcb	$1B,$32,BGP
                     fcb	$1B,$32,FGP					reset FG
 CBLen               equ	*-ColorBar
 
-                    emod
-eom                 equ       *
-                    end
+                    endsect
