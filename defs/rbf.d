@@ -200,8 +200,8 @@ PD.TFM              RMB       1                   DMA Transfer Mode
 PD.Exten            RMB       2                   Path Extension (PE) for record locking
 PD.SToff            RMB       1                   Sector/Track offsets (for "foreign" disk formats)
 PD.ATT              RMB       1                   File attributes
-PD.FD               RMB       3                   File descriptor psn
-PD.DFD              RMB       3                   Directory file descriptor psn
+PD.FD               RMB       3                   File descriptor psn (i.e. 3-byte inode number)
+PD.DFD              RMB       3                   Directory file descriptor psn (i.e. 3-byte inode number)
 PD.DCP              RMB       4                   File directory entry ptr
 PD.DVT              RMB       2                   User readable dev tbl ptr
 
@@ -219,7 +219,8 @@ BufBusy             EQU       $40                 Buffer is currently busy
 * Random Block Path Extension Format
 *
 * RBF paths under Level Two have additional information that
-* is referenced by the path extension area.
+* is referenced by the path extension area.  These are 64-byte
+* allocs from the same table (D.PthDBT) as the Path Descriptors.
 *
                     ORG       0
 PE.PE               RMB       1                   PE path number
