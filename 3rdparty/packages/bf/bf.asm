@@ -79,7 +79,7 @@ putChar
                     lda       #1
                     tfr       y,x
                     ldy       #1
-                    os9       I$Write
+                    os9       I$WritLn
                     puls      d,x,y,pc
 
 getChar
