@@ -72,6 +72,7 @@ $(DSKSD_F256K):
 	$(OS9ATTR_EXEC) $@,sysgo
 	$(CD) cmds; $(OS9COPY) $(CMDS) ../$@,CMDS
 	$(CD) cmds; $(OS9COPY) -r shellplus ../$@,CMDS/shell
+	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 	$(CD) sys; $(CPL) $(SYSTEXT) ../$@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(SYSTEXT),$@,SYS/$(file))
 	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
@@ -131,6 +132,7 @@ $(DSKSD_F256JR):
 	$(OS9ATTR_EXEC) $@,sysgo
 	$(CD) cmds; $(OS9COPY) $(CMDS) ../$@,CMDS
 	$(CD) cmds; $(OS9COPY) -r shellplus ../$@,CMDS/shell
+	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 	$(CD) sys; $(CPL) $(SYSTEXT) ../$@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(SYSTEXT),$@,SYS/$(file))
 	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
