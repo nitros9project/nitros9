@@ -13,7 +13,7 @@
 * Converted into a stand-alone command line utility.
 
                     section   bss
-bootpath            rmb       2         the bootfile's absolute path pointer
+bootpath            rmb       80        the bootfile's absolute path
 diskpath            rmb       1         path to disk
 krnentry            rmb       2         address of kernel entry point
 bootaddr            rmb       2         bootfile load address
@@ -22,6 +22,7 @@ bootpages           rmb       1         # of 256-byte pages to accommodate the b
 bootblocks          rmb       1         # of 8K blocks to accommodate the bootfile
 startblock          rmb       1         the starting block number to load the bootfile into
 sectorbuffer        rmb       256       holds sectors read from disk
+stack               rmb       200
                     endsect
 
                     section   code
@@ -34,7 +35,7 @@ PrintModeFailure    lbsr      PRINTS
 PrintSearch         lbsr      PRINTS
                     fcc       "Searching for "
                     fcb       0
-                    ldx       bootpath,u
+                    leax      bootpath,u
                     lbsr      PUTS
                     ldb       #'.
                     lbra      PUTC
@@ -65,12 +66,17 @@ __start
                     cmpa      #$07      is it 7? (indicates that we're running from RAM)
                     beq       ram@      branch if so
 * We're in FLASH mode... continue.
-* Nil out the CR at the end of the parameter string.
+                    decb                decrement parameter length
+                    beq       ex@       if no parameter, just exit
+* Copy the parameter.
+                    leay      bootpath,u
+l@                  lda       ,x+
+                    sta       ,y+
                     decb
-                    clr       b,x       clear byte at D,X (nil out carriage return)
-                    tst       ,x        any parameters?
-                    beq       ex@       no... just exit
-                    stx       bootpath,u save the boot pathlist pointer
+                    bne       l@
+                    clr       ,y
+                    leax      bootpath,u
+* Perform boot.
                     bsr       BootOS9   attempt to boot...
                     bcs       ex@       branch if error
                     jmp       ,x        else jump and boot OS-9, never to return!
@@ -84,7 +90,7 @@ ex@                 os9       F$Exit    exit
 * Exit:  X = The address to jump to if no error.
 *       CC = carry clear indicating no error; or set indicating error.
 BootOS9             bsr       PrintSearch print the message
-                    ldx       bootpath,u point to the boot pathlist
+                    leax      bootpath,u point to the boot pathlist
                     lda       #READ.    open the file in read mode
                     os9       I$Open    open it
                     bcc       FoundIt   branch if found
@@ -342,14 +348,14 @@ PrintKrnNotFound    lbsr      PRINTS
                     fcb       C$CR,0
                     bra       badex
 
-PrintPathNotFound   ldx       bootpath,u
+PrintPathNotFound   leax      bootpath,u
                     lbsr      PUTS
                     lbsr      PRINTS
                     fcc       " not found."
                     fcb       C$CR,0
                     bra       badex
                     
-PrintFound          ldx       bootpath,u
+PrintFound          leax      bootpath,u
                     lbsr      PUTS
                     lbsr      PRINTS
                     fcc       " found."
