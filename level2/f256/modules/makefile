@@ -14,7 +14,7 @@ SYSMODS		= ioman init sysgo
 CLOCKS		= clock clock2_f256
 
 RBF		= rbf.mn rbdw.dr dwio.sb ddx0.dd x0.dd x1.dd x2.dd x3.dd \
-          rbfnxcart.dr ddc0.dd c0.dd \
+          rbmem.dr ddc0.dd c0.dd f0.dd \
 		rbsuper.dr \
           llfnxsd.sb dds0.dd s0.dd
 
@@ -61,11 +61,14 @@ dds0.dd: rbfnxsddesc.asm
 s0.dd: rbfnxsddesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(FNXSDFLAGS)
 
-# rbfnxcart descriptors
-ddc0.dd: rbfnxcartdesc.asm
+# rbmem descriptors
+ddc0.dd: rbmemdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDD=1 -DDNum=0
 
-c0.dd: rbfnxcartdesc.asm
+c0.dd: rbmemdesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0 -DCART=1
+
+f0.dd: rbmemdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
 
 # 16550 descriptors
