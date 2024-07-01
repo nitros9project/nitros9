@@ -70,7 +70,7 @@ utilpak1:  $(UTILPAK1) $(DEPENDS)
 	@$(ECHO) ""
 
 clean:
-	$(RM) shell utilpak1 $(SUBS) $(SHELLMODS) $(CMDS)
+	$(RM) shell utilpak1 $(SUBS) $(SHELLMODS) $(CMDS) *.list *.map
 
 # Only $(CMDS) are shown here
 showobjs:
