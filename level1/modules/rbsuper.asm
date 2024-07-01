@@ -23,7 +23,10 @@
 *   HDBDOS - if set, adds code to handle HDB-DOS partitions
 * And somewhere this flag has been lost GH 2012/11/13
 * Only found when I trashed my systems vdisks
-HDBDOS              set       1
+* 2024/06/30 BGP: DAMN DAMN DAMN. Gene Heskett put this next line in place instead of properly conditionalizing it.
+* HDBDOS              set       1
+* He's never touching the source code again!
+*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
