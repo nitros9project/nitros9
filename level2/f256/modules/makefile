@@ -210,7 +210,7 @@ clock: clock.asm
 
 clean:
 	$(CD) kernel; make $@
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 showobjs:
 	@$(ECHO) $(ALLOBJS)
