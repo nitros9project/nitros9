@@ -353,9 +353,11 @@ nofree@             puls      a,u                 restore regs
                     bcs       ex@                 and branch if error
                     sta       V.SectSize,u        save new sector size
 no@
+                    ifne      HDBDOS
                     lda       PD.DNS,y            get DNS byte
                     anda      #DNS.HDB            isolate HDB-DOS flag
                     sta       V.HDBPart,u         and save state
+                    endc
 exok@               clrb                          clear carry
                     rts                           return
 ex@                 clr       V.SectSize,u        clear sector size to force realloc
@@ -673,6 +675,7 @@ writeit             lda       #$01
                     tst       PD.VFY,y            verify flag set?
                     bne       ex@                 if so, we don't verify -- just exit
 * Read back physical sector into cache
+                    ifne      HDBDOS
                     tst       V.HDBPart,u         HDB-DOS partition?
                     beq       o@
 * If in HDB-DOS mode, we simply place the base address of the cache into
@@ -680,6 +683,7 @@ writeit             lda       #$01
                     ldx       V.CchAddr,u
                     stx       V.CchPSpot,u
                     stx       V.CchLSpot,u
+                    endc
 o@                  lda       #$01
                     sta       V.SectCnt,u
                     ldx       V.LLRead,u
