@@ -1,5 +1,5 @@
 ********************************************************************
-* ascript - Action Script
+* pick - Action Scripting Utility
 *
 * $Id$
 *
@@ -9,7 +9,7 @@
 *   1      2024/06/28  Boisy Pitre
 * Created.
 
-scrdelim        set     C$COMA
+scrdelim        set     '|
 maxlinelen		set		80
 
                     section   bss

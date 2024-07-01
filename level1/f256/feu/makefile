@@ -103,7 +103,7 @@ F0_CMDS = $(CMDSDIR)/attr \
 		$(CMDSDIR)/makdir $(CMDSDIR)/mfree $(CMDSDIR)/mdir \
 		$(CMDSDIR)/procs $(CMDSDIR)/pwd $(CMDSDIR)/pxd \
 		$(CMDSDIR)/setime $(CMDSDIR)/sleep \
-		$(CMDSDIR)/tmode $(CMDSDIR)/ascript
+		$(CMDSDIR)/tmode $(CMDSDIR)/pick
 
 ALLOBJS		= init sysgo bootfile_f256k bootfile_f256jr booter_ram_f256k booter_flash_f256k \
 				booter_ram_f256jr booter_flash_f256jr
@@ -204,7 +204,7 @@ feu/startup: FORCE
 	echo "echo Build date:" `date` >> $@
 	echo "fnxinfo" >> $@
 	echo "chd .../feu" >> $@
-	echo "ascript main.script</1" >> $@
+	echo "pick main.pick</1" >> $@
 
 FORCE: ;
 
