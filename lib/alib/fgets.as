@@ -1,8 +1,8 @@
                     section   .text
 
-;;; FGETC_NOCR
+;;; FGETS_NOCR
 ;;;
-;;; Read a string from a device and removes the carriage return from the input.
+;;; Read a string from a device and remove the carriage return from the input.
 ;;;
 ;;; Entry:  A = The path to read the string from.
 ;;;         X = The address of the buffer that holds the string.
@@ -21,7 +21,7 @@ FGETS_NOCR:         pshs      d,x
                     clr       d,x
 bye                 puls      d,x,pc
 
-;;; FGETC
+;;; FGETS
 ;;;
 ;;; Read a string from a device.
 ;;;

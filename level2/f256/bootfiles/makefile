@@ -21,7 +21,7 @@ RBF		= $(MD)/rbf.mn
 RBDW      = $(MD)/rbdw.dr $(MD)/x0.dd $(MD)/x1.dd $(MD)/x2.dd $(MD)/x3.dd
 
 # RBF Foenix Flash/RAM disk driver
-RBFNXCART = $(MD)/rbfnxcart.dr $(MD)/c0.dd
+RBMEM = $(MD)/rbmem.dr $(MD)/c0.dd
 
 # RBF RBSuper driver
 RBSUPER   = $(MD)/rbsuper.dr
@@ -68,7 +68,7 @@ BOOTFILE_SD_F256K = $(KERNELP2) \
 		$(SCF) $(SCVT_F256K) \
 		$(FONT) $(PALETTE) \
 		$(DWIO) \
-		$(RBF) $(RBDW) $(RBSUPER) $(RBFNXCART) $(RBFNXSD) \
+		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
 		$(MD)/dds0.dd \
 		$(SC16550) \
 		$(CLOCK) \
@@ -79,7 +79,7 @@ BOOTFILE_DW_F256K = $(KERNELP2) \
 		$(SCF) $(SCVT_F256K) \
 		$(FONT) $(PALETTE) \
 		$(DWIO) \
-		$(RBF) $(RBDW) $(RBSUPER) $(RBFNXCART) $(RBFNXSD) \
+		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
 		$(MD)/ddx0.dd \
 		$(SC16550) \
 		$(CLOCK) \
@@ -90,7 +90,7 @@ BOOTFILE_SD_F256JR = $(KERNELP2) \
 		$(SCF) $(SCVT_F256JR) \
 		$(FONT) $(PALETTE) \
 		$(DWIO) \
-		$(RBF) $(RBDW) $(RBSUPER) $(RBFNXCART) $(RBFNXSD) \
+		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
 		$(MD)/dds0.dd \
 		$(SC16550) \
 		$(CLOCK) \
@@ -101,7 +101,7 @@ BOOTFILE_DW_F256JR = $(KERNELP2) \
 		$(SCF) $(SCVT_F256JR) \
 		$(FONT) $(PALETTE) \
 		$(DWIO) \
-		$(RBF) $(RBDW) $(RBSUPER) $(RBFNXCART) $(RBFNXSD) \
+		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
 		$(MD)/ddx0.dd \
 		$(SC16550) \
 		$(CLOCK) \
