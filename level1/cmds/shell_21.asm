@@ -40,14 +40,14 @@ u000C               rmb       1
 nestcount           rmb       1         counter of nested parentheses for new shell marker
 kbdsignl            rmb       1
 immflag             rmb       1         1 = shell is immortal and won't exit; 0 = normal shell
-u0010               rmb       1
-u0011               rmb       1
-suppressintro       rmb       1
+u0010               rmb       1         ??
+u0011               rmb       1         ??
+suppressintro       rmb       1         1 = suppress the introductory text; 0 = don't suppress it
 echoflag            rmb       1         1 = echo commands to standard output; 0 = don't echo
-noxflag             rmb       1
-setprid             rmb       1
-devnambuf           rmb       72
-u005E               rmb       18
+noxflag             rmb       1         1 = exit shell script on error; 0 = continue processing
+setprid             rmb       1         ID for setting priority
+devnambuf           rmb       72        input device name buffer
+modheader           rmb       18        buffer used to read in module header
 u0070               rmb       143
 u00FF               rmb       313
 stack               rmb       200
@@ -112,48 +112,48 @@ start               leas      -$05,s          reserve some space on the stack
                     puls      x,b,a     recover all but Y earlier pushed
                     std       <parmlen  save the parameter length
                     beq       noparms@  branch if empty
-                    lbsr      ParseCmds     
-                    bcs       ExitShellWithErr
+                    lbsr      ParseCmdLine     start parsing the command line
+                    bcs       ExitShellWithErr exit if there was an error
                     tst       <u000C
                     bne       ExitShell        exit shell if so
 noparms@            lds       ,s++             get Y off stack pushed earlier (end of parameter area)
 * OPT: do leax after bne
-L005E               leax      <Intro,pcr       point to intro string
+ProcLine            leax      <Intro,pcr       point to intro string
                     tst       <suppressintro   do we suppress showing the intro?
                     bne       ReadCmdLoop      yes, don't show prompt, just go read a command
                     bsr       WriteLin         else show it
                     bcs       Exit             branch if error
-L0069               leax      <DefPrmpt,pcr    point to the prompt
+ShowPrompt          leax      <DefPrmpt,pcr    point to the prompt
                     ldy       #DefPrmL         load its length
-L0070               tst       <suppressintro   do we suppress showing the intro?
+chkintro@           tst       <suppressintro   do we suppress showing the intro?
                     bne       ReadCmdLoop      yes, don't show prompt
                     bsr       WritLin2         else show it
 ReadCmdLoop         clra                       A = standard input
                     leax      <u0070,u         point to read buffer
                     ldy       #200             load our maximum read length
                     os9       I$ReadLn         read from the standard input
-                    bcc       L0094            branch if ok
+                    bcc       procinput@            branch if ok
                     cmpb      #E$EOF           did we get an EOF error?
                     beq       ExitWithEOF      handle it if so
-L0087               tst       <immflag is this shell immortal?
-                    bne       L008F     branch if so
-                    tst       <noxflag
-                    bne       ExitShellWithErr
-L008F               os9       F$PErr           print the error
-                    bra       L0069            and continue reading
-L0094               cmpy      #$0001           is the input length > 1
-                    bhi       L00A4            yes, process the command
+chkimm@             tst       <immflag is this shell immortal?
+                    bne       showerr@     branch if so
+                    tst       <noxflag  is exit with error flag set?
+                    bne       ExitShellWithErr of so, exit with error
+showerr@            os9       F$PErr           print the error
+                    bra       ShowPrompt            and continue reading
+procinput@          cmpy      #$0001           is the input length > 1
+                    bhi       testecho@            yes, process the command
                     leax      >OS9Prmpt,pcr    else return was pressed by itself; load OS-9 prompt string
                     ldy       #OS9PrmL         and load OS-9 prompt length
-                    bra       L0070            show if needed
-L00A4               tst       <echoflag
-                    beq       L00AA
-                    bsr       WriteLin
-L00AA               lbsr      ParseCmds
-                    bcc       L0069
-                    tstb
-                    bne       L0087
-                    bra       L0069
+                    bra       chkintro@            show if needed
+testecho@           tst       <echoflag echo flag set?
+                    beq       parse@ branch if not
+                    bsr       WriteLin else echo the command line
+parse@              lbsr      ParseCmdLine parse the command line
+                    bcc       ShowPrompt show prompt if no error
+                    tstb error code?
+                    bne       chkimm@ branch if not zero
+                    bra       ShowPrompt else show prompt
 
 eofmsg              fcc       "eof"
                     fcb       C$CR
@@ -179,21 +179,22 @@ WritLin2            lda       #$02                load standard error
 * I=...
 Immortal            lbsr      L03B3
                     lbcs      L02ED
-                    pshs      x
+                    pshs      x         save X
                     ldb       #SS.DevNm
-                    leax      <devnambuf,u
-                    lda       #PDELIM
-                    sta       ,x+
+                    leax      <devnambuf,u                  point to device name buffer
+                    lda       #PDELIM                       get path delimiter
+                    sta       ,x+       save it and move X to next position
                     clra                          stdin
                     os9       I$GetStt            get device name
-                    puls      x
-                    lbcs      L02ED
+                    puls      x         restore X
+                    lbcs      L02ED     branch if error
                     inc       <immflag            increment the immortal flag
-                    inc       <u0010
+                    inc       <u0010    increment ??
                     lbsr      L02ED
-                    clr       <u0010
-                    rts
+                    clr       <u0010 clear ??
+                    rts                 return
 
+* Match table for internal commands.
 InternalCmds        fdb       Comment-*
                     fcs       "*"
                     fdb       Wait-*
@@ -225,15 +226,17 @@ InternalCmds        fdb       Comment-*
                     fdb       NextCmd-*
                     fcs       ";"
                     fdb       $0000
-L013A               fdb       Pipe-*
+                    
+ShellChars          fdb       Pipe-*
                     fcs       "!"
                     fdb       NextCmd2-*
                     fcs       ";"
                     fdb       Backgrnd-*
                     fcs       "&"
                     fdb       Return-*
-                    fcb       $8D
-L0146               fdb       AllRedir-*
+                    fcb       C$CR+$80
+                    
+Redirects           fdb       AllRedir-*
                     fcs       "<>>>"
                     fdb       IERedir-*
                     fcs       "<>>"
@@ -254,6 +257,7 @@ L0146               fdb       AllRedir-*
 L0169               fcb       C$CR
                     fcc       "()"
                     fcb       $ff
+                    
 CRConst             fcb       C$CR
                     fcc       "!#&;<>"
                     fcb       $ff
@@ -265,7 +269,7 @@ ClearAtU            clr       b,u       clear the location at B,U
                     rts                 return
 
 * Parse commands on the command line                    
-ParseCmds           ldb       #kbdsignl start from the keyboard signal variable down
+ParseCmdLine           ldb       #kbdsignl start from the keyboard signal variable down
                     bsr       ClearAtU  and clear to start of variables
 L017F               clr       <xtrastack clear optional stack value
                     clr       <kbdsignl clear the keyboard signal
@@ -301,7 +305,7 @@ L01BE               leay      <CRConst,pcr
                     subd      <parmptr subtract the parameter pointer
                     std       <parmlen  and save the parameter length
                     leax      -$01,x
-                    leay      >L013A,pcr
+                    leay      >ShellChars,pcr
                     bsr       DoParse
                     bcs       L01DE
                     ldy       <progptr
@@ -310,61 +314,69 @@ L01D6               lbne      WTF
                     bne       L017F
 L01DE               lbra      L02ED
 
-L01E1               stx       <progptr
-                    bsr       L01F4
-                    bcs       L01F3
-L01E7               bsr       L01F4
-                    bcc       L01E7
-                    leay      >L0146,pcr
-                    bsr       DoParse
-                    stx       <parmptr
-L01F3               rts
+* Process command
+*
+* Entry: X = program on command line to execute.
+L01E1               stx       <progptr  save X to program pointer
+                    bsr       ParseName parse the command name
+                    bcs       ex@ branch if there was an error
+l@                  bsr       ParseName parse again
+                    bcc       l@ and keep going until error
+                    leay      >Redirects,pcr point to redirect table
+                    bsr       DoParse attempt to match
+                    stx       <parmptr save the parameter pointer
+ex@                 rts return
 
-* Parse the name at X
-L01F4               os9       F$PrsNam  parse the name
-                    bcc       L0205     branch if carry clear
+* Parse the program name on the command line.
+*
+* Entry: X = Name to parse.
+ParseName           os9       F$PrsNam  parse the name
+                    bcc       ex1@      branch if carry clear
                     lda       ,x+       else get character at A
                     cmpa      #C$PERD   is it a period?
-                    bne       L0209     branch if not
+                    bne       badex@    branch if not
                     cmpa      ,x+       is it the same as the next character?
-                    beq       L0207     branch if so
-                    leay      -$01,x    else point Y to the previous character
-L0205               leax      ,y        copy Y to X
-L0207               clra                clear carry
+                    beq       ex2@      branch if so
+                    leay      -1,x    else point Y to the previous character
+ex1@                leax      ,y        copy Y to X
+ex2@                clra                clear carry
                     rts                 return
-L0209               comb                set carry
-                    leax      -$01,x    back up X one character
+badex@              comb                set carry
+                    leax      -1,x    back up X one character
                     ldb       #E$BPNam  return a bad pathname
                     rts                 return
 
-* Entry: X = The string to parse.                    
+* Parse the entire command line.
+*
+* Entry: X = The location on the command line to parse.                    
+*        Y = The location of the match table.
 DoParse             bsr       SkipCnsc  skip consecutive characters at X
-                    pshs      y         save
-                    bsr       L0264
-                    bcs       L0220
-                    ldd       ,y
-                    jsr       d,y
-                    puls      y
-                    bcc       DoParse   continue parsing
-                    rts                 return
-L0220               clra
-                    lda       ,x
-                    puls      pc,y
+                    pshs      y         save off match table on stack
+                    bsr       L0264     attempt to match
+                    bcs       ex@       branch if no match
+                    ldd       ,y        else we have a match; recover the processing routine pointer
+                    jsr       d,y       call the routine
+                    puls      y         recover Y
+                    bcc       DoParse   if no error, continue parsing
+                    rts                 else return
+ex@                 clra                clear carry
+                    lda       ,x        load character at X into A
+                    puls      pc,y      return
                     
-L0225               puls      y         restore Y
+l0@                 puls      y         restore Y
 L0227               pshs      y         save Y
                     lda       ,x+       get character at X
-L022B               tst       ,y        test character
-                    bmi       L0225     branch if high bit set
+L022B               tst       ,y        test against character in table
+                    bmi       l0@       branch if high bit set
                     cmpa      #'"       quote?
                     bne       L023B     branch if not
 l@                  lda       ,x+       else get next character
                     cmpa      #'"       ending quote?
                     bne       l@        branch if not
-                    lda       ,x+       get character
-L023B               cmpa      ,y+       
-                    bne       L022B
-                    puls      pc,y
+                    lda       ,x+       get character at X and increment X
+L023B               cmpa      ,y+       test against character in table entry and increment Y
+                    bne       L022B     branch if no match
+                    puls      pc,y      else return
 
 * Skip over consecutive whitespace OR non-whitespace characters greater than carriage return
 *
@@ -387,53 +399,56 @@ l1@                 cmpa      ,x+       is it the next character as well?
                     beq       l1@       branch if so
                     leax      -1,x    else back up
 NextCmd             andcc     #^Carry   clear the carry    
-                    rts                 return
-                    
-L0264               pshs      y,x
-                    leay      $02,y
-L0268               ldx       ,s
+                    rts                 return                     
+* X = Address of the source string.
+* Y = Address of the string to match.                    
+L0264               pshs      y,x       save registers
+                    leay      2,y       advance past the entry pointer
+L0268               ldx       ,s        recover X on the stack
 L026A               lda       ,x+    get the character at X and increment X
                     cmpa      #'a    is it 'a'?
                     bcs       L0272  branch if lower than
                     suba      #$20   make uppercase
 L0272               eora      ,y+    XOR with the character at Y and increment Y
-                    lsla
-                    bne       L0286
-                    bcc       L026A
-                    lda       -$01,y
-                    cmpa      #$C1
-                    bcs       L0283
-                    bsr       SkipCnsc
-                    bcs       L0286
-L0283               clra
-                    puls      pc,y,b,a
-L0286               leay      -$01,y
-L0288               lda       ,y+
-                    bpl       L0288
-                    sty       $02,s
-                    ldd       ,y++
-                    bne       L0268
-                    comb
-                    puls      pc,y,x
+                    lsla shift A left (move high bit of A into carry)
+                    bne       L0286 branch if not zero
+                    bcc       L026A branch if carry clear
+                    lda       -1,y get the previous character
+                    cmpa      #$C1 compare against ??
+                    bcs       L0283 branch if carry set
+                    bsr       SkipCnsc skip consecutive characters
+                    bcs       L0286 branch if carry set
+L0283               clra clear carry
+                    puls      pc,y,b,a pull registers and return
+L0286               leay      -1,y back up one
+l0@                  lda       ,y+ get character
+                    bpl       l0@ keep going until we get passed hi-bit char
+                    sty       2,s save pointer to next entry
+                    ldd       ,y++ get value at Y into D
+                    bne       L0268 branch if not zero
+                    comb else set carry
+                    puls      pc,y,x and return
 
 * Process the EXIT command
-Ex                  lbsr      L01E1
-                    clra
-                    bsr       L02B8
-                    bsr       L02B7
-                    bsr       L02B7
-                    bsr       Comment
-                    leax      1,x
-                    tfr       x,d
-                    subd      <parmptr
-                    std       <parmlen
-                    leas      >u00FF,u
-                    lbsr      L0497
+*
+* TODO: check of no parameters so we can bypass F$Chain and just call F$Exit.
+Ex                  lbsr      L01E1     process the argument as a command
+                    clra                set A to standard input
+                    bsr       procpath@ process standard input
+                    bsr       incpath@  process standard output
+                    bsr       incpath@  process standard error
+                    bsr       Comment   go to end of the line
+                    leax      1,x       go past end of line
+                    tfr       x,d       transfer to D
+                    subd      <parmptr  subtract parameter pointer
+                    std       <parmlen  store as parameter length
+                    leas      >u00FF,u  point S to area in our stack
+                    lbsr      ExecPrep prepare for chaining
                     os9       F$Chain   chain the program
                     lbra      ExitShellWithErr     branch if error
-L02B7               inca
-L02B8               pshs      a
-                    bra       L0313
+incpath@            inca                increment the path number
+procpath@           pshs      a         push the path number
+                    bra       L0313     go process the path number
 
 * Change directory
 Chx                 lda       #DIR.+EXEC. set to "dir + exec"
@@ -461,7 +476,7 @@ NoEcho              clra                set to "don't echo commands"
 n@                  sta       <echoflag save the flag state
                     rts                 return
 
-* Exit with error on/off routine
+* Exit script with error on/off routine
 *
 * Exit: A = exit with error flag
 X                   lda       #$01      set to "exit with error"
@@ -470,68 +485,71 @@ NOX                 clra                set to "don't exit with error"
 n@                  sta       <noxflag  save the flag state
                     rts                 return
 
-* Exit: A = C$CR                    
+* Search for CR in string pointed to by X
+* '*' Comment lines come here
+*
+* Exit:  A = C$CR                    
+*       CC = Equal set
 Comment             lda       #C$CR     load A with CR
 l@                  cmpa      ,x+       is A and the character at X the same?
                     bne       l@        branch if not
                     cmpa      ,-x       set EQUAL flag in carry
                     rts                 return
                     
-L02E7               pshs      b,a,cc
+L02E7               pshs      b,a,cc    save registers
+                    lda       #$01      start with standard output
+                    bra       s@                    
+L02ED               pshs      b,a,cc    save registers
+                    lda       #$02      get number of paths
+s@                  sta       <u0011    save the path count
+                    clra                start at path 0
+l@                  bsr       L02FF     go close (possibly dupe) paths
+                    inca                increment path
+                    cmpa      <u0011    are we at last one yet?
+                    bls       l@        continue if lower or same
+                    ror       ,s+       else shift CC on stack, placing hi bit into CC
+                    puls      pc,b,a    return
 
-                    lda       #$01
-                    bra       L02F1
-                    
-L02ED               pshs      b,a,cc
-                    lda       #$02
-L02F1               sta       <u0011
-                    clra                standard input offset
-L02F4               bsr       L02FF
-                    inca
-                    cmpa      <u0011
-                    bls       L02F4
-                    ror       ,s+
-                    puls      pc,b,a
-                    
-L02FF               pshs      a         save A
-                    tst       <u0010
-                    bmi       L031B
-                    bne       L0313
-                    tst       a,u
-                    beq       L031E
-                    os9       I$Close
-                    lda       a,u
-                    os9       I$Dup
-L0313               ldb       ,s
-                    lda       b,u
-                    beq       L031E
-                    clr       b,u
-L031B               os9       I$Close
-L031E               puls      pc,a
+* Entry: A = path number.                    
+L02FF               pshs      a         save path number
+                    tst       <u0010    test ??
+                    bmi       L031B     if hi-bit set, close path
+                    bne       L0313     if 0<u0019<128, get changed path # & close
+                    tst       a,u       check 'real' path number from our variables
+                    beq       L031E     branch if 0
+                    os9       I$Close   close the current path
+                    lda       a,u       get the 'real' path number
+                    os9       I$Dup     duplicate it
+L0313               ldb       ,s        get the passed path number
+                    lda       b,u       get the real path number from our variables
+                    beq       L031E     branch if 0
+                    clr       b,u       else clear the variable
+L031B               os9       I$Close   and close the path
+L031E               puls      pc,a      return
 
 SayWhat             fcc       "WHAT?"
                     fcb       C$CR
 
-WTF                 bsr       L02ED
+WTF                 bsr       L02ED     close 3 standard paths (possibly dupe)
                     leax      <SayWhat,pcr                  point to WTF value
                     lbsr      WriteLin                      write it out
                     clrb                clear the error flag
                     coma                set the carry
                     rts                 return
 
-L0331               inc       <u0010
-                    bsr       L02ED
-                    lda       #$FF
-                    sta       <u0010
-                    bsr       L02E7
+L0331               inc       <u0010    increment ??
+                    bsr       L02ED    do path closings (possibly dupings)
+                    lda       #$FF     set flag to just close raw paths
+                    sta       <u0010    save to ??
+                    bsr       L02E7    go close standard input and standard error
                     leax      <devnambuf,u                  point to the device name buffer
                     bsr       L03BC
                     lbcs      Exit      exit completely if there's an error
                     lda       #$02
                     bsr       L02FF
                     lbsr      L03DC
-                    clr       <u0010
-                    lbra      L005E
+                    clr       <u0010    clear ??
+                    lbra      ProcLine
 InRedir             ldd       #$0001
                     bra       L036E
 ErrRedir            ldd       #$020D
@@ -544,10 +562,10 @@ L035E               ldb       #$02
 * Entry: A = path
 *        B = file mode
 *        X = path
-L0362               tst       a,u       is this path mode set?
-                    bne       WTF       yes... WTF?
+L0362               tst       a,u       duped path exists?
+                    bne       WTF       yes... show WTF?
                     pshs      b,a       else save A/B on the stack
-                    tst       <u0010
+                    tst       <u0010    test ??
                     bmi       L0386
                     bra       L0378
 L036E               tst       a,u       is this path mode set?
@@ -555,7 +573,7 @@ L036E               tst       a,u       is this path mode set?
                     pshs      b,a       else save A/B on the stack
                     ldb       #C$CR     get the carriage return
                     stb       -$01,x    and terminate the line
-L0378               os9       I$Dup     duplicate the path in A
+L0378               os9       I$Dup     duplicate the standard path in A
                     bcs       L03A8     branch if there was an error
                     ldb       ,s        get the path into B
                     sta       b,u       save the duplicated path in the variable
@@ -579,8 +597,8 @@ L03A1               ldb       #PREAD.+READ.+WRITE. load the file mode
 L03A6               stb       1,s       save it to B on the stack
 L03A8               puls      pc,b,a  pull registers and return
 
-L03AA               clra                clear A
-L03AB               ldb       #READ.+WRITE. 
+L03AA               clra          A = standard input
+L03AB               ldb       #$03 B = ??
                     bra       L0362
 
 AllRedir            lda       #C$CR     load A with carriage return
@@ -593,14 +611,14 @@ IORedir             lda       #C$CR     load A with carriage return
                     sta       -$02,x    terminate prior to "<>"
 L03BC               bsr       L03AA
                     bcs       L03B7
-                    ldd       #$01*256+DIR.    standard output in A and directory bit in B
+                    ldd       #$01*256+$80    standard output in A and hi bit in B
                     bra       L0362
                     
 IERedir             lda       #C$CR     load A with carriage return
                     sta       -$03,x    terminate prior to "<>>"
                     bsr       L03AA
                     bcs       L03B7
-                    ldd       #$02*256+DIR.    standard error in A and directory bit in B
+                    ldd       #$02*256+$80    standard error in A and hi bit in B
                     bra       L0362
                     
 OERedir             lda       #C$CR     load A with carriage return
@@ -630,7 +648,7 @@ ChkStdSntx          pshs      x,b,a     save registers
                     bne       L0404 branch if not
                     ldb       1,s else get path
                     ldb       b,u and load mode in our variables
-L0404               orb       #DIR.
+L0404               orb       #$80
                     stb       ,s save it on A in stack
                     puls      b,a
                     leas      $02,s clean stack
@@ -707,7 +725,10 @@ L0491               tstb
                     coma
 L0495               puls      pc,a
 
-L0497               lda       #Prgrm+Objct forking a program
+* Prepare to fork or chain a program.
+* 
+* This call loads the registers to prepare to call F$Fork or F$Chain.
+ExecPrep            lda       #Prgrm+Objct forking a program
                     ldb       <xtrastack get the extra stack value
                     ldx       <progptr    get the pointer to program to fork
                     ldy       <parmlen  get the parameter length
@@ -720,7 +741,7 @@ L0497               lda       #Prgrm+Objct forking a program
 LoadNLaunch         lda       #EXEC.    load with the execution bit
                     os9       I$Open    open the file
                     bcs       L0500     branch if error
-                    leax      <u005E,u  point to ??
+                    leax      <modheader,u  point to module header buffer
                     ldy       #M$Mode   read up to M$Mode bytes (to see if this an OS-9 module)
                     os9       I$Read    read the data
                     pshs      b,cc      save registers
@@ -823,7 +844,7 @@ L0535
                     addd      <u000A add ??
                     addd      #$00FF round up to the next page
                     sta       <xtrastack and save it to the extra stack value
-L0542               lbsr      L0497
+L0542               lbsr      ExecPrep
                     os9       F$Fork   fork the module
                     pshs      b,a,cc save off registers
                     bcs       L0552 branch if there was an error
