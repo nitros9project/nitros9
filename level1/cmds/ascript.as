@@ -6,6 +6,8 @@
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
+*   1      2024/06/28  Boisy Pitre
+* Created.
 
 scrdelim        set     C$COMA
 maxlinelen		set		80
@@ -24,63 +26,61 @@ KeySig              equ       $84
 IcptRtn
                     lbsr      GETC
                     sta       keypressed,u
-                    rti                           our interrupt routine does nothing.
+                    rti
 
 **********************************************************
 * Entry Point
 **********************************************************
-__start
-                    lda       ,x
-                    cmpa      #C$CR
-                    beq       exit
-                    ldd       #maxlinelen-1
-                    leay      scriptpathlist,u
-                    lbsr      STRNCPY
-                    leax      IcptRtn,pcr
-                    os9       F$Icpt
+__start             cmpd      #$0001              any parameters?
+                    beq       exit                no... exit.
+                    ldd       #maxlinelen-1       else get maximum line length - 1
+                    leay      scriptpathlist,u    and script file buffer
+                    lbsr      STRNCPY             copy the parameter over
+                    leax      IcptRtn,pcr         point to the signal handler routine
+                    os9       F$Icpt              install the signal handler
 * Entry: X = menu to display
 PromptAndRead       lbsr      PUTCR                put a carriage return
-                    leax      scriptpathlist,u
-                    lbsr      SHOWSCRMENU            show the menu
-                    bcs       badex@
-                    lbsr      PUTCR
-                    lbsr      PRINTS
+                    leax      scriptpathlist,u     point to the file
+                    lbsr      SHOWSCRMENU          show the menu
+                    bcs       badex@               branch if erro
+                    lbsr      PUTCR put carriage return
+                    lbsr      PRINTS print prompt
                     fcc       /? /
                     fcb       0
                     lbsr      GETC                get a character
-                    lbsr      MATCHASCR
-                    cmpx      #$0000
-                    bne       process
-                    lbsr      PUTCR
-                    bra       PromptAndRead
-process             lbsr      PUTCR
+                    lbsr      MATCHASCR attempt to match
+                    cmpx      #$0000 did we get a match?
+                    bne       process if so, process
+                    lbsr      PUTCR else put a carriage return
+                    bra       PromptAndRead and go back again
+process             lbsr      PUTCR put a carriage return
                     leax      2,x                 skip key and delimiter
-                    ldb       #scrdelim
-                    lbsr      TO_CHAR_OR_NIL      find next delimiter (before command)
+                    ldb       #scrdelim get the script delimiter
+                    lbsr      TO_CHAR_OR_NIL      find the next instance of the delimiter (before command)
                     leax      1,x                 skip over the delimiter
                     lda       ,x                  get the first character of the command
                     cmpa      #'$                 is it the exit character?
                     beq       exit                branch if so
                     pshs      x,u                 else save the pointer to the command and U
-                    lbsr      TO_CHAR_OR_NIL      find next delimiter (before parameter)
+                    lbsr      TO_CHAR_OR_NIL      find the next delimiter (before parameter)
                     clr       ,x+                 nil terminate the command and advance X to parameters
 * count parameter length
                     lbsr      STRLEN
-                    tfr       d,y                    
+                    tfr       d,y                transfer the length to Y    
                     leau      ,x                  point U to parameters for forking (C$CR is at end of parameters)
                     puls      x                   get pointer to command on stack
-                    ldd       #(Prgrm+Objct)*256
-                    os9       F$Fork
-                    puls      u
-                    os9       F$Wait
-                    bra       PromptAndRead
-exit                clrb
-badex@              os9       F$Exit
+                    ldd       #(Prgrm+Objct)*256  A = type/language, B = 0 pages of extra stack space
+                    os9       F$Fork    fork the program
+                    puls      u         recover the static storage pointer
+                    os9       F$Wait    wait for the program to complete
+                    bra       PromptAndRead                 and go back to process the script again
+exit                clrb                clear the carry flag
+badex@              os9       F$Exit    exit
                     
-* Command Scripts
+* Action Scripts
 *
-* Command scripts are text files that are parsed to perform some command based on a key.
-* A command script is made up of one or more comma delimited lines of this form:
+* Action scripts are text files that are parsed to perform some command based on a key.
+* A script is made up of one or more comma delimited lines of this form:
 *
 * K,M,C,P
 *
@@ -97,14 +97,14 @@ badex@              os9       F$Exit
 *    # This is another comment (ignored)
 *    r,Reset,fnxreset,
 *
-* To use command scripts:
+* To use scripts:
 *   1. Show the script menu by calling SHOWSCRMENU.
 *   2. Match a key to an command by calling MATCHASCR with A holding the key to match.
 
 
 ;;; MATCHASCR
 ;;;
-;;; Match a key to an command in an command script and return a pointer to the command entry, if found.
+;;; Match a key to an command in an action script and return a pointer to the command entry, if found.
 ;;;
 ;;; Entry:  A = The key to match against.
 ;;;         X = The pathlist to the script file.
@@ -132,7 +132,7 @@ notfound@       ldx     #$0000
                 
 ;;; SHOWSCRMENU
 ;;;
-;;; Show an command script menu.
+;;; Show an action script menu.
 ;;;
 ;;; Entry:  X = The pathlist to the script file.
 ;;;
