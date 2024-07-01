@@ -71,7 +71,7 @@ BOOTFILE_F256K = $(KERNEL) $(DWIO) \
 		$(PIPE) \
 		$(CLOCK) \
 		sysgo $(CMDSDIR)/shell_21 \
-		$(CMDSDIR)/date $(CMDSDIR)/display \
+		$(CMDSDIR)/display \
 		$(CMDSDIR)/echo $(CMDSDIR)/fnxreset \
 		$(CMDSDIR)/iniz $(CMDSDIR)/deiniz \
 		$(CMDSDIR)/load $(CMDSDIR)/link $(CMDSDIR)/unlink \
@@ -84,7 +84,7 @@ BOOTFILE_F256JR = $(KERNEL) $(DWIO) \
 		$(PIPE) \
 		$(CLOCK) \
 		sysgo $(CMDSDIR)/shell_21 \
-		$(CMDSDIR)/date $(CMDSDIR)/display \
+		$(CMDSDIR)/display \
 		$(CMDSDIR)/echo $(CMDSDIR)/fnxreset \
 		$(CMDSDIR)/iniz $(CMDSDIR)/deiniz \
 		$(CMDSDIR)/load $(CMDSDIR)/link $(CMDSDIR)/unlink \
@@ -93,6 +93,7 @@ BOOTFILE_F256JR = $(KERNEL) $(DWIO) \
 F0_CMDS = $(CMDSDIR)/attr \
 		$(CMDSDIR)/build \
 		$(CMDSDIR)/copy \
+		$(CMDSDIR)/date \
 		$(CMDSDIR)/debug $(CMDSDIR)/del $(CMDSDIR)/deldir \
 		$(CMDSDIR)/devs $(CMDSDIR)/dir $(CMDSDIR)/dump \
 		$(CMDSDIR)/edit \
@@ -100,16 +101,14 @@ F0_CMDS = $(CMDSDIR)/attr \
 		$(CMDSDIR)/ident $(CMDSDIR)/irqs \
 		$(CMDSDIR)/list \
 		$(CMDSDIR)/makdir $(CMDSDIR)/mfree $(CMDSDIR)/mdir \
-		$(CMDSDIR)/prompt $(CMDSDIR)/procs $(CMDSDIR)/pwd $(CMDSDIR)/pxd \
-		$(CMDSDIR)/rename \
+		$(CMDSDIR)/procs $(CMDSDIR)/pwd $(CMDSDIR)/pxd \
 		$(CMDSDIR)/setime $(CMDSDIR)/sleep \
-		$(CMDSDIR)/tmode \
-		$(CMDSDIR)/xmode
+		$(CMDSDIR)/tmode $(CMDSDIR)/ascript
 
 ALLOBJS		= init sysgo bootfile_f256k bootfile_f256jr booter_ram_f256k booter_flash_f256k \
 				booter_ram_f256jr booter_flash_f256jr
 
-all: $(DEPENDS) $(ALLOBJS)
+all: $(DEPENDS) $(ALLOBJS) f0.dsk
 	
 # Some commands depend on net.o
 $(NOSLIB)/net.o:
@@ -189,24 +188,28 @@ flash_f0: f0.dsk
 	bulk_flash bulk.csv
 	rm f0_? bulk.csv
 
-f0.dsk: startup.feu
+FEU_FILES = $(foreach file,feu/*,$(file))
+
+f0.dsk: feu/startup
 	$(OS9FORMAT) -q -t10 -st16 $@ -n"FEU"
 	$(MAKDIR) $@,CMDS
 	$(OS9COPY) $(F0_CMDS) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(F0_CMDS),$@,CMDS/$(file))
-	$(OS9COPY) -l $^ $@,
-
-startup.feu:
+	$(MAKDIR) $@,FEU
+	$(foreach file,$(FEU_FILES),$(OS9COPY) -l $(file) $@,FEU)
+	
+feu/startup: FORCE
 	echo "display 1b 60 0 ff ff 20 ff 1b 61 1 ff 0 0 ff 5 22 f0 1b 20 2 0 0 50 18 0 1 0" > $@
 	echo "echo FEU - Foenix Executive Utility" >> $@
+	echo "echo Build date:" `date` >> $@
 	echo "fnxinfo" >> $@
-	echo "echo" >> $@
-	echo "bootos9 /c0/OS9Boot" >> $@
-	echo "bootos9 /s0/OS9Boot" >> $@
-	echo "bootos9 /x0/OS9Boot" >> $@
+	echo "chd .../feu" >> $@
+	echo "ascript main.script</1" >> $@
+
+FORCE: ;
 
 clean:
-	$(RM) $(ALLOBJS) *.o *.tmp vectors trampoline startup.feu *.list *.map *.dsk
+	$(RM) $(ALLOBJS) *.o *.tmp vectors trampoline *.list *.map *.dsk
 
-autoex: feu.o os9boot.o autoexec.o
+feu: feu.o
 	$(LINKER) $(LFLAGS) $^ -o$@
