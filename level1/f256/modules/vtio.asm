@@ -28,7 +28,7 @@ edition             set       2
 PSG.Base            equ       PSGM.Base
 
 * We can use a different MMU slot if we want.
-                    ifdef     Level-1
+                    ifeq     Level-1
 * For Level 1, we need to use the high slot -- or else we crash (1-July-2024).                    
 MAPSLOT             equ       MMU_SLOT_7
                     else
