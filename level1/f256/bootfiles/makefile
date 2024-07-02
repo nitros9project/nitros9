@@ -66,41 +66,53 @@ SCDWP     = $(MD)/scdwp.dr $(MD)/p_scdwp.dd
 # Clock driver
 CLOCK	= $(MD)/clock $(MD)/clock2_f256
 
-BOOTFILE_SD_F256K = $(KERNEL) $(DWIO) \
-		$(RBF) $(RBFDW) \
-		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
-		$(MD)/dds0.dd \
+# NOTE!!!
+# VTIO must be near the top of the bootlist so that it can safely map
+# the F256's text and CLUT blocks into $E000-$FFFF.
+BOOTFILE_SD_F256K = $(KERNEL) \
 		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
-		$(SC16550) \
-		$(CLOCK) \
-		$(MD)/sysgo \
-		$(CMDSDIR)/shell_21
-
-BOOTFILE_SD_F256JR = $(KERNEL) $(DWIO) \
-		$(RBF) $(RBFDW) \
+		$(RBF) $(RBFDW) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
 		$(MD)/dds0.dd \
-		$(SCF) $(SCVT_F256JR) $(FONT) $(PALETTE) \
 		$(SC16550) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(CMDSDIR)/shell_21
 
-BOOTFILE_DW_F256K = $(KERNEL) $(DWIO) \
-		$(RBF) $(RBFDW) \
+# NOTE!!!
+# VTIO must be near the top of the bootlist so that it can safely map
+# the F256's text and CLUT blocks into $E000-$FFFF.
+BOOTFILE_SD_F256JR = $(KERNEL) \
+		$(SCF) $(SCVT_F256JR) $(FONT) $(PALETTE) \
+		$(RBF) $(RBFDW) $(DWIO) \
+		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
+		$(MD)/dds0.dd \
+		$(SC16550) \
+		$(CLOCK) \
+		$(MD)/sysgo \
+		$(CMDSDIR)/shell_21
+
+# NOTE!!!
+# VTIO must be near the top of the bootlist so that it can safely map
+# the F256's text and CLUT blocks into $E000-$FFFF.
+BOOTFILE_DW_F256K = $(KERNEL) \
+		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
+		$(RBF) $(RBFDW) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
 		$(MD)/ddx0.dd \
-		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
 		$(SC16550) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(CMDSDIR)/shell_21
 		
-BOOTFILE_DW_F256JR = $(KERNEL) $(DWIO) \
-		$(RBF) $(RBFDW) \
+# NOTE!!!
+# VTIO must be near the top of the bootlist so that it can safely map
+# the F256's text and CLUT blocks into $E000-$FFFF.
+BOOTFILE_DW_F256JR = $(KERNEL) \
+		$(SCF) $(SCVT_F256JR) $(FONT) $(PALETTE) \
+		$(RBF) $(RBFDW) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
 		$(MD)/ddx0.dd \
-		$(SCF) $(SCVT_F256JR) $(FONT) $(PALETTE) \
 		$(SC16550) \
 		$(CLOCK) \
 		$(MD)/sysgo \
