@@ -96,6 +96,9 @@ $(DSKSD_F256K):
 	$(foreach file,$(SCRIPTS),$(CPL) ../../level1/f256/scripts/$(file) $@,SCRIPTS;)
 	$(MAKDIR) $@,TESTS
 	$(foreach file,$(TESTS),$(CPL) ../../level1/f256/tests/$(file) $@,TESTS;)
+	$(MAKDIR) $@,FEU
+	echo "bootos9 /s0/os9boot" > /tmp/startup
+	$(OS9COPY) -l /tmp/startup $@,FEU
 
 $(DSKDW_F256K):
 	$(RM) $@
@@ -132,6 +135,9 @@ $(DSKDW_F256K):
 	$(foreach file,$(SCRIPTS),$(CPL) ../../level1/f256/scripts/$(file) $@,SCRIPTS;)
 	$(MAKDIR) $@,TESTS
 	$(foreach file,$(TESTS),$(CPL) ../../level1/f256/tests/$(file) $@,TESTS;)
+	$(MAKDIR) $@,FEU
+	echo "bootos9 /x0/os9boot" > /tmp/startup
+	$(OS9COPY) -l /tmp/startup $@,FEU
 
 $(DSKSD_F256JR):
 	$(RM) $@
@@ -168,7 +174,10 @@ $(DSKSD_F256JR):
 	$(foreach file,$(SCRIPTS),$(CPL) ../../level1/f256/scripts/$(file) $@,SCRIPTS;)
 	$(MAKDIR) $@,TESTS
 	$(foreach file,$(TESTS),$(CPL) ../../level1/f256/tests/$(file) $@,TESTS;)
-
+	$(MAKDIR) $@,FEU
+	echo "bootos9 /s0/os9boot" > /tmp/startup
+	$(OS9COPY) -l /tmp/startup $@,FEU
+	
 $(DSKDW_F256JR):
 	$(RM) $@
 	$(OS9FORMAT_DW) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
@@ -204,6 +213,9 @@ $(DSKDW_F256JR):
 	$(foreach file,$(SCRIPTS),$(CPL) ../../level1/f256/scripts/$(file) $@,SCRIPTS;)
 	$(MAKDIR) $@,TESTS
 	$(foreach file,$(TESTS),$(CPL) ../../level1/f256/tests/$(file) $@,TESTS;)
+	$(MAKDIR) $@,FEU
+	echo "bootos9 /x0/os9boot" > /tmp/startup
+	$(OS9COPY) -l /tmp/startup $@,FEU
 
 info:
 	@$(ECHO) "*** NitrOS-9/$(CPU) Level $(LEVEL) for the $(MACHINE) ***"

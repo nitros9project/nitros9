@@ -1,7 +1,7 @@
 include ../port.mak
 
 vpath %.as $(LEVEL1)/f256/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds
-vpath %.asm $(LEVEL1)/f256/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/bf:$(3RDPARTY)/packages/cpm
+vpath %.asm $(LEVEL1)/f256/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/bf:$(3RDPARTY)/packages/cpm:$(3RDPARTY)/packages/rogue
 
 DEPENDS		= ./makefile $(NOSLIB)/net.o
 
@@ -25,7 +25,8 @@ CMDS    = asm attr backup binex build cmp copy \
 		makdir mdir megaread merge mfree minted mmap modpatch padrom park \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
-		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) play fstatus
+		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) play fstatus \
+		bootos9 fnxinfo fnxreset pick rogue
 
 SHELLMODS	= shellplus echo iniz link load save unlink
 
