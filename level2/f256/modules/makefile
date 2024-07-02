@@ -1,10 +1,12 @@
 include ../port.mak
 
+vpath %.as $(LEVEL1)/$(PORT)/modules
 vpath %.asm kernel:$(LEVEL1)/$(PORT)/modules:$(LEVEL2)/modules:$(LEVEL1)/modules
 
 AFLAGS		+= -I$(LEVEL2)/$(PORT)
 AFLAGS		+= -I$(LEVEL1)/$(PORT)/modules
 AFLAGS		+= -I$(LEVEL1)/modules
+LFLAGS      += -L $(NITROS9DIR)/lib -lnet -lf256 -lalib -lf256snd
 
 DEPENDS		= ./makefile
 TPB		= $(3RDPARTY)/booters
@@ -41,6 +43,8 @@ ALLOBJS		=  $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(PIPE) $(RFM) $(FONTS)
 
 all:	$(ALLOBJS)
 
+sysgo: sysgo.o
+
 # Kernel
 krn: $(LEVEL2)/modules/kernel/krn.asm
 	$(CD) kernel; make $@
@@ -49,10 +53,6 @@ krn: $(LEVEL2)/modules/kernel/krn.asm
 krnp2: $(LEVEL2)/modules/kernel/krnp2.asm
 	$(CD) kernel; make $@
 	$(CP) kernel/$@ .
-
-# SysGo Modules
-sysgo: sysgo.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDD=1
 
 # SD card descriptors
 dds0.dd: rbfnxsddesc.asm
