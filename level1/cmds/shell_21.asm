@@ -15,6 +15,9 @@
 *  22      2010/01/19  Boisy Pitre
 * Added code to honor S$HUP signal and exit when received to support
 * networking.
+*
+*  23      2024/07/01  Boisy Pitre
+* Minor optimizations.
 
                     ifp1
                     use       defsfile
@@ -23,7 +26,7 @@
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       22
+edition             set       23
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -117,10 +120,9 @@ start               leas      -$05,s          reserve some space on the stack
                     tst       <u000C
                     bne       ExitShell        exit shell if so
 noparms@            lds       ,s++             get Y off stack pushed earlier (end of parameter area)
-* OPT: do leax after bne
-ProcLine            leax      <Intro,pcr       point to intro string
-                    tst       <suppressintro   do we suppress showing the intro?
+ProcLine            tst       <suppressintro   do we suppress showing the intro?
                     bne       ReadCmdLoop      yes, don't show prompt, just go read a command
+                    leax      <Intro,pcr       point to intro string
                     bsr       WriteLin         else show it
                     bcs       Exit             branch if error
 ShowPrompt          leax      <DefPrmpt,pcr    point to the prompt
@@ -151,7 +153,7 @@ testecho@           tst       <echoflag echo flag set?
                     bsr       WriteLin else echo the command line
 parse@              lbsr      ParseCmdLine parse the command line
                     bcc       ShowPrompt show prompt if no error
-                    tstb error code?
+                    tstb                error code?
                     bne       chkimm@ branch if not zero
                     bra       ShowPrompt else show prompt
 
@@ -393,11 +395,11 @@ SkipCnsc            pshs      x         save registers
 l@                  cmpa      ,x+       compare character to it
                     bhi       l@        branch if higher
                     puls      pc,x      grab X and return
-clean@              leas      $02,s     clean the stack
+clean@              leas      2,s       clean the stack
                     lda       #C$SPAC   load A with space
 l1@                 cmpa      ,x+       is it the next character as well?
                     beq       l1@       branch if so
-                    leax      -1,x    else back up
+                    leax      -1,x      else back up
 NextCmd             andcc     #^Carry   clear the carry    
                     rts                 return                     
 * X = Address of the source string.
@@ -513,19 +515,19 @@ l@                  bsr       L02FF     go close (possibly dupe) paths
 * Entry: A = path number.                    
 L02FF               pshs      a         save path number
                     tst       <u0010    test ??
-                    bmi       L031B     if hi-bit set, close path
-                    bne       L0313     if 0<u0019<128, get changed path # & close
+                    bmi       close@    if hi-bit set, close path
+                    bne       L0313     if 0<u0010<128, get changed path number & close
                     tst       a,u       check 'real' path number from our variables
-                    beq       L031E     branch if 0
+                    beq       ex@       branch if 0
                     os9       I$Close   close the current path
                     lda       a,u       get the 'real' path number
                     os9       I$Dup     duplicate it
 L0313               ldb       ,s        get the passed path number
                     lda       b,u       get the real path number from our variables
-                    beq       L031E     branch if 0
+                    beq       ex@       branch if 0
                     clr       b,u       else clear the variable
-L031B               os9       I$Close   and close the path
-L031E               puls      pc,a      return
+close@              os9       I$Close   and close the path
+ex@                 puls      pc,a      return
 
 SayWhat             fcc       "WHAT?"
                     fcb       C$CR
@@ -557,11 +559,16 @@ ErrRedir            ldd       #$020D
                     bra       L035E
 
 OutRedir            lda       #$01      A = standard output
-L035E               ldb       #$02
+L035E               ldb       #WRITE.   B = mode
                     bra       L036E                    
+
+* Dup paths or open/create a file, depending on parameters.
+*
 * Entry: A = path
-*        B = file mode
-*        X = path
+*        B = if bit 7 is hi, then B is a path; otherwise, it's a file mode.
+*        X = file to open or create (if bit 7 of B is clear)
+*
+* Exit:  B = error code, if any
 L0362               tst       a,u       duped path exists?
                     bne       WTF       yes... show WTF?
                     pshs      b,a       else save A/B on the stack
@@ -572,33 +579,33 @@ L036E               tst       a,u       is this path mode set?
                     bne       WTF       yes... WTF?
                     pshs      b,a       else save A/B on the stack
                     ldb       #C$CR     get the carriage return
-                    stb       -$01,x    and terminate the line
+                    stb       -1,x      and terminate the line
 L0378               os9       I$Dup     duplicate the standard path in A
-                    bcs       L03A8     branch if there was an error
-                    ldb       ,s        get the path into B
+                    bcs       ex@       branch if there was an error
+                    ldb       ,s        get the path in B
                     sta       b,u       save the duplicated path in the variable
-                    lda       ,s        get the path into A
+                    lda       ,s        get the path offset into A
                     os9       I$Close   close the old path
-L0386               lda       1,s       get file mode on stack
-                    bmi       L0391     branch if directory bit is set
+L0386               lda       1,s       get passed B on stack
+                    bmi       L0391     branch if hi-bit set (A is path)
                     ldb       ,s        get path off stack into B
                     bsr       ChkStdSntx
-                    tsta                test the file mode in A
-                    bpl       L0398     branch if not a directory
-L0391               anda      #%00001111 mask out all but the lower 4 bits
+                    tsta                is A a mode byte?
+                    bpl       L0398     branch if so
+L0391               anda      #%00001111 else mask out all but the lower 4 bits
                     os9       I$Dup     duplicate the path in A
-                    bra       L03A6     branch
+                    bra       saveandex@     branch
 L0398               bita      #WRITE.   is the write flag set?
-                    bne       L03A1     branch if so
+                    bne       create@     branch to create the file
                     os9       I$Open    else open the file
-                    bra       L03A6     and continue
-L03A1               ldb       #PREAD.+READ.+WRITE. load the file mode
+                    bra       saveandex@     and continue
+create@             ldb       #PREAD.+READ.+WRITE. load the file mode
                     os9       I$Create  create the file
-L03A6               stb       1,s       save it to B on the stack
-L03A8               puls      pc,b,a  pull registers and return
+saveandex@          stb       1,s       save error code on B in stack
+ex@                 puls      pc,b,a  pull registers and return
 
 L03AA               clra          A = standard input
-L03AB               ldb       #$03 B = ??
+L03AB               ldb       #READ.+WRITE. B = mode byte
                     bra       L0362
 
 AllRedir            lda       #C$CR     load A with carriage return
@@ -611,14 +618,14 @@ IORedir             lda       #C$CR     load A with carriage return
                     sta       -$02,x    terminate prior to "<>"
 L03BC               bsr       L03AA
                     bcs       L03B7
-                    ldd       #$01*256+$80    standard output in A and hi bit in B
+                    ldd       #$01*256+$80    standard output in A and standard input in B (hi bit set to indicate path)
                     bra       L0362
                     
 IERedir             lda       #C$CR     load A with carriage return
                     sta       -$03,x    terminate prior to "<>>"
                     bsr       L03AA
                     bcs       L03B7
-                    ldd       #$02*256+$80    standard error in A and hi bit in B
+                    ldd       #$02*256+$80    standard error in A and standard input in B (hi-bit set to indicate path)
                     bra       L0362
                     
 OERedir             lda       #C$CR     load A with carriage return
@@ -626,7 +633,7 @@ OERedir             lda       #C$CR     load A with carriage return
                     lda       #$01      offset to standard output variable
                     bsr       L03AB
                     bcs       L03B7
-L03DC               ldd       #$02*256+DIR.+READ.    standard error in A and directory + read bit in B
+L03DC               ldd       #$02*256+$81    standard error in A and standard output in B (hi-bit set to indicate path)
                     bra       L0362
           
 * Check if /0, /1, or /2 syntax is being used.
@@ -643,7 +650,7 @@ ChkStdSntx          pshs      x,b,a     save registers
                     lbsr      SkipCnsc skip characters after /0, /1, of /2
                     puls      x,b,a    restore registers
                     bcs       ex@      branch if carry set
-                    andb      #3 mask out all but std/std/stderr
+                    andb      #%00000011 mask out all but std/std/stderr
                     cmpb      1,s  same as what was passed?
                     bne       L0404 branch if not
                     ldb       1,s else get path
@@ -651,8 +658,8 @@ ChkStdSntx          pshs      x,b,a     save registers
 L0404               orb       #$80
                     stb       ,s save it on A in stack
                     puls      b,a
-                    leas      $02,s clean stack
-                    rts return
+                    leas      2,s clean stack
+                    rts       return
 ex@                 puls      pc,x,b,a return
 
 StkSize             ldb       #C$CR     load A with carriage return
@@ -671,7 +678,7 @@ StkSize             ldb       #C$CR     load A with carriage return
 L042C               stb       <xtrastack save the additional stack value
                     lbra      SkipCnsc  go skip the next set of consecutive characters at X
 
-Return              leax      -$01,x
+Return              leax      -1,x      move X back one position
                     lbsr      L04CA
                     bra       L043B
 
@@ -681,7 +688,7 @@ L043B               bcs       L044E
                     bsr       L045F
 L0442               bcs       L044E
                     lbsr      SkipCnsc
-                    cmpa      #$0D
+                    cmpa      #C$CR
                     bne       L044D
                     leas      $04,s
 L044D               clrb
@@ -696,34 +703,42 @@ Backgrnd            bsr       L04C6
 
 * Wait for a child process to die.
 Wait                clra                clear A so that we don't call F$Send later
+* Entered here if commands are separated with ';' (or '()' groups).
 L045F               pshs      a         save the process ID on the stack
-DoWait             os9       F$Wait    wait for the child
+DoWait             os9       F$Wait    wait for child to die or until signal received
                     tst       <kbdsignl has a key been pressed?
-                    beq       L0479     branch if not
+                    beq       L0479     no, child was exited (or got signal), go process
+* Shell was interrupted by signal while waiting.
                     ldb       <kbdsignl get the signal
                     cmpb      #S$Abort  is it the abort signal?
                     bne       L0491     branch if not
                     lda       ,s        else get process ID on stack
-                    beq       L0491     branch if zero
+                    beq       L0491     branch if none
                     os9       F$Send    send the signal
                     clr       ,s        clear the process ID on the stack
                     bra       DoWait     go back and wait again
-L0479               bcs       L0495     branch if an error occurred
-                    cmpa      ,s        is the process ID the same as on the stack?
-                    beq       L0491     branch if so
-                    tst       ,s        is the process ID on the stack zero?
-                    beq       L0486     branch if so
-                    tstb                is B = 0?
-                    beq       DoWait    if so, go back and wait again
-L0486               pshs      b         save ??
-                    bsr       L044E
-                    ldb       #'-
-                    lbsr      L0597
-                    puls      b
-L0491               tstb
-                    beq       L0495
-                    coma
-L0495               puls      pc,a
+
+* Child F$Exited or was aborted - eat should go here
+* Entry: A=ID # of deceased child
+*        B=Exit (error) code from child
+L0479               bcs       L0495     if F$Wait exited with error, return with it
+                    cmpa      ,s        same process number as one we were waiting for?
+                    beq       L0491     yes, exit
+                    tst       ,s        no, was there a specific process number we wanted?
+                    beq       L0486     no, skip ahead
+* Child died, but not the one we were waiting for.
+                    tstb                was there an error status?
+                    beq       DoWait    no, ignore dead child and wait for one we wanted
+* Child died with error on exit.
+L0486               pshs      b         preserve child's exit status code
+                    bsr       L044E     ??? go close & re-dupe paths?
+                    ldb       #'-       get a '-' (for a '-003' process finished msg)
+                    lbsr      L0597     print that out
+                    puls      b         get back exit status code
+L0491               tstb                is there an error/signal code?
+                    beq       L0495     no, exit
+                    coma                set the carry flag
+L0495               puls      pc,a      return
 
 * Prepare to fork or chain a program.
 * 
@@ -733,7 +748,7 @@ ExecPrep            lda       #Prgrm+Objct forking a program
                     ldx       <progptr    get the pointer to program to fork
                     ldy       <parmlen  get the parameter length
                     ldu       <parmptr    get the parameter pointer
-                    rts
+                    rts                 return
 
 * Load and launch a module.
 *
