@@ -32,13 +32,13 @@ RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd
 # SCF
 SCF		 = $(MD)/scf.mn
 
-# SCF video terminal
-SCVT_F256JR  = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/term.dt
-SCVT_F256K   = $(MD)/vtio.dr $(MD)/keydrv_f256k.sb $(MD)/term.dt
-
 # Font & palette
 FONT		 = $(MD)/phoenixegafont.sb
 PALETTE	 = $(MD)/palette.sb
+
+# SCF video terminal
+SCVT_F256JR  = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/term.dt
+SCVT_F256K   = $(MD)/vtio.dr $(MD)/keydrv_f256k.sb $(MD)/term.dt
 
 # SCF DriveWire virtual networking/window driver
 SCDWV = 	$(MD)/scdwv.dr $(SCDWV_NET) $(SCDWV_WIN)
@@ -64,10 +64,13 @@ PIPE	= $(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd
 # Clock driver
 CLOCK	= $(MD)/clock $(MD)/clock2_f256
 
-BOOTFILE_F256K = $(KERNEL) $(DWIO) \
-		$(RBF) $(RBFDW) \
-		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
+# NOTE!!!
+# VTIO must be near the top of the bootlist so that it can safely map
+# the F256's text and CLUT blocks into $E000-$FFFF.
+BOOTFILE_F256K = $(KERNEL) \
 		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
+		$(RBF) $(RBFDW) $(DWIO) \
+		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
 		$(PIPE) \
 		$(CLOCK) \
 		sysgo $(CMDSDIR)/shell_21 \
@@ -77,10 +80,13 @@ BOOTFILE_F256K = $(KERNEL) $(DWIO) \
 		$(CMDSDIR)/load $(CMDSDIR)/link $(CMDSDIR)/unlink \
 		$(CMDSDIR)/bootos9
 
-BOOTFILE_F256JR = $(KERNEL) $(DWIO) \
-		$(RBF) $(RBFDW) \
-		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
+# NOTE!!!
+# VTIO must be near the top of the bootlist so that it can safely map
+# the F256's text and CLUT blocks into $E000-$FFFF.
+BOOTFILE_F256JR = $(KERNEL) \
 		$(SCF) $(SCVT_F256JR) $(FONT) $(PALETTE) \
+		$(RBF) $(RBFDW) $(DWIO) \
+		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
 		$(PIPE) \
 		$(CLOCK) \
 		sysgo $(CMDSDIR)/shell_21 \
