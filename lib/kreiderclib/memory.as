@@ -1,5 +1,5 @@
-                    export    malloc
-                    export    free
+                    export    _malloc
+                    export    _free
                     
                     section   bss
 
@@ -32,11 +32,11 @@ L0000               ldd       2,s
                     std       2,u
                     leau      4,u
                     pshs      u
-                    bsr       free
+                    bsr       _free
                     leas      2,s
                     ldu       G0000,y
 L002b               rts
-malloc              pshs      d,u
+_malloc             pshs      d,u
                     ldd       6,s
                     addd      #3
                     lsra
@@ -86,7 +86,7 @@ L0085               cmpu      G0000,y
                     clrb
 L0093               leas      2,s
                     puls      u,pc
-free                pshs      d,u
+_free               pshs      d,u
                     ldu       6,s
                     leau      -4,u
                     ldx       G0000,y

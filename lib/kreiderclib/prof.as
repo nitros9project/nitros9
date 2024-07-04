@@ -71,7 +71,7 @@ L006c               puls      x
 L0071               puls      u,pc
 _dumprof            pshs      u
                     lbsr      pflinit
-                    leax      _iob+13,y
+                    leax      iob+13,y
                     pshs      x
                     lbsr      fflush
                     leas      2,s
@@ -86,7 +86,7 @@ L0089               leax      4,u
                     pshs      d
                     leax      >L00c0,pcr
                     pshs      x
-                    leax      _iob+26,y
+                    leax      iob+26,y
                     pshs      x
                     lbsr      fprintf
                     leas      10,s

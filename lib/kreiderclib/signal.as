@@ -1,3 +1,4 @@
+                    export    _signal
                     export    _sigint
                     
                     section   bss
@@ -11,6 +12,7 @@ B003c               rmb       1
 
                     section   code
 
+_signal
 _sigint             ldd       2,s
                     tstb
                     beq       L000c
