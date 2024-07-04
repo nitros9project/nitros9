@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of strlen.r
-
+                    export    strlen
+                    
                     section   code
 
 strlen              pshs      u

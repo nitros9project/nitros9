@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of pfldummy.r
-
+                    export    pflong
+                    
                     section   bss
 
 * Initialized Data (class G)

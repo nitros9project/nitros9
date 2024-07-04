@@ -1,18 +1,20 @@
-* Disassembly by Os9disasm of system.r
-
+                    export    _system
+                    
                     section   code
 
 * class D external label equates
 
 D0000               equ       $0000
 
+                    export    _system
+                    
 * class X external label equates
 
 X6865               equ       $6865
 
-system              pshs      u
+_system             pshs      u
                     ldd       #$ff5a
-                    lbsr      _stkcheck
+*                    lbsr      _stkcheck
                     leas      -86,s
                     ldd       #$0051
                     ldu       90,s

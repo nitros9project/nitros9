@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of defdrive.r
-
+                    export    getdrive
+                    
 * class D external label equates
 
 D0000               equ       $0000

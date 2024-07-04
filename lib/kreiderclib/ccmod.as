@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of ccmod.r
-
+                    export    ccumod
+                    export    ccmod
+                    
                     section   bss
 
 * Uninitialized data (class B)

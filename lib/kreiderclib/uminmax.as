@@ -1,4 +1,5 @@
-* Disassembly by Os9disasm of uminmax.r
+                    export    umin
+                    export    umax
 
                     section   code
 

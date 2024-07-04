@@ -1,6 +1,8 @@
 # Makefile to create assembler library
 include $(NITROS9DIR)/rules.mak
 
+ASM		= lwasm --no-warn=ifp1 --6309 --format=obj --pragma=pcaspcr,condundefzero,undefextern,dollarnotlocal,noforwardrefmax --includedir=. --includedir=$(DEFSDIR)
+
 MODS = _prgname.o abort.o abs.o access.o adump.o atof.o atoi.o atol.o \
 	bsearch.o  \
 	calloc.o case.o ccdiv.o ccmod.o ccmult.o cfinish.o cfloats.o \
@@ -34,12 +36,12 @@ MODS = _prgname.o abort.o abs.o access.o adump.o atof.o atoi.o atol.o \
 
 NOTYET = pffinit.o plfinit.o
 
-all:	../clib.a
+all:	../libc.a
 
-../clib.a: $(MODS)
-	lwar -c $@ $?
+../libc.a: $(MODS)
+	lwar -c $@ $^
 
 dskclean: clean
 
 clean:
-	$(RM) *.o ../clib.a
+	$(RM) *.o ../libc.a *.list *.map

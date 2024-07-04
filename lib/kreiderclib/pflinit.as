@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of pflinit.r
-
+                    export    pflinit
+                    export    pflong
+                    
 * class D external label equates
 
 D003b               equ       $003b

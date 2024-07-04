@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of memchr.r
-
+                    export    memchr
+                    
                     section   code
 
 memchr              pshs      x,u

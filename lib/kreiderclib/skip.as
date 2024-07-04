@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of skip.r
-
+                    export    skipbl
+                    export    skipwd
+                    
                     section   code
 
 skipbl              ldx       2,s

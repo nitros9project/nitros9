@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of index.r
-
+                    export    strchr
+                    export    strrchr
+                    
                     section   code
 
 strchr              ldx       2,s
@@ -11,6 +12,7 @@ L0002               ldb       ,x+
                     bra       L0025
 L000e               clra
                     rts
+                    
 strrchr             ldx       2,s
                     ldd       #1
                     pshs      d

@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of htoi.r
-
+                    export    htoi
+                    
                     section   code
 
 htoi                clra

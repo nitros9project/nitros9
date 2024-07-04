@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of claddsub.r
-
+                    export    _ladd
+                    export    _lsub
+                    
                     section   code
 
 _ladd               ldd       4,s

@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of mktemp.r
-
+                    export    mktemp
+                    
                     section   code
 
 mktemp              pshs      u

@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of pffdummy.r
-
+                    export    pffloat
+                    
                     section   code
 
 * class D external label equates

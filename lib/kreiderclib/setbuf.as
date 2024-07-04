@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of setbuf.r
-
+                    export    setbuf
+                    
                     section   code
 
 setbuf              pshs      u

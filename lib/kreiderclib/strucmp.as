@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of strucmp.r
-
+                    export    strucmp
+                    
                     section   codd
 
 strucmp             pshs      u

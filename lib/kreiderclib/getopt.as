@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of getopt.r
-
+                    export    getopt
+                    
 * class D external label equates
 
 D0000               equ       $0000

@@ -1,24 +1,14 @@
-* Disassembly by Os9disasm of sleep.r
-
                     section   code
 
-* OS-9 system function equates
+                    export    _sleep
 
-F$ID                equ       $0c
-F$SUser             equ       $1c
-F$NMLink            equ       $21
-L0025               equ       $25
-
-L0000               fcb       $61
-                    fcb       $62
-                    fcb       $62
-                    cmpb      <L0068,pcr
-sleep               equ       *-2
+L0000               fcs       "abba"
+_sleep              cmpx      #$0000
                     bne       L000d
                     ldd       #1
                     bra       L003a
 L000d               pshs      d
-                    os9       L0025
+                    os9       F$TPS
                     bcc       L0037
                     clra
                     os9       F$ID
@@ -40,5 +30,4 @@ L003a               pshs      d
                     lbsr      tsleep
                     puls      x,pc
 
-                    endsect
-
+                    endsection

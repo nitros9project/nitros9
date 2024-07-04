@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of strclr.r
-
+                    export    strclr
+                    
                     section   code
 
 strclr              pshs      u

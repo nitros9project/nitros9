@@ -1,5 +1,10 @@
-* Disassembly by Os9disasm of pwent.r
-
+                    export    getpwent
+                    export    setpwent          
+                    export    endpwent
+                    export    getpwdlm
+                    export    getpwuid
+                    export    getpwnam
+                    
 * class D external label equates
 
 D0000               equ       $0000

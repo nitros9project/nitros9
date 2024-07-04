@@ -1,5 +1,7 @@
-* Disassembly by Os9disasm of findstr.r
-
+                    export    findstr
+                    export    findnstr
+                    export    findastr
+                    
                     section   code
 
 findstr             pshs      y,u

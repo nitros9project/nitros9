@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of pwcryp.r
-
+                    export    pwcryp
+                    
                     section   code
 
 pwcryp              pshs      u

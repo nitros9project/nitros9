@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of scale.r
-
+                    export    atoftbl
+                    export    scale
+                    
                     section   bss
 
 * Initialized Data (class G)

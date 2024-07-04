@@ -1,5 +1,7 @@
-* Disassembly by Os9disasm of putc.r
-
+                    export    putc
+                    export    putw
+                    export    fflush
+                    
                     section   code
 
 putc                pshs      u

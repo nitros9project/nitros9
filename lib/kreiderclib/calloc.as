@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of calloc.r
-
+                    export    calloc
+                    
                     section   code
 
 calloc              pshs      u

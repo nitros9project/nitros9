@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of xtoa.r
-
+                    export    utoa
+                    export    itoa
+                    
                     section   code
 
 utoa                clra
@@ -7,6 +8,7 @@ utoa                clra
                     pshs      d,u
                     ldu       8,s
                     bra       L0018
+                    
 itoa                clra
                     clrb
                     pshs      d,u

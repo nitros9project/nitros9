@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of strncpy.r
-
+                    export    strncpy
+                    
                     section   code
 
 strncpy             pshs      y,u

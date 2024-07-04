@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of strass.r
-
+                    export    _strass
+                    
                     section   code
 
 _strass             pshs      y,u

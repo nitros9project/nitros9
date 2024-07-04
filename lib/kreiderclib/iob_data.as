@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of iob_data.r
-
+                    export    _iob
+                    
                     section   code
 
 * Initialized Data (class G)

@@ -1,14 +1,6 @@
-* Disassembly by Os9disasm of chown.r
-
+                    export    chown
+                    
                     section   code
-
-* OS-9 system function equates
-
-F$ID                equ       $0c
-I$Open              equ       $84
-I$GetStt            equ       $8d
-I$SetStt            equ       $8e
-I$Close             equ       $8f
 
 chown               pshs      y,u
                     leas      -16,s

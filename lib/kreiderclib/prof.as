@@ -1,5 +1,7 @@
-* Disassembly by Os9disasm of prof.r
-
+                    export    _prof
+                    export    _dumprof
+                    export    _trace
+                    
 * class D external label equates
 
 D0000               equ       $0000

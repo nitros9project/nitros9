@@ -1,5 +1,31 @@
-* Disassembly by Os9disasm of cfloats.r
-
+                    export    _flacc
+                    export    _dnorm
+                    export    _dneg
+                    export    _dadd
+                    export    _dsub
+                    export    _dmul
+                    export    _ddiv
+                    export    _dtol
+                    export    _dtoi
+                    export    _ltod
+                    export    _itod
+                    export    _dtof
+                    export    _ftod
+                    export    _dcmpr
+                    export    _xtofla
+                    export    _dinc
+                    export    _ddec
+                    export    _finc
+                    export    _fdec
+                    export    _fstack
+                    export    _dstack
+                    export    _fmove
+                    export    _dmove
+                    
+                    section   bss
+_flacc              rmb                 2                    
+                    endc
+                    
                     section   code
 
 * class D external label equates

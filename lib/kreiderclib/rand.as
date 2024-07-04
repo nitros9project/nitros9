@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of rand.r
-
+                    export    rand
+                    export    srand
+                    
 * class D external label equates
 
 D0000               equ       $0000
@@ -35,6 +36,7 @@ rand                pshs      u
                     stx       2,u
                     anda      #$7f
                     puls      u,pc
+                    
 srand               leax      G0000,y
                     ldd       2,s
                     std       2,x

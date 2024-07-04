@@ -1,5 +1,7 @@
-* Disassembly by Os9disasm of cshifts.r
-
+                    export    ccasr
+                    export    cclsr
+                    export    ccasl
+                    
                     section   code
 
 ccasr               tstb

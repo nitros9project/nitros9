@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of swab.r
-
+                    export    swab
+                    
                     section   code
 
 swab                ldd       2,s

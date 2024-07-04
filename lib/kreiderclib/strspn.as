@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of strspn.r
-
+                    export    strspn
+                    export    strcspn
+                    
                     section   code
 
 strspn              pshs      x,u

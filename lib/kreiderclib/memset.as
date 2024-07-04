@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of memset.r
-
+                    export    memset
+                    
                     section   code
 
 memset              pshs      u

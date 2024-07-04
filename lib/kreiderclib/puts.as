@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of puts.r
-
+                    export    puts
+                    export    fputs
+                    
                     section   code
 
 puts                pshs      u

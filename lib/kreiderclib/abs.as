@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of abs.r
-
+                    export    abs
+                    
                     section   code
 
 abs                 ldd       2,s

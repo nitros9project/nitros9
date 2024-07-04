@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of strhcpy.r
-
+                    export    strhcpy
+                    
                     section   code
 
 strhcpy             pshs      u

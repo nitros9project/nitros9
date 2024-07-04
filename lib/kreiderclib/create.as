@@ -1,14 +1,9 @@
-* Disassembly by Os9disasm of create.r
-
+                    export    creat
+                    export    create
+                    
+                    export    ocreat
+                    
                     section   code
-
-* OS-9 system function equates
-
-I$Create            equ       $83
-I$Open              equ       $84
-I$Delete            equ       $87
-I$SetStt            equ       $8e
-I$Close             equ       $8f
 
 creat               ldx       2,s
                     lda       5,s

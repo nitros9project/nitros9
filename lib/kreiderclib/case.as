@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of case.r
-
+                    export    toupper
+                    export    tolower
+                    
                     section   code
 
 toupper             clra

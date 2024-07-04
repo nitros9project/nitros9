@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of popen.r
-
+                    export    popen
+                    export    pclose
+                    
 * class D external label equates
 
 D0000               equ       $0000

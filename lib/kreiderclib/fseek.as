@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of fseek.r
-
+                    export    fseek
+                    
                     section   code
 
 * class D external label equates

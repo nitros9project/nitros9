@@ -1,10 +1,7 @@
-* Disassembly by Os9disasm of devtyp.r
-
+                    export    isatty
+                    export    devtyp
+                    
                     section   code
-
-* OS-9 system function equates
-
-I$GetStt            equ       $8d
 
 isatty              ldd       2,s
                     pshs      d
@@ -15,6 +12,7 @@ isatty              ldd       2,s
                     rts
 L000c               incb
                     rts
+                    
 devtyp              lda       3,s
                     clrb
                     leas      -32,s

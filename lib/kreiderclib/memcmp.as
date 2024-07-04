@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of memcmp.r
-
+                    export    memcmp
+                    
                     section   code
 
 memcmp              pshs      y,u

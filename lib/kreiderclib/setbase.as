@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of setbase.r
-
+                    export    _setbase
+                    
                     section   code
 
 _setbase            pshs      u

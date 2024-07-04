@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of minmax.r
-
+                    export    min
+                    export    max
+                    
                     section   code
 
 min                 ldd       2,s
