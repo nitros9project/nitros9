@@ -8,14 +8,13 @@ struct tbl {
   int *t_ptr;
   int t_val;
 } *t, tbl[] = {
-
-  "number", &nflg, TRUE,
-  "nonumber", &nflg, FALSE,
-  "list", &lflg, TRUE,
-  "nolist", &lflg, FALSE,
-  "eightbit", &eightbit, TRUE,
-  "noeightbit", &eightbit, FALSE,
-  0
+  {"number", &nflg, TRUE},
+  {"nonumber", &nflg, FALSE},
+  {"list", &lflg, TRUE},
+  {"nolist", &lflg, FALSE},
+  {"eightbit", &eightbit, TRUE},
+  {"noeightbit", &eightbit, FALSE},
+  {0, 0, 0}
 };
 
 int set()
