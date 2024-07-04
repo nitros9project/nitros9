@@ -1,4 +1,22 @@
-extern  char    _chcodes[];      /* in chcodes.r */
+/*
+ * ctype.h - Standard C header file
+ *
+ * Notes:
+ *
+ * Edt/Rev  YYYY/MM/DD  Modified by
+ * Comment
+ * ------------------------------------------------------------------
+ *          2005/08/12  Boisy G. Pitre
+ * Brought in from Carl Kreider's CLIB package.
+ *
+ *          2024/07/04  Boisy G. Pitre
+ * Incorporated into CMOC.
+ */
+
+#ifndef _CTYPE_H
+#define _CTYPE_H
+
+extern char     _chcodes[];	/* in chcodes.r */
 
 #define _CONTROL       0x01
 #define _UPPER         0x02
@@ -22,3 +40,5 @@ extern  char    _chcodes[];      /* in chcodes.r */
 #define _toupper(c)     ((c)&0xdf)
 #define _tolower(c)     ((c)|0x20)
 #define toascii(c)      ((c)&0x7f)
+
+#endif				/* _CTYPE_H */
