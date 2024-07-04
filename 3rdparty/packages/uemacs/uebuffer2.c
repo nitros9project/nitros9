@@ -9,7 +9,7 @@
 #include        "ueed.h"
 
 #ifndef OS9
-itoa(buf, width, num)
+xitoa(buf, width, num)
 register char   buf[];
 register int    width;
 register int    num;

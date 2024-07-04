@@ -116,88 +116,88 @@ extern     int  spawn();                /* Run a command in a subjob.   */
 extern     int  quickexit();            /* low keystroke style exit.    */
 
 KEYTAB keytab[] = {
-  CTRL|'@',    setmark,
-  CTRL|'A',    gotobol,
-  CTRL|'B',    backchar,
-  CTRL|'C',    spawncli,  /* Run CLI in subjob. */
-  CTRL|'D',    forwdel,
-  CTRL|'E',    gotoeol,
-  CTRL|'F',    forwchar,
-  CTRL|'G',    ctrlg,
-  CTRL|'H',    backdel,
-  CTRL|'I',    tab,
-  CTRL|'J',    indent,
-  CTRL|'K',    killer,
-  CTRL|'L',    refresh,
-  CTRL|'M',    newline,
-  CTRL|'N',    forwline,
-  CTRL|'O',    openline,
-  CTRL|'P',    backline,
-  CTRL|'Q',    quote,   /* Often unreachable */
-  CTRL|'R',    backsearch,
-  CTRL|'S',    forwsearch, /* Often unreachable */
-  CTRL|'T',    twiddle,
-  CTRL|'V',    forwpage,
-  CTRL|'W',    killregion,
-  CTRL|'Y',    yank,
-  CTRL|'Z',    quickexit,  /* quick save and exit */
+  {CTRL|'@',    setmark},
+  {CTRL|'A',    gotobol},
+  {CTRL|'B',    backchar},
+  {CTRL|'C',    spawncli},  /* Run CLI in subjob. */
+  {CTRL|'D',    forwdel},
+  {CTRL|'E',    gotoeol},
+  {CTRL|'F',    forwchar},
+  {CTRL|'G',    ctrlg},
+  {CTRL|'H',    backdel},
+  {CTRL|'I',    tab},
+  {CTRL|'J',    indent},
+  {CTRL|'K',    killer},
+  {CTRL|'L',    refresh},
+  {CTRL|'M',    newline},
+  {CTRL|'N',    forwline},
+  {CTRL|'O',    openline},
+  {CTRL|'P',    backline},
+  {CTRL|'Q',    quote},   /* Often unreachable */
+  {CTRL|'R',    backsearch},
+  {CTRL|'S',    forwsearch}, /* Often unreachable */
+  {CTRL|'T',    twiddle},
+  {CTRL|'V',    forwpage},
+  {CTRL|'W',    killregion},
+  {CTRL|'Y',    yank},
+  {CTRL|'Z',    quickexit},  /* quick save and exit */
 #ifndef OS9
-  CTLX|CTRL|'B',   listbuffers,
+  {CTLX|CTRL|'B',   listbuffers},
 #endif
-  CTLX|CTRL|'C',   quit,   /* Hard quit.   */
-  CTLX|CTRL|'F',   filename,
-  CTLX|CTRL|'L',   lowerregion,
-  CTLX|CTRL|'O',   deblank,
+  {CTLX|CTRL|'C',   quit},   /* Hard quit.   */
+  {CTLX|CTRL|'F',   filename},
+  {CTLX|CTRL|'L',   lowerregion},
+  {CTLX|CTRL|'O',   deblank},
 #ifndef OS9
-  CTLX|CTRL|'N',   mvdnwind,
-  CTLX|CTRL|'P',   mvupwind,
+  {CTLX|CTRL|'N',   mvdnwind},
+  {CTLX|CTRL|'P',   mvupwind},
 #endif
-  CTLX|CTRL|'R',   fileread,
-  CTLX|CTRL|'S',   filesave,  /* Often unreachable */
-  CTLX|CTRL|'U',   upperregion,
+  {CTLX|CTRL|'R',   fileread},
+  {CTLX|CTRL|'S',   filesave},  /* Often unreachable */
+  {CTLX|CTRL|'U',   upperregion},
 #ifndef OS9
-  CTLX|CTRL|'V',   filevisit,
+  {CTLX|CTRL|'V',   filevisit},
 #endif
-  CTLX|CTRL|'W',   filewrite,
-  CTLX|CTRL|'X',   swapmark,
+  {CTLX|CTRL|'W',   filewrite},
+  {CTLX|CTRL|'X',   swapmark},
 #ifndef OS9
-  CTLX|CTRL|'Z',   shrinkwind,
+  {CTLX|CTRL|'Z',   shrinkwind},
 #endif
-  CTLX|'!',    spawn,   /* Run 1 command.  */
-  CTLX|'=',    showcpos,
-  CTLX|'(',    ctlxlp,
-  CTLX|')',    ctlxrp,
+  {CTLX|'!',    spawn},   /* Run 1 command.  */
+  {CTLX|'=',    showcpos},
+  {CTLX|'(',    ctlxlp},
+  {CTLX|')',    ctlxrp},
 #ifndef OS9
-  CTLX|'1',    onlywind,
-  CTLX|'2',    splitwind,
-  CTLX|'B',    usebuffer,
+  {CTLX|'1',    onlywind},
+  {CTLX|'2',    splitwind},
+  {CTLX|'B',    usebuffer},
 #endif
-  CTLX|'E',    ctlxe,
-  CTLX|'F',    setfillcol,
+  {CTLX|'E',    ctlxe},
+  {CTLX|'F',    setfillcol},
 #ifndef OS9
-  CTLX|'K',    killbuffer,
-  CTLX|'N',    nextwind,
-  CTLX|'P',    prevwind,
-  CTLX|'Z',    enlargewind,
+  {CTLX|'K',    killbuffer},
+  {CTLX|'N',    nextwind},
+  {CTLX|'P',    prevwind},
+  {CTLX|'Z',    enlargewind},
 #endif
-  META|CTRL|'H',   delbword,
-  META|'!',    reposition,
-  META|'.',    setmark,
-  META|'>',    gotoeob,
-  META|'<',    gotobob,
-  META|'B',    backword,
-  META|'C',    capword,
-  META|'D',    delfword,
-  META|'F',    forwword,
-  META|'L',    lowerword,
-  META|'U',    upperword,
-  META|'V',    backpage,
+  {META|CTRL|'H',   delbword},
+  {META|'!',    reposition},
+  {META|'.',    setmark},
+  {META|'>',    gotoeob},
+  {META|'<',    gotobob},
+  {META|'B',    backword},
+  {META|'C',    capword},
+  {META|'D',    delfword},
+  {META|'F',    forwword},
+  {META|'L',    lowerword},
+  {META|'U',    upperword},
+  {META|'V',    backpage},
 #ifndef OS9
-  META|'W',    copyregion,
+  {META|'W',    copyregion},
 #endif
-  META|0x7F,    delbword,
-  0x7F,     backdel,
-  0,        0 /* Signals end of table */
+  {META|0x7F,    delbword},
+  {0x7F,     backdel},
+  {0,        0} /* Signals end of table */
 };
 #else
 extern KEYTAB keytab[];
