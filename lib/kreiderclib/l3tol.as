@@ -1,8 +1,8 @@
-                    export    l3tol
+                    export    _l3tol
                     
                     section   code
 
-l3tol               pshs      u
+_l3tol              pshs      u
                     ldu       4,s
                     ldd       6,s
                     addd      #1

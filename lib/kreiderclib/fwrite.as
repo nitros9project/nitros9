@@ -1,8 +1,8 @@
-                    export    fwrite
+                    export    _fwrite
                     
                     section   code
 
-fwrite              pshs      d,x,u
+_fwrite             pshs      d,x,u
                     ldu       8,s
                     clra
                     clrb
@@ -12,7 +12,7 @@ L0008               ldd       10,s
 L000c               ldx       14,s
                     ldb       ,u+
                     pshs      d,x
-                    lbsr      putc
+                    lbsr      _putc
                     leas      4,s
                     cmpd      #-1
                     beq       L0032

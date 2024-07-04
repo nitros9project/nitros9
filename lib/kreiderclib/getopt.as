@@ -1,4 +1,4 @@
-                    export    getopt
+                    export    _getopt
                     
 * class D external label equates
 
@@ -26,7 +26,7 @@ G0004               fdb       L0156
 
                     section   code
 
-getopt              pshs      u
+_getopt             pshs      u
                     ldb       [G0004,y]
                     bne       L004f
                     ldd       optind,y
@@ -68,7 +68,7 @@ L004f               ldx       G0004,y
                     pshs      d
                     ldd       10,s
                     pshs      d
-                    lbsr      strchr
+                    lbsr      _strchr
                     leas      4,s
                     tfr       d,u
                     stu       -2,s
@@ -78,13 +78,13 @@ L007b               ldb       [G0004,y]
                     ldd       optind,y
                     addd      #1
                     std       optind,y
-L008c               leax      iob+26,y
+L008c               leax      __iob+26,y
                     pshs      x
                     ldd       [8,s]
                     pshs      d
-                    lbsr      fputs
+                    lbsr      _fputs
                     leas      4,s
-                    leax      iob+26,y
+                    leax      __iob+26,y
                     pshs      x
                     leax      L0157,pcr
                     bra       L0100
@@ -109,29 +109,29 @@ L00ce               ldd       optind,y
                     blt       L012d
                     leax      L016c,pcr
                     stx       G0004,y
-                    leax      iob+26,y
+                    leax      __iob+26,y
                     pshs      x
                     ldd       [8,s]
                     pshs      d
-                    lbsr      fputs
+                    lbsr      _fputs
                     leas      4,s
-                    leax      iob+26,y
+                    leax      __iob+26,y
                     pshs      x
                     leax      >L016d,pcr
 L0100               pshs      x
-                    lbsr      fputs
+                    lbsr      _fputs
                     leas      4,s
-                    leax      iob+26,y
+                    leax      __iob+26,y
                     pshs      x
                     ldd       optopt,y
                     pshs      d
-                    lbsr      putc
+                    lbsr      _putc
                     leas      4,s
-                    leax      iob+26,y
+                    leax      __iob+26,y
                     pshs      x
                     ldd       #$000d
                     pshs      d
-                    lbsr      putc
+                    lbsr      _putc
                     leas      4,s
                     ldd       #$003f
                     puls      u,pc

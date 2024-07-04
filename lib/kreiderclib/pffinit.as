@@ -1,5 +1,5 @@
-                    export    pffinit
-                    export    pffloat
+                    export    _pffinit
+                    export    _pffloat
                     
                     section   bss
 
@@ -167,9 +167,10 @@ G0000               fcb       $00
 
                     section   code
 
-pffinit             pshs      u
+_pffinit            pshs      u
                     puls      u,pc
-pffloat             pshs      d,u
+                    
+_pffloat            pshs      d,u
                     ldx       6,s
                     bra       L001a
 L000a               ldd       #1
@@ -246,10 +247,10 @@ L00ab               std       24,s
                     ldd       22,s
                     pshs      d
                     ldd       #78
-                    lbsr      ccmult
+                    lbsr      _ccmult
                     pshs      d
                     ldd       #8
-                    lbsr      ccasr
+                    lbsr      _ccasr
                     std       20,s
                     ldd       24,s
                     beq       L00d2

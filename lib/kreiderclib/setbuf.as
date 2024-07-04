@@ -8,7 +8,7 @@ _setbuf             pshs      u
                     anda      #1
                     beq       L0011
                     pshs      u
-                    lbsr      fflush
+                    lbsr      _fflush
                     leas      2,s
 L0011               ldd       6,u
                     anda      #254

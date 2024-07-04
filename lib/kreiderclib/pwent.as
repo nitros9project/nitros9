@@ -1,9 +1,9 @@
-                    export    getpwent
-                    export    setpwent          
-                    export    endpwent
-                    export    getpwdlm
-                    export    getpwuid
-                    export    getpwnam
+                    export    _getpwent
+                    export    _setpwent          
+                    export    _endpwent
+                    export    _getpwdlm
+                    export    _getpwuid
+                    export    _getpwnam
                     
 * class D external label equates
 
@@ -28,7 +28,7 @@ _pwdelim            fcb       $61
 
                     section   code
 
-getpwent            pshs      d,u
+_getpwent           pshs      d,u
                     ldd       G0000,y
                     bne       L0020
                     ldd       #1
@@ -76,7 +76,8 @@ L0066               ldb       [,s]
                     bsr       L00c4
                     leas      4,s
                     lbra      L0225
-setpwent            pshs      u
+
+_setpwent           pshs      u
                     ldd       G0000,y
                     beq       L009e
                     clra
@@ -91,7 +92,8 @@ setpwent            pshs      u
                     lbsr      lseek
                     leas      8,s
 L009e               puls      u,pc
-endpwent            pshs      u
+
+_endpwent           pshs      u
                     ldd       G0000,y
                     beq       L00b9
                     ldd       G0000,y
@@ -102,7 +104,8 @@ endpwent            pshs      u
                     clrb
                     std       G0000,y
 L00b9               puls      u,pc
-getpwdlm            pshs      u
+
+_getpwdlm           pshs      u
                     ldb       _pwdelim,y
                     sex
                     puls      u,pc
@@ -247,7 +250,8 @@ L017d               ldd       4,s
                     stb       ,x
                     ldd       6,s
                     puls      u,pc
-getpwuid            pshs      d,u
+
+_getpwuid           pshs      d,u
                     bra       L01fa
 L01ea               ldx       ,s
                     ldd       4,x
@@ -260,7 +264,7 @@ L01fa               lbsr      getpwent
                     std       ,s
                     bne       L01ea
                     bra       L0223
-getpwnam            pshs      d,u
+_getpwnam           pshs      d,u
                     bra       L021c
 L0207               ldd       [,s]
                     pshs      d

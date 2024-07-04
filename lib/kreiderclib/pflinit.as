@@ -107,7 +107,7 @@ L005f               adda      ,s+
                     leas      1,s
 L006b               ldx       ,s
                     clr       ,u
-                    lbsr      frevers
+                    lbsr      _frevers
                     puls      d,u,pc
 L0074               ldb       8,s
                     bpl       L00a3

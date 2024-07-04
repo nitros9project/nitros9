@@ -1,8 +1,8 @@
-                    export    strncat
+                    export    _strncat
                     
                     section   code
 
-strncat             pshs      y,u
+_strncat            pshs      y,u
                     ldu       8,s
                     ldx       6,s
                     ldy       10,s

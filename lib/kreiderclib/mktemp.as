@@ -1,8 +1,8 @@
-                    export    mktemp
+                    export    _mktemp
                     
                     section   code
 
-mktemp              pshs      u
+_mktemp             pshs      u
                     ldu       4,s
 L0004               ldb       ,u+
                     beq       L0024
@@ -15,7 +15,7 @@ L0013               sta       ,u+
                     decb
                     bne       L0013
                     puls      u
-                    lbsr      getpid
+                    lbsr      _getpid
                     pshs      d,u
                     lbsr      itoa
                     leas      4,s

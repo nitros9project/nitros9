@@ -1,10 +1,10 @@
-                    export    modlink
-                    export    modload
-                    export    munlink
+                    export    _modlink
+                    export    _modload
+                    export    _munlink
                     
                     section   code
 
-modlink             pshs      y,u
+_modlink            pshs      y,u
                     ldx       6,s
                     lda       9,s
                     asla
@@ -18,7 +18,7 @@ L000f               tfr       u,d
                     lblo      _os9err
                     rts
                     
-modload             pshs      y,u
+_modload            pshs      y,u
                     ldx       6,s
                     lda       9,s
                     asla
@@ -29,7 +29,7 @@ modload             pshs      y,u
                     os9       F$Load
                     bra       L000f
                     
-munlink             pshs      u
+_munlink            pshs      u
                     ldu       4,s
                     os9       F$UnLink
                     puls      u

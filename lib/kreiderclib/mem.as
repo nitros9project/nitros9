@@ -1,6 +1,6 @@
-                    export    ibrk
-                    export    sbrk
-                    export    unbrk
+                    export    _ibrk
+                    export    _sbrk
+                    export    _unbrk
                                         
                     section   bss
 
@@ -15,7 +15,7 @@ _spare              rmb       2
 
                     section   code
 
-sbrk                ldd       _memend,y
+_sbrk               ldd       _memend,y
                     pshs      d
                     ldd       4,s
                     cmpd      _spare,y
@@ -50,7 +50,8 @@ L004e               sta       ,x+
                     cmpx      _memend,y
                     bcs       L004e
                     puls      d,pc
-ibrk                ldd       2,s
+                    
+_ibrk               ldd       2,s
                     addd      _mtop,y
                     bcs       L0081
                     cmpd      _stbot,y
@@ -68,7 +69,8 @@ L0076               ldd       _mtop,y
                     rts
 L0081               ldd       #-1
                     rts
-unbrk               ldd       2,s
+                    
+_unbrk              ldd       2,s
                     pshs      y
                     os9       F$Mem
                     bcc       L0093

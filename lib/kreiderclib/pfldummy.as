@@ -1,4 +1,4 @@
-                    export    pflong
+                    export    _pflong
                     
                     section   bss
 
@@ -11,7 +11,7 @@ G0002               fcb       $00
 
                     section   code
 
-pflong              ldb       3,s
+_pflong             ldb       3,s
                     leax      G0002,y
                     cmpb      #$64
                     beq       L001a

@@ -1,9 +1,9 @@
-                    export    strchr
-                    export    strrchr
+                    export    _strchr
+                    export    _strrchr
                     
                     section   code
 
-strchr              ldx       2,s
+_strchr             ldx       2,s
 L0002               ldb       ,x+
                     beq       L000e
                     cmpb      5,s
@@ -13,7 +13,7 @@ L0002               ldb       ,x+
 L000e               clra
                     rts
                     
-strrchr             ldx       2,s
+_strrchr            ldx       2,s
                     ldd       #1
                     pshs      d
                     bra       L001f

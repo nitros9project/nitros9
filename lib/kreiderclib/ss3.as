@@ -1,8 +1,8 @@
-                    export    _ss_wtrk
+                    export    __ss_wtrk
                     
                     section   code
 
-_ss_wtrk            pshs      y,u
+__ss_wtrk           pshs      y,u
                     ldb       #4
                     ldy       10,s
                     ldu       8,s

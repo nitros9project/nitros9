@@ -1,7 +1,7 @@
-                    export    printf
-                    export    sprintf
+                    export    _printf
+                    export    _sprintf
                     export    _fprintf
-                    export    frevers
+                    export    _frevers
                     
                     section   bss
 
@@ -22,19 +22,19 @@ G0000               fcb       $27
 
                     section   code
 
-printf              pshs      u
+_printf             pshs      u
                     leau      6,s
                     leax      __iob+13,y
                     ldd       4,s
                     bra       L0014
-_fprintf             pshs      u
+_fprintf            pshs      u
                     leau      8,s
                     ldx       4,s
                     ldd       6,s
 L0014               stx       B0000,y
                     leax      L024a,pcr
                     bra       L002e
-sprintf             pshs      u
+_sprintf            pshs      u
                     ldd       4,s
                     std       B0000,y
                     leau      8,s
@@ -226,7 +226,7 @@ L0198               adda      ,s+
                     bne       L018a
 L01aa               clr       ,u
                     ldx       2,s
-                    bsr       frevers
+                    bsr       _frevers
                     leas      2,s
 L01b2               puls      u
 L01b4               bsr       L01e2
@@ -236,7 +236,7 @@ L01bb               ldb       ,x
                     lda       ,-u
                     sta       ,x+
                     stb       ,u
-frevers             pshs      u
+_frevers            pshs      u
                     cmpx      ,s++
                     bcs       L01bb
                     rts

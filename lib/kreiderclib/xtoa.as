@@ -1,15 +1,15 @@
-                    export    utoa
-                    export    itoa
+                    export    _utoa
+                    export    _itoa
                     
                     section   code
 
-utoa                clra
+_utoa               clra
                     clrb
                     pshs      d,u
                     ldu       8,s
                     bra       L0018
                     
-itoa                clra
+_itoa               clra
                     clrb
                     pshs      d,u
                     ldu       8,s

@@ -70,7 +70,7 @@ L0079               leax      __iob,y
                     beq       L0095
                     leax      __iob+13,y
                     pshs      x
-                    lbsr      fflush
+                    lbsr      _fflush
                     leas      2,s
 L0095               ldb       7,u
                     andb      #8

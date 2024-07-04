@@ -1,12 +1,12 @@
-                    export    reverse
+                    export    _reverse
                     
                     section   code
 
-reverse             pshs      u
+_reverse            pshs      u
                     ldu       4,s
                     pshs      u
                     pshs      u
-                    lbsr      strlen
+                    lbsr      _strlen
                     leas      2,s
                     addd      ,s++
                     tfr       d,x

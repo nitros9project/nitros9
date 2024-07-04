@@ -1,9 +1,9 @@
-                    export    ccudiv
-                    export    ccdiv
+                    export    _ccudiv
+                    export    _ccdiv
                     
                     section   code
 
-ccudiv              subd      #0
+_ccudiv             subd      #0
                     beq       L000f
                     pshs      d
                     leas      -2,s
@@ -14,7 +14,8 @@ L000f               puls      d
                     std       ,s
                     ldd       #$002d
                     lbra      _rpterr
-ccdiv               subd      #0
+
+_ccdiv              subd      #0
                     beq       L000f
                     pshs      d
                     leas      -2,s

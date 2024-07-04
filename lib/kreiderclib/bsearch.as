@@ -1,8 +1,8 @@
-                    export    bsearch
+                    export    _bsearch
                     
                     section   code
 
-bsearch             pshs      d,x,y,u
+_bsearch            pshs      d,x,y,u
                     ldu       10,s
                     clra
                     clrb
@@ -19,7 +19,7 @@ L000d               subd      2,s
                     addd      #-1
                     pshs      d
                     ldd       18,s
-                    lbsr      ccmult
+                    lbsr      _ccmult
                     addd      12,s
                     std       ,s
                     pshs      u

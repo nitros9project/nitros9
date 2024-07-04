@@ -1,9 +1,9 @@
-                    export    toupper
-                    export    tolower
+                    export    _toupper
+                    export    _tolower
                     
                     section   code
 
-toupper             clra
+_toupper            clra
                     ldb       3,s
                     leax      _chcodes,y
                     lda       d,x
@@ -12,7 +12,8 @@ toupper             clra
                     andb      #$df
                     clra
                     rts
-tolower             clra
+
+_tolower            clra
                     ldb       3,s
                     leax      _chcodes,y
                     lda       d,x

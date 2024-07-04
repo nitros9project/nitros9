@@ -1,11 +1,12 @@
-                    export    _gs_size
-                    export    _gs_pos
+                    export    __gs_size
+                    export    __gs_pos
                     
                     section   code
 
-_gs_size            ldb       #2
+__gs_size           ldb       #2
                     bra       L0006
-_gs_pos             ldb       #5
+                    
+__gs_pos            ldb       #5
 L0006               pshs      u
                     lda       5,s
                     os9       I$GetStt

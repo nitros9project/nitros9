@@ -47,25 +47,25 @@ L0015               std       6,s
                     beq       L0070
                     ldd       6,s
                     pshs      d
-                    lbsr      close
+                    lbsr      _close
                     leas      2,s
                     ldd       4,s
                     pshs      d
-                    lbsr      dup
+                    lbsr      _dup
                     leas      2,s
                     cmpd      #-1
                     bne       L0080
                     ldd       ,s
                     pshs      d
-                    lbsr      dup
+                    lbsr      _dup
                     leas      2,s
                     ldd       ,s
                     pshs      d
-                    lbsr      close
+                    lbsr      _close
                     leas      2,s
 L0070               ldd       4,s
                     pshs      d
-                    lbsr      close
+                    lbsr      _close
                     leas      2,s
                     lbra      L019d
                     bra       L0080
@@ -80,24 +80,24 @@ L008a               ldb       ,u
                     bne       L0092
                     leau      1,u
 L0092               pshs      u
-                    lbsr      strlen
+                    lbsr      _strlen
                     leas      2,s
                     std       8,s
                     addd      #2
                     pshs      d
-                    lbsr      malloc
+                    lbsr      _malloc
                     leas      2,s
                     std       12,s
                     pshs      u
                     ldd       14,s
                     pshs      d
-                    lbsr      strcpy
+                    lbsr      _strcpy
                     leas      4,s
                     leax      L0201,pcr
                     pshs      x
                     ldd       14,s
                     pshs      d
-                    lbsr      strcat
+                    lbsr      _strcat
                     leas      4,s
                     ldd       2,s
                     lslb
@@ -119,7 +119,7 @@ L0092               pshs      u
                     pshs      d
                     ldd       30,s
                     pshs      d
-                    lbsr      os9fork
+                    lbsr      _os9fork
                     leas      12,s
                     std       [,s++]
                     cmpd      #-1
@@ -130,53 +130,53 @@ L0092               pshs      u
                     leas      2,s
                     ldd       6,s
                     pshs      d
-                    lbsr      close
+                    lbsr      _close
                     leas      2,s
                     ldd       ,s
                     pshs      d
-                    lbsr      dup
+                    lbsr      _dup
                     leas      2,s
                     ldd       ,s
                     pshs      d
-                    lbsr      close
+                    lbsr      _close
                     leas      2,s
                     ldd       4,s
                     pshs      d
-                    lbsr      close
+                    lbsr      _close
                     leas      2,s
                     lbra      L018f
 L012a               ldd       12,s
                     pshs      d
-                    lbsr      free
+                    lbsr      _free
                     leas      2,s
                     ldd       6,s
                     pshs      d
-                    lbsr      close
+                    lbsr      _close
                     leas      2,s
                     ldd       ,s
                     pshs      d
-                    lbsr      dup
+                    lbsr      _dup
                     leas      2,s
                     ldd       ,s
                     pshs      d
-                    lbsr      close
+                    lbsr      _close
                     leas      2,s
                     ldd       20,s
                     pshs      d
                     ldd       6,s
                     pshs      d
-                    lbsr      fdopen
+                    lbsr      _fdopen
                     leas      4,s
                     std       10,s
                     bne       L01a1
                     ldd       4,s
                     pshs      d
-                    lbsr      close
+                    lbsr      _close
                     leas      2,s
 L0169               clra
                     clrb
                     pshs      d
-                    lbsr      wait
+                    lbsr      _wait
                     leas      2,s
                     std       8,s
                     pshs      d

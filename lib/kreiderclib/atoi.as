@@ -1,8 +1,8 @@
-                    export    atoi
+                    export    _atoi
                     
                     section   code
 
-atoi                pshs      u
+_atoi               pshs      u
                     ldu       4,s
                     clra
                     clrb

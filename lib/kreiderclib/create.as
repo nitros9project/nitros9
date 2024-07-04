@@ -1,11 +1,10 @@
-                    export    creat
-                    export    create
-                    
-                    export    ocreat
+                    export    _creat
+                    export    _create
+                    export    _ocreat
                     
                     section   code
 
-creat               ldx       2,s
+_creat              ldx       2,s
                     lda       5,s
                     tfr       a,b
                     andb      #$24
@@ -32,7 +31,8 @@ creat               ldx       2,s
                     os9       I$Close
                     puls      b
 L0039               lbra      _os9err
-create              ldx       2,s
+
+_create             ldx       2,s
                     lda       5,s
                     ldb       7,s
                     os9       I$Create
@@ -42,7 +42,8 @@ L0049               cmpb      #$da
                     bne       L0039
                     os9       I$Delete
                     bcs       L0039
-ocreat              ldx       2,s
+                    
+_ocreat             ldx       2,s
                     lda       5,s
                     ldb       7,s
                     os9       I$Create

@@ -1,4 +1,4 @@
-                    export    intercept
+                    export    _intercept
                     
                     section   bss
 
@@ -10,7 +10,7 @@ B0000               rmb       2
 
                     section   code
 
-intercept           pshs      u
+_intercept          pshs      u
                     tfr       y,u
                     ldx       4,s
                     stx       B0000,y

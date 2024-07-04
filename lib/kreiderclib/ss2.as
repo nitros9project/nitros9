@@ -1,18 +1,18 @@
-                    export    _ss_lock
-                    export    _ss_attr
-                    export    _ss_size
+                    export    __ss_lock
+                    export    __ss_attr
+                    export    __ss_size
                     
                     section   code
 
-_ss_lock            pshs      u
+__ss_lock           pshs      u
                     ldb       #$11
                     bra       L0010
                     
-_ss_attr            pshs      u
+__ss_attr           pshs      u
                     ldb       #$1c
                     bra       L0012
                     
-_ss_size            pshs      u
+__ss_size           pshs      u
                     ldb       #2
 L0010               ldu       8,s
 L0012               ldx       6,s

@@ -1,8 +1,8 @@
-                    export    pwcryp
+                    export    _pwcryp
                     
                     section   code
 
-pwcryp              pshs      u
+_pwcryp             pshs      u
                     ldu       4,s
                     ldd       #-1
                     pshs      d

@@ -1,16 +1,17 @@
-                    export    skipbl
-                    export    skipwd
+                    export    _skipbl
+                    export    _skipwd
                     
                     section   code
 
-skipbl              ldx       2,s
+_skipbl             ldx       2,s
 L0002               ldb       ,x+
                     cmpb      #$20
                     beq       L0002
                     cmpb      #9
                     beq       L0002
                     bra       L001c
-skipwd              ldx       2,s
+                    
+_skipwd             ldx       2,s
 L0010               ldb       ,x+
                     beq       L001c
                     cmpb      #$20
