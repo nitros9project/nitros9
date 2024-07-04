@@ -130,8 +130,7 @@ ttopen()
 #endif
 #ifdef OS9
         getstat(0, 0, &ostate);                       /* save old state */
-        getstat(0, 0, &nstate);                       /* get base of new state *
-/
+        getstat(0, 0, &nstate);                       /* get base of new state */
         nstate.sg_echo = 0;       /* no echo for now... */
         nstate.sg_bellch = 0;
         nstate.sg_bsech = 0;
@@ -245,7 +244,7 @@ char c;
         bios(BCONOUT, c, 0);
 #endif
 
-#ifdef MSDOS & CWC86
+#if defined(MSDOS) || defined(CWC86)
         dosb(CONDIO, c, 0);
 #endif
 

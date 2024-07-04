@@ -5,22 +5,22 @@
  * operating system and terminal.
  */
 
-/* #define AMIGA   1                       /* AmigaDOS, Lattice            */
-/* #define ST520   0                       /* ST520, TOS                   */
-/* #define MWC86   0
-/* #define V7      0                       /* V7 UN*X or Coherent          */
-/* #define VMS     0                       /* VAX/VMS                      */
-/* #define CPM     0                       /* CP/M-86                      */
-/* #define OS9     1                       /* os9/6809 level 1 (coco)      */
-/* #define OSK     1                       /* os9/68000 predefined         */
-/* #define MSDOS   0                       /* MS-DOS predefined            */
+// #define AMIGA   1                       /* AmigaDOS, Lattice            */
+// #define ST520   0                       /* ST520, TOS                   */
+// #define MWC86   0
+// #define V7      0                       /* V7 UN*X or Coherent          */
+// #define VMS     0                       /* VAX/VMS                      */
+// #define CPM     0                       /* CP/M-86                      */
+// #define OS9     1                       /* os9/6809 level 1 (coco)      */
+// #define OSK     1                       /* os9/68000 predefined         */
+// #define MSDOS   0                       /* MS-DOS predefined            */
 
-/* #define ANSI    1                       /* ANSI terminal (Vt100)        */
-/* #define VT52    1                       /* VT52 terminal (Zenith).      */
-/* #define VT100   0                       /* Handle VT100 style keypad.   */
-/* #define LK201   0                       /* Handle LK201 style keypad.   */
-/* #define RAINBOW 0                       /* Use Rainbow fast video.      */
-/* #define TERMCAP 0                       /* Use TERMCAP                  */
+// #define ANSI    1                       /* ANSI terminal (Vt100)        */
+// #define VT52    1                       /* VT52 terminal (Zenith).      */
+// #define VT100   0                       /* Handle VT100 style keypad.   */
+// #define LK201   0                       /* Handle LK201 style keypad.   */
+// #define RAINBOW 0                       /* Use Rainbow fast video.      */
+// #define TERMCAP 0                       /* Use TERMCAP                  */
 
 #define CVMVAS  1                       /* C-V, M-V arg. in screens.    */
 
@@ -157,7 +157,7 @@ typedef struct  {
         int     (*t_getchar)();         /* Get character from keyboard. */
         int     (*t_putchar)();         /* Put character to display.    */
         int     (*t_flush)();           /* Flush output buffers.        */
-        int     (*t_move)();            /* Move the cursor, origin 0.   */
+        int     (*t_move)(int, int);            /* Move the cursor, origin 0.   */
         int     (*t_eeol)();            /* Erase to end of line.        */
         int     (*t_eeop)();            /* Erase to end of page.        */
         int     (*t_beep)();            /* Beep.                        */
@@ -185,5 +185,3 @@ extern  TERM    term;                   /*(Terminal information.        */
 extern  BUFFER  *bfind();               /* Lookup a buffer by name      */
 extern  WINDOW  *wpopup();              /* Pop up window creation       */
 extern  LINE    *lalloc();              /* Allocate a line              */
-
-
