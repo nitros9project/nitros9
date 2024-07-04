@@ -1,9 +1,8 @@
-* Disassembly by Os9disasm of utime.r
-
-* class X standard named label equates
-
-D.SysPrc            equ       $004a
-
+                    export    time
+                    export    o2utime
+                    export    asctime
+                    export    ctime
+                                        
 * class D external label equates
 
 D0000               equ       $0000

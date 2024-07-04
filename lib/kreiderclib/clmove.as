@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of clmove.r
-
+                    export    _lmove
+                    
                     section   code
 
 _lmove              pshs      y

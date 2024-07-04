@@ -1,4 +1,4 @@
-* Disassembly by Os9disasm of ccmult.r
+                    export    ccmult
 
                     section   code
 

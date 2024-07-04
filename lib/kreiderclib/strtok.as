@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of strtok.r
-
+                    export    strtok
+                    
                     section   bss
 
 * Initialized Data (class G)

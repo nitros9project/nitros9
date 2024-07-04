@@ -1,12 +1,8 @@
-* Disassembly by Os9disasm of mod.r
-
+                    export    modlink
+                    export    modload
+                    export    munlink
+                    
                     section   code
-
-* OS-9 system function equates
-
-F$Link              equ       $00
-F$Load              equ       $01
-F$UnLink            equ       $02
 
 modlink             pshs      y,u
                     ldx       6,s
@@ -21,6 +17,7 @@ L000f               tfr       u,d
                     puls      y,u
                     lblo      _os9err
                     rts
+                    
 modload             pshs      y,u
                     ldx       6,s
                     lda       9,s
@@ -31,6 +28,7 @@ modload             pshs      y,u
                     ora       11,s
                     os9       F$Load
                     bra       L000f
+                    
 munlink             pshs      u
                     ldu       4,s
                     os9       F$UnLink

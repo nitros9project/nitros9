@@ -1,5 +1,7 @@
-* Disassembly by Os9disasm of strings.r
-
+                    export    strcat
+                    export    strcpy
+                    export    strend
+                    
                     section   code
 
 strcat              pshs      u
@@ -8,6 +10,7 @@ strcat              pshs      u
                     bsr       L001e
                     tfr       d,x
                     bra       L0012
+                    
 strcpy              pshs      u
                     ldu       6,s
                     ldx       4,s
@@ -16,6 +19,7 @@ L0012               ldb       ,u+
                     bne       L0012
                     ldd       4,s
                     puls      u,pc
+                    
 strend              ldx       2,s
 L001e               ldb       ,x+
                     bne       L001e

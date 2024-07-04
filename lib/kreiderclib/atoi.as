@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of atoi.r
-
+                    export    atoi
+                    
                     section   code
 
 atoi                pshs      u

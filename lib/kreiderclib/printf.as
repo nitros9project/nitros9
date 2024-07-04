@@ -1,5 +1,7 @@
-* Disassembly by Os9disasm of printf.r
-
+                    export    printf
+                    export    sprintf
+                    export    fprintf
+                    
                     section   bss
 
 * Uninitialized data (class B)

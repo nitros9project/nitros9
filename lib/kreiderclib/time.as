@@ -1,11 +1,7 @@
-* Disassembly by Os9disasm of time.r
-
+                    export    setime
+                    export    getime
+                    
                     section   code
-
-* OS-9 system function equates
-
-F$Time              equ       $15
-F$STime             equ       $16
 
 setime              ldx       2,s
                     os9       F$STime

@@ -1,5 +1,7 @@
-* Disassembly by Os9disasm of fopen.r
-
+                    export    fdopen
+                    export    fopen
+                    export    freopen
+                    
                     section   code
 
 L0000               pshs      d

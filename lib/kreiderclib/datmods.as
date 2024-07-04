@@ -1,12 +1,9 @@
-* Disassembly by Os9disasm of datmods.r
-
+                    export    lockdata
+                    export    unlkdata
+                    export    datlink
+                    export    dunlink
+                    
                     section   code
-
-* OS-9 system function equates
-
-F$Link              equ       $00
-F$Load              equ       $01
-F$UnLink            equ       $02
 
 lockdata            ldx       2,s
                     pshs      cc

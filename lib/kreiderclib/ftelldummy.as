@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of ftelldummy.r
-
+                    export    ftell
+                    
                     section   code
 
 ftell               leax      _flacc,y

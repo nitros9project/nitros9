@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of ltoa.r
-
+                    export    ltoa
+                    
                     section   code
 
 * class D external label equates

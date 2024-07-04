@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of ccdiv.r
-
+                    export    ccudiv
+                    export    ccdiv
+                    
                     section   code
 
 ccudiv              subd      #0

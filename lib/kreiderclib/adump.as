@@ -1,10 +1,8 @@
-* Disassembly by Os9disasm of adump.r
-
+                    export    _dump
+                    
                     section   code
 
 * class X standard named label equates
-
-D.Tasks             equ       $0020
 
 * class D external label equates
 

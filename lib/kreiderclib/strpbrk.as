@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of strpbrk.r
-
+                    export    strpbrk
+                    
                     section   code
 
 strpbrk             pshs      x,u

@@ -1,11 +1,6 @@
-* Disassembly by Os9disasm of abort.r
-
+                    export    abort
+                    
                     section   code
-
-* OS-9 system function equates
-
-F$Exit              equ       $06
-I$Write             equ       $8a
 
 abort               pshs      d,x,y,u
                     leax      >L0048,pcr

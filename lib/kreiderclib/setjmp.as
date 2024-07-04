@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of setjmp.r
-
+                    export    setjmp
+                    export    longjmp
+                    
                     section   code
 
 setjmp              ldx       2,s
@@ -11,6 +12,7 @@ setjmp              ldx       2,s
                     clra
                     clrb
                     rts
+                    
 longjmp             ldx       2,s
                     ldy       6,x
                     ldu       4,x

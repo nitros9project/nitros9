@@ -1,5 +1,11 @@
-* Disassembly by Os9disasm of syscommon.r
-
+                    export    errno
+                    export    _os9err
+                    export    _sysret
+                    
+                    section   bss
+errno               rmb                 1                    
+                    endc
+                    
                     section   code
 
 _os9err             clra

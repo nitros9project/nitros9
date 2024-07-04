@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of fwrite.r
-
+                    export    fwrite
+                    
                     section   code
 
 fwrite              pshs      d,x,u

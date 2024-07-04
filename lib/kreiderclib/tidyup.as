@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of tidyup.r
-
+                    export    _tidyup
+                    
                     section   code
 
 _tidyup             rts

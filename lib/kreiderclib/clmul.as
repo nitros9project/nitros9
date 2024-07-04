@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of clmul.r
-
+                    export    _lmul
+                    
                     section   code
 
 _lmul               ldd       2,x

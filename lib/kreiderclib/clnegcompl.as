@@ -1,5 +1,7 @@
-* Disassembly by Os9disasm of clnegcompl.r
-
+                    export    _lneg
+                    export    _lnegx
+                    export    _lcompl
+                    
                     section   code
 
 _lneg               lbsr      _ltoacc

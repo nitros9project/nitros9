@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of clincdec.r
-
+                    export    _linc
+                    export    _ldec
+                    
                     section   code
 
 _linc               ldd       #1

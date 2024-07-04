@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of bsearch.r
-
+                    export    bsearch
+                    
                     section   code
 
 bsearch             pshs      d,x,y,u

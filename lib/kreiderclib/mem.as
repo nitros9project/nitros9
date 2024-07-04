@@ -1,9 +1,6 @@
-* Disassembly by Os9disasm of mem.r
-
-* OS-9 system function equates
-
-F$Mem               equ       $07
-
+                    export    sbrk
+                    export    unbrk
+                                        
                     section   bss
 
 * Uninitialized data (class B)

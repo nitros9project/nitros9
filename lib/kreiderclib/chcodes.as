@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of chcodes.r
-
+                    export    _chcodes
+                    
                     section   bss
 
 * Initialized Data (class G)

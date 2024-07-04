@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of fflush.r
-
+                    export    fflush
+                    
                     section   code
 
 fflush              rts

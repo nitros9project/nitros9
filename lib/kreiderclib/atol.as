@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of atol.r
-
+                    export    atol
+                    
                     section   code
 
 * class D external label equates

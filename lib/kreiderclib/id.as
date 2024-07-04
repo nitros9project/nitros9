@@ -1,11 +1,9 @@
-* Disassembly by Os9disasm of id.r
-
+                    export    getpid
+                    export    getuid
+                    export    asetuid
+                    export    setuid
+                    
                     section   code
-
-* OS-9 system function equates
-
-F$ID                equ       $0c
-F$SUser             equ       $1c
 
 * class X external label equates
 
@@ -17,12 +15,15 @@ getpid              pshs      y
                     tfr       a,b
                     clra
                     rts
+                    
 getuid              pshs      y
                     os9       F$ID
                     tfr       y,d
                     puls      y,pc
+                    
 asetuid             pshs      y
                     bra       L0027
+                    
 setuid              pshs      y
                     bsr       getuid
                     std       -2,s

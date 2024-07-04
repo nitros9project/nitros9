@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of strcmp.r
-
+                    export    strcmp
+                    
                     section   code
 
 strcmp              pshs      u

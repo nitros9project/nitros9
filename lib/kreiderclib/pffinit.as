@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of pffinit.r
-
+                    export    pffinit
+                    export    pffloat
+                    
                     section   bss
 
 * Uninitialized data (class D)

@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of errmsg.r
-
+                    export    _errmsg
+                    
                     section   code
 
 _errmsg             pshs      u

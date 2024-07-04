@@ -1,5 +1,9 @@
-* Disassembly by Os9disasm of dirutil.r
-
+                    export    closedir
+                    export    opendir
+                    export    readdir
+                    export    seekdir
+                    export    telldir
+                    
 * class D external label equates
 
 D001d               equ       $001d

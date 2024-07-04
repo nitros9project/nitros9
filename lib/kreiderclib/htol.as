@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of htol.r
-
+                    export    htol
+                    
                     section   code
 
 htol                pshs      y,u

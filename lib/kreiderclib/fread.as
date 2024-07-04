@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of fread.r
-
+                    export    fread
+                    
                     section   code
 
 fread               pshs      d,x,u

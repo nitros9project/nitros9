@@ -1,10 +1,7 @@
-* Disassembly by Os9disasm of gs1.r
-
+                    export    _gs_size
+                    export    _gs_pos
+                    
                     section   code
-
-* OS-9 system function equates
-
-I$GetStt            equ       $8d
 
 _gs_size            ldb       #2
                     bra       L0006

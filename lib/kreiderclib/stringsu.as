@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of stringsu.r
-
+                    export    strucat
+                    export    strucpy
+                    
                     section   code
 
 strucat             pshs      u

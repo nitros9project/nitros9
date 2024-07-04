@@ -1,5 +1,14 @@
-* Disassembly by Os9disasm of sets.r
-
+                    export    allocset
+                    export    addc2set
+                    export    adds2set
+                    export    rmfmset
+                    export    smember
+                    export    dupset
+                    export    copyset
+                    export    sunion
+                    export    sinterse
+                    export    sdiffere
+                    
                     section   code
 
 allocset            ldd       #$0020

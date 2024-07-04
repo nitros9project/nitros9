@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of gets.r
-
+                    export    gets
+                    export    fgets
+                    
                     section   code
 
 gets                pshs      u

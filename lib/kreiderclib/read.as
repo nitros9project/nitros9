@@ -1,13 +1,9 @@
-* Disassembly by Os9disasm of read.r
-
+                    export    _read
+                    export    _readln
+                    
                     section   code
 
-* OS-9 system function equates
-
-I$Read              equ       $89
-I$ReadLn            equ       $8b
-
-read                pshs      y
+_read               pshs      y
                     ldx       6,s
                     lda       5,s
                     ldy       8,s
@@ -23,7 +19,8 @@ L0018               puls      x,y
                     lbra      _os9err
 L001d               tfr       y,d
                     puls      x,y,pc
-readln              pshs      y
+                    
+_readln             pshs      y
                     lda       5,s
                     ldx       6,s
                     ldy       8,s

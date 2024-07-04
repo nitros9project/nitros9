@@ -1,10 +1,5 @@
-* Disassembly by Os9disasm of signal.r
-
-* OS-9 system function equates
-
-F$Exit              equ       $06
-F$Icpt              equ       $09
-
+                    export    _sigint
+                    
                     section   bss
 
 * Uninitialized data (class B)

@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of l3tol.r
-
+                    export    l3tol
+                    
                     section   code
 
 l3tol               pshs      u

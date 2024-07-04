@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of memory.r
-
+                    export    malloc
+                    export    free
+                    
                     section   bss
 
 * Uninitialized data (class B)

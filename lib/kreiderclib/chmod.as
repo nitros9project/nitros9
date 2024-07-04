@@ -1,14 +1,6 @@
-* Disassembly by Os9disasm of chmod.r
-
+                    export    chmod
+                    
                     section   code
-
-* OS-9 system function equates
-
-F$ID                equ       $0c
-I$Open              equ       $84
-I$GetStt            equ       $8d
-I$SetStt            equ       $8e
-I$Close             equ       $8f
 
 chmod               pshs      y,u
                     leas      -16,s

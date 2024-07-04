@@ -1,11 +1,7 @@
-* Disassembly by Os9disasm of stat.r
-
+                    export    getstat
+                    export    setstat
+                    
                     section   code
-
-* OS-9 system function equates
-
-I$GetStt            equ       $8d
-I$SetStt            equ       $8e
 
 getstat             pshs      y,u
                     lda       9,s

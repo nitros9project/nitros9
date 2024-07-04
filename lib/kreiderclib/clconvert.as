@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of clconvert.r
-
+                    export    _litol
+                    export    _lutol
+                    
                     section   code
 
 _litol              leax      _flacc,y

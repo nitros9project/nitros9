@@ -1,9 +1,5 @@
-* Disassembly by Os9disasm of intercept.r
-
-* OS-9 system function equates
-
-F$Icpt              equ       $09
-
+                    export    intercept
+                    
                     section   bss
 
 * Uninitialized data (class B)

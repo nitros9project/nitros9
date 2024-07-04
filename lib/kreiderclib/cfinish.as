@@ -1,10 +1,6 @@
-* Disassembly by Os9disasm of cfinish.r
-
+                    export    exit
+                    
                     section   code
-
-* OS-9 system function equates
-
-F$Exit              equ       $06
 
 exit                lbsr      _dumprof
                     lbsr      _tidyup

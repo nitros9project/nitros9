@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of realloc.r
-
+                    export    realloc
+                    
                     section   code
 
 realloc             pshs      d,y,u

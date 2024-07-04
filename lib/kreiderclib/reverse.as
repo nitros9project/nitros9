@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of reverse.r
-
+                    export    reverse
+                    
                     section   code
 
 reverse             pshs      u

@@ -1,5 +1,7 @@
-* Disassembly by Os9disasm of getc.r
-
+                    export    getc
+                    export    ungetc
+                    export    getw
+                    
                     section   code
 
 getc                pshs      u

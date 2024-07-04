@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of strncat.r
-
+                    export    strncat
+                    
                     section   code
 
 strncat             pshs      y,u
