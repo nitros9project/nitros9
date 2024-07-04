@@ -63,7 +63,7 @@ char *argv[];
      static char newsrcfile[100];
      char sub;
      register int i;
-     int count, index, j, c, interrupt();
+     int count, index, j, c, myinterrupt();
      FILE *file;
 
      homedir = NULL;
@@ -72,7 +72,7 @@ char *argv[];
      if (argc > 1)
           usage();
 
-     intercept (interrupt);
+     intercept (myinterrupt);
 
      if (getparam() == FALSE)
           exit (0);
@@ -1366,7 +1366,7 @@ int howmany;
 
 
 
-int interrupt (sig)
+int myinterrupt (sig)
 int sig;
 {
 #ifndef TERMCAP
@@ -1391,7 +1391,7 @@ char *msg;
           fprintf (stderr, "...error %d", errno);
 
      putc ('\n', stderr);
-     interrupt (0);
+     myinterrupt (0);
 }
 
 
