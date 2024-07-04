@@ -1,5 +1,5 @@
-                    export    rand
-                    export    srand
+                    export    _rand
+                    export    _srand
                     
 * class D external label equates
 
@@ -17,7 +17,7 @@ G0000               fcb       $00
 
                     section   code
 
-rand                pshs      u
+_rand               pshs      u
                     leax      G0000,y
                     ldd       ,x
                     ldu       2,x
@@ -37,7 +37,7 @@ rand                pshs      u
                     anda      #$7f
                     puls      u,pc
                     
-srand               leax      G0000,y
+_srand              leax      G0000,y
                     ldd       2,s
                     std       2,x
                     clra

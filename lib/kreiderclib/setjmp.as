@@ -1,9 +1,9 @@
-                    export    setjmp
-                    export    longjmp
+                    export    _setjmp
+                    export    _longjmp
                     
                     section   code
 
-setjmp              ldx       2,s
+_setjmp             ldx       2,s
                     ldd       ,s
                     std       2,x
                     sty       6,x
@@ -13,7 +13,7 @@ setjmp              ldx       2,s
                     clrb
                     rts
                     
-longjmp             ldx       2,s
+_longjmp            ldx       2,s
                     ldy       6,x
                     ldu       4,x
                     ldd       4,s

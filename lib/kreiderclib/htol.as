@@ -1,8 +1,8 @@
-                    export    htol
+                    export    _htol
                     
                     section   code
 
-htol                pshs      y,u
+_htol               pshs      y,u
                     leax      _flacc,y
                     leay      _chcodes,y
                     ldu       6,s

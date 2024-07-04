@@ -1,7 +1,8 @@
-                    export    strncmp
+                    export    _strncmp
+                    
                     section   code
 
-strncmp             pshs      y,u
+_strncmp            pshs      y,u
                     ldx       6,s
                     ldu       8,s
                     ldy       10,s

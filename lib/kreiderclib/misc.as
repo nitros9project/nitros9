@@ -1,35 +1,35 @@
-                    export    lock
-                    export    pause
-                    export    sync
-                    export    crc
-                    export    prerr
-                    export    tsleep
+                    export    _lock
+                    export    _pause
+                    export    _sync
+                    export    _crc
+                    export    _prerr
+                    export    _tsleep
                     
                     section   code
 
-lock                rts
+_lock               rts
 
-pause               ldx       #0
+_pause              ldx       #0
                     clrb
                     os9       F$Sleep
                     lbra      _os9err
                     
-sync                rts
+_sync               rts
 
-crc                 pshs      y,u
+_crc                pshs      y,u
                     ldx       6,s
                     ldy       8,s
                     ldu       10,s
                     os9       F$CRC
                     puls      y,u,pc
                     
-prerr               lda       3,s
+_prerr              lda       3,s
                     ldb       5,s
                     os9       F$PErr
                     lblo      _os9err
                     rts
                     
-tsleep              ldx       2,s
+_tsleep             ldx       2,s
                     os9       F$Sleep
                     lblo      _os9err
                     tfr       x,d

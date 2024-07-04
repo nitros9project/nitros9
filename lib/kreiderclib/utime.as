@@ -1,7 +1,8 @@
-                    export    time
-                    export    o2utime
-                    export    asctime
-                    export    ctime
+                    export    _time
+                    export    _o2utime
+                    export    _asctime
+                    export    _ctime
+                    export    _localtim
                                         
 * class D external label equates
 
@@ -58,13 +59,13 @@ G0000               fcb       $00
 
                     section   code
 
-time                pshs      u
+_time               pshs      u
                     leas      -6,s
                     leau      ,s
                     pshs      u
                     lbsr      getime
                     stu       ,s
-                    bsr       o2utime
+                    bsr       _o2utime
                     ldu       12,s
                     beq       L001b
                     ldd       ,x
@@ -76,7 +77,8 @@ L001b               leas      8,s
 L001f               fcb       $01
                     tst       1,x
                     jmp       -12,y
-o2utime             equ       *-1
+                    
+_o2utime            equ       *-1
                     rora
                     ldu       6,s
                     clra
@@ -206,7 +208,8 @@ L0103               ldb       ,u+
 daylight            neg       D0000
 timezone            neg       D0000
                     neg       D0000
-localtim            pshs      d,u
+                    
+_localtim           pshs      d,u
                     leau      B0000,y
                     ldx       6,s
                     ldd       2,x
@@ -294,7 +297,7 @@ L01af               rol       3,x
                     ror       4,s
                     leas      3,s
                     puls      d,pc
-asctime             pshs      u
+_asctime            pshs      u
                     ldu       4,s
                     ldd       10,u
                     pshs      d
@@ -332,7 +335,8 @@ asctime             pshs      u
                     leax      B0010,y
                     tfr       x,d
                     puls      u,pc
-ctime               ldd       2,s
+                    
+_ctime              ldd       2,s
                     pshs      d
                     lbsr      localtim
                     std       ,s

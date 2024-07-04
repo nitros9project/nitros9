@@ -23,7 +23,7 @@ L0000               ldd       2,s
                     lslb
                     rola
                     pshs      d
-                    lbsr      sbrk
+                    lbsr      _sbrk
                     leas      2,s
                     puls      u
                     cmpd      #-1

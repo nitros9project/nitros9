@@ -1,10 +1,10 @@
-                    export    findstr
-                    export    findnstr
-                    export    findastr
+                    export    _findstr
+                    export    _findnstr
+                    export    _findastr
                     
                     section   code
 
-findstr             pshs      y,u
+_findstr            pshs      y,u
                     bsr       L002c
                     bra       L0008
 L0006               bsr       L000e
@@ -12,7 +12,7 @@ L0008               ldb       ,x
                     bne       L0006
                     bra       L0046
 L000e               pshs      x,y
-                    bsr       findastr
+                    bsr       _findastr
                     puls      x,y
                     bne       L001b
                     leau      1,u
@@ -20,7 +20,8 @@ L000e               pshs      x,y
                     rts
 L001b               tfr       u,d
                     puls      x,y,u,pc
-findnstr            pshs      y,u
+                    
+_findnstr           pshs      y,u
                     bsr       L002c
 L0023               bsr       L000e
                     cmpu      12,s
@@ -33,7 +34,8 @@ L002c               ldu       8,s
                     leax      -1,x
                     ldy       12,s
                     rts
-findastr            pshs      y,u
+                    
+_findastr           pshs      y,u
                     ldu       6,s
                     ldx       8,s
                     bra       L004a

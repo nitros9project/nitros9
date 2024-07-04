@@ -1,6 +1,6 @@
-                    export    fdopen
+                    export    _fdopen
                     export    _fopen
-                    export    freopen
+                    export    _freopen
                     
                     section   code
 
@@ -86,7 +86,7 @@ L0086               cmpb      #$61
                     ldx       #0
                     pshs      x,u
                     pshs      d,x
-                    lbsr      lseek
+                    lbsr      _lseek
                     puls      d
                     leas      6,s
                     bra       L00e0
@@ -96,7 +96,7 @@ L00b6               ldd       ,s
                     orb       #2
                     pshs      d
                     pshs      u
-                    lbsr      creat
+                    lbsr      _creat
                     bra       L00de
 L00c3               cmpb      #$64
                     beq       L00d3
@@ -112,7 +112,8 @@ L00d7               pshs      d
 L00de               leas      4,s
 L00e0               leas      4,s
                     rts
-fdopen             pshs      u
+                    
+_fdopen             pshs      u
                     ldu       #0
                     ldx       6,s
                     ldd       4,s
@@ -127,7 +128,8 @@ _fopen               pshs      u
 L00fe               clra
                     clrb
                     puls      u,pc
-freopen             pshs      u
+                    
+_freopen            pshs      u
                     ldd       8,s
                     pshs      d
                     lbsr      _fclose

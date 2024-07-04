@@ -1,22 +1,22 @@
-                    export    strucat
-                    export    strucpy
+                    export    _strucat
+                    export    _strucpy
                     
                     section   code
 
-strucat             pshs      u
+_strucat            pshs      u
                     ldu       6,s
                     ldx       4,s
 L0006               ldb       ,x+
                     bne       L0006
                     leax      -1,x
                     bra       L0014
-strucpy             pshs      u
+_strucpy            pshs      u
                     ldu       6,s
                     ldx       4,s
 L0014               ldb       ,u+
                     clra
                     pshs      d,x
-                    lbsr      toupper
+                    lbsr      _toupper
                     leas      2,s
                     puls      x
                     stb       ,x+

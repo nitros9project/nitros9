@@ -1,4 +1,4 @@
-                    export    pffloat
+                    export    _pffloat
                     
                     section   code
 
@@ -6,7 +6,7 @@
 
 D0000               equ       $0000
 
-pffloat             leax      >L0007,pcr
+_pffloat            leax      >L0007,pcr
                     tfr       x,d
                     rts
 L0007               fcb       $00

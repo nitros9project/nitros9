@@ -1,8 +1,8 @@
-                    export    strncpy
+                    export    _strncpy
                     
                     section   code
 
-strncpy             pshs      y,u
+_strncpy            pshs      y,u
                     ldu       8,s
                     ldx       6,s
                     ldy       10,s

@@ -1,8 +1,8 @@
-                    export    chown
+                    export    _chown
                     
                     section   code
 
-chown               pshs      y,u
+_chown              pshs      y,u
                     leas      -16,s
                     os9       F$ID
                     bcs       L002a

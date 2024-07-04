@@ -1,11 +1,11 @@
-                    export    isatty
-                    export    devtyp
+                    export    _isatty
+                    export    _devtyp
                     
                     section   code
 
-isatty              ldd       2,s
+_isatty             ldd       2,s
                     pshs      d
-                    bsr       devtyp
+                    bsr       _devtyp
                     std       ,s++
                     beq       L000c
                     clrb
@@ -13,7 +13,7 @@ isatty              ldd       2,s
 L000c               incb
                     rts
                     
-devtyp              lda       3,s
+_devtyp             lda       3,s
                     clrb
                     leas      -32,s
                     leax      ,s

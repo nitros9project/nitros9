@@ -67,7 +67,7 @@ L0078               sex
                     ldd       8,s
                     pshs      d
                     ldd       #$000a
-                    lbsr      ccmult
+                    lbsr      _ccmult
                     addd      ,s++
                     std       6,s
 L0089               ldb       ,u+

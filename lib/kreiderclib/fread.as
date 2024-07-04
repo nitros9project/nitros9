@@ -1,8 +1,8 @@
-                    export    fread
+                    export    _fread
                     
                     section   code
 
-fread               pshs      d,x,u
+_fread              pshs      d,x,u
                     ldu       8,s
                     clra
                     clrb
@@ -11,7 +11,7 @@ L0008               ldd       10,s
                     bra       L0022
 L000c               ldd       14,s
                     pshs      d
-                    lbsr      getc
+                    lbsr      _getc
                     leas      2,s
                     cmpd      #-1
                     beq       L0032

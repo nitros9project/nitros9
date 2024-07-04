@@ -1,8 +1,8 @@
-                    export    strucmp
+                    export    _strucmp
                     
-                    section   codd
+                    section   code
 
-strucmp             pshs      u
+_strucmp            pshs      u
                     ldx       4,s
                     ldu       6,s
                     bra       L000c
@@ -11,14 +11,14 @@ L0008               ldb       ,u+
 L000c               ldb       ,u
                     clra
                     pshs      d,x
-                    lbsr      toupper
+                    lbsr      _toupper
                     leas      2,s
                     ldx       ,s
                     std       ,s
                     ldb       ,x+
                     clra
                     pshs      d,x
-                    lbsr      toupper
+                    lbsr      _toupper
                     leas      2,s
                     puls      x
                     subd      ,s++

@@ -1,14 +1,15 @@
-                    export    umin
-                    export    umax
+                    export    _umin
+                    export    _umax
 
                     section   code
 
-umin                ldd       2,s
+_umin               ldd       2,s
                     cmpd      4,s
                     bls       L0009
                     ldd       4,s
 L0009               rts
-umax                ldd       2,s
+
+_umax               ldd       2,s
                     cmpd      4,s
                     bcc       L0013
                     ldd       4,s

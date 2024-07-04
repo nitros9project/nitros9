@@ -1,8 +1,8 @@
-                    export    lseek
+                    export    _lseek
                     
                     section   code
 
-lseek               pshs      u
+_lseek              pshs      u
                     ldd       10,s
                     bne       L000e
                     ldu       #0

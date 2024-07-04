@@ -1,10 +1,10 @@
-                    export    exit
+                    export    _exit
                     
                     section   code
 
-exit                lbsr      _dumprof
+_exit               lbsr      _dumprof
                     lbsr      _tidyup
-_exit               ldd       2,s
+__exit              ldd       2,s
                     os9       F$Exit
 
                     endsect

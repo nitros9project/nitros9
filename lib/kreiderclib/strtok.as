@@ -1,4 +1,4 @@
-                    export    strtok
+                    export    _strtok
                     
                     section   bss
 
@@ -10,7 +10,7 @@ G0000               fcb       $00
 
                     section   code
 
-strtok              clra
+_strtok             clra
                     clrb
                     pshs      d,u
                     ldu       6,s
@@ -20,7 +20,7 @@ strtok              clra
 L000e               ldx       8,s
                     pshs      x
                     pshs      u
-                    lbsr      strspn
+                    lbsr      _strspn
                     leas      4,s
                     leau      d,u
                     ldb       ,u
@@ -29,7 +29,7 @@ L000e               ldx       8,s
                     ldx       8,s
                     pshs      x
                     pshs      u
-                    lbsr      strpbrk
+                    lbsr      _strpbrk
                     leas      4,s
                     std       G0000,y
                     beq       L003a

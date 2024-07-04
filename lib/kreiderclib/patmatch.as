@@ -1,8 +1,8 @@
-                    export    patmatch
+                    export    _patmatch
                     
                     section   code
 
-patmatch            pshs      u
+_patmatch           pshs      u
                     ldu       6,s
                     leas      -2,s
                     bra       L0041
@@ -14,7 +14,7 @@ L000c               ldb       11,s
                     pshs      u
                     ldd       10,s
                     pshs      d
-                    bsr       patmatch
+                    bsr       _patmatch
                     leas      6,s
                     bne       L005b
                     ldb       ,u+
@@ -31,7 +31,7 @@ L002f               ldb       ,u+
                     beq       L003d
                     clra
                     pshs      d
-                    lbsr      toupper
+                    lbsr      _toupper
                     leas      2,s
 L003d               cmpb      1,s
                     bne       L0060
@@ -42,7 +42,7 @@ L0041               ldx       6,s
                     beq       L0053
                     clra
                     pshs      d
-                    lbsr      toupper
+                    lbsr      _toupper
                     leas      2,s
 L0053               stb       1,s
                     bne       L0008

@@ -1,14 +1,14 @@
-                    export    calloc
+                    export    _calloc
                     
                     section   code
 
-calloc              pshs      u
+_calloc             pshs      u
                     ldd       4,s
                     ldx       6,s
                     pshs      x
-                    lbsr      ccmult
+                    lbsr      _ccmult
                     pshs      d
-                    lbsr      malloc
+                    lbsr      _malloc
                     std       -2,s
                     beq       L001e
                     ldx       ,s

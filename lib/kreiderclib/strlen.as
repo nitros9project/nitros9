@@ -1,8 +1,8 @@
-                    export    strlen
+                    export    _strlen
                     
                     section   code
 
-strlen              pshs      u
+_strlen             pshs      u
                     ldu       4,s
 L0004               ldb       ,u+
                     bne       L0004

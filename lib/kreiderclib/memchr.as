@@ -1,8 +1,8 @@
-                    export    memchr
+                    export    _memchr
                     
                     section   code
 
-memchr              pshs      x,u
+_memchr             pshs      x,u
                     ldu       6,s
                     ldx       10,s
                     beq       L0018

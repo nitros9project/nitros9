@@ -1,8 +1,8 @@
-                    export    abort
+                    export    _abort
                     
                     section   code
 
-abort               pshs      d,x,y,u
+_abort              pshs      d,x,y,u
                     leax      >L0048,pcr
                     ldb       #3
                     clra

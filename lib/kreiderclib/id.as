@@ -1,7 +1,7 @@
-                    export    getpid
-                    export    getuid
-                    export    asetuid
-                    export    setuid
+                    export    _getpid
+                    export    _getuid
+                    export    _asetuid
+                    export    _setuid
                     
                     section   code
 
@@ -9,23 +9,23 @@
 
 X004b               equ       $004b
 
-getpid              pshs      y
+_getpid             pshs      y
                     os9       F$ID
                     puls      y
                     tfr       a,b
                     clra
                     rts
                     
-getuid              pshs      y
+_getuid             pshs      y
                     os9       F$ID
                     tfr       y,d
                     puls      y,pc
                     
-asetuid             pshs      y
+_asetuid            pshs      y
                     bra       L0027
                     
-setuid              pshs      y
-                    bsr       getuid
+_setuid             pshs      y
+                    bsr       _getuid
                     std       -2,s
                     beq       L0027
                     ldb       #$d6

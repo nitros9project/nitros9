@@ -1,8 +1,8 @@
-                    export    strclr
+                    export    _strclr
                     
                     section   code
 
-strclr              pshs      u
+_strclr             pshs      u
                     ldu       4,s
                     clrb
                     ldx       6,s

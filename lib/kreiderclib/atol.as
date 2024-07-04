@@ -1,4 +1,4 @@
-                    export    atol
+                    export    _atol
                     
                     section   code
 
@@ -7,7 +7,7 @@
 D0000               equ       $0000
 D000a               equ       $000a
 
-atol                pshs      u
+_atol               pshs      u
                     ldu       4,s
                     clra
                     clrb

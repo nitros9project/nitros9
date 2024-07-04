@@ -1,5 +1,5 @@
-                    export    ccumod
-                    export    ccmod
+                    export    _ccumod
+                    export    _ccmod
                     
                     section   bss
 
@@ -12,11 +12,12 @@ B0001               rmb       2
 
                     section   code
 
-ccumod              clr       B0000,y
-                    leax      ccudiv,pcr
+_ccumod             clr       B0000,y
+                    leax      _ccudiv,pcr
                     stx       B0001,y
                     bra       L0022
-ccmod               leax      ccdiv,pcr
+                    
+_ccmod              leax      _ccdiv,pcr
                     stx       B0001,y
                     clr       B0000,y
                     tst       2,s

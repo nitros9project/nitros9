@@ -1,8 +1,8 @@
-                    export    abs
+                    export    _abs
                     
                     section   code
 
-abs                 ldd       2,s
+_abs                ldd       2,s
                     bpl       L0008
                     nega
                     negb

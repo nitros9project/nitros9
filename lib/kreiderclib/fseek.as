@@ -1,4 +1,4 @@
-                    export    fseek
+                    export    _fseek
                     
                     section   code
 
@@ -11,7 +11,7 @@ D0000               equ       $0000
 X4f5f               equ       $4f5f
 Xffff               equ       $ffff
 
-fseek               pshs      u
+_fseek              pshs      u
                     ldu       4,s
                     leas      -6,s
                     lbeq      L0114
@@ -27,7 +27,7 @@ fseek               pshs      u
 L0020               bita      #1
                     beq       L003a
                     pshs      u
-                    lbsr      fflush
+                    lbsr      _fflush
                     leas      2,s
                     lda       6,u
                     anda      #254
@@ -55,7 +55,7 @@ L0059               leax      2,s
                     ldd       ,x
                     pshs      d
                     pshs      u
-                    lbsr      ftell
+                    lbsr      _ftell
                     leas      2,s
                     lbsr      _lsub
                     lbsr      _lmove
@@ -121,7 +121,7 @@ L00e5               ldb       7,u
                     pshs      d
                     ldd       8,u
                     pshs      d
-                    lbsr      lseek
+                    lbsr      _lseek
                     leas      8,s
                     ldd       2,x
                     pshs      d
@@ -171,7 +171,7 @@ L015b               ldd       #1
                     pshs      d
                     ldd       8,u
                     pshs      d
-                    lbsr      lseek
+                    lbsr      _lseek
                     leas      8,s
                     ldd       2,x
                     pshs      d

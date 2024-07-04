@@ -1,11 +1,11 @@
-                    export    realloc
+                    export    _realloc
                     
                     section   code
 
-realloc             pshs      d,y,u
+_realloc            pshs      d,y,u
                     ldd       10,s
                     std       ,s
-                    lbsr      malloc
+                    lbsr      _malloc
                     std       ,s
                     beq       L003d
                     cmpd      8,s
@@ -30,7 +30,7 @@ L002c               ldd       ,u++
                     bne       L002c
                     ldd       8,s
                     pshs      d
-                    lbsr      free
+                    lbsr      _free
                     puls      d
 L003d               puls      d,y,u,pc
 

@@ -1,17 +1,17 @@
-                    export    kill
-                    export    wait
-                    export    setpr
-                    export    chain
-                    export    os9fork
+                    export    _kill
+                    export    _wait
+                    export    _setpr
+                    export    _chain
+                    export    _os9fork
                     
                     section   code
 
-kill                lda       3,s
+_kill               lda       3,s
                     ldb       5,s
                     os9       F$Send
                     lbra      _sysret
                     
-wait                clra
+_wait               clra
                     clrb
                     os9       F$Wait
                     lblo      _os9err
@@ -23,12 +23,12 @@ L001b               tfr       a,b
                     clra
                     rts
                     
-setpr               lda       3,s
+_setpr              lda       3,s
                     ldb       5,s
                     os9       F$SPrior
                     lbra      _sysret
                     
-chain               leau      ,s
+_chain              leau      ,s
                     leas      255,y
                     ldx       2,u
                     ldy       4,u
@@ -43,7 +43,7 @@ chain               leau      ,s
                     os9       F$Chain
                     os9       F$Exit
                     
-os9fork             pshs      y,u
+_os9fork            pshs      y,u
                     ldx       6,s
                     ldy       8,s
                     ldu       10,s

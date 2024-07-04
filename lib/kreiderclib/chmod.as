@@ -1,8 +1,8 @@
-                    export    chmod
+                    export    _chmod
                     
                     section   code
 
-chmod               pshs      y,u
+_chmod              pshs      y,u
                     leas      -16,s
                     bsr       L0035
                     bcs       L002d

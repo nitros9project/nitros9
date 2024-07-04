@@ -1,12 +1,13 @@
-                    export    setime
-                    export    getime
+                    export    _setime
+                    export    _getime
                     
                     section   code
 
-setime              ldx       2,s
+_setime             ldx       2,s
                     os9       F$STime
                     lbra      _sysret
-getime              ldx       2,s
+                    
+_getime             ldx       2,s
                     os9       F$Time
                     lbra      _sysret
 

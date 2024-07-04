@@ -1,8 +1,8 @@
-                    export    strnucmp
+                    export    _strnucmp
                     
                     section   code
 
-strnucmp            pshs      y,u
+_strnucmp           pshs      y,u
                     ldu       8,s
                     ldd       10,s
                     beq       L0037
@@ -16,14 +16,14 @@ L000a               ldd       10,s
 L0017               ldb       ,u
                     clra
                     pshs      d
-                    lbsr      toupper
+                    lbsr      _toupper
                     std       ,s
                     ldx       8,s
                     ldb       ,x+
                     stx       8,s
                     clra
                     pshs      d
-                    lbsr      toupper
+                    lbsr      _toupper
                     leas      2,s
                     subd      ,s++
                     beq       L000a

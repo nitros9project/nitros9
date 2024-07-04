@@ -1,4 +1,4 @@
-                    export    getdrive
+                    export    _getdrive
                     
 * class D external label equates
 
@@ -18,7 +18,7 @@ B0000               rmb       12
 
                     section   code
 
-getdrive            pshs      u
+_getdrive           pshs      u
                     leas      -7,s
                     clra
                     clrb
@@ -27,7 +27,7 @@ getdrive            pshs      u
                     pshs      d
                     leax      >L0061,pcr
                     pshs      x
-                    lbsr      modlink
+                    lbsr      _modlink
                     leas      6,s
                     std       ,s
                     cmpd      #-1
@@ -55,7 +55,7 @@ L0033               ldx       5,s
                     stb       ,u
                     ldd       ,s
                     pshs      d
-                    lbsr      munlink
+                    lbsr      _munlink
                     leas      2,s
                     leax      B0000,y
                     tfr       x,d

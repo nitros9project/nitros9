@@ -1,11 +1,11 @@
-                    export    lockdata
-                    export    unlkdata
-                    export    datlink
-                    export    dunlink
+                    export    _lockdata
+                    export    _unlkdata
+                    export    _datlink
+                    export    _dunlink
                     
                     section   code
 
-lockdata            ldx       2,s
+_lockdata           ldx       2,s
                     pshs      cc
                     orcc      #$10
                     inc       ,x
@@ -14,7 +14,8 @@ lockdata            ldx       2,s
                     dec       ,x
 L000e               sex
                     puls      cc,pc
-unlkdata            ldx       2,s
+                    
+_unlkdata            ldx       2,s
                     pshs      cc
                     orcc      #$10
                     ldb       ,x
@@ -23,7 +24,8 @@ unlkdata            ldx       2,s
 L001d               clra
                     clrb
                     puls      cc,pc
-datlink             pshs      y,u
+                    
+_datlink            pshs      y,u
                     clr       ,-s
                     clr       ,-s
                     ldx       8,s
@@ -51,12 +53,13 @@ L0045               pshs      y
                     ldd       ,s
                     beq       L0067
                     pshs      y
-                    bsr       lockdata
+                    bsr       _lockdata
                     std       ,s++
                     beq       L0067
                     clr       1,s
 L0067               puls      d,y,u,pc
-dunlink             pshs      u
+
+_dunlink            pshs      u
                     ldu       4,s
                     ldd       ,--u
                     leau      d,u

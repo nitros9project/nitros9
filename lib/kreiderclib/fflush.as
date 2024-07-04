@@ -1,8 +1,8 @@
-                    export    fflush
+                    export    _fflush
                     
                     section   code
 
-fflush              rts
+_fflush             rts
 
                     endsect
 

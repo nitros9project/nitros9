@@ -25,9 +25,9 @@ L0022               leax      <L0000,pcr
                     ldd       #$0064
                     bra       L0037
 L0034               ldd       #$003c
-L0037               lbsr      ccmult
+L0037               lbsr      _ccmult
 L003a               pshs      d
-                    lbsr      tsleep
+                    lbsr      _tsleep
                     puls      x,pc
 
                     endsection

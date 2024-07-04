@@ -1,10 +1,10 @@
-                    export    atoftbl
-                    export    scale
+                    export    _atoftbl
+                    export    _scale
                     
                     section   bss
 
 * Initialized Data (class G)
-atoftbl             fcb       $00
+_atoftbl            fcb       $00
                     fcb       $00
                     fcb       $00
                     fcb       $00
@@ -149,7 +149,8 @@ L003e               leau      _flacc,y
                     pshs      u
                     lbsr      _dmove
                     puls      u,pc
-scale               pshs      u
+                    
+_scale              pshs      u
                     ldd       12,s
                     cmpd      #9
                     ble       L0079
@@ -160,7 +161,7 @@ scale               pshs      u
                     ldd       16,s
                     pshs      d
                     ldd       #$000a
-                    lbsr      ccdiv
+                    lbsr      _ccdiv
                     addd      #9
                     pshs      d
                     leax      10,s
