@@ -1,5 +1,5 @@
 /*
- * setjmp.h
+ * dbg.h - Debugging header file
  *
  * Notes:
  *
@@ -13,15 +13,12 @@
  * Incorporated into CMOC.
  */
 
-#ifndef _SETJMP_H
-#define _SETJMP_H
+#ifndef _DBG_H
+#define _DBG_H
 
-#ifdef OSK
-typedef int     jmp_buf[16];
+#define  TROFF       0
+#define  TRON        1
+#define  E_INTERACT  2
+#define  L_INTERACT  4
 
-#else
-typedef int     jmp_buf[4];
-
-#endif
-
-#endif				/* _SETJMP_H */
+#endif				/* _DBG_H */
