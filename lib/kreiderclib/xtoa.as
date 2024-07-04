@@ -21,13 +21,13 @@ _itoa               clra
 L0018               ldd       6,s
                     pshs      d
                     ldd       #$000a
-                    lbsr      ccumod
+                    lbsr      _ccumod
                     addb      #$30
                     stb       ,u+
                     ldd       6,s
                     pshs      d
                     ldd       #$000a
-                    lbsr      ccudiv
+                    lbsr      _ccudiv
                     std       6,s
                     bgt       L0018
                     tst       ,s
@@ -37,7 +37,7 @@ L0018               ldd       6,s
 L003c               clr       ,u
                     ldd       8,s
                     pshs      d
-                    lbsr      reverse
+                    lbsr      _reverse
                     leas      4,s
                     puls      u,pc
 

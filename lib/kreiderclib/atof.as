@@ -2,7 +2,7 @@
                     
                     section   code
 
-_atof                pshs      u
+_atof               pshs      u
                     ldu       4,s
                     ldb       #$10
                     clra

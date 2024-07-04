@@ -2,7 +2,7 @@
 
                     section   code
 
-__os9                pshs      y,u
+__os9               pshs      y,u
                     lda       7,s
                     ldb       #$39
                     pshs      d
@@ -32,4 +32,3 @@ L0034               clra
                     rts
 
                     endsect
-

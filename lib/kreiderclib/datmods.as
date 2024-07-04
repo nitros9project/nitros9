@@ -15,7 +15,7 @@ _lockdata           ldx       2,s
 L000e               sex
                     puls      cc,pc
                     
-_unlkdata            ldx       2,s
+_unlkdata           ldx       2,s
                     pshs      cc
                     orcc      #$10
                     ldb       ,x

@@ -82,7 +82,7 @@ L007b               stu       ,s
 L00a3               ldd       2,s
                     cmpd      #$0010
                     blt       L007b
-                    leax      iob+26,y
+                    leax      __iob+26,y
                     pshs      x
                     ldd       #$000d
                     pshs      d

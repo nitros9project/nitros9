@@ -21,12 +21,12 @@ _system             pshs      u
                     leax      ,s
                     pshs      d
                     pshs      x,u
-                    lbsr      strncpy
+                    lbsr      _strncpy
                     leas      6,s
                     clr       80,s
                     leax      >L0066,pcr
                     pshs      d,x
-                    lbsr      strcat
+                    lbsr      _strcat
                     leas      4,s
                     clra
                     clrb
@@ -41,20 +41,20 @@ _system             pshs      u
                     std       ,s
                     leax      >L0061,pcr
                     pshs      x
-                    lbsr      os9fork
+                    lbsr      _os9fork
                     leas      12,s
                     std       82,s
 L004c               leax      84,s
                     pshs      x
-                    lbsr      wait
+                    lbsr      _wait
                     leas      2,s
                     cmpd      82,s
                     bne       L004c
                     leas      84,s
                     puls      d,u,pc
-L0061               com       X6865
-                    inc       12,s
-L0066               tst       D0000
+                    
+L0061               fcc       /shell/
+L0066               fcb       $7D,$00,$0
 
                     endsect
 

@@ -74,12 +74,10 @@ _time               pshs      u
                     std       2,u
 L001b               leas      8,s
                     puls      u,pc
-L001f               fcb       $01
-                    tst       1,x
-                    jmp       -12,y
                     
-_o2utime            equ       *-1
-                    rora
+L001f               fcb       $01,$6D,$01,$6E
+
+_o2utime            pshs      d,u
                     ldu       6,s
                     clra
                     clrb
@@ -205,9 +203,10 @@ L0103               ldb       ,u+
                     deca
                     bne       L0103
                     puls      u,pc
-daylight            neg       D0000
-timezone            neg       D0000
-                    neg       D0000
+                    
+daylight            fcb       $70,$00,$00
+timezone            fcb       $70,$00,$00
+                    fcb       $70,$00,$00
                     
 _localtim           pshs      d,u
                     leau      B0000,y
@@ -297,6 +296,7 @@ L01af               rol       3,x
                     ror       4,s
                     leas      3,s
                     puls      d,pc
+                    
 _asctime            pshs      u
                     ldu       4,s
                     ldd       10,u
@@ -330,7 +330,7 @@ _asctime            pshs      u
                     pshs      x
                     leax      B0010,y
                     pshs      x
-                    lbsr      sprintf
+                    lbsr      _sprintf
                     leas      18,s
                     leax      B0010,y
                     tfr       x,d
@@ -338,9 +338,9 @@ _asctime            pshs      u
                     
 _ctime              ldd       2,s
                     pshs      d
-                    lbsr      localtim
+                    lbsr      _localtim
                     std       ,s
-                    lbsr      asctime
+                    lbsr      _asctime
                     puls      x,pc
 *L022e comb
 * fcb $75

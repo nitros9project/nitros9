@@ -135,7 +135,7 @@ L00fd               pshs      u
                     clrb
                     pshs      d
                     pshs      u
-                    lbsr      ftell
+                    lbsr      _ftell
                     leas      2,s
                     ldd       2,x
                     pshs      d
@@ -143,7 +143,7 @@ L00fd               pshs      u
                     pshs      d
                     ldd       8,u
                     pshs      d
-                    lbsr      lseek
+                    lbsr      _lseek
                     leas      8,s
 L012c               ldd       ,u
                     subd      2,u
