@@ -22,7 +22,7 @@ int readln(int path, char *buffer, int length);
 int write(int path, const char *buffer, int length);
 int writeln(int path, const char *buffer, int length);
 int close(int path);
-int chdir(char *path);
+int chdir(const char *path);
 int system(const char *command);
 int sleep(int seconds);
 int tsleep(int ticks);

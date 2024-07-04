@@ -1,5 +1,5 @@
-                    export    pflinit
-                    export    pflong
+                    export    _pflinit
+                    export    _pflong
                     
 * class D external label equates
 
@@ -51,8 +51,8 @@ G0000               fcb       $3b
 
                     section   code
 
-pflinit             rts
-pflong              pshs      u
+_pflinit            rts
+_pflong             pshs      u
                     leau      B0000,y
                     pshs      u
                     ldb       7,s
@@ -168,13 +168,14 @@ L00e3               dec       1,s
                     stb       ,u+
                     leas      3,s
                     bra       L009c
-L00f1               blt       L0125
-                    leay      -12,y
-                    pulu      b,x,y
-                    fcb       $38
-                    leau      -10,y
-                    pshs      dp,x,y
-                    fcb       $00
+
+* TODO: Verify these constants! - BGP
+L00f1               fdb       $2D32
+                    fdb       $3134
+                    fdb       $3734
+                    fdb       $3833
+                    fdb       $3634
+                    fdb       $3800
 
                     endsect
 

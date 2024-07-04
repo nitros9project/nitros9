@@ -1,8 +1,8 @@
-                    export    setbuf
+                    export    _setbuf
                     
                     section   code
 
-setbuf              pshs      u
+_setbuf             pshs      u
                     ldu       4,s
                     lda       6,u
                     anda      #1

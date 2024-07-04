@@ -1,9 +1,13 @@
+                    export    ibrk
                     export    sbrk
                     export    unbrk
                                         
                     section   bss
 
 * Uninitialized data (class B)
+_stbot              rmb       2
+_mtop               rmb       2
+_memend             rmb       2
 _spare              rmb       2
 * Initialized Data (class G)
 
@@ -11,7 +15,7 @@ _spare              rmb       2
 
                     section   code
 
-sbrk                ldd       memend,y
+sbrk                ldd       _memend,y
                     pshs      d
                     ldd       4,s
                     cmpd      _spare,y
@@ -28,7 +32,7 @@ sbrk                ldd       memend,y
                     ldd       #-1
                     leas      2,s
                     rts
-L0027               std       memend,y
+L0027               std       _memend,y
                     addd      _spare,y
                     subd      ,s
                     std       _spare,y
@@ -37,13 +41,13 @@ L0035               leas      2,s
                     pshs      d
                     subd      4,s
                     std       _spare,y
-                    ldd       memend,y
+                    ldd       _memend,y
                     subd      ,s++
                     pshs      d
                     clra
                     ldx       ,s
 L004e               sta       ,x+
-                    cmpx      memend,y
+                    cmpx      _memend,y
                     bcs       L004e
                     puls      d,pc
 ibrk                ldd       2,s
@@ -72,7 +76,7 @@ unbrk               ldd       2,s
                     puls      y,pc
 L0093               tfr       y,d
                     puls      y
-                    std       memend,y
+                    std       _memend,y
                     clra
                     clrb
                     std       _spare,y

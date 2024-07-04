@@ -1,10 +1,10 @@
-                    export    getc
-                    export    ungetc
-                    export    getw
+                    export    _getc
+                    export    _ungetc
+                    export    _getw
                     
                     section   code
 
-getc                pshs      u
+_getc               pshs      u
                     ldu       4,s
                     beq       L005f
                     lda       6,u
@@ -17,7 +17,7 @@ L0012               ldb       ,x+
 L0014               stx       ,u
                     clra
                     puls      u,pc
-ungetc              pshs      u
+_ungetc             pshs      u
                     ldu       6,s
                     beq       L005f
                     ldb       7,u
@@ -31,14 +31,14 @@ ungetc              pshs      u
                     beq       L005f
                     stb       ,-x
                     bra       L0014
-getw                pshs      u
+_getw               pshs      u
                     ldu       4,s
                     pshs      u,pc
-                    bsr       getc
+                    bsr       _getc
                     std       2,s
                     cmpd      #-1
                     beq       L0051
-                    bsr       getc
+                    bsr       _getc
                     cmpd      #-1
                     beq       L0051
                     lda       3,s
@@ -61,14 +61,14 @@ L0064               ldd       6,u
                     pshs      u
                     lbsr      _setbase
                     leas      2,s
-L0079               leax      _iob,y
+L0079               leax      __iob,y
                     pshs      x
                     cmpu      ,s++
                     bne       L0095
                     ldb       7,u
                     andb      #$40
                     beq       L0095
-                    leax      _iob+13,y
+                    leax      __iob+13,y
                     pshs      x
                     lbsr      fflush
                     leas      2,s
@@ -83,7 +83,7 @@ L0095               ldb       7,u
                     ldb       7,u
                     andb      #$40
                     beq       L00bd
-                    lbsr      readln
+                    lbsr      _readln
                     bra       L00c0
 L00b0               ldd       #1
                     pshs      d
@@ -91,7 +91,7 @@ L00b0               ldd       #1
                     stx       2,u
                     ldd       8,u
                     pshs      d,x
-L00bd               lbsr      read
+L00bd               lbsr      _read
 L00c0               leas      6,s
                     std       -2,s
                     beq       L0055

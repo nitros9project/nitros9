@@ -605,7 +605,7 @@ L0422               clra
                     bhi       L044b
                     leax      L04eb,pcr
                     pshs      x
-                    leax      _iob+26,y
+                    leax      iob+26,y
                     pshs      x
                     lbsr      fprintf
                     leas      4,s

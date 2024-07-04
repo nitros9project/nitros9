@@ -20,7 +20,7 @@ MODS = _prgname.o abort.o abs.o access.o adump.o atof.o atoi.o atol.o \
 	mem.o memccpy.o memchr.o memcmp.o memcpy.o memory.o \
 	memset.o minmax.o misc.o mktemp.o mod.o \
 	open.o \
-	patmatch.o pffdummy.o pfldummy.o \
+	patmatch.o pffdummy.o pfldummy.o pflinit.o \
 	popen.o printf.o process.o prof.o profdummy.o putc.o \
 	puts.o pwcryp.o pwent.o \
 	rand.o read.o realloc.o reverse.o rpterr.o \
@@ -34,7 +34,7 @@ MODS = _prgname.o abort.o abs.o access.o adump.o atof.o atoi.o atol.o \
 	write.o \
 	xtoa.o
 
-NOTYET = pffinit.o plfinit.o
+NOTYET = pffinit.o
 
 all:	../libkreiderc.a
 

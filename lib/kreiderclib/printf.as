@@ -1,6 +1,7 @@
                     export    printf
                     export    sprintf
-                    export    fprintf
+                    export    _fprintf
+                    export    frevers
                     
                     section   bss
 
@@ -23,10 +24,10 @@ G0000               fcb       $27
 
 printf              pshs      u
                     leau      6,s
-                    leax      _iob+13,y
+                    leax      __iob+13,y
                     ldd       4,s
                     bra       L0014
-fprintf             pshs      u
+_fprintf             pshs      u
                     leau      8,s
                     ldx       4,s
                     ldd       6,s
@@ -309,7 +310,7 @@ L0242               lda       b,x
                     puls      d,pc
 L024a               ldx       B0000,y
                     pshs      d,x
-                    lbsr      putc
+                    lbsr      _putc
                     leas      4,s
                     rts
 L0256               ldx       B0000,y

@@ -1,10 +1,11 @@
-                    export    putc
-                    export    putw
-                    export    fflush
+                    export    _putc
+                    export    _putw
+                    export    _fflush
+                    export    _fclose
                     
                     section   code
 
-putc                pshs      u
+_putc               pshs      u
                     ldu       6,s
                     ldd       6,u
                     anda      #$80
@@ -27,9 +28,9 @@ L0019               ldd       6,u
                     ldb       7,u
                     andb      #$40
                     beq       L0035
-                    lbsr      writeln
+                    lbsr      _writeln
                     bra       L0038
-L0035               lbsr      write
+L0035               lbsr      _write
 L0038               leas      6,s
                     cmpd      #-1
                     bne       L0079
@@ -62,28 +63,28 @@ L0070               pshs      u
                     bne       L0046
 L0079               ldd       4,s
                     puls      u,pc
-putw                pshs      u
+_putw               pshs      u
                     ldu       6,s
                     ldb       4,s
                     pshs      d,u
-                    lbsr      putc
+                    lbsr      _putc
                     ldb       9,s
                     stb       1,s
-                    lbsr      putc
+                    lbsr      _putc
                     leas      4,s
                     puls      u,pc
 _tidyup             pshs      u
-                    leax      _iob,y
+                    leax      __iob,y
                     ldb       #$10
                     pshs      b
 L009d               pshs      x
-                    bsr       fclose
+                    bsr       _fclose
                     puls      x
                     leax      13,x
                     dec       ,s
                     bne       L009d
                     puls      b,u,pc
-fclose              pshs      u
+_fclose             pshs      u
                     ldu       4,s
                     lbeq      L0046
                     ldd       6,u
@@ -91,7 +92,7 @@ fclose              pshs      u
                     andb      #2
                     beq       L00c5
                     pshs      u
-                    bsr       fflush
+                    bsr       _fflush
                     leas      2,s
                     bra       L00c7
 L00c5               clra
@@ -99,13 +100,13 @@ L00c5               clra
 L00c7               pshs      d
                     ldd       8,u
                     pshs      d
-                    lbsr      close
+                    lbsr      _close
                     leas      2,s
                     clra
                     clrb
                     std       6,u
                     puls      d,u,pc
-fflush              pshs      u
+_fflush             pshs      u
                     ldu       4,s
                     lbeq      L0046
                     ldd       6,u
@@ -160,7 +161,7 @@ L0146               pshs      d
                     pshs      d
                     ldd       8,u
                     pshs      d
-                    lbsr      writeln
+                    lbsr      _writeln
                     leas      6,s
                     std       ,s
                     cmpd      #-1
@@ -180,7 +181,7 @@ L016f               ldd       2,s
                     pshs      d
                     ldd       8,u
                     pshs      d
-                    lbsr      write
+                    lbsr      _write
                     leas      6,s
                     cmpd      2,s
                     beq       L0194

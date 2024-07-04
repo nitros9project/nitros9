@@ -3,7 +3,7 @@
                     
                     section   code
 
-_read               pshs      y
+_read                pshs      y
                     ldx       6,s
                     lda       5,s
                     ldy       8,s
@@ -20,7 +20,7 @@ L0018               puls      x,y
 L001d               tfr       y,d
                     puls      x,y,pc
                     
-_readln             pshs      y
+_readln              pshs      y
                     lda       5,s
                     ldx       6,s
                     ldy       8,s

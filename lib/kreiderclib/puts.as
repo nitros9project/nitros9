@@ -1,25 +1,25 @@
-                    export    puts
-                    export    fputs
+                    export    _puts
+                    export    _fputs
                     
                     section   code
 
-puts                pshs      u
-                    leax      _iob+13,y
+_puts               pshs      u
+                    leax      __iob+13,y
                     ldd       4,s
                     pshs      d,x
-                    bsr       fputs
+                    bsr       _fputs
                     ldb       #$0d
                     stb       1,s
-                    lbsr      putc
+                    lbsr      _putc
                     leas      4,s
                     puls      u,pc
-fputs               pshs      u
+_fputs              pshs      u
                     ldu       4,s
                     ldx       6,s
                     pshs      d,x
                     bra       L0026
 L0021               stb       1,s
-                    lbsr      putc
+                    lbsr      _putc
 L0026               ldb       ,u+
                     bne       L0021
                     leas      4,s

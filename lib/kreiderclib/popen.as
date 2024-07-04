@@ -1,5 +1,5 @@
-                    export    popen
-                    export    pclose
+                    export    _popen
+                    export    _pclose
                     
 * class D external label equates
 
@@ -16,7 +16,7 @@ B0000               rmb       32
 
                     section   code
 
-popen               pshs      u
+_popen              pshs      u
                     leas      -14,s
                     ldu       18,s
                     ldb       [20,s]
@@ -205,13 +205,13 @@ L019d               clra
 L01a1               ldd       10,s
 L01a3               leas      14,s
                     puls      u,pc
-pclose              pshs      d,x,u
+_pclose             pshs      d,x,u
                     ldx       8,s
                     ldd       8,x
                     std       2,s
                     ldd       8,s
                     pshs      d
-                    lbsr      fclose
+                    lbsr      _fclose
                     leas      2,s
 L01b8               leax      ,s
                     pshs      x

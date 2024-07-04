@@ -1,9 +1,9 @@
-                    export    getstat
-                    export    setstat
+                    export    _getstat
+                    export    _setstat
                     
                     section   code
 
-getstat             pshs      y,u
+_getstat            pshs      y,u
                     lda       9,s
                     ldb       7,s
                     beq       L003c
@@ -36,7 +36,8 @@ L003c               ldx       10,s
 L003e               os9       I$GetStt
                     puls      y,u
                     lbra      _sysret
-setstat             pshs      y,u
+                    
+_setstat            pshs      y,u
                     lda       9,s
                     ldb       7,s
                     beq       L0096

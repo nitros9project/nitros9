@@ -16,13 +16,13 @@ _dump               pshs      u
                     pshs      d
                     leax      L0192,pcr
                     pshs      x
-                    leax      _iob+26,y
+                    leax      iob+26,y
                     pshs      x
                     lbsr      fprintf
                     leas      6,s
                     leax      L0197,pcr
                     pshs      x
-                    leax      _iob+26,y
+                    leax      iob+26,y
                     pshs      x
                     lbsr      fprintf
                     leas      4,s
@@ -38,7 +38,7 @@ L0032               stu       ,s
                     pshs      d
                     leax      L019e,pcr
                     pshs      x
-                    leax      _iob+26,y
+                    leax      iob+26,y
                     pshs      x
                     lbsr      fprintf
                     leas      6,s
@@ -53,7 +53,7 @@ L005a               ldd       2,s
                     blt       L0032
                     leax      L01a4,pcr
                     pshs      x
-                    leax      _iob+26,y
+                    leax      iob+26,y
                     pshs      x
                     lbsr      fprintf
                     leas      4,s
@@ -69,7 +69,7 @@ L007b               stu       ,s
                     pshs      d
                     leax      L01a6,pcr
                     pshs      x
-                    leax      _iob+26,y
+                    leax      iob+26,y
                     pshs      x
                     lbsr      fprintf
                     leas      6,s
@@ -82,7 +82,7 @@ L007b               stu       ,s
 L00a3               ldd       2,s
                     cmpd      #$0010
                     blt       L007b
-                    leax      _iob+26,y
+                    leax      iob+26,y
                     pshs      x
                     ldd       #$000d
                     pshs      d
@@ -90,7 +90,7 @@ L00a3               ldd       2,s
                     leas      4,s
                     leax      L01aa,pcr
                     pshs      x
-                    leax      _iob+26,y
+                    leax      iob+26,y
                     pshs      x
                     lbsr      fprintf
                     leas      4,s
@@ -99,7 +99,7 @@ L00cf               ldd       11,s
                     pshs      d
                     leax      L01f3,pcr
                     pshs      x
-                    leax      _iob+26,y
+                    leax      iob+26,y
                     pshs      x
                     lbsr      fprintf
                     leas      6,s
@@ -113,7 +113,7 @@ L00ec               ldb       ,u+
                     pshs      d
                     leax      L01fa,pcr
                     pshs      x
-                    leax      _iob+26,y
+                    leax      iob+26,y
                     pshs      x
                     lbsr      fprintf
                     leas      6,s
@@ -125,7 +125,7 @@ L0109               ldd       2,s
                     blt       L00ec
                     leax      L0200,pcr
                     pshs      x
-                    leax      _iob+26,y
+                    leax      iob+26,y
                     pshs      x
                     lbsr      fprintf
                     leas      4,s
@@ -147,7 +147,7 @@ L013a               ldd       #$002e
 L013d               pshs      d
                     leax      L0202,pcr
                     pshs      x
-                    leax      _iob+26,y
+                    leax      iob+26,y
                     pshs      x
                     lbsr      fprintf
                     leas      6,s
@@ -157,7 +157,7 @@ L013d               pshs      d
 L0157               ldd       2,s
                     cmpd      #$0010
                     blt       L012a
-                    leax      _iob+26,y
+                    leax      iob+26,y
                     pshs      x
                     ldd       #$000d
                     pshs      d
@@ -169,7 +169,7 @@ L0157               ldd       2,s
                     std       13,s
 L0178               ldd       13,s
                     lbgt      L00cf
-                    leax      _iob+26,y
+                    leax      iob+26,y
                     pshs      x
                     ldd       #$000d
                     pshs      d
