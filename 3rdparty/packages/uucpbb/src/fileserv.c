@@ -82,7 +82,7 @@ void wtlog(), warnadmin(), chg_to_dir(), flushbits(), writeheader();
 void sendmsg(), rejectfile(), fatal();
 
 
-int interrupt (sig)
+int myinterrupt (sig)
 int sig;
 {
      if (*tempfile != '\0')
@@ -109,7 +109,7 @@ int main()
      log = NULL;
 
      pflinit();                      /* tell compiler longs will be printed */
-     intercept (interrupt);
+     intercept (myinterrupt);
 
      if (getparam() == FALSE)
           exit (0);
@@ -837,7 +837,7 @@ void fatal (msg)
 register char *msg;
 {
      fprintf (stderr, "fileserv: %s\n", msg);
-     interrupt (0);
+     myinterrupt (0);
 }
 
 

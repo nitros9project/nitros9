@@ -64,14 +64,14 @@ QQ int debuglvl = 0;
 static char value[100];
 char sysname[20], artfile[100], newsgroup[1024], subject[128];
 char reference[256],article[100], distrib[50], localgroup[256];
-char tempfile[100];                /* moved from postgroup() so interrupt() */
+char tempfile[100];                /* moved from postgroup() so myinterrupt() */
                                    /* can clean up -- REB */
 
 int main(argc, argv)
 int argc;
 char *argv[];
 {
-     int option, interrupt();
+     int option, myinterrupt();
      register char *p;
 #ifndef _OSK
      struct registers regs;
@@ -87,7 +87,7 @@ char *argv[];
 #endif
 
      /* handle keyboard interrupts */
-     intercept (interrupt);
+     intercept (myinterrupt);
 
 #ifdef TERMCAP
      init_term_cap();
@@ -142,7 +142,7 @@ char *argv[];
      newsgroup[strlen (newsgroup) - 1] = '\0';
 
      if (getparam() == FALSE)
-          interrupt (0);
+          myinterrupt (0);
 
      userparam();
 
@@ -188,7 +188,7 @@ char *argv[];
 
      /* post article to newsgroup */
      postgroup (sysname);
-     interrupt (0);
+     myinterrupt (0);
 }
 
 
@@ -413,7 +413,7 @@ char *system;
                          if (tilde == SIGINT  ||  tilde == SIGQUIT
                              || tilde == ABORT)
                            {
-                              interrupt (0);
+                              myinterrupt (0);
                            }
 
                          if ((qfile = fopen (tempfile, "a")) == NULL)
@@ -466,7 +466,7 @@ char *system;
      if ((result = docmd_na (line)) != 0)
        {
           unlink (dname);
-          interrupt (result);
+          myinterrupt (result);
        }
 
      /* local article only? */
@@ -633,7 +633,7 @@ char *msg;
           fprintf (stderr, "...error %d", errno);
 
      putc ('\n', stderr);
-     interrupt (0);
+     myinterrupt (0);
 }
 
 
@@ -642,14 +642,14 @@ int badparam (msg)
 char *msg;
 {
      fprintf (stderr, "postnews: %s not in Parameters\n", msg);
-     interrupt (0);
+     myinterrupt (0);
 }
 
 
 
 /* deal with interruptions */
 
-int interrupt (sig)
+int myinterrupt (sig)
 int sig;
 {
      if (*tempfile != '\0')

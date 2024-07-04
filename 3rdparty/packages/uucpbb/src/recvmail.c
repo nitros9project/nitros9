@@ -1007,7 +1007,7 @@ char *letter;
 
                /* exit without touch any mail */
                case 'x':
-                    interrupt (0);
+                    myinterrupt (0);
 
                /* make ALL deleted mail readable again */
                case 'u':

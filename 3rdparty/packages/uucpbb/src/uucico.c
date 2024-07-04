@@ -57,7 +57,7 @@
 
 extern QQ unsigned myuid;
 
-int interrupt();
+int myinterrupt();
 
 
 main (argc, argv)
@@ -88,7 +88,7 @@ char *argv[];
      pflinit();                                    /* longs will be printed */
 #endif
 
-     intercept (interrupt);                      /* deal with interruptions */
+     intercept (myinterrupt);                      /* deal with interruptions */
      asetuid (0);
 
      if (getparam() == FALSE)
@@ -661,7 +661,7 @@ char *msg;
 
 /* clean up before we exit on keyboard abort -- REB */
 
-int interrupt (sig)
+int myinterrupt (sig)
 int sig;
 {
      fprintf (log, "\n%s %s %s OPERATOR ABORTED\n", sender,sysname,gtime() );
