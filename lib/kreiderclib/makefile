@@ -36,12 +36,12 @@ MODS = _prgname.o abort.o abs.o access.o adump.o atof.o atoi.o atol.o \
 
 NOTYET = pffinit.o plfinit.o
 
-all:	../libc.a
+all:	../libkreiderc.a
 
-../libc.a: $(MODS)
+../libkreiderc.a: $(MODS)
 	lwar -c $@ $^
 
 dskclean: clean
 
 clean:
-	$(RM) *.o ../libc.a *.list *.map
+	$(RM) *.o ../libkreiderc.a *.list *.map
