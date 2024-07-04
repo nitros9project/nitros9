@@ -13,11 +13,13 @@ typedef struct line LINE;
 #define LGLOB   2               /* line marked global */
 
                                 /* max number of chars per line */
-#define MAXLINE (sizeof(int) == 2 ? 256 : 8192)
+//#define MAXLINE (sizeof(int) == 2 ? 256 : 8192)
+#define MAXLINE 256
 #define MAXPAT  256             /* max number of chars per replacement
                                  * pattern */
                                 /* max file name size */
-#define MAXFNAME (sizeof(int) == 2 ? 256 : 1024)
+//#define MAXFNAME (sizeof(int) == 2 ? 256 : 1024)
+#define MAXFNAME 256
 
 extern LINE line0;
 extern int curln, lastln, line1, line2, nlines;
