@@ -174,7 +174,7 @@ L0079               ldd       14,s
                     ldd       14,s
                     pshs      d
                     ldd       #$000a
-                    lbsr      ccmod
+                    lbsr      _ccmod
                     pshs      d
                     leax      8,s
                     lbsr      _dstack

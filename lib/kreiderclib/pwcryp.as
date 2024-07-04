@@ -10,7 +10,7 @@ _pwcryp             pshs      u
                     leax      ,s
                     pshs      x
                     pshs      u
-                    lbsr      strlen
+                    lbsr      _strlen
                     std       ,s
                     pshs      u
                     lbsr      crc

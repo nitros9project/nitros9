@@ -118,7 +118,8 @@ _fdopen             pshs      u
                     ldx       6,s
                     ldd       4,s
                     bra       L011c
-_fopen               pshs      u
+
+_fopen              pshs      u
                     ldx       6,s
                     ldu       4,s
                     lbsr      L0056

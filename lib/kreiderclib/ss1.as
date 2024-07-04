@@ -7,22 +7,22 @@
                     
                     section   code
 
-__ss_rel            ldb       #$1b
+__ss_rel            ldb       #SS.Relea
                     bra       L0018
                     
-__ss_rest           ldb       #3
+__ss_rest           ldb       #SS.Reset
                     bra       L0018
                     
-__ss_opt            ldb       #0
+__ss_opt            ldb       #SS.Opt
                     bra       L0016
                     
-__ss_pfd            ldb       #$0f
+__ss_pfd            ldb       #SS.FD
                     bra       L0016
                     
-__ss_ssig           ldb       #$1a
+__ss_ssig           ldb       #SS.SSig
                     bra       L0016
                     
-__ss_tiks           ldb       #$10
+__ss_tiks           ldb       #SS.Ticks
 L0016               ldx       4,s
 L0018               lda       3,s
                     os9       I$SetStt
