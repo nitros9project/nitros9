@@ -2,7 +2,9 @@
                     export    _o2utime
                     export    _asctime
                     export    _ctime
-                    export    _localtim
+                    export    _localtime
+                    export    _daylight
+                    export    _timezone
                                         
 * class D external label equates
 
@@ -204,11 +206,17 @@ L0103               ldb       ,u+
                     bne       L0103
                     puls      u,pc
                     
-daylight            fcb       $70,$00,$00
-timezone            fcb       $70,$00,$00
+_daylight           fcb       $70,$00,$00
+_timezone           fcb       $70,$00,$00
                     fcb       $70,$00,$00
                     
-_localtim           pshs      d,u
+;;; #include <utime.h>
+;;;
+;;; struct tm *localtime(long *clock)
+;;;
+;;; Returns a time structure.
+
+_localtime          pshs      d,u
                     leau      B0000,y
                     ldx       6,s
                     ldd       2,x
@@ -297,6 +305,17 @@ L01af               rol       3,x
                     leas      3,s
                     puls      d,pc
                     
+;;; #include <utime.h>
+;;;
+;;; char *asctime(struct tm *tm)
+;;;
+;;; Convert a time structure to an ASCII string.
+;;;
+;;; This function takes a time structure representing the time in seconds since 00:00:00, January 1, 1970,
+;;; and returns a pointer to a 26-character string in the following form:
+;;;
+;;;   Sun Sep 16 01:03:52 1973
+
 _asctime            pshs      u
                     ldu       4,s
                     ldd       10,u
@@ -336,80 +355,66 @@ _asctime            pshs      u
                     tfr       x,d
                     puls      u,pc
                     
+;;; #include <utime.h>
+;;;
+;;; char *ctime(long *clock)
+;;;
+;;; Convert date and time to an ASCII string.
+;;;
+;;; This function converts a long integer, usually returned from time(), representing the time in seconds since 00:00:00, January 1, 1970,
+;;; and returns a pointer to a 26-character string in the following form:
+;;;
+;;;   Sun Sep 16 01:03:52 1973
+
 _ctime              ldd       2,s
                     pshs      d
-                    lbsr      _localtim
+                    lbsr      _localtime
                     std       ,s
                     lbsr      _asctime
                     puls      x,pc
-*L022e comb
-* fcb $75
-* fcb $6e
-* neg   D004d
-* clr   14,s
-* neg   D0054
-* fcb $75
-* fcb $65
-* neg   D0057
-* fcb $65
-* fcb $64
-* neg   D0054
-* asl   -11,s
-* neg   D0046
-* fcb $72
-* fcb $69
-* neg   D0053
-* fcb $61
-* lsr   D.SysPrc
-*L024a equ *-1
-* fcb $61
-* fcb $6e
-* neg   D0046
-* fcb $65
-* fcb $62
-* neg   D004d
-* fcb $61
-* fcb $72
-* neg   D0041
-* neg   X7200
-* tsta
-* fcb $61
-* rol   D.SysPrc
-* fcb $75
-* fcb $6e
-* neg   D004a
-* fcb $75
-* fcb $6c
-* neg   D0041
-* fcb $75
-* fcb $67
-* neg   D0053
-* fcb $65
-* neg   X004f
-* com   -12,s
-* neg   D004e
-* clr   -10,s
-* neg   D0044
-* fcb $65
-* fcb $63
-* neg   D0025
-*L027a equ *-1
-* com   X2025
-* com   X2025
-* leas  4,s
-* bra   L02aa
-* leax  -14,y
-* lsr   -6,y
-* bcs   L02bb
-* leas  4,s
-* abx
-* bcs   L02c0
-* leas  4,s
-* bra   L02c5
-* rts
-* bcs   L02c7
-* leas  4,s
-* tst   D0000
-*
+
+L022e               fcc       "Sun"
+                    fdb       $7000
+                    fcc       "Mon"
+                    fdb       $7000
+                    fcc       "Tue"
+                    fdb       $7000
+                    fcc       "Wed"
+                    fdb       $7000
+                    fcc       "Thu"
+                    fdb       $7000
+                    fcc       "Fri"
+                    fdb       $7000
+                    fcc       "Sat"
+                    fdb       $0000
+                    
+L024a               fcc       "Jan"
+                    fdb       $7000
+                    fcc       "Feb"
+                    fdb       $7000
+                    fcc       "Mar"
+                    fdb       $7000
+                    fcc       "Apr"
+                    fdb       $7000
+                    fcc       "May"
+                    fdb       $7000
+                    fcc       "Jun"
+                    fdb       $7000
+                    fcc       "Jul"
+                    fdb       $7000
+                    fcc       "Aug"
+                    fdb       $7000
+                    fcc       "Sep"
+                    fdb       $7000
+                    fcc       "Oct"
+                    fdb       $7000
+                    fcc       "Nov"
+                    fdb       $7000
+                    fcc       "Dec"
+                    fdb       $7000
+                    
+L027a               fcc       "%s %s %2d%02d:%2d:%2d92d}"
+                    fcb       $0
+
                     endsect
 

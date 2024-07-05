@@ -1,3 +1,20 @@
+;;; int access(char *fname, int perms)
+;;;
+;;; Set a file's accessibility.
+;;;
+;;; This function returns zero if the access modes are correct for the user to access the file.
+;;; If the file isn't accessible, the function returns -1.
+;;;
+;;; This function is useful to test the existence of a file without actually opening the file.
+;;;
+;;; The permissions value may be any legal OS-9 mode as used for open() or creat(). If it's 0, the
+;;; function tests whether the file exists or the path to it is searchable.
+;;;
+;;;
+;;; Note: The values for perms are NOT compatible with non-OS-9 systems.
+;;;
+;;; Returns: 0 on success, or -1 on error.
+
                     export    _access
                     export    _mknod
                     export    _unlinkx
