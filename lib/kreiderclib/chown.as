@@ -2,6 +2,15 @@
                     
                     section   code
 
+;;; int chown(char *fname, int id)
+;;;
+;;; Change a file's permissions.
+;;;
+;;; This function changes the ownership of a file by changing the ID in the file descriptor. Only the
+;;; super user can successfully call this function.
+;;;
+;;; Returns: 0 on success, or -1 on error.
+
 _chown              pshs      y,u
                     leas      -16,s
                     os9       F$ID

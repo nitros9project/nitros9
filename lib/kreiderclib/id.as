@@ -21,6 +21,12 @@ _getuid             pshs      y
                     tfr       y,d
                     puls      y,pc
                     
+;;; void asetuid(int uid)
+;;;
+;;; Set the user ID for the current process.
+;;;
+;;; This function sets the user ID number for the current task. Unlike setuid(), this call can be used even;;; if the user is not the super user.
+
 _asetuid            pshs      y
                     bra       L0027
                     

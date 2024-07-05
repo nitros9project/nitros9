@@ -2,6 +2,18 @@
                     
                     section   code
 
+;;; #include <modes.h>
+;;;
+;;; int chmod(char *fname, int permissions)
+;;;
+;;; Change a file's permissions.
+;;;
+;;; This function changes the permission bits in the path descriptor associated with the file. fname must
+;;; be a pointer to a file name, and permissions must contain the desired access mode number. Only the owner
+;;; or the super user can change a file's permissions.
+;;;
+;;; Returns: 0 on success, or -1 on error.
+
 _chmod              pshs      y,u
                     leas      -16,s
                     bsr       L0035

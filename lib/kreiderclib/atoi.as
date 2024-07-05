@@ -2,6 +2,16 @@
                     
                     section   code
 
+;;; #include <math.h>
+;;;
+;;; int atoi(char *str)
+;;;
+;;; Convert a string to an integer.
+;;;
+;;; This function recognizes an optional number of spaces, an optional sign, and a series of digits. For example: "-2333".
+;;;
+;;; Overflow causes unpredictable results, and the function doesn't return any error.
+
 _atoi               pshs      u
                     ldu       4,s
                     clra

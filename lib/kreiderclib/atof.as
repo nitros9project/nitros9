@@ -2,6 +2,19 @@
                     
                     section   code
 
+;;; #include <math.h>
+;;;
+;;; double atof(char *str)
+;;;
+;;; Convert a string to a float.
+;;;
+;;; This function recognizes an optional sign, an optional string of spaces, a string of digits optionally containing a radix character,
+;;; an optional `e' or `E', and an optionally signed integer. For example: "-1234.5678e+9".
+;;;
+;;; Numbers up to the decimal point are assumed to be the integer portion of the number.
+;;;
+;;; Overflow causes unpredictable results, and the function doesn't return any error.
+
 _atof               pshs      u
                     ldu       4,s
                     ldb       #$10
