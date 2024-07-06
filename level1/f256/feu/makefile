@@ -210,7 +210,7 @@ feu/startup: FORCE
 	echo "echo Build date:" `date` >> $@
 	echo "fnxinfo" >> $@
 	echo "chd .../feu" >> $@
-	echo "pick main.pick</1" >> $@
+	echo "pick -pFEU: main.pick</1" >> $@
 
 FORCE: ;
 
