@@ -74,14 +74,20 @@ trynext@
                     tst       ,x                  at end of table?
                     bne       trynext@
 
-                    bra       DoStartup
-                    
 DoExec              leax      -7,x
                     lda       #EXEC.
                     os9       I$ChgDir
                     leax      ExecDir,pcr
                     os9       I$ChgDir
 
+* Check if SHIFT key is held down -- if so, bypass startup
+                    lda       #1
+                    ldb       #SS.KySns
+                    os9       I$GetStt
+                    bcs       FrkShell
+                    bita      #SHIFTBIT  check for SHIFT down
+                    bne       FrkShell  bypass startup if down
+                    
 * Fork shell startup here
 DoStartup           equ       *
                     pshs      u,y
@@ -90,10 +96,9 @@ DoStartup           equ       *
                     ldd       #(Prgrm+Objct)*256+4
                     ldy       #StartupL
                     os9       F$Fork
-                    bcs       L0186              startup failed
+                    bcs       cont@              startup failed
                     os9       F$Wait
-
-L0186               equ       *
+cont@
                     puls      u,y
 FrkShell            leax      >ShellPrm,pcr
                     leay      ,u
