@@ -1,19 +1,5 @@
-************************************************
-*
-* Binary to decimal conversion
-
-* OTHER MODULES NEEDED: DECTAB$
-
-* ENTRY: X=buffer for ascii string
-*        D=binary value to convert
-
-* EXIT: all registers (except cc) preserved
-
 * BGP - 04/11/2009 - Fixed issue where BIN_DEC was printing negative
 * sign in certain cases.  Cleared nega flag to fix issue.
-
-                    nam       Binary              to Decimal Conversion
-                    ttl       Assembler Library Module
 
 
                     section   .bss
@@ -21,7 +7,21 @@ nega                rmb       1
                     endsect
 
                     section   .text
-BIN_SDEC
+
+;;; BIN_SDEC
+;;;
+;;; Binary to signed decimal string conversion.
+;;;
+;;; OTHER MODULES NEEDED: DECTAB$
+;;;
+;;; Entry:  D = The binary value to convert.
+;;;         X = The address of the buffer that holds the ASCII string.
+;;;
+;;; Exit:  None.
+;;;
+;;; All registers (except CC) are preserved.
+
+BIN_SDEC:
                     clr       nega,u
                     tsta
                     bpl       BIN_DEC
@@ -31,7 +31,20 @@ BIN_SDEC
                     addd      #$0001
                     bra       BIN_DEC_COMMON      +++ added BGP
 
-BIN_DEC
+;;; BIN_DEC
+;;;
+;;; Binary to unsigned decimal string conversion.
+;;;
+;;; OTHER MODULES NEEDED: DECTAB$
+;;;
+;;; Entry:  D = The binary value to convert.
+;;;         X = The address of the buffer that holds the ASCII string.
+;;;
+;;; Exit:  None.
+;;;
+;;; All registers (except CC) are preserved.
+
+BIN_DEC:
                     clr       nega,u              +++ added BGP
 BIN_DEC_COMMON
                     pshs      a,b,x,y

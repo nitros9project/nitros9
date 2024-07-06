@@ -1,24 +1,19 @@
-**********************************
-
-* STRCAT: append 2 null terminated strings
-*         User must ensure there is room in buffer!!!
-
-* OTHER MODULES NEEDED: STRCPY, STRLEN
-
-* ENTRY: X=start of string to move
-*        Y=start of string to append to
-
-* EXIT: all regs preserved (except cc)
-
-
-                    nam       Append              2 null terminated strings
-                    ttl       Assembler Library Module
-
+;;; STRCAT
+;;;
+;;; Concatenate two null-terminated strings
+;;;
+;;; Other modules needed: STRCPY, STRLEN
+;;;
+;;; Entry:  X = The address of the first string.
+;;;         Y = The address of the second string.
+;;;
+;;; Exit:   None.
+;;;
+;;; All registers except CC are preserved.
 
                     section   .text
 
-STRCAT
-                    pshs      d,x,y
+STRCAT:             pshs      d,x,y
                     exg       x,y
                     lbsr      STRLEN              find end of appended string
                     leax      d,x                 point to end of "buffer"

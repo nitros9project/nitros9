@@ -1,25 +1,16 @@
-**************************************
-
-* Memory move
-
-* NOTE: This routine properly moves overlapping areas of memory.
-*       Uses fast move algorithm
-
-* ENTRY: X=source data
-*        Y=destination
-*        D=count
-
-* EXIT: all registers (except CC) preserved
-
-                    nam       Move                Memory
-                    ttl       Assembler Library Module
-
-
+;;; MEMMOVE
+;;;
+;;; Moves memory, and handles overlaps.
+;;;
+;;; Entry:  D = The number of bytes to move.
+;;;         B = The source address.
+;;;         X = The destination address.
+;;;
+;;; All registers except CC are preserved.
 
                     section   .text
 
-MEMMOVE
-                    pshs      d,x,y,u
+MEMMOVE:            pshs      d,x,y,u
                     std       -2,s                test u
                     beq       exit                zero count, exit
                     tfr       y,u                 use u for dest
@@ -28,23 +19,20 @@ MEMMOVE
                     beq       exit                same, no need to move
                     bhi       down                u>x
 
-up
-                    bitb      #1                  see if odd number to move
+up                  bitb      #1                  see if odd number to move
                     beq       up1
                     lda       ,x+                 move odd byte
                     sta       ,u+
                     leay      -1,y                could be only one
                     beq       exit
 
-up1
-                    ldd       ,x++                move 2 bytes
+up1                 ldd       ,x++                move 2 bytes
                     std       ,u++
                     leay      -2,y                count down
                     bne       up1
                     bra       exit
 
-down
-                    leau      d,u                 u=dest end (count in D)
+down                leau      d,u                 u=dest end (count in D)
                     leax      d,x                 x=source end
 
                     bitb      #1
@@ -54,13 +42,11 @@ down
                     leay      -1,y                could be only one to do
                     beq       exit
 
-down2
-                    ldd       ,--x                get 2 bytes
+down2               ldd       ,--x                get 2 bytes
                     std       ,--u                move them
                     leay      -2,y                count down
                     bne       down2
 
-exit
-                    puls      d,x,y,u,pc
+exit                puls      d,x,y,u,pc
 
                     endsect

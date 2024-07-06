@@ -1,21 +1,15 @@
-****************************************
-
-* Convert hex byte to 2 hex digits
-
-* OTHER MODULES REQUIRED: none
-
-* ENTRY: B= value to convert
-
-* EXIT: D=2 byte hex digits
-
-
-                    nam       Convert             Byte to Hex
-                    ttl       Assembler Library Module
+;;; BIN2HEX
+;;;
+;;; Convert a byte to two hexadecimal digits.
+;;;
+;;; Entry:  B = The binary value to convert.
+;;;         X = The address of the 20-byte buffer that holds the roman numerals.
+;;;
+;;; Exit:   D = Two-byte hexadecimal digits.
 
                     section   .text
 
-BIN2HEX
-                    pshs      b
+BIN2HEX:            pshs      b
                     lsrb                          get msn
                     lsrb
                     lsrb
@@ -25,13 +19,11 @@ BIN2HEX
                     puls      b                   get lsn
                     andb      #%00001111          keep msn
 
-ToHex
-                    addb      #'0                 convert to ascii
+ToHex               addb      #'0                 convert to ascii
                     cmpb      #'9
                     bls       ToHex1
                     addb      #7                  convert plus 9 to A..F
-ToHex1
-                    rts
+ToHex1              rts
 
                     endsect
 

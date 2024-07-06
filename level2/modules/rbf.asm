@@ -1,7 +1,21 @@
 ********************************************************************
 * RBF - Random Block File Manager
 *
-* $Id$
+* nitros9/level2/modules/rbf.asm
+*
+* 2024-01-02 by strick:
+* This version of level2/modules/rbf.asm has been altered slightly
+* to minimize diffs with the level1 version of rbf.asm.
+*
+* So far, we've been careful that level2 rbf assembles to exactly
+* the same binary as before, both for the M6809 and the H6309 case.
+*
+* As you edit either level1 or level2 rbf.asm, please minimize
+* diffs between the two, in case we decide to do the work to
+* unite them.  If possible, edit them in parallel with something
+* like vimdiff.
+*
+* ******** LEVEL TWO HISTORY ********
 *
 * Modified for 6309 Native mode by Bill Nobel, L. Curtis Boyle & Wes Gale
 *
@@ -94,6 +108,8 @@
 * Moved SS.VarSect code down to fix a problem where code to call driver
 * expected PD.Exten to be allocated when it wasn't, and that caused
 * a write to PE.Prior to go into the system globals area (address $0016).
+*
+* ------------------------------------------------------------------
 
                     nam       RBF
                     ttl       Random Block File Manager
@@ -123,6 +139,10 @@ name                fcs       /RBF/
 
 *L0012    fcb   DRVMEM
 
+****************************
+* All routines are entered with
+* (Y) = Path descriptor pointer
+* (U) = Caller's register stack pointer
 
 ****************************
 *
@@ -166,9 +186,9 @@ Create
                     ifne      H6309
                     aim       #^DIR.,R$B,u
                     else
-                    lda       R$B,u               force directory bit off
-                    anda      #^DIR.
-                    sta       R$B,u
+                    lda       R$B,u               get perms
+                    anda      #^DIR.              mask off dir bit
+                    sta       R$B,u               save perms back
                     endc
                     lbsr      FindFile            try & find it in directory
                     bcs       Creat47             branch if doesn't exist
@@ -184,7 +204,6 @@ Creat47             cmpb      #E$PNNF             not found?
                     pshs      x                   preserve filename pointer
                     ldx       PD.RGS,y            get register stack pointer
                     stu       R$X,x               save updated pathname pointer
-* These 4 did have < in front, made 3 byte cmnds but some are 2!
                     ldb       PD.SBP,y            get physical sector # of segment list
                     ldx       PD.SBP+1,y
                     lda       PD.SSZ,y            get size of segment list in bytes
@@ -288,7 +307,7 @@ CreatD9             clra                          move length to Y
                     ldx       <D.Proc             get process pointer
                     ldd       P$User,x            get user #
                     std       FD.OWN,u            save creation user
-                    lbsr      L02D1               place date & time into file descriptor
+                    lbsr      SetMTime            place date & time into file descriptor
                     ldd       FD.DAT,u            get date last modified
                     std       FD.Creat,u          save it as creation date (since we just made it)
                     ldb       FD.DAT+2,u
@@ -421,7 +440,7 @@ Open1BB             lda       PD.MOD,y            get file mode
                     bcs       RtnMemry            no, return no permission error
                     bita      #WRITE.             open for write?
                     beq       Open1CC             no, skip ahead
-                    lbsr      L02D1               update last date modified to current
+                    lbsr      SetMTime            update last date modified to current
                     lbsr      L11FD               update file descriptor on disk
 Open1CC             puls      y                   restore path descriptor pointer
 
@@ -433,6 +452,7 @@ Open1CE
                     clra
                     clrb
                     endc
+* the following two lines are swapped, between level1 and level2.
                     std       PD.CP+2,y           set seek pointer to start of file
                     std       PD.CP,y
                     std       PD.SBL,y            set segment start
@@ -590,7 +610,7 @@ Rt100Mem            pshs      b,cc                preserve error status
 RtMem2CF            puls      pc,b,cc             restore error status & return
 
 * Place date & time into file descriptor
-L02D1               lbsr      RdFlDscr            read in file descriptor sector
+SetMTime            lbsr      RdFlDscr            read in file descriptor sector
                     ldu       PD.BUF,y            get pointer to it
                     lda       FD.LNK,u            get link count
                     ldx       <D.Proc             get current process pointer
@@ -613,42 +633,116 @@ L02D1               lbsr      RdFlDscr            read in file descriptor sector
 
 *
 * I$ChgDir Entry Point
+*    The user's requested mode is in PD.MOD,y.
+*    It should have at least one bit of READ. or WRITE. or EXEC.
+*    CWD is changed if READ. ($1) or WRITE. ($2) is set.
+*    CXD is changed if EXEC. ($4) is set.
+*    Both may be changed.
+*    If no bits were set, it does nothing but returns OK.
+*
+*    (Level 1 used to allow PEXEC. ($20) as well as EXEC. ($4),
+*    but Level 2 did not.  To unify the levels, now both will
+*    accept PEXEC., but this was probably never documented.)
+*
+*    IOMan creates a temporary 64-byte Path Descriptor,
+*    and closes the descriptor before IOMan returns.
+*    That is the path descriptor passed to ChgDir in the Y register.
+*
+*    Using that path descriptor, IOMan calls I$Attach on the device before
+*    calling the ChgDir entry here, and calls I$Detach on the device after
+*    we return.  I$Attach links the Device Descriptor module, its Driver
+*    module, and its File Mananger module.  I$Detach unlinks all three.
+*
+*    Here's how this seems to work.  In the process descriptor,
+*    there are 12 bytes, starting with the label P$DIO.  The headers
+*    do not describe the internal structure.
+*
+*    IOMan imposes this much structure:
+*    The Device Table Entry Pointer for the CWD device
+*    is two bytes stored at offset 0.
+*    The Device Table Entry Pointer for the CXD device
+*    is two bytes stored at offset 6.
+*    That implies that the File Manager of a device with directories
+*    can use four bytes, offsets 2 through 5, to remember which directory
+*    is the CWD; and can use four bytes, offsets 8 through 11,
+*    to remember which directory is the CXD.
+*
+*    RBF saves the 3-byte PSN Sector Number of the inode of the CWD
+*    in offsets 3 through 5.  It appears offset 2 is unused.
+*
+*    RBF saves the 3-byte PSN Sector Number of the inode of the CXD
+*    in offsets 9 through 11.  It appears offset 8 is unused.
+*
+*    Is there any Link Count on the Device (in the Device Table Entry)
+*    to mark the fact that a process is using it for its CWD or CXD?
+*    It seems to me (strick) that there should be, but I cannot find
+*    where a link count is being maintained.  This should involve
+*    three things:  1. A new process inherits CWD and CXD from its
+*    parent process, so it should add a link to each device;
+*    2.  When a process changes a current directory, it should unlink
+*    the old one, and link the new one;  and 3.  A process unlinks them
+*    when the process dies.
+*
+*    However I think in Nitros9 actually 1. A new process gets a copy
+*    of its parent's 12 byte P$DIO structure, but no links are done;
+*    2. When one changes directories, the old values are ignored
+*    and the new values are not linked; and 3. When a process dies,
+*    its P$DIO structure is ignored, and just vanishes.
+*
+*    (In most unices, the CWD and CRD (working and root) directories
+*    are ordinary open paths to the directory, which would link the
+*    usage of the device.  Why didn't OS9 do the same thing?)
+*
+*    Fact: The name `P$DIO` does not occur in any of the Level2
+*    kernel module sources.   In Level1, it only appears in `ffork.asm`
+*    where it is used to copy the 12 bytes from parent to child.
+*
+*    Bug?  If you unlink a device (with no open paths) while some
+*    process uses it for CWD or CXD, are not the Device Table
+*    Entry Pointers now pointing to garbage?
 *
 * Entry:
+*    Y -> a temporary path descriptor, created just for this operation.
+*
+* How this block exits:
+*    The entry Y value should have been pushed onto the stack.
+*    Notice all exits are branches to Clos2A0.
 *
 * Exit:
+*    The only result is a side effect in the P$DIO structure in the
+*    process descriptor.
 *
 * Error: CC Carry set
 *        B = errcode
 *
-ChgDir              pshs      y                   preserve path descriptor pointer
+ChgDir              pshs      y                   preserve path descriptor pointer (to be pulled at Clos2A0)
                     ifne      H6309
-                    oim       #$80,PD.MOD,y       ensure the directory bit is set
+                    oim       #DIR.,PD.MOD,y      ensure the directory bit is set
                     else
-                    lda       PD.MOD,y
-                    ora       #$80
-                    sta       PD.MOD,y
+                    lda       PD.MOD,y            get mode from caller,
+                    ora       #DIR.               add the directory bit,
+                    sta       PD.MOD,y            and save back to pd.
                     endc
-                    lbsr      Open                go open the directory
+                    lbsr      Open                go open the directory in the path descriptor at Y.
                     bcs       Clos2A0             exit on error
                     ldx       <D.Proc             get current process pointer
-                    ldu       PD.FD+1,y           get LSW of file descriptor sector #
+                    ldu       PD.FD+1,y           get LSW of file descriptor sector # (i.e. inode)
                     ldb       PD.MOD,y            get current file mode
                     bitb      #UPDAT.             read or write mode?
                     beq       CD30D               no, skip ahead
 * Change current data dir
-                    ldb       PD.FD,y
-                    stb       P$DIO+3,x
-                    stu       P$DIO+4,x
+                    ldb       PD.FD,y             get MSB of file descriptor sector # (i.e. inode)
+                    stb       P$DIO+3,x           save MSB in Proc descriptor (changes the CWD of the proc)
+                    stu       P$DIO+4,x           save LSW in Proc descriptor (changes the CWD of the proc)
 CD30D               ldb       PD.MOD,y            get current file mode
-                    bitb      #EXEC.              is it execution dir?
-                    beq       CD31C               no, skip ahead
+                    bitb      #PEXEC.+EXEC.       is it execution dir?
+                    beq       CD31C               no, skip ahead (do nothing but return OK, if no R, W, or E mode bits)
 * Change current execution directory
-                    ldb       PD.FD,y
-                    stb       P$DIO+9,x
-                    stu       P$DIO+10,x
+                    ldb       PD.FD,y             get MSB of file descriptor sector # (i.e. inode)
+                    stb       P$DIO+9,x           save MSB in Proc descriptor (changes the CXD of the proc)
+                    stu       P$DIO+10,x          save LSW in Proc descriptor (changes the CXD of the proc)
 CD31C               clrb                          clear errors
-                    bra       Clos2A0             return to system
+                    bra       Clos2A0             Close the path that was Opened above, and return to system.
 
 
 *
@@ -1438,7 +1532,8 @@ Sst715              cmpb      #SS.Attr            is it SS.Attr?
                     lbsr      RdFlDscr            get the file descriptor from drive
                     bcs       Sst714              error, return
                     ldx       <D.Proc             get pointer to current process
-* Note, should'nt this be lda?  User number is 8 bits, not 16
+* Note, should'nt this be lda?  User number is 8 bits, not 16.
+* Nope: P$User is "RMB 2", FD.OWN is "RMB 2", and F$ID returns user id in Y.
                     ldd       P$User,x            get user number
                     beq       Sst72A              it's super user, skip ahead
                     ldx       PD.BUF,y            get pointer to FD
@@ -1602,13 +1697,13 @@ Sst7FB              anda      #$7F                strip high bit
                     leax      -$01,x              bump path pointer back 1
                     lda       PD.MOD,y            get file mode
                     ldu       <D.Proc             get pointer to current process
-                    leau      P$DIO,u             point to default data directory FD sector #
-                    bita      #EXEC.              does he want execution dir?
+                    leau      P$DIO,u             point to default data directory FD sector # (i.e. CWD inode # is at offset 3)
+                    bita      #EXEC.              do they want execution dir?
                     beq       Sst814              no, skip ahead
-                    leau      $06,u               point to execution dir
-Sst814              ldb       $03,u               get LSB of logical sector # of FD to dir
+                    leau      $06,u               point to execution dir (i.e. CXD inode # is at offset 3)
+Sst814              ldb       $03,u               get MSB of logical sector # of FD to dir
                     stb       PD.FD,y             put it in path descriptor
-                    ldd       $04,u               get MSW of logical sector # of FD to dir
+                    ldd       $04,u               get LSW of logical sector # of FD to dir
                     std       PD.FD+1,y
 Sst81E              ldu       PD.DEV,y            get pointer to device table
                     stu       PD.DVT,y            copy it for user
@@ -1639,10 +1734,10 @@ Sst83F              lbsr      L1110               read in LSN0
                     bne       Sst861              yes, skip ahead
                     lda       PD.FD,y
                     bne       Sst861
-                    lda       DD.DIR,u            get LSN of root directory
+                    lda       DD.DIR,u            get MSB of LSN of root directory
                     sta       PD.FD,y             put it in path descriptor
-                    ldd       DD.DIR+1,u
-                    std       PD.FD+1,y
+                    ldd       DD.DIR+1,u          also get LSW of LSN of root directory
+                    std       PD.FD+1,y           also put it in path descriptor
 Sst861              stx       $04,s               save pointer to pathname
                     stx       $08,s
 
@@ -1747,7 +1842,8 @@ L0918               pshs      d
                     bne       L0940
                     bra       L0928               fewer clock cycles
 L0926               pshs      d
-L0928               stx       $06,s
+L0928
+                    stx       $06,s
                     lda       PD.FD,y
                     sta       PD.DFD,y
                     ldd       PD.FD+1,y
@@ -1894,6 +1990,7 @@ L0A0C               leas      $02,s               purge attributes from stack
 L0A11               ldb       #E$Share            get shareable file error
                     bra       L0A0C               return
 
+* Check directory bits.
 L0A15               ldb       1,s                 get directory bits
                     orb       FD.ATT,u            mask in with current
                     bitb      #SHARE.             shareable bit set?
@@ -1906,7 +2003,8 @@ L0A15               ldb       1,s                 get directory bits
 L0A28               puls      pc,x,b,a
 
 
-L0A2A               pshs      u,y,x
+L0A2A
+                    pshs      u,y,x
                     ifne      H6309
                     clrd
                     else
@@ -2219,6 +2317,7 @@ L0C43               ldd       PE.HiLck,x
 L0C53               comb
 L0C54               puls      pc,u,y,b,a
 
+* "wake up the process"
 L0C56               pshs      y,x,b,a
                     ldx       <D.Proc
                     lda       P$IOQN,x            get I/O queue next ptr
@@ -2485,6 +2584,7 @@ L0DF5               equ       *
                     lsra
                     rorb
                     endc
+
 L0DF7               lsr       $0A,s
                     ror       $0B,s
                     bcc       L0DF5               loop, and continue
@@ -2650,6 +2750,7 @@ L0EFE               clra                          clear the carry
                     lda       PD.MOD,y            access mode
                     bita      #DIR.               directory?
                     bne       L0F6F               yes (bit set), exit immediately
+
                     ifne      H6309
                     ldq       PD.SIZ,y            grab size of the file
                     stq       PD.CP,y             make it the current position
@@ -2659,6 +2760,7 @@ L0EFE               clra                          clear the carry
                     ldd       PD.SIZ+2,y
                     std       PD.CP+2,y
                     endc
+
                     ldd       #$FFFF
                     tfr       d,x
                     lbsr      L0B1B
@@ -2877,15 +2979,17 @@ L1053               ldu       <D.Proc             get current process pointer
                     ldb       P$Signal,u          get pending signal
                     cmpb      #S$Wake             is it what we're looking for?
                     bls       L1060               yes, skip ahead
-                    cmpb      #S$Intrpt           is it a keyboard interrupt/
+                    cmpb      #S$Intrpt           is it a keyboard interrupt?
                     bls       L1067               no, return error [B]=Error code
 L1060               clra                          clear error status
+
                     ifne      H6309
                     tim       #Condem,P$State,u   is process dead?
                     else
                     lda       P$State,u
                     bita      #Condem
                     endc
+
                     beq       L1068               no, skip ahead
 L1067               coma                          flag error
 L1068               rts                           return
@@ -3019,6 +3123,7 @@ RdFlDscr
                     ifne      H6309
                     oim       #FDBUF,PD.SMF,y
                     else
+* TODO(strick): Level1 uses B, Level2 uses A, next 3 instructions.
                     lda       PD.SMF,y
                     ora       #FDBUF
                     sta       PD.SMF,y

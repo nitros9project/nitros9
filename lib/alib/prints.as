@@ -1,35 +1,29 @@
-***********************************
-
-* Print a program-embedded, null terminated string to standard out.
-
-* OTHER MODULES NEEDED: puts
-
-* ENTRY: Null terminated string must follow PRINTS call
-*        eg: LBSR PRINTS
-*            fcc /this is stuff to print/
-*            fcb $0d  * a new line
-*            fcc /more stuff to print/
-*            fcb $0d,0  the end
-*            lda #xx or whatever..
-*            * the rest of the program....
-
-* EXIT: CC carry set if error
-*       B error code (if any)
-
-
-                    nam       Print               Embedded String to Std. Out
-                    ttl       Assembler Library Module
-
+;;; PRINTS
+;;;
+;;; Print an embedded, null-terminated string to the standard output.
+;;;
+;;; Other modules needed: PUTS
+;;;
+;;; Entry:  None
+;;;
+;;; Error:  B = A non-zero error code.
+;;;        CC = Carry flag set to indicate error.
+;;;
+;;; The null-terminated follows the PRINTS call:
+;;;
+;;;          LBSR PRINTS
+;;;          fcc /this is stuff to print/
+;;;          fcb $0d  * a new line
+;;;          fcc /more stuff to print/
+;;;          fcb $0d,0  the end
 
                     section   .text
 
-PRINTS
-                    pshs      x,u
+PRINTS:             pshs      x,u
                     ldx       4,s                 get start of string (old return address)
                     tfr       x,u                 copy it
 
-loop
-                    tst       ,u+                 advance U to end of string
+loop                tst       ,u+                 advance U to end of string
                     bne       loop
 
                     stu       4,s                 one past null=return address

@@ -1,23 +1,15 @@
-**********************************
-
-* Advance X to 1st space character
-
-* OTHER MODULES NEEDED: none
-
-* ENTRY: X=somewhere in a string
-
-* EXIT: X=1st space character in string
-
-
-                    nam       Advance             to space
-                    ttl       Assembler Library Module
+;;; TO_SP
+;;;
+;;; Advance to the first space character.
+;;;
+;;; Entry:  X = The string to advance.
+;;;
+;;; Exit:   X = The address of the first space character.
 
                     section   .text
 
-TO_SP
-                    pshs      b
-spl
-                    ldb       ,x+
+TO_SP:              pshs      b
+spl                 ldb       ,x+
                     cmpb      #$20                is it space?
                     bne       spl                 no, loop
                     leax      -1,x                point to space

@@ -1,19 +1,15 @@
-****************************************
-
-* DECIMAL to BINARY conversion routine
-
-* OTHER MODULES NEEDED: DECTAB$, IS_TERMIN
-
-* ENTRY: X = start of asci decimal string terminated by
-*            a space, comma, CR or null.
-
-* EXIT: D = binary value
-*       CC carry set if error (too large, not numeric)
-*       Y = terminator or error char.
-
-                    nam       Convert             Decimal String to Binary
-                    ttl       Assembler Library Module
-
+;;; DEC_BIN
+;;;
+;;; Decimal to binary conversion routine.
+;;;
+;;; Other modules needed: BIN_ASC
+;;;
+;;; Entry:  X = The ASCII decimal string terminated with a space, comma, carriage return, or null.
+;;;
+;;; Exit:   D = The binary value.
+;;;         Y = The address of the terminator or error character.
+;;;        CC = Carry set an error occurred (too large, or not numeric.)
+;;;
 
                     section   .bss
 nega                rmb       1
@@ -21,8 +17,7 @@ nega                rmb       1
 
                     section   .text
 
-DEC_BIN
-                    clra                          set result to 0
+DEC_BIN:            clra                          set result to 0
                     clrb
                     pshs      a,b,x
                     leas      -1,s                temp variable
@@ -32,20 +27,16 @@ DEC_BIN
                     cmpb      #'-
                     bne       decbn15
                     stb       nega,u
-decbn1
-                    ldb       ,X+                 get a digit
-decbn15
-                    lbsr      IS_DIGIT
+decbn1              ldb       ,X+                 get a digit
+decbn15             lbsr      IS_DIGIT
                     bne       decbn3              end of string...
                     inca                          bump string len
                     bra       decbn1              loop for whole string
 
-decbn3
-                    lbsr      IS_TERMIN           valid terminator?
+decbn3              lbsr      IS_TERMIN           valid terminator?
                     bne       error
 
-ok
-                    tsta                          length = 0?
+ok                  tsta                          length = 0?
                     beq       error               yes, error
                     cmpa      #6                  more than 6 chars?
                     bhi       error               yes, error
@@ -57,43 +48,35 @@ ok
                     cmpa      #'-
                     bne       decbn35
                     leax      1,x
-decbn35
-                    lda       #5                  max length
+decbn35             lda       #5                  max length
                     suba      ,S+                 adjust for offset
                     asla                          2 bytes per table entry
                     leay      DECTAB$,PCR         addr of conversion table
                     leay      A,Y                 add in offset for actual len
 
-decbn4
-                    lda       ,X+                 get a digit
+decbn4              lda       ,X+                 get a digit
                     suba      #$30                strip off ASCII
                     beq       decbn6              zero, skip
                     sta       ,s                  save digit=# of adds
                     ldd       1,S                 get binary data
 
-decbn5
-                    addd      ,Y                  add in table value
+decbn5              addd      ,Y                  add in table value
                     bcs       error               past 0, too big
                     dec       ,S                  count down digit size
                     bne       decbn5              loop til 0
                     std       1,S                 save binary data
 
-
-decbn6
-                    leay      2,Y                 next entry
+decbn6              leay      2,Y                 next entry
                     tst       1,y                 end of table?
                     bne       decbn4              loop til done
                     clr       ,s+                 clean up and clear carry
                     bra       exit
 
-
-error
-                    clr       0,s                 force data = 0
+error               clr       0,s                 force data = 0
                     clr       1,s
                     com       ,s+                 clean up and set carry
 
-exit
-                    tfr       x,y                 end of string/error char
+exit                tfr       x,y                 end of string/error char
                     puls      a,b,x
                     bcs       leave
                     tst       nega,u
@@ -102,9 +85,6 @@ exit
                     coma
                     comb
                     andcc     #$FE
-leave
-                    rts
-
+leave               rts
 
                     endsect
-

@@ -1,26 +1,15 @@
-*****************************************
-
-* See if character in "B" is a space ($20)
-
-* NOTE: This module is included for completeness only,
-*       it is much more efficient to do an inline test.
-
-* OTHER MODULES NEEDED: none
-
-* ENTRY: B=character to test
-
-* EXIT: CC zero=1 if space, 0 if not
-
-
-                    nam       Is                  Char a Space?
-                    ttl       Assembler Library Module
-
+;;; IS_SPACE
+;;;
+;;; Test if a character is a space.
+;;;
+;;; Entry:  B = The character to test.
+;;;
+;;; Exit:  CC = Zero is 1 if the character is a space; otherwise, 0.
+;;;
 
                     section   .text
 
-
-IS_SPACE
-                    cmpb      #$20
+IS_SPACE:           cmpb      #$20
                     rts
 
                     endsect

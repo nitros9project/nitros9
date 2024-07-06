@@ -1,26 +1,19 @@
-********************************************
-*
-* Binary to hexadecimal convertor
-*
-* This subroutine will convert the binary value in
-* 'D' to a 4 digit hexadecimal ascii string.
-
-
-* OTHER MODULES NEEDED: BIN2HEX
-
-* ENTRY: D=value to convert
-*        X=buffer for hex string-null terminated
-
-* EXIT all registers (except CC) preserved.
-
-                    nam       Convert             # to Hex String
-                    ttl       Assembler Library Module
-
+;;; BIN_HEX
+;;;
+;;; Binary to hexadecimal string conversion.
+;;;
+;;; OTHER MODULES NEEDED: BIN2HEX
+;;;
+;;; Entry:  D = The binary value to convert.
+;;;         X = The address of the buffer that holds the nul-terminated hexadecimal string.
+;;;
+;;; Exit:  None.
+;;;
+;;; All registers (except CC) are preserved.
 
                     section   .text
 
-BIN_HEX
-                    pshs      d,x
+BIN_HEX:            pshs      d,x
                     ldb       ,s
                     lbsr      BIN2HEX             convert 1 byte
                     std       ,x++

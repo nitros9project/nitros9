@@ -1,27 +1,16 @@
-*****************************************
-
-* See if character in "B" is a valid string terminator.
-
-* NOTE: This module is used by HEX_BIN, DEC_BIN, etc. It permits
-*       SPACE, CR, COMMA and NULL to be used as a delimiter -- useful
-*       for paramater and list processing....
-
-* OTHER MODULES NEEDED: none
-
-* ENTRY: B=character to test
-
-* EXIT: CC zero=1 if space, 0 if not
-
-
-                    nam       Is                  Char a Terminator?
-                    ttl       Assembler Library Module
-
+;;; IS_TERMIN
+;;;
+;;; Test if a character is a valid string terminator.
+;;;
+;;; Entry:  B = The character to test.
+;;;
+;;; Exit:  CC = Zero is 1 if the character is a valid string terminator; otherwise, 0.
+;;;
+;;; Valid string terminators are space, carriage return, comma, and null.
 
                     section   .text
 
-
-IS_TERMIN
-                    tstb                          null?
+IS_TERMIN:          tstb                          null?
                     beq       exit
                     cmpb      #$20                space
                     beq       exit
@@ -29,8 +18,7 @@ IS_TERMIN
                     beq       exit
                     cmpb      #',                 comma?
 
-exit
-                    rts
+exit                rts
 
                     endsect
 

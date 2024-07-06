@@ -1,23 +1,20 @@
-***************************************
-
-* Pattern Search
-
-* OTHER MODULES REQUIRED: COMPARE
-
-* ENTRY: X=start of memory to search
-*        U=end of memory
-*        Y=start of pattern
-*        D=size of pattern
-*        CASEMTCH (a global variable in COMPARE) =0 if A<>a, -1 if A=a
-
-* EXIT: X=address of match if found, unchanged if no match
-*       CC zero set if match, clear for no-match
-*       A,B,U,Y preserved
-
-
-                    nam       Pattern             Search
-                    ttl       Assembler Library Module
-
+;;; PTSEARCH
+;;;
+;;; Search for a pattern in memory.
+;;;
+;;; Other modules needed: COMPARE
+;;;
+;;; Entry:  X = The address to start searching.
+;;;         U = The address to stop searching.
+;;;         Y = The address of the pattern to search.
+;;;         D = The length of the pattern to search.
+;;;
+;;; Set CASEMTCH = 0 for non-case comparison, or -1 for case comparison.
+;;;
+;;; Exit:   X = The address of the match, if found; otherwise unchanged.
+;;;        CC = Zero bit set if there's a match; otherwize bit is clear.
+;;;
+;;; Registers A, B, Y, and Y are preserved.
 
                     section   .data
 
@@ -34,8 +31,7 @@ realend             rmb       2                   saved <U>
 
 * set up stack frame for variables
 
-PTSEARCH
-                    pshs      d,x,y,u
+PTSEARCH:           pshs      d,x,y,u
                     leas      -4,s                room for temps
                     tfr       u,d                 end of memory to check
                     subd      patsize,s           end-pattern size
@@ -46,8 +42,7 @@ PTSEARCH
 
 * loop here looking for a match of the first characters
 
-inmatch
-                    cmpx      memend,s            raeched end of memory
+inmatch             cmpx      memend,s            raeched end of memory
                     bhs       nomatch
                     lda       ,x+                 get char from memory
                     ldb       ,y                  compare to pattern
@@ -56,12 +51,10 @@ inmatch
 
 * see if rest of pattern matches
 
-more
-                    tfr       x,u                 save pointer
+more                tfr       x,u                 save pointer
                     leay      1,y                 already matched that one
 
-more1
-                    cmpy      pattend,s           all chars matched, go home happy
+more1               cmpy      pattend,s           all chars matched, go home happy
                     beq       match
                     lda       ,x+
                     ldb       ,y+
@@ -72,17 +65,14 @@ more1
                     bra       inmatch
 
 
-nomatch
-                    lda       #1                  clear zero
+nomatch             lda       #1                  clear zero
                     bra       exit
 
-match
-                    leau      -1,u                start of match
+match               leau      -1,u                start of match
                     stu       memstrt,s           where pattern starts
                     clra                          set zero flag=found
 
-exit
-                    leas      4,s                 clean stack
+exit                leas      4,s                 clean stack
                     puls      d,x,y,u,pc
 
                     endsect

@@ -83,10 +83,10 @@ PromptForAutoAbort
                     pshs      b
                     ifgt      SecondsToWait
                     lda       #1
-                    lbsr      SaveOpts
+                    lbsr      SAVEOPTS
                     clrb
-                    lbsr      SetQuitChar
-                    lbsr      SetEcho
+                    lbsr      SETQUITCHAR
+                    lbsr      SETECHO
                     lbsr      PRINTS
                     fcc       "Press SPACE to continue or ESC to abort in "
                     fcb       $00
@@ -110,14 +110,14 @@ s@                  os9       F$Sleep
 cont@               dec       ,s
                     bpl       loop@
 ex@                 lda       #1
-                    lbsr      RestoreOpts
+                    lbsr      RESTOREOPTS
                     clra
                     ldb       #SS.Relea
                     os9       I$SetStt
                     puls      b,pc
 abort@              lbsr      PUTCR
                     lda       #1
-                    lbsr      RestoreOpts
+                    lbsr      RESTOREOPTS
                     comb
                     endc
                     puls      b,pc

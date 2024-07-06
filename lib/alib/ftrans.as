@@ -1,25 +1,19 @@
-***************************************
+;;; FTRANS
+;;;
+;;; Transfer data between fpaths.
+;;;
+;;; Entry:  A = The source path.
+;;;         B = The destination path.
+;;;         X = The address of the buffer to transfer.
+;;;         Y = The number of bytes to transfer.
+;;;         U = The buffer size.
+;;;
+;;; Error:  B = A non-zero error code.
+;;;        CC = Carry flag set to indicate error.
 
-* Subroutine to transfer data for one file to another
-
-* OTHER MODULES NEEDED: none
-
-* ENTRY: A=source path
-*        B=destination path
-*        Y=number of bytes to transfer
-*        X=buffer for this routine
-*        U=buffer size
-
-
-* EXIT:  CC carry set if error (from I$Read or I$Write)
-*        B  error code if any
-
-                    nam       File                data transfer
-                    ttl       Assembler Library Module
+* This sets up a stack frame used for variable references.
 
                     section   .data
-
-* this sets up a stack frame used for variable references
 
 count               rmb       2                   number of bytes to transfer (2nd Y)
 inpath              rmb       1                   source file (A)
@@ -33,12 +27,10 @@ bufsize             rmb       2                   buffer size (U)
 
                     section   .text
 
-FTRANS
-                    pshs      a,b,x,y,u
+FTRANS:             pshs      a,b,x,y,u
                     pshs      y
 
-loop
-                    ldy       count,s             bytes left to send
+loop                ldy       count,s             bytes left to send
                     beq       exit                all done?
 
                     lda       inpath,s            source file
@@ -47,8 +39,7 @@ loop
                     blo       get                 no, get all of remainder
                     ldy       bufsize,s           use buffer size
 
-get
-                    os9       I$Read              get data
+get                 os9       I$Read              get data
                     bcs       error
                     lda       outpath,s
                     os9       I$Write
@@ -60,16 +51,13 @@ get
                     std       count,s
                     bra       loop
 
-exit
-                    clra                          no error
+exit                clra                          no error
                     bra       exit2
 
-error
-                    coma                          signal error
+error               coma                          signal error
                     stb       Breg,s              set B
 
-exit2
-                    puls      y
+exit2               puls      y
                     puls      a,b,x,y,u,pc
 
                     endsect

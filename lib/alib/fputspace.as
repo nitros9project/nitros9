@@ -1,22 +1,15 @@
-****************************************
-
-* Subroutine to print a space
-
-* OTHER MODULES REQUIRED: FPUTC
-
-* ENTRY: A=path
-
-* EXIT: CC carry set if error (from I$WritLn)
-*       B  error code if any.
-
-                    nam       Output              One Space Char.
-                    ttl       Assembler Library Module
-
+;;; FPUTSPACE
+;;;
+;;; Prints a space to a device.
+;;;
+;;; Entry:  A = The path to print to.
+;;;
+;;; Error:  B = A non-zero error code.
+;;;        CC = Carry flag set to indicate error.
 
                     section   .text
 
-FPUTSPACE
-                    ldb       #$20
+FPUTSPACE:          ldb       #$20
                     lbra      FPUTC
 
                     endsect
