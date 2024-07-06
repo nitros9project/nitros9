@@ -21,7 +21,7 @@ RBF		= $(MD)/rbf.mn
 RBDW      = $(MD)/rbdw.dr $(MD)/x0.dd $(MD)/x1.dd $(MD)/x2.dd $(MD)/x3.dd
 
 # RBF Foenix Flash/RAM disk driver
-RBMEM = $(MD)/rbmem.dr $(MD)/c0.dd
+RBMEM = $(MD)/rbmem.dr $(MD)/c0.dd $(MD)/f0.dd
 
 # RBF RBSuper driver
 RBSUPER   = $(MD)/rbsuper.dr
