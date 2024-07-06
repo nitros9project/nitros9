@@ -1,5 +1,5 @@
 ********************************************************************
-* pick - Action Scripting Utility
+* pick - Scripting Utility
 *
 * $Id$
 *
@@ -10,19 +10,22 @@
 * Created.
 
 scrdelim        set     '|
+maxpromptlen    set     20
 maxlinelen		set		80
 
                     section   bss
 keypressed          rmb       1
 isflash             rmb       1
-scriptpathlist      rmb       maxlinelen
-linebuff		    rmb		  maxlinelen
+prompt              rmb       maxpromptlen+1
+scriptpathlist      rmb       maxlinelen+1
+linebuff		    rmb		  maxlinelen+1
                     rmb       100
                     endsect
 
 KeySig              equ       $84
 
                     section   code
+                    
 IcptRtn
                     lbsr      GETC
                     sta       keypressed,u
@@ -32,8 +35,30 @@ IcptRtn
 * Entry Point
 **********************************************************
 __start             cmpd      #$0001              any parameters?
-                    beq       exit                no... exit.
-                    ldd       #maxlinelen-1       else get maximum line length - 1
+                    lbeq      exit                no... exit.
+                    ldy       #':*256             get default prompt
+                    sty       prompt,u            and set it
+                    ldd       ,x                  look for "-p"
+                    andb      #$5F                make second character uppercase
+                    cmpd      #'-*256+'P          is it a -p?
+                    bne       cont@               nope
+                    leax      2,x                 else skip over the option
+                    lbsr      TO_NON_SP           and skip over any whitespace
+* X is at the prompt.
+                    leay      prompt,u            point to the buffer
+                    ldb       #maxpromptlen       get maximum prompt length in B
+l@                  lda       ,x+                 get the prompt character
+                    cmpa      #C$CR               carriage return?
+                    lbeq      exit                if so, no file was specified -- just exit
+                    cmpa      #C$SPAC             space?
+                    beq       terminate@          terminate if so
+                    sta       ,y+                 else save prompt character in buffer
+                    decb                          decrement maximum length
+                    bne       l@                  branch if we have more room
+terminate@          clr       ,y                  nil terminate the prompt                    
+cont@
+                    lbsr      TO_NON_SP           and skip over any whitespace to get to the script file
+                    ldd       #maxlinelen         else get maximum line length
                     leay      scriptpathlist,u    and script file buffer
                     lbsr      STRNCPY             copy the parameter over
                     leax      IcptRtn,pcr         point to the signal handler routine
@@ -44,9 +69,10 @@ PromptAndRead       lbsr      PUTCR                put a carriage return
                     lbsr      SHOWSCRMENU          show the menu
                     bcs       badex@               branch if erro
                     lbsr      PUTCR put carriage return
-                    lbsr      PRINTS print prompt
-                    fcc       /? /
-                    fcb       0
+                    pshs      x
+                    leax      prompt,u
+                    lbsr      PUTS                 print prompt
+                    puls      x
                     lbsr      GETC                get a character
                     lbsr      MATCHASCR attempt to match
                     cmpx      #$0000 did we get a match?
@@ -62,10 +88,12 @@ process             lbsr      PUTCR put a carriage return
                     cmpa      #'$                 is it the exit character?
                     beq       exit                branch if so
                     pshs      x,u                 else save the pointer to the command and U
-                    lbsr      TO_CHAR_OR_NIL      find the next delimiter (before parameter)
+                    lbsr      TO_SP_OR_NIL        find the next space character (before parameter, if any)
+                    tst       ,x
+                    beq       noparams@
                     clr       ,x+                 nil terminate the command and advance X to parameters
 * count parameter length
-                    lbsr      STRLEN
+noparams@           lbsr      STRLEN
                     tfr       d,y                transfer the length to Y    
                     leau      ,x                  point U to parameters for forking (C$CR is at end of parameters)
                     puls      x                   get pointer to command on stack
@@ -77,25 +105,24 @@ process             lbsr      PUTCR put a carriage return
 exit                clrb                clear the carry flag
 badex@              os9       F$Exit    exit
                     
-* Action Scripts
+* Pick Scripts
 *
-* Action scripts are text files that are parsed to perform some command based on a key.
-* A script is made up of one or more comma delimited lines of this form:
+* Pick scripts are text files that are parsed to perform some command based on a key.
+* A script is made up of one or more delimited lines of this form:
 *
-* K,M,C,P
+* K|M|C
 *
 * Where:
 *    K = the key used to invoke the command
 *    D = a description string which describes the command
-*    C = the command to execute
-*    P = any parameters for the command
+*    C = the command to execute with any parameters
 *
 * For example:
 *
 *    * This is a comment (ignored)
-*    o,Boot OS-9,bootos9,/x0/OS9Boot
+*    o|Boot OS-9|bootos9 /x0/OS9Boot
 *    # This is another comment (ignored)
-*    r,Reset,fnxreset,
+*    r|Reset|fnxreset
 *
 * To use scripts:
 *   1. Show the script menu by calling SHOWSCRMENU.
@@ -104,7 +131,7 @@ badex@              os9       F$Exit    exit
 
 ;;; MATCHASCR
 ;;;
-;;; Match a key to an command in an action script and return a pointer to the command entry, if found.
+;;; Match a key to an command in a pick script and return a pointer to the command entry, if found.
 ;;;
 ;;; Entry:  A = The key to match against.
 ;;;         X = The pathlist to the script file.
@@ -132,7 +159,7 @@ notfound@       ldx     #$0000
                 
 ;;; SHOWSCRMENU
 ;;;
-;;; Show an action script menu.
+;;; Show a pick script menu.
 ;;;
 ;;; Entry:  X = The pathlist to the script file.
 ;;;
@@ -154,9 +181,9 @@ loop@           leax    linebuff,u
 				lbsr    PRINTS
 				fcc     " - "
 				fcb     0
-                ldb                 #scrdelim
-                pshs                x
-                lbsr                TO_CHAR_OR_NIL                                                                                
+                ldb     #scrdelim
+                pshs    x
+                lbsr    TO_CHAR_OR_NIL                                                                                
                 clr     ,x
                 puls    x
 				lbsr	PUTS				print it
@@ -166,6 +193,6 @@ ex@             os9     I$Close
                 clrb
 badex@			puls	x,y,pc
 				
-    endsection
+                endsection
 				
 				
