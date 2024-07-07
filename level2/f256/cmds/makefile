@@ -1,3 +1,6 @@
+
+
+
 include ../port.mak
 
 vpath %.as $(LEVEL1)/f256/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds
@@ -24,7 +27,7 @@ CMDS    = asm attr backup binex build cmp copy \
 		format free fstatus help ident iniz irqs link list load login \
 		makdir mdir megaread merge mfree minted mmap modpatch padrom park \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
-		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
+		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode xtclut \
 		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) play \
 		bootos9 fnxinfo fnxreset pick rogue
 

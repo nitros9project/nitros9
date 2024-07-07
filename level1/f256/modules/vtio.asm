@@ -1338,7 +1338,7 @@ SetStat             ldx       PD.RGS,y            get caller's registers in X
                     cmpa      #SS.SSig            send signal on data ready?
                     beq       SSSig               yes, go process
                     cmpa      #SS.Relea           release signal on data ready?
-                    beq       SSRelea             yes, go process
+                    lbeq      SSRelea             yes, go process
                     cmpa      #SS.DMAFill         DMA Fill?
                     beq       SSDMAFill
                     cmpa      #SS.Tone
