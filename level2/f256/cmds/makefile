@@ -21,11 +21,11 @@ CMDS_DW = inetd dw telnet httpd
 CMDS    = asm attr backup binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
 		display dmem dmode dsave dump echo edit error exbin \
-		format free help ident iniz irqs link list load login \
+		format free fstatus help ident iniz irqs link list load login \
 		makdir mdir megaread merge mfree minted mmap modpatch padrom park \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
-		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) play fstatus \
+		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) play \
 		bootos9 fnxinfo fnxreset pick rogue
 
 SHELLMODS	= shellplus echo iniz link load save unlink
@@ -39,8 +39,8 @@ all:	$(DEPENDS) $(CMDS) shell utilpak1
 # Some commands depend on net.o
 $(NOSLIB)/net.o:
 	cd $(NOSLIB); make
-	
-runb:	runb.asm
+
+nrunb:	runb.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 	$(MERGE) $@ $(SUBS)>$@.tmp
 	$(RM) $@
