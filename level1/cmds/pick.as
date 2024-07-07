@@ -10,14 +10,13 @@
 * Created.
 
 scrdelim        set     '|
-maxpromptlen    set     20
 maxlinelen		set		80
 
                     section   bss
 keypressed          rmb       1
 isflash             rmb       1
-prompt              rmb       maxpromptlen+1
-scriptpathlist      rmb       maxlinelen+1
+prompt              rmb       2
+scriptpathlist      rmb       2
 linebuff		    rmb		  maxlinelen+1
                     rmb       100
                     endsect
@@ -31,46 +30,38 @@ IcptRtn
                     sta       keypressed,u
                     rti
 
+DefPrompt           fcc       ":"
+                    fcb       $00
+                    
 **********************************************************
 * Entry Point
 **********************************************************
 __start             cmpd      #$0001              any parameters?
                     lbeq      exit                no... exit.
-                    ldy       #':*256             get default prompt
+                    leay      DefPrompt,pcr       get default prompt
                     sty       prompt,u            and set it
                     ldd       ,x                  look for "-p"
                     andb      #$5F                make second character uppercase
                     cmpd      #'-*256+'P          is it a -p?
                     bne       cont@               nope
                     leax      2,x                 else skip over the option
-                    lbsr      TO_NON_SP           and skip over any whitespace
 * X is at the prompt.
-                    leay      prompt,u            point to the buffer
-                    ldb       #maxpromptlen       get maximum prompt length in B
-l@                  lda       ,x+                 get the prompt character
-                    cmpa      #C$CR               carriage return?
-                    lbeq      exit                if so, no file was specified -- just exit
-                    cmpa      #C$SPAC             space?
-                    beq       terminate@          terminate if so
-                    sta       ,y+                 else save prompt character in buffer
-                    decb                          decrement maximum length
-                    bne       l@                  branch if we have more room
-terminate@          clr       ,y                  nil terminate the prompt                    
-cont@
-                    lbsr      TO_NON_SP           and skip over any whitespace to get to the script file
-                    ldd       #maxlinelen         else get maximum line length
-                    leay      scriptpathlist,u    and script file buffer
-                    lbsr      STRNCPY             copy the parameter over
+                    stx       prompt,u
+                    lbsr      TO_SP_OR_NIL        and find the next space or nil
+                    clr       ,x+                 nil out the prompt
+                    lbsr      TO_NON_SP           move to next non-space character
+* X is at script
+cont@               stx       scriptpathlist,u
                     leax      IcptRtn,pcr         point to the signal handler routine
                     os9       F$Icpt              install the signal handler
 * Entry: X = menu to display
 PromptAndRead       lbsr      PUTCR                put a carriage return
-                    leax      scriptpathlist,u     point to the file
+                    ldx       scriptpathlist,u     point to the file
                     lbsr      SHOWSCRMENU          show the menu
                     bcs       badex@               branch if erro
                     lbsr      PUTCR put carriage return
                     pshs      x
-                    leax      prompt,u
+                    ldx       prompt,u
                     lbsr      PUTS                 print prompt
                     puls      x
                     lbsr      GETC                get a character
