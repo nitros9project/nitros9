@@ -577,6 +577,33 @@ TyVKY_BM2_START_ADDY_L equ       $F011
 TyVKY_BM2_START_ADDY_M equ       $F012
 TyVKY_BM2_START_ADDY_H equ       $F013
 
+**  THESE ARE DUPLICATES, RECONCILE THIS LATER
+********************************************************************
+* vtio graphics constants
+********************************************************************
+* Constants used in SS.DScrn to set the display screen type
+
+FX_GAM             equ       %01000000              Gamma Correction On
+FX_SPR             equ       %00100000              Sprites On
+FX_TIL             equ       %00010000              Tile Maps On
+FX_BM              equ       %00001000              Bitmaps On
+FX_GRF             equ       %00000100              Graphics Mode On
+FX_OVR             equ       %00000010              Overlay Text on Graphics
+FX_TXT             equ       %00000001              Text Mode On
+FT_FSET            equ       %00100000              Font Set 1 On (0=Font Set 0)
+FT_FOVR            equ       %00010000              FG and BG colors displayed when overlay text 0=transparent
+FT_MON             equ       %00001000              Turn off monitor sync and sleep monitor
+FT_DBX             equ       %00000100              Double-wide text mode characters
+FT_DBY             equ       %00000010              Double-high text mode characters
+FT_CLK70           equ       %00000001              70 Hz screen (640x400 txt,320x200 grf)
+FX_OMIT            equ       %11111111              Setting for SS.DScrn don't change first byte in MCR
+FT_OMIT            equ       %11111111              Setting for SS.DScrn don't change second byte in MCR
+
+* FT_FOVR:  0=display only FG color, all others transparent
+*           1=display FG & BG color, only BG color 0 is transparent
+* CLK_70:   0=60 Hz screen (640x480 txt, 320x240 grf)
+*           0=70 Hz screen (640x400 txt, 32
+**  END OF DUPLICATE CONSTANTS
 
 ; Tile map
 TyVKY_TL_CTRL0      equ       $F100
