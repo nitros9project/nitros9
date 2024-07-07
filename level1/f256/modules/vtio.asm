@@ -1438,68 +1438,63 @@ ex@                 rts
 ;;; Exit:  B = A non-zero error code.
 ;;;       CC = Carry flag clear to indicate success
 ;;;        X = Starting Page# of bitmap address
-SSAScrn	       	    lda	      R$Y+1,x		  load the bitmap number
-		    lsla      			  multiply by 2
-		    leay      V.BM0BLK,u
-		    leay      a,y
-		    lda	      ,y		  See if there is a current block number
-		    beq	      NewBitMap@          if zero, then no bitmap, make a new one
-		    ldb	      #E$WADef		  Error: Bitmap already defined
-		    sta	      R$X+1,x		  Store the bitmap block# in X
-		    clra
-		    sta	      R$X,x
-		    bra	      error@
-NewBitMap@	    ldb	      R$X+1,x		  Get the window type (0 or 1)
-		    beq	      tenblocks@    	  Need 10 blocks for 320x240
-eightblocks	    ldb	      #$08		  Need 8 blocks for 320x200
-		    bra	      GetMem@
-tenblocks@	    ldb	      #10		  Need 10 8k Blocks from highram
-GetMem@		    os9	      F$AlHRAM		  Allocate Ram, put starting block# in D
-               	    bcc       map@                Check for error, continue if no error
-	            ldb       #E$MFull            Set error code to Memory Full error and return
- 		    bra	      error@
-* 		    **** Store starting block# for bitmap in V.BMXBlk
-map@	            lda	      R$Y+1,x	          Load Bitmap@
-                    lsla      			  multiply by 2 to get correct index	
-		    leay      V.BM0Blk,u          Calc address for block storage BM0,BM1 or BM2
-	            stb	      a,y	  	  Store block # in V.[BMX]Block where [BMX] is BM00, BM11 or BM2w
-		    clra
-		    std	      R$X,x		  Store block # in X for return value
-* 		    **** Store physical address of bitmap in TinyVicky BM0, BM1 or BM2
-		    pshs      cc
-		    orcc      #IntMasks           mask interrupts
-		    lda	      MAPSLOT
-		    pshs      a
-	            lda       #$C0                Get the MMU Block for bitmap addresses
+SSAScrn             lda       R$Y+1,x             load the bitmap number
+                    lsla                          multiply by 2
+                    leay      V.BM0BLK,u
+                    lda       a,y                 see if there is a current block number
+                    beq       NewBitMap@          if zero, then no bitmap, make a new one
+                    ldb       #E$WADef            error: bitmap already defined
+                    sta       R$X+1,x             store the bitmap block# in X
+                    clr       R$X,x
+                    bra       error@
+NewBitMap@          ldb       R$X+1,x             get the window type (0 or 1)
+                    beq       tenblocks@          need 10 blocks for 320x240
+eightblocks         ldb       #$08                need 8 blocks for 320x200
+                    bra       GetMem@
+tenblocks@          ldb       #10                 need 10 8k Blocks from highram
+GetMem@             os9       F$AlHRAM            allocate ram, put starting block# in D
+                    bcc       map@                check for error, continue if no error
+                    ldb       #E$MFull            set error code to Memory Full error and return
+                    bra       error@
+*                   **** Store starting block# for bitmap in V.BMXBlk
+map@                lda       R$Y+1,x             load bitmap@
+                    lsla                          multiply by 2 to get correct index    
+                    leay      V.BM0Blk,u          calc address for block storage BM0,BM1 or BM2
+                    stb       a,y                 store block # in V.[BMX]Block where [BMX] is BM00, BM11 or BM2w
+                    clra
+                    std       R$X,x               store block # in X for return value
+*                   **** Store physical address of bitmap in TinyVicky BM0, BM1 or BM2
+                    pshs      cc
+                    orcc      #IntMasks           mask interrupts
+                    lda       MAPSLOT
+                    pshs      a
+                    lda       #$C0                get the MMU Block for bitmap addresses
                     sta       MAPSLOT             store it in the MMU slot to map it in
-* 		    **** Calculate starting address at 1000,1008,1010
-	            pshs      b		          push block# to stack
-		    ldb	      R$Y+1,x               ldb with bitmap#
-		    lda	      #$08		  multiply by 8 (to start at 0, 8 or 16)
-		    mul	      			  d should be 0,8,or 16
-		    addd      #MAPADDR
-		    addd      #$1000
-		    tfr	      d,y		  y is address of BM(0-2) registers
-* 		    **** Convert b from block number to physical address
-		    ldb	      ,s		  load b with block# from stack
+*                   **** Calculate starting address at 1000,1008,1010
+                    pshs      b                   push block# to stack
+                    ldb       R$Y+1,x             ldb with bitmap#
+                    lda       #$08                multiply by 8 (to start at 0, 8 or 16)
+                    mul                           d should be 0,8,or 16
+                    addd      #MAPADDR
+                    addd      #$1000
+                    tfr       d,y                 y is address of BM(0-2) registers
+*                   **** Convert b from block number to physical address
+                    ldb       ,s                  load b with block# from stack
                     lbsr      Blk2Addr            convert blk# to high 16 bits of address in d
-* 		    **** Load Bitmap start block physical address into Vicky BM0, BM1 or BM2
-		    pshs      a			  push high byte of bitmap address
-		    lda       #%00000001	  enable bitmapX with CLUT 0
-		    sta	      ,y+           	  enable bitmap with CLUT 0
-		    lda	      #$0
-		    sta	      ,y+		  clear AD7-AD0
-		    stb	      ,y+		  store AD15-AD8
-		    puls      a                   pull high byte of bitmap address
-		    sta	      ,y            	  store AD18-AD16
-		    puls      b
-		    puls      a
-		    sta	      MAPSLOT
-		    puls      cc
-		    andcc     #$FE
-noerror@	    bra	      end@	
-error@	            orcc      #Carry	          Set carry bit on erro
-end@		    rts		    
+*                   **** Load Bitmap start block physical address into Vicky BM0, BM1 or BM2
+                    pshs      a                   push high byte of bitmap address
+                    lda       #%00000001          enable bitmapX with CLUT 0
+                    sta       ,y+                 enable bitmap with CLUT 0
+                    lda       #$0
+                    sta       ,y+                 clear AD7-AD0
+                    stb       ,y+                 store AD15-AD8
+                    puls      a                   pull high byte of bitmap address
+                    sta       ,y                  store AD18-AD16
+                    puls      b,a
+                    sta       MAPSLOT
+noerror@            puls      cc,pc     
+error@              coma                          set carry bit on error
+end@                rts             
 
 ;;;  SS.DScrn
 ;;;  Display Screen Settings
@@ -1511,19 +1506,19 @@ end@		    rts
 ;;;
 ;;; Exit:  Nothing. This just sets the register and updates driver variables
 ;;;
-SSDScrn		    lda	      R$X+1,x               Load MCR Low byte
-		    ldb	      R$Y+1,x		    Load MCR Hight byte
-		    ldy       #TXT.Base
-mcrlbit@            cmpa      #FX_OMIT	            If omit, don't change
-		    beq	      mcrhbit@
-		    sta	      MASTER_CTRL_REG_L,y   Store new MCR Low byte
-		    sta	      V.V_MCR,u		    Store copy in driver variables
-mcrhbit@	    cmpb      #FT_OMIT	            If omit, don't change
-		    beq	      end@
-		    stb	      MASTER_CTRL_REG_H,y   Store new MCR High byte	
-		    stb	      V.V_MCR+1,u	    Store copy in driver variables
-end@		    clrb
-		    rts
+SSDScrn             lda       R$X+1,x               load MCR low byte
+                    ldb       R$Y+1,x               load MCR high byte
+                    ldy       #TXT.Base
+mcrlbit@            cmpa      #FX_OMIT              If omit, don't change
+                    beq       mcrhbit@
+                    sta       MASTER_CTRL_REG_L,y   store new MCR low byte
+                    sta       V.V_MCR,u             store copy in driver variables
+mcrhbit@            cmpb      #FT_OMIT              if omit, don't change
+                    beq       end@
+                    stb       MASTER_CTRL_REG_H,y   store new MCR High byte     
+                    stb       V.V_MCR+1,u           store copy in driver variables
+end@                clrb
+                    rts
 
 ;;;  SS.PScrn
 ;;;  Position Screen Layers
@@ -1537,32 +1532,32 @@ end@		    clrb
 ;;; Exit:  B = A non-zero error code.
 ;;;       CC = Carry flag clear to indicate success
 ;;;
-SSPScrn		    ldy	      R$X,x               x=layer
-		    lda	      $FFC2
-sl0@                cmpy      #$00		  test for Screen layer 0
-		    bne	      sl1@		  if not, go to layer 1
-		    anda      #%11110000           this is L0, clear L0 values
-		    adda      R$Y+1,x
-		    sta	      $FFC2		  Store them
- 		    bra	      end@
-sl1@		    cmpy      #$01		  test for layer 1
-		    bne	      sl2@                if not, go to layer 2
-		    anda      #%00001111           clear the Layer1 bits
-		    sta	      $FFC2
-		    ldb	      R$Y+1,x
-		    lslb                          shift bitmap# 4 bits for layer 1
-		    lslb
-		    lslb
-		    lslb
-		    addb      $FFC2		  add it
-		    stb	      $FFC2		  store it
-		    bra	      end@
-sl2@		    cmpy      #$02                test for Layer2
-		    bne	      end@
-		    ldb	      R$Y+1,x
-		    stb	      $FFC3		  Store BM# or TM# in L2
-		    clrb
-end@		    rts
+SSPScrn             ldy       R$X,x                 x=layer
+                    lda       VKY_LAYER_CTRL_0
+sl0@                cmpy      #$00                  test for Screen layer 0
+                    bne       sl1@                  if not, go to layer 1
+                    anda      #%11110000            this is L0, clear L0 values
+                    adda      R$Y+1,x
+                    sta       VKY_LAYER_CTRL_0      store them
+                    bra       end@
+sl1@                cmpy      #$01                  test for layer 1
+                    bne       sl2@                  if not, go to layer 2
+                    anda      #%00001111            clear the Layer1 bits
+                    sta       VKY_LAYER_CTRL_0
+                    ldb       R$Y+1,x
+                    lslb                            shift bitmap# 4 bits for layer 1
+                    lslb
+                    lslb
+                    lslb
+                    addb      VKY_LAYER_CTRL_0      add it
+                    stb       VKY_LAYER_CTRL_0      store it
+                    rts
+sl2@                cmpy      #$02                  test for Layer2
+                    rts
+                    ldb       R$Y+1,x
+                    stb       VKY_LAYER_CTRL_1      store BM# or TM# in L2
+                    clrb
+end@                rts
 
 ;;; SS.FScrn
 ;;;
@@ -1572,59 +1567,57 @@ end@		    rts
 ;;;
 ;;; Exit:  B = A non-zero error code.
 ;;;       CC = Carry flag clear to indicate success
-SSFScrn	       	    lda	      R$Y+1,x	           get the bitmap#
-		    lsla      			   multiply by 2
-		    leay      V.BM0Blk,u
-		    pshs      x
-		    ldb	      a,y	           load block# for bitmapX
-		    bne	      deallocate@	   if not zero, continue
-		    ldb	      #E$WUndef		   window undefined
-		    orcc      #1
-		    puls      x
-		    bra	      end@
-deallocate@	    clra
-		    tfr       d,x
-                    ldy	      #TXT.Base
-		    lda	      MASTER_CTRL_REG_H,y  load in Vicky_MCR
-		    bita      #%00000001           Test for CLK_70
-		    beq	      CLK_60@
-CLK_70@		    ldb	      #$08	           Clk_70 only has 8 blocks
-		    bra	      cont@
-CLK_60@		    ldb	      #$0A		   clk_60 is 10 blocks
-cont@		    os9	      F$DelRAM		   Free RAM from starting at blockX
-		    puls      x			   recover x
-		    lda	      R$Y+1,x		   get the bitmap#
-		    lsla      			   multiply by 2
-clr_bmvar@	    leay      V.BM0Blk,u	   Clear the bitmap storage
-		    leay      a,y
-		    clra
-		    sta	      ,y
-clr_bmReg@	    pshs      cc		  clear the bitmap registers,disable bitmap
-		    orcc      #IntMasks           mask interrupts
-		    lda	      MAPSLOT
-		    pshs      a		          preserve current mmu block
-	            lda       #$C0                Get the MMU Block for bitmap addresses
-                    sta       MAPSLOT             store it in the MMU slot to map it in
+SSFScrn             lda       R$Y+1,x              get the bitmap#
+                    lsla                           multiply by 2
+                    leay      V.BM0Blk,u
+                    pshs      x
+                    ldb       a,y                  load block# for bitmapX
+                    bne       deallocate@          if not zero, continue
+                    ldb       #E$WUndef            window undefined
+                    coma
+                    puls      x,pc
+deallocate@         clra
+                    tfr       d,x
+                    ldy       #TXT.Base
+                    lda       MASTER_CTRL_REG_H,y  load in Vicky_MCR
+                    bita      #%00000001           Test for CLK_70
+                    beq       CLK_60@
+CLK_70@             ldb       #$08                 clk_70 only has 8 blocks
+                    bra       cont@
+CLK_60@             ldb       #$0A                 clk_60 is 10 blocks
+cont@               os9       F$DelRAM             Free RAM from starting at blockX
+                    puls      x                    recover x
+                    lda       R$Y+1,x              get the bitmap#
+                    lsla                           multiply by 2
+clr_bmvar@          leay      V.BM0Blk,u           clear the bitmap storage
+                    leay      a,y
+                    clra
+                    sta       ,y
+clr_bmReg@          pshs      cc                   clear the bitmap registers,disable bitmap
+                    orcc      #IntMasks            mask interrupts
+                    lda       MAPSLOT
+                    pshs      a                    preserve current mmu block
+                    lda       #$C0                 get the MMU Block for bitmap addresses
+                    sta       MAPSLOT              store it in the MMU slot to map it in
 * Calculate starting address at 1000,1008,1010
-		    ldb	      R$Y+1,x               ldb with bitmap#
-		    clra
-		    lslb      			  multiply by 8
-		    lslb
-		    lslb
-		    addd      #MAPADDR
-		    addd      #$1000
-		    tfr	      d,y		  y is address of BM(0-2) registers
+                    ldb       R$Y+1,x              ldb with bitmap#
+                    clra
+                    lslb                           multiply by 8
+                    lslb
+                    lslb
+                    addd      #MAPADDR
+                    addd      #$1000
+                    tfr       d,y                  y is address of BM(0-2) registers
 * Load Bitmap start block physical address into Vicky BM0, BM1 or BM2
-		    clra      			  enable bitmapX with CLUT 0
-		    sta	      ,y+           	  clear and disable bitmap with CLUT 0
-		    sta	      ,y+		  clear AD7-AD0
-		    sta	      ,y+		  clear AD15-AD8
-		    sta	      ,y            	  clear AD18-AD16
-		    puls      a
-		    sta	      MAPSLOT
-		    puls      cc
-		    andcc     #$FE		    
-end@	            rts
+                    clra                           enable bitmapX with CLUT 0
+                    sta       ,y+                  clear and disable bitmap with CLUT 0
+                    sta       ,y+                  clear AD7-AD0
+                    sta       ,y+                  clear AD15-AD8
+                    sta       ,y                   clear AD18-AD16
+                    puls      a
+                    sta       MAPSLOT
+                    puls      cc
+end@                rts
 
 ;;; SS.Palet
 ;;; Assign Palette to Bitmap
@@ -1637,29 +1630,27 @@ end@	            rts
 ;;; Exit:  B = A non-zero error code.
 ;;;       CC = Carry flag clear to indicate success
 ;;;
-SSPalet	            pshs      cc
-		    orcc      #IntMasks           mask interrupts
-		    lda	      MAPSLOT
-		    pshs      a
-	            lda       #$C0                Get the MMU Block for bitmap addresses
+SSPalet             pshs      cc
+                    orcc      #IntMasks           mask interrupts
+                    lda       MAPSLOT
+                    pshs      a
+                    lda       #$C0                get the MMU Block for bitmap addresses
                     sta       MAPSLOT             store it in the MMU slot to map it in
-* 		    **** Calculate starting address at 1000,1008,1010
-		    ldb	      R$Y+1,x               ldb with bitmap#
-		    lda	      #$08		  multiply by 8 (to start at 0, 8 or 16)
-		    mul	      			  d should be 0,8,or 16
-		    addd      #MAPADDR
-		    addd      #$1000
-		    tfr	      d,y		  y is address of BM(0-2) registers
-		    ldd	      R$X,x		  d now has CLUT#
-		    orcc      #1		  Set carry bit
-		    rolb			  shift B, and rotate in enable it
-		    andcc     #$FE		  Clear carry bit
-* 		    **** Load Bitmap start block physical address into Vicky BM0, BM1 or BM2
-		    stb	      ,y           	  enable bitmap with CLUT R$X
-		    puls      a
-		    sta	      MAPSLOT
-		    puls      cc
-		    rts
+*                   **** Calculate starting address at 1000,1008,1010
+                    ldb       R$Y+1,x             ldb with bitmap#
+                    lda       #$08                multiply by 8 (to start at 0, 8 or 16)
+                    mul                           d should be 0,8,or 16
+                    addd      #MAPADDR
+                    addd      #$1000
+                    tfr       d,y                 y is address of BM(0-2) registers
+                    ldd       R$X,x               d now has CLUT#
+                    orcc      #Carry              set carry bit
+                    rolb                          shift B, and rotate in enable it
+*                   **** Load Bitmap start block physical address into Vicky BM0, BM1 or BM2
+                    stb       ,y                  enable bitmap with CLUT R$X
+                    puls      a
+                    sta       MAPSLOT
+                    puls      cc,pc
 
 
 
@@ -1667,66 +1658,64 @@ SSPalet	            pshs      cc
 ;;; Define Palette and populate a CLUT from Memory Module
 ;;;
 ;;; Entry: R$X = CLUT # (0-3)
-;;; 	   R$Y = pointer to location of data in caller process
+;;;        R$Y = pointer to location of data in caller process
 ;;;        (Caller must load data module)
 ;;;
 ;;; Exit:  B = A non-zero error code.
 ;;;       CC = Carry flag clear to indicate success
-SSDfPal	       	    pshs      a,x,y,u
-*		    **** Map in $C1 for CLUT Registers
-		    pshs      cc
-		    orcc      #IntMasks
-		    ldy	      <D.Proc
-		    pshs      y,x
-		    ldy	      <D.SysPrc
-		    sty	      <D.Proc
-		    ldb	      #$01
-		    ldx	      #$C1
-		    os9	      F$MapBlk
-		    bcs       errnomap@
-		    puls      y,x
-		    sty	      <D.Proc
-		    puls      cc
-*		    **** Calculate CLUT offset		    
-		    pshs      u	                  push map logical addr
-         	    lda       R$X+1,x
+SSDfPal             pshs      cc,a,x,y,u
+*                   **** Map in $C1 for CLUT Registers
+                    orcc      #IntMasks
+                    ldy       <D.Proc
+                    pshs      y,x
+                    ldy       <D.SysPrc
+                    sty       <D.Proc
+                    ldb       #$01
+                    ldx       #$C1
+                    os9       F$MapBlk
+                    bcs       errnomap@
+                    puls      y,x
+                    sty       <D.Proc
+                    puls      cc
+*                   **** Calculate CLUT offset              
+                    pshs      u                   push map logical addr
+                    lda       R$X+1,x
                     lsla                          multiply by 2 so index works
-                    pshs      x			  push pointer to caller Regs
+                    pshs      x                   push pointer to caller Regs
                     leax      clutlookup,pcr
-		    ldd	      a,x
+                    ldd       a,x
                     leau      d,u                 ldx with $1000 offset for CLUT0
-*		    **** Start F$Move (with U from above)
-		    puls      x			  pull pointer to caller Regs
-		    pshs      x
-		    ldx       R$Y,x               x=Get pointer to caller data
-		    ldy	      <D.Proc		  Get caller process
-		    lda	      P$Task,y		  a=source Task# (Caller)
-		    ldb	      <D.SysTsk	      	  b=dest Task# (System)
-                    ldy	      #$400	          moving 1K
+*                   **** Start F$Move (with U from above)
+                    ldx       ,s                  load pointer to caller Regs
+                    ldx       R$Y,x               x=Get pointer to caller data
+                    ldy       <D.Proc             Get caller process
+                    lda       P$Task,y            a=source Task# (Caller)
+                    ldb       <D.SysTsk           b=dest Task# (System)
+                    ldy       #$400               moving 1K
                     os9       F$Move              copy data
-		    bcs       errormove@          return if error
-*		    **** Exit Move
-		    puls      x
-noerror@	    puls      u
-		    bsr	      clearblock
-		    andcc     #$FE
-		    clrb			  No Error Code
-		    bra	      end@
-errnomap@	    puls      y,x		  Come here on F$MapBlk error
-		    sty	      <D.Proc
-		    puls      cc
-		    orcc      #Carry	          Set carry bit on erro
-		    bra	      end@
-errormove@	    puls      x
-		    puls      u			  come here on F$Move erre
-		    bsr	      clearblock
-		    orcc      #Carry	          Set carry bit on erro
-end@		    puls      u,y,x,a
-		    rts
+                    bcs       errormove@          return if error
+*                   **** Exit Move
+                    puls      x
+noerror@            puls      u
+                    bsr       clearblock
+                    clrb                          no error code
+                    bra       end@
+errnomap@           puls      y,x                 come here on F$MapBlk error
+                    sty       <D.Proc
+                    puls      cc
+                    coma                          set carry bit on error
+                    bra       end@
+errormove@          puls      x
+                    puls      u                   come here on F$Move error
+                    bsr       clearblock
+                    coma                          set carry bit on error
+end@                puls      u,y,x,a
+                    rts
 
-clutlookup	    fdb	      $1000,$1400,$0800,$0C00
+clutlookup          fdb       $1000,$1400,$0800,$0C00
 
-clearblock          orcc      #IntMasks		  u=logical address of block on entry
+clearblock          pshs      cc
+                    orcc      #IntMasks           u=logical address of block on entry
                     ldd       <D.Proc
                     pshs      d
                     ldd       <D.SysPrc
@@ -1735,22 +1724,22 @@ clearblock          orcc      #IntMasks		  u=logical address of block on entry
                     os9       F$ClrBlk            U=logical addr, B=# of blocks
                     puls      d
                     std       <D.Proc
-                    rts
+                    puls      cc,pc
 
 * Block to Address: Convert block# to high 16 bits in D
 * b = block#, a = 0.  d = high 16 bits of address
 * Try to replace with math coprocessor multiply in Vicky?
-Blk2Addr 	    clra			  clear a, block # is in b
-		    lslb                          multiply block# by $20 to get top 16 bits x2
-		    rola			  of physical address (ex $3F*$20 = $07E0)
-		    lslb                          x4
-		    rola                          roll carry into a
-		    lslb                          x8
-		    rola                          roll carry into a
-		    lslb                          x16
-		    rola                          roll carry into a
-		    lslb			  x32 ($20)
-		    rola
+Blk2Addr            clra                          clear a, block # is in b
+                    lslb                          multiply block# by $20 to get top 16 bits x2
+                    rola                          of physical address (ex $3F*$20 = $07E0)
+                    lslb                          x4
+                    rola                          roll carry into a
+                    lslb                          x8
+                    rola                          roll carry into a
+                    lslb                          x16
+                    rola                          roll carry into a
+                    lslb                          x32 ($20)
+                    rola
                     rts
 
 
