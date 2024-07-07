@@ -107,9 +107,10 @@ F0_CMDS = $(CMDSDIR)/attr \
 		$(CMDSDIR)/ident $(CMDSDIR)/irqs \
 		$(CMDSDIR)/list \
 		$(CMDSDIR)/makdir $(CMDSDIR)/mfree $(CMDSDIR)/mdir \
-		$(CMDSDIR)/procs $(CMDSDIR)/pwd $(CMDSDIR)/pxd \
+	    $(CMDSDIR)/pick \
+ 		$(CMDSDIR)/procs $(CMDSDIR)/pwd $(CMDSDIR)/pxd \
 		$(CMDSDIR)/setime $(CMDSDIR)/sleep \
-		$(CMDSDIR)/tmode $(CMDSDIR)/pick
+		$(CMDSDIR)/tmode
 
 ALLOBJS		= init sysgo bootfile_f256k bootfile_f256jr booter_ram_f256k booter_flash_f256k \
 				booter_ram_f256jr booter_flash_f256jr
@@ -160,27 +161,34 @@ upload_f256k: booter_ram_f256k
 upload_f256jr: booter_ram_f256jr
 	upload $^ 8000
 
-flash_f256k: booter_flash_f256k
+f256k.zip: booter_flash_f256k
+	-rm booter_? bulk.csv
 	dd status=none bs=8k skip=0 count=1 if=$^ of=booter_0
 	dd status=none bs=8k skip=1 count=1 if=$^ of=booter_1
 	dd status=none bs=8k skip=2 count=1 if=$^ of=booter_2
 	echo "3d,booter_0" > bulk.csv
 	echo "3e,booter_1" >> bulk.csv
 	echo "3f,booter_2" >> bulk.csv
-	bulk_flash bulk.csv
-	rm booter_? bulk.csv
+	zip $@ bulk.csv booter_0 booter_1 booter_2
 
-flash_f256jr: booter_flash_f256jr
+flash_f256k: f256k.zip
+	bulk_flash bulk.csv
+
+f256jr.zip: booter_flash_f256jr
+	-rm booter_? bulk.csv
 	dd status=none bs=8k skip=0 count=1 if=$^ of=booter_0
 	dd status=none bs=8k skip=1 count=1 if=$^ of=booter_1
 	dd status=none bs=8k skip=2 count=1 if=$^ of=booter_2
 	echo "3d,booter_0" > bulk.csv
 	echo "3e,booter_1" >> bulk.csv
 	echo "3f,booter_2" >> bulk.csv
-	bulk_flash bulk.csv
-	rm booter_? bulk.csv
+	zip $@ bulk.csv booter_0 booter_1 booter_2
 
-flash_f0: f0.dsk
+flash_f256jr: f256jr.zip
+	bulk_flash bulk.csv
+
+f0.zip: f0.dsk
+	-rm f0_? bulk.csv
 	dd status=none bs=8k skip=0 count=1 if=$^ of=f0_0
 	dd status=none bs=8k skip=1 count=1 if=$^ of=f0_1
 	dd status=none bs=8k skip=2 count=1 if=$^ of=f0_2
@@ -191,8 +199,10 @@ flash_f0: f0.dsk
 	echo "3a,f0_2" >> bulk.csv
 	echo "3b,f0_3" >> bulk.csv
 	echo "3c,f0_4" >> bulk.csv
+	zip $@ bulk.csv f0_0 f0_1 f0_2 f0_3 f0_4
+
+flash_f0: f0.zip
 	bulk_flash bulk.csv
-	rm f0_? bulk.csv
 
 FEU_FILES = $(foreach file,feu/*,$(file))
 
@@ -215,7 +225,7 @@ feu/startup: FORCE
 FORCE: ;
 
 clean:
-	$(RM) $(ALLOBJS) *.o *.tmp vectors trampoline *.list *.map *.dsk
+	$(RM) $(ALLOBJS) *.o *.tmp vectors trampoline *.list *.map *.dsk bulk.csv f0_? booter_? *.zip
 
 feu: feu.o
 	$(LINKER) $(LFLAGS) $^ -o$@
