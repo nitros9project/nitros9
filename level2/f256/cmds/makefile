@@ -29,7 +29,7 @@ CMDS    = asm attr backup binex build cmp copy \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode xtclut \
 		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) play \
-		bootos9 fnxinfo fnxreset pick rogue
+		bootos9 fnxinfo fnxreset pick rogue 
 
 SHELLMODS	= shellplus echo iniz link load save unlink
 
@@ -43,7 +43,7 @@ all:	$(DEPENDS) $(CMDS) shell utilpak1
 $(NOSLIB)/net.o:
 	cd $(NOSLIB); make
 
-nrunb:	runb.asm
+runb:	runb.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 	$(MERGE) $@ $(SUBS)>$@.tmp
 	$(RM) $@
