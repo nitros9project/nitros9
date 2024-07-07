@@ -487,11 +487,14 @@ CS_EN               equ       %00000001
 * F256 text screen definitions
 *
 TXT.Base            equ       $FFC0
+VKY_LAYER_CTRL_0    equ	      $FFC2
+VKY_LAYER_CTRL_1    equ       $FFC3
+* The following are registers indicies based on TXT.Base
                     org       0
 MASTER_CTRL_REG_L   rmb       1
 MASTER_CTRL_REG_H   rmb       1
-VKY_RESERVED_00     rmb       1
-VKY_RESERVED_01     rmb       1
+VKY_LAYER_CTRL_L    rmb       1
+VKY_LAYER_CTRL_H    rmb       1
 BORDER_CTRL_REG     rmb       1         bit[0] - enable (1 by default)  bit[4..6]: X scroll offset (will scroll left) (acceptable values: 0..7)
 BORDER_COLOR_B      rmb       1
 BORDER_COLOR_G      rmb       1
@@ -540,7 +543,7 @@ Vky_Cursor_Flash_Rate0 equ       $02
 Vky_Cursor_Flash_Rate1 equ       $04
 Vky_Cursor_Flash_Disable equ       $08
 
-FON_SET             equ       %0010000
+FON_SET             equ       %00100000
 FON_OVLY            equ       %00010000
 MON_SLP             equ       %00001000
 DBL_Y               equ       %00000100

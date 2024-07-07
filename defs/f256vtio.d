@@ -90,8 +90,8 @@ V.BM2Cl_En	    RMB	      1			  bitmap2 |clut|enable|
 * CLUT - need to store mirror of CLUT data so switching windows will work
 * Store block# where high 4k is CLUT mirror.  Could store in last 4k of BM blocks.
 
-V.CLUTBlk	    RMB	      1			  Block where high 4k mirrored CLUT data,0=Default CLUT
-V.CLUT              RMB       1			  Which CLUTs are active 00001111
+V.CLUTBlk	    RMB	      1			  block where high 4k mirrored CLUT data,0=Default CLUT
+V.CLUT              RMB       1			  which CLUTs are active 00001111
 
 * TILE MAPS - 3 tile maps.  Registers are 12 bytes, 2 are reserved and
 * 3 are the plysical address for the Tile Set.  Use Blk# for address here.
@@ -100,22 +100,22 @@ V.CLUT              RMB       1			  Which CLUTs are active 00001111
 * and Tile Set is set in the actual tile map data, not here.
 * A tile map could be 2.4K (40x30) to 132K (256x256)
 
-V.TM0	    	    RMB	     1	     	  	  Bit4 is Tile Size (1=8x8,0=16x16) Bit0 is enable
-V.TM0Blk	    RMB	     1			  Starting Block# of Tile Map
-V.TM0MapX	    RMB	     1			  Map Size X (max 255)
-V.TM0MapY	    RMB	     1			  Map Size Y (max 255)
+V.TM0	    	    RMB	     1	     	  	  bit4 is yile size (1=8x8,0=16x16) bit0 is enable
+V.TM0Blk	    RMB	     1			  starting block# of Tile Map
+V.TM0MapX	    RMB	     1			  map size X (max 255)
+V.TM0MapY	    RMB	     1			  map size Y (max 255)
 V.TM0ScrlX          RMB      2			  2 bytes for scroll X info
 V.TM0ScrlY          RMB      2			  2 bytes for scroll Y info		    
-V.TM1	    	    RMB	     1	     	  	  Bit4 is Tile Size (1=8x8,0=16x16) Bit0 is enable
-V.TM1Blk	    RMB	     1			  Starting Block# of Tile Set
-V.TM1MapX	    RMB	     1			  Map Size X (max 255)
-V.TM1MapY	    RMB	     1			  Map Size Y (max 255)
+V.TM1	    	    RMB	     1	     	  	  bit4 is tile size (1=8x8,0=16x16) bit0 is enable
+V.TM1Blk	    RMB	     1			  starting block# of tile set
+V.TM1MapX	    RMB	     1			  map size X (max 255)
+V.TM1MapY	    RMB	     1			  map size Y (max 255)
 V.TM1ScrlX          RMB      2			  2 bytes for scroll X info
 V.TM1ScrlY          RMB      2			  2 bytes for scroll Y info
-V.TM2	    	    RMB	     1	     	  	  Bit4 is Tile Size (1=8x8,0=16x16) Bit0 is enable
-V.TM2Blk	    RMB	     1			  Starting Block# of Tile Set
-V.TM2MapX	    RMB	     1			  Map Size X (max 255)
-V.TM2MapY	    RMB	     1			  Map Size Y (max 255)
+V.TM2	    	    RMB	     1	     	  	  bit4 is tile size (1=8x8,0=16x16) bit0 is enable
+V.TM2Blk	    RMB	     1			  starting block# of tile set
+V.TM2MapX	    RMB	     1			  map size X (max 255)
+V.TM2MapY	    RMB	     1			  map size Y (max 255)
 V.TM2ScrlX          RMB      2			  2 bytes for scroll X info
 V.TM2ScrlY          RMB      2			  2 bytes for scroll Y info
 
@@ -123,32 +123,32 @@ V.TM2ScrlY          RMB      2			  2 bytes for scroll Y info
 * a Square bit to determine if Tile Set is LINEAR or SQUARE
 * Tile Sets are either 16K (8x8) or 64K (16x16)
 
-V.TS0Blk	    RMB	     1 	    	   	  Starting Block# of Tile Set
-V.TS0SQR	    RMB	     1			  Square or linear (bit 3)
-V.TS1Blk	    RMB	     1 	    	   	  Starting Block# of Tile Set
-V.TS1SQR	    RMB	     1			  Square or linear (bit 3)
-V.TS2Blk	    RMB	     1 	    	   	  Starting Block# of Tile Set
-V.TS2SQR	    RMB	     1			  Square or linear (bit 3)
-V.TS3Blk	    RMB	     1 	    	   	  Starting Block# of Tile Set
-V.TS3SQR	    RMB	     1			  Square or linear (bit 3)
-V.TS4Blk	    RMB	     1 	    	   	  Starting Block# of Tile Set
-V.TS4SQR	    RMB	     1			  Square or linear (bit 3)
-V.TS5Blk	    RMB	     1 	    	   	  Starting Block# of Tile Set
-V.TS5SQR	    RMB	     1			  Square or linear (bit 3)
-V.TS6Blk	    RMB	     1 	    	   	  Starting Block# of Tile Set
-V.TS6SQR	    RMB	     1			  Square or linear (bit 3)
-V.TS7Blk	    RMB	     1 	    	   	  Starting Block# of Tile Set
-V.TS7SQR	    RMB	     1			  Square or linear (bit 3)
+V.TS0Blk	    RMB	     1 	    	   	  starting block# of tile set
+V.TS0SQR	    RMB	     1			  square or linear (bit 3)
+V.TS1Blk	    RMB	     1 	    	   	  starting block# of tile set
+V.TS1SQR	    RMB	     1			  square or linear (bit 3)
+V.TS2Blk	    RMB	     1 	    	   	  starting block# of tile set
+V.TS2SQR	    RMB	     1			  square or linear (bit 3)
+V.TS3Blk	    RMB	     1 	    	   	  starting block# of tile set
+V.TS3SQR	    RMB	     1			  square or linear (bit 3)
+V.TS4Blk	    RMB	     1 	    	   	  starting block# of tile set
+V.TS4SQR	    RMB	     1			  square or linear (bit 3)
+V.TS5Blk	    RMB	     1 	    	   	  starting block# of tile set
+V.TS5SQR	    RMB	     1			  square or linear (bit 3)
+V.TS6Blk	    RMB	     1 	    	   	  starting block# of tile set
+V.TS6SQR	    RMB	     1			  square or linear (bit 3)
+V.TS7Blk	    RMB	     1 	    	   	  starting block# of tile set
+V.TS7SQR	    RMB	     1			  square or linear (bit 3)
 
 * GRAPHICS CURSORS,LINES, COLORS
-V.GCX	            RMB	     2			  Graphics Cursor X
-V.GCY		    RMB	     1			  Graphics Cursor Y
-V.GCOLOR	    RMB	     1			  Graphics Color
-V.LX		    RMB	     2			  Line coordiate for X
-V.LY		    RMB	     1			  Line coordinate for Y
-V.GCADDR	    RMB	     3			  Address of cursor on screen
-V.GCAD8K	    RMB	     2			  Address in 8K window
-V.GMAPBLK	    RMB	     2			  Mapped in Logical address of block
+V.GCX	            RMB	     2			  graphics cursor X
+V.GCY		    RMB	     1			  graphics cursor Y
+V.GCOLOR	    RMB	     1			  graphics color
+V.LX		    RMB	     2			  line coordiate for X
+V.LY		    RMB	     1			  line coordinate for Y
+V.GCADDR	    RMB	     3			  address of cursor on screen
+V.GCAD8K	    RMB	     2			  address in 8K window
+V.GMAPBLK	    RMB	     2			  mapped in logical address of block
 
 
 V.InBuf             RMB       KBufSz              the input buffer
