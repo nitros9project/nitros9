@@ -1343,6 +1343,7 @@ SetStat             ldx       PD.RGS,y            get caller's registers in X
                     beq       SSDMAFill
                     cmpa      #SS.Tone
 		    beq       SSTone
+ ifgt Level-1                                            
 		    cmpa      #SS.AScrn	          SS.AScrn allocated bitmap
 		    lbeq      SSAScrn
 		    cmpa      #SS.DScrn	          SS.DScrn MCR to display text or graphics
@@ -1355,6 +1356,7 @@ SetStat             ldx       PD.RGS,y            get caller's registers in X
 		    lbeq      SSPalet		  SS.Palet assigns palette to bitmap
 		    cmpa      #SS.DfPal
 		    lbeq      SSDfPal		  SS.DfPal defines and populates a CLUT
+  endc                                            
 		    comb                          set the carry
                     ldb       #E$UnkSvc           load the "unknown service" error
                     rts                           return
@@ -1428,6 +1430,7 @@ SSRelea             lda       PD.CPR,y            get the current process ID
                     clr       <V.SSigID,u         else clear process the ID
 ex@                 rts
 
+                    ifgt      Level-1
 ;;; SS.AScrn
 ;;;
 ;;; Allocate a bitmap screen
@@ -1741,7 +1744,7 @@ Blk2Addr            clra                          clear a, block # is in b
                     lslb                          x32 ($20)
                     rola
                     rts
-
+                    endc
 
 
                     emod
