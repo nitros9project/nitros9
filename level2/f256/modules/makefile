@@ -36,7 +36,7 @@ SCF		= scf.mn \
 
 PIPE		= pipeman.mn pipeman_named.mn piper.dr pipe.dd
 
-FONTS	= applefont.sb bannerfont.sb jessefont.sb phoenixegafont.sb msxfont.sb quadrotextfont.sb
+FONTS	= applefont.sb bannerfont.sb jessefont.sb phoenixegafont.sb msxfont.sb msxbannerfont.sb quadrotextfont.sb
 PALETTES  = palette.sb
 
 ALLOBJS		=  $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(PIPE) $(RFM) $(FONTS) $(PALETTES)
