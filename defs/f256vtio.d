@@ -45,6 +45,7 @@ V.DWFore            set       V.EscParms+5
 V.DWBack            set       V.EscParms+6
 V.DWBorder          set       V.EscParms+7
 
+                    ifgt      Level-1                                            
 ********************************************************************
 * vtio Graphics definitions for the F256 - 53 bytes + 
 ********************************************************************
@@ -149,7 +150,7 @@ V.LY		    RMB	     1			  line coordinate for Y
 V.GCADDR	    RMB	     3			  address of cursor on screen
 V.GCAD8K	    RMB	     2			  address in 8K window
 V.GMAPBLK	    RMB	     2			  mapped in logical address of block
-
+                    endc
 
 V.InBuf             RMB       KBufSz              the input buffer
                     RMB       250-.
