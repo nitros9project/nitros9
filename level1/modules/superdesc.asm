@@ -273,6 +273,11 @@ lldrv               equ       *
                     ifne      CC3FPGA
                     fcs       /llcoco3fpga/
                     fcb       0,0,0
+                    else
+                    ifne      LLDUMMY
+                    fcs       /lldummy/
+                    fcb       0,0,0
+                    endc
                     endc
                     endc
                     endc

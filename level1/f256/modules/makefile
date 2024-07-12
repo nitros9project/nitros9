@@ -20,7 +20,8 @@ CLOCKS      = clock clock2_f256
 RBF		= rbf.mn rbdw.dr dwio.sb ddx0.dd x0.dd x1.dd x2.dd x3.dd \
           rbmem.dr c0.dd f0.dd \
 		rbsuper.dr \
-          llfnxsd.sb dds0.dd s0.dd
+          llfnxsd.sb dds0.dd s0.dd \
+		  lldummy.sb s0_dummy.dd
 
 SCF		= scf.mn \
 		vrn.dr nil.dd \
@@ -58,6 +59,9 @@ dds0.dd: rbfnxsddesc.asm
 
 s0.dd: rbfnxsddesc.asm
 	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(FNXSDFLAGS)
+
+s0_dummy.dd: superdesc.asm
+	$(AS) $(AFLAGS) $(ASOUT)$@ $< -DLLDUMMY
 
 # rbmem descriptors
 c0.dd: rbmemdesc.asm

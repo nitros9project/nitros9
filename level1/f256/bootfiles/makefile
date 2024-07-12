@@ -29,6 +29,9 @@ RBSUPER   = $(MD)/rbsuper.dr
 # RBF Foenix SD card low level driver
 RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd
 
+# RBF Dummy low level driver
+RBFDUMMY	= $(MD)/lldummy.sb $(MD)/s0_dummy.dd
+
 # SCF
 SCF		 = $(MD)/scf.mn
 
@@ -98,7 +101,7 @@ BOOTFILE_SD_F256JR = $(KERNEL) \
 BOOTFILE_DW_F256K = $(KERNEL) \
 		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
 		$(RBF) $(RBFDW) $(DWIO) \
-		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
+		$(RBSUPER) $(RBFDUMMY) $(RBMEM) \
 		$(MD)/ddx0.dd \
 		$(SC16550) \
 		$(CLOCK) \
