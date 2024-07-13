@@ -101,7 +101,7 @@ BOOTFILE_SD_F256JR = $(KERNEL) \
 BOOTFILE_DW_F256K = $(KERNEL) \
 		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
 		$(RBF) $(RBFDW) $(DWIO) \
-		$(RBSUPER) $(RBFDUMMY) $(RBMEM) \
+		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
 		$(MD)/ddx0.dd \
 		$(SC16550) \
 		$(CLOCK) \
