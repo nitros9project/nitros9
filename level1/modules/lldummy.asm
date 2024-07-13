@@ -4,13 +4,11 @@
 * This driver exists purely for performance testing. It doesn't interface
 * with any hardware.
 *
-* Test command: date -t; megaread</xx@; date -t 
-*
-* (Assumes date and megaread are loaded into memory.)
-*
-* Date         System               3 run average time in seconds
-* -----------  -------------------  -----------------------------
-* 12-Jul-2024  F256K                4.333
+* Date         System               Megaread 3 run average time
+* -----------  -------------------  ---------------------------
+* 12-Jul-2024  F256K                4.333 seconds
+* 12-Jul-2024  6809 CoCo 3          19.666 seconds
+* 12-Jul-2024  6309 CoCo 3          9.333 seconds
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
