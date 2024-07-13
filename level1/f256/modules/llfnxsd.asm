@@ -236,6 +236,10 @@ l0@                 GetSDByte                     sends $FF
                     decb                          decrement the counter
                     bne       l0@                 branch if there's more
                     puls      d,x,y,pc
+
+EWP                 comb                          set the carry
+                    ldb       #E$WP               write protect error
+                    rts                           return
                                         
 * ll_write - Low level write routine
 *
@@ -265,7 +269,7 @@ ll_write            ldx       V.Port-UOFFSET,u    get the hardware address
                     anda      #SYS_SD_CD          is a card inserted
                     lbne      NOTRDY              branch if not
                     anda      #SYS_SD_WP
-                    lbne      EWP                 write protected, then exit with WP error
+                    bne       EWP                 write protected, then exit with WP error
 * The big write sector loop comes to here.
 lphw                ldd       #CMDWrite           get the write command bytes
                     std       CMDStorage,u        save them to the command buffer
@@ -331,10 +335,6 @@ fl@                 GetSDByte
 * No errors, exit.
 ex@                 clrb                          clear carry
                     rts
-
-EWP                 comb                          set the carry
-                    ldb       #E$WP               write protect error
-                    rts                           return
 
 EWRITE              comb                          set the carry
                     ldb       #E$Write            write error
