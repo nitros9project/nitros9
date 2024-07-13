@@ -119,7 +119,7 @@ ll_read
                     bne       EREAD               branch if not
 lphr                lda       SEC_CNT,u           get our sector count
                     ldd       #CMDRead            and the read command
-                    std       CMDStorage,u        store the ead command and clear the MSB of the address
+                    std       CMDStorage,u        store the read command and clear the MSB of the address
                     ldd       #CMDEnd             get the ending bytes of the command
                     std       SD_SEC_ADD+3,u      clear the LSB of the address and the CRC
 * Setup the SPI to access the card, and send the command.
@@ -229,10 +229,6 @@ TurnLEDOFF          ldb       SYS0
 saveit@             stb       SYS0
                     rts
 
-EWP                 comb                          set the carry
-                    ldb       #E$WP               write protect error
-                    rts                           return
-
 * Blast data to the SD card.
 * Entry:  B = number of times to blast
 BlastSD             pshs      d,x,y
@@ -269,7 +265,7 @@ ll_write            ldx       V.Port-UOFFSET,u    get the hardware address
                     anda      #SYS_SD_CD          is a card inserted
                     lbne      NOTRDY              branch if not
                     anda      #SYS_SD_WP
-                    bne       EWP                 write protected, then exit with WP error
+                    lbne      EWP                 write protected, then exit with WP error
 * The big write sector loop comes to here.
 lphw                ldd       #CMDWrite           get the write command bytes
                     std       CMDStorage,u        save them to the command buffer
@@ -336,6 +332,10 @@ fl@                 GetSDByte
 ex@                 clrb                          clear carry
                     rts
 
+EWP                 comb                          set the carry
+                    ldb       #E$WP               write protect error
+                    rts                           return
+
 EWRITE              comb                          set the carry
                     ldb       #E$Write            write error
                     rts                           return
@@ -347,6 +347,7 @@ NOTRDY              comb                          set the carry
 BMODE               comb                          set the carry
                     ldb       #E$BMode            bad mode error
                     rts                           return
+
 
 * ll_init - Low level init routine
 * Entry:
@@ -381,47 +382,47 @@ ll_init             ldx       V.PORT-UOFFSET,u    load X with the hardware addre
 * Send CMD0.
                     leay      CMD0,pcr            point to the command stream
                     lbsr      SendCmd             send the command
-                    lbcs       NOTRDY              branch if error
+                    bcs       NOTRDY              branch if error
                     anda      #$7E                check if all but bits 7 and 1 are clear
-                    lbne       NOTRDY              branch if not
+                    bne       NOTRDY              branch if not
 
 * Send CMD8.
                     leay      CMD8,pcr            point to the command stream
                     lbsr      SendCmd             send the command
-                    lbcs       NOTRDY              branch if error
+                    bcs       NOTRDY              branch if error
                     anda      #$7E                clear bits 7 and 0
                     cmpa      #$04                illegal command?
-                    lbeq       SDV1                branch if so
+                    lbeq      SDV1                branch if so
                     tsta                          is it 0 (no error)?
-                    lbne       NOTRDY              no, something else... bail
+                    bne       NOTRDY              no, something else... bail
                     lbsr      GetR1               get the response
-                    lbcs       NOTRDY              branch if error
+                    bcs       NOTRDY              branch if error
                     tsta                          is the response 0?
-                    lbne       BMODE               branch if not
+                    bne       BMODE               branch if not
                     lbsr      GetR1               get the response
-                    lbcs       NOTRDY              branch if error
+                    bcs       NOTRDY              branch if error
                     tsta                          is the response 0?
-                    lbne       BMODE               branch if not
+                    bne       BMODE               branch if not
                     lbsr      GetR1               get the response
-                    lbcs       NOTRDY              branch if error
+                    bcs       NOTRDY              branch if error
                     cmpa      #1                  is the response 1?
-                    lbne       BMODE               branch if not
+                    bne       BMODE               branch if not
                     lbsr      GetR1               get the response
-                    lbcs       NOTRDY              branch if error
+                    bcs       NOTRDY              branch if error
                     cmpa      #$AA                is the response $AA?
-                    lbne       BMODE               branch if not
+                    bne       BMODE               branch if not
 
 * Send ACMD41 by first CMD55.
 loop41V2            leay      CMD55,pcr           point to the command stream
                     lbsr      SendCmd             send the command
-                    lbcs      NOTRDY              branch if error
+                    bcs       NOTRDY              branch if error
                     anda      #$7E                are bits 6-1 clear?
-                    lbne      BMODE               branch if not
+                    bne       BMODE               branch if not
 
 * Then send ACMD41.
                     leay      ACMD41V2,pcr        point to the command stream
                     lbsr      SendCmd             send the command
-                    lbcs      NOTRDY              branch if error
+                    bcs       NOTRDY              branch if error
                     tsta                          is the response 0?
                     beq       Send58              if so, then send CMD58
                     cmpa      #$01                is it 1?
