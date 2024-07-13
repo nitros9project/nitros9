@@ -48,7 +48,7 @@ RBF		= rbf.mn \
 		ddr0_8k.dd ddr0_96k.dd ddr0_128k.dd ddr0_192k.dd md.dd \
 		myram.dr mr0.dd \
 		ddx0.dd x0.dd x1.dd x2.dd x3.dd \
-		rbsuper.dr lltc3.dr llide.dr llcocosdc.dr \
+		rbsuper.dr lltc3.dr llide.dr llcocosdc.dr lldummy.dr s0_dummy.dd \
 		ddi0_ide.dd i0_ide.dd i1_ide.dd ih_ide.dd \
 		dds0_tc3.dd s0_tc3.dd s1_tc3.dd s2_tc3.dd s3_tc3.dd s4_tc3.dd \
 		s5_tc3.dd s6_tc3.dd sh_tc3.dd \
@@ -449,6 +449,10 @@ i1_ide.dd: superdesc.asm
 
 ih_ide.dd: superdesc.asm
 	$(AS) $(ASOUT)$@ $< $(IDEFLAGS) $(HDBDOS)
+
+# Dummy descriptor
+s0_dummy.dd: superdesc.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DLLDUMMY=1
 
 # CoCo SDC Descriptors
 ddsd0_cocosdc.dd: superdesc.asm
