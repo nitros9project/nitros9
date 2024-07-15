@@ -51,7 +51,7 @@ rev                 set       $07
 initsize            equ       *
 
 name                equ       *
-                    fcs       /t2/
+                    fcs       /t0/
 mgrnam              fcs       /scf/
 drvnam              fcs       /sc16550/
 
