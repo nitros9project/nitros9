@@ -121,42 +121,45 @@ BellTone            tst       D.SndPrcID
                     ldb       MAPSLOT             get the MMU slot we'll map to
                     sta       MAPSLOT             store it in the MMU slot to map it in
 * Turn off attenuation for tones 2, 3, and noise channel.
-                    lda       #%10011111
-                    sta       MAPADDR+PSG.Base
-                    lda       #%10111111
-                    sta       MAPADDR+PSG.Base
-                    lda       #%11111111
-                    sta       MAPADDR+PSG.Base
+                    lda       #%10111111          set tone 2 attenuation to 0
+                    ldx       #MAPADDR+PSG.Base
+                    sta       ,x
+                    lda       #%11011111          set tone 3 attenuation to 0
+                    sta       ,x
+                    lda       #%11111111          set noise attenuation to 0
+                    sta       ,x
 * Turn on PSG.
                     lda       1,s                 get the volume byte from the stack
                     coma                          complement since attenuation is inverted on the PSG
                     anda      #%00001111          turn off all but attenuation bits for tone 1
-                    ora       #%10010000          set latch bit and attenuation bit
-                    sta       MAPADDR+PSG.Base           store in PSG hardware
+                    ora       #%10010000          set latch bit and attenuation control bit for tone 1
+                    sta       ,x                  store in PSG hardware
 
 * Set frequency of tone
                     pshs      b save original MAP slot value                    
                     tfr       y,d transfer frequency over
-                    pshs      d           only 10 bits are significant
-                    andb      #%00001111  clear all but bits 0-3
-                    orb       #%10000000  set the latch to 1 for tone 1         
-                    stb       MAPADDR+PSG.Base send it to the hardware
-                    puls      d obtain the value again
-                    lsrb shift the...
-                    lsrb first four...
-                    lsrb bits out...
-                    lsrb of the way...
-                    lsla  shift bits...
-                    lsla 9-8...
-                    lsla  up to...
-                    lsla the upper nibble
-                    anda      #%00110000 clear 
-                    pshs      a save on the stack
-                    orb       ,s+ OR in with bits 7-4
-                    stb       MAPADDR+PSG.Base
-                    puls      b get the original MAP slot value
-                    stb       MAPSLOT restore it to the hardware
-                    lda       V.BUSY,u            Get active process ID
+                    coma
+                    comb
+                    pshs      d                   only 10 bits are significant
+                    andb      #%00001111          clear all but bits 0-3
+                    orb       #%10000000          set the latch to 1 for tone 1         
+                    stb       ,x                  send it to the hardware
+                    puls      d                   obtain the value again
+                    lsrb                          shift the...
+                    lsrb                          first four...
+                    lsrb                          bits out...
+                    lsrb                          of the way...
+                    lsla                          shift bits...
+                    lsla                          9-8...
+                    lsla                          up to...
+                    lsla                          the upper nibble
+                    anda      #%00110000          clear all other bits
+                    pshs      a                   save on the stack
+                    orb       ,s+                 OR in with bits 7-4
+                    stb       ,x
+                    puls      b                   get the original MAP slot value
+                    stb       MAPSLOT             restore it to the hardware
+                    lda       V.BUSY,u            get active process ID
                     sta       D.SndPrcID
                     ldx       #$0000
                     os9       F$Sleep

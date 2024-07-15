@@ -93,7 +93,7 @@ PLAYSNG
      lbsr PUTCR
  
  pshs cc
-* orcc #IntMasks
+ orcc #IntMasks
 
 .1?
  pshs x
@@ -107,7 +107,7 @@ PLAYSNG
 .2?	ldb	,x+
 	lbsr PSG_WRITE
  pshs x
- ldx #$02
+ ldx #$2000
  bsr Delay
  puls x
 	deca
@@ -117,10 +117,9 @@ PLAYSNG
  puls cc,pc
 
 Delay 
-  os9 F$Sleep
-*l@ leax -1,x
-* cmpx #$0000
-* bne l@
+l@ leax -1,x
+ cmpx #$0000
+ bne l@
  rts
  
 IntSvc

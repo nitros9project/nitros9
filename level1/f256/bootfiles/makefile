@@ -30,7 +30,7 @@ RBSUPER   = $(MD)/rbsuper.dr
 RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd
 
 # RBF Dummy low level driver
-RBFDUMMY	= $(MD)/lldummy.sb $(MD)/s0_dummy.dd
+RBFDUMMY	= $(MD)/lldummy.sb $(MD)/s0_v.dd
 
 # SCF
 SCF		 = $(MD)/scf.mn
@@ -40,7 +40,7 @@ SCVT_F256K  = $(MD)/vtio.dr $(MD)/keydrv_f256k.sb $(MD)/term.dt
 SCVT_F256JR = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/term.dt
 
 # SCF 16550 serial driver
-SC16550  = $(MD)/sc16550.dr $(MD)/t2_sc16550.dd
+SC16550  = $(MD)/sc16550.dr $(MD)/t0_sc16550.dd
 
 # Font & palette
 FONT		 = $(MD)/bannerfont.sb
@@ -49,7 +49,7 @@ PALETTE	 = $(MD)/palette.sb
 # SCF DriveWire virtual networking/window driver
 SCDWV = 	$(MD)/scdwv.dr $(SCDWV_NET) $(SCDWV_WIN)
 
-SC16550 =   $(MD)/sc16550.dr $(MD)/t2_sc16550.dd
+SC16550 =   $(MD)/sc16550.dr $(MD)/t0_sc16550.dd
 
 # SCF DriveWire virtual networking descriptors
 SCDWV_NET  = $(MD)/n_scdwv.dd $(MD)/n1_scdwv.dd \
