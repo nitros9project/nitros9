@@ -33,7 +33,7 @@ RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd
 SCF		 = $(MD)/scf.mn
 
 # SCF 16550
-SC16550	 = $(MD)/sc16550.dr $(MD)/t2_sc16550.dd
+SC16550	 = $(MD)/sc16550.dr $(MD)/t0_sc16550.dd
 
 # SCF video terminal
 SCVT_F256K	 = $(MD)/vtio.dr $(MD)/keydrv_f256k.sb $(MD)/term.dt
