@@ -182,5 +182,4 @@ btod2               andb      #$0F
                     stb       ,y+
                     rts
                     
-* S                    
                     endsection
