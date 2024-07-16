@@ -8,18 +8,21 @@
 ;;;         X = The address of the buffer that holds the string.
 ;;;         Y = The maximum buffer size minus 1 (for the null character).
 ;;;
+;;; Exit:   Y = The length of the read string.
+;;;
 ;;; Error:  B = A non-zero error code.
 ;;;        CC = Carry flag set to indicate error.
 ;;;
 ;;; The string entered must end with an end-of-record char (usually a $0D). The null is appended for ease in string handling.
 
-FGETS_NOCR:         pshs      d,x
+FGETS_NOCR:         pshs      a,x
                     bsr       FGETS
                     bcs       bye
                     tfr       y,d
+                    leay      -1,y
                     leax      -1,x
                     clr       d,x
-bye                 puls      d,x,pc
+bye                 puls      a,x,pc
 
 ;;; FGETS
 ;;;
@@ -28,6 +31,8 @@ bye                 puls      d,x,pc
 ;;; Entry:  A = The path to read the string from.
 ;;;         X = The address of the buffer that holds the string.
 ;;;         Y = The maximum buffer size minus 1 (for the null character).
+;;;
+;;; Exit:   Y = The length of the read string.
 ;;;
 ;;; Error:  B = A non-zero error code.
 ;;;        CC = Carry flag set to indicate error.
@@ -40,7 +45,6 @@ FGETS:              pshs      a,x
                     tfr       y,d
                     clr       d,x                 add null
                     clrb                          no error..
-
 exit                puls      a,x,pc
 
                     endsect
