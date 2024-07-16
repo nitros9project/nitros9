@@ -14,6 +14,9 @@ KERNEL	= $(MD)/krn $(MD)/krnp2 $(MD)/init $(MD)/ioman
 # DriveWire support
 DWIO		= $(MD)/dwio.sb
 
+# PIPE
+PIPE	= $(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd
+
 # RBF
 RBF		= $(MD)/rbf.mn
 
@@ -74,6 +77,7 @@ CLOCK	= $(MD)/clock $(MD)/clock2_f256
 # the F256's text and CLUT blocks into $E000-$FFFF.
 BOOTFILE_SD_F256K = $(KERNEL) \
 		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
+		$(PIPE) \
 		$(RBF) $(RBFDW) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
 		$(MD)/dds0.dd \
@@ -87,6 +91,7 @@ BOOTFILE_SD_F256K = $(KERNEL) \
 # the F256's text and CLUT blocks into $E000-$FFFF.
 BOOTFILE_SD_F256JR = $(KERNEL) \
 		$(SCF) $(SCVT_F256JR) $(FONT) $(PALETTE) \
+		$(PIPE) \
 		$(RBF) $(RBFDW) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
 		$(MD)/dds0.dd \
@@ -100,6 +105,7 @@ BOOTFILE_SD_F256JR = $(KERNEL) \
 # the F256's text and CLUT blocks into $E000-$FFFF.
 BOOTFILE_DW_F256K = $(KERNEL) \
 		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
+		$(PIPE) \
 		$(RBF) $(RBFDW) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
 		$(MD)/ddx0.dd \
@@ -113,6 +119,7 @@ BOOTFILE_DW_F256K = $(KERNEL) \
 # the F256's text and CLUT blocks into $E000-$FFFF.
 BOOTFILE_DW_F256JR = $(KERNEL) \
 		$(SCF) $(SCVT_F256JR) $(FONT) $(PALETTE) \
+		$(PIPE) \
 		$(RBF) $(RBFDW) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
 		$(MD)/ddx0.dd \

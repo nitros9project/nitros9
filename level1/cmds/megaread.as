@@ -1,6 +1,5 @@
 ***********************************************************************
 * MegaRead - Disk Performance Utility
-* $Id$
 *
 * Modified from an original program by Caveh Jalali
 * Edt/Rev  YYYY/MM/DD  Modified by
