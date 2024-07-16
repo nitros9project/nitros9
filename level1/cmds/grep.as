@@ -34,12 +34,12 @@ params              rmb       200
                     
                     section   code
 
-__start             clr       path,u              clear path (assume standard input)
-                    clr       numflag,u
-                    clr       linecnt,u
-                    clr       linecnt+1,u
-                    clr       linecnt+2,u
-                    clr       maskbyte,u          assume no case masking
+__start             clr       <path               clear path (assume standard input)
+                    clr       <numflag
+                    clr       <linecnt
+                    clr       <linecnt+1
+                    clr       <linecnt+2
+                    clr       <maskbyte           assume no case masking
 
 Parse               lda       ,x+                 get char off cmd line
                     cmpa      #C$SPAC             is it a space?
@@ -56,25 +56,25 @@ Parse2              lda       ,x+                 get char after dash
                     anda      #$DF                and mask it
                     cmpa      #'N                 is it an N for line numbers?
                     bne       Parse3              nope, try I
-                    sta       numflag,u           set the line numbers flag
+                    sta       <numflag            set the line numbers flag
                     bra       Parse               and resume parsing
 Parse3              cmpa      #'I                 is it a I for case insensitivity?
                     bne       Done                nope, bad option, we're done
                     lda       #%00100000          assume masking
-                    sta       maskbyte,u          else clear the mask byte
+                    sta       <maskbyte           else clear the mask byte
                     bra       Parse               and go back to parsing routine
 
-GetStr              leay      pattern,u           point to pattern buffer
-                    clr       pattlen,u           and clear the size variable
+GetStr              leay      <pattern,u          point to pattern buffer
+                    clr       <pattlen            and clear the size variable
 
 Store               lda       ,x+                 get char
                     cmpa      #'"                 is it the ending quote?
                     beq       ChckFile            yep, see if a file was specified
                     cmpa      #C$CR               is it a CR?
                     beq       Done                yep, in middle of quote! we're done
-                    ora       maskbyte,u          else mask char
+                    ora       <maskbyte           else mask char
                     sta       ,y+                 and save it in buffer
-                    inc       pattlen,u           increment the size by one
+                    inc       <pattlen            increment the size by one
                     bra       Store               and get the next char
 
 EOF                 cmpb      #E$EOF              is error an end-of-file?
@@ -95,59 +95,59 @@ ChckFile            lda       ,x                  get char
 GetFile             lda       #READ.              open for read
                     os9       I$Open
                     bcs       Error
-                    sta       path,u              and save the path
+                    sta       <path               and save the path
 
 ReadIn              ldy       #maxlinelen         maximum characters to read
-                    leax      line,u              point X to line buffer
-                    lda       path,u              load A with path number
+                    leax      <line,u             point X to line buffer
+                    lda       <path               load A with path number
                     lbsr      FGETS_NOCR
                     bcs       EOF                 if error, check for EOF
                     tfr       y,d                 transfer read size into D (we only care about B)
-                    subb      pattlen,u           subtract pattern length from length of line just read in
+                    subb      <pattlen            subtract pattern length from length of line just read in
                     bmi       ReadIn              if negative, line is longer than pattern
-                    stb       stoppos,u           else B is the end position of our search
-                    clr       startpos,u          clear the starting pos
+                    stb       <stoppos            else B is the end position of our search
+                    clr       <startpos           clear the starting pos
                     
 * count lines in BCD, 6-digit version (3 bytes)
-                    lda       linecnt+2,u
+                    lda       <linecnt+2
                     inca
                     daa
-                    sta       linecnt+2,u
+                    sta       <linecnt+2
                     bcc       Match
-                    adca      linecnt+1,u
+                    adca      <linecnt+1
                     daa
-                    sta       linecnt+1,u
+                    sta       <linecnt+1
                     bcc       Match
-                    adca      linecnt,u
+                    adca      <linecnt
                     daa
-                    sta       linecnt,u
+                    sta       <linecnt
 
 * Comparison
 * X = the line to search
 * startpos,u = position in line to start our search
 * stoppos,u = position in line to stop our search
 * pattlen,u = the length of our search pattern
-Match               lda       startpos,u          get the start position
-                    cmpa      stoppos,u           is it at or past the stop position?
+Match               lda       <startpos           get the start position
+                    cmpa      <stoppos            is it at or past the stop position?
                     bgt       ReadIn              if so, we're done
-                    inc       startpos,u          increment for next time
-                    ldb       pattlen,u           load B with pattern size
-                    stb       tmpval,u            save it as temporary
-                    leay      pattern,u           point Y to pattern
+                    inc       <startpos           increment for next time
+                    ldb       <pattlen            load B with pattern size
+                    stb       <tmpval             save it as temporary
+                    leay      <pattern,u          point Y to pattern
 l@                  ldb       a,x                 else load A with char at X (line)
-                    orb       maskbyte,u          mask it
+                    orb       <maskbyte           mask it
                     pshs      b                   save it on the stack
                     ldb       ,y+                 load A with char at Y (pattern)
                     cmpb      ,s+                 compare it with saved byte
                     bne       Match               not the same, start over
                     inca                          increment A as index into next char to compare
-                    dec       tmpval,u            decrement pattern length
+                    dec       <tmpval             decrement pattern length
                     bne       l@                  continue if we have more pattern to match
                     
-doline              tst       numflag,u
+doline              tst       <numflag
                     bne       bcdtoasc
 
-PrnLine             leax      line,u              point to line buffer
+PrnLine             leax      <line,u             point to line buffer
 PrnLine2
                     lbsr      PUTS                print the string
                     lbsr      PUTCR               put a CR
@@ -155,15 +155,15 @@ PrnLine2
                     lbra      ReadIn              else get next line
 
 bcdtoasc
-                    leay      linestr,u
-                    ldb       linecnt,u
+                    leay      <linestr,u
+                    ldb       <linecnt
                     bsr       btod                convert all 6 digits
-                    ldb       linecnt+1,u
+                    ldb       <linecnt+1
                     bsr       btod
-                    ldb       linecnt+2,u
+                    ldb       <linecnt+2
                     bsr       btod
                     clr       ,y
-                    leax      linestr+1,u         but print only last 5
+                    leax      <linestr+1,u        but print only last 5
 * to print 6 digits change previous line to leax linestr,u
                     lbsr      PUTS                print the number
                     ldb       #':
