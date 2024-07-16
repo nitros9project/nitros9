@@ -110,7 +110,7 @@ ReadIn              ldy       #maxlinelen         maximum characters to read
                     
 * count lines in BCD, 6-digit version (3 bytes)
                     lda       linecnt+2,u
-                    adda      #1
+                    inca
                     daa
                     sta       linecnt+2,u
                     bcc       Match
