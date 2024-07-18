@@ -9,16 +9,8 @@ AFLAGS         += --includedir=$(3RDPARTY)/packages/basic09 --includedir=$(3RDPA
 LFLAGS         += -L $(NITROS9DIR)/lib -lnet -lf256 -lalib -lf256snd
 
 BASIC09		= basic09 runb inkey syscall foenix
-BF  		= bf
-CMDS		= asm attr backup binex build cmp copy \
-		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
-		display dmode dsave dump echo edit error exbin format \
-		free grep help ident iniz irqs link list load login makdir \
-		megaread mdir merge mfree padrom park printerr procs prompt pwd pxd \
-		rename save setime shellplus shell_21 sleep \
-		tee tmode touch tsmon unlink verify xmode \
-		inetd telnet dw httpd $(BASIC09) $(BF) play \
-		bootos9 fnxinfo fnxreset pick
+BF  			= bf
+CMDS			= $(STD_CMDS) bootos9 fnxinfo fnxreset play $(BASIC09) $(BF)
 
 ALLOBJS		= $(CMDS)
 

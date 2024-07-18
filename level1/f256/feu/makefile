@@ -225,7 +225,7 @@ feu/startup: FORCE
 FORCE: ;
 
 clean:
-	$(RM) $(ALLOBJS) *.o *.tmp vectors trampoline *.list *.map *.dsk bulk.csv f0_? booter_? *.zip
+	$(RM) $(ALLOBJS) *.o *.tmp vectors trampoline *.list *.map *.dsk bulk.csv f0_? booter_? *.zip feu/startup
 
 feu: feu.o
 	$(LINKER) $(LFLAGS) $^ -o$@

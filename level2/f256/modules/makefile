@@ -63,7 +63,7 @@ s0.dd: rbfnxsddesc.asm
 
 # rbmem descriptors
 ddc0.dd: rbmemdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDD=1 -DDNum=0
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0 -DCART=1 -DDD=1
 
 c0.dd: rbmemdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0 -DCART=1
@@ -210,7 +210,7 @@ clock: clock.asm
 
 clean:
 	$(CD) kernel; make $@
-	$(RM) $(ALLOBJS) *.list *.map
+	$(RM) $(ALLOBJS) *.o *.list *.map
 
 showobjs:
 	@$(ECHO) $(ALLOBJS)

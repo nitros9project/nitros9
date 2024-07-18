@@ -1,0 +1,9 @@
+* Boot script menu
+c - Boot OS-9 from expansion cartridge
+bootos9 /c0/OS9boot
+s - Boot OS-9 from SD card
+bootos9 /s0/OS9boot
+s - Boot OS-9 from DriveWire
+bootos9 /x0/OS9boot
+q - Return to main menu
+-

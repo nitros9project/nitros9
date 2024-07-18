@@ -1,0 +1,5 @@
+* Main script menu
+o,Boot OS-9,boot.fscpt
+d,Debugger,debug
+s,Shell,shell
+r,Reset,fnxreset

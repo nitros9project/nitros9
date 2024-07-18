@@ -1,0 +1,18 @@
+@BAWK
+Syntax: bawk [<opts>] <format> <path> [<path> ...]
+Usage : Parse and process fields in lines.
+
+Opts  :
+  -a# = anchor start field to #th column
+  -d? = optional delimiter you wish to use (space is default)
+  -i  = print lines even if the field doesn't exist
+  -l  = print the name of the currently processed file
+  -f  = fork shell with expanded line as parameter; don't print line
+  -F  = fork shell with expanded line asparameter; print line
+
+Examples:
+   Kill all tsmon processes:
+       procs | fgrep -i "tsmon" | bawk -f "kill $1"
+
+   Print the date in a different order:
+       date | bawk -d, "$2 $1 $3"

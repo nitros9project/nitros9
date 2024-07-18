@@ -18,7 +18,7 @@ SYSMODS		= ioman init sysgo
 CLOCKS      = clock clock2_f256
 
 RBF		= rbf.mn rbdw.dr dwio.sb ddx0.dd x0.dd x1.dd x2.dd x3.dd \
-          rbmem.dr c0.dd f0.dd \
+          rbmem.dr ddc0.dd c0.dd f0.dd \
 		rbsuper.dr \
           llfnxsd.sb dds0.dd s0.dd \
 		  lldummy.sb s0_dummy.dd
@@ -64,6 +64,9 @@ s0_dummy.dd: superdesc.asm
 	$(AS) $(AFLAGS) $(ASOUT)$@ $< -DLLDUMMY
 
 # rbmem descriptors
+ddc0.dd: rbmemdesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DCART=1 -DDNum=0 -DDD=1
+
 c0.dd: rbmemdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DCART=1 -DDNum=0
 
@@ -193,7 +196,7 @@ clock_60hz: clock.asm
 
 clean:
 	$(CD) kernel; make $@
-	$(RM) $(ALLOBJS) *.list *.map
+	$(RM) $(ALLOBJS) *.o *.list *.map
 
 showobjs:
 	@$(ECHO) $(ALLOBJS)
@@ -218,5 +221,4 @@ showpipe:
 
 identify:
 	$(IDENT_SHORT) $(ALLOBJS)
-
 

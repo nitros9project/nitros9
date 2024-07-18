@@ -21,15 +21,10 @@ BASIC09	= basic09 runb inkey syscall foenix
 BF      = bf
 CPM     = cpm
 CMDS_DW = inetd dw telnet httpd
-CMDS    = asm attr backup binex build cmp copy \
-		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
-		display dmem dmode dsave dump echo edit error exbin \
-		format free fstatus help ident iniz irqs link list load login \
-		makdir mdir megaread merge mfree minted mmap modpatch padrom park \
-		pmap proc procs prompt pwd pxd rename save setime shellplus \
-		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode xtclut \
+
+CMDS		= $(STD_CMDS_L2) fstatus mmap pmap proc smap xtclut \
 		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) play \
-		bootos9 fnxinfo fnxreset pick rogue 
+		bootos9 fnxinfo fnxreset rogue 
 
 SHELLMODS	= shellplus echo iniz link load save unlink
 
