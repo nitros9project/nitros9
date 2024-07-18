@@ -45,6 +45,8 @@ REVOFF              equ       $1f21
 Name                fcs       /more/
                     fcb       2
 
+maxlinelen          equ       250
+
 Path                rmb       1
 Response            rmb       1
 XH                  rmb       1
@@ -53,7 +55,7 @@ YH                  rmb       1
 YL                  rmb       1
 LFlag               rmb       1
 FilePtr             rmb       2
-Buffer              rmb       250
+Buffer              rmb       maxlinelen
 FileBuf             rmb       60
 Stack               rmb       200
 
@@ -134,11 +136,11 @@ Start               pshs      x                   put away X temporarily,
                     leax      IntSvc,pc           point to the interrupt service routine
                     os9       F$Icpt              and make the system aware of it
                     puls      x                   then get X back for processing
-                    clr       Path                Clear the path (assume stdin)
+                    clr       Path                clear the path (assume stdin)
                     clr       LFlag
                     bsr       GetSize
 
-Parse               lda       ,x+                 Parsing of the line is done here
+Parse               lda       ,x+                 parsing of the line is done here
                     cmpa      #C$SPAC
                     beq       Parse
                     cmpa      #'-
@@ -164,7 +166,7 @@ IsItW               cmpa      #'W
                     sta       XH
                     bra       Parse
 
-TestFlag            leax      -1,x                Here, we test to see if the -l
+TestFlag            leax      -1,x                here, we test to see if the -l
                     tst       LFlag               flag is set (to display the file
                     bne       TestF2              header)  If so, we print it, else
                     bsr       OpenFile
@@ -180,7 +182,7 @@ TestF2              pshs      x                   we continue with reading...
                     blt       ShowMess            if so, time to show prompt
                     bra       ReadLine            else read the line
 
-OpenFile            lda       #Read.              Prepare for reading
+OpenFile            lda       #READ.              Prepare for reading
                     os9       I$Open              Then open the file
                     bcs       Error               Exit on error
                     stx       FilePtr             Save X for later use
@@ -193,36 +195,34 @@ Error               os9       F$Exit
 
 Cycle               lda       YL                  Get the low order byte
                     sta       YH                  and use the high as a counter
-                    bsr       PutCR
+PutCR               leax      CR,pc
+                    lda       #1
+                    ldy       #1
+                    os9       I$Write
+                    bcs       Error
 
-ReadLine            lda       Path                Get the path
-                    ldy       #250                max chars read = 250
+ReadLine            lda       Path                get the path
+                    ldy       #maxlinelen         maximum characters to read
                     leax      Buffer,u            point to the buffer
                     os9       I$ReadLn            and read the line
                     bcs       EOF                 if error, check for EOF
-                    tst       XH                  Is high order byte set?
-                    beq       WriteOut            Nope, continue as normal
-                    pshs      x                   else loop until end of the
                     ldb       XH                  string and place a CR at the
-Loop                leax      1,x                 end.
-                    decb                          This is unnecessary if the line
-                    bne       Loop                is less than XH, but doesn't slow
+                    beq       WriteOut            nope, continue as normal
                     lda       #C$CR               down the processing considerably
-                    sta       ,x                  and would take longer if we actually
-                    puls      x                   checked to see if a CR existed.
+                    sta       b,x                 and would take longer if we actually
 
-WriteOut            lda       #1                  Prepare to write to stdout
-                    os9       I$WritLn            Write!
+WriteOut            lda       #1                  prepare to write to stdout
+                    os9       I$WritLn            write!
                     bcs       Error               if error, leave
                     dec       YH                  else decrement the counter
                     bne       ReadLine            if not 0, more lines to show
 
-ShowMess            leax      Message,pc          Prepare to show message
+ShowMess            leax      Message,pc          prepare to show message
                     ldy       #MessLen
                     lda       #2                  to stderr...
                     os9       I$Write             write it!
                     bcs       Error
-                    lda       #2                  Now get response
+                    lda       #2                  now get response
                     ldy       #1                  of one character
                     leax      Response,u          from stderr
                     os9       I$Read
@@ -230,44 +230,37 @@ ShowMess            leax      Message,pc          Prepare to show message
                     bsr       KillLine
                     bra       TestInp
 
-PutCR               leax      CR,pc
-                    lda       #1
-                    ldy       #1
-                    os9       I$Write
-                    bcs       Error
-                    rts
-
-KillLine            lda       #2                  Here we send a delete line char
+KillLine            lda       #2                  here we send a delete line char
                     ldy       #1                  to clean the prompt.
                     leax      DelLine,pc
                     os9       I$Write
                     bcs       Error
                     rts
 
-EOF                 cmpb      #E$EOF              Check for end-of-file
-                    bne       Error               If not, exit w/ error
+EOF                 cmpb      #E$EOF              check for end-of-file
+                    bne       Error               if not, exit w/ error
 EOF2                lda       Path                else close the path
                     os9       I$Close
-                    tst       Path                If the path is stdin, we can quit
+                    tst       Path                if the path is stdin, we can quit
                     lbeq      Done
                     ldx       FilePtr
                     lbra      Parse               command line.
 
-TestInp             lda       Response            Here we test the response at prompt
+TestInp             lda       Response            here we test the response at prompt
                     cmpa      #C$CR               is it cr?
                     beq       OneLine             yep, go up one line
                     anda      #$DF                else mask uppercase
                     cmpa      #'Q                 is it Q?
-                    beq       IntSvc              Yep, kill prompt and exit
+                    beq       IntSvc              yep, kill prompt and exit
                     cmpa      #'N                 is it N?
                     lbne      Cycle               nope, must be space or other char
                     bsr       KillLine            else Kill the prompt
                     bra       EOF2                and get next file
 
-IntSvc              bsr       KillLine            Interrupt service routine
+IntSvc              bsr       KillLine            interrupt service routine
                     lbra      Done
 
-OneLine             lda       #1                  We go here if <ENTER> was pressed
+OneLine             lda       #1                  we go here if <ENTER> was pressed
                     sta       YH,u                to increment only one line
                     lbra      ReadLine
 
