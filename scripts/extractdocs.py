@@ -31,7 +31,15 @@ def obtainfiles(sourcefolder):
 	return results	
 
 
-files = obtainfiles(["../level1/cmds"])
-for f in files:
-	f2 = "../level1/cmds/" + f
-	extractdocs(f2)
+def extractDocsFromFolder(folder):
+	files = obtainfiles([folder])
+	for file in files:
+		f2 = folder + "/" + file
+		print("Extracting documentation from " + f2)
+		extractdocs(f2)
+
+def main():
+	extractDocsFromFolder(sys.argv[1])
+
+if __name__ == "__main__":
+	main()
