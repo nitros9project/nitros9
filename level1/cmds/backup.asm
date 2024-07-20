@@ -25,16 +25,16 @@
 ;;; backup
 ;;;
 ;;; Syntax: backup [opts] <devname1> <devname2>
-;;; Function: Copies all data from one disk to another.
+;;; Function: Copy all data from one disk to another.
 ;;; Parameters:
-;;;     devname1  The drive containing the disk files you want to back up.
-;;;     devname2  The drive containing the disk to which you want to transfer the files.
-;;;     opts      One or more of the following options.
+;;;   devname1  drive supplying files
+;;;   devname2  drive receiving files
+;;;   opts      one or more options
 ;;; Options:
-;;;      e        Cancels the backup if a read error occurs.
-;;;      S        Backup a diskette using only one drive.
-;;;      -v       Don't verify the data written to the destination diskette.
-;;;      #nK      Increase to n the amount of memory that backup uses.
+;;;    e    cancels the backup if a read error occurs
+;;;    S    backup a diskette using only one drive
+;;;   -v    don't verify the data written to the destination
+;;;   #nK   increase to n the amount of memory that backup uses
 ;;;
 ;;; Notes
 ;;;

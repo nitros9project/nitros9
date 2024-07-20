@@ -12,10 +12,10 @@
 ;;; cmp
 ;;;
 ;;; Syntax: cmp <filename1> <filename2>
-;;; Function: Compares two files.
+;;; Function: Compare two files.
 ;;; Parameters:
-;;;      filename1    The first file to compare.
-;;;      filename2    The second file to compare.
+;;;   filename1  first file to compare
+;;;   filename2  fecond file to compare
 ;;;
 ;;; Notes
 ;;;

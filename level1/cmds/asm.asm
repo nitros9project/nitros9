@@ -45,6 +45,11 @@
 *   header (like REL)
 * Fixed bug on last line of mult-line listing if G option turned on and size >4 bytes
 
+;;; asm
+;;;
+;;; Syntax: asm <filename>
+;;; Function: Convert assembly language to object code.
+
                     nam       Asm
                     ttl       6809/6309 Assembler
 

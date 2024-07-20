@@ -14,11 +14,11 @@
 
 ;;; binex
 ;;;
-;;; Syntax:	binex <filename1> <filename2>
-;;; Function: Converts a binary file into an S-Record file.
+;;; Syntax: binex <filename1> <filename2>
+;;; Function: Convert a binary file into an S-Record file.
 ;;; Parameters:
-;;;     filename1   The name of the file to convert.
-;;;     filename2   The name of the file in which to store the converted code.
+;;;   filename1  name of the file to convert
+;;;   filename2  name of the converted file
 ;;;
 ;;; Notes
 ;;;

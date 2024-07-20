@@ -1,4 +1,4 @@
-;; F$Sleep
+;;; F$Sleep
 ;;;
 ;;; Suspend the calling process and put it in the sleep queue.
 ;;;
