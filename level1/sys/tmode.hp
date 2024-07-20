@@ -1,3 +1,3 @@
 @TMODE
-Syntax: Tmode [.<path>] [<params>]
-Usage : Displays or changes the operating parameters of the terminal
+Syntax: tmode [.<path>] [<params>]
+Usage : Display or change SCF path parameters

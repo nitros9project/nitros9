@@ -8,20 +8,10 @@ DEPENDS		= ./makefile
 AFLAGS          += --includedir=$(3RDPARTY)/packages/basic09 --includedir=$(3RDPARTY)/packages/bf
 LFLAGS          += -L $(NITROS9DIR)/lib -lnet -latari -lalib
 
-BASIC09 = basic09 runb inkey syscall
-BF      = bf
-CMDS    = asm attr backup binex build calldbg cmp copy cputype \
-		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
-		display dmode dsave dump echo edit error exbin format \
-		free help ident iniz irqs link list load login makdir \
-		megaread mdir merge mfree padrom park printerr procs prompt pwd pxd \
-		rename save setime shellplus shell_21 sleep \
-		tee tmode touch tsmon unlink verify xmode \
-		inetd telnet dw httpd $(BASIC09) $(BF)
+BASIC09 		= basic09 runb inkey syscall
+BF      		= bf
 
-CMDS_DEMO      = fuji
-
-ALLOBJS		= $(CMDS) $(CMDS_DEMO)
+ALLOBJS		= $(STD_CMDS) fuji $(BASIC09) $(BF)
 
 all:	$(ALLOBJS)
 
@@ -44,13 +34,10 @@ identify:
 	$(IDENT_SHORT) $(ALLOBJS)
 
 showobjs:
-	@$(ECHO) $(CMDS)
+	@$(ECHO) $(ALLOBJS)
 
 showobjs_dw:
-	@$(ECHO) $(CMDS)
-
-showobjs_demo:
-	@$(ECHO) $(CMDS_DEMO)
+	@$(ECHO) $(ALLOBJS)
 
 showallobjs:
 	@$(ECHO) $(ALLOBJS)

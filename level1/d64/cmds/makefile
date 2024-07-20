@@ -7,13 +7,7 @@ vpath %.asm $(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09
 
 DEPENDS		= ./makefile
 
-CMDS		= asm attr backup binex build cmp cobbler cobbler_dragon copy cputype \
-		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
-		display dmode dsave dump echo edit error exbin format \
-		free grfdrv help ident iniz irqs link list load login makdir \
-		megaread mdir merge mfree minted mpi os9gen padrom park printerr procs prompt pwd pxd \
-		rename save setime shellplus shell_21 sleep \
-		tee tmode touch tsmon tuneport unlink verify xmode
+CMDS		= $(STD_CMDS) cobbler_dragon grfdrv mpi os9gen tuneport
 
 DRAGON525CMDS	= asm attr backup binex build cmp cobbler_dragon copy date del deldir \
 		dir display dmode dsave dump echo exbin format free ident link list \
