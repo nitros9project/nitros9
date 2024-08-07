@@ -29,11 +29,11 @@
 
 ;;; dir
 ;;;
-;;; Syntax:	dir [<opts>] [<path>]
-;;; Usage:	Displays formatted list of the file names in a directory
+;;; Syntax: dir [<opts>] [<path>]
+;;; Usage: Show files in a directory.
 ;;; Parameters:
-;;;     -e  extended directory listing
-;;;     -x  execution directory
+;;;   -e  extended directory listing
+;;;   -x  execution directory
 
                     nam       Dir
                     ttl       Show directory

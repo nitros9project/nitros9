@@ -20,8 +20,8 @@
 ;;; Syntax: copy <path1> <path2> [-s]
 ;;; Function: Copy a file from one location to another.
 ;;; Parameters:
-;;;      pathlist1    The pathlist of the file to copy.
-;;;      pathlist2    The destination pathlist of the copied file.
+;;;   pathlist1  the file to copy
+;;;   pathlist2  where to copy the file
 ;;;
 ;;; Notes
 ;;;

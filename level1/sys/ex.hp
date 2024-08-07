@@ -1,3 +1,5 @@
 @EX
-Syntax: Ex <modname>
-Usage : Chain to the given module 
+Syntax: ex <modname>
+Usage : Chain to the given module
+
+This is an internal shell command. Typing this command without a parameter causes the shell to exit.

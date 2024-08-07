@@ -1,5 +1,5 @@
 @ERROR
-Syntax: Error <errno> [<errno> [...]]
-Usage : Outputs text error message(s) for given error number(s)
+Syntax: error <errno> [<errno> [...]]
+Usage : Output text error messages for given error numbers
 
-The error messages are extracted from /DD/SYS/errmsg
+The error messages are stored in /DD/SYS/errmsg.

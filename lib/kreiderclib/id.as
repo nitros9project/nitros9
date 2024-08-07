@@ -1,30 +1,37 @@
-* Disassembly by Os9disasm of id.r
-
+                    export    _getpid
+                    export    _getuid
+                    export    _asetuid
+                    export    _setuid
+                    
                     section   code
-
-* OS-9 system function equates
-
-F$ID                equ       $0c
-F$SUser             equ       $1c
 
 * class X external label equates
 
 X004b               equ       $004b
 
-getpid              pshs      y
+_getpid             pshs      y
                     os9       F$ID
                     puls      y
                     tfr       a,b
                     clra
                     rts
-getuid              pshs      y
+                    
+_getuid             pshs      y
                     os9       F$ID
                     tfr       y,d
                     puls      y,pc
-asetuid             pshs      y
+                    
+;;; void asetuid(int uid)
+;;;
+;;; Set the user ID for the current process.
+;;;
+;;; This function sets the user ID number for the current task. Unlike setuid(), this call can be used even;;; if the user is not the super user.
+
+_asetuid            pshs      y
                     bra       L0027
-setuid              pshs      y
-                    bsr       getuid
+                    
+_setuid             pshs      y
+                    bsr       _getuid
                     std       -2,s
                     beq       L0027
                     ldb       #$d6

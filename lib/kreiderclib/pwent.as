@@ -1,5 +1,10 @@
-* Disassembly by Os9disasm of pwent.r
-
+                    export    _getpwent
+                    export    _setpwent          
+                    export    _endpwent
+                    export    _getpwdlm
+                    export    _getpwuid
+                    export    _getpwnam
+                    
 * class D external label equates
 
 D0000               equ       $0000
@@ -23,14 +28,14 @@ _pwdelim            fcb       $61
 
                     section   code
 
-getpwent            pshs      d,u
+_getpwent           pshs      d,u
                     ldd       G0000,y
                     bne       L0020
                     ldd       #1
                     pshs      d
                     leax      L0229,pcr
                     pshs      x
-                    lbsr      open
+                    lbsr      _open
                     leas      4,s
                     std       G0000,y
                     lble      L0223
@@ -40,7 +45,7 @@ L0020               ldd       #$0084
                     pshs      x
                     ldd       G0000,y
                     pshs      d
-                    lbsr      readln
+                    lbsr      _readln
                     leas      6,s
                     std       -2,s
                     lble      L0223
@@ -71,7 +76,8 @@ L0066               ldb       [,s]
                     bsr       L00c4
                     leas      4,s
                     lbra      L0225
-setpwent            pshs      u
+
+_setpwent           pshs      u
                     ldd       G0000,y
                     beq       L009e
                     clra
@@ -83,21 +89,23 @@ setpwent            pshs      u
                     pshs      d
                     ldd       G0000,y
                     pshs      d
-                    lbsr      lseek
+                    lbsr      _lseek
                     leas      8,s
 L009e               puls      u,pc
-endpwent            pshs      u
+
+_endpwent           pshs      u
                     ldd       G0000,y
                     beq       L00b9
                     ldd       G0000,y
                     pshs      d
-                    lbsr      close
+                    lbsr      _close
                     leas      2,s
                     clra
                     clrb
                     std       G0000,y
 L00b9               puls      u,pc
-getpwdlm            pshs      u
+
+_getpwdlm           pshs      u
                     ldb       _pwdelim,y
                     sex
                     puls      u,pc
@@ -113,7 +121,7 @@ L00c4               pshs      u
                     pshs      d
                     ldd       6,s
                     pshs      d
-                    lbsr      index
+                    lbsr      _index
                     leas      4,s
                     std       4,s
                     tfr       d,x
@@ -130,7 +138,7 @@ L00c4               pshs      u
                     pshs      d
                     ldd       6,s
                     pshs      d
-                    lbsr      index
+                    lbsr      _index
                     leas      4,s
                     std       4,s
                     tfr       d,x
@@ -164,7 +172,7 @@ L00c4               pshs      u
                     pshs      d
                     ldd       6,s
                     pshs      d
-                    lbsr      index
+                    lbsr      _index
                     leas      4,s
                     std       4,s
                     tfr       d,x
@@ -184,7 +192,7 @@ L00c4               pshs      u
                     pshs      d
                     ldd       6,s
                     pshs      d
-                    lbsr      index
+                    lbsr      _index
                     leas      4,s
                     std       4,s
                     tfr       d,x
@@ -201,7 +209,7 @@ L017d               ldd       4,s
                     pshs      d
                     ldd       6,s
                     pshs      d
-                    lbsr      index
+                    lbsr      _index
                     leas      4,s
                     std       4,s
                     tfr       d,x
@@ -218,7 +226,7 @@ L017d               ldd       4,s
                     pshs      d
                     ldd       6,s
                     pshs      d
-                    lbsr      index
+                    lbsr      _index
                     leas      4,s
                     std       4,s
                     tfr       d,x
@@ -234,7 +242,7 @@ L017d               ldd       4,s
                     pshs      d
                     ldd       6,s
                     pshs      d
-                    lbsr      index
+                    lbsr      _index
                     leas      4,s
                     tfr       d,x
                     clra
@@ -242,32 +250,33 @@ L017d               ldd       4,s
                     stb       ,x
                     ldd       6,s
                     puls      u,pc
-getpwuid            pshs      d,u
+
+_getpwuid           pshs      d,u
                     bra       L01fa
 L01ea               ldx       ,s
                     ldd       4,x
                     pshs      d
-                    lbsr      atoi
+                    lbsr      _atoi
                     leas      2,s
                     cmpd      6,s
                     beq       L0218
-L01fa               lbsr      getpwent
+L01fa               lbsr      _getpwent
                     std       ,s
                     bne       L01ea
                     bra       L0223
-getpwnam            pshs      d,u
+_getpwnam           pshs      d,u
                     bra       L021c
 L0207               ldd       [,s]
                     pshs      d
                     ldd       8,s
                     pshs      d
-                    lbsr      strucmp
+                    lbsr      _strucmp
                     leas      4,s
                     std       -2,s
                     bne       L021c
 L0218               ldd       ,s
                     bra       L0225
-L021c               lbsr      getpwent
+L021c               lbsr      _getpwent
                     std       ,s
                     bne       L0207
 L0223               clra

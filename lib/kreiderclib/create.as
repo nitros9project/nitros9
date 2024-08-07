@@ -1,16 +1,27 @@
-* Disassembly by Os9disasm of create.r
-
+                    export    _creat
+                    export    _create
+                    export    _ocreat
+                    
                     section   code
 
-* OS-9 system function equates
+;;; #include <modes.h>
+;;;
+;;; void creat(char *fname, int perms)
+;;;
+;;; Create a new file.
+;;;
+;;; This function returns a path number to a new file available for writing and gives it the permissions specified in perm. The
+;;; caller is the owner of the file.
+;;; If the file already exists, the function truncates it to length zero and the ownership and permissions remain unchanged.
+;;;
+;;; This function doesn't return an error if the file exists. If needed, ue access() to determine if the file exists. It
+;;; doesn't create directories; use mknod() for that.
+;;;
+;;; If perms specify either owner or public executable, this function creates the file in the current execution directory; otherwise, the data directory hosts the file.
+;;;
+;;; Returns: 0 on success, or -1 on error.
 
-I$Create            equ       $83
-I$Open              equ       $84
-I$Delete            equ       $87
-I$SetStt            equ       $8e
-I$Close             equ       $8f
-
-creat               ldx       2,s
+_creat              ldx       2,s
                     lda       5,s
                     tfr       a,b
                     andb      #$24
@@ -37,7 +48,18 @@ creat               ldx       2,s
                     os9       I$Close
                     puls      b
 L0039               lbra      _os9err
-create              ldx       2,s
+
+;;; #include <modes.h>
+;;;
+;;; void create(char *fname, int mode, int perms)
+;;;
+;;; Create and open a file.
+;;;
+;;; This function creates and opens a file, and accepts the file mode and access permissions.
+;;;
+;;; Returns: 0 on success, or -1 on error.
+
+_create             ldx       2,s
                     lda       5,s
                     ldb       7,s
                     os9       I$Create
@@ -47,7 +69,18 @@ L0049               cmpb      #$da
                     bne       L0039
                     os9       I$Delete
                     bcs       L0039
-ocreat              ldx       2,s
+                    
+;;; #include <modes.h>
+;;;
+;;; void ocreat(char *fname, int mode, int perms)
+;;;
+;;; Delete the file, then create and open it.
+;;;
+;;; This function deletes the file if it exists, then creates and opens it, and accepts the file mode and access permissions.
+;;;
+;;; Returns: 0 on success, or -1 on error.
+
+_ocreat             ldx       2,s
                     lda       5,s
                     ldb       7,s
                     os9       I$Create

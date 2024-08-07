@@ -2,61 +2,44 @@
 <title>Welcome to NitrOS-9!</title>
 <titleabbrev>Introduction</titleabbrev>
 <para>
-The foundation of a modern computer system is its
-<emphasis>Operating System</emphasis> or "OS".  The OS is the master control
-program that interfaces all other software to the system's hardware. Some
-of the things it must do are performing input and output operations,
-coordinating memory use, and many other "housekeeping" functions. All
-other software - programming languages, applications programs, etc. -
-live in your computer's memory along with the OS and depend on it to
-communicate with you using the keyboard and display and to store and
-retrieve data on disks, etc. Because virtually all other software relies
-on the OS, your computer's performance depends on the capabilities and
-efficiency of its OS.
+The foundation of a modern computer system is the
+<emphasis>operating system</emphasis>. This software interfaces to the computer's hardware, and provides
+a consistent interface for applications to access devices and services. The operating system's
+responsibilities include performing input and output operations on behalf of programs,
+managing memory usage, and coordinating the scheduling of processes.
 </para>
 
 <para>
-NitrOS-9 is an operating system for the TRS-80/Tandy Color Computer family which provides harmony to the chaos of multiple devices, memory management and application service requests.  Its overall structure was based on the famous UNIX<footnote id="unixdesc">
-<para>
-UNIX is an operating system designed by Bell Telephone
-Laboratories, which is becoming widely recognized as a standard for
-mini and micro operating systems because of its versatility and
-elegant structure.
-</para>
+NitrOS-9 is an operating system for 6809-based computers. It provides harmony to the chaos of multiple devices, memory management and application service requests. While it's inspired by UNIX<footnote id="unixdesc">UNIX is an operating system designed by Bell Telephone
+Laboratories and is widely recognized as a standard for
+mini and micro operating systems because of its versatility and elegant structure.
 </footnote>
-operating system.
+and has similar features, NitrOS-9 is its own operating system with its own design principles and philosophy.
 </para>
 <para>
-NitrOS-9 is 100% compatible with OS-9 Level One and OS-9 Level Two for the Color Computer.  These products were manufactured by Tandy Corporation and sold through Radio Shack stores in the 1980s, and were purchased by many Color Computer users.  Today, the Color Computer is no longer manufactured and those versions of OS-9 are no longer for sale.  NitrOS-9 has evolved to be even better than these operating systems, and stands as the logical choice for those Color Computer owners who wish to use their CoCos today and tomorrow.
-</para>
-<para>
-Some of the advanced NitrOS-9 features you'll learn about in this
-book are:
+Here are some of the advanced NitrOS-9 features you'll learn about:
 </para>
 <orderedlist numeration="arabic">
 
-<listitem><para>Multiuser/Multitasking Real-Time Operating System</para></listitem>
+<listitem><para>Multi-user and multi-tasking</para></listitem>
 
 <listitem><para>Extensive support for structured, modular programming</para></listitem>
 
 <listitem><para>Device-independent interrupt-driven input/output system</para></listitem>
 
-<listitem><para>Multi-level directory file system</para></listitem>
+<listitem><para>Fast, random access, multi-level directory file system</para></listitem>
 
-<listitem><para>Fast Random-Access File System</para></listitem>
-
-<listitem><para>Readily Expandable and Adaptable Design</para></listitem>
+<listitem><para>Expandable and adaptable design</para></listitem>
 
 </orderedlist>
 <para>
-If you don't know what some of these thing mean yet - don't
+If you don't know what some of these thing mean yet, don't
 worry. As you explore NitrOS-9 you'll soon learn how they enhance the
-capability of your Color Computer; and make it so much easier to use
+capability of your 6809-based computer, and make it so much easier to use
 in almost any application.
 </para>
 <para>
-NitrOS-9 has many commands and functions - definitely more than
-you can learn in an evening! The best way to become an NitrOS-9 expert
+NitrOS-9 has many commands and functions. The best way to become an NitrOS-9 expert
 is to study this manual carefully, section-by-section, taking time
 to try out each command or function. Because many functions affect
 others, you'll find this manual extensively cross-referenced so you
@@ -65,8 +48,8 @@ to study this book will certainly increase your knowledge and
 enjoyment of NitrOS-9.
 </para>
 <para>
-But if you can't wait, at least read the rest of this chapter,
-scan the command descriptions in a later chapter, and have fun
+But if you can't wait, at least read the next chapter,
+scan the command descriptions in later chapters, and have fun
 experimenting!
 </para>
 </preface>

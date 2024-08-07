@@ -1,8 +1,21 @@
-* Disassembly by Os9disasm of atof.r
-
+                    export    _atof
+                    
                     section   code
 
-atof                pshs      u
+;;; #include <math.h>
+;;;
+;;; double atof(char *str)
+;;;
+;;; Convert a string to a float.
+;;;
+;;; This function recognizes an optional sign, an optional string of spaces, a string of digits optionally containing a radix character,
+;;; an optional `e' or `E', and an optionally signed integer. For example: "-1234.5678e+9".
+;;;
+;;; Numbers up to the decimal point are assumed to be the integer portion of the number.
+;;;
+;;; Overflow causes unpredictable results, and the function doesn't return any error.
+
+_atof               pshs      u
                     ldu       4,s
                     ldb       #$10
                     clra
@@ -67,7 +80,7 @@ L0078               sex
                     ldd       8,s
                     pshs      d
                     ldd       #$000a
-                    lbsr      ccmult
+                    lbsr      _ccmult
                     addd      ,s++
                     std       6,s
 L0089               ldb       ,u+

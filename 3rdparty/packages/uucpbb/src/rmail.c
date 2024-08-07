@@ -76,7 +76,7 @@ char *argv[];
 {
      register FILE *file;
      flag delivered;
-     int interrupt();
+     int myinterrupt();
 
      userdir = NULL;
      homedir = NULL;
@@ -85,7 +85,7 @@ char *argv[];
 #ifdef _OSK
      pflinit();                              /* longs will be printed */
 #endif
-     intercept (interrupt);
+     intercept (myinterrupt);
 
      switch (argc)
        {
@@ -1057,7 +1057,7 @@ char *msg;
 
 /* exit with error if we receive a signal */
 
-int interrupt (sig)
+int myinterrupt (sig)
 int sig;
 {
      closelog();

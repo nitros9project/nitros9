@@ -1,45 +1,72 @@
-* Disassembly by Os9disasm of datmods.r
-
+                    export    _lockdata
+                    export    _unlkdata
+                    export    _datlink
+                    export    _dunlink
+                    
                     section   code
 
-* OS-9 system function equates
+;;; int lockdata(char *datptr)
+;;;
+;;; Lock a data module.
+;;;
+;;; This function attempts to lock the data module by changing the lock byte pointed to by datptr from -1 to 0.
+;;;
+;;; A data module is considered locked when it's loaded. It must be set for use by a call to unlkdata() after the original loader is finished.
+;;; A user determines if they're the original owner by the value returned from datlink().
+;;; In all cases, datptr points to the lock byte. User free space begins at datptr + 1.
+;;;
+;;; Returns: 0 on success, or -1 if the data module couldn't be locked.
 
-F$Link              equ       $00
-F$Load              equ       $01
-F$UnLink            equ       $02
-
-lockdata            ldx       2,s
+_lockdata           ldx       2,s
                     pshs      cc
-                    orcc      #$10
+                    orcc      #IRQMask
                     inc       ,x
                     beq       L001d
                     ldb       ,x
                     dec       ,x
 L000e               sex
                     puls      cc,pc
-unlkdata            ldx       2,s
+                    
+;;; int unlkdata(char *datptr)
+;;;
+;;; Unlock a data module.
+;;;
+;;; This function unlocks the data module.
+;;;
+;;; Returns: 0 on success, or -1 if the data module isn't locked.
+
+_unlkdata           ldx       2,s
                     pshs      cc
-                    orcc      #$10
+                    orcc      #IRQMask
                     ldb       ,x
                     bne       L000e
                     dec       ,x
 L001d               clra
                     clrb
                     puls      cc,pc
-datlink             pshs      y,u
+                    
+;;; int datlink(char *name, char *datptr, int *space)
+;;;
+;;; Link to a data module.
+;;;
+;;; This function loads (if necessary) and links to a module of name and sets datptr to the address of the data section, and sets space to the free space available.
+;;;
+;;; Returns: 0 on success, or -1 on error.
+
+_datlink            pshs      y,u
                     clr       ,-s
                     clr       ,-s
                     ldx       8,s
-                    lda       #$40
+                    lda       #Data
                     os9       F$Link
                     bcc       L0045
-                    cmpb      #$dd
+                    cmpb      #E$MNF
                     beq       L003a
                     coma
 L0035               puls      x,y,u
                     lbra      _os9err
 L003a               ldx       8,s
-                    lda       #$40
+                    lda       #Data
                     os9       F$Load
                     bcs       L0035
                     inc       1,s
@@ -54,12 +81,21 @@ L0045               pshs      y
                     ldd       ,s
                     beq       L0067
                     pshs      y
-                    bsr       lockdata
+                    bsr       _lockdata
                     std       ,s++
                     beq       L0067
                     clr       1,s
 L0067               puls      d,y,u,pc
-dunlink             pshs      u
+
+;;; int dunlink(char *datpr)
+;;;
+;;; Unlink a data module.
+;;;
+;;; This function unlinks the data module, reducing the link count by 1.
+;;;
+;;; Returns: 0 on success, or -1 on error.
+
+_dunlink            pshs      u
                     ldu       4,s
                     ldd       ,--u
                     leau      d,u

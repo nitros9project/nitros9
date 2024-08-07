@@ -1,9 +1,9 @@
-* Disassembly by Os9disasm of iob_data.r
-
+                    export    __iob
+                    
                     section   code
 
 * Initialized Data (class G)
-_iob                fcb       $00
+__iob               fcb       $00
                     fcb       $00
                     fcb       $00
                     fcb       $00

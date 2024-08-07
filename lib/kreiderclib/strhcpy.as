@@ -1,8 +1,8 @@
-* Disassembly by Os9disasm of strhcpy.r
-
+                    export    _strhcpy
+                    
                     section   code
 
-strhcpy             pshs      u
+_strhcpy            pshs      u
                     ldu       4,s
                     ldx       6,s
 L0006               ldb       ,x+

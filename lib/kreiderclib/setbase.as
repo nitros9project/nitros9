@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of setbase.r
-
+                    export    _setbase
+                    
                     section   code
 
 _setbase            pshs      u
@@ -14,7 +14,7 @@ _setbase            pshs      u
                     clra
                     clrb
                     pshs      d
-                    lbsr      getstat
+                    lbsr      _getstat
                     ldb       #$40
                     lda       6,s
                     beq       L0022

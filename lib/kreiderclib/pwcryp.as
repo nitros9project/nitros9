@@ -1,8 +1,8 @@
-* Disassembly by Os9disasm of pwcryp.r
-
+                    export    _pwcryp
+                    
                     section   code
 
-pwcryp              pshs      u
+_pwcryp             pshs      u
                     ldu       4,s
                     ldd       #-1
                     pshs      d
@@ -10,7 +10,7 @@ pwcryp              pshs      u
                     leax      ,s
                     pshs      x
                     pshs      u
-                    lbsr      strlen
+                    lbsr      _strlen
                     std       ,s
                     pshs      u
                     lbsr      crc

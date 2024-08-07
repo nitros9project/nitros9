@@ -1,14 +1,14 @@
-* Disassembly by Os9disasm of setbuf.r
-
+                    export    _setbuf
+                    
                     section   code
 
-setbuf              pshs      u
+_setbuf             pshs      u
                     ldu       4,s
                     lda       6,u
                     anda      #1
                     beq       L0011
                     pshs      u
-                    lbsr      fflush
+                    lbsr      _fflush
                     leas      2,s
 L0011               ldd       6,u
                     anda      #254

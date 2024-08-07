@@ -1,8 +1,8 @@
-* Disassembly by Os9disasm of htoi.r
-
+                    export    _htoi
+                    
                     section   code
 
-htoi                clra
+_htoi               clra
                     clrb
                     pshs      d,u
                     ldu       6,s

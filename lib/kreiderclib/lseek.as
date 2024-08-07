@@ -1,13 +1,8 @@
-* Disassembly by Os9disasm of lseek.r
-
+                    export    _lseek
+                    
                     section   code
 
-* OS-9 system function equates
-
-I$Seek              equ       $88
-I$GetStt            equ       $8d
-
-lseek               pshs      u
+_lseek              pshs      u
                     ldd       10,s
                     bne       L000e
                     ldu       #0

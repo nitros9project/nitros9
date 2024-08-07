@@ -1,8 +1,8 @@
-* Disassembly by Os9disasm of memcmp.r
-
+                    export    _memcmp
+                    
                     section   code
 
-memcmp              pshs      y,u
+_memcmp             pshs      y,u
                     ldx       6,s
                     cmpx      8,s
                     beq       L001d

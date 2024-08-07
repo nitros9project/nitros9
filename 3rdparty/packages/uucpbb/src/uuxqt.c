@@ -68,13 +68,13 @@ int main(argc, argv)
 int argc;
 char *argv[];
 {
-     int option, interrupt();
+     int option, myinterrupt();
      register char **sysptr;
 
      log = NULL;
      childid = -1;                                 /* no children yet */
 
-     intercept (interrupt);                        /* set signal trap */
+     intercept (myinterrupt);                        /* set signal trap */
      myuid = getuid();
 
      if ((logdir = getenv ("LOGDIR")) != NULL)
@@ -399,7 +399,7 @@ void closelog()
 
 
 
-int interrupt (sig)
+int myinterrupt (sig)
 int sig;
 {
      switch (sig)
@@ -446,7 +446,7 @@ char *msg;
 int fatal (msg)
 char *msg;
 {
-     interrupt (errno);
+     myinterrupt (errno);
      error (msg);
      exit (0);
 }

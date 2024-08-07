@@ -14,7 +14,7 @@ HELPFILES	= asm.hp attr.hp backup.hp binex.hp build.hp chd.hp \
 		chx.hp cmp.hp cobbler.hp config.hp copy.hp cputype.hp date.hp \
 		dcheck.hp debug.hp ded.hp deiniz.hp del.hp deldir.hp devs.hp \
 		dir.hp dirsort.hp disasm.hp display.hp dmode.hp dsave.hp dump.hp echo.hp \
-		edit.hp error.hp ex.hp exbin.hp format.hp free.hp gfx.hp \
+		edit.hp error.hp ex.hp exbin.hp format.hp free.hp \
 		help.hp ident.hp iniz.hp inkey.hp irqs.hp kill.hp link.hp \
 		list.hp load.hp login.hp makdir.hp \
 		mdir.hp megaread.hp merge.hp minted.hp mpi.hp mfree.hp os9gen.hp \
@@ -24,9 +24,9 @@ HELPFILES	= asm.hp attr.hp backup.hp binex.hp build.hp chd.hp \
 		tuneport.hp unlink.hp verify.hp xmode.hp
 
 # These are Level 2/3 only
-HELPFILES	+= dmem.hp gfx2.hp grfdrv.hp basic09.hp runb.hp \
-		wcreate.hp mmap.hp modpatch.hp montype.hp \
-		pmap.hp proc.hp reboot.hp smap.hp
+HELPFILES	+= dmem.hp basic09.hp runb.hp \
+		wcreate.hp mmap.hp modpatch.hp \
+		pmap.hp proc.hp smap.hp
 
 #HELPFILES	= make.hp maketerm.hp rdump.hp rlink.hp rma.hp scred.hp
 
@@ -48,7 +48,7 @@ inetd.conf:     $(LEVEL1)/sys/inetd.conf
 	@sed -e 's/%TELNET_PORT%/$(TELNET_PORT)/' -e 's/%HTTPD_PORT%/$(HTTPD_PORT)/' $^ > $@
 
 clean:
-	$(RM) $(HELPMSG) $(L1TXTFILES) $(BINFILES) inetd.conf
+	$(RM) $(HELPMSG) $(L1TXTFILES) $(BINFILES) inetd.conf *.list *.map
 
 showbinobjs:
 	@$(ECHO) $(BINFILES)

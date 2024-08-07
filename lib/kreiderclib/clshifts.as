@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of clshifts.r
-
+                    export    _lshl
+                    export    _lshr
+                    
                     section   code
 
 _lshl               ldx       2,s

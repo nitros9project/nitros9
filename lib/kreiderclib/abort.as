@@ -1,14 +1,16 @@
-* Disassembly by Os9disasm of abort.r
+;;; void abort(void)
+;;;
+;;; Stop the program and produce a core dump.
+;;;
+;;; Calling this function causes a memory image to be written out to the file "core" in the current directory.
+;;; The program then exits with a status of 1.
 
+                    export    _abort
+                    
                     section   code
 
-* OS-9 system function equates
-
-F$Exit              equ       $06
-I$Write             equ       $8a
-
-abort               pshs      d,x,y,u
-                    leax      >L0048,pcr
+_abort              pshs      d,x,y,u
+                    leax      >corename,pcr
                     ldb       #3
                     clra
                     pshs      d
@@ -37,10 +39,10 @@ L001d               leas      4,s
                     bsr       L004e
                     ldb       #255
                     os9       F$Exit
-L0048               com       15,s
-                    fcb       $72
-                    fcb       $65
-                    bra       L005b
+                    
+corename            fcc       "core "
+                    fcb       C$CR
+
 L004e               pshs      d,x
                     lda       6,s
                     leax      2,s

@@ -14,21 +14,21 @@
 
 ;;; attr
 ;;;
-;;; Syntax:	attr <filename> [permission]
+;;; Syntax: attr <filename> [permission]
 ;;; Function: Examine or change a file's security permissions.
 ;;; Parameters:
-;;;     filename    The name of the file to examine or change.
-;;;     permission  One or more file attributes to apply.
-;;; Options:
-;;;     -d   Changes a file directory file to not a non-directory file.
-;;;      s   The file is not single-user and can serve only one user at a time.
-;;;      r   Only the owner can read the file.
-;;;      w   Only the owner can write to the file.
-;;;      e   Only the owner can execute the file.
-;;;     pr   Anyone can read the file.
-;;;     pw   Anyone can write to the file.
-;;;     pe   Anyone can execute the file.
-;;;     -a   Don't display attributes when modifying.
+;;;   filename    name of the file to examine or change
+;;;   permission  one or more file attributes to apply.
+;;; Permissions:
+;;;     -d  change a directory file to a non-directory file
+;;;      s  file is not single-user and can serve only one user at a time
+;;;      r  only the owner can read the file
+;;;      w  only the owner can write to the file
+;;;      e  only the owner can execute the file
+;;;     pr  anyone can read the file
+;;;     pw  anyone can write to the file
+;;;     pe  anyone can execute the file
+;;;     -a  don't display attributes when modifying
 ;;;
 ;;; Notes
 ;;;

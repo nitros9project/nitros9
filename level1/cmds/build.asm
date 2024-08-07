@@ -12,9 +12,9 @@
 ;;; build
 ;;;
 ;;; Syntax: build <filename>
-;;; Function: Builds a text file by copying input from the standard input device (the keyboard) into the file specified by filename.
+;;; Function: Create a text file.
 ;;; Parameters:
-;;;      filename    The name of the file you're creating.
+;;;   filename  name of the text file
 ;;;
 ;;; Notes
 ;;;

@@ -1,17 +1,31 @@
-* Disassembly by Os9disasm of dir.r
-
                     section   code
+                    
+                    export    _chdir
+                    export    _chxdir
 
-* OS-9 system function equates
+;;; int chdir(char *dirname)
+;;;
+;;; Change the data directory.
+;;;
+;;; This function changes the data directory of the calling process.
+;;;
+;;; Returns: 0 on success, or -1 on error.
 
-I$ChgDir            equ       $86
-
-chdir               lda       #1
-L0002               ldx       2,s
+_chdir              lda       #1
+chex                ldx       2,s
                     os9       I$ChgDir
                     lbra      _sysret
-chxdir              lda       #4
-                    bra       L0002
+
+;;; int chxir(char *dirname)
+;;;
+;;; Change the execution directory.
+;;;
+;;; This function changes the execution directory of the calling process.
+;;;
+;;; Returns: 0 on success, or -1 on error.
+
+_chxdir             lda       #4
+                    bra       chex
 
                     endsect
 

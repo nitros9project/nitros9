@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of clcompare.r
-
+                    export    _lcmpr
+                    
                     section   code
 
 _lcmpr              ldd       2,s

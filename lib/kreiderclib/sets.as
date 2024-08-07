@@ -1,17 +1,28 @@
-* Disassembly by Os9disasm of sets.r
-
+                    export    _allocset
+                    export    _addc2set
+                    export    _adds2set
+                    export    _rmfmset
+                    export    _smember
+                    export    _dupset
+                    export    _copyset
+                    export    _sunion
+                    export    _sinterse
+                    export    _sdiffere
+                    
                     section   code
 
-allocset            ldd       #$0020
+_allocset           ldd       #$0020
                     pshs      d
-                    lbsr      malloc
+                    lbsr      _malloc
                     puls      x,pc
-addc2set            bsr       L003a
+                    
+_addc2set           bsr       L003a
                     orb       a,x
                     stb       a,x
                     tfr       x,d
                     rts
-adds2set            pshs      u
+                    
+_adds2set           pshs      u
                     ldu       6,s
                     ldx       4,s
                     bra       L0021
@@ -22,14 +33,16 @@ L0021               lda       ,u+
                     bne       L001b
                     ldd       4,s
                     puls      u,pc
-rmfmset             bsr       L003a
+                    
+_rmfmset            bsr       L003a
                     comb
                     andb      a,x
                     stb       a,x
                     clrb
                     tfr       x,d
                     rts
-smember             bsr       L003a
+                    
+_smember            bsr       L003a
                     andb      a,x
                     clra
                     rts
@@ -47,12 +60,14 @@ L004a               puls      a
                     asra
                     asra
                     rts
-dupset              bsr       allocset
+                    
+_dupset             bsr       _allocset
                     ldx       2,s
                     pshs      d,x
-                    bsr       copyset
+                    bsr       _copyset
                     puls      d,x,pc
-copyset             pshs      u
+                    
+_copyset            pshs      u
                     ldx       4,s
                     ldu       6,s
                     ldb       #$20
@@ -62,7 +77,8 @@ L0062               lda       ,u+
                     bne       L0062
                     ldd       4,s
                     puls      u,pc
-sunion              pshs      u
+                    
+_sunion             pshs      u
                     ldu       4,s
                     ldx       6,s
                     ldb       #$20
@@ -73,7 +89,8 @@ L0075               lda       ,x+
                     bne       L0075
                     ldd       4,s
                     puls      u,pc
-sinterse            pshs      u
+
+_sinterse           pshs      u
                     ldu       4,s
                     ldx       6,s
                     ldb       #$20
@@ -84,7 +101,8 @@ L008a               lda       ,x+
                     bne       L008a
                     ldd       4,s
                     puls      u,pc
-sdiffere            pshs      u
+
+_sdiffere           pshs      u
                     ldu       4,s
                     ldx       6,s
                     ldb       #$20

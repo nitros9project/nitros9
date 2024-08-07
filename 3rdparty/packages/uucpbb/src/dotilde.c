@@ -44,7 +44,7 @@ QQ flag t2flag, winopen = FALSE;
 QQ unsigned myuid;
 char dline[256];
 long _gs_size();
-int interrupt();
+int myinterrupt();
 
 
 int main(argc, argv)
@@ -62,7 +62,7 @@ char **argv;
           *editor;                           /* moved from getparam.c --REB */
 
      pflinit();                              /* longs will be printed */
-     intercept (interrupt);
+     intercept (myinterrupt);
      ++argv;
      strcpy (command, *argv++);
 #ifndef TERMCAP
@@ -308,7 +308,7 @@ char **argv;
           /* ~q, ~x: exit command.  Cleanup after ourself -- REB */
           case 'q':
           case 'x':
-               interrupt (SIGQUIT);
+               myinterrupt (SIGQUIT);
 
           /* ~!: fork a shell --REB */
           case '!':
@@ -518,7 +518,7 @@ char *source, *letter;
 
 
 
-int interrupt (sig)
+int myinterrupt (sig)
 int sig;
 {
 #ifndef TERMCAP

@@ -1,13 +1,9 @@
-* Disassembly by Os9disasm of write.r
-
+                    export    _write
+                    export    _writeln
+                    
                     section   code
 
-* OS-9 system function equates
-
-I$Write             equ       $8a
-I$WritLn            equ       $8c
-
-write               pshs      y
+_write              pshs      y
                     ldy       8,s
                     beq       L0015
                     lda       5,s
@@ -18,7 +14,8 @@ L000e               bcc       L0015
                     lbra      _os9err
 L0015               tfr       y,d
                     puls      y,pc
-writeln             pshs      y
+                    
+_writeln            pshs      y
                     ldy       8,s
                     beq       L0015
                     lda       5,s

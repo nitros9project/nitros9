@@ -7,8 +7,6 @@ include $(NITROS9DIR)/rules.mak
 # NOTE: This package must be compiled by the SUPERUSER (user 0) in order
 #       for it to work properly.
 
-CC      = c3
-
 # Temporary directory.  This device must have at least 120K of free space
 TMP     =
 
@@ -22,6 +20,8 @@ DD     = /DD
 LIB     = #-l=/dd/lib/termlib.l \
           #-l=/dd/lib/cmath63.l -l=/dd/lib/string63.l \
           #-l=$(DD)/lib/sys.l 
+
+LIB     = -L../../../../lib -lkreiderc -lnos96809l2
 
 # REPLACE m6809 below with m6309 if you are using the 6309 microprocessor
 
@@ -41,8 +41,8 @@ USHELL  = SHELLPLUS
 #
 # ==IMPORTANT== do NOT remove the '\' at the end of the CFLAGS line.
 
-CFLAGS  = -q -o -s -d$(CPU) -dOS9 -d$(USHELL) -dNEWCLIB  \
-          #-dTERMCAP  #-dBSDISH  #-dDASHOK
+CFLAGS  = -I../../../../lib/kreiderclib/defs --os9 -D$(CPU) -DOS9 -D$(USHELL) -DNEWCLIB  \
+          #-DTERMCAP  #-DBSDISH  #-DDASHOK
 OBJS	= uucico mailx dotilde rmail rnews uuxqt readnews postnews expire \
      subscribe unsubscribe uulog uuclean uuencode uudecode uucp chown \
      whoami fixtext adduser fileserv uuname login cnvrtmail #uusetup
@@ -77,243 +77,243 @@ all: $(OBJS)
 #	attr cnvrtmail e w r -pe -pw -pr
 #	attr uusetup e w r -pe -pw -pr
 
-_UUCICO = uucico.r getopt.r getparam.r findmach.r chksched.r findline.r \
-        findent.r finddev.r connect.r openport.r openuucp.r findwork.r \
-        filexfer.r gproto.r dumpcode.r filemove.r fixperms.r closeuucp.r \
-        parse.r docmd.r gtime.r mfgets.r strdetab.r getenv.r strdup.r \
-        getdirs.r strstr.r pwent.r
+_UUCICO = uucico.o getopt.o getparam.o findmach.o chksched.o findline.o \
+        findent.o finddev.o connect.o openport.o openuucp.o findwork.o \
+        filexfer.o gproto.o dumpcode.o filemove.o fixperms.o closeuucp.o \
+        parse.o docmd.o gtime.o mfgets.o strdetab.o getenv.o strdup.o \
+        getdirs.o strstr.o pwent.o
 
 uucico: $(_UUCICO)
-	$(CC) -f=uucico $(CFLAGS) $(_UUCICO) $(LIB) -m=4k
+	$(CC) $(CFLAGS) $(_UUCICO) $(LIB)
 
-_MAILX = mail.r recvmail.r sendmail.r getuser.r docmd.r parse.r fixline.r \
-        filemove.r maketemp.r getseq.r getval.r fixperms.r getparam.r \
-        userparam.r t2test.r date822.r gtime.r doalias.r forkshell.r \
-        strdup.r mfgets.r strdetab.r getenv.r termio.r nmload.r getdirs.r \
-        pwent.r
+_MAILX = mail.o recvmail.o sendmail.o getuser.o docmd.o parse.o fixline.o \
+        filemove.o maketemp.o getseq.o getval.o fixperms.o getparam.o \
+        userparam.o t2test.o date822.o gtime.o doalias.o forkshell.o \
+        strdup.o mfgets.o strdetab.o getenv.o termio.o nmload.o getdirs.o \
+        pwent.o
 
 mailx: $(_MAILX)
 	$(CC) -f=mailx $(CFLAGS) $(_MAILX) $(LIB) -m=3k
 
-_DOTILDE = dotilde.r docmd.r fixline.r parse.r forkshell.r getenv.r \
-        mfgets.r strdetab.r strdup.r gtime.r filemove.r termio.r pwent.r
+_DOTILDE = dotilde.o docmd.o fixline.o parse.o forkshell.o getenv.o \
+        mfgets.o strdetab.o strdup.o gtime.o filemove.o termio.o pwent.o
 
 dotilde: $(_DOTILDE)
 	$(CC) -f=dotilde $(CFLAGS) $(_DOTILDE) $(LIB) -m=2k
 
-_RMAIL = rmail.r getline.r getuser.r validuser.r setuser.r parse.r genseq.r \
-        findent.r getparam.r getval.r maketemp.r gtime.r fixperms.r \
-        date822.r filemove.r doalias.r mfgets.r getenv.r strdup.r getdirs.r \
-        termio.r docmd.r pwent.r
+_RMAIL = rmail.o getline.o getuser.o validuser.o setuser.o parse.o genseq.o \
+        findent.o getparam.o getval.o maketemp.o gtime.o fixperms.o \
+        date822.o filemove.o doalias.o mfgets.o getenv.o strdup.o getdirs.o \
+        termio.o docmd.o pwent.o
 
 rmail: $(_RMAIL)
 	$(CC) -f=rmail $(CFLAGS) $(_RMAIL) $(LIB) -m=4k
 
-_RNEWS = rnews.r getline.r groups.r procbatch.r mbuf.r xatol.r getdirs.r \
-         getparam.r parse.r strdup.r mfgets.r openarts.r makepath.r strupr.r \
-         procart.r getopt.r fixref.r gtime.r log.r getenv.r
+_RNEWS = rnews.o getline.o groups.o procbatch.o mbuf.o xatol.o getdirs.o \
+         getparam.o parse.o strdup.o mfgets.o openarts.o makepath.o strupr.o \
+         procart.o getopt.o fixref.o gtime.o log.o getenv.o
 
 rnews: $(_RNEWS)
 	$(CC) -f=rnews $(CFLAGS) $(_RNEWS) $(LIB) -m=5k -e=21
 
-_UUXQT = uuxqt.r findxwork.r getline.r parse.r docmd.r gtime.r filemove.r \
-        mfgets.r getopt.r strdetab.r strdup.r getdirs.r strupr.r nmload.r \
-        getenv.r
+_UUXQT = uuxqt.o findxwork.o getline.o parse.o docmd.o gtime.o filemove.o \
+        mfgets.o getopt.o strdetab.o strdup.o getdirs.o strupr.o nmload.o \
+        getenv.o
 
 uuxqt: $(_UUXQT)
 	$(CC) -f=uuxqt $(CFLAGS) $(_UUXQT) $(LIB) -m=3k
 
-_READNEWS = readnews.r getuser.r makepath.r parse.r filemove.r fixline.r \
-        docmd.r newsutils.r getval.r getparam.r userparam.r gtime.r \
-        t2test.r forkshell.r mfgets.r strupr.r strdetab.r getenv.r strdup.r \
-        getdirs.r termio.r pwent.r
+_READNEWS = readnews.o getuser.o makepath.o parse.o filemove.o fixline.o \
+        docmd.o newsutils.o getval.o getparam.o userparam.o gtime.o \
+        t2test.o forkshell.o mfgets.o strupr.o strdetab.o getenv.o strdup.o \
+        getdirs.o termio.o pwent.o
 
 readnews: $(_READNEWS)
 	$(CC) -f=readnews $(CFLAGS) $(_READNEWS) $(LIB) -m=4k
 
-_POSTNEWS = postnews.r getuser.r maketemp.r getseq.r findent.r \
-        getsys.r docmd.r fixline.r filemove.r genseq.r getparam.r \
-        userparam.r parse.r t2test.r fixperms.r gtime.r date822.r mfgets.r \
-        strdetab.r getenv.r strdup.r getdirs.r getopt.r termio.r nmload.r \
-        pwent.r
+_POSTNEWS = postnews.o getuser.o maketemp.o getseq.o findent.o \
+        getsys.o docmd.o fixline.o filemove.o genseq.o getparam.o \
+        userparam.o parse.o t2test.o fixperms.o gtime.o date822.o mfgets.o \
+        strdetab.o getenv.o strdup.o getdirs.o getopt.o termio.o nmload.o \
+        pwent.o
 
 postnews: $(_POSTNEWS)
 	$(CC) -f=postnews $(CFLAGS) $(_POSTNEWS) $(LIB) -m=4k
 
-_EXPIRE = expire.r expgroup.r makepath.r parse.r newsutils.r gtime.r \
-        filemove.r strupr.r mfgets.r strdetab.r strdup.r getdirs.r getopt.r \
-        getenv.r
+_EXPIRE = expire.o expgroup.o makepath.o parse.o newsutils.o gtime.o \
+        filemove.o strupr.o mfgets.o strdetab.o strdup.o getdirs.o getopt.o \
+        getenv.o
 
 expire: $(_EXPIRE)
 	$(CC) -f=expire $(CFLAGS) $(_EXPIRE) $(LIB) -m=2k
 
-_SUBSCRIBE = subscribe.r filemove.r mfgets.r getenv.r pwent.r strdup.r
+_SUBSCRIBE = subscribe.o filemove.o mfgets.o getenv.o pwent.o strdup.o
 
 subscribe: $(_SUBSCRIBE)
 	$(CC) -f=subscribe $(CFLAGS) $(_SUBSCRIBE) $(LIB) -m=1k
 
-_UNSUBSCRIBE = unsubscribe.r filemove.r mfgets.r getenv.r pwent.r strdup.r
+_UNSUBSCRIBE = unsubscribe.o filemove.o mfgets.o getenv.o pwent.o strdup.o
 
 unsubscribe: $(_UNSUBSCRIBE)
 	$(CC) -f=unsubscribe $(CFLAGS) $(_UNSUBSCRIBE) $(LIB) -m=1k
 
-_UULOG = uulog.r getopt.r getenv.r strdup.r mfgets.r
+_UULOG = uulog.o getopt.o getenv.o strdup.o mfgets.o
 
 uulog: $(_UULOG)
 	$(CC) -f=uulog $(CFLAGS) $(_UULOG) $(LIB) -m=1k
 
-_UUCLEAN = uuclean.r getparam.r parse.r docmd.r maketemp.r mfgets.r \
-           gtime.r filemove.r date822.r setuser.r getval.r getenv.r \
-           strdup.r getdirs.r getopt.r pwent.r
+_UUCLEAN = uuclean.o getparam.o parse.o docmd.o maketemp.o mfgets.o \
+           gtime.o filemove.o date822.o setuser.o getval.o getenv.o \
+           strdup.o getdirs.o getopt.o pwent.o
 
 uuclean: $(_UUCLEAN)
 	$(CC) -f=uuclean $(CFLAGS) $(_UUCLEAN) $(LIB) -m=4k
 
-_UUSTAT = uustat.r
+_UUSTAT = uustat.o
 
 uustat: $(_UUSTAT)
 	$(CC) -f=uustat $(CFLAGS) $(_UUSTAT) $(LIB) -m=1k
 
-_UUCP = uucp.r getuser.r getparam.r parse.r genseq.r fixperms.r maketemp.r \
-        docmd.r mfgets.r gtime.r getenv.r strdup.r getdirs.r pwent.r
+_UUCP = uucp.o getuser.o getparam.o parse.o genseq.o fixperms.o maketemp.o \
+        docmd.o mfgets.o gtime.o getenv.o strdup.o getdirs.o pwent.o
 
 uucp: $(_UUCP)
 	$(CC) -f=uucp $(CFLAGS) $(_UUCP) $(LIB) -m=2k
 
-_UUDECODE = uudecode.r
+_UUDECODE = uudecode.o
 
 uudecode: $(_UUDECODE)
 	$(CC) -f=uudecode $(CFLAGS) $(_UUDECODE) $(LIB) -m=1k
 
-_UUENCODE = uuencode.r
+_UUENCODE = uuencode.o
 
 uuencode: $(_UUENCODE)
 	$(CC) -f=uuencode $(CFLAGS) $(_UUENCODE) $(LIB) -m=1k
 
-_CHOWN = chown.r pwent.r
+_CHOWN = chown.o pwent.o
 
 chown: $(_CHOWN)
 	$(CC) -f=chown $(CFLAGS) $(_CHOWN) $(LIB)
 
-_WHOAMI = whoami.r pwent.r
+_WHOAMI = whoami.o pwent.o
 
 whoami: $(_WHOAMI)
 	$(CC) -f=whoami $(CFLAGS) $(_WHOAMI) $(LIB) -m=1k
 
-_FIXTEXT = fixtext.r fixline.r strdetab.r mfgets.r
+_FIXTEXT = fixtext.o fixline.o strdetab.o mfgets.o
 
 fixtext: $(_FIXTEXT)
 	$(CC) -f=fixtext $(CFLAGS) $(_FIXTEXT) $(LIB)
 
-_CNVRTMAIL = cnvrtmail.r docmd.r fixperms.r gtime.r strupr.r getval.r \
-             mfgets.r filemove.r getenv.r parse.r pwent.r strdup.r
+_CNVRTMAIL = cnvrtmail.o docmd.o fixperms.o gtime.o strupr.o getval.o \
+             mfgets.o filemove.o getenv.o parse.o pwent.o strdup.o
 
 cnvrtmail: $(_CNVRTMAIL)
 	$(CC) -f=cnvrtmail $(CFLAGS) $(_CNVRTMAIL) $(LIB) -m=4k
 
-_LOGIN = login.r parse.r fixperms.r pwent.r getenv.r strdup.r
+_LOGIN = login.o parse.o fixperms.o pwent.o getenv.o strdup.o
 
 login: $(_LOGIN)
 	$(CC) -f=login $(CFLAGS) $(_LOGIN) $(LIB) -m=1k
 
-_ADDUSER = adduser.r strdetab.r getenv.r strdup.r termio.r mfgets.r pwent.r
+_ADDUSER = adduser.o strdetab.o getenv.o strdup.o termio.o mfgets.o pwent.o
 
 adduser: $(_ADDUSER)
 	$(CC) -f=adduser $(CFLAGS) $(_ADDUSER) $(LIB) -m=1k
 
-_UUSETUP = uusetup.r getdevices.r parse.r strupr.r mfgets.r termio.r
+_UUSETUP = uusetup.o getdevices.o parse.o strupr.o mfgets.o termio.o
 
 uusetup: $(_UUSETUP)
 	$(CC) -f=uusetup $(CFLAGS) $(_UUSETUP) $(LIB) -m=1k
 
-_FILESERV = fileserv.r getparam.r getdirs.r strdup.r mfgets.r getval.r \
-    maketemp.r filemove.r docmd.r gtime.r date822.r getseq.r fixperms.r \
-    parse.r getenv.r
+_FILESERV = fileserv.o getparam.o getdirs.o strdup.o mfgets.o getval.o \
+    maketemp.o filemove.o docmd.o gtime.o date822.o getseq.o fixperms.o \
+    parse.o getenv.o
 
 fileserv: $(_FILESERV)
 	$(CC) -f=fileserv $(CFLAGS) $(_FILESERV) $(LIB) -m=3k
 
-_UUNAME = uuname.r parse.r mfgets.r
+_UUNAME = uuname.o parse.o mfgets.o
 
 uuname: $(_UUNAME)
 	$(CC) -f=uuname $(CFLAGS) $(_UUNAME) $(LIB)
 
 clean:
-	$(RM) *.r $(OBJS)
+	$(RM) *.o $(OBJS)
 	
 #
 # Dependencies between .c and .h files
 #
-uucico.r: uucico.c uucp.h proto.h os_misc.h uucico.h
-findmach.r: findmach.c uucp.h proto.h os_misc.h uucico.h
-findline.r: findline.c uucp.h proto.h os_misc.h
-findent.r: findent.c uucp.h proto.h os_misc.h
-chksched.r: chksched.c uucp.h proto.h os_misc.h uucico.h
-finddev.r: finddev.c uucp.h proto.h os_misc.h
-openport.r: openport.c uucp.h proto.h os_misc.h uucico.h
-openuucp.r: openuucp.c uucp.h proto.h os_misc.h uucico.h
-gproto.r: gproto.c uucp.h proto.h os_misc.h uucico.h
-dumpcode.r: dumpcode.c uucp.h proto.h os_misc.h
-closeuucp.r: closeuucp.c uucp.h proto.h os_misc.h uucico.h
-connect.r: connect.c uucp.h proto.h os_misc.h uucico.h
-findwork.r: findwork.c uucp.h proto.h os_misc.h uucico.h
-filexfer.r: filexfer.c uucp.h proto.h os_misc.h uucico.h
-docmd.r: docmd.c uucp.h proto.h os_misc.h
-getsys.r: getsys.c uucp.h proto.h os_misc.h
-getparam.r: getparam.c uucp.h proto.h os_misc.h uucico.h
-getopt.r: getopt.c getopt.h
-dotilde.r: dotilde.c uucp.h proto.h os_misc.h
-userparam.r: userparam.c uucp.h proto.h os_misc.h
-doalias.r: doalias.c uucp.h proto.h os_misc.h
-mail.r: mail.c uucp.h proto.h os_misc.h mail.h
-recvmail.r: recvmail.c uucp.h proto.h os_misc.h mail.h
-sendmail.r: sendmail.c uucp.h proto.h os_misc.h mail.h
-mailx.r: mail.c uucp.h proto.h os_misc.h mail.h
-recvmail.r: recvmail.c uucp.h proto.h os_misc.h mail.h
-rmail.r: rmail.c uucp.h proto.h os_misc.h
-genseq.r: genseq.c uucp.h proto.h os_misc.h
-rnews.r: rnews.c uucp.h proto.h os_misc.h rnews.h mbuf.h getopt.h
-groups.r: groups.c uucp.h proto.h os_misc.h rnews.h mbuf.h
-procbatch.r: procbatch.c uucp.h proto.h os_misc.h rnews.h mbuf.h
-xatol.r: xatol.c
-mbuf.r: mbuf.c mbuf.h
-openarts.r: openarts.c uucp.h proto.h os_misc.h rnews.h mbuf.h
-procart.r: procart.c uucp.h proto.h os_misc.h rnews.h mbuf.h
-fixref.r: fixref.c
-log.r: log.c uucp.h proto.h os_misc.h
-validuser.r: validuser.c uucp.h proto.h os_misc.h
-uuxqt.r: uuxqt.c uucp.h proto.h os_misc.h
-findxwork.r: findxwork.c uucp.h proto.h os_misc.h
-readnews.r: readnews.c uucp.h proto.h os_misc.h
-newsutils.r: newsutils.c uucp.h proto.h os_misc.h
-postnews.r: postnews.c uucp.h proto.h os_misc.h
-expire.r: expire.c uucp.h proto.h os_misc.h
-expgroup.r: expgroup.c uucp.h proto.h os_misc.h
-subscribe.r: subscribe.c uucp.h proto.h os_misc.h
-unsubscribe.r: unsubscribe.c uucp.h proto.h os_misc.h
-uulog.r: uulog.c uucp.h proto.h os_misc.h
-uuclean.r: uuclean.c uucp.h proto.h os_misc.h
-uustat.r: uustat.c uucp.h proto.h os_misc.h
-uucp.r: uucp.c uucp.h proto.h os_misc.h
-cnvrtmail.r: cnvrtmail.c uucp.h proto.h os_misc.h
-login.r: login.c uucp.h proto.h os_misc.h
-chown.r: chown.c uucp.h proto.h os_misc.h
-adduser.r: adduser.c uucp.h proto.h os_misc.h
-uusetup.r: uusetup.c uucp.h proto.h os_misc.h uusetup.h
-getdevices.r: getdevices.c uucp.h proto.h os_misc.h uusetup.h
-getenv.r: getenv.c uucp.h proto.h os_misc.h
-getseq.r: getseq.c uucp.h proto.h os_misc.h
-maketemp.r: maketemp.c uucp.h proto.h os_misc.h
-forkhsell.r: forkshell.c uucp.h proto.h os_misc.h
-setuser.r: setuser.c uucp.h proto.h os_misc.h
-filemove.r: filemove.c uucp.h proto.h os_misc.h
-fixpath.r: fixpath.c uucp.h proto.h os_misc.h
-makepath.r: makepath.c uucp.h proto.h os_misc.h
-getdirs.r: getdirs.c uucp.h proto.h os_misc.h
-fixline.r: fixline.c uucp.h proto.h os_misc.h
-getenv.r: getenv.c uucp.h proto.h os_misc.h
-fileserv.r: fileserv.c uucp.h proto.h os_misc.h
-osk.r: osk.c uucp.h proto.h os_misc.h
-pwent.r: pwent.c uucp.h proto.h os_misc.h
-uuname.r: uuname.c uucp.h proto.h os_misc.h
-parse.r: parse.c uucp.h proto.h os_misc.h
+uucico.o: uucico.c uucp.h proto.h os_misc.h uucico.h
+findmach.o: findmach.c uucp.h proto.h os_misc.h uucico.h
+findline.o: findline.c uucp.h proto.h os_misc.h
+findent.o: findent.c uucp.h proto.h os_misc.h
+chksched.o: chksched.c uucp.h proto.h os_misc.h uucico.h
+finddev.o: finddev.c uucp.h proto.h os_misc.h
+openport.o: openport.c uucp.h proto.h os_misc.h uucico.h
+openuucp.o: openuucp.c uucp.h proto.h os_misc.h uucico.h
+gproto.o: gproto.c uucp.h proto.h os_misc.h uucico.h
+dumpcode.o: dumpcode.c uucp.h proto.h os_misc.h
+closeuucp.o: closeuucp.c uucp.h proto.h os_misc.h uucico.h
+connect.o: connect.c uucp.h proto.h os_misc.h uucico.h
+findwork.o: findwork.c uucp.h proto.h os_misc.h uucico.h
+filexfer.o: filexfer.c uucp.h proto.h os_misc.h uucico.h
+docmd.o: docmd.c uucp.h proto.h os_misc.h
+getsys.o: getsys.c uucp.h proto.h os_misc.h
+getparam.o: getparam.c uucp.h proto.h os_misc.h uucico.h
+getopt.o: getopt.c getopt.h
+dotilde.o: dotilde.c uucp.h proto.h os_misc.h
+userparam.o: userparam.c uucp.h proto.h os_misc.h
+doalias.o: doalias.c uucp.h proto.h os_misc.h
+mail.o: mail.c uucp.h proto.h os_misc.h mail.h
+recvmail.o: recvmail.c uucp.h proto.h os_misc.h mail.h
+sendmail.o: sendmail.c uucp.h proto.h os_misc.h mail.h
+mailx.o: mail.c uucp.h proto.h os_misc.h mail.h
+recvmail.o: recvmail.c uucp.h proto.h os_misc.h mail.h
+rmail.o: rmail.c uucp.h proto.h os_misc.h
+genseq.o: genseq.c uucp.h proto.h os_misc.h
+rnews.o: rnews.c uucp.h proto.h os_misc.h rnews.h mbuf.h getopt.h
+groups.o: groups.c uucp.h proto.h os_misc.h rnews.h mbuf.h
+procbatch.o: procbatch.c uucp.h proto.h os_misc.h rnews.h mbuf.h
+xatol.o: xatol.c
+mbuf.o: mbuf.c mbuf.h
+openarts.o: openarts.c uucp.h proto.h os_misc.h rnews.h mbuf.h
+procart.o: procart.c uucp.h proto.h os_misc.h rnews.h mbuf.h
+fixref.o: fixref.c
+log.o: log.c uucp.h proto.h os_misc.h
+validuser.o: validuser.c uucp.h proto.h os_misc.h
+uuxqt.o: uuxqt.c uucp.h proto.h os_misc.h
+findxwork.o: findxwork.c uucp.h proto.h os_misc.h
+readnews.o: readnews.c uucp.h proto.h os_misc.h
+newsutils.o: newsutils.c uucp.h proto.h os_misc.h
+postnews.o: postnews.c uucp.h proto.h os_misc.h
+expire.o: expire.c uucp.h proto.h os_misc.h
+expgroup.o: expgroup.c uucp.h proto.h os_misc.h
+subscribe.o: subscribe.c uucp.h proto.h os_misc.h
+unsubscribe.o: unsubscribe.c uucp.h proto.h os_misc.h
+uulog.o: uulog.c uucp.h proto.h os_misc.h
+uuclean.o: uuclean.c uucp.h proto.h os_misc.h
+uustat.o: uustat.c uucp.h proto.h os_misc.h
+uucp.o: uucp.c uucp.h proto.h os_misc.h
+cnvrtmail.o: cnvrtmail.c uucp.h proto.h os_misc.h
+login.o: login.c uucp.h proto.h os_misc.h
+chown.o: chown.c uucp.h proto.h os_misc.h
+adduser.o: adduser.c uucp.h proto.h os_misc.h
+uusetup.o: uusetup.c uucp.h proto.h os_misc.h uusetup.h
+getdevices.o: getdevices.c uucp.h proto.h os_misc.h uusetup.h
+getenv.o: getenv.c uucp.h proto.h os_misc.h
+getseq.o: getseq.c uucp.h proto.h os_misc.h
+maketemp.o: maketemp.c uucp.h proto.h os_misc.h
+forkhsell.o: forkshell.c uucp.h proto.h os_misc.h
+setuser.o: setuser.c uucp.h proto.h os_misc.h
+filemove.o: filemove.c uucp.h proto.h os_misc.h
+fixpath.o: fixpath.c uucp.h proto.h os_misc.h
+makepath.o: makepath.c uucp.h proto.h os_misc.h
+getdirs.o: getdirs.c uucp.h proto.h os_misc.h
+fixline.o: fixline.c uucp.h proto.h os_misc.h
+getenv.o: getenv.c uucp.h proto.h os_misc.h
+fileserv.o: fileserv.c uucp.h proto.h os_misc.h
+osk.o: osk.c uucp.h proto.h os_misc.h
+pwent.o: pwent.c uucp.h proto.h os_misc.h
+uuname.o: uuname.c uucp.h proto.h os_misc.h
+parse.o: parse.c uucp.h proto.h os_misc.h
