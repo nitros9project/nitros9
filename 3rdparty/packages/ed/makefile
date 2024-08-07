@@ -11,7 +11,7 @@ OBJS = amatch.o append.o bitmap.o catsub.o ckglob.o deflt.o del.o docmd.o \
 all: ed
 
 ed: $(OBJS)
-	$(CC) $(LFLAGS) -o$@ $^ -lkreiderc -lnos96809l2
+	$(CC) $(LFLAGS) -o$@ $^ -lct -lnos96809l2
 	
 clean:
 	$(RM) $(OBJS)

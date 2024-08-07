@@ -142,9 +142,9 @@ STD_CMDS	= asm attr \
 STD_CMDS_L2	= $(STD_CMDS) \
 		dmem modpatch mmap pmap proc reboot smap
 
-# C-Cubed Rules
+# CMOC Rules
 %.o: %.c
-	$(CC) $(CFLAGS) $< -r
+	$(CC) $(CFLAGS) -c $<
 
 %.a: %.o
 	lwar -c $@ $?

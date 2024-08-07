@@ -17,7 +17,7 @@ all: umacs
 
 # use cio libarary
 umacs: $(RFILES) 
-	$(CC) --os9 -o $@ $^ -L../../../lib -lkreiderc -ltermcap -lnos96809l2
+	$(CC) --os9 -o $@ $^ -L../../../lib -lct -ltermcap -lnos96809l2
 	  
 $(MAINR): ueed.h uemain.h
 $(DISPR): ueed.h uedisplay.h
