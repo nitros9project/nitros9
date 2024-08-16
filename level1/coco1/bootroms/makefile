@@ -14,7 +14,7 @@ BOOTFILE_ROM	= $(MD)/rominfo $(MD)/ioman \
 		$(MD)/scf.mn $(MD)/vtio.dr \
 		$(MD)/covdg.io \
 		$(MD)/term_vdg.dt \
-		$(MD)/sysgo_dd \
+		$(MD)/sysgo_rom \
 		$(CMDS)/shell_21 \
 		$(MD)/clock_60hz $(MD)/clock2_soft
 

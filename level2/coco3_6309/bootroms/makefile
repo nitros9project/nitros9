@@ -9,7 +9,7 @@ KERNEL_ROM	= $(MD)/rel_32 $(MD)/boot_rom $(MD)/krn
 
 BOOTFILE_ROM	= $(MD)/rominfo $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/scf.mn $(MD)/vtio.dr \
-		$(MD)/keydrv_cc3.sb $(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
+		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg.io \
 		$(MD)/term_vdg.dt \
 		$(MD)/clock_60hz $(MD)/clock2_soft \
