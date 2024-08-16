@@ -31,7 +31,7 @@ BOOTERS		= boot_1773_6ms boot_1773_30ms \
 		boot_sdc boot_dw_mmmpiu1 boot_dw_mmmpiu2
 BOOTTRACK	= rel $(BOOTERS)
 KERNEL		= krn krnp2 wbug
-SYSMODS		= ioman init sysgo_dd sysgo_h0 rominfo rominfo_pak vectors
+SYSMODS		= ioman init sysgo_dd sysgo_h0 sysgo_rom rominfo rominfo_pak vectors
 CLOCKS          = clock_60hz clock_50hz \
 		clock2_elim clock2_disto2 clock2_disto4 clock2_bnb \
                 clock2_smart clock2_harris clock2_cloud9 clock2_soft \
@@ -420,6 +420,9 @@ sysgo_dd: sysgo.asm
 
 sysgo_h0: sysgo.asm
 	$(AS) $(AFLAGS) $(ASOUT)$@ $<
+
+sysgo_rom: sysgo.asm
+	$(AS) $(AFLAGS) $(ASOUT)$@ $< -DROM=1
 
 # Clocks
 clock_60hz: clock.asm

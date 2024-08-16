@@ -120,9 +120,7 @@
 ../MODULES/SCF/scf.mn
 *
 * CoCo 3 I/O sub-drivers
-* Keyboard modules: choose cc3 for CoCo 3 keyboard
 ../MODULES/SCF/vtio.dr
-../MODULES/SCF/keydrv_cc3.sb
 * Sound module: CoCo 3 built-in sound generator
 ../MODULES/SCF/snddrv_cc3.sb
 * Joystick modules: choose joy for hi-res joystick adapter or

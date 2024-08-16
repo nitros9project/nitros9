@@ -36,7 +36,7 @@ KERNELFILE_MMMPIU1	= bootfiles/kernel_mmmpiu1
 KERNELFILE_MMMPIU2	= bootfiles/kernel_mmmpiu2
 KERNELFILE_ARDUINO	= bootfiles/kernel_arduino
 KERNELFILE_COCOSDC	= bootfiles/kernel_cocosdc
-DIRS		= defs cmds modules sys bootfiles wwwroot
+DIRS		= defs cmds modules sys bootfiles bootroms wwwroot
 
 CMDS		= $(shell $(CD) cmds; make --no-print-directory showobjs)
 CMDS_D2		= $(shell $(CD) cmds; make --no-print-directory showobjs_d2)
