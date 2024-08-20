@@ -43,3 +43,6 @@ kernel_rom: $(KERNEL_ROM) $(DEPENDS)
 clean:
 	$(RM) $(ALLROMS) $(KERNELS)
 
+# Load Ostrich Emulator
+loadromemu: nos96809l2.rom
+	ostrich2.py --device $(ROMEMUDEV) write --address 0x8000 $^
