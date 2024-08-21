@@ -48,7 +48,7 @@ name                fcs       /Boot/
 
 * HWInit - Stop any floppy activity.
 * Force floppy interrupt per R Gault
-HWInit              ldb       #13                 Forced interrupt command
+HWInit              ldb       #$d0                Force interrupt
                     stb       $FF48               put to floppy command address
                     clrb
 delay@              decb                          Delay for NMI
