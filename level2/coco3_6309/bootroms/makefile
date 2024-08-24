@@ -1,7 +1,9 @@
-include $(NITROS9DIR)/rules.mak
+include ../port.mak
 
 # Module directory
 MD		= ../modules
+# Commands directory
+CMDSDIR		= ../cmds
 
 DEPENDS		= ./makefile
 
@@ -13,9 +15,11 @@ BOOTFILE_ROM	= $(MD)/rominfo $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/covdg.io \
 		$(MD)/term_vdg.dt \
 		$(MD)/clock_60hz $(MD)/clock2_soft \
-		$(MD)/sysgo_rom
+		$(MD)/sysgo_rom \
+		$(CMDSDIR)/shell_21 \
+		$(CMDSDIR)/mdir
 
-BOOTROMS	= nos96809l2.rom
+BOOTROMS	= nos96309l2.rom
 KERNELS		= kernel_rom
 
 ALLROMS		= $(BOOTROMS)
@@ -23,7 +27,7 @@ ALLROMS		= $(BOOTROMS)
 all:	$(ALLROMS)
 
 # Bootfiles
-nos96809l2.rom: $(BOOTFILE_ROM) $(KERNEL_ROM) $(DEPENDS)
+nos96309l2.rom: $(BOOTFILE_ROM) $(KERNEL_ROM) $(DEPENDS)
 	$(MERGE) $(BOOTFILE_ROM)>$@.tmp
 	$(PADROM) 27648 $@.tmp
 	$(MERGE) $@.tmp $(KERNEL_ROM)>$@.tmp2
@@ -39,3 +43,6 @@ kernel_rom: $(KERNEL_ROM) $(DEPENDS)
 clean:
 	$(RM) $(ALLROMS) $(KERNELS)
 
+# Load Ostrich Emulator
+loadromemu: nos96309l2.rom
+	ostrich2.py --device $(ROMEMUDEV) write --address 0x8000 $^

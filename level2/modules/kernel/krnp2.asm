@@ -88,7 +88,7 @@ TC9                 set       false               "true" use TC-9 6309 trap vect
 Edition             equ       20
 Revision            equ       0
 
-                    mod       eom,MName,Systm,ReEnt+Revision,krnp2,$0100
+                    mod       eom,MName,Systm+Objct,ReEnt+Revision,krnp2,$0100
 
 MName               fcs       /KrnP2/
                     fcb       Edition
