@@ -11,6 +11,10 @@
 *
 *   1r1    2003/09/07  Boisy G. Pitre
 * Added 6309 optimizations
+*
+*   2      2024/09/05  Boisy G. Pitre
+* Fixed some assumptions in the code about which blocks were mapped into which
+* MMU slots. Attempted to make the code a bit more general.
 
                     nam       Boot
                     ttl       NitrOS-9 Level 2 ROM Boot Module
@@ -22,7 +26,7 @@
 tylg                set       Systm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $01
-edition             set       1
+edition             set       2
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -96,14 +100,14 @@ RelCode             equ       *
                     sta       $FFDE               ROM/RAM mode
 
 * Map ROM Blocks in
-                    ldd       $FFA6
-                    pshs      d
-                    ldd       $FFA4
-                    pshs      d
-                    ldd       #$3C3D
-                    std       $FFA4
-                    lda       #$3E
-                    sta       $FFA6
+                    ldd       $FFA6               get the two bytes at $FFA6-$FFA7
+                    pshs      d                   save on the stack
+                    ldd       $FFA4               get the two bytes at $FFA4-$FFA5
+                    pshs      d                   save on the stack
+                    ldd       #$3C3D              we're mapping the first 16K of ROM...
+                    std       $FFA4               ... into $8000-$BFFF
+                    lda       #$3E                and the next 8K of ROM...
+                    sta       $FFA6               ... into $C000-$DFFF
 
 * Map block 1 at $6000
                     lda       $FFA3
