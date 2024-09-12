@@ -247,7 +247,7 @@ Write               equ       *
                     pshs      a
                     leax      ,s
                     ldy       #$0002              ; 3 bytes to send.. ugh.  need WRITEM (data mode)
-                    ifgt      Level-1
+Blast               ifgt      Level-1
                     ldu       <D.DWSubAddr
                     else
                     ldu       >D.DWSubAddr
@@ -487,11 +487,67 @@ SendStat
 *
 SetStat
                     cmpa      #SS.Open
-                    bne       isitcomst
-                    bsr       open
-                    bcs       ssbye
+                    bne       isitblkwr
+                    lbsr       open
+                    lbcs       ssbye
                     ldd       #SS.Open*256+OP_SERSETSTAT
                     bra       SendStat
+isitblkwr           cmpa      #SS.BlkWr
+                    bne       isitcomst
+* This routine moves data from the caller's address space to the system's address space so
+* it can be quickly moved through via DriveWire. This is useful for certain networking
+* protocols like FujiNet which are packet oriented. The alternative is to use the regular
+* I$Write system call which goes through the Write entry point in this driver, which
+* prepends each byte with a special channel byte.                    
+* SS.BlkWr
+* R$X = data to blast
+* R$Y = length (BlkWrMaX bytes or less)
+                    ldx       PD.RGS,y            get the caller's register stack pointer
+                    ldy       R$Y,x               load the # of bytes to write
+                    ldx       R$X,x               and the pointer to those bytes (in the caller's address space)
+                    ifgt      Level-1
+BlkWrMax            equ       64                  the maximum amount of data we'll move at a time
+* Move bytes from user to system (Level 2 only)
+* Input:  A = Source task #
+*         B = Destination task #
+*         X = Source pointer
+*         Y = Number of bytes to move
+*         U = Destination pointer
+                    leas      -BlkWrMax,s         set aside space on stack to move the caller's data to our space
+                    leau      ,s                  point U to that location on the stack
+l@                  pshs      y                   save count for later (we only do BlkWrMax bytes at a time)
+                    pshs      x                   save the source pointer
+                    ldx       <D.Proc             get the current process descriptor
+                    lda       P$Task,x            get the source task #
+                    ldb       <D.SysTsk           get the destination task #
+                    ldx       ,s++                pull the source pointer off of the stack
+                    cmpy      #BlkWrMax           is the # of bytes to move <= our maximum?
+                    ble       moveit@             branch if so
+                    ldy       #BlkWrMax           else set Y to the maximum we copy at a time
+moveit@             os9       F$Move              move the data from the caller's address space to ours
+                    tfr       y,d                 get move count into D
+                    leax      d,x                 advance X that may bytes in for the next possible move
+                    pshs      x,u                 save X and U on the stack
+                    tfr       u,x                 move U into X so we can write it via DriveWire
+                    ldu       <D.DWSubAddr        get the address of the subroutine module entry (Level 2)
+                    else
+                    ldu       >D.DWSubAddr        get the address of the subroutine module entry (Level 1)
+                    endc
+                    jsr       6,u                call DW write
+                    ifgt      Level-1
+                    puls      x,u                recover X (pointing to next write block) and U (our destination pointer)
+                    ldd       ,s++               get the leftover size from stack (was Y pushed earlier)
+                    subd      #BlkWrMax          subtract our maximum size on stack
+                    tfr       d,y                put it into Y
+                    cmpd      #0000              compare against zero
+                    bgt       l@                 branch if D > 0 (there's more)
+                    leas      BlkWrMax,s         else recover stack -- we're done
+                    endc
+                    rts                          return to the caller
+                    
+* Entry: X=Source pointer
+*        Y=Byte count
+*        U=Destination pointer
 isitcomst
                     ldb       #OP_SERSETSTAT
                     bsr       SendStat
