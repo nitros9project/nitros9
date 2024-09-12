@@ -14,7 +14,7 @@ LFLAGS		+= -lcoco3_6309
 else
 LFLAGS		+= -lcoco3
 endif
-LFLAGS		+= -lnet -lalib 
+LFLAGS		+= -lfuji -lnet -lalib 
 
 CMDS		= asm attr backup bawk binex build cmp cobbler copy cputype \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
@@ -28,6 +28,7 @@ CMDS_D2         = basic09 runb gfx2 gfx inkey syscall copy del echo format \
                 merge os9gen prompt tmode
 
 CMDS_DW		= inetd dw telnet httpd
+CMDS_FN		= fngetdevfile fnsetdevfile
 
 SHELLMODS	= shellplus date deiniz echo iniz link load save unlink
 
@@ -35,7 +36,7 @@ UTILPAK1	= attr build copy del deldir dir display list makdir mdir \
 		merge mfree procs rename tmode
 
 # Files not compilable by os9asm: config
-all:	$(DEPENDS) $(CMDS) $(CMDS_D2) $(CMDS_DW) shell utilpak1 $(DEPENDS)
+all:	$(DEPENDS) $(CMDS) $(CMDS_D2) $(CMDS_DW) $(CMDS_FN) shell utilpak1 $(DEPENDS)
 
 # Some commands depend on net.o
 $(NOSLIB)/net.o:
@@ -72,14 +73,14 @@ utilpak1:  $(UTILPAK1) $(DEPENDS)
 	@$(ECHO) ""
 
 clean:
-	$(RM) shell utilpak1 $(SUBS) $(SHELLMODS) $(CMDS) $(CMDS_D2) $(CMDS_DW) *.list *.map
+	$(RM) shell utilpak1 $(SUBS) $(SHELLMODS) $(CMDS) $(CMDS_D2) $(CMDS_DW) $(CMDS_FN) *.list *.map
 
 # Only $(CMDS) are shown here
 showobjs:
 	@$(ECHO) shell utilpak1 $(CMDS)
 
 showobjs_dw:
-	@$(ECHO) shell utilpak1 $(sort $(CMDS) $(CMDS_D2) $(CMDS_DW))
+	@$(ECHO) shell utilpak1 $(sort $(CMDS) $(CMDS_D2) $(CMDS_DW) $(CMDS_FN))
 
 showobjs_d2:
 	@$(ECHO) $(CMDS_D2)

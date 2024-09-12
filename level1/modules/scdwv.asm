@@ -247,7 +247,7 @@ Write               equ       *
                     pshs      a
                     leax      ,s
                     ldy       #$0002              ; 3 bytes to send.. ugh.  need WRITEM (data mode)
-                    ifgt      Level-1
+Blast               ifgt      Level-1
                     ldu       <D.DWSubAddr
                     else
                     ldu       >D.DWSubAddr
