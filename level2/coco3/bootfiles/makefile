@@ -72,7 +72,7 @@ RBCOCO3FPGA = $(MD)/rbsuper.dr $(MD)/llcoco3fpga.dr \
 		$(MD)/sd1_coco3fpga.dd $(MD)/ramd_coco3fpga.dr \
 		$(MD)/r0_ramd_coco3fpga.dd
 
-SCDWV_NET  = $(MD)/n_scdwv.dd $(MD)/n1_scdwv.dd $(MD)/n2_scdwv.dd \
+SCDWV_NET  = $(MD)/fuji_scdwv.dd $(MD)/n_scdwv.dd $(MD)/n1_scdwv.dd $(MD)/n2_scdwv.dd \
 		$(MD)/n3_scdwv.dd $(MD)/n4_scdwv.dd $(MD)/midi_scdwv.dd
 SCDWV_WIN  = $(MD)/z1_scdwv.dd $(MD)/z2_scdwv.dd
 SCDWP     = $(MD)/scdwp.dr $(MD)/p_scdwp.dd
@@ -283,12 +283,6 @@ BOOTFILE_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(SCDWP) \
 		$(PIPE) \
 		$(CLOCK60HZDW)
-#		$(MD)/scdwv.dr \
-#		$(MD)/n_scdwv.dd $(MD)/n1_scdwv.dd $(MD)/n2_scdwv.dd \
-#		$(MD)/n3_scdwv.dd $(MD)/n4_scdwv.dd $(MD)/n5_scdwv.dd \
-#		$(MD)/n6_scdwv.dd $(MD)/n7_scdwv.dd $(MD)/n8_scdwv.dd \
-#		$(MD)/n9_scdwv.dd $(MD)/n10_scdwv.dd $(MD)/n11_scdwv.dd \
-#		$(MD)/n12_scdwv.dd $(MD)/n13_scdwv.dd $(MD)/midi_scdwv.dd \
 
 # NitrOS-9 disk bootfile to allow booting from DriveWire 3 server
 # Headless mode

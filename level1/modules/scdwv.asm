@@ -247,7 +247,7 @@ Write               equ       *
                     pshs      a
                     leax      ,s
                     ldy       #$0002              ; 3 bytes to send.. ugh.  need WRITEM (data mode)
-Blast               ifgt      Level-1
+                    ifgt      Level-1
                     ldu       <D.DWSubAddr
                     else
                     ldu       >D.DWSubAddr
@@ -488,8 +488,8 @@ SendStat
 SetStat
                     cmpa      #SS.Open
                     bne       isitblkwr
-                    lbsr       open
-                    lbcs       ssbye
+                    lbsr      open
+                    lbcs      ssbye
                     ldd       #SS.Open*256+OP_SERSETSTAT
                     bra       SendStat
 isitblkwr           cmpa      #SS.BlkWr
