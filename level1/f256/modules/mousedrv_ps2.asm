@@ -235,7 +235,7 @@ exit@               puls      a,x,pc
 * This routine gets the information from the mouse and stores it in the
 * correct location for processing.
 * Use getstat to get X,Y and Buttons in a program
-* There is an auto-hide timer that has corresponding code in ALTIRG in vtio.asm
+* There is an auto-hide timer that has corresponding code in ALTISR in vtio.asm
 * Auto-hide timer var is V.MSTimer and is incremented in 1/60 sec increments
 * Auto-hides when timer var wraps around to 0 in vtio.asm
 * when first initialized there is sometimes an extra acknowledge byte ($FA) sent
