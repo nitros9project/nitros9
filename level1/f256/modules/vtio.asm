@@ -1,4 +1,4 @@
-********************************************************************
+*******************************************************************
 * VTIO - NitrOS-9 video terminal I/O driver for the Foenix F256
 *
 * $Id$
@@ -58,6 +58,7 @@ start               lbra      Init
 fontmod             fcs       /font/
 palettemod          fcs       /palette/
 keydrvmod           fcs       /keydrv/
+msdrvmod	    fcs	      /mousedrv/             mouse driver module
 
 *
 * VTIO Alternate IRQ routine - Entered from Clock every 1/60th of a second
@@ -74,9 +75,11 @@ AltISR
 * Handle keyboard (if available)
                     ldx       V.KeyDrvEPtr,u
                     cmpx      #$0000
-                    beq       HandleSound
+                    beq       HandleMSTimer
                     jsr       6,x call AltIRQ routine in keydrv
-                    
+HandleMSTimer	    inc	      V.MSTimer	         increment mouse auto-hide timer
+		    bne	      HandleSound	 if it is not zero, then skip
+		    clr	      MS_MEN		 if timer flips to 0, turn off mouse cursor
 * Handle sound.
 HandleSound
                     tst       D.TnCnt          get the tone counter
@@ -322,7 +325,7 @@ l@                  ldd       ,x++                get two bytes from the source
 
 * Clear memory at MAPADDR with the contents of D.
 clr                 ldx       #MAPADDR
-l@               std       ,x++
+l@                  std       ,x++
                     cmpx      #MAPADDR+80*61
                     bne       l@
                     rts
@@ -345,6 +348,25 @@ InitKeyboard        clr       D.KySns
 ex@                 ldd        #0 set D to 0
                     std       V.KeyDrvMPtr,u clear the module pointer
                     std       V.KeyDrvEPtr,u clear the entry pointer
+                    rts       return to the caller
+
+* Mouse initialization  
+* NOTE: If we fail to find the 'msdrv' module, carry is returned set, but
+* the caller can chose to ignore the error condition.
+InitMouse    	    leax      msdrvmod,pcr         point to the keydrv module name
+                    lda       #Systm+Objct               it's a system module
+                    pshs      u save U on the stack
+                    os9       F$Link              link to it
+                    tfr       u,x move the module address to X
+                    puls      u restore U from the stack
+                    bcs       ex@         branch if the link failed
+                    stx       V.MSDrvMPtr,u save the module pointer
+                    sty       V.MSDrvEPtr,u save the entry pointer
+                    jsr       ,y                  call the subroutine's Init entry point
+                    rts                           return to the caller
+ex@                 ldd        #0 set D to 0
+                    std       V.MSDrvMPtr,u clear the module pointer
+                    std       V.MSDrvEPtr,u clear the entry pointer
                     rts return to the caller
 * Init
 *
@@ -367,7 +389,8 @@ Init                stu       D.KbdSta
                     
                     lbsr      InitDisplay         initialize the display
                     lbsr      InitSound           initialize the sound
-                    lbsr      InitKeyboard        initialize the keyboad                    
+                    lbsr      InitKeyboard        initialize the keyboad
+                    lbsr      InitMouse
 
                     ldx       >D.AltIRQ           get the current alternate IRQ vector
                     stx       >D.OrgAlt           save it off in the original vector
@@ -398,8 +421,15 @@ Term                ldx       >D.OrgAlt   get the original alternate IRQ vector
                     ldu       V.KeyDrvMPtr,u
                     os9       F$Unlink
                     puls      u                    
-                    std       V.KeyDrvMPtr,u
-ex@                  clrb                          clear the carry
+                    std       V.MSDrvMPtr,u
+                    ldd       #0
+                    std       V.MSDrvEPtr,u          and zero out the vector
+                    pshs      u
+                    ldu       V.MSDrvMPtr,u
+                    os9       F$Unlink
+                    puls      u                    
+                    std       V.MSDrvMPtr,u		    
+ex@                 clrb                          clear the carry
                     rts                           return to the caller
 
 * Read

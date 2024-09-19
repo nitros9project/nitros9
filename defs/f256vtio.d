@@ -30,7 +30,11 @@ V.FBCol             RMB       1                   currently selected foreground 
 V.BordCol           RMB       1                   currently selected border color
 V.KeyDrvMPtr        RMB       2                   keydrv module address
 V.KeyDrvEPtr        RMB       2                   keydrv entry point address
-
+V.MSDrvMPtr         RMB       2                   keydrv module address
+V.MSDrvEPtr         RMB       2                   keydrv entry point address
+V.MouseVect	    RMB	      2
+V.MSButtons	    RMB	      1		          Keeps the buttons for the SetStat call
+V.MSTimer	    RMB	      1                   This will hide the cursor if inactive for more than 4 secons
 V.KeyDrvStat        equ       .
                     RMB       8
 
@@ -44,6 +48,8 @@ V.DWHeight          set       V.EscParms+4
 V.DWFore            set       V.EscParms+5
 V.DWBack            set       V.EscParms+6
 V.DWBorder          set       V.EscParms+7
+
+
 
                     ifgt      Level-1                                            
 ********************************************************************
@@ -151,6 +157,12 @@ V.GCADDR	    RMB	     3			  address of cursor on screen
 V.GCAD8K	    RMB	     2			  address in 8K window
 V.GMAPBLK	    RMB	     2			  mapped in logical address of block
                     endc
+
+
+bufstrt             rmb       2
+bufcur              rmb       2
+linebuf             rmb       10
+
 
 V.InBuf             RMB       KBufSz              the input buffer
                     RMB       250-.
