@@ -77,9 +77,20 @@ AltISR
                     cmpx      #$0000
                     beq       HandleMSTimer
                     jsr       6,x call AltIRQ routine in keydrv
-HandleMSTimer	    inc	      V.MSTimer	         increment mouse auto-hide timer
+* Handle Mouse Timer. When timer wraps to zero, turn it off
+* Mouse does not hide correctly, so park it at right side of screen
+* Check if mouse is already off, if it is, then skip timer code
+* Mouse timer reset is in mousedrv_ps2.asm interrupt procedure
+* Mouse timer resets on every mouse interrupt
+* This should hide the mouse after 4 to 5 seconds of inactivity
+HandleMSTimer	    tst	      MS_MEN             check if mouse cursor already off
+		    beq	      HandleSound	 if cursor already off, skip timer code
+		    inc	      V.MSTimer	         increment mouse auto-hide timer
 		    bne	      HandleSound	 if it is not zero, then skip
 		    clr	      MS_MEN		 if timer flips to 0, turn off mouse cursor
+		    ldd	      #640		 park mouse at right border
+		    sta	      MS_XH		 turning off cursor doesn't work
+		    stb	      MS_XL		 correctly at the moment
 * Handle sound.
 HandleSound
                     tst       D.TnCnt          get the tone counter
@@ -1193,6 +1204,8 @@ GetStat             cmpa      #SS.EOF             is this the EOF call?
                     lbeq      GSKySns             branch if so
                     cmpa      #SS.Joy             get joystick position?
                     beq       SSJoy               branch if so
+		    cmpa      #SS.Mouse
+		    beq	      GSMouse
                     cmpa      #SS.Palet           get palettes?
                     beq       GSPalet             yes, go process
                     cmpa      #SS.FBRgs           get colors?
@@ -1301,6 +1314,30 @@ s3@                 lsra                          shift out RIGHT
 s4@                 sta       R$A,u               store buttons in caller's A
                     clrb                          clear carry
                     rts                           return
+
+;;; SS.Mouse
+;;;
+;;; Returns the mouse information.
+;;;
+;;; Entry:  B  = SS.Mouse 
+;;;
+;;; Exit:   A = Button state.
+;;;         X = Horizontal position (0 - 640).
+;;;         Y = Vertical position (0 - 480).
+;;;        CC = Carry flag clear to indicate success.
+;;;
+;;; Error:  B = A non-zero error code.
+;;;        CC = Carry flag set to indicate error.
+GSMouse             lda       MS_XH
+                    ldb       MS_XL
+                    std       R$X,x
+                    lda       MS_YH
+                    ldb       MS_YL
+                    std       R$Y,x
+                    lda       V.MSButtons,u
+                    sta       R$A,x
+                    clrb                          clear carry
+                    rts   
 
 ;;; SS.Palet
 ;;;

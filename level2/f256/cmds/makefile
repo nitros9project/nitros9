@@ -22,7 +22,7 @@ BF      = bf
 CPM     = cpm
 CMDS_DW = inetd dw telnet httpd
 
-CMDS		= $(STD_CMDS_L2) fstatus mmap pmap proc smap xtclut \
+CMDS		= $(STD_CMDS_L2) fstatus mmap pmap proc smap xtclut drawtest \
 		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) play \
 		bootos9 fnxinfo fnxreset rogue 
 

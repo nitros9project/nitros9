@@ -53,8 +53,9 @@ AltISR              rts
 Init                
 * F256 Jr. PS/2 mouse  initialization                    
 * Initialize the registers and send the right codes to the mouse
-* $FF - Mouse Reset (should return self test successful $AA and id $00
+* $FF - Mouse Reset (should return self test successful $AA and id $00)
 * $F3 - sample rate (10,20,40,80,100,200) - use 40 times/sec for F256
+*       sample rate defined in MS_SRATE in f256.d
 * $E8 - Set Resolution $00=1/mm.$01=2/mm.$03=4/mm,$04=8/mm
 * $E6 - Scaling 1:1 ($E7=2:1 scaling)
 * $F4 - Set mouse to streaming mode.  Stream data with interrupts.
@@ -64,8 +65,8 @@ Init
 * IRQ routine writes X,Y to mouse pointer registers, buttons stored in V.MSButtons
 * MS_MEN is the mouse enable Bit1 Mode:1-hardware,0-setxy Bit0:1-show cursor,0-hide cursor
 *
-* PS/2 Registers are $FE50. Mouse relevant registers are:
-* |           |  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |
+* PS/2 Registers are $FE50. Mouse relevant registers are: (defined in f256.d)
+* |f256.d     |  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |  ADDR
 * |PS2_CTRL   |     |     |MCLR |KCLR |M_WR |     |K_WR |     | $FE50
 * |PS2_OUT    | Data to send to keyboard or mouse             | $FE51
 * |MS_IN      | Data in from Mouse                            | $FE53
@@ -159,10 +160,8 @@ Term
                     ldx       #$0000              we want to remove the IRQ table entry
                     leay      IRQMSvc,pcr          point to the interrupt service routine
                     os9       F$IRQ               call to remove it
-
                     ldx       >D.OrgAlt           get the original alternate IRQ vector
                     stx       <D.AltIRQ           save it back to the D.AltIRQ address
-                    
                     clrb                          clear the carry
                     rts                           return to the caller
 
@@ -182,7 +181,7 @@ SendMPS2            clr       PS2_CTRL            clear control register
 ***********************************************************************************
 * Read Byte from PS/2 Mouse
 * read one byte from ps/2 mouse fifo
-* built in time out of FFFFx10 in case too close to send
+* built in time out of FFFFx10 in case too close to send or interrupt
 * really should never time out if mouse is working
 * Exit:  A = value from mouse, Carry bit = error code
 ReadMPS2            pshs      b,x
@@ -206,6 +205,7 @@ time1out@           decb
 * Send Byte to PS/2 Mouse
 * Try to send byte to mouse 3 times, if fails, return error with carry flag
 * Check potential return codes: $FA=Ack, $FE=resend, $FC=error
+* Fail if receipt of acknowledge byte ($FA) times out
 SendMCode           pshs      a,x
                     ldx       #4
 sendloop@           leax      -1,x
@@ -232,29 +232,28 @@ exit@               puls      a,x,pc
 * Mouse is on 640x480 grid. Limit coordinates to grid.
 * Read in current XY values and adjust for offsets, then write XY back
 * Button information is stored in V.MSButtons 4=middle,2=right,1=left (bits 2,1,0)
-* This routine gets the information from the mouse and stores it in the
-* correct location for processing.
+* V.MSButtons defined in f256vtio.d
 * Use getstat to get X,Y and Buttons in a program
 * There is an auto-hide timer that has corresponding code in ALTISR in vtio.asm
 * Auto-hide timer var is V.MSTimer and is incremented in 1/60 sec increments
 * Auto-hides when timer var wraps around to 0 in vtio.asm
-* when first initialized there is sometimes an extra acknowledge byte ($FA) sent
-* before the packet.  This will check for the $FA (acknowledge) byte
+* When first initialized there is sometimes an extra acknowledge byte ($FA) sent
+* before the packet.  This will check for the $FA (acknowledge) byte.
 * NOTE: Interrupt can trigger before there is a byte in the FIFO to read
-* ALWAYS CHECK if there is a byte to read first
+*       ALWAYS CHECK if there is a byte to read first
 IRQMSvc             pshs      a,b
                     lda       #INT_PS2_MOUSE      get the PS/2 mouse interrupt flag
                     sta       INT_PENDING_0       clear the interrupt
 * Enable mouse cursor if it has been auto-hid               
                     lda       #$01
                     sta       MS_MEN              show mouse and enable legacy mode
-                    clr       V.MSTimer           reset the auto-hide timer
+                    clr       V.MSTimer           reset the auto-hide timer (f256vtio.d)
 getmpacket          ldb       PS2_STAT            read ps/2 status register detect empty fifo
                     andb      #%00000010          Check byte ready in fifo
                     lbne      IRQMExit            branch to timeloop if fifo empty
                     lda       MS_IN               load byte#0 - buttons, + or -, overflow
                     pshs      a                   push a to store +- for xy
-                    cmpa      #$FA                Check for extra $FA
+                    cmpa      #$FA                Check for extra $FA - just in case
                     lbeq      finish@         
                     anda      #%00000111          just get button information
                     sta       V.MSButtons,u       store new button flags
@@ -359,7 +358,8 @@ mswritepx           sta       ,x+
                     bne       mswritepx
                     rts
 
-mspointerdata       fcb       255,1,1,1,255,1,0,13
+mspointerdata       fcb       255,2,0,14
+                    fcb       255,1,1,1,255,1,0,13
                     fcb       255,1,1,2,255,1,0,12
                     fcb       255,1,1,3,255,1,0,11
                     fcb       255,1,1,4,255,1,0,10
@@ -369,12 +369,11 @@ mspointerdata       fcb       255,1,1,1,255,1,0,13
                     fcb       255,1,1,8,255,1,0,6
                     fcb       255,1,1,9,255,1,0,5
                     fcb       255,1,1,10,255,1,0,4
-                    fcb       255,1,1,11,255,1,0,3
-                    fcb       255,1,1,7,255,1,0,7
-                    fcb       255,1,1,8,255,1,0,6
-                    fcb       255,1,1,3,255,2,1,4,0,6
-                    fcb       255,1,1,2,255,3,1,4,0,6
-                    fcb       255,2,0,3,1,4,0,7,0,0
+                    fcb       255,1,1,6,255,5,0,4
+                    fcb       255,1,1,3,255,1,1,3,255,1,0,7
+                    fcb       255,1,1,2,255,3,1,2,255,1,0,7
+                    fcb       255,1,1,1,255,4,1,2,255,1,0,7
+                    fcb       255,2,0,4,255,3,0,7,0,0
 
 emod
 eom                 equ       *
