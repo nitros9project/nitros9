@@ -39,8 +39,8 @@ RBFDUMMY	= $(MD)/lldummy.sb $(MD)/s0_v.dd
 SCF		 = $(MD)/scf.mn
 
 # SCF video terminal
-SCVT_F256K  = $(MD)/vtio.dr $(MD)/keydrv_f256k.sb  $(MD)/mousedrv_ps2.sb $(MD)/term.dt
-SCVT_F256JR = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb  $(MD)/mousedrv_ps2.sb $(MD)/term.dt
+SCVT_F256K  = $(MD)/vtio.dr $(MD)/keydrv_f256k.sb $(MD)/term.dt
+SCVT_F256JR = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/term.dt
 
 # SCF 16550 serial driver
 SC16550  = $(MD)/sc16550.dr $(MD)/t0_sc16550.dd

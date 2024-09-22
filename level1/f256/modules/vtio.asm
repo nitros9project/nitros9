@@ -75,8 +75,13 @@ AltISR
 * Handle keyboard (if available)
                     ldx       V.KeyDrvEPtr,u
                     cmpx      #$0000
+		    ifgt      Level-1
                     beq       HandleMSTimer
+		    else
+		    beq	      HandleSound
+		    endc
                     jsr       6,x			call AltIRQ routine in keydrv
+		    ifgt      Level-1
 * Handle Mouse Timer. When timer wraps to zero, turn it off
 * Mouse does not hide correctly, so park it at right side of screen
 * Check if mouse is already off, if it is, then skip timer code
@@ -91,6 +96,7 @@ HandleMSTimer	    tst	      MS_MEN             check if mouse cursor already off
 		    ldd	      #640		 park mouse at right border
 		    sta	      MS_XH		 turning off cursor doesn't work
 		    stb	      MS_XL		 correctly at the moment
+		    endc
 * Handle sound.
 HandleSound
                     tst       D.TnCnt          get the tone counter
@@ -361,6 +367,7 @@ ex@                 ldd        #0 set D to 0
                     std       V.KeyDrvEPtr,u clear the entry pointer
                     rts       return to the caller
 
+		    ifgt      Level-1
 * Mouse initialization  
 * NOTE: If we fail to find the 'msdrv' module, carry is returned set, but
 * the caller can chose to ignore the error condition.
@@ -379,7 +386,8 @@ ex@                 ldd        #0 set D to 0
                     std       V.MSDrvMPtr,u clear the module pointer
                     std       V.MSDrvEPtr,u clear the entry pointer
                     rts return to the caller
-* Init
+		    endc
+* Init		    
 *
 * Entry:
 *    Y  = address of device descriptor
@@ -401,7 +409,9 @@ Init                stu       D.KbdSta
                     lbsr      InitDisplay         initialize the display
                     lbsr      InitSound           initialize the sound
                     lbsr      InitKeyboard        initialize the keyboad
+		    ifgt      Level-1
                     lbsr      InitMouse
+		    endc
 
                     ldx       >D.AltIRQ           get the current alternate IRQ vector
                     stx       >D.OrgAlt           save it off in the original vector
@@ -1204,8 +1214,10 @@ GetStat             cmpa      #SS.EOF             is this the EOF call?
                     lbeq      GSKySns             branch if so
                     cmpa      #SS.Joy             get joystick position?
                     beq       SSJoy               branch if so
+		    ifgt      Level-1
 		    cmpa      #SS.Mouse
 		    beq	      GSMouse
+		    endc
                     cmpa      #SS.Palet           get palettes?
                     beq       GSPalet             yes, go process
                     cmpa      #SS.FBRgs           get colors?
@@ -1315,6 +1327,7 @@ s4@                 sta       R$A,u               store buttons in caller's A
                     clrb                          clear carry
                     rts                           return
 
+		    ifgt      Level-1
 ;;; SS.Mouse
 ;;;
 ;;; Returns the mouse information.
@@ -1338,7 +1351,7 @@ GSMouse             lda       MS_XH
                     sta       R$A,x
                     clrb                          clear carry
                     rts   
-
+		    endc
 ;;; SS.Palet
 ;;;
 ;;; Return palette information.
