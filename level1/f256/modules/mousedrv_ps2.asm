@@ -247,7 +247,7 @@ IRQMSvc             pshs      a,b
 * Enable mouse cursor if it has been auto-hid               
                     lda       #$01
                     sta       MS_MEN              show mouse and enable legacy mode
-                    clr       V.MSTimer           reset the auto-hide timer (f256vtio.d)
+                    clr       V.MSTimer,u         reset the auto-hide timer (f256vtio.d)
 getmpacket          ldb       PS2_STAT            read ps/2 status register detect empty fifo
                     andb      #%00000010          Check byte ready in fifo
                     lbne      IRQMExit            branch to timeloop if fifo empty

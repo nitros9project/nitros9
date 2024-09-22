@@ -76,7 +76,7 @@ AltISR
                     ldx       V.KeyDrvEPtr,u
                     cmpx      #$0000
                     beq       HandleMSTimer
-                    jsr       6,x call AltIRQ routine in keydrv
+                    jsr       6,x			call AltIRQ routine in keydrv
 * Handle Mouse Timer. When timer wraps to zero, turn it off
 * Mouse does not hide correctly, so park it at right side of screen
 * Check if mouse is already off, if it is, then skip timer code
@@ -85,7 +85,7 @@ AltISR
 * This should hide the mouse after 4 to 5 seconds of inactivity
 HandleMSTimer	    tst	      MS_MEN             check if mouse cursor already off
 		    beq	      HandleSound	 if cursor already off, skip timer code
-		    inc	      V.MSTimer	         increment mouse auto-hide timer
+		    inc	      V.MSTimer,u	         increment mouse auto-hide timer
 		    bne	      HandleSound	 if it is not zero, then skip
 		    clr	      MS_MEN		 if timer flips to 0, turn off mouse cursor
 		    ldd	      #640		 park mouse at right border
