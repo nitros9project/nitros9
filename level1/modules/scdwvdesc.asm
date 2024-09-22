@@ -100,7 +100,11 @@ initsize            equ       *
 
 name                equ       *
                     ifeq      Addr-0
+                    ifne      FUJIDEV
+                    fcs       /fuji/
+                    else
                     fcs       /Term/
+                    endc
                     else
                     ifeq      Addr-14
                     fcs       /MIDI/

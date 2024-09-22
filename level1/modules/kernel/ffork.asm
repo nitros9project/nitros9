@@ -184,24 +184,23 @@ L0250          lda       ,x+
                endc
                puls      x,u                 restore pointers to descriptors
                endc
-* Copy I/O pointers to new descriptor
+* Copy CWD and CXD info (Device Entry pointers and directory PSN) to new descriptor
                leax      P$DIO,x
                leau      P$DIO,u
                ifne      H6309
-               ldw       #DefIOSiz
+               ldw       #DefIOSiz           six bytes for CWD, six bytes for CXD
                tfm       x+,u+
-* Copy Standard paths to new descriptor
-               lde       #3                  get # paths
+               lde       #3                  next, child inherits first 3 I/O paths
                else
-               ldb       #DefIOSiz
+               ldb       #DefIOSiz           six bytes for CWD, six bytes for CXD
 L0261          lda       ,x+
                sta       ,u+
                decb
                bne       L0261
-               ldy       #3
+               ldy       #3                  next, child inherits first 3 I/O paths
                endc
 
-* Duplicate 1st 3 paths
+* Duplicate first 3 I/O paths from parent to child
 GetOPth        lda       ,x+                 get a path #
                beq       SveNPth             don't exist, go on
                os9       I$Dup               dupe it
@@ -211,9 +210,9 @@ GetOPth        lda       ,x+                 get a path #
 * As std in/out/err
 SveNPth        sta       ,u+                 save new path #
                ifne      H6309
-               dece                          done?
+               dece                          count down from 3.  done?
                else
-               leay      -1,y
+               leay      -1,y                count down from 3.  done?
                endc
                bne       GetOPth             no, keep going
 * Link to new module & setup task map

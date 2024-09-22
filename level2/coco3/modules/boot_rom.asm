@@ -11,6 +11,10 @@
 *
 *   1r1    2003/09/07  Boisy G. Pitre
 * Added 6309 optimizations
+*
+*   2      2024/09/05  Boisy G. Pitre
+* Fixed some assumptions in the code about which blocks were mapped into which
+* MMU slots. Attempted to make the code a bit more general.
 
                     nam       Boot
                     ttl       NitrOS-9 Level 2 ROM Boot Module
@@ -22,7 +26,7 @@
 tylg                set       Systm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $01
-edition             set       1
+edition             set       2
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -44,13 +48,22 @@ start               equ       *
                     bcs       Uhoh
 
                     stu       3,s                 save pointer in X on stack
+                    deca                          reduce the number of pages we're returning
                     std       1,s                 save size in D on stack
 
-* TRICK!  Map block 4 into $4000, copy our special ROM copy code
-*         there, then jmp to it!
+* Call F$SRtMem to return the last page of RAM.
+                    leau      d,u
+                    ldd       #1
+                    os9       F$SRtMem
+                    
+RelAddy             equ       $4800
+
+TBLOCK              equ       5
+* TRICK! Map block TBLOCK into $4000 of the kernel address space temporarily, then 
+* copy our special ROM copy code there and jump to it.
                     lda       $FFA2
                     pshs      a
-                    lda       #$04
+                    lda       #TBLOCK
                     sta       $FFA2
                     ifne      H6309
                     ldw       #RelCodeL
@@ -58,7 +71,7 @@ start               equ       *
                     ldd       #RelCodeL           code less than 256 bytes
                     endc
                     leax      RelCode,pcr
-                    ldy       #$4800
+                    ldy       #RelAddy
                     ifne      H6309
                     tfm       x+,y+
                     else
@@ -68,7 +81,7 @@ Copy                lda       ,x+
                     bne       Copy
                     endc
 
-Jump                jsr       $4800               * jump to rel code
+Jump                jsr       RelAddy             * jump to rel code
                     puls      a                   restore original block at $4000
                     sta       $FFA2
 
@@ -80,22 +93,26 @@ ExitOK              andcc     #^Carry             clear carry
 Uhoh                puls      u,y,x,a,b,cc,pc
 
 
-* this code executes at $4800
+* this code executes at RelAddy
 RelCode             equ       *
                     lda       #$4E                CC3 mode, MMU, 32K ROM
                     sta       $FF90
                     sta       $FFDE               ROM/RAM mode
 
 * Map ROM Blocks in
-                    ldd       #$3C3D
-                    std       $FFA4
-                    lda       #$3E
-                    sta       $FFA6
+                    ldd       $FFA6               get the two bytes at $FFA6-$FFA7
+                    pshs      d                   save on the stack
+                    ldd       $FFA4               get the two bytes at $FFA4-$FFA5
+                    pshs      d                   save on the stack
+                    ldd       #$3C3D              we're mapping the first 16K of ROM...
+                    std       $FFA4               ... into $8000-$BFFF
+                    lda       #$3E                and the next 8K of ROM...
+                    sta       $FFA6               ... into $C000-$DFFF
 
 * Map block 1 at $6000
                     lda       $FFA3
                     pshs      a
-                    lda       #$01
+                    lda       1,s
                     sta       $FFA3
 * Copy first 8K of ROM
                     ldx       #$8000
@@ -111,7 +128,7 @@ Loop1               ldd       ,x++
                     endc
 
 * Map block 2 at $6000
-                    lda       #$02
+                    lda       2,s
                     sta       $FFA3
 * Copy second 8K of ROM
 *         ldx   #$A000		X is already $A000
@@ -127,7 +144,7 @@ Loop2               ldd       ,x++
                     endc
 
 * Map block 3 at $6000
-                    lda       #$03
+                    lda       3,s
                     sta       $FFA3
 * Copy third 8K of ROM
 *         ldx   #$C000		X is already $C000
@@ -143,7 +160,7 @@ Loop3               ldd       ,x++
                     endc
 
 * Copy remaining ROM area ($8000-$1300)
-                    lda       #$3F
+                    lda       4,s
                     sta       $FFA3
 *         ldx   #$E000		X is already $E000
                     ldy       #$6000
@@ -164,10 +181,10 @@ Loop4               clr       $FFDE               put in ROM/RAM mode to get byt
                     sta       $FF90
                     puls      a                   restore org block at $6000
                     sta       $FFA3
-                    lda       #$03
-                    sta       $FFA6
-                    ldd       #$0102
+                    puls      d
                     std       $FFA4
+                    puls      d
+                    std       $FFA6
                     rts
 
 RelCodeL            equ       *-RelCode

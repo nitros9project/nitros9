@@ -72,7 +72,7 @@ SCF		= scf.mn \
 		v1.dw v2.dw v3.dw v4.dw v5.dw \
 		v6.dw v7.dw \
 		scdwv.dr term_scdwv.dt n_scdwv.dd \
-		n1_scdwv.dd n2_scdwv.dd n3_scdwv.dd \
+		fuji_scdwv.dd n1_scdwv.dd n2_scdwv.dd n3_scdwv.dd \
 		n4_scdwv.dd n5_scdwv.dd n6_scdwv.dd n7_scdwv.dd \
 		n8_scdwv.dd n9_scdwv.dd n10_scdwv.dd n11_scdwv.dd \
 		n12_scdwv.dd n13_scdwv.dd midi_scdwv.dd \
@@ -323,6 +323,9 @@ h1_emudsk.dd: emudskdesc.asm
 # DriveWire SCF descriptors
 term_scdwv.dt: scdwvdesc.asm
 	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=0
+
+fuji_scdwv.dd: scdwvdesc.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=0 -DFUJIDEV
 
 n_scdwv.dd: scdwvdesc.asm
 	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=255
