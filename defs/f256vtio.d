@@ -30,7 +30,13 @@ V.FBCol             RMB       1                   currently selected foreground 
 V.BordCol           RMB       1                   currently selected border color
 V.KeyDrvMPtr        RMB       2                   keydrv module address
 V.KeyDrvEPtr        RMB       2                   keydrv entry point address
-
+		    ifgt      Level-1
+V.MSDrvMPtr         RMB       2                   mouse module address
+V.MSDrvEPtr         RMB       2                   mouse entry point address
+V.MouseVect	    RMB	      2
+V.MSButtons	    RMB	      1		          Keeps the buttons for the SetStat call
+V.MSTimer	    RMB	      1                   This will hide the cursor if inactive for more than 4 secons
+		    endc
 V.KeyDrvStat        equ       .
                     RMB       8
 
@@ -44,6 +50,8 @@ V.DWHeight          set       V.EscParms+4
 V.DWFore            set       V.EscParms+5
 V.DWBack            set       V.EscParms+6
 V.DWBorder          set       V.EscParms+7
+
+
 
                     ifgt      Level-1                                            
 ********************************************************************
