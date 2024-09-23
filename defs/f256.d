@@ -269,7 +269,7 @@ KEMP                equ       %00000001
 * Enable is bit 0.  1=show mouse pointer 0 = hide mouse pointer
 MS_MEN		    equ	      $FEA0     mouse mode-enable
 MS_XL		    equ	      $FEA2	mouse x low byte
-MS_XH		    equ	      $FEA3	moush x high byte	    
+MS_XH		    equ	      $FEA3	mouse x high byte	    
 MS_YL		    equ	      $FEA4	mouse y low byte
 MS_YH		    equ	      $FEA5	mouse y high byte
 MS_PS2B0	    equ	      $FEA6	mouse PS/2 Byte 0
