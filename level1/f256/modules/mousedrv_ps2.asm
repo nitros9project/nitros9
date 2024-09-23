@@ -58,7 +58,7 @@ Init
 *       sample rate defined in MS_SRATE in f256.d
 * $E8 - Set Resolution $00=1/mm.$01=2/mm.$03=4/mm,$04=8/mm
 * $E6 - Scaling 1:1 ($E7=2:1 scaling)
-* $F4 - Set mouse to streaming mode.  Stream data with interrupts.
+* $F4 - Set mouse to streaming mode. Stream data with interrupts.
 * Mouse responds to every command with $FA acknowledge byte
 * SendMCode handles receipt of $FA byte
 *
@@ -83,18 +83,18 @@ Init
 
 * Mode 0 and disable mouse cursor in case there is no mouse connected       
                     lda       #$00
-                    sta       MS_MEN              Mode=0,EN=0
+                    sta       MS_MEN              mode=0,en=0
 * Clear Mouse FIFO                  
-                    lda       #MCLR               Clear FIFO
+                    lda       #MCLR               clear FIFO
                     sta       PS2_CTRL
                     clr       PS2_CTRL
 * Initialize Mouse                  
                     lda       #$FF                load the RESET command
-                    lbsr      SendMCode            send it to the mouse
+                    lbsr      SendMCode           send it to the mouse
                     bcs       nomouse             if $FF not sucessfully sent, then likely no mouse
                     lbsr      ReadMPS2            read the response
                     bcs       nomouse             response timed out, probably no mouse
-                    cmpa      #$AA                Look for self test success
+                    cmpa      #$AA                look for self test success
                     bne       nomouse             no success = no mouse
                     lbsr      ReadMPS2
                     cmpa      #$00                id=0 (need different codes if intellimouse)
@@ -107,7 +107,7 @@ Init
                     lbsr      SendMCode
                     lda       #$02                $02=4 counts/mm
                     lbsr      SendMCode
-                    lda       #$E6                Set scaling at 1:1
+                    lda       #$E6                set scaling at 1:1
                     lbsr      SendMCode
 *Set up mouse handler, this gets skipped if no mouse is detected                    
                     leax      MSHandler,pcr       get the PS/2 mouse handler routine
@@ -128,7 +128,7 @@ Init
                     lda       #MCLR
                     sta       PS2_CTRL
                     clr       PS2_CTRL
-                    lda       #$F4                Enable mouse stream
+                    lda       #$F4                enable mouse stream
                     lbsr      SendMCode
 nomouse             andcc     #$FE                clear the carry flag
 ex@                 rts                           return to the caller
@@ -158,7 +158,7 @@ Term
 *                    
                    
                     ldx       #$0000              we want to remove the IRQ table entry
-                    leay      IRQMSvc,pcr          point to the interrupt service routine
+                    leay      IRQMSvc,pcr         point to the interrupt service routine
                     os9       F$IRQ               call to remove it
                     ldx       >D.OrgAlt           get the original alternate IRQ vector
                     stx       <D.AltIRQ           save it back to the D.AltIRQ address
@@ -185,7 +185,7 @@ SendMPS2            clr       PS2_CTRL            clear control register
 * really should never time out if mouse is working
 * Exit:  A = value from mouse, Carry bit = error code
 ReadMPS2            pshs      b,x
-                    ldb       #$0A                Set 10 outer loops
+                    ldb       #$0A                set 10 outer loops
 timerstart          ldx       #$FFFF              wait up to FFFF cycles to read from mouse
 timeloop@           leax      -1,x                decrement counter
                     beq       time1out@           timout at 0, give up - no data to read
@@ -238,7 +238,7 @@ exit@               puls      a,x,pc
 * Auto-hide timer var is V.MSTimer and is incremented in 1/60 sec increments
 * Auto-hides when timer var wraps around to 0 in vtio.asm
 * When first initialized there is sometimes an extra acknowledge byte ($FA) sent
-* before the packet.  This will check for the $FA (acknowledge) byte.
+* before the packet. This will check for the $FA (acknowledge) byte.
 * NOTE: Interrupt can trigger before there is a byte in the FIFO to read
 *       ALWAYS CHECK if there is a byte to read first
 IRQMSvc             pshs      a,b
@@ -249,11 +249,11 @@ IRQMSvc             pshs      a,b
                     sta       MS_MEN              show mouse and enable legacy mode
                     clr       V.MSTimer,u         reset the auto-hide timer (f256vtio.d)
 getmpacket          ldb       PS2_STAT            read ps/2 status register detect empty fifo
-                    andb      #%00000010          Check byte ready in fifo
+                    andb      #%00000010          check byte ready in fifo
                     lbne      IRQMExit            branch to timeloop if fifo empty
                     lda       MS_IN               load byte#0 - buttons, + or -, overflow
                     pshs      a                   push a to store +- for xy
-                    cmpa      #$FA                Check for extra $FA - just in case
+                    cmpa      #$FA                check for extra $FA - just in case
                     lbeq      finish@         
                     anda      #%00000111          just get button information
                     sta       V.MSButtons,u       store new button flags
@@ -312,7 +312,7 @@ storey              sta       MS_YH               store new y value
                     stb       MS_YL
                     puls      d  
 finish@             puls      a
-                    lda       #MCLR               Clear FIFO
+                    lda       #MCLR               clear FIFO
                     sta       PS2_CTRL
                     clr       PS2_CTRL
 IRQMExit            puls      a,b 
@@ -334,7 +334,7 @@ MSHandler           andcc     #$FE
 * Map in block $C0, then $C00 offset
 * Mouse pointer is 16x16 at $18_0C00 which is block $C0 at $0C00
 MakeMSPointer       pshs      cc,a,x,y,u
-*                   **** Map in $C0 for Mouse Graphics Registers
+*                   **** map in $C0 for Mouse Graphics Registers
                     orcc      #IntMasks
                     lda       MAPSLOT
                     pshs      a
@@ -342,7 +342,7 @@ MakeMSPointer       pshs      cc,a,x,y,u
                     sta       MAPSLOT             store it in the MMU slot to map it in             
                     ldx       #MAPADDR
                     leax      $C00,x              mouse pointer graphics start at $C00 offset
-*                   ****      Draw mouse pixels
+*                   ****      draw mouse pixels
                     leay      mspointerdata,pcr   load mousedata pointer
 mouseloop@          ldd       ,y++                load color,length from data
                     beq       mswritedone@        if d=$0000, then done
