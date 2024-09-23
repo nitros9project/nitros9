@@ -35,7 +35,7 @@ V.MSDrvMPtr         RMB       2                   mouse module address
 V.MSDrvEPtr         RMB       2                   mouse entry point address
 V.MouseVect	    RMB	      2
 V.MSButtons	    RMB	      1		          keeps the buttons for the SetStat call
-V.MSTimer	    RMB	      1                   this will hide the cursor if inactive for more than 4 secons
+V.MSTimer	    RMB	      1                   this hides the cursor if inactive for more than 4 seconds
 		    endc
 V.KeyDrvStat        equ       .
                     RMB       8
