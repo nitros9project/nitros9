@@ -34,8 +34,8 @@ V.KeyDrvEPtr        RMB       2                   keydrv entry point address
 V.MSDrvMPtr         RMB       2                   mouse module address
 V.MSDrvEPtr         RMB       2                   mouse entry point address
 V.MouseVect	    RMB	      2
-V.MSButtons	    RMB	      1		          Keeps the buttons for the SetStat call
-V.MSTimer	    RMB	      1                   This will hide the cursor if inactive for more than 4 secons
+V.MSButtons	    RMB	      1		          keeps the buttons for the SetStat call
+V.MSTimer	    RMB	      1                   this will hide the cursor if inactive for more than 4 secons
 		    endc
 V.KeyDrvStat        equ       .
                     RMB       8
@@ -58,7 +58,7 @@ V.DWBorder          set       V.EscParms+7
 * vtio Graphics definitions for the F256 - 53 bytes + 
 ********************************************************************
 
-V.ST		    RMB	      1			   Screen type 0=Term 1=Gfx
+V.ST		    RMB	      1			   screen type 0=Term 1=Gfx
 
 * VICKY MASTER CONTROL REGISTER to enable graphics and capabilities
 * | 7 |   6   |    5   |   4  |    3   |   2   |   1   |   0  |
