@@ -48,51 +48,51 @@ name                fcs       /drawtest/
 
 
 start
-*                   **** Initialize vars
+*                   **** initialize vars
                     ldx       #0
                     stx       <clutheader
                     stx       <clutdata
 		    stx	      <pxlblk0
 		    stx	      <bmblock0
 
-*                   **** Get a new bitmap 0
-                    ldy       #$0                 Bitmap #
-                    ldx       #$0                 Screentype = 320x240 (1=320x200)
-                    lda       #$0                 Path #
-                    ldb       #SS.AScrn           Assign and create bitmap
+*                   **** get a new bitmap 0
+                    ldy       #$0                 bitmap #
+                    ldx       #$0                 screentype = 320x240 (1=320x200)
+                    lda       #$0                 path #
+                    ldb       #SS.AScrn           assign and create bitmap
                     os9       I$SetStt
-                    bcc       storeblk            No error, store block#
-                    cmpb      #E$WADef            Check if window already defined
+                    bcc       storeblk            no error, store block#
+                    cmpb      #E$WADef            check if window already defined
                     lbne      error               if other error, then end else continue
 storeblk            tfr       x,d
-                    stb       <bmblock            Store bitmap block# for later use
+                    stb       <bmblock            store bitmap block# for later use
 
 setBMClut
-*                   **** Assign CLUT0 to BM0
-                    ldx       #0                  CLUT #
-                    ldy       #0                  Bitmap #
-                    lda       #0                  Path #
-                    ldb       #SS.Palet           Assign Clut # to Bitmap #
+*                   **** assign clut0 to bm0
+                    ldx       #0                  clut #
+                    ldy       #0                  bitmap #
+                    lda       #0                  path #
+                    ldb       #SS.Palet           assign clut # to bitmap #
                     os9       I$SetStt
 		    leax      clut0,pcr
 		    lbsr      clutload
 		    lbsr      clutcopy
 setlayer
-*                   **** Assign BM0 to Layer0               
-                    ldx       #0                  Layer #
-                    ldy       #0                  Bitmap #
-                    lda       #0                  Path # 
-                    ldb       #SS.PScrn           Position Bitmap # on Layer #
+*                   **** assign bm0 to layer0               
+                    ldx       #0                  layer #
+                    ldy       #0                  bitmap #
+                    lda       #0                  path # 
+                    ldb       #SS.PScrn           position bitmap # on layer #
                     os9       I$SetStt
 
 		    lbsr      clearbitmap
 
 main                
-*                    **** Turn on Graphics
-                    ldx       #FX_BM+FX_GRF       Turn on Bitmaps and Graphics
-                    ldy       #FT_OMIT            Don't change $FFC1
-                    lda       #$00                Path #
-                    ldb       #SS.DScrn           Display Screen with new settings 
+*                    **** turn on graphics
+                    ldx       #FX_BM+FX_GRF       turn on bitmaps and graphics
+                    ldy       #FT_OMIT            don't change $FFC1
+                    lda       #$00                path #
+                    ldb       #SS.DScrn           display screen with new settings 
                     os9       I$SetStt            
                     lbcs      error                 
 
@@ -113,21 +113,21 @@ pollmouse	    ldb	      #SS.Mouse
 		    bra	      pollkeyboard
 
 
-*                   **** Turn off Graphics
-exit                ldx       #FX_TXT             Turn on Text, all else off
-                    ldy       #FT_OMIT            Don't change $FFC1
-                    lda       #$00                Path #
-                    ldb       #SS.DScrn           Display Screen with new settings 
+*                   **** turn off graphics
+exit                ldx       #FX_TXT             turn on text, all else off
+                    ldy       #FT_OMIT            don't change $FFC1
+                    lda       #$00                path #
+                    ldb       #SS.DScrn           display screen with new settings 
                     os9       I$SetStt            
                     lbcs      error
 
-*                   **** Unlink CLUT
+*                   **** unlink clut
                     lbsr      unlinkclut
 
-*                   **** Deallocate Bitmap memory
-                    ldy       #$0                 Bitmap 0
-                    lda       #$0                 Path #
-                    ldb       #SS.FScrn           Free Screen Ram
+*                   **** deallocate bitmap memory
+                    ldy       #$0                 bitmap 0
+                    lda       #$0                 path #
+                    ldb       #SS.FScrn           free screen ram
                     os9       I$SetStt
                     lbcs       error
                     clrb
@@ -144,7 +144,7 @@ clearbitmap         lda	      #10	          loop through 10 blocks
                     ldx	      <bmblock0		  block#
 		    pshs      u		          preserve u
 clrloop@            ldb       #1                  map 1 block
-                    os9       F$MapBlk            Map the block
+                    os9       F$MapBlk            map the block
 		    pshs      u			  preserve start addr of block
 		    ldy	      #$2000		  set up clear loop
 loop@		    clr	      ,u+		  clear 8K
@@ -193,17 +193,17 @@ drawpixel	    tfr	      x,d
 		    
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Clut Load
+; clut Load
 ; extry:  x is address of file path/name
 ; Loads CLUT from file or link
 clutload
-*                   **** Try to link CLUT data module
-*                   **** If Link fails, then Load the module from default chx
+*                   **** try to link clut data module
+*                   **** if link fails, then load the module from default chx
                     pshs      a,b,x,y,u
                     lda       #0                  F$Load a=langauge, 0=any
-                    os9       F$Link              Try linking module
-                    beq       cont@               Link CLUT if no error, if error, try load
-                    os9       F$Load              Load and set Y=entry point of module
+                    os9       F$Link              try linking module
+                    beq       cont@               link CLUT if no error, if error, try load
+                    os9       F$Load              load and set Y=entry point of module
                     lbcs      err@
 cont@               stu       <clutheader
                     sty       <clutdata
@@ -211,20 +211,20 @@ err@                puls      u,y,x,b,a
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Clut copy
+; clut copy
 ; extry:  none
-; copies clut from loaded module to CLUT#0
+; copies clut from loaded module to clut#0
 clutcopy            pshs      a,b,y,u
                     ldx       #0
                     ldy       <clutdata
-                    lda       #$0                 Path #
-                    ldb       #SS.DfPal           Define Palette CLUT#0 with data Y
+                    lda       #$0                 path #
+                    ldb       #SS.DfPal           define palette clut#0 with data y
                     os9       I$SetStt
 err@                puls      u,y,a,b,pc
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Unlink Clut
+; unlink clut
 ; extry:  none
 ; unlink the current clut module from memory
 unlinkclut          pshs      u
@@ -242,7 +242,7 @@ unlinkclut          pshs      u
 writepixel          pshs      a,b,x,y,u
                     leas      -1,s                  add 1 byte to stack for carry
                     clr       ,s                    0=carry,1=color,2=y,3=X
-*                   **** D = 320 * gy.
+*                   **** d = 320 * gy.
 *                   **** 320 = 256 + 64, so use MUL for the lower byte,
 *                   **** and then add gy (gy * 256) to the upper byte.
                     lda       2,s                   py     ; 8 bits.
@@ -250,29 +250,29 @@ writepixel          pshs      a,b,x,y,u
                     mul
                     adda      2,s                   py
                     ror       ,s                    <pcarry  ; Collect the carry bit.
-*                   **** D += gx.
+*                   **** d += gx.
                     addd      3,s                   px     ; 16 bits.
                     ror       ,s                    <pcarry  ; Collect the carry bit.
-*                   **** Stash the block ID bits.
+*                   **** stash the block ID bits.
                     pshs      a
 
-*                   **** Move the lower 13 bits (8191) into a pointer.
+*                   **** move the lower 13 bits (8191) into a pointer.
                     anda      #31
                     tfr       d,x
-*                   **** Restore the carry.
-*                   **** This add will set/clear the carry
+*                   **** restore the carry.
+*                   **** this add will set/clear the carry
 *                   **** based on the previously collected carry bits.
                     ldb       1,s                   carry bit 
                     addb      #192
 *                   **** ror it into the top of the block bits.
                     puls      a
                     rora
-*                   **** Shift the block bits to the bottom of A. 
+*                   **** shift the block bits to the bottom of A. 
                     lsra
                     lsra
                     lsra
                     lsra
-*                   **** A now contains the relative block number,
+*                   **** a now contains the relative block number,
 *                   **** and X contains the block relative offset.xxxxxxxxw
                     pshs      x                   stx pixel offset
                     adda      <bmblock            add start of bitmap to relative to get block#
