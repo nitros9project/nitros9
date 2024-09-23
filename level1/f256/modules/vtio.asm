@@ -1,4 +1,4 @@
-********************************************************************
+*******************************************************************
 * VTIO - NitrOS-9 video terminal I/O driver for the Foenix F256
 *
 * $Id$
@@ -58,6 +58,7 @@ start               lbra      Init
 fontmod             fcs       /font/
 palettemod          fcs       /palette/
 keydrvmod           fcs       /keydrv/
+msdrvmod	    fcs	      /mousedrv/             mouse driver module
 
 *
 * VTIO Alternate IRQ routine - Entered from Clock every 1/60th of a second
@@ -74,9 +75,28 @@ AltISR
 * Handle keyboard (if available)
                     ldx       V.KeyDrvEPtr,u
                     cmpx      #$0000
-                    beq       HandleSound
-                    jsr       6,x call AltIRQ routine in keydrv
-                    
+		    ifgt      Level-1
+                    beq       HandleMSTimer
+		    else
+		    beq	      HandleSound
+		    endc
+                    jsr       6,x			call AltIRQ routine in keydrv
+		    ifgt      Level-1
+* Handle Mouse Timer. When timer wraps to zero, turn it off
+* Mouse does not hide correctly, so park it at right side of screen
+* Check if mouse is already off, if it is, then skip timer code
+* Mouse timer reset is in mousedrv_ps2.asm interrupt procedure
+* Mouse timer resets on every mouse interrupt
+* This should hide the mouse after 4 to 5 seconds of inactivity
+HandleMSTimer	    tst	      MS_MEN             check if mouse cursor already off
+		    beq	      HandleSound	 if cursor already off, skip timer code
+		    inc	      V.MSTimer,u	         increment mouse auto-hide timer
+		    bne	      HandleSound	 if it is not zero, then skip
+		    clr	      MS_MEN		 if timer flips to 0, turn off mouse cursor
+		    ldd	      #640		 park mouse at right border
+		    sta	      MS_XH		 turning off cursor doesn't work
+		    stb	      MS_XL		 correctly at the moment
+		    endc
 * Handle sound.
 HandleSound
                     tst       D.TnCnt          get the tone counter
@@ -322,7 +342,7 @@ l@                  ldd       ,x++                get two bytes from the source
 
 * Clear memory at MAPADDR with the contents of D.
 clr                 ldx       #MAPADDR
-l@               std       ,x++
+l@                  std       ,x++
                     cmpx      #MAPADDR+80*61
                     bne       l@
                     rts
@@ -345,8 +365,29 @@ InitKeyboard        clr       D.KySns
 ex@                 ldd        #0 set D to 0
                     std       V.KeyDrvMPtr,u clear the module pointer
                     std       V.KeyDrvEPtr,u clear the entry pointer
+                    rts       return to the caller
+
+		    ifgt      Level-1
+* Mouse initialization  
+* NOTE: If we fail to find the 'msdrv' module, carry is returned set, but
+* the caller can chose to ignore the error condition.
+InitMouse    	    leax      msdrvmod,pcr         point to the keydrv module name
+                    lda       #Systm+Objct               it's a system module
+                    pshs      u save U on the stack
+                    os9       F$Link              link to it
+                    tfr       u,x move the module address to X
+                    puls      u restore U from the stack
+                    bcs       ex@         branch if the link failed
+                    stx       V.MSDrvMPtr,u save the module pointer
+                    sty       V.MSDrvEPtr,u save the entry pointer
+                    jsr       ,y                  call the subroutine's Init entry point
+                    rts                           return to the caller
+ex@                 ldd        #0 set D to 0
+                    std       V.MSDrvMPtr,u clear the module pointer
+                    std       V.MSDrvEPtr,u clear the entry pointer
                     rts return to the caller
-* Init
+		    endc
+* Init		    
 *
 * Entry:
 *    Y  = address of device descriptor
@@ -367,7 +408,10 @@ Init                stu       D.KbdSta
                     
                     lbsr      InitDisplay         initialize the display
                     lbsr      InitSound           initialize the sound
-                    lbsr      InitKeyboard        initialize the keyboad                    
+                    lbsr      InitKeyboard        initialize the keyboad
+		    ifgt      Level-1
+                    lbsr      InitMouse
+		    endc
 
                     ldx       >D.AltIRQ           get the current alternate IRQ vector
                     stx       >D.OrgAlt           save it off in the original vector
@@ -397,9 +441,18 @@ Term                ldx       >D.OrgAlt   get the original alternate IRQ vector
                     pshs      u
                     ldu       V.KeyDrvMPtr,u
                     os9       F$Unlink
+                    puls      u
+                    ifgt      Level-1
+                    std       V.MSDrvMPtr,u
+                    ldd       #0
+                    std       V.MSDrvEPtr,u          and zero out the vector
+                    pshs      u
+                    ldu       V.MSDrvMPtr,u
+                    os9       F$Unlink
                     puls      u                    
-                    std       V.KeyDrvMPtr,u
-ex@                  clrb                          clear the carry
+                    std       V.MSDrvMPtr,u
+		    endc
+ex@                 clrb                          clear the carry
                     rts                           return to the caller
 
 * Read
@@ -1163,6 +1216,10 @@ GetStat             cmpa      #SS.EOF             is this the EOF call?
                     lbeq      GSKySns             branch if so
                     cmpa      #SS.Joy             get joystick position?
                     beq       SSJoy               branch if so
+		    ifgt      Level-1
+		    cmpa      #SS.Mouse
+		    beq	      GSMouse
+		    endc
                     cmpa      #SS.Palet           get palettes?
                     beq       GSPalet             yes, go process
                     cmpa      #SS.FBRgs           get colors?
@@ -1272,6 +1329,31 @@ s4@                 sta       R$A,u               store buttons in caller's A
                     clrb                          clear carry
                     rts                           return
 
+		    ifgt      Level-1
+;;; SS.Mouse
+;;;
+;;; Returns the mouse information.
+;;;
+;;; Entry:  B  = SS.Mouse 
+;;;
+;;; Exit:   A = Button state.
+;;;         X = Horizontal position (0 - 640).
+;;;         Y = Vertical position (0 - 480).
+;;;        CC = Carry flag clear to indicate success.
+;;;
+;;; Error:  B = A non-zero error code.
+;;;        CC = Carry flag set to indicate error.
+GSMouse             lda       MS_XH
+                    ldb       MS_XL
+                    std       R$X,x
+                    lda       MS_YH
+                    ldb       MS_YL
+                    std       R$Y,x
+                    lda       V.MSButtons,u
+                    sta       R$A,x
+                    clrb                          clear carry
+                    rts   
+		    endc
 ;;; SS.Palet
 ;;;
 ;;; Return palette information.

@@ -36,8 +36,8 @@ SCF		 = $(MD)/scf.mn
 SC16550	 = $(MD)/sc16550.dr $(MD)/t0_sc16550.dd
 
 # SCF video terminal
-SCVT_F256K	 = $(MD)/vtio.dr $(MD)/keydrv_f256k.sb $(MD)/term.dt
-SCVT_F256JR  = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/term.dt
+SCVT_F256K	 = $(MD)/vtio.dr $(MD)/keydrv_f256k.sb $(MD)/mousedrv_ps2.sb $(MD)/term.dt
+SCVT_F256JR  = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/mousedrv_ps2.sb $(MD)/term.dt
 
 # Font & palette
 FONT		 = $(MD)/bannerfont.sb
