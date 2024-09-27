@@ -45,6 +45,13 @@ PrmPtr5             rmb       2         $14 pointer to 5th parameter data
 PrmLen5             rmb       2         $16 length of 5th parameter
 PrmPtr6             rmb       2         $18 pointer to 6th parameter data
 PrmLen6             rmb       2         $1A length of 6th parameter
+PrmPtr7             rmb       2         $1C pointer to 7th parameter data
+PrmLen7             rmb       2         $1E length of 7th parameter
+PrmPtr8             rmb       2         $20 pointer to 8th parameter data
+PrmLen8             rmb       2         $22 length of 8th parameter
+PrmPtr9             rmb       2         $24 pointer to 9th parameter data
+PrmLen9             rmb       2         $26 length of 9th parameter
+stkdepth            equ       .
 
 * Function table. Please note, that on entry to these subroutines, the main temp stack is already
 * allocated (33 bytes), B=# of parameters received
@@ -151,8 +158,6 @@ FuncTbl
 
 * Test by sending non-existant function name
                     fcb       $00       end of table marker
-
-stkdepth            equ       $21
 
 * All functions (from the call table) are entered with the following parameters:
 *   Y = pointer to function subroutine
