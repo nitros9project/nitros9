@@ -55,7 +55,7 @@ inetd.conf:     $(LEVEL1)/sys/inetd.conf
 	@sed -e 's/%TELNET_PORT%/$(TELNET_PORT)/' -e 's/%HTTPD_PORT%/$(HTTPD_PORT)/' $^ > $@
 
 clean:
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 showbinobjs:
 	@$(ECHO) $(BINFILES)

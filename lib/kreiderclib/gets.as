@@ -1,14 +1,15 @@
-* Disassembly by Os9disasm of gets.r
-
+                    export    _gets
+                    export    _fgets
+                    
                     section   code
 
-gets                pshs      u
+_gets               pshs      u
                     ldu       4,s
                     bra       L0008
 L0006               stb       ,u+
-L0008               leax      _iob,y
+L0008               leax      __iob,y
                     pshs      x
-                    lbsr      getc
+                    lbsr      _getc
                     leas      2,s
                     cmpb      #$0d
                     beq       L0021
@@ -20,7 +21,7 @@ L0008               leax      _iob,y
 L0021               clr       ,u
                     ldd       4,s
 L0025               puls      u,pc
-fgets               pshs      u
+_fgets              pshs      u
                     ldx       4,s
                     clr       ,x
                     ldu       6,s
@@ -37,7 +38,7 @@ L003f               leau      -1,u
                     beq       L0054
                     ldd       10,s
                     pshs      d
-                    lbsr      getc
+                    lbsr      _getc
                     leas      2,s
                     cmpd      #-1
                     bne       L0035

@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include "tools.h"
 
+TOKEN * makepat();
+
 /* Translate arg into a TOKEN string */
 TOKEN *
  getpat(arg)

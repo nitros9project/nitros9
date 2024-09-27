@@ -1,8 +1,8 @@
-* Disassembly by Os9disasm of ccmult.r
+                    export    _ccmult
 
                     section   code
 
-ccmult              tsta
+_ccmult             tsta
                     bne       L0015
                     tst       2,s
                     bne       L0015

@@ -20,7 +20,7 @@ NOS9DBG = 1
 
 #################### DO NOT CHANGE ANYTHING BELOW THIS LINE ####################
 
-CC		= c3
+CC		= cmoc
 OS9		= os9
 
 NITROS9VER	= v0$(NOS9VER)0$(NOS9MAJ)0$(NOS9MIN)
@@ -77,7 +77,7 @@ OS9FORMAT_DS40	= os9 format -e -t40 -ds -dd
 OS9FORMAT_DS80	= os9 format -e -t80 -ds -dd
 OS9FORMAT_DW	= os9 format -t29126 -ss -dd
 OS9FORMAT_SDC  = os9 format -e -t29126 -ss -dd
-OS9FORMAT_F256SD  = os9 format -t29126 -ss -dd
+OS9FORMAT_F256SD  = os9 format -t29126 -c32 -ss -dd
 OS9GEN		= os9 gen
 OS9RENAME	= os9 rename
 OS9ATTR		= os9 attr -q
@@ -117,6 +117,30 @@ ID7 = -DITDRV=7
 SLAVE  = -DITDNS=1
 MASTER = -DITDNS=0
 
+# Standard commands across all OS-9 systems, regardless of platform
+STD_CMDS	= asm attr \
+		backup bawk binex build \
+		calldbg cmp copy cputype \
+		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
+		display dmode dsave dump \
+		echo edit error exbin \
+		format free \
+		grep \
+		help \
+		ident iniz irqs \
+		link list load login \
+		makdir megaread mdir merge minted mfree more \
+		padrom park pick printerr procs prompt pwd pxd \
+		rename \
+		save setime shellplus shell_21 sleep \
+		tee tmode touch tsmon \
+		unlink \
+		verify \
+		xmode
+
+# Standard commands across all OS-9 systems, regardless of platform
+STD_CMDS_L2	= $(STD_CMDS) \
+		dmem modpatch mmap pmap proc reboot smap
 
 # C-Cubed Rules
 %.o: %.c

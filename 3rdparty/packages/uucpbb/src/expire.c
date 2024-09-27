@@ -58,7 +58,7 @@ char *argv[];
      char newsgroup[100];
      register int i;                                      /* Changed -- REB */
      int limit, found;
-     int option, interrupt(), onegroup;                   /* Added -- REB */
+     int option, myinterrupt(), onegroup;                   /* Added -- REB */
      char *fixgroupname();
 
      *newsgroup = '\0';
@@ -73,7 +73,7 @@ char *argv[];
      if (myuid != 0)
           fatal ("you are not the superuser!");
 
-     intercept (interrupt);                      /* signal trap --REB */
+     intercept (myinterrupt);                      /* signal trap --REB */
 
      if ((newsdir = getdirs ("newsdir")) == NULL)
           fatal ("newsdir not in Parameters");
@@ -240,7 +240,7 @@ int closelog()
 
 /* clean up if we get a keyboard interrupt --REB */
 
-int interrupt (sig)
+int myinterrupt (sig)
 int sig;
 {
      closelog();

@@ -2,24 +2,27 @@
 # temp files on ram disk
 include $(NITROS9DIR)/rules.mak
 
-CC	= c3
+CC	= cmoc
 
-CFLAGS += -y -q -dTERMCAP
+CFLAGS = -I. -I../../../lib/kreiderclib/defs --os9
 
-MAINR  = uemain1.r uemain2.r uemain3.r uemain4.r uemaintable.r
-DISPR  = uedisplay1.r uedisplay2.r uedisplay3.r
-RESTR  = uebasic.r uebuffer1.r uebuffer2.r uefile1.r uefile2.r uefileio.r \
-  ueline1.r ueline2.r uerandom1.r uerandom2.r ueregion.r uesearch.r uespawn.r \
-  uetermio.r uevt52.r uewindow.r ueword.r uetcap.r
+MAINR  = uemain1.o uemain2.o uemain3.o uemain4.o uemaintable.o
+DISPR  = uedisplay1.o uedisplay2.o uedisplay3.o
+RESTR  = uebasic.o uebuffer1.o uebuffer2.o uefile1.o uefile2.o uefileio.o \
+ueline1.o ueline2.o uerandom1.o uerandom2.o ueregion.o uesearch.o uespawn.o \
+uetermio.o uevt52.o uewindow.o ueword.o uetcap.o uecoco.o
 RFILES = $(MAINR) $(DISPR) $(RESTR)
 
+all: umacs
+
 # use cio libarary
-umacs: $(RFILES)
-	$(CC) -i $(RFILES) -f=umacs
-  
+umacs: $(RFILES) 
+	$(CC) --os9 -o $@ $^ -L../../../lib -lkreiderc -ltermcap -lnos96809l2
+	  
 $(MAINR): ueed.h uemain.h
 $(DISPR): ueed.h uedisplay.h
 $(RESTR): ueed.h
 
 clean:
 	$(RM) $(RFILES) umacs
+	

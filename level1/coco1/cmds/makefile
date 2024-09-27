@@ -9,13 +9,7 @@ AFLAGS		+= -I$(LEVEL1)/$(PORT)
 AFLAGS		+= -I$(3RDPARTY)/packages/basic09
 LFLAGS		+= -L $(NITROS9DIR)/lib -lnet -lcoco -lalib
 
-CMDS		= asm attr backup binex build calldbg cmp cobbler copy cputype \
-		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
-		display dmode dsave dump echo edit error exbin format \
-		free grfdrv help ident iniz irqs link list load login makdir \
-		megaread mdir merge mfree minted mpi os9gen padrom park printerr procs prompt pwd pxd \
-		rename save setime shellplus shell_21 sleep \
-		tee tmode touch tsmon tuneport unlink verify xmode
+CMDS			= $(STD_CMDS) cobbler grfdrv mpi os9gen tuneport
 
 CMDS_D2		= copy del echo format merge os9gen prompt tmode
 

@@ -1,6 +1,6 @@
-* Disassembly by Os9disasm of _prgname.r
-
                     section   code
+
+                    export    _prgname
 
 _prgname            leax      btext,pcr
                     ldd       2,x

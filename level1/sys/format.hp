@@ -1,6 +1,6 @@
 @FORMAT
-Syntax: Format <devname> 
-Usage : Initializes a NitrOS-9 diskette
+Syntax: format <devname> 
+Usage : Initialize a storage device
 Opts  :
   R   - Ready
   L   - Logical format only

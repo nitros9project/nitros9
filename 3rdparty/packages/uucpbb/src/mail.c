@@ -65,7 +65,7 @@ QQ flag readmail = FORWARD;
 /* Declarations */
 long _gs_pos(), _gs_size();
 void usage();
-int interrupt();
+int myinterrupt();
 
 
 int main(argc, argv)
@@ -96,7 +96,7 @@ char **argv;
 #ifndef _OSK
      pflinit();                                      /* longs will be print */
 #endif
-     intercept (interrupt);                          /* signal handler */
+     intercept (myinterrupt);                          /* signal handler */
 
      if (getparam() == FALSE)
           exit (0);
@@ -568,7 +568,7 @@ FILE *fp, *mptr, *omptr;
 char *filename;
 {
      char mline[256], subj[SUBJSIZE], from[FRMSIZE], resentfrm[128];
-     char resentrply[128], *grabfrom();
+     char resentrply[128];
      register char *p;
      int linecount;
 
@@ -685,7 +685,7 @@ int numltrs;
           putc ('\n', stderr);
 
           /* quit */
-          interrupt (0);
+          myinterrupt (0);
        }
 
      /* make sure nobody else can mess with us for now */
@@ -704,7 +704,7 @@ int numltrs;
                          unlink (envelop->letter);
                          free (envelop->mline);
                          envelop = envelop->next;
-                         continue;
+//                         continue;
 
                     case 'N':
                          *p = 'U';
@@ -839,14 +839,14 @@ char *msg;
           fprintf (stderr, "...error %d", errno);
 
      putc ('\n', stderr);
-     interrupt (0);
+     myinterrupt (0);
 }
 
 
 
 /* Cleanup if we get a keyboard interrupt and get out. */
 
-int interrupt (sig)
+int myinterrupt (sig)
 int sig;
 {
 #ifndef TERMCAP

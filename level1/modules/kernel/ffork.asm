@@ -5,7 +5,7 @@
 ;;; Entry:  A = The type/language byte.
 ;;;         B = Size of the optional data area (in pages).
 ;;;         X = Address of the module name or filename.
-;;;         Y = Size of the parameter area (in pages). The default is 0.
+;;;         Y = Size of the parameter area (in bytes). The default is 0.
 ;;;         U = Starting address of the parameter area. This must be at least one page.
 ;;;
 ;;; Exit:   A = New process I/O number.

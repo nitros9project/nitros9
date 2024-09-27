@@ -1,10 +1,6 @@
-* Disassembly by Os9disasm of signal.r
-
-* OS-9 system function equates
-
-F$Exit              equ       $06
-F$Icpt              equ       $09
-
+                    export    _signal
+                    export    _sigint
+                    
                     section   bss
 
 * Uninitialized data (class B)
@@ -16,6 +12,7 @@ B003c               rmb       1
 
                     section   code
 
+_signal
 _sigint             ldd       2,s
                     tstb
                     beq       L000c

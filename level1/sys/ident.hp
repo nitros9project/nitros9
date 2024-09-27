@@ -1,6 +1,6 @@
 @IDENT
-Syntax: Ident [<opts>] <path> [<opts>]
-Usage : Displays header information from NitrOS-9 memory modules
+Syntax: ident [<opts>] <path> [<opts>]
+Usage : Display module header information
 Opts  :
   -m = module in memory
   -s = short form

@@ -1,8 +1,8 @@
-* Disassembly by Os9disasm of strcmp.r
-
+                    export    _strcmp
+                    
                     section   code
 
-strcmp              pshs      u
+_strcmp             pshs      u
                     ldx       4,s
                     ldu       6,s
                     bra       L000c

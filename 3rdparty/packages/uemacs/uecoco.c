@@ -53,7 +53,7 @@ TERM    term    = {
 /*
  * Cursor move command.
  */
-cocomove(row, col)
+ cocomove(row, col)
 {
         ttputc(CURSOR);
         cocoparm(col);

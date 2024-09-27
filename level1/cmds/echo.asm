@@ -12,8 +12,6 @@
                     nam       Echo
                     ttl       Echo text
 
-* Disassembled 98/09/10 22:44:14 by Disasm v1.6 (C) 1988 by RML
-
                     ifp1
                     use       defsfile
                     endc
@@ -26,18 +24,18 @@ edition             set       5
                     mod       eom,name,tylg,atrv,start,size
 
                     org       0
-u0000               rmb       450
+                    rmb       200       stack
 size                equ       .
 
 name                fcs       /Echo/
                     fcb       edition
 
-start               tfr       d,y
-                    lda       #1
-                    os9       I$WritLn
-                    bcs       Exit
-                    clrb
-Exit                os9       F$Exit
+start               tfr       d,y       transfer parameter count to Y
+                    lda       #1        we are writing to standard out
+                    os9       I$WritLn  write the line
+                    bcs       ex@       branch if an error
+                    clrb                clear error and carry
+ex@                 os9       F$Exit    exit
 
                     emod
 eom                 equ       *

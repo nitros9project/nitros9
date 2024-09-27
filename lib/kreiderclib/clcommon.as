@@ -1,5 +1,6 @@
-* Disassembly by Os9disasm of clcommon.r
-
+                    export    _lbexit
+                    export    _ltoacc
+                    
                     section   code
 
 _lbexit             tfr       cc,a

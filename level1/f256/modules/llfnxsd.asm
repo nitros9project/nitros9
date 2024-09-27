@@ -8,6 +8,11 @@
 *  - Kingston 32GB Canvas Select Plus SDHC (verified by Stefany Allaire)
 *  - Sandisk 64GB ImageMate Plus (after consulting with https://electronics.stackexchange.com/questions/303745/sd-card-initialization-problem-cmd8-wrong-response)
 *
+* Date         System               Megaread 3 run average time
+* -----------  -------------------  ---------------------------
+* 13-Jul-2024  F256K                11.666 seconds (Unrolled)
+* 13-Jul-2024  F256K                14.000 seconds
+*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
@@ -23,9 +28,6 @@ rev                 set       0
 edition             set       4
 
                     mod       eom,name,tylg,atrv,start,0
-
-* Set to 1 to get verbose debugging (not recommended).
-SD_DEBUG            equ       0
 
                     org       V.LLMem
 * Low-level driver static memory area.
@@ -56,6 +58,18 @@ CMD58               fcb       $7A,$00,$00,$00,$00,$FF was 95
 CMDRead             equ       $5100               command to read a single block
 CMDWrite            equ       $5800               command to write a sector
 CMDEnd              equ       $00FF               every command ends with this
+
+XFer                macro                    
+                    sta       SDC_DATA,x          store the byte to the SD card
+l@                  tst       SDC_STAT,x          get the SPI status bit
+                    bmi       l@                  branch if SPI is busy
+                    lda       SDC_DATA,x          get the data from the SD card
+                    endm
+                    
+GetSDByte           macro
+                    lda       #$FF                load A with $FF
+                    XFer
+                    endm
 
 name                fcs       /llfnxsd/
 
@@ -105,7 +119,7 @@ ll_read
                     bne       EREAD               branch if not
 lphr                lda       SEC_CNT,u           get our sector count
                     ldd       #CMDRead            and the read command
-                    std       CMDStorage,u        store the ead command and clear the MSB of the address
+                    std       CMDStorage,u        store the read command and clear the MSB of the address
                     ldd       #CMDEnd             get the ending bytes of the command
                     std       SD_SEC_ADD+3,u      clear the LSB of the address and the CRC
 * Setup the SPI to access the card, and send the command.
@@ -115,22 +129,22 @@ lphr                lda       SEC_CNT,u           get our sector count
                     lbne      BMODE               branch if not
                     ldy       SEC_LOC,u           get the sector buffer address
 * We make 256 loops of 2 reads, or 512 bytes.
-                    bsr       TurnLEDON           turn LED ON
+                    lbsr       TurnLEDON          turn LED ON
                     clrb                          load the counter
-p@                  lbsr      GetSDByte           get a byte
+p@                  GetSDByte                     get a byte
                     cmpa      #$FE                is it the marker?
                     bne       p@                  branch if not
 * Read the 512 Byte sector.
-l@                  lbsr      GetSDByte           get a byte
+l@                  GetSDByte                     get a byte
                     sta       ,y+                 save it in our buffer
-                    bsr       GetSDByte           get another byte
+                    GetSDByte                     get a byte
                     sta       ,y+                 store it in our buffer
                     decb                          decrement the counter
                     bne       l@                  branch if there's more to read
 * Get the last two bytes of the sector (CRC bytes).
-                    bsr       GetSDByte           get the first CRC byte
+                    GetSDByte                     get the first CRC byte
                     sty       SEC_LOC,u           save the updated buffer pointer
-                    bsr       GetSDByte           get the second CRC byte
+                    GetSDByte                     get the second CRC byte
                     bsr       TurnLEDOFF          turn LED ON
                     dec       SEC_CNT,u           decrement the number of sectors to read
                     beq       ex@                 branch if we're done
@@ -165,12 +179,13 @@ LSNMap              lda       SDVersion,u         get the SD card version
                     sta       SD_SEC_ADD,u        and store it in the MSB of the 32-bit sector address
                     bra       merge               branch to send the command
 * Sector addressing.
-secadd              ldd       SEC_ADD+1,u         save the sector number into our storage
-                    std       SD_SEC_ADD+2,u      store it in the last three bytes of the 4 byte address
-                    lda       SEC_ADD,u           get bits 23-16
-                    sta       SD_SEC_ADD+1,u      and place it in the buffer
-merge               bsr       GetSDByte           get a byte (necessary?)
-LSNMap1             leay      CMDStorage,u        point to the command buffer
+secadd              ldd       SEC_ADD+1,u         fetch bits 15-0 of our 24-bit LSN
+                    std       SD_SEC_ADD+2,u      store it in bits 15-0 of the 32-bit SD LSN
+                    lda       SEC_ADD,u           get bits 23-16 of our 24-bit LSN
+                    sta       SD_SEC_ADD+1,u      store it in bits 23-16 of the 32-bit SD LSN
+merge
+*               GetSDByte                     get a byte (necessary?)
+                    leay      CMDStorage,u        point to the command buffer
 
 * SendCmd - Sends a 6 byte command.
 *
@@ -179,13 +194,10 @@ LSNMap1             leay      CMDStorage,u        point to the command buffer
 * Exit:
 * Registers preserved: all but A/B/X
 SendCmd
-                    bsr       GetSDByte           get a byte from the SD (needed for SanDisk)
+                    GetSDByte                     get a byte from the SD (needed for SanDisk)
                     ldb       #6                  get the number of bytes to send
 l@                  lda       ,y+                 get the byte from the command
-                    ifne      SD_DEBUG
-                    lbsr      phexOut
-                    endc
-                    bsr       xfer                transfer it to the SD card
+                    XFer                          transfer it to the SD card
                     decb                          decrement the counter
                     bne       l@                  branch if more
 
@@ -198,7 +210,7 @@ l@                  lda       ,y+                 get the byte from the command
 *         CC.C = 1 ERROR
 * Registers preserved: all but A/B
 GetR1               ldb       #20                 set up the timeout counter
-r0@                 bsr       GetSDByte           get a byte
+r0@                 GetSDByte                     get a byte
                     cmpa      #$FF                is it $FF?
                     bne       r1@                 branch if not (we're done)
                     decb                          else decrement the timeout counter
@@ -217,28 +229,17 @@ TurnLEDOFF          ldb       SYS0
 saveit@             stb       SYS0
                     rts
 
-* Get a single byte from the SD card
-GetSDByte           lda       #$FF                load A with $FF
-xfer                sta       SDC_DATA,x          store the byte to the SD card
-l@                  tst       SDC_STAT,x          get the SPI status bit
-                    bmi       l@                  branch if SPI is busy
-                    lda       SDC_DATA,x          get the data from the SD card
-                    ifne      SD_DEBUG
-                    lbsr      phexIn
-                    endc
-                    rts                           return
+* Blast data to the SD card.
+* Entry:  B = number of times to blast
+BlastSD             pshs      d,x,y
+l0@                 GetSDByte                     sends $FF
+                    decb                          decrement the counter
+                    bne       l0@                 branch if there's more
+                    puls      d,x,y,pc
 
 EWP                 comb                          set the carry
                     ldb       #E$WP               write protect error
                     rts                           return
-
-* Blast data to the SD card.
-* Entry:  B = number of times to blast
-BlastSD             pshs      d,x,y
-l0@                 lbsr      GetSDByte           sends $FF
-                    decb                          decrement the counter
-                    bne       l0@                 branch if there's more
-                    puls      d,x,y,pc
                                         
 * ll_write - Low level write routine
 *
@@ -269,31 +270,32 @@ ll_write            ldx       V.Port-UOFFSET,u    get the hardware address
                     lbne      NOTRDY              branch if not
                     anda      #SYS_SD_WP
                     bne       EWP                 write protected, then exit with WP error
-* The big read sector loop comes to here.
+* The big write sector loop comes to here.
 lphw                ldd       #CMDWrite           get the write command bytes
                     std       CMDStorage,u        save them to the command buffer
-                    ldd       #CMDEnd             get the ending bytes
+                    ldd       #CMDEnd            get the ending bytes
                     std       SD_SEC_ADD+3,u      store the LSB of the address and CRC
                     lbsr      LSNMap              set the LSN value for the card and build the command
 * Setup SPI to access the card, and send the command.
-                    bcs       EWRITE              branch if error
-                    bne       EWRITE              branch if we have a non-zero response
-                    bsr       GetSDByte           get a byte
-                    bsr       GetSDByte           and another byte
-                    ldd       #$FE00              set the start of the sector byte and clear the counter
+                    lbcs      EWRITE              branch if error
+                    lbne      EWRITE              branch if we have a non-zero response
+                    GetSDByte                     get a byte
+                    GetSDByte                     and another byte
+                    lda       #$FE                set the start of the sector byte
                     ldy       SEC_LOC,u           get the location of the sectors(s) to write
-                    lbsr      xfer                mark the start of the sector
+                    XFer                          mark the start of the sector
 * Write the 512 Byte sector.
-                    bsr       TurnLEDON           turn LED ON
+                    lbsr      TurnLEDON           turn LED ON
+                    clrb
 l@                  lda       ,y+                 get a byte from our buffer
-                    lbsr      xfer                and save it to the SD card
+                    XFer                          and save it to the SD card
                     lda       ,y+                 get another byte from our buffer
-                    lbsr      xfer                and save it to the SD card
+                    XFer                          and save it to the SD card
                     decb                          decrement the counter
                     bne       l@                  continue if more
-                    bsr       GetSDByte           send two $FFs as the CRC
+                    GetSDByte                     send two $FFs as the CRC
                     sty       SEC_LOC,u           save the updated buffer pointer
-                    bsr       GetSDByte           send a second $FF (send 0 to check)
+                    GetSDByte                     send a second $FF (send 0 to check)
                     cmpa      #$E5                get the response - data accepted token
                     beq       fnd0                first byte? if not, check four more bytes
                     lbsr      TurnLEDOFF          turn LED OFF
@@ -319,13 +321,13 @@ lpwr2               lbsr      GetR1               get a byte from the SD card
                     beq       f@                  branch if so
                     bra       lpwr2               else continue
 f@                  ldb       #10                 send 10 more FF just in case
-fl@                 lbsr      GetSDByte
+fl@                 GetSDByte 
                     decb
                     bne       fl@
                     dec       SEC_CNT,u           decrement the number of sectors to read
                     beq       ex@                 if zero, we are finished
                     inc       SEC_ADD+2,u         add one to 3 byte LSN
-                    bne       lphw                if we are at 0 then we need to add
+                    lbne      lphw                if we are at 0 then we need to add
                     inc       SEC_ADD+1,u         the carry to the next byte
                     lbne      lphw                if we are at 0 then we need to add
                     inc       SEC_ADD,u           the carry to the next byte
@@ -346,55 +348,6 @@ BMODE               comb                          set the carry
                     ldb       #E$BMode            bad mode error
                     rts                           return
 
-                    ifne      SD_DEBUG
-* A = byte to convert to HEX
-convtohex           cmpa      #$09
-                    bgt       o@
-                    adda      #$30
-                    rts
-o@                  adda      #$37                   
-                    rts
-                    
-pMarker             pshs      d,x,y
-                    leax      ,s
-                    ldy       #1
-                    lda       #1
-                    os9       I$Write
-                    puls      d,x,y,pc
-                    
-phexIn              pshs      d,x,y
-                    lda       #'<
-                    bsr       pMarker
-                    lda       ,s
-                    bsr       pHex
-                    puls      d,x,y,pc
-        
-phexOut             pshs      d,x,y
-                    lda       #'>
-                    bsr       pMarker
-                    lda       ,s
-                    bsr       pHex
-                    puls      d,x,y,pc
-        
-phex                pshs      d,x,y
-                    pshs      d
-                    lsra
-                    lsra
-                    lsra
-                    lsra
-                    bsr       convtohex
-                    sta       ,s
-                    lda       2,s
-                    anda      #%00001111
-                    bsr       convtohex
-                    sta       1,s
-                    leax      ,s
-                    ldy       #2
-                    lda       #1
-                    os9       I$Write
-                    puls      d
-                    puls      d,x,y,pc
-                    endc
 
 * ll_init - Low level init routine
 * Entry:
@@ -429,47 +382,47 @@ ll_init             ldx       V.PORT-UOFFSET,u    load X with the hardware addre
 * Send CMD0.
                     leay      CMD0,pcr            point to the command stream
                     lbsr      SendCmd             send the command
-                    lbcs       NOTRDY              branch if error
+                    bcs       NOTRDY              branch if error
                     anda      #$7E                check if all but bits 7 and 1 are clear
-                    lbne       NOTRDY              branch if not
+                    bne       NOTRDY              branch if not
 
 * Send CMD8.
                     leay      CMD8,pcr            point to the command stream
                     lbsr      SendCmd             send the command
-                    lbcs       NOTRDY              branch if error
+                    bcs       NOTRDY              branch if error
                     anda      #$7E                clear bits 7 and 0
                     cmpa      #$04                illegal command?
-                    lbeq       SDV1                branch if so
+                    lbeq      SDV1                branch if so
                     tsta                          is it 0 (no error)?
-                    lbne       NOTRDY              no, something else... bail
+                    bne       NOTRDY              no, something else... bail
                     lbsr      GetR1               get the response
-                    lbcs       NOTRDY              branch if error
+                    bcs       NOTRDY              branch if error
                     tsta                          is the response 0?
-                    lbne       BMODE               branch if not
+                    bne       BMODE               branch if not
                     lbsr      GetR1               get the response
-                    lbcs       NOTRDY              branch if error
+                    bcs       NOTRDY              branch if error
                     tsta                          is the response 0?
-                    lbne       BMODE               branch if not
+                    bne       BMODE               branch if not
                     lbsr      GetR1               get the response
-                    lbcs       NOTRDY              branch if error
+                    bcs       NOTRDY              branch if error
                     cmpa      #1                  is the response 1?
-                    lbne       BMODE               branch if not
+                    bne       BMODE               branch if not
                     lbsr      GetR1               get the response
-                    lbcs       NOTRDY              branch if error
+                    bcs       NOTRDY              branch if error
                     cmpa      #$AA                is the response $AA?
-                    lbne       BMODE               branch if not
+                    bne       BMODE               branch if not
 
 * Send ACMD41 by first CMD55.
 loop41V2            leay      CMD55,pcr           point to the command stream
                     lbsr      SendCmd             send the command
-                    lbcs      NOTRDY              branch if error
+                    bcs       NOTRDY              branch if error
                     anda      #$7E                are bits 6-1 clear?
-                    lbne      BMODE               branch if not
+                    bne       BMODE               branch if not
 
 * Then send ACMD41.
                     leay      ACMD41V2,pcr        point to the command stream
                     lbsr      SendCmd             send the command
-                    lbcs      NOTRDY              branch if error
+                    bcs       NOTRDY              branch if error
                     tsta                          is the response 0?
                     beq       Send58              if so, then send CMD58
                     cmpa      #$01                is it 1?
@@ -517,6 +470,9 @@ Send16              lbsr      SendCmd             send the command
                     lbne      NOTRDY              branch if error
 
 InitEx
+* Select the card (put in high speed).
+                    lda       #CS_EN              set the card enable and fast SPI clock
+                    sta       SDC_STAT,x          update the hardware
 
 * Finished with initialization
 * Use the stat routine to return

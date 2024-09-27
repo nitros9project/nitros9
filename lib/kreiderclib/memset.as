@@ -1,8 +1,8 @@
-* Disassembly by Os9disasm of memset.r
-
+                    export    _memset
+                    
                     section   code
 
-memset              pshs      u
+_memset             pshs      u
                     ldu       4,s
                     ldx       8,s
                     beq       L0010

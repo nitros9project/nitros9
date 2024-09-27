@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of profdummy.r
-
+                    export    _dumprof
+                    
                     section   code
 
 _dumprof            rts

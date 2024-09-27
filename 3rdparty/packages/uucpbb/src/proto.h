@@ -34,9 +34,15 @@ extern int errno;
 #ifndef _OSK
 # ifndef _VOID_
 #  define _VOID_
+#  ifndef _CMOC_VERSION_
 typedef int void;
+#  endif
 # endif
+# ifndef _CMOC_VERSION_
 #define QQ direct                  /* CoCo type 'direct' [page] */
+#else
+#define QQ
+#endif
 typedef int flag;
 char *parse_cmd();
 #endif
@@ -92,6 +98,5 @@ char *getstring(), *getval(), *getrealname(), *genseq();
 char *strdetab(), *strlwr(), *strupr(), *strdup(), *strstr(), *strend();
 char *InttouID();
 int  strucmp();
-FILE *popen(), *fdopen(), *freopen();
 long getseq();
 void errorexit();

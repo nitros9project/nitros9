@@ -1,8 +1,8 @@
-* Disassembly by Os9disasm of syscall.r
+                    export    __os9
 
                     section   code
 
-_os9                pshs      y,u
+__os9               pshs      y,u
                     lda       7,s
                     ldb       #$39
                     pshs      d
@@ -32,4 +32,3 @@ L0034               clra
                     rts
 
                     endsect
-
