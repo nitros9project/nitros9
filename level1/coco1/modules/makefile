@@ -28,7 +28,7 @@ BOOTERS		= boot_1773_6ms boot_1773_30ms \
 		boot_tc3 boot_ide boot_rom boot_dw_becker \
 		boot_dw_rs232pak boot_dw_directmodempak \
 		boot_dw_arduino boot_dw_38400 boot_dw_cocolink \
-		boot_sdc boot_dw_mmmpiu1 boot_dw_mmmpiu2
+		boot_sdc boot_dw_mmmpiu1 boot_dw_mmmpiu2 boot_emu
 BOOTTRACK	= rel $(BOOTERS)
 KERNEL		= krn krnp2 wbug
 SYSMODS		= ioman init sysgo_dd sysgo_h0 sysgo_rom rominfo rominfo_pak vectors

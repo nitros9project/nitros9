@@ -26,7 +26,7 @@ TPB		= $(3RDPARTY)/booters
 BOOTERS		= boot_1773_6ms boot_1773_30ms \
 		boot_burke boot_rampak boot_wd1002 boot_dw boot_dw_becker boot_dw_arduino \
 		boot_tc3 boot_dide boot_ide boot_sdc boot_rom boot_dw_rs232pak boot_dw_directmodempak \
-		boot_dw_cocolink boot_dw_mmmpiu1 boot_dw_mmmpiu2
+		boot_dw_cocolink boot_dw_mmmpiu1 boot_dw_mmmpiu2 boot_emu
 BOOTTRACK	= rel_32 rel_40 rel_80 rel_32_50hz rel_40_50hz rel_80_50hz $(BOOTERS) krn
 KERNEL		= krnp2 krnp3_perr krnp4_regdump ccbkrn
 SYSMODS		= ioman init sysgo_h0 sysgo_dd sysgo_rom sysgo_bd rominfo vectors
