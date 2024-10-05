@@ -5,6 +5,7 @@ DEPENDS		= ./makefile $(NOSLIB)/net.o
 # Module directory
 LFLAGS          += -L $(NITROS9DIR)/lib -lnet -lf256 -lalib
 MD		= ../modules
+FNT	        = ../sys/fonts
 # Commands directory
 CMDSDIR		= ../cmds
 
@@ -33,7 +34,7 @@ RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd
 SCF		 = $(MD)/scf.mn
 
 # Font & palette
-FONT		 = $(MD)/phoenixegafont.sb
+FONT		 = $(FNT)/phoenixegafont.sb
 PALETTE	 = $(MD)/palette.sb
 
 # SCF video terminal
