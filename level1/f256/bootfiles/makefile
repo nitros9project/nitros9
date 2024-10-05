@@ -3,6 +3,7 @@ include ../port.mak
 # Module directory
 LFLAGS          += -L $(NITROS9DIR)/lib -lnet -lf256 -lalib
 MD		= ../modules
+FNT             = ../sys/fonts
 # Commands directory
 CMDSDIR		= ../cmds
 
@@ -46,7 +47,7 @@ SCVT_F256JR = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/term.dt
 SC16550  = $(MD)/sc16550.dr $(MD)/t0_sc16550.dd
 
 # Font & palette
-FONT		 = $(MD)/bannerfont.sb
+FONT		 = $(FNT)/bannerfont.sb
 PALETTE	 = $(MD)/palette.sb
 
 # SCF DriveWire virtual networking/window driver
