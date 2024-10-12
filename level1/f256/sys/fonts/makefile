@@ -1,4 +1,4 @@
-include ../../port.mak
+cdinclude ../../port.mak
 
 vpath %.as $(LEVEL1)/f256/sys/fonts
 vpath %.asm $(LEVEL1)/f256/sys/fonts
@@ -8,10 +8,10 @@ AFLAGS		+= -I$(LEVEL1)/$(PORT)/sys/fonts
 
 DEPENDS		= ./makefile
 
-FONTS	= 800yfont.sb applefont.sb BigBluefont.sb boxedfont.sb bannerfont.sb \
-	  c256seriffont.sb cbmfont.sb commodedorfont.sb enemigafont.sb f256standardfont.sb \
-	  IIishfont.sb jessefont.sb msxbannerfont.sb msxfont.sb petticoatsfont.sb \
-	  phoenixegafont.sb quadrotextfont.sb techfont.sb thickefont.sb
+FONTS	= 800yfont applefont bigbluefont boxedfont bannerfont.sb \
+	  c256seriffont cbmfont commodedorfont enemigafont f256standardfont \
+	  IIishfont jessefont msxbannerfont msxfont petticoatsfont \
+	  phoenixegafont.sb quadrotextfont techfont thickefont
 
 ALLOBJS		= $(FONTS)
 
