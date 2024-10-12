@@ -4,6 +4,8 @@ include ../port.mak
 MD		= ../modules
 # Commands directory
 CMDSDIR		= ../cmds
+# Font directory
+FNT 	        = ../sys/fonts
 
 DEPENDS		= ./makefile
 
@@ -40,7 +42,7 @@ SCVT_F256K	 = $(MD)/vtio.dr $(MD)/keydrv_f256k.sb $(MD)/mousedrv_ps2.sb $(MD)/te
 SCVT_F256JR  = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/mousedrv_ps2.sb $(MD)/term.dt
 
 # Font & palette
-FONT		 = $(MD)/bannerfont.sb
+FONT		 = $(FNT)/bannerfont.sb
 PALETTE	 = $(MD)/palette.sb
 
 # SCF DriveWire virtual networking/window driver
