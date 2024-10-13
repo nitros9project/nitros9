@@ -1,4 +1,4 @@
-cdinclude ../../port.mak
+include ../../port.mak
 
 vpath %.as $(LEVEL1)/f256/sys/fonts
 vpath %.asm $(LEVEL1)/f256/sys/fonts
