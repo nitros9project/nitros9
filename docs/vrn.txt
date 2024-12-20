@@ -1,0 +1,305 @@
+The following two documents are found in this archive:
+  nitros9/3rdparty/packages/l2upgrade/upgrade1.dsk,vrn.ar
+
+Sadly the author Bruce Isted has passed away:
+  https://mhfh.com/tribute/details/45646/Bruce-Isted/obituary.html
+
+
+##############################
+##
+##    read.me
+##
+
+The VRN driver and it's associated FTDD, Nil, and VI descriptors are not only
+intended to replace subLOGIC's FT+FTDD and Sierra's AGIVIRQDr+VI, but is also
+intended to provide a general user interface to VIRQs and MMU RAM blocks.
+
+To use VIRQs and/or MMU RAM blocks, the process simply opens a path (or paths)
+to any one (or several) of the VRN driver's descriptors (FTDD, Nil, and VI are
+supplied) and makes the appropriate Get and Set Status calls to the opened
+path(s).  See the "vrn.doc" file for general information and the "vrn.asm"
+file for detailed information.
+
+By using the VRN driver these resources are safeguarded from one process
+trampling over another.  And if problems do occur, the resources are returned
+when a process exits, even if that process errors out and doesn't explicitly
+close the FTDD, Nil, or VI path that was used to access VIRQs and/or MMU RAM
+blocks.
+
+I hope that this VRN driver will be used by other software writers who are
+more application oriented than am I.  I'd very much like to see word
+processors, spreadsheets, and other programs for the CoCo 3 that can handle
+several hundred KBytes of data in memory at once.  I also hope to see
+communications and other programs that use VIRQs to complete time sensitive
+tasks such as advanced transfer protocols and BBS mail handling.
+
+If any commercial software is written to use the VRN driver (or any of my
+other "FREELY copyable" copyright software), please get in touch with me for
+permission to distribute my software in the commercial package.  In most
+circumstances this permission would be free of charge, but please do contact
+me first.
+
+  Bruce Isted  90/11/29
+
+CIS:  76625,2273
+Delphi:  BRUCEISTED
+Phone:  (403) 271-5827 (evenings, Mountain time)
+
+
+##############################
+##
+##    vrn.doc
+##
+
+VRN (VIRQ/RAM/NULL Driver) Documentation
+
+
+Copyright (C) 1989, 1990 Bruce Isted
+
+This program may be freely distributed as long as the copyright notice remains
+intact and the source, binary, and documentation files are distributed
+together.
+
+This program may not be sold for profit, individually or as part of a package
+without the prior written permission of the copyright holder.
+
+
+Note:  Where the following text refers to "King's Quest III", the reader
+should remember that whatever is said applies also to "Leisure Suit Larry",
+another of Sierra's games for the CoCo 3.
+
+
+This ARchive should contain the following files:
+ftdd.asm   - OS-9/6809 assembly source for Ftdd.dd descriptor.
+Ftdd.dd    - Replacement for Flight Simulator II "FTDD" device descriptor.
+nil.asm    - OS-9/6809 assembly source for Nil.dd descriptor.
+Nil.dd     - Replacement for NilDrv "Nil" device descriptor.
+TstFS2     - Test program for Flight Simulator II type signals.
+tstfs2.asm - OS-9/6809 assembly source for TstFS2 program.
+TstKQ3     - Test program for King's Quest III type signals.
+tstkq3.asm - OS-9/6809 assembly source for TstKQ3 program.
+TstRAM     - Test program for King's Quest III type RAM allocation.
+tstram.asm - OS-9/6809 assembly source for TstRAM program.
+vi.asm     - OS-9/6809 assembly source for Vi.dd descriptor.
+Vi.dd      - Replacement for King's Quest III "VI" device descriptor.
+vrn.asm    - OS-9/6809 assembly source for VRN (VIRQ/RAM/NULL) driver.
+Vrn.dr     - Replacement for AGIVIRQDr, FT, and NilDrv drivers.
+vrn.doc    - This documentation file.
+read.me    - A small information file that should be read first.
+
+
+The general features of each section of the VRN driver are explained in the
+"VRN (VIRQ/RAM/NULL Driver) Synopsis" section at the end of this documentation
+file.  For more detail you'll have to consult the source file (vrn.asm).
+
+The three test programs supplied (TstFS2, TstKQ3, and TstRAM) are intended to
+both test the various functions of, and provide an example of how to interface
+to, the VRN driver.
+
+Using the test programs in combination with various other utilities we all
+should have (KD's utils, etc.) gives us a pretty complete set of tools to test
+VRN's features without requiring Flight Simulator II or King's Quest III.  Of
+course, you can play the games if you want to!  I've had four copies of FS2
+running simultaneously.  However, it's impossible to run more than one copy of
+KQ3 at a time.  Running more than two FS2s plus one KQ3 is also too much, the
+COCO can't keep up, and the stack (system, I think) overflows.
+
+The TstFS2 program is used to test both standard FS2 and FS2+ VIRQ signals.
+It allows one parameter character.  If no parameters are given, then it
+defaults to standard FS2 VIRQ mode.  If a parameter character is given, then
+the ASCII value of that character is used as the signal code.  A special case
+is the numeral "0", which sets up a "one-shot" VIRQ.  Pressing [.] (period)
+will return the total VIRQs and signal count, while pressing [SPACEBAR] will
+clear the FS2/FS2+ VIRQ while leaving the path open, and pressing [ENTER] will
+terminate the program.
+
+The TstKQ3 program is used to test KQ3 type signals.  It ignores parameters.
+It simply counts the signals received, and reports whenever the one byte
+counter overflows (256 signals).  Pressing [SPACEBAR] will clear the KQ3 VIRQ
+while leaving the path open, and pressing [ENTER] will terminate the program.
+
+The TstRAM program will allocate from 1 to 9 RAM blocks.  It does nothing with
+them, not even mapping them into its address space.  It allows one parameter
+character from "0" to "9".  If no parameters are given, then it defaults to
+one RAM block.  Pressing [SPACEBAR] will de-allocate the RAM block(s) while
+leaving the path open, and pressing [ENTER] will terminate the program.
+
+One thing that should be mentioned about the RAM allocation is that it simply
+reserves the RAM blocks.  It's up to the user program to map the block(s) into
+the user's address space.  Any number of RAM blocks may be reserved, up to the
+total available.  It's possible for a program to reserve thirty or more
+consecutive RAM blocks for data, and map/unmap them as required in whatever
+chunks will fit in available user memory.  Another option is to open several
+paths to a VRN descriptor, and allocate RAM block(s) for each path.  This
+makes using large amounts of non-contiguous memory possible.
+
+
+
+VRN (VIRQ/RAM/NULL Driver) Synopsis
+
+
+_Init_
+
+Entry Conditions:
+    DP = system direct page
+    Y  = address of the device descriptor
+    U  = address of the device memory area
+    Note:  All device memory except V.PAGE and V.PORT has been cleared
+           (zeroed) before the _Init_ routine is entered.
+
+Exit Conditions:
+    IRQ and VIRQ (repetetive one tick interval) polling table entries have
+    been installed.
+
+Error Conditions:
+    CC = carry set
+    B  = error code
+
+
+_Read_
+
+Entry Conditions:
+    DP = system direct page
+    Y  = address of the path descriptor
+    U  = address of the device memory area
+
+Exit Conditions:
+    No character is ever returned, _Read_ always exits with E$EOF error.
+
+Error Conditions:
+    CC = carry set
+    B  = E$EOF
+
+
+_Write_
+
+Entry Conditions:
+    A  = character to write
+    DP = system direct page
+    Y  = address of the path descriptor
+    U  = address of the device memory area
+
+Exit Conditions:
+    The character to write is ignored, _Write_ always exits without error.
+
+Error Conditions:
+    No error possible.
+
+
+_Get_Status_
+
+Entry Conditions:
+    A  = get status call code
+    DP = system direct page
+    Y  = address of the path descriptor
+    U  = address of the device memory area
+
+Exit Conditions:
+    Depends upon the call code.  See "Supported Calls" below for further
+    information.  If the call code is not supported, _Get_Status_ exits
+    with an E$UnkSvc error.
+
+Error Conditions:
+    CC = carry set
+    B  = error code
+
+Supported Calls:
+    Code $01, SS.Ready
+        Always exits with E$NotRdy (no data ready) error.
+    Code $80, FS2 defined
+        Returns VIRQ total counter MSBs in caller's R$X, LSBs in R$Y, and
+        clears VIRQ total.  If entry for path is non-existant, exits with
+        E$Unit error.
+    Code $81, FS2 defined
+        Returns signal total counter in caller's R$A and clears signal total.
+        If entry for path is non-existant, exits with E$Unit error.
+
+
+_Set_Status_
+
+Entry Conditions:
+    A  = set status call code
+    DP = system direct page
+    Y  = address of the path descriptor
+    U  = address of the device memory area
+
+Exit Conditions:
+    Depends upon the call code.  See "Supported Calls" below for further
+    information.  If the call code is not supported, _Set_Status_ exits
+    with an E$UnkSvc error.
+
+Error Conditions:
+    CC = carry set
+    B  = error code
+
+Supported Calls:
+    Code $2A, SS.Close
+        All KQ3 and FS2/FS2+ VIRQ entries for the closed path are cleared, and
+        RAM block(s) allocated for the closed path are de-allocated.
+    Code $81, FS2 defined
+        If caller's R$Y LSB is not zero, an FS2 VIRQ entry for path is set.
+        Caller's R$X contains initial timer count and reset count.  The signal
+        code to send is set to $80.  If R$X is zero then the VIRQ is a
+        one-shot, and will not be repeated.  If entry for path already exists,
+        it is replaced.  If no table entries are available, exits with
+        E$DevBsy error.
+        If caller's R$Y LSB is zero, then the FS2/FS2+ VIRQ entry for path is
+        cleared.  If entry for path is non-existant and no table entries are
+        available, exits with E$DevBsy error, otherwise exits without error.
+    Code $C7, newly defined
+        Sets FS2+ VIRQ entry for path.  Caller's R$X contains initial timer
+        count, R$Y contains reset count, and R$U LSB contains signal code to
+        send.  If R$Y is zero then the VIRQ is a one-shot, and will not be
+        repeated.  If entry for path already exists, it is replaced.  If no
+        table entries are available, exits with E$DevBsy error.
+    Code $C8, KQ3 defined
+        Sets KQ3 VIRQ entry for path.  If entry for path already exists, exits
+        without error.  If no table entries are available, exits with E$DevBsy
+        error.
+    Code $C9, KQ3 defined
+        Clears KQ3 VIRQ entry for path.  If non-existant, exits without error.
+    Code $CA, KQ3 defined
+        Allocates caller's R$X LSB number of consecutive RAM block(s) for path
+        and returns starting block number in caller's R$X.   If RAM block(s)
+        are already allocated for path, or if no table entries are available,
+        exits with E$DevBsy error.
+    Code $CB, KQ3 defined
+        De-allocates RAM block(s) previously allocated for path.  If none were
+        allocated, exits without error.
+
+
+_Term_
+
+Entry Conditions:
+    DP = system direct page
+    U  = address of the device memory area
+
+Exit Conditions:
+    IRQ and VIRQ polling table entries have been removed.
+
+Error Conditions:
+    CC = carry set
+    B  = error code
+
+
+_IRQ_Service_
+
+Entry Conditions:
+    DP = system direct page
+    U  = address of the device memory area
+
+Exit Conditions:
+    The VIRQ status flag has been cleared.  All KQ3 entries in the VIRQ tables
+    have been signalled ($80).  All FS2/FS2+ entries in the VIRQ tables VIRQ
+    total counters have been incremented, the VIRQ delay counters have been
+    decremented, and if zero have been signalled (FS2 signal = $80, FS2+
+    signal = user defined).  Each signalled FS2/FS2+ entry's signal total
+    counter has been incremented.  If the signalled FS2/FS2+ entry's reset
+    value is not zero then the counter is reset to the value, otherwise the
+    FS2/FS2+ entry is cleared.  _IRQ_Service_ always exits without error.
+
+Error Conditions:
+    No error possible.
+
+
+  Bruce Isted  90/11/29
