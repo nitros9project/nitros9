@@ -170,7 +170,11 @@ f256k.zip: booter_flash_f256k
 	echo "3d,booter_0" > bulk.csv
 	echo "3e,booter_1" >> bulk.csv
 	echo "3f,booter_2" >> bulk.csv
-	zip $@ bulk.csv booter_0 booter_1 booter_2
+	-rm -rf mapfiles
+	mkdir mapfiles
+	os9 ident -s $^ > mapfiles/bootlist
+	cp ../modules/kernel/*.map ../modules/kernel/*.list ../modules/*.map ../modules/*.list mapfiles
+	zip $@ bulk.csv booter_0 booter_1 booter_2 mapfiles/*
 
 flash_f256k: f256k.zip
 	bulk_flash bulk.csv
@@ -183,7 +187,11 @@ f256jr.zip: booter_flash_f256jr
 	echo "3d,booter_0" > bulk.csv
 	echo "3e,booter_1" >> bulk.csv
 	echo "3f,booter_2" >> bulk.csv
-	zip $@ bulk.csv booter_0 booter_1 booter_2
+	-rm -rf mapfiles
+	mkdir mapfiles
+	os9 ident -s $^ > mapfiles/bootlist
+	cp ../modules/kernel/*.map ../modules/kernel/*.list ../modules/*.map ../modules/*.list mapfiles
+	zip $@ bulk.csv booter_0 booter_1 booter_2 mapfiles/*
 
 flash_f256jr: f256jr.zip
 	bulk_flash bulk.csv
