@@ -58,7 +58,7 @@ reload:
 	osascript -e 'tell application "DriveWire"' -e 'tell server of first document' -e 'reload drive 0' -e 'end tell' -e 'end tell'
 
 BASIC09_FILES = $(foreach file,$(3RDPARTY)/packages/basic09/samples/*.b09,$(file))
-BF_FILES = $(foreach file,$(3RDPARTY)/packages/brainfuck/*.bf,$(file))
+BF_FILES = $(foreach file,$(3RDPARTY)/packages/bf/*.bf,$(file))
 
 $(DSKSD):
 	$(RM) $@
@@ -80,8 +80,8 @@ $(DSKSD):
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
-	$(MAKDIR) $@,BRAINFUCK
-	$(CPL) $(BF_FILES) $@,BRAINFUCK
+	$(MAKDIR) $@,BF
+	$(CPL) $(BF_FILES) $@,BF
 	$(RM) $(LDSKSD)
 	$(SOFTLINK) $@ $(LDSKSD)
 
@@ -106,8 +106,8 @@ $(DSKDW):
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
-	$(MAKDIR) $@,BRAINFUCK
-	$(CPL) $(BF_FILES) $@,BRAINFUCK
+	$(MAKDIR) $@,BF
+	$(CPL) $(BF_FILES) $@,BF
 	$(RM) $(LDSKDW)
 	$(SOFTLINK) $@ $(LDSKDW)
 

@@ -58,7 +58,7 @@ reload:
 BASIC09_FILES = $(foreach file,$(3RDPARTY)/packages/basic09/samples/*.b09,$(file))
 ROGUE_OBJS = $(shell $(CD) $(3RDPARTY)/packages/rogue; make --no-print-directory showobjs)
 ROGUE_FILES = $(shell $(CD) $(3RDPARTY)/packages/rogue; make --no-print-directory showfiles)
-BF_FILES = $(foreach file,$(3RDPARTY)/packages/brainfuck/*.bf,$(file))
+BF_FILES = $(foreach file,$(3RDPARTY)/packages/bf/*.bf,$(file))
 CPM_FILES = $(3RDPARTY)/packages/cpm/software
 
 $(DSKSD):
@@ -87,8 +87,8 @@ $(DSKSD):
 	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_OBJS) ../../../level2/f256/$@,CMDS
 	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_FILES) ../../../level2/f256/$@,ROGUE
 	$(OS9ATTR_EXEC) $(foreach file,$(ROGUE_OBJS),$@,CMDS/$(file))
-	$(MAKDIR) $@,BRAINFUCK
-	$(CPL) $(BF_FILES) $@,BRAINFUCK
+	$(MAKDIR) $@,BF
+	$(CPL) $(BF_FILES) $@,BF
 	os9 dsave -e $(CPM_FILES) $@,CPM
 	$(RM) $(LDSKSD)
 	$(SOFTLINK) $@ $(LDSKSD)
@@ -119,8 +119,8 @@ $(DSKDW):
 	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_OBJS) ../../../level2/f256/$@,CMDS
 	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_FILES) ../../../level2/f256/$@,ROGUE
 	$(OS9ATTR_EXEC) $(foreach file,$(ROGUE_OBJS),$@,CMDS/$(file))
-	$(MAKDIR) $@,BRAINFUCK
-	$(CPL) $(BF_FILES) $@,BRAINFUCK
+	$(MAKDIR) $@,BF
+	$(CPL) $(BF_FILES) $@,BF
 	os9 dsave -e $(CPM_FILES) $@,CPM	
 	$(RM) $(LDSKDW)
 	$(SOFTLINK) $@ $(LDSKDW)
