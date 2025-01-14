@@ -1,20 +1,23 @@
+
+
+
 include ../port.mak
 
-vpath %.as $(LEVEL2)/cmds:$(LEVEL1)/cmds
-vpath %.asm $(LEVEL2)/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/brainfuck:$(3RDPARTY)/packages/cpm
+vpath %.as $(LEVEL1)/f256/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds
+vpath %.asm $(LEVEL1)/f256/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/bf:$(3RDPARTY)/packages/cpm:$(3RDPARTY)/packages/rogue
 
 DEPENDS		= ./makefile $(NOSLIB)/net.o
 
 AFLAGS      += -I$(LEVEL2)/$(PORT)
 AFLAGS      += -I$(3RDPARTY)/packages/basic09
-AFLAGS      += -I$(3RDPARTY)/packages/brainfuck
+AFLAGS      += -I$(3RDPARTY)/packages/bf
 AFLAGS      += -I$(3RDPARTY)/packages/cpm
 AFLAGS      += -I../defs
 LFLAGS		+= -L$(NITROS9DIR)/lib
-LFLAGS		+= -lf256
-LFLAGS		+= -lnet -lalib
+LFLAGS		+= -lf256 -lf256snd
+LFLAGS		+= -lnet -lalib -lnos96809l2
 
-BASIC09	= basic09 runb inkey syscall
+BASIC09	= basic09 runb inkey syscall foenix
 BF      = bf
 CPM     = cpm
 CMDS_DW = inetd dw telnet httpd
@@ -25,12 +28,13 @@ CMDS    = asm attr backup bawk binex build cmp copy \
 		makdir mdir megaread merge mfree minted mmap modpatch more padrom park \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
+		bootos9 fnxinfo fnxreset rogue fstatus mmap pmap proc smap xtclut drawtest play \
 		$(CMDS_DW) $(BASIC09) $(BF) $(CPM)
 
-SHELLMODS	= shellplus date deiniz echo iniz link load save unlink
+SHELLMODS	= shellplus echo iniz link load save unlink
 
-UTILPAK1	= attr build copy del deldir dir display list makdir mdir \
-		merge mfree procs rename tmode
+UTILPAK1	= attr copy date del deiniz dir display list makdir mdir \
+		merge mfree procs rename tmode unlink
 
 # Files not compilable by os9asm: config
 all:	$(DEPENDS) $(CMDS) shell utilpak1
@@ -38,7 +42,7 @@ all:	$(DEPENDS) $(CMDS) shell utilpak1
 # Some commands depend on net.o
 $(NOSLIB)/net.o:
 	cd $(NOSLIB); make
-	
+
 runb:	runb.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 	$(MERGE) $@ $(SUBS)>$@.tmp
@@ -70,7 +74,7 @@ utilpak1:  $(UTILPAK1) $(DEPENDS)
 	@$(ECHO) ""
 
 clean:
-	$(RM) shell utilpak1 $(SUBS) $(SHELLMODS) $(CMDS)
+	$(RM) shell utilpak1 $(SUBS) $(SHELLMODS) $(CMDS) *.list *.map
 
 # Only $(CMDS) are shown here
 showobjs:
