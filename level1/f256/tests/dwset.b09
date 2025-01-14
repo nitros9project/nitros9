@@ -1,0 +1,14 @@
+PROCEDURE DWSet
+
+DIM format, width, xcor, ycor, height, foreground, background, border:INTEGER
+
+format = 2
+xcor = 0
+ycor = 0
+width  = 80
+height = 30
+foreground = 3
+background = 4
+border = 5
+
+RUN FOENIX("DWSET", format, xcor, ycor, width, height, foreground, background, border)

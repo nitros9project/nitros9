@@ -55,15 +55,15 @@ l2@                 leax      -1,x
                     bne       l2@
                     deca
                     bne       l1@
-
+                    
 * Jump to the kernel.
-                    ldx       #$8000
-                    ldy       #$7D00
+                    ldx       #$A000
+                    ldy       #$5D00
                     jmp       $11,x               jump to the kernel
 
 MMUValues
                     ifeq      FLASH-1
-                    fcb       $00,$01,$02,$03,$7C,$7D,$7E,$7F
+                    fcb       $00,$3C,$3D,$3E,$3F,$7D,$7E,$7F
                     else
                     fcb       $00,$01,$02,$03,$04,$05,$06,$07
                     endc

@@ -55,7 +55,7 @@ GetTime             ldx       M$Mem,pcr           get RTC base address
                     addb      #100                assume we're always in 20th century
                     stb       <D.Year             save in globals
                     lda       RTC_CTRL,x          get the RTC control byte
-                    anda      #^(RTC_UTI|RTC_24HR) turn off UTI bit to update external registers
+                    anda      #^(RTC_UTI)         turn off UTI bit to update external registers
                     sta       RTC_CTRL,x          and save it back
                     rts                           return to the caller
 
@@ -83,7 +83,7 @@ SetTime             ldx       M$Mem,pcr           get RTC base address
                     bsr       bin2bcd             convert from binary to BCD
                     stb       RTC_YEAR,x          save in RTC
                     lda       RTC_CTRL,x          get the RTC control byte
-                    anda      #^(RTC_UTI|RTC_24HR) turn off UTI bit to update external registers
+                    anda      #^(RTC_UTI)         turn off UTI bit to update external registers
                     sta       RTC_CTRL,x          and save it back
                     rts                           return to the caller
 
