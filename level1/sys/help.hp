@@ -1,6 +1,6 @@
 @HELP
-Syntax: Help [<subject>]
-Usage : Give on-line help on subject
+Syntax: help [<subject>]
+Usage : Give on-line help
         will prompt if no subjects given
 
 The help text is extracted from the file /DD/SYS/helpmsg

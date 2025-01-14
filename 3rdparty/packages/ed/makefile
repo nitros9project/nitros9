@@ -1,14 +1,17 @@
 include $(NITROS9DIR)/rules.mak
 
-CFLAGS += -y -q
+CFLAGS += --os9 -I../../../lib/kreiderclib/defs
+LFLAGS = --os9 -L../../../lib 
+OBJS = amatch.o append.o bitmap.o catsub.o ckglob.o deflt.o del.o docmd.o \
+	dodash.o doglob.o doprnt.o doread.o dowrite.o ed.o egets.o esc.o \
+	find.o getfn.o getlst.o getnum.o getone.o getpat.o getptr.o getrhs.o \
+	gettxt.o ins.o join.o makepat.o maksub.o matchs.o move.o omatch.o \
+	optpat.o set.o setbuf.o subst.o unmkpat.o
 
-RFILES = amatch.r append.r bitmap.r catsub.r ckglob.r deflt.r del.r docmd.r \
-	dodash.r doglob.r doprnt.r doread.r dowrite.r ed.r egets.r esc.r \
-	find.r getfn.r getlst.r getnum.r getone.r getpat.r getptr.r getrhs.r \
-	gettxt.r ins.r join.r makepat.r maksub.r matchs.r move.r omatch.r \
-	optpat.r set.r setbuf.r subst.r unmkpat.r
+all: ed
 
-ed: $(RFILES)
-
+ed: $(OBJS)
+	$(CC) $(LFLAGS) -o$@ $^ -lkreiderc -lnos96809l2
+	
 clean:
-	$(RM) $(RFILES)
+	$(RM) $(OBJS)

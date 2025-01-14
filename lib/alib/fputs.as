@@ -1,3 +1,5 @@
+                    section   .text
+
 ;;; FPUTS
 ;;;
 ;;; Prints a null-terminated string to a device.
@@ -9,8 +11,6 @@
 ;;;        CC = Carry flag set to indicate error.
 ;;;
 ;;; I$WritLn prints the string, so additional character processing may occur.
-
-                    section   .text
 
 FPUTS:              pshs      a,x,y,u
                     tfr       x,u                 start of 1st segment to print

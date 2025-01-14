@@ -125,6 +125,4 @@ char    *str;
 {
         tputs(str, n, ttputc);
 }
-#endif TERMCAP
-
-
+#endif /* TERMCAP */

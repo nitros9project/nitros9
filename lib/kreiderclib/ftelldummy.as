@@ -1,8 +1,8 @@
-* Disassembly by Os9disasm of ftelldummy.r
-
+                    export    _ftell
+                    
                     section   code
 
-ftell               leax      _flacc,y
+_ftell              leax      _flacc,y
                     clra
                     clrb
                     std       ,x

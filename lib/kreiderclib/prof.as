@@ -1,5 +1,7 @@
-* Disassembly by Os9disasm of prof.r
-
+                    export    _prof
+                    export    _dumprof
+                    export    _trace
+                    
 * class D external label equates
 
 D0000               equ       $0000
@@ -68,10 +70,10 @@ L006c               puls      x
                     lbsr      _lmove
 L0071               puls      u,pc
 _dumprof            pshs      u
-                    lbsr      pflinit
-                    leax      _iob+13,y
+                    lbsr      _pflinit
+                    leax      __iob+13,y
                     pshs      x
-                    lbsr      fflush
+                    lbsr      _fflush
                     leas      2,s
                     leau      B0000,y
                     bra       L00aa
@@ -84,9 +86,9 @@ L0089               leax      4,u
                     pshs      d
                     leax      >L00c0,pcr
                     pshs      x
-                    leax      _iob+26,y
+                    leax      __iob+26,y
                     pshs      x
-                    lbsr      fprintf
+                    lbsr      _fprintf
                     leas      10,s
                     leau      8,u
 L00aa               cmpu      G0000,y

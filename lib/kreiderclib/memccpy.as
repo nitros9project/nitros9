@@ -1,8 +1,8 @@
-* Disassembly by Os9disasm of memccpy.r
-
+                    export    _memccpy
+                    
                     section   code
 
-memccpy             pshs      y,u
+_memccpy            pshs      y,u
                     ldu       8,s
                     ldx       6,s
                     ldy       12,s

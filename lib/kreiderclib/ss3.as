@@ -1,12 +1,8 @@
-* Disassembly by Os9disasm of ss3.r
-
+                    export    __ss_wtrk
+                    
                     section   code
 
-* OS-9 system function equates
-
-I$SetStt            equ       $8e
-
-_ss_wtrk            pshs      y,u
+__ss_wtrk           pshs      y,u
                     ldb       #4
                     ldy       10,s
                     ldu       8,s

@@ -1,16 +1,20 @@
-* Disassembly by Os9disasm of chmod.r
-
+                    export    _chmod
+                    
                     section   code
 
-* OS-9 system function equates
+;;; #include <modes.h>
+;;;
+;;; int chmod(char *fname, int permissions)
+;;;
+;;; Change a file's permissions.
+;;;
+;;; This function changes the permission bits in the path descriptor associated with the file. fname must
+;;; be a pointer to a file name, and permissions must contain the desired access mode number. Only the owner
+;;; or the super user can change a file's permissions.
+;;;
+;;; Returns: 0 on success, or -1 on error.
 
-F$ID                equ       $0c
-I$Open              equ       $84
-I$GetStt            equ       $8d
-I$SetStt            equ       $8e
-I$Close             equ       $8f
-
-chmod               pshs      y,u
+_chmod              pshs      y,u
                     leas      -16,s
                     bsr       L0035
                     bcs       L002d

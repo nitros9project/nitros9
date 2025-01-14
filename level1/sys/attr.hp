@@ -1,5 +1,5 @@
 @ATTR
-Syntax: Attr filename [<opts>] [<perms>]
+Syntax: attr <filename> [<opts>] [<perms>]
 Usage : Examine or change the security permissions of a file
 Opts  :
   -perm = turn off specified permission

@@ -1,5 +1,8 @@
-* Disassembly by Os9disasm of clbits.r
-
+                    export    _land
+                    export    _lor
+                    export    _lxor
+                    export    _lnot
+                    
                     section   code
 
 _land               ldd       2,s

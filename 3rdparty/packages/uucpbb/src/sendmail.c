@@ -486,7 +486,7 @@ int compmail()
           tilde = docmd_na (temp);
 
           if (tilde == SIGINT  ||  tilde == SIGQUIT)
-               interrupt (0);
+               myinterrupt (0);
           else if (tilde == ABORT)
                return (ABORT);
 
@@ -519,7 +519,7 @@ int compmail()
                tilde = docmd_na (temp);
 
                if (tilde == SIGINT  ||  tilde == SIGQUIT)
-                    interrupt (0);
+                    myinterrupt (0);
                else if (tilde == ABORT)
                     return (ABORT);
 

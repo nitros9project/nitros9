@@ -113,7 +113,7 @@ loop:
         if (c == (CTRL|'X'))                    /* ^X is a prefix       */
                 c = CTLX | getctl();
         if (kbdmip != NULL) {                   /* Save macro strokes.  */
-                if (kbdmip == kbdm[NKBDM-6])
+                if (*kbdmip == kbdm[NKBDM-6])
 /*                if (c != ( CTLX | ')' ) && kbdmip > &kbdm[NKBDM-6]) */
 		{
                         ctrlg(FALSE, 0);

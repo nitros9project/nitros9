@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of ltoa.r
-
+                    export    _ltoa
+                    
                     section   code
 
 * class D external label equates
@@ -7,7 +7,7 @@
 D0000               equ       $0000
 D000a               equ       $000a
 
-ltoa                clra
+_ltoa               clra
                     clrb
                     pshs      d,u
                     ldu       10,s
@@ -47,7 +47,7 @@ L0018               ldd       8,s
 L0051               clr       ,u
                     ldd       10,s
                     pshs      d
-                    lbsr      reverse
+                    lbsr      _reverse
                     leas      4,s
                     puls      u,pc
 L005e               neg       D0000

@@ -1,0 +1,11 @@
+PROCEDURE Winfo
+
+DIM format, width, height, foreground, background, border:INTEGER
+
+RUN FOENIX("WINFO", format, width, height, foreground, background, border)
+PRINT "Format: ";format
+PRINT "Width: ";width
+PRINT "Height: ";height
+PRINT "Foreground: ";foreground
+PRINT "Background: ";background
+PRINT "Border: ";border

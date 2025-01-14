@@ -1,8 +1,8 @@
-* Disassembly by Os9disasm of ltol3.r
-
+                    export    _ltol3
+                    
                     section   code
 
-ltol3               pshs      u
+_ltol3              pshs      u
                     ldu       4,s
                     leau      1,u
                     bra       L001d

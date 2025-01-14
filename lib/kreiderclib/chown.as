@@ -1,16 +1,17 @@
-* Disassembly by Os9disasm of chown.r
-
+                    export    _chown
+                    
                     section   code
 
-* OS-9 system function equates
+;;; int chown(char *fname, int id)
+;;;
+;;; Change a file's permissions.
+;;;
+;;; This function changes the ownership of a file by changing the ID in the file descriptor. Only the
+;;; super user can successfully call this function.
+;;;
+;;; Returns: 0 on success, or -1 on error.
 
-F$ID                equ       $0c
-I$Open              equ       $84
-I$GetStt            equ       $8d
-I$SetStt            equ       $8e
-I$Close             equ       $8f
-
-chown               pshs      y,u
+_chown              pshs      y,u
                     leas      -16,s
                     os9       F$ID
                     bcs       L002a

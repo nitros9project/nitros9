@@ -1,8 +1,0 @@
-Brainfuck is a dead-simple, Turing complete computer language.
-This is a dead-simple interpreter for the language. It takes a single parameter: the name of the source file.
-
-e.g.
-
-brainfuck helloworld.bf
-
-Learn more about Brainfuck here: https://en.wikipedia.org/wiki/Brainfuck

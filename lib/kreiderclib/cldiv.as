@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of cldiv.r
-
+                    export    _ldiv
+                    export    _lmod
 
                     section   bss
 

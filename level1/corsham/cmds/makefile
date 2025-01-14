@@ -8,13 +8,7 @@ DEPENDS		= ./makefile
 AFLAGS          += --includedir=$(3RDPARTY)/packages/basic09
 LFLAGS          += -L $(NITROS9DIR)/lib -lnet -latari -lalib
 
-CMDS		= asm attr backup binex build calldbg cmp copy cputype \
-		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
-		display dmode dsave dump echo edit error exbin format \
-		free help ident iniz irqs link list load login makdir \
-		megaread mdir merge mfree os9gen padrom park printerr procs prompt pwd pxd \
-		rename save setime shellplus shell_21 sleep \
-		tee tmode touch tsmon tuneport unlink verify xmode
+CMDS		= $(STD_CMDS)
 
 BASIC09		= basic09 runb gfx inkey syscall
 

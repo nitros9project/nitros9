@@ -1,5 +1,5 @@
-* Disassembly by Os9disasm of atol.r
-
+                    export    _atol
+                    
                     section   code
 
 * class D external label equates
@@ -7,7 +7,17 @@
 D0000               equ       $0000
 D000a               equ       $000a
 
-atol                pshs      u
+;;; #include <math.h>
+;;;
+;;; long atol(char *str)
+;;;
+;;; Convert a string to a long.
+;;;
+;;; This function recognizes an optional number of spaces, an optional sign, and a series of digits. For example: "-144155".
+;;;
+;;; Overflow causes unpredictable results, and the function doesn't return any error.
+
+_atol               pshs      u
                     ldu       4,s
                     clra
                     clrb

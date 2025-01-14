@@ -1,11 +1,13 @@
-* Disassembly by Os9disasm of fopen.r
-
+                    export    _fdopen
+                    export    _fopen
+                    export    _freopen
+                    
                     section   code
 
 L0000               pshs      d
                     stu       -2,s
                     bne       L0022
-                    leau      _iob,y
+                    leau      __iob,y
                     lda       #$10
 L000c               ldb       7,u
                     andb      #3
@@ -75,7 +77,7 @@ L0086               cmpb      #$61
                     orb       #2
                     pshs      d
                     pshs      u
-                    lbsr      open
+                    lbsr      _open
                     leas      4,s
                     std       2,s
                     cmpd      #-1
@@ -84,7 +86,7 @@ L0086               cmpb      #$61
                     ldx       #0
                     pshs      x,u
                     pshs      d,x
-                    lbsr      lseek
+                    lbsr      _lseek
                     puls      d
                     leas      6,s
                     bra       L00e0
@@ -94,7 +96,7 @@ L00b6               ldd       ,s
                     orb       #2
                     pshs      d
                     pshs      u
-                    lbsr      creat
+                    lbsr      _creat
                     bra       L00de
 L00c3               cmpb      #$64
                     beq       L00d3
@@ -106,16 +108,18 @@ L00d3               ldd       ,s
                     orb       #$81
 L00d7               pshs      d
                     pshs      u
-                    lbsr      open
+                    lbsr      _open
 L00de               leas      4,s
 L00e0               leas      4,s
                     rts
-fdopen              pshs      u
+                    
+_fdopen             pshs      u
                     ldu       #0
                     ldx       6,s
                     ldd       4,s
                     bra       L011c
-fopen               pshs      u
+
+_fopen              pshs      u
                     ldx       6,s
                     ldu       4,s
                     lbsr      L0056
@@ -125,10 +129,11 @@ fopen               pshs      u
 L00fe               clra
                     clrb
                     puls      u,pc
-freopen             pshs      u
+                    
+_freopen            pshs      u
                     ldd       8,s
                     pshs      d
-                    lbsr      fclose
+                    lbsr      _fclose
                     leas      2,s
                     ldx       6,s
                     ldu       4,s

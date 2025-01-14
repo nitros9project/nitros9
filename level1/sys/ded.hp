@@ -1,3 +1,3 @@
 @DED
-Syntax: dEd </device>
-Usage : Binary Disk Editor
+Syntax: ded </device>
+Usage : Edit RBF devices using binary

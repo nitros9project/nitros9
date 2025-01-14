@@ -1,0 +1,1713 @@
+                      (           bf.asm):00001         ********************************************************************
+                      (           bf.asm):00002         * bf - Brainfsck Language Interpreter
+                      (           bf.asm):00003         *
+                      (           bf.asm):00004         * $Id$
+                      (           bf.asm):00005         *
+                      (           bf.asm):00006         * This is a simple interpreter for the Brainfsck language:
+                      (           bf.asm):00007         * https://en.wikipedia.org/wiki/Brainfsck
+                      (           bf.asm):00008         *
+                      (           bf.asm):00009         * Edt/Rev  YYYY/MM/DD  Modified by
+                      (           bf.asm):00010         * Comment
+                      (           bf.asm):00011         * ------------------------------------------------------------------
+                      (           bf.asm):00012         *   1      2015/10/02  Boisy G. Pitre
+                      (           bf.asm):00013         * Created.
+                      (           bf.asm):00014         *
+                      (           bf.asm):00015         
+                      (           bf.asm):00016                             ifp1
+                      (           bf.asm):00017                             use       defsfile
+                      (         defsfile):00001                  use   os9.d   
+                      (            os9.d):00001                             IFNE      OS9.D-1
+                      (            os9.d):00002         
+     0001             (            os9.d):00003         OS9.D               SET       1
+                      (            os9.d):00004         
+                      (            os9.d):00005         ********************************************************************
+                      (            os9.d):00006         * os9.d - NitrOS-9 System Definitions
+                      (            os9.d):00007         *
+                      (            os9.d):00008         * $Id$
+                      (            os9.d):00009         *
+                      (            os9.d):00010         * Edt/Rev  YYYY/MM/DD  Modified by
+                      (            os9.d):00011         * Comment
+                      (            os9.d):00012         * ------------------------------------------------------------------
+                      (            os9.d):00013         *          1985/08/29  KMZ
+                      (            os9.d):00014         * Fixed DT.SBF/NFM values to 3/4
+                      (            os9.d):00015         *
+                      (            os9.d):00016         *          1985/09/01  KMZ
+                      (            os9.d):00017         * Added SS.FDInf, SS.Attr to accept 68K request thru NET.
+                      (            os9.d):00018         *
+                      (            os9.d):00019         *          1985/09/03  KMZ/Robert F. Doggett
+                      (            os9.d):00020         * Eliminated E$BPrcID, made Error #238 become E$DNE for
+                      (            os9.d):00021         * 68000 compatability.
+                      (            os9.d):00022         *
+                      (            os9.d):00023         *          1986/04/15  Mark G. Hawkins
+                      (            os9.d):00024         * F$AlHRAM System call added for COCO.
+                      (            os9.d):00025         *
+                      (            os9.d):00026         *          1986/09/08  Mark G. Hawkins
+                      (            os9.d):00027         * F$Alarm for COCO Clock Module.
+                      (            os9.d):00028         *
+                      (            os9.d):00029         *          1986/09/17  Mark G. Hawkins
+                      (            os9.d):00030         * SS.Tone For COCO.
+                      (            os9.d):00031         *
+                      (            os9.d):00032         *          1986/09/23  Mark G. Hawkins
+                      (            os9.d):00033         * Added F$NMLink and F$NMLoad for COCO.
+                      (            os9.d):00034         *
+                      (            os9.d):00035         *          1986/09/30  Mark G. Hawkins
+                      (            os9.d):00036         * Added Reserved User $70 to $7f in sytem calls.
+                      (            os9.d):00037         *
+                      (            os9.d):00038         *          1986/09/30  Mark G. Hawkins
+                      (            os9.d):00039         * Created Color Computer 3 Version of OS9Defs.
+                      (            os9.d):00040         *
+                      (            os9.d):00041         *          1998/10/03  Boisy G. Pitre
+                      (            os9.d):00042         * Consolidated Level 1/Level 2 os9defs.
+                      (            os9.d):00043         *
+                      (            os9.d):00044         *          2002/04/04  Boisy G. Pitre
+                      (            os9.d):00045         * Consolidated Level 2/Level 2 V3 os9defs.
+                      (            os9.d):00046         *
+                      (            os9.d):00047         *          2002/04/30  Boisy G. Pitre
+                      (            os9.d):00048         * Added NitrOS-9 definitions.
+                      (            os9.d):00049         *
+                      (            os9.d):00050         *          2003/05/30  Boisy G. Pitre
+                      (            os9.d):00051         * Added WD1002 sys vars to Level One section.
+                      (            os9.d):00052         *
+                      (            os9.d):00053         *          2003/06/02  Boisy G. Pitre
+                      (            os9.d):00054         * Fixed incorrectly ordered D.X*** system globals for OS-9 Level One and
+                      (            os9.d):00055         * changed the sizes from 2 to 3 bytes.
+                      (            os9.d):00056         * DT.NFM is now the same for both Level One and Level Two.
+                      (            os9.d):00057         * Added DT.CDFM type for future CD-ROM file manager
+                      (            os9.d):00058         *
+                      (            os9.d):00059         *          2003/11/05  Robert Gault
+                      (            os9.d):00060         * Fixed MouseInf. Made it rmb 2 as it should be. Also changes to init and cc3io.
+                      (            os9.d):00061         *
+                      (            os9.d):00062         *              2005/11/02  P.Harvey-Smith
+                      (            os9.d):00063         * Added definitions for boot areas on Dragon computers.
+                      (            os9.d):00064         *
+                      (            os9.d):00065         *              2006/03/03  Boisy G. Pitre
+                      (            os9.d):00066         * Added F$Debug and D.DbgMem areas, common to all levels of NitrOS-9
+                      (            os9.d):00067         *
+                      (            os9.d):00068         *        2019/10/30  Bill Nobel, from discussions with L. Curtis Boyle
+                      (            os9.d):00069         * Added I$ModDsc call (modify device descriptor in system memory) BN/LCB
+                      (            os9.d):00070         *
+                      (            os9.d):00071         *        2019/12/27 L. Curtis Boyle
+                      (            os9.d):00072         * Added D.IRQTmp for faster temp vars (currently used in Krn F$Move/6809,
+                      (            os9.d):00073         *   can be used elsewheres later, in small routines with IRQ's turned off).
+                      (            os9.d):00074         *
+                      (            os9.d):00075         *        2019/10/30  Bill Nobel, from discussions with L. Curtis Boyle
+                      (            os9.d):00076         * Added S$FS2Sig & S$KQ3Sig (both $80) FS2 & KQ3 (VRN) signal codes added (LCB).
+                      (            os9.d):00077         
+                      (            os9.d):00078                             NAM       os9.d
+                      (            os9.d):00079                             IFEQ      Level-1
+                      (            os9.d):00080                             TTL       NitrOS-9            Level 1 System Symbol Definitions
+                      (            os9.d):00081                             ELSE
+                      (            os9.d):00082                             IFEQ      Level-2
+                      (            os9.d):00083                             TTL       NitrOS-9            Level 2 System Symbol Definitions
+                      (            os9.d):00084                             ELSE
+                      (            os9.d):00085                             TTL       NitrOS-9            Level 3 System Symbol Definitions
+                      (            os9.d):00086                             ENDC
+                      (            os9.d):00087                             ENDC
+                      (            os9.d):00088         
+                      (            os9.d):00089         * Common definitions
+     0001             (            os9.d):00090         true                EQU       1                   useful name
+     0000             (            os9.d):00091         false               EQU       0                   useful name
+                      (            os9.d):00092         
+                      (            os9.d):00093                             PAG
+                      (            os9.d):00094         *****************************************
+                      (            os9.d):00095         * System Service Request Code Definitions
+                      (            os9.d):00096         *
+                      (            os9.d):00097                             ORG       0
+0000                  (            os9.d):00098         F$Link              RMB       1                   Link to Module
+0001                  (            os9.d):00099         F$Load              RMB       1                   Load Module from File
+0002                  (            os9.d):00100         F$UnLink            RMB       1                   Unlink Module
+0003                  (            os9.d):00101         F$Fork              RMB       1                   Start New Process
+0004                  (            os9.d):00102         F$Wait              RMB       1                   Wait for Child Process to Die
+0005                  (            os9.d):00103         F$Chain             RMB       1                   Chain Process to New Module
+0006                  (            os9.d):00104         F$Exit              RMB       1                   Terminate Process
+0007                  (            os9.d):00105         F$Mem               RMB       1                   Set Memory Size
+0008                  (            os9.d):00106         F$Send              RMB       1                   Send Signal to Process
+0009                  (            os9.d):00107         F$Icpt              RMB       1                   Set Signal Intercept
+000A                  (            os9.d):00108         F$Sleep             RMB       1                   Suspend Process
+000B                  (            os9.d):00109         F$SSpd              RMB       1                   Suspend Process
+000C                  (            os9.d):00110         F$ID                RMB       1                   Return Process ID
+000D                  (            os9.d):00111         F$SPrior            RMB       1                   Set Process Priority
+000E                  (            os9.d):00112         F$SSWI              RMB       1                   Set Software Interrupt
+000F                  (            os9.d):00113         F$PErr              RMB       1                   Print Error
+0010                  (            os9.d):00114         F$PrsNam            RMB       1                   Parse Pathlist Name
+0011                  (            os9.d):00115         F$CmpNam            RMB       1                   Compare Two Names
+0012                  (            os9.d):00116         F$SchBit            RMB       1                   Search Bit Map
+0013                  (            os9.d):00117         F$AllBit            RMB       1                   Allocate in Bit Map
+0014                  (            os9.d):00118         F$DelBit            RMB       1                   Deallocate in Bit Map
+0015                  (            os9.d):00119         F$Time              RMB       1                   Get Current Time
+0016                  (            os9.d):00120         F$STime             RMB       1                   Set Current Time
+0017                  (            os9.d):00121         F$CRC               RMB       1                   Generate CRC ($17)
+                      (            os9.d):00122         
+                      (            os9.d):00123                             IFGT      Level-1
+                      (            os9.d):00124         
+                      (            os9.d):00125         * NitrOS-9 Level 2 system calls
+0018                  (            os9.d):00126         F$GPrDsc            RMB       1                   Get Process Descriptor copy ($18)
+0018                  (            os9.d):00127         F$GBlkMp            RMB       1                   Get System Block Map copy ($19)
+0018                  (            os9.d):00128         F$GModDr            RMB       1                   Get Module Directory copy ($1A)
+0018                  (            os9.d):00129         F$CpyMem            RMB       1                   Copy External Memory ($1B)
+0018                  (            os9.d):00130         F$SUser             RMB       1                   Set User ID number ($1C)
+0018                  (            os9.d):00131         F$UnLoad            RMB       1                   Unlink Module by name ($1D)
+0018                  (            os9.d):00132         F$Alarm             RMB       1                   Color Computer 3 Alarm Call ($1E)
+                      (            os9.d):00133                             RMB       2                   Reserved - For overlap of other systems ($1F)
+0018                  (            os9.d):00134         F$NMLink            RMB       1                   Color Computer 3 Non-Mapping Link ($21)
+0018                  (            os9.d):00135         F$NMLoad            RMB       1                   Color Computer 3 Non-Mapping Load ($22)
+                      (            os9.d):00136         
+                      (            os9.d):00137                             ELSE
+                      (            os9.d):00138         
+                      (            os9.d):00139         * NitrOS-9 Level 1 system call padding
+0018                  (            os9.d):00140                             RMB       11
+                      (            os9.d):00141         
+                      (            os9.d):00142                             ENDC
+                      (            os9.d):00143         
+0023                  (            os9.d):00144         F$Debug             RMB       1                   Drop the system into the debugger ($23)
+                      (            os9.d):00145         
+                      (            os9.d):00146                             IFGT      Level-1
+                      (            os9.d):00147         
+                      (            os9.d):00148                             ORG       $25
+0024                  (            os9.d):00149         F$TPS               RMB       1                   Return System's Ticks Per Second
+0024                  (            os9.d):00150         F$TimAlm            RMB       1                   CoCo individual process alarm call
+                      (            os9.d):00151         
+                      (            os9.d):00152                             ENDC
+                      (            os9.d):00153         
+                      (            os9.d):00154                             ORG       $27                 Beginning of System Reserved Calls
+                      (            os9.d):00155         * NitrOS-9 common system calls
+0027                  (            os9.d):00156         F$VIRQ              RMB       1                   Install/Delete Virtual IRQ
+0028                  (            os9.d):00157         F$SRqMem            RMB       1                   System Memory Request
+0029                  (            os9.d):00158         F$SRtMem            RMB       1                   System Memory Return
+002A                  (            os9.d):00159         F$IRQ               RMB       1                   Enter IRQ Polling Table
+002B                  (            os9.d):00160         F$IOQu              RMB       1                   Enter I/O Queue
+002C                  (            os9.d):00161         F$AProc             RMB       1                   Enter Active Process Queue
+002D                  (            os9.d):00162         F$NProc             RMB       1                   Start Next Process
+002E                  (            os9.d):00163         F$VModul            RMB       1                   Validate Module
+002F                  (            os9.d):00164         F$Find64            RMB       1                   Find Process/Path Descriptor
+0030                  (            os9.d):00165         F$All64             RMB       1                   Allocate Process/Path Descriptor
+0031                  (            os9.d):00166         F$Ret64             RMB       1                   Return Process/Path Descriptor
+0032                  (            os9.d):00167         F$SSvc              RMB       1                   Service Request Table Initialization
+0033                  (            os9.d):00168         F$IODel             RMB       1                   Delete I/O Module
+                      (            os9.d):00169         
+                      (            os9.d):00170                             IFGT      Level-1
+                      (            os9.d):00171         
+0034                  (            os9.d):00172         F$SLink             RMB       1                   System Link
+0034                  (            os9.d):00173         F$Boot              RMB       1                   Bootstrap System
+0034                  (            os9.d):00174         F$BtMem             RMB       1                   Bootstrap Memory Request
+0034                  (            os9.d):00175         F$GProcP            RMB       1                   Get Process ptr
+0034                  (            os9.d):00176         F$Move              RMB       1                   Move Data (low bound first)
+0034                  (            os9.d):00177         F$AllRAM            RMB       1                   Allocate RAM blocks
+0034                  (            os9.d):00178         F$AllImg            RMB       1                   Allocate Image RAM blocks
+0034                  (            os9.d):00179         F$DelImg            RMB       1                   Deallocate Image RAM blocks
+0034                  (            os9.d):00180         F$SetImg            RMB       1                   Set Process DAT Image
+0034                  (            os9.d):00181         F$FreeLB            RMB       1                   Get Free Low Block
+0034                  (            os9.d):00182         F$FreeHB            RMB       1                   Get Free High Block
+0034                  (            os9.d):00183         F$AllTsk            RMB       1                   Allocate Process Task number
+0034                  (            os9.d):00184         F$DelTsk            RMB       1                   Deallocate Process Task number
+0034                  (            os9.d):00185         F$SetTsk            RMB       1                   Set Process Task DAT registers
+0034                  (            os9.d):00186         F$ResTsk            RMB       1                   Reserve Task number
+0034                  (            os9.d):00187         F$RelTsk            RMB       1                   Release Task number
+0034                  (            os9.d):00188         F$DATLog            RMB       1                   Convert DAT Block/Offset to Logical
+0034                  (            os9.d):00189         F$DATTmp            RMB       1                   Make temporary DAT image (Obsolete)
+0034                  (            os9.d):00190         F$LDAXY             RMB       1                   Load A [X,[Y]]
+0034                  (            os9.d):00191         F$LDAXYP            RMB       1                   Load A [X+,[Y]]
+0034                  (            os9.d):00192         F$LDDDXY            RMB       1                   Load D [D+X,[Y]]
+0034                  (            os9.d):00193         F$LDABX             RMB       1                   Load A from 0,X in task B
+0034                  (            os9.d):00194         F$STABX             RMB       1                   Store A at 0,X in task B
+0034                  (            os9.d):00195         F$AllPrc            RMB       1                   Allocate Process Descriptor
+0034                  (            os9.d):00196         F$DelPrc            RMB       1                   Deallocate Process Descriptor
+0034                  (            os9.d):00197         F$ELink             RMB       1                   Link using Module Directory Entry
+0034                  (            os9.d):00198         F$FModul            RMB       1                   Find Module Directory Entry
+0034                  (            os9.d):00199         F$MapBlk            RMB       1                   Map Specific Block
+0034                  (            os9.d):00200         F$ClrBlk            RMB       1                   Clear Specific Block
+0034                  (            os9.d):00201         F$DelRAM            RMB       1                   Deallocate RAM blocks
+0034                  (            os9.d):00202         F$GCMDir            RMB       1                   Pack module directory
+0034                  (            os9.d):00203         F$AlHRAM            RMB       1                   Allocate HIGH RAM Blocks
+                      (            os9.d):00204         
+                      (            os9.d):00205         * Alan DeKok additions
+0034                  (            os9.d):00206         F$ReBoot            RMB       1                   Reboot machine (reload OS9Boot) or drop to RSDOS
+0034                  (            os9.d):00207         F$CRCMod            RMB       1                   CRC mode, toggle or report current status
+0034                  (            os9.d):00208         F$XTime             RMB       1                   Get Extended time packet from RTC (fractions of second)
+0034                  (            os9.d):00209         F$VBlock            RMB       1                   Verify modules in a block of memory, add to module directory
+                      (            os9.d):00210         
+                      (            os9.d):00211                             ENDC
+                      (            os9.d):00212         
+                      (            os9.d):00213         *
+                      (            os9.d):00214         * Numbers $70 through $7F are reserved for user definitions
+                      (            os9.d):00215         *
+                      (            os9.d):00216                             ORG       $70
+                      (            os9.d):00217         
+                      (            os9.d):00218                             IFEQ      Level-1
+                      (            os9.d):00219         
+                      (            os9.d):00220                             RMB       16                  Reserved for user definition
+                      (            os9.d):00221         
+                      (            os9.d):00222                             ELSE
+                      (            os9.d):00223         
+0070                  (            os9.d):00224         F$RegDmp            RMB       1                   Ron Lammardo's debugging register dump
+0071                  (            os9.d):00225         F$NVRAM             RMB       1                   Non Volatile RAM (RTC battery backed static) read/write
+                      (            os9.d):00226         
+0072                  (            os9.d):00227                             RMB       $80-.               Reserved for user definitions
+                      (            os9.d):00228                             ENDC
+                      (            os9.d):00229         
+                      (            os9.d):00230                             PAG
+                      (            os9.d):00231         **************************************
+                      (            os9.d):00232         * I/O Service Request Code Definitions
+                      (            os9.d):00233         *
+                      (            os9.d):00234                             ORG       $80
+0080                  (            os9.d):00235         I$Attach            RMB       1                   Attach I/O Device
+0081                  (            os9.d):00236         I$Detach            RMB       1                   Detach I/O Device
+0082                  (            os9.d):00237         I$Dup               RMB       1                   Duplicate Path
+0083                  (            os9.d):00238         I$Create            RMB       1                   Create New File
+0084                  (            os9.d):00239         I$Open              RMB       1                   Open Existing File
+0085                  (            os9.d):00240         I$MakDir            RMB       1                   Make Directory File
+0086                  (            os9.d):00241         I$ChgDir            RMB       1                   Change Default Directory
+0087                  (            os9.d):00242         I$Delete            RMB       1                   Delete File
+0088                  (            os9.d):00243         I$Seek              RMB       1                   Change Current Position
+0089                  (            os9.d):00244         I$Read              RMB       1                   Read Data
+008A                  (            os9.d):00245         I$Write             RMB       1                   Write Data
+008B                  (            os9.d):00246         I$ReadLn            RMB       1                   Read Line of ASCII Data
+008C                  (            os9.d):00247         I$WritLn            RMB       1                   Write Line of ASCII Data
+008D                  (            os9.d):00248         I$GetStt            RMB       1                   Get Path Status
+008E                  (            os9.d):00249         I$SetStt            RMB       1                   Set Path Status
+008F                  (            os9.d):00250         I$Close             RMB       1                   Close Path
+0090                  (            os9.d):00251         I$DeletX            RMB       1                   Delete from current exec dir
+0091                  (            os9.d):00252         I$ModDsc            RMB       1                   Modify SCF/RBF Descriptor in Memory
+                      (            os9.d):00253         
+                      (            os9.d):00254         *******************
+                      (            os9.d):00255         * File Access Modes
+                      (            os9.d):00256         *
+     0001             (            os9.d):00257         READ.               EQU       %00000001
+     0002             (            os9.d):00258         WRITE.              EQU       %00000010
+     0003             (            os9.d):00259         UPDAT.              EQU       READ.+WRITE.
+     0004             (            os9.d):00260         EXEC.               EQU       %00000100
+     0008             (            os9.d):00261         PREAD.              EQU       %00001000
+     0010             (            os9.d):00262         PWRIT.              EQU       %00010000
+     0020             (            os9.d):00263         PEXEC.              EQU       %00100000
+     0040             (            os9.d):00264         SHARE.              EQU       %01000000
+     0080             (            os9.d):00265         DIR.                EQU       %10000000
+     0020             (            os9.d):00266         ISIZ.               EQU       %00100000
+                      (            os9.d):00267         
+                      (            os9.d):00268         **************
+                      (            os9.d):00269         * Signal Codes
+                      (            os9.d):00270         *
+                      (            os9.d):00271                             ORG       0
+0000                  (            os9.d):00272         S$Kill              RMB       1                   Non-Interceptable Abort
+0001                  (            os9.d):00273         S$Wake              RMB       1                   Wake-up Sleeping Process
+0002                  (            os9.d):00274         S$Abort             RMB       1                   Keyboard Abort
+0003                  (            os9.d):00275         S$Intrpt            RMB       1                   Keyboard Interrupt
+0004                  (            os9.d):00276         S$Window            RMB       1                   Window Change
+     0004             (            os9.d):00277         S$HUP               EQU       S$Window            Hang Up
+0005                  (            os9.d):00278         S$Alarm             RMB       1                   CoCo individual process' alarm signal
+                      (            os9.d):00279         
+                      (            os9.d):00280                             ifgt      Level-1
+                      (            os9.d):00281                             ORG       $80
+0006                  (            os9.d):00282         S$FS2Sig            RMB       1                   FS2 VIRQ Signal code (VRN)
+0006                  (            os9.d):00283         S$KQ3Sig            EQU       S$FS2Sig            KQ3 VIRQ Signal code (VRN)
+                      (            os9.d):00284                             endc
+                      (            os9.d):00285         
+                      (            os9.d):00286                             PAG
+                      (            os9.d):00287         **********************************
+                      (            os9.d):00288         * Status Codes for GetStat/GetStat
+                      (            os9.d):00289         *
+                      (            os9.d):00290                             ORG       0
+0000                  (            os9.d):00291         SS.Opt              RMB       1                   Read/Write PD Options
+0001                  (            os9.d):00292         SS.Ready            RMB       1                   Check for Device Ready
+0002                  (            os9.d):00293         SS.Size             RMB       1                   Read/Write File Size
+0003                  (            os9.d):00294         SS.Reset            RMB       1                   Device Restore
+0004                  (            os9.d):00295         SS.WTrk             RMB       1                   Device Write Track
+0005                  (            os9.d):00296         SS.Pos              RMB       1                   Get File Current Position
+0006                  (            os9.d):00297         SS.EOF              RMB       1                   Test for End of File
+0007                  (            os9.d):00298         SS.Link             RMB       1                   Link to Status routines
+0008                  (            os9.d):00299         SS.ULink            RMB       1                   Unlink Status routines
+0009                  (            os9.d):00300         SS.Feed             RMB       1                   Issue form feed
+000A                  (            os9.d):00301         SS.Frz              RMB       1                   Freeze DD. information
+000B                  (            os9.d):00302         SS.SPT              RMB       1                   Set DD.TKS to given value
+000C                  (            os9.d):00303         SS.SQD              RMB       1                   Sequence down hard disk
+000D                  (            os9.d):00304         SS.DCmd             RMB       1                   Send direct command to disk
+000E                  (            os9.d):00305         SS.DevNm            RMB       1                   Return Device name (32-bytes at [X])
+000F                  (            os9.d):00306         SS.FD               RMB       1                   Return File Descriptor (Y-bytes at [X])
+0010                  (            os9.d):00307         SS.Ticks            RMB       1                   Set Lockout honor duration
+0011                  (            os9.d):00308         SS.Lock             RMB       1                   Lock/Release record
+0012                  (            os9.d):00309         SS.DStat            RMB       1                   Return Display Status (CoCo)
+0013                  (            os9.d):00310         SS.Joy              RMB       1                   Return Joystick Value (CoCo)
+0014                  (            os9.d):00311         SS.BlkRd            RMB       1                   Block Read
+0015                  (            os9.d):00312         SS.BlkWr            RMB       1                   Block Write
+0016                  (            os9.d):00313         SS.Reten            RMB       1                   Retension cycle
+0017                  (            os9.d):00314         SS.WFM              RMB       1                   Write File Mark
+0018                  (            os9.d):00315         SS.RFM              RMB       1                   Read past File Mark
+0019                  (            os9.d):00316         SS.ELog             RMB       1                   Read Error Log
+001A                  (            os9.d):00317         SS.SSig             RMB       1                   Send signal on data ready
+001B                  (            os9.d):00318         SS.Relea            RMB       1                   Release device
+001C                  (            os9.d):00319         SS.AlfaS            RMB       1                   Return Alfa Display Status (CoCo, SCF/GetStat)
+     001C             (            os9.d):00320         SS.Attr             EQU       SS.AlfaS            To serve 68K/RBF/SetStat only, thru NET
+001D                  (            os9.d):00321         SS.Break            RMB       1                   Send break signal out acia
+001E                  (            os9.d):00322         SS.RsBit            RMB       1                   Reserve bitmap sector (do not allocate in) LSB(X)=sct#
+001F                  (            os9.d):00323                             RMB       1                   Reserved
+     0020             (            os9.d):00324         SS.FDInf            EQU       $20                 To serve 68K/RBF/GetStat only, thru NET
+0020                  (            os9.d):00325         SS.DirEnt           RMB       1                   Reserve bitmap sector (do not allocate in) LSB(X)=sct#
+0021                  (            os9.d):00326                             RMB       3                   Reserve $20-$23 for Japanese version (Hoshi)
+0024                  (            os9.d):00327         SS.SetMF            RMB       1                   Reserve $24 for Gimix G68 (Flex compatability?)
+0025                  (            os9.d):00328         SS.Cursr            RMB       1                   Cursor information for COCO
+0026                  (            os9.d):00329         SS.ScSiz            RMB       1                   Return screen size for COCO
+0027                  (            os9.d):00330         SS.KySns            RMB       1                   Getstat/SetStat for COCO keyboard
+0028                  (            os9.d):00331         SS.ComSt            RMB       1                   Getstat/SetStat for Baud/Parity
+0029                  (            os9.d):00332         SS.Open             RMB       1                   SetStat to tell driver a path was opened
+002A                  (            os9.d):00333         SS.Close            RMB       1                   SetStat to tell driver a path was closed
+002B                  (            os9.d):00334         SS.HngUp            RMB       1                   SetStat to tell driver to hangup phone
+002C                  (            os9.d):00335         SS.FSig             RMB       1                   New signal for temp locked files
+     0026             (            os9.d):00336         SS.DSize            EQU       SS.ScSiz            Return disk size (RBF GetStat)
+     0012             (            os9.d):00337         SS.VarSect          EQU       SS.DStat            Variable Sector Size (RBF GetStat)
+                      (            os9.d):00338         
+                      (            os9.d):00339         * System Specific and User defined codes above $80
+                      (            os9.d):00340                             ORG       $80
+0080                  (            os9.d):00341         SS.AAGBf            RMB       1                   SetStat to Allocate Additional Graphic Buffer
+0081                  (            os9.d):00342         SS.SLGBf            RMB       1                   SetStat to Select a different Graphic Buffer
+0082                  (            os9.d):00343         SS.Mount            RMB       1                   Network 4 Mount Setstat
+0083                  (            os9.d):00344         SS.RdNet            RMB       1                   Read Raw Sector from Network 4 Omnidrive
+0084                  (            os9.d):00345         SS.MpGPB            RMB       1                   SetStat to request a Get/Put Buffer be mapped in workspace
+0085                  (            os9.d):00346         SS.Slots            RMB       1                   Network 4 slots? getstat
+                      (            os9.d):00347         
+                      (            os9.d):00348         *               IFGT      Level-1
+                      (            os9.d):00349                             IFNE      1
+                      (            os9.d):00350         * Level 2 Windowing
+0086                  (            os9.d):00351         SS.WnSet            RMB       1                   Set up High Level Windowing Information
+0087                  (            os9.d):00352         SS.MnSel            RMB       1                   Request High level Menu Handler take determine next event
+0088                  (            os9.d):00353         SS.SBar             RMB       1                   SetStat to set position block on Window scroll bars
+0089                  (            os9.d):00354         SS.Mouse            RMB       1                   Return Mouse information packet (COCO)
+008A                  (            os9.d):00355         SS.MsSig            RMB       1                   SetStat to tell driver to send signal on mouse event
+008B                  (            os9.d):00356         SS.AScrn            RMB       1                   Allocate a screen for application poking
+008C                  (            os9.d):00357         SS.DScrn            RMB       1                   Display a screen allocated by SS.AScrn
+008D                  (            os9.d):00358         SS.FScrn            RMB       1                   Free a screen allocated by SS.AScrn
+008E                  (            os9.d):00359         SS.PScrn            RMB       1                   Polymorph Screen into different screen type
+008F                  (            os9.d):00360         SS.ScInf            RMB       1                   Get Current screen info for direct writes
+0090                  (            os9.d):00361                             RMB       1                   Reserved
+0091                  (            os9.d):00362         SS.Palet            RMB       1                   Return palette information
+0092                  (            os9.d):00363         SS.Montr            RMB       1                   Get and Set Monitor Type
+0093                  (            os9.d):00364         SS.ScTyp            RMB       1                   Get screen type information
+0094                  (            os9.d):00365         SS.GIP              RMB       1                   Global Input Parameters (SetStat)
+0095                  (            os9.d):00366         SS.UMBar            RMB       1                   update menu bar (SetStat)
+0096                  (            os9.d):00367         SS.FBRgs            RMB       1                   return color registers (GetStat)
+0097                  (            os9.d):00368         SS.DfPal            RMB       1                   set/return default palette registers (Getstat/Setstat)
+0098                  (            os9.d):00369         SS.Tone             RMB       1                   Generate a tone using 6 bit sound
+0099                  (            os9.d):00370         SS.GIP2             RMB       1                   Global Input Params #2 (L2V3)
+009A                  (            os9.d):00371         SS.AnPal            RMB       1                   Animate palettes (L2V3)
+009B                  (            os9.d):00372         SS.FndBf            RMB       1                   Find named buffer (L2V3)
+                      (            os9.d):00373         
+                      (            os9.d):00374         * sc6551 defined
+     0099             (            os9.d):00375         SS.CDSta            EQU       SS.GIP2
+     009A             (            os9.d):00376         SS.CDSig            EQU       SS.AnPal
+     009B             (            os9.d):00377         SS.CDRel            EQU       SS.FndBf
+                      (            os9.d):00378                             ELSE
+                      (            os9.d):00379         * These are wide open in Level 1
+                      (            os9.d):00380                             RMB       19
+                      (            os9.d):00381         
+                      (            os9.d):00382         * sc6551 defined
+009C                  (            os9.d):00383         SS.CDSta            RMB       1
+009C                  (            os9.d):00384         SS.CDSig            RMB       1
+009C                  (            os9.d):00385         SS.CDRel            RMB       1
+                      (            os9.d):00386                             ENDC
+                      (            os9.d):00387         
+                      (            os9.d):00388                             ORG       $A0
+                      (            os9.d):00389         *
+                      (            os9.d):00390         * New Default SCF input buffer Set status call
+00A0                  (            os9.d):00391         SS.Fill             RMB       1                   Pre-load SCF device input buffer
+00A1                  (            os9.d):00392         SS.Hist             RMB       1                   Enable command-line history easily
+                      (            os9.d):00393         
+                      (            os9.d):00394         
+                      (            os9.d):00395                             ORG       $B0
+                      (            os9.d):00396         *
+                      (            os9.d):00397         * New WDDisk get/set status calls
+00B0                  (            os9.d):00398         SS.ECC              RMB       1                   ECC corrected data error enable/disable (GetStat/SetStat)
+                      (            os9.d):00399         
+                      (            os9.d):00400         *
+                      (            os9.d):00401                             IFGT      Level-1
+                      (            os9.d):00402         
+                      (            os9.d):00403         * VRN get/set status calls.  Named by Alan DeKok.
+00B1                  (            os9.d):00404         SS.VCtr             EQU       $80                 Return FS2 total VIRQ counter
+00B1                  (            os9.d):00405         SS.VSig             EQU       $81                 Return FS2 number of signals sent
+                      (            os9.d):00406         
+00B1                  (            os9.d):00407         SS.FClr             EQU       $81                 Set/clear FS2 VIRQ
+00B1                  (            os9.d):00408         SS.FSet             EQU       $C7                 Set FS2+ VIRQ
+00B1                  (            os9.d):00409         SS.KSet             EQU       $C8                 Set KQ3 VIRQ
+00B1                  (            os9.d):00410         SS.KClr             EQU       $C9                 Clr KQ3 VIRQ
+00B1                  (            os9.d):00411         SS.ARAM             EQU       $CA                 Allocate RAM blocks
+00B1                  (            os9.d):00412         SS.DRAM             EQU       $CB                 De-allocate RAM blocks
+                      (            os9.d):00413         
+                      (            os9.d):00414         * SDisk 3 Definition Equates
+00B1                  (            os9.d):00415         SS.DRead            EQU       SS.AAGBf            SDisk3 Direct Sector Read ($80)
+00B1                  (            os9.d):00416         SS.DWrit            EQU       SS.DRead            SDisk3 Direct sector Write ($80)
+00B1                  (            os9.d):00417         SS.UnFrz            EQU       SS.SLGBf            SDisk3 UNFreeze DD info ($81)
+00B1                  (            os9.d):00418         SS.MOFF             EQU       SS.Mount            SDisk3 fast motor off call ($82)
+00B1                  (            os9.d):00419         SS.MoTim            EQU       SS.RdNet            SDisk3 Set motor shut off time ($83)
+00B1                  (            os9.d):00420         SS.SDRD             EQU       SS.MpGPB            SDisk3 System direct read ($84)
+00B1                  (            os9.d):00421         SS.SDWRT            EQU       SS.SDRD             SDisk3 System direct writes ($84)
+00B1                  (            os9.d):00422         SS.Sleep            EQU       SS.Slots            SDisk3 (DMC ONLY) Enable/disable F$Sleep calls in read/write 1773 I/O ($85)
+00B1                  (            os9.d):00423         SS.DrvCh            EQU       SS.WnSet            SDisk3 (DMC ONLY) Set drive number to cache, or return drive number being cached ($86)
+                      (            os9.d):00424         
+                      (            os9.d):00425                             ENDC
+                      (            os9.d):00426         
+                      (            os9.d):00427                             TTL       Direct              Page Definitions
+                      (            os9.d):00428                             PAG
+                      (            os9.d):00429         
+                      (            os9.d):00430         **********************************
+                      (            os9.d):00431         * Direct Page Variable Definitions
+                      (            os9.d):00432         *
+                      (            os9.d):00433                             ORG       $00
+0000                  (            os9.d):00434         D.WDAddr            RMB       2                   FHL/Isted WD1002-05 interface base address
+0002                  (            os9.d):00435         D.WDBtDr            RMB       1                   FHL/Isted WD1002-05 boot physical device drive num.
+0003                  (            os9.d):00436         D.SWPage            RMB       1                   SmartWatch page # (see clock2_smart)
+0004                  (            os9.d):00437                             RMB       5
+0009                  (            os9.d):00438         D.COCOXT            RMB       1                   Busy flag for CoCo-XT driver (one drive at a time)
+000A                  (            os9.d):00439         D.DbgMem            RMB       2                   Debug memory pointer
+000C                  (            os9.d):00440         D.DWSubAddr         RMB       2                   DriveWire subroutine module pointer
+000E                  (            os9.d):00441         D.DWStat            RMB       2                   DriveWire statics page
+0010                  (            os9.d):00442         D.DWSrvID           RMB       1                   DriveWire server ID
+0011                  (            os9.d):00443         D.IRQTmp            RMB       2                   1 or 2 byte DP scratch var (for when IRQ's are off)
+                      (            os9.d):00444         
+                      (            os9.d):00445                             ORG       $20
+                      (            os9.d):00446         
+                      (            os9.d):00447                             IFEQ      Level-1
+                      (            os9.d):00448         
+                      (            os9.d):00449         * Level 1 DP vars
+0020                  (            os9.d):00450         D.FMBM              RMB       4                   Free memory bit map pointers
+0020                  (            os9.d):00451         D.MLIM              RMB       2                   Memory limit $24
+0020                  (            os9.d):00452         D.ModDir            RMB       4                   Module directory $26
+0020                  (            os9.d):00453         D.Init              RMB       2                   Rom base address $2A
+0020                  (            os9.d):00454         D.SWI3              RMB       2                   Swi3 vector $2C
+0020                  (            os9.d):00455         D.SWI2              RMB       2                   Swi2 vector $2E
+0020                  (            os9.d):00456         D.FIRQ              RMB       2                   Firq vector $30
+0020                  (            os9.d):00457         D.IRQ               RMB       2                   Irq vector $32
+0020                  (            os9.d):00458         D.SWI               RMB       2                   Swi vector $34
+0020                  (            os9.d):00459         D.NMI               RMB       2                   Nmi vector $36
+0020                  (            os9.d):00460         D.SvcIRQ            RMB       2                   Interrupt service entry $38
+0020                  (            os9.d):00461         D.Poll              RMB       2                   Interrupt polling routine $3A
+0020                  (            os9.d):00462         D.UsrIRQ            RMB       2                   User irq routine $3C
+0020                  (            os9.d):00463         D.SysIRQ            RMB       2                   System irq routine $3E
+0020                  (            os9.d):00464         D.UsrSvc            RMB       2                   User service request routine $40
+0020                  (            os9.d):00465         D.SysSvc            RMB       2                   System service request routine $42
+0020                  (            os9.d):00466         D.UsrDis            RMB       2                   User service request dispatch table
+0020                  (            os9.d):00467         D.SysDis            RMB       2                   System service reuest dispatch table
+0020                  (            os9.d):00468         D.Slice             RMB       1                   Process time slice count $48
+0020                  (            os9.d):00469         D.PrcDBT            RMB       2                   Process descriptor block address  $49
+0020                  (            os9.d):00470         D.Proc              RMB       2                   Process descriptor address $4B
+0020                  (            os9.d):00471         D.AProcQ            RMB       2                   Active process queue $4D
+0020                  (            os9.d):00472         D.WProcQ            RMB       2                   Waiting process queue $4F
+0020                  (            os9.d):00473         D.SProcQ            RMB       2                   Sleeping process queue $51
+0020                  (            os9.d):00474         D.Time              EQU       .                   Time
+0020                  (            os9.d):00475         D.Year              RMB       1                   $53
+0020                  (            os9.d):00476         D.Month             RMB       1                   $54
+0020                  (            os9.d):00477         D.Day               RMB       1                   $55
+0020                  (            os9.d):00478         D.Hour              RMB       1                   $56
+0020                  (            os9.d):00479         D.Min               RMB       1                   $57
+0020                  (            os9.d):00480         D.Sec               RMB       1                   $58
+0020                  (            os9.d):00481         D.Tick              RMB       1                   $59
+0020                  (            os9.d):00482         D.TSec              RMB       1                   Ticks / second $5A
+0020                  (            os9.d):00483         D.TSlice            RMB       1                   Ticks / time-slice $5B
+0020                  (            os9.d):00484         D.IOML              RMB       2                   I/O mgr free memory low bound $5C
+0020                  (            os9.d):00485         D.IOMH              RMB       2                   I/O mgr free memory hi  bound $5E
+0020                  (            os9.d):00486         D.DevTbl            RMB       2                   Device driver table addr $60
+0020                  (            os9.d):00487         D.PolTbl            RMB       2                   Irq polling table addr $62
+0020                  (            os9.d):00488         D.PthDBT            RMB       2                   Path descriptor block table addr $64
+0020                  (            os9.d):00489         D.BTLO              RMB       2                   Bootstrap low address $66
+0020                  (            os9.d):00490         D.BTHI              RMB       2                   Bootstrap hi address $68
+0020                  (            os9.d):00491         D.DMAReq            RMB       1                   DMA in use flag $6A
+0020                  (            os9.d):00492         D.AltIRQ            RMB       2                   Alternate IRQ vector (CC) $6B
+0020                  (            os9.d):00493         D.KbdSta            RMB       2                   Keyboard scanner static storage (CC) $6D
+0020                  (            os9.d):00494         D.DskTmr            RMB       2                   Disk Motor Timer (CC) $6F
+0020                  (            os9.d):00495         D.CBStrt            RMB       16                  reserved for CC warmstart ($71)
+0020                  (            os9.d):00496         D.Clock             RMB       2                   Address of Clock Tick Routine (CC) $81
+0020                  (            os9.d):00497         D.Boot              RMB       1                   Bootstrap attempted flag
+0020                  (            os9.d):00498         D.URtoSs            RMB       2                   address of user to system routine (VIRQ) $84
+0020                  (            os9.d):00499         D.CLTb              RMB       2                   Pointer to clock interrupt table (VIRQ) $86
+0020                  (            os9.d):00500         D.MDREG             RMB       1                   6309 MD (mode) shadow register $88 (added in V2.01.00)
+0020                  (            os9.d):00501         D.CRC               RMB       1                   CRC checking mode flag $89 (added in V2.01.00)
+0020                  (            os9.d):00502         D.Clock2            RMB       2                   CC Clock2 entry address
+                      (            os9.d):00503         
+                      (            os9.d):00504                             ORG       $100
+                      (            os9.d):00505         *D.XSWI3        RMB       3
+                      (            os9.d):00506         *D.XSWI2        RMB       3
+                      (            os9.d):00507         *D.XFIRQ        RMB       3
+                      (            os9.d):00508         *D.XIRQ         RMB       3
+                      (            os9.d):00509         *D.XSWI         RMB       3
+                      (            os9.d):00510         *D.XNMI         RMB       3
+                      (            os9.d):00511         
+0020                  (            os9.d):00512         D.XSWI3             RMB       3
+0020                  (            os9.d):00513         D.XSWI2             RMB       3
+0020                  (            os9.d):00514         D.XSWI              RMB       3
+0020                  (            os9.d):00515         D.XNMI              RMB       3
+0020                  (            os9.d):00516         D.XIRQ              RMB       3
+0020                  (            os9.d):00517         D.XFIRQ             RMB       3
+                      (            os9.d):00518         
+                      (            os9.d):00519         * Table Sizes
+0020                  (            os9.d):00520         BMAPSZ              EQU       32                  Bitmap table size
+0020                  (            os9.d):00521         SVCTNM              EQU       2                   Number of service request tables
+0020                  (            os9.d):00522         SVCTSZ              EQU       (256-BMAPSZ)/SVCTNM-2 Service request table size
+                      (            os9.d):00523         
+                      (            os9.d):00524                             ELSE
+                      (            os9.d):00525         
+                      (            os9.d):00526         * Level 2 DP vars
+0020                  (            os9.d):00527         D.Tasks             RMB       2                   Task User Table
+0022                  (            os9.d):00528         D.TmpDAT            RMB       2                   Temporary DAT Image stack
+0024                  (            os9.d):00529         D.Init              RMB       2                   Initialization Module ptr
+0026                  (            os9.d):00530         D.Poll              RMB       2                   Interrupt Polling Routine ptr
+     0028             (            os9.d):00531         D.Time              EQU       .                   System Time
+0028                  (            os9.d):00532         D.Year              RMB       1
+0029                  (            os9.d):00533         D.Month             RMB       1
+002A                  (            os9.d):00534         D.Day               RMB       1
+002B                  (            os9.d):00535         D.Hour              RMB       1
+002C                  (            os9.d):00536         D.Min               RMB       1
+002D                  (            os9.d):00537         D.Sec               RMB       1
+002E                  (            os9.d):00538         D.Tick              RMB       1
+002F                  (            os9.d):00539         D.Slice             RMB       1                   current slice remaining
+0030                  (            os9.d):00540         D.TSlice            RMB       1                   Ticks per Slice
+0031                  (            os9.d):00541         D.Boot              RMB       1                   Bootstrap attempted flag
+     0032             (            os9.d):00542         D.KbdSta            EQU       .                   Keyboard scanner static storage (F256 vtio)
+0032                  (            os9.d):00543         D.MotOn             RMB       1                   Floppy Disk Motor-On time out
+0033                  (            os9.d):00544         D.ErrCod            RMB       1                   Reset Error Code
+0034                  (            os9.d):00545         D.Daywk             RMB       1                   day of week, com-trol clock
+0035                  (            os9.d):00546         D.TkCnt             RMB       1                   Tick Counter
+0036                  (            os9.d):00547         D.BtPtr             RMB       2                   Address of Boot in System Address space
+0038                  (            os9.d):00548         D.BtSz              RMB       2                   Size of Boot
+                      (            os9.d):00549         
+                      (            os9.d):00550                             IFNE      H6309
+003A                  (            os9.d):00551         D.MDREG             RMB       1                   6309 MD (mode) shadow register
+                      (            os9.d):00552                             ELSE
+                      (            os9.d):00553                             RMB       1                   Currently unused in NitrOS-9/6809
+                      (            os9.d):00554                             ENDC
+                      (            os9.d):00555         
+003B                  (            os9.d):00556         D.CRC               RMB       1                   CRC checking mode flag
+                      (            os9.d):00557         
+003C                  (            os9.d):00558         D.Tenths            RMB       1                   Tenths and hundredths of second for F$Xtime
+003D                  (            os9.d):00559         D.Task1N            RMB       1                   Map type 1 task number*2 - offset into [D.TskIPt]
+003E                  (            os9.d):00560         D.Quick             RMB       1                   Quick system call return flag - 0 =stack is at $FEE1
+003F                  (            os9.d):00561         D.QIRQ              RMB       1                   Quick IRQ flag - 0 =IRQ wasn't clock, so quick return
+                      (            os9.d):00562         
+                      (            os9.d):00563                             ORG       $40
+0040                  (            os9.d):00564         D.BlkMap            RMB       4                   Memory Block Map ptr
+0044                  (            os9.d):00565         D.ModDir            RMB       4                   Module Directory ptrs
+0048                  (            os9.d):00566         D.PrcDBT            RMB       2                   Process Descriptor Block Table ptr
+004A                  (            os9.d):00567         D.SysPrc            RMB       2                   System Process Descriptor ptr
+004C                  (            os9.d):00568         D.SysDAT            RMB       2                   System DAT Image ptr
+004E                  (            os9.d):00569         D.SysMem            RMB       2                   System Memory Map ptr
+0050                  (            os9.d):00570         D.Proc              RMB       2                   Current Process ptr
+0052                  (            os9.d):00571         D.AProcQ            RMB       2                   Active Process Queue
+0054                  (            os9.d):00572         D.WProcQ            RMB       2                   Waiting Process Queue
+0056                  (            os9.d):00573         D.SProcQ            RMB       2                   Sleeping Process Queue
+0058                  (            os9.d):00574         D.ModEnd            RMB       2                   Module Directory end ptr
+005A                  (            os9.d):00575         D.ModDAT            RMB       2                   Module Dir DAT image end ptr
+005C                  (            os9.d):00576         D.CldRes            RMB       2                   Cold Restart vector
+005E                  (            os9.d):00577         D.BtBug             RMB       3                   Boot debug information
+0061                  (            os9.d):00578         D.Pipe              RMB       2
+                      (            os9.d):00579         
+                      (            os9.d):00580                             ORG       $6B
+006B                  (            os9.d):00581         D.Crash             RMB       6                   Pointer to CC Crash Routine
+0071                  (            os9.d):00582         D.CBStrt            RMB       $B                  Reserved for CC warmstart ($71)
+007C                  (            os9.d):00583         D.QCnt              RMB       1                   Count of number of quick system calls performed
+                      (            os9.d):00584         
+                      (            os9.d):00585                             ORG       $80
+0080                  (            os9.d):00586         D.DevTbl            RMB       2                   I/O Device Table
+0082                  (            os9.d):00587         D.PolTbl            RMB       2                   I/O Polling Table
+0084                  (            os9.d):00588                             RMB       4                   reserved
+0088                  (            os9.d):00589         D.PthDBT            RMB       2                   Path Descriptor Block Table ptr
+008A                  (            os9.d):00590         D.DMAReq            RMB       1                   DMA Request flag
+                      (            os9.d):00591         
+                      (            os9.d):00592         ********
+                      (            os9.d):00593         * CoCo 3 STUFF COMES NEXT
+                      (            os9.d):00594         * This area is used for the CoCo Hardware Registers
+                      (            os9.d):00595         *
+                      (            os9.d):00596                             ORG       $90
+0090                  (            os9.d):00597         D.HINIT             RMB       1                   GIME INIT0 register (hardware setup $FF90)
+0091                  (            os9.d):00598         D.TINIT             RMB       1                   GIME INIT1 register (timer/task register $FF91)
+0092                  (            os9.d):00599         D.IRQER             RMB       1                   Interrupt enable regsiter ($FF92)
+0093                  (            os9.d):00600         D.FRQER             RMB       1                   Fast Interrupt enable register ($FF93)
+0094                  (            os9.d):00601         D.TIMMS             RMB       1                   Timer most significant nibble ($FF94)
+0095                  (            os9.d):00602         D.TIMLS             RMB       1                   Timer least significant byte ($FF95)
+0096                  (            os9.d):00603         D.RESV1             RMB       1                   reserved register ($FF96)
+0097                  (            os9.d):00604         D.RESV2             RMB       1                   reserved register ($FF97)
+0098                  (            os9.d):00605         D.VIDMD             RMB       1                   video mode register ($FF98)
+0099                  (            os9.d):00606         D.VIDRS             RMB       1                   video resolution register ($FF99)
+009A                  (            os9.d):00607         D.BORDR             RMB       1                   border register ($FF9A)
+009B                  (            os9.d):00608         D.RESV3             RMB       1                   reserved register ($FF9B)
+009C                  (            os9.d):00609         D.VOFF2             RMB       1                   vertical scroll/offset 2 register ($FF9C)
+009D                  (            os9.d):00610         D.VOFF1             RMB       1                   vertical offset 1 register ($FF9D)
+009E                  (            os9.d):00611         D.VOFF0             RMB       1                   vertical offset 0 register ($FF9E)
+009F                  (            os9.d):00612         D.HOFF0             RMB       1                   horizontal offset 0 register ($FF9F)
+00A0                  (            os9.d):00613         D.Speed             RMB       1                   Speed of COCO CPU 0=slow,1=fast ($A0)
+00A1                  (            os9.d):00614         D.TskIPt            RMB       2                   Task image Pointer table (CC) ($A1)
+00A3                  (            os9.d):00615         D.MemSz             RMB       1                   128/512K memory flag (CC) ($A3)
+00A4                  (            os9.d):00616         D.SSTskN            RMB       1                   System State Task Number (COCO) ($A4)
+00A5                  (            os9.d):00617         D.CCMem             RMB       2                   Pointer to beginning of CC Memory ($A5)
+00A7                  (            os9.d):00618         D.CCStk             RMB       2                   Pointer to top of CC Memory ($A7)
+00A9                  (            os9.d):00619         D.Flip0             RMB       2                   Change to Task 0 ($A9)
+00AB                  (            os9.d):00620         D.Flip1             RMB       2                   Change to reserved Task 1 ($AB)
+00AD                  (            os9.d):00621         D.VIRQ              RMB       2                   VIRQ Polling routine ($AD)
+00AF                  (            os9.d):00622         D.IRQS              RMB       1                   IRQ shadow register (CC Temporary) ($AF)
+00B0                  (            os9.d):00623         D.CLTb              RMB       2                   VIRQ Table address ($B0)
+00B2                  (            os9.d):00624         D.AltIRQ            RMB       2                   Alternate IRQ Vector (CC) ($B2)
+00B4                  (            os9.d):00625         D.GPoll             RMB       2                   CC GIME IRQ enable/disable toggle
+00B6                  (            os9.d):00626         D.Clock2            RMB       2                   CC Clock2 entry address
+                      (            os9.d):00627                             ORG       $C0
+00C0                  (            os9.d):00628         D.SysSvc            RMB       2                   System Service Routine entry
+00C2                  (            os9.d):00629         D.SysDis            RMB       2                   System Service Dispatch Table ptr
+00C4                  (            os9.d):00630         D.SysIRQ            RMB       2                   System IRQ Routine entry
+00C6                  (            os9.d):00631         D.UsrSvc            RMB       2                   User Service Routine entry
+00C8                  (            os9.d):00632         D.UsrDis            RMB       2                   User Service Dispatch Table ptr
+00CA                  (            os9.d):00633         D.UsrIRQ            RMB       2                   User IRQ Routine entry
+00CC                  (            os9.d):00634         D.SysStk            RMB       2                   System stack
+00CE                  (            os9.d):00635         D.SvcIRQ            RMB       2                   In-System IRQ service
+00D0                  (            os9.d):00636         D.SysTsk            RMB       1                   System Task number
+                      (            os9.d):00637                             ORG       $E0
+00E0                  (            os9.d):00638         D.Clock             RMB       2
+00E2                  (            os9.d):00639         D.XSWI3             RMB       2
+00E4                  (            os9.d):00640         D.XSWI2             RMB       2
+00E6                  (            os9.d):00641         D.XFIRQ             RMB       2
+00E8                  (            os9.d):00642         D.XIRQ              RMB       2
+00EA                  (            os9.d):00643         D.XSWI              RMB       2
+00EC                  (            os9.d):00644         D.XNMI              RMB       2
+00EE                  (            os9.d):00645         D.ErrRst            RMB       2
+00F0                  (            os9.d):00646         D.SysVec            RMB       2                   F$xxx system call vector for NitrOS-9 Level 3
+00F2                  (            os9.d):00647         D.SWI3              RMB       2
+00F4                  (            os9.d):00648         D.SWI2              RMB       2
+00F6                  (            os9.d):00649         D.FIRQ              RMB       2
+00F8                  (            os9.d):00650         D.IRQ               RMB       2
+00FA                  (            os9.d):00651         D.SWI               RMB       2
+00FC                  (            os9.d):00652         D.NMI               RMB       2
+                      (            os9.d):00653         
+                      (            os9.d):00654         *************************
+                      (            os9.d):00655         * Level 2 flags used for bytes in the memory block map at D.BlkMap
+                      (            os9.d):00656         * and for bytes in the system memory map at D.SysMem.
+                      (            os9.d):00657         * A value of 0 indicates an unused/unassigned block.
+                      (            os9.d):00658         * In the code, block assignment often involves incrementing a value
+                      (            os9.d):00659         * from 0 to 1 rather than explict use of RAMinUse.
+                      (            os9.d):00660         *
+     0080             (            os9.d):00661         NotRAM              EQU       %10000000           Block Not RAM flag
+     0004             (            os9.d):00662         VidRAM              EQU       %00000100           Block is being used as Video RAM
+     0002             (            os9.d):00663         ModBlock            EQU       %00000010           Module in Block
+     0001             (            os9.d):00664         RAMinUse            EQU       %00000001           RAM Block in use flag
+                      (            os9.d):00665         *
+                      (            os9.d):00666         * Service Dispatch Table special entries
+                      (            os9.d):00667         *
+     00FE             (            os9.d):00668         IOEntry             EQU       254
+                      (            os9.d):00669         
+                      (            os9.d):00670                             ENDC
+                      (            os9.d):00671         
+                      (            os9.d):00672                             TTL       Structure           Formats
+                      (            os9.d):00673                             PAG
+                      (            os9.d):00674         ************************************
+                      (            os9.d):00675         * Module Directory Entry Definitions
+                      (            os9.d):00676         *
+                      (            os9.d):00677                             ORG       0
+                      (            os9.d):00678                             IFGT      Level-1
+0000                  (            os9.d):00679         MD$MPDAT            RMB       2                   Module DAT Image ptr
+0000                  (            os9.d):00680         MD$MBSiz            RMB       2                   Memory Block size
+                      (            os9.d):00681                             ENDC
+0000                  (            os9.d):00682         MD$MPtr             RMB       2                   Module ptr
+0002                  (            os9.d):00683         MD$Link             RMB       2                   Module Link count
+     0004             (            os9.d):00684         MD$ESize            EQU       .                   Module Directory Entry size
+                      (            os9.d):00685         
+                      (            os9.d):00686         ************************************
+                      (            os9.d):00687         * Module Definitions
+                      (            os9.d):00688         *
+                      (            os9.d):00689         * Universal Module Offsets
+                      (            os9.d):00690         *
+                      (            os9.d):00691                             ORG       0
+0000                  (            os9.d):00692         M$ID                RMB       2                   ID Code
+0002                  (            os9.d):00693         M$Size              RMB       2                   Module Size
+0004                  (            os9.d):00694         M$Name              RMB       2                   Module Name
+0006                  (            os9.d):00695         M$Type              RMB       1                   Type / Language
+0007                  (            os9.d):00696         M$Revs              RMB       1                   Attributes / Revision Level
+0008                  (            os9.d):00697         M$Parity            RMB       1                   Header Parity
+     0009             (            os9.d):00698         M$IDSize            EQU       .                   Module ID Size
+                      (            os9.d):00699         *
+                      (            os9.d):00700         * Type-Dependent Module Offsets
+                      (            os9.d):00701         *
+                      (            os9.d):00702         * System, File Manager, Device Driver, Program Module
+                      (            os9.d):00703         *
+0009                  (            os9.d):00704         M$Exec              RMB       2                   Execution Entry Offset
+                      (            os9.d):00705         *
+                      (            os9.d):00706         * Device Driver, Program Module
+                      (            os9.d):00707         *
+000B                  (            os9.d):00708         M$Mem               RMB       2                   Stack Requirement
+                      (            os9.d):00709         *
+                      (            os9.d):00710         * Device Driver, Device Descriptor Module
+                      (            os9.d):00711         *
+000D                  (            os9.d):00712         M$Mode              RMB       1                   Device Driver Mode Capabilities
+                      (            os9.d):00713         *
+                      (            os9.d):00714         * Device Descriptor Module
+                      (            os9.d):00715         *
+                      (            os9.d):00716                             ORG       M$IDSize
+0009                  (            os9.d):00717         M$FMgr              RMB       2                   File Manager Name Offset
+000B                  (            os9.d):00718         M$PDev              RMB       2                   Device Driver Name Offset
+000D                  (            os9.d):00719                             RMB       1                   M$Mode (defined above)
+000E                  (            os9.d):00720         M$Port              RMB       3                   Port Address
+0011                  (            os9.d):00721         M$Opt               RMB       1                   Device Default Options
+0012                  (            os9.d):00722         M$DTyp              RMB       1                   Device Type
+     0012             (            os9.d):00723         IT.DTP              EQU       M$DTyp              Descriptor type offset
+                      (            os9.d):00724         *
+                      (            os9.d):00725         * Configuration Module Entry Offsets
+                      (            os9.d):00726         *
+                      (            os9.d):00727                             ORG       M$IDSize
+0009                  (            os9.d):00728         MaxMem              RMB       3                   Maximum Free Memory
+000C                  (            os9.d):00729         PollCnt             RMB       1                   Entries in Interrupt Polling Table
+000D                  (            os9.d):00730         DevCnt              RMB       1                   Entries in Device Table
+000E                  (            os9.d):00731         InitStr             RMB       2                   Initial Module Name
+0010                  (            os9.d):00732         SysStr              RMB       2                   System Device Name
+0012                  (            os9.d):00733         StdStr              RMB       2                   Standard I/O Pathlist
+0014                  (            os9.d):00734         BootStr             RMB       2                   Bootstrap Module name
+0016                  (            os9.d):00735         ProtFlag            RMB       1                   Write protect enable flag
+                      (            os9.d):00736         
+0017                  (            os9.d):00737         OSLevel             RMB       1                   OS level
+0018                  (            os9.d):00738         OSVer               RMB       1                   OS version
+0019                  (            os9.d):00739         OSMajor             RMB       1                   OS major
+001A                  (            os9.d):00740         OSMinor             RMB       1                   OS minor
+001B                  (            os9.d):00741         Feature1            RMB       1                   feature byte 1
+001C                  (            os9.d):00742         Feature2            RMB       1                   feature byte 2
+001D                  (            os9.d):00743         OSName              RMB       2                   OS revision name string (nul terminated)
+001F                  (            os9.d):00744         InstallName         RMB       2                   installation name string (nul terminated)
+0021                  (            os9.d):00745                             RMB       4                   reserved for future use
+                      (            os9.d):00746         
+                      (            os9.d):00747                             IFGT      Level-1
+                      (            os9.d):00748         * -- VTIO area -- (NitrOS-9 Level 2 and above) *
+0025                  (            os9.d):00749         MonType             RMB       1                   Monitor type (0=CMP,1=RGB,2=MONO)
+0025                  (            os9.d):00750         MouseInf            RMB       2                   Mouse resolution/Mouse port; was 1, major error RG.
+0025                  (            os9.d):00751         KeyRptS             RMB       1                   Key repeat start constant
+0025                  (            os9.d):00752         KeyRptD             RMB       1                   Key repeat delay constant
+                      (            os9.d):00753                             ENDC
+                      (            os9.d):00754         
+                      (            os9.d):00755         * Feature1 byte definitions
+     0001             (            os9.d):00756         CRCOn               EQU       %00000001           CRC checking on
+     0000             (            os9.d):00757         CRCOff              EQU       %00000000           CRC checking off
+     0000             (            os9.d):00758         Proc6809            EQU       %00000000           6809 procesor
+     0002             (            os9.d):00759         Proc6309            EQU       %00000010           6309 procesor
+                      (            os9.d):00760         
+                      (            os9.d):00761                             PAG
+                      (            os9.d):00762         **************************
+                      (            os9.d):00763         * Module Field Definitions
+                      (            os9.d):00764         *
+                      (            os9.d):00765         * ID Field - First two bytes of a NitrOS-9 module
+                      (            os9.d):00766         *
+     0087             (            os9.d):00767         M$ID1               EQU       $87                 Module ID code byte one
+     00CD             (            os9.d):00768         M$ID2               EQU       $CD                 Module ID code byte two
+     87CD             (            os9.d):00769         M$ID12              EQU       M$ID1*256+M$ID2
+                      (            os9.d):00770         
+                      (            os9.d):00771         *
+                      (            os9.d):00772         * Module Type/Language Field Masks
+                      (            os9.d):00773         *
+     00F0             (            os9.d):00774         TypeMask            EQU       %11110000           Type Field
+     000F             (            os9.d):00775         LangMask            EQU       %00001111           Language Field
+                      (            os9.d):00776         
+                      (            os9.d):00777         *
+                      (            os9.d):00778         * Module Type Values
+                      (            os9.d):00779         *
+     00F0             (            os9.d):00780         Devic               EQU       $F0                 Device Descriptor Module
+     00E0             (            os9.d):00781         Drivr               EQU       $E0                 Physical Device Driver
+     00D0             (            os9.d):00782         FlMgr               EQU       $D0                 File Manager
+     00C0             (            os9.d):00783         Systm               EQU       $C0                 System Module
+     0050             (            os9.d):00784         ShellSub            EQU       $50                 Shell+ shell sub module
+     0040             (            os9.d):00785         Data                EQU       $40                 Data Module
+     0030             (            os9.d):00786         Multi               EQU       $30                 Multi-Module
+     0020             (            os9.d):00787         Sbrtn               EQU       $20                 Subroutine Module
+     0010             (            os9.d):00788         Prgrm               EQU       $10                 Program Module
+                      (            os9.d):00789         
+                      (            os9.d):00790         *
+                      (            os9.d):00791         * Module Language Values
+                      (            os9.d):00792         *
+     0001             (            os9.d):00793         Objct               EQU       1                   6809 Object Code Module
+     0002             (            os9.d):00794         ICode               EQU       2                   Basic09 I-code
+     0003             (            os9.d):00795         PCode               EQU       3                   Pascal P-code
+     0004             (            os9.d):00796         CCode               EQU       4                   C I-code
+     0005             (            os9.d):00797         CblCode             EQU       5                   Cobol I-code
+     0006             (            os9.d):00798         FrtnCode            EQU       6                   Fortran I-code
+     0007             (            os9.d):00799         Obj6309             EQU       7                   6309 object code
+                      (            os9.d):00800         *
+                      (            os9.d):00801         * Module Attributes / Revision byte
+                      (            os9.d):00802         *
+                      (            os9.d):00803         * Field Masks
+                      (            os9.d):00804         *
+     00F0             (            os9.d):00805         AttrMask            EQU       %11110000           Attributes Field
+     000F             (            os9.d):00806         RevsMask            EQU       %00001111           Revision Level Field
+                      (            os9.d):00807         *
+                      (            os9.d):00808         * Attribute Flags
+                      (            os9.d):00809         *
+     0080             (            os9.d):00810         ReEnt               EQU       %10000000           Re-Entrant Module
+     0040             (            os9.d):00811         ModProt             EQU       %01000000           Gimix Module protect bit (0=protected, 1=write enable)
+     0020             (            os9.d):00812         ModNat              EQU       %00100000           6309 native mode attribute
+     0040             (            os9.d):00813         BufWrits            EQU       ModProt             SCF buffered read supported (Coco only at this point)
+     0010             (            os9.d):00814         BufReads            EQU       %00010000           SCF buffered write supported (Coco only at this point)
+                      (            os9.d):00815         * LCB - propose we add Buffered Read/Buffered Write attribute bits for Coco (in descriptors and
+                      (            os9.d):00816         *   drivers for SCF), with one of them replacing ModProt. SCF would check Read/ReadLn and Write/WritLn
+                      (            os9.d):00817         *   calls, and if both the driver and descriptor have the appropriate bit set, it would do buffered 32
+                      (            os9.d):00818         *   byte (for now) reads/writes like the Grfdrv write call does now, for all bytes that are ASCII >$1F
+                      (            os9.d):00819         *   (ie non-control chars, which need special processing)
+                      (            os9.d):00820         
+                      (            os9.d):00821         
+                      (            os9.d):00822         ********************
+                      (            os9.d):00823         * Device Type Values
+                      (            os9.d):00824         *
+                      (            os9.d):00825         * These values define various classes of devices, which are
+                      (            os9.d):00826         * managed by a file manager module.  The Device Type is embedded
+                      (            os9.d):00827         * in a device's device descriptor.
+                      (            os9.d):00828         *
+     0000             (            os9.d):00829         DT.SCF              EQU       0                   Sequential Character File Manager
+     0001             (            os9.d):00830         DT.RBF              EQU       1                   Random Block File Manager
+     0002             (            os9.d):00831         DT.Pipe             EQU       2                   Pipe File Manager
+     0003             (            os9.d):00832         DT.SBF              EQU       3                   Sequential Block File Manager
+     0004             (            os9.d):00833         DT.NFM              EQU       4                   Network File Manager
+     0005             (            os9.d):00834         DT.CDFM             EQU       5                   CD-ROM File Manager
+     0006             (            os9.d):00835         DT.RFM              EQU       6                   Remote File Manager
+                      (            os9.d):00836         
+                      (            os9.d):00837         *********************
+                      (            os9.d):00838         * CRC Result Constant
+                      (            os9.d):00839         *
+     0080             (            os9.d):00840         CRCCon1             EQU       $80
+     0FE3             (            os9.d):00841         CRCCon23            EQU       $0FE3
+                      (            os9.d):00842         
+                      (            os9.d):00843                             TTL       Process             Information
+                      (            os9.d):00844                             PAG
+                      (            os9.d):00845         ********************************
+                      (            os9.d):00846         * Process Descriptor Definitions
+                      (            os9.d):00847         *
+                      (            os9.d):00848                             IFEQ      Level-1
+                      (            os9.d):00849         
+                      (            os9.d):00850         * Level 1 process descriptor defs
+0025                  (            os9.d):00851         DefIOSiz            EQU       12
+0025                  (            os9.d):00852         NumPaths            EQU       16                  Number of Local Paths
+                      (            os9.d):00853         
+                      (            os9.d):00854                             ORG       0
+0025                  (            os9.d):00855         P$ID                RMB       1                   Process ID
+0025                  (            os9.d):00856         P$PID               RMB       1                   Parent's ID
+0025                  (            os9.d):00857         P$SID               RMB       1                   Sibling's ID
+0025                  (            os9.d):00858         P$CID               RMB       1                   Child's ID
+0025                  (            os9.d):00859         P$SP                RMB       2                   Stack ptr
+0025                  (            os9.d):00860         P$CHAP              RMB       1                   process chapter number
+0025                  (            os9.d):00861         P$ADDR              RMB       1                   user address beginning page number
+0025                  (            os9.d):00862         P$PagCnt            RMB       1                   Memory Page Count
+0025                  (            os9.d):00863         P$User              RMB       2                   User Index $09
+0025                  (            os9.d):00864         P$Prior             RMB       1                   Priority $0B
+0025                  (            os9.d):00865         P$Age               RMB       1                   Age $0C
+0025                  (            os9.d):00866         P$State             RMB       1                   Status $0D
+0025                  (            os9.d):00867         P$Queue             RMB       2                   Queue Link (Process ptr) $0E
+0025                  (            os9.d):00868         P$IOQP              RMB       1                   Previous I/O Queue Link (Process ID) $10
+0025                  (            os9.d):00869         P$IOQN              RMB       1                   Next     I/O Queue Link (Process ID)
+0025                  (            os9.d):00870         P$PModul            RMB       2                   Primary Module
+0025                  (            os9.d):00871         P$SWI               RMB       2                   SWI Entry Point
+0025                  (            os9.d):00872         P$SWI2              RMB       2                   SWI2 Entry Point
+0025                  (            os9.d):00873         P$SWI3              RMB       2                   SWI3 Entry Point $18
+0025                  (            os9.d):00874         P$DIO               RMB       DefIOSiz            default I/O ptrs $1A
+0025                  (            os9.d):00875         P$PATH              RMB       NumPaths            I/O path table $26
+0025                  (            os9.d):00876         P$Signal            RMB       1                   Signal Code $36
+0025                  (            os9.d):00877         P$SigVec            RMB       2                   Signal Intercept Vector
+0025                  (            os9.d):00878         P$SigDat            RMB       2                   Signal Intercept Data Address
+0025                  (            os9.d):00879         P$NIO               RMB       4                   additional dio pointers for net
+                      (            os9.d):00880                             RMB       $40-.               unused
+0025                  (            os9.d):00881         P$Size              EQU       .                   Size of Process Descriptor
+                      (            os9.d):00882         
+                      (            os9.d):00883         *
+                      (            os9.d):00884         * Process State Flags
+                      (            os9.d):00885         *
+0025                  (            os9.d):00886         SysState            EQU       %10000000
+0025                  (            os9.d):00887         TimSleep            EQU       %01000000
+0025                  (            os9.d):00888         TimOut              EQU       %00100000
+0025                  (            os9.d):00889         ImgChg              EQU       %00010000
+0025                  (            os9.d):00890         Condem              EQU       %00000010
+0025                  (            os9.d):00891         Dead                EQU       %00000001
+                      (            os9.d):00892         
+                      (            os9.d):00893                             ELSE
+                      (            os9.d):00894         
+                      (            os9.d):00895         * Level 2 process descriptor defs
+     0010             (            os9.d):00896         DefIOSiz            EQU       16                  Default I/O Data Length
+     000C             (            os9.d):00897         NefIOSiz            EQU       12                  On-Net Default I/O Data Length
+     0010             (            os9.d):00898         NumPaths            EQU       16                  Number of Local Paths
+                      (            os9.d):00899         
+                      (            os9.d):00900                             ORG       0
+0000                  (            os9.d):00901         P$ID                RMB       1                   Process ID
+0001                  (            os9.d):00902         P$PID               RMB       1                   Parent's ID
+0002                  (            os9.d):00903         P$SID               RMB       1                   Sibling's ID
+0003                  (            os9.d):00904         P$CID               RMB       1                   Child's ID
+0004                  (            os9.d):00905         P$SP                RMB       2                   Stack ptr
+0006                  (            os9.d):00906         P$Task              RMB       1                   Task Number
+0007                  (            os9.d):00907         P$PagCnt            RMB       1                   Memory Page Count
+0008                  (            os9.d):00908         P$User              RMB       2                   User Index
+000A                  (            os9.d):00909         P$Prior             RMB       1                   Priority
+000B                  (            os9.d):00910         P$Age               RMB       1                   Age
+000C                  (            os9.d):00911         P$State             RMB       1                   Status
+000D                  (            os9.d):00912         P$Queue             RMB       2                   Queue Link (Process ptr)
+000F                  (            os9.d):00913         P$IOQP              RMB       1                   Previous I/O Queue Link (Process ID)
+0010                  (            os9.d):00914         P$IOQN              RMB       1                   Next I/O Queue Link (Process ID)
+0011                  (            os9.d):00915         P$PModul            RMB       2                   Primary Module
+0013                  (            os9.d):00916         P$SWI               RMB       2                   SWI Entry Point
+0015                  (            os9.d):00917         P$SWI2              RMB       2                   SWI2 Entry Point
+0017                  (            os9.d):00918         P$SWI3              RMB       2                   SWI3 Entry Point
+0019                  (            os9.d):00919         P$Signal            RMB       1                   Signal Code
+001A                  (            os9.d):00920         P$SigVec            RMB       2                   Signal Intercept Vector
+001C                  (            os9.d):00921         P$SigDat            RMB       2                   Signal Intercept Data Address
+001E                  (            os9.d):00922         P$DeadLk            RMB       1                   Dominant proc ID if I/O locked
+001F                  (            os9.d):00923                             RMB       $20-.               unused
+0020                  (            os9.d):00924         P$DIO               RMB       DefIOSiz            Default I/O ptrs
+0030                  (            os9.d):00925         P$Path              RMB       NumPaths            I/O Path Table
+0040                  (            os9.d):00926         P$DATImg            RMB       64                  DAT Image
+0080                  (            os9.d):00927         P$Links             RMB       32                  Block Link counts
+00A0                  (            os9.d):00928         P$NIO               RMB       6*2                 additional DIO ptrs for net, compatible  with 68k
+00AC                  (            os9.d):00929         P$SelP              RMB       1                   Selected Path for COCO Windows (Default 0)
+00AD                  (            os9.d):00930         P$UTicks            RMB       4                   proc User Tick counter        (L2V3)
+00B1                  (            os9.d):00931         P$STicks            RMB       4                   proc System Tick counter      (L2V3)
+00B5                  (            os9.d):00932         P$FCalls            RMB       4                   proc F$ call counter          (L2V3)
+00B9                  (            os9.d):00933         P$ICalls            RMB       4                   proc I$ call counter          (L2V3)
+00BD                  (            os9.d):00934         P$DatBeg            RMB       3                   proc Date of creation (Y/M/D) (L2V3)
+00C0                  (            os9.d):00935         P$TimBeg            RMB       3                   proc Time of creation (H/M/S) (L2V3)
+00C3                  (            os9.d):00936         P$Alarm             RMB       6
+00C9                  (            os9.d):00937                             RMB       $200-.              Local stack
+     0200             (            os9.d):00938         P$Stack             EQU       .                   Top of Stack
+     0200             (            os9.d):00939         P$Size              EQU       .                   Size of Process Descriptor
+                      (            os9.d):00940         
+                      (            os9.d):00941         *
+                      (            os9.d):00942         * Process State Flags
+                      (            os9.d):00943         *
+     0080             (            os9.d):00944         SysState            EQU       %10000000
+     0040             (            os9.d):00945         TimSleep            EQU       %01000000
+     0020             (            os9.d):00946         TimOut              EQU       %00100000
+     0010             (            os9.d):00947         ImgChg              EQU       %00010000
+     0008             (            os9.d):00948         Suspend             EQU       %00001000
+     0002             (            os9.d):00949         Condem              EQU       %00000010
+     0001             (            os9.d):00950         Dead                EQU       %00000001
+                      (            os9.d):00951         
+                      (            os9.d):00952                             ENDC
+                      (            os9.d):00953         
+                      (            os9.d):00954                             TTL       NitrOS-9            I/O Symbolic Definitions
+                      (            os9.d):00955                             PAG
+                      (            os9.d):00956         *************************
+                      (            os9.d):00957         * Path Descriptor Offsets
+                      (            os9.d):00958         *
+                      (            os9.d):00959                             ORG       0
+0000                  (            os9.d):00960         PD.PD               RMB       1                   Path Number
+0001                  (            os9.d):00961         PD.MOD              RMB       1                   Mode (Read/Write/Update)
+0002                  (            os9.d):00962         PD.CNT              RMB       1                   Number of Open Images
+0003                  (            os9.d):00963         PD.DEV              RMB       2                   Device Table Entry Address
+0005                  (            os9.d):00964         PD.CPR              RMB       1                   Current Process
+0006                  (            os9.d):00965         PD.RGS              RMB       2                   Caller's Register Stack
+0008                  (            os9.d):00966         PD.BUF              RMB       2                   Buffer Address
+000A                  (            os9.d):00967         PD.FST              RMB       32-.                File Manager's Storage
+     0020             (            os9.d):00968         PD.OPT              EQU       .                   PD GetSts(0) Options
+0020                  (            os9.d):00969         PD.DTP              RMB       1                   Device Type
+0021                  (            os9.d):00970                             RMB       64-.                Path options
+     0040             (            os9.d):00971         PDSIZE              EQU       .
+                      (            os9.d):00972         
+                      (            os9.d):00973         *
+                      (            os9.d):00974         * Pathlist Special Symbols
+                      (            os9.d):00975         *
+     002F             (            os9.d):00976         PDELIM              EQU       '/                  Pathlist Name Separator
+     002E             (            os9.d):00977         PDIR                EQU       '.                  Directory
+     0040             (            os9.d):00978         PENTIR              EQU       '@                  Entire Device
+                      (            os9.d):00979         
+                      (            os9.d):00980                             PAG
+                      (            os9.d):00981         ****************************
+                      (            os9.d):00982         * File Manager Entry Offsets
+                      (            os9.d):00983         *
+                      (            os9.d):00984                             ORG       0
+0000                  (            os9.d):00985         FMCREA              RMB       3                   Create (Open New) File
+0003                  (            os9.d):00986         FMOPEN              RMB       3                   Open File
+0006                  (            os9.d):00987         FMMDIR              RMB       3                   Make Directory
+0009                  (            os9.d):00988         FMCDIR              RMB       3                   Change Directory
+000C                  (            os9.d):00989         FMDLET              RMB       3                   Delete File
+000F                  (            os9.d):00990         FMSEEK              RMB       3                   Position File
+0012                  (            os9.d):00991         FMREAD              RMB       3                   Read from File
+0015                  (            os9.d):00992         FMWRIT              RMB       3                   Write to File
+0018                  (            os9.d):00993         FMRDLN              RMB       3                   ReadLn
+001B                  (            os9.d):00994         FMWRLN              RMB       3                   WritLn
+001E                  (            os9.d):00995         FMGSTA              RMB       3                   Get File Status
+0021                  (            os9.d):00996         FMSSTA              RMB       3                   Set File Status
+0024                  (            os9.d):00997         FMCLOS              RMB       3                   Close File
+                      (            os9.d):00998         
+                      (            os9.d):00999         *****************************
+                      (            os9.d):01000         * Device Driver Entry Offsets
+                      (            os9.d):01001         *
+                      (            os9.d):01002                             ORG       0
+0000                  (            os9.d):01003         D$INIT              RMB       3                   Device Initialization
+0003                  (            os9.d):01004         D$READ              RMB       3                   Read from Device
+0006                  (            os9.d):01005         D$WRIT              RMB       3                   Write to Device
+0009                  (            os9.d):01006         D$GSTA              RMB       3                   Get Device Status
+000C                  (            os9.d):01007         D$PSTA              RMB       3                   Put Device Status
+000F                  (            os9.d):01008         D$TERM              RMB       3                   Device Termination
+                      (            os9.d):01009         
+                      (            os9.d):01010         *********************
+                      (            os9.d):01011         * Device Table Format
+                      (            os9.d):01012         *
+                      (            os9.d):01013                             ORG       0
+0000                  (            os9.d):01014         V$DRIV              RMB       2                   Device Driver module
+0002                  (            os9.d):01015         V$STAT              RMB       2                   Device Driver Static storage
+0004                  (            os9.d):01016         V$DESC              RMB       2                   Device Descriptor module
+0006                  (            os9.d):01017         V$FMGR              RMB       2                   File Manager module
+0008                  (            os9.d):01018         V$USRS              RMB       1                   use count
+                      (            os9.d):01019                             IFGT      Level-1
+0009                  (            os9.d):01020         V$DRIVEX            RMB       2                   Device Driver execution address
+0009                  (            os9.d):01021         V$FMGREX            RMB       2                   File Manager execution address
+                      (            os9.d):01022                             ENDC
+     0009             (            os9.d):01023         DEVSIZ              EQU       .
+                      (            os9.d):01024         
+                      (            os9.d):01025         *******************************
+                      (            os9.d):01026         * Device Static Storage Offsets
+                      (            os9.d):01027         *
+                      (            os9.d):01028                             ORG       0
+0000                  (            os9.d):01029         V.PAGE              RMB       1                   Port Extended Address
+0001                  (            os9.d):01030         V.PORT              RMB       2                   Device 'Base' Port Address
+0003                  (            os9.d):01031         V.LPRC              RMB       1                   Last Active Process ID
+0004                  (            os9.d):01032         V.BUSY              RMB       1                   Active Process ID (0=UnBusy)
+0005                  (            os9.d):01033         V.WAKE              RMB       1                   Active PD if Driver MUST Wake-up
+     0006             (            os9.d):01034         V.USER              EQU       .                   Driver Allocation Origin
+                      (            os9.d):01035         
+                      (            os9.d):01036         ********************************
+                      (            os9.d):01037         * Interrupt Polling Table Format
+                      (            os9.d):01038         *
+                      (            os9.d):01039                             ORG       0
+0000                  (            os9.d):01040         Q$POLL              RMB       2                   Absolute Polling Address
+0002                  (            os9.d):01041         Q$FLIP              RMB       1                   Flip (EOR) Byte ..normally Zero
+0003                  (            os9.d):01042         Q$MASK              RMB       1                   Polling Mask (after Flip)
+0004                  (            os9.d):01043         Q$SERV              RMB       2                   Absolute Service routine Address
+0006                  (            os9.d):01044         Q$STAT              RMB       2                   Static Storage Address
+0008                  (            os9.d):01045         Q$PRTY              RMB       1                   Priority (Low Numbers=Top Priority)
+                      (            os9.d):01046                             IFGT      Level-1
+0009                  (            os9.d):01047         Q$MAP               RMB       2                   NitrOS-9 Level 2 and above
+                      (            os9.d):01048                             ENDC
+     0009             (            os9.d):01049         POLSIZ              EQU       .
+                      (            os9.d):01050         
+                      (            os9.d):01051         ********************
+                      (            os9.d):01052         * VIRQ packet format
+                      (            os9.d):01053         *
+                      (            os9.d):01054                             ORG       0
+0000                  (            os9.d):01055         Vi.Cnt              RMB       2                   count down counter
+0002                  (            os9.d):01056         Vi.Rst              RMB       2                   reset value for counter
+0004                  (            os9.d):01057         Vi.Stat             RMB       1                   status byte
+     0005             (            os9.d):01058         Vi.PkSz             EQU       .
+                      (            os9.d):01059         
+     0001             (            os9.d):01060         Vi.IFlag            EQU       %00000001           status byte virq flag
+                      (            os9.d):01061         
+                      (            os9.d):01062                             PAG
+                      (            os9.d):01063         *************************************
+                      (            os9.d):01064         * Machine Characteristics Definitions
+                      (            os9.d):01065         *
+     0000             (            os9.d):01066         R$CC                EQU       0                   Condition Codes register
+     0001             (            os9.d):01067         R$A                 EQU       1                   A Accumulator
+     0002             (            os9.d):01068         R$B                 EQU       2                   B Accumulator
+     0001             (            os9.d):01069         R$D                 EQU       R$A                 Combined A:B Accumulator
+                      (            os9.d):01070                             IFNE      H6309
+     0003             (            os9.d):01071         R$E                 EQU       3                   E Accumulator
+     0004             (            os9.d):01072         R$F                 EQU       4                   F Accumulator
+     0003             (            os9.d):01073         R$W                 EQU       R$E                 Combined E:F Accumulator
+     0001             (            os9.d):01074         R$Q                 EQU       R$A                 Combined A:B:E:F Accumulator
+     0005             (            os9.d):01075         R$DP                EQU       5                   Direct Page register
+     0006             (            os9.d):01076         R$X                 EQU       6                   X Index register
+     0008             (            os9.d):01077         R$Y                 EQU       8                   Y Index register
+     000A             (            os9.d):01078         R$U                 EQU       10                  User Stack register
+     000C             (            os9.d):01079         R$PC                EQU       12                  Program Counter register
+     000E             (            os9.d):01080         R$Size              EQU       14                  Total register package size
+                      (            os9.d):01081                             ELSE
+0005                  (            os9.d):01082         R$DP                EQU       3                   Direct Page register
+0005                  (            os9.d):01083         R$X                 EQU       4                   X Index register
+0005                  (            os9.d):01084         R$Y                 EQU       6                   Y Index register
+0005                  (            os9.d):01085         R$U                 EQU       8                   User Stack register
+0005                  (            os9.d):01086         R$PC                EQU       10                  Program Counter register
+0005                  (            os9.d):01087         R$Size              EQU       12                  Total register package size
+                      (            os9.d):01088                             ENDC
+                      (            os9.d):01089         
+                      (            os9.d):01090         * MD register masks
+                      (            os9.d):01091         * 6309 definitions
+     0080             (            os9.d):01092         DIV0                EQU       %10000000           division by 0 trap flag       : 1 = trap occured
+     0040             (            os9.d):01093         badinstr            EQU       %01000000           illegal instruction trap flag : 1 = trap occured
+                      (            os9.d):01094         
+     0080             (            os9.d):01095         Entire              EQU       %10000000           Full Register Stack flag
+     0040             (            os9.d):01096         FIRQMask            EQU       %01000000           Fast-Interrupt Mask bit
+     0020             (            os9.d):01097         HalfCrry            EQU       %00100000           Half Carry flag
+     0010             (            os9.d):01098         IRQMask             EQU       %00010000           Interrupt Mask bit
+     0008             (            os9.d):01099         Negative            EQU       %00001000           Negative flag
+     0004             (            os9.d):01100         Zero                EQU       %00000100           Zero flag
+     0002             (            os9.d):01101         TwosOvfl            EQU       %00000010           Two's Comp Overflow flag
+     0001             (            os9.d):01102         Carry               EQU       %00000001           Carry bit
+     0050             (            os9.d):01103         IntMasks            EQU       IRQMask+FIRQMask
+     0080             (            os9.d):01104         Sign                EQU       %10000000           sign bit
+                      (            os9.d):01105         
+                      (            os9.d):01106                             TTL       Error               Code Definitions
+                      (            os9.d):01107                             PAG
+                      (            os9.d):01108         ************************
+                      (            os9.d):01109         * Error Code Definitions
+                      (            os9.d):01110         *
+                      (            os9.d):01111         * Basic09 Error Codes
+                      (            os9.d):01112         *
+                      (            os9.d):01113                             ORG       10
+000A                  (            os9.d):01114         E$UnkSym            RMB       1                   Unknown symbol
+000B                  (            os9.d):01115         E$ExcVrb            RMB       1                   Excessive verbage
+000C                  (            os9.d):01116         E$IllStC            RMB       1                   Illegal statement construction
+000D                  (            os9.d):01117         E$ICOvf             RMB       1                   I-code overflow
+000E                  (            os9.d):01118         E$IChRef            RMB       1                   Illegal channel reference
+000F                  (            os9.d):01119         E$IllMod            RMB       1                   Illegal mode
+0010                  (            os9.d):01120         E$IllNum            RMB       1                   Illegal number
+0011                  (            os9.d):01121         E$IllPrf            RMB       1                   Illegal prefix
+0012                  (            os9.d):01122         E$IllOpd            RMB       1                   Illegal operand
+0013                  (            os9.d):01123         E$IllOpr            RMB       1                   Illegal operator
+0014                  (            os9.d):01124         E$IllRFN            RMB       1                   Illegal record field name
+0015                  (            os9.d):01125         E$IllDim            RMB       1                   Illegal dimension
+0016                  (            os9.d):01126         E$IllLit            RMB       1                   Illegal literal
+0017                  (            os9.d):01127         E$IllRet            RMB       1                   Illegal relational
+0018                  (            os9.d):01128         E$IllSfx            RMB       1                   Illegal type suffix
+0019                  (            os9.d):01129         E$DimLrg            RMB       1                   Dimension too large
+001A                  (            os9.d):01130         E$LinLrg            RMB       1                   Line number too large
+001B                  (            os9.d):01131         E$NoAssg            RMB       1                   Missing assignment statement
+001C                  (            os9.d):01132         E$NoPath            RMB       1                   Missing path number
+001D                  (            os9.d):01133         E$NoComa            RMB       1                   Missing coma
+001E                  (            os9.d):01134         E$NoDim             RMB       1                   Missing dimension
+001F                  (            os9.d):01135         E$NoDO              RMB       1                   Missing DO statement
+0020                  (            os9.d):01136         E$MFull             RMB       1                   Memory full
+0021                  (            os9.d):01137         E$NoGoto            RMB       1                   Missing GOTO
+0022                  (            os9.d):01138         E$NoLPar            RMB       1                   Missing left parenthesis
+0023                  (            os9.d):01139         E$NoLRef            RMB       1                   Missing line reference
+0024                  (            os9.d):01140         E$NoOprd            RMB       1                   Missing operand
+0025                  (            os9.d):01141         E$NoRPar            RMB       1                   Missing right parenthesis
+0026                  (            os9.d):01142         E$NoTHEN            RMB       1                   Missing THEN statement
+0027                  (            os9.d):01143         E$NoTO              RMB       1                   Missing TO statement
+0028                  (            os9.d):01144         E$NoVRef            RMB       1                   Missing variable reference
+0029                  (            os9.d):01145         E$EndQou            RMB       1                   Missing end quote
+002A                  (            os9.d):01146         E$SubLrg            RMB       1                   Too many subscripts
+002B                  (            os9.d):01147         E$UnkPrc            RMB       1                   Unknown procedure
+002C                  (            os9.d):01148         E$MulPrc            RMB       1                   Multiply defined procedure
+002D                  (            os9.d):01149         E$DivZer            RMB       1                   Divice by zero
+002E                  (            os9.d):01150         E$TypMis            RMB       1                   Operand type mismatch
+002F                  (            os9.d):01151         E$StrOvf            RMB       1                   String stack overflow
+0030                  (            os9.d):01152         E$NoRout            RMB       1                   Unimplemented routine
+0031                  (            os9.d):01153         E$UndVar            RMB       1                   Undefined variable
+0032                  (            os9.d):01154         E$FltOvf            RMB       1                   Floating Overflow
+0033                  (            os9.d):01155         E$LnComp            RMB       1                   Line with compiler error
+0034                  (            os9.d):01156         E$ValRng            RMB       1                   Value out of range for destination
+0035                  (            os9.d):01157         E$SubOvf            RMB       1                   Subroutine stack overflow
+0036                  (            os9.d):01158         E$SubUnd            RMB       1                   Subroutine stack underflow
+0037                  (            os9.d):01159         E$SubRng            RMB       1                   Subscript out of range
+0038                  (            os9.d):01160         E$ParmEr            RMB       1                   Paraemter error
+0039                  (            os9.d):01161         E$SysOvf            RMB       1                   System stack overflow
+003A                  (            os9.d):01162         E$IOMism            RMB       1                   I/O type mismatch
+003B                  (            os9.d):01163         E$IONum             RMB       1                   I/O numeric input format bad
+003C                  (            os9.d):01164         E$IOConv            RMB       1                   I/O conversion: number out of range
+003D                  (            os9.d):01165         E$IllInp            RMB       1                   Illegal input format
+003E                  (            os9.d):01166         E$IOFRpt            RMB       1                   I/O format repeat error
+003F                  (            os9.d):01167         E$IOFSyn            RMB       1                   I/O format syntax error
+0040                  (            os9.d):01168         E$IllPNm            RMB       1                   Illegal path number
+0041                  (            os9.d):01169         E$WrSub             RMB       1                   Wrong number of subscripts
+0042                  (            os9.d):01170         E$NonRcO            RMB       1                   Non-record type operand
+0043                  (            os9.d):01171         E$IllA              RMB       1                   Illegal argument
+0044                  (            os9.d):01172         E$IllCnt            RMB       1                   Illegal control structure
+0045                  (            os9.d):01173         E$UnmCnt            RMB       1                   Unmatched control structure
+0046                  (            os9.d):01174         E$IllFOR            RMB       1                   Illegal FOR variable
+0047                  (            os9.d):01175         E$IllExp            RMB       1                   Illegal expression type
+0048                  (            os9.d):01176         E$IllDec            RMB       1                   Illegal declarative statement
+0049                  (            os9.d):01177         E$ArrOvf            RMB       1                   Array size overflow
+004A                  (            os9.d):01178         E$UndLin            RMB       1                   Undefined line number
+004B                  (            os9.d):01179         E$MltLin            RMB       1                   Multiply defined line number
+004C                  (            os9.d):01180         E$MltVar            RMB       1                   Multiply defined variable
+004D                  (            os9.d):01181         E$IllIVr            RMB       1                   Illegal input variable
+004E                  (            os9.d):01182         E$SeekRg            RMB       1                   Seek out of range
+004F                  (            os9.d):01183         E$NoData            RMB       1                   Missing data statement
+                      (            os9.d):01184         
+                      (            os9.d):01185         *
+                      (            os9.d):01186         * System Dependent Error Codes
+                      (            os9.d):01187         *
+                      (            os9.d):01188         
+                      (            os9.d):01189         * Level 2 windowing error codes
+                      (            os9.d):01190                             ORG       183
+00B7                  (            os9.d):01191         E$IWTyp             RMB       1                   Illegal window type
+00B8                  (            os9.d):01192         E$WADef             RMB       1                   Window already defined
+00B9                  (            os9.d):01193         E$NFont             RMB       1                   Font not found
+00BA                  (            os9.d):01194         E$StkOvf            RMB       1                   Stack overflow
+00BB                  (            os9.d):01195         E$IllArg            RMB       1                   Illegal argument
+00BC                  (            os9.d):01196                             RMB       1                   reserved
+00BD                  (            os9.d):01197         E$ICoord            RMB       1                   Illegal coordinates
+00BE                  (            os9.d):01198         E$Bug               RMB       1                   Bug (should never be returned)
+00BF                  (            os9.d):01199         E$BufSiz            RMB       1                   Buffer size is too small
+00C0                  (            os9.d):01200         E$IllCmd            RMB       1                   Illegal command
+00C1                  (            os9.d):01201         E$TblFul            RMB       1                   Screen or window table is full
+00C2                  (            os9.d):01202         E$BadBuf            RMB       1                   Bad/Undefined buffer number
+00C3                  (            os9.d):01203         E$IWDef             RMB       1                   Illegal window definition
+00C4                  (            os9.d):01204         E$WUndef            RMB       1                   Window undefined
+                      (            os9.d):01205         
+00C5                  (            os9.d):01206         E$Up                RMB       1                   Up arrow pressed on SCF I$ReadLn with PD.UP enabled
+00C6                  (            os9.d):01207         E$Dn                RMB       1                   Down arrow pressed on SCF I$ReadLn with PD.DOWN enabled
+00C7                  (            os9.d):01208         E$Alias             RMB       1
+                      (            os9.d):01209         
+                      (            os9.d):01210         
+                      (            os9.d):01211         *
+                      (            os9.d):01212         * Standard NitrOS-9 Error Codes
+                      (            os9.d):01213         *
+                      (            os9.d):01214                             ORG       200
+00C8                  (            os9.d):01215         E$PthFul            RMB       1                   Path Table full
+00C9                  (            os9.d):01216         E$BPNum             RMB       1                   Bad Path Number
+00CA                  (            os9.d):01217         E$Poll              RMB       1                   Polling Table Full
+00CB                  (            os9.d):01218         E$BMode             RMB       1                   Bad Mode
+00CC                  (            os9.d):01219         E$DevOvf            RMB       1                   Device Table Overflow
+00CD                  (            os9.d):01220         E$BMID              RMB       1                   Bad Module ID
+00CE                  (            os9.d):01221         E$DirFul            RMB       1                   Module Directory Full
+00CF                  (            os9.d):01222         E$MemFul            RMB       1                   Process Memory Full
+00D0                  (            os9.d):01223         E$UnkSvc            RMB       1                   Unknown Service Code
+00D1                  (            os9.d):01224         E$ModBsy            RMB       1                   Module Busy
+00D2                  (            os9.d):01225         E$BPAddr            RMB       1                   Bad Page Address
+00D3                  (            os9.d):01226         E$EOF               RMB       1                   End of File
+00D4                  (            os9.d):01227                             RMB       1
+00D5                  (            os9.d):01228         E$NES               RMB       1                   Non-Existing Segment
+00D6                  (            os9.d):01229         E$FNA               RMB       1                   File Not Accesible
+00D7                  (            os9.d):01230         E$BPNam             RMB       1                   Bad Path Name
+00D8                  (            os9.d):01231         E$PNNF              RMB       1                   Path Name Not Found
+00D9                  (            os9.d):01232         E$SLF               RMB       1                   Segment List Full
+00DA                  (            os9.d):01233         E$CEF               RMB       1                   Creating Existing File
+00DB                  (            os9.d):01234         E$IBA               RMB       1                   Illegal Block Address
+00DC                  (            os9.d):01235         E$HangUp            RMB       1                   Carrier Detect Lost
+00DD                  (            os9.d):01236         E$MNF               RMB       1                   Module Not Found
+00DE                  (            os9.d):01237                             RMB       1
+00DF                  (            os9.d):01238         E$DelSP             RMB       1                   Deleting Stack Pointer memory
+00E0                  (            os9.d):01239         E$IPrcID            RMB       1                   Illegal Process ID
+     00E0             (            os9.d):01240         E$BPrcID            EQU       E$IPrcID            Bad Process ID (formerly #238)
+00E1                  (            os9.d):01241                             RMB       1
+00E2                  (            os9.d):01242         E$NoChld            RMB       1                   No Children
+00E3                  (            os9.d):01243         E$ISWI              RMB       1                   Illegal SWI code
+00E4                  (            os9.d):01244         E$PrcAbt            RMB       1                   Process Aborted
+00E5                  (            os9.d):01245         E$PrcFul            RMB       1                   Process Table Full
+00E6                  (            os9.d):01246         E$IForkP            RMB       1                   Illegal Fork Parameter
+00E7                  (            os9.d):01247         E$KwnMod            RMB       1                   Known Module
+00E8                  (            os9.d):01248         E$BMCRC             RMB       1                   Bad Module CRC
+00E9                  (            os9.d):01249         E$USigP             RMB       1                   Unprocessed Signal Pending
+00EA                  (            os9.d):01250         E$NEMod             RMB       1                   Non Existing Module
+00EB                  (            os9.d):01251         E$BNam              RMB       1                   Bad Name
+00EC                  (            os9.d):01252         E$BMHP              RMB       1                   (bad module header parity)
+00ED                  (            os9.d):01253         E$NoRAM             RMB       1                   No (System) RAM Available
+00EE                  (            os9.d):01254         E$DNE               RMB       1                   Directory not empty
+00EF                  (            os9.d):01255         E$NoTask            RMB       1                   No available Task number
+                      (            os9.d):01256                             RMB       $F0-.               reserved
+00F0                  (            os9.d):01257         E$Unit              RMB       1                   Illegal Unit (drive)
+00F1                  (            os9.d):01258         E$Sect              RMB       1                   Bad Sector number
+00F2                  (            os9.d):01259         E$WP                RMB       1                   Write Protect
+00F3                  (            os9.d):01260         E$CRC               RMB       1                   Bad Check Sum
+00F4                  (            os9.d):01261         E$Read              RMB       1                   Read Error
+00F5                  (            os9.d):01262         E$Write             RMB       1                   Write Error
+00F6                  (            os9.d):01263         E$NotRdy            RMB       1                   Device Not Ready
+00F7                  (            os9.d):01264         E$Seek              RMB       1                   Seek Error
+00F8                  (            os9.d):01265         E$Full              RMB       1                   Media Full
+00F9                  (            os9.d):01266         E$BTyp              RMB       1                   Bad Type (incompatable) media
+00FA                  (            os9.d):01267         E$DevBsy            RMB       1                   Device Busy
+00FB                  (            os9.d):01268         E$DIDC              RMB       1                   Disk ID Change
+00FC                  (            os9.d):01269         E$Lock              RMB       1                   Record is busy (locked out)
+00FD                  (            os9.d):01270         E$Share             RMB       1                   Non-sharable file busy
+00FE                  (            os9.d):01271         E$DeadLk            RMB       1                   I/O Deadlock error
+                      (            os9.d):01272         
+                      (            os9.d):01273         
+                      (            os9.d):01274                             IFGT      Level-2
+                      (            os9.d):01275         ***************************
+                      (            os9.d):01276         * Level 3 Defs
+                      (            os9.d):01277         *
+                      (            os9.d):01278         * These definitions apply to NitrOS-9 Level 3
+                      (            os9.d):01279         *
+00FF                  (            os9.d):01280         L3.Start            EQU       $2000               Start off at slot 1
+00FF                  (            os9.d):01281         L3.Size             EQU       $40                 Go for 64 pages: 2 slots total
+00FF                  (            os9.d):01282         L3.Blks             EQU       L3.Size/$20         Number of slots
+00FF                  (            os9.d):01283         L3.End              EQU       L3.Start+L3.Size*$0100 end of L3 memory
+00FF                  (            os9.d):01284         L3.SCF              EQU       $0660               SCF block ptr
+00FF                  (            os9.d):01285         L3.RBF              EQU       L3.SCF+1            RBF block ptr
+                      (            os9.d):01286                             ENDC
+                      (            os9.d):01287         
+                      (            os9.d):01288                             ENDC
+                      (         defsfile):00002                  use   scf.d   
+                      (            scf.d):00001                             IFNE      SCF.D-1
+                      (            scf.d):00002         
+     0001             (            scf.d):00003         SCF.D               SET       1
+                      (            scf.d):00004         
+                      (            scf.d):00005         ********************************************************************
+                      (            scf.d):00006         * scf.d - Sequential Character File Manager Definitions
+                      (            scf.d):00007         *
+                      (            scf.d):00008         * $Id$
+                      (            scf.d):00009         *
+                      (            scf.d):00010         * SCF stands for 'Sequential Character Filemanager' and is a package of subroutines
+                      (            scf.d):00011         * that define the logical structure of a serial device.
+                      (            scf.d):00012         *
+                      (            scf.d):00013         * The data structures in this file give SCF its 'personality' and are used
+                      (            scf.d):00014         * by SCF itself, as well as applications that will require disk I/O.
+                      (            scf.d):00015         *
+                      (            scf.d):00016         * Edt/Rev  YYYY/MM/DD  Modified by
+                      (            scf.d):00017         * Comment
+                      (            scf.d):00018         * ------------------------------------------------------------------
+                      (            scf.d):00019         *          1984/01/11  YO
+                      (            scf.d):00020         * Added V.KANJI, V.KBUF, V.MODADR for new kanji input process.
+                      (            scf.d):00021         *
+                      (            scf.d):00022         *          1985/04/20  Mark G. Hawkins
+                      (            scf.d):00023         * Added V.PDLHd Path Descriptor List Head.
+                      (            scf.d):00024         *
+                      (            scf.d):00025         *          1985/04/21  Mark G. Hawkins
+                      (            scf.d):00026         * Added PD.PLP and PD.PST for modem handling.
+                      (            scf.d):00027         *
+                      (            scf.d):00028         *          1987/06/23  Kevin K. Darling
+                      (            scf.d):00029         * Updated with Dev Desc info.
+                      (            scf.d):00030         *
+                      (            scf.d):00031         *          1998/10/03  Boisy G. Pitre
+                      (            scf.d):00032         * Consolidated L1/L2 scfdefs.
+                      (            scf.d):00033         *
+                      (            scf.d):00034         *          2003/01/21  Boisy G. Pitre
+                      (            scf.d):00035         * Added symbolics for enhanced SCF line editing.
+                      (            scf.d):00036         *
+                      (            scf.d):00037         *          2003/06/02  Boisy G. Pitre
+                      (            scf.d):00038         * Updated comments for clarity.
+                      (            scf.d):00039         *
+                      (            scf.d):00040         *          2004/05/17  Boisy G. Pitre
+                      (            scf.d):00041         * Added higher baud rates.
+                      (            scf.d):00042         
+                      (            scf.d):00043                             NAM       scf.d
+                      (            scf.d):00044                             TTL       Sequential          File Manager Definitions
+                      (            scf.d):00045         
+                      (            scf.d):00046                             PAG
+                      (            scf.d):00047         *******************************
+                      (            scf.d):00048         * SCF Device Descriptor Offsets
+                      (            scf.d):00049         *
+                      (            scf.d):00050         * These definitions are for SCF device descriptors.
+                      (            scf.d):00051         
+                      (            scf.d):00052                             ORG       M$DTyp
+0012                  (            scf.d):00053         IT.DVC              RMB       1                   Device type (DT.SCF)
+0013                  (            scf.d):00054         IT.UPC              RMB       1                   Uppercase flag
+0014                  (            scf.d):00055         IT.BSO              RMB       1                   Backspace behavior
+0015                  (            scf.d):00056         IT.DLO              RMB       1                   Delete behavior
+0016                  (            scf.d):00057         IT.EKO              RMB       1                   Echo flag
+0017                  (            scf.d):00058         IT.ALF              RMB       1                   Auto linefeed flag
+0018                  (            scf.d):00059         IT.NUL              RMB       1                   End-of-line null count
+0019                  (            scf.d):00060         IT.PAU              RMB       1                   Page pause flag
+001A                  (            scf.d):00061         IT.PAG              RMB       1                   Number of lines per page
+001B                  (            scf.d):00062         IT.BSP              RMB       1                   Backspace character
+001C                  (            scf.d):00063         IT.DEL              RMB       1                   Delete-line character
+001D                  (            scf.d):00064         IT.EOR              RMB       1                   End-of-record character
+001E                  (            scf.d):00065         IT.EOF              RMB       1                   End-of-file character
+001F                  (            scf.d):00066         IT.RPR              RMB       1                   Reprint-line character
+0020                  (            scf.d):00067         IT.DUP              RMB       1                   Duplicate-last-line character
+0021                  (            scf.d):00068         IT.PSC              RMB       1                   Pause character
+0022                  (            scf.d):00069         IT.INT              RMB       1                   Interrupt character
+0023                  (            scf.d):00070         IT.QUT              RMB       1                   Quit character
+0024                  (            scf.d):00071         IT.BSE              RMB       1                   Backspace echo character
+0025                  (            scf.d):00072         IT.OVF              RMB       1                   Bell character
+0026                  (            scf.d):00073         IT.PAR              RMB       1                   Parity
+0027                  (            scf.d):00074         IT.BAU              RMB       1                   Baud rate
+0028                  (            scf.d):00075         IT.D2P              RMB       2                   Attached device name string offset
+002A                  (            scf.d):00076         IT.XON              RMB       1                   X-ON character
+002B                  (            scf.d):00077         IT.XOFF             RMB       1                   X-OFF character
+002C                  (            scf.d):00078         IT.COL              RMB       1                   Number of columns for display
+002D                  (            scf.d):00079         IT.ROW              RMB       1                   Number of rows for display
+002E                  (            scf.d):00080         IT.XTYP             RMB       1                   Extended type (added by BRI)
+                      (            scf.d):00081         
+                      (            scf.d):00082                             IFGT      Level-1
+                      (            scf.d):00083         * Window Descriptor Additions
+                      (            scf.d):00084         * For CoCo window, where IT.PAR = $80
+                      (            scf.d):00085                             ORG       IT.ROW+1
+002F                  (            scf.d):00086         IT.WND              RMB       1                   Window number (matches device name) ($2E)
+002F                  (            scf.d):00087         IT.VAL              RMB       1                   Use defaults on Init (0=no, 1=yes)
+002F                  (            scf.d):00088         IT.STY              RMB       1                   Screen type default
+002F                  (            scf.d):00089         IT.CPX              RMB       1                   Column start default
+002F                  (            scf.d):00090         IT.CPY              RMB       1                   Row start default
+002F                  (            scf.d):00091         IT.FGC              RMB       1                   Foreground color default
+002F                  (            scf.d):00092         IT.BGC              RMB       1                   Background color default
+002F                  (            scf.d):00093         IT.BDC              RMB       1                   Border color default
+                      (            scf.d):00094                             ENDC
+                      (            scf.d):00095         
+                      (            scf.d):00096         
+                      (            scf.d):00097                             PAG
+                      (            scf.d):00098         ********************
+                      (            scf.d):00099         * SCF Static Storage
+                      (            scf.d):00100         *
+                      (            scf.d):00101         * SCF devices must reserve this space for SCF
+                      (            scf.d):00102         *
+                      (            scf.d):00103                             ORG       V.USER
+0006                  (            scf.d):00104         V.TYPE              RMB       1                   Device type or parity
+0007                  (            scf.d):00105         V.LINE              RMB       1                   Lines left until end of page
+0008                  (            scf.d):00106         V.PAUS              RMB       1                   Immediate Pause request
+0009                  (            scf.d):00107         V.DEV2              RMB       2                   Attached device's static
+000B                  (            scf.d):00108         V.INTR              RMB       1                   Interrupt char
+000C                  (            scf.d):00109         V.QUIT              RMB       1                   Quit char
+000D                  (            scf.d):00110         V.PCHR              RMB       1                   Pause char
+000E                  (            scf.d):00111         V.ERR               RMB       1                   Accumulated errors
+000F                  (            scf.d):00112         V.XON               RMB       1                   X-On char
+0010                  (            scf.d):00113         V.XOFF              RMB       1                   X-Off char
+0011                  (            scf.d):00114         V.KANJI             RMB       1                   Kanji mode flag
+0012                  (            scf.d):00115         V.KBUF              RMB       2                   Kana - Kanji convert routine work address
+0014                  (            scf.d):00116         V.MODADR            RMB       2                   Kana - Kanji convert module address
+0016                  (            scf.d):00117         V.PDLHd             RMB       2                   Open path descriptor list head pointer
+0018                  (            scf.d):00118         V.RSV               RMB       5                   Reserve bytes for future expansion
+     001D             (            scf.d):00119         V.SCF               EQU       .                   Total SCF manager static overhead
+                      (            scf.d):00120         
+                      (            scf.d):00121         
+                      (            scf.d):00122                             PAG
+                      (            scf.d):00123         ***********************
+                      (            scf.d):00124         * Character Definitions
+                      (            scf.d):00125         *
+     0000             (            scf.d):00126         C$NULL              SET       0                   Null char
+     0001             (            scf.d):00127         C$RPET              SET       $01                 (CTRL-A - SOH) Repeat last input line
+     0003             (            scf.d):00128         C$INTR              SET       $03                 (CTRL-C - ETX) Keyboard interrupt
+     0004             (            scf.d):00129         C$RPRT              SET       $04                 (CTRL-D - EOT) Reprint current input line
+     0005             (            scf.d):00130         C$QUIT              SET       $05                 (CTRL-E - ENQ) Keyboard Abort
+     0007             (            scf.d):00131         C$BELL              SET       $07                 (CTRL-G - BEL) Line overflow warning
+     0008             (            scf.d):00132         C$BSP               SET       $08                 (CTRL-H - BS ) Back space
+     0009             (            scf.d):00133         C$RARR              SET       $09                 Right Arrow
+     0005             (            scf.d):00134         C$EL                SET       $05                 Erase Line
+     000A             (            scf.d):00135         C$LF                SET       $0A                 Line feed
+     000B             (            scf.d):00136         C$HOME              SET       $0B                 Home position Code
+     0015             (            scf.d):00137         C$Clsgr             SET       $15                 Graphic screen clear (use FM-11)
+     0016             (            scf.d):00138         C$Clsall            SET       $16                 Graphic & character clear (use FM-11)
+     000D             (            scf.d):00139         C$CR                SET       $0D                 Carriage return
+     000C             (            scf.d):00140         C$FORM              SET       $0C                 (CTRL-L - FF ) Form Feed ... screen clear
+     000F             (            scf.d):00141         C$SI                SET       $0F                 Shift IN Code
+     000E             (            scf.d):00142         C$SO                SET       $0E                 Shift OUT Code
+     0010             (            scf.d):00143         C$DELETE            SET       $10                 Delete char (for SCF enhanced line editing)
+     0011             (            scf.d):00144         C$XON               SET       $11                 (CTRL-Q - DC1) Transmit Enable
+     0011             (            scf.d):00145         C$INSERT            SET       C$XON               Insert char (for SCF enhanced line editing)
+     0013             (            scf.d):00146         C$XOFF              SET       $13                 (CTRL-S - DC3) Transmit Disable
+     0013             (            scf.d):00147         C$PLINE             SET       C$XOFF              Print remaining line (for SCF enhanced line editing)
+     0017             (            scf.d):00148         C$PAUS              SET       $17                 (CTRL-W - ETB) Pause character
+     0018             (            scf.d):00149         C$DEL               SET       $18                 (CTRL-X - CAN) Delete line
+     0019             (            scf.d):00150         C$SHRARR            SET       $19                 Shift Right-Arrow
+     001B             (            scf.d):00151         C$EOF               SET       $1B                 (CTRL-[ - ESC) END of file
+     001C             (            scf.d):00152         C$RGT               SET       $1C                 Cursor right
+     001D             (            scf.d):00153         C$LFT               SET       $1D                 Cursor left
+     001E             (            scf.d):00154         C$UP                SET       $1E                 Cursor up
+     001F             (            scf.d):00155         C$DWN               SET       $1F                 Cursor down
+     0020             (            scf.d):00156         C$SPAC              SET       $20                 Space
+     002E             (            scf.d):00157         C$PERD              SET       '.
+     002C             (            scf.d):00158         C$COMA              SET       ',
+                      (            scf.d):00159         
+                      (            scf.d):00160         
+                      (            scf.d):00161                             PAG
+                      (            scf.d):00162         *********************************************
+                      (            scf.d):00163         * Sequential Character Path Descriptor Format
+                      (            scf.d):00164         *
+                      (            scf.d):00165         * A path descriptor is created for every new path that is open
+                      (            scf.d):00166         * via the I$Open system call (processed by IOMan).  Process
+                      (            scf.d):00167         * descriptors track state information of a path.
+                      (            scf.d):00168         *
+                      (            scf.d):00169                             ORG       PD.FST
+000A                  (            scf.d):00170         PD.DV2              RMB       2                   Output device table pointer
+000C                  (            scf.d):00171         PD.RAW              RMB       1                   Read/Write or ReadLn/WritLn mode
+000D                  (            scf.d):00172         PD.MAX              RMB       2                   ReadLn high byte count
+000F                  (            scf.d):00173         PD.MIN              RMB       1                   Devices are "mine" if clear
+0010                  (            scf.d):00174         PD.STS              RMB       2                   Status routine module addr
+0012                  (            scf.d):00175         PD.STM              RMB       2                   Reserved for status routine
+                      (            scf.d):00176                             ORG       PD.OPT
+0020                  (            scf.d):00177                             RMB       1                   Device type
+0021                  (            scf.d):00178         PD.UPC              RMB       1                   Case (0=both, 1=upper only)
+0022                  (            scf.d):00179         PD.BSO              RMB       1                   Backspace (0=BSE, 1=BSE,SP,BSE)
+0023                  (            scf.d):00180         PD.DLO              RMB       1                   Delete (0=BSE over line, 1=CRLF)
+0024                  (            scf.d):00181         PD.EKO              RMB       1                   Echo (0=No Echo)
+0025                  (            scf.d):00182         PD.ALF              RMB       1                   Auto linefeed (0=No auto LF)
+0026                  (            scf.d):00183         PD.NUL              RMB       1                   End of Line null count
+0027                  (            scf.d):00184         PD.PAU              RMB       1                   Page pause (0=No end of page pause)
+0028                  (            scf.d):00185         PD.PAG              RMB       1                   Lines per page
+0029                  (            scf.d):00186         PD.BSP              RMB       1                   Backspace character
+002A                  (            scf.d):00187         PD.DEL              RMB       1                   Delete Line character
+002B                  (            scf.d):00188         PD.EOR              RMB       1                   End of Record character (read only)
+002C                  (            scf.d):00189         PD.EOF              RMB       1                   End of File character
+002D                  (            scf.d):00190         PD.RPR              RMB       1                   Repront Line character
+002E                  (            scf.d):00191         PD.DUP              RMB       1                   Dup Last Line character
+002F                  (            scf.d):00192         PD.PSC              RMB       1                   Pause character
+0030                  (            scf.d):00193         PD.INT              RMB       1                   Keyboard interrupt character (CTRL-C)
+0031                  (            scf.d):00194         PD.QUT              RMB       1                   Keyboard quit character (CTRL-E)
+0032                  (            scf.d):00195         PD.BSE              RMB       1                   Backspace echo character
+0033                  (            scf.d):00196         PD.OVF              RMB       1                   Line overflow character (BELL)
+0034                  (            scf.d):00197         PD.PAR              RMB       1                   Parity code
+0035                  (            scf.d):00198         PD.BAU              RMB       1                   ACIA baud rate (Color Computer)
+0036                  (            scf.d):00199         PD.D2P              RMB       2                   Offset of DEV2 name
+0038                  (            scf.d):00200         PD.XON              RMB       1                   ACIA X-ON character
+0039                  (            scf.d):00201         PD.XOFF             RMB       1                   ACIA X-OFF character
+     001A             (            scf.d):00202         OPTCNT              EQU       .-PD.OPT            Total user settable options
+003A                  (            scf.d):00203         PD.ERR              RMB       1                   Most recent I/O error status
+003B                  (            scf.d):00204         PD.TBL              RMB       2                   Device table addr (copy)
+003D                  (            scf.d):00205         PD.PLP              RMB       2                   Path Descriptor List Pointer
+003F                  (            scf.d):00206         PD.PST              RMB       1                   Current path status
+                      (            scf.d):00207         
+                      (            scf.d):00208         
+                      (            scf.d):00209         * PD.PST values Path Descriptor Status byte
+                      (            scf.d):00210         *
+     0001             (            scf.d):00211         PST.DCD             EQU       %00000001           Set if DCD is lost on Serial port
+                      (            scf.d):00212         
+                      (            scf.d):00213         
+                      (            scf.d):00214         * PD.PAR definitions
+                      (            scf.d):00215         *
+                      (            scf.d):00216         * Parity
+     0000             (            scf.d):00217         PARNONE             EQU       %00000000
+     0020             (            scf.d):00218         PARODD              EQU       %00100000
+     0060             (            scf.d):00219         PAREVEN             EQU       %01100000
+     00A0             (            scf.d):00220         PARMARK             EQU       %10100000
+     00E0             (            scf.d):00221         PARSPACE            EQU       %11100000
+     00E0             (            scf.d):00222         PARMASK             EQU       %11100000
+                      (            scf.d):00223         
+                      (            scf.d):00224         * PD.BAU definitions
+                      (            scf.d):00225         *
+                      (            scf.d):00226         * Baud rate
+     0000             (            scf.d):00227         B110                EQU       %00000000
+     0001             (            scf.d):00228         B300                EQU       %00000001
+     0002             (            scf.d):00229         B600                EQU       %00000010
+     0003             (            scf.d):00230         B1200               EQU       %00000011
+     0004             (            scf.d):00231         B2400               EQU       %00000100
+     0005             (            scf.d):00232         B4800               EQU       %00000101
+     0006             (            scf.d):00233         B9600               EQU       %00000110
+     0007             (            scf.d):00234         B19200              EQU       %00000111
+     0008             (            scf.d):00235         B38400              EQU       %00001000
+     0009             (            scf.d):00236         B57600              EQU       %00001001
+     000A             (            scf.d):00237         B115200             EQU       %00001010
+                      (            scf.d):00238         * Word size
+     0000             (            scf.d):00239         WORD8               EQU       %00000000
+     0020             (            scf.d):00240         WORD7               EQU       %00100000
+                      (            scf.d):00241         * Stop bits
+     0000             (            scf.d):00242         STOP1               EQU       %00000000
+     0010             (            scf.d):00243         STOP2               EQU       %00010000
+                      (            scf.d):00244         
+                      (            scf.d):00245                             ENDC
+                      (           bf.asm):00018                             endc
+                      (           bf.asm):00019         
+     0011             (           bf.asm):00020         tylg                set       Prgrm+Objct
+     0080             (           bf.asm):00021         atrv                set       ReEnt+rev
+     0000             (           bf.asm):00022         rev                 set       $00
+     0001             (           bf.asm):00023         edition             set       1
+                      (           bf.asm):00024         
+0000 87CD00EF000D1180 (           bf.asm):00025                             mod       eom,name,tylg,atrv,start,size
+     C600103B60
+                      (           bf.asm):00026         
+     2EE0             (           bf.asm):00027         pSize               equ       12000
+     0BB8             (           bf.asm):00028         dSize               equ       3000
+                      (           bf.asm):00029         
+                      (           bf.asm):00030                             org       0
+0000.                 (           bf.asm):00031         pmem                rmb       pSize
+2EE0.                 (           bf.asm):00032         dmem                rmb       dSize
+3A98.                 (           bf.asm):00033         stack               rmb       200
+     3B60             (           bf.asm):00034         size                equ       .
+                      (           bf.asm):00035         
+000D 62E6             (           bf.asm):00036         name                fcs       /bf/
+000F 01               (           bf.asm):00037                             fcb       edition
+                      (           bf.asm):00038         
+                      (           bf.asm):00039         * initialize interpreter
+                      (           bf.asm):00040         * clear program memory
+0010.                 (           bf.asm):00041         start
+0010 8601             (           bf.asm):00042                             lda       #READ.
+0012 103F84           (           bf.asm):00043                             os9       I$Open
+0015 102500D0         (           bf.asm):00044                             lbcs      error
+0019 108E2EE0         (           bf.asm):00045                             ldy       #pSize
+001D 30C4             (           bf.asm):00046                             leax      pmem,u
+001F 103F89           (           bf.asm):00047                             os9       I$Read
+0022 102500C3         (           bf.asm):00048                             lbcs      error
+0026 103F8F           (           bf.asm):00049                             os9       I$Close
+0029 1F20             (           bf.asm):00050                             tfr       y,d                 nul terminate program string in memory
+002B 6F8B             (           bf.asm):00051                             clr       d,x
+                      (           bf.asm):00052         
+002D 31C92EE0         (           bf.asm):00053                             leay      dmem,u
+0031 CC0BB8           (           bf.asm):00054                             ldd       #dSize
+0034 6FA0             (           bf.asm):00055         clrloop             clr       ,y+
+0036 830001           (           bf.asm):00056                             subd      #$0001
+0039 26F9             (           bf.asm):00057                             bne       clrloop
+003B 31C92EE0         (           bf.asm):00058                             leay      dmem,u
+003F 2063             (           bf.asm):00059                             bra       parse
+                      (           bf.asm):00060         
+0041.                 (           bf.asm):00061         ptrInc
+0041 3121             (           bf.asm):00062                             leay      1,y
+0043 205F             (           bf.asm):00063                             bra       parse
+                      (           bf.asm):00064         
+0045.                 (           bf.asm):00065         ptrDec
+0045 313F             (           bf.asm):00066                             leay      -1,y
+0047 205B             (           bf.asm):00067                             bra       parse
+                      (           bf.asm):00068         
+0049.                 (           bf.asm):00069         dataInc
+0049 6CA4             (           bf.asm):00070                             inc       ,y
+004B 2057             (           bf.asm):00071                             bra       parse
+                      (           bf.asm):00072         
+004D.                 (           bf.asm):00073         dataDec
+004D 6AA4             (           bf.asm):00074                             dec       ,y
+004F 2053             (           bf.asm):00075                             bra       parse
+                      (           bf.asm):00076         
+0051.                 (           bf.asm):00077         putChar
+0051 3436             (           bf.asm):00078                             pshs      d,x,y
+0053 8601             (           bf.asm):00079                             lda       #1
+0055 1F21             (           bf.asm):00080                             tfr       y,x
+0057 108E0001         (           bf.asm):00081                             ldy       #1
+005B 103F8A           (           bf.asm):00082                             os9       I$Write
+005E 35B6             (           bf.asm):00083                             puls      d,x,y,pc
+                      (           bf.asm):00084         
+0060.                 (           bf.asm):00085         getChar
+0060 3436             (           bf.asm):00086                             pshs      d,x,y
+0062 4F               (           bf.asm):00087                             clra
+0063 1F21             (           bf.asm):00088                             tfr       y,x
+0065 108E0001         (           bf.asm):00089                             ldy       #1
+0069 103F89           (           bf.asm):00090                             os9       I$Read
+006C 35B6             (           bf.asm):00091                             puls      d,x,y,pc
+                      (           bf.asm):00092         
+                      (           bf.asm):00093         
+006E 8601             (           bf.asm):00094         brOpen              lda       #1
+0070 3402             (           bf.asm):00095                             pshs      a
+0072 6DA4             (           bf.asm):00096                             tst       ,y
+0074 2614             (           bf.asm):00097                             bne       brOpenBye
+0076.                 (           bf.asm):00098         brOpenDo
+0076 A680             (           bf.asm):00099                             lda       ,x+
+0078 815B             (           bf.asm):00100                             cmpa      #'[
+007A 2604             (           bf.asm):00101                             bne       brOpenCkClose
+007C 6CE4             (           bf.asm):00102                             inc       ,s
+007E 2006             (           bf.asm):00103                             bra       brOpenDoTest
+0080.                 (           bf.asm):00104         brOpenCkClose
+0080 815D             (           bf.asm):00105                             cmpa      #']
+0082 2602             (           bf.asm):00106                             bne       brOpenDoTest
+0084 6AE4             (           bf.asm):00107                             dec       ,s
+0086.                 (           bf.asm):00108         brOpenDoTest
+0086 6DE4             (           bf.asm):00109                             tst       ,s
+0088 26EC             (           bf.asm):00110                             bne       brOpenDo
+008A.                 (           bf.asm):00111         brOpenBye
+008A 3582             (           bf.asm):00112                             puls      a,pc
+                      (           bf.asm):00113         
+008C.                 (           bf.asm):00114         brClose
+008C 6FE2             (           bf.asm):00115                             clr       ,-s
+008E.                 (           bf.asm):00116         brCloseDo
+008E A682             (           bf.asm):00117                             lda       ,-x
+0090 815B             (           bf.asm):00118                             cmpa      #'[
+0092 2604             (           bf.asm):00119                             bne       brCloseCkClose
+0094 6CE4             (           bf.asm):00120                             inc       ,s
+0096 2006             (           bf.asm):00121                             bra       brCloseDoCont
+0098.                 (           bf.asm):00122         brCloseCkClose
+0098 815D             (           bf.asm):00123                             cmpa      #']
+009A 2602             (           bf.asm):00124                             bne       brCloseDoCont
+009C 6AE4             (           bf.asm):00125                             dec       ,s
+009E.                 (           bf.asm):00126         brCloseDoCont
+009E 6DE4             (           bf.asm):00127                             tst       ,s
+00A0 26EC             (           bf.asm):00128                             bne       brCloseDo
+00A2 3582             (           bf.asm):00129                             puls      a,pc
+                      (           bf.asm):00130         
+                      (           bf.asm):00131         * X = Brainfsck program pointer (nul byte terminates)
+                      (           bf.asm):00132         * Y = Brainfsck data pointer
+00A4.                 (           bf.asm):00133         parse
+00A4 A680             (           bf.asm):00134                             lda       ,x+
+00A6 2740             (           bf.asm):00135                             beq       parseEnd
+00A8 813E             (           bf.asm):00136                             cmpa      #'>
+00AA 2604             (           bf.asm):00137                             bne       a1
+00AC 3121             (           bf.asm):00138                             leay      1,y
+00AE 20F4             (           bf.asm):00139                             bra       parse
+00B0 813C             (           bf.asm):00140         a1                  cmpa      #'<
+00B2 2604             (           bf.asm):00141                             bne       a2
+00B4 313F             (           bf.asm):00142                             leay      -1,y
+00B6 20EC             (           bf.asm):00143                             bra       parse
+00B8 812B             (           bf.asm):00144         a2                  cmpa      #'+
+00BA 2604             (           bf.asm):00145                             bne       a3
+00BC 6CA4             (           bf.asm):00146                             inc       ,y
+00BE 20E4             (           bf.asm):00147                             bra       parse
+00C0 812D             (           bf.asm):00148         a3                  cmpa      #'-
+00C2 2604             (           bf.asm):00149                             bne       a4
+00C4 6AA4             (           bf.asm):00150                             dec       ,y
+00C6 20DC             (           bf.asm):00151                             bra       parse
+00C8 812E             (           bf.asm):00152         a4                  cmpa      #'.
+00CA 2604             (           bf.asm):00153                             bne       a5
+00CC 8D83             (           bf.asm):00154                             bsr       putChar
+00CE 20D4             (           bf.asm):00155                             bra       parse
+00D0 812C             (           bf.asm):00156         a5                  cmpa      #',
+00D2 2604             (           bf.asm):00157                             bne       a6
+00D4 8D8A             (           bf.asm):00158                             bsr       getChar
+00D6 20CC             (           bf.asm):00159                             bra       parse
+00D8 815B             (           bf.asm):00160         a6                  cmpa      #'[
+00DA 2604             (           bf.asm):00161                             bne       a7
+00DC 8D90             (           bf.asm):00162                             bsr       brOpen
+00DE 20C4             (           bf.asm):00163                             bra       parse
+00E0 815D             (           bf.asm):00164         a7                  cmpa      #']
+00E2 26C0             (           bf.asm):00165                             bne       parse               unrecognized character -- keep parsing
+00E4 8DA6             (           bf.asm):00166                             bsr       brClose
+00E6 20BC             (           bf.asm):00167                             bra       parse
+                      (           bf.asm):00168         
+                      (           bf.asm):00169         
+00E8.                 (           bf.asm):00170         parseEnd
+00E8 5F               (           bf.asm):00171                             clrb
+00E9.                 (           bf.asm):00172         error
+00E9 103F06           (           bf.asm):00173                             os9       F$Exit
+                      (           bf.asm):00174         
+00EC DEB8F7           (           bf.asm):00175                             emod
+     00EF             (           bf.asm):00176         eom                 equ       *
+                      (           bf.asm):00177                             end
