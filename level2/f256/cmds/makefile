@@ -28,7 +28,7 @@ CMDS    = asm attr backup bawk binex build cmp copy \
 		makdir mdir megaread merge mfree minted mmap modpatch more padrom park \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
-		bootos9 fnxinfo fnxreset rogue fstatus mmap pmap proc smap xtclut drawtest play \
+		bootos9 fnxinfo fnxreset rogue fstatus  xtclut drawtest play \
 		$(CMDS_DW) $(BASIC09) $(BF) $(CPM)
 
 SHELLMODS	= shellplus echo iniz link load save unlink
