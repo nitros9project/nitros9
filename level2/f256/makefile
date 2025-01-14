@@ -3,7 +3,7 @@ include port.mak
 DISTRO		= $(CPU)L$(LEVEL)
 DISTRONAME	= NOS9_$(CPU)_L$(LEVEL)
 DISTROVER	= $(DISTRONAME)_$(NITROS9VER)_$(PORT)
-DIRS		= defs cmds modules sys sys/fonts bootfiles wwwroot
+DIRS		= defs libs cmds modules sys sys/fonts bootfiles wwwroot
 
 CMDS		= $(shell $(CD) cmds; make --no-print-directory showobjs)
 CMDS_DW		= $(shell $(CD) cmds; make --no-print-directory showobjs_dw)
