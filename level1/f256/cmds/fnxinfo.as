@@ -51,7 +51,7 @@ __start
                     os9       F$Exit
                     
 * F256 identity routine
-* Exit: A = $02 (F256K), $12 (F256 Jr.)
+* Exit: A = $02 (F256K), $12 (F256 Jr.), $1A (F256 Jr2), $16 (F256K2)
 F256Type            pshs      x
                     ldx       #SYS0
                     lda       7,x
@@ -68,13 +68,25 @@ PrintMBoardInfo     bsr       F256Type
                     cmpa      #$02
                     bne       isItF256K@
 f256k@              lbsr      PRINTS
-                    fcc       "F256 Jr."
+                    fcc       "F256 Jr"
                     fcb       $0
                     bra       cont@
 isItF256K@          cmpa      #$12
-                    bne       cont@
+                    bne       isitF256JrJr@
                     lbsr      PRINTS
                     fcc       "F256K"
+                    fcb       $0
+                    bra       cont@
+isitF256JrJr@       cmpa      #$1A
+                    bne       isitF256K2@
+                    lbsr      PRINTS
+                    fcc       "F256 Jr2"
+                    fcb       $0
+                    bra       cont@
+isitF256K2@         cmpa      #$16
+                    bne       cont@
+                    lbsr      PRINTS
+                    fcc       "F256K2"
                     fcb       $0
 cont@               lbsr      PRINTS
                     fcc       " - PCBID "
