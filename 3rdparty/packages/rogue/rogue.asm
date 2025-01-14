@@ -34,6 +34,7 @@ F$PErr              equ       $0F
 F$Time              equ       $15
 I$Create            equ       $83
 I$Open              equ       $84
+I$ChgDir            equ       $86
 I$Delete            equ       $87
 I$Read              equ       $89
 I$Write             equ       $8A
@@ -49,6 +50,8 @@ SS.ScSiz            equ       $26
 Prgrm               equ       $10
 Objct               equ       $01
 ReEnt               equ       $80
+
+READ.               equ       $01
 
 Edition             equ       $01                 Change to $01 once we are done
 
@@ -105,6 +108,12 @@ start               orcc      #$50                Kill IRQs
                     lda       #$02
                     sta       >$FF20              ??? RS-232 bit on PIA?
                     endc
+
+* Added on 2-Jul-2024
+                    leax      RogueDir,pcr
+                    lda       #READ.
+                    os9       I$ChgDir
+                                        
                     clra
                     ldb       #SS.ScTyp           Get screen type
                     os9       I$GetStt
@@ -196,6 +205,9 @@ L00DC               rti
 *   group/buff (1b 29 gg bb), so it has type 5, 8x8, $400 byte load
 L00DD               fcb       $05,$00,$08,$00,$08,$04,$00
 
+RogueDir            fcc       '...../rogue'
+                    fcb       $0D
+                    
 * Name of special font
 L00E4               fcc       'rogue.fnt'
                     fcb       0
