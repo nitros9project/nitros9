@@ -165,9 +165,6 @@ Params              rmb       200
 Finish              equ       .
 
 
-HelpMess            fcc       /Usage:  BAWK [-d? -i -l -a# -f -F] "format_string" [file] [...]/
-                    fcb       C$CR
-
 Shell               fcc       "Shell"
                     fcb       C$CR
 
@@ -287,7 +284,7 @@ Eat2                lda       ,x+
 * Entry of program
 
 Start               decb                          any params?
-                    lbeq      Help                nope, exit w/ error
+                    lbeq      Done                nope, exit w/ error
 
                     clr       Path                assume stdin upon entry
                     clr       IncFlag             Clear (OFF) inclusion flag
@@ -304,7 +301,7 @@ Start               decb                          any params?
 Parse               bsr       EatSpace
                     lda       ,x+
                     cmpa      #C$CR
-                    beq       Help
+                    beq       Done
                     cmpa      #'-
                     bne       IsItQ
 * Dash options parsed here
@@ -335,19 +332,19 @@ IsItI               cmpa      #'i                 is it the inclusion option?
                     sta       IncFlag
                     bra       Parse
 IsItD               cmpa      #'d                 delimiter?
-                    bne       Help                bad option -- error out
+                    bne       Done                bad option -- error out
                     lda       ,x+                 else load character after the 'D'
                     sta       Delim               save it...
                     bra       Parse               then go back to parsing the line
 * Format String detected here
 IsItQ               cmpa      #'"                 Is it a '"' format string?
-                    bne       Help                nope, must be an error
+                    bne       Done                nope, must be an error
 
 * Save the format string
 SaveFmat            leay      Format,u
 SaveFmt2            lda       ,x+                 Point to char after first '"'
                     cmpa      #C$CR
-                    beq       Help
+                    beq       Done
                     cmpa      #'"                 is it the second '"'?
                     bne       SaveFmt3            no, save char
                     lda       #C$CR
@@ -360,15 +357,6 @@ ChkFile             lbsr      EatSpace            Check after last '"' for a fil
                     cmpa      #C$CR               if no filename, execute from StdIn
                     beq       MainLine
                     bra       OpenFile
-
-****************************************
-* Help Routine
-*
-
-Help                leax      HelpMess,pcr        Show Help message
-                    lda       #2
-                    os9       I$WritLn
-                    bra       Done
 
 ****************************************
 * Check for EOF
