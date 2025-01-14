@@ -1,0 +1,11 @@
+@PICK
+Syntax: pick [<opts>] [<scriptfile>]
+Usage : Present a menu of options
+Opts  :
+  -p<prompt> = show <prompt> when reading input
+
+The help text is extracted from the file /DD/SYS/helpmsg
+
+Entries in helpmsg are in plain text. An entry for subject FOO
+starts with a line containing the text "@FOO". helpmsg is
+typically created by concatenating a set of per-subject .hp files.
