@@ -179,64 +179,65 @@ start               leas      >u019C,u
                     ldd       #$0000
                     std       <u0002
                     std       <u0004
-L0263               lda       ,x+
-L0265               cmpa      #C$SPAC
-                    beq       L0263
-                    cmpa      #C$COMA
-                    beq       L0263
-                    cmpa      #C$CR
-                    beq       L02BB
-                    cmpa      #'-
-                    beq       L027E
-                    ldy       <u0002
-                    bne       L0263
-                    stx       <u0002
-                    bra       L0263
-L027E               lda       ,x+
-                    cmpa      #'-
-                    beq       L027E
-                    cmpa      #'0
-                    bcs       L0265
-                    eora      #'M
-                    anda      #$DF
-                    bne       L0292
-                    inc       <dolink
-                    bra       L027E
-L0292               lda       -$01,x
-                    eora      #'S
-                    anda      #$DF
-                    bne       L029E
-                    inc       <short
-                    bra       L027E
-L029E               lda       -$01,x
-                    eora      #'V
-                    anda      #$DF
-                    bne       L02AA
-                    inc       <modvfy
-                    bra       L027E
-L02AA               lda       -$01,x
-                    eora      #'X
-                    anda      #$DF
-                    bne       L02B8
-                    lda       #EXEC.+READ.
-                    sta       <fperm
-                    bra       L027E
-L02B8               lbra      ShowHelp
-L02BB               ldx       <u0002
-                    lbeq      ShowHelp
-                    leax      -$01,x
-                    tst       <dolink
-                    beq       L0314
-                    pshs      u
-                    clra
-                    os9       F$Link
-                    lbcs      L03D2
-                    stu       <modptr
-                    ldd       M$ID,u
-                    cmpd      #M$ID12
-                    beq       L02EB
-                    puls      u
-L02DD               leay      >M_MInc,pcr
+                    
+L0263               lda       ,x+       get next parameter character
+L0265               cmpa      #C$SPAC   space?
+                    beq       L0263     branch if so
+                    cmpa      #C$COMA   comma?
+                    beq       L0263     branch if so
+                    cmpa      #C$CR     carriage return?
+                    beq       L02BB     branch if so
+                    cmpa      #'-       option?
+                    beq       L027E     branch if so
+                    ldy       <u0002    did we already store module/file name parameter?
+                    bne       L0263     no, keep going
+                    stx       <u0002    save off parameter (presumed module/file name)
+                    bra       L0263     go back and get next character
+L027E               lda       ,x+       get character after dash
+                    cmpa      #'-       is it another dash?
+                    beq       L027E     branch if so
+                    cmpa      #'0       is it 0?
+                    bcs       L0265     branch if less than     
+                    eora      #'M       XOR with M
+                    anda      #$DF      AND
+                    bne       L0292     branch if not the same
+                    inc       <dolink   else set the "link module" flag
+                    bra       L027E     go get next parameter character
+L0292               lda       -1,x      get last character
+                    eora      #'S       XOR with S
+                    anda      #$DF      AND
+                    bne       L029E     branch if not the option
+                    inc       <short    else set the "short" flag
+                    bra       L027E     and continue parsing
+L029E               lda       -$01,x    get last character
+                    eora      #'V       XOR with V
+                    anda      #$DF      AND
+                    bne       L02AA     branch if not the option
+                    inc       <modvfy   else set the "verify" flag
+                    bra       L027E     and continue parsing
+L02AA               lda       -$01,x    get the last character
+                    eora      #'X       XOR with X
+                    anda      #$DF      AND
+                    bne       L02B8     branch if not the option
+                    lda       #EXEC.+READ. load file perms with exec and read
+                    sta       <fperm    and save to the variable
+                    bra       L027E     and continue parsing
+L02B8               lbra      ShowHelp  show help
+L02BB               ldx       <u0002    any file/module name specified?
+                    lbeq      ShowHelp  branch if not
+                    leax      -$01,x    else back up one
+                    tst       <dolink   was "link module" flag set?
+                    beq       L0314     branch if so
+                    pshs      u         save U
+                    clra                clear A (link to any module)
+                    os9       F$Link    link to it
+                    lbcs      L03D2     branch if error
+                    stu       <modptr   else save the module pointer
+                    ldd       M$ID,u    get the ID
+                    cmpd      #M$ID12   is it OS-9 module sync bytes?
+                    beq       L02EB     branch if so
+                    puls      u         else recover U
+L02DD               leay      >M_MInc,pcr point to incorrect header message
                     lbsr      L05FC
                     lbsr      L0612
                     clrb
@@ -572,17 +573,19 @@ L05E9               lda       #'$
                     pshs      b,a
                     andb      #$0F
                     bra       L05E9
-L05FC               lda       ,y
-                    anda      #$7F
+                    
+L05FC               lda       ,y        get character at Y
+                    anda      #$7F      clear hi bit
                     bsr       L0608
-                    lda       ,y+
-                    bpl       L05FC
-L0606               lda       #C$SPAC
-L0608               pshs      x
-                    ldx       <u0000
+                    lda       ,y+       get character at Y and increment
+                    bpl       L05FC     branch if hi-bit clear
+L0606               lda       #C$SPAC   load A with space character
+L0608               pshs      x         save off X
+                    ldx       <u0000    
                     sta       ,x+
                     stx       <u0000
                     puls      pc,x
+                    
 L0612               pshs      y,x,a
                     lda       #C$CR
                     bsr       L0608
