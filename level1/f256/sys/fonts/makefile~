@@ -1,28 +1,31 @@
 include ../port.mak
 
-vpath %.as $(LEVEL1)/$(PORT)/modules
-vpath %.asm kernel:$(LEVEL1)/$(PORT)/modules:$(LEVEL2)/modules:$(LEVEL1)/modules
+vpath %.as $(LEVEL1)/f256/modules
+vpath %.asm $(LEVEL1)/f256/modules:$(LEVEL1)/modules
 
-AFLAGS		+= -I$(LEVEL2)/$(PORT)
+AFLAGS		+= -I$(LEVEL1)/$(PORT)
 AFLAGS		+= -I$(LEVEL1)/$(PORT)/modules
 AFLAGS		+= -I$(LEVEL1)/modules
 LFLAGS      += -L $(NITROS9DIR)/lib -lnet -lf256 -lalib -lf256snd
+
+CLOCKSOFT       = -DRTCSoft=1
 
 DEPENDS		= ./makefile
 TPB		= $(3RDPARTY)/booters
 
 KERNEL		= krn krnp2
 SYSMODS		= ioman init sysgo
-CLOCKS		= clock clock2_f256
+CLOCKS      = clock clock2_f256
 
 RBF		= rbf.mn rbdw.dr dwio.sb ddx0.dd x0.dd x1.dd x2.dd x3.dd \
           rbmem.dr ddc0.dd c0.dd f0.dd \
 		rbsuper.dr \
-          llfnxsd.sb dds0.dd s0.dd
+          llfnxsd.sb dds0.dd s0.dd \
+		  lldummy.sb s0_dummy.dd
 
 SCF		= scf.mn \
 		vrn.dr nil.dd \
-		vtio.dr keydrv_f256k.sb keydrv_ps2.sb mousedrv_ps2.sb term.dt \
+		vtio.dr keydrv_f256k.sb keydrv_ps2.sb term.dt \
 		sc16550.dr t0_sc16550.dd \
 		scdwp.dr p_scdwp.dd \
 		scdwv.dr term_scdwv.dt n_scdwv.dd \
@@ -34,48 +37,63 @@ SCF		= scf.mn \
 		z6_scdwv.dd z7_scdwv.dd z8_scdwv.dd z9_scdwv.dd z10_scdwv.dd \
 		z11_scdwv.dd z12_scdwv.dd z13_scdwv.dd z14_scdwv.dd
 
-PIPE		= pipeman.mn pipeman_named.mn piper.dr pipe.dd
+PIPE		= pipeman.mn piper.dr pipe.dd
 
-FONTS	= #applefont.sb bannerfont.sb jessefont.sb phoenixegafont.sb msxfont.sb msxbannerfont.sb quadrotextfont.sb
+FONTS	= applefont.sb bannerfont.sb jessefont.sb phoenixegafont.sb msxfont.sb quadrotextfont.sb
 PALETTES  = palette.sb
 
-ALLOBJS		=  $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(PIPE) $(RFM) $(FONTS) $(PALETTES)
+ALLOBJS		= $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(PIPE) $(DW) $(FONTS) $(PALETTES)
 
 all:	$(ALLOBJS)
 
-sysgo: sysgo.o
-
 # Kernel
-krn: $(LEVEL2)/modules/kernel/krn.asm
+krn krnp2:
 	$(CD) kernel; make $@
 	$(CP) kernel/$@ .
 
-krnp2: $(LEVEL2)/modules/kernel/krnp2.asm
-	$(CD) kernel; make $@
-	$(CP) kernel/$@ .
+sysgo.o: sysgo.as
 
 # SD card descriptors
 dds0.dd: rbfnxsddesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(FNXSDFLAGS) -DDD=1
+	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(FNXSDFLAGS) -DDD=1
 
 s0.dd: rbfnxsddesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(FNXSDFLAGS)
+	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(FNXSDFLAGS)
+
+s0_dummy.dd: superdesc.asm
+	$(AS) $(AFLAGS) $(ASOUT)$@ $< -DLLDUMMY
 
 # rbmem descriptors
 ddc0.dd: rbmemdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0 -DCART=1 -DDD=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DCART=1 -DDNum=0 -DDD=1
 
 c0.dd: rbmemdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0 -DCART=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DCART=1 -DDNum=0
 
 f0.dd: rbmemdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
+
+# DriveWire 3 RBF descriptors
+ddx0.dd: dwdesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDD=1 -DDNum=0
+
+x0.dd: dwdesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
+
+x1.dd: dwdesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=1
+
+x2.dd: dwdesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=2
+
+x3.dd: dwdesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=3
 
 # 16550 descriptors
 t0_sc16550.dd: sc16550desc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
 
-# DriveWire SCF descriptors
+# DriveWire 3 SCF descriptors
 term_scdwv.dt: scdwvdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=0
 
@@ -172,40 +190,8 @@ z13_scdwv.dd: scdwvdesc.asm
 z14_scdwv.dd: scdwvdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=30
 
-# DriveWire RBF descriptors
-ddx0.dd: dwdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDD=1 -DDNum=0
-
-x0.dd: dwdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
-
-x1.dd: dwdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=1
-
-x2.dd: dwdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=2
-
-x3.dd: dwdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=3
-
-# RFM descriptors
-ddy0.dd: rfmdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDD=1 -DDNum=0
-
-y0.dd: rfmdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
-
-y1.dd: rfmdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=1
-
-y2.dd: rfmdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=2
-
-y3.dd: rfmdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=3
-
 # Clocks
-clock: clock.asm
+clock_60hz: clock.asm
 	$(AS) $(AFLAGS) $(ASOUT)$@ $< -DPwrLnFrq=60
 
 clean:
@@ -214,9 +200,6 @@ clean:
 
 showobjs:
 	@$(ECHO) $(ALLOBJS)
-
-showboottrack:
-	@$(ECHO) $(BOOTTRACK)
 
 showkernel:
 	@$(ECHO) $(KERNEL)
@@ -238,3 +221,4 @@ showpipe:
 
 identify:
 	$(IDENT_SHORT) $(ALLOBJS)
+

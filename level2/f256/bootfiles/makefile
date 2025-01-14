@@ -4,6 +4,8 @@ include ../port.mak
 MD		= ../modules
 # Commands directory
 CMDSDIR		= ../cmds
+# Font directory
+FNT 	        = ../sys/fonts
 
 DEPENDS		= ./makefile
 
@@ -21,7 +23,7 @@ RBF		= $(MD)/rbf.mn
 RBDW      = $(MD)/rbdw.dr $(MD)/x0.dd $(MD)/x1.dd $(MD)/x2.dd $(MD)/x3.dd
 
 # RBF Foenix Flash/RAM disk driver
-RBFNXCART = $(MD)/rbfnxcart.dr $(MD)/c0.dd
+RBMEM = $(MD)/rbmem.dr $(MD)/c0.dd $(MD)/f0.dd
 
 # RBF RBSuper driver
 RBSUPER   = $(MD)/rbsuper.dr
@@ -32,11 +34,15 @@ RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd
 # SCF
 SCF		 = $(MD)/scf.mn
 
+# SCF 16550
+SC16550	 = $(MD)/sc16550.dr $(MD)/t0_sc16550.dd
+
 # SCF video terminal
-SCVT		 = $(MD)/vtio.dr $(MD)/term.dt
+SCVT_F256K	 = $(MD)/vtio.dr $(MD)/keydrv_f256k.sb $(MD)/mousedrv_ps2.sb $(MD)/term.dt
+SCVT_F256JR  = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/mousedrv_ps2.sb $(MD)/term.dt
 
 # Font & palette
-FONT		 = $(MD)/phoenixegafont.sb
+FONT		 = $(FNT)/bannerfont.sb
 PALETTE	 = $(MD)/palette.sb
 
 # SCF DriveWire virtual networking/window driver
@@ -60,40 +66,75 @@ SCDWP     = $(MD)/scdwp.dr $(MD)/p_scdwp.dd
 # Clock driver
 CLOCK	= $(MD)/clock $(MD)/clock2_f256
 
-BOOTFILE_SD = $(KERNELP2) \
-		$(SCF) $(SCVT) \
+BOOTFILE_SD_F256K = $(KERNELP2) \
+		$(SCF) $(SCVT_F256K) \
 		$(FONT) $(PALETTE) \
 		$(DWIO) \
-		$(RBF) $(RBDW) $(RBSUPER) $(RBFNXCART) $(RBFNXSD) \
+		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
 		$(MD)/dds0.dd \
+		$(SC16550) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(MD)/kernel/krn
 
-BOOTFILE_DW = $(KERNELP2) \
-		$(SCF) $(SCVT) \
+BOOTFILE_DW_F256K = $(KERNELP2) \
+		$(SCF) $(SCVT_F256K) \
 		$(FONT) $(PALETTE) \
 		$(DWIO) \
-		$(RBF) $(RBDW) $(RBSUPER) $(RBFNXCART) $(RBFNXSD) \
+		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
 		$(MD)/ddx0.dd \
+		$(SC16550) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(MD)/kernel/krn
 
-ALLOBJS		= bootfile_sd bootfile_dw
+BOOTFILE_SD_F256JR = $(KERNELP2) \
+		$(SCF) $(SCVT_F256JR) \
+		$(FONT) $(PALETTE) \
+		$(DWIO) \
+		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
+		$(MD)/dds0.dd \
+		$(SC16550) \
+		$(CLOCK) \
+		$(MD)/sysgo \
+		$(MD)/kernel/krn
+
+BOOTFILE_DW_F256JR = $(KERNELP2) \
+		$(SCF) $(SCVT_F256JR) \
+		$(FONT) $(PALETTE) \
+		$(DWIO) \
+		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
+		$(MD)/ddx0.dd \
+		$(SC16550) \
+		$(CLOCK) \
+		$(MD)/sysgo \
+		$(MD)/kernel/krn
+
+ALLOBJS		= bootfile_sd_f256k bootfile_dw_f256k bootfile_sd_f256jr bootfile_dw_f256jr
 
 all:	$(ALLOBJS)
 
-bootfile_sd: $(BOOTFILE_SD) $(DEPENDS)
-	$(MERGE) $(BOOTFILE_SD)>$@
+bootfile_sd_f256k: $(BOOTFILE_SD_F256K) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_SD_F256K)>$@
 	./padup256 $@
 
-bootfile_dw: $(BOOTFILE_DW) $(DEPENDS)
-	$(MERGE) $(BOOTFILE_DW)>$@
+bootfile_dw_f256k: $(BOOTFILE_DW_F256K) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_DW_F256K)>$@
 	./padup256 $@
 
-upload: bootfile_dw
-	upload bootfile 8000
+upload_f256jr: bootfile_dw_f256jr
+	upload bootfile_f256kr 8000
+
+bootfile_sd_f256jr: $(BOOTFILE_SD_F256JR) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_SD_F256JR)>$@
+	./padup256 $@
+
+bootfile_dw_f256jr: $(BOOTFILE_DW_F256JR) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_DW_F256JR)>$@
+	./padup256 $@
+
+upload_f256jr: bootfile_dw_f256jr
+	upload bootfile_f256jr 8000
 
 trace:
 	@dump 0 20
