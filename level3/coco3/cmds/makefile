@@ -7,11 +7,11 @@ DEPENDS		= ./makefile
 AFLAGS		+= --includedir=$(3RDPARTY)/packages/basic09
 AFLAGS		+= --includedir=../defs
 
-CMDS		= asm attr backup binex build cmp cobbler copy cputype \
+CMDS		= asm attr backup bawk binex build cmp cobbler copy cputype \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
 		display dmem dmode dsave dump echo edit error exbin \
 		format free grfdrv help ident iniz irqs link list load login \
-		makdir mdir megaread merge mfree mmap modpatch montype mpi os9gen padrom park \
+		makdir mdir megaread merge mfree mmap modpatch montype more mpi os9gen padrom park \
 		pmap proc procs prompt pwd pxd reboot rename save setime \
 		shell_21 sleep smap sfree tee tmode touch tsmon tuneport unlink verify wcreate xmode
 

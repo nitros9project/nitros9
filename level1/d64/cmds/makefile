@@ -7,11 +7,11 @@ vpath %.asm $(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09
 
 DEPENDS		= ./makefile
 
-CMDS		= asm attr backup binex build cmp cobbler cobbler_dragon copy cputype \
+CMDS		= asm attr backup bawk binex build cmp cobbler cobbler_dragon copy cputype \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
 		display dmode dsave dump echo edit error exbin format \
 		free grfdrv help ident iniz irqs link list load login makdir \
-		megaread mdir merge mfree minted mpi os9gen padrom park printerr procs prompt pwd pxd \
+		megaread mdir merge mfree minted more mpi os9gen padrom park printerr procs prompt pwd pxd \
 		rename save setime shellplus shell_21 sleep \
 		tee tmode touch tsmon tuneport unlink verify xmode
 
@@ -20,8 +20,8 @@ DRAGON525CMDS	= asm attr backup binex build cmp cobbler_dragon copy date del del
 		load login makdir mdir merge mfree os9gen printerr procs pwd pxd rename \
 		save setime shell_21 sleep tee tmode tsmon unlink verify xmode
 
-DRAGON525CMDS2	= cputype dcheck debug ded deiniz devs dirsort disasm edit error \
-		grfdrv help iniz irqs megaread mpi padrom park prompt \
+DRAGON525CMDS2	= bawk cputype dcheck debug ded deiniz devs dirsort disasm edit error \
+		grfdrv help iniz irqs megaread more mpi padrom park prompt \
 		shellplus touch tuneport
 
 BASIC09		= runb gfx inkey syscall
