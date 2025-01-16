@@ -284,6 +284,8 @@ copy@               ldd       ,y++                get vector bytes
                     leax      >SysSvc,pcr         get the system state service routine
                     stx       <D.SysSvc           store it in system globals
                     stx       <D.SWI2             and in the SWI2 vector
+                    leax      DUMMY,pcr           get the DUMMY routine
+                    stx       <D.NMI              store it in the NMI vector
                     leax      >Poll,pcr           get the default polling routine
                     stx       <D.Poll             store it in system globals
                     leax      >Clock,pcr          get the default tick generator routine
