@@ -1,0 +1,4 @@
+c|Boot OS-9 from cartridge|bootos9 /c0/OS9Boot
+s|Boot OS-9 from SD card|bootos9 /s0/OS9Boot
+x|Boot OS-9 from DriveWire|bootos9 /x0/OS9Boot
+q|Return|$

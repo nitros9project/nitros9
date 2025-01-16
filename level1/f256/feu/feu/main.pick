@@ -1,0 +1,4 @@
+o|Boot OS-9|pick -pFEU: boot.pick
+d|Debugger|debug
+s|OS-9 Shell|shell
+r|Reset|fnxreset

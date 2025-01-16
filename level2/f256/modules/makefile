@@ -1,10 +1,12 @@
 include ../port.mak
 
+vpath %.as $(LEVEL1)/$(PORT)/modules
 vpath %.asm kernel:$(LEVEL1)/$(PORT)/modules:$(LEVEL2)/modules:$(LEVEL1)/modules
 
 AFLAGS		+= -I$(LEVEL2)/$(PORT)
 AFLAGS		+= -I$(LEVEL1)/$(PORT)/modules
 AFLAGS		+= -I$(LEVEL1)/modules
+LFLAGS      += -L $(NITROS9DIR)/lib -lnet -lf256 -lalib -lf256snd
 
 DEPENDS		= ./makefile
 TPB		= $(3RDPARTY)/booters
@@ -14,13 +16,14 @@ SYSMODS		= ioman init sysgo
 CLOCKS		= clock clock2_f256
 
 RBF		= rbf.mn rbdw.dr dwio.sb ddx0.dd x0.dd x1.dd x2.dd x3.dd \
-          rbfnxcart.dr ddc0.dd c0.dd \
+          rbmem.dr ddc0.dd c0.dd f0.dd \
 		rbsuper.dr \
           llfnxsd.sb dds0.dd s0.dd
 
 SCF		= scf.mn \
 		vrn.dr nil.dd \
-		vtio.dr term.dt \
+		vtio.dr keydrv_f256k.sb keydrv_ps2.sb mousedrv_ps2.sb term.dt \
+		sc16550.dr t0_sc16550.dd \
 		scdwp.dr p_scdwp.dd \
 		scdwv.dr term_scdwv.dt n_scdwv.dd \
 		n0_scdwv.dd n1_scdwv.dd n2_scdwv.dd \
@@ -33,12 +36,14 @@ SCF		= scf.mn \
 
 PIPE		= pipeman.mn pipeman_named.mn piper.dr pipe.dd
 
-FONTS	= applefont.sb jessefont.sb phoenixegafont.sb msxfont.sb quadrotextfont.sb
+FONTS	= #applefont.sb bannerfont.sb jessefont.sb phoenixegafont.sb msxfont.sb msxbannerfont.sb quadrotextfont.sb
 PALETTES  = palette.sb
 
 ALLOBJS		=  $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(PIPE) $(RFM) $(FONTS) $(PALETTES)
 
 all:	$(ALLOBJS)
+
+sysgo: sysgo.o
 
 # Kernel
 krn: $(LEVEL2)/modules/kernel/krn.asm
@@ -49,10 +54,6 @@ krnp2: $(LEVEL2)/modules/kernel/krnp2.asm
 	$(CD) kernel; make $@
 	$(CP) kernel/$@ .
 
-# SysGo Modules
-sysgo: sysgo.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDD=1
-
 # SD card descriptors
 dds0.dd: rbfnxsddesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(FNXSDFLAGS) -DDD=1
@@ -60,12 +61,19 @@ dds0.dd: rbfnxsddesc.asm
 s0.dd: rbfnxsddesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(FNXSDFLAGS)
 
-# rbfnxcart descriptors
-ddc0.dd: rbfnxcartdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDD=1 -DDNum=0
+# rbmem descriptors
+ddc0.dd: rbmemdesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0 -DCART=1 -DDD=1
 
-c0.dd: rbfnxcartdesc.asm
+c0.dd: rbmemdesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0 -DCART=1
+
+f0.dd: rbmemdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
+
+# 16550 descriptors
+t0_sc16550.dd: sc16550desc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
 
 # DriveWire SCF descriptors
 term_scdwv.dt: scdwvdesc.asm
@@ -202,7 +210,7 @@ clock: clock.asm
 
 clean:
 	$(CD) kernel; make $@
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.o *.list *.map
 
 showobjs:
 	@$(ECHO) $(ALLOBJS)

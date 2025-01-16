@@ -11,11 +11,11 @@ LFLAGS		+= -L$(NITROS9DIR)/lib
 LFLAGS		+= -lmc09
 LFLAGS		+= -lnet -lalib
 
-CMDS		= asm attr backup binex build cmp cobbler copy cputype \
+CMDS		= asm attr backup bawk binex build cmp cobbler copy cputype \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
 		display dmem dmode dsave dump echo edit error exbin \
 		format free grfdrv help ident iniz irqs link list load login \
-		makdir mc09rtc mdir megaread merge mfree minted mmap modpatch montype mpi os9gen padrom park \
+		makdir mc09rtc mdir megaread merge mfree minted mmap modpatch montype more mpi os9gen padrom park \
 		pmap proc procs prompt pwd pxd reboot rename save setime \
 		shell_21 sleep smap tee tmode touch tsmon tuneport unlink verify wcreate xmode
 
