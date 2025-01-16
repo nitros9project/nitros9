@@ -1,11 +1,11 @@
 include ../port.mak
 
 vpath %.as $(LEVEL1)/cmds
-vpath %.asm $(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/bf
+vpath %.asm $(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/brainfuck
 
 DEPENDS		= ./makefile $(NOSLIB)/net.o
 
-AFLAGS         += --includedir=$(3RDPARTY)/packages/basic09 --includedir=$(3RDPARTY)/packages/bf
+AFLAGS         += --includedir=$(3RDPARTY)/packages/basic09 --includedir=$(3RDPARTY)/packages/brainfuck
 LFLAGS         += -L $(NITROS9DIR)/lib -lnet -lf256 -lalib -lf256snd
 
 BASIC09		= basic09 runb inkey syscall

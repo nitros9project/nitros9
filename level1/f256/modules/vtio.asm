@@ -27,6 +27,11 @@ edition             set       2
 
 PSG.Base            equ       PSGM.Base
 
+                    ifeq      Level-2
+* For Level 2, we use D.Boot (unused in F256 kernel) for keyboard statics
+D.KbdSta            equ       D.Boot
+                    endc
+
 * We can use a different MMU slot if we want.
                     ifeq     Level-1
 * For Level 1, we need to use the high slot -- or else we crash (1-July-2024).                    
