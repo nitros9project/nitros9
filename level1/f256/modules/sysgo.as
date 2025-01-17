@@ -49,7 +49,7 @@ DefTime             fcb       85,12,31,23,59,59
 Init                fcs       /Init/
 
 * F256 identity routine
-* Exit: A = $02 (F256K), $12 (F256 Jr.)
+* Exit: A = $02 (F256 Jr), $12 (F256K), $1A (F256 Jr2), $16 (F256K2)
 F256Type            pshs      x
                     ldx       #SYS0
                     lda       7,x
@@ -58,12 +58,23 @@ F256Type            pshs      x
 ShowMachType        bsr       F256Type
                     cmpa      #$02                          F256 Jr?
                     beq       @showJr
+                    cmpa      #$16
+                    beq       @showK2
+                    cmpa      #$1A
+                    beq       @showJr2
+                    cmpa      #$12
+                    bne       bye@
 @showK              ldb       #'K
                     lbra      PUTC
+@showK2             bsr       @showK
+                    bra       @show2
 @showJr             lbsr      PRINTS
                     fcc       " Jr"
                     fcb       0
-                    rts
+bye@                rts
+@showJr2            bsr       @showJr
+@show2              ldb       #'2
+                    lbra      PUTC
 
 SetupPalette        bsr       F256Type
                     cmpa      #$02                          F256 Jr?
