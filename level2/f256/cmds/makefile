@@ -10,8 +10,8 @@ AFLAGS      += -I$(3RDPARTY)/packages/basic09
 AFLAGS      += -I$(3RDPARTY)/packages/brainfuck
 AFLAGS      += -I$(3RDPARTY)/packages/cpm
 AFLAGS      += -I../defs
-LFLAGS		+= -L$(NITROS9DIR)/lib
-LFLAGS		+= -lf256 -lf256snd
+LFLAGS		+= -L$(NITROS9DIR)/lib -L$(LEVEL2)/$(PORT)/libs
+LFLAGS		+= -lf256 -lfnxsnd
 LFLAGS		+= -lnet -lalib -lnos96809l2
 
 BASIC09	= basic09 runb inkey syscall foenix
