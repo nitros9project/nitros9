@@ -314,8 +314,8 @@ l@                  ldd       ,x++                get two bytes of font data
                     sta       VKY_TXT_CURSOR_CTRL_REG,x
                     clra
                     clrb
-                    std       VKY_TXT_CURSOR_Y_REG_L,x
-                    std       VKY_TXT_CURSOR_X_REG_L,x
+                    std       VKY_TXT_CURSOR_Y_REG_H,x
+                    std       VKY_TXT_CURSOR_X_REG_H,x
                     lda       #'_
                     sta       VKY_TXT_CURSOR_CHAR_REG,x
 
@@ -1575,14 +1575,13 @@ map@                lda       R$Y+1,x             load bitmap@
                     ldb       ,s                  load b with block# from stack
                     lbsr      Blk2Addr            convert blk# to high 16 bits of address in d
 *                   **** Load Bitmap start block physical address into Vicky BM0, BM1 or BM2
-                    pshs      a                   push high byte of bitmap address
+		     pshs      a                   push high byte of bitmap address
                     lda       #%00000001          enable bitmapX with CLUT 0
                     sta       ,y+                 enable bitmap with CLUT 0
+		    puls      a			  
+		    std	      ,y++
                     lda       #$0
                     sta       ,y+                 clear AD7-AD0
-                    stb       ,y+                 store AD15-AD8
-                    puls      a                   pull high byte of bitmap address
-                    sta       ,y                  store AD18-AD16
                     puls      b,a
                     sta       MAPSLOT
 noerror@            puls      cc,pc     
@@ -1805,7 +1804,7 @@ errormove@          puls      x
 end@                puls      u,y,x,a
                     rts
 
-clutlookup          fdb       $1000,$1400,$0800,$0C00
+clutlookup          fdb       $1000,$1400,$1800,$1C00
 
 clearblock          pshs      cc
                     orcc      #IntMasks           u=logical address of block on entry

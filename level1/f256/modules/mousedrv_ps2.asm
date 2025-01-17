@@ -74,10 +74,10 @@ Init
 *
 * Mouse Registers are $FEA0
 * |MS_MEN     |     |     |     |     |     |     |MODE |EN   | $FEA0
-* |MS_XL      | X7  | X6  | X5  | X4  | X3  | X2  | X1  | X0  | $FEA2
-* |MS_XH      | X15 | X14 | X13 | X12 | X11 | X10 | X9  | X8  | $FEA3
-* |MS_YL      | Y7  | Y6  | Y5  | Y4  | Y3  | Y2  | Y1  | Y0  | $FEA4
-* |MS_YH      | Y15 | Y14 | Y13 | Y12 | Y11 | Y10 | Y9  | Y8  | $FEA5
+* |MS_XH      | X15 | X14 | X13 | X12 | X11 | X10 | X9  | X8  | $FEA2
+* |MS_XL      | X7  | X6  | X5  | X4  | X3  | X2  | X1  | X0  | $FEA3
+* |MS_YH      | Y15 | Y14 | Y13 | Y12 | Y11 | Y10 | Y9  | Y8  | $FEA4
+* |MS_YL      | Y7  | Y6  | Y5  | Y4  | Y3  | Y2  | Y1  | Y0  | $FEA5
 * 
                     clr       V.MSButtons,u       clear buttons
 
@@ -270,8 +270,7 @@ posxvalue           clra
 contx@              ldb       MS_IN               load byte#1 - x offet
                     beq       computey            if 0, then skip comps and jump straight to y
                     pshs      d                   not 0, push offset
-                    lda       MS_XH               load current X value
-                    ldb       MS_XL
+                    ldd       MS_XH               load current X value
                     addd      ,s                  add offset
                     cmpd      #0                  if <0, handle 0 limiter
                     blt       xzero
@@ -281,8 +280,7 @@ contx@              ldb       MS_IN               load byte#1 - x offet
 xzero               ldd       #0                  handle 0 limiter
                     bra       storex
 x640                ldd       #640                handle 640 limiter  
-storex              sta       MS_XH               store new x value
-                    stb       MS_XL
+storex              std       MS_XH               store new x value
                     puls      d
 * Compute new Y value and store in registers
 computey            ldb       PS2_STAT            read ps/2 status register detect empty fifo
@@ -297,8 +295,7 @@ posyvalue           clra
 conty@              ldb       MS_IN               load byte#2 - y offet
                     beq       finish@             if 0, then skip comps and jump to end
                     pshs      d                   not 0, push offset
-                    lda       MS_YH               load current Y value
-                    ldb       MS_YL               
+                    ldd       MS_YH               load current Y value
                     subd      ,s                  subtract offset (backwards b/c Y=0 at top of screen)
                     cmpd      #0                  if <0, handle 0 limiter
                     blt       yzero
@@ -308,8 +305,7 @@ conty@              ldb       MS_IN               load byte#2 - y offet
 yzero               ldd       #0                  handle 0 limiter
                     bra       storey
 y480                ldd       #480                handle 480 limiter  
-storey              sta       MS_YH               store new y value
-                    stb       MS_YL
+storey              std       MS_YH               store new y value
                     puls      d  
 finish@             puls      a
                     lda       #MCLR               clear FIFO
