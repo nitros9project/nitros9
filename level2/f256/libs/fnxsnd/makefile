@@ -5,10 +5,10 @@ vpath %.as $(LEVEL1)/f256/libs/fnxsnd
 
 MODS = psg.o
 
-all:	libfnxsnd.a
+all:	../libfnxsnd.a
 
-libfnxsnd.a: $(MODS)
+../libfnxsnd.a: $(MODS)
 	$(LWAR) $@ $?
 
 clean:
-	$(RM) *.o libfnxsnd.a *.list *.map
+	$(RM) *.o ../libfnxsnd.a *.list *.map
