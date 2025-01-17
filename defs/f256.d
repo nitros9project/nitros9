@@ -268,10 +268,10 @@ KEMP                equ       %00000001
 * 0=System handles x/y  1=harware interprets PS/2 packets
 * Enable is bit 0.  1=show mouse pointer 0 = hide mouse pointer
 MS_MEN		    equ	      $FEA0     mouse mode-enable
-MS_XL		    equ	      $FEA2	mouse x low byte
-MS_XH		    equ	      $FEA3	mouse x high byte	    
-MS_YL		    equ	      $FEA4	mouse y low byte
-MS_YH		    equ	      $FEA5	mouse y high byte
+MS_XH		    equ	      $FEA2	mouse x low byte
+MS_XL		    equ	      $FEA3	mouse x high byte	    
+MS_YH		    equ	      $FEA4	mouse y low byte
+MS_YL		    equ	      $FEA5	mouse y high byte
 MS_PS2B0	    equ	      $FEA6	mouse PS/2 Byte 0
 MS_PS2B1	    equ	      $FEA7	mouse PS/2 Byte 1
 MS_PS2B2	    equ	      $FEA8	mouse PS/2 Byte 2
@@ -530,10 +530,10 @@ VKY_TXT_CURSOR_CTRL_REG rmb       1         [0] Enable Text Mode
 VKY_TXT_START_ADD_PTR rmb       1         this is an offset to change the starting address of the text mode Buffer (in X)
 VKY_TXT_CURSOR_CHAR_REG rmb       1
 VKY_TXT_CURSOR_COLR_REG rmb       1
-VKY_TXT_CURSOR_X_REG_L rmb       1
 VKY_TXT_CURSOR_X_REG_H rmb       1
-VKY_TXT_CURSOR_Y_REG_L rmb       1
+VKY_TXT_CURSOR_X_REG_L rmb       1
 VKY_TXT_CURSOR_Y_REG_H rmb       1
+VKY_TXT_CURSOR_Y_REG_L rmb       1
 ; Line interrupt
 VKY_LINE_IRQ_CTRL_REG rmb       1         [0] - enable line 0 - write only
 VKY_LINE_CMP_VALUE_LO rmb       1         write only [7:0]
@@ -576,26 +576,26 @@ TyVKY_BM0_CTRL_REG  equ       $F000
 BM0_Ctrl            equ       $01       enable the BM0
 BM0_LUT0            equ       $02       LUT0
 BM0_LUT1            equ       $04       LUT1
-TyVKY_BM0_START_ADDY_L equ       $F001
+TyVKY_BM0_START_ADDY_H equ       $F001
 TyVKY_BM0_START_ADDY_M equ       $F002
-TyVKY_BM0_START_ADDY_H equ       $F003
+TyVKY_BM0_START_ADDY_L equ       $F003
 ;BM1
 TyVKY_BM1_CTRL_REG  equ       $F008
 BM1_Ctrl            equ       $01       enable the BM0
 BM1_LUT0            equ       $02       LUT0
 BM1_LUT1            equ       $04       LUT1
-TyVKY_BM1_START_ADDY_L equ       $F009
+TyVKY_BM1_START_ADDY_H equ       $F009
 TyVKY_BM1_START_ADDY_M equ       $F00A
-TyVKY_BM1_START_ADDY_H equ       $F00B
+TyVKY_BM1_START_ADDY_L equ       $F00B
 ;BM2
 TyVKY_BM2_CTRL_REG  equ       $F010
 BM2_Ctrl            equ       $01       enable the BM0
 BM2_LUT0            equ       $02       LUT0
 BM2_LUT1            equ       $04       LUT1
 BM2_LUT2            equ       $08       LUT2
-TyVKY_BM2_START_ADDY_L equ       $F011
+TyVKY_BM2_START_ADDY_H equ       $F011
 TyVKY_BM2_START_ADDY_M equ       $F012
-TyVKY_BM2_START_ADDY_H equ       $F013
+TyVKY_BM2_START_ADDY_L equ       $F013
 
 **  THESE ARE DUPLICATES, RECONCILE THIS LATER
 ********************************************************************
