@@ -6,7 +6,7 @@ vpath %.asm kernel:$(LEVEL1)/$(PORT)/modules:$(LEVEL2)/modules:$(LEVEL1)/modules
 AFLAGS		+= -I$(LEVEL2)/$(PORT)
 AFLAGS		+= -I$(LEVEL1)/$(PORT)/modules
 AFLAGS		+= -I$(LEVEL1)/modules
-LFLAGS      += -L $(NITROS9DIR)/lib -lnet -lf256 -lalib -lf256snd
+LFLAGS      += -L $(NITROS9DIR)/lib -L $(LEVEL2)/$(PORT)/libs -lnet -lf256 -lalib -lfnxsnd
 
 DEPENDS		= ./makefile
 TPB		= $(3RDPARTY)/booters
