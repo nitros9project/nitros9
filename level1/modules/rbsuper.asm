@@ -21,9 +21,7 @@
 *   H6309 - if set, assembles for 6309
 *   USECS - if set, uses critical section code (slows down driver)
 *   HDBDOS - if set, adds code to handle HDB-DOS partitions
-* And somewhere this flag has been lost GH 2012/11/13
-* Only found when I trashed my systems vdisks
-HDBDOS              set       1
+*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
@@ -63,6 +61,12 @@ HDBDOS              set       1
                     use       rbsuper.d
                     endc
 
+* F256 port doesn't use HDB-DOS. Other ports that don't need it should have their
+* flags added on the next line as well.
+                    ifeq      f256
+HDBDOS              set       1
+                    endc
+                    
 tylg                set       Drivr+Objct
 atrv                set       ReEnt+rev
 rev                 set       0
