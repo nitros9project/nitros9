@@ -21,7 +21,7 @@ CMDS_DW = inetd dw telnet httpd
 CMDS    = asm attr backup bawk binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
 		display dmem dmode dsave dump echo edit error exbin \
-		format free help ident iniz irqs link list load login \
+		format free grep help ident iniz irqs link list load login \
 		makdir mdir megaread merge mfree minted mmap modpatch more padrom park \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \

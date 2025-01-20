@@ -5,7 +5,7 @@ include ../../../rules.mak
 
 DEPENDS		= ./makefile
 
-CMDS		= bawk del grep mode send timer bigbro font makdir \
+CMDS		= del mode send timer bigbro font makdir \
 		more tee joypoll
 
 ALLOBJS		= $(CMDS)
