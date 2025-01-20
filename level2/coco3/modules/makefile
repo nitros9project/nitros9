@@ -26,7 +26,7 @@ TPB		= $(3RDPARTY)/booters
 BOOTERS		= boot_1773_6ms boot_1773_30ms \
 		boot_burke boot_rampak boot_wd1002 boot_dw boot_dw_becker boot_dw_arduino \
 		boot_tc3 boot_dide boot_ide boot_sdc boot_rom boot_dw_rs232pak boot_dw_directmodempak \
-		boot_dw_cocolink boot_dw_mmmpiu1 boot_dw_mmmpiu2 boot_emu
+		boot_dw_cocolink boot_dw_mmmpiu1 boot_dw_mmmpiu2 boot_emu boot_realcocofpga
 BOOTTRACK	= rel_32 rel_40 rel_80 rel_32_50hz rel_40_50hz rel_80_50hz $(BOOTERS) krn
 KERNEL		= krnp2 krnp3_perr krnp4_regdump ccbkrn
 SYSMODS		= ioman init sysgo_h0 sysgo_dd sysgo_rom sysgo_bd rominfo vectors
@@ -55,7 +55,8 @@ RBF		= rbf.mn \
 		ddsd0_cocosdc.dd sd0_cocosdc.dd sd1_cocosdc.dd \
 		llcoco3fpga.dr ddsd0_coco3fpga.dd sd0_coco3fpga.dd sd1_coco3fpga.dd \
 		ramd_coco3fpga.dr r0_ramd_coco3fpga.dd \
-		emudsk.dr ddh0_emudsk.dd h0_emudsk.dd h1_emudsk.dd
+		emudsk.dr ddh0_emudsk.dd h0_emudsk.dd h1_emudsk.dd \
+		realcocofpga_sdc.dr realcocofpga_sdc_dds0.dd realcocofpga_sdc_s0.dd realcocofpga_sdc_s1.dd realcocofpga_sdc_s2.dd realcocofpga_sdc_s3.dd
 
 SCF		= scf.mn \
 		vtio.dr vrn.dr scbbp.dr scbbt.dr scdwp.dr sspak.dr sc6551.dr \
@@ -95,6 +96,22 @@ ccbkrn krn krnp2:
 	$(CP) kernel/$@ .
 
 # Special cases
+
+
+boot_realcocofpga: boot_realcocofpga_sdc.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS)
+realcocofpga_sdc.dr: realcocofpga_sdc.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS)
+realcocofpga_sdc_dds0.dr: realcocofpga_sdc_dds0.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS)
+realcocofpga_sdc_s0.dr: realcocofpga_sdc_s0.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS)
+realcocofpga_sdc_s1.dr: realcocofpga_sdc_s1.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS)
+realcocofpga_sdc_s2.dr: realcocofpga_sdc_s2.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS)
+realcocofpga_sdc_s3.dr: realcocofpga_sdc_s3.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS)
 
 # TC^3 SCSI Booter
 boot_tc3: boot_scsi.asm
