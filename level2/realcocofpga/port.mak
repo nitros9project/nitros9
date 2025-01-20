@@ -1,0 +1,9 @@
+PORT = coco3
+MACHINE = CoCo 3
+CPU = 6809
+LEVEL = 2
+TELNET_PORT = 6810
+HTTPD_PORT = 8810
+
+include $(NITROS9DIR)/rules.mak
+
