@@ -13,14 +13,18 @@ shell i=/w1&
 shell i=/w2&
 shell i=/w3&
 shell i=/w4&
+shell i=/w5&
+shell i=/w6&
+shell i=/w7&
 * Set system time from keyboard
 setime <>>>/1
 * Show the updated date and time
 date -t
-Echo Loading 49 fonts plus graphics pointers plus patterns...
+Echo Loading fonts, cursors, and patterns...
 cd sys
-merge stdfonts stdpats_2 stdpats_16 stdpats_4 stdptrs stdwnd isolatin1font ibmedcfont smallfont.27 macfonts ansifonts_65.fnt ia.fnt roguefonts
-merge ibmpoker.fnt ibmcga.fnt
-Echo Loading extended patterns for MVCanvas...
-merge stdpats_2.plus stdpats_4.plus stdpats_16.plus
+merge stdfonts stdpats_2 stdpats_16 stdpats_4 stdptrs stdwnd isolatin1font ibmedcfont
+*merge smallfont.27 macfonts ansifonts_65.fnt ia.fnt roguefonts
+*merge ibmpoker.fnt ibmcga.fnt
+*Echo Loading extended patterns for MVCanvas...
+*merge stdpats_2.plus stdpats_4.plus stdpats_16.plus
 cd ..
