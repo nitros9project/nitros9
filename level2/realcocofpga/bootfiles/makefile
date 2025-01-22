@@ -73,7 +73,7 @@ KERNEL_REALCOCOFPGA	= $(MD)/rel_80 $(MD)/bootmodule_realcocofpga $(MD)/krn
 REALCOCOFPGA_SDC_DRIVERS = $(MD)/realcocofpga_sdc.dr \
 	$(MD)/realcocofpga_sdc_dds0.dd \
 	$(MD)/realcocofpga_sdc_s0.dd \
-	$(MD)/realcocofpga_sdc_s1.dd
+	$(MD)/realcocofpga_sdc_s1.dd \
 
 VTIO_COWIN_80 = $(MD)/vtio.dr \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
