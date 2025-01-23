@@ -23,7 +23,7 @@ CC3FPGAFLAGS    = $(AFLAGS) -DCC3FPGA=1 $(FLAGS)
 DEPENDS		= ./makefile
 TPB		= $(3RDPARTY)/booters
 
-BOOTERS		= boot_1773_6ms boot_1773_30ms bootmodule_realcocofpga
+BOOTERS		= boot_1773_6ms boot_1773_30ms boot_realcocofpga
 BOOTTRACK	= rel_32 rel_40 rel_80 rel_32_50hz rel_40_50hz rel_80_50hz $(BOOTERS) krn
 KERNEL		= krnp2 krnp3_perr krnp4_regdump #ccbkrn
 SYSMODS		= ioman init sysgo_h0 sysgo_dd sysgo_rom sysgo_bd rominfo vectors
@@ -107,7 +107,7 @@ ccbkrn krn krnp2:
 
 
 
-bootmodule_realcocofpga: boot_realcocofpga_sdc.asm
+boot_realcocofpga: boot_realcocofpga_sdc.asm
 	$(AS) $(ASOUT)$@ $< $(AFLAGS)
 
 realcocofpga_sdc.dr: realcocofpga_sdc.asm
