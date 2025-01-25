@@ -3,9 +3,14 @@ ifeq ($(PORT),)
 endif
 include $(NITROS9DIR)/rules.mak
 
+vpath %.as $(LEVEL1)/cmds
 vpath %.asm $(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09
 
 DEPENDS		= ./makefile
+
+AFLAGS		+= -I$(LEVEL1)/$(PORT)
+AFLAGS		+= -I$(3RDPARTY)/packages/basic09
+LFLAGS		+= -L $(NITROS9DIR)/lib -lnet -ldragon -lalib
 
 CMDS		= asm attr backup bawk binex build cmp cobbler cobbler_dragon copy cputype \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
