@@ -24,7 +24,7 @@ CMDS_DW = inetd dw telnet httpd
 
 CMDS		= $(STD_CMDS_L2) fstatus mmap pmap proc smap xtclut drawtest \
 		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) play \
-		bootos9 fnxinfo fnxreset rogue 
+		bootos9 fnxinfo fnxreset rogue mqtt
 
 SHELLMODS	= shellplus echo iniz link load save unlink
 
@@ -43,6 +43,9 @@ runb:	runb.asm
 	$(MERGE) $@ $(SUBS)>$@.tmp
 	$(RM) $@
 	$(MOVE) $@.tmp $@
+
+mqtt:   mqtt.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 tmode:	xmode.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DTMODE=1
