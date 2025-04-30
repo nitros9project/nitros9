@@ -317,6 +317,16 @@ VIA_IFR             rmb       1         interrupt flag register
 VIA_IER             rmb       1         interrupt enable register
 VIA_ORA_IRA_AUX     rmb       1         port a data (no handshake)
 
+********************************************************************
+* F256K2 optical keyboard definitions
+*
+OKB.Base            fdb       $FF00
+                    org       0
+OKB.Data            rmb       1         keyboard data
+OKB.Stat            rmb       1         bit 7 = 1 (mechanical) or 0 (optical), bit 0 = 1 (FIFO empty) or 0 (FIFO full)
+OKB.CntLo           rmb       1
+OKB.CntHi           rmb       1
+
 * ACR control register values
 T1_CTRL             equ       %11000000
 T2_CTRL             equ       %00100000

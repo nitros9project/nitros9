@@ -45,10 +45,37 @@ start               lbra      Init
                     lbra      Term
 *                    lbra      AltISR
 
+DoOptical           ror       OKB.Stat,x    move bit 0 into carry
+                    bcs       ex@           if set, FIFO empty, so nothing to do
+* Something has changed. Interrogate the FIFO
+                    ldb       #$07          fetch 16 bytes (8 rows, 2 bytes each)
+                    ldy       #D.RowState   point to the row state global area
+loop@               lda       OKB.Data,x    get hi byte (row and extra bit)
+                    anda      #$01          mask out all but low bit
+                    eora      #$FF          invert for hardware signaling
+                    rora                    move bit 0 into carry
+                    ror       DownRightStates,u          rotate the carry into bit 7 of down/right state byte
+                    lda       OKB.Data,x    get column byte
+                    eora      #$FF          invert
+                    eora      ,y            XOR with the last row state value
+                    beq       next@         branch if there's no change
+                    pshs      b
+                    tfr       a,b           save a copy to B
+                    bsr       HandleRow     else one or more keys for this row have changed direction - handle it
+                    puls      b
+next@               leay      1,y       advance to the next row state value
+                    decb
+                    bpl       loop@                    
+ex@                 rts
+
 * Alternate IRQ routine - Called from vtio at 60Hz to scan the keyboard.
-AltISR              ldx       #VIA1.Base get the VIA1 base address
+AltISR              ldx       #OKB.Base     get the optical keyboard base address
+                    tst       OKB.Stat,x    test for high bit (1 = mechanical)
+                    bpl       DoOptical                   
+DoMechanical                    
 **** Optimization: see if there's ANY key down (thanks for the idea, @gadget!)
 **** Requires a new global to keep track of how many keys are down.
+                ldx       #VIA1.Base    get the VIA1 base address
                 tst       D.F256KKyDn       one or more keys currently down?
                 bne       scan@             scan if so
                 clr       VIA_ORA_IRA,x		set all outputs to 0
