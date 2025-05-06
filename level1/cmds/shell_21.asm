@@ -6,23 +6,23 @@
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
-*  17      1983/01/20  KKK
+*  17      1983/01/20  Kim Kempf
 * Fix RESET to properly DUP paths on errors
 *
-*  18      1983/02/10  RFD
+*  18      1983/02/10  Robert F. Doggett
 * Clear Mem size (#K) parameter between pipes
 *
-*  19      1983/03/28  RFD
+*  19      1983/03/28  Robert F. Doggett
 * Clean up signal processing; fix #201 error.
 *
-*  20      1983/03/29  RFD
+*  20      1983/03/29  Robert F. Doggett
 * Fix bug generated in edition 19. (wait)
 *
 *  21      1985/??/??
 * Original Tandy/Microware version.
 *
 *  21/2    2003/01/22  Boisy Pitre
-* CHD no longer sets WRITE. permission.
+* CHD no longer requires WRITE. permission.
 *
 *  22      2010/01/19  Boisy Pitre
 * Added code to honor S$HUP signal and exit when received to support
@@ -1141,7 +1141,7 @@ shgn20 lda ,-x
 shgn90 leas $02,s discard return addr
 L05E7 lbra shlstx syntax error
 
-SetPr bsr ASC2Int  get process number
+SetPr bsr ASC2Int get process number
  stb <temp save proc#
  lbsr skpsep
  bsr ASC2Int get priority
