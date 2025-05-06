@@ -389,7 +389,11 @@ FRZS10 tst <zersup zero suppression?
  bne FRZS20 ..no; print digit
  rts
  
-*********** Frpnum*   Print 8-Bit Decimal Number At (,X+)*FRPNUM ldb ,x+
+**********
+* Frpnum
+*   Print 8-Bit Decimal Number At (,X+)
+*
+FRPNUM ldb ,x+
  lda #$AE
 FRPN30 inca form hundred digit
  subb #100
