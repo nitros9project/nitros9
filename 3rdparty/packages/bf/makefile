@@ -1,6 +1,6 @@
 include $(NITROS9DIR)/rules.mak
 
-DSK	= BrainFuck.dsk
+DSK	= bf.dsk
 
 # NitrOS-9
 H6309		= $(AFLAGS) -DH6309=1
@@ -20,7 +20,7 @@ all:	banner $(ALLOBJS) $(DEPENDS)
 banner:
 	@$(ECHO) "**************************************************"
 	@$(ECHO) "*                                                *"
-	@$(ECHO) "*                    Brainfuck                   *"
+	@$(ECHO) "*                    Brainf*ck                   *"
 	@$(ECHO) "*                                                *"
 	@$(ECHO) "**************************************************"
 
@@ -34,7 +34,7 @@ dsk: $(DSK)
 
 $(DSK): all
 	$(RM) $@
-	$(OS9FORMAT_SS35) $@ -n"brainfuck"
+	$(OS9FORMAT_SS35) $@ -n"bf"
 	$(MAKDIR) $@,CMDS
 	$(OS9COPY) $(ALLOBJS) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(ALLOBJS),$@,CMDS/$(file))
@@ -56,5 +56,5 @@ showfiles:
 	@$(ECHO) $(SOURCEFILES)
 
 info:
-	@$(ECHO) "*** brainfuck ***"
+	@$(ECHO) "*** bf ***"
 	@$(ECHO) $(DSK)
