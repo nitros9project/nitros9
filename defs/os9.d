@@ -5,89 +5,35 @@ OS9.D               SET       1
 ********************************************************************
 * os9.d - NitrOS-9 System Definitions
 *
+* $Id$
+*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
-* ------------------------------------------------------------------ 
-*          1983/03/01
-* Six new Status codes added: SS.BlkRd - SS.ELog.
+* ------------------------------------------------------------------
+*          1985/08/29  KMZ
+* Fixed DT.SBF/NFM values to 3/4
 *
-*          1983/03/08
-* New status code added: SS.SSig.
-*
-*          1983/04/21
-* Added new F$ call for 7 day clock function for control level II.
-*
-*          1983/05/04  William G. Phelps
-* F$CMDir service request added for NCM.
-*
-*          1983/06/29
-* Added ProfFlag to init module offsets.
-*
-*          1983/07/12  Mark G. Hawkins
-* Added SS.Atlas for CoCo.
-*
-*          1983/10/08  Robert E. Sorensen
-* Added SS.Break for ACIA Break command.
-*
-*          1983/11/29
-* Added SS.RsBit to reserve (not allocate in) bitmap sector.
-*
-*          1984/02/17
-* Added reserved status codes for Hoshi and Gimix.
-*
-*          1984/03/07  Mark G. Hawkins
-* Added SS.Cursr and SS.ScSiz for CoCo.
-* Added New signal code S$Window ... CoCo future.
-*
-*          1984/04/11  Mark G. Hawkins
-* Added SS.Sound for CoCo.
-*
-*          1984/05/05  Mark G. Hawkins
-* Added label SS.SetMF to Gimix Reserved byte
-* Changed SS.Sound to SS.KySns.
-*
-*          1985/05/24  Mark G. Hawkins
-* Added SS.ComSt Communication Set (Parity,Baud).
-*
-*          1985/05/28  Tim A. Harris
-* Added F$VIRQ for Virtual IRQ.
-*
-*          1985/07/30  Mark G. Hawkins
-* Added SS.Open, SS.Close, SS.HngUP.
-*
-*          1985/07/30  Mark G. Hawkins
-* Added E$HangUp error for CDC Lost.
-*
-*          1985/08/24  Doug J. Nicholson
-* Added DT.NFM device type.
-*
-*          1985/06/20  Mark G. Hawkins
-* Added SS.MAGBf, SS.SLCBf.
-*
-*          1985/08/29  Ken Mizuno
-* Fixed DT.SBF/NFM values to 3/4.
-*
-*          1985/09/01  Ken Mizuno
+*          1985/09/01  KMZ
 * Added SS.FDInf, SS.Attr to accept 68K request thru NET.
 *
-*          1985/09/03  Ken Mizuno/Robert F. Doggett
+*          1985/09/03  KMZ/Robert F. Doggett
 * Eliminated E$BPrcID, made Error #238 become E$DNE for
 * 68000 compatability.
 *
 *          1986/04/15  Mark G. Hawkins
-* F$AlHRAM System call added for CoCo.
+* F$AlHRAM System call added for COCO.
 *
 *          1986/09/08  Mark G. Hawkins
-* F$Alarm for CoCo Clock Module.
+* F$Alarm for COCO Clock Module.
 *
 *          1986/09/17  Mark G. Hawkins
-* SS.Tone For CoCo.
+* SS.Tone For COCO.
 *
 *          1986/09/23  Mark G. Hawkins
-* Added F$NMLink and F$NMLoad for CoCo.
+* Added F$NMLink and F$NMLoad for COCO.
 *
 *          1986/09/30  Mark G. Hawkins
-* Added Reserved User $70 to $7f in system calls.
+* Added Reserved User $70 to $7f in sytem calls.
 *
 *          1986/09/30  Mark G. Hawkins
 * Created Color Computer 3 Version of OS9Defs.
@@ -593,6 +539,7 @@ D.Tick              RMB       1
 D.Slice             RMB       1                   current slice remaining
 D.TSlice            RMB       1                   Ticks per Slice
 D.Boot              RMB       1                   Bootstrap attempted flag
+D.KbdSta            EQU       .                   Keyboard scanner static storage (F256 vtio)
 D.MotOn             RMB       1                   Floppy Disk Motor-On time out
 D.ErrCod            RMB       1                   Reset Error Code
 D.Daywk             RMB       1                   day of week, com-trol clock

@@ -28,7 +28,8 @@ DSKDW_F256K		= $(DISTROVER)k_dw.dsk
 DSKSD_F256JR		= $(DISTROVER)jr_sd.dsk
 DSKDW_F256JR		= $(DISTROVER)jr_dw.dsk
 
-DSKS	= $(DSKSD_F256K) $(DSKDW_F256K) $(DSKSD_F256JR) $(DSKDW_F256JR)
+#DSKS	= $(DSKSD_F256K) $(DSKDW_F256K) $(DSKSD_F256JR) $(DSKDW_F256JR)
+DSKS	= $(DSKDW_F256JR)
 
 # Make all components
 all:
@@ -221,14 +222,19 @@ $(DSKDW_F256JR):
 	$(CPL) $(BF_FILES) $@,BF
 	$(MAKDIR) $@,SOUNDS
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
-	os9 dsave -e $(CPM_FILES) $@,CPM	
+#	os9 dsave -e $(CPM_FILES) $@,CPM	
 	$(MAKDIR) $@,SCRIPTS
 	$(foreach file,$(SCRIPTS),$(CPL) ../../level1/f256/scripts/$(file) $@,SCRIPTS;)
 	$(MAKDIR) $@,TESTS
 	$(foreach file,$(TESTS),$(CPL) ../../level1/f256/tests/$(file) $@,TESTS;)
+	$(OS9COPY) modules/wizfi.dr $@,wizfi.dr
+	$(OS9ATTR_EXEC) $@,wizfi.dr
+	$(OS9COPY) modules/wz.dd $@,wz.dd
+	$(OS9ATTR_EXEC) $@,wz.dd
 	$(MAKDIR) $@,FEU
-	echo "bootos9 /x0/os9boot" > /tmp/startup
-	$(OS9COPY) -l /tmp/startup $@,FEU
+	mkdir -p FEU
+	echo "bootos9 /x0/os9boot" > FEU/startup
+	$(OS9COPY) -l FEU/startup $@,FEU
 
 info:
 	@$(ECHO) "*** NitrOS-9/$(CPU) Level $(LEVEL) for the $(MACHINE) ***"
