@@ -240,6 +240,14 @@ edition             set       1
 
                     fcb       UPDAT.              access mode(s)
 
+ModEntry            lbra      Init
+                    lbra      Read
+                    lbra      Write
+                    lbra      GStt
+                    lbra      SStt
+                    lbra      Term
+
+
 ModName             fcs       "WizFi"
                     fcb       edition
 
@@ -449,13 +457,6 @@ ReadChar
 	stb	>WORK_SLOT
 
 ReadExit        puls      cc,dp,pc            recover IRQ/Carry status, dummy B, system DP, return
-
-ModEntry            lbra      Init
-                    lbra       Read
-                    lbra       Write
-                    lbra      GStt
-                    lbra      SStt
-                    lbra      Term
 
 PrAbtErr            ldb       #E$PrcAbt
                     bra       ErrExit
