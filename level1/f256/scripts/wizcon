@@ -1,0 +1,19 @@
+echo ***************************************************
+echo * "wizcon" script
+echo * WizFi360 Helper - Connection to Router
+echo * The chip reconnects on power-up unless you change
+echo * your SSID or password.
+echo *
+echo ATE0>/wz
+mergeln /wz /wz
+echo AT+CWMODE_CUR=1>/wz
+mergeln /wz /wz
+echo AT+CWDHCP_CUR=1,1>/wz
+mergeln /wz /wz
+echo AT+CWJAP_CUR="SSID","PASSWORD">/wz
+mergeln /wz /wz
+mergeln /wz /wz
+echo AT+CIPSTA_CUR?>/wz
+mergeln /wz /wz
+mergeln /wz /wz
+mergeln /wz /wz
