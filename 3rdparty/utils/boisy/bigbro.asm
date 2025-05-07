@@ -54,7 +54,7 @@ Loop                leax      Top,pcr             Point to Home cursor byte
                     clrb                          No memory used
                     leax      Module,pcr          Point to module to fork's name
                     ldy       #0                  No parameters
-                    os9       F$Fork              Fuck it!
+                    os9       F$Fork              Fork it!
                     bcs       Error
                     os9       F$Wait              Wait till process finishes
                     tstb                          see if a signal occurred
