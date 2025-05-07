@@ -11,33 +11,23 @@
 * Comment
 * ------------------------------------------------------------------
 
-* The SST39LF010/020/040 and SST39VF010/020/040
-* FLASH chips are 128K x8, 256K x8 and 5,124K x8
-
-* CPU address where MMU block is mapped in for Flash Chip block r/w
-WINDOW_FLASH	equ	$6000         $0000[MMU_SLOT_0],$2000[MMU_SLOT_1],$4000[MMU_SLOT_2],$6000[MMU_SLOT_3]
-* window at $6000 (block 3) is used for flash blocks=> MMU_REG = 8+3
-FLASH_ID_256K	equ	$BFD6		SST brand, 256KB Flash
-
-ERASE_WAIT	equ	$2800	Worked for ~10 tests but keep monitoring for glitches
-*ERASE_WAIT	equ	$3000	Safe but slower
-
-
                     use       defsfile
+
+
+MMU_SLOT            equ       2
+MMU_WINDOW          equ       $2000*MMU_SLOT
 
 tylg                set       Drivr+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
 edition             set       1
 
-
-                    mod       eom,name,tylg,atrv,start,size
+                    mod       eom,name,tylg,atrv,ModEntry,size
 
                     org       DRVBEG+1*DRVMEM
 
-fcpuaddr            rmb       2
-fblock              rmb       1
-
+FlashBank           rmb       1
+isflash             rmb       1
 size                equ       .
 
                     fcb       DIR.+SHARE.+PREAD.+PWRIT.+PEXEC.+READ.+WRITE.+EXEC.
@@ -45,17 +35,19 @@ size                equ       .
 name                fcs       /rbflash/
                     fcb       edition
 
-ascii               fcc       /0000/
-                    fcb       $0D
-                    fcb       $0A
-                    fcb       0
+FLASH_ID_128K       fdb       $BFD5           SST brand
+FLASH_ID_256K       fdb       $BFD6	      SST brand
+FLASH_ID_512K       fdb       $BFD7	      SST brand
+ERASE_WAIT          fdb       $2800           Tightest safe delay only when using    leax -1,x  cmpx #0000  bne loop  method
+*ERASE_WAIT          fdb       $3000           trial delay
 
-start               lbra       Init
+
+ModEntry            lbra       Init
                     lbra       Read
                     lbra       Write
                     lbra       GetStat
-                    lbra       GetStat
-                    lbra       GetStat
+                    lbra       SetStat
+                    lbra       Term
 
 * Init routine - only gets called once per driver initialized.
 * Called if you INIZ the device as well.
@@ -71,57 +63,13 @@ Init                lda       #1                  only can handle 1 drive descri
                     ldd       M$Port+1,y          get port address in device descriptor
                     std       V.PORT,u            and save to device memory (used by CalcMMUBlock)
 
-	lbsr      ReadFlashID
+                    lbsr      ReadFlashID
+                    lbsr      ShowFlashID
+                    clrb
+                    rts
 
-	pshs	cc
-	orcc	#IntMasks
-	ldb	>MMU_SLOT_2
-	pshs	b
-	ldb	#$C2				text bank
-	stb	>MMU_SLOT_2 
-
-	tfr       x,d
-	lsra                          do cheap binary to 4-digit HEX ASCII string
-	lsra
-	lsra
-	lsra
-	bsr	Bin2AscHex
-	sta	>$4000
-
-	tfr	x,d
-	anda	#$0f
-	bsr	Bin2AscHex
-	sta	>$4001
-
-	tfr	x,d
-	tfr	b,a
-	lsra                          do cheap binary to 4-digit HEX ASCII string
-	lsra
-	lsra
-	lsra
-	bsr	Bin2AscHex
-	sta	>$4002
-
-	tfr	x,d
-	tfr	b,a
-	anda	#$0f
-	bsr	Bin2AscHex
-	sta	>$4003
-
-	puls	b
-	stb	>MMU_SLOT_2
-	clrb                          clear error code and carry flag
-	puls	cc,pc
-
-Bin2AscHex
-	anda	#$0f
-	cmpa	#9
-	bls	d@
-	suba	#10
-	adda	#'A'
-	bra	x@
-d@	adda	#'0'
-x@	rts
+Term                clrb
+                    rts
 
 * Entry: B:X = LSN to read (only X will be used).
 *          Y = Path descriptor pointer.
@@ -141,20 +89,18 @@ l@                  lda       ,x+                 get a byte from the source
                     sta       ,y+                 save it in the destination
                     decb                          decrement the counter
                     bne       l@                  branch of more to do
-* GetStat/SetStat - no calls, just exit w/o error.
-GetStat             clrb                          clear error code and carry flag
-exit                rts                           return
+cx@                 clrb
+                    rts
 ex@                 puls      y,x,pc              restore registers and return
 
 * Entry: B:X = LSN to write.
 *          Y = Path descriptor pointer.
 *          U = Device memory pointer.
 Write               bsr       CalcMMUBlock        calculate the MMU Block & the offset for the sector
-                    bcs       exit                branch if error
+                    bcs       x@                  branch if error
                     exg       x,y                 X = sector buffer pointer, Y= offset within the MMU block
 * Transfer data between the RBF sector buffer & the RAM drive image sector buffer.
 * Both READ and WRITE (with X,Y swapping between the two) call this routine.
-MMU_SLOT            equ       2
 TfrSect             orcc      #IntMasks           mask interrupts
                     ldb       >MMU_SLOT_0+MMU_SLOT save the MMU block number
                     pshs      b
@@ -172,7 +118,17 @@ l@                  pulu      d,x                 get 4 bytes
                     puls      a
                     sta       >MMU_SLOT_0+MMU_SLOT remap in system block 0
                     andcc     #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
+x@                  rts                           return
+
+GetStat             pshs      a,x,y,u
+                    lbsr      ReadFlashID
+                    lbsr      ShowFlashID
+                    clrb                          clear error code and carry flag
+                    puls      a,x,y,u,pc          return
+
+SetStat             clrb                          clear error code and carry flag
                     rts                           return
+
 
 * Subroutine to calculate MMU block number and offset based on the requested sector.
 *
@@ -201,7 +157,7 @@ CalcMMUBlock        tstb                          test the MSB of the sector num
                     clrb                          calculate the offset within the 8KB block we want
                     lda       2,s                 get the sector number off of the stack
                     anda      #$1F                mask out all but what's within the 8KB address offset
-                    addd      #$2000*MMU_SLOT     add the base address of the MMU slot
+                    addd      #MMU_WINDOW         add the base address of the MMU slot
                     std       1,s                 save the updated offset back on the stack
                     ldy       PD.BUF,y            get the sector buffer address
                     puls      pc,x,a              get the offset and MMU block, then return
@@ -210,19 +166,18 @@ sectex@             comb                          set the carry
                     ldb       #E$Sect             load the "bad sector" error
                     rts                           return
 
-
-
-
 ProgCart
 	ldx	#$c000
 	ldb	#$9e
-	stb	fblock,u
+	stb	FlashBank,u
 	lbsr	Write8KBlock
 *	jsr	WaitaBit
 x@	rts
 
 
-
+* The SST39LF010/020/040 and SST39VF010/020/040
+* FLASH chips are 128K x8, 256K x8 and 5,124K x8
+*
 * With A MS -A1 = 0; SST Manufacturer’s ID = BFH, is read with A0 = 0,
 * SST39LF/VF010 Device ID = D5H, is read with A0 = 1.
 * SST39LF/VF020 Device ID = D6H, is read with A0 = 1.
@@ -234,59 +189,61 @@ x@	rts
 *                    $D6 = 256KB of Flash <----- Foenix Flash cartridge
 *                    $D7 = 512KB of Flash
 *
-* So, in summary: We better see $BFD6 as the chip ID.
+* In summary: We better see $BFD6 or $BFD7 as the chip ID.
 *
 ReadFlashID
 	pshs	cc
 	orcc	#IntMasks
-	ldb	>MMU_SLOT_2
+	ldb	>MMU_SLOT_0+MMU_SLOT
 	pshs	b
 	bsr	FlashSend5555AA                 * Send command "Software ID Entry"
 	bsr	FlashSend2AAA55
 	ldb	#$90
 	bsr	FlashSend5555XX
-*	ldd	$6000				Get ID of Flash Chip (if using MMU_SLOT_3)
-	ldd	$4000				Get ID of Flash Chip (if using MMU_SLOT_2)
+	ldd	MMU_WINDOW			Get ID of Flash Chip (if using MMU_SLOT_2)
         tfr     d,x
 	bsr	FlashSend5555AA                 * Send command "Software ID Exit"
 	bsr	FlashSend2AAA55
 	ldb	#$F0
 	bsr	FlashSend5555XX
 	puls	b
-	stb	>MMU_SLOT_2
-	puls	cc,pc
+	stb	>MMU_SLOT_0+MMU_SLOT
+	clr	isFlash,u
+	cmpx	FLASH_ID_256K,pcr
+	beq	f@
+	cmpx	FLASH_ID_512K,pcr
+	beq	f@
+	bra	s@			Debug, show the Flash Cart's ID on the text screen
+f@	inc	IsFlash,u
+s@	puls	cc,pc
 
 
-* Address $5555 in chip is in block $82 and when block $82 is mapped to $6000 (MMU SLOT 3),
-* the address $5555 translates to $7555
 * Address $5555 in chip is in block $82 and when block $82 is mapped to $4000 (MMU SLOT 2),
-* the address $5555 translates to $5555
+* the address $5555 translates to $5555, because $5555 becomes $1555 then added to $4000.
 FlashSend5555AA
-        pshs            d
+        pshs	d
 	lda	#$82                            $42 for onboard Flash
-	sta	>MMU_SLOT_2
+	sta	>MMU_SLOT_0+MMU_SLOT
 	lda	#$AA
-*	sta	$7555				If using MMU_SLOT_3
 	sta	$5555				If using MMU_SLOT_2
-	puls            d,pc
-FlashSend5555XX
-        pshs            d
-	lda	#$82                            $42 for onboard Flash?
-	sta	>MMU_SLOT_2
-*	stb	$7555                           If using MMU_SLOT_3
-	stb	$5555				If using MMU_SLOT_2
-	puls            d,pc
+	puls	d,pc
 
-* Address $2AAA in chip is in block $81 and when block $81 is mapped to $6000 (MMU SLOT 3),
-* the address $2AAA translates to $6AAA
+FlashSend5555XX
+* Address $5555 in chip is in block $82 and when block $82 is mapped to $4000 (MMU SLOT 2),
+* the address $5555 translates to $5555, because $5555 becomes $1555 then added to $4000.
+        pshs	d
+	lda	#$82                            $42 for onboard Flash?
+	sta	>MMU_SLOT_0+MMU_SLOT
+	stb	$5555				If using MMU_SLOT_2
+	puls	d,pc
+
 * Address $2AAA in chip is in block $81 and when block $81 is mapped to $4000 (MMU SLOT 2),
-* the address $2AAA translates to $4AAA
+* the address $2AAA translates to $4AAA, because $2AAA becomes $0AAA then added to $4000.
 FlashSend2AAA55
 	pshs	d
 	lda	#$81                            $41 for onboard Flash?
-	sta	>MMU_SLOT_2
+	sta	>MMU_SLOT_0+MMU_SLOT
 	lda	#$55
-*	sta	$6AAA				If using MMU_SLOT_3
 	sta	$4AAA				If using MMU_SLOT_2
 	puls    d,pc
 
@@ -317,23 +274,21 @@ Erase4KSector
 	bsr	FlashSend5555XX
 	bsr	FlashSend5555AA
 	bsr	FlashSend2AAA55
-	cmpx	#0
-	bne	u@			erase first 4k sector of 8k block
+	cmpx	#0			Which 4k sector of the 8k block do we erase?
+	bne	u@			if x = 1 then go erase 2nd sector
 	ldb	,s			get block num from stack
-	stb	>MMU_SLOT_2		erase second 4k sector of 8k block
-	lda	#$30
-*	sta	$6000			If using MMU_SLOT_3
-	sta	$4000			If using MMU_SLOT_2
-	bra	w@
-u@	ldb	,s
-	stb	>MMU_SLOT_2
-	lda	#$30
-*	sta	$7000			If using MMU_SLOT_3
-	sta	$5000			If using MMU_SLOT_2
-w@	ldx	#ERASE_WAIT	Delay counter to fully erase Flash sector
-w1@	leax	-1,x
-	cmpx	#$0000
-	bne	w1@
+	stb	>MMU_SLOT_0+MMU_SLOT    map the block in
+	lda	#$30			Place #$30 (Sector Erase Command) on the data bus
+	sta	MMU_WINDOW		Place address of 4k block on the address bus
+	bra	d@			go to the delay routine
+u@	ldb	,s			get block num from stack
+	stb	>MMU_SLOT_0+MMU_SLOT    map the block in
+	lda	#$30			Place #$30 (Sector Erase Command) on the data bus
+	sta	MMU_WINDOW+$1000	Place address of 4k block on the address bus
+d@	ldx	ERASE_WAIT,pcr		delay to fully erase Flash sector
+w@	leax	-1,x
+	cmpx    #$0000                  <--- Used to tweak the delay based on $2800
+	bne	w@                      <---  until another delay value is tested WITHOUT using cmpx #$0000
 	puls    b,x,pc
 
 *; accu has to contain flashblock number.
@@ -349,9 +304,9 @@ Write8KBlock
 	pshs	y,u
 	pshs	x,b			cpu addr, block num
 
-        ldx	#0
+        ldx	#0			Specify 1st 4k sector in 8k block
         bsr	Erase4KSector
-        ldx	#1
+        ldx	#1			Specify 2nd 4k sector in 8k block
         bsr	Erase4KSector
 
 	ldb	,s			get block num from stack
@@ -364,8 +319,8 @@ w@	lbsr	FlashSend5555AA
 	bsr	FlashSend2AAA55
 	ldb	#$A0
 	bsr	FlashSend5555XX $A0
-        ldb     fblock,u
-	stb	>MMU_SLOT_2
+        ldb     FlashBank,u
+	stb	>MMU_SLOT_0+MMU_SLOT
 	lda	,x+
 	sta	,u+
 	leay	-1,y
@@ -376,6 +331,58 @@ w@	lbsr	FlashSend5555AA
 	puls	u,y
 	andcc   #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
 	rts
+
+ShowFlashID
+	pshs	cc
+	orcc	#IntMasks
+	ldb	>MMU_SLOT_0+MMU_SLOT
+	pshs	b
+	ldb	#$C2				text bank
+	stb	>MMU_SLOT_0+MMU_SLOT 
+
+	tfr       x,d
+	lsra                          do cheap binary to 4-digit HEX ASCII string
+	lsra
+	lsra
+	lsra
+	bsr	Bin2AscHex
+	sta	>MMU_WINDOW+80+76
+
+	tfr	x,d
+	anda	#$0f
+	bsr	Bin2AscHex
+	sta	>MMU_WINDOW+80+77
+
+	tfr	x,d
+	tfr	b,a
+	lsra                          do cheap binary to 4-digit HEX ASCII string
+	lsra
+	lsra
+	lsra
+	bsr	Bin2AscHex
+	sta	>MMU_WINDOW+80+78
+
+	tfr	x,d
+	tfr	b,a
+	anda	#$0f
+	bsr	Bin2AscHex
+	sta	>MMU_WINDOW+80+79
+
+	puls	b
+	stb	>MMU_SLOT_0+MMU_SLOT
+
+	clrb                          clear error code and carry flag
+	puls	cc,pc
+
+Bin2AscHex
+	anda	#$0f
+	cmpa	#9
+	bls	d@
+	suba	#10
+	adda	#'A'
+	bra	x@
+d@	adda	#'0'
+x@	rts
 
 
 
