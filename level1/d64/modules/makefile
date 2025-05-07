@@ -216,7 +216,7 @@ v0.dd: $(3RDPARTY)/drivers/compusense/v0.asm
 
 clean:
 	$(CD) kernel; make $@
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 showobjs:
 	@$(ECHO) $(ALLOBJS)

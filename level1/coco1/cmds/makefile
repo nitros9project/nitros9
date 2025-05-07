@@ -44,7 +44,7 @@ pxd:	pd.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DPXD=1
 	
 clean:
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 identify:
 	$(IDENT_SHORT) $(ALLOBJS)

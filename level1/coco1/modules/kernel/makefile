@@ -24,7 +24,7 @@ $(KERNEL):	krn.asm $(SYSCALLS)
 $(KERNELP2):	krnp2.asm $(SYSCALLS)
 
 clean:
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 showobjs:
 	@$(ECHO) $(ALLOBJS)
