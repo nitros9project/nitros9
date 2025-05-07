@@ -231,6 +231,10 @@ $(DSKDW_F256JR):
 	$(OS9ATTR_EXEC) $@,wizfi.dr
 	$(OS9COPY) modules/wz.dd $@,wz.dd
 	$(OS9ATTR_EXEC) $@,wz.dd
+	$(OS9COPY) modules/rbflash.dr $@,rbflash.dr
+	$(OS9ATTR_EXEC) $@,rbflash.dr
+	$(OS9COPY) modules/cf.dd $@,cf.dd
+	$(OS9ATTR_EXEC) $@,cf.dd
 	$(MAKDIR) $@,FEU
 	mkdir -p FEU
 	echo "bootos9 /x0/os9boot" > FEU/startup
