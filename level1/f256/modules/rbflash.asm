@@ -17,6 +17,7 @@
 * CPU address where MMU block is mapped in for Flash Chip block r/w
 WINDOW_FLASH	equ	$6000         $0000[MMU_SLOT_0],$2000[MMU_SLOT_1],$4000[MMU_SLOT_2],$6000[MMU_SLOT_3]
 * window at $6000 (block 3) is used for flash blocks=> MMU_REG = 8+3
+FLASH_ID_256K	equ	$BFD6		SST brand, 256KB Flash
 
 ERASE_WAIT	equ	$2800	Worked for ~10 tests but keep monitoring for glitches
 *ERASE_WAIT	equ	$3000	Safe but slower
@@ -32,7 +33,8 @@ edition             set       1
 
                     mod       eom,name,tylg,atrv,start,size
 
-u0000               rmb       DRVBEG+DRVMEM       Reserve room for 1 entry drive table
+                    org       DRVBEG+1*DRVMEM
+
 fcpuaddr            rmb       2
 fblock              rmb       1
 
@@ -43,17 +45,17 @@ size                equ       .
 name                fcs       /rbflash/
                     fcb       edition
 
-start               bra       Init
-                    nop
-                    bra       Read
-                    nop
-                    bra       Write
-                    nop
-                    bra       GetStat
-                    nop
-                    bra       GetStat
-                    nop
-                    bra       GetStat
+ascii               fcc       /0000/
+                    fcb       $0D
+                    fcb       $0A
+                    fcb       0
+
+start               lbra       Init
+                    lbra       Read
+                    lbra       Write
+                    lbra       GetStat
+                    lbra       GetStat
+                    lbra       GetStat
 
 * Init routine - only gets called once per driver initialized.
 * Called if you INIZ the device as well.
@@ -68,8 +70,58 @@ Init                lda       #1                  only can handle 1 drive descri
                     stb       DD.TOT+2,x          to this value
                     ldd       M$Port+1,y          get port address in device descriptor
                     std       V.PORT,u            and save to device memory (used by CalcMMUBlock)
-                    clrb                          clear error code and carry flag
-                    rts                           return
+
+	lbsr      ReadFlashID
+
+	pshs	cc
+	orcc	#IntMasks
+	ldb	>MMU_SLOT_2
+	pshs	b
+	ldb	#$C2				text bank
+	stb	>MMU_SLOT_2 
+
+	tfr       x,d
+	lsra                          do cheap binary to 4-digit HEX ASCII string
+	lsra
+	lsra
+	lsra
+	bsr	Bin2AscHex
+	sta	>$4000
+
+	tfr	x,d
+	anda	#$0f
+	bsr	Bin2AscHex
+	sta	>$4001
+
+	tfr	x,d
+	tfr	b,a
+	lsra                          do cheap binary to 4-digit HEX ASCII string
+	lsra
+	lsra
+	lsra
+	bsr	Bin2AscHex
+	sta	>$4002
+
+	tfr	x,d
+	tfr	b,a
+	anda	#$0f
+	bsr	Bin2AscHex
+	sta	>$4003
+
+	puls	b
+	stb	>MMU_SLOT_2
+	clrb                          clear error code and carry flag
+	puls	cc,pc
+
+Bin2AscHex
+	anda	#$0f
+	cmpa	#9
+	bls	d@
+	suba	#10
+	adda	#'A'
+	bra	x@
+d@	adda	#'0'
+x@	rts
 
 * Entry: B:X = LSN to read (only X will be used).
 *          Y = Path descriptor pointer.
@@ -159,6 +211,8 @@ sectex@             comb                          set the carry
                     rts                           return
 
 
+
+
 ProgCart
 	ldx	#$c000
 	ldb	#$9e
@@ -169,44 +223,71 @@ x@	rts
 
 
 
+* With A MS -A1 = 0; SST Manufacturer’s ID = BFH, is read with A0 = 0,
+* SST39LF/VF010 Device ID = D5H, is read with A0 = 1.
+* SST39LF/VF020 Device ID = D6H, is read with A0 = 1.
+* SST39LF/VF040 Device ID = D7H, is read with A0 = 1.
+*
+* Translation: The value we read from $6000 contains:
+*  MSB = Manufacturer's ID = $BF (Microchip Technology - SST)
+*  LSB = Device ID = $DF = 128KB of Flash
+*                    $D6 = 256KB of Flash <----- Foenix Flash cartridge
+*                    $D7 = 512KB of Flash
+*
+* So, in summary: We better see $BFD6 as the chip ID.
+*
 ReadFlashID
+	pshs	cc
+	orcc	#IntMasks
+	ldb	>MMU_SLOT_2
+	pshs	b
 	bsr	FlashSend5555AA                 * Send command "Software ID Entry"
 	bsr	FlashSend2AAA55
 	ldb	#$90
 	bsr	FlashSend5555XX
-	ldd	$6000
+*	ldd	$6000				Get ID of Flash Chip (if using MMU_SLOT_3)
+	ldd	$4000				Get ID of Flash Chip (if using MMU_SLOT_2)
         tfr     d,x
 	bsr	FlashSend5555AA                 * Send command "Software ID Exit"
 	bsr	FlashSend2AAA55
 	ldb	#$F0
 	bsr	FlashSend5555XX
-	rts
+	puls	b
+	stb	>MMU_SLOT_2
+	puls	cc,pc
 
 
-* Address $5555 in chip is in block $82 and when block $82 is mapped to $6000,
+* Address $5555 in chip is in block $82 and when block $82 is mapped to $6000 (MMU SLOT 3),
 * the address $5555 translates to $7555
+* Address $5555 in chip is in block $82 and when block $82 is mapped to $4000 (MMU SLOT 2),
+* the address $5555 translates to $5555
 FlashSend5555AA
         pshs            d
 	lda	#$82                            $42 for onboard Flash
-	sta	>MMU_SLOT_3
+	sta	>MMU_SLOT_2
 	lda	#$AA
-	sta	$7555
+*	sta	$7555				If using MMU_SLOT_3
+	sta	$5555				If using MMU_SLOT_2
 	puls            d,pc
 FlashSend5555XX
         pshs            d
 	lda	#$82                            $42 for onboard Flash?
-	sta	>MMU_SLOT_3
-	stb	$7555                           
+	sta	>MMU_SLOT_2
+*	stb	$7555                           If using MMU_SLOT_3
+	stb	$5555				If using MMU_SLOT_2
 	puls            d,pc
 
-* Address $2AAA in chip is in block $81 and when block $81 is mapped to $6000,
+* Address $2AAA in chip is in block $81 and when block $81 is mapped to $6000 (MMU SLOT 3),
 * the address $2AAA translates to $6AAA
+* Address $2AAA in chip is in block $81 and when block $81 is mapped to $4000 (MMU SLOT 2),
+* the address $2AAA translates to $4AAA
 FlashSend2AAA55
 	pshs	d
 	lda	#$81                            $41 for onboard Flash?
-	sta	>MMU_SLOT_3
+	sta	>MMU_SLOT_2
 	lda	#$55
-	sta	$6AAA
+*	sta	$6AAA				If using MMU_SLOT_3
+	sta	$4AAA				If using MMU_SLOT_2
 	puls    d,pc
 
 
@@ -239,19 +320,21 @@ Erase4KSector
 	cmpx	#0
 	bne	u@			erase first 4k sector of 8k block
 	ldb	,s			get block num from stack
-	stb	>MMU_SLOT_3		erase second 4k sector of 8k block
+	stb	>MMU_SLOT_2		erase second 4k sector of 8k block
 	lda	#$30
-	sta	$6000
+*	sta	$6000			If using MMU_SLOT_3
+	sta	$4000			If using MMU_SLOT_2
 	bra	w@
 u@	ldb	,s
-	stb	>MMU_SLOT_3
+	stb	>MMU_SLOT_2
 	lda	#$30
-	sta	$7000
+*	sta	$7000			If using MMU_SLOT_3
+	sta	$5000			If using MMU_SLOT_2
 w@	ldx	#ERASE_WAIT	Delay counter to fully erase Flash sector
 w1@	leax	-1,x
 	cmpx	#$0000
 	bne	w1@
-	puls      b,x,pc
+	puls    b,x,pc
 
 *; accu has to contain flashblock number.
 erase8KBlock
@@ -282,7 +365,7 @@ w@	lbsr	FlashSend5555AA
 	ldb	#$A0
 	bsr	FlashSend5555XX $A0
         ldb     fblock,u
-	stb	>MMU_SLOT_3
+	stb	>MMU_SLOT_2
 	lda	,x+
 	sta	,u+
 	leay	-1,y
@@ -291,7 +374,7 @@ w@	lbsr	FlashSend5555AA
 *	bsr	verify8KBlock
 	puls	x,b
 	puls	u,y
-	andcc     #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
+	andcc   #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
 	rts
 
 
