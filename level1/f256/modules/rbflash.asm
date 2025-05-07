@@ -1,11 +1,26 @@
 ********************************************************************
-* rbmem - F256 cartridge expansion and flash driver
-*
+* rbflash - F256 cartridge expansion and flash driver
+* TEMPORARY driver because the F256 port is in github-shambles and
+* I have to build my drivers outside of os9boot and load them manually.
+* This will eventually and hopefully become rbmem and do what it's
+* supposed to do.   R Taylor
+
 * $Id$
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
+
+* The SST39LF010/020/040 and SST39VF010/020/040
+* FLASH chips are 128K x8, 256K x8 and 5,124K x8
+
+* CPU address where MMU block is mapped in for Flash Chip block r/w
+WINDOW_FLASH	equ	$6000         $0000[MMU_SLOT_0],$2000[MMU_SLOT_1],$4000[MMU_SLOT_2],$6000[MMU_SLOT_3]
+* window at $6000 (block 3) is used for flash blocks=> MMU_REG = 8+3
+
+ERASE_WAIT	equ	$2800	Worked for ~10 tests but keep monitoring for glitches
+*ERASE_WAIT	equ	$3000	Safe but slower
+
 
                     use       defsfile
 
@@ -18,11 +33,14 @@ edition             set       1
                     mod       eom,name,tylg,atrv,start,size
 
 u0000               rmb       DRVBEG+DRVMEM       Reserve room for 1 entry drive table
+fcpuaddr            rmb       2
+fblock              rmb       1
+
 size                equ       .
 
                     fcb       DIR.+SHARE.+PREAD.+PWRIT.+PEXEC.+READ.+WRITE.+EXEC.
 
-name                fcs       /rbmem/
+name                fcs       /rbflash/
                     fcb       edition
 
 start               bra       Init
@@ -139,6 +157,146 @@ cleanex@            leas      3,s                 clean up the stack
 sectex@             comb                          set the carry
                     ldb       #E$Sect             load the "bad sector" error
                     rts                           return
+
+
+ProgCart
+	ldx	#$c000
+	ldb	#$9e
+	stb	fblock,u
+	lbsr	Write8KBlock
+*	jsr	WaitaBit
+x@	rts
+
+
+
+ReadFlashID
+	bsr	FlashSend5555AA                 * Send command "Software ID Entry"
+	bsr	FlashSend2AAA55
+	ldb	#$90
+	bsr	FlashSend5555XX
+	ldd	$6000
+        tfr     d,x
+	bsr	FlashSend5555AA                 * Send command "Software ID Exit"
+	bsr	FlashSend2AAA55
+	ldb	#$F0
+	bsr	FlashSend5555XX
+	rts
+
+
+* Address $5555 in chip is in block $82 and when block $82 is mapped to $6000,
+* the address $5555 translates to $7555
+FlashSend5555AA
+        pshs            d
+	lda	#$82                            $42 for onboard Flash
+	sta	>MMU_SLOT_3
+	lda	#$AA
+	sta	$7555
+	puls            d,pc
+FlashSend5555XX
+        pshs            d
+	lda	#$82                            $42 for onboard Flash?
+	sta	>MMU_SLOT_3
+	stb	$7555                           
+	puls            d,pc
+
+* Address $2AAA in chip is in block $81 and when block $81 is mapped to $6000,
+* the address $2AAA translates to $6AAA
+FlashSend2AAA55
+	pshs	d
+	lda	#$81                            $41 for onboard Flash?
+	sta	>MMU_SLOT_3
+	lda	#$55
+	sta	$6AAA
+	puls    d,pc
+
+
+
+* 3.3 Sector Erase Operation
+* The Sector Erase operation allows the system to erase
+* the device on a sector-by-sector basis. The sector
+* architecture is based on uniform sector size of
+* 4 Kbytes. The Sector Erase operation is initiated by
+* executing a six-byte command load sequence for
+* Software Data Protection with Sector Erase command
+* (30H) and Sector Address (SA) in the last bus cycle.
+* The sector address is latched on the falling edge of the
+* sixth WE# pulse, while the command (30H) is latched
+* on the rising edge of the sixth WE# pulse. The internal
+* Erase operation begins after the sixth WE# pulse. The
+* End-of-Erase can be determined using either Data#
+* Polling or Toggle Bit methods. See Figure 7-6 for timing
+* waveforms. Any commands written during the Sector
+* Erase operation will be ignored.
+
+Erase4KSector
+	pshs	x,b			block num to erase
+	bsr	FlashSend5555AA
+	bsr	FlashSend2AAA55
+	ldb	#$80
+	bsr	FlashSend5555XX
+	bsr	FlashSend5555AA
+	bsr	FlashSend2AAA55
+	cmpx	#0
+	bne	u@			erase first 4k sector of 8k block
+	ldb	,s			get block num from stack
+	stb	>MMU_SLOT_3		erase second 4k sector of 8k block
+	lda	#$30
+	sta	$6000
+	bra	w@
+u@	ldb	,s
+	stb	>MMU_SLOT_3
+	lda	#$30
+	sta	$7000
+w@	ldx	#ERASE_WAIT	Delay counter to fully erase Flash sector
+w1@	leax	-1,x
+	cmpx	#$0000
+	bne	w1@
+	puls      b,x,pc
+
+*; accu has to contain flashblock number.
+erase8KBlock
+        ldx	#0
+        bsr	Erase4KSector
+        ldx	#1
+        bsr	Erase4KSector
+        rts
+
+Write8KBlock
+	orcc	#IntMasks
+	pshs	y,u
+	pshs	x,b			cpu addr, block num
+
+        ldx	#0
+        bsr	Erase4KSector
+        ldx	#1
+        bsr	Erase4KSector
+
+	ldb	,s			get block num from stack
+	ldx	1,s			get cpu addr from stack
+	ldu	#$6000           flash block transfer window
+        ldy	#8192           # of bytes in a bank/block
+
+* Load data first, then address, command
+w@	lbsr	FlashSend5555AA
+	bsr	FlashSend2AAA55
+	ldb	#$A0
+	bsr	FlashSend5555XX $A0
+        ldb     fblock,u
+	stb	>MMU_SLOT_3
+	lda	,x+
+	sta	,u+
+	leay	-1,y
+	bne	w@
+
+*	bsr	verify8KBlock
+	puls	x,b
+	puls	u,y
+	andcc     #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
+	rts
+
+
+
+
 
                     emod
 eom                 equ       *
