@@ -1,10 +1,10 @@
 ********************************************************************
-* bf - Brainfuck Language Interpreter
+* bf - Brainf*ck Language Interpreter
 *
 * $Id$
 *
-* This is a simple interpreter for the Brainfuck language:
-* https://en.wikipedia.org/wiki/Brainfuck
+* This is a simple interpreter for the Brainf*ck language:
+* https://en.wikipedia.org/wiki/Brainf*ck
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
@@ -128,8 +128,8 @@ brCloseDoCont
                     bne       brCloseDo
                     puls      a,pc
 
-* X = Brainfuck program pointer (nul byte terminates)
-* Y = Brainfuck data pointer
+* X = Brainf*ck program pointer (nul byte terminates)
+* Y = Brainf*ck data pointer
 parse
                     lda       ,x+
                     beq       parseEnd
