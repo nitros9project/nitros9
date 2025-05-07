@@ -6,7 +6,7 @@
 ###
 ##########################
 ### 99 Bottles of Beer ###
-### coded in Brainfuck ###
+### coded in Brainf*ck ###
 ### with explanations  ###
 ##########################
 #
