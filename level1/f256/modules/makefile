@@ -6,7 +6,7 @@ vpath %.asm $(LEVEL1)/f256/modules:$(LEVEL1)/modules
 AFLAGS		+= -I$(LEVEL1)/$(PORT)
 AFLAGS		+= -I$(LEVEL1)/$(PORT)/modules
 AFLAGS		+= -I$(LEVEL1)/modules
-LFLAGS      += -L $(NITROS9DIR)/lib -L $(LEVEL1)/$(PORT)/libs -lnet -lf256 -lalib -lfnxsnd
+LFLAGS      += -L $(NITROS9DIR)/lib -L $(LEVEL1)/$(PORT)/libs/fnxsnd -lnet -lf256 -lalib -lfnxsnd
 
 CLOCKSOFT       = -DRTCSoft=1
 

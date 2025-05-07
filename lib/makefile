@@ -46,5 +46,5 @@ dskcopy:
 dskclean:
 
 clean:
-	$(RM) *.a *.o
+	$(RM) *.a *.o *.list *.map
 	$(MAKE) -C alib clean

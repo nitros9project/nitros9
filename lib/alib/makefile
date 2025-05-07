@@ -29,4 +29,4 @@ all:	../libalib.a
 	$(LWAR) $@ $?
 
 clean:
-	$(RM) *.o ../libalib.a
+	$(RM) *.o ../libalib.a *.list *.map
