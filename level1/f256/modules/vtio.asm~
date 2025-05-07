@@ -1891,7 +1891,7 @@ sl1@                cmpy      #$01                  test for layer 1
                     stb       VKY_LAYER_CTRL_0      store it
                     rts
 sl2@                cmpy      #$02                  test for Layer2
-                    bne	      end@
+                    rts
                     ldb       R$Y+1,x
                     stb       VKY_LAYER_CTRL_1      store BM# or TM# in L2
                     clrb
