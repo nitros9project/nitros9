@@ -43,7 +43,8 @@ name                fcs       /rbflash/
 FLASH_ID_128K       fdb       $BFD5           SST brand
 FLASH_ID_256K       fdb       $BFD6	      SST brand
 FLASH_ID_512K       fdb       $BFD7	      SST brand
-ERASE_WAIT          fdb       $2800           Tightest safe delay only when using    leax -1,x  cmpx #0000  bne loop  method
+*ERASE_WAIT          fdb       $2800           Tightest safe delay only when using    leax -1,x  cmpx #0000  bne loop  method
+ERASE_WAIT          fdb       $2900           trial
 *ERASE_WAIT          fdb       $3000           trial delay
 
 

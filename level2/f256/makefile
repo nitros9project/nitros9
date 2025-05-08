@@ -254,6 +254,8 @@ $(DSKCART_F256JR):
 	$(CD) cmds; $(OS9COPY) $(CMDS_CART) ../$@,CMDS
 	$(CD) cmds; $(OS9COPY) -r shell ../$@,CMDS/shell
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS_CART),$@,CMDS/$(file))
+	$(MAKDIR) $@,SCRIPTS
+	$(foreach file,$(SCRIPTS),$(CPL) ../../level1/f256/scripts/$(file) $@,SCRIPTS;)
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,FEU

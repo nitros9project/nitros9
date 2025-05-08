@@ -17,17 +17,17 @@ LFLAGS		+= -lnet -lalib -lnos96809l2
 BASIC09	= basic09 runb inkey syscall foenix
 BF      = bf
 CPM     = cpm
-CMDS_CART = backup copy date dcheck ded del deldir dir dmode dsave format free iniz list load makdir mdir merge save setime shell_21
 CMDS_DW = inetd dw telnet httpd
 CMDS    = asm attr backup bawk binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
 		display dmem dmode dsave dump echo edit error exbin \
 		format free grep help ident iniz irqs link list load login \
-		makdir mdir megaread merge mfree minted mmap modpatch more padrom park \
+		makdir mdir megaread merge mergeln mfree minted mmap modpatch more padrom park \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
-		bootos9 fnxinfo fnxreset rogue fstatus  xtclut drawtest play \
-		$(CMDS_DW) $(BASIC09) $(BF) $(CPM)
+		bootos9 fnxinfo fnxreset rogue fstatus xtclut drawtest play \
+		$(CMDS_DW)
+# $(BASIC09) $(BF) $(CPM)
 
 SHELLMODS	= shellplus echo iniz link load save unlink
 
@@ -40,6 +40,9 @@ all:	$(DEPENDS) $(CMDS) shell utilpak1
 # Some commands depend on net.o
 $(NOSLIB)/net.o:
 	cd $(NOSLIB); make
+
+mergeln: mergeln.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 runb:	runb.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
@@ -82,7 +85,7 @@ showobjs_dw:
 	@$(ECHO) shell utilpak1 $(sort $(CMDS))
 
 showobjs_cart:
-	@$(ECHO) shell utilpak1 $(sort $(CMDS_CART))
+	@$(ECHO) shell utilpak1 $(sort $(CMDS))
 
 identify:
 	$(IDENT_SHORT) $(ALLOBJS)

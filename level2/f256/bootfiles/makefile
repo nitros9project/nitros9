@@ -25,6 +25,7 @@ RBDW      = $(MD)/rbdw.dr $(MD)/x0.dd $(MD)/x1.dd $(MD)/x2.dd $(MD)/x3.dd
 # RBF Foenix Flash/RAM disk driver
 RBMEM = $(MD)/rbmem.dr $(MD)/c0.dd $(MD)/f0.dd
 RBFLASH = $(MD)/rbflash.dr $(MD)/cf.dd
+WIZFI = $(MD)/wizfi.dr $(MD)/wz.dd
 
 # RBF RBSuper driver
 RBSUPER   = $(MD)/rbsuper.dr
@@ -117,6 +118,7 @@ BOOTFILE_CART = $(KERNELP2) \
 		$(DWIO) \
 		$(RBF) $(RBDW) $(RBSUPER) $(RBFNXSD) \
 		$(RBMEM) $(MD)/ddc0.dd $(MD)/c0.dd \
+		$(RBFLASH) $(WIZFI) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(MD)/kernel/krn
