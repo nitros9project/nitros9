@@ -1,7 +1,12 @@
 ********************************************************************
 * rbflash - F256 cartridge expansion and flash driver
-* Experimental driver for seeing how we can use the Flash cartridge.
-
+* TEMPORARY driver because the F256 port is in github-shambles and
+* I have to build my drivers outside of os9boot and load them manually.
+* This will eventually and hopefully become rbmem and do what it's
+* supposed to do.   R Taylor
+* The sector size of the Flash chip is 4096 bytes, meaning we can
+* only write out 16 256-byte sectors at a time?
+*
 * $Id$
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
@@ -65,11 +70,6 @@ Init                lda       #1                  only can handle 1 drive descri
                     lbsr      ReadFlashID
                     lbsr      ShowFlashID
 
-                    ldb       #1                  we need 1 8k RAM block
-                    os9       F$AllRAM            to read the Flash block into for updating and writing back to Flash
-                    bcs       x@
-                    stb       SwapBlock,u
-
                     clrb
 x@                    rts
 
@@ -85,7 +85,7 @@ Read                pshs      y,x                 preserve the path descriptor &
                     bsr       TfrSect             else transfer the sector from the RAM drive to PD.BUF
                     puls      y,x                 restore the pointers
                     leax      ,x                  is this LSN0?
-                    bne       GetStat             branch if not
+                    lbne      cx@                 branch if not
                     ldx       PD.BUF,y            else get the path descriptor buffer into X
                     leay      DRVBEG,u            point to the start of the drive table
 * 6809 - Use StkBlCpy (either system wide or local to driver).
@@ -97,43 +97,6 @@ l@                  lda       ,x+                 get a byte from the source
 cx@                 clrb
                     rts
 ex@                 puls      y,x,pc              restore registers and return
-
-* Entry: B:X = LSN to write.
-*          Y = Path descriptor pointer.
-*          U = Device memory pointer.
-Write               bsr       CalcMMUBlock        calculate the MMU Block & the offset for the sector
-                    bcs       x@                  branch if error
-                    exg       x,y                 make  X = sector buffer pointer, Y= offset within the MMU block
-* Transfer data between the RBF sector buffer & the RAM drive image sector buffer.
-* Both READ and WRITE (with X,Y swapping between the two) call this routine.
-TfrSect             orcc      #IntMasks           mask interrupts
-                    ldb       >MMU_SLOT_0+MMU_SLOT save the MMU block number
-                    pshs      b
-                    sta       >MMU_SLOT_0+MMU_SLOT save the MMU block number
-* 6809 - Use StkBlCpy (either system wide or local to driver)
-                    ldb       #64                 64 sets of 4 bytes to copy
-                    pshs      b,u                 save the counter & U
-                    leau      ,x                  point U to the source of the copy
-l@                  pulu      d,x                 get 4 bytes
-                    std       ,y++                save the first two bytes in the sector buffer
-                    stx       ,y++                and the next one
-                    dec       ,s                  decrement the 4 byte block counter
-                    bne       l@                  branch until all 256 bytes are done
-                    puls      b,u                 B = 0, restore U
-                    puls      a
-                    sta       >MMU_SLOT_0+MMU_SLOT remap in system block 0
-                    andcc     #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
-x@                  rts                           return
-
-
-GetStat             pshs      a,x,y,u
-                    lbsr      ReadFlashID
-                    lbsr      ShowFlashID
-                    clrb                          clear error code and carry flag
-                    puls      a,x,y,u,pc          return
-
-SetStat             clrb                          clear error code and carry flag
-                    rts                           return
 
 
 * Subroutine to calculate MMU block number and offset based on the requested sector.
@@ -171,6 +134,91 @@ cleanex@            leas      3,s                 clean up the stack
 sectex@             comb                          set the carry
                     ldb       #E$Sect             load the "bad sector" error
                     rts                           return
+
+* Entry: B:X = LSN to write.
+*          Y = Path descriptor pointer.
+*          U = Device memory pointer.
+x@                  rts                           return
+Write               bsr       CalcMMUBlock        calculate the MMU Block & the offset for the sector
+                    bcs       x@                  branch if error
+                    exg       x,y                 make  X = sector buffer pointer, Y= offset within the MMU block
+                    tst       IsFlash,u
+                    bne       TfrFSect
+* Transfer data between the RBF sector buffer & the RAM drive image sector buffer.
+* Both READ and WRITE (with X,Y swapping between the two) call this routine.
+TfrSect             orcc      #IntMasks           mask interrupts
+                    ldb       >MMU_SLOT_0+MMU_SLOT save the MMU block number
+                    pshs      b
+                    sta       >MMU_SLOT_0+MMU_SLOT save the MMU block number
+* 6809 - Use StkBlCpy (either system wide or local to driver)
+                    ldb       #64                 64 sets of 4 bytes to copy
+                    pshs      b,u                 save the counter & U
+                    leau      ,x                  point U to the source of the copy
+l@                  pulu      d,x                 get 4 bytes
+                    std       ,y++                save the first two bytes in the sector buffer
+                    stx       ,y++                and the next one
+                    dec       ,s                  decrement the 4 byte block counter
+                    bne       l@                  branch until all 256 bytes are done
+                    puls      b,u                 B = 0, restore U
+                    puls      a
+                    sta       >MMU_SLOT_0+MMU_SLOT remap in system block 0
+                    andcc     #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
+                    clrb
+                    rts                           return
+
+TfrFSect            orcc      #IntMasks           mask interrupts
+                    sta       FlashBank,u
+                    ldb       >MMU_SLOT_0+MMU_SLOT save the MMU block number
+                    pshs      b
+	            leax      ,y                  point Y to the source of the copy
+                    ldu       #256
+
+* Load data first, then address, command
+w@                  lbsr      FlashSend5555AA
+                    lbsr      FlashSend2AAA55
+                    ldb       #$A0
+                    lbsr      FlashSend5555XX $A0
+                    ldb       FlashBank,u
+                    stb       >MMU_SLOT_0+MMU_SLOT
+                    lda       ,x+
+                    sta       ,y+
+                    leau      -1,u
+                    cmpu      #0
+                    bne       w@
+                    puls      a
+                    sta       >MMU_SLOT_0+MMU_SLOT remap in system block 0
+                    andcc     #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
+                    clrb
+                    rts                           return
+
+
+GetStat             pshs      a,x,y,u
+                    lbsr      ReadFlashID
+                    lbsr      ShowFlashID
+                    clrb                          clear error code and carry flag
+                    puls      a,x,y,u,pc          return
+
+SetStat             cmpb      #SS.WTrk            format (write) track (u=track#, d/y = side and density)
+                    bne       cx@
+                    cmpu      #0                  trigger a wipe of the entire Flash cart if track # = 0
+                    bne       cx@
+* Chip Erase 5555H AAH,  2AAAH 55H,  5555H 80H,  5555H AAH,  2AAAH 55H,  5555H 10H
+                    pshs	cc
+                    orcc	#IntMasks
+                    lbsr	FlashSend5555AA
+                    lbsr	FlashSend2AAA55
+                    ldb	#$80
+                    lbsr	FlashSend5555XX
+                    lbsr	FlashSend5555AA
+                    lbsr	FlashSend2AAA55
+                    lda	#$10			Place #$10 (Chip Erase Command) on the data bus
+                    lsr	FlashSend5555XX
+                    puls	cc
+                    ldx	#90
+                    os9	F$Sleep
+cx@                 clrb                          clear error code and carry flag
+                    rts                           return
+
 
 * The SST39LF010/020/040 and SST39VF010/020/040
 * FLASH chips are 128K x8, 256K x8 and 5,124K x8
@@ -288,44 +336,6 @@ w@	leax	-1,x
 	bne	w@                      <---  until another delay value is tested WITHOUT using cmpx #$0000
 	puls    b,x,pc
 
-
-* A = MMU block
-* X = sector buffer pointer, Y= offset within the MMU block
-Write8KBlock
-	orcc	#IntMasks           mask interrupts
-	sta	FlashBank,u
-	sty     RAMAddr,u
-
-	ldb	>MMU_SLOT_0+MMU_SLOT save the MMU block number
-	pshs	x,y,u,b
-
-        ldx	#0			Specify 1st 4k sector in 8k block
-        bsr	Erase4KSector
-        ldx	#1			Specify 2nd 4k sector in 8k block
-        bsr	Erase4KSector
-
-	ldb	FlashBank,u			get block num from stack
-	ldx	RAMAddr,u		get cpu addr from stack
-	ldu	#MMU_WINDOW           flash block transfer window
-        ldy	#8192           # of bytes in a bank/block
-
-* Load data first, then address, command
-w@	lbsr	FlashSend5555AA
-	bsr	FlashSend2AAA55
-	ldb	#$A0
-	bsr	FlashSend5555XX $A0
-        ldb     FlashBank,u
-	stb	>MMU_SLOT_0+MMU_SLOT
-	lda	,x+
-	sta	,u+
-	leay	-1,y
-	bne	w@
-
-	puls	a,x,y,u
-	sta	>MMU_SLOT_0+MMU_SLOT remap in system block 0
-	andcc	#^IntMasks  turn on interrupts and clear carry to indicate no error
-	clrb
-	rts
 
 ShowFlashID
 	pshs	cc
