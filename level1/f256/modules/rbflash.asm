@@ -28,9 +28,13 @@ edition             set       1
 
                     org       DRVBEG+1*DRVMEM
 
+
+SaveMMU             rmb       1
 FlashBank           rmb       1
+SwapBank            rmb       1
 RAMAddr             rmb       2
 IsFlash             rmb       1
+
 
 size                equ       .
 
@@ -70,22 +74,32 @@ Init                lda       #1                  only can handle 1 drive descri
                     lbsr      ReadFlashID
                     lbsr      ShowFlashID
 
+		ldb #1
+		os9 F$AllRAM
+		stb SwapBank,u
+
+
                     clrb
 x@                    rts
 
 Term                clrb
                     rts
 
+
 * Entry: B:X = LSN to read (only X will be used).
 *          Y = Path descriptor pointer.
 *          U = Device memory pointer.
-Read                pshs      y,x                 preserve the path descriptor & device memory pointers
+Read                lda       >MMU_SLOT_0+MMU_SLOT save the MMU block number
+                    sta       SaveMMU,u
+                    pshs      y,x                 preserve the path descriptor & device memory pointers
                     bsr       CalcMMUBlock        calculate the MMU block & offset for the sector
+                    sta       FlashBank,u
                     bcs       ex@                 branch if error
+                    orcc      #IntMasks
                     bsr       TfrSect             else transfer the sector from the RAM drive to PD.BUF
                     puls      y,x                 restore the pointers
                     leax      ,x                  is this LSN0?
-                    lbne      cx@                 branch if not
+                    bne       CleanExit           branch if not
                     ldx       PD.BUF,y            else get the path descriptor buffer into X
                     leay      DRVBEG,u            point to the start of the drive table
 * 6809 - Use StkBlCpy (either system wide or local to driver).
@@ -94,10 +108,15 @@ l@                  lda       ,x+                 get a byte from the source
                     sta       ,y+                 save it in the destination
                     decb                          decrement the counter
                     bne       l@                  branch of more to do
-cx@                 clrb
-                    rts
+                    bra       CleanExit
 ex@                 puls      y,x,pc              restore registers and return
 
+CleanExit
+                    lda       SaveMMU,u
+                    sta       >MMU_SLOT_0+MMU_SLOT save the MMU block number
+                    clrb
+                    andcc     #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
+                    rts
 
 * Subroutine to calculate MMU block number and offset based on the requested sector.
 *
@@ -138,18 +157,26 @@ sectex@             comb                          set the carry
 * Entry: B:X = LSN to write.
 *          Y = Path descriptor pointer.
 *          U = Device memory pointer.
-x@                  rts                           return
-Write               bsr       CalcMMUBlock        calculate the MMU Block & the offset for the sector
-                    bcs       x@                  branch if error
+wx@                  rts                           return
+Write               orcc      #IntMasks           mask interrupts
+                    lda       >MMU_SLOT_0+MMU_SLOT save the MMU block number
+                    sta       SaveMMU,u
+                    bsr       CalcMMUBlock        calculate the MMU Block & the offset for the sector
+                    sta       FlashBank,u
+                    bcs       wx@                  branch if error
                     exg       x,y                 make  X = sector buffer pointer, Y= offset within the MMU block
                     tst       IsFlash,u
                     bne       TfrFSect
+                    bsr       TfrSect
+                    lda       SaveMMU,u
+                    sta       >MMU_SLOT_0+MMU_SLOT save the MMU block number
+                    andcc     #^IntMasks  turn on interrupts and clear carry to indicate no error
+                    clrb
+                    rts
+
 * Transfer data between the RBF sector buffer & the RAM drive image sector buffer.
 * Both READ and WRITE (with X,Y swapping between the two) call this routine.
-TfrSect             orcc      #IntMasks           mask interrupts
-                    ldb       >MMU_SLOT_0+MMU_SLOT save the MMU block number
-                    pshs      b
-                    sta       >MMU_SLOT_0+MMU_SLOT save the MMU block number
+TfrSect             sta       >MMU_SLOT_0+MMU_SLOT save the MMU block number
 * 6809 - Use StkBlCpy (either system wide or local to driver)
                     ldb       #64                 64 sets of 4 bytes to copy
                     pshs      b,u                 save the counter & U
@@ -160,32 +187,47 @@ l@                  pulu      d,x                 get 4 bytes
                     dec       ,s                  decrement the 4 byte block counter
                     bne       l@                  branch until all 256 bytes are done
                     puls      b,u                 B = 0, restore U
-                    puls      a
-                    sta       >MMU_SLOT_0+MMU_SLOT remap in system block 0
                     andcc     #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
-                    clrb
                     rts                           return
 
-TfrFSect            orcc      #IntMasks           mask interrupts
-                    sta       FlashBank,u
-                    ldb       >MMU_SLOT_0+MMU_SLOT save the MMU block number
-                    pshs      b
-	            leax      ,y                  point Y to the source of the copy
-                    ldu       #256
+TfrFSect            pshs      x,y
+
+* Copy Cartridge Bank to Motherboard RAM Bank
+ ldx #MMU_WINDOW
+ ldy #8192
+c@ ldb FlashBank,u
+ stb >MMU_SLOT_0+MMU_SLOT 
+ lda ,x
+ ldb SwapBank,u
+ stb >MMU_SLOT_0+MMU_SLOT 
+ sta ,x+
+ leay -1,y
+ bne c@
+                    ldb       FlashBank,u
+                    lbsr      erase8KBlock
+
+                    puls      x,y
+                    lda       SwapBank,u
+                    lbsr      TfrSect               Write the 256-byte sector into the 8k SwapBlock
+
+                    ldx       #MMU_WINDOW
+                    ldy       #8192
 
 * Load data first, then address, command
-w@                  lbsr      FlashSend5555AA
+w@                  ldb       SwapBank,u
+                    stb       >MMU_SLOT_0+MMU_SLOT
+                    lda       ,x
+                    lbsr      FlashSend5555AA
                     lbsr      FlashSend2AAA55
                     ldb       #$A0
                     lbsr      FlashSend5555XX $A0
                     ldb       FlashBank,u
                     stb       >MMU_SLOT_0+MMU_SLOT
-                    lda       ,x+
-                    sta       ,y+
-                    leau      -1,u
-                    cmpu      #0
+                    sta       ,x+
+                    leay      -1,y
                     bne       w@
-                    puls      a
+
+                    lda       SaveMMU,u
                     sta       >MMU_SLOT_0+MMU_SLOT remap in system block 0
                     andcc     #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
                     clrb
@@ -310,6 +352,13 @@ FlashSend2AAA55
 * Polling or Toggle Bit methods. See Figure 7-6 for timing
 * waveforms. Any commands written during the Sector
 * Erase operation will be ignored.
+
+erase8KBlock
+        ldx	#0
+        bsr	Erase4KSector
+        ldx	#1
+        bsr	Erase4KSector
+        rts
 
 Erase4KSector
 	pshs	x,b			block num to erase
