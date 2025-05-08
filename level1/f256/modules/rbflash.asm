@@ -1,11 +1,8 @@
 ********************************************************************
 * rbflash - F256 cartridge expansion and flash driver
-* TEMPORARY driver because the F256 port is in github-shambles and
-* I have to build my drivers outside of os9boot and load them manually.
+* TEMPORARY driver
 * This will eventually and hopefully become rbmem and do what it's
 * supposed to do.   R Taylor
-* The sector size of the Flash chip is 4096 bytes, meaning we can
-* only write out 16 256-byte sectors at a time?
 *
 * $Id$
 *
