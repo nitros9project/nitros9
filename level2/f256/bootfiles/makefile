@@ -24,6 +24,7 @@ RBDW      = $(MD)/rbdw.dr $(MD)/x0.dd $(MD)/x1.dd $(MD)/x2.dd $(MD)/x3.dd
 
 # RBF Foenix Flash/RAM disk driver
 RBMEM = $(MD)/rbmem.dr $(MD)/c0.dd $(MD)/f0.dd
+RBFLASH = $(MD)/rbflash.dr $(MD)/cf.dd
 
 # RBF RBSuper driver
 RBSUPER   = $(MD)/rbsuper.dr
@@ -110,7 +111,17 @@ BOOTFILE_DW_F256JR = $(KERNELP2) \
 		$(MD)/sysgo \
 		$(MD)/kernel/krn
 
-ALLOBJS		= bootfile_sd_f256k bootfile_dw_f256k bootfile_sd_f256jr bootfile_dw_f256jr
+BOOTFILE_CART = $(KERNELP2) \
+		$(SCF) $(SCVT_F256JR) \
+		$(FONT) $(PALETTE) \
+		$(DWIO) \
+		$(RBF) $(RBDW) $(RBSUPER) $(RBFNXSD) \
+		$(RBMEM) $(MD)/ddc0.dd $(MD)/c0.dd \
+		$(CLOCK) \
+		$(MD)/sysgo \
+		$(MD)/kernel/krn
+
+ALLOBJS		= bootfile_sd_f256k bootfile_dw_f256k bootfile_sd_f256jr bootfile_dw_f256jr bootfile_cart
 
 all:	$(ALLOBJS)
 
@@ -131,6 +142,10 @@ bootfile_sd_f256jr: $(BOOTFILE_SD_F256JR) $(DEPENDS)
 
 bootfile_dw_f256jr: $(BOOTFILE_DW_F256JR) $(DEPENDS)
 	$(MERGE) $(BOOTFILE_DW_F256JR)>$@
+	./padup256 $@
+
+bootfile_cart: $(BOOTFILE_CART) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_CART)>$@
 	./padup256 $@
 
 upload_f256jr: bootfile_dw_f256jr

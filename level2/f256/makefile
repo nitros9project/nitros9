@@ -7,6 +7,7 @@ DIRS		= defs libs cmds modules sys sys/fonts bootfiles wwwroot
 
 CMDS		= $(shell $(CD) cmds; make --no-print-directory showobjs)
 CMDS_DW		= $(shell $(CD) cmds; make --no-print-directory showobjs_dw)
+CMDS_CART	= $(shell $(CD) cmds; make --no-print-directory showobjs_cart)
 KERNEL		= $(shell $(CD) modules; make --no-print-directory showkernel)
 SYSMODS		= $(shell $(CD) modules; make --no-print-directory showsysmods)
 CLOCKS		= $(shell $(CD) modules; make --no-print-directory showclocks)
@@ -27,9 +28,11 @@ DSKSD_F256K		= $(DISTROVER)k_sd.dsk
 DSKDW_F256K		= $(DISTROVER)k_dw.dsk
 DSKSD_F256JR		= $(DISTROVER)jr_sd.dsk
 DSKDW_F256JR		= $(DISTROVER)jr_dw.dsk
+DSKCART_F256JR          = $(DISTROVER)jr_cart.dsk
 
 #DSKS	= $(DSKSD_F256K) $(DSKDW_F256K) $(DSKSD_F256JR) $(DSKDW_F256JR)
-DSKS	= $(DSKDW_F256JR)
+#DSKS	= $(DSKDW_F256JR)
+DSKS = $(DSKCART_F256JR)
 
 # Make all components
 all:
@@ -239,6 +242,26 @@ $(DSKDW_F256JR):
 	mkdir -p FEU
 	echo "bootos9 /x0/os9boot" > FEU/startup
 	$(OS9COPY) -l FEU/startup $@,FEU
+
+$(DSKCART_F256JR):
+	$(RM) $@
+	$(OS9FORMAT_C256) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
+	$(OS9COPY) bootfiles/bootfile_cart $@,OS9Boot
+	$(MAKDIR) $@,CMDS
+	$(MAKDIR) $@,SYS
+	$(OS9COPY) modules/$(SYSGO) $@,sysgo
+	$(OS9ATTR_EXEC) $@,sysgo
+	$(CD) cmds; $(OS9COPY) $(CMDS_CART) ../$@,CMDS
+	$(CD) cmds; $(OS9COPY) -r shell ../$@,CMDS/shell
+	$(OS9ATTR_EXEC) $(foreach file,$(CMDS_CART),$@,CMDS/$(file))
+	$(CPL) $(STARTUP) $@,startup
+	$(OS9ATTR_TEXT) $@,startup
+	$(MAKDIR) $@,FEU
+	mkdir -p FEU
+	echo "bootos9 /c0/os9boot" > FEU/startup
+	$(OS9COPY) -l FEU/startup $@,FEU
+
+
 
 info:
 	@$(ECHO) "*** NitrOS-9/$(CPU) Level $(LEVEL) for the $(MACHINE) ***"
