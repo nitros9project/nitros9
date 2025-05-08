@@ -1,9 +1,6 @@
 ********************************************************************
 * rbflash - F256 cartridge expansion and flash driver
-* TEMPORARY driver because the F256 port is in github-shambles and
-* I have to build my drivers outside of os9boot and load them manually.
-* This will eventually and hopefully become rbmem and do what it's
-* supposed to do.   R Taylor
+* Experimental driver for seeing how we can use the Flash cartridge.
 
 * $Id$
 *
@@ -27,7 +24,9 @@ edition             set       1
                     org       DRVBEG+1*DRVMEM
 
 FlashBank           rmb       1
-isflash             rmb       1
+RAMAddr             rmb       2
+IsFlash             rmb       1
+
 size                equ       .
 
                     fcb       DIR.+SHARE.+PREAD.+PWRIT.+PEXEC.+READ.+WRITE.+EXEC.
@@ -65,8 +64,14 @@ Init                lda       #1                  only can handle 1 drive descri
 
                     lbsr      ReadFlashID
                     lbsr      ShowFlashID
+
+                    ldb       #1                  we need 1 8k RAM block
+                    os9       F$AllRAM            to read the Flash block into for updating and writing back to Flash
+                    bcs       x@
+                    stb       SwapBlock,u
+
                     clrb
-                    rts
+x@                    rts
 
 Term                clrb
                     rts
@@ -98,7 +103,7 @@ ex@                 puls      y,x,pc              restore registers and return
 *          U = Device memory pointer.
 Write               bsr       CalcMMUBlock        calculate the MMU Block & the offset for the sector
                     bcs       x@                  branch if error
-                    exg       x,y                 X = sector buffer pointer, Y= offset within the MMU block
+                    exg       x,y                 make  X = sector buffer pointer, Y= offset within the MMU block
 * Transfer data between the RBF sector buffer & the RAM drive image sector buffer.
 * Both READ and WRITE (with X,Y swapping between the two) call this routine.
 TfrSect             orcc      #IntMasks           mask interrupts
@@ -119,6 +124,7 @@ l@                  pulu      d,x                 get 4 bytes
                     sta       >MMU_SLOT_0+MMU_SLOT remap in system block 0
                     andcc     #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
 x@                  rts                           return
+
 
 GetStat             pshs      a,x,y,u
                     lbsr      ReadFlashID
@@ -165,15 +171,6 @@ cleanex@            leas      3,s                 clean up the stack
 sectex@             comb                          set the carry
                     ldb       #E$Sect             load the "bad sector" error
                     rts                           return
-
-ProgCart
-	ldx	#$c000
-	ldb	#$9e
-	stb	FlashBank,u
-	lbsr	Write8KBlock
-*	jsr	WaitaBit
-x@	rts
-
 
 * The SST39LF010/020/040 and SST39VF010/020/040
 * FLASH chips are 128K x8, 256K x8 and 5,124K x8
@@ -291,27 +288,25 @@ w@	leax	-1,x
 	bne	w@                      <---  until another delay value is tested WITHOUT using cmpx #$0000
 	puls    b,x,pc
 
-*; accu has to contain flashblock number.
-erase8KBlock
-        ldx	#0
-        bsr	Erase4KSector
-        ldx	#1
-        bsr	Erase4KSector
-        rts
 
+* A = MMU block
+* X = sector buffer pointer, Y= offset within the MMU block
 Write8KBlock
-	orcc	#IntMasks
-	pshs	y,u
-	pshs	x,b			cpu addr, block num
+	orcc	#IntMasks           mask interrupts
+	sta	FlashBank,u
+	sty     RAMAddr,u
+
+	ldb	>MMU_SLOT_0+MMU_SLOT save the MMU block number
+	pshs	x,y,u,b
 
         ldx	#0			Specify 1st 4k sector in 8k block
         bsr	Erase4KSector
         ldx	#1			Specify 2nd 4k sector in 8k block
         bsr	Erase4KSector
 
-	ldb	,s			get block num from stack
-	ldx	1,s			get cpu addr from stack
-	ldu	#$6000           flash block transfer window
+	ldb	FlashBank,u			get block num from stack
+	ldx	RAMAddr,u		get cpu addr from stack
+	ldu	#MMU_WINDOW           flash block transfer window
         ldy	#8192           # of bytes in a bank/block
 
 * Load data first, then address, command
@@ -326,10 +321,10 @@ w@	lbsr	FlashSend5555AA
 	leay	-1,y
 	bne	w@
 
-*	bsr	verify8KBlock
-	puls	x,b
-	puls	u,y
-	andcc   #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
+	puls	a,x,y,u
+	sta	>MMU_SLOT_0+MMU_SLOT remap in system block 0
+	andcc	#^IntMasks  turn on interrupts and clear carry to indicate no error
+	clrb
 	rts
 
 ShowFlashID
