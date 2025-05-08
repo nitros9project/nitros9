@@ -17,6 +17,7 @@ LFLAGS		+= -lnet -lalib -lnos96809l2
 BASIC09	= basic09 runb inkey syscall foenix
 BF      = bf
 CPM     = cpm
+CMDS_CART = backup copy date dcheck ded del deldir dir dmode dsave format free iniz list load makdir mdir merge save setime shell_21
 CMDS_DW = inetd dw telnet httpd
 CMDS    = asm attr backup bawk binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
@@ -79,6 +80,9 @@ showobjs:
 
 showobjs_dw:
 	@$(ECHO) shell utilpak1 $(sort $(CMDS))
+
+showobjs_cart:
+	@$(ECHO) shell utilpak1 $(sort $(CMDS_CART))
 
 identify:
 	$(IDENT_SHORT) $(ALLOBJS)

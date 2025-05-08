@@ -75,6 +75,7 @@ OS9FORMAT_SS40	= os9 format -e -t40 -ss -dd
 OS9FORMAT_SS80	= os9 format -e -t80 -ss -dd
 OS9FORMAT_DS40	= os9 format -e -t40 -ds -dd
 OS9FORMAT_DS80	= os9 format -e -t80 -ds -dd
+OS9FORMAT_C256  = os9 format -e -t256 -ss -st4 -sa4
 OS9FORMAT_DW	= os9 format -t29126 -ss -dd
 OS9FORMAT_SDC  = os9 format -e -t29126 -ss -dd
 OS9FORMAT_F256SD  = os9 format -t29126 -ss -dd
