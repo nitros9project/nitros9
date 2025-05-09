@@ -24,8 +24,9 @@ edition             set       1
 
                     mod       eom,name,tylg,atrv,ModEntry,size
 
-                    org       DRVBEG+1*DRVMEM
+                    org       0
 
+                    rmb       DRVBEG+1*DRVMEM
 
 SaveMMU             rmb       1
 FlashBlock           rmb       1
@@ -44,9 +45,10 @@ name                fcs       /rbflash/
 FLASH_ID_128K       fdb       $BFD5           SST brand
 FLASH_ID_256K       fdb       $BFD6	      SST brand
 FLASH_ID_512K       fdb       $BFD7	      SST brand
-*ERASE_WAIT          fdb       $2800           Tightest safe delay only when using    leax -1,x  cmpx #0000  bne loop  method
-ERASE_WAIT          fdb       $2900           trial
-*ERASE_WAIT          fdb       $3000           trial delay
+
+*ERASE_WAIT          equ       $2800           Tightest safe delay only when using    leax -1,x  cmpx #0000  bne loop  method
+ERASE_WAIT          equ       $2900           trial
+*ERASE_WAIT          equ       $3000           trial delay
 
 
 ModEntry            lbra       Init
@@ -312,7 +314,7 @@ u@	ldb	,s			get block num from stack
 	stb	>MMU_SLOT_0+MMU_SLOT    map the block in
 	lda	#$30			Place #$30 (Sector Erase Command) on the data bus
 	sta	MMU_WINDOW+$1000	Place address of 4k block on the address bus
-d@	ldx	ERASE_WAIT,pcr		delay to fully erase Flash sector
+d@	ldx	#ERASE_WAIT 		delay to fully erase Flash sector
 w@	leax	-1,x
 	cmpx    #$0000                  <--- Used to tweak the delay based on $2800
 	bne	w@                      <---  until another delay value is tested WITHOUT using cmpx #$0000
@@ -345,10 +347,10 @@ SetStat             cmpb      #SS.WTrk            format (write) track (u=track#
                     lbsr	FlashSend5555AA
                     lbsr	FlashSend2AAA55
                     lda	#$10			Place #$10 (Chip Erase Command) on the data bus
-                    lsr	FlashSend5555XX
+                    lbsr	FlashSend5555XX
                     puls	cc
-                    ldx	#90
-                    os9	F$Sleep
+                    ldx         #180
+                    os9         F$Sleep
 cx@                 clrb                          clear error code and carry flag
                     rts                           return
 
