@@ -258,6 +258,10 @@ $(DSKCART_F256JR):
 	$(foreach file,$(SCRIPTS),$(CPL) ../../level1/f256/scripts/$(file) $@,SCRIPTS;)
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
+	$(OS9COPY) modules/rbflash.dr $@,rbflash.dr
+	$(OS9ATTR_EXEC) $@,rbflash.dr
+	$(OS9COPY) modules/cf.dd $@,cf.dd
+	$(OS9ATTR_EXEC) $@,cf.dd
 	$(MAKDIR) $@,FEU
 	mkdir -p FEU
 	echo "bootos9 /c0/os9boot" > FEU/startup
