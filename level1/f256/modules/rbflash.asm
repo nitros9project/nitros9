@@ -328,8 +328,8 @@ u@	ldb	,s			get block num from stack
 	sta	MMU_WINDOW+$1000	Place address of 4k block on the address bus
 d@	ldx	#ERASE_WAIT 		delay to fully erase Flash sector
 w@                  leax      -1,x
-                    ldd       >$0000             REQUIRED because the wait count of $2800 was
-                    bne       w@                 Discovered while 6 padding cycles was included
+                    cmpx      #0        REQUIRED because the wait count of $2800 was
+                    bne       w@        Discovered while 6 padding cycles was included
                     puls      b,x,pc
 
 
