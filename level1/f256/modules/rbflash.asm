@@ -5,13 +5,8 @@
 *
 * This Driver is For Testing Only
 * Data corruption is likely.  Use at your own risk.
-* For each 256-byte OS-9 sector written to the Flash cartridge,
-* a separate rewrite of the associated 4K Flash sector is made!
-* During Init and/or GetStat, the Flash ID is shown on the F256
+* During Init the Flash ID is shown on the F256
 * text screen in the upper right corner.
-*
-* This revision appears to have a geometry bug causing
-* the backup command to read past the track limit.
 *
 * $Id$
 *
@@ -20,9 +15,12 @@
 * ------------------------------------------------------------------
 *
 *   0/0    2025/5/9    R Taylor
-* 4KB Flash sector version, has predictable write corruption, not sure if it's a geometrical bug. 
-* When using the Backup command from a same-size DriveWire disk, Backup attempts to read past the
-* last track.
+* 4KB Flash sector version, has predictable write corruption, not
+* sure if it's a geometrical bug. When using the Backup command
+* from a same-size/geometry source disk, Backup attempts to read
+* past the last track. Flash writes are being verified in real time.
+* For each 256-byte OS-9 sector written to the Flash cartridge,
+* a separate rewrite of the associated 4K Flash sector is made!
 
 
                     use       defsfile
