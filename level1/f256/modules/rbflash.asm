@@ -43,10 +43,9 @@ edition             set       1
 SaveMMU             rmb       1
 FlashBlock           rmb       1
 SwapBlock            rmb       1
-RAMAddr             rmb       2
 IsFlash             rmb       1
 
-
+                    rmb       255-.               residual page RAM for stack etc. RG
 size                equ       .
 
                     fcb       DIR.+SHARE.+PREAD.+PWRIT.+PEXEC.+READ.+WRITE.+EXEC.
@@ -82,6 +81,7 @@ Init                lda       #1                  only can handle 1 drive descri
                     stb       DD.TOT+2,x          to this value
                     ldd       M$Port+1,y          get port address in device descriptor
                     std       V.PORT,u            and save to device memory (used by CalcMMUBlock)
+
                     lbsr      ReadFlashID
                     lbsr      ShowFlashID
                     ldb       #1                  Flash Write mode needs an 8K swap block of RAM
@@ -103,8 +103,8 @@ Read                lda       >MMU_SLOT_0+MMU_SLOT save the MMU block number
                     sta       SaveMMU,u
                     pshs      y,x                 preserve the path descriptor & device memory pointers
                     bsr       CalcMMUBlock        calculate the MMU block & offset for the sector
-                    sta       FlashBlock,u
                     bcs       ex@                 branch if error
+                    sta       FlashBlock,u
                     orcc      #IntMasks
                     bsr       TfrSect             else transfer the sector from the RAM drive to PD.BUF
                     puls      y,x                 restore the pointers
@@ -199,22 +199,10 @@ l@                  pulu      d,x                 get 4 bytes
                     rts                           return
 
 
-* Scheme as of 5/8/2025 (Worked to erase/rewrite 4K Flash sectors)
-* Find the 8K Flash block that our 256-byte OS-9 sector is in.
-* Read the 8K Flash block into the 8K working RAM block.
-* Write the 256-byte OS-9 sector into the 8K working RAM block.
-* Erase the 4K Flash sector that the 256-byte OS-9 sector will be in.
-* Write back only the correct 4K sector of the 8K working RAM block.
-*
-* Proposed Scheme
-* Find the 4K Flash sector that our 256-byte OS-9 sector is in.
-* Read the 4K Flash sector into the 8K working RAM block.
-* Write the 256-byte OS-9 sector into the 8K working RAM block.
-* Erase the 4K Flash sector that the 256-byte OS-9 sector will be in.
-* Write back only the correct 4K sector of the 8K working RAM block.
-
-* Determine which half of the 8K working RAM block our 256-byte OS-9 sector is in.
-* Then write that 4K sector to a 4K Flash sector.
+* Scheme as of 5/9/2025 (Worked to erase/rewrite 4K Flash sectors)
+* Copy 8K Flash block into 8K working RAM block.
+* Copy OS-9 sector into correct spot in 8K working RAM block.
+* Erase and write back the 4K sector that the OS-9 sector is in from the 8K working RAM block.
 
 TfrFSect            pshs      x,y
                     ldx       #MMU_WINDOW
@@ -351,9 +339,8 @@ erase8KBlock
         bsr	Erase4KSector
         rts
 
-GetStat             pshs      a,x,y,u
-                    clrb                          clear error code and carry flag
-                    puls      a,x,y,u,pc          return
+GetStat             clrb
+                    rts
 
 SetStat
                     clrb
