@@ -2,6 +2,7 @@
 * rbflash - F256 RAM and Flash Cartridge Driver
 * Based on rbmem
 * R Taylor
+* Editor tabs are 21,31,51
 *
 * This Driver is For Testing Only
 * Data corruption is likely.  Use at your own risk.
@@ -28,6 +29,7 @@
 
 MMU_SLOT            equ       2
 MMU_WINDOW          equ       $2000*MMU_SLOT
+MMU_WORKSLOT        equ       MMU_WORKSLOT
 
 tylg                set       Drivr+Objct
 atrv                set       ReEnt+rev
@@ -41,8 +43,8 @@ edition             set       1
                     rmb       DRVBEG+1*DRVMEM
 
 SaveMMU             rmb       1
-FlashBlock           rmb       1
-SwapBlock            rmb       1
+FlashBlock          rmb       1
+CacheBlock          rmb       1
 IsFlash             rmb       1
 
                     rmb       255-.               residual page RAM for stack etc. RG
@@ -61,12 +63,12 @@ FLASH_ID_512K       fdb       $BFD7	      SST brand
 *ERASE_WAIT          equ       $2800*2           trial
 ERASE_WAIT          equ       $3000           trial delay
 
-ModEntry            lbra       Init
-                    lbra       Read
-                    lbra       Write
-                    lbra       GetStat
-                    lbra       SetStat
-                    lbra       Term
+ModEntry            lbra      Init
+                    lbra      Read
+                    lbra      Write
+                    lbra      GetStat
+                    lbra      SetStat
+                    lbra      Term
 
 * Init routine - only gets called once per driver initialized.
 * Called if you INIZ the device as well.
@@ -87,7 +89,7 @@ Init                lda       #1                  only can handle 1 drive descri
                     ldb       #1                  Flash Write mode needs an 8K swap block of RAM
                     os9       F$AllRAM
                     bcs       x@
-                    stb       SwapBlock,u
+                    stb       CacheBlock,u
 *                    lbsr      Wipe                Called from Init just as a test to see if it wipes the Flash
                     clrb
 x@                  rts
@@ -99,7 +101,7 @@ Term                clrb
 * Entry: B:X = LSN to read (only X will be used).
 *          Y = Path descriptor pointer.
 *          U = Device memory pointer.
-Read                lda       >MMU_SLOT_0+MMU_SLOT save the MMU block number
+Read                lda       >MMU_WORKSLOT       save the MMU block number
                     sta       SaveMMU,u
                     pshs      y,x                 preserve the path descriptor & device memory pointers
                     bsr       CalcMMUBlock        calculate the MMU block & offset for the sector
@@ -122,7 +124,7 @@ l@                  lda       ,x+                 get a byte from the source
 ex@                 puls      y,x,pc              restore registers and return
 
 CleanRWExit         lda       SaveMMU,u
-                    sta       >MMU_SLOT_0+MMU_SLOT save the MMU block number
+                    sta       >MMU_WORKSLOT       restore the MMU block number
                     clrb
                     andcc     #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
                     rts
@@ -167,7 +169,7 @@ sectex@             comb                          set the carry
 *          Y = Path descriptor pointer.
 *          U = Device memory pointer.
 Write               orcc      #IntMasks           mask interrupts
-                    lda       >MMU_SLOT_0+MMU_SLOT get the contents of working slot
+                    lda       >MMU_WORKSLOT       get the contents of working slot
                     sta       SaveMMU,u           save in driver vars
                     bsr       CalcMMUBlock        calculate the MMU Block & the offset for the sector
                     bcs       x@                  branch if error
@@ -176,15 +178,12 @@ Write               orcc      #IntMasks           mask interrupts
                     tst       IsFlash,u
                     bne       TfrFSect
                     bsr       TfrSect
-                    lda       SaveMMU,u
-                    sta       >MMU_SLOT_0+MMU_SLOT restore the working slot
-                    andcc     #^IntMasks          turn on interrupts and clear carry to indicate no error
-                    clrb
+                    lbra      CleanRWExit
 x@                  rts
 
 * Transfer data between the RBF sector buffer & the RAM drive image sector buffer.
 * Both READ and WRITE (with X,Y swapping between the two) call this routine.
-TfrSect             sta       >MMU_SLOT_0+MMU_SLOT switch in the working block 
+TfrSect             sta       >MMU_WORKSLOT switch in the working block 
 * 6809 - Use StkBlCpy (either system wide or local to driver) ?
                     ldb       #64                 64 sets of 4 bytes to copy
                     pshs      b,u                 save the counter & U
@@ -198,90 +197,96 @@ l@                  pulu      d,x                 get 4 bytes
                     andcc     #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
                     rts                           return
 
-
-* Scheme as of 5/9/2025 (Worked to erase/rewrite 4K Flash sectors)
-* Copy 8K Flash block into 8K working RAM block.
-* Copy OS-9 sector into correct spot in 8K working RAM block.
-* Erase and write back the 4K sector that the OS-9 sector is in from the 8K working RAM block.
-
-TfrFSect            pshs      x,y
+* 8K block copier, using single MMU slot
+* Entry: A = source block
+*        B = destination block
+* Exit: destination block stays in MMU slot
+*       all registers restored
+BlockCopy           pshs      u,x,y,d
                     ldx       #MMU_WINDOW
-                    ldy       #8192
-c@                  ldb       FlashBlock,u
-                    stb       >MMU_SLOT_0+MMU_SLOT 
-                    lda       ,x
-                    ldb       SwapBlock,u
-                    stb       >MMU_SLOT_0+MMU_SLOT 
-                    sta       ,x+
+                    ldy       #4096               2 bytes per iteration = 8192
+c@                  ldb       ,s                  get source block from reg.a position on stack
+                    stb       >MMU_WORKSLOT 
+                    ldu       ,x
+                    ldb       1,s                 get destination block from reg.b position on stack
+                    stb       >MMU_WORKSLOT 
+                    stu       ,x++
                     leay      -1,y
                     bne       c@
-                    puls      x,y
+                    puls      u,x,y,pc
+
+* Scheme as of 5/9/2025 (Worked to erase/rewrite 4K Flash sectors)
+* Copy 8K Flash block into 8K cache.
+* Copy OS-9 sector into correct spot in 8K cache.
+* Erase the associatated 4K Flash sector.
+* Program the 4K Flash sector using the 4K cache sector associated with the OS-9 sector.
+
+* Enter: X = address of OS-9 sector
+TfrFSect            lda       FlashBlock,u        copy from Flash block to Cache block
+                    ldb       CacheBlock,u
+                    bsr       BlockCopy
                     pshs      x
-                    lda       SwapBlock,u
-                    lbsr      TfrSect               Write the 256-byte sector into the 8K work RAM block
+                    lda       CacheBlock,u
+                    lbsr      TfrSect             Write the 256-byte sector into the 8K work RAM block
                     puls      x
-                    tfr       x,d                   X = address of OS-9 256-byte sector
-                    anda      #$10                  compute which half of the 8K Flash block it's in
+                    tfr       x,d                 X = address of OS-9 256-byte sector
+                    anda      #$10                compute which half of the 8K Flash block it's in
                     tfr       d,x               
-                    leax      MMU_WINDOW,x          base start of the RAM copy of the new Flash sector to write back
+                    leax      MMU_WINDOW,x        base start of the RAM copy of the new Flash sector to write back
                     lsra
                     lsra
                     lsra
-                    lsra                            compute 0=1st half of 4k Flash sector, 1=2nd half
-                    ldb       FlashBlock,u          what 8K Flash block is the sector in?
+                    lsra                          compute 0=1st half of 4k Flash sector, 1=2nd half
+                    ldb       FlashBlock,u        what 8K Flash block is the sector in?
                     bsr       Erase4KSector
-                    ldy       #4096                 write 4KB of bytes to the Flash
-w@                  ldb       SwapBlock,u
-                    stb       >MMU_SLOT_0+MMU_SLOT
+                    ldy       #4096               write 4KB of bytes to the Flash
+w@                  ldb       CacheBlock,u
+                    stb       >MMU_WORKSLOT
                     lda       ,x
-                    lbsr      FlashSend5555AA       Load data first, then address, command
+                    lbsr      FlashSend5555AA     Load data first, then address, command
                     lbsr      FlashSend2AAA55
                     ldb       #$A0
-                    lbsr      FlashSend5555XX $A0
+                    lbsr      FlashSend5555XX     $A0
                     ldb       FlashBlock,u
-                    stb       >MMU_SLOT_0+MMU_SLOT
-                    tfr       a,b                  **** Required, put data on bus early
-                    stb       ,x+                  **** Required, when address changes the data is latched
-v@                  cmpa      -1,x                 **** Required, compare data with Flash contents
-                    bne       v@                   **** Required, wait for data to read back the same
+                    stb       >MMU_WORKSLOT
+                    tfr       a,b                 | REQUIRED: put data on bus early
+                    stb       ,x+                 | REQUIRED: when address changes the data is latched
+v@                  cmpa      -1,x                | REQUIRED: compare data with Flash contents which
+                    bne       v@                  | REQUIRED: wait for Flash contents to match
                     leay      -1,y
                     bne       w@
                     lda       SaveMMU,u
-                    sta       >MMU_SLOT_0+MMU_SLOT remap in system block 0
+                    sta       >MMU_WORKSLOT       remap in system block 0
                     andcc     #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
-                    clrb
-x@                    rts                           return
+                    clrb                          no errors
+                    rts
 
 
+* Address $5555 in Flash cartridge is in block $82 and when block $82 is mapped to $4000 (MMU SLOT 2),
+* the address $5555 translates to $5555, because $5555 becomes $1555 then added to $4000.
+FlashSend5555AA     pshs      a
+                    lda       #$82
+                    sta       >MMU_WORKSLOT
+                    lda       #$AA
+                    sta       >$5555
+                    puls      a,pc
 
 * Address $5555 in chip is in block $82 and when block $82 is mapped to $4000 (MMU SLOT 2),
 * the address $5555 translates to $5555, because $5555 becomes $1555 then added to $4000.
-FlashSend5555AA
-        pshs	a
-	lda	#$82                            $42 for onboard Flash
-	sta	>MMU_SLOT_0+MMU_SLOT
-	lda	#$AA
-	sta	$5555				If using MMU_SLOT_2
-	puls	a,pc
-
-FlashSend5555XX
-* Address $5555 in chip is in block $82 and when block $82 is mapped to $4000 (MMU SLOT 2),
-* the address $5555 translates to $5555, because $5555 becomes $1555 then added to $4000.
-        pshs	a
-	lda	#$82                            $42 for onboard Flash?
-	sta	>MMU_SLOT_0+MMU_SLOT
-	stb	$5555				If using MMU_SLOT_2
-	puls	a,pc
+FlashSend5555XX     pshs      a
+                    lda       #$82
+                    sta       >MMU_WORKSLOT
+                    stb       >$5555
+                    puls      a,pc
 
 * Address $2AAA in chip is in block $81 and when block $81 is mapped to $4000 (MMU SLOT 2),
 * the address $2AAA translates to $4AAA, because $2AAA becomes $0AAA then added to $4000.
-FlashSend2AAA55
-	pshs	a
-	lda	#$81                            $41 for onboard Flash?
-	sta	>MMU_SLOT_0+MMU_SLOT
-	lda	#$55
-	sta	$4AAA				If using MMU_SLOT_2
-	puls    a,pc
+FlashSend2AAA55     pshs      a
+                    lda       #$81
+                    sta       >MMU_WORKSLOT
+                    lda       #$55
+                    sta       >$4AAA
+                    puls      a,pc
 
 * 3.3 Sector Erase Operation
 * The Sector Erase operation allows the system to erase
@@ -307,37 +312,30 @@ FlashSend2AAA55
 * or Chip Erase, the Data# Polling is valid after the rising
 * edge of sixth WE# (or CE#) pulse.
 
-Erase4KSector
-	pshs	x,b			block num to erase
-	bsr	FlashSend5555AA
-	bsr	FlashSend2AAA55
-	ldb	#$80
-	bsr	FlashSend5555XX
-	bsr	FlashSend5555AA
-	bsr	FlashSend2AAA55
+Erase4KSector       pshs      x,b                 reg.b = block num to erase
+                    bsr       FlashSend5555AA
+                    bsr       FlashSend2AAA55
+                    ldb       #$80
+                    bsr       FlashSend5555XX
+                    bsr       FlashSend5555AA
+                    bsr       FlashSend2AAA55
 	tsta	                        Which 4k sector of the 8k block do we erase?
 	bne	u@			if reg.a = 1 then go erase 2nd sector
 	ldb	,s			get block num from stack
-	stb	>MMU_SLOT_0+MMU_SLOT    map the block in
+	stb	>MMU_WORKSLOT    map the block in
 	lda	#$30			Place #$30 (Sector Erase Command) on the data bus
 	sta	MMU_WINDOW		Place address of 4k block on the address bus
 	bra	d@			go to the delay routine
 u@	ldb	,s			get block num from stack
-	stb	>MMU_SLOT_0+MMU_SLOT    map the block in
+	stb	>MMU_WORKSLOT    map the block in
 	lda	#$30			Place #$30 (Sector Erase Command) on the data bus
 	sta	MMU_WINDOW+$1000	Place address of 4k block on the address bus
 d@	ldx	#ERASE_WAIT 		delay to fully erase Flash sector
-w@	leax	-1,x
-        cmpx    #0
-	bne	w@                      <---  until another delay value is tested WITHOUT using cmpx #$0000
-	puls    b,x,pc
+w@                  leax      -1,x
+                    ldd       >$0000             | REQUIRED because the wait count of $2800 was
+                    bne       w@                 | Discovered while 6 padding cycles was included
+                    puls      b,x,pc
 
-erase8KBlock
-        ldx	#0
-        bsr	Erase4KSector
-        ldx	#1
-        bsr	Erase4KSector
-        rts
 
 GetStat             clrb
                     rts
@@ -390,7 +388,7 @@ x@                  rts                           return
 ReadFlashID
 	pshs	cc
 	orcc	#IntMasks
-	ldb	>MMU_SLOT_0+MMU_SLOT
+	ldb	>MMU_WORKSLOT
 	pshs	b
 	lbsr	FlashSend5555AA                 * Send command "Software ID Entry"
 	lbsr	FlashSend2AAA55
@@ -403,7 +401,7 @@ ReadFlashID
 	ldb	#$F0
 	lbsr	FlashSend5555XX
 	puls	b
-	stb	>MMU_SLOT_0+MMU_SLOT
+	stb	>MMU_WORKSLOT
 	clr	isFlash,u
 	cmpx	FLASH_ID_256K,pcr
 	beq	f@
@@ -417,10 +415,10 @@ s@	puls	cc,pc
 ShowFlashID
 	pshs	cc
 	orcc	#IntMasks
-	ldb	>MMU_SLOT_0+MMU_SLOT
+	ldb	>MMU_WORKSLOT
 	pshs	b
 	ldb	#$C2				text bank
-	stb	>MMU_SLOT_0+MMU_SLOT 
+	stb	>MMU_WORKSLOT 
 
 	tfr       x,d
 	lsra                          do cheap binary to 4-digit HEX ASCII string
@@ -451,7 +449,7 @@ ShowFlashID
 	sta	>MMU_WINDOW+80+79
 
 	puls	b
-	stb	>MMU_SLOT_0+MMU_SLOT
+	stb	>MMU_WORKSLOT
 
 	clrb                          clear error code and carry flag
 	puls	cc,pc
