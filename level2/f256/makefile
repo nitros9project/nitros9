@@ -245,7 +245,7 @@ $(DSKDW_F256JR):
 
 $(DSKCART_F256JR):
 	$(RM) $@
-	$(OS9FORMAT_C256) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
+	$(OS9FORMAT_CART) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9COPY) bootfiles/bootfile_cart $@,OS9Boot
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
