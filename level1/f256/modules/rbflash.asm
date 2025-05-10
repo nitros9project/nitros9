@@ -209,7 +209,7 @@ c@                  ldb       ,s                  get source block from reg.a po
                     stu       ,x++
                     leay      -1,y
                     bne       c@
-                    puls      u,x,y,pc
+                    puls      d,u,x,y,pc
 
 * Scheme as of 5/9/2025 (Worked to erase/rewrite 4K Flash sectors)
 * Copy 8K Flash block into 8K cache.
