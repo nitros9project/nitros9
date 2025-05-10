@@ -1,15 +1,29 @@
 ********************************************************************
 * rbflash - F256 RAM and Flash Cartridge Driver
+* Based on rbmem
+* R Taylor
 *
-* TEMPORARY driver
-* This will eventually and hopefully become part of a cleaner rbmem
-* and do what it's supposed to do.   R Taylor
+* This Driver is For Testing Only
+* Data corruption is likely.  Use at your own risk.
+* For each 256-byte OS-9 sector written to the Flash cartridge,
+* a separate rewrite of the associated 4K Flash sector is made!
+* During Init and/or GetStat, the Flash ID is shown on the F256
+* text screen in the upper right corner.
+*
+* This revision appears to have a geometry bug causing
+* the backup command to read past the track limit.
 *
 * $Id$
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
+*
+*   0/0    2025/5/9    R Taylor
+* 4KB Flash sector version, has predictable write corruption, not sure if it's a geometrical bug. 
+* When using the Backup command from a same-size DriveWire disk, Backup attempts to read past the
+* last track.
+
 
                     use       defsfile
 
@@ -47,9 +61,8 @@ FLASH_ID_256K       fdb       $BFD6	      SST brand
 FLASH_ID_512K       fdb       $BFD7	      SST brand
 
 *ERASE_WAIT          equ       $2800           Tightest safe delay only when using    leax -1,x  cmpx #0000  bne loop  method
-ERASE_WAIT          equ       $2900           trial
-*ERASE_WAIT          equ       $3000           trial delay
-
+*ERASE_WAIT          equ       $2800*2           trial
+ERASE_WAIT          equ       $3000           trial delay
 
 ModEntry            lbra       Init
                     lbra       Read
@@ -77,6 +90,7 @@ Init                lda       #1                  only can handle 1 drive descri
                     os9       F$AllRAM
                     bcs       x@
                     stb       SwapBlock,u
+*                    lbsr      Wipe                Called from Init just as a test to see if it wipes the Flash
                     clrb
 x@                  rts
 
@@ -201,6 +215,9 @@ l@                  pulu      d,x                 get 4 bytes
 * Erase the 4K Flash sector that the 256-byte OS-9 sector will be in.
 * Write back only the correct 4K sector of the 8K working RAM block.
 
+* Determine which half of the 8K working RAM block our 256-byte OS-9 sector is in.
+* Then write that 4K sector to a 4K Flash sector.
+
 TfrFSect            pshs      x,y
                     ldx       #MMU_WINDOW
                     ldy       #8192
@@ -217,9 +234,6 @@ c@                  ldb       FlashBlock,u
                     lda       SwapBlock,u
                     lbsr      TfrSect               Write the 256-byte sector into the 8K work RAM block
                     puls      x
-
-* Determine which half of the 8K working RAM block our 256-byte OS-9 sector is in.
-* Then write that 4K sector to a 4K Flash sector.
                     tfr       x,d                   X = address of OS-9 256-byte sector
                     anda      #$10                  compute which half of the 8K Flash block it's in
                     tfr       d,x               
@@ -240,7 +254,10 @@ w@                  ldb       SwapBlock,u
                     lbsr      FlashSend5555XX $A0
                     ldb       FlashBlock,u
                     stb       >MMU_SLOT_0+MMU_SLOT
-                    sta       ,x+
+                    tfr       a,b                  **** Required, put data on bus early
+                    stb       ,x+                  **** Required, when address changes the data is latched
+v@                  cmpa      -1,x                 **** Required, compare data with Flash contents
+                    bne       v@                   **** Required, wait for data to read back the same
                     leay      -1,y
                     bne       w@
                     lda       SaveMMU,u
@@ -249,34 +266,36 @@ w@                  ldb       SwapBlock,u
                     clrb
 x@                    rts                           return
 
+
+
 * Address $5555 in chip is in block $82 and when block $82 is mapped to $4000 (MMU SLOT 2),
 * the address $5555 translates to $5555, because $5555 becomes $1555 then added to $4000.
 FlashSend5555AA
-        pshs	d
+        pshs	a
 	lda	#$82                            $42 for onboard Flash
 	sta	>MMU_SLOT_0+MMU_SLOT
 	lda	#$AA
 	sta	$5555				If using MMU_SLOT_2
-	puls	d,pc
+	puls	a,pc
 
 FlashSend5555XX
 * Address $5555 in chip is in block $82 and when block $82 is mapped to $4000 (MMU SLOT 2),
 * the address $5555 translates to $5555, because $5555 becomes $1555 then added to $4000.
-        pshs	d
+        pshs	a
 	lda	#$82                            $42 for onboard Flash?
 	sta	>MMU_SLOT_0+MMU_SLOT
 	stb	$5555				If using MMU_SLOT_2
-	puls	d,pc
+	puls	a,pc
 
 * Address $2AAA in chip is in block $81 and when block $81 is mapped to $4000 (MMU SLOT 2),
 * the address $2AAA translates to $4AAA, because $2AAA becomes $0AAA then added to $4000.
 FlashSend2AAA55
-	pshs	d
+	pshs	a
 	lda	#$81                            $41 for onboard Flash?
 	sta	>MMU_SLOT_0+MMU_SLOT
 	lda	#$55
 	sta	$4AAA				If using MMU_SLOT_2
-	puls    d,pc
+	puls    a,pc
 
 * 3.3 Sector Erase Operation
 * The Sector Erase operation allows the system to erase
@@ -294,6 +313,13 @@ FlashSend2AAA55
 * Polling or Toggle Bit methods. See Figure 7-6 for timing
 * waveforms. Any commands written during the Sector
 * Erase operation will be ignored.
+* During an internal Erase operation, any attempt to read
+* DQ7 will produce a ‘0’. Once the internal Erase
+* operation is completed, DQ7 will produce a ‘1’. The
+* Data# Polling is valid after the rising edge of fourth
+* WE# (or CE#) pulse for Program operation. For Sector
+* or Chip Erase, the Data# Polling is valid after the rising
+* edge of sixth WE# (or CE#) pulse.
 
 Erase4KSector
 	pshs	x,b			block num to erase
@@ -316,7 +342,7 @@ u@	ldb	,s			get block num from stack
 	sta	MMU_WINDOW+$1000	Place address of 4k block on the address bus
 d@	ldx	#ERASE_WAIT 		delay to fully erase Flash sector
 w@	leax	-1,x
-	cmpx    #$0000                  <--- Used to tweak the delay based on $2800
+        cmpx    #0
 	bne	w@                      <---  until another delay value is tested WITHOUT using cmpx #$0000
 	puls    b,x,pc
 
@@ -328,31 +354,36 @@ erase8KBlock
         rts
 
 GetStat             pshs      a,x,y,u
-                    lbsr      ReadFlashID
-                    lbsr      ShowFlashID
                     clrb                          clear error code and carry flag
                     puls      a,x,y,u,pc          return
 
-SetStat             cmpb      #SS.WTrk            format (write) track (u=track#, d/y = side and density)
-                    bne       cx@
-                    cmpu      #0                  trigger a wipe of the entire Flash cart if track # = 0
-                    bne       cx@
+SetStat
+                    clrb
+                    rts
+
+* How do we get the current track that the Format command is trying to write?
+                    ldx       PD.Rgs,y            ; Retrieve request
+                    ldb       R$B,x
+                    cmpb      #SS.Wtrk            ; Write (format) a track
+                    bne       x@
+                    leax      DRVBEG,u            Point to 1st normal drive table
+                    lda       <V.TRAK,x           Init Current track # to $FF
+                    cmpa      #0                  Is this right?  We need to know if the device is at track 0
+                    bne       x@
 * Chip Erase 5555H AAH,  2AAAH 55H,  5555H 80H,  5555H AAH,  2AAAH 55H,  5555H 10H
-                    pshs	cc
+Wipe                clrb
+                    pshs        cc
                     orcc	#IntMasks
                     lbsr	FlashSend5555AA
                     lbsr	FlashSend2AAA55
-                    ldb	#$80
+                    ldb         #$80
                     lbsr	FlashSend5555XX
                     lbsr	FlashSend5555AA
                     lbsr	FlashSend2AAA55
-                    lda	#$10			Place #$10 (Chip Erase Command) on the data bus
+                    ldb         #$10			Place #$10 (Chip Erase Command) on the data bus
                     lbsr	FlashSend5555XX
                     puls	cc
-                    ldx         #180
-                    os9         F$Sleep
-cx@                 clrb                          clear error code and carry flag
-                    rts                           return
+x@                  rts                           return
 
 
 * The SST39LF010/020/040 and SST39VF010/020/040

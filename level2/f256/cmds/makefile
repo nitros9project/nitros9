@@ -14,19 +14,21 @@ LFLAGS		+= -L$(NITROS9DIR)/lib -L$(LEVEL2)/$(PORT)/libs
 LFLAGS		+= -lf256 -lfnxsnd
 LFLAGS		+= -lnet -lalib -lnos96809l2
 
-BASIC09	= basic09 runb inkey syscall foenix
-BF      = bf
-CPM     = cpm
-CMDS_DW = inetd dw telnet httpd
-CMDS    = asm attr backup bawk binex build cmp copy \
-		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
+BASIC09       = basic09 runb inkey syscall foenix
+BF            = bf
+CPM           = cpm
+CMDS_DW       = inetd dw telnet httpd
+CMDS_LARGE    = disasm modpatch rogue grep shellplus play
+CMDS_CART     = asm attr backup bawk binex build cmp copy \
+		date dcheck debug ded deiniz del deldir devs dir dirsort \
 		display dmem dmode dsave dump echo edit error exbin \
 		format free grep help ident iniz irqs link list load login \
 		makdir mdir megaread merge mergeln mfree minted mmap modpatch more padrom park \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
-		bootos9 fnxinfo fnxreset rogue fstatus xtclut drawtest play \
-		$(CMDS_DW)
+		bootos9 fnxinfo fnxreset fstatus xtclut drawtest
+CMDS          = $(CMDS_CART) $(CMDS_LARGE) $(CMDS_DW)
+
 # $(BASIC09) $(BF) $(CPM)
 
 SHELLMODS	= shellplus echo iniz link load save unlink
@@ -85,7 +87,7 @@ showobjs_dw:
 	@$(ECHO) shell utilpak1 $(sort $(CMDS))
 
 showobjs_cart:
-	@$(ECHO) shell utilpak1 $(sort $(CMDS))
+	@$(ECHO) shell utilpak1 $(sort $(CMDS_CART))
 
 identify:
 	$(IDENT_SHORT) $(ALLOBJS)

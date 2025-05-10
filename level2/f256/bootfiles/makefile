@@ -117,7 +117,7 @@ BOOTFILE_CART = $(KERNELP2) \
 		$(FONT) $(PALETTE) \
 		$(DWIO) \
 		$(RBF) $(RBDW) $(RBSUPER) $(RBFNXSD) \
-		$(RBMEM) $(MD)/ddc0.dd $(MD)/c0.dd \
+		$(RBMEM) $(MD)/ddc0.dd \
 		$(RBFLASH) $(WIZFI) \
 		$(CLOCK) \
 		$(MD)/sysgo \
