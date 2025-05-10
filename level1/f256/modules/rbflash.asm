@@ -4,8 +4,13 @@
 * R Taylor
 * Editor tabs are 21,31,51
 *
+* Flash Wear warning: For each 256-byte OS-9 sector written to the
+* Flash cartridge a separate rewrite of the associated 4K Flash
+* sector is made!
+*
 * This Driver is For Testing Only
 * Data corruption is likely.  Use at your own risk.
+*
 * During Init the Flash ID is shown on the F256
 * text screen in the upper right corner.
 *
@@ -17,11 +22,8 @@
 *
 *   0/0    2025/5/9    R Taylor
 * 4KB Flash sector version, has predictable write corruption, not
-* sure if it's a geometrical bug. When using the Backup command
-* from a same-size/geometry source disk, Backup attempts to read
-* past the last track. Flash writes are being verified in real time.
-* For each 256-byte OS-9 sector written to the Flash cartridge,
-* a separate rewrite of the associated 4K Flash sector is made!
+* sure if it's a geometrical bug, but Flash byte writes are being
+* verified for each byte, so the writes are valid.
 
 
                     use       defsfile
@@ -29,7 +31,7 @@
 
 MMU_SLOT            equ       2
 MMU_WINDOW          equ       $2000*MMU_SLOT
-MMU_WORKSLOT        equ       MMU_WORKSLOT
+MMU_WORKSLOT        equ       MMU_SLOT_0+MMU_SLOT
 
 tylg                set       Drivr+Objct
 atrv                set       ReEnt+rev
@@ -111,7 +113,7 @@ Read                lda       >MMU_WORKSLOT       save the MMU block number
                     bsr       TfrSect             else transfer the sector from the RAM drive to PD.BUF
                     puls      y,x                 restore the pointers
                     leax      ,x                  is this LSN0?
-                    bne       CleanRWExit         branch if not
+                    lbne      CleanRWExit         branch if not
                     ldx       PD.BUF,y            else get the path descriptor buffer into X
                     leay      DRVBEG,u            point to the start of the drive table
 * 6809 - Use StkBlCpy (either system wide or local to driver).
@@ -120,14 +122,8 @@ l@                  lda       ,x+                 get a byte from the source
                     sta       ,y+                 save it in the destination
                     decb                          decrement the counter
                     bne       l@                  branch of more to do
-                    bra       CleanRWExit
+                    lbra      CleanRWExit
 ex@                 puls      y,x,pc              restore registers and return
-
-CleanRWExit         lda       SaveMMU,u
-                    sta       >MMU_WORKSLOT       restore the MMU block number
-                    clrb
-                    andcc     #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
-                    rts
 
 * Subroutine to calculate MMU block number and offset based on the requested sector.
 *
@@ -249,15 +245,15 @@ w@                  ldb       CacheBlock,u
                     lbsr      FlashSend5555XX     $A0
                     ldb       FlashBlock,u
                     stb       >MMU_WORKSLOT
-                    tfr       a,b                 | REQUIRED: put data on bus early
-                    stb       ,x+                 | REQUIRED: when address changes the data is latched
-v@                  cmpa      -1,x                | REQUIRED: compare data with Flash contents which
-                    bne       v@                  | REQUIRED: wait for Flash contents to match
+                    tfr       a,b                 REQUIRED: put data on bus early
+                    stb       ,x+                 REQUIRED: when address changes the data is latched
+v@                  cmpa      -1,x                REQUIRED: compare data with Flash contents which
+                    bne       v@                  REQUIRED: wait for Flash contents to match
                     leay      -1,y
                     bne       w@
-                    lda       SaveMMU,u
+CleanRWExit         lda       SaveMMU,u
                     sta       >MMU_WORKSLOT       remap in system block 0
-                    andcc     #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
+                    andcc     #^IntMasks          turn on interrupts and clear carry to indicate no error
                     clrb                          no errors
                     rts
 
@@ -332,8 +328,8 @@ u@	ldb	,s			get block num from stack
 	sta	MMU_WINDOW+$1000	Place address of 4k block on the address bus
 d@	ldx	#ERASE_WAIT 		delay to fully erase Flash sector
 w@                  leax      -1,x
-                    ldd       >$0000             | REQUIRED because the wait count of $2800 was
-                    bne       w@                 | Discovered while 6 padding cycles was included
+                    ldd       >$0000             REQUIRED because the wait count of $2800 was
+                    bne       w@                 Discovered while 6 padding cycles was included
                     puls      b,x,pc
 
 
