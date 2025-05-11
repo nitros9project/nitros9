@@ -1,15 +1,12 @@
 ********************************************************************
 * rbflash - F256 RAM and Flash Cartridge Driver
+* This Driver is For Testing Only
 * Based on rbmem
-* R Taylor
 * Editor tabs are 21,31,51
 *
 * Flash Wear warning: For each 256-byte OS-9 sector written to the
 * Flash cartridge a separate rewrite of the associated 4K Flash
 * sector is made!
-*
-* This Driver is For Testing Only
-* Data corruption is likely.  Use at your own risk.
 *
 * During Init the Flash ID is shown on the F256
 * text screen in the upper right corner.
@@ -20,7 +17,11 @@
 * Comment
 * ------------------------------------------------------------------
 *
-*   0/0    2025/5/9    R Taylor
+*   1/1    2025/5/10   R Taylor
+* Flash LSN bug appears to be fixed. The Flash programming verifier
+* has been commented out until more testing.
+*
+*   1/0    2025/5/9    R Taylor
 * 4KB Flash sector version, has predictable write corruption, not
 * sure if it's a geometrical bug, but Flash byte writes are being
 * verified for each byte, so the writes are valid.
@@ -35,7 +36,7 @@ MMU_WORKSLOT        equ       MMU_SLOT_0+MMU_SLOT
 
 tylg                set       Drivr+Objct
 atrv                set       ReEnt+rev
-rev                 set       $00
+rev                 set       $01
 edition             set       1
 
                     mod       eom,name,tylg,atrv,ModEntry,size
@@ -249,7 +250,7 @@ w@                  ldb       CacheBlock,u
                     stb       ,x+                 REQUIRED: when address changes the data is latched
 v@                  cmpa      -1,x                REQUIRED: compare data with Flash contents, 1st read
                     cmpa      -1,x                REQUIRED: compare data with Flash contents, 2nd read
-                    bne       v@                  REQUIRED: wait for byte to match, per datasheet flowchart
+*                    bne       v@                  REQUIRED: wait for byte to match, per datasheet flowchart
                     leay      -1,y
                     bne       w@
 CleanRWExit         lda       SaveMMU,u
