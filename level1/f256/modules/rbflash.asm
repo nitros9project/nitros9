@@ -63,7 +63,7 @@ FLASH_ID_512K       fdb       $BFD7	      SST brand
 
 *ERASE_WAIT          equ       $2800           Tightest safe delay only when using    leax -1,x  cmpx #0000  bne loop  method
 *ERASE_WAIT          equ       $2800*2           trial
-ERASE_WAIT          equ       $3000           trial delay
+ERASE_WAIT          equ       $6000           trial delay
 
 ModEntry            lbra      Init
                     lbra      Read
@@ -179,7 +179,7 @@ x@                  rts
 
 * Transfer data between the RBF sector buffer & the RAM drive image sector buffer.
 * Both READ and WRITE (with X,Y swapping between the two) call this routine.
-TfrSect             sta       >MMU_WORKSLOT switch in the working block 
+TfrSect             sta       >MMU_WORKSLOT       switch in the working block 
 * 6809 - Use StkBlCpy (either system wide or local to driver) ?
                     ldb       #64                 64 sets of 4 bytes to copy
                     pshs      b,u                 save the counter & U
@@ -223,10 +223,10 @@ TfrFSect            lda       FlashBlock,u        copy from Flash block to Cache
                     bsr       BlockCopy
                     pshs      x
                     lda       CacheBlock,u
-                    lbsr      TfrSect             Write the 256-byte sector into the 8K work RAM block
+                    lbsr      TfrSect             Write the 256-byte sector into the 8K cache
                     puls      x
                     tfr       x,d                 X = address of OS-9 256-byte sector
-                    anda      #$10                compute which half of the 8K Flash block it's in
+                    anda      #$10                compute which half of the 8K Flash block it's in (A12 of address)
                     tfr       d,x               
                     leax      MMU_WINDOW,x        base start of the RAM copy of the new Flash sector to write back
                     lsra
@@ -247,8 +247,9 @@ w@                  ldb       CacheBlock,u
                     stb       >MMU_WORKSLOT
                     tfr       a,b                 REQUIRED: put data on bus early
                     stb       ,x+                 REQUIRED: when address changes the data is latched
-v@                  cmpa      -1,x                REQUIRED: compare data with Flash contents which
-                    bne       v@                  REQUIRED: wait for Flash contents to match
+v@                  cmpa      -1,x                REQUIRED: compare data with Flash contents, 1st read
+                    cmpa      -1,x                REQUIRED: compare data with Flash contents, 2nd read
+                    bne       v@                  REQUIRED: wait for byte to match, per datasheet flowchart
                     leay      -1,y
                     bne       w@
 CleanRWExit         lda       SaveMMU,u
@@ -308,29 +309,32 @@ FlashSend2AAA55     pshs      a
 * or Chip Erase, the Data# Polling is valid after the rising
 * edge of sixth WE# (or CE#) pulse.
 
-Erase4KSector       pshs      x,b                 reg.b = block num to erase
+Erase4KSector       pshs      x,b,a                 reg.b = block num to erase
                     bsr       FlashSend5555AA
                     bsr       FlashSend2AAA55
                     ldb       #$80
                     bsr       FlashSend5555XX
                     bsr       FlashSend5555AA
                     bsr       FlashSend2AAA55
-	tsta	                        Which 4k sector of the 8k block do we erase?
+	tst     ,s	                        Which 4k sector of the 8k block do we erase?
 	bne	u@			if reg.a = 1 then go erase 2nd sector
-	ldb	,s			get block num from stack
-	stb	>MMU_WORKSLOT    map the block in
+	ldb	1,s			get Flash block num from stack
+	stb	>MMU_WORKSLOT           map the Flash block in
 	lda	#$30			Place #$30 (Sector Erase Command) on the data bus
 	sta	MMU_WINDOW		Place address of 4k block on the address bus
+	sta	MMU_WINDOW		Place address of 4k block on the address bus
 	bra	d@			go to the delay routine
-u@	ldb	,s			get block num from stack
-	stb	>MMU_WORKSLOT    map the block in
+u@	ldb	1,s			get Flash block num from stack
+	stb	>MMU_WORKSLOT           map the Flash block in
 	lda	#$30			Place #$30 (Sector Erase Command) on the data bus
 	sta	MMU_WINDOW+$1000	Place address of 4k block on the address bus
-d@	ldx	#ERASE_WAIT 		delay to fully erase Flash sector
+	sta	MMU_WINDOW+$1000	Place address of 4k block on the address bus
+	bra	d@			go to the delay routine
+d@                  ldx       #ERASE_WAIT 		delay to fully erase Flash sector
 w@                  leax      -1,x
                     cmpx      #0        REQUIRED because the wait count of $2800 was
                     bne       w@        Discovered while 6 padding cycles was included
-                    puls      b,x,pc
+                    puls      a,b,x,pc
 
 
 GetStat             clrb
