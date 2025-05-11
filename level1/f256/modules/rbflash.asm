@@ -221,11 +221,11 @@ c@                  ldb       ,s                  get source block from reg.a po
 TfrFSect            lda       FlashBlock,u        copy from Flash block to Cache block
                     ldb       CacheBlock,u
                     bsr       BlockCopy
-                    pshs      x
+                    pshs      x,y
                     lda       CacheBlock,u
                     lbsr      TfrSect             Write the 256-byte sector into the 8K cache
-                    puls      x
-                    tfr       x,d                 X = address of OS-9 256-byte sector
+                    puls      x,y
+                    tfr       y,d                 X = address of OS-9 256-byte sector
                     anda      #$10                compute which half of the 8K Flash block it's in (A12 of address)
                     tfr       d,x               
                     leax      MMU_WINDOW,x        base start of the RAM copy of the new Flash sector to write back
