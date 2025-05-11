@@ -49,6 +49,7 @@ SaveMMU             rmb       1
 FlashBlock          rmb       1
 CacheBlock          rmb       1
 IsFlash             rmb       1
+verify2             rmb       2
 
                     rmb       255-.               residual page RAM for stack etc. RG
 size                equ       .
@@ -81,9 +82,10 @@ ModEntry            lbra      Init
 Init                lda       #1                  only can handle 1 drive descriptor
                     sta       V.NDRV,u            update the device memory
                     leax      DRVBEG,u            point to the start of the drive table
-                    ldd       #$FFFF              set initialization value
-                    std       DD.TOT,x            set DD.TOT
-                    stb       DD.TOT+2,x          to this value
+                    lda       #$00
+                    sta       DD.TOT,x
+                    ldd       #$0400              set initialization value
+                    std       DD.TOT+1,x            set DD.TOT
                     ldd       M$Port+1,y          get port address in device descriptor
                     std       V.PORT,u            and save to device memory (used by CalcMMUBlock)
 
@@ -191,7 +193,7 @@ l@                  pulu      d,x                 get 4 bytes
                     dec       ,s                  decrement the 4 byte block counter
                     bne       l@                  branch until all 256 bytes are done
                     puls      b,u                 B = 0, restore U
-                    andcc     #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
+*                    andcc     #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
                     rts                           return
 
 * 8K block copier, using single MMU slot
@@ -212,13 +214,22 @@ c@                  ldb       ,s                  get source block from reg.a po
                     bne       c@
                     puls      d,u,x,y,pc
 
+CheckEmpty          pshs      d,y
+                    lda       ,y
+                    clrb
+a@                  anda      ,y+
+                    decb
+                    bne       a@
+                    coma                          $FF becomes $00 which sets CC.Z ?
+                    tsta
+                    puls      d,y,pc
+
 * Scheme as of 5/9/2025 (Worked to erase/rewrite 4K Flash sectors)
 * Copy 8K Flash block into 8K cache.
 * Copy OS-9 sector into correct spot in 8K cache.
 * Erase the associatated 4K Flash sector.
 * Program the 4K Flash sector using the 4K cache sector associated with the OS-9 sector.
 
-* Enter: X = address of OS-9 sector
 TfrFSect            lda       FlashBlock,u        copy from Flash block to Cache block
                     ldb       CacheBlock,u
                     bsr       BlockCopy
@@ -226,31 +237,45 @@ TfrFSect            lda       FlashBlock,u        copy from Flash block to Cache
                     lda       CacheBlock,u
                     lbsr      TfrSect             Write the 256-byte sector into the 8K cache
                     puls      x,y
-                    tfr       y,d                 X = address of OS-9 256-byte sector
+                    tfr       y,d                 Y = address of OS-9 256-byte sector within the 8K cache
                     anda      #$10                compute which half of the 8K Flash block it's in (A12 of address)
                     tfr       d,x               
                     leax      MMU_WINDOW,x        base start of the RAM copy of the new Flash sector to write back
+                    bsr       CheckEmpty
+                    beq       p@
                     lsra
                     lsra
                     lsra
-                    lsra                          compute 0=1st half of 4k Flash sector, 1=2nd half
+                    lsra                          compute 0=1st half of 4K Flash sector, 1=2nd half
                     ldb       FlashBlock,u        what 8K Flash block is the sector in?
-                    bsr       Erase4KSector
-                    ldy       #4096               write 4KB of bytes to the Flash
+                    lbsr      Erase4KSector
+p@                  ldy       #4096               write 4KB of bytes to the Flash
 w@                  ldb       CacheBlock,u
                     stb       >MMU_WORKSLOT
                     lda       ,x
-                    lbsr      FlashSend5555AA     Load data first, then address, command
-                    lbsr      FlashSend2AAA55
+*
+                    ldb       #$82
+                    stb       >MMU_WORKSLOT
+                    ldb       #$AA
+                    stb       >$5555
+*
+                    ldb       #$81
+                    stb       >MMU_WORKSLOT
+                    ldb       #$55
+                    stb       >$4AAA
+*
+                    ldb       #$82
+                    stb       >MMU_WORKSLOT
                     ldb       #$A0
-                    lbsr      FlashSend5555XX     $A0
+                    stb       >$5555
+*
                     ldb       FlashBlock,u
                     stb       >MMU_WORKSLOT
-                    tfr       a,b                 REQUIRED: put data on bus early
-                    stb       ,x+                 REQUIRED: when address changes the data is latched
-v@                  cmpa      -1,x                REQUIRED: compare data with Flash contents, 1st read
-                    cmpa      -1,x                REQUIRED: compare data with Flash contents, 2nd read
-*                    bne       v@                  REQUIRED: wait for byte to match, per datasheet flowchart
+                    ldb       ,x
+                    sta       ,x+                 REQUIRED: when address changes the data is latched
+v@                  cmpa       -1,x
+                    cmpa       -1,x
+                    bne       v@
                     leay      -1,y
                     bne       w@
 CleanRWExit         lda       SaveMMU,u
@@ -323,13 +348,13 @@ Erase4KSector       pshs      x,b,a                 reg.b = block num to erase
 	stb	>MMU_WORKSLOT           map the Flash block in
 	lda	#$30			Place #$30 (Sector Erase Command) on the data bus
 	sta	MMU_WINDOW		Place address of 4k block on the address bus
-	sta	MMU_WINDOW		Place address of 4k block on the address bus
+*	sta	MMU_WINDOW		Place address of 4k block on the address bus
 	bra	d@			go to the delay routine
 u@	ldb	1,s			get Flash block num from stack
 	stb	>MMU_WORKSLOT           map the Flash block in
 	lda	#$30			Place #$30 (Sector Erase Command) on the data bus
 	sta	MMU_WINDOW+$1000	Place address of 4k block on the address bus
-	sta	MMU_WINDOW+$1000	Place address of 4k block on the address bus
+*	sta	MMU_WINDOW+$1000	Place address of 4k block on the address bus
 	bra	d@			go to the delay routine
 d@                  ldx       #ERASE_WAIT 		delay to fully erase Flash sector
 w@                  leax      -1,x
