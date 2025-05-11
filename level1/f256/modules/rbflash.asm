@@ -42,8 +42,7 @@ edition             set       1
                     mod       eom,name,tylg,atrv,ModEntry,size
 
                     org       0
-
-                    rmb       DRVBEG+1*DRVMEM
+                    rmb       DRVBEG+(DRVMEM*1)
 
 SaveMMU             rmb       1
 FlashBlock          rmb       1
@@ -65,7 +64,7 @@ FLASH_ID_512K       fdb       $BFD7	      SST brand
 
 *ERASE_WAIT          equ       $2800           Tightest safe delay only when using    leax -1,x  cmpx #0000  bne loop  method
 *ERASE_WAIT          equ       $2800*2           trial
-ERASE_WAIT          equ       $6000           trial delay
+ERASE_WAIT          equ       $2800           trial delay
 
 ModEntry            lbra      Init
                     lbra      Read
@@ -79,13 +78,18 @@ ModEntry            lbra      Init
 * Entry: Y = Address of device descriptor.
 *        U = Device memory area.
 * NOTE: All of device memory (Except V.PORT) are cleared to 0's.
-Init                lda       #1                  only can handle 1 drive descriptor
-                    sta       V.NDRV,u            update the device memory
-                    leax      DRVBEG,u            point to the start of the drive table
-                    lda       #$00
-                    sta       DD.TOT,x
-                    ldd       #$0400              set initialization value
-                    std       DD.TOT+1,x            set DD.TOT
+Init
+                    leax      DRVBEG,u            point to the beginning of the drive tables
+
+                    ldd       #$ffff              Number of total sectors, set to illegal value
+                    stb       DD.TOT,x
+                    std       DD.TOT+1,x
+                    stb       V.TRAK,x
+
+
+                    ldd       #$0100              A=$01 B=$00
+                    stb       V.NDRV,u            $01
+
                     ldd       M$Port+1,y          get port address in device descriptor
                     std       V.PORT,u            and save to device memory (used by CalcMMUBlock)
 
@@ -95,7 +99,7 @@ Init                lda       #1                  only can handle 1 drive descri
                     os9       F$AllRAM
                     bcs       x@
                     stb       CacheBlock,u
-*                    lbsr      Wipe                Called from Init just as a test to see if it wipes the Flash
+                    lbsr      Wipe                Called from Init just as a test to see if it wipes the Flash
                     clrb
 x@                  rts
 
