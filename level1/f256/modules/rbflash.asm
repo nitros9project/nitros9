@@ -81,13 +81,14 @@ ModEntry            lbra      Init
 Init
                     leax      DRVBEG,u            point to the beginning of the drive tables
 
-                    ldd       #$ffff              Number of total sectors, set to illegal value
-                    stb       DD.TOT,x
+                    ldd       #$0400              Number of total sectors
+                    clr       DD.TOT,x
                     std       DD.TOT+1,x
+
+                    ldb       #-1
                     stb       V.TRAK,x
 
-
-                    ldd       #$0100              A=$01 B=$00
+                    ldb       #$01
                     stb       V.NDRV,u            $01
 
                     ldd       M$Port+1,y          get port address in device descriptor
@@ -99,7 +100,7 @@ Init
                     os9       F$AllRAM
                     bcs       x@
                     stb       CacheBlock,u
-                    lbsr      Wipe                Called from Init just as a test to see if it wipes the Flash
+*                    lbsr      Wipe                Called from Init just as a test to see if it wipes the Flash
                     clrb
 x@                  rts
 
