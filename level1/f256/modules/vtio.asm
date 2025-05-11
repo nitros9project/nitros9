@@ -2035,10 +2035,54 @@ errormove@          puls      x
                     puls      u                   come here on F$Move error
                     bsr       clearblock
                     coma                          set carry bit on error
-end@                puls      u,y,x,a
-                    rts
+end@                puls      u,y,x,a,pc
 
-clutlookup          fdb       $1000,$1400,$0800,$0C00
+clutlookup          fdb       $1000,$1400,$1800,$1C00
+
+
+;;; mapblock
+;;; Map a block into the system process map
+;;;
+;;; Entry:  X = block to map (like $C1)
+;;;
+;;; Exit:   U = address of first block
+;;;         B = a non-zero error code (F$MapBlk)
+;;;        CC = carry flag clear=success set=error
+;;;
+;;; F$MapBlk only works to map for the current processin D.Proc
+;;; To use F$MapBlk for the system, assign system to D.Proc
+;;; Call F$MapBlk, then change the processes back
+;;; Make sure to mask interrupts so processes don't switch while
+;;; the change is happening
+;;;
+;;; Does not preserve a,b,x,y,u
+mapblock	    pshs      cc		  push cc and mask interrupts
+		    orcc      #IntMasks
+                    ldy       <D.Proc	          ldy with current process descriptor
+                    pshs      y			  store current proc descriptor on stack
+                    ldy       <D.SysPrc		  copy system proc descriptor to current
+                    sty       <D.Proc
+                    ldb       #$01                map 1 block at address x (x set on entry) 
+                    os9       F$MapBlk
+                    puls      y	                  pull current proc descriptor from stack
+                    sty       <D.Proc		  and save it back
+                    bcs       errnomap@		  if F$MapBlok error, then handle error
+		    puls      cc,pc		  if no error, pull cc and return
+errnomap@	    puls      cc		  if error, pull cc
+		    coma      			  set carry bit
+		    rts				  and return
+;;; clearblock
+;;; clear a mapped block from the system process map
+;;;
+;;; Entry:  U = address of first block to clear
+;;;
+;;; Exit:   Nothing
+;;;
+;;; F$ClrBlk only works with the current process, so assign
+;;; system process to current process, clear the block
+;;; then switch it back
+;;;
+;;; Does not preserve a,b
 
 clearblock          pshs      cc
                     orcc      #IntMasks           u=logical address of block on entry
