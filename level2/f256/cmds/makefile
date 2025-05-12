@@ -17,17 +17,20 @@ LFLAGS		+= -lnet -lalib -lnos96809l2
 BASIC09       = basic09 runb inkey syscall foenix
 BF            = bf
 CPM           = cpm
-CMDS_DW       = inetd dw telnet httpd
-CMDS_LARGE    = disasm modpatch rogue grep shellplus play
-CMDS_CART     = asm attr backup bawk binex build cmp copy \
+
+CMDS_LITE      = asm attr backup bawk binex bootos9 build cmp copy grep \
 		date dcheck debug ded deiniz del deldir devs dir dirsort \
 		display dmem dmode dsave dump echo edit error exbin \
 		format free grep help ident iniz irqs link list load login \
-		makdir mdir megaread merge mergeln mfree minted mmap modpatch more padrom park \
-		pmap proc procs prompt pwd pxd rename save setime shellplus \
-		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
-		bootos9 fnxinfo fnxreset fstatus xtclut drawtest
-CMDS          = $(CMDS_CART) $(CMDS_LARGE) $(CMDS_DW)
+		makdir mdir megaread merge mergeln mfree minted mmap more  \
+		pmap proc procs prompt pwd pxd rename save setime \
+		sleep smap tee tmode touch tsmon unlink verify xmode \
+		 fnxinfo fnxreset fstatus xtclut
+CMDS_EXTRAS    = disasm modpatch rogue shellplus play padrom park drawtest shell_21 basic09
+CMDS_DW        = inetd dw telnet httpd
+
+CMDS          = $(CMDS_LITE) $(CMDS_EXTRAS) $(CMDS_DW)
+CMDS_CART     = $(CMDS_LITE)
 
 # $(BASIC09) $(BF) $(CPM)
 
