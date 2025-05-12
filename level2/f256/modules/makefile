@@ -34,7 +34,8 @@ SCF		= scf.mn \
 		n13_scdwv.dd midi_scdwv.dd \
 		z1_scdwv.dd z2_scdwv.dd z3_scdwv.dd z4_scdwv.dd z5_scdwv.dd \
 		z6_scdwv.dd z7_scdwv.dd z8_scdwv.dd z9_scdwv.dd z10_scdwv.dd \
-		z11_scdwv.dd z12_scdwv.dd z13_scdwv.dd z14_scdwv.dd
+		z11_scdwv.dd z12_scdwv.dd z13_scdwv.dd z14_scdwv.dd \
+                wizfi.dr wz.dd
 
 PIPE		= pipeman.mn pipeman_named.mn piper.dr pipe.dd
 
@@ -46,6 +47,12 @@ ALLOBJS		=  $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(PIPE) $(RFM) $(FONTS)
 all:	$(ALLOBJS)
 
 sysgo: sysgo.o
+
+# WizFi360 chip
+wizfi.dr: wizfi.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
+wz.dd: wz.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
 
 # Kernel
 krn: $(LEVEL2)/modules/kernel/krn.asm
