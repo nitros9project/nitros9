@@ -1,0 +1,1 @@
+PROCEDURE circleDIM name:STRINGDIM bm0:INTEGERFOR i=$FEE0 TO $FEEFPOKE i,$00NEXT iRUN foenix("Clear")RUN foenix("Bitmap",0,0,bm0,0,0,"/DD/CMDS/XTCLUT")RUN foenix("Gon")RUN foenix("BMClear",bm0,0)RUN foenix("Circle",100,100,15,0,6,bm0)FOR i=$FEE0 TO $FEEFPRINT PEEK(i); "  "; NEXT iINPUT "Cont <Enter>",nameRUN foenix("BMoff",0)RUN foenix("Goff")

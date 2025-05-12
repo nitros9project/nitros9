@@ -1,0 +1,1 @@
+PROCEDURE maptstDIM nm:STRINGDIM radd,page:INTEGERpage=193RUN foenix("MapBlk",page,radd)PRINT "Page="; pagePRINT "Mapped Addr="; raddSHELL "pmap"INPUT "<Cont>",nmRUN foenix("ClrBlk",page,radd)SHELL "pmap"
