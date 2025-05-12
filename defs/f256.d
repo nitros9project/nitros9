@@ -121,6 +121,16 @@ KrnBlk              SET       $7
                   ENDC
 
 ********************************************************************
+* Custom SetStats for F256
+*
+		    org	      $C0
+SS.FntLoadM	    rmb	      1
+SS.FntLoadF         rmb	      1
+SS.FntChar	    rmb	      1
+SS.SOLIRQ	    rmb	      1
+SS.SOLMUTE	    rmb	      1
+
+********************************************************************
 * System control definitions
 *
 SYS0                equ       $FE00
@@ -488,6 +498,12 @@ TEXT_LUT_FG         equ       $FF00
 TEXT_LUT_BG         equ       $FF40
 
 ********************************************************************
+* F256 font definitions
+FONT_BLK            equ	      $C1
+FONT_0_OFFSET	    equ	      $0000
+FONT_1_OFFSET	    equ	      $0800
+
+********************************************************************
 * F256 SD card interface definitions
 *
 SDC.Base            equ       $FE90
@@ -536,13 +552,13 @@ VKY_TXT_CURSOR_Y_REG_H rmb       1
 VKY_TXT_CURSOR_Y_REG_L rmb       1
 ; Line interrupt
 VKY_LINE_IRQ_CTRL_REG rmb       1         [0] - enable line 0 - write only
-VKY_LINE_CMP_VALUE_LO rmb       1         write only [7:0]
-VKY_LINE_CMP_VALUE_HI rmb       1         write only [3:0]
+VKY_LINE_CMP_VALUE_HI rmb       1         write only [7:0]
+VKY_LINE_CMP_VALUE_LO rmb       1         write only [3:0]
 
-VKY_PIXEL_X_POS_LO  equ       VKY_LINE_IRQ_CTRL_REG this is where on the video line is the pixel
-VKY_PIXEL_X_POS_HI  equ       VKY_LINE_CMP_VALUE_LO or what pixel is being displayed when the register is read
-VKY_LINE_Y_POS_LO   equ       VKY_LINE_CMP_VALUE_HI this is the line value of the raster
-VKY_LINE_Y_POS_HI   rmb       1
+VKY_PIXEL_X_POS_HI  equ       VKY_LINE_IRQ_CTRL_REG this is where on the video line is the pixel
+VKY_PIXEL_X_POS_LO  equ       VKY_LINE_CMP_VALUE_LO or what pixel is being displayed when the register is read
+VKY_LINE_Y_POS_HI   equ       VKY_LINE_CMP_VALUE_HI this is the line value of the raster
+VKY_LINE_Y_POS_LO   rmb       1
 
 * Text control bit definitions
 Mstr_Ctrl_Text_Mode_En equ       $01       enable the text mode
@@ -690,19 +706,19 @@ TILE_MAP_ADDY7      equ       $F19C
 
 
 XYMATH_CTRL_REG     equ       $D300     reserved
-XYMATH_ADDY_L       equ       $D301     w
+XYMATH_ADDY_H       equ       $D301     w
 XYMATH_ADDY_M       equ       $D302     w
-XYMATH_ADDY_H       equ       $D303     w
-XYMATH_ADDY_POSX_L  equ       $D304     r/w
-XYMATH_ADDY_POSX_H  equ       $D305     r/w
-XYMATH_ADDY_POSY_L  equ       $D306     r/w
-XYMATH_ADDY_POSY_H  equ       $D307     r/w
-XYMATH_BLOCK_OFF_L  equ       $D308     r only - low block offset
-XYMATH_BLOCK_OFF_H  equ       $D309     r only - hi block offset
+XYMATH_ADDY_L       equ       $D303     w
+XYMATH_ADDY_POSX_H  equ       $D304     r/w
+XYMATH_ADDY_POSX_L  equ       $D305     r/w
+XYMATH_ADDY_POSY_H  equ       $D306     r/w
+XYMATH_ADDY_POSY_L  equ       $D307     r/w
+XYMATH_BLOCK_OFF_H  equ       $D308     r only - low block offset
+XYMATH_BLOCK_OFF_L  equ       $D309     r only - hi block offset
 XYMATH_MMU_BLOCK    equ       $D30A     r only - which mmu block
-XYMATH_ABS_ADDY_L   equ       $D30B     low absolute results
+XYMATH_ABS_ADDY_H   equ       $D30B     low absolute results
 XYMATH_ABS_ADDY_M   equ       $D30C     mid absolute results
-XYMATH_ABS_ADDY_H   equ       $D30D     hi absolute results
+XYMATH_ABS_ADDY_L   equ       $D30D     hi absolute results
 
 ; Sprite block0
 SPRITE_Ctrl_Enable  equ       $01

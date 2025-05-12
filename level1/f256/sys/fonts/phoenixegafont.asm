@@ -8,7 +8,9 @@
 * ------------------------------------------------------------------
 *   1      2023/09/24  Boisy G. Pitre
 * Created.
-*
+*   2      2025-01-07  Added custom NitrOS-9 and Basic09 custom fonts $01-15
+*          by Matt Massie
+
                nam       font
                ttl       F256 font
 
@@ -26,28 +28,28 @@ start
 
 
 L0000    fcb   $00,$00,$00,$00,$00,$00,$00,$00   ........
-L0008    fcb   $7E,$81,$A5,$81,$BD,$99,$81,$7E   ~.%.=..~
-L0010    fcb   $3C,$7E,$DB,$FF,$C3,$7E,$3C,$00   <~[.C~<.
-L0018    fcb   $00,$EE,$FE,$FE,$7C,$38,$10,$00   .n..|8..
-L0020    fcb   $10,$38,$7C,$FE,$7C,$38,$10,$00   .8|.|8..
-L0028    fcb   $00,$3C,$18,$FF,$FF,$08,$18,$00   .<......
-L0030    fcb   $10,$38,$7C,$FE,$FE,$10,$38,$00   .8|...8.
-L0038    fcb   $00,$00,$18,$3C,$18,$00,$00,$00   ...<....
-L0040    fcb   $FF,$FF,$E7,$C3,$E7,$FF,$FF,$FF   ..gCg...
-L0048    fcb   $00,$3C,$42,$81,$81,$42,$3C,$00   .<B..B<.
-L0050    fcb   $FF,$C3,$BD,$7E,$7E,$BD,$C3,$FF   .C=~~=C.
-L0058    fcb   $01,$03,$07,$0F,$1F,$3F,$7F,$FF   .....?..
-L0060    fcb   $FF,$FE,$FC,$F8,$F0,$E0,$C0,$80   ...xp`@.
-L0068    fcb   $04,$06,$07,$04,$04,$FC,$F8,$00   ......x.
-L0070    fcb   $0C,$0A,$0D,$0B,$F9,$F9,$1F,$1F   ....yy..
-L0078    fcb   $00,$92,$7C,$44,$C6,$7C,$92,$00   ..|DF|..
-L0080    fcb   $00,$00,$60,$78,$7E,$78,$60,$00   ..`x~x`.
-L0088    fcb   $00,$00,$06,$1E,$7E,$1E,$06,$00   ....~...
-L0090    fcb   $18,$7E,$18,$18,$18,$18,$7E,$18   .~....~.
-L0098    fcb   $66,$66,$66,$66,$66,$00,$66,$00   fffff.f.
-L00A0    fcb   $FF,$B6,$76,$36,$36,$36,$36,$00   .6v6666.
-L00A8    fcb   $7E,$C1,$DC,$22,$22,$1F,$83,$7E   ~A\""..~
-L00B0    fcb   $00,$00,$00,$7E,$7E,$00,$00,$00   ...~~...
+L0008    fcb   $C0,$C0,$C0,$C0,$C0,$C0,$C0,$C0   ~.%.=..~ Custom $01 x $b3
+L0010    fcb   $C0,$C0,$C0,$C0,$C0,$C0,$C0,$FF   ~.%.=..~ Custom $02 x $b4
+L0018    fcb   $07,$1F,$3F,$7F,$7F,$FF,$FF,$FF   <~[.C~<. Custom $03 x $b5
+L0020    fcb   $FF,$FF,$FF,$7F,$7F,$3F,$1F,$07   .n..|8.. Custom $04 x $b6
+L0028    fcb   $E0,$F8,$FC,$FE,$FE,$FF,$FF,$FF   .8|.|8.. Custom $05 x $b7
+L0030    fcb   $FF,$FF,$FF,$FE,$FE,$FC,$F8,$E0   .<...... Custom $06 x $b8
+L0038    fcb   $0F,$1F,$3F,$7F,$7F,$3F,$1F,$0F   .8|...8. Custom $07 x $b9
+L0040    fcb   $FF,$FE,$FC,$F8,$F0,$E0,$C0,$80   ...<.... Custom $08 x $ba
+L0048    fcb   $FF,$7F,$3F,$1F,$0F,$07,$03,$01   ..gCg... Custom $09 x $bb
+L0050    fcb   $80,$C0,$E0,$F0,$F8,$FC,$FE,$FF   .<B..B<. Custom $0A x $bc
+L0058    fcb   $FF,$FF,$FE,$FC,$FC,$FE,$FF,$FF   .C=~~=C. Custom $0B x $bd
+L0060    fcb   $FF,$FE,$FC,$F8,$F0,$F0,$F0,$F0   .....?.. Custom $0C x $be
+L0068    fcb   $0F,$0F,$0F,$0F,$1F,$3F,$7F,$FF   ...xp`@. Custom $0D x $bf
+L0070    fcb   $F0,$F0,$F0,$F0,$F8,$FC,$FE,$FF   ......x. Custom $0E x $c0
+L0078    fcb   $FF,$7F,$3F,$1F,$0F,$0F,$0F,$0F   ....yy.. Custom $0F x $c1
+L0080    fcb   $01,$03,$07,$0F,$1F,$3F,$7F,$FF   ..|DF|.. Custom $10 x $c2
+L0088    fcb   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF   ..`x~x`. Font   $11 $DB Solid
+L0090    fcb   $F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0   ....~... Font   $12 $DD Left Half
+L0098    fcb   $0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F   .~....~. Font   $13 $DE Right Half
+L00A0    fcb   $FF,$FF,$FF,$FF,$00,$00,$00,$00   fffff.f. Font   $14 $DF Top Half
+L00A8    fcb   $FF,$FE,$FC,$F8,$F0,$E0,$C0,$80   ........ Custom $15 x $c3
+L00B0    fcb   $00,$00,$00,$00,$00,$00,$00,$FF   ...~~...
 L00B8    fcb   $18,$7E,$18,$18,$7E,$18,$00,$FF   .~..~...
 L00C0    fcb   $18,$7E,$18,$18,$18,$18,$18,$00   .~......
 L00C8    fcb   $18,$18,$18,$18,$18,$7E,$18,$00   .....~..
