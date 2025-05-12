@@ -25,29 +25,29 @@ rev            set       $01
 name           fcs       /commodedorfont/
 
 start
-               fcb $06,$09,$10,$3C,$10,$21,$7E,$00
-               fcb $00,$00,$00,$00,$00,$00,$FF,$FF
-               fcb $00,$00,$00,$00,$00,$FF,$FF,$FF
-               fcb $00,$00,$00,$00,$FF,$FF,$FF,$FF
-               fcb $00,$00,$00,$FF,$FF,$FF,$FF,$FF
-               fcb $00,$00,$FF,$FF,$FF,$FF,$FF,$FF
-               fcb $00,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+	       fcb $00,$00,$00,$00,$00,$00,$00,$00
+	       fcb $C0,$C0,$C0,$C0,$C0,$C0,$C0,$C0
+               fcb $C0,$C0,$C0,$C0,$C0,$C0,$C0,$FF
+               fcb $07,$1F,$3F,$7F,$7F,$FF,$FF,$FF
+               fcb $FF,$FF,$FF,$7F,$7F,$3F,$1F,$07
+               fcb $E0,$F8,$FC,$FE,$FE,$FF,$FF,$FF
+               fcb $FF,$FF,$FF,$FE,$FE,$FC,$F8,$E0
+               fcb $0F,$1F,$3F,$7F,$7F,$3F,$1F,$0F
+               fcb $FF,$FE,$FC,$F8,$F0,$E0,$C0,$80
+               fcb $FF,$7F,$3F,$1F,$0F,$07,$03,$01
+               fcb $80,$C0,$E0,$F0,$F8,$FC,$FE,$FF
+               fcb $FF,$FF,$FE,$FC,$FC,$FE,$FF,$FF
+               fcb $FF,$FE,$FC,$F8,$F0,$F0,$F0,$F0
+               fcb $0F,$0F,$0F,$0F,$1F,$3F,$7F,$FF
+               fcb $F0,$F0,$F0,$F0,$F8,$FC,$FE,$FF
+               fcb $FF,$7F,$3F,$1F,$0F,$0F,$0F,$0F
+               fcb $01,$03,$07,$0F,$1F,$3F,$7F,$FF
                fcb $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
-               fcb $FF,$FF,$FF,$FF,$FF,$FF,$FF,$00
-               fcb $FF,$FF,$FF,$FF,$FF,$FF,$00,$00
-               fcb $FF,$FF,$FF,$FF,$FF,$00,$00,$00
+               fcb $F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0
+               fcb $0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F
                fcb $FF,$FF,$FF,$FF,$00,$00,$00,$00
-               fcb $FF,$FF,$FF,$00,$00,$00,$00,$00
-               fcb $FF,$FF,$00,$00,$00,$00,$00,$00
-               fcb $FF,$00,$00,$00,$00,$00,$00,$00
-               fcb $08,$00,$22,$00,$08,$00,$02,$00
-               fcb $88,$00,$22,$00,$88,$00,$22,$00
-               fcb $8A,$00,$2A,$00,$8A,$00,$2A,$00
-               fcb $AA,$00,$AA,$00,$AA,$00,$AA,$00
-               fcb $AA,$05,$AA,$11,$AA,$05,$AA,$11
-               fcb $AA,$5F,$AA,$77,$AA,$5F,$AA,$77
-               fcb $AA,$FF,$AA,$FF,$AA,$FF,$AA,$FF
-               fcb $AF,$FF,$BB,$FF,$AF,$FF,$BB,$FF
+               fcb $FF,$FE,$FC,$F8,$F0,$E0,$C0,$80     end
+               fcb $00,$00,$00,$00,$00,$00,$00,$FF
                fcb $77,$FF,$DD,$FF,$77,$FF,$DD,$FF
                fcb $7F,$FF,$DF,$FF,$77,$FF,$DF,$FF
                fcb $FF,$FF,$DF,$FF,$77,$FF,$DD,$FF
@@ -55,8 +55,8 @@ start
                fcb $AA,$FF,$AA,$77,$AA,$DD,$AA,$55
                fcb $AA,$55,$22,$55,$88,$55,$00,$55
                fcb $AA,$00,$AA,$00,$88,$00,$22,$00
+               fcb $AA,$55,$22,$55,$88,$55,$00,$55
                fcb $33,$99,$CC,$66,$33,$99,$CC,$66
-               fcb $CC,$99,$33,$66,$CC,$99,$33,$66
                fcb $00,$00,$00,$00,$00,$00,$00,$00
                fcb $18,$18,$18,$18,$00,$00,$18,$00
                fcb $66,$66,$66,$00,$00,$00,$00,$00
