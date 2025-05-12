@@ -96,7 +96,6 @@ BOOTFILE_SD_F256JR = $(KERNELP2) \
 		$(DWIO) \
 		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
 		$(MD)/dds0.dd \
-		$(SC16550) \
 		$(RBFLASH) $(WIZFI) \
 		$(CLOCK) \
 		$(MD)/sysgo \

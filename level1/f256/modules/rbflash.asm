@@ -1,15 +1,11 @@
 ********************************************************************
 * rbflash - F256 RAM and Flash Cartridge Driver
-* This Driver is For Testing Only
-* Based on rbmem
-* Editor tabs are 21,31,51
 *
-* Flash Wear warning: For each 256-byte OS-9 sector written to the
-* Flash cartridge a separate rewrite of the associated 4K Flash
-* sector is made!
-*
-* During Init the Flash ID is shown on the F256
-* text screen in the upper right corner.
+* In developing this driver an extreme and unrealistic amount of
+* write cycles have been carried out for months with no apparent
+* effects as of this writing. Having said this, wear-reduction and
+* write-efficiency will be added to this driver over time.
+* Don't be afraid to use the F256 Flash Cartridge!  RT
 *
 * $Id$
 *
@@ -17,19 +13,13 @@
 * Comment
 * ------------------------------------------------------------------
 *
-*   1/1    2025/5/10   R Taylor
-* Flash LSN bug appears to be fixed. The Flash programming verifier
-* has been commented out until more testing.
+*   1/1    2025/5/11   R Taylor
+* Solid Flash writes, wear-reduction and write efficiency
 *
-*   1/0    2025/5/9    R Taylor
-* 4KB Flash sector version, has predictable write corruption, not
-* sure if it's a geometrical bug, but Flash byte writes are being
-* verified for each byte, so the writes are valid.
-
-
                     use       defsfile
 
-
+* If 1, during Init the Flash ID is shown on the F256 text screen in the upper right corner.
+fDEBUG              equ       1
 MMU_SLOT            equ       2
 MMU_WINDOW          equ       $2000*MMU_SLOT
 MMU_WORKSLOT        equ       MMU_SLOT_0+MMU_SLOT
@@ -42,13 +32,14 @@ edition             set       1
                     mod       eom,name,tylg,atrv,ModEntry,size
 
                     org       0
+
                     rmb       DRVBEG+(DRVMEM*1)
 
 SaveMMU             rmb       1
 FlashBlock          rmb       1
 CacheBlock          rmb       1
 IsFlash             rmb       1
-verify2             rmb       2
+EmptySector         rmb       1
 
                     rmb       255-.               residual page RAM for stack etc. RG
 size                equ       .
@@ -61,10 +52,7 @@ name                fcs       /rbflash/
 FLASH_ID_128K       fdb       $BFD5           SST brand
 FLASH_ID_256K       fdb       $BFD6	      SST brand
 FLASH_ID_512K       fdb       $BFD7	      SST brand
-
-*ERASE_WAIT          equ       $2800           Tightest safe delay only when using    leax -1,x  cmpx #0000  bne loop  method
-*ERASE_WAIT          equ       $2800*2           trial
-ERASE_WAIT          equ       $2800           trial delay
+ERASE_WAIT          equ       $2800           This value considers a dummy "cmpx #$0000" in the delay loop
 
 ModEntry            lbra      Init
                     lbra      Read
@@ -206,7 +194,7 @@ l@                  pulu      d,x                 get 4 bytes
 *        B = destination block
 * Exit: destination block stays in MMU slot
 *       all registers restored
-BlockCopy           pshs      u,x,y,d
+Flash2Cache         pshs      u,x,y,d
                     ldx       #MMU_WINDOW
                     ldy       #4096               2 bytes per iteration = 8192
 c@                  ldb       ,s                  get source block from reg.a position on stack
@@ -219,7 +207,7 @@ c@                  ldb       ,s                  get source block from reg.a po
                     bne       c@
                     puls      d,u,x,y,pc
 
-CheckEmpty          pshs      d,y
+CheckEmpty          pshs      b,y
                     lda       ,y
                     clrb
 a@                  anda      ,y+
@@ -227,34 +215,38 @@ a@                  anda      ,y+
                     bne       a@
                     coma                          $FF becomes $00 which sets CC.Z ?
                     tsta
-                    puls      d,y,pc
+                    puls      b,y,pc
 
-* Scheme as of 5/9/2025 (Worked to erase/rewrite 4K Flash sectors)
-* Copy 8K Flash block into 8K cache.
-* Copy OS-9 sector into correct spot in 8K cache.
-* Erase the associatated 4K Flash sector.
-* Program the 4K Flash sector using the 4K cache sector associated with the OS-9 sector.
+* Copy 8K Flash block into 8K Cache.
+* Copy OS-9 sector into correct spot in 8K Cache.
+* Is old OS-9 sector empty?  No, erase the associated 4K Flash sector and write back the 4K Cache sector.
+* Is old OS-9 sector empty?  Yes, write only the 256-byte sector back to Flash.
 
 TfrFSect            lda       FlashBlock,u        copy from Flash block to Cache block
                     ldb       CacheBlock,u
-                    bsr       BlockCopy
+                    bsr       Flash2Cache
+                    bsr       CheckEmpty          is the OS-9 sector that's already on Flash empty?
+                    sta       EmptySector,u       save empty status
                     pshs      x,y
                     lda       CacheBlock,u
-                    lbsr      TfrSect             Write the 256-byte sector into the 8K cache
+                    lbsr      TfrSect             Write the 256-byte sector into the 8K Cache
                     puls      x,y
-                    tfr       y,d                 Y = address of OS-9 256-byte sector within the 8K cache
+                    tst       EmptySector,u
+*                    beq       c@                  old OS-9 sector is empty, so we just need to write over Only It
+                    tfr       y,d                 Y = address of OS-9 256-byte sector within the 8K Cache
                     anda      #$10                compute which half of the 8K Flash block it's in (A12 of address)
                     tfr       d,x               
                     leax      MMU_WINDOW,x        base start of the RAM copy of the new Flash sector to write back
-                    bsr       CheckEmpty
-                    beq       p@
-                    lsra
+                    lsra                          OS-9 sector on Flash is dirty (used), so we need to rewrite entire 4K Flash sector
                     lsra
                     lsra
                     lsra                          compute 0=1st half of 4K Flash sector, 1=2nd half
                     ldb       FlashBlock,u        what 8K Flash block is the sector in?
                     lbsr      Erase4KSector
-p@                  ldy       #4096               write 4KB of bytes to the Flash
+                    ldy       #4096               at this point X needs to point to the 4K Sector within the 8K Cache
+                    bra       w@                  start writing 4K Sector from 8K Cache to Flash
+c@                  tfr       y,x                 Y = address of OS-9 256-byte sector within the 8K Cache
+                    ldy       #256                write only the OS-9 sector to Flash
 w@                  ldb       CacheBlock,u
                     stb       >MMU_WORKSLOT
                     lda       ,x
@@ -444,7 +436,10 @@ s@	puls	cc,pc
 
 
 ShowFlashID
-	pshs	cc
+        lda     fDEBUG,u
+        bne     d@
+        rts
+d@	pshs	cc
 	orcc	#IntMasks
 	ldb	>MMU_WORKSLOT
 	pshs	b
