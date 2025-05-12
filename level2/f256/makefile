@@ -30,9 +30,7 @@ DSKSD_F256JR		= $(DISTROVER)jr_sd.dsk
 DSKDW_F256JR		= $(DISTROVER)jr_dw.dsk
 DSKCART_F256JR          = $(DISTROVER)jr_cart.dsk
 
-#DSKS	= $(DSKSD_F256K) $(DSKDW_F256K) $(DSKSD_F256JR) $(DSKDW_F256JR)
-#DSKS	= $(DSKDW_F256JR)
-DSKS = $(DSKCART_F256JR)
+DSKS	= $(DSKSD_F256JR) $(DSKCART_F256JR) #$(DSKSD_F256K) $(DSKDW_F256K) $(DSKDW_F256JR)
 
 # Make all components
 all:
@@ -105,8 +103,9 @@ $(DSKSD_F256K):
 	$(MAKDIR) $@,TESTS
 	$(foreach file,$(TESTS),$(CPL) ../../level1/f256/tests/$(file) $@,TESTS;)
 	$(MAKDIR) $@,FEU
-	echo "bootos9 /s0/os9boot" > /tmp/startup
-	$(OS9COPY) -l /tmp/startup $@,FEU
+	mkdir -p FEU
+	echo "bootos9 /s0/os9boot" > FEU/startup
+	$(OS9COPY) -l FEU/startup $@,FEU
 
 $(DSKDW_F256K):
 	$(RM) $@
@@ -147,8 +146,9 @@ $(DSKDW_F256K):
 	$(MAKDIR) $@,TESTS
 	$(foreach file,$(TESTS),$(CPL) ../../level1/f256/tests/$(file) $@,TESTS;)
 	$(MAKDIR) $@,FEU
-	echo "bootos9 /x0/os9boot" > /tmp/startup
-	$(OS9COPY) -l /tmp/startup $@,FEU
+	mkdir -p FEU
+	echo "bootos9 /x0/os9boot" > FEU/startup
+	$(OS9COPY) -l FEU/startup $@,FEU
 
 $(DSKSD_F256JR):
 	$(RM) $@
@@ -183,14 +183,15 @@ $(DSKSD_F256JR):
 	$(CPL) $(BF_FILES) $@,BF
 	$(MAKDIR) $@,SOUNDS
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
-	os9 dsave -e $(CPM_FILES) $@,CPM
+#	os9 dsave -e $(CPM_FILES) $@,CPM
 	$(MAKDIR) $@,SCRIPTS
 	$(foreach file,$(SCRIPTS),$(CPL) ../../level1/f256/scripts/$(file) $@,SCRIPTS;)
 	$(MAKDIR) $@,TESTS
 	$(foreach file,$(TESTS),$(CPL) ../../level1/f256/tests/$(file) $@,TESTS;)
 	$(MAKDIR) $@,FEU
-	echo "bootos9 /s0/os9boot" > /tmp/startup
-	$(OS9COPY) -l /tmp/startup $@,FEU
+	mkdir -p FEU
+	echo "bootos9 /s0/os9boot" > FEU/startup
+	$(OS9COPY) -l FEU/startup $@,FEU
 	
 $(DSKDW_F256JR):
 	$(RM) $@
@@ -230,14 +231,6 @@ $(DSKDW_F256JR):
 	$(foreach file,$(SCRIPTS),$(CPL) ../../level1/f256/scripts/$(file) $@,SCRIPTS;)
 	$(MAKDIR) $@,TESTS
 	$(foreach file,$(TESTS),$(CPL) ../../level1/f256/tests/$(file) $@,TESTS;)
-	$(OS9COPY) modules/wizfi.dr $@,wizfi.dr
-	$(OS9ATTR_EXEC) $@,wizfi.dr
-	$(OS9COPY) modules/wz.dd $@,wz.dd
-	$(OS9ATTR_EXEC) $@,wz.dd
-	$(OS9COPY) modules/rbflash.dr $@,rbflash.dr
-	$(OS9ATTR_EXEC) $@,rbflash.dr
-	$(OS9COPY) modules/cf.dd $@,cf.dd
-	$(OS9ATTR_EXEC) $@,cf.dd
 	$(MAKDIR) $@,FEU
 	mkdir -p FEU
 	echo "bootos9 /x0/os9boot" > FEU/startup
@@ -254,14 +247,14 @@ $(DSKCART_F256JR):
 	$(CD) cmds; $(OS9COPY) $(CMDS_CART) ../$@,CMDS
 	$(CD) cmds; $(OS9COPY) -r shell ../$@,CMDS/shell
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS_CART),$@,CMDS/$(file))
-	$(MAKDIR) $@,SCRIPTS
-	$(foreach file,$(SCRIPTS),$(CPL) ../../level1/f256/scripts/$(file) $@,SCRIPTS;)
+	$(CD) sys; $(CPL) $(SYSTEXT) ../$@,SYS
+	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
-	$(OS9COPY) modules/rbflash.dr $@,rbflash.dr
-	$(OS9ATTR_EXEC) $@,rbflash.dr
-	$(OS9COPY) modules/cf.dd $@,cf.dd
-	$(OS9ATTR_EXEC) $@,cf.dd
+	$(MAKDIR) $@,BASIC09
+	$(CPL) $(BASIC09_FILES) $@,BASIC09
+	$(MAKDIR) $@,SCRIPTS
+	$(foreach file,$(SCRIPTS),$(CPL) ../../level1/f256/scripts/$(file) $@,SCRIPTS;)
 	$(MAKDIR) $@,FEU
 	mkdir -p FEU
 	echo "bootos9 /c0/os9boot" > FEU/startup
