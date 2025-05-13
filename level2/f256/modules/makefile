@@ -18,7 +18,9 @@ CLOCKS		= clock clock2_f256
 RBF		= rbf.mn rbdw.dr dwio.sb ddx0.dd x0.dd x1.dd x2.dd x3.dd \
           rbmem.dr ddc0.dd c0.dd f0.dd \
 		rbsuper.dr \
-          llfnxsd.sb dds0.dd s0.dd
+          llfnxsd.sb dds0.dd s0.dd \
+                rbflash.dr cf.dd ddcf.dd
+
 
 SCF		= scf.mn \
 		vrn.dr nil.dd \
@@ -33,7 +35,8 @@ SCF		= scf.mn \
 		n13_scdwv.dd midi_scdwv.dd \
 		z1_scdwv.dd z2_scdwv.dd z3_scdwv.dd z4_scdwv.dd z5_scdwv.dd \
 		z6_scdwv.dd z7_scdwv.dd z8_scdwv.dd z9_scdwv.dd z10_scdwv.dd \
-		z11_scdwv.dd z12_scdwv.dd z13_scdwv.dd z14_scdwv.dd
+		z11_scdwv.dd z12_scdwv.dd z13_scdwv.dd z14_scdwv.dd \
+                wizfi.dr wz.dd
 
 PIPE		= pipeman.mn pipeman_named.mn piper.dr pipe.dd
 
@@ -45,6 +48,12 @@ ALLOBJS		=  $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(PIPE) $(RFM) $(FONTS)
 all:	$(ALLOBJS)
 
 sysgo: sysgo.o
+
+# WizFi360 chip
+wizfi.dr: wizfi.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
+wz.dd: wz.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
 
 # Kernel
 krn: $(LEVEL2)/modules/kernel/krn.asm
@@ -71,6 +80,16 @@ c0.dd: rbmemdesc.asm
 
 f0.dd: rbmemdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
+
+# rbflash decriptors
+cf.dd: rbflashdesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0 -DCART=1
+ddcf.dd: rbflashdesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0 -DCART=1 -DDD=1
+
+# rbflash driver (What other makefile should this Rule be in?)
+#rbflash.dr: rbflash.asm
+#	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
 
 # 16550 descriptors
 t0_sc16550.dd: sc16550desc.asm
