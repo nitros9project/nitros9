@@ -22,11 +22,20 @@ CMDS    = asm attr backup bawk binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
 		display dmem dmode dsave dump echo edit error exbin \
 		format free grep help ident iniz irqs link list load login \
-		makdir mdir megaread merge mfree minted mmap modpatch more padrom park \
+		makdir mdir megaread merge mergeln mfree minted mmap modpatch more padrom park \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
 		bootos9 fnxinfo fnxreset rogue fstatus xtclut drawtest play foenix \
 		$(CMDS_DW) $(BASIC09) $(BF) $(CPM)
+
+CMDS_CART      = asm attr backup bawk binex bootos9 build cmp copy \
+		date dcheck debug ded deiniz del deldir devs dir dirsort \
+		display dmem dmode drawtest dsave dump echo edit error exbin \
+		format free grep help ident iniz irqs link list load login \
+		makdir mdir megaread merge mergeln mfree minted mmap more  \
+		pmap proc procs prompt pwd pxd rename save setime \
+		sleep smap tee tmode touch tsmon unlink verify xmode \
+		 fnxinfo fnxreset fstatus xtclut
 
 SHELLMODS	= shellplus echo iniz link load save unlink
 
@@ -79,6 +88,9 @@ showobjs:
 
 showobjs_dw:
 	@$(ECHO) shell utilpak1 $(sort $(CMDS))
+
+showobjs_cart:
+	@$(ECHO) shell utilpak1 $(CMDS_CART)
 
 identify:
 	$(IDENT_SHORT) $(ALLOBJS)

@@ -7,6 +7,7 @@ DIRS		= defs libs cmds modules sys sys/fonts bootfiles wwwroot
 
 CMDS		= $(shell $(CD) cmds; make --no-print-directory showobjs)
 CMDS_DW		= $(shell $(CD) cmds; make --no-print-directory showobjs_dw)
+CMDS_CART       = $(shell $(CD) cmds; make --no-print-directory showobjs_cart)
 KERNEL		= $(shell $(CD) modules; make --no-print-directory showkernel)
 SYSMODS		= $(shell $(CD) modules; make --no-print-directory showsysmods)
 CLOCKS		= $(shell $(CD) modules; make --no-print-directory showclocks)
@@ -29,8 +30,7 @@ DSKSD_F256JR		= $(DISTROVER)jr_sd.dsk
 DSKDW_F256JR		= $(DISTROVER)jr_dw.dsk
 DSKCART_F256JR          = $(DISTROVER)jr_cart.dsk
 
-#DSKS	= $(DSKSD_F256K) $(DSKDW_F256K) $(DSKSD_F256JR) $(DSKDW_F256JR) $(DSKCART_F256JR)
-DSKS	= $(DSKSD_F256JR) $(DSKCART_F256JR)
+DSKS	= $(DSKSD_F256K) $(DSKDW_F256K) $(DSKSD_F256JR) $(DSKDW_F256JR) $(DSKCART_F256JR)
 
 # Make all components
 all:
@@ -231,7 +231,7 @@ $(DSKDW_F256JR):
 $(DSKCART_F256JR):
 	$(RM) $@
 	$(OS9FORMAT_CART) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
-	$(OS9COPY) bootfiles/bootfile_cart $@,OS9Boot
+	$(OS9COPY) bootfiles/bootfile_cart_f256jr $@,OS9Boot
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
 	$(OS9COPY) modules/$(SYSGO) $@,sysgo
