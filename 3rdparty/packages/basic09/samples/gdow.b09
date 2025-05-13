@@ -1,0 +1,1 @@
+PROCEDURE gdowDIM dow:INTEGERRUN foenix("GetDow",dow)PRINT dow
