@@ -243,8 +243,6 @@ $(DSKCART_F256JR):
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
-	$(MAKDIR) $@,BASIC09
-	$(CPL) $(BASIC09_FILES) $@,BASIC09
 	$(MAKDIR) $@,SCRIPTS
 	$(foreach file,$(SCRIPTS),$(CPL) ../../level1/f256/scripts/$(file) $@,SCRIPTS;)
 	$(MAKDIR) $@,FEU
