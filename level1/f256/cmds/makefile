@@ -14,11 +14,11 @@ CMDS		= asm attr backup bawk binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
 		display dmode dsave dump echo edit error exbin format \
 		free grep help ident iniz irqs link list load login makdir \
-		megaread mdir merge mfree more padrom park printerr procs prompt pwd pxd \
+		megaread mdir merge mergeln mfree more padrom park printerr procs prompt pwd pxd \
 		rename save setime shellplus shell_21 sleep \
 		tee tmode touch tsmon unlink verify xmode \
 		inetd telnet dw httpd $(BASIC09) $(BF) \
-		bootos9 fnxinfo fnxreset pick play
+		bootos9 fnxinfo fnxreset pick play mergeln
 
 ALLOBJS		= $(CMDS)
 
