@@ -1,0 +1,17 @@
+echo ***************************************************
+echo * "wizcon" script
+echo * WizFi360 Helper - Connection to Router
+echo * The chip reconnects on power-up unless you change
+echo * your SSID or password.  Repower your F256 after
+echo * running this script.
+echo *
+echo ATE0>/wz
+sleep 90
+echo AT+CWMODE_CUR=1>/wz
+sleep 90
+echo AT+CWDHCP_CUR=1,1>/wz
+sleep 90
+echo AT+CWJAP_CUR="SSID","PASSWORD">/wz
+sleep 90
+echo AT+CIPSTA_CUR?>/wz
+sleep 90
