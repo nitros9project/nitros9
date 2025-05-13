@@ -77,7 +77,7 @@ BOOTFILE_SD_F256K = $(KERNELP2) \
 		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
                 $(RBFLASH) \
 		$(MD)/dds0.dd \
-		$(SC16550) \
+        	$(WIZFI) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(MD)/kernel/krn
@@ -89,7 +89,7 @@ BOOTFILE_DW_F256K = $(KERNELP2) \
 		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
                 $(RBFLASH) \
 		$(MD)/ddx0.dd \
-		$(SC16550) \
+        	$(WIZFI) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(MD)/kernel/krn
@@ -99,9 +99,9 @@ BOOTFILE_SD_F256JR = $(KERNELP2) \
 		$(FONT) $(PALETTE) \
 		$(DWIO) \
 		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
-                $(RBFLASH) \
+        	$(RBFLASH) \
 		$(MD)/dds0.dd \
-		$(SC16550) \
+        	$(WIZFI) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(MD)/kernel/krn
@@ -111,14 +111,26 @@ BOOTFILE_DW_F256JR = $(KERNELP2) \
 		$(FONT) $(PALETTE) \
 		$(DWIO) \
 		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
-                $(RBFLASH) \
+        	$(RBFLASH) \
 		$(MD)/ddx0.dd \
-		$(SC16550) \
+        	$(WIZFI) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(MD)/kernel/krn
 
-ALLOBJS		= bootfile_sd_f256k bootfile_dw_f256k bootfile_sd_f256jr bootfile_dw_f256jr
+BOOTFILE_CART_F256JR = $(KERNELP2) \
+		$(SCF) $(SCVT_F256JR) \
+		$(FONT) $(PALETTE) \
+		$(DWIO) \
+		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
+        	$(RBFLASH) \
+		$(MD)/ddc0.dd \
+        	$(WIZFI) \
+		$(CLOCK) \
+		$(MD)/sysgo \
+		$(MD)/kernel/krn
+
+ALLOBJS		= bootfile_sd_f256k bootfile_dw_f256k bootfile_sd_f256jr bootfile_dw_f256jr bootfile_cart_f256jr
 
 all:	$(ALLOBJS)
 
@@ -143,6 +155,10 @@ bootfile_dw_f256jr: $(BOOTFILE_DW_F256JR) $(DEPENDS)
 
 upload_f256jr: bootfile_dw_f256jr
 	upload bootfile_f256jr 8000
+
+bootfile_cart_f256jr: $(BOOTFILE_CART_F256JR) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_CART_F256JR)>$@
+	./padup256 $@
 
 trace:
 	@dump 0 20
