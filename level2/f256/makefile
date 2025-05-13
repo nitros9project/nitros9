@@ -29,7 +29,8 @@ DSKSD_F256JR		= $(DISTROVER)jr_sd.dsk
 DSKDW_F256JR		= $(DISTROVER)jr_dw.dsk
 DSKCART_F256JR          = $(DISTROVER)jr_cart.dsk
 
-DSKS	= $(DSKSD_F256K) $(DSKDW_F256K) $(DSKSD_F256JR) $(DSKDW_F256JR) $(DSKCART_F256JR)
+#DSKS	= $(DSKSD_F256K) $(DSKDW_F256K) $(DSKSD_F256JR) $(DSKDW_F256JR) $(DSKCART_F256JR)
+DSKS	= $(DSKSD_F256JR) $(DSKCART_F256JR)
 
 # Make all components
 all:
@@ -102,8 +103,7 @@ $(DSKSD_F256K):
 	$(MAKDIR) $@,TESTS
 	$(foreach file,$(TESTS),$(CPL) ../../level1/f256/tests/$(file) $@,TESTS;)
 	$(MAKDIR) $@,FEU
-	echo "bootos9 /s0/os9boot" > /tmp/startup
-	$(OS9COPY) -l /tmp/startup $@,FEU
+	$(OS9COPY) -l FEU/startup_s0 $@,FEU/startup
 
 $(DSKDW_F256K):
 	$(RM) $@
@@ -144,8 +144,7 @@ $(DSKDW_F256K):
 	$(MAKDIR) $@,TESTS
 	$(foreach file,$(TESTS),$(CPL) ../../level1/f256/tests/$(file) $@,TESTS;)
 	$(MAKDIR) $@,FEU
-	echo "bootos9 /x0/os9boot" > /tmp/startup
-	$(OS9COPY) -l /tmp/startup $@,FEU
+	$(OS9COPY) -l FEU/startup_x0 $@,FEU/startup
 
 $(DSKSD_F256JR):
 	$(RM) $@
@@ -180,14 +179,13 @@ $(DSKSD_F256JR):
 	$(CPL) $(BF_FILES) $@,BF
 	$(MAKDIR) $@,SOUNDS
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
-	os9 dsave -e $(CPM_FILES) $@,CPM
+#	os9 dsave -e $(CPM_FILES) $@,CPM
 	$(MAKDIR) $@,SCRIPTS
 	$(foreach file,$(SCRIPTS),$(CPL) ../../level1/f256/scripts/$(file) $@,SCRIPTS;)
 	$(MAKDIR) $@,TESTS
 	$(foreach file,$(TESTS),$(CPL) ../../level1/f256/tests/$(file) $@,TESTS;)
 	$(MAKDIR) $@,FEU
-	echo "bootos9 /s0/os9boot" > /tmp/startup
-	$(OS9COPY) -l /tmp/startup $@,FEU
+	$(OS9COPY) -l FEU/startup_s0 $@,FEU/startup
 	
 $(DSKDW_F256JR):
 	$(RM) $@
@@ -228,8 +226,7 @@ $(DSKDW_F256JR):
 	$(MAKDIR) $@,TESTS
 	$(foreach file,$(TESTS),$(CPL) ../../level1/f256/tests/$(file) $@,TESTS;)
 	$(MAKDIR) $@,FEU
-	echo "bootos9 /x0/os9boot" > /tmp/startup
-	$(OS9COPY) -l /tmp/startup $@,FEU
+	$(OS9COPY) -l FEU/startup_x0 $@,FEU/startup
 
 $(DSKCART_F256JR):
 	$(RM) $@
@@ -251,10 +248,7 @@ $(DSKCART_F256JR):
 	$(MAKDIR) $@,SCRIPTS
 	$(foreach file,$(SCRIPTS),$(CPL) ../../level1/f256/scripts/$(file) $@,SCRIPTS;)
 	$(MAKDIR) $@,FEU
-	mkdir -p FEU
-	echo "bootos9 /c0/os9boot" > FEU/startup
-	$(OS9COPY) -l FEU/startup $@,FEU
-
+	$(OS9COPY) -l FEU/startup_c0 $@,FEU/startup
 
 info:
 	@$(ECHO) "*** NitrOS-9/$(CPU) Level $(LEVEL) for the $(MACHINE) ***"
