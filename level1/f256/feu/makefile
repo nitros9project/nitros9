@@ -34,7 +34,7 @@ RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd
 SCF		 = $(MD)/scf.mn
 
 # Font & palette
-FONT		 = $(FNT)/phoenixegafont.sb
+FONT		 = $(FNT)/bannerfont.sb
 PALETTE	 = $(MD)/palette.sb
 
 # SCF video terminal
