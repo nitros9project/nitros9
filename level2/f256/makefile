@@ -51,6 +51,10 @@ dskclean:
 
 dsk: all $(DSKS)
 
+jrcart: all $(DSKCART_F256JR)
+
+jrsd: all $(DSKSD_F256JR)
+
 dskcopy: $(DSKS)
 	$(CP) $(DSKS) $(DSKDIR)
 
