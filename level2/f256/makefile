@@ -179,7 +179,7 @@ $(DSKSD_F256JR):
 	$(CPL) $(BF_FILES) $@,BF
 	$(MAKDIR) $@,SOUNDS
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
-#	os9 dsave -e $(CPM_FILES) $@,CPM
+	os9 dsave -e $(CPM_FILES) $@,CPM
 	$(MAKDIR) $@,SCRIPTS
 	$(foreach file,$(SCRIPTS),$(CPL) ../../level1/f256/scripts/$(file) $@,SCRIPTS;)
 	$(MAKDIR) $@,TESTS
