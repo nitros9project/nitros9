@@ -18,8 +18,7 @@ CLOCKS		= clock clock2_f256
 RBF		= rbf.mn rbdw.dr dwio.sb ddx0.dd x0.dd x1.dd x2.dd x3.dd \
           rbmem.dr ddc0.dd c0.dd f0.dd \
 		rbsuper.dr \
-          llfnxsd.sb dds0.dd s0.dd \
-                rbflash.dr cf.dd ddcf.dd
+          llfnxsd.sb dds0.dd s0.dd
 
 
 SCF		= scf.mn \
@@ -79,16 +78,6 @@ c0.dd: rbmemdesc.asm
 
 f0.dd: rbmemdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
-
-# rbflash decriptors
-cf.dd: rbflashdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0 -DCART=1
-ddcf.dd: rbflashdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0 -DCART=1 -DDD=1
-
-# rbflash driver (What other makefile should this Rule be in?)
-#rbflash.dr: rbflash.asm
-#	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
 
 # 16550 descriptors
 t0_sc16550.dd: sc16550desc.asm
