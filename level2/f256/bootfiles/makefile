@@ -13,6 +13,9 @@ DEPENDS		= ./makefile
 KERNEL	= $(MD)/krn
 KERNELP2	= $(MD)/krnp2 $(MD)/init $(MD)/ioman
 
+# Classic OS-9 PIPE
+PIPE = $(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd
+
 # DriveWire support
 DWIO		= $(MD)/dwio.sb
 
@@ -78,6 +81,7 @@ BOOTFILE_SD_F256K = $(KERNELP2) \
                 $(RBFLASH) \
 		$(MD)/dds0.dd \
         	$(WIZFI) \
+		$(PIPE) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(MD)/kernel/krn
@@ -90,6 +94,7 @@ BOOTFILE_DW_F256K = $(KERNELP2) \
                 $(RBFLASH) \
 		$(MD)/ddx0.dd \
         	$(WIZFI) \
+		$(PIPE) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(MD)/kernel/krn
@@ -102,6 +107,7 @@ BOOTFILE_SD_F256JR = $(KERNELP2) \
         	$(RBFLASH) \
 		$(MD)/dds0.dd \
         	$(WIZFI) \
+		$(PIPE) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(MD)/kernel/krn
@@ -114,6 +120,7 @@ BOOTFILE_DW_F256JR = $(KERNELP2) \
         	$(RBFLASH) \
 		$(MD)/ddx0.dd \
         	$(WIZFI) \
+		$(PIPE) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(MD)/kernel/krn
@@ -125,7 +132,8 @@ BOOTFILE_CART_F256JR = $(KERNELP2) \
 		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
         	$(RBFLASH) \
 		$(MD)/ddc0.dd \
-        	$(WIZFI) \
+		$(WIZFI) \
+		$(PIPE) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(MD)/kernel/krn
