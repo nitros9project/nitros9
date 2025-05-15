@@ -51,6 +51,9 @@ SCVT_F256JR  = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/mousedrv_ps2.sb $(MD)/ter
 #FONT		 = $(FNT)/bannerfont.sb
 #PALETTE	 = $(MD)/palette.sb
 
+#SOL
+SOL = $(MD)/SOLdrv.sb $(MD)/fSOL.dd 
+
 # SCF DriveWire virtual networking/window driver
 SCDWV = 	$(MD)/scdwv.dr $(SCDWV_NET) $(SCDWV_WIN)
 
@@ -78,6 +81,7 @@ BOOTFILE_SD_F256K = $(KERNELP2) \
 		$(DWIO) \
 		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
 		$(MD)/dds0.dd \
+		$(SOL) \
         	$(WIZFI) \
 		$(PIPE) \
 		$(CLOCK) \
@@ -90,7 +94,8 @@ BOOTFILE_DW_F256K = $(KERNELP2) \
 		$(DWIO) \
 		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
 		$(MD)/ddx0.dd \
-        	$(WIZFI) \
+		$(SOL) \
+		$(WIZFI) \
 		$(PIPE) \
 		$(CLOCK) \
 		$(MD)/sysgo \
@@ -102,7 +107,8 @@ BOOTFILE_SD_F256JR = $(KERNELP2) \
 		$(DWIO) \
 		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
 		$(MD)/dds0.dd \
-        	$(WIZFI) \
+		$(SOL) \
+		$(WIZFI) \
 		$(PIPE) \
 		$(CLOCK) \
 		$(MD)/sysgo \
@@ -114,7 +120,8 @@ BOOTFILE_DW_F256JR = $(KERNELP2) \
 		$(DWIO) \
 		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
 		$(MD)/ddx0.dd \
-        	$(WIZFI) \
+		$(SOL) \
+		$(WIZFI) \
 		$(PIPE) \
 		$(CLOCK) \
 		$(MD)/sysgo \
@@ -126,6 +133,7 @@ BOOTFILE_CART_F256JR = $(KERNELP2) \
 		$(DWIO) \
 		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
 		$(MD)/ddc0.dd \
+		$(SOL) \
 		$(WIZFI) \
 		$(PIPE) \
 		$(CLOCK) \
