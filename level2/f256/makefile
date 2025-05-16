@@ -3,7 +3,7 @@ include port.mak
 DISTRO		= $(CPU)L$(LEVEL)
 DISTRONAME	= NOS9_$(CPU)_L$(LEVEL)
 DISTROVER	= $(DISTRONAME)_$(NITROS9VER)_$(PORT)
-DIRS		= defs libs cmds modules sys sys/fonts bootfiles wwwroot
+DIRS		= defs libs cmds modules sys sys/fonts sys/backgrounds bootfiles wwwroot
 
 CMDS		= $(shell $(CD) cmds; make --no-print-directory showobjs)
 CMDS_DW		= $(shell $(CD) cmds; make --no-print-directory showobjs_dw)
@@ -19,6 +19,7 @@ DEFS		= $(shell $(CD) defs; make --no-print-directory showobjs)
 SYSBIN		= $(shell $(CD) sys; make --no-print-directory showbinobjs)
 SYSTEXT		= $(shell $(CD) sys; make --no-print-directory showtextobjs)
 FONTS	        = $(shell $(CD) sys/fonts; make --no-print-directory showobjs)
+BACKGROUNDS     = $(shell $(CD) sys/backgrounds; make --no-print-directory showobjs)
 STARTUP		= startup
 SCRIPTS     = $(shell $(CD) ../../level1/f256/scripts; echo *)
 TESTS       = $(shell $(CD) ../../level1/f256/tests; echo *)
@@ -75,6 +76,7 @@ $(DSKSD_F256K):
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
 	$(MAKDIR) $@,SYS/FONTS
+	$(MAKDIR) $@,SYS/BACKGROUNDS
 	$(MAKDIR) $@,DEFS
 	$(OS9COPY) modules/$(SYSGO) $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
@@ -87,6 +89,8 @@ $(DSKSD_F256K):
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
 	$(CD) sys/fonts; $(OS9COPY) $(FONTS) ../../$@,SYS/FONTS
 	$(OS9ATTR_EXEC) $(foreach file,$(FONTS),$@,SYS/FONTS/$(file))
+	$(CD) sys/backgrounds; $(OS9COPY) $(BACKGROUNDS) ../../$@,SYS/BACKGROUNDS
+	$(OS9ATTR_EXEC) $(foreach file,$(BACKGROUNDS),$@,SYS/BACKGROUNDS/$(file))
 	$(CD) defs; $(CPL) $(DEFS) ../$@,DEFS
 	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
 	$(CPL) $(STARTUP) $@,startup
@@ -116,6 +120,7 @@ $(DSKDW_F256K):
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
 	$(MAKDIR) $@,SYS/FONTS
+	$(MAKDIR) $@,SYS/BACKGROUNDS
 	$(MAKDIR) $@,DEFS
 	$(OS9COPY) modules/$(SYSGO) $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
@@ -128,6 +133,8 @@ $(DSKDW_F256K):
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
 	$(CD) sys/fonts; $(OS9COPY) $(FONTS) ../../$@,SYS/FONTS
 	$(OS9ATTR_EXEC) $(foreach file,$(FONTS),$@,SYS/FONTS/$(file))
+	$(CD) sys/backgrounds; $(OS9COPY) $(BACKGROUNDS) ../../$@,SYS/BACKGROUNDS
+	$(OS9ATTR_EXEC) $(foreach file,$(BACKGROUNDS),$@,SYS/BACKGROUNDS/$(file))
 	$(CD) defs; $(CPL) $(DEFS) ../$@,DEFS
 	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
 	$(CPL) $(STARTUP) $@,startup
@@ -157,6 +164,7 @@ $(DSKSD_F256JR):
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
 	$(MAKDIR) $@,SYS/FONTS
+	$(MAKDIR) $@,SYS/BACKGROUNDS
 	$(MAKDIR) $@,DEFS
 	$(OS9COPY) modules/$(SYSGO) $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
@@ -169,6 +177,8 @@ $(DSKSD_F256JR):
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
 	$(CD) sys/fonts; $(OS9COPY) $(FONTS) ../../$@,SYS/FONTS
 	$(OS9ATTR_EXEC) $(foreach file,$(FONTS),$@,SYS/FONTS/$(file))
+	$(CD) sys/backgrounds; $(OS9COPY) $(BACKGROUNDS) ../../$@,SYS/BACKGROUNDS
+	$(OS9ATTR_EXEC) $(foreach file,$(BACKGROUNDS),$@,SYS/BACKGROUNDS/$(file))
 	$(CD) defs; $(CPL) $(DEFS) ../$@,DEFS
 	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
 	$(CPL) $(STARTUP) $@,startup
@@ -198,6 +208,7 @@ $(DSKDW_F256JR):
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
 	$(MAKDIR) $@,SYS/FONTS
+	$(MAKDIR) $@,SYS/BACKGROUNDS
 	$(MAKDIR) $@,DEFS
 	$(OS9COPY) modules/$(SYSGO) $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
@@ -210,6 +221,8 @@ $(DSKDW_F256JR):
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
 	$(CD) sys/fonts; $(OS9COPY) $(FONTS) ../../$@,SYS/FONTS
 	$(OS9ATTR_EXEC) $(foreach file,$(FONTS),$@,SYS/FONTS/$(file))
+	$(CD) sys/backgrounds; $(OS9COPY) $(BACKGROUNDS) ../../$@,SYS/BACKGROUNDS
+	$(OS9ATTR_EXEC) $(foreach file,$(BACKGROUNDS),$@,SYS/BACKGROUNDS/$(file))
 	$(CD) defs; $(CPL) $(DEFS) ../$@,DEFS
 	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
 	$(CPL) $(STARTUP) $@,startup
