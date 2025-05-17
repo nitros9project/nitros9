@@ -87,13 +87,14 @@ Init
 
                     lbsr      ReadFlashID
                     lbsr      ShowFlashID
-                    ldb       #1                  Flash Write mode needs an 8K swap block of RAM
-                    os9       F$AllRAM
-                    bcs       x@
+
+                ifgt Level-1
+                    lbsr      AskForCache
                     stb       CacheBlock,u
-*                    lbsr      Wipe               Called from Init just as a test to see if it wipes the Flash
-                    clrb
-x@                  rts
+                else
+                    clrb                          No error
+                endc
+                    rts
 
 Term                clrb
                     rts
@@ -170,8 +171,10 @@ Write               orcc      #IntMasks           Mask interrupts
                     bcs       x@                  Branch if error
                     sta       FlashBlock,u        Remember the target cartridge block #
                     exg       x,y                 Make  X = sector buffer pointer, Y= offset within the MMU block
+                    ifgt      Level-1
                     tst       IsFlash,u
-                    bne       TfrFSect
+                    lbne       TfrFSect
+                    endc
                     bsr       TfrSect
                     lbra      CleanRWExit
 x@                  rts
@@ -192,204 +195,11 @@ l@                  pulu      d,x                 get 4 bytes
 *                    andcc     #^(IntMasks+Carry)  turn on interrupts and clear carry to indicate no error
                     rts                           return
 
-* 8K block copier, using single MMU slot
-* Entry: A = source block
-*        B = destination block
-* Exit: destination block stays in MMU slot
-*       all registers restored
-Flash2Cache         pshs      u,x,y,d
-                    ldx       #MMU_WINDOW
-                    ldy       #4096               2 bytes per iteration = 8192
-c@                  ldb       ,s                  get source block from reg.a position on stack
-                    stb       >MMU_WORKSLOT 
-                    ldu       ,x
-                    ldb       1,s                 get destination block from reg.b position on stack
-                    stb       >MMU_WORKSLOT 
-                    stu       ,x++
-                    leay      -1,y
-                    bne       c@
-                    puls      d,u,x,y,pc
-
-CheckEmpty          pshs      b,y
-                    lda       ,y
-                    clrb
-a@                  anda      ,y+
-                    decb
-                    bne       a@
-                    coma                          $FF becomes $00 which sets CC.Z ?
-                    tsta
-                    puls      b,y,pc
-
-* Copy 8K Flash block into 8K Cache.
-* Copy OS-9 sector into correct spot in 8K Cache.
-* Is old OS-9 sector empty?  No, erase the associated 4K Flash sector and write back the 4K Cache sector.
-* Is old OS-9 sector empty?  Yes, write only the 256-byte sector back to Flash.
-
-TfrFSect            lda       FlashBlock,u        copy from Flash block to Cache block
-                    ldb       CacheBlock,u
-                    bsr       Flash2Cache
-                    bsr       CheckEmpty          is the OS-9 sector that's already on Flash empty?
-                    sta       EmptySector,u       save empty status
-                    pshs      x,y
-                    lda       CacheBlock,u
-                    lbsr      TfrSect             Write the 256-byte sector into the 8K Cache
-                    puls      x,y
-                    tst       EmptySector,u
-                    beq       c@                  old OS-9 sector is empty, so we just need to write over Only It
-                    tfr       y,d                 Y = address of OS-9 256-byte sector within the 8K Cache
-                    anda      #$10                compute which half of the 8K Flash block it's in (A12 of address)
-                    tfr       d,x               
-                    leax      MMU_WINDOW,x        base start of the RAM copy of the new Flash sector to write back
-                    lsra                          OS-9 sector on Flash is dirty (used), so we need to rewrite entire 4K Flash sector
-                    lsra
-                    lsra
-                    lsra                          compute 0=1st half of 4K Flash sector, 1=2nd half
-                    ldb       FlashBlock,u        what 8K Flash block is the sector in?
-                    lbsr      Erase4KSector
-                    ldy       #4096               at this point X needs to point to the 4K Sector within the 8K Cache
-                    bra       w@                  start writing 4K Sector from 8K Cache to Flash
-c@                  tfr       y,x                 Y = address of OS-9 256-byte sector within the 8K Cache
-                    ldy       #256                write only the OS-9 sector to Flash
-w@                  ldb       CacheBlock,u
-                    stb       >MMU_WORKSLOT
-                    lda       ,x
-*
-                    ldb       #$82
-                    stb       >MMU_WORKSLOT
-                    ldb       #$AA
-                    stb       >$5555
-*
-                    ldb       #$81
-                    stb       >MMU_WORKSLOT
-                    ldb       #$55
-                    stb       >$4AAA
-*
-                    ldb       #$82
-                    stb       >MMU_WORKSLOT
-                    ldb       #$A0
-                    stb       >$5555
-*
-                    ldb       FlashBlock,u
-                    stb       >MMU_WORKSLOT
-                    ldb       ,x
-                    sta       ,x+                 REQUIRED: when address changes the data is latched
-v@                  cmpa       -1,x
-                    cmpa       -1,x
-                    bne       v@
-                    leay      -1,y
-                    bne       w@
-CleanRWExit         lda       SaveMMU,u
-                    sta       >MMU_WORKSLOT       remap in system block 0
-                    andcc     #^IntMasks          turn on interrupts and clear carry to indicate no error
-                    clrb                          no errors
-                    rts
-
-
-* Address $5555 in Flash cartridge is in block $82 and when block $82 is mapped to $4000 (MMU SLOT 2),
-* the address $5555 translates to $5555, because $5555 becomes $1555 then added to $4000.
-FlashSend5555AA     pshs      a
-                    lda       #$82
-                    sta       >MMU_WORKSLOT
-                    lda       #$AA
-                    sta       >$5555
-                    puls      a,pc
-
-* Address $5555 in chip is in block $82 and when block $82 is mapped to $4000 (MMU SLOT 2),
-* the address $5555 translates to $5555, because $5555 becomes $1555 then added to $4000.
-FlashSend5555XX     pshs      a
-                    lda       #$82
-                    sta       >MMU_WORKSLOT
-                    stb       >$5555
-                    puls      a,pc
-
-* Address $2AAA in chip is in block $81 and when block $81 is mapped to $4000 (MMU SLOT 2),
-* the address $2AAA translates to $4AAA, because $2AAA becomes $0AAA then added to $4000.
-FlashSend2AAA55     pshs      a
-                    lda       #$81
-                    sta       >MMU_WORKSLOT
-                    lda       #$55
-                    sta       >$4AAA
-                    puls      a,pc
-
-* 3.3 Sector Erase Operation
-* The Sector Erase operation allows the system to erase
-* the device on a sector-by-sector basis. The sector
-* architecture is based on uniform sector size of
-* 4 Kbytes. The Sector Erase operation is initiated by
-* executing a six-byte command load sequence for
-* Software Data Protection with Sector Erase command
-* (30H) and Sector Address (SA) in the last bus cycle.
-* The sector address is latched on the falling edge of the
-* sixth WE# pulse, while the command (30H) is latched
-* on the rising edge of the sixth WE# pulse. The internal
-* Erase operation begins after the sixth WE# pulse. The
-* End-of-Erase can be determined using either Data#
-* Polling or Toggle Bit methods. See Figure 7-6 for timing
-* waveforms. Any commands written during the Sector
-* Erase operation will be ignored.
-* During an internal Erase operation, any attempt to read
-* DQ7 will produce a ‘0’. Once the internal Erase
-* operation is completed, DQ7 will produce a ‘1’. The
-* Data# Polling is valid after the rising edge of fourth
-* WE# (or CE#) pulse for Program operation. For Sector
-* or Chip Erase, the Data# Polling is valid after the rising
-* edge of sixth WE# (or CE#) pulse.
-
-Erase4KSector       pshs      x,b,a               reg.b = block num to erase
-                    bsr       FlashSend5555AA
-                    bsr       FlashSend2AAA55
-                    ldb       #$80
-                    bsr       FlashSend5555XX
-                    bsr       FlashSend5555AA
-                    bsr       FlashSend2AAA55
-                    tst       ,s	                  which 4k sector of the 8k block do we erase?
-                    bne       u@                  if reg.a = 1 then go erase 2nd sector
-                    ldb       1,s                 get Flash block num from stack
-                    stb       >MMU_WORKSLOT       map the Flash block in
-                    lda       #$30                place #$30 (Sector Erase Command) on the data bus
-                    sta       >MMU_WINDOW         place address of 4k block on the address bus
-                    bra       d@                  go to the delay routine
-u@                  ldb       1,s                 get Flash block num from stack
-                    stb       >MMU_WORKSLOT       map the Flash block in
-                    lda       #$30                place #$30 (Sector Erase Command) on the data bus
-                    sta       >MMU_WINDOW+$1000   place address of 4k block on the address bus
-                    bra       d@                  go to the delay routine
-d@                  ldx       #ERASE_WAIT         delay to fully erase Flash sector
-w@                  leax      -1,x
-                    cmpx      #0                  REQUIRED because the wait count of $2800 was
-                    bne       w@                   discovered while 6 padding cycles was included
-                    puls      a,b,x,pc
-
-
 GetStat             clrb
                     rts
 
 SetStat             clrb
                     rts
-
-* How do we get the current track that the Format command is trying to write?
-                    ldx       PD.Rgs,y            ; Retrieve request
-                    ldb       R$B,x
-                    cmpb      #SS.Wtrk            ; Write (format) a track
-                    bne       x@
-                    leax      DRVBEG,u            Point to 1st normal drive table
-                    lda       <V.TRAK,x           Init Current track # to $FF
-                    cmpa      #0                  Is this right?  We need to know if the device is at track 0
-                    bne       x@
-* Chip Erase 5555H AAH,  2AAAH 55H,  5555H 80H,  5555H AAH,  2AAAH 55H,  5555H 10H
-Wipe                clrb
-                    pshs      cc
-                    orcc      #IntMasks
-                    lbsr      FlashSend5555AA
-                    lbsr      FlashSend2AAA55
-                    ldb       #$80
-                    lbsr      FlashSend5555XX
-                    lbsr      FlashSend5555AA
-                    lbsr      FlashSend2AAA55
-                    ldb       #$10			Place #$10 (Chip Erase Command) on the data bus
-                    lbsr      FlashSend5555XX
-                    puls      cc
-x@                  rts                           return
 
 
 * The SST39LF010/020/040 and SST39VF010/020/040
@@ -478,6 +288,211 @@ Bin2AscHex          anda      #$0f
                     bra       x@
 d@                  adda      #'0'
 x@                  rts
+
+CleanRWExit         lda       SaveMMU,u
+                    sta       >MMU_WORKSLOT       remap in system block 0
+                    andcc     #^IntMasks          turn on interrupts and clear carry to indicate no error
+                    clrb                          no errors
+                    rts
+
+
+* Address $5555 in Flash cartridge is in block $82 and when block $82 is mapped to $4000 (MMU SLOT 2),
+* the address $5555 translates to $5555, because $5555 becomes $1555 then added to $4000.
+FlashSend5555AA     pshs      a
+                    lda       #$82
+                    sta       >MMU_WORKSLOT
+                    lda       #$AA
+                    sta       >$5555
+                    puls      a,pc
+
+* Address $5555 in chip is in block $82 and when block $82 is mapped to $4000 (MMU SLOT 2),
+* the address $5555 translates to $5555, because $5555 becomes $1555 then added to $4000.
+FlashSend5555XX     pshs      a
+                    lda       #$82
+                    sta       >MMU_WORKSLOT
+                    stb       >$5555
+                    puls      a,pc
+
+* Address $2AAA in chip is in block $81 and when block $81 is mapped to $4000 (MMU SLOT 2),
+* the address $2AAA translates to $4AAA, because $2AAA becomes $0AAA then added to $4000.
+FlashSend2AAA55     pshs      a
+                    lda       #$81
+                    sta       >MMU_WORKSLOT
+                    lda       #$55
+                    sta       >$4AAA
+                    puls      a,pc
+
+
+
+*  =================================================================================
+* |  Everything below this point is for Level II only                               |
+* |  Flash Writable version of this driver                                          |
+*  =================================================================================
+
+* 8K block copier, using single MMU slot
+* Entry: A = source block
+*        B = destination block
+* Exit: destination block stays in MMU slot
+*       all registers restored
+
+                    ifgt      Level-1
+
+AskForCache         ldb       #1                  Flash Write mode needs an 8K swap block of RAM
+                    os9       F$AllRAM
+                    rts                           Return with any error, otherwise reg.b = cache block
+
+Flash2Cache         pshs      u,x,y,d
+                    ldx       #MMU_WINDOW
+                    ldy       #4096               2 bytes per iteration = 8192
+c@                  ldb       ,s                  get source block from reg.a position on stack
+                    stb       >MMU_WORKSLOT 
+                    ldu       ,x
+                    ldb       1,s                 get destination block from reg.b position on stack
+                    stb       >MMU_WORKSLOT 
+                    stu       ,x++
+                    leay      -1,y
+                    bne       c@
+                    puls      d,u,x,y,pc
+
+CheckEmpty          pshs      b,y
+                    lda       ,y
+                    clrb
+a@                  anda      ,y+
+                    decb
+                    bne       a@
+                    coma                          $FF becomes $00 which sets CC.Z ?
+                    tsta
+                    puls      b,y,pc
+
+* Copy 8K Flash block into 8K Cache.
+* Copy OS-9 sector into correct spot in 8K Cache.
+* Is old OS-9 sector empty?  No, erase the associated 4K Flash sector and write back the 4K Cache sector.
+* Is old OS-9 sector empty?  Yes, write only the 256-byte sector back to Flash.
+
+TfrFSect            lda       FlashBlock,u        copy from Flash block to Cache block
+                    ldb       CacheBlock,u
+                    bsr       Flash2Cache
+                    bsr       CheckEmpty          is the OS-9 sector that's already on Flash empty?
+                    sta       EmptySector,u       save empty status
+                    pshs      x,y
+                    lda       CacheBlock,u
+                    lbsr      TfrSect             Write the 256-byte sector into the 8K Cache
+                    puls      x,y
+                    tst       EmptySector,u
+                    beq       c@                  old OS-9 sector is empty, so we just need to write over Only It
+                    tfr       y,d                 Y = address of OS-9 256-byte sector within the 8K Cache
+                    anda      #$10                compute which half of the 8K Flash block it's in (A12 of address)
+                    tfr       d,x               
+                    leax      MMU_WINDOW,x        base start of the RAM copy of the new Flash sector to write back
+                    lsra                          OS-9 sector on Flash is dirty (used), so we need to rewrite entire 4K Flash sector
+                    lsra
+                    lsra
+                    lsra                          compute 0=1st half of 4K Flash sector, 1=2nd half
+                    ldb       FlashBlock,u        what 8K Flash block is the sector in?
+                    lbsr      Erase4KSector
+                    ldy       #4096               at this point X needs to point to the 4K Sector within the 8K Cache
+                    bra       w@                  start writing 4K Sector from 8K Cache to Flash
+c@                  tfr       y,x                 Y = address of OS-9 256-byte sector within the 8K Cache
+                    ldy       #256                write only the OS-9 sector to Flash
+w@                  ldb       CacheBlock,u
+                    stb       >MMU_WORKSLOT
+                    lda       ,x
+*
+                    ldb       #$82
+                    stb       >MMU_WORKSLOT
+                    ldb       #$AA
+                    stb       >$5555
+*
+                    ldb       #$81
+                    stb       >MMU_WORKSLOT
+                    ldb       #$55
+                    stb       >$4AAA
+*
+                    ldb       #$82
+                    stb       >MMU_WORKSLOT
+                    ldb       #$A0
+                    stb       >$5555
+*
+                    ldb       FlashBlock,u
+                    stb       >MMU_WORKSLOT
+                    ldb       ,x
+                    sta       ,x+                 REQUIRED: when address changes the data is latched
+v@                  cmpa       -1,x
+                    cmpa       -1,x
+                    bne       v@
+                    leay      -1,y
+                    bne       w@
+                    lbra      CleanRWExit
+
+* 3.3 Sector Erase Operation
+* The Sector Erase operation allows the system to erase
+* the device on a sector-by-sector basis. The sector
+* architecture is based on uniform sector size of
+* 4 Kbytes. The Sector Erase operation is initiated by
+* executing a six-byte command load sequence for
+* Software Data Protection with Sector Erase command
+* (30H) and Sector Address (SA) in the last bus cycle.
+* The sector address is latched on the falling edge of the
+* sixth WE# pulse, while the command (30H) is latched
+* on the rising edge of the sixth WE# pulse. The internal
+* Erase operation begins after the sixth WE# pulse. The
+* End-of-Erase can be determined using either Data#
+* Polling or Toggle Bit methods. See Figure 7-6 for timing
+* waveforms. Any commands written during the Sector
+* Erase operation will be ignored.
+* During an internal Erase operation, any attempt to read
+* DQ7 will produce a ‘0’. Once the internal Erase
+* operation is completed, DQ7 will produce a ‘1’. The
+* Data# Polling is valid after the rising edge of fourth
+* WE# (or CE#) pulse for Program operation. For Sector
+* or Chip Erase, the Data# Polling is valid after the rising
+* edge of sixth WE# (or CE#) pulse.
+
+Erase4KSector       pshs      x,b,a               reg.b = block num to erase
+                    lbsr       FlashSend5555AA
+                    lbsr       FlashSend2AAA55
+                    ldb       #$80
+                    lbsr       FlashSend5555XX
+                    lbsr       FlashSend5555AA
+                    lbsr       FlashSend2AAA55
+                    tst       ,s	                  which 4k sector of the 8k block do we erase?
+                    bne       u@                  if reg.a = 1 then go erase 2nd sector
+                    ldb       1,s                 get Flash block num from stack
+                    stb       >MMU_WORKSLOT       map the Flash block in
+                    lda       #$30                place #$30 (Sector Erase Command) on the data bus
+                    sta       >MMU_WINDOW         place address of 4k block on the address bus
+                    bra       d@                  go to the delay routine
+u@                  ldb       1,s                 get Flash block num from stack
+                    stb       >MMU_WORKSLOT       map the Flash block in
+                    lda       #$30                place #$30 (Sector Erase Command) on the data bus
+                    sta       >MMU_WINDOW+$1000   place address of 4k block on the address bus
+                    bra       d@                  go to the delay routine
+d@                  ldx       #ERASE_WAIT         delay to fully erase Flash sector
+w@                  leax      -1,x
+                    cmpx      #0                  REQUIRED because the wait count of $2800 was
+                    bne       w@                   discovered while 6 padding cycles was included
+                    puls      a,b,x,pc
+
+
+* Chip Erase 5555H AAH,  2AAAH 55H,  5555H 80H,  5555H AAH,  2AAAH 55H,  5555H 10H
+Wipe                clrb
+                    pshs      cc
+                    orcc      #IntMasks
+                    lbsr      FlashSend5555AA
+                    lbsr      FlashSend2AAA55
+                    ldb       #$80
+                    lbsr      FlashSend5555XX
+                    lbsr      FlashSend5555AA
+                    lbsr      FlashSend2AAA55
+                    ldb       #$10			Place #$10 (Chip Erase Command) on the data bus
+                    lbsr      FlashSend5555XX
+                    puls      cc
+x@                  rts                           return
+
+
+
+                    endc
+
 
                     emod
 eom                 equ       *
