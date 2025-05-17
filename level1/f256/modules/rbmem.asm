@@ -235,7 +235,7 @@ TfrFSect            lda       FlashBlock,u        copy from Flash block to Cache
                     lbsr      TfrSect             Write the 256-byte sector into the 8K Cache
                     puls      x,y
                     tst       EmptySector,u
-*                    beq       c@                  old OS-9 sector is empty, so we just need to write over Only It
+                    beq       c@                  old OS-9 sector is empty, so we just need to write over Only It
                     tfr       y,d                 Y = address of OS-9 256-byte sector within the 8K Cache
                     anda      #$10                compute which half of the 8K Flash block it's in (A12 of address)
                     tfr       d,x               
