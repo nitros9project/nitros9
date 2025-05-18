@@ -224,7 +224,7 @@ f0.dsk: feu/startup
 	$(foreach file,$(FEU_FILES),$(OS9COPY) -l $(file) $@,FEU)
 	
 feu/startup: FORCE
-	echo "display 1b 60 0 ff ff 20 ff 1b 61 1 ff 0 0 ff 5 22 f0 1b 20 2 0 0 50 18 0 1 0" > $@
+	echo "display 1b 60 0 0 0 0 0 1b 61 1 ff 0 0 ff 5 22 f0 1b 20 2 0 0 50 18 0 1 0 1b 32 7" > $@
 	echo "echo FEU - Foenix Executive Utility" >> $@
 	echo "echo Build date:" `date` >> $@
 	echo "fnxinfo" >> $@
