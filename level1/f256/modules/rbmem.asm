@@ -85,16 +85,17 @@ Init
                     ldd       M$Port+1,y          Get port address in device descriptor
                     std       V.PORT,u            and save to device memory (used by CalcMMUBlock)
 
-                    lbsr      ReadFlashID
-                    lbsr      ShowFlashID
+                    clr       isFlash,u
 
                 ifgt Level-1
-                    lbsr      AskForCache
-                    stb       CacheBlock,u
+                    lbsr      ReadFlashID         If compatible Flash ID is seen, isFlash is set to 1
+                    lbsr      ShowFlashID         Print the 4-character Flash ID in the upper/right of the screen
+                    lbsr      AskForCache         OS-9 Level II - only call to request a free 8K block of RAM
+                    stb       CacheBlock,u        Save the block #
                 else
                     clrb                          No error
                 endc
-                    rts
+                    rts                           Return with any error from the AskForCache routine
 
 Term                clrb
                     rts
@@ -108,7 +109,9 @@ Read                lda       >MMU_WORKSLOT       Save the MMU block number
                     pshs      y,x                 Preserve the path descriptor & device memory pointers
                     bsr       CalcMMUBlock        Calculate the MMU block & offset for the sector
                     bcs       ex@                 Branch if error
+                ifgt Level-1
                     sta       FlashBlock,u
+                endc
                     orcc      #IntMasks
                     bsr       TfrSect             Transfer the sector from the RAM drive to PD.BUF
                     puls      y,x                 Restore the pointers
@@ -169,12 +172,12 @@ Write               lda       >MMU_WORKSLOT       Get the contents of working sl
                     bsr       CalcMMUBlock        Calculate the MMU Block & the offset for the sector
                     bcs       x@                  Branch if error
                     orcc      #IntMasks           Mask interrupts
-                    sta       FlashBlock,u        Remember the target cartridge block #
                     exg       x,y                 Make  X = sector buffer pointer, Y= offset within the MMU block
-                    ifgt      Level-1
+                ifgt      Level-1
+                    sta       FlashBlock,u
                     tst       IsFlash,u
                     lbne      TfrFSect
-                    endc
+                endc
                     bsr       TfrSect
                     lbra      CleanRWExit
 x@                  rts
@@ -201,6 +204,12 @@ GetStat             clrb
 SetStat             clrb
                     rts
 
+
+*  =================================================================================
+* |  Everything below this point is for the Flash Writable version of this driver   |
+*  =================================================================================
+
+                    ifgt      Level-1
 
 * The SST39LF010/020/040 and SST39VF010/020/040
 * FLASH chips are 128K x8, 256K x8 and 5,124K x8
@@ -234,7 +243,6 @@ ReadFlashID         pshs      cc
                     lbsr      FlashSend5555XX
                     puls      b
                     stb       >MMU_WORKSLOT
-                    clr       isFlash,u
                     cmpx      FLASH_ID_256K,pcr
                     beq       f@
                     cmpx      FLASH_ID_512K,pcr
@@ -323,19 +331,11 @@ FlashSend2AAA55     pshs      a
                     puls      a,pc
 
 
-
-*  =================================================================================
-* |  Everything below this point is for Level II only                               |
-* |  Flash Writable version of this driver                                          |
-*  =================================================================================
-
 * 8K block copier, using single MMU slot
 * Entry: A = source block
 *        B = destination block
 * Exit: destination block stays in MMU slot
 *       all registers restored
-
-                    ifgt      Level-1
 
 AskForCache         ldb       #1                  Flash Write mode needs an 8K swap block of RAM
                     os9       F$AllRAM
