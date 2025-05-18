@@ -21,7 +21,7 @@ DRVTYP              equ       $80
 TRACKS              equ       64       number of tracks
 BLOCKSTART          equ       $80       starting block number
 SECTRK              equ       16
-SAS                 equ       4
+SAS                 equ       1
 modes               equ       DIR.+SHARE.+PREAD.+PWRIT.+PEXEC.+READ.+WRITE.+EXEC.
                   ELSE
 * Geometry values equals the size of the flash area: 5 8K blocks (40,960 bytes)
