@@ -72,7 +72,6 @@ BOOTFILE_F256K = $(KERNEL) \
 		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
 		$(RBF) $(RBFDW) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
-		$(PIPE) \
 		$(CLOCK) \
 		sysgo $(CMDSDIR)/shell_21 \
 		$(CMDSDIR)/display \
@@ -88,7 +87,6 @@ BOOTFILE_F256JR = $(KERNEL) \
 		$(SCF) $(SCVT_F256JR) $(FONT) $(PALETTE) \
 		$(RBF) $(RBFDW) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
-		$(PIPE) \
 		$(CLOCK) \
 		sysgo $(CMDSDIR)/shell_21 \
 		$(CMDSDIR)/display \
