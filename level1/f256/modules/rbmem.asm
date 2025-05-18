@@ -164,16 +164,16 @@ sectex@             comb                          Set the carry
 * Entry: B:X = LSN to write.
 *          Y = Path descriptor pointer.
 *          U = Device memory pointer.
-Write               orcc      #IntMasks           Mask interrupts
-                    lda       >MMU_WORKSLOT       Get the contents of working slot
+Write               lda       >MMU_WORKSLOT       Get the contents of working slot
                     sta       SaveMMU,u           Save in driver vars
                     bsr       CalcMMUBlock        Calculate the MMU Block & the offset for the sector
                     bcs       x@                  Branch if error
+                    orcc      #IntMasks           Mask interrupts
                     sta       FlashBlock,u        Remember the target cartridge block #
                     exg       x,y                 Make  X = sector buffer pointer, Y= offset within the MMU block
                     ifgt      Level-1
                     tst       IsFlash,u
-                    lbne       TfrFSect
+                    lbne      TfrFSect
                     endc
                     bsr       TfrSect
                     lbra      CleanRWExit
@@ -419,10 +419,22 @@ w@                  ldb       CacheBlock,u
                     sta       ,x+                 REQUIRED: when address changes the data is latched
 v@                  cmpa       -1,x
                     cmpa       -1,x
+                    beq       g@
+                    decb
                     bne       v@
-                    leay      -1,y
+                    lda       SaveMMU,u
+                    sta       >MMU_WORKSLOT       remap in system block 0
+                    ldb       #$F3                CRC ERROR - CRC error on read or write verify
+                    andcc     #^IntMasks          turn on interrupts and clear carry to indicate no error
+                    orcc      #1
+                    rts
+g@                  leay      -1,y
                     bne       w@
-                    lbra      CleanRWExit
+                    lda       SaveMMU,u
+                    sta       >MMU_WORKSLOT       remap in system block 0
+                    andcc     #^IntMasks          turn on interrupts and clear carry to indicate no error
+                    clrb                          no errors
+                    rts
 
 * 3.3 Sector Erase Operation
 * The Sector Erase operation allows the system to erase
