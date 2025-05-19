@@ -278,10 +278,10 @@ Init                clrb                          default to no error...
 * 0 = 115200 bps (aka Slow mode)
 * 1 = 921600 bps (aka Fast mode) doesn't appear to work at this time
                 sta	>WIZFI_UART_CtrlReg
-                ldy	#2048
-p@      	ldb	>WIZFI_UART_DataReg
-                leay	-1,y
-                bne	p@
+*                ldy	#2048
+*p@      	ldb	>WIZFI_UART_DataReg
+*                leay	-1,y
+*                bne	p@
                 stx	>WORK_SLOT
                 puls	x
 
