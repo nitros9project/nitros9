@@ -12,6 +12,3 @@ sleep 90
 echo AT+CWDHCP_CUR=1,1>/wz
 sleep 90
 echo AT+CWJAP_CUR="SSID","PASSWORD">/wz
-sleep 90
-echo AT+CIPSTA_CUR?>/wz
-sleep 90
