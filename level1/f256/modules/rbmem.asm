@@ -116,7 +116,7 @@ Read                lda       >MMU_WORKSLOT       Save the MMU block number
                     bsr       TfrSect             Transfer the sector from the RAM drive to PD.BUF
                     puls      y,x                 Restore the pointers
                     leax      ,x                  Is this LSN0?
-                    lbne      CleanRWExit         Branch if not
+                    bne       CleanRWExit         Branch if not
                     ldx       PD.BUF,y            else get the path descriptor buffer into X
                     leay      DRVBEG,u            Point to the start of the drive table
 * 6809 - Use StkBlCpy (either system wide or local to driver).
@@ -125,7 +125,7 @@ l@                  lda       ,x+                 Get a byte from the source
                     sta       ,y+                 Save it in the destination
                     decb                          Decrement the counter
                     bne       l@                  Branch of more to do
-                    lbra      CleanRWExit
+                    bra       CleanRWExit
 ex@                 puls      y,x,pc              Restore registers and return
 
 * Subroutine to calculate MMU block number and offset based on the requested sector.
@@ -164,6 +164,12 @@ sectex@             comb                          Set the carry
                     ldb       #E$Sect             Load the "bad sector" error
                     rts                           Return
 
+CleanRWExit         lda       SaveMMU,u
+                    sta       >MMU_WORKSLOT       remap in system block 0
+                    andcc     #^IntMasks          turn on interrupts and clear carry to indicate no error
+                    clrb                          no errors
+                    rts
+
 * Entry: B:X = LSN to write.
 *          Y = Path descriptor pointer.
 *          U = Device memory pointer.
@@ -179,8 +185,9 @@ Write               lda       >MMU_WORKSLOT       Get the contents of working sl
                     lbne      TfrFSect
                 endc
                     bsr       TfrSect
-                    lbra      CleanRWExit
+                    bra       CleanRWExit
 x@                  rts
+
 
 * Transfer data between the RBF sector buffer & the RAM drive image sector buffer.
 * Both READ and WRITE (with X,Y swapping between the two) call this routine.
@@ -296,12 +303,6 @@ Bin2AscHex          anda      #$0f
                     bra       x@
 d@                  adda      #'0'
 x@                  rts
-
-CleanRWExit         lda       SaveMMU,u
-                    sta       >MMU_WORKSLOT       remap in system block 0
-                    andcc     #^IntMasks          turn on interrupts and clear carry to indicate no error
-                    clrb                          no errors
-                    rts
 
 
 * Address $5555 in Flash cartridge is in block $82 and when block $82 is mapped to $4000 (MMU SLOT 2),
