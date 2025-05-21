@@ -23,6 +23,7 @@
 
 * If 1, during Init the Flash ID is shown on the F256 text screen in the upper right corner.
 fDEBUG              equ       1
+MAXDRIVES           equ       4
 MMU_SLOT            equ       2
 MMU_WINDOW          equ       $2000*MMU_SLOT
 MMU_WORKSLOT        equ       MMU_SLOT_0+MMU_SLOT
@@ -34,17 +35,16 @@ edition             set       2
 
                     mod       eom,name,tylg,atrv,ModEntry,size
 
-                    org       0
+                    org       DrvBeg
+DrvTab              rmb       MaxDrives*DrvMem       ; Drive tables, 1 per drive
 
-                    rmb       DRVBEG+(DRVMEM*1)
-
+CDrvTab             rmb       2
 SaveMMU             rmb       1
 FlashBlock          rmb       1
 CacheBlock          rmb       1
 IsFlash             rmb       1
 EmptySector         rmb       1
 
-                    rmb       255-.               Residual page RAM for stack etc. RG
 size                equ       .
 
                     fcb       DIR.+SHARE.+PREAD.+PWRIT.+PEXEC.+READ.+WRITE.+EXEC.
@@ -55,6 +55,7 @@ name                fcs       /rbmem/
 FLASH_ID_128K       fdb       $BFD5               SST brand
 FLASH_ID_256K       fdb       $BFD6	          SST brand
 FLASH_ID_512K       fdb       $BFD7	          SST brand
+FLASH_ID_F256       fdb       $F256               Jr2 has the onboard Flash ID of ($BFD7) but is intercepted by the FPGA and returns $F256
 ERASE_WAIT          equ       $2800               This value considers a dummy "cmpx #$0000" is in the delay loop
 
 ModEntry            lbra      Init
@@ -64,24 +65,31 @@ ModEntry            lbra      Init
                     lbra      SetStat
                     lbra      Term
 
+
+
 * Init routine - only gets called once per driver initialized.
 * Called if you INIZ the device as well.
 * Entry: Y = Address of device descriptor.
 *        U = Device memory area.
 * NOTE: All of device memory (Except V.PORT) are cleared to 0's.
 Init
-                    leax      DRVBEG,u            Point to the beginning of the drive tables
-
-                    ldd       #$0400              Number of total sectors
+                    ldb       #MAXDRIVES          get default # drives
+                    pshs      b
+                    stb       V.NDRV,u            save it
+                    leax      DRVBEG,u            point to drive table start
+t@
+                    clr       <V.TRAK,x
+                    dec       <V.TRAK,x
                     clr       DD.TOT,x
+*     Cartridge (128KB) = 1024 total LSNs
+* Onboard Flash (512KB) = 2048 total LSNs
+                    ldd       #$800
                     std       DD.TOT+1,x
-
-                    ldb       #-1
-                    stb       V.TRAK,x
-
-                    ldb       #$01
-                    stb       V.NDRV,u            $01
-
+                    leax      DRVMEM,x
+                    dec       ,s
+                    bne       t@
+                    puls      b
+  
                     ldd       M$Port+1,y          Get port address in device descriptor
                     std       V.PORT,u            and save to device memory (used by CalcMMUBlock)
 
@@ -101,33 +109,6 @@ Term                clrb
                     rts
 
 
-* Entry: B:X = LSN to read (only X will be used).
-*          Y = Path descriptor pointer.
-*          U = Device memory pointer.
-Read                lda       >MMU_WORKSLOT       Save the MMU block number
-                    sta       SaveMMU,u
-                    pshs      y,x                 Preserve the path descriptor & device memory pointers
-                    bsr       CalcMMUBlock        Calculate the MMU block & offset for the sector
-                    bcs       ex@                 Branch if error
-                ifgt Level-1
-                    sta       FlashBlock,u
-                endc
-                    orcc      #IntMasks
-                    bsr       TfrSect             Transfer the sector from the RAM drive to PD.BUF
-                    puls      y,x                 Restore the pointers
-                    leax      ,x                  Is this LSN0?
-                    bne       CleanRWExit         Branch if not
-                    ldx       PD.BUF,y            else get the path descriptor buffer into X
-                    leay      DRVBEG,u            Point to the start of the drive table
-* 6809 - Use StkBlCpy (either system wide or local to driver).
-                    ldb       #DD.SIZ             Set the counter to the size
-l@                  lda       ,x+                 Get a byte from the source
-                    sta       ,y+                 Save it in the destination
-                    decb                          Decrement the counter
-                    bne       l@                  Branch of more to do
-                    bra       CleanRWExit
-ex@                 puls      y,x,pc              Restore registers and return
-
 * Subroutine to calculate MMU block number and offset based on the requested sector.
 *
 * Entry:   Y = Path descriptor pointer.
@@ -137,11 +118,22 @@ ex@                 puls      y,x,pc              Restore registers and return
 * Exit:    A = MMU block number we need to map in.
 *          X = Offset within the MMU block to get sector from (always < 8KB).
 *          Y = Sector buffer pointer for RBF.
-CalcMMUBlock        tstb                          Test the MSB of the sector number
-                    bne       sectex@             Branch if not 0 (error)
+CalcMMUBlock        lda       PD.DRV,y
+                    cmpa      V.NDRV,u
+                    bhs       drvex@
+                    pshs      x,d
+                    leax      DrvBeg,u
+                    ldb       #DrvMem
+                    lda       PD.DRV,y
+                    mul
+                    leax      d,x
+                    stx       CDrvTab,u
+                    puls      x,d
+                    cmpb      DD.TOT,x            Test the MSB of the sector number
+                    bhi       sectex@             Branch if not 0 (error)
                     pshs      a,x                 Preserve the LSW of the sector number
-                    tfr       x,d                 Transfer LSW of sector from X to D
-                    leax      DRVBEG,u            Point to the drive table
+                    ldx       CDrvTab,u            Point to the drive table
+                    ldd       1,s                 Get LSW of sector from stack
                     cmpd      DD.TOT+1,x          Compare against the LSW of the sector to table's number of sectors
                     bhs       cleanex@            Sector number too large, exit with error
                     aslb                          D = D * 2
@@ -163,6 +155,35 @@ cleanex@            leas      3,s                 Clean up the stack
 sectex@             comb                          Set the carry
                     ldb       #E$Sect             Load the "bad sector" error
                     rts                           Return
+drvex@              comb                          Set the carry
+                    ldb       #$F0                Unit error (illegal drive number)
+                    rts                           Return
+
+* Entry: B:X = LSN to read (only X will be used).
+*          Y = Path descriptor pointer.
+*          U = Device memory pointer.
+Read                lda       >MMU_WORKSLOT       Save the MMU block number
+                    sta       SaveMMU,u
+                    pshs      y,x                 Preserve the path descriptor & device memory pointers
+                    bsr       CalcMMUBlock        Calculate the MMU block & offset for the sector
+                    bcs       ex@                 Branch if error
+                ifgt Level-1
+                    sta       FlashBlock,u
+                endc
+                    orcc      #IntMasks
+                    bsr       TfrSect             Transfer the sector from the RAM drive to PD.BUF
+                    puls      y,x                 Restore the path descriptor & device memory pointers
+                    leax      ,x                  Is this LSN0?
+                    bne       CleanRWExit         Branch if not
+                    ldx       PD.BUF,y            else get the path descriptor buffer into X
+                    ldy       cDrvTab,u           Recall this drive's memory pointer from CalcMMUBlock routine
+                    ldb       #DD.SIZ             Set the counter to the size
+l@                  lda       ,x+                 Get a byte from the source
+                    sta       ,y+                 Save it in the destination
+                    decb                          Decrement the counter
+                    bne       l@                  Branch of more to do
+                    bra       CleanRWExit
+ex@                 puls      y,x,pc              Restore registers and return
 
 CleanRWExit         lda       SaveMMU,u
                     sta       >MMU_WORKSLOT       remap in system block 0
@@ -175,7 +196,7 @@ CleanRWExit         lda       SaveMMU,u
 *          U = Device memory pointer.
 Write               lda       >MMU_WORKSLOT       Get the contents of working slot
                     sta       SaveMMU,u           Save in driver vars
-                    bsr       CalcMMUBlock        Calculate the MMU Block & the offset for the sector
+                    lbsr      CalcMMUBlock        Calculate the MMU Block & the offset for the sector
                     bcs       x@                  Branch if error
                     orcc      #IntMasks           Mask interrupts
                     exg       x,y                 Make  X = sector buffer pointer, Y= offset within the MMU block
@@ -250,6 +271,10 @@ ReadFlashID         pshs      cc
                     lbsr      FlashSend5555XX
                     puls      b
                     stb       >MMU_WORKSLOT
+                    cmpx      FLASH_ID_F256,pcr
+                    beq       f@
+                    cmpx      FLASH_ID_128K,pcr
+                    beq       f@
                     cmpx      FLASH_ID_256K,pcr
                     beq       f@
                     cmpx      FLASH_ID_512K,pcr
@@ -308,7 +333,9 @@ x@                  rts
 * Address $5555 in Flash cartridge is in block $82 and when block $82 is mapped to $4000 (MMU SLOT 2),
 * the address $5555 translates to $5555, because $5555 becomes $1555 then added to $4000.
 FlashSend5555AA     pshs      a
-                    lda       #$82
+                    lda       V.PORT+1,u
+                    anda      #$C0               Align to top of Flash chip
+                    adda      #$02
                     sta       >MMU_WORKSLOT
                     lda       #$AA
                     sta       >$5555
@@ -317,7 +344,9 @@ FlashSend5555AA     pshs      a
 * Address $5555 in chip is in block $82 and when block $82 is mapped to $4000 (MMU SLOT 2),
 * the address $5555 translates to $5555, because $5555 becomes $1555 then added to $4000.
 FlashSend5555XX     pshs      a
-                    lda       #$82
+                    lda       V.PORT+1,u
+                    anda      #$C0               Align to top of Flash chip
+                    adda      #$02
                     sta       >MMU_WORKSLOT
                     stb       >$5555
                     puls      a,pc
@@ -325,7 +354,9 @@ FlashSend5555XX     pshs      a
 * Address $2AAA in chip is in block $81 and when block $81 is mapped to $4000 (MMU SLOT 2),
 * the address $2AAA translates to $4AAA, because $2AAA becomes $0AAA then added to $4000.
 FlashSend2AAA55     pshs      a
-                    lda       #$81
+                    lda       V.PORT+1,u
+                    anda      #$C0               Align to top of Flash chip
+                    inca
                     sta       >MMU_WORKSLOT
                     lda       #$55
                     sta       >$4AAA
@@ -399,17 +430,23 @@ w@                  ldb       CacheBlock,u
                     stb       >MMU_WORKSLOT
                     lda       ,x
 *
-                    ldb       #$82
+                    ldb       V.PORT+1,u
+                    andb      #$C0               Align to top of Flash chip
+                    addb      #$02
                     stb       >MMU_WORKSLOT
                     ldb       #$AA
                     stb       >$5555
 *
-                    ldb       #$81
+                    ldb       V.PORT+1,u
+                    andb      #$C0               Align to top of Flash chip
+                    incb
                     stb       >MMU_WORKSLOT
                     ldb       #$55
                     stb       >$4AAA
 *
-                    ldb       #$82
+                    ldb       V.PORT+1,u
+                    andb      #$C0               Align to top of Flash chip
+                    addb      #$02
                     stb       >MMU_WORKSLOT
                     ldb       #$A0
                     stb       >$5555
@@ -418,8 +455,8 @@ w@                  ldb       CacheBlock,u
                     stb       >MMU_WORKSLOT
                     ldb       ,x
                     sta       ,x+                 REQUIRED: when address changes the data is latched
-v@                  cmpa       -1,x
-                    cmpa       -1,x
+v@                  cmpa      -1,x
+                    cmpa      -1,x
                     beq       g@
                     decb
                     bne       v@
@@ -454,20 +491,20 @@ g@                  leay      -1,y
 * waveforms. Any commands written during the Sector
 * Erase operation will be ignored.
 * During an internal Erase operation, any attempt to read
-* DQ7 will produce a ‘0’. Once the internal Erase
-* operation is completed, DQ7 will produce a ‘1’. The
+* DQ7 will produce a '0'. Once the internal Erase
+* operation is completed, DQ7 will produce a '1'. The
 * Data# Polling is valid after the rising edge of fourth
 * WE# (or CE#) pulse for Program operation. For Sector
 * or Chip Erase, the Data# Polling is valid after the rising
 * edge of sixth WE# (or CE#) pulse.
 
 Erase4KSector       pshs      x,b,a               reg.b = block num to erase
-                    lbsr       FlashSend5555AA
-                    lbsr       FlashSend2AAA55
+                    lbsr      FlashSend5555AA
+                    lbsr      FlashSend2AAA55
                     ldb       #$80
-                    lbsr       FlashSend5555XX
-                    lbsr       FlashSend5555AA
-                    lbsr       FlashSend2AAA55
+                    lbsr      FlashSend5555XX
+                    lbsr      FlashSend5555AA
+                    lbsr      FlashSend2AAA55
                     tst       ,s	                  which 4k sector of the 8k block do we erase?
                     bne       u@                  if reg.a = 1 then go erase 2nd sector
                     ldb       1,s                 get Flash block num from stack
@@ -502,10 +539,7 @@ Wipe                clrb
                     puls      cc
 x@                  rts                           return
 
-
-
                     endc
-
 
                     emod
 eom                 equ       *
