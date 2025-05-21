@@ -13,29 +13,47 @@ tylg                set       Devic+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
 
+modes               set       DIR.+SHARE.+PREAD.+PWRIT.+PEXEC.+READ.+WRITE.+EXEC.
+
                     mod       eom,name,tylg,atrv,mgrnam,drvnam
 
-                    ifdef     CART
-* Geometry values equals the size of the cartridge memory: 32 8K blocks (262,144 bytes)
-DRVTYP              equ       $80
-TRACKS              equ       64       number of tracks
-BLOCKSTART          equ       $80       starting block number
-SECTRK              equ       16
-SAS                 equ       1
-modes               equ       DIR.+SHARE.+PREAD.+PWRIT.+PEXEC.+READ.+WRITE.+EXEC.
-                  ELSE
-* Geometry values equals the size of the flash area: 5 8K blocks (40,960 bytes)
-DRVTYP              equ       $20
-TRACKS              equ       40        number of tracks
-BLOCKSTART          equ       $78       starting block number
-SECTRK              equ       4
-SAS                 equ       4
-modes               equ       DIR.+SHARE.+PREAD.+PEXEC.+READ.+EXEC.
-                  ENDC
+SECTRK              set       4
+SAS                 set       4
+
+
+                    IFDEF     C0
+DRVTYP              set       $80
+BLOCK               set       $80
+TRACKS              set       256
+
+                    ELSE
+                    IFDEF     C1
+DRVTYP              set       $80
+BLOCK               set       $90
+TRACKS              set       128
+
+                    ELSE
+                    IFDEF     F1
+DRVTYP              set       $80
+BLOCK               set       $40
+TRACKS              set       512-40     take what FEU isn't using
+
+                    ELSE
+DRVTYP              set       $20
+BLOCK               set       $78       FEU drive starting block number
+TRACKS              set       40
+DNum                set       0
+modes               set       DIR.+SHARE.+PREAD.+PEXEC.+READ.+EXEC.
+
+                    ENDC
+                    ENDC
+                    ENDC
+                    ENDC
+
 
                     fcb       modes
                     fcb       HW.Page   extended controller address
-                    fdb       $FF00+BLOCKSTART physical controller address (lower 8 bits used for start block)
+                    fdb       $FF00+BLOCK physical controller address (lower 8 bits used for start block)
                     fcb       initsize-*-1 initialization table size
                     fcb       DT.RBF    device type:0=scf,1=rbf,2=pipe,3=scf
                     fcb       DNum      drive number
@@ -51,15 +69,23 @@ modes               equ       DIR.+SHARE.+PREAD.+PEXEC.+READ.+EXEC.
                     fcb       SAS       minimum size of sector allocation
 initsize            equ       *
 
-                  IFNE    DD
+                IFNE    DD
 name                fcs       /dd/
-                  ELSE
-                  IFNE    CART
+                ELSE
+                IFNE    C0
 name                fcs       /c0/
-                  ELSE
+                ELSE
+                IFNE    C1
+name                fcs       /c1/
+                ELSE
+                IFNE    F1
+name                fcs       /f1/
+                ELSE
 name                fcs       /f0/
-                  ENDC
-                  ENDC
+                ENDC
+                ENDC
+                ENDC
+                ENDC
 
 mgrnam              fcs       /rbf/
 drvnam              fcs       /rbmem/
