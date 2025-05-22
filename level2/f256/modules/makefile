@@ -70,8 +70,11 @@ s0.dd: rbfnxsddesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(FNXSDFLAGS)
 
 # rbmem descriptors
-ddc0.dd: rbmemdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0 -DDD=1 -DC0=1
+f0.dd: rbmemdesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
+
+f1.dd: rbmemdesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=1 -DF1=1
 
 c0.dd: rbmemdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=2 -DC0=1
@@ -79,11 +82,8 @@ c0.dd: rbmemdesc.asm
 c1.dd: rbmemdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=3 -DC1=1
 
-f0.dd: rbmemdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
-
-f1.dd: rbmemdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=1 -DF1=1
+ddc0.dd: rbmemdesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=2 -DDD=1 -DC0=1
 
 # 16550 descriptors
 t0_sc16550.dd: sc16550desc.asm
