@@ -878,15 +878,14 @@ DMA_STATUS_TRF_IP   equ       $80       transfer in progress
 ** Bottom line, there is only one Count you need and it is the RxD FIFO...
 ** There is no Empty Flag in the Control Register to be read as a status, only the count registers will tell you how many bytes are present in the FIFO. the FIFOs are both 2K deep btw
 
-* WIZFI360 Registers
-*WIZFI.Base equ $FF20               Proposed register base
-WIZFI.Base equ $4040               Original MMU-based addressing system
-WIZFI_UART_CtrlReg equ WIZFI.Base+0
-WIZFI_UART_DataReg equ WIZFI.Base+1
-WIZFI_UART_RxD_RD_Count equ WIZFI.Base+2
-WIZFI_UART_RxD_WR_Count equ WIZFI.Base+4
-WIZFI_UART_TxD_RD_Count equ WIZFI.Base+6
-WIZFI_UART_TxD_WR_Count equ WIZFI.Base+8
+* WIZFI360 Register Indices
+ org 0
+WIZFI_UART_CtrlReg rmb 1
+WIZFI_UART_DataReg rmb 1
+WIZFI_UART_RxD_RD_Count rmb 2
+WIZFI_UART_RxD_WR_Count rmb 2
+WIZFI_UART_TxD_RD_Count rmb 2
+WIZFI_UART_TxD_WR_Count rmb 2
 
 
                   ENDC
