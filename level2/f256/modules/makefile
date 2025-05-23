@@ -16,10 +16,9 @@ SYSMODS		= ioman init sysgo
 CLOCKS		= clock clock2_f256
 
 RBF		= rbf.mn rbdw.dr dwio.sb ddx0.dd x0.dd x1.dd x2.dd x3.dd \
-          rbmem.dr ddc0.dd c0.dd f0.dd \
+                rbmem.dr ddc0.dd c0.dd c1.dd f0.dd f1.dd \
 		rbsuper.dr \
-          llfnxsd.sb dds0.dd s0.dd
-
+                llfnxsd.sb dds0.dd s0.dd
 
 SCF		= scf.mn \
 		vrn.dr nil.dd \
@@ -71,14 +70,20 @@ s0.dd: rbfnxsddesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(FNXSDFLAGS)
 
 # rbmem descriptors
-ddc0.dd: rbmemdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0 -DCART=1 -DDD=1
-
-c0.dd: rbmemdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0 -DCART=1
-
 f0.dd: rbmemdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
+
+f1.dd: rbmemdesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=1 -DF1=1
+
+c0.dd: rbmemdesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=2 -DC0=1
+
+c1.dd: rbmemdesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=3 -DC1=1
+
+ddc0.dd: rbmemdesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=2 -DDD=1 -DC0=1
 
 # 16550 descriptors
 t0_sc16550.dd: sc16550desc.asm
