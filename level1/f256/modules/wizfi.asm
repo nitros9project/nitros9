@@ -33,43 +33,6 @@
 VIRQCNT  equ  1
 WORK_SLOT	equ	MMU_SLOT_2
 
-** $0000: R/W - Control Register ; Only bit[0] is used 
-**         0: Low Speed (115K) 1: Hi-Speed (2M) 
-** $0001: R/W - FIFO Port (input/output)
-
-** ; This is the number of Byte in the FIFO to be Read
-** 00000CCC_CCCCCCCC  16-bit count
-** $0002: WIFI_UART_RxD_RD_Count[7:0]
-** $0003: {5'b0_0000, WIFI_UART_RxD_RD_Count[10:8]}
-
-** ; The is the number of byte has been written by the Module in the FIFO to be read by CPU
-** 00000CCC_CCCCCCCC  16-bit count
-** $0004: WIFI_UART_RxD_WR_Count[7:0]      <<<< This is the one you know how many bytes to read from the MODULE
-** $0005: {5'b0_0000, WIFI_UART_RxD_WR_Count[10:8]}
-
-** ; This is the number of Byte in the FIFO to be Read by the MODULE
-** 00000CCC_CCCCCCCC  16-bit count
-** $0006: WIFI_UART_TxD_RD_Count[7:0]
-** $0007: {5'b0_0000, WIFI_UART_RxD_RD_Count[10:8]} 
-
-** ; This is the number of Byte the CPU has written in the FIFO to be sent to MODULE
-** 00000CCC_CCCCCCCC  16-bit count
-** $0008: WIFI_UART_TxD_WR_Count[7:0]      
-** $0009: {5'b0_0000, WIFI_UART_RxD_WR_Count[10:8]}
-
-** By the way, I put both counts of both sides of both FIFO (1xRxD, 1xTxD) In reality the RxD side ought to report the same number if you take the RD side as opposed to the WR side.
-** Bottom line, there is only one Count you need and it is the RxD FIFO...
-** There is no Empty Flag in the Control Register to be read as a status, only the count registers will tell you how many bytes are present in the FIFO. the FIFOs are both 2K deep btw
-
-* The F256 has the WizFi registers in bank $C5/$0040 which we map in at $4000 (MMU_SLOT_2)
-WIZFI.Base equ $4040
-WIZFI_UART_CtrlReg equ WIZFI.Base+0
-WIZFI_UART_DataReg equ WIZFI.Base+1
-WIZFI_UART_RxD_RD_Count equ WIZFI.Base+2
-WIZFI_UART_RxD_WR_Count equ WIZFI.Base+4
-WIZFI_UART_TxD_RD_Count equ WIZFI.Base+6
-WIZFI_UART_TxD_WR_Count equ WIZFI.Base+8
-
 
 * conditional assembly switches
 TC9                 set       false               "true" for TC-9 version, "false" for Coco 3
@@ -247,65 +210,56 @@ ModEntry            lbra      Init
                     lbra      SStt
                     lbra      Term
 
-
 ModName             fcs       "WizFi"
                     fcb       edition
 
 SlotSlct            fcb       $FF                 disable MPI slot selection
-
 
 BaudTabl            equ       *
                     fcb       BR.00110,BR.00300,BR.00600
                     fcb       BR.01200,BR.02400,BR.04800
                     fcb       BR.09600,BR.19200
 
-DMSK     fcb 0                 no flip bits
-         fcb Vi.IFlag          polling mask for VIRG
-         fcb 10                priority
+DMSK                fcb       0                 no flip bits
+                    fcb       Vi.IFlag          polling mask for VIRG
+                    fcb       10                priority
 * NOTE:  SCFMan has already cleared all device memory except for V.PAGE and
 *        V.PORT.  Zero-default variables are:  CDSigPID, CDSigSig, Wrk.XTyp.
 Init                clrb                          default to no error...
                     pshs      cc,dp               save IRQ/Carry status, system DP
+                    orcc      #IntMasks
                     tfr       u,d
                     tfr       a,dp
                     pshs      y			save Y so it's last on stack so we can recall it using 0,s
 
-                pshs	x
-                ldx	>WORK_SLOT
-                ldd	#$00C5		  reg.B = Bank where the WizFi registers are
-                stb	>WORK_SLOT
-* Bit #0 of the Control Register is the Speed Mode, where
-* 0 = 115200 bps (aka Slow mode)
-* 1 = 921600 bps (aka Fast mode) doesn't appear to work at this time
-                sta	>WIZFI_UART_CtrlReg
-*                ldy	#2048
-*p@      	ldb	>WIZFI_UART_DataReg
-*                leay	-1,y
-*                bne	p@
-                stx	>WORK_SLOT
-                puls	x
+                    ldb       >WORK_SLOT
+                    lda       #$C5		  reg.B = Bank where the WizFi registers are
+                    sta       >WORK_SLOT
+                    lda       #$00
+                    sta       >WIZFI_UART_CtrlReg
+                    stb       >WORK_SLOT
 
 * set up IRQ table entry first
 * NOTE: uses the status register of the VIRQ buffer for
 * the interrupt status register since no hardware status 
 * register is available
 
-                    leay	VIRQBF+Vi.Stat,U get address of status byte
-                    tfr         y,d               put it into D reg
-                    leay	IRQSvc,PCR         get address of interrupt routine 
-                    leax	DMSK,PCR         get VIRQ mask info
-                    os9         F$IRQ             install onto table
-                    lbcs	INIT9             exit on error
+                    leay      VIRQBF+Vi.Stat,U get address of status byte
+                    tfr       y,d               put it into D reg
+                    leay      IRQSvc,PCR         get address of interrupt routine 
+                    leax      DMSK,PCR         get VIRQ mask info
+                    os9       F$IRQ             install onto table
+                    lbcs      INIT9             exit on error
 
         * now set up the VIRQ table entry
-                    leay	VIRQBF,U         point to the S-byte packet
-                    lda         #$80              get the reset flag to repeat VIRQ's
-                    sta	Vi.Stat,y         save it in the buffer
-                    ldd	#VIRQCNT          get the VIRQ counter value
-                    std	Vi.Rst,y          save it in the reset area of buffer 
-                    ldx	#1                code to install the VIRQ
-                    os9	F$VIRQ            install on the table
-                    lbcs	INIT9             exit on error
+                    leay      VIRQBF,U         point to the S-byte packet
+                    lda       #$80              get the reset flag to repeat VIRQ's
+                    sta       Vi.Stat,y         save it in the buffer
+                    ldd       #VIRQCNT          get the VIRQ counter value
+                    std       Vi.Rst,y          save it in the reset area of buffer 
+                    ldx       #1                code to install the VIRQ
+                    os9       F$VIRQ            install on the table
+                    lbcs      INIT9             exit on error
 
 	            ldy       ,s
                     ldb       M$Opt,y             get option size
@@ -365,9 +319,8 @@ NoDTR               ldx       <V.PORT             get port address
                     andb      #Stat.DSR!Stat.DCD  clear all but DSR+DCD status
                     stb       <CpyDCDSR           save new DCD+DSR status copy
 
-
-INIT9	puls	y
-	puls      cc,dp,pc            recover IRQ/Carry status, system DP, return
+INIT9               puls      y
+                    puls      cc,dp,pc            recover IRQ/Carry status, system DP, return
 
 Term                clrb                          default to no error...
                     pshs      cc,dp               save IRQ/Carry status, dummy B, system DP
@@ -387,7 +340,7 @@ Term                clrb                          default to no error...
                     andb      #ForceDTR           forced DTR?
                     beq       KeepDTR             no, go leave DTR disabled...
                     ora       #Cmd.DTR            set (enable) DTR bit
-KeepDTR             sta       <CmdReg		*CmdReg,x            set DTR and RTS enable/disable
+KeepDTR             sta       <CmdReg		  *CmdReg,x            set DTR and RTS enable/disable
                     ldd       <RxBufSiz           get Rx buffer size
                     tsta                          less than 256 bytes?
                     beq       TermExit            yes, no system memory to return...
@@ -404,16 +357,21 @@ TermExit
                     addd      #$0001
 
 * remove from VIRQ table first
-         ldx #0               get zero to remove from table
-         leay VIRQBF,U        get address of packet 
-         os9 F$VIRQ
+                    ldx       #0                  get zero to remove from table
+                    leay      VIRQBF,U            get address of packet 
+                    os9       F$VIRQ
 * then remove from IRQ table
-         ldx #0               get zero to remove from table
-         os9 F$IRQ
+                    ldx       #0                  get zero to remove from table
+                    os9       F$IRQ
 
                     puls      cc                  recover IRQ/Carry status
                     puls      dp,pc               restore dummy A, system DP, return
 
+Read                clrb                          default to no errors...
+                    pshs      cc,dp               save IRQ/Carry status, system DP
+                    tfr       u,d
+                    tfr       a,dp
+                    bra       ReadChar
 ReadSlp             ldd       >D.Proc             Level II process descriptor address
                     sta       <V.WAKE             save MSB for IRQ service routine
                     tfr       d,x                 copy process descriptor address
@@ -425,38 +383,37 @@ ReadSlp             ldd       >D.Proc             Level II process descriptor ad
                     ldb       P$Signal,x          pending signal for this process?
                     beq       ChkState            no, go check process state...
                     cmpb      #S$Intrpt           do we honor signal?
-                    lbls      ErrExit             yes, go do it...
-ChkState            equ       *
-                    ldb       P$State,x
+                    bls       ErrExit             yes, go do it...
+ChkState            ldb       P$State,x
                     bitb      #Condem
-                    lbne       PrAbtErr            yes, go do it...
+                    bne       PrAbtErr            yes, go do it...
                     ldb       <V.WAKE             true interrupt?
-                    beq       ReadChar             yes, go read the char.
-                    bra       ReadSlp             no, go suspend the process
-
-Read                clrb                          default to no errors...
-                    pshs      cc,dp               save IRQ/Carry status, system DP
-                    tfr       u,d
-                    tfr       a,dp
+                    bne       ReadSlp             no, go suspend the process
 ReadChar
-	ldb	>WORK_SLOT
-   	lda	#$C5			Bank where the WizFi registers are
-	sta	>WORK_SLOT
-	lda	>WIZFI_UART_RxD_WR_Count
-        sta	<RxDatLen+1
-	clr	<RxDatLen
-	stb	>WORK_SLOT
+                    lda       <V.PAGE
+                    bita      #%10000000
+                    bne       ReadExit
 
-        ldx	<RxDatLen	           how many RxD FIFO bytes ready?
-        lbeq    ReadSlp             none, go sleep while waiting for new Rx data...
+                    orcc      #IntMasks
+                    ldb       >WORK_SLOT
+                    lda       #$C5                Bank where the WizFi registers are
+                    sta       >WORK_SLOT
+                    lda       >WIZFI_UART_RxD_RD_Count
+                    sta       <RxDatLen+1
+                    clr       <RxDatLen
+                    stb       >WORK_SLOT
+                    andcc     #^IntMasks
+        
+                    ldx       <RxDatLen	          how many RxD FIFO bytes ready?
+                    beq       ReadSlp             none, go sleep while waiting for new Rx data...
 
-	ldb	>WORK_SLOT
-   	lda	#$C5			Bank where the WizFi registers are
-	sta	>WORK_SLOT
-	lda	>WIZFI_UART_DataReg
-	stb	>WORK_SLOT
-
-ReadExit        puls      cc,dp,pc            recover IRQ/Carry status, dummy B, system DP, return
+                    orcc      #IntMasks
+                    ldb       >WORK_SLOT
+                    lda       #$C5                Bank where the WizFi registers are
+                    sta       >WORK_SLOT
+                    lda       >WIZFI_UART_DataReg
+                    stb       >WORK_SLOT
+ReadExit            puls      cc,dp,pc            recover IRQ/Carry status, dummy B, system DP, return
 
 PrAbtErr            ldb       #E$PrcAbt
                     bra       ErrExit
@@ -482,22 +439,19 @@ NRdyErr             ldb       #E$NotRdy
 UnSvcErr            ldb       #E$UnkSvc
                     bra       ErrExit
 
-Write               clrb                          default to no error...
-                    pshs      cc,dp               save IRQ/Carry status, Tx character, system DP
+Write               pshs      cc,dp               save IRQ/Carry status, Tx character, system DP
                     pshs      a
                     tfr       u,d
                     tfr       a,dp
-                    puls      a
+                    
                     orcc      #IntMasks           disable IRQs during error and Tx disable checks
-
-	pshs	x,b
-	ldx	>WORK_SLOT
-   	ldb	#$C5			Bank where the WizFi registers are
-	stb	>WORK_SLOT
-	sta	>WIZFI_UART_DataReg
-	stx	>WORK_SLOT
-	puls	b,x
-
+                    ldb       >WORK_SLOT
+                    lda       #$c5
+                    sta       >WORK_SLOT
+                    puls      a
+                    sta       >WIZFI_UART_DataReg
+                    stb       >WORK_SLOT
+                    clrb
                     puls      cc,dp,pc            recover IRQ/Carry status, Tx character, system DP, return
 
 GStt                clrb                          default to no error...
@@ -512,16 +466,15 @@ GStt                clrb                          default to no error...
                     cmpa      #SS.Ready
                     bne       GetScSiz
 
-        orcc #Intmasks
-	pshs	x,b
-	ldx	>WORK_SLOT
-   	ldb	#$C5			Bank where the WizFi registers are
-	stb	>WORK_SLOT
-        clra
-	ldb	>WIZFI_UART_RxD_WR_Count
-        std     <RxDatLen
-	stx	>WORK_SLOT
-	puls	b,x
+                    orcc      #Intmasks
+                    ldb       >WORK_SLOT
+                    lda       #$C5			Bank where the WizFi registers are
+                    sta       >WORK_SLOT
+                    lda       >WIZFI_UART_RxD_RD_Count
+                    sta       <RxDatLen+1
+                    clr       <RxDatLen
+                    stb       >WORK_SLOT
+                    andcc     #^IntMasks
 
                     ldd       <RxDatLen           get Rx data length
                     lbeq       NRdyErr             none, go report error
@@ -703,41 +656,42 @@ SetPort             pshs      cc                  save IRQ enable and Carry stat
                     puls      cc,pc               recover IRQ enable and Carry status, return...
 
 
-* The purpose of IRQSvc is not to hog the CPU and perform things that the software should be doing.
-* What the 6551 and 6850 drivers are doing is insanity.
 IRQSvc
-                    pshs      dp                  save system DP
+                    pshs      dp,x,y,u
                     tfr       u,d                 setup our DP
                     tfr       a,dp
 
 	            lda       VIRQBF+Vi.Stat,U  get status byte 
                     anda      #$FF-Vi.IFlag    mask off interrupt bit 
                     sta	      VIRQBF+Vi.Stat,U  put it back
+                    
+                    lda       <V.PAGE
+                    bita      #%10000000
+                    bne       IRQCont             Essentially ignore the interrupt
 
-ChkRDRF             pshs      x,b
-                    ldx       >WORK_SLOT
-                    lda       #$C5		Bank where the WizFi registers are
+ChkRDRF             lda       #$c5
+                    ldb       >WORK_SLOT
                     sta       >WORK_SLOT
-                    clra
-                    ldb       >WIZFI_UART_RxD_WR_Count
-                    beq       noWiz
-                    stx       >WORK_SLOT
-	            puls      x,b
-                    bra       CkSuspnd
+                    lda       >WIZFI_UART_RxD_WR_Count
+                    stb       >WORK_SLOT
+                    beq       IRQExit
 
-noWiz               stx       >WORK_SLOT
-	            puls      x,b
-                    bra       IRQExit
-
-CkSuspnd            clrb                          clear Carry (for exit) and LSB of process descriptor address
+IRQCont             clrb                          clear Carry (for exit) and LSB of process descriptor address
                     lda       <V.WAKE             anybody waiting? ([D]=process descriptor address)
                     beq       IRQExit             no, go return...
+                ifeq      Level-1
+                    clr       <V.WAKE
+                    ldb       #S$Wake
+                    os9       F$Send
+                else
                     stb       <V.WAKE             mark I/O done
                     tfr       d,x                 copy process descriptor pointer
                     lda       P$State,x           get state flags
                     anda      #^Suspend           clear suspend state
                     sta       P$State,x           save state flags
-IRQExit             puls      dp,pc               recover system DP, return...
+                endc
+
+IRQExit             puls      dp,x,y,u,pc
 
                     emod
 ModSize             equ       *
