@@ -31,7 +31,7 @@ DWRead              clra                          clear carry (no framing error)
 
 loop@               ldd       #$0000              store counter
                     std       1+1,s               ?+1,s considering extra stack byte
-loop2@              ldb       >WIZFI_UART_RxD_WR_Count    Based on older .mcs broken "Little Endian FIFO MSB" register
+loop2@              ldb       $4040+WIZFI_UART_RxD_WR_Count    Based on older .mcs broken "Little Endian FIFO MSB" register
                     bne       getbyte@            if available, get byte
                     mul                           extend the timeout much longer due to faster CPU
                     mul
@@ -47,7 +47,7 @@ loop2@              ldb       >WIZFI_UART_RxD_WR_Count    Based on older .mcs br
                     anda      #^$04               clear the Z flag to indicate not all bytes received.
                     sta       0+1,s               ?+1,s considering extra stack byte
                     bra       bye@
-getbyte@            ldb       >WIZFI_UART_DataReg get the data byte
+getbyte@            ldb       $4040+WIZFI_UART_DataReg get the data byte
                     stb       ,u+                 save off acquired byte
                     abx                           update checksum
                     leay      ,-y                 decrement Y
