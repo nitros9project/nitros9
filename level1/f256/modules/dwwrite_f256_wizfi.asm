@@ -25,13 +25,13 @@ a@                  clrb
 * Purging the RxD FIFO while transmitting the packet has proven to make the most stable session under
 * the current conditions of the Jr2 FIFO count registers being broken.
 * By some miracle, it works out 99% of the time.
-b@                  lda       >WIZFI_UART_RxD_WR_Count
+b@                  lda       $4040+WIZFI_UART_RxD_WR_Count
                     beq       t@
-                    lda       >WIZFI_UART_DataReg
+                    lda       $4040+WIZFI_UART_DataReg
                     decb
                     bne       b@
 t@                  lda       ,x+                 get byte from buffer
-                    sta       >WIZFI_UART_DataReg send the data byte
+                    sta       $4040+WIZFI_UART_DataReg send the data byte
                     leay      -1,y                decrement byte counter
                     bne       a@                  loop if more to send
 
