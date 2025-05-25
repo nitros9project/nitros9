@@ -196,6 +196,9 @@ orgDFIRQ            rmb       2
 regWbuf             rmb       2                   substitute for regW
 RxBufDSz            equ       256-.               default Rx buffer gets remainder of page...
 RxBuff              rmb       RxBufDSz            default Rx buffer
+
+                    rmb       250       stack space
+
 MemSize             equ       .
 
 rev                 set       2
