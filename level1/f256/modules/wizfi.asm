@@ -233,29 +233,29 @@ Init                clrb                          default to no error...
                     pshs      cc,dp               save IRQ/Carry status, system DP
                     tfr       u,d
                     tfr       a,dp
-                    pshs      y			save Y so it's last on stack so we can recall it using 0,s
+                    pshs      y			  save Y so it's last on stack so we can recall it using 0,s
 
 * set up IRQ table entry first
 * NOTE: uses the status register of the VIRQ buffer for
 * the interrupt status register since no hardware status 
 * register is available
 
-                    leay	VIRQBF+Vi.Stat,U get address of status byte
-                    tfr         y,d               put it into D reg
-                    leay	IRQSvc,PCR         get address of interrupt routine 
-                    leax	DMSK,PCR         get VIRQ mask info
-                    os9         F$IRQ             install onto table
-                    lbcs	INIT9             exit on error
+                    leay      VIRQBF+Vi.Stat,U    get address of status byte
+                    tfr       y,d                 put it into D reg
+                    leay      IRQSvc,PCR          get address of interrupt routine 
+                    leax      DMSK,PCR            get VIRQ mask info
+                    os9       F$IRQ               install onto table
+                    lbcs      INIT9               exit on error
 
         * now set up the VIRQ table entry
-                    leay	VIRQBF,U         point to the S-byte packet
-                    lda         #$80              get the reset flag to repeat VIRQ's
-                    sta	Vi.Stat,y         save it in the buffer
-                    ldd	#VIRQCNT          get the VIRQ counter value
-                    std	Vi.Rst,y          save it in the reset area of buffer 
-                    ldx	#1                code to install the VIRQ
-                    os9	F$VIRQ            install on the table
-                    lbcs	INIT9             exit on error
+                    leay      VIRQBF,U            point to the S-byte packet
+                    lda       #$80                get the reset flag to repeat VIRQ's
+                    sta       Vi.Stat,y           save it in the buffer
+                    ldd       #VIRQCNT            get the VIRQ counter value
+                    std       Vi.Rst,y            save it in the reset area of buffer 
+                    ldx       #1                  code to install the VIRQ
+                    os9       F$VIRQ              install on the table
+                    lbcs      INIT9               exit on error
 
 	            ldy       ,s
                     ldb       M$Opt,y             get option size
@@ -389,8 +389,8 @@ Read                clrb                          default to no errors...
                     tfr       u,d
                     tfr       a,dp
 ReadChar
-	ldb	>WORK_SLOT
-   	lda	#$C5			Bank where the WizFi registers are
+                    ldb       >WORK_SLOT
+                    lda       #$C5                Bank where the WizFi registers are
 	sta	>WORK_SLOT
         ldx     <V.PORT
         lda     <WIZFI_UART_RxD_WR_Count,x
