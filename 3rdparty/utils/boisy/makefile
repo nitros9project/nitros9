@@ -6,7 +6,7 @@ include ../../../rules.mak
 DEPENDS		= ./makefile
 
 CMDS		= del mode send timer bigbro font makdir \
-		more tee joypoll
+		 tee joypoll
 
 ALLOBJS		= $(CMDS)
 
