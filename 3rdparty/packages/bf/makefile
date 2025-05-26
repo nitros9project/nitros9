@@ -28,7 +28,7 @@ bf: bf.asm
 	$(AS) $(ASOUT)$@ $< $(H6309)
 
 clean: dskclean
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 dsk: $(DSK)
 
