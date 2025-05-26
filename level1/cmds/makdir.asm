@@ -1,12 +1,15 @@
 ********************************************************************
 * MakDir - Create directory file
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
+*   3      ????/??/??
+* Prehistoric.
+*
 *   4      ????/??/??
+* Copyright notice removed from object.
+* Stack and param space reserved.
 * From Tandy OS-9 Level One VR 02.00.00.
 *
 *   5      ????/??/??  Alan DeKok
@@ -14,8 +17,6 @@
 
                     nam       Makdir
                     ttl       Create directory file
-
-* Disassembled 94/12/08 21:42:56 by Alan DeKok
 
                     ifp1
                     use       defsfile
