@@ -47,7 +47,7 @@ dd_mmc_l2.dd: mmcdesc.asm
 	$(AS) $(ASOUT)$@ $< $(MMCL2FLAGS) -DITDRV=0 -DDD=1
 
 clean:
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 dsk:
 dskcopy:

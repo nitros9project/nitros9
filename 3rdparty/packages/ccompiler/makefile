@@ -17,7 +17,7 @@ banner:
 
 # Clean all components
 clean:	dskclean
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 dsk: $(DSK)
 
