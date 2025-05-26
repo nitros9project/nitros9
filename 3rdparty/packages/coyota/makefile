@@ -20,4 +20,4 @@ dskclean:
 	$(RM) $(DSK)
 
 clean: dskclean
-	$(RM) $(OBJS) $(TARGET)
+	$(RM) $(OBJS) $(TARGET) *.list *.map
