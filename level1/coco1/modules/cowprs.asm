@@ -1,8 +1,6 @@
 ********************************************************************
 * COWP - PBJ WordPak RS Co-Driver for VTIO
 *
-* $Id$
-*
 * Adapted from CO80 for the WordPak RS.
 *
 * Edt/Rev  YYYY/MM/DD  Modified by

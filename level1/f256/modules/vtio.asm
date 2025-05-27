@@ -1,8 +1,6 @@
 *******************************************************************
 * VTIO - NitrOS-9 video terminal I/O driver for the Foenix F256
 *
-* $Id$
-*
 * https://wiki.osdev.org/PS2_Keyboard
 *
 * Edt/Rev  YYYY/MM/DD  Modified by

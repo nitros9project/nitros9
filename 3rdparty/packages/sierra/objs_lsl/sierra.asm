@@ -1,8 +1,6 @@
 ********************************************************************
 * sierra - Sierra setup module
 *
-* $Id$
-*
 * Notes: This module is for the 2.072 version of the interpreter.
 *
 * Edt/Rev  YYYY/MM/DD  Modified by

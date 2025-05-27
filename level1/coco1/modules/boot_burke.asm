@@ -1,8 +1,6 @@
 ********************************************************************
 * Boot - Burke & Burke Boot Module
 *
-* $Id$
-*
 * Burke & Burke boot module... needs to be patched for OS9Boots that are
 * far into the device.
 * Track is the literal cylinder #, Cylinder would be including all heads

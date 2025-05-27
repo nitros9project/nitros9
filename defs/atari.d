@@ -48,8 +48,6 @@ ATARI.D             set       1
 * Atari Hardware is documented here:
 *   http://user.xmission.com/~trevin/atari/pokey_regs.html
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

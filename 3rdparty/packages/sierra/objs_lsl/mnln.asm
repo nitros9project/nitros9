@@ -1,8 +1,6 @@
 ********************************************************************
 * MNLN - Leisure Suit Larry main line module
 *
-* $Id$
-*
 *        Header for : mnln
 *        Module size: $6372  #25458
 *        Module CRC : $81A0CC (Good)

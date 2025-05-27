@@ -1,8 +1,6 @@
 ********************************************************************
 * sub6 - Sub6 Sub Battle Simulator Utility Routines
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

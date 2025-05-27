@@ -1,8 +1,6 @@
 ********************************************************************
 * VTIO - NitrOS-9 video terminal I/O driver for Atari XE/XL
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

@@ -30,8 +30,6 @@ F256.D              set       1
 * F256 hardware is documented here:
 *   https://github.com/pweingar/C256jrManual/blob/main/tex/f256jr_ref.pdf
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

@@ -1,8 +1,6 @@
 ********************************************************************
 * Rammer - NitrOS-9 Level 2 RAM Disk
 *
-* $Id$
-*
 * Alan DeKok's version of RAMMER - Based on original Keving Darling version
 *
 * NOTE: For some reason, when DEINIZing /r0, the INIT routine gets called...

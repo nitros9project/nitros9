@@ -1,8 +1,6 @@
 ********************************************************************
 * HiRes - HiRes Joystick Subroutine Module
 *
-* $Id$
-*
 * Ed.    Comments                                       Who YY/MM/DD
 * ------------------------------------------------------------------
 *   1    Created for Coyota project                     BGP 98/??/??

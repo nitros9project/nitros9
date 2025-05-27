@@ -1,8 +1,6 @@
 ********************************************************************
 * Proc - Show process information
 *
-* $Id$
-*
 * NOTE: SHOULD ADD IN TO HANDLE PRINTING NAME OF CURRENT MODULE
 *       RUNNING IN A RUNB or BASIC09 PROCESS
 *

@@ -1,8 +1,6 @@
 ********************************************************************
 * Krn - NitrOS-9 Level 1 Kernel
 *
-* $Id$
-*
 * This is how the memory map looks after the kernel has initialized:
 *
 *     $0000----> ==================================
