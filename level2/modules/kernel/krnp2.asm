@@ -1,8 +1,6 @@
 ********************************************************************
 * krnp2 - NitrOS-9 Level 2 Kernel Part 2
 *
-* $Id$
-*
 * Copyright (c) 1982 Microware Corporation
 *
 * Modified for 6309 Native mode by:

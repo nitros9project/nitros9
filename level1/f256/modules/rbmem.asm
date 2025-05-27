@@ -7,8 +7,6 @@
 * effects as of this writing. Having said this, wear-reduction and
 * write-efficiency will be added to this driver over time.
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

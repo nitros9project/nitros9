@@ -1,8 +1,6 @@
 ********************************************************************
 * MergeLn - Experimental, Merge text files into one file
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

@@ -6,8 +6,6 @@
 *
 * Obtained by Boisy Pitre from L. Curtis Boyle on 10/12/2002
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

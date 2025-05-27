@@ -1,8 +1,6 @@
 ********************************************************************
 * bf - Brainf*ck Language Interpreter
 *
-* $Id$
-*
 * This is a simple interpreter for the Brainf*ck language:
 * https://en.wikipedia.org/wiki/Brainf*ck
 *

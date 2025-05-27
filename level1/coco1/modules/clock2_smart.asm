@@ -1,8 +1,6 @@
 ********************************************************************
 * Clock2 - Dallas Semiconductor 1216 RTC Driver
 *
-* $Id$
-*
 * Dallas Semiconductor DS1216 SmartWatch
 *
 * Wakeup sequence $C5 3A A3 5C C5 3A A3 5C

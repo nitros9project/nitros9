@@ -5,8 +5,6 @@ RBF.D               SET       1
 ********************************************************************
 * rbf.d - Random Block File Manager Definitions
 *
-* $Id$
-*
 * RBF stands for 'Random Block Filemanager' and is a package of subroutines
 * that define the logical structure of a disk and allows access to the files
 * in that structure.

@@ -3,8 +3,6 @@
 *
 * Original by Micah at https://github.com/WartyMN/Foenix-Fonts
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

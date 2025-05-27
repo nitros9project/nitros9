@@ -1,8 +1,6 @@
 ********************************************************************
 * H0 - MMC device descriptor
 *
-* $Id$
-*
 * MMC Defined Offsets
 *
 * Ed.    Comments                                       Who YY/MM/DD

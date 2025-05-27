@@ -1,8 +1,6 @@
 ********************************************************************
 * Clock2 - Jeff Vavasour CoCo 3 Emulator RTC Driver
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

@@ -1,8 +1,6 @@
 ********************************************************************
 * IDEDesc - IDE device descriptor
 *
-* $Id$
-*
 * IDE Defined Offsets
 *
 * Ed.    Comments                                       Who YY/MM/DD

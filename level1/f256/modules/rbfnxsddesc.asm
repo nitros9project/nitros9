@@ -1,8 +1,6 @@
 ********************************************************************
 * fnxsddesc - Super Driver Device Descriptor Template
 *
-* $Id$
-*
 * RBSuper Defined Offsets
 *
 * IT.STP (offset $14)
