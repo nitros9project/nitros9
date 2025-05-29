@@ -1,0 +1,26 @@
+echo ***************************************************
+echo "wizmon" script
+echo * WizFi360 Helper - Start raw connection server
+echo *
+xmode /wz eko=0
+echo ATE0>/wz
+mergeln /wz /wz
+echo AT+CIPSERVERMAXCONN=1>/wz
+mergeln /wz /wz
+echo AT+CIPMUX=1>/wz
+mergeln /wz /wz
+echo AT+CIPMODE=1>/wz
+mergeln /wz /wz
+echo AT+CIPSERVER=1,22>/wz
+mergeln /wz /wz
+mergeln /wz
+echo ***************************************************
+echo * From the remote terminal connect to port 22 of
+echo * the WizFi's IP address now...
+mergeln /wz
+sleep 60
+echo AT+CIPSEND>/wz
+sleep 60
+xmode /wz eko=1
+tsmon /wz&
+echo * Now accepting remote login

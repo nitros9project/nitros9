@@ -217,9 +217,10 @@ IcptRtn             rti
 
 
 FGP                 set $07
+FGP2                set $07
 BGP                 set $0A
-
-UCH                 set $5F
+BGP2                set $20
+UCH                 set $16
 
 KPal
 * Set up 80x30 window with foreground and background colors as same
@@ -239,369 +240,372 @@ JrPalLen            equ *-JrPal
 
 Logo                
 * Draw first line
-                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB					center outline
-                    fcb	$1B,$32,$00
-                    fcb UCH,UCH,UCH
-                    fcb $1B,$32,BGP
-                    fcb	UCH,UCH,UCH,UCH
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2	      center outline
                     fcb $1B,$32,$00
-                    fcb UCH,UCH                                             outline
+                    fcb $1C,$16,$1C,$16,$1C,$16
                     fcb $1B,$32,BGP
-                    fcb	UCH
+                    fcb BGP2,BGP2,BGP2,BGP2
                     fcb $1B,$32,$00
-                    fcb UCH,UCH
+                    fcb $1C,$16,$1C,$16                                     outline
                     fcb $1B,$32,BGP
-                    fcb	UCH,UCH,UCH,UCH
+                    fcb BGP2
                     fcb $1B,$32,$00
-                    fcb UCH,UCH
+                    fcb $1C,$16,$1C,$16
                     fcb $1B,$32,BGP
-                    fcb UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH        
-                    fcb	$1B,$32,BGP
-                    fcb UCH,UCH,UCH,UCH
+                    fcb BGP2,BGP2,BGP2,BGP2
                     fcb $1B,$32,$00
-                    fcb	UCH,UCH,UCH,UCH,UCH,UCH
+                    fcb $1C,$16,$1C,$16
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2        
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2
+                    fcb $1B,$32,$00
+                    fcb $1C,$16,$1C,$16,$1C,$16,$1C,UCH,$1C,UCH,$1C,UCH
                     fcb $1B,$32,$0B
-                    fcb UCH
-                    fcb	$1B,$32,BGP
-                    fcb UCH,UCH
+                    fcb $1C,UCH
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2
                     fcb $1B,$32,$00
-                    fcb UCH,UCH        
-                    fcb	UCH,UCH,UCH
+                    fcb $1C,UCH,$1C,UCH        
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH
                     fcb $1B,$32,$0B
-                    fcb UCH
+                    fcb $1C,UCH
                     fcb $1B,$32,BGP
-                    fcb	UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
                     fcb $1B,$32,$00
-                    fcb UCH,UCH,UCH,UCH,UCH
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
                     fcb $1B,$32,$0B
-                    fcb	UCH
+                    fcb $1C,UCH
                     fcb $1B,$32,BGP
-                    fcb UCH,UCH,UCH,$DD,$DD,$DD,$DD,$DD,$DD,$DD,$DD
-                    fcb	$1B,$32,BGP
-                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB					center line
-                    fcb	$1B,$32,$02
-                    fcb $DB,$DB,$DB,$BC
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
                     fcb $1B,$32,BGP
-                    fcb	$DB,$DB,$DB
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2		center line
                     fcb $1B,$32,$02
-                    fcb $DB,$DB
-                    fcb $1B,$32,$00,$B3
+                    fcb $1C,$11,$1C,$11,$1C,$11,$1C,$0A
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2
+                    fcb $1B,$32,$02
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00,$1C,$01
                     fcb $1B,$32,$08
-                    fcb $DB,$DB
+                    fcb $1C,$11,$1C,$11
                     fcb $1B,$32,$00
-                    fcb	$B3
+                    fcb $1C,$01
                     fcb $1B,$32,BGP
-                    fcb $DB
+                    fcb BGP2
                     fcb $1B,$32,$00
-                    fcb UCH,UCH	
-                    fcb	$1B,$32,$07
-                    fcb $DB,$DB
+                    fcb $1C,UCH,$1C,UCH	
+                    fcb $1B,$32,$07
+                    fcb $1C,$11,$1C,$11
                     fcb $1B,$32,$00
-                    fcb $B4,UCH,UCH
+                    fcb $1C,$02,$1C,UCH,$1C,UCH
                     fcb $1B,$32,BGP
-                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
                     fcb $1B,$32,$01
-                    fcb $B5,$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb $1C,$03,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
                     fcb $1B,$33,$0B
-                    fcb $B7
+                    fcb $1C,$05
                     fcb $1B,$33,BGP
                     fcb $1B,$32,$0B
-                    fcb $B3
+                    fcb $1C,$01
                     fcb $1B,$32,$01
-                    fcb $B5,$DB,$DB,$DB,$DB,$DB
+                    fcb $1C,$03,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
                     fcb $1B,$33,$0B
-                    fcb $B7
+                    fcb $1C,$05
                     fcb $1B,$33,BGP
                     fcb $1B,$32,$0B
-                    fcb $B3
+                    fcb $1C,$01
                     fcb $1B,$32,BGP
-                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
                     fcb $1B,$32,$01
-                    fcb $B5,$DB,$DB,$DB,$DB,$DB
+                    fcb $1C,$03,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
                     fcb $1B,$33,$0B
-                    fcb $B7
+                    fcb $1C,$05
                     fcb $1B,$33,BGP
                     fcb $1B,$32,$0B
-                    fcb $B3
+                    fcb $1C,$01
                     fcb $1B,$32,BGP
-                    fcb $DB,$DB,$DB,$DB,$DB
-                    fcb $1B,$32,BGP					end line 1
-                    fcb	$DD,$DD,$DB,$DB,$DB,$DB,$DB,$DB,$DB
-                    fcb	$DB,$DB,$DB,$DB,$DB				center line
-                    fcb	$1B,$32,$02
-                    fcb $DB,$DB,$BB,$DB,$BC
-                    fcb $1B,$32,BGP
-                    fcb $DB,$DB
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb $1B,$32,BGP                                                      end line 1
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2                                         center line
                     fcb $1B,$32,$02
-                    fcb $DB,$DB
-                    fcb $1B,$32,$00
-                    fcb $B3,UCH,UCH
+                    fcb $1C,$11,$1C,$11,$1C,$09,$1C,$11,$1C,$0A
                     fcb $1B,$32,BGP
-                    fcb $DB
+                    fcb BGP2,BGP2
+                    fcb $1B,$32,$02
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$01,$1C,UCH,$1C,UCH
+                    fcb $1B,$32,BGP
+                    fcb BGP2
                     fcb $1B,$32,$00
                     fcb $1B,$32,$07
-                    fcb $B9,$DB,$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb $1C,$07,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
                     fcb $1B,$32,$00
-                    fcb $B3
+                    fcb $1C,$01
                     fcb $1B,$32,BGP
-                    fcb $DB
-                    fcb	$1B,$32,$00
-                    fcb UCH,UCH,UCH,UCH
-                    fcb $1B,$32,$0B
-                    fcb	UCH
-                    fcb $1B,$32,BGP
-                    fcb $DB
-                    fcb $1B,$32,$01
-                    fcb $DB,$DB
-                    fcb	$1B,$32,$00
-                    fcb $B3
-                    fcb $1B,$32,BGP
-                    fcb $DB,$DB,$DB
-                    fcb	$1B,$32,$01
-                    fcb $DB,$DB
-                    fcb $1B,$32,$0B
-                    fcb $B3
-                    fcb $1B,$32,$01
-                    fcb $DB,$DB
+                    fcb BGP2
                     fcb $1B,$32,$00
-                    fcb $B4,UCH,UCH,UCH
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
                     fcb $1B,$32,$0B
-                    fcb UCH
+                    fcb $1C,UCH
                     fcb $1B,$32,BGP
-                    fcb $DB
+                    fcb BGP2
+                    fcb $1B,$32,$01
+                    fcb $1C,$11,$1C,$11
                     fcb $1B,$32,$00
-                    fcb UCH,UCH,UCH,UCH,UCH,UCH
+                    fcb $1C,$01
                     fcb $1B,$32,BGP
-                    fcb $DB
+                    fcb BGP2,BGP2,BGP2
                     fcb $1B,$32,$01
-                    fcb $DB,$DB
-                    fcb $1B,$32,$00
-                    fcb	$B4,UCH,UCH
-                    fcb $1B,$32,$01
-                    fcb $DB,$DB
+                    fcb $1C,$11,$1C,$11
                     fcb $1B,$32,$0B
-                    fcb $B3					end line 2
-                    fcb	$1B,$32,BGP
-                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB
-                    fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB	center line
-                    fcb	$DB,$DB
+                    fcb $1C,$01
+                    fcb $1B,$32,$01
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$02,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1B,$32,$0B
+                    fcb $1C,UCH
+                    fcb $1B,$32,BGP
+                    fcb BGP2
+                    fcb $1B,$32,$00
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1B,$32,BGP
+                    fcb BGP2
+                    fcb $1B,$32,$01
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$02,$1C,UCH,$1C,UCH
+                    fcb $1B,$32,$01
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$0B
+                    fcb $1C,$01					                end line 2
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2            center line
+                    fcb BGP2,BGP2
                     fcb $1B,$32,$02
-                    fcb $DB,$DB
+                    fcb $1C,$11,$1C,$11
                     fcb $1B,$32,BGP
-                    fcb	$DB
+                    fcb BGP2
                     fcb $1B,$32,$02
-                    fcb $BB,$DB,$BC
+                    fcb $1C,$09,$1C,$11,$1C,$0A
                     fcb $1B,$32,BGP
-                    fcb	$DB
+                    fcb BGP2
                     fcb $1B,$32,$02
-                    fcb $DB,$DB
-                    fcb $1B,$32,$00,$B3
-                    fcb	$1B,$32,$08
-                    fcb $DB,$DB
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00,$1C,$01
+                    fcb $1B,$32,$08
+                    fcb $1C,$11,$1C,$11
                     fcb $1B,$32,$00
-                    fcb $B3
+                    fcb $1C,$01
                     fcb $1B,$32,BGP
-                    fcb $DB,$DB,$DB
+                    fcb BGP2,BGP2,BGP2
                     fcb $1B,$32,$07
-                    fcb $DB,$DB
-                    fcb	$1B,$32,$00
-                    fcb $B3
-                    fcb $1B,$32,BGP
-                    fcb $DB,$DB,$DB
-                    fcb	$1B,$32,$05
-                    fcb $B5,$DB,$DB,$DB,$DB
-                    fcb $1B,$33,BGP
-                    fcb $1B,$33,$0B
-                    fcb $B7
-                    fcb $1B,$33,BGP
-                    fcb $1B,$32,$0B
-                    fcb $B3
-                    fcb $1B,$32,$01
-                    fcb $DB,$DB
+                    fcb $1C,$11,$1C,$11
                     fcb $1B,$32,$00
-                    fcb	$B3
+                    fcb $1C,$01
                     fcb $1B,$32,BGP
-                    fcb $DB,$DB,$DB
-                    fcb $1B,$32,$01
-                    fcb	$DB,$DB
-                    fcb $1B,$32,$0B
-                    fcb $B3
-                    fcb $1B,$32,$01
-                    fcb $B6
-                    fcb	$DB,$DB,$DB,$DB,$DB
+                    fcb BGP2,BGP2,BGP2
+                    fcb $1B,$32,$05
+                    fcb $1C,$03,$1C,$11,$1C,$11,$1C,$11,$1C,$11
+                    fcb $1B,$33,BGP
                     fcb $1B,$33,$0B
-                    fcb $B7
+                    fcb $1C,$05
                     fcb $1B,$33,BGP
                     fcb $1B,$32,$0B
-                    fcb $B3
+                    fcb $1C,$01
                     fcb $1B,$32,$01
-                    fcb $DB,$DB
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$01
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2
+                    fcb $1B,$32,$01
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$0B
+                    fcb $1C,$01
+                    fcb $1B,$32,$01
+                    fcb $1C,$04
+                    fcb $1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
+                    fcb $1B,$33,$0B
+                    fcb $1C,$05
+                    fcb $1B,$33,BGP
+                    fcb $1B,$32,$0B
+                    fcb $1C,$01
+                    fcb $1B,$32,$01
+                    fcb $1C,$11,$1C,$11
                     fcb $1B,$32,$0F
-                    fcb $DB
+                    fcb $1C,$11
                     fcb $1B,$32,$0C
-                    fcb $DB
+                    fcb $1C,$11
                     fcb $1B,$32,$0B
-                    fcb $DB
+                    fcb $1C,$11
                     fcb $1B,$32,$00
-                    fcb $DB
+                    fcb $1C,$11
                     fcb $1B,$32,BGP
-                    fcb	$DB
+                    fcb BGP2
                     fcb $1B,$32,$01
-                    fcb $B6,$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb $1C,$04,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
                     fcb $1B,$32,$0B
-                    fcb $B3				end line 3
-                    fcb	$1B,$32,BGP
-                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB
-                    fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB	center line
-                    fcb	$DB,$DB
-                    fcb $1B,$32,$02
-                    fcb $DB,$DB
+                    fcb $1C,$01				                        end line 3
                     fcb $1B,$32,BGP
-                    fcb	$DB,$DB
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2             center line
+                    fcb BGP2,BGP2
                     fcb $1B,$32,$02
-                    fcb $BB,$DB,$BC,$DB,$DB
-                    fcb	$1B,$32,$00
-                    fcb $B3
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2
+                    fcb $1B,$32,$02
+                    fcb $1C,$09,$1C,$11,$1C,$0A,$1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$01
                     fcb $1B,$32,$08
-                    fcb $DB,$DB
+                    fcb $1C,$11,$1C,$11
                     fcb $1B,$32,$00
-                    fcb $B3
+                    fcb $1C,$01
                     fcb $1B,$32,BGP
-                    fcb $DB,$DB,$DB
+                    fcb BGP2,BGP2,BGP2
                     fcb $1B,$32,$07
-                    fcb $DB,$DB
+                    fcb $1C,$11,$1C,$11
                     fcb $1B,$32,$00
-                    fcb $B4,UCH
+                    fcb $1C,$02,$1C,UCH
                     fcb $1B,$32,BGP
-                    fcb $DB,$DB
+                    fcb BGP2,BGP2
                     fcb $1B,$32,$05
-                    fcb $DB,$DB
+                    fcb $1C,$11,$1C,$11
                     fcb $1B,$32,$00
-                    fcb $B3
+                    fcb $1C,$01
                     fcb $1B,$32,BGP
-                    fcb $DB,$DB
+                    fcb BGP2,BGP2
                     fcb $1B,$32,$05
-                    fcb $DF
+                    fcb $1C,$14
                     fcb $1B,$32,BGP
-                    fcb $DB
+                    fcb BGP2
                     fcb $1B,$32,$01
-                    fcb $DB,$DB
+                    fcb $1C,$11,$1C,$11
                     fcb $1B,$32,$00
-                    fcb $B4,UCH,UCH,UCH
+                    fcb $1C,$02,$1C,UCH,$1C,UCH,$1C,UCH
                     fcb $1B,$32,$01
-                    fcb $DB,$DB
+                    fcb $1C,$11,$1C,$11
                     fcb $1B,$32,$0B
-                    fcb $B3
+                    fcb $1C,$01
                     fcb $1B,$32,BGP
-                    fcb	$DB
+                    fcb BGP2
                     fcb $1B,$32,$00
-                    fcb UCH,UCH,UCH,UCH
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
                     fcb $1B,$32,$01
-                    fcb $DB,$DB
+                    fcb $1C,$11,$1C,$11
                     fcb $1B,$32,$0B
-                    fcb $B3
+                    fcb $1C,$01
                     fcb $1B,$32,BGP
-                    fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
                     fcb $1B,$32,$00
-                    fcb UCH,UCH,UCH,UCH
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
                     fcb $1B,$32,$01
-                    fcb $DB,$DB
-                    fcb	$1B,$32,$0B
-                    fcb $B3				end line 4
-                    fcb	$1B,$32,BGP
-                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB
-                    fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB	
-                    fcb	$DB,$DB					center font
-                    fcb	$1B,$32,$02
-                    fcb $DB,$DB
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$0B
+                    fcb $1C,$01	                			end line 4
                     fcb $1B,$32,BGP
-                    fcb $DB,$DB
-                    fcb	$DB
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2	
+                    fcb BGP2,BGP2                                            center font
                     fcb $1B,$32,$02
-                    fcb $BB,$DB,$DB,$DB
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2
+                    fcb $1B,$32,$02
+                    fcb $1C,$09,$1C,$11,$1C,$11,$1C,$11
                     fcb $1B,$32,$00
-                    fcb $B3
+                    fcb $1C,$01
                     fcb $1B,$32,$08
-                    fcb $DB,$DB
+                    fcb $1C,$11,$1C,$11
                     fcb $1B,$32,$00
-                    fcb	$B3
+                    fcb $1C,$01
                     fcb $1B,$32,BGP
-                    fcb $DB,$DB,$DB
+                    fcb BGP2,BGP2,BGP2
                     fcb $1B,$32,$07
-                    fcb	$DB,$DB,$DB,$BA
+                    fcb $1C,$11,$1C,$11,$1C,$11,$1C,$08
                     fcb $1B,$32,BGP
-                    fcb $DB,$DB
+                    fcb BGP2,BGP2
                     fcb $1B,$32,$05
-                    fcb $DB,$DB
+                    fcb $1C,$11,$1C,$11
                     fcb $1B,$32,$00
-                    fcb $B3
+                    fcb $1C,$01
                     fcb $1B,$32,BGP
-                    fcb $DB,$DB,$DB,$DB
+                    fcb BGP2,BGP2,BGP2,BGP2
                     fcb $1B,$32,$01
-                    fcb $B6,$DB,$DB,$DB,$DB,$DB,$DB,$B8
+                    fcb $1C,$04,$1C,$11,$1C,$11,$1C,$11,$1C,$11
+                    fcb $1C,$11,$1C,$11,$1C,$06
                     fcb $1B,$32,BGP
-                    fcb $DB
-                    fcb	$1B,$32,$01
-                    fcb $B9,$DB,$DB,$DB,$DB,$DB,$B8
-                    fcb	$1B,$32,BGP
-                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB
+                    fcb BGP2
                     fcb $1B,$32,$01
-                    fcb $B9,$DB,$DB,$DB,$DB,$DB
-                    fcb	$B8						end line 5
-                    fcb	$1B,$32,BGP
-                    fcb $DB,$DB,$DB,$DB,$DB
-                    fcb	$DB,$DB,$DB,$DB,$DB,$DB
-                    fcb $1B,$32,FGP	            reset FG
+                    fcb $1C,$07,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$06
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb $1B,$32,$01
+                    fcb $1C,$07,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
+                    fcb $1C,$06                                               end line 5
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb $1B,$32,FGP	                                        reset FG
 LogoLen             equ	*-Logo
 
 * Line above color bar
-BLogo               fcb	$1B,$32,BGP
-                    fcb $DB,$DB,$DB,$DB,$DB,$DB,$DB
-                    fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB		center line
-                    fcb	$1B,$32,$00
-                    fcb UCH,UCH,UCH,UCH,UCH,UCH,UCH
-                    fcb	UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH
-                    fcb	UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH
-                    fcb	UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH
-                    fcb	UCH,UCH,UCH,UCH,UCH,UCH,UCH,UCH
-                    fcb	C$CR,C$LF
+BLogo               fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2	         center line
+                    fcb $1B,$32,$00
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1C,UCH
+                    fcb C$CR,C$LF
 BLogoLen            equ	*-BLogo
 
 * Color bar
-ColorBar            fcb	$1B,$32,BGP
-                    fcb	$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB,$DB	center bar
-                    fcb	$DB,$DB,$DB,$DB,$DB,$DB
-                    fcb	$1B,$32,$02
-                    fcb $DF,$DF,$DF
+ColorBar            fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2	 center bar
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb $1B,$32,$02
+                    fcb $1C,$14,$1C,$14,$1C,$14
                     fcb $1B,$32,$08
-                    fcb $DF,$DF,$DF	color bar
+                    fcb $1C,$14,$1C,$14,$1C,$14                          	 color bar
                     fcb $1B,$32,$07
-                    fcb $DF,$DF,$DF
+                    fcb $1C,$14,$1C,$14,$1C,$14
                     fcb $1B,$32,$05
-                    fcb $DF,$DF,$DF
+                    fcb $1C,$14,$1C,$14,$1C,$14
                     fcb $1B,$32,$0E
-                    fcb $DF,$DF,$DF
-                    fcb	$1B,$32,$04
-                    fcb $DF,$DF,$DF
+                    fcb $1C,$14,$1C,$14,$1C,$14
+                    fcb $1B,$32,$04
+                    fcb $1C,$14,$1C,$14,$1C,$14
                     fcb $1B,$32,$01
-                    fcb $DF,$DF,$DF
+                    fcb $1C,$14,$1C,$14,$1C,$14
                     fcb $1B,$32,$0F
-                    fcb $DF,$DF,$DF
+                    fcb $1C,$14,$1C,$14,$1C,$14
                     fcb $1B,$32,$0C
-                    fcb $DF,$DF,$DF
+                    fcb $1C,$14,$1C,$14,$1C,$14
                     fcb $1B,$32,$0B
-                    fcb $DF,$DF,$DF
-                    fcb	$1B,$32,$03
-                    fcb $DF,$DF,$DF
+                    fcb $1C,$14,$1C,$14,$1C,$14
+                    fcb $1B,$32,$03
+                    fcb $1C,$14,$1C,$14,$1C,$14
                     fcb $1B,$32,$0A
-                    fcb $DF,$DF,$DF
+                    fcb $1C,$14,$1C,$14,$1C,$14
                     fcb $1B,$32,$0D
-                    fcb $DF,$DF,$DF
+                    fcb $1C,$14,$1C,$14,$1C,$14
                     fcb $1B,$32,$09
-                    fcb $DF,$DF,$DF
+                    fcb $1C,$14,$1C,$14,$1C,$14
                     fcb $1B,$32,$00
-                    fcb $DF,$DF,$DF
-                    fcb	$1B,$32,FGP					reset FG
+                    fcb $1C,$14,$1C,$14,$1C,$14
+                    fcb $1B,$32,FGP2                                          reset FG
 CBLen               equ	*-ColorBar
 
                     endsect

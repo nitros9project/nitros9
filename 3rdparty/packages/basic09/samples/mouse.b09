@@ -1,0 +1,1 @@
+PROCEDURE mouseDIM i,x,y,btn:INTEGERi=0 \x=0 \y=0 \btn=0100 RUN foenix("Mouse",x,y,btn)RUN foenix("CurXY",0,28)PRINT "X:"; x; "  Y:"; y; "  BTN:"; btn; "             "GOTO 100

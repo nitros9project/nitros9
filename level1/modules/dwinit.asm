@@ -8,6 +8,7 @@
                     endc
 
                     ifne      f256
+*                    use dwinit_f256_wizfi.asm
                     use dwinit_f256.asm
                     endc
 

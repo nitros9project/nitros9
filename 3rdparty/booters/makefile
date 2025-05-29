@@ -8,7 +8,7 @@ ALLOBJS		= $(BOOTERS_L2) $(BOOTERS_L1)
 all:	$(ALLOBJS) $(DEPENDS)
 
 clean:
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 dsk:
 dskcopy:
