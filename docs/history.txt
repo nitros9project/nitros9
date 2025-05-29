@@ -6,7 +6,7 @@ and pieces, rather than a whole story.
 
 L. Curtis Boyle:
 
-NitrOS9 was started by @Bill Nobel , Wes Gale and myself (although I was
+NitrOS9 was started by @Bill Nobel, Wes Gale, and myself (although I was
 a few days later than the other two), and then Alan Dekok joined in later
 as well. OS-9 "Level 3", as Alan called it, was his way to expand system
 memory, although it won't work with DriveWire at all in it's current state
@@ -18,3 +18,26 @@ that Kevin talked about in his history of the project. Some of it has made
 it into NitrOS9 (some directly ported like GShell, serial mouse drivers,
 etc.) and some clean room style (original code but same functionality)
 and other parts are not in NitrOS9 currently.
+
+Boisy Pitre:
+
+It was around 1998 that I got Alan DeKok's "TuneUp" which was a series of
+patches to make OS-9 Level 2 run faster on a CoCo 3. By that time, there
+were a myriad of patches online for various system modules, enhancements to
+commands, etc. I began to think of how we could build a working OS-9 system
+from source for the CoCo 3, and thus began a series of disassemblies of all
+the system and command modules. It was slow at first. Diassemblies were not
+very well commented, but at least we had the start of a source base.
+
+Alongside this effort, I started working on cross development tools like `mamou`,
+a 6809 cross-assembler, and Toolshed, a set of utilities for manipulating the
+contents of disk images. These tools would allow someone to build the entire
+OS-9 operating system on a modern system and then create disk images that could be
+transferred to a physical floppy disk for booting. At the time I was using Linux
+for cross-development, so those tools were developed there.
+
+Around 2000, I began to put the work under source code control and inviting 
+collaborators who could help with the disassembly and commenting of OS-9 source.
+I also disassembled OS-9 Level 1 modules for the CoCo 1 and CoCo 2 so those systems
+could also have a complete source-to-binary build. Then, the consolidation of sources
+between Level 1 and Level 2 started to commence.
