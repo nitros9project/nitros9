@@ -6,7 +6,7 @@ and pieces, rather than a whole story.
 
 L. Curtis Boyle:
 
-NitrOS9 was started by @Bill Nobel, Wes Gale, and myself (although I was
+NitrOS-9 was started by Bill Nobel, Wes Gale, and myself (although I was
 a few days later than the other two), and then Alan Dekok joined in later
 as well. OS-9 "Level 3", as Alan called it, was his way to expand system
 memory, although it won't work with DriveWire at all in it's current state
@@ -17,7 +17,7 @@ it was released by Brother Jeremy, but it's not the most advanced version
 that Kevin talked about in his history of the project. Some of it has made
 it into NitrOS9 (some directly ported like GShell, serial mouse drivers,
 etc.) and some clean room style (original code but same functionality)
-and other parts are not in NitrOS9 currently.
+and other parts are not in NitrOS-9 currently.
 
 Boisy Pitre:
 
@@ -41,3 +41,10 @@ collaborators who could help with the disassembly and commenting of OS-9 source.
 I also disassembled OS-9 Level 1 modules for the CoCo 1 and CoCo 2 so those systems
 could also have a complete source-to-binary build. Then, the consolidation of sources
 between Level 1 and Level 2 started to commence.
+
+Actually, it was this effort that bootstrapped DriveWire, which I created while
+working in Boston in 2003. The disk images created by cross-assembly and Toolshed
+were a natural media for disseminating over a serial cable hooked up to a modern
+computer. By that time I had moved over to the Mac and that became my primary
+development platform.
+
