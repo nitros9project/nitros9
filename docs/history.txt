@@ -27,7 +27,9 @@ were a myriad of patches online for various system modules, enhancements to
 commands, etc. I began to think of how we could build a working OS-9 system
 from source for the CoCo 3, and thus began a series of disassemblies of all
 the system and command modules. It was slow at first. Diassemblies were not
-very well commented, but at least we had the start of a source base.
+very well commented, but at least we had the start of a source base. At some
+point, I also incorporated the 6309 modules that NitrOS-9 had improved upon,
+making a conditional assembly for both the 6309 and 6809.
 
 Alongside this effort, I started working on cross development tools like `mamou`,
 a 6809 cross-assembler, and Toolshed, a set of utilities for manipulating the
