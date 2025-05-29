@@ -1,0 +1,20 @@
+As the decades pass, we will lose some of the history of how we got to
+where we are.  This file is to help us remember, even if it records bits
+and pieces, rather than a whole story.
+
+----
+
+L. Curtis Boyle:
+
+NitrOS9 was started by @Bill Nobel , Wes Gale and myself (although I was
+a few days later than the other two), and then Alan Dekok joined in later
+as well. OS-9 "Level 3", as Alan called it, was his way to expand system
+memory, although it won't work with DriveWire at all in it's current state
+(Bill was looking into the at one point). Version 3 was the one by over
+a dozen developers in the late 1980's and was planned to be sold through
+Tandy. The main head of that project was Kevin Darling, and a version of
+it was released by Brother Jeremy, but it's not the most advanced version
+that Kevin talked about in his history of the project. Some of it has made
+it into NitrOS9 (some directly ported like GShell, serial mouse drivers,
+etc.) and some clean room style (original code but same functionality)
+and other parts are not in NitrOS9 currently.
