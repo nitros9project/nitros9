@@ -1,10 +1,12 @@
+# NitrOS-9 History
+
 As the decades pass, we will lose some of the history of how we got to
 where we are.  This file is to help us remember, even if it records bits
 and pieces, rather than a whole story.
 
 ----
 
-L. Curtis Boyle:
+## L. Curtis Boyle
 
 NitrOS-9 was started by Bill Nobel, Wes Gale, and myself (although I was
 a few days later than the other two), and then Alan Dekok joined in later
@@ -21,16 +23,11 @@ and other parts are not in NitrOS-9 currently.
 
 We did a series of group interviews going through the history of NitrOS-9 not too long ago; that would be a good place to start. We didn’t get everyone we had hoped for (Wes Gale was unable to make it although he had planned to, for example), but we got a good mix from the various eras of NitrOS-9.
 
-Part 1 (aired Aug 20, 2022) - Episode 275 - First decade of NitrOS9 - L. Curtis Boyle, Bill Nobel, Alan Dekok (Wes Gale couldn't make it)
-  https://www.youtube.com/live/QRbl-Br8fjg?si=v2SOm6MC5Ac1974o
+* Part 1 (aired Aug 20, 2022) - (Episode 275 - First decade of NitrOS9)[https://www.youtube.com/live/QRbl-Br8fjg?si=v2SOm6MC5Ac1974o] - L. Curtis Boyle, Bill Nobel, Alan Dekok (Wes Gale couldn't make it)
+* Part 2 (aired Nov 2, 2022) - (Episode 286 - Second decade of NitrOS9)[https://www.youtube.com/live/2YWkZepe7UU?si=pqy7gLoFpES4-97j] - passing the code over to Boisy Pitre
+* Part 3 (aired May 27, 2023) - (Coco Nation Show #314)[https://www.youtube.com/live/9qttp0SAeV8?si=QNr7IBHPG5OtGoZs] (William Astle, Jeff Teunissen, Tormod Volden, David Ladd). This is mostly the open source era (the last 10 years)
 
-Part 2 (aired Nov 2, 2022) - Episode 286 - Second decade of NitrOS9 - passing the code over to Boisy Pitre
-  https://www.youtube.com/live/2YWkZepe7UU?si=pqy7gLoFpES4-97j
-
-Part 3 (aired May 27, 2023) - Coco Nation Show #314  (William Astle, Jeff Teunissen, Tormod Volden, David Ladd). This is mostly the open source era (the last 10 years)
-  https://www.youtube.com/live/9qttp0SAeV8?si=QNr7IBHPG5OtGoZs
-
-Boisy Pitre:
+## Boisy Pitre
 
 It was around 1998 that I got Alan DeKok's "TuneUp" which was a series of
 patches to make OS-9 Level 2 run faster on a CoCo 3. By that time, there
