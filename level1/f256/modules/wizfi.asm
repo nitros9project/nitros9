@@ -32,9 +32,7 @@
 
 VIRQCNT  equ  1
 WORK_SLOT	equ	MMU_SLOT_2
-
-
-
+MMU_WINDOW      equ     $4000
 
 * conditional assembly switches
 TC9                 set       false               "true" for TC-9 version, "false" for Coco 3
@@ -153,8 +151,16 @@ SwpDCDSR            equ       %10000000           swap DCD+DSR bits (valid for 6
 ForceDTR            equ       %01000000           don't drop DTR in term routine
 RxBufPag            equ       %00001111           input buffer page count
 
+
+
 * static data area definitions
                     org       V.SCF               allow for SCF manager data area
+ind_ControlReg rmb 2
+ind_DataReg rmb 2
+ind_RxD_RD_CountReg rmb 2
+ind_RxD_WR_CountReg rmb 2
+ind_TxD_RD_CountReg rmb 2
+ind_TxD_WR_CountReg rmb 2
 Cpy.Stat            rmb       1                   Status register copy
 CpyDCDSR            rmb       1                   DSR+DCD status copy
 Mask.DCD            rmb       1                   DCD status bit mask (MUST immediately precede Mask.DSR)
@@ -189,6 +195,20 @@ PRstReg             equ       StatReg             programmed reset (write only)
 CmdReg              rmb       1                   command (read/write)
 CtlReg              rmb       1                   control (read/write)
 
+State_ListenIpdSocketNum equ  %00000100
+State_ListenIpdTail equ       %00001000
+State_ListenIpdHead equ       %00000010
+State_ListenConnect equ       %00000001
+Mask_SocketDev      equ       %00001000
+
+
+IpdLen              rmb       2
+PacketMode          rmb       1		if > 0  then device uses socket filtering, otherwise is passthru
+DeviceSocket        rmb       1
+PacketSocket        rmb       1
+ReadState           rmb       1
+ReadPos             rmb       1
+IpdLenChar          rmb        1
 
                     ifeq      Level-1
 orgDFIRQ            rmb       2
@@ -197,7 +217,7 @@ regWbuf             rmb       2                   substitute for regW
 RxBufDSz            equ       256-.               default Rx buffer gets remainder of page...
 RxBuff              rmb       RxBufDSz            default Rx buffer
 
-                    rmb       250       stack space
+                    rmb       250       stack space?
 
 MemSize             equ       .
 
@@ -221,15 +241,21 @@ ModName             fcs       "WizFi"
 
 SlotSlct            fcb       $FF                 disable MPI slot selection
 
+strConnect          fcc       "0,CONNECT"
+strIPD              fcc       "+IPD,$,####:"
+strCipSend          fcc       "AT+CIPSEND="
+                    fcb       0
+strCipSendTail      fcb       $0d,$0a,$00
 
 BaudTabl            equ       *
                     fcb       BR.00110,BR.00300,BR.00600
                     fcb       BR.01200,BR.02400,BR.04800
                     fcb       BR.09600,BR.19200
 
-DMSK     fcb 0                 no flip bits
-         fcb Vi.IFlag          polling mask for VIRG
-         fcb 10                priority
+DMSK                fcb       0                 no flip bits
+                    fcb       Vi.IFlag          polling mask for VIRG
+                    fcb       10                priority
+
 * NOTE:  SCFMan has already cleared all device memory except for V.PAGE and
 *        V.PORT.  Zero-default variables are:  CDSigPID, CDSigSig, Wrk.XTyp.
 Init                clrb                          default to no error...
@@ -237,6 +263,26 @@ Init                clrb                          default to no error...
                     tfr       u,d
                     tfr       a,dp
                     pshs      y			  save Y so it's last on stack so we can recall it using 0,s
+
+                    ldd       <V.PORT	allow $404x, $FF2x  
+                    andb      #%11100000                
+                    tfr       d,y
+                    leax      WizFi_CtrlReg,y
+                    stx       ind_ControlReg,u
+                    leax      WizFi_DataReg,y
+                    stx       ind_DataReg,u
+                    leax      WizFi_RxD_RD_Count,y
+                    stx       ind_RxD_RD_CountReg,u
+                    leax      WizFi_RxD_WR_Count,y
+                    stx       ind_RxD_WR_CountReg,u
+                    leax      WizFi_TxD_RD_Count,y
+                    stx       ind_TxD_RD_CountReg,u
+                    leax      WizFi_TxD_WR_Count,y
+                    stx       ind_TxD_WR_CountReg,u
+
+	clr	IpdLen,u
+	clr	IpdLen+1,u
+
 
 * set up IRQ table entry first
 * NOTE: uses the status register of the VIRQ buffer for
@@ -260,14 +306,17 @@ Init                clrb                          default to no error...
                     os9       F$VIRQ              install on the table
                     lbcs      INIT9               exit on error
 
-	            ldy       ,s
+                    clr       ReadPos,u
+                    ldb       #State_ListenIpdHead
+                    stb       ReadState,u
+                    lbsr      GetDeviceSocket	   can be changed on the fly using the xmode command
+ 
+                    ldy       ,s
                     ldb       M$Opt,y             get option size
-                    cmpb      #IT.XTYP-IT.DTP     room for extended type byte?
-                    bls       DfltInfo            no, go use defaults...
-                    ldd       #Stat.DCD*256+Stat.DSR default (unswapped) DCD+DSR masks
-                    tst       IT.XTYP,y           check extended type byte for swapped DCD & DSR bits
-                    bpl       NoSwap              no, go skip swapping them...
-                    exg       a,b                 swap to DSR+DCD masks
+                    cmpb      #IT.XTYP-IT.DTP  ($1C) Is there an Extended Type byte in descriptor?
+                    bls       n@        No, skip ahead
+                    lda       <IT.XTYP,y   Yes, get Extended type byte
+n@                  ldd       #Stat.DCD*256+Stat.DSR default (unswapped) DCD+DSR masks
 NoSwap              std       <Mask.DCD           save DCD+DSR (or DSR+DCD) masks
                     lda       IT.XTYP,y           get extended type byte
                     sta       <Wrk.XTyp           save it
@@ -302,25 +351,16 @@ NoDTR               ldx       <V.PORT             get port address
                     ldd       IT.PAR,y            [A] = IT.PAR, [B] = IT.BAU from descriptor
                     lbsr      SetPort             go save it and set up control/format registers
                     orcc      #IntMasks           disable IRQs while setting up hardware
-*                    ifgt      Level-1
-*                    lda       #IRQBit             get GIME IRQ bit to use
-*                    ora       >D.IRQER            mask in current GIME IRQ enables
-*                    sta       >D.IRQER            save GIME CART* IRQ enable shadow register
-*                    sta       >IrqEnR             enable GIME CART* IRQs
-*                    endc
-*                    lda       StatReg,x           get new Status register contents
                     lda       #Stat.DCD                 fake status for 6551 DCD *************************************************************
                     sta       <Cpy.Stat           save Status copy
                     tfr       a,b                 copy it...
-*                    eora      Pkt.Flip,pc         flip bits per D.Poll
-*                    anda      Pkt.Mask,pc         any IRQ(s) still pending?
-*                    lbne      NRdyErr             yes, go report error... (device not plugged in?)
                     andb      #Stat.DSR!Stat.DCD  clear all but DSR+DCD status
                     stb       <CpyDCDSR           save new DCD+DSR status copy
 
+INIT9               puls      y
+                    puls      cc,dp,pc            recover IRQ/Carry status, system DP, return
 
-INIT9	puls	y
-	puls      cc,dp,pc            recover IRQ/Carry status, system DP, return
+
 
 Term                clrb                          default to no error...
                     pshs      cc,dp               save IRQ/Carry status, dummy B, system DP
@@ -357,18 +397,18 @@ TermExit
                     addd      #$0001
 
 * remove from VIRQ table first
-         ldx #0               get zero to remove from table
-         leay VIRQBF,U        get address of packet 
-         os9 F$VIRQ
+                    ldx       #0               get zero to remove from table
+                    leay      VIRQBF,U        get address of packet 
+                    os9       F$VIRQ
 * then remove from IRQ table
-         ldx #0               get zero to remove from table
-         os9 F$IRQ
+                    ldx       #0               get zero to remove from table
+                    os9       F$IRQ
 
                     puls      cc                  recover IRQ/Carry status
                     puls      dp,pc               restore dummy A, system DP, return
 
 ReadSlp             ldd       >D.Proc             Level II process descriptor address
-                    sta       <V.WAKE             save MSB for IRQ service routine
+                    sta       V.WAKE,u             save MSB for IRQ service routine
                     tfr       d,x                 copy process descriptor address
                     ldb       P$State,x
                     orb       #Suspend
@@ -382,35 +422,198 @@ ReadSlp             ldd       >D.Proc             Level II process descriptor ad
 ChkState            equ       *
                     ldb       P$State,x
                     bitb      #Condem
-                    lbne       PrAbtErr            yes, go do it...
-                    ldb       <V.WAKE             true interrupt?
+                    lbne      PrAbtErr            yes, go do it...
+                    ldb       V.WAKE,u             true interrupt?
                     beq       ReadChar             yes, go read the char.
                     bra       ReadSlp             no, go suspend the process
+
+* x bits 1..0 is socket #, bit 4 = isPacketSocket	ldd <V.PORT
+GetDeviceSocket
+                    ldb       <V.PORT+1
+                    tfr       b,a
+                    anda      #3
+                    sta       DeviceSocket,u
+                    tfr       b,a
+                    anda      #MASK_SOCKETDEV
+                    sta       PacketMode,u
+                    rts
 
 Read                clrb                          default to no errors...
                     pshs      cc,dp               save IRQ/Carry status, system DP
                     tfr       u,d
                     tfr       a,dp
+
 ReadChar
+                    lbsr      GetDeviceSocket	   can be changed on the fly using the xmode command
+
                     ldb       >WORK_SLOT
                     lda       #$C5                Bank where the WizFi registers are
-	sta	>WORK_SLOT
-        ldx     <V.PORT
-        lda     <WIZFI_UART_RxD_WR_Count,x
-        sta	<RxDatLen+1
-	clr	<RxDatLen
-	stb	>WORK_SLOT
 
-        ldd	<RxDatLen	           how many RxD FIFO bytes ready?
-        lbeq    ReadSlp             none, go sleep while waiting for new Rx data...
+                    sta       >WORK_SLOT
+                    lda       [ind_RxD_WR_CountReg,u]
+                    sta       <RxDatLen+1
+	            clr       <RxDatLen
+	            stb       >WORK_SLOT
 
-	ldb	>WORK_SLOT
-   	lda	#$C5			Bank where the WizFi registers are
-	sta	>WORK_SLOT
-        lda     <WIZFI_UART_DataReg,x
-	stb	>WORK_SLOT
+                    ldd       <RxDatLen	           how many RxD FIFO bytes ready?
+                    lbeq      ReadSlp             none, go sleep while waiting for new Rx data...
 
-ReadExit        puls      cc,dp,pc            recover IRQ/Carry status, dummy B, system DP, return
+                    ldb       >WORK_SLOT
+                    lda       #$C5			Bank where the WizFi registers are
+                    sta       >WORK_SLOT
+                    lda       [ind_DataReg,u]
+                    stb       >WORK_SLOT
+
+* Character State Machine to look for "+IPD,$,####:" where $ = connection 0-3 and # is number of bytes to return from Read routine
+* Otherwise parse character then sleep
+
+  	ldb	PacketMode,u
+	lbeq	ReadExit
+
+        ldb	ReadState,u
+
+	cmpb	#State_ListenIpdHead
+	beq	ListenIpdHead
+
+	* cmpb	#State_ListenConnect
+	* beq	ListenForConnect
+
+	ldx	IpdLen,u
+	bne	x@
+	ldb	#State_ListenIpdHead
+	stb	ReadState,u
+	clr     ReadPos,u
+	bra	s@
+x@	leax	-1,x
+	stx	IpdLen,u
+	ldb	PacketSocket,u
+        cmpb	DeviceSocket,u
+	lbeq	ReadExit
+s@	lbra	ReadSlp
+
+* Default to listen for the #,Connect string, while passing thru all bytes
+* ListenForConnect  for /n# devices only
+* 	leax	strConnect,pcr
+* 	ldb	ReadPos,u
+* 	cmpa	b,x
+* 	beq	m@
+* 	clr	ReadPos,u
+* 	bra	x@
+* m@	incb
+* 	stb	ReadPos,u
+*         cmpb    #9		total match
+*         blo     x@
+* 	clr	ReadPos,u
+* 	ldb	#State_ListenIpdHead
+* 	stb	ReadState,u
+* x@	bra	ReadExit
+
+*  +IPD,0,1111:
+ListenIpdHead
+	leax	strIPD,pcr	point to start of IPD string constant
+	ldb	ReadPos,u       what character position are we at?  +  P  D  ,   ?  0-3
+	cmpb    #4
+        bls     mc@             go match exact chars "+IPD,"
+        cmpb    #5
+	beq	ms@             go match a digit "0" - "3" for the socket #
+	cmpb    #6
+	bls	mc@             go match exact char ","
+	cmpa	#58             match ":" terminator for +IPD string
+	beq	t@		terminating character
+        sta     IpdLenChar,u	match length digits
+	ldd	IpdLen,u
+        bsr     DecBin
+	std     IpdLen,u
+	tfr	d,x
+	lbsr	ShowDecimal
+	bra     m@
+t@	clr	ReadPos,u
+	clr	ReadState,u	switch to data mode for the next Read cycle
+	bra	x@
+mc@	cmpa	b,x		match exact char from RxD FIFO
+	beq     m@
+	clr	ReadPos,u	it failed, quit parsing the IPD start again
+	bra	x@
+ms@	clr	PacketSocket,u
+	cmpa	#'0
+	blo	m@
+	cmpa	#'3
+	bhi	m@
+	suba	#'0		get connection # in ASCII "0" - "3"
+	sta	PacketSocket,u
+	bra	m@
+m@      inc	ReadPos,u
+x@      lbra    ReadSlp		forget about the packet characters and go sleep
+
+
+ReadExit            puls      cc,dp,pc            recover IRQ/Carry status, dummy B, system DP, return
+
+********************************************************************
+* process decimal number into it's binary representation
+* return with binary in the d register
+********************************************************************
+
+DecBin              pshs      y,b,a               save registers
+                    ldb       IpdLenChar,u                 get digit
+                    subb      #$30                make it binary
+                    cmpb      #$0A                bla bla bla!
+                    bcc       L095D
+                    lda       #$00
+                    ldy       #$000A
+L094F               addd      ,s
+                    bcs       L095B
+                    leay      -$01,y
+                    bne       L094F
+                    std       ,s
+                    andcc     #^Zero
+L095B               puls      pc,y,b,a
+L095D               orcc      #Zero
+                    puls      pc,y,b,a
+
+
+ShowDecimal         pshs      cc,d
+                    orcc      #IntMasks
+                    ldb       >WORK_SLOT
+                    pshs      b
+                    ldb       #$C2                Text screen block #
+                    stb       >WORK_SLOT 
+                    tfr       x,d
+                    lsra                          Do cheap binary to 4-digit HEX ASCII string
+                    lsra
+                    lsra
+                    lsra
+                    bsr       Bin2AscHex
+                    sta       >MMU_WINDOW+80+76
+                    tfr       x,d
+                    anda      #$0f
+                    bsr       Bin2AscHex
+                    sta       >MMU_WINDOW+80+77
+                    tfr       x,d
+                    tfr       b,a
+                    lsra                          Do cheap binary to 4-digit HEX ASCII string
+                    lsra
+                    lsra
+                    lsra
+                    bsr       Bin2AscHex
+                    sta       >MMU_WINDOW+80+78
+                    tfr       x,d
+                    tfr       b,a
+                    anda      #$0f
+                    bsr       Bin2AscHex
+                    sta       >MMU_WINDOW+80+79
+                    puls      b
+                    stb       >WORK_SLOT
+                    puls      cc,d,pc
+
+Bin2AscHex          anda      #$0f
+                    cmpa      #9
+                    bls       d@
+                    suba      #10
+                    adda      #'A'
+                    bra       x@
+d@                  adda      #'0'
+x@                  rts
+
 
 PrAbtErr            ldb       #E$PrcAbt
                     bra       ErrExit
@@ -437,21 +640,43 @@ UnSvcErr            ldb       #E$UnkSvc
                     bra       ErrExit
 
 Write               clrb                          default to no error...
-                    pshs      cc,dp,x               save IRQ/Carry status, Tx character, system DP
-                    pshs      a
+                    pshs      cc,a,dp               save IRQ/Carry status, Tx character, system DP
                     tfr       u,d
                     tfr       a,dp
 
-                    ldx       <V.PORT
+                    lbsr      GetDeviceSocket	   can be changed on the fly using the xmode command
+	ldb	PacketMode,u
+	beq	x@			device is for packet-based transmission only, even single bytes travel by a packet
+	leax	strCipSend,pcr
+s@	lda	,x+
+	beq	c@
+	bsr	SendByte
+	bra	s@
+c@	lda	DeviceSocket,u
+	adda	#'0
+	bsr	SendByte
+	lda	#',
+	bsr	SendByte
+	lda	#'1
+	bsr	SendByte
+	lda	#$0d
+	bsr	SendByte
+	lda	#$0a
+	bsr	SendByte
+	clrb
+x@	lda	1,s
+	bsr	SendByte
+                  puls      cc,a,dp,pc            recover IRQ/Carry status, Tx character, system DP, return
+
+SendByte            pshs      cc,a
                     orcc      #IntMasks           disable IRQs during error and Tx disable checks
                     ldb       >WORK_SLOT
                     lda       #$c5
                     sta       >WORK_SLOT
-                    puls      a
-                    sta       <WIZFI_UART_DataReg,x
+                    lda       1,s
+                    sta       [ind_DataReg,u]
                     stb       >WORK_SLOT
-
-                    puls      cc,dp,x,pc            recover IRQ/Carry status, Tx character, system DP, return
+                    puls      cc,a,pc
 
 GStt                clrb                          default to no error...
                     pshs      cc,dp               save IRQ/Carry status, dummy B, system DP
@@ -465,16 +690,15 @@ GStt                clrb                          default to no error...
                     cmpa      #SS.Ready
                     bne       GetScSiz
 
-        ldx     <V.PORT
-        orcc    #Intmasks
-	ldb	>WORK_SLOT
-   	lda	#$C5			Bank where the WizFi registers are
- 	sta	>WORK_SLOT
-	lda	<WIZFI_UART_RxD_WR_Count,x
-        clr     <RxDatLen
-        sta     <RxDatLen+1
-	stb	>WORK_SLOT
-        andcc   #^IntMasks
+                    orcc      #Intmasks
+	            ldb       >WORK_SLOT
+   	            lda       #$C5			Bank where the WizFi registers are
+ 	            sta       >WORK_SLOT
+	            lda       [ind_RxD_WR_CountReg,u]
+                    clr       <RxDatLen
+                    sta       <RxDatLen+1
+	            stb       >WORK_SLOT
+                    andcc     #^IntMasks
 
                     ldd       <RxDatLen           get Rx data length
                     lbeq       NRdyErr             none, go report error
@@ -655,9 +879,6 @@ SetPort             pshs      cc                  save IRQ enable and Carry stat
                     std       <CmdReg		*CmdReg,x            set command+control registers
                     puls      cc,pc               recover IRQ enable and Carry status, return...
 
-
-* The purpose of IRQSvc is not to hog the CPU and perform things that the software should be doing.
-* What the 6551 and 6850 drivers are doing is insanity.
 IRQSvc
                     pshs      cc,dp,x                  save system DP
                     tfr       u,d                 setup our DP
@@ -668,12 +889,11 @@ IRQSvc
                     anda      #$FF-Vi.IFlag    mask off interrupt bit 
                     sta	      VIRQBF+Vi.Stat,U  put it back
 
-                    ldx       <V.PORT 
                     ldb       >WORK_SLOT
                     lda       #$C5		Bank where the WizFi registers are
                     sta       >WORK_SLOT
                     clra
-                    lda       <WIZFI_UART_RxD_WR_Count,x
+                    lda       [ind_RxD_WR_CountReg,u]
                     stb       >WORK_SLOT
                     tsta
                     beq       IRQExit
