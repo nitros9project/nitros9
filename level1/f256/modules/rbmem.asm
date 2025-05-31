@@ -43,6 +43,7 @@ CacheBlock          rmb       1
 IsFlash             rmb       1
 EmptySector         rmb       1
 
+                    rmb       250                 stack space
 size                equ       .
 
                     fcb       DIR.+SHARE.+PREAD.+PWRIT.+PEXEC.+READ.+WRITE.+EXEC.
