@@ -9,22 +9,25 @@
 *   1/1    2025/03/31  Roger Taylor
 
 
-                    nam       WZ
+                    nam       n3
                     ttl       WizFi360 device descriptor
 
                     ifp1
                     use       defsfile
                     endc
 
+Base                set       $4040
+Connection          set       $3
+PacketMode          set       $08
 tylg                set       Devic+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
 
                     mod       eom,name,tylg,atrv,mgrnam,drvnam
 
-                fcb       UPDAT.              mode byte
+                    fcb       UPDAT.              mode byte
                     fcb       HW.Page             extended controller address
-                    fdb       $4040               physical controller address
+                    fdb       Base+Connection+PacketMode               physical controller address has extra info
                     fcb       initsize-*-1        initilization table size
                     fcb       DT.SCF              device type:0=scf,1=rbf,2=pipe,3=scf
                     fcb       $00                 case:0=up&lower,1=upper only
@@ -53,10 +56,10 @@ rev                 set       $00
                     fcb       $00		C$XOFF              acia xoff char
                     fcb       80                  (szx) number of columns for display
                     fcb       60                  (szy) number of rows for display
-                     fcb       $00                 Extended type byte (socket 0)
+                    fcb       $00                 Extended type
 initsize            equ       *
 
-name                fcs       /wz/
+name                fcs       /n3/
 mgrnam              fcs       /SCF/
 drvnam              fcs       /WizFi/
 
