@@ -41,7 +41,7 @@ SCF		 = $(MD)/scf.mn
 SC16550	 = $(MD)/sc16550.dr $(MD)/t0_sc16550.dd
 
 # WizFi360 drivers
-WIZFI = $(MD)/wizfi.dr $(MD)/wz.dd
+WIZFI = $(MD)/wizfi.dr $(MD)/wz.dd $(MD)/n0.dd $(MD)/n1.dd $(MD)/n2.dd $(MD)/n3.dd
 
 # SCF video terminal
 SCVT_F256K	 = $(MD)/vtio.dr $(MD)/keydrv_f256k.sb $(MD)/mousedrv_ps2.sb $(MD)/term.dt
