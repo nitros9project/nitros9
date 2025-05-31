@@ -878,12 +878,12 @@ DMA_STATUS_TRF_IP   equ       $80       transfer in progress
 
 * WIZFI360 Register Indices
  org 0
-WIZFI_UART_CtrlReg rmb 1
-WIZFI_UART_DataReg rmb 1
-WIZFI_UART_RxD_RD_Count rmb 2
-WIZFI_UART_RxD_WR_Count rmb 2
-WIZFI_UART_TxD_RD_Count rmb 2
-WIZFI_UART_TxD_WR_Count rmb 2
+WizFi_CtrlReg rmb 1
+WizFi_DataReg rmb 1
+WizFi_RxD_RD_Count rmb 2
+WizFi_RxD_WR_Count rmb 2
+WizFi_TxD_RD_Count rmb 2
+WizFi_TxD_WR_Count rmb 2
 
 
                   ENDC
