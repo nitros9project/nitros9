@@ -20,7 +20,7 @@ rev                 set       $00
 
                     mod       eom,name,tylg,atrv,mgrnam,drvnam
 
-                     fcb       UPDAT.              mode byte
+                fcb       UPDAT.              mode byte
                     fcb       HW.Page             extended controller address
                     fdb       $4040               physical controller address
                     fcb       initsize-*-1        initilization table size
@@ -51,7 +51,7 @@ rev                 set       $00
                     fcb       $00		C$XOFF              acia xoff char
                     fcb       80                  (szx) number of columns for display
                     fcb       60                  (szy) number of rows for display
-                    fcb       $00                 Extended type
+                     fcb       $00                 Extended type byte (socket 0)
 initsize            equ       *
 
 name                fcs       /wz/
