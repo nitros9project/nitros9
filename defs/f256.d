@@ -232,7 +232,7 @@ INT_VKY_SOL         equ       %00000010 TinyVicky start of line interrupt
 INT_PS2_KBD         equ       %00000100 PS/2 keyboard event
 INT_PS2_MOUSE       equ       %00001000 PS/2 mouse event
 INT_TIMER_0         equ       %00010000 TIMER0 has reached its target value
-INT_TIMER_1         equ       %00010000 TIMER1 has reached its target value
+INT_TIMER_1         equ       %00100000 TIMER1 has reached its target value
 INT_CARTRIDGE       equ       %10000000 Interrupt asserted by the cartridge
 
 * Interrupt group 1 flags
