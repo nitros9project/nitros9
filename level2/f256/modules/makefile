@@ -34,7 +34,7 @@ SCF		= scf.mn \
 		z1_scdwv.dd z2_scdwv.dd z3_scdwv.dd z4_scdwv.dd z5_scdwv.dd \
 		z6_scdwv.dd z7_scdwv.dd z8_scdwv.dd z9_scdwv.dd z10_scdwv.dd \
 		z11_scdwv.dd z12_scdwv.dd z13_scdwv.dd z14_scdwv.dd \
-                wizfi.dr wz.dd
+                wizfi.dr wz.dd n0.dd n1.dd n2.dd n3.dd
 
 PIPE		= pipeman.mn pipeman_named.mn piper.dr pipe.dd
 
@@ -51,6 +51,14 @@ sysgo: sysgo.o
 wizfi.dr: wizfi.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
 wz.dd: wz.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
+n0.dd: n0.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
+n1.dd: n1.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
+n2.dd: n2.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
+n3.dd: n3.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
 
 # Kernel
