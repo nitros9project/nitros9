@@ -119,16 +119,21 @@ all:
 # Clean all components
 clean:	dskclean
 	$(foreach dir,$(DIRS),$(MAKE) -C $(dir) clean &&) :
+	$(RM) cmds/ACIA51 || :
 	
 dskclean:
 	$(RM) $(DSKS) $(LDSKS)
 
-dsk: all $(DSKS)
+dsk: all moveacia51 $(DSKS)
 
 dskcopy: $(DSKS)
 	$(CP) $(DSKS) $(DSKDIR)
 
 #Dragon 64/32+
+
+moveacia51:
+	$(CP) -v modules/acia51.dd cmds/ACIA51 || :
+	$(RM) -v modules/acia51.dd || :
 
 $(DSK360K_1):
 	$(RM) $@
@@ -139,6 +144,8 @@ $(DSK360K_1):
 	$(CD) cmds; $(OS9COPY) $(CMDS) ../$@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 	$(OS9RENAME) $@,CMDS/$(WHICHSHELL) shell
+	$(CD) cmds; $(OS9COPY) ACIA51 ../$@,CMDS
+	$(OS9ATTR_EXEC) $@,CMDS/ACIA51
 	$(CD) sys; $(CPL) $(SYSTEXT) ../$@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(SYSTEXT),$@,SYS/$(file))
 	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
@@ -198,6 +205,8 @@ $(DSK720K):
 	$(CD) cmds; $(OS9COPY) $(CMDS) ../$@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 	$(OS9RENAME) $@,CMDS/$(WHICHSHELL) shell
+	$(CD) cmds; $(OS9COPY) ACIA51 ../$@,CMDS
+	$(OS9ATTR_EXEC) $@,CMDS/ACIA51
 	$(CD) sys; $(CPL) $(SYSTEXT) ../$@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(SYSTEXT),$@,SYS/$(file))
 	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
@@ -248,6 +257,7 @@ $(DSK180K_1):
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
 	$(CD) cmds; $(OS9COPY) $(CMDS525) ../$@,CMDS
+	$(CD) cmds; $(OS9COPY) ACIA51 ../$@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS525),$@,CMDS/$(file))
 	# put all commands on the first disk because we can
 	$(CD) cmds; $(OS9COPY) $(CMDS525_2) ../$@,CMDS

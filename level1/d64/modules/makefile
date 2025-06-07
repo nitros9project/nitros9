@@ -76,6 +76,7 @@ SCF		= scf.mn \
 		covdg.io cohr.io co42.io\
 		nil.dd p_dpp.dd pipe.dd ssp.dd \
 		term_sc6551.dt t2_sc6551.dt t3_sc6551.dt \
+		t1_acia51.dt \
 		term_vdg.dt term_hr.dt term_42.dt term_80.dt p1_sc6551dragon.dd
 
 ifeq ($(PORT),dplus)
@@ -86,7 +87,7 @@ PIPE		= pipeman.mn \
 		piper.dr \
 		pipe.dd
 
-ALLOBJS		= $(BOOTTRACK) $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(PIPE) 
+ALLOBJS		= $(BOOTTRACK) $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(PIPE) acia51.dd
 
 all:	$(ALLOBJS)
 

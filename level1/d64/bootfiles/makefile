@@ -40,6 +40,7 @@ BOOTFILE_COVDG_DS40 = $(MD)/ioman \
 		$(MD)/scf.mn \
 		$(MD)/vtio.dr $(MD)/covdg.io $(MD)/term_vdg.dt \
 		$(MD)/scdpp.dr $(MD)/p_dpp.dd \
+		$(MD)/t1_acia51.dt \
 		$(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft \
 		$(MD)/sysgo_dd
@@ -52,6 +53,7 @@ BOOTFILE_COHR_DS40 = $(MD)/ioman \
 		$(MD)/scf.mn \
 		$(MD)/vtio.dr $(MD)/cohr.io $(MD)/term_hr.dt \
 		$(MD)/scdpp.dr $(MD)/p_dpp.dd \
+		$(MD)/t1_acia51.dt \
 		$(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft \
 		$(MD)/sysgo_dd
@@ -64,6 +66,7 @@ BOOTFILE_CO42_DS40 = $(MD)/ioman \
 		$(MD)/scf.mn \
 		$(MD)/vtio.dr $(MD)/co42.io $(MD)/term_42.dt \
 		$(MD)/scdpp.dr $(MD)/p_dpp.dd \
+		$(MD)/t1_acia51.dt \
 		$(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft \
 		$(MD)/sysgo_dd		
@@ -76,6 +79,7 @@ BOOTFILE_COVDG_DS80 = $(MD)/ioman \
 		$(MD)/scf.mn \
 		$(MD)/vtio.dr $(MD)/covdg.io $(MD)/term_vdg.dt \
 		$(MD)/scdpp.dr $(MD)/p_dpp.dd \
+		$(MD)/t1_acia51.dt \
 		$(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft \
 		$(MD)/sysgo_dd
@@ -88,6 +92,7 @@ BOOTFILE_COHR_DS80 = $(MD)/ioman \
 		$(MD)/scf.mn \
 		$(MD)/vtio.dr $(MD)/cohr.io $(MD)/term_hr.dt \
 		$(MD)/scdpp.dr $(MD)/p_dpp.dd \
+		$(MD)/t1_acia51.dt \
 		$(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft \
 		$(MD)/sysgo_dd
@@ -100,6 +105,7 @@ BOOTFILE_CO42_DS80 = $(MD)/ioman \
 		$(MD)/scf.mn \
 		$(MD)/vtio.dr $(MD)/co42.io $(MD)/term_42.dt \
 		$(MD)/scdpp.dr $(MD)/p_dpp.dd \
+		$(MD)/t1_acia51.dt \
 		$(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft \
 		$(MD)/sysgo_dd
@@ -112,6 +118,7 @@ BOOTFILE_COVDG_SS40 = $(MD)/ioman \
 		$(MD)/scf.mn \
 		$(MD)/vtio.dr $(MD)/covdg.io $(MD)/term_vdg.dt \
 		$(MD)/scdpp.dr $(MD)/p_dpp.dd \
+		$(MD)/t1_acia51.dt \
 		$(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft \
 		$(MD)/sysgo_dd
@@ -124,6 +131,7 @@ BOOTFILE_COHR_SS40 = $(MD)/ioman \
 		$(MD)/scf.mn \
 		$(MD)/vtio.dr $(MD)/cohr.io $(MD)/term_hr.dt \
 		$(MD)/scdpp.dr $(MD)/p_dpp.dd \
+		$(MD)/t1_acia51.dt \
 		$(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft \
 		$(MD)/sysgo_dd
@@ -136,6 +144,7 @@ BOOTFILE_CO42_SS40 = $(MD)/ioman \
 		$(MD)/scf.mn \
 		$(MD)/vtio.dr $(MD)/co42.io $(MD)/term_42.dt \
 		$(MD)/scdpp.dr $(MD)/p_dpp.dd \
+		$(MD)/t1_acia51.dt \
 		$(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft \
 		$(MD)/sysgo_dd
