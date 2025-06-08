@@ -105,26 +105,26 @@ itsfile             bsr       readfile
 
 readfile            lda       #READ.
                     os9       I$Open              open the file for reading
-                    lbcs       read.ex             crap out if error
+                    lbcs      read.ex             crap out if error
                     sta       <path               save path number
                     stx       <param              and save new address of parameter area
 
-read.lpcr1          lda       <path               get the current path number
-                    ldy       #1
-                    ldy       #$0001              Up to 256 bytes to be read
-                    ldx       <d.ptr              and pointer to data buffer
-                    os9       I$Read              Go read byte
-                    lbcs       chk.err             check errors
+* read.lpcr1          lda       <path               get the current path number
+*                     ldy       #1
+*                     ldy       #$0001              Up to 256 bytes to be read
+*                     ldx       <d.ptr              and pointer to data buffer
+*                     os9       I$Read              Go read byte
+*                     lbcs      chk.err             check errors
 
-                    ldy       #1
-                    lda       #$01                to STDOUT
-                    os9       I$Write             dump it out in one shot
-                    bcs       read.ex             abort
+*                     ldy       #1
+*                     lda       #$01                to STDOUT
+*                     os9       I$Write             dump it out in one shot
+*                     bcs       read.ex             abort
 
-                    ldx       <d.ptr
-                    lda       ,x
-                    cmpa      #$0d
-                    bne       read.lpcr1
+*                     ldx       <d.ptr
+*                     lda       ,x
+*                     cmpa      #$0d
+*                     bne       read.lpcr1
                     
 read.lplf1          lda       <path               get the current path number
                     ldy       #1
@@ -135,6 +135,7 @@ read.lplf1          lda       <path               get the current path number
 
                     ldy       #1
                     lda       #$01                to STDOUT
+                    ldx       <d.ptr              and pointer to data buffer
                     os9       I$Write             dump it out in one shot
                     bcs       read.ex             abort
 
