@@ -64,7 +64,8 @@ SCF		= scf.mn \
 		n8_scdwv.dd n9_scdwv.dd n10_scdwv.dd n11_scdwv.dd n12_scdwv.dd \
 		n13_scdwv.dd midi_scdwv.dd \
 		term_z_scdwv.dt z1_scdwv.dd z2_scdwv.dd z3_scdwv.dd z4_scdwv.dd z5_scdwv.dd \
-		z6_scdwv.dd z7_scdwv.dd
+			z6_scdwv.dd z7_scdwv.dd \
+		sc6850.dr term_sc6850_ff06.dt
 
 PIPE		= pipeman.mn \
 		piper.dr \
@@ -259,6 +260,13 @@ term_vga.dt: term_vdg.asm
 # DriveWire 3 SCF descriptors
 term_scdwv.dt: scdwvdesc.asm
 	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=0
+
+# TFR9 emulates a sc6850 for /term, tucked away at $FF06.
+term_sc6850_ff06.dt: term_sc6850.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DHwBASE=65286 # 0xFF06
+
+sc6850.dr: sc6850.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS)
 
 n_scdwv.dd: scdwvdesc.asm
 	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=255
