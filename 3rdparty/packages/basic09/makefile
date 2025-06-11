@@ -48,7 +48,7 @@ runbt_6809: basic09.asm
 	$(AS) $(ASOUT)$@ $< $(M6809) -aRUNTIME=1
 
 clean: dskclean
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 dsk: $(DSK)
 

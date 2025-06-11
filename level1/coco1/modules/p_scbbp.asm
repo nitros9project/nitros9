@@ -1,8 +1,6 @@
 ********************************************************************
 * P - CoCo Bit-Banger Printer Driver Device Descriptor
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

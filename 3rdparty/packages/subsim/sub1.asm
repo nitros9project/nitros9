@@ -1,8 +1,6 @@
 ********************************************************************
 * sub1 - Sub1 Sub Battle Simulator subroutine
 *
-* $Id$
-*
 * There is a lot of extraneous and unneccessary instructions throughout
 * the code. But since we use the jump table at module enter be careful
 * when removing any thing and adjust it accordingly.

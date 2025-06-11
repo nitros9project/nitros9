@@ -30,8 +30,6 @@ F256.D              set       1
 * F256 hardware is documented here:
 *   https://github.com/pweingar/C256jrManual/blob/main/tex/f256jr_ref.pdf
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
@@ -234,7 +232,7 @@ INT_VKY_SOL         equ       %00000010 TinyVicky start of line interrupt
 INT_PS2_KBD         equ       %00000100 PS/2 keyboard event
 INT_PS2_MOUSE       equ       %00001000 PS/2 mouse event
 INT_TIMER_0         equ       %00010000 TIMER0 has reached its target value
-INT_TIMER_1         equ       %00010000 TIMER1 has reached its target value
+INT_TIMER_1         equ       %00100000 TIMER1 has reached its target value
 INT_CARTRIDGE       equ       %10000000 Interrupt asserted by the cartridge
 
 * Interrupt group 1 flags
@@ -849,5 +847,43 @@ DMA_CTRL_Start_Trf  equ       $80
 
 * DMA_STATUS_REG bit definitions
 DMA_STATUS_TRF_IP   equ       $80       transfer in progress
+
+** $0000: R/W - Control Register ; Only bit[0] is used 
+**         0: Low Speed (115K) 1: Hi-Speed (2M) 
+** $0001: R/W - FIFO Port (input/output)
+
+** ; This is the number of Byte in the FIFO to be Read
+** 00000CCC_CCCCCCCC  16-bit count
+** $0002: WIFI_UART_RxD_RD_Count[7:0]
+** $0003: {5'b0_0000, WIFI_UART_RxD_RD_Count[10:8]}
+
+** ; The is the number of byte has been written by the Module in the FIFO to be read by CPU
+** 00000CCC_CCCCCCCC  16-bit count
+** $0004: WIFI_UART_RxD_WR_Count[7:0]      <<<< This is the one you know how many bytes to read from the MODULE
+** $0005: {5'b0_0000, WIFI_UART_RxD_WR_Count[10:8]}
+
+** ; This is the number of Byte in the FIFO to be Read by the MODULE
+** 00000CCC_CCCCCCCC  16-bit count
+** $0006: WIFI_UART_TxD_RD_Count[7:0]
+** $0007: {5'b0_0000, WIFI_UART_RxD_RD_Count[10:8]} 
+
+** ; This is the number of Byte the CPU has written in the FIFO to be sent to MODULE
+** 00000CCC_CCCCCCCC  16-bit count
+** $0008: WIFI_UART_TxD_WR_Count[7:0]      
+** $0009: {5'b0_0000, WIFI_UART_RxD_WR_Count[10:8]}
+
+** By the way, I put both counts of both sides of both FIFO (1xRxD, 1xTxD) In reality the RxD side ought to report the same number if you take the RD side as opposed to the WR side.
+** Bottom line, there is only one Count you need and it is the RxD FIFO...
+** There is no Empty Flag in the Control Register to be read as a status, only the count registers will tell you how many bytes are present in the FIFO. the FIFOs are both 2K deep btw
+
+* WIZFI360 Register Indices
+ org 0
+WIZFI_UART_CtrlReg rmb 1
+WIZFI_UART_DataReg rmb 1
+WIZFI_UART_RxD_RD_Count rmb 2
+WIZFI_UART_RxD_WR_Count rmb 2
+WIZFI_UART_TxD_RD_Count rmb 2
+WIZFI_UART_TxD_WR_Count rmb 2
+
 
                   ENDC

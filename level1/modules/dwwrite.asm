@@ -21,6 +21,7 @@
                     endc
 
                     ifne      f256
+*                    use dwwrite_f256_wizfi.asm
                     use dwwrite_f256.asm
                     endc
 

@@ -1,8 +1,6 @@
 *******************************************************************
 * REL - Relocation routine
 *
-* $Id$
-*
 * This module MUST occupy the last 256 bytes of ROM ($FF00-$FFFF)
 * due to the way the Corsham board is designed.
 *

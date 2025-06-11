@@ -1,8 +1,6 @@
 *******************************************************************
 * VTIO - NitrOS-9 video terminal I/O driver for the Foenix F256
 *
-* $Id$
-*
 * https://wiki.osdev.org/PS2_Keyboard
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
@@ -298,7 +296,7 @@ l@                  tfr       d,x                 transfer it to X
 installfont         leax      fontmod,pcr         point to the font module
                     lda       #Data               it's a data module
                     os9       F$Link              link to it
-                    bcs       setforeback         branch if the link failed
+                    bcs       initcursor          branch if the link failed
                     tfr       y,x                 transfer Y to X
                     lda       #$C1                get the font MMU block
                     sta       MAPSLOT             store it in the MMU slot to map it in
@@ -309,7 +307,7 @@ l@                  ldd       ,x++                get two bytes of font data
                     bne       l@                  branch if not
 
 * Initialize the cursor.
-                    ldx       #TXT.Base
+initcursor          ldx       #TXT.Base
                     lda       #Vky_Cursor_Enable|Vky_Cursor_Flash_Rate0|Vky_Cursor_Flash_Rate1
                     sta       VKY_TXT_CURSOR_CTRL_REG,x
                     clra

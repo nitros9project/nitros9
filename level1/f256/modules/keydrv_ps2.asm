@@ -455,7 +455,7 @@ SetDefaultHandler
 * These tables map PS/2 key codes to characters in both non-SHIFT and SHIFT cases.
 * If the high bit of a character is set, it is a special flag and therefore
 * is handled differently.
-ScanMap             fcb       0,0,0,0,0,0,0,0,0,0,0,0,0,0,'`,0
+ScanMap             fcb       0,0,0,0,0,$b1,$b2,0,0,0,0,0,0,0,'`,0
                     fcb       0,0,0,0,0,'q,'1,0,0,0,'z,'s,'a,'w,'2,0
                     fcb       0,'c,'x,'d,'e,'4,'3,0,0,C$SPAC,'v,'f,'t,'r,'5,0
                     fcb       0,'n,'b,'h,'g,'y,'6,0,0,0,'m,'j,'u,'7,'8,0
@@ -464,7 +464,7 @@ ScanMap             fcb       0,0,0,0,0,0,0,0,0,0,0,0,0,0,'`,0
                     fcb       0,0,0,0,0,0,$8,0,0,'1,0,'4,'7,0,0,0
                     fcb       '0,'.,'2,'5,'6,'8,$05,0,0,'+,'3,'-,'*,'9,$17,0
 
-SHIFTScanMap        fcb       0,0,0,0,0,0,0,0,0,0,0,0,0,0,'~,0
+SHIFTScanMap        fcb       0,0,0,0,0,$b3,$b4,0,0,0,0,0,0,0,'~,0
                     fcb       0,0,0,0,0,'Q,'!,0,0,0,'Z,'S,'A,'W,'@,0
                     fcb       0,'C,'X,'D,'E,'$,'#,0,0,C$SPAC,'V,'F,'T,'R,'%,0
                     fcb       0,'N,'B,'H,'G,'Y,'^,0,0,0,'M,'J,'U,'&,'*,0

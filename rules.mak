@@ -25,6 +25,10 @@ OS9		= os9
 
 NITROS9VER	= v0$(NOS9VER)0$(NOS9MAJ)0$(NOS9MIN)
 
+ifeq ($(OS),Windows_NT)
+    OS := W
+endif
+
 DEFSDIR		= $(NITROS9DIR)/defs
 DSKDIR		= $(NITROS9DIR)/dsks
 
@@ -78,6 +82,7 @@ OS9FORMAT_DS80	= os9 format -e -t80 -ds -dd
 OS9FORMAT_DW	= os9 format -t29126 -ss -dd
 OS9FORMAT_SDC  = os9 format -e -t29126 -ss -dd
 OS9FORMAT_F256SD  = os9 format -t29126 -ss -dd
+OS9FORMAT_CART  = os9 format -e -t64 -ss -st16 -sa1
 OS9GEN		= os9 gen
 OS9RENAME	= os9 rename
 OS9ATTR		= os9 attr -q
@@ -89,7 +94,11 @@ UMOUNT		= sudo umount
 LOREMOVE	= sudo losetup -d
 LOSETUP		= sudo losetup
 LINK		= ln
+ifeq ($(OS),W)
+SOFTLINK	= $(LINK)	# Special case for Windows
+else
 SOFTLINK	= $(LINK) -s
+endif
 ARCHIVE		= zip -D -9 -j
 MKDSKINDEX	= perl $(NITROS9DIR)/scripts/mkdskindex
 DROP_EXTRA_SPACES = fn() { mv "$$1" "$$1.tmp" && sed 's/  */ /g' "$$1.tmp" > "$$1" && rm "$$1.tmp"; }; fn

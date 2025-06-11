@@ -1,8 +1,6 @@
 ********************************************************************
 * PMap - Show process map information
 *
-* $Id$
-*
 * From "Inside Level II" by Kevin Darling
 *
 * Edt/Rev  YYYY/MM/DD  Modified by

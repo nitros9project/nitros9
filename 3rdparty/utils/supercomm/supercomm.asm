@@ -1,8 +1,6 @@
 ********************************************************************
 * SuperComm - OS-9 Level Two Communications Program
 *
-* $Id$
-*
 * Ed.    Comments                                       Who YY/MM/DD
 * ------------------------------------------------------------------
 *        Acquired source                                    02/11/20

@@ -13,7 +13,7 @@ ALLOBJS		= $(CMDS)
 all:	$(ALLOBJS)
 
 clean:
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 showobjs:
 	@$(ECHO) $(CMDS)

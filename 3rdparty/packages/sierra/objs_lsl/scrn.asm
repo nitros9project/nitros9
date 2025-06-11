@@ -1,8 +1,6 @@
 ********************************************************************
 * scrn - Kings Quest III screen module
 *
-* $Id$
-*
 * Note the header shows a data size of 0 called from the sierra module
 * and accesses data set up in that module.
 *

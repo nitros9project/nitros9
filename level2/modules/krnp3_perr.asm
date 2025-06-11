@@ -1,8 +1,6 @@
 ********************************************************************
 * krnp3 - Printerr functionality for Level 2
 *
-* $Id$
-*
 *    Peter E. Durham
 *    The New Wentworth Timesharing System
 *    summer: 6 Twin Brook Circle        school: Quincy House D-24

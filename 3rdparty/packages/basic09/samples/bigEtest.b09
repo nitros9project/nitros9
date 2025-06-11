@@ -1,0 +1,403 @@
+PROCEDURE bigEtest
+DIM choice:INTEGER
+choice = 9
+REPEAT
+PRINT "Menu (v3):"
+PRINT TAB(6);"[1] MATH COPROCESSOR"
+PRINT TAB(6);"[2] BITMAP VTIO"
+PRINT TAB(6);"[3] SPRITES"
+PRINT TAB(6);"[4] DMA"
+PRINT TAB(6);"[0] QUIT"
+INPUT "Selection: ", choice
+
+IF choice = 1 THEN
+RUN mathcopro
+ENDIF
+IF choice = 2 THEN
+RUN bitmaps
+ENDIF
+IF choice = 3 THEN
+RUN spritetest
+ENDIF
+
+UNTIL choice = 0
+END
+
+PROCEDURE mathcopro
+dim choice:integer
+REPEAT
+PRINT "Math CoPro:"
+PRINT TAB(13);"[1] Multiplication"
+PRINT TAB(13);"[2] Division"
+PRINT TAB(13);"[3] Division 2"
+PRINT TAB(13);"[4] Addition"
+PRINT TAB(13);"[0] Back"
+INPUT "Selection: ", choice
+IF choice = 1 THEN
+RUN multtest
+ENDIF   
+IF choice = 2 THEN
+RUN divtest
+ENDIF   
+IF choice = 3 THEN
+RUN divtest2
+ENDIF
+IF choice = 4 THEN
+RUN addtest
+ENDIF
+UNTIL choice = 0
+END
+
+PROCEDURE bitmaps
+dim choice:integer
+REPEAT
+PRINT "Bitmaps:"
+PRINT TAB(13);"[1] Test Images BM0 Layer 0"
+PRINT TAB(13);"[2] Test CLUTS"
+PRINT TAB(13);"[3] Test BM 0-2 Layer 0"
+PRINT TAB(13);"[4] Test 3 BM 3 CLUTS 3 Layers"
+PRINT TAB(13);"[0] Back"
+INPUT "Selection: ", choice
+IF choice = 1 THEN
+RUN checkimages
+ENDIF   
+IF choice = 2 THEN
+RUN cluttest
+ENDIF   
+IF choice = 3 THEN
+RUN bmtest
+ENDIF
+IF choice = 4 THEN
+RUN bitmaptest
+ENDIF
+UNTIL choice = 0
+END
+
+
+
+PROCEDURE multtest
+DIM a,b,i:INTEGER
+a = 1
+b = 0
+PRINT TAB(4);"WRITE";TAB(22);"READ";TAB(33);"RESULT"
+FOR i = 1 TO 17
+POKE $FEE0,PEEK(ADDR(a))
+POKE $FEE1,PEEK(ADDR(a)+1)
+POKE $FEE2,PEEK(ADDR(b))
+POKE $FEE3,PEEK(ADDR(b)+1)
+PRINT USING "H4,S3,H4,S6", a," x ",b,"-->  ";
+PRINT USING "H2,H2,S3,H2,H2,S3,H2,H2,H2,H2", PEEK($FEE0),PEEK($FEE1)," x ",PEEK($FEE2),PEEK($FEE3)," = ",PEEK($FEF0),PEEK($FEF1),PEEK($FEF2),PEEK($FEF3)
+a=a*2
+IF b=0 THEN
+b=1
+ELSE
+b=b*2
+ENDIF
+NEXT i
+END
+
+
+PROCEDURE divtest
+DIM a,b,i:INTEGER
+a = 1
+b = 0
+PRINT TAB(4);"WRITE";TAB(22);"READ";TAB(33);"RESULT"
+FOR i = 1 TO 16
+POKE $FEE4,PEEK(ADDR(a))
+POKE $FEE5,PEEK(ADDR(a)+1)
+POKE $FEE6,PEEK(ADDR(b))
+POKE $FEE7,PEEK(ADDR(b)+1)
+PRINT USING "H4,S3,H4,S6", b," / ",a,"-->  ";
+PRINT USING "H2,H2,S3,H2,H2,S3,H2,H2,S3,H2,H2", PEEK($FEE6),PEEK($FEE7)," / ",PEEK($FEE4),PEEK($FEE5)," = ",PEEK($FEF4),PEEK($FEF5)," R ",PEEK($FEF6),PEEK($FEF7)
+a=a*2
+if a=0 then
+a=1
+endif
+IF b=0 THEN
+b=1
+ELSE
+b=b*2
+ENDIF
+NEXT i
+END
+
+PROCEDURE divtest2
+DIM a,b,i:INTEGER
+a = 1
+b = 1
+PRINT TAB(4);"WRITE";TAB(22);"READ";TAB(33);"RESULT"
+FOR i = 1 TO 16
+POKE $FEE4,PEEK(ADDR(a))
+POKE $FEE5,PEEK(ADDR(a)+1)
+POKE $FEE6,PEEK(ADDR(b))
+POKE $FEE7,PEEK(ADDR(b)+1)
+PRINT USING "H4,S3,H4,S6", b," / ",a,"-->  ";
+PRINT USING "H2,H2,S3,H2,H2,S3,H2,H2,S3,H2,H2", PEEK($FEE6),PEEK($FEE7)," / ",PEEK($FEE4),PEEK($FEE5)," = ",PEEK($FEF4),PEEK($FEF5)," R ",PEEK($FEF6),PEEK($FEF7)
+a=a*2
+if a=0 then
+a=1
+endif
+IF b=0 THEN
+b=1
+ELSE
+b=b*2
+ENDIF
+if b=2 then
+a=1
+ENDIF
+NEXT i
+END
+
+
+PROCEDURE addtest
+DIM ah,al,bh,bl,i:INTEGER
+ah=0
+al=1
+bh=0
+bl=1
+PRINT TAB(4);"WRITE";TAB(22);"READ";TAB(33);"RESULT"
+FOR i = 1 TO 32
+POKE $FEE8,PEEK(ADDR(ah))
+POKE $FEE9,PEEK(ADDR(ah)+1)
+POKE $FEEA,PEEK(ADDR(al))
+POKE $FEEB,PEEK(ADDR(al)+1)
+POKE $FEEC,PEEK(ADDR(bh))
+POKE $FEED,PEEK(ADDR(bh)+1)
+POKE $FEEE,PEEK(ADDR(bl))
+POKE $FEEF,PEEK(ADDR(bl)+1)
+PRINT USING "H4,H4,S3,H4,H4,S6",ah,al," + ",bh,bl,"-->  ";
+PRINT USING "H2,H2,H2,H2,S3,H2,H2,H2,H2,S3,H2,H2,H2,H2",PEEK($FEE8),PEEK($FEE9),PEEK($FEEA),PEEK($FEEB)," + ",PEEK($FEEC),PEEK($FEED),PEEK($FEEE),PEEK($FEEF)," = ",PEEK($FEF8),PEEK($FEF9),PEEK($FEFA),PEEK($FEFB)
+ah=ah*2
+al=al*2
+bh=bh*2
+bl=bl*2
+IF al=0 AND ah=0 THEN
+ah=1
+ENDIF
+IF bl=0 AND bh=0 THEN
+bh=1
+ENDIF
+NEXT i
+END
+
+PROCEDURE bitmaptest
+dim bm0,bm1,bm2:INTEGER
+dim choice:STRING
+(* allocate 3 bitmaps, with different cluts *)
+RUN FOENIX("Bitmap",0,0,bm0,0,0,"testclutbm0")
+RUN FOENIX("Bitmap",1,0,bm1,1,1,"testclutbm1")
+RUN FOENIX("Bitmap",2,0,bm2,2,2,"testclutbm2")
+RUN FOENIX("BMLoad",bm0,"/dd/cmds/testpixmapbm0")
+RUN FOENIX("BMLoad",bm1,"/dd/cmds/testpixmapbm1")
+RUN FOENIX("BMLoad",bm2,"/dd/cmds/testpixmapbm2")
+RUN FOENIX("Gon")
+SHELL "fstatus"
+INPUT "Press enter to continue: ",choice
+RUN FOENIX("BMoff",0)
+RUN FOENIX("BMoff",1)
+RUN FOENIX("BMoff",2)
+RUN FOENIX("Goff")
+END
+
+PROCEDURE checkimages
+dim bm0,bm1,bm2:INTEGER
+dim choice:STRING
+(* allocate 3 bitmaps, with different cluts *)
+RUN FOENIX("Gon")
+RUN FOENIX("Bitmap",0,0,bm0,0,0,"testclutbm0")
+RUN FOENIX("BMLoad",bm0,"/dd/cmds/testpixmapbm0")
+INPUT "Press enter to switch to pixmap 1: ",choice
+RUN FOENIX("BMoff",0)
+RUN FOENIX("Bitmap",0,0,bm1,0,0,"testclutbm1")
+RUN FOENIX("BMLoad",bm1,"/dd/cmds/testpixmapbm1")
+INPUT "Press enter to switch to pixmap 2: ",choice
+RUN FOENIX("BMoff",0)
+RUN FOENIX("Bitmap",0,0,bm2,0,0,"testclutbm2")
+RUN FOENIX("BMLoad",bm2,"/dd/cmds/testpixmapbm2")
+INPUT "Press enter to exit",choice
+RUN FOENIX("BMoff",0)
+RUN FOENIX("Goff")
+END
+
+procedure cluttest
+dim bm0,bm1,bm2:INTEGER
+dim choice:STRING
+(* Test all CLUTs with bm0, layer 0 *)
+PRINT "Test Cluts 0-3 on BM0, Layer0"
+PRINT ""
+PRINT "CLUT 0, BM0, Layer 0"
+RUN FOENIX("Gon")
+RUN FOENIX("Bitmap",0,0,bm0,0,0,"testclutbm0")
+RUN FOENIX("BMLoad",bm0,"/dd/cmds/testpixmapbm0")
+SHELL "fstatus"
+INPUT "Press enter to switch to Clut 1: ",choice
+PRINT ""
+PRINT "CLUT 1, BM0, Layer 0"
+RUN FOENIX("BMoff",0)
+RUN FOENIX("Bitmap",0,0,bm1,0,1,"testclutbm1")
+RUN FOENIX("BMLoad",bm1,"/dd/cmds/testpixmapbm1")
+SHELL "fstatus"
+INPUT "Press enter to switch to CLUT 2: ",choice
+PRINT ""
+PRINT "CLUT 2, BM0, Layer 0"
+RUN FOENIX("BMoff",0)
+RUN FOENIX("Bitmap",0,0,bm2,0,2,"testclutbm2")
+RUN FOENIX("BMLoad",bm2,"/dd/cmds/testpixmapbm2")
+SHELL "fstatus"
+INPUT "Press enter to switch to CLUT 3",choice
+PRINT ""
+PRINT "CLUT 3, BM0, Layer 0"
+RUN FOENIX("BMoff",0)
+RUN FOENIX("Bitmap",0,0,bm0,0,3,"testclutbm0")
+RUN FOENIX("BMLoad",bm0,"/dd/cmds/testpixmapbm0")
+SHELL "fstatus"
+INPUT "Press enter to exit",choice
+RUN FOENIX("BMoff",0)
+RUN FOENIX("Goff")
+END
+
+procedure bmtest
+dim bm0,bm1,bm2:INTEGER
+dim choice:STRING
+(* Test all bitmaps with layer 0 *)
+PRINT "Test BM 0-3 on Layer0"
+PRINT ""
+PRINT "** BM0, CLUT0, Layer 0 **"
+RUN FOENIX("Gon")
+RUN FOENIX("Bitmap",0,0,bm0,0,0,"testclutbm0")
+RUN FOENIX("BMLoad",bm0,"/dd/cmds/testpixmapbm0")
+SHELL "fstatus"
+INPUT "Press enter to switch to BM1: ",choice
+PRINT ""
+PRINT "** BM1, CLUT1, Layer 0 **"
+RUN FOENIX("BMoff",0)
+RUN FOENIX("Bitmap",1,0,bm1,0,0,"testclutbm1")
+RUN FOENIX("BMLoad",bm1,"/dd/cmds/testpixmapbm1")
+SHELL "fstatus"
+INPUT "Press enter to switch to BM2: ",choice
+PRINT ""
+PRINT "** BM2, CLUT2, Layer 0 **"
+RUN FOENIX("BMoff",1)
+RUN FOENIX("Bitmap",2,0,bm2,0,0,"testclutbm2")
+RUN FOENIX("BMLoad",bm2,"/dd/cmds/testpixmapbm2")
+SHELL "fstatus"
+INPUT "Press enter to exit",choice
+RUN FOENIX("BMoff",2)
+RUN FOENIX("Goff")
+END
+
+procedure dpoke
+param loc,value:INTEGER
+POKE loc,PEEK(ADDR(value))
+POKE loc+1,PEEK(ADDR(value)+1)
+end
+
+procedure spritetest
+dim bm0:INTEGER
+dim choice:STRING
+RUN FOENIX("Gon")
+RUN FOENIX("Bitmap",0,0,bm0,0,0,"xtclut")
+PRINT "Trying to load BM"
+(* RUN FOENIX("BMLoad",bm0,"/dd/cmds/thing.bin") *)
+PRINT "Trying to load CLUT"
+RUN loadclut0
+RUN FOENIX("BMClear",bm0,0)
+RUN loadbm(bm0,"/dd/cmds/thing.bin")
+RUN setsprites(bm0)
+INPUT "Press enter to exit",choice
+RUN FOENIX("BMoff",0)
+RUN FOENIX("Goff")
+END
+
+
+procedure loadclut0
+param fname:STRING
+dim cl0:INTEGER
+dim pg,loc,i,c,x:INTEGER
+dim p:byte
+pg = $C1
+RUN FOENIX("MapBlk",pg,loc)
+i = $1000 + loc
+open #p,"/dd/cmds/grudge.pal":READ
+REPEAT
+get #p,c
+RUN dpoke(i,c)
+i = i + 2
+until i >= $1400 + loc
+close #p
+RUN FOENIX("ClrBlk",pg,loc)
+END
+
+procedure loadbm
+param bm:INTEGER; fname:STRING
+dim pg,loc,i,c,x:INTEGER
+dim p:byte
+RUN FOENIX("MapBlk",bm,loc)
+i = loc
+open #p,fname:READ
+REPEAT
+get #p,c
+RUN dpoke(i,c)
+i = i + 2
+UNTIL EOF(#p)
+close #p
+RUN FOENIX("ClrBlk",bm,loc)
+END
+
+procedure setsprites
+param bm:INTEGER
+TYPE sprite_rec = hloc,x,y,dx,dy:INTEGER
+dim sprite(4):sprite_rec
+dim haddr,loc,i,j,k:INTEGER
+dim b:BYTE
+haddr = bm * 32
+RUN FOENIX("MapBlk",$C0,loc)
+i = $1300+loc
+for j = 1 to 4
+sprite(j).hloc = haddr + (j-1)
+sprite(j).x = 100 + ((j-1)*20)
+sprite(j).y = 100 + ((j-1)*20)
+sprite(j).dx = 1
+sprite(j).dy = 1
+next j
+for j = 1 to 4
+POKE i,$41
+i = i + 1
+RUN dpoke(i,sprite(j).hloc)
+i = i + 2
+poke i,0
+i = i + 1
+run dpoke(i,sprite(j).x)
+i = i + 2
+run dpoke(i,sprite(j).y)
+i = i + 2
+next j
+for k = 1 TO 200
+i = $1300+loc
+for j = 1 TO 4
+sprite(j).x = sprite(j).x + sprite(j).dx
+IF sprite(j).x > 320 then
+sprite(j).dx = -1
+ENDIF
+if sprite(j).x < 0 then
+sprite(j).dx = 1
+ENDIF
+sprite(j).y = sprite(j).y + sprite(j).dy
+if sprite(j).y > 240 then
+sprite(j).dy = -1
+ENDIF
+if sprite(j).y < 0 then
+sprite(j).dy = 1
+ENDIF
+i = i+ 4
+run dpoke(i,sprite(j).x)
+i = i + 2
+run dpoke(i,sprite(j).y)
+i = i + 2
+next j
+next k
+
+RUN FOENIX("ClrBlk",$C0,loc)
+END
+
+

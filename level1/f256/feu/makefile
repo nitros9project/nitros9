@@ -34,7 +34,7 @@ RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd
 SCF		 = $(MD)/scf.mn
 
 # Font & palette
-FONT		 = $(FNT)/phoenixegafont.sb
+FONT		 = $(FNT)/bannerfont.sb
 PALETTE	 = $(MD)/palette.sb
 
 # SCF video terminal
@@ -72,7 +72,6 @@ BOOTFILE_F256K = $(KERNEL) \
 		$(SCF) $(SCVT_F256K) $(FONT) $(PALETTE) \
 		$(RBF) $(RBFDW) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
-		$(PIPE) \
 		$(CLOCK) \
 		sysgo $(CMDSDIR)/shell_21 \
 		$(CMDSDIR)/display \
@@ -88,7 +87,6 @@ BOOTFILE_F256JR = $(KERNEL) \
 		$(SCF) $(SCVT_F256JR) $(FONT) $(PALETTE) \
 		$(RBF) $(RBFDW) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
-		$(PIPE) \
 		$(CLOCK) \
 		sysgo $(CMDSDIR)/shell_21 \
 		$(CMDSDIR)/display \
@@ -173,7 +171,6 @@ f256k.zip: booter_flash_f256k
 	-rm -rf mapfiles
 	mkdir mapfiles
 	os9 ident -s $^ > mapfiles/bootlist
-	cp ../modules/kernel/*.map ../modules/kernel/*.list ../modules/*.map ../modules/*.list mapfiles
 	zip $@ bulk.csv booter_0 booter_1 booter_2 mapfiles/*
 
 flash_f256k: f256k.zip
@@ -190,7 +187,6 @@ f256jr.zip: booter_flash_f256jr
 	-rm -rf mapfiles
 	mkdir mapfiles
 	os9 ident -s $^ > mapfiles/bootlist
-	cp ../modules/kernel/*.map ../modules/kernel/*.list ../modules/*.map ../modules/*.list mapfiles
 	zip $@ bulk.csv booter_0 booter_1 booter_2 mapfiles/*
 
 flash_f256jr: f256jr.zip
@@ -224,7 +220,7 @@ f0.dsk: feu/startup
 	$(foreach file,$(FEU_FILES),$(OS9COPY) -l $(file) $@,FEU)
 	
 feu/startup: FORCE
-	echo "display 1b 60 0 ff ff 20 ff 1b 61 1 ff 0 0 ff 5 22 f0 1b 20 2 0 0 50 18 0 1 0" > $@
+	echo "display 1b 61 1 ff 0 0 ff 5 22 f0 1b 20 2 0 0 50 18 0 1 0 1b 32 7" > $@
 	echo "echo FEU - Foenix Executive Utility" >> $@
 	echo "echo Build date:" `date` >> $@
 	echo "fnxinfo" >> $@

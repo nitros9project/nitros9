@@ -1,13 +1,13 @@
 include ../port.mak
 
 vpath %.as $(LEVEL1)/f256/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds
-vpath %.asm $(LEVEL1)/f256/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/brainfuck:$(3RDPARTY)/packages/cpm:$(3RDPARTY)/packages/rogue
+vpath %.asm $(LEVEL1)/f256/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/bf:$(3RDPARTY)/packages/cpm:$(3RDPARTY)/packages/rogue
 
 DEPENDS		= ./makefile $(NOSLIB)/net.o
 
 AFLAGS      += -I$(LEVEL2)/$(PORT)
 AFLAGS      += -I$(3RDPARTY)/packages/basic09
-AFLAGS      += -I$(3RDPARTY)/packages/brainfuck
+AFLAGS      += -I$(3RDPARTY)/packages/bf
 AFLAGS      += -I$(3RDPARTY)/packages/cpm
 AFLAGS      += -I../defs
 LFLAGS		+= -L$(NITROS9DIR)/lib -L$(LEVEL2)/$(PORT)/libs
@@ -22,11 +22,20 @@ CMDS    = asm attr backup bawk binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
 		display dmem dmode dsave dump echo edit error exbin \
 		format free grep help ident iniz irqs link list load login \
-		makdir mdir megaread merge mfree minted mmap modpatch more padrom park \
+		makdir mdir megaread merge mergeln mfree minted mmap modpatch more padrom park \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
-		bootos9 fnxinfo fnxreset rogue fstatus  xtclut drawtest play \
+		bootos9 fnxinfo fnxreset rogue fstatus fcfg xtclut drawtest play foenix shellbg shellbgoff \
 		$(CMDS_DW) $(BASIC09) $(BF) $(CPM)
+
+CMDS_CART      = asm attr backup bawk binex build cmp copy \
+		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
+		display dmem dmode dsave dump echo edit error exbin \
+		format free grep help ident iniz irqs link list load login \
+		makdir mdir merge mergeln mfree minted mmap more padrom park \
+		pmap proc procs prompt pwd pxd rename save setime \
+		sleep smap tee tmode touch tsmon unlink verify xmode \
+		bootos9 fnxinfo fnxreset rogue fstatus fcfg xtclut play foenix
 
 SHELLMODS	= shellplus echo iniz link load save unlink
 
@@ -79,6 +88,9 @@ showobjs:
 
 showobjs_dw:
 	@$(ECHO) shell utilpak1 $(sort $(CMDS))
+
+showobjs_cart:
+	@$(ECHO) shell utilpak1 $(CMDS_CART)
 
 identify:
 	$(IDENT_SHORT) $(ALLOBJS)

@@ -1,0 +1,1 @@
+PROCEDURE gdateDIM month,day,year:INTEGERRUN foenix("GetDate",month,day,year)PRINT month,day,year
