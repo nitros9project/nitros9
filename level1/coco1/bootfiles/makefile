@@ -42,6 +42,9 @@ KERNEL_ARDUINO	= $(MD)/rel $(MD)/krn $(MD)/krnp2 $(MD)/init \
 KERNEL_COCOSDC	= $(MD)/rel $(MD)/krn $(MD)/krnp2 $(MD)/init \
 		$(MD)/boot_sdc
 
+KERNEL_TFR9   	= $(MD)/rel $(MD)/krn $(MD)/krnp2 $(MD)/init \
+		$(MD)/boot_emu
+
 IDE		= $(3PD)/ide
 SCSI		= $(3PD)/scsisys
 
@@ -932,6 +935,16 @@ BOOTFILE_EMUDSK	= $(MD)/ioman \
 		$(MD)/sysgo_dd \
 		$(EMUDSK)
 
+BOOTFILE_TFR9	= $(MD)/ioman \
+		$(MD)/rbf.mn \
+		$(MD)/scf.mn \
+		$(PIPE) \
+		$(CLOCK60HZ) \
+		$(MD)/sysgo_dd \
+		$(MD)/emudsk.dr $(MD)/ddh0_emudsk.dd $(MD)/h1_emudsk.dd \
+		$(MD)/term_sc6850_ff06.dt $(MD)/sc6850.dr
+
+
 BOOTFILES	= bootfile_covdg bootfile_cohr bootfile_co42 bootfile_cowprs \
 		bootfile_dw_headless bootfile_covdg_becker bootfile_covdg_rs232pak \
 		bootfile_covdg_cocolink bootfile_covdg_directmodempak \
@@ -945,6 +958,7 @@ BOOTFILES	= bootfile_covdg bootfile_cohr bootfile_co42 bootfile_cowprs \
 		bootfile_cohr_cocolink bootfile_cocolink_headless \
 		bootfile_cohr_directmodempak bootfile_directmodempak_headless \
 		bootfile_covdg_arduino bootfile_arduino_headless \
+		bootfile_tfr9 \
 		bootfile_cohr_arduino bootfile_covdg_arduino_game \
 		bootfile_covga_ds80 bootfile_covga_cocosdc bootfile_covga_dw bootfile_covga_rs232pak \
 		bootfile_covga_directmodempak bootfile_covga_cocolink bootfile_covga_dw_game \
@@ -959,7 +973,7 @@ BOOTFILES	= bootfile_covdg bootfile_cohr bootfile_co42 bootfile_cowprs \
 
 KERNELS		= kernel_1773 kernel_dw kernel_becker kernel_arduino kernel_cocosdc \
 			kernel_rs232pak kernel_directmodempak kernel_cocolink \
-			kernel_mmmpiu1 kernel_mmmpiu2
+			kernel_mmmpiu1 kernel_mmmpiu2 kernel_tfr9
 
 ALLOBJS		= $(BOOTFILES) $(KERNELS)
 
@@ -1160,6 +1174,9 @@ bootfile_cohr_arduino: $(BOOTFILE_COHR_ARDUINO) $(DEPENDS)
 bootfile_emudsk: $(BOOTFILE_EMUDSK) $(DEPENDS)
 	$(MERGE) $(BOOTFILE_EMUDSK)>$@
 
+bootfile_tfr9: $(BOOTFILE_TFR9) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_TFR9)>$@
+
 # WD1773 Kernel
 kernel_1773: $(KERNEL_1773) $(DEPENDS)
 	$(MERGE) $(KERNEL_1773)>$@
@@ -1200,6 +1217,10 @@ kernel_arduino: $(KERNEL_ARDUINO) $(DEPENDS)
 
 kernel_cocosdc: $(KERNEL_COCOSDC) $(DEPENDS)
 	$(MERGE) $(KERNEL_COCOSDC)>$@
+	$(PADROM) 4608 $@
+
+kernel_tfr9: $(KERNEL_TFR9) $(DEPENDS)
+	$(MERGE) $(KERNEL_TFR9)>$@
 	$(PADROM) 4608 $@
 
 clean:
