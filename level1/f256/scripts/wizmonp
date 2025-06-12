@@ -1,11 +1,7 @@
-echo * WizFi360 Helper - Start multi connection server
+echo * WizFi360 Helper - Start remote shell on /n0
 xmode /wz eko=0
 echo ATE0>/wz
 mergeln /wz /wz
-echo AT+RST>/wz
-mergeln /wz /wz
-mergeln /wz /wz /wz /wz /wz /wz
-mergeln /wz
 echo AT+CIPMODE=0>/wz
 mergeln /wz /wz
 echo AT+CIPMUX=1>/wz
@@ -16,9 +12,5 @@ echo AT+CIPSERVER=1,23>/wz
 mergeln /wz /wz
 echo AT+CIPSTO=0>/wz
 mergeln /wz /wz
-mergeln /wz /wz
 xmode /n0 eko=1
-xmode /n1 eko=1
-xmode /n2 eko=1
-xmode /n3 eko=1
-
+tsmon /n0&
