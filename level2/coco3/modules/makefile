@@ -78,6 +78,7 @@ SCF		= scf.mn \
 		n12_scdwv.dd n13_scdwv.dd midi_scdwv.dd \
 		term_z_scdwv.dt z1_scdwv.dd z2_scdwv.dd z3_scdwv.dd \
 		z4_scdwv.dd z5_scdwv.dd z6_scdwv.dd z7_scdwv.dd \
+        sc6850.dr term_sc6850_ff06.dt
 
 PIPE		= pipeman.mn pipeman_named.mn \
 		piper.dr \
@@ -319,6 +320,9 @@ h0_emudsk.dd: emudskdesc.asm
 
 h1_emudsk.dd: emudskdesc.asm
 	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=1
+
+term_sc6850_ff06.dt: term_sc6850.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DHwBASE=65286 # 0xFF06
 
 # DriveWire SCF descriptors
 term_scdwv.dt: scdwvdesc.asm
