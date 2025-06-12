@@ -1,0 +1,3 @@
+echo Purging WizFi FIFO
+iniz /wz
+mergeln /wz /wz /wz /wz /wz /wz
