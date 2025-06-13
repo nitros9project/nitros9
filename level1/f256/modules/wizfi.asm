@@ -32,8 +32,8 @@
                     use       defsfile
                     endc
 
-WIZFI_INTERRUPT     equ       INT_TIMER_0         Convenience placement
-VIRQCNT             equ       1
+D.WZStatTbl         equ       D.SWPage            Borrowed from incompatible SmartWatch variable
+
 WORK_SLOT	    equ       MMU_SLOT_2
 MMU_WINDOW          equ       $4000
 
@@ -387,8 +387,12 @@ ReadSlp             lbsr     Sleep1              go suspend process...
 Read                clrb                          default to no errors...
                     pshs      cc,dp               save IRQ/Carry status, system DP
 
-ReadD               orcc      #IntMasks
-                    ldx       <D.WizFi           Examine the broadcast port to see if WE have any data
+ReadD               
+                    ifgt      Level-1
+                    ldx       <D.WZStatTbl
+                    else
+                    ldx       >D.WZStatTbl
+                    endc
                     ldb       RxPending,x
                     bpl       ReadSlp
                     andb      #%00000111
@@ -488,7 +492,11 @@ GStt                clrb                          default to no error...
                     cmpa      #SS.Ready
                     bne       GetScSiz
  pshs x
- ldx <D.WizFi
+                    ifgt      Level-1
+                    ldx       <D.WZStatTbl
+                    else
+                    ldx       >D.WZStatTbl
+                    endc
  lda RxPending,x
  puls x
  clrb
@@ -558,9 +566,13 @@ SetSSig             cmpa      #SS.SSig
                     lda       PD.CPR,y            current process ID
                     ldb       R$X+1,x             LSB of [X] is signal code
                     orcc      #IntMasks
- bra RSendSig
+* bra RSendSig
                     pshs      d
- ldx <D.WizFi
+                    ifgt      Level-1
+                    ldx       <D.WZStatTbl
+                    else
+                    ldx       >D.WZStatTbl
+                    endc
  lda RxPending,x
  clrb
  lsla
