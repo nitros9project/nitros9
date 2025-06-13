@@ -2,9 +2,9 @@
                     use       defsfile
                     endc
 
-* Note: we are "stealing" D.DWSubAddr for our driver. This means the WizFi and DriveWire
-* functionality are not compatible at the moment and should not be in the same bootfile.
-D.WizFi             equ       D.DWSubAddr
+* Note: we are "stealing" D.SWPage for our driver. This means the WizFi and the
+* SmartWatch functionality are not compatible and should not be in the same bootfile.
+D.WizFi             equ       D.SWPage
 
 tylg                set       Drivr+Objct
 atrv                set       ReEnt+rev
