@@ -127,6 +127,7 @@ SS.FntLoadF         rmb	      1
 SS.FntChar	    rmb	      1
 SS.SOLIRQ	    rmb	      1
 SS.SOLMUTE	    rmb	      1
+SS.WizFiIRQ         rmb       1
 
 ********************************************************************
 * System control definitions
