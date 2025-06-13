@@ -329,7 +329,7 @@ iService           clrb
                     lda       #WIZFI_INTERRUPT    clear pending interrupt
                     sta       INT_PENDING_0
 
- lbsr ShowHex
+* lbsr ShowHex
 
 
 
