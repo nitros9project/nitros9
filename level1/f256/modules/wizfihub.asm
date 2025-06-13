@@ -203,6 +203,10 @@ Term
 *
 Init                clrb
                 pshs cc,dp,x,y,u
+
+
+
+
 * Set up INT_TIMER_0 (25.175Mhz-based timer)
 * Fast
 * 25,175,000 / 11520 Bytes Per Second  = 2185 ticks @ 25.175Mhz (8, 137)
@@ -262,6 +266,8 @@ c@                  clr       ,x+
                     lda       >INT_MASK_0          else get the interrupt mask byte
                     anda      #^WIZFI_INTERRUPT   set the interrupt
                     sta       >INT_MASK_0          and save it back
+
+* lbsr ShowHex
 
 
 InitExit            puls      cc,dp,x,y,u,pc            recover IRQ/Carry status, system DP, return
@@ -345,8 +351,6 @@ iService           clrb
 
                     lda       #WIZFI_INTERRUPT    clear pending interrupt
                     sta       INT_PENDING_0
-
- lbsr ShowHex
 
                     ifgt      Level-1
                     ldx       <D.WZStatTbl
@@ -583,7 +587,7 @@ L095D               orcc      #Zero
 *         puls d,x,pc
 
 
-ShowHex             pshs      cc,d
+ShowHex             pshs      cc,d,x,y,u
                     orcc      #IntMasks
                     ldb       >WORK_SLOT
                     pshs      b
@@ -615,7 +619,7 @@ ShowHex             pshs      cc,d
                     sta       >MMU_WINDOW+(80*20)+79
                     puls      b
                     stb       >WORK_SLOT
-                    puls      cc,d,pc
+                    puls      cc,d,x,y,u,pc
 
 Bin2AscHex          anda      #$0f
                     cmpa      #9
