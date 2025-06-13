@@ -492,8 +492,11 @@ CODECCtrl           equ       CODECStat
 ******************************************************************
 * F256 text lookup definitions
 *
-TEXT_LUT_FG         equ       $FF00
-TEXT_LUT_BG         equ       $FF40
+* These are relative offsets to block $C2
+*
+TEXT_LUT_BLK	    equ	      $C1      $18_2000 to $18_3FFF
+TEXT_LUT_FG         equ       $1800
+TEXT_LUT_BG         equ       $1840
 
 ********************************************************************
 * F256 font definitions
