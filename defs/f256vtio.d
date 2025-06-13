@@ -51,6 +51,7 @@ V.DWFore            set       V.EscParms+5
 V.DWBack            set       V.EscParms+6
 V.DWBorder          set       V.EscParms+7
 
+V.WizFiStat rmb 20
 
 
                     ifgt      Level-1                                            
