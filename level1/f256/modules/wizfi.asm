@@ -2,6 +2,10 @@
                     use       defsfile
                     endc
 
+* Note: we are "stealing" D.DWSubAddr for our driver. This means the WizFi and DriveWire
+* functionality are not compatible at the moment and should not be in the same bootfile.
+D.WizFi             equ       D.DWSubAddr
+
 tylg                set       Drivr+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
@@ -24,7 +28,6 @@ start               lbra      Init              |SCF jump table
                     lbra      SetSta            |I$Open requires certain SetStats
                     lbra      Term
 
-
 ***********************************************************************************
 * Init              
 *
@@ -36,9 +39,21 @@ start               lbra      Init              |SCF jump table
 *    CC = carry set on error
 *    B  = error code
 *
-* Initialize driver to off.  We don't need to set up an SOL or IRQ
-* until a user requests to set up one.
-Init                clrb
+Init
+* Check if we've already allocated memory.
+                    ldx        <D.WizFi
+                    bne        initex
+                    
+* Allocate a single 256 byte page of memory
+                    ldd       #$0100
+                    pshs      u
+                    os9       F$SRqMem
+                    tfr       u,x
+                    puls      u
+                    stx       <D.WizFi
+                    
+initex
+                    clrb
                     rts
 
 
