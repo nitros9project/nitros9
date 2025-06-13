@@ -28,6 +28,7 @@ SCF		= scf.mn \
 		vtio.dr keydrv_f256k.sb keydrv_ps2.sb term.dt \
 		sc16550.dr t0_sc16550.dd \
 		wizfi.dr \
+		wz0_wizfi.dd wz1_wizfi.dd wz2_wizfi.dd wz3_wizfi.dd \
 		scdwp.dr p_scdwp.dd \
 		scdwv.dr term_scdwv.dt n_scdwv.dd \
 		n0_scdwv.dd n1_scdwv.dd n2_scdwv.dd \
@@ -99,6 +100,19 @@ x3.dd: dwdesc.asm
 # 16550 descriptors
 t0_sc16550.dd: sc16550desc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
+
+# WizFi descriptors
+wz0_wizfi.dd: wizfidesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=0
+
+wz1_wizfi.dd: wizfidesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=1
+
+wz2_wizfi.dd: wizfidesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=2
+
+wz3_wizfi.dd: wizfidesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=3
 
 # DriveWire 3 SCF descriptors
 term_scdwv.dt: scdwvdesc.asm
