@@ -27,7 +27,9 @@
                     endc
 
 WIZFI_INTERRUPT     equ       INT_TIMER_0         Convenience placement
-VIRQCNT             equ       1
+D.WZStatTbl         equ       D.SWPage            Borrowed from incompatible SmartWatch variable
+
+
 WORK_SLOT	    equ       MMU_SLOT_2
 MMU_WINDOW          equ       $4000
 
@@ -211,11 +213,26 @@ Init                clrb
 * 273 = startup purger idled out
 * 380 = startup purger finished
 
+* Check if we've already allocated memory.
+                *     ifgt      Level-1
+                *     ldx       <D.WZStatTbl
+                *     else
+                *     ldx       >D.WZStatTbl
+                *     endc
+                *     bne       InitExit
+                    
+* Allocate a single 256 byte page of memory
                     ldd       #$0100
+                    pshs      u
                     os9       F$SRqMem
-*                    bcs       InitExit
-                    stu       <D.WizFi            We want WizFi devices to be able to access this memory
                     tfr       u,x
+                    puls      u
+                    ifgt      Level-1
+                    stx       <D.WZStatTbl
+                    else
+                    stx       >D.WZStatTbl
+                    endc
+
                     clrb
 c@                  clr       ,x+
                     decb
@@ -232,12 +249,12 @@ c@                  clr       ,x+
                     lda       #%00000010          Timer reloads Value, for continuous run
                     sta       >T0_CMP_CTR
 
-
                     ldd       #$0100
                     os9       F$SRqMem
                     ldd       #INT_PENDING_0      get the pending interrupt pending address
                     leax      IRQ_Pckt,pcr        point to the IRQ packet
                     leay      iService,pcr       and the service routine
+ andcc #^IntMasks
                     os9       F$IRQ               install the interrupt handler
 
 *                    bcc       g@                  branch if success
@@ -329,13 +346,16 @@ iService           clrb
                     lda       #WIZFI_INTERRUPT    clear pending interrupt
                     sta       INT_PENDING_0
 
-* lbsr ShowHex
+ lbsr ShowHex
 
+                    ifgt      Level-1
+                    ldx       <D.WZStatTbl
+                    else
+                    ldx       >D.WZStatTbl
+                    endc
 
-
- ldx <D.WizFi
- lda RxPending,x
- anda #$80
+                    lda       RxPending,x
+                    anda      #$80
                     lbne      iExit
                     lbsr      iRxFCheck
                     lbeq      iSendPkt         Send pending TxD packets only if no RxD
@@ -343,8 +363,8 @@ iService           clrb
                     lda       [ind_DataReg,u]
                     sta       LastRxD,u
 
-                    ldb       DeviceMode,u        Device descriptor has the Packets bit set
-                    lbeq      iBroadcastNew
+                    ldb       DeviceMode,u
+                    lbeq      iBroadcast
 
                     ldb       IRQ_State,u
                     cmpb      #IRQ_State_ListenPkt
@@ -361,7 +381,7 @@ x@                  leax      -1,x
 
                     ldb       PacketChannel,u
                     cmpb      DeviceChannel,u
-                    lbeq      iBroadCastNew
+                    lbeq      iBroadCast
                     lbra      iExit
 
 iListenPkt          leax      strIPD,pcr          point to start of IPD string constant
@@ -467,21 +487,30 @@ SendByte            pshs      cc,a,b
                     stb       >WORK_SLOT
                     puls      cc,a,b,pc
 
-iBroadcastNew
- ldx <D.WizFi
+iBroadcast
+                    ifgt      Level-1
+                    ldx       <D.WZStatTbl
+                    else
+                    ldx       >D.WZStatTbl
+                    endc
  lda RxPending,x
  ora #$80
  sta RxPending,x
                     lda       LastRxD,u
                     sta       RxData,x
-                    ldd       IpdLen,u
+*                    ldd       IpdLen,u
+ ldd #$0001
                     std       RxSize,x
 
 * Always update virtual ports
 iExit
-                    ldx       <D.WizFi
+                    ifgt      Level-1
+                    ldx       <D.WZStatTbl
+                    else
+                    ldx       >D.WZStatTbl
+                    endc
                     ldb       RxPending,x
-                    andb      #%11111000
+                    andb      #%10000000
                     orb       PacketChannel,u
                     stb       RxPending,x
 
