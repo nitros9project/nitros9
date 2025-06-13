@@ -45,6 +45,7 @@ ShellPL             equ       *-ShellPrm
 DefTime             fcb       85,12,31,23,59,59
 
 Init                fcs       /Init/
+WizFiHub            fcs       /WizFiHub/
 
 * F256 identity routine
 * Exit: A = $02 (F256 Jr), $12 (F256K), $1A (F256 Jr2), $16 (F256K2)
@@ -116,7 +117,7 @@ SignOn              bsr       SetupPalette
                     clra
                     pshs      u
                     os9       F$Link
-                    bcs       SetDefTime
+                    bcs       StartWizFi
                     ldd       OSName,u            point to OS name in INIT module
                     leax      d,u                 
                     lbsr      PUTS
@@ -126,6 +127,16 @@ SignOn              bsr       SetupPalette
                     lbsr      PUTS
                     lbsr      ShowMachType
                     lbsr      PUTCR
+
+* Look for WizFiHub and call Init
+StartWizFi
+                    leax      >WizFiHub,pcr
+                    lda       #Systm+Objct
+                    os9       F$Link
+*                    bcs       SetDefTime
+* ldu ,s
+ jsr ,y
+
 
 * Set default time
 SetDefTime          puls      u
