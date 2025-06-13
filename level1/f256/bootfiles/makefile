@@ -55,6 +55,10 @@ SCDWV = 	$(MD)/scdwv.dr $(SCDWV_NET) $(SCDWV_WIN)
 
 SC16550 =   $(MD)/sc16550.dr $(MD)/t0_sc16550.dd
 
+# SCF WizFi driver/descriptors
+WIZFI = 	$(MD)/wizfi.dr \
+		$(MD)/wz0_wizfi.dd $(MD)/wz1_wizfi.dd $(MD)/wz2_wizfi.dd $(MD)/wz3_wizfi.dd
+
 # SCF DriveWire virtual networking descriptors
 SCDWV_NET  = $(MD)/n_scdwv.dd $(MD)/n1_scdwv.dd \
 		$(MD)/n2_scdwv.dd $(MD)/n3_scdwv.dd $(MD)/n4_scdwv.dd \
@@ -82,7 +86,7 @@ BOOTFILE_SD_F256K = $(KERNEL) \
 		$(RBF) $(RBFDW) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
 		$(MD)/dds0.dd \
-		$(SC16550) \
+		$(WIZFI) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(CMDSDIR)/shell_21
@@ -96,7 +100,7 @@ BOOTFILE_SD_F256JR = $(KERNEL) \
 		$(RBF) $(RBFDW) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
 		$(MD)/dds0.dd \
-		$(SC16550) \
+		$(WIZFI) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(CMDSDIR)/shell_21
@@ -110,7 +114,7 @@ BOOTFILE_DW_F256K = $(KERNEL) \
 		$(RBF) $(RBFDW) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
 		$(MD)/ddx0.dd \
-		$(SC16550) \
+		$(WIZFI) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(CMDSDIR)/shell_21
@@ -124,7 +128,7 @@ BOOTFILE_DW_F256JR = $(KERNEL) \
 		$(RBF) $(RBFDW) $(DWIO) \
 		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
 		$(MD)/ddx0.dd \
-		$(SC16550) \
+		$(WIZFI) \
 		$(CLOCK) \
 		$(MD)/sysgo \
 		$(CMDSDIR)/shell_21
