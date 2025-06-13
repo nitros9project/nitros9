@@ -23,6 +23,7 @@
 
                     ifp1
                     use       defsfile
+                    use       f256vtio.d
                     endc
 
 WIZFI_INTERRUPT     equ       INT_TIMER_0         Convenience placement
@@ -30,10 +31,15 @@ VIRQCNT             equ       1
 WORK_SLOT	    equ       MMU_SLOT_2
 MMU_WINDOW          equ       $4000
 
-tylg                set       Drivr+Objct
+tylg                set       Systm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
 edition             set       1
+
+
+
+                    mod       eom,name,tylg,atrv,start,MemSize
+
 
 * Being tweaked for goldilox
 TRATE equ 300
@@ -70,7 +76,7 @@ IRQ_State_ListenPktVerify equ       $06
 
 
 * static data area definitions
-                    org       V.SCF               allow for SCF manager data area
+                    org       V.WizFiStat
 Cpy.Stat            rmb       1                   Status register copy
 CpyDCDSR            rmb       1                   DSR+DCD status copy
 Mask.DCD            rmb       1                   DCD status bit mask (MUST immediately precede Mask.DSR)
@@ -146,15 +152,8 @@ RxBufDSz            equ       256-.               default Rx buffer gets remaind
 RxBuff              rmb       RxBufDSz            default Rx buffer
 OutPktBuf           rmb       256
 
-
 MemSize             equ       .
 
-
-                    mod       eom,name,tylg,atrv,start,size
-
-                    org       V.SCF
-
-size                equ       .
                     fcb       UPDAT.+SHARE.     these are the supported modes.
 name                fcs       /WizFiHub/
                     fcb       edition
@@ -201,9 +200,7 @@ Term
 *    B  = error code
 *
 Init                clrb
-                    pshs cc,dp,y
- orcc #IntMasks
- lbsr ShowHex
+                pshs cc,dp,x,y,u
 * Set up INT_TIMER_0 (25.175Mhz-based timer)
 * Fast
 * 25,175,000 / 11520 Bytes Per Second  = 2185 ticks @ 25.175Mhz (8, 137)
@@ -213,6 +210,17 @@ Init                clrb
 * rates and results
 * 273 = startup purger idled out
 * 380 = startup purger finished
+
+                    ldd       #$0100
+                    os9       F$SRqMem
+*                    bcs       InitExit
+                    stu       <D.WizFi            We want WizFi devices to be able to access this memory
+                    tfr       u,x
+                    clrb
+c@                  clr       ,x+
+                    decb
+                    bne       c@
+
 
                     ldd       #TRATE
                     sta       T0_VAL+0            registers are still Little Endian?
@@ -224,31 +232,22 @@ Init                clrb
                     lda       #%00000010          Timer reloads Value, for continuous run
                     sta       >T0_CMP_CTR
 
+
+                    ldd       #$0100
+                    os9       F$SRqMem
                     ldd       #INT_PENDING_0      get the pending interrupt pending address
                     leax      IRQ_Pckt,pcr        point to the IRQ packet
                     leay      iService,pcr       and the service routine
                     os9       F$IRQ               install the interrupt handler
+
 *                    bcc       g@                  branch if success
 *                    os9       F$PErr
                     lda       >INT_MASK_0          else get the interrupt mask byte
                     anda      #^WIZFI_INTERRUPT   set the interrupt
                     sta       >INT_MASK_0          and save it back
 
-                    pshs      u
-                    ldd       #$0100
-                    os9       F$SRqMem
-                    tfr       u,x
-                    puls      u
-                    bcs       InitExit
-                    stx       <D.WizFi            We want WizFi devices to be able to access this memory
 
-
-                    clrb
-c@                  clr       ,x+
-                    decb
-                    bne       c@
-
-InitExit            puls      cc,dp,y,pc            recover IRQ/Carry status, system DP, return
+InitExit            puls      cc,dp,x,y,u,pc            recover IRQ/Carry status, system DP, return
 
 
 
@@ -317,7 +316,8 @@ RxCCheck
 
 
 
-iService            pshs      cc,dp,x
+iService           clrb
+ pshs      cc,dp,x
 *                    tfr       u,d                 setup our DP
 *                    tfr       a,dp
 *                    bsr       GetDeviceChannel
@@ -328,6 +328,10 @@ iService            pshs      cc,dp,x
 
                     lda       #WIZFI_INTERRUPT    clear pending interrupt
                     sta       INT_PENDING_0
+
+ lbsr ShowHex
+
+
 
  ldx <D.WizFi
  lda RxPending,x
