@@ -495,6 +495,7 @@ D.DWSubAddr         RMB       2                   DriveWire subroutine module po
 D.DWStat            RMB       2                   DriveWire statics page
 D.DWSrvID           RMB       1                   DriveWire server ID
 D.IRQTmp            RMB       2                   1 or 2 byte DP scratch var (for when IRQ's are off)
+D.WizFi             rmb       2
 
                     ORG       $20
 
@@ -554,7 +555,6 @@ D.CLTb              RMB       2                   Pointer to clock interrupt tab
 D.MDREG             RMB       1                   6309 MD (mode) shadow register $88 (added in V2.01.00)
 D.CRC               RMB       1                   CRC checking mode flag $89 (added in V2.01.00)
 D.Clock2            RMB       2                   CC Clock2 entry address
-D.WizFi             rmb       4
 
                     ORG       $100
 *D.XSWI3        RMB       3
