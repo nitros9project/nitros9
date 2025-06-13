@@ -9,6 +9,7 @@ D.WZStatTbl         equ       D.SWPage
 * D.WZStatTbl definitions (must be 256 bytes max)
 WZ.StatCnt          equ       4                   there are four channels in the WizFi
 WZ.BufSiz           equ       16                  16 bytes per channel for input buffering
+WZ.Reset            equ       60                  reset value
 
 
 * These next value represent offsets into the D.WZStatTbl (256 byte buffer) that the Init routine
@@ -61,41 +62,53 @@ Init
                     bne       initex
                     
 * Allocate a single 256 byte page of memory
-                    ldd       #$0100
+                    ldd       #256
                     pshs      u
                     os9       F$SRqMem
                     tfr       u,x
                     puls      u
+                    bcs       initex
+
+* Clear 256 bytes of memory                    
+                    tfr       x,y
+                    clra
+l@                  clr       ,y+
+                    deca
+                    bne       l@
+                    
                     ifgt      Level-1
                     stx       <D.WZStatTbl
                     else
                     stx       >D.WZStatTbl
                     endc
+                    clrb
                     
                     leax      WZ.VIRQPkt,x
-                    pshs      u
+                    pshs      u,x
                     tfr       x,u
-                    leax      Vi.Stat,x           ;fake VIRQ status register
-                    lda       #$80                ;VIRQ flag clear, repeated VIRQs
-                    sta       ,x                  ;set it while we're here...
-                    tfr       x,d                 ;copy fake VIRQ status register address
-                    leax      IRQPckt,pcr         ;IRQ polling packet
-                    leay      IRQSvc,pcr          ;IRQ service entry
-                    os9       F$IRQ               ;install
-                    puls      u
-                    bcs       InitEx              ;exit with error
-                    tfr       x,y                 ; move VIRQ software packet to Y
+                    ldd       #WZ.Reset countdown value
+                    std       Vi.Rst,x
+                    std       Vi.Cnt,x
+                    leax      Vi.Stat,x           fake VIRQ status register
+                    lda       #$80                VIRQ flag clear, repeated VIRQs
+                    sta       ,x                  set it while we're here...
+                    tfr       x,d                 copy fake VIRQ status register address
+                    leax      IRQPckt,pcr         IRQ polling packet
+                    leay      IRQSvc,pcr          IRQ service entry
+                    os9       F$IRQ               install
+                    puls      u,x
+                    bcs       InitEx              exit with error
+                    tfr       x,y                 move VIRQ software packet to Y
 tryagain
-                    ldx       #$0001              ; code to install new VIRQ
-                    os9       F$VIRQ              ; install
-                    bcc       IRQok               ; no error, continue
-                    cmpb      #E$UnkSvc
-                    bne       InitEx
+                    ldd       #WZ.Reset
+                    ldx       #$0001              code to install new VIRQ
+                    os9       F$VIRQ              install
+                    bcs       initerr             no error, continue
 IRQok
 
 initex
                     clrb
-                    rts
+initerr             rts
 
 
 ***********************************************************************************
@@ -188,8 +201,12 @@ SetSta              clrb
 IRQPckt             fcb       $00,$01,$0A         ;IRQ packet Flip(1),Mask(1),Priority(1) bytes
 
 * Upon entry, U points to 
-IRQSvc            
-                    rti
+IRQSvc              
+* mark VIRQ handled (note U is pointer to our VIRQ packet in DP)
+                    lda       Vi.Stat,u           ; VIRQ status register
+                    anda      #^Vi.IFlag          ; clear flag in VIRQ status register
+                    sta       Vi.Stat,u           ; save it...
+                    rts
                     
                     emod
 eom                 equ       *
