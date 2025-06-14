@@ -14,7 +14,7 @@
                     use       defsfile
                     endc
 
-Base                set       $4040
+Base                set       $FF20
 Connection          set       $3
 DeviceMode          set       $08
 tylg                set       Devic+Objct
