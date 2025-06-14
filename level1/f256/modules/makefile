@@ -20,7 +20,7 @@ CLOCKS      = clock clock2_f256
 RBF		= rbf.mn rbdw.dr dwio.sb ddx0.dd x0.dd x1.dd x2.dd x3.dd \
                 rbmem.dr ddc0.dd c0.dd c1.dd f0.dd f1.dd \
 		rbsuper.dr \
-                llfnxsd.sb dds0.dd s0.dd
+                llfnxsd.sb dds0.dd s0.dd s1.dd
 #		  lldummy.sb s0_dummy.dd
 
 SCF		= scf.mn \
@@ -55,10 +55,13 @@ sysgo.o: sysgo.as
 
 # SD card descriptors
 dds0.dd: rbfnxsddesc.asm
-	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(FNXSDFLAGS) -DDD=1
+	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(FNXSDFLAGS) -DSD=0 -DDD=1
 
 s0.dd: rbfnxsddesc.asm
-	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(FNXSDFLAGS)
+	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(FNXSDFLAGS) -DSD=0
+
+s1.dd: rbfnxsddesc.asm
+	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(FNXSDFLAGS) -DSD=1
 
 #s0_dummy.dd: superdesc.asm
 #	$(AS) $(AFLAGS) $(ASOUT)$@ $< -DLLDUMMY
