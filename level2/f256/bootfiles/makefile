@@ -32,7 +32,7 @@ RBMEM = $(MD)/rbmem.dr $(MD)/f0.dd $(MD)/c0.dd $(MD)/f1.dd $(MD)/c1.dd
 RBSUPER   = $(MD)/rbsuper.dr
 
 # RBF Foenix SD card low level driver
-RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd
+RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd $(MD)/s1.dd
 
 # SCF
 SCF		 = $(MD)/scf.mn
