@@ -663,15 +663,16 @@ Read                clrb                          default to no errors...
                     pshs      cc,dp               save IRQ/Carry status, system DP
 
  
-ReadD               lbsr      GetVpPtr
+ReadD
+ orcc #IntMasks
+                    lbsr      GetVpPtr
                     ldb       vpr_stat,x
                     bpl       ReadSlp
-*                    andb      #%00000011
-*                    cmpb      DeviceChannel,u
-*                    bne       ReadSlp
-                    lda       vpr_data,x           Get our data
-                    andb      #%01111111          Clear the RxD flag
+                    andb      #%00000011
                     stb       vpr_stat,x           Notify the hub that we've taken our data
+                    cmpb      DeviceChannel,u
+                    bne       ReadSlp
+                    lda       vpr_data,x           Get our data
                     puls      cc,dp,pc            recover IRQ/Carry status, dummy B, system DP, return
 
 
