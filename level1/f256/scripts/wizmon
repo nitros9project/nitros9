@@ -1,5 +1,4 @@
 echo ***************************************************
-echo "wizmon" script
 echo * WizFi360 Helper - Start raw connection server
 echo *
 xmode /wz eko=0
@@ -20,7 +19,9 @@ echo * the WizFi's IP address now...
 mergeln /wz
 sleep 60
 echo AT+CIPSEND>/wz
+mergeln /wz
 sleep 60
+xmode /wz hpa=4040
 xmode /wz eko=1
 tsmon /wz&
 echo * Now accepting remote login
