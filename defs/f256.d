@@ -507,7 +507,8 @@ FONT_1_OFFSET	    equ	      $0800
 ********************************************************************
 * F256 SD card interface definitions
 *
-SDC.Base            equ       $FE90
+SDC0.Base           equ       $FE90
+SDC1.Base           equ       $FF00
                     org       0
 SDC_STAT            rmb       1
 SDC_DATA            rmb       1
