@@ -73,8 +73,8 @@ CPUSpeed            SET       TwoMHz
 **********************************
 * Power Line Frequency Definitions
 *
-Hz50                EQU       1                   Assemble clock for 50 hz power
-Hz60                EQU       2                   Assemble clock for 60 hz power
+Hz50                EQU       50                  Assemble clock for 50 hz power
+Hz60                EQU       60                  Assemble clock for 60 hz power
                     IFNDEF    PwrLnFrq
 PwrLnFrq            SET       Hz60                Set to Appropriate freq
                     ENDC
