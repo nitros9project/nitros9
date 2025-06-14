@@ -1,2 +1,6 @@
 load utilpak1
 link shell
+iniz wz
+mergeln /wz /wz /wz /wz /wz /wz
+devs
+irqs
