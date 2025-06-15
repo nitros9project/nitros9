@@ -12,8 +12,9 @@ CMDSDIR		= ../cmds
 # Kernel
 KERNEL	= $(MD)/krn $(MD)/krnp2 init $(MD)/ioman
 
-# DriveWire support
-DWIO		= $(MD)/dwio.sb
+# Select one of the dwio modules below based on your desired configuration:
+#DWIO 	= $(MD)/dwio_wizfi.sb
+DWIO 	= $(MD)/dwio_serial.sb
 
 # RBF
 RBF		= $(MD)/rbf.mn
