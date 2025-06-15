@@ -18,6 +18,7 @@ KERNEL_MMMPIU2  = $(MD)/rel_80 $(MD)/boot_dw_mmmpiu2 $(MD)/krn
 KERNEL_COCOSDC	= $(MD)/rel_80 $(MD)/boot_sdc $(MD)/krn
 KERNEL_IDE	= $(MD)/rel_80 $(MD)/boot_ide $(MD)/krn
 KERNEL_DIDE	= $(MD)/rel_80 $(MD)/boot_dide $(MD)/krn
+KERNEL_TFR9	= $(MD)/rel_80 $(MD)/boot_emu $(MD)/krn
 # these not used yet:
 KERNEL_RAMPAK	= $(MD)/rel_80 $(MD)/boot_rampak $(MD)/krn
 KERNEL_KENTON	= $(MD)/rel_80 $(MD)/boot_kenton $(MD)/krn
@@ -472,6 +473,14 @@ BOOTFILE_EMUDSK	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(CLOCK60HZ) \
 		$(EMUDSK)
 
+BOOTFILE_TFR9	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
+		$(MD)/rbf.mn \
+		$(MD)/scf.mn \
+		$(PIPE) \
+		$(CLOCK60HZ) \
+		$(MD)/term_sc6850_ff06.dt $(MD)/sc6850.dr \
+        $(MD)/emudsk.dr $(MD)/ddh0_emudsk.dd $(MD)/h1_emudsk.dd
+
 BOOTFILES	= bootfile_40d bootfile_40d_50hz bootfile_80d \
 		bootfile_80d_50hz bootfile_dw bootfile_dw_headless \
 		bootfile_becker bootfile_arduino bootfile_becker_headless \
@@ -480,14 +489,14 @@ BOOTFILES	= bootfile_40d bootfile_40d_50hz bootfile_80d \
 		bootfile_coco3fpga_rom bootfile_coco3fpga_rom_dw bootfile_coco3fpga_rom_rtc \
 		bootfile_rs232pak bootfile_directmodempak bootfile_rs232pak_headless \
 		bootfile_directmodempak_headless bootfile_cocolink_headless bootfile_cocolink \
-		bootfile_emudsk \
+		bootfile_emudsk bootfile_tfr9 \
 		bootfile_mmmpiu1 bootfile_mmmpiu2 \
 		bootfile_mmmpiu1_headless bootfile_mmmpiu2_headless
 
 KERNELS		= kernel_1773 kernel_1773_50hz kernel_dw kernel_becker \
 		kernel_arduino kernel_cocosdc kernel_ide kernel_dide \
 		kernel_rs232pak kernel_directmodempak kernel_cocolink \
-		kernel_mmmpiu1 kernel_mmmpiu2
+		kernel_mmmpiu1 kernel_mmmpiu2 kernel_tfr9
 
 ALLOBJS		= $(BOOTFILES) $(KERNELS)
 
@@ -581,6 +590,9 @@ bootfile_ide: $(BOOTFILE_IDE) $(DEPENDS)
 bootfile_emudsk: $(BOOTFILE_EMUDSK) $(DEPENDS)
 	$(MERGE) $(BOOTFILE_EMUDSK)>$@
 
+bootfile_tfr9: $(BOOTFILE_TFR9) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_TFR9)>$@
+
 # Kernels
 kernel_becker: $(KERNEL_BECKER) $(DEPENDS)
 	$(MERGE) $(KERNEL_BECKER)>$@
@@ -620,6 +632,9 @@ kernel_ide: $(KERNEL_IDE) $(DEPENDS)
 
 kernel_dide: $(KERNEL_DIDE) $(DEPENDS)
 	$(MERGE) $(KERNEL_DIDE)>$@
+
+kernel_tfr9: $(KERNEL_TFR9) $(DEPENDS)
+	$(MERGE) $(KERNEL_TFR9)>$@
 
 clean:
 	$(RM) $(ALLOBJS)
