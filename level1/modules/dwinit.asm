@@ -7,9 +7,12 @@
                     use dwinit/dwinit_mmmpi.asm
                     endc
 
-                    ifne      f256
+                    ifne      F256
+                    ifne      DWIO_WIZFI
                     use dwinit_f256_wizfi.asm
-*                    use dwinit_f256.asm
+                    else
+                    use dwinit_f256_serial.asm
+                    endc
                     endc
 
                     ifne      ARDUINO
