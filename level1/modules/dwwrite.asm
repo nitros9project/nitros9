@@ -20,9 +20,12 @@
                     use dwwrite/dwwrite_mmmpi.asm
                     endc
 
-                    ifne      f256
+                    ifne      F256
+                    ifne      DWIO_WIZFI
                     use dwwrite_f256_wizfi.asm
-*                    use dwwrite_f256.asm
+                    else
+                    use dwwrite_f256_serial.asm
+                    endc
                     endc
 
                     ifne      ARDUINO
