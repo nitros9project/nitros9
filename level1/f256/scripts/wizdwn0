@@ -1,0 +1,25 @@
+echo ***************************************************
+echo * wizdw script
+echo * WizFi360 Helper - Start server
+echo *
+xmode /n0 eko=0
+echo ATE0>/n0
+mergeln /n0 /n0
+echo AT+CIPSERVERMAXCONN=1>/n0
+mergeln /n0 /n0
+echo AT+CIPMUX=1>/n0
+mergeln /n0 /n0
+echo AT+CIPMODE=1>/n0
+mergeln /n0 /n0
+echo AT+CIPSERVER=1,22>/n0
+mergeln /n0 /n0
+mergeln /n0
+echo ***************************************************
+echo * From the DriveWire server connect to port 22 of
+echo * the WizFi's IP address now...
+mergeln /n0
+sleep 60
+echo AT+CIPSEND>/n0
+sleep 60
+xmode /n0 eko=1
+echo * DriveWire should be talking now...
