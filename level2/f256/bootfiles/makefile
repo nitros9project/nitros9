@@ -153,8 +153,8 @@ bootfile_dw_f256k: $(BOOTFILE_DW_F256K) $(DEPENDS)
 	$(MERGE) $(BOOTFILE_DW_F256K)>$@
 	./padup256 $@
 
-upload_f256jr: bootfile_dw_f256jr
-	upload bootfile_f256kr 8000
+upload_f256k: bootfile_dw_f256k
+	upload bootfile_f256k 8000
 
 bootfile_sd_f256jr: $(BOOTFILE_SD_F256JR) $(DEPENDS)
 	$(MERGE) $(BOOTFILE_SD_F256JR)>$@
