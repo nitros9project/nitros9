@@ -1,2 +1,5 @@
 echo AT+UART_CUR=921600,8,1,0,0>/wz
 modem /wz /wz /wz
+xmode /wz bau=1
+echo AT>/wz
+modem /wz /wz

@@ -1,0 +1,10 @@
+echo * WizFi360 Helper - Remote passthrough connection
+echo * From the remote client connect to port 23 of
+echo * the WizFi's IP address now...
+modem /wz
+sleep 30
+echo AT+CIPSEND>/wz
+modem /wz
+sleep 30
+xmode /wz eko=1
+tsmon /wz&

@@ -1,0 +1,7 @@
+echo * WizFi360 Helper - Remote packet connection
+echo * From the remote client connect to port 23 of
+echo * the WizFi's IP address now...
+modem /wz
+iniz /n0
+xmode /n0 eko=1
+tsmon /n0&
