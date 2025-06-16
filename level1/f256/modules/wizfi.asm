@@ -395,32 +395,12 @@ Init2
                     leax      WizFi_TxD_WR_Cnt,y
                     stx       ind_TxD_WR_CountReg,u
 
-*                     ldb       #%00000010
-*                     stb       [ind_ControlReg,u]
-*                     clrb
-* d@                  decb
-*                     bne       d@
-*                     ldb       #%00000000
-*                     stb       [ind_ControlReg,u]
-
-                    ldy       #$0000
-l@                  lbsr      iRxFCheck
-                    beq       n@
-                    lda       [ind_DataReg,u]
-n@                  leay      -1,y
-                    bne       l@
-
-
 *                    pshs      x
 *                    ldb       #1                  Master RxD stream needs an 8K block of RAM
 *                    os9       F$AllRAM
 *                    puls      x
 *                    lbcs      InitExit
 *                    stb       MasterRxDBlock,u
-
-* Allocate WizFi statics page
-
-                    ldy       ,s
 
 InitExit            puls      y
                     puls      cc,dp,pc            recover IRQ/Carry status, system DP, return
@@ -431,32 +411,15 @@ Term                clrb                          default to no error...
                     tfr       u,d
                     tfr       a,dp
 
-*                    clra
-*                    ldb       MasterRxDBlock,u
-*                    tfr       d,x
-*                    ldb       #1
-*                    os9       F$DelRAM
-
                 *     ifeq      Level-1
                 *     ldx       >D.Proc
                 *     lda       P$ID,x
                 *     sta       <V.BUSY
                 *     sta       <V.LPRC
                 *     endc
-
-                *     ldx       V.PORT,u
-                *     lda       CmdReg,u		*CmdReg,x            get current Command register contents
-                *     anda      #^(Cmd.TIRB!Cmd.DTR) disable Tx IRQs, RTS, and DTR
-                *     ora       #Cmd.RxI            disable Rx IRQs
-                *     ldb       Wrk.XTyp,u           get extended type byte
-                *     andb      #ForceDTR           forced DTR?
-                *     beq       KeepDTR             no, go leave DTR disabled...
-                *     ora       #Cmd.DTR            set (enable) DTR bit
 KeepDTR
 *             sta       CmdReg,u		*CmdReg,x            set DTR and RTS enable/disable
-TermExit
-
-                    ldx       #$0000              remove IRQ table entry
+TermExit            ldx       #$0000              remove IRQ table entry
                     os9       F$IRQ
 
                     puls      cc                  recover IRQ/Carry status
