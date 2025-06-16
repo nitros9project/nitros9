@@ -1,2 +1,5 @@
-echo AT+UART_CUR=115200,8,1,0,0>/n0
-modem /n0 /n0 /n0
+echo AT+UART_CUR=115200,8,1,0,0>/wz
+modem /wz /wz /wz
+xmode /wz bau=0
+echo AT>/wz
+modem /wz /wz
