@@ -16,8 +16,9 @@ KERNELP2	= $(MD)/krnp2 $(MD)/init $(MD)/ioman
 # Classic OS-9 PIPE
 PIPE = $(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd
 
-# DriveWire support
-DWIO		= $(MD)/dwio.sb
+# Select one of the dwio modules below based on your desired configuration:
+#DWIO 	= $(MD)/dwio_wizfi.sb
+DWIO 	= $(MD)/dwio_serial.sb
 
 # RBF
 RBF		= $(MD)/rbf.mn
