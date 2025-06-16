@@ -42,7 +42,7 @@ GetTime             ldx       M$Mem,pcr           get RTC base address
                     bsr       bcd2bin             convert from BCD to binary
                     stb       <D.Min              save in globals
                     lda       RTC_HRS,x           get the RTC value
-                    anda      $7F                 remove AM/PM bit
+                    anda      #$7F                remove AM/PM bit
                     bsr       bcd2bin             convert from BCD to binary
                     stb       <D.Hour             save in globals
                     lda       RTC_DAY,x           get the RTC value
