@@ -1,2 +1,2 @@
 echo AT+UART_CUR=921600,8,1,0,0>/wz
-dump /wz
+mergeln /wz /wz /wz
