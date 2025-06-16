@@ -1,3 +1,6 @@
+                    nam       WizFi
+                    ttl       WizNet WizFi360 Driver
+
 ********************************************************************
 * WizFi - WizNet WizFi360 Driver
 *
@@ -5,41 +8,23 @@
 *   https://docs.wiznet.io/img/products/wizfi360/wizfi360ds/wizfi360_atset_v1118_e.pdf
 *   http://www.wiznet.io/
 *
+********************************************************************
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
-*          ????/??/??
-*
-*   r1     2025/04/27  Roger Taylor
-* Based on sc6551 framework. Removed a ton of ACIA stuff.
-*
-*          2025/05/05  Roger Taylor
-* Works from XTerm software
-*
-*          2025/06/04  R Taylor
-* Packet listener added to ISR.  Stages the packet data for the main code to
-* grab for the current /n# device.  No buffering is taking place at this time.
-*
-*          2025/06/05  R Taylor
-* Automatic packet transmitter added to ISR.  Works in tandem with the Write
-* routine's 256-byte circular buffer.
+*          2025/06/17  Roger Taylor
+* Single IRQ, multi device process coupling attempt
 
-
-                    nam       WizFi
-                    ttl       WizNet WizFi360 Driver
 
                     ifp1
                     use       defsfile
                     endc
 
 WIZFI_INTERRUPT     equ       INT_TIMER_0         Convenience placement
-VIRQCNT             equ       1
+D.WZStatTbl         equ       D.SWPage            Borrowed from incompatible SmartWatch variable
 WORK_SLOT	    equ       MMU_SLOT_2
 MMU_WINDOW          equ       $4000
-HPA_CHANNELBITS     equ       %00000011
-HPA_RESETBIT        equ       %00000100
-HPA_MODEBIT         equ       %00001000
-HPA_RATEBIT         equ       %00010000
+STATUS_RXD          equ       %00000100           In Control Register
 
 * miscellaneous definitions
 DCDStBit            equ       %00100000           DCD status bit for SS.CDSta call
@@ -73,6 +58,14 @@ DB.8                equ       %00000000           eight data bits per character
 DB.7                equ       %00100000           seven data bits per character
 DB.6                equ       %01000000           six data bits per character
 DB.5                equ       %01100000           five data bits per character
+
+ org $00
+vpr_proc rmb 1
+vpr_wake rmb 1
+vpr_chan rmb 1
+vpr_stat rmb 1
+vpr_data rmb 1
+
 
 * baud rate table
                     org       $00
@@ -150,6 +143,7 @@ RxBufPag            equ       %00001111           input buffer page count
 
 
 *============================================================================
+Mask_SocketDev            equ       %00001000
 IRQ_State_ListenByte      equ       $01
 IRQ_State_ListenPkt       equ       $02
 IRQ_State_ListenConnect   equ       $03
@@ -202,7 +196,7 @@ MasterRxDput        rmb       2
 MasterRxDBlock      rmb       1
 
 *============================================================================
-ind_ControlReg      rmb       2
+ind_CtrlReg         rmb       2
 ind_DataReg         rmb       2
 ind_RxD_RD_CountReg rmb       2
 ind_RxD_WR_CountReg rmb       2
@@ -267,12 +261,9 @@ ModName             fcs       "WizFi"
 strConnect          fcc       "0,CONNECT"
 strCipSend          fcc       "AT+CIPSEND="
                     fcb       0
-BaudTabl            equ       *
-                    fcb       BR.00110,BR.00300,BR.00600
-                    fcb       BR.01200,BR.02400,BR.04800
-                    fcb       BR.09600,BR.19200
 
-
+* WizFi requires a high-speed hardware IRQ service.
+* Clock-based VIRQ has never worked out.
 ***********************************************************************************
 * F$IRQ packet.
 *
@@ -296,11 +287,6 @@ IRQ_Pckt.Mask       fcb       WIZFI_INTERRUPT     the mask byte
 TRATE equ 300
 *TRATE equ 800 * choppy response but output is fast
 
-SetIRQRate           ldd       #TRATE
-c@                  sta       T0_VAL+0            registers are still Little Endian?
-                    stb       T0_VAL+1
-                    clr       T0_VAL+2
-                    rts
 
 
 * Init
@@ -316,35 +302,37 @@ c@                  sta       T0_VAL+0            registers are still Little End
 *        V.PORT.  Zero-default variables are:  CDSigPID, CDSigSig, Wrk.XTyp.
 Init                clrb                          default to no error...
                     pshs      cc,dp               save IRQ/Carry status, system DP
-*                    tfr       u,d
-*                    tfr       a,dp
-
-                    orcc      #IntMasks
 
                     pshs      y			  save Y so it's last on stack so we can recall it using 0,s
 
                     lbsr      GetDeviceChannel
 
-                *     pshs      x
-                *     tfr       dp,a
-                *     ldb       DeviceChannel,u
-                *     tfr       d,x
-                *     tfr       u,d
-                *     tst       $1C,x
-                *     bne       Init2               Already requested a page of memory
-*                     pshs      u
-*                     ldd       #$0100
-*                     os9       F$SRqMem
-*                     tfr       u,x
-*                     puls      u
-*                     lbcs      InitExit
-*                     stx       <D.WizFi
-*                     clrb
-* c@                  clr       ,x+
-*                     decb
-*                     bne       c@
-* Install IRQ servicer based on INT_PENDING_0 register
-                    ldd       #TRATE
+* Check if we've already allocated memory.
+                    ifgt      Level-1
+                    ldx       <D.WZStatTbl
+                    else
+                    ldx       >D.WZStatTbl
+                    endc
+                    lbne      Init2
+                    
+* Allocate a single 256 byte page of memory
+                    ldd       #$0100
+                    pshs      u
+                    os9       F$SRqMem
+                    tfr       u,x
+                    puls      u
+                    ifgt      Level-1
+                    stx       <D.WZStatTbl
+                    else
+                    stx       >D.WZStatTbl
+                    endc
+
+                    clrb
+c@                  clr       ,x+
+                    decb
+                    bne       c@
+
+Init2                    ldd       #TRATE
                     sta       T0_VAL+0            registers are still Little Endian?
                     stb       T0_VAL+1
                     clr       T0_VAL+2
@@ -361,8 +349,6 @@ Init                clrb                          default to no error...
                     lda       >INT_MASK_0          else get the interrupt mask byte
                     anda      #^WIZFI_INTERRUPT   set the interrupt
                     sta       >INT_MASK_0          and save it back
-Init2
-*                    puls      x
                     clr       OutPktLaydown,u
                     clr       OutPktPickup,u
                     clr       WritePacketTimer,u
@@ -377,13 +363,15 @@ Init2
                     ldb       #IRQ_State_ListenPkt
                     stb       IRQ_State,u
 
-                    ldd       V.PORT,u
-                    andb      #%11100000          Filter out any control bits we use
+*Init2
+                    ldd       V.PORT,u	allow $404x, $FF2x  
+                    andb      #%11100000                
                     tfr       d,y
+
 
 * Give ability for us to LD/ST [someWizFiReg,u] for the WizFi registers
                     leax      WizFi_CtrlReg,y
-                    stx       ind_ControlReg,u
+                    stx       ind_CtrlReg,u
                     leax      WizFi_DataReg,y
                     stx       ind_DataReg,u
                     leax      WizFi_RxD_RD_Cnt,y
@@ -408,86 +396,143 @@ InitExit            puls      y
 Term                clrb                          default to no error...
                     pshs      cc,dp               save IRQ/Carry status, dummy B, system DP
 
-                    tfr       u,d
-                    tfr       a,dp
+                *     lda       #WIZFI_INTERRUPT
+                *     pshs      a
+                *     sta       >INT_PENDING_0      get the pending interrupt pending address
+                *     lda       >INT_MASK_0          else get the interrupt mask byte
+                *     ora       ,s+
+                *     sta       >INT_MASK_0          and save it back
 
-                *     ifeq      Level-1
-                *     ldx       >D.Proc
-                *     lda       P$ID,x
-                *     sta       <V.BUSY
-                *     sta       <V.LPRC
+                     ldx       #$0000              remove IRQ table entry
+                     os9       F$IRQ
+
+                *     pshs      u                   save data pointer
+                *     ifgt      Level-1
+                *     ldu       <D.WZStatTbl
+                *     else
+                *     ldu       >D.WZStatTbl
                 *     endc
-KeepDTR
-*             sta       CmdReg,u		*CmdReg,x            set DTR and RTS enable/disable
-TermExit            ldx       #$0000              remove IRQ table entry
-                    os9       F$IRQ
+                *     os9       F$SRtMem
+                *     puls      u                   recover data pointer
 
                     puls      cc                  recover IRQ/Carry status
                     puls      dp,pc               restore dummy A, system DP, return
 
+GetVpPtr            ifgt      Level-1
+                    ldx       <D.WZStatTbl
+                    else
+                    ldx       >D.WZStatTbl
+                    endc
+                    andb      #3
+                    lslb
+                    lslb
+                    abx
+                    rts
+
 GetDeviceChannel    pshs      d
                     ldd       Wrk.Type,u           save type/baud in data area
-                    andb      #3
-                    stb       [ind_ControlReg,u] Update WizFi Control Register
-
+                    andb      #%00000011
+                    stb       [ind_CtrlReg,u]      Update WizFi Control Register
                     ldb       V.PORT+1,u
                     tfr       b,a
-                    anda      #HPA_MODEBIT
+                    anda      #%00001000
                     sta       DeviceMode,u
                     tfr       b,a
-                    anda      #HPA_CHANNELBITS
+                    anda      #%00000011
                     sta       DeviceChannel,u
                     puls      d,pc
 
-* GetDeviceChannel    pshs      d
-*                     ldb       V.PORT+1,u
-*                     tfr       b,a
-*                     anda      #HPA_MODEBIT
-*                     sta       DeviceMode,u
-*                     tfr       b,a
-*                     anda      #HPA_CHANNELBITS
-*                     sta       DeviceChannel,u
-*                     tfr       b,a
-*                     anda      #HPA_RATEBIT       000bmrcc (b = rate) (m = mode) (r = reset) (cc = channel)
-*                     lsra                         Shift baud bit into bit #0 of WizFi Control Register
-*                     lsra
-*                     lsra
-*                     lsra
-*                     pshs      a
-*                     tfr       b,a
-*                     anda      #HPA_RESETBIT
-*                     lsra                         Shift Reset bit into bit #1 of WizFi Control Register
-*                     ora       ,s+                Combined control bits
-*                     sta       [ind_ControlReg,u] Update WizFi Control Register
-*                     puls      d,pc
 
-iRxFCheck           ldd       [ind_RxD_WR_CountReg,u]
+RxFCheck            ldd       [ind_RxD_WR_CountReg,u]
                     anda      #$07
                     cmpd      #$0000
                     rts
 
-RxCCheck
-                    ldb       PendingByte,u
-                    rts
-
+* RxFCheck            ldb       [ind_CtrlReg,u]     Create fake Bytes Waiting value (0 or 1)
+*                     comb
+*                     andb      #STATUS_RXD         (Z=0 = Data Waiting)  (Z=0 = No Data in RxD FIFO)
+*                     lsrb
+*                     lsrb
+*                     clra
+*                     cmpd      #$0000
+*                     rts
 
 iService            pshs      cc,dp,x
-*                    tfr       u,d                 setup our DP
-*                    tfr       a,dp
-*                    bsr       GetDeviceChannel
+
                     lda       #WIZFI_INTERRUPT    clear pending interrupt
                     sta       INT_PENDING_0
 
-                    ldb       PendingByte,u
-                    lbne      iExit
-                    lbsr      iRxFCheck
-                    lbeq      iSendPkt         Send pending TxD packets only if no RxD
+iSendPkt            ldb       OutPktLaydown,u
+                    subb      OutPktPickup,u
+                    lbeq      iRead
+                    bpl       n@
+                    negb
+n@                  clra
+                    tfr       d,y
+                    ldb       DeviceMode,u
+                    beq       r@
+                    leax      strCipSend,pcr
+s@                  lda       ,x+
+                    beq       c@
+                    sta       [ind_DataReg,u]
+                    bra       s@
+c@                  lda       DeviceChannel,u
+                    adda      #'0
+                    sta       [ind_DataReg,u]
+                    lda       #',
+                    sta       [ind_DataReg,u]
+                    leax      strDecimal5,u
+                    tfr       y,d
+                    lbsr      Word2Dec3           We also have Word2Dec5 routine for 5-digit packet size for outgoing
+                    ldb       #3
+d@                  lda       ,x+
+                    sta       [ind_DataReg,u]
+                    decb
+                    bne       d@
+                    lda       #$0d
+                    sta       [ind_DataReg,u]
+                    lda       #$0a
+                    sta       [ind_DataReg,u]
+wsp@                lbsr      RxFCheck
+                    beq       wsp@
+                    lda       [ind_DataReg,u]
+                    cmpa      #32
+                    bne       wsp@
+r@                  inc       OutPktPickup,u
+                    ldb       OutPktPickup,u
+                    leax      OutPktBuf,u
+                    abx
+                    lda       ,x
+                    sta       [ind_DataReg,u]
+                    leay      -1,y
+                    bne       r@
+                    ldb       DeviceMode,u
+                    beq       xx@
+                    ldy       #4                  Wait for 4 CRLF terminated AT responses
+pl@                 lbsr      RxFCheck            There is no dead loop prevention at this time
+                    beq       pl@
+                    lda       [ind_DataReg,u]
+                    cmpa      #10
+                    bne       pl@
+                    leay      -1,y
+                    bne       pl@
+xx@                 equ       *
+*                    bra       iExit
+                    lbra       iWake
+
+
+iRead
+                    ldb       DeviceChannel,u
+                    lbsr      GetVpPtr
+                    lda       vpr_stat,x
+                    lbmi      iExit
+                    lbsr      RxFCheck
+                    lbeq      iExit
 
                     lda       [ind_DataReg,u]
-                    sta       LastRxD,u
 
                     ldb       DeviceMode,u        Device descriptor has the Packets bit set
-                    lbeq      iReadAndWake0
+                    lbeq      iBroadcast
 
                     ldb       IRQ_State,u
                     cmpb      #IRQ_State_ListenPkt
@@ -502,10 +547,11 @@ iService            pshs      cc,dp,x
 x@                  leax      -1,x
                     stx       IpdLen,u
 
-                    ldb       PacketChannel,u
-                    cmpb      DeviceChannel,u
-                    lbeq      iReadAndWake
-                    lbra      iExit
+                *     ldb       PacketChannel,u
+                *     cmpb      DeviceChannel,u
+                *     lbeq      iBroadcast
+                *     lbra      iExit
+                      lbra       iBroadcast
 
 iListenPkt          leax      strIPD,pcr          point to start of IPD string constant
                     ldb       PktReadPos,u           what character position are we at?  +  P  D  ,   ?  0-3
@@ -541,94 +587,34 @@ ms@                 clr       PacketChannel,u
                     clr       IpdLen,u
                     clr       IpdLen+1,u
                     bra       m@
-iSendPkt
-*                    inc       WritePacketTimer,u
-*                    ldb       WritePacketTimer,u
-*                    anda      #127
-*                    andb      #7
-*                    lbne      iExit
-                    ldb       OutPktLaydown,u
-                    subb      OutPktPickup,u
-                    lbeq      iExit
-                    bpl       n@
-                    negb
-n@                  clra
-                    tfr       d,y
-                    leax      strCipSend,pcr
-s@                  lda       ,x+
-                    beq       c@
-                    sta       [ind_DataReg,u]
-                    bra       s@
-c@                  lda       DeviceChannel,u
-                    adda      #'0
-                    sta       [ind_DataReg,u]
-                    lda       #',
-                    sta       [ind_DataReg,u]
-                    leax      strDecimal5,u
-                    tfr       y,d
-                    lbsr      Word2Dec3           We also have Word2Dec5 routine for 5-digit packet size for outgoing
-                    ldb       #3
-d@                  lda       ,x+
-                    sta       [ind_DataReg,u]
-                    decb
-                    bne       d@
-                    lda       #$0d
-                    sta       [ind_DataReg,u]
 
-                    lda       #$0a
-                    sta       [ind_DataReg,u]
-wsp@                lbsr      iRxFCheck
-                    beq       wsp@
-                    lda       [ind_DataReg,u]
-                    cmpa      #32
-                    bne       wsp@
-r@                  inc       OutPktPickup,u
-                    ldb       OutPktPickup,u
-                    leax      OutPktBuf,u
-                    abx
-                    lda       ,x
-                    sta       [ind_DataReg,u]
-                    leay      -1,y
-                    bne       r@
-                    ldy       #4                  Wait for 4 CRLF terminated AT responses
-pl@                 lbsr      iRxFCheck           There is no dead loop prevention at this time
-                    beq       pl@
-                    lda       [ind_DataReg,u]
-                    cmpa      #10
-                    bne       pl@
-                    leay      -1,y
-                    bne       pl@
-                    bra       iExit
-*                    bra       iWake
-iReadAndWake0       clr       PacketChannel,u
-iReadAndWake
-                    ldb       #1
-                    stb       PendingByte,u
+iBroadcast
+                    ldb       PacketChannel,u
+                    lbsr      GetVpPtr
+                    ldb       PacketChannel,u
+                    orb       #$80
+                    stb       vpr_stat,x
+                    sta       vpr_data,x
 
-iWake
-                *     pshs      u
-                *     tfr       dp,a 
-                *     ldb       PacketChannel,u
-                *     tfr       d,x
-                *     lda       $1C,x
-                *     clrb
-                *     tfr       d,u
-
+iWake     
+                    ldb       PacketChannel,u
+                    lbsr      GetVpPtr
                     clrb                          clear Carry (for exit) and LSB of process descriptor address
-                    lda       V.WAKE,u            anybody waiting? ([D]=process descriptor address)
-                    beq       r@                  no, go return...
-                    stb       V.WAKE,u            mark I/O done
+                    lda       vpr_wake,x            anybody waiting? ([D]=process descriptor address)
+                    beq       iExit                  no, go return...
+                    stb       vpr_wake,x            mark I/O done
                     tfr       d,x                 copy process descriptor pointer
                     lda       P$State,x           get state flags
                     anda      #^Suspend           clear suspend state
                     sta       P$State,x           save state flags
-r@
-*                  puls      u
+
 iExit               puls      cc,dp,x,pc               recover system DP, return...
 
-
-ReadSlp             ldd       >D.Proc             Level II process descriptor address
-                    sta       V.WAKE,u             save MSB for IRQ service routine
+ReadSlp
+                    ldb       DeviceChannel,u
+                    lbsr      GetVpPtr
+                    ldd       >D.Proc             Level II process descriptor address
+                    sta       vpr_wake,x           V.WAKE,u             save MSB for IRQ service routine
                     tfr       d,x                 copy process descriptor address
                     ldb       P$State,x
                     orb       #Suspend
@@ -636,35 +622,34 @@ ReadSlp             ldd       >D.Proc             Level II process descriptor ad
                     lbsr      Sleep1              go suspend process...
                     ldx       >D.Proc             process descriptor address
                     ldb       P$Signal,x          pending signal for this process?
-                    beq       ChkState            no, go check process state...
+                    beq       c@                  no, go check process state...
                     cmpb      #S$Intrpt           do we honor signal?
                     lbls      ErrExit             yes, go do it...
-ChkState            equ       *
-                    ldb       P$State,x
+c@                  ldb       P$State,x
                     bitb      #Condem
                     lbne      PrAbtErr            yes, go do it...
-                    ldb       V.WAKE,u             true interrupt?
-                    beq       ReadChar             yes, go read the char.
+                    ldb       DeviceChannel,u
+                    lbsr      GetVpPtr
+                    ldb       vpr_wake,x           V.WAKE,u            true interrupt?
+                    beq       ReadD               yes, go read the char.
                     bra       ReadSlp             no, go suspend the process
 
 * x bits 1..0 is socket #, bit 4 = isPacketChannel	ldd <V.PORT
 Read                clrb                          default to no errors...
                     pshs      cc,dp               save IRQ/Carry status, system DP
-                    lbsr      GetDeviceChannel
-*                    tfr       u,d
-*                    tfr       a,dp
 
-*ReadChar
-*                    ldb       V.ERR,u              get accumulated errors, if any
-*                    stb       PD.ERR,y            set/clear error(s) in path descriptor
-*                    lbne      ReprtErr            error(s), go report it/them...
-
-ReadChar            orcc      #IntMasks
-                    tst       PendingByte,u
-                    beq       ReadSlp
-                    lda       LastRxD,u
-                    clr       PendingByte,u
+ReadD               orcc      #IntMasks
+                    ldb       DeviceChannel,u
+                    lbsr      GetVpPtr
+                    ldb       vpr_stat,x
+                    bpl       ReadSlp
+                    andb      #3
+                    stb       vpr_stat,x           Notify the hub that we've taken our data
+                    cmpb      DeviceChannel,u
+                    bne       ReadSlp
+                    lda       vpr_data,x           Get our data
                     puls      cc,dp,pc            recover IRQ/Carry status, dummy B, system DP, return
+
 
 PrAbtErr            ldb       #E$PrcAbt
                     bra       ErrExit
@@ -690,9 +675,10 @@ NRdyErr             ldb       #E$NotRdy
 UnSvcErr            ldb       #E$UnkSvc
                     bra       ErrExit
 
-
-WriteSlp            ldd       >D.Proc             Level II process descriptor address
-                    sta       V.WAKE,u             save MSB for IRQ service routine
+WritSlp             ldb       DeviceChannel,u
+                    lbsr      GetVpPtr
+                    ldd       >D.Proc             Level II process descriptor address
+                    sta       vpr_wake,x             save MSB for IRQ service routine
                     tfr       d,x                 copy process descriptor address
                     ldb       P$State,x
                     orb       #Suspend
@@ -700,53 +686,53 @@ WriteSlp            ldd       >D.Proc             Level II process descriptor ad
                     lbsr      Sleep1              go suspend process...
                     ldx       >D.Proc             process descriptor address
                     ldb       P$Signal,x          pending signal for this process?
-                    beq       ChkWState           no, go check process state...
+                    beq       c@                  no, go check process state...
                     cmpb      #S$Intrpt           do we honor signal?
                     lbls      ErrExit             yes, go do it...
-ChkWState           equ       *
-                    ldb       P$State,x
+c@                  ldb       P$State,x
                     bitb      #Condem
                     lbne      PrAbtErr            yes, go do it...
-                    ldb       V.WAKE,u             true interrupt?
-                    beq       Wrt2PktBuf             yes, go write the char.
-                    bra       WriteSlp             no, go suspend the process
+                    ldb       DeviceChannel,u
+                    lbsr      GetVpPtr
+                    ldb       vpr_wake,x            true interrupt?
+                    beq       WriteD               yes, go read the char.
+                    bra       WritSlp             no, go suspend the process
 
 Write               clrb                          default to no error...
-                    pshs      cc,a             save IRQ/Carry status, Tx character, system DP
-                    lbsr      GetDeviceChannel
-                    ldb       DeviceMode,u
-                    bne       Wrt2PktBuf
-                    sta       [ind_DataReg,u]
-                    bra       WriteExit
+                    pshs      cc,a                save IRQ/Carry status, Tx character, system DP
 
-Wrt2PktBuf
-                    orcc      #IntMasks
+WriteD              orcc      #IntMasks
                     ldb       OutPktLaydown,u
                     incb
                     cmpb      OutPktPickup,u
-                    beq       WriteSlp                 1 more write would overflow the buffer, so we need to wait on the ISR to purge
+                    beq       WritSlp
                     stb       OutPktLaydown,u
                     leax      OutPktBuf,u
                     abx
                     lda       1,s
                     sta       ,x
- 
-WriteExit           puls      cc,a,pc            recover IRQ/Carry status, Tx character, system DP, return
-
+                    puls      cc,a,pc            recover IRQ/Carry status, Tx character, system DP, return
 
 GStt                clrb                          default to no error...
                     pshs      cc,dp               save IRQ/Carry status, dummy B, system DP
-                *     pshs      a
-                *     tfr       u,d
-                *     tfr       a,dp
-                *     puls      a
                     ldx       PD.RGS,y            caller's register stack pointer
                     cmpa      #SS.EOF
                     beq       GSExitOK            yes, SCF devices never return EOF
                     cmpa      #SS.Ready
                     bne       GetScSiz
-                    lbsr      RxCCheck
+                    pshs      x
+                    ldb       DeviceChannel,u
+                    lbsr      GetVpPtr
+                    lda       vpr_stat,x
+                    puls      x
+                    clrb
+                    lsla
+                    rolb
+                    clra
+                    cmpd      #$0000
+*                    lbsr      RxCCheck
                     lbeq      NRdyErr             none, go report error
+
                     tsta                          more than 255 bytes?
                     beq       SaveLen             no, keep Rx data available
                     ldb       #255                yes, just use 255
@@ -807,12 +793,19 @@ SetSSig             cmpa      #SS.SSig
                     bne       SetRelea
                     lda       PD.CPR,y            current process ID
                     ldb       R$X+1,x             LSB of [X] is signal code
-                    orcc      #IntMasks
  bra RSendSig
                     pshs      d
-                    lbsr      RxCCheck
+                    ldb       DeviceChannel,u
+                    lbsr      GetVpPtr
+                    lda       vpr_stat,x
+                    clrb
+                    lsla
+                    rolb
+                    clra
                     tfr       d,x
                     puls      d
+*                    lbsr      RxCCheck
+*                    tfr       d,x
                     cmpx      #$0000
                     bne       RSendSig
                     std       SSigPID,u
@@ -879,8 +872,7 @@ SetPort             pshs      cc                  save IRQ enable and Carry stat
 
 
 * Convert byte in B to Decimal string at X (3 places)
-Word2Dec3
-                    pshs      u,y,x,b
+Word2Dec3           pshs      u,y,x,b
                     clra
                     leau      <DeciTbl+4,pcr      point to deci-table
                     ldy       #$0003              number of decimal places
@@ -926,7 +918,6 @@ L094F               addd      ,s
 L095B               puls      pc,y,b,a
 L095D               orcc      #Zero
                     puls      pc,y,b,a
-
 
 
 * Phased out, or on pause
@@ -982,59 +973,6 @@ L095D               orcc      #Zero
 *                     bra       x@
 * d@                  adda      #'0'
 * x@                  rts
-
-
-* RxCCheck
-*                    pshs      cc
-*                    orcc      #IntMasks
-* Method 1
-*                    ldd       MasterRxDput,u
-*                    cmpd      MasterRxDget,u
-*                    bhs       p@
-*                    ldd       MasterRxDget,u
-*                    subd      MasterRxDput,u
-*                    bra       r@
-* p@                 subd      MasterRxDget,u
-* r@
-*                    puls      cc
-* Method 2
-*                    cmpd      #$0000
-*                    rts
-
-
-
-* * Transfer RxD from FIFO into Connection Buffer
-
-* ISRPurger           lbsr      iRxFCheck
-*                     beq       ISRWatcher
-*                     tfr       d,y                 <------  Copying all FIFO to 8k Buffer "doesn't work out"  -------->
-*                     ldy       #1                  <------  Copying only 1 byte, RxD works but is super slow  ------->
-
-* p@                  lbsr      RxFRead             Hardware FIFO buffer
-*                     lbsr      RxCWrite            Circular buffer, keeps track of size
-*                     leay      -1,y
-*                     bne       p@
-*                     bra       iWake
-
-* ISRWatcher          lbsr      RxCCheck
-*                     beq       ISRExit
-
-* ListenForConnect  for /n# devices only
-* 	leax	strConnect,pcr
-* 	ldb	PktReadPos,u
-* 	cmpa	b,x
-* 	beq	m@
-* 	clr	PktReadPos,u
-* 	bra	x@
-* m@	incb
-* 	stb	PktReadPos,u
-*         cmpb    #9		total match
-*         blo     x@
-* 	clr	PktReadPos,u
-* 	ldb	#State_ListenPacket
-* 	stb	IRQ_State,u
-* x@	bra	ReadExit
-
 
                     emod
 ModSize             equ       *
