@@ -16,6 +16,7 @@
 *    U is preserved.  All accumulators are clobbered
 *
 
+
 DWRead              clra                          clear carry (no framing error)
                     clrb
                     pshs      u,x,d,cc            preserve registers
@@ -24,14 +25,10 @@ DWRead              clra                          clear carry (no framing error)
                     ldx       #$0000
 
                     orcc      #IntMasks           mask interrupts
-                    ldb       >MMU_SLOT_2
-                    pshs      b                   Make another spot on the stack for the MMU block # to preserve
-                    lda       #$C5		  Bank where the WizFi registers are
-                    sta       >MMU_SLOT_2
 
 loop@               ldd       #$0000              store counter
                     std       1+1,s               ?+1,s considering extra stack byte
-loop2@              ldb       $4040+WIZFI_UART_RxD_WR_Count    Based on older .mcs broken "Little Endian FIFO MSB" register
+loop2@              ldd       $FF20+WizFi_RxD_WR_Cnt
                     bne       getbyte@            if available, get byte
                     mul                           extend the timeout much longer due to faster CPU
                     mul
@@ -47,12 +44,10 @@ loop2@              ldb       $4040+WIZFI_UART_RxD_WR_Count    Based on older .m
                     anda      #^$04               clear the Z flag to indicate not all bytes received.
                     sta       0+1,s               ?+1,s considering extra stack byte
                     bra       bye@
-getbyte@            ldb       $4040+WIZFI_UART_DataReg get the data byte
+getbyte@            ldb       $FF20+WizFi_DataReg get the data byte
                     stb       ,u+                 save off acquired byte
                     abx                           update checksum
                     leay      ,-y                 decrement Y
                     bne       loop@               branch if more to obtain
                     leay      ,x                  return checksum in Y
-bye@                puls      a                   pop saved MMU block # from stack
-                    sta       >MMU_SLOT_2
-                    puls      cc,d,x,u,pc         restore registers and return
+bye@                puls      cc,d,x,u,pc         restore registers and return

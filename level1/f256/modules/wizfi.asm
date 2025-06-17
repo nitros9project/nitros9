@@ -356,23 +356,19 @@ c@                  clr       ,x+
                     sta       T0_VAL+0            registers are still Little Endian?
                     stb       T0_VAL+1
                     clr       T0_VAL+2
-
                     lda       #%00000001
                     sta       >T0_CTR
                     lda       #%00000010          Timer reloads Value, for continuous run
                     sta       >T0_CMP_CTR
-
                     ldd       #INT_PENDING_0      get the pending interrupt pending address
                     leax      IRQ_Pckt,pcr        point to the IRQ packet
                     leay      iService,pcr       and the service routine
                     os9       F$IRQ               install the interrupt handler
-
 *                    bcc       g@                  branch if success
 *                    os9       F$PErr
                     lda       >INT_MASK_0          else get the interrupt mask byte
                     anda      #^WIZFI_INTERRUPT   set the interrupt
                     sta       >INT_MASK_0          and save it back
-
                     clr       OutPktLaydown,u
                     clr       OutPktPickup,u
                     clr       WritePacketTimer,u
@@ -392,19 +388,20 @@ Init2
                     andb      #%11100000                
                     tfr       d,y
 
-                    leax      WIZFI_UART_CtrlReg,y
-                    stx       ind_ControlReg,u
-                    leax      WIZFI_UART_DataReg,y
-                    stx       ind_DataReg,u
-                    leax      WIZFI_UART_RxD_RD_Count,y
-                    stx       ind_RxD_RD_CountReg,u
-                    leax      WIZFI_UART_RxD_WR_Count,y
-                    stx       ind_RxD_WR_CountReg,u
-                    leax      WIZFI_UART_TxD_RD_Count,y
-                    stx       ind_TxD_RD_CountReg,u
-                    leax      WIZFI_UART_TxD_WR_Count,y
-                    stx       ind_TxD_WR_CountReg,u
 
+* Give ability for us to LD/ST [someWizFiReg,u] for the WizFi registers
+                    leax      WizFi_CtrlReg,y
+                    stx       ind_ControlReg,u
+                    leax      WizFi_DataReg,y
+                    stx       ind_DataReg,u
+                    leax      WizFi_RxD_RD_Cnt,y
+                    stx       ind_RxD_RD_CountReg,u
+                    leax      WizFi_RxD_WR_Cnt,y
+                    stx       ind_RxD_WR_CountReg,u
+                    leax      WizFi_TxD_RD_Cnt,y
+                    stx       ind_TxD_RD_CountReg,u
+                    leax      WizFi_TxD_WR_Cnt,y
+                    stx       ind_TxD_WR_CountReg,u
 
 *                    pshs      x
 *                    ldb       #1                  Master RxD stream needs an 8K block of RAM
@@ -435,31 +432,49 @@ TermExit
                     puls      cc                  recover IRQ/Carry status
                     puls      dp,pc               restore dummy A, system DP, return
 
+GetDeviceChannel    pshs      d
+                    ldd       Wrk.Type,u           save type/baud in data area
+                    andb      #3
+                    stb       [ind_ControlReg,u] Update WizFi Control Register
 
-
-RxFRead             pshs      cc,b
-                    orcc      #IntMasks
-                    ldb       >WORK_SLOT
-                    lda       #$C5		Bank where the WizFi registers are
-                    sta       >WORK_SLOT
-                    lda       [ind_DataReg,u]
-                    stb       >WORK_SLOT
-                    puls      b,cc
-                    rts
-
-GetDeviceChannel
                     ldb       V.PORT+1,u
                     tfr       b,a
-                    anda      #MASK_SOCKETDEV
+                    anda      #HPA_MODEBIT
                     sta       DeviceMode,u
-                    andb      #3
-                    stb       DeviceChannel,u
+                    tfr       b,a
+                    anda      #HPA_CHANNELBITS
+                    sta       DeviceChannel,u
+                    puls      d,pc
+
+* GetDeviceChannel    pshs      d
+*                     ldb       V.PORT+1,u
+*                     tfr       b,a
+*                     anda      #HPA_MODEBIT
+*                     sta       DeviceMode,u
+*                     tfr       b,a
+*                     anda      #HPA_CHANNELBITS
+*                     sta       DeviceChannel,u
+*                     tfr       b,a
+*                     anda      #HPA_RATEBIT       000bmrcc (b = rate) (m = mode) (r = reset) (cc = channel)
+*                     lsra                         Shift baud bit into bit #0 of WizFi Control Register
+*                     lsra
+*                     lsra
+*                     lsra
+*                     pshs      a
+*                     tfr       b,a
+*                     anda      #HPA_RESETBIT
+*                     lsra                         Shift Reset bit into bit #1 of WizFi Control Register
+*                     ora       ,s+                Combined control bits
+*                     sta       [ind_ControlReg,u] Update WizFi Control Register
+*                     puls      d,pc
+
+iRxFCheck           ldd       [ind_RxD_WR_CountReg,u]
+                    anda      #$07
+                    cmpd      #$0000
                     rts
 
-iRxFCheck           lda       [ind_RxD_WR_CountReg,u]
-                    tfr       a,b
-                    clra
-                    cmpd      #$0000
+RxCCheck
+                    ldb       PendingByte,u
                     rts
 
 
@@ -467,27 +482,19 @@ iService            pshs      cc,dp,x
 *                    tfr       u,d                 setup our DP
 *                    tfr       a,dp
 *                    bsr       GetDeviceChannel
-                    ldb       >WORK_SLOT
-                    pshs      b
-                    lda       #$C5		  Map in the WizFi registers
-                    sta       >WORK_SLOT
-
                     lda       #WIZFI_INTERRUPT    clear pending interrupt
                     sta       INT_PENDING_0
 
-                    lbsr      GetVpPtr
-                    lda       vpr_stat,x
-                    anda      #$80
+                    ldb       PendingByte,u
                     lbne      iExit
-
                     lbsr      iRxFCheck
                     lbeq      iSendPkt         Send pending TxD packets only if no RxD
 
                     lda       [ind_DataReg,u]
                     sta       LastRxD,u
 
-                    ldb       DeviceMode,u
-                    lbeq      iBroadcast
+                    ldb       DeviceMode,u        Device descriptor has the Packets bit set
+                    lbeq      iReadAndWake0
 
                     ldb       IRQ_State,u
                     cmpb      #IRQ_State_ListenPkt
@@ -504,7 +511,7 @@ x@                  leax      -1,x
 
                     ldb       PacketChannel,u
                     cmpb      DeviceChannel,u
-                    lbeq      iBroadCast
+                    lbeq      iReadAndWake
                     lbra      iExit
 
 iListenPkt          leax      strIPD,pcr          point to start of IPD string constant
@@ -542,6 +549,11 @@ ms@                 clr       PacketChannel,u
                     clr       IpdLen+1,u
                     bra       m@
 iSendPkt
+*                    inc       WritePacketTimer,u
+*                    ldb       WritePacketTimer,u
+*                    anda      #127
+*                    andb      #7
+*                    lbne      iExit
                     ldb       OutPktLaydown,u
                     subb      OutPktPickup,u
                     lbeq      iExit
@@ -552,26 +564,26 @@ n@                  clra
                     leax      strCipSend,pcr
 s@                  lda       ,x+
                     beq       c@
-                    lbsr      SendByte
+                    sta       [ind_DataReg,u]
                     bra       s@
 c@                  lda       DeviceChannel,u
                     adda      #'0
-                    lbsr      SendByte
+                    sta       [ind_DataReg,u]
                     lda       #',
-                    lbsr      SendByte
-
+                    sta       [ind_DataReg,u]
                     leax      strDecimal5,u
                     tfr       y,d
                     lbsr      Word2Dec3           We also have Word2Dec5 routine for 5-digit packet size for outgoing
                     ldb       #3
 d@                  lda       ,x+
-                    lbsr      SendByte
+                    sta       [ind_DataReg,u]
                     decb
                     bne       d@
                     lda       #$0d
-                    lbsr      SendByte
+                    sta       [ind_DataReg,u]
+
                     lda       #$0a
-                    lbsr      SendByte
+                    sta       [ind_DataReg,u]
 wsp@                lbsr      iRxFCheck
                     beq       wsp@
                     lda       [ind_DataReg,u]
@@ -582,7 +594,7 @@ r@                  inc       OutPktPickup,u
                     leax      OutPktBuf,u
                     abx
                     lda       ,x
-	            lbsr      SendByte
+                    sta       [ind_DataReg,u]
                     leay      -1,y
                     bne       r@
                     ldy       #4                  Wait for 4 CRLF terminated AT responses
@@ -659,6 +671,7 @@ ChkState            equ       *
                     beq       ReadD               yes, go read the char.
                     bra       ReadSlp             no, go suspend the process
 
+* x bits 1..0 is socket #, bit 4 = isPacketChannel	ldd <V.PORT
 Read                clrb                          default to no errors...
                     pshs      cc,dp               save IRQ/Carry status, system DP
 
@@ -741,19 +754,13 @@ Wrt2PktBuf
  
 WriteExit           puls      cc,a,pc            recover IRQ/Carry status, Tx character, system DP, return
 
-SendByte            pshs      cc,a,b
-                    orcc      #IntMasks           disable IRQs during error and Tx disable checks
-                    ldb       >WORK_SLOT
-                    lda       #$c5
-                    sta       >WORK_SLOT
-                    lda       1,s
-                    sta       [ind_DataReg,u]
-                    stb       >WORK_SLOT
-                    puls      cc,a,b,pc
-
 
 GStt                clrb                          default to no error...
                     pshs      cc,dp               save IRQ/Carry status, dummy B, system DP
+                *     pshs      a
+                *     tfr       u,d
+                *     tfr       a,dp
+                *     puls      a
                     ldx       PD.RGS,y            caller's register stack pointer
                     cmpa      #SS.EOF
                     beq       GSExitOK            yes, SCF devices never return EOF
@@ -820,6 +827,10 @@ TimedSlp            pshs      cc                  save IRQ enable status
 
 SStt                clrb                          default to no error...
                     pshs      cc,dp               save IRQ/Carry status, dummy B, system DP
+                *     pshs      a
+                *     tfr       u,d
+                *     tfr       a,dp
+                *     puls      a
                     ldx       PD.RGS,y
 
 SetSSig             cmpa      #SS.SSig
@@ -895,6 +906,11 @@ ReleaSig            pshs      cc                  save IRQ enable status
 NoReleas            puls      cc,pc               restore IRQ enable status, return
 
 SetPort             pshs      cc                  save IRQ enable and Carry status
+                    orcc      #IntMasks           disable IRQs while setting up ACIA registers
+                    std       Wrk.Type,u           save type/baud in data area
+
+                    lbsr      GetDeviceChannel
+
                     puls      cc,pc               recover IRQ enable and Carry status, return...
 
 

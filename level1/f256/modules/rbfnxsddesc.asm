@@ -75,8 +75,14 @@ SAS                 set       $08
                     use       rbsuper.d
                     use       f256.d
 
-SDAddr              set       SDC.Base
-
+                    ifeq      SD
+SDAddr              set       SDC0.Base
+ITDRV               set       $00
+                    else
+SDAddr              set       SDC1.Base
+ITDRV               set       $01
+                    endc
+                    
 tylg                set       Devic+Objct
 atrv                set       ReEnt+rev
 rev                 set       $09

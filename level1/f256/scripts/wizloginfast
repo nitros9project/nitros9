@@ -1,0 +1,3 @@
+echo * WizFi360 Helper - Remote login over /n0
+xmode /n0 eko=1
+tsmon /n0&

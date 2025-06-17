@@ -16,8 +16,9 @@ KERNELP2	= $(MD)/krnp2 $(MD)/init $(MD)/ioman
 # Classic OS-9 PIPE
 PIPE = $(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd
 
-# DriveWire support
-DWIO		= $(MD)/dwio.sb
+# Select one of the dwio modules below based on your desired configuration:
+#DWIO 	= $(MD)/dwio_wizfi.sb
+DWIO 	= $(MD)/dwio_serial.sb
 
 # RBF
 RBF		= $(MD)/rbf.mn
@@ -32,7 +33,7 @@ RBMEM = $(MD)/rbmem.dr $(MD)/f0.dd $(MD)/c0.dd $(MD)/f1.dd $(MD)/c1.dd
 RBSUPER   = $(MD)/rbsuper.dr
 
 # RBF Foenix SD card low level driver
-RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd
+RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd $(MD)/s1.dd
 
 # SCF
 SCF		 = $(MD)/scf.mn
@@ -152,8 +153,8 @@ bootfile_dw_f256k: $(BOOTFILE_DW_F256K) $(DEPENDS)
 	$(MERGE) $(BOOTFILE_DW_F256K)>$@
 	./padup256 $@
 
-upload_f256jr: bootfile_dw_f256jr
-	upload bootfile_f256kr 8000
+upload_f256k: bootfile_dw_f256k
+	upload bootfile_f256k 8000
 
 bootfile_sd_f256jr: $(BOOTFILE_SD_F256JR) $(DEPENDS)
 	$(MERGE) $(BOOTFILE_SD_F256JR)>$@

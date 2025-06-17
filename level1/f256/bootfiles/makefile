@@ -12,8 +12,9 @@ DEPENDS		= ./makefile
 # Kernel
 KERNEL	= $(MD)/krn $(MD)/krnp2 $(MD)/init $(MD)/ioman
 
-# DriveWire support
-DWIO		= $(MD)/dwio.sb
+# Select one of the dwio modules below based on your desired configuration:
+#DWIO 	= $(MD)/dwio_wizfi.sb
+DWIO 	= $(MD)/dwio_serial.sb
 
 # PIPE
 PIPE	= $(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd
@@ -31,7 +32,7 @@ RBMEM = $(MD)/rbmem.dr $(MD)/f0.dd $(MD)/c0.dd $(MD)/f1.dd $(MD)/c1.dd
 RBSUPER   = $(MD)/rbsuper.dr
 
 # RBF Foenix SD card low level driver
-RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd
+RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd $(MD)/s1.dd
 
 # RBF Dummy low level driver
 RBFDUMMY	= $(MD)/lldummy.sb $(MD)/s0_v.dd
