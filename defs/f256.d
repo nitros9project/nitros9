@@ -858,6 +858,8 @@ DMA_STATUS_TRF_IP   equ       $80       transfer in progress
 * Wifi_Control_Register:
 * Bit[0] = 0 = 115,200K Mode, 1 = 921,600K Mode
 * Bit[1] = 0 Default, 1 = Reset FIFO (you need to bring it back to 0) This is directly connected to reset line of the FIFO
+* Bit[2] = RX FIFO Empty ( 1 = Empty, 0 = Data Available)
+* Bit[3] = TX FIFO Empty ( 1 = Empty, 0 = Data Available)
                     org       $0
 WizFi_CtrlReg       rmb       1
 WizFi_DataReg       rmb       1
