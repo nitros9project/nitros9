@@ -63,7 +63,6 @@ DB.5                equ       %01100000           five data bits per character
 vpr_wake rmb 1
 vpr_stat rmb 1
 vpr_data rmb 1
- rmb 1
 
 
 * baud rate table
@@ -312,7 +311,7 @@ Init                clrb                          default to no error...
                     else
                     ldx       >D.WZStatTbl
                     endc
-                    lbne      Init2
+*                    lbne      Init2
                     
 * Allocate a single 256 byte page of memory
                     ldd       #$0100
@@ -388,8 +387,24 @@ InitExit            puls      y
 Term                clrb                          default to no error...
                     pshs      cc,dp               save IRQ/Carry status, dummy B, system DP
 
-*                    ldx       #$0000              remove IRQ table entry
-*                    os9       F$IRQ
+                    lda       #WIZFI_INTERRUPT
+                    pshs      a
+                    sta       >INT_PENDING_0      get the pending interrupt pending address
+                    lda       >INT_MASK_0          else get the interrupt mask byte
+                    ora       ,s+
+                    sta       >INT_MASK_0          and save it back
+
+                    ldx       #$0000              remove IRQ table entry
+                    os9       F$IRQ
+
+                    pshs      u                   save data pointer
+                    ifgt      Level-1
+                    ldu       <D.WZStatTbl
+                    else
+                    ldu       >D.WZStatTbl
+                    endc
+                    os9       F$SRtMem
+                    puls      u                   recover data pointer
 
                     puls      cc                  recover IRQ/Carry status
                     puls      dp,pc               restore dummy A, system DP, return
@@ -439,11 +454,70 @@ iService            pshs      cc,dp,x
                     lda       #WIZFI_INTERRUPT    clear pending interrupt
                     sta       INT_PENDING_0
 
-                    lbsr      GetVpPtr
+iSendPkt            ldb       OutPktLaydown,u
+                    subb      OutPktPickup,u
+                    lbeq      iRead
+                    bpl       n@
+                    negb
+n@                  clra
+                    tfr       d,y
+                    ldb       DeviceMode,u
+                    beq       r@
+                    leax      strCipSend,pcr
+s@                  lda       ,x+
+                    beq       c@
+                    sta       [ind_DataReg,u]
+                    bra       s@
+c@                  lda       DeviceChannel,u
+                    adda      #'0
+                    sta       [ind_DataReg,u]
+                    lda       #',
+                    sta       [ind_DataReg,u]
+                    leax      strDecimal5,u
+                    tfr       y,d
+                    lbsr      Word2Dec3           We also have Word2Dec5 routine for 5-digit packet size for outgoing
+                    ldb       #3
+d@                  lda       ,x+
+                    sta       [ind_DataReg,u]
+                    decb
+                    bne       d@
+                    lda       #$0d
+                    sta       [ind_DataReg,u]
+                    lda       #$0a
+                    sta       [ind_DataReg,u]
+wsp@                lbsr      RxFCheck
+                    beq       wsp@
+                    lda       [ind_DataReg,u]
+                    cmpa      #32
+                    bne       wsp@
+r@                  inc       OutPktPickup,u
+                    ldb       OutPktPickup,u
+                    leax      OutPktBuf,u
+                    abx
+                    lda       ,x
+                    sta       [ind_DataReg,u]
+                    leay      -1,y
+                    bne       r@
+                    ldb       DeviceMode,u
+                    beq       xx@
+                    ldy       #4                  Wait for 4 CRLF terminated AT responses
+pl@                 lbsr      RxFCheck            There is no dead loop prevention at this time
+                    beq       pl@
+                    lda       [ind_DataReg,u]
+                    cmpa      #10
+                    bne       pl@
+                    leay      -1,y
+                    bne       pl@
+xx@                 equ       *
+*                    bra       iExit
+                    lbra       iWake
+
+
+iRead               lbsr      GetVpPtr
                     lda       vpr_stat,x
                     lbmi      iExit
-                    bsr       RxFCheck
-                    lbeq      iSendPkt            Send pending TxD packets only if no RxD
+                    lbsr      RxFCheck
+                    lbeq      iExit
 
                     lbsr      GetVpPtr
                     lda       [ind_DataReg,u]
@@ -504,69 +578,13 @@ ms@                 clr       PacketChannel,u
                     clr       IpdLen,u
                     clr       IpdLen+1,u
                     bra       m@
-iSendPkt            ldb       OutPktLaydown,u
-                    subb      OutPktPickup,u
-                    lbeq      iExit
-                    bpl       n@
-                    negb
-n@                  clra
-                    tfr       d,y
-                    ldb       DeviceMode,u
-                    beq       r@
-                    leax      strCipSend,pcr
-s@                  lda       ,x+
-                    beq       c@
-                    sta       [ind_DataReg,u]
-                    bra       s@
-c@                  lda       DeviceChannel,u
-                    adda      #'0
-                    sta       [ind_DataReg,u]
-                    lda       #',
-                    sta       [ind_DataReg,u]
-                    leax      strDecimal5,u
-                    tfr       y,d
-                    lbsr      Word2Dec3           We also have Word2Dec5 routine for 5-digit packet size for outgoing
-                    ldb       #3
-d@                  lda       ,x+
-                    sta       [ind_DataReg,u]
-                    decb
-                    bne       d@
-                    lda       #$0d
-                    sta       [ind_DataReg,u]
-                    lda       #$0a
-                    sta       [ind_DataReg,u]
-wsp@                lbsr      RxFCheck
-                    beq       wsp@
-                    lda       [ind_DataReg,u]
-                    cmpa      #32
-                    bne       wsp@
-r@                  inc       OutPktPickup,u
-                    ldb       OutPktPickup,u
-                    leax      OutPktBuf,u
-                    abx
-                    lda       ,x
-                    sta       [ind_DataReg,u]
-                    leay      -1,y
-                    bne       r@
-                    ldb       DeviceMode,u
-                    beq       xx@
-                    ldy       #4                  Wait for 4 CRLF terminated AT responses
-pl@                 lbsr      RxFCheck            There is no dead loop prevention at this time
-                    beq       pl@
-                    lda       [ind_DataReg,u]
-                    cmpa      #10
-                    bne       pl@
-                    leay      -1,y
-                    bne       pl@
-xx@                 equ       *
-                    bra       iExit
-*                    bra       iWake
 
 iBroadcast          lbsr      GetVpPtr
                     ldb       #$80
                     orb       PacketChannel,u
                     stb       vpr_stat,x
 
+iWake               lbsr      GetVpPtr
                     clrb                          clear Carry (for exit) and LSB of process descriptor address
                     lda       vpr_wake,x           <V.WAKE             anybody waiting? ([D]=process descriptor address)
                     beq       iExit             no, go return...
@@ -576,13 +594,7 @@ iBroadcast          lbsr      GetVpPtr
                     anda      #^Suspend           clear suspend state
                     sta       P$State,x           save state flags
 
-iExit               lbsr      GetVpPtr
-                    ldb       vpr_stat,x
-                    andb      #%10000000
-                    orb       PacketChannel,u
-                    stb       vpr_stat,x
-
-                    puls      cc,dp,x,pc               recover system DP, return...
+iExit               puls      cc,dp,x,pc               recover system DP, return...
 
 ReadSlp             lbsr      GetVpPtr
                     ldd       >D.Proc             Level II process descriptor address
@@ -613,10 +625,14 @@ ReadD               orcc      #IntMasks
                     lbsr      GetVpPtr
                     ldb       vpr_stat,x
                     bpl       ReadSlp
-                    andb      #%00000011
-                    lda       vpr_data,x           Get our data
                     stb       vpr_stat,x           Notify the hub that we've taken our data
+                    andb      #3
+                    cmpb      DeviceChannel,u
+                    bne       ReadSlp
+                    stb       vpr_stat,x           Notify the hub that we've taken our data
+                    lda       vpr_data,x           Get our data
                     puls      cc,dp,pc            recover IRQ/Carry status, dummy B, system DP, return
+
 
 PrAbtErr            ldb       #E$PrcAbt
                     bra       ErrExit
@@ -644,7 +660,7 @@ UnSvcErr            ldb       #E$UnkSvc
 
 WritSlp             lbsr      GetVpPtr
                     ldd       >D.Proc             Level II process descriptor address
-                    sta       vpr_wake,x           V.WAKE,u             save MSB for IRQ service routine
+                    sta       vpr_wake,x             save MSB for IRQ service routine
                     tfr       d,x                 copy process descriptor address
                     ldb       P$State,x
                     orb       #Suspend
@@ -659,7 +675,7 @@ c@                  ldb       P$State,x
                     bitb      #Condem
                     lbne      PrAbtErr            yes, go do it...
                     lbsr      GetVpPtr
-                    ldb       vpr_wake,x           V.WAKE,u            true interrupt?
+                    ldb       vpr_wake,x            true interrupt?
                     beq       WriteD               yes, go read the char.
                     bra       WritSlp             no, go suspend the process
 
