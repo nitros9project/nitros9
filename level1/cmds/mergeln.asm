@@ -1,5 +1,5 @@
 ********************************************************************
-* MergeLn - Experimental, Merge text files into one file
+* modem - Experimental, Merge text files into one file
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
@@ -10,7 +10,7 @@
 *   5      2003/09/06
 * Added -z option to read files from stdin
 
-                    nam       MergeLn
+                    nam       modem
                     ttl       Merge text files into one file
 
                     ifp1
@@ -42,7 +42,7 @@ d.buffer            rmb       2496                should reserve 7k, leaving som
                     rmb       STACKSZ+PARMSZ
 size                equ       .
 
-name                fcs       /MergeLn/
+name                fcs       /modem/
                     fcb       edition             change to 6, as merge 5 has problems?
 
 * Here's how registers are set when this process is forked:

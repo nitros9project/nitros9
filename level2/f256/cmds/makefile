@@ -22,7 +22,7 @@ CMDS    = asm attr backup bawk binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
 		display dmem dmode dsave dump echo edit error exbin \
 		format free grep help ident iniz irqs link list load login \
-		makdir mdir megaread merge mergeln mfree minted mmap modpatch more padrom park \
+		makdir mdir megaread merge modem mfree minted mmap modpatch more padrom park \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
 		bootos9 fnxinfo fnxreset rogue fstatus fcfg xtclut drawtest play foenix shellbg shellbgoff \
@@ -32,7 +32,7 @@ CMDS_CART      = asm attr backup bawk binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
 		display dmem dmode dsave dump echo edit error exbin \
 		format free grep help ident iniz irqs link list load login \
-		makdir mdir merge mergeln mfree minted mmap more padrom park \
+		makdir mdir merge modem mfree minted mmap more padrom park \
 		pmap proc procs prompt pwd pxd rename save setime \
 		sleep smap tee tmode touch tsmon unlink verify xmode \
 		bootos9 fnxinfo fnxreset rogue fstatus fcfg xtclut play foenix
