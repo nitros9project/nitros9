@@ -1,17 +1,14 @@
+                    nam       Modem
+                    ttl       Modem Command/Response Utility
+
 ********************************************************************
-* MergeLn - Experimental, Merge text files into one file
+* Modem - Similar to the MERGE command at this time,
+* but aimed at Telnet/WIFI Modem devices.
+* Will evolve into a full AT command issuer and response parser.
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
-*   4      ????/??/??
-* From Tandy OS-9 Level One VR 02.00.00.
-*
-*   5      2003/09/06
-* Added -z option to read files from stdin
-
-                    nam       MergeLn
-                    ttl       Merge text files into one file
 
                     ifp1
                     use       defsfile
@@ -42,7 +39,7 @@ d.buffer            rmb       2496                should reserve 7k, leaving som
                     rmb       STACKSZ+PARMSZ
 size                equ       .
 
-name                fcs       /MergeLn/
+name                fcs       /Modem/
                     fcb       edition             change to 6, as merge 5 has problems?
 
 * Here's how registers are set when this process is forked:
