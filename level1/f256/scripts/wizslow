@@ -1,2 +1,2 @@
 echo AT+UART_CUR=115200,8,1,0,0>/n0
-mergeln /n0 /n0 /n0
+modem /n0 /n0 /n0

@@ -1,2 +1,2 @@
 echo AT+UART_CUR=921600,8,1,0,0>/wz
-mergeln /wz /wz /wz
+modem /wz /wz /wz
