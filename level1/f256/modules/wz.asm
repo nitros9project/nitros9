@@ -1,14 +1,12 @@
+                    nam       wz
+                    ttl       WizFi360 device descriptor
+
 ********************************************************************
-* WZ - WizFi360 device descriptor
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
 *   1/1    2025/03/31  Roger Taylor
 
-
-                    nam       WZ
-                    ttl       WizFi360 device descriptor
 
                     ifp1
                     use       defsfile
