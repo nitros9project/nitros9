@@ -1,14 +1,12 @@
+                    nam       n1
+                    ttl       WizFi360 device descriptor
+
 ********************************************************************
-* WZ - WizFi360 device descriptor
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
 *   1/1    2025/03/31  Roger Taylor
 
-
-                    nam       n1
-                    ttl       WizFi360 device descriptor
 
                     ifp1
                     use       defsfile
@@ -48,7 +46,7 @@ rev                 set       $00
                     fcb       C$BSP               backspace echo character
                     fcb       C$BELL              line overflow character (bell)
                     fcb       PARNONE             parity
-                    fcb       STOP1+WORD8+B9600   stop bits/word size/baud rate
+                    fcb       STOP1+WORD8+1       stop bits/word size/baud rate
                     fdb       name                copy of descriptor name address
                     fcb       $00		C$XON               acia xon char
                     fcb       $00		C$XOFF              acia xoff char
