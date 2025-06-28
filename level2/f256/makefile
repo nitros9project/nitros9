@@ -126,7 +126,6 @@ $(DSKDW_F256K):
 	$(OS9ATTR_EXEC) $@,sysgo
 	$(CD) cmds; $(OS9COPY) $(CMDS_DW) ../$@,CMDS
 	$(CD) cmds; $(OS9COPY) -r shell ../$@,CMDS/shell
-	$(CD) cmds; $(OS9COPY) -l wizfitool.b09 ../$@,CMDS/wizfitool.b09
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS_DW),$@,CMDS/$(file))
 	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(SYSBIN),$@,SYS/$(file))
