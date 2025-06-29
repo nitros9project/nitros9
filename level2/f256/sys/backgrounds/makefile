@@ -10,7 +10,8 @@ DEPENDS		= ./makefile
 
 BACKGROUNDS	= clutbeach clutgrid clutmeadow clutmetal clutspace clutstone clutstone2 clutwood \
 	          pixmapbeach pixmapgrid pixmapmeadow pixmapmetal pixmapspace pixmapstone \
-	          pixmapstone2 pixmapwood pixmappaintspl pixmappaint2 clutpaintspl clutpaint2
+	          pixmapstone2 pixmapwood pixmappaintspl pixmappaint2 clutpaintspl clutpaint2 \
+              pixmapwizfi pixmapwizfi2 clutwizfi clutwizfi2
 
 
 ALLOBJS		= $(BACKGROUNDS)
