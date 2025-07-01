@@ -12,8 +12,9 @@ CMDSDIR		= ../cmds
 # Kernel
 KERNEL	= $(MD)/krn $(MD)/krnp2 init $(MD)/ioman
 
-# DriveWire support
-DWIO		= $(MD)/dwio.sb
+# Select one of the dwio modules below based on your desired configuration:
+#DWIO 	= $(MD)/dwio_wizfi.sb
+DWIO 	= $(MD)/dwio_serial.sb
 
 # RBF
 RBF		= $(MD)/rbf.mn
@@ -28,7 +29,7 @@ RBMEM = $(MD)/rbmem.dr $(MD)/c0.dd $(MD)/f0.dd
 RBSUPER   = $(MD)/rbsuper.dr
 
 # RBF Foenix SD card low level driver
-RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd
+RBFNXSD	= $(MD)/llfnxsd.sb $(MD)/s0.dd $(MD)/s1.dd
 
 # SCF
 SCF		 = $(MD)/scf.mn

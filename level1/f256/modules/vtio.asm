@@ -286,10 +286,14 @@ l@                  tfr       d,x                 transfer it to X
                     bcs       installfont         branch if the link failed
                     pshs      y                   save Y
                     tfr       y,x                 transfer it to X
-                    ldy       #TEXT_LUT_FG        load Y with the LUT foreground
+		    lda	      #TEXT_LUT_BLK	  load text LUT block
+		    sta	      MAPSLOT
+		    ldy	      #MAPADDR
+                    leay      TEXT_LUT_FG,y       load Y with the LUT foreground
                     bsr       copypal             copy the palette data for the foreground
                     puls      x                   restore Y into X
-                    ldy       #TEXT_LUT_BG        load Y with the LUT background
+		    ldy	      #MAPADDR
+                    leay      TEXT_LUT_BG,y       load Y with the LUT background
                     bsr       copypal             copy the palette data for the background
 
 * Install the font.
@@ -346,7 +350,7 @@ l@                  ldd       ,x++                get two bytes from the source
 * Clear memory at MAPADDR with the contents of D.
 clr                 ldx       #MAPADDR
 l@                  std       ,x++
-                    cmpx      #MAPADDR+80*61
+                    cmpx      #MAPADDR+80*60     
                     bne       l@
                     rts
 
@@ -1059,7 +1063,8 @@ SetWin80x60         clrb
 ;;; GVA = green component.
 ;;; BVA = blue component.
 ;;; AVA = alpha component.
-ChgForePal          ldx       #TEXT_LUT_FG
+ChgForePal	    ldx       #MAPADDR	
+		    leax      TEXT_LUT_FG,x
 ChgPal              stx       V.EscParms+4,u
                     leax      Do1B60_Param0,pcr
                     lbra      SetHandler
@@ -1084,7 +1089,12 @@ Do1B60_Param3
                     leax      Do1B60_Param4,pcr
                     lbra      SetHandler
 
-Do1B60_Param4
+Do1B60_Param4	    pshs      cc
+		    orcc      #IntMasks
+		    ldb	      MAPSLOT
+		    pshs      b
+		    ldb	      #TEXT_LUT_BLK
+		    stb	      MAPSLOT
                     ldx       V.EscParms+4,u
                     ldb       V.EscParms+0,u
                     lslb
@@ -1097,6 +1107,9 @@ Do1B60_Param4
                     sta       1,x
                     lda       V.EscParms+1,u get red component
                     sta       2,x
+		    puls      b
+		    stb	      MAPSLOT
+		    puls      cc
                     lbra      ResetHandler
 
 ;;; ChgBackPal
@@ -1112,7 +1125,8 @@ Do1B60_Param4
 ;;; GVA = green component.
 ;;; BVA = blue component.
 ;;; AVA = alpha component.
-ChgBackPal          ldx       #TEXT_LUT_BG
+ChgBackPal          ldx       #MAPADDR
+		    leax      TEXT_LUT_BG,x
                     bra       ChgPal
 
 * These do nothing for now.

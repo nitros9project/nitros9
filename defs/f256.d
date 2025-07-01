@@ -492,8 +492,11 @@ CODECCtrl           equ       CODECStat
 ******************************************************************
 * F256 text lookup definitions
 *
-TEXT_LUT_FG         equ       $FF00
-TEXT_LUT_BG         equ       $FF40
+* These are relative offsets to block $C2
+*
+TEXT_LUT_BLK	    equ	      $C1      $18_2000 to $18_3FFF
+TEXT_LUT_FG         equ       $1800
+TEXT_LUT_BG         equ       $1840
 
 ********************************************************************
 * F256 font definitions
@@ -504,7 +507,8 @@ FONT_1_OFFSET	    equ	      $0800
 ********************************************************************
 * F256 SD card interface definitions
 *
-SDC.Base            equ       $FE90
+SDC0.Base           equ       $FE90
+SDC1.Base           equ       $FF00
                     org       0
 SDC_STAT            rmb       1
 SDC_DATA            rmb       1
@@ -848,42 +852,21 @@ DMA_CTRL_Start_Trf  equ       $80
 * DMA_STATUS_REG bit definitions
 DMA_STATUS_TRF_IP   equ       $80       transfer in progress
 
-** $0000: R/W - Control Register ; Only bit[0] is used 
-**         0: Low Speed (115K) 1: Hi-Speed (2M) 
-** $0001: R/W - FIFO Port (input/output)
-
-** ; This is the number of Byte in the FIFO to be Read
-** 00000CCC_CCCCCCCC  16-bit count
-** $0002: WIFI_UART_RxD_RD_Count[7:0]
-** $0003: {5'b0_0000, WIFI_UART_RxD_RD_Count[10:8]}
-
-** ; The is the number of byte has been written by the Module in the FIFO to be read by CPU
-** 00000CCC_CCCCCCCC  16-bit count
-** $0004: WIFI_UART_RxD_WR_Count[7:0]      <<<< This is the one you know how many bytes to read from the MODULE
-** $0005: {5'b0_0000, WIFI_UART_RxD_WR_Count[10:8]}
-
-** ; This is the number of Byte in the FIFO to be Read by the MODULE
-** 00000CCC_CCCCCCCC  16-bit count
-** $0006: WIFI_UART_TxD_RD_Count[7:0]
-** $0007: {5'b0_0000, WIFI_UART_RxD_RD_Count[10:8]} 
-
-** ; This is the number of Byte the CPU has written in the FIFO to be sent to MODULE
-** 00000CCC_CCCCCCCC  16-bit count
-** $0008: WIFI_UART_TxD_WR_Count[7:0]      
-** $0009: {5'b0_0000, WIFI_UART_RxD_WR_Count[10:8]}
-
-** By the way, I put both counts of both sides of both FIFO (1xRxD, 1xTxD) In reality the RxD side ought to report the same number if you take the RD side as opposed to the WR side.
-** Bottom line, there is only one Count you need and it is the RxD FIFO...
-** There is no Empty Flag in the Control Register to be read as a status, only the count registers will tell you how many bytes are present in the FIFO. the FIFOs are both 2K deep btw
-
-* WIZFI360 Register Indices
- org 0
-WIZFI_UART_CtrlReg rmb 1
-WIZFI_UART_DataReg rmb 1
-WIZFI_UART_RxD_RD_Count rmb 2
-WIZFI_UART_RxD_WR_Count rmb 2
-WIZFI_UART_TxD_RD_Count rmb 2
-WIZFI_UART_TxD_WR_Count rmb 2
 
 
-                  ENDC
+* WizFi360 Registers, 2K x 2 FIFO
+* Wifi_Control_Register:
+* Bit[0] = 0 = 115,200K Mode, 1 = 921,600K Mode
+* Bit[1] = 0 Default, 1 = Reset FIFO (you need to bring it back to 0) This is directly connected to reset line of the FIFO
+* Bit[2] = RX FIFO Empty ( 1 = Empty, 0 = Data Available)
+* Bit[3] = TX FIFO Empty ( 1 = Empty, 0 = Data Available)
+                    org       $0
+WizFi_CtrlReg       rmb       1
+WizFi_DataReg       rmb       1
+WizFi_RxD_RD_Cnt    rmb       2
+WizFi_RxD_WR_Cnt    rmb       2
+WizFi_TxD_RD_Cnt    rmb       2
+WizFi_TxD_WR_Cnt    rmb       2
+
+
+                    ENDC

@@ -1,17 +1,14 @@
+                    nam       Modem
+                    ttl       Modem Command/Response Utility
+
 ********************************************************************
-* MergeLn - Experimental, Merge text files into one file
+* Modem - Similar to the MERGE command at this time,
+* but aimed at Telnet/WIFI Modem devices.
+* Will evolve into a full AT command issuer and response parser.
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
-*   4      ????/??/??
-* From Tandy OS-9 Level One VR 02.00.00.
-*
-*   5      2003/09/06
-* Added -z option to read files from stdin
-
-                    nam       MergeLn
-                    ttl       Merge text files into one file
 
                     ifp1
                     use       defsfile
@@ -33,13 +30,16 @@ path                rmb       1
 param               rmb       2
 d.ptr               rmb       2
 d.size              rmb       2
+
+d.time1             rmb       6
+d.time2             rmb       6
 d.buff              rmb       128
 d.buffer            rmb       2496                should reserve 7k, leaving some room for parameters
 * Finally the stack for any PSHS/PULS/BSR/LBSRs that we might do
                     rmb       STACKSZ+PARMSZ
 size                equ       .
 
-name                fcs       /MergeLn/
+name                fcs       /Modem/
                     fcb       edition             change to 6, as merge 5 has problems?
 
 * Here's how registers are set when this process is forked:
@@ -105,47 +105,43 @@ itsfile             bsr       readfile
 
 readfile            lda       #READ.
                     os9       I$Open              open the file for reading
-                    lbcs       read.ex             crap out if error
+                    lbcs      read.ex             crap out if error
                     sta       <path               save path number
                     stx       <param              and save new address of parameter area
+                    leax      d.time1,u
+                    os9       F$Time
 
-read.lpcr1          lda       <path               get the current path number
-                    ldy       #1
-                    ldy       #$0001              Up to 256 bytes to be read
-                    ldx       <d.ptr              and pointer to data buffer
-                    os9       I$Read              Go read byte
-                    lbcs       chk.err             check errors
-
-                    ldy       #1
-                    lda       #$01                to STDOUT
-                    os9       I$Write             dump it out in one shot
-                    bcs       read.ex             abort
-
-                    ldx       <d.ptr
-                    lda       ,x
-                    cmpa      #$0d
-                    bne       read.lpcr1
-                    
-read.lplf1          lda       <path               get the current path number
+l@                  lda       <path               get the current path number
+                    ldb       #SS.Ready
+                    os9       I$GetStt
+                    bcc       d@
+                    leax      d.time2,u
+                    os9       F$Time
+                    ldb       5,x
+                    leax      d.time1,u
+                    subb      5,x
+                    bpl       a@
+                    negb
+a@                  cmpb      #2
+                    bhi       read.ex
+                    bra       l@
+d@                  lda       <path
                     ldy       #1
                     ldy       #$0001              Up to 256 bytes to be read
                     ldx       <d.ptr              and pointer to data buffer
                     os9       I$Read              Go read byte
                     bcs       chk.err             check errors
-
                     ldy       #1
                     lda       #$01                to STDOUT
+                    ldx       <d.ptr              and pointer to data buffer
                     os9       I$Write             dump it out in one shot
                     bcs       read.ex             abort
-
                     ldx       <d.ptr
                     lda       ,x
                     cmpa      #$0a
-                    bne       read.lplf1
-
+                    bne       l@
                     lda       <path               get the current path number
                     os9       I$Close             close it
-
 read.ex             rts
 
 chk.err             cmpb      #E$EOF              end of the file?

@@ -3,6 +3,10 @@ include ../port.mak
 vpath %.as $(LEVEL1)/$(PORT)/modules
 vpath %.asm kernel:$(LEVEL1)/$(PORT)/modules:$(LEVEL2)/modules:$(LEVEL1)/modules
 
+# Select one of the dwio modules below based on your desired configuration:
+#DWIO 	= dwio_wizfi.sb
+DWIO 	= dwio_serial.sb
+
 AFLAGS		+= -I$(LEVEL2)/$(PORT)
 AFLAGS		+= -I$(LEVEL1)/$(PORT)/modules
 AFLAGS		+= -I$(LEVEL1)/modules
@@ -15,10 +19,10 @@ KERNEL		= krn krnp2
 SYSMODS		= ioman init sysgo
 CLOCKS		= clock clock2_f256
 
-RBF		= rbf.mn rbdw.dr dwio.sb ddx0.dd x0.dd x1.dd x2.dd x3.dd \
+RBF		= rbf.mn rbdw.dr $(DWIO) ddx0.dd x0.dd x1.dd x2.dd x3.dd \
                 rbmem.dr ddc0.dd c0.dd c1.dd f0.dd f1.dd \
 		rbsuper.dr \
-                llfnxsd.sb dds0.dd s0.dd
+                llfnxsd.sb dds0.dd s0.dd s1.dd
 
 SCF		= scf.mn \
 		vrn.dr nil.dd \
@@ -34,7 +38,7 @@ SCF		= scf.mn \
 		z1_scdwv.dd z2_scdwv.dd z3_scdwv.dd z4_scdwv.dd z5_scdwv.dd \
 		z6_scdwv.dd z7_scdwv.dd z8_scdwv.dd z9_scdwv.dd z10_scdwv.dd \
 		z11_scdwv.dd z12_scdwv.dd z13_scdwv.dd z14_scdwv.dd \
-                wizfi.dr wz.dd
+                wizfi.dr wz.dd n0.dd n1.dd n2.dd n3.dd
 
 PIPE		= pipeman.mn pipeman_named.mn piper.dr pipe.dd
 
@@ -52,6 +56,14 @@ wizfi.dr: wizfi.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
 wz.dd: wz.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
+n0.dd: n0.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
+n1.dd: n1.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
+n2.dd: n2.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
+n3.dd: n3.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
 
 # Kernel
 krn: $(LEVEL2)/modules/kernel/krn.asm
@@ -64,10 +76,13 @@ krnp2: $(LEVEL2)/modules/kernel/krnp2.asm
 
 # SD card descriptors
 dds0.dd: rbfnxsddesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(FNXSDFLAGS) -DDD=1
+	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(FNXSDFLAGS) -DSD=0 -DDD=1
 
 s0.dd: rbfnxsddesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(FNXSDFLAGS)
+	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(FNXSDFLAGS) -DSD=0
+
+s1.dd: rbfnxsddesc.asm
+	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(FNXSDFLAGS) -DSD=1
 
 # rbmem descriptors
 f0.dd: rbmemdesc.asm
@@ -185,6 +200,13 @@ z13_scdwv.dd: scdwvdesc.asm
 
 z14_scdwv.dd: scdwvdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=30
+
+# DriveWire dwio modules
+dwio_wizfi.sb: dwio.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDWIO_WIZFI
+
+dwio_serial.sb: dwio.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDWIO_SERIAL
 
 # DriveWire RBF descriptors
 ddx0.dd: dwdesc.asm

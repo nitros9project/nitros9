@@ -3,6 +3,10 @@ include ../port.mak
 vpath %.as $(LEVEL1)/f256/modules
 vpath %.asm $(LEVEL1)/f256/modules:$(LEVEL1)/modules
 
+# Select one of the dwio modules below based on your desired configuration:
+#DWIO	= dwio_wizfi.sb
+DWIO 	= dwio_serial.sb
+
 AFLAGS		+= -I$(LEVEL1)/$(PORT)
 AFLAGS		+= -I$(LEVEL1)/$(PORT)/modules
 AFLAGS		+= -I$(LEVEL1)/modules
@@ -17,10 +21,11 @@ KERNEL		= krn krnp2
 SYSMODS		= ioman init sysgo
 CLOCKS      = clock clock2_f256
 
-RBF		= rbf.mn rbdw.dr dwio.sb ddx0.dd x0.dd x1.dd x2.dd x3.dd \
+
+RBF		= rbf.mn rbdw.dr $(DWIO) ddx0.dd x0.dd x1.dd x2.dd x3.dd \
                 rbmem.dr ddc0.dd c0.dd c1.dd f0.dd f1.dd \
 		rbsuper.dr \
-                llfnxsd.sb dds0.dd s0.dd
+                llfnxsd.sb dds0.dd s0.dd s1.dd
 #		  lldummy.sb s0_dummy.dd
 
 SCF		= scf.mn \
@@ -55,10 +60,13 @@ sysgo.o: sysgo.as
 
 # SD card descriptors
 dds0.dd: rbfnxsddesc.asm
-	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(FNXSDFLAGS) -DDD=1
+	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(FNXSDFLAGS) -DSD=0 -DDD=1
 
 s0.dd: rbfnxsddesc.asm
-	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(FNXSDFLAGS)
+	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(FNXSDFLAGS) -DSD=0
+
+s1.dd: rbfnxsddesc.asm
+	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(FNXSDFLAGS) -DSD=1
 
 #s0_dummy.dd: superdesc.asm
 #	$(AS) $(AFLAGS) $(ASOUT)$@ $< -DLLDUMMY
@@ -78,6 +86,13 @@ c1.dd: rbmemdesc.asm
 
 ddc0.dd: rbmemdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=2 -DDD=1 -DC0=1
+
+# DriveWire dwio modules
+dwio_wizfi.sb: dwio.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDWIO_WIZFI
+
+dwio_serial.sb: dwio.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDWIO_SERIAL
 
 # DriveWire 3 RBF descriptors
 ddx0.dd: dwdesc.asm
