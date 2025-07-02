@@ -20,7 +20,7 @@
                     use       defsfile
 
 * If 1, during Init the Flash ID is shown on the F256 text screen in the upper right corner.
-fDEBUG              equ       1
+fDEBUG              equ       0
 MAXDRIVES           equ       4
 MMU_SLOT            equ       2
 MMU_WINDOW          equ       $2000*MMU_SLOT
