@@ -34,7 +34,7 @@ TRACKS              set       128
                     IFDEF     F1
 DRVTYP              set       $80
 BLOCK               set       $40
-TRACKS              set       512-40     take what FEU isn't using
+TRACKS              set       512-64     take what FEU isn't using
 
                     ELSE
 DRVTYP              set       $20
