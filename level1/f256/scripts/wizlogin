@@ -1,3 +1,5 @@
 echo * WizFi360 Helper - Remote login over /wz
+modem "ATE0"
+modem /wz /wz /wz
 xmode /wz eko=1
 tsmon /wz&
