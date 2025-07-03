@@ -6,6 +6,22 @@
 * but aimed at Telnet/WIFI Modem devices.
 * Will evolve into a full AT command issuer and response parser.
 *
+* Modem tokens table format:
+* 8 characters for the name, 2 bytes for the string address/offset, 16 bytes for the string
+* Token = @r
+* String = 13,0,0,0,0,0,0,0
+* Address = $00
+*
+* Token = @n
+* String = 10,0,0,0,0,0,0,0
+* Address = $00
+*
+* Token = @rn
+* String = $80,$81,0,0,0,0,0,0
+* Address = $0000
+
+
+
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
@@ -27,13 +43,15 @@ PARMSZ              set       256                 estimated parameter size in by
 
                     org       0
 path                rmb       1
+cfgpath             rmb       1
 param               rmb       2
 d.ptr               rmb       2
 d.size              rmb       2
-
+timeout             rmb       1
 d.time1             rmb       6
 d.time2             rmb       6
 d.buff              rmb       128
+d.pathname          rmb       128                 custom filename using aliasdir
 d.buffer            rmb       2496                should reserve 7k, leaving some room for parameters
 * Finally the stack for any PSHS/PULS/BSR/LBSRs that we might do
                     rmb       STACKSZ+PARMSZ
@@ -41,6 +59,10 @@ size                equ       .
 
 name                fcs       /Modem/
                     fcb       edition             change to 6, as merge 5 has problems?
+
+devicestr           fcs       "/wz"
+crlf                fcb       13,10
+aliasdir            fcs       "/dd/sys/modem.conf"
 
 * Here's how registers are set when this process is forked:
 *
@@ -59,7 +81,13 @@ name                fcs       /Modem/
 
 * The start of the program is here.
 start               subd      #$0001              if this becomes zero,
-                    lbeq       Exit                we have no parameters
+                    lbeq       Exit               we have no parameters
+
+                *     clra
+                *     clrb
+                *     std       <d.device           |
+                *     std       <d.device+2         | clear device name string space (5 chars)
+                *     stb       <d.device+4         |
 
                     leay      d.buffer,u          point Y to buffer offset in U
                     stx       <param              and parameter area start
@@ -68,62 +96,152 @@ start               subd      #$0001              if this becomes zero,
                     subd      ,s++                get size of space between buff and X
                     subd      #STACKSZ+PARMSZ     subtract out our stack/param size
                     std       <d.size             save size of data buffer
+                    clr       <timeout
                     leay      d.buffer,u          point to some data
                     sty       <d.ptr
+                    bra       do.opts
 
+do.t                ldb       #3                  -t option sets default 3-second timeout
+                    stb       <timeout
+                    bra       do.opts2            do more args
+
+quote               lda       ,x+                 grab a character
+                    cmpa      #34                 Double Quote?
+                    beq       quote               yes, skip it
+                    leax      -1,x                otherwise point to last non-space
+                    rts
+
+
+space               lda       ,x+                 grab a character
+                    cmpa      #C$SPAC             space?
+                    beq       space               yes, skip it
+                    leax      -1,x                otherwise point to last non-space
+                    rts
+
+nonspace            lda       ,x+                 grab a character
+                    cmpa      #C$CR               cr?
+                    beq       nospacex            yes, skip it
+                    cmpa      #C$SPAC             nonspace?
+                    bne       nonspace            yes, skip it
+nospacex            leax      -1,x                otherwise point to last space
+                    rts
+
+
+********************************************************************
 do.opts             ldx       <param              get first option
 do.opts2            lbsr      space
 
                     cmpa      #C$CR               was the character a CR?
-                    beq       do.file             yes, parse files
+                    lbeq      do.file             yes, parse files
 
                     cmpa      #'-                 was the character a dash?
-                    lbeq       do.dash             yes, parse option
-                    lbsr      nonspace            else skip nonspace chars
+                    beq       do.dash             yes, parse option
 
+                    cmpa      #34
+                    beq       do.string
+
+                    bsr       nonspace            else skip nonspace chars
                     cmpa      #C$CR               end of line?
                     beq       do.file             branch if so
+
                     bra       do.opts2            else continue parsing for options
 
+do.dash             leax      1,x                 skip over dash
+                    lda       ,x+                 get char after dash
+                    cmpa      #C$CR               CR?
+                    lbeq      Exit                yes, exit
+
+                    anda      #$DF                make uppercase
+                    cmpa      #'T
+                    beq       do.t
+                    cmpa      #'Z                 input from stdin?
+                    lbeq      do.z
+                    lbra      Exit
+
+********************************************************************
+
+do.string           leax      1,x
+                    stx       <param
+                    leax      devicestr,pcr
+                    lda       #WRITE.
+                    os9       I$Open              open the file for reading
+                    lbcs      read.ex             crap out if error
+                    sta       <path
+do.sw               ldx       <param
+                    lda       ,x
+                    cmpa      #34
+                    beq       do.sx
+                    cmpa      #'\
+                    bne       do.chr
+do.esc              leax      1,x
+                    stx       <param
+                    lda       ,x
+
+do.chr              cmpa      #$00
+                    lbeq      Exit
+                    cmpa      #C$CR
+                    lbeq      Exit
+                    ldy       #1
+*                    ldx       <param
+                    lda       <path
+                    os9       I$WritLn
+                    lbcs      read.ex             crap out if error
+                    ldx       <param
+                    leax      1,x
+                    stx       <param
+                    bra       do.sw
+do.sx               leax      1,x
+                    stx       <param
+                    leax      crlf,pcr
+                    ldy       #2
+                    lda       <path
+                    os9       I$WritLn
+                    lbcs      read.ex             crap out if error
+                    lda       <path               get the current path number
+                    os9       I$Close             close it
+                    lbra      do.opts2
+
+********************************************************************
 do.file             ldx       <param
                     lbsr      space
 
                     cmpa      #C$CR               CR?
-                    lbeq       Exit                exit if so
+                    lbeq      Exit                exit if so
 
                     cmpa      #'-                 option?
                     bne       itsfile
 
-                    lbsr       nonspace
+                    lbsr      nonspace
 
                     cmpa      #C$CR               CR?
-                    lbeq       Exit                exit if so
+                    lbeq      Exit                exit if so
 
 itsfile             bsr       readfile
-                    lbcs       Error
+                    lbcs      Error
                     bra       do.file
 
-readfile            lda       #READ.
+readfile            lda       #UPDAT.
                     os9       I$Open              open the file for reading
                     lbcs      read.ex             crap out if error
                     sta       <path               save path number
                     stx       <param              and save new address of parameter area
                     leax      d.time1,u
                     os9       F$Time
-
 l@                  lda       <path               get the current path number
                     ldb       #SS.Ready
                     os9       I$GetStt
                     bcc       d@
-                    leax      d.time2,u
+                    ldb       <timeout
+                    beq       l@                  no, loop until data is available
+                    leax      d.time2,u           use timeout for response
                     os9       F$Time
                     ldb       5,x
                     leax      d.time1,u
                     subb      5,x
                     bpl       a@
                     negb
-a@                  cmpb      #2
-                    bhi       read.ex
+a@                  cmpb      <timeout
+                    bhs       read.ex
                     bra       l@
 d@                  lda       <path
                     ldy       #1
@@ -156,15 +274,6 @@ Error               coma                          set carry
 Exit                clrb
                     os9       F$Exit              and exit
 
-do.dash             leax      1,x                 skip over dash
-                    lda       ,x+                 get char after dash
-                    cmpa      #C$CR               CR?
-                    beq       Exit                yes, exit
-
-                    anda      #$DF                make uppercase
-                    cmpa      #'Z                 input from stdin?
-                    bne       Exit
-
 * read from stdin until eof or blank line
 * skip lines that begin with * (these are comments)
 do.z                leax      d.buff,u
@@ -175,35 +284,19 @@ do.z                leax      d.buff,u
                     cmpb      #E$EOF              end-of-file?
                     beq       Exit                nope, exit with error
                     bra       Error
-
 do.z2               lda       ,x
                     cmpa      #'*                 asterisk? (comment)
                     beq       do.z                yep, ignore and get next line
-                    bsr       space               skip space at X
+                    lbsr      space               skip space at X
                     cmpa      #C$CR               end of line?
                     beq       Exit                yup, we're done
-
 * X points to a filename...
                     pshs      x
-                    lbsr       readfile            read contents of file and send to stdout
+                    lbsr      readfile            read contents of file and send to stdout
                     puls      x
                     bcc       do.z                branch if ok
                     bra       Error
 
-
-space               lda       ,x+                 grab a character
-                    cmpa      #C$SPAC             space?
-                    beq       space               yes, skip it
-                    leax      -1,x                otherwise point to last non-space
-                    rts
-
-nonspace            lda       ,x+                 grab a character
-                    cmpa      #C$CR               cr?
-                    beq       nospacex            yes, skip it
-                    cmpa      #C$SPAC             nonspace?
-                    bne       nonspace            yes, skip it
-nospacex            leax      -1,x                otherwise point to last space
-                    rts
 
                     emod
 eom                 equ       *
