@@ -20,75 +20,29 @@
                     use       defsfile
                     endc
 
+
+* INT_TIMER_0 (25.175Mhz-based timer)
+* 25,175,000 / 11520 Bytes Per Second  = 2185 ticks @ 25.175Mhz (8, 137)
+* 25,175,000 / 92160 Bytes Per Second  =  273 ticks @ 25.175Mhz (1,  17)
+
+TRATE               equ       350                 Tweak for goldilox (300 = quick response) (800 = choppy response)
 WIZFI_INTERRUPT     equ       INT_TIMER_0         Convenience placement
 D.WZStatTbl         equ       D.SWPage            Borrowed from incompatible SmartWatch variable
 WORK_SLOT	    equ       MMU_SLOT_2
 MMU_WINDOW          equ       $4000
-STATUS_RXD          equ       %00000100           In Control Register
+Mask_SocketDev      equ       %00001000
+IRQ_State_ListenPkt equ       %00000001
 
-* miscellaneous definitions
+*============================================================================
+
+* sc6551 residue being removed over time
 DCDStBit            equ       %00100000           DCD status bit for SS.CDSta call
 DSRStBit            equ       %01000000           DSR status bit for SS.CDSta call
 SlpBreak            set       TkPerSec/2+1        line Break duration
 SlpHngUp            set       TkPerSec/2+1        hang up (drop DTR) duration
 
 
-* Status bit definitions
-Stat.IRQ            equ       %10000000           IRQ occurred
-Stat.DSR            equ       %01000000           DSR level (clear = active)
-Stat.DCD            equ       %00100000           DCD level (clear = active)
-Stat.TxE            equ       %00010000           Tx data register Empty
-Stat.RxF            equ       %00001000           Rx data register Full
-Stat.Ovr            equ       %00000100           Rx data Overrun error
-Stat.Frm            equ       %00000010           Rx data Framing error
-Stat.Par            equ       %00000001           Rx data Parity error
-
-Stat.Err            equ       Stat.Ovr!Stat.Frm!Stat.Par Status error bits
-Stat.Flp            equ       $00                 all Status bits active when set
-Stat.Msk            equ       Stat.IRQ!Stat.RxF   active IRQs
-
-* Control bit definitions
-Ctl.Stop            equ       %10000000           stop bits (set=two, clear=one)
-Ctl.DBit            equ       %01100000           see data bit table below
-Ctl.RxCS            equ       %00010000           Rx clock source (set=baud rate, clear=external)
-Ctl.Baud            equ       %00001111           see baud rate table below
-
-* data bit table
-DB.8                equ       %00000000           eight data bits per character
-DB.7                equ       %00100000           seven data bits per character
-DB.6                equ       %01000000           six data bits per character
-DB.5                equ       %01100000           five data bits per character
-
- org $00
-vpr_proc rmb 1
-vpr_wake rmb 1
-vpr_chan rmb 1
-vpr_stat rmb 1
-vpr_data rmb 1
-
-
-* baud rate table
-                    org       $00
-BR.ExClk            rmb       1                   16x external clock (not supported)
-                    org       $11
-BR.00050            rmb       1                   50 baud (not supported)
-BR.00075            rmb       1                   75 baud (not supported)
-BR.00110            rmb       1                   109.92 baud
-BR.00135            rmb       1                   134.58 baud (not supported)
-BR.00150            rmb       1                   150 baud (not supported)
-BR.00300            rmb       1                   300 baud
-BR.00600            rmb       1                   600 baud
-BR.01200            rmb       1                   1200 baud
-BR.01800            rmb       1                   1800 baud (not supported)
-BR.02400            rmb       1                   2400 baud
-BR.03600            rmb       1                   3600 baud (not supported)
-BR.04800            rmb       1                   4800 baud
-BR.07200            rmb       1                   7200 baud (not supported)
-BR.09600            rmb       1                   9600 baud
-BR.19200            rmb       1                   19200 baud
-
 * Command bit definitions
-Cmd.Par             equ       %11100000           see parity table below
 Cmd.Echo            equ       %00010000           local echo (set=activated)
 Cmd.TIRB            equ       %00001100           see Tx IRQ/RTS/Break table below
 Cmd.RxI             equ       %00000010           Rx IRQ (set=disabled)
@@ -119,81 +73,28 @@ FCRxSent            equ       %00010000           Rx disabled due to XOFF sent
 FCRxDTR             equ       %00000010           Rx disabled due to DTR
 FCRxRTS             equ       %00000001           Rx disabled due to RTS
 
-* FloCtlTx bit definitions
-FCTxXOff            equ       %10000000           due to XOFF received
-FCTxBrk             equ       %00000010           due to currently transmitting Break
-
-* Wrk.Type bit definitions
-Parity              equ       %11100000           parity bits
-MdmKill             equ       %00010000           modem kill option
-RxSwFlow            equ       %00001000           Rx data software (XON/XOFF) flow control
-TxSwFlow            equ       %00000100           Tx data software (XON/XOFF) flow control
-RTSFlow             equ       %00000010           CTS/RTS hardware flow control
-DSRFlow             equ       %00000001           DSR/DTR hardware flow control
-
-* Wrk.Baud bit definitions
-StopBits            equ       %10000000           number of stop bits code
-WordLen             equ       %01100000           word length code
-BaudRate            equ       %00001111           baud rate code
-
-* Wrk.XTyp bit definitions
-SwpDCDSR            equ       %10000000           swap DCD+DSR bits (valid for 6551 only)
-ForceDTR            equ       %01000000           don't drop DTR in term routine
-RxBufPag            equ       %00001111           input buffer page count
-
-
-*============================================================================
-Mask_SocketDev            equ       %00001000
-IRQ_State_ListenByte      equ       $01
-IRQ_State_ListenPkt       equ       $02
-IRQ_State_ListenConnect   equ       $03
-IRQ_State_WritePacket     equ       $04
-IRQ_State_ListenPktPrompt equ       $05
-IRQ_State_ListenPktVerify equ       $06
-
 *============================================================================
 
-* Globals Page Definitions (must be 256 bytes max)
-* WizFi.StatCnt          equ       15+16
-*                        org       $00
-* D.WizFi                rmb       4
-* WizFi.StatTbl          rmb       WizFi.StatCnt          page pointers for terminal device static storage
+                    org       $00
+vpr_proc            rmb       1
+vpr_wake            rmb       1
+vpr_chan            rmb       1
+vpr_stat            rmb       1
+vpr_data            rmb       1
 
-
-
-* static data area definitions
+*============================================================================
                     org       V.SCF               allow for SCF manager data area
-Cpy.Stat            rmb       1                   Status register copy
 CpyDCDSR            rmb       1                   DSR+DCD status copy
 Mask.DCD            rmb       1                   DCD status bit mask (MUST immediately precede Mask.DSR)
 Mask.DSR            rmb       1                   DSR status bit mask (MUST immediately follow Mask.DCD)
 CDSigPID            rmb       1                   process ID for CD signal
 CDSigSig            rmb       1                   CD signal code
-FloCtlRx            rmb       1                   Rx flow control flags
-FloCtlTx            rmb       1                   Tx flow control flags
-RxBufEnd            rmb       2                   end of Rx buffer
-RxBufGet            rmb       2                   Rx buffer output pointer
-RxBufMax            rmb       2                   Send XOFF (if enabled) at this point
-RxBufMin            rmb       2                   Send XON (if XOFF sent) at this point
-RxBufPtr            rmb       2                   pointer to Rx buffer
-RxBufPut            rmb       2                   Rx buffer input pointer
-RxBufSiz            rmb       2                   Rx buffer size
-RxDatLen            rmb       2                   current length of data in Rx buffer
-WxDatLen            rmb       2
 SigSent             rmb       1                   keyboard abort/interrupt signal already sent
 SSigPID             rmb       1                   SS.SSig process ID
 SSigSig             rmb       1                   SS.SSig signal code
-WritFlag            rmb       1                   initial write attempt flag
 Wrk.Type            rmb       1                   type work byte (MUST immediately precede Wrk.Baud)
 Wrk.Baud            rmb       1                   baud work byte (MUST immediately follow Wrk.Type)
 Wrk.XTyp            rmb       1                   extended type work byte
-VIRQBF              rmb       5                   buffer for VIRQ
-LastRxCount         rmb       1
-
-*============================================================================
-MasterRxDget        rmb       2
-MasterRxDput        rmb       2
-MasterRxDBlock      rmb       1
 
 *============================================================================
 ind_CtrlReg         rmb       2
@@ -203,40 +104,17 @@ ind_RxD_WR_CountReg rmb       2
 ind_TxD_RD_CountReg rmb       2
 ind_TxD_WR_CountReg rmb       2
 
-*== INTERUPT SERVICE ROUTINE ================================================
+*============================================================================
 IRQ_State           rmb       1
-PendingByte         rmb       1
-LastRxD             rmb       1
 IpdLen              rmb       2
-PktReadPos             rmb       1
+PktReadPos          rmb       1
 IpdLenChar          rmb       1
 DeviceMode          rmb       1		          Mode of the device descriptor (0 = no packets)
-DeviceChannel       rmb       1                  Connection # of the device descriptor (0-3)
+DevChan             rmb       1                  Connection # of the device descriptor (0-3)
 PacketChannel       rmb       1
-
-*== WRITING PACKETS =========================================================
-WritePos            rmb       1
-WritePacketTimer    rmb       1
 OutPktLaydown       rmb       1
 OutPktPickup        rmb       1
 strDecimal5         rmb       5
-
-*============================================================================
-* sc6551 residuals
-DataReg             rmb       1                   receive/transmit Data (read Rx / write Tx)
-StatReg             rmb       1                   status (read only)
-PRstReg             equ       StatReg             programmed reset (write only)
-CmdReg              rmb       1                   command (read/write)
-CtlReg              rmb       1                   control (read/write)
-
-*============================================================================
-                    ifeq      Level-1
-orgDFIRQ            rmb       2
-                    endc
-*============================================================================
-RxBufDSz            equ       256-.               default Rx buffer gets remainder of page...
-RxBuff              rmb       RxBufDSz            default Rx buffer
-
 OutPktBuf           rmb       256
 
 MemSize             equ       .
@@ -273,22 +151,6 @@ IRQ_Pckt.Mask       fcb       WIZFI_INTERRUPT     the mask byte
                     fcb       $F1                 the priority byte
 
 
-* Set up INT_TIMER_0 (25.175Mhz-based timer)
-* Fast
-* 25,175,000 / 11520 Bytes Per Second  = 2185 ticks @ 25.175Mhz (8, 137)
-* 25,175,000 / 23040 Bytes Per Second  = 1092 ticks @ 25.175Mhz (4,  68)
-* 25,175,000 / 92160 Bytes Per Second  =  273 ticks @ 25.175Mhz (1,  17)
-*
-* rates and results
-* 273 = startup purger idled out
-* 380 = startup purger finished
-
-* Being tweaked for goldilox
-TRATE equ 300
-*TRATE equ 800 * choppy response but output is fast
-
-
-
 * Init
 *
 * Entry:
@@ -305,7 +167,7 @@ Init                clrb                          default to no error...
 
                     pshs      y			  save Y so it's last on stack so we can recall it using 0,s
 
-                    lbsr      GetDeviceChannel
+                    lbsr      GetDevChan
 
 * Check if we've already allocated memory.
                     ifgt      Level-1
@@ -332,7 +194,7 @@ c@                  clr       ,x+
                     decb
                     bne       c@
 
-Init2                    ldd       #TRATE
+Init2               ldd       #TRATE
                     sta       T0_VAL+0            registers are still Little Endian?
                     stb       T0_VAL+1
                     clr       T0_VAL+2
@@ -351,14 +213,10 @@ Init2                    ldd       #TRATE
                     sta       >INT_MASK_0          and save it back
                     clr       OutPktLaydown,u
                     clr       OutPktPickup,u
-                    clr       WritePacketTimer,u
                     clr       PktReadPos,u
-                    clr       PendingByte,u
                     clra
                     clrb
                     std       IpdLen,u
-                    std       MasterRxDget,u
-                    std       MasterRxDput,u
 
                     ldb       #IRQ_State_ListenPkt
                     stb       IRQ_State,u
@@ -368,8 +226,7 @@ Init2                    ldd       #TRATE
                     andb      #%11100000                
                     tfr       d,y
 
-
-* Give ability for us to LD/ST [someWizFiReg,u] for the WizFi registers
+* Give ability for us to LD#/ST# [someWizFiReg,u] the WizFi registers
                     leax      WizFi_CtrlReg,y
                     stx       ind_CtrlReg,u
                     leax      WizFi_DataReg,y
@@ -429,7 +286,7 @@ GetVpPtr            ifgt      Level-1
                     abx
                     rts
 
-GetDeviceChannel    pshs      d
+GetDevChan          pshs      d
                     ldd       Wrk.Type,u           save type/baud in data area
                     andb      #%00000011
                     stb       [ind_CtrlReg,u]      Update WizFi Control Register
@@ -439,23 +296,13 @@ GetDeviceChannel    pshs      d
                     sta       DeviceMode,u
                     tfr       b,a
                     anda      #%00000011
-                    sta       DeviceChannel,u
+                    sta       DevChan,u
                     puls      d,pc
-
 
 RxFCheck            ldd       [ind_RxD_WR_CountReg,u]
                     anda      #$07
                     cmpd      #$0000
                     rts
-
-* RxFCheck            ldb       [ind_CtrlReg,u]     Create fake Bytes Waiting value (0 or 1)
-*                     comb
-*                     andb      #STATUS_RXD         (Z=0 = Data Waiting)  (Z=0 = No Data in RxD FIFO)
-*                     lsrb
-*                     lsrb
-*                     clra
-*                     cmpd      #$0000
-*                     rts
 
 iService            pshs      cc,dp,x
 
@@ -469,14 +316,18 @@ iSendPkt            ldb       OutPktLaydown,u
                     negb
 n@                  clra
                     tfr       d,y
-                    ldb       DeviceMode,u
+* ps@                 lbsr      RxFCheck            Is there any FIFO data waiting?
+*                     beq       s1@
+*                     lda       [ind_DataReg,u]     Read next FIFO byte
+*                     bra       ps@
+s1@                 ldb       DeviceMode,u
                     beq       r@
                     leax      strCipSend,pcr
 s@                  lda       ,x+
                     beq       c@
                     sta       [ind_DataReg,u]
                     bra       s@
-c@                  lda       DeviceChannel,u
+c@                  lda       DevChan,u
                     adda      #'0
                     sta       [ind_DataReg,u]
                     lda       #',
@@ -509,49 +360,41 @@ r@                  inc       OutPktPickup,u
                     ldb       DeviceMode,u
                     beq       xx@
                     ldy       #4                  Wait for 4 CRLF terminated AT responses
-pl@                 lbsr      RxFCheck            There is no dead loop prevention at this time
-                    beq       pl@
-                    lda       [ind_DataReg,u]
-                    cmpa      #10
-                    bne       pl@
-                    leay      -1,y
-                    bne       pl@
-xx@                 equ       *
-*                    bra       iExit
-                    lbra       iWake
-
+pl@                 lbsr      RxFCheck            Is there any FIFO data waiting?
+                    beq       pl@                 No, loop forever until there is *** There is no dead loop prevention at this time
+                    lda       [ind_DataReg,u]     Read next FIFO byte
+                    cmpa      #10                 Is it the code for Line Feed?
+                    bne       pl@                 No, loop until
+                    leay      -1,y                Update the string response counter
+                    bne       pl@                 Purge the next string
+xx@                 lbra      iWake
+*                    lbra      iExit               Return from ISR, no payload update
 
 iRead
-                    ldb       DeviceChannel,u
-                    lbsr      GetVpPtr
-                    lda       vpr_stat,x
-                    lbmi      iExit
-                    lbsr      RxFCheck
-                    lbeq      iExit
+                    ldb       DevChan,u           Get the connection/channel # for the current device
+                    lbsr      GetVpPtr            Point to associated payload
+                    lda       vpr_stat,x          Has the mainline code signaled that it has consumed the last data byte?
+                    lbmi      iExit               No, so just exit.  The hardware FIFO will do it's job in the meantime.
+                    lbsr      RxFCheck            Are there any pending RxD FIFO bytes?
+                    lbeq      iExit               Return from ISR, no payload update
 
-                    lda       [ind_DataReg,u]
-
+                    lda       [ind_DataReg,u]     Pop next FIFO byte
                     ldb       DeviceMode,u        Device descriptor has the Packets bit set
-                    lbeq      iBroadcast
+                    lbeq      iBroadcast          Device is using the WizFi360 passthrough/raw mode
 
-                    ldb       IRQ_State,u
+                    ldb       IRQ_State,u         Are we currently listening for a packet header?
                     cmpb      #IRQ_State_ListenPkt
-                    beq       iListenPkt
+                    beq       iListenPkt          Yes, keep listening
 
-                    ldx       IpdLen,u
-                    bne       x@
-                    ldb       #IRQ_State_ListenPkt
+                    ldx       IpdLen,u            Are we still returning the data portion of a packet?
+                    beq       x@                  No, go back into Listen mode and return
+                    leax      -1,x                Yes, decrement the byte count
+                    stx       IpdLen,u            Update the byte counter
+                    lbra      iBroadcast          Update the payload and return
+x@                  ldb       #IRQ_State_ListenPkt  Go into listen mode
                     stb       IRQ_State,u
-                    clr       PktReadPos,u
-                    lbra      iExit
-x@                  leax      -1,x
-                    stx       IpdLen,u
-
-                *     ldb       PacketChannel,u
-                *     cmpb      DeviceChannel,u
-                *     lbeq      iBroadcast
-                *     lbra      iExit
-                      lbra       iBroadcast
+                    clr       PktReadPos,u        Clear the text matching index
+                    lbeq      iExit               Return from ISR, no payload update
 
 iListenPkt          leax      strIPD,pcr          point to start of IPD string constant
                     ldb       PktReadPos,u           what character position are we at?  +  P  D  ,   ?  0-3
@@ -568,7 +411,7 @@ iListenPkt          leax      strIPD,pcr          point to start of IPD string c
                     lbsr      DecBin
                     std       IpdLen,u
 m@                  inc       PktReadPos,u
-x@                  lbra      iExit             Exit with no data
+x@                  lbra      iExit               Exit with no data
 strIPD              fcc       "+IPD,$,#####:"
 t@                  clr       PktReadPos,u
                     clr       IRQ_State,u        Switch to data mode for the next cycle
@@ -587,31 +430,27 @@ ms@                 clr       PacketChannel,u
                     clr       IpdLen,u
                     clr       IpdLen+1,u
                     bra       m@
-
-iBroadcast
-                    ldb       PacketChannel,u
+iBroadcast          ldb       PacketChannel,u
                     lbsr      GetVpPtr
                     ldb       PacketChannel,u
                     orb       #$80
                     stb       vpr_stat,x
                     sta       vpr_data,x
 
-iWake     
-                    ldb       PacketChannel,u
+iWake               ldb       PacketChannel,u
                     lbsr      GetVpPtr
                     clrb                          clear Carry (for exit) and LSB of process descriptor address
-                    lda       vpr_wake,x            anybody waiting? ([D]=process descriptor address)
-                    beq       iExit                  no, go return...
-                    stb       vpr_wake,x            mark I/O done
+                    lda       vpr_wake,x          anybody waiting? ([D]=process descriptor address)
+                    beq       iExit               no, go return...
+                    stb       vpr_wake,x          mark I/O done
                     tfr       d,x                 copy process descriptor pointer
                     lda       P$State,x           get state flags
                     anda      #^Suspend           clear suspend state
                     sta       P$State,x           save state flags
 
-iExit               puls      cc,dp,x,pc               recover system DP, return...
+iExit               puls      cc,dp,x,pc          Recover system DP, return...
 
-ReadSlp
-                    ldb       DeviceChannel,u
+ReadSlp             ldb       DevChan,u
                     lbsr      GetVpPtr
                     ldd       >D.Proc             Level II process descriptor address
                     sta       vpr_wake,x           V.WAKE,u             save MSB for IRQ service routine
@@ -628,7 +467,7 @@ ReadSlp
 c@                  ldb       P$State,x
                     bitb      #Condem
                     lbne      PrAbtErr            yes, go do it...
-                    ldb       DeviceChannel,u
+                    ldb       DevChan,u
                     lbsr      GetVpPtr
                     ldb       vpr_wake,x           V.WAKE,u            true interrupt?
                     beq       ReadD               yes, go read the char.
@@ -639,13 +478,13 @@ Read                clrb                          default to no errors...
                     pshs      cc,dp               save IRQ/Carry status, system DP
 
 ReadD               orcc      #IntMasks
-                    ldb       DeviceChannel,u
+                    ldb       DevChan,u
                     lbsr      GetVpPtr
                     ldb       vpr_stat,x
                     bpl       ReadSlp
                     andb      #3
                     stb       vpr_stat,x           Notify the hub that we've taken our data
-                    cmpb      DeviceChannel,u
+                    cmpb      DevChan,u
                     bne       ReadSlp
                     lda       vpr_data,x           Get our data
                     puls      cc,dp,pc            recover IRQ/Carry status, dummy B, system DP, return
@@ -675,7 +514,7 @@ NRdyErr             ldb       #E$NotRdy
 UnSvcErr            ldb       #E$UnkSvc
                     bra       ErrExit
 
-WritSlp             ldb       DeviceChannel,u
+WritSlp             ldb       DevChan,u
                     lbsr      GetVpPtr
                     ldd       >D.Proc             Level II process descriptor address
                     sta       vpr_wake,x             save MSB for IRQ service routine
@@ -692,7 +531,7 @@ WritSlp             ldb       DeviceChannel,u
 c@                  ldb       P$State,x
                     bitb      #Condem
                     lbne      PrAbtErr            yes, go do it...
-                    ldb       DeviceChannel,u
+                    ldb       DevChan,u
                     lbsr      GetVpPtr
                     ldb       vpr_wake,x            true interrupt?
                     beq       WriteD               yes, go read the char.
@@ -721,15 +560,15 @@ GStt                clrb                          default to no error...
                     cmpa      #SS.Ready
                     bne       GetScSiz
                     pshs      x
-                    ldb       DeviceChannel,u
+                    ldb       DevChan,u
                     lbsr      GetVpPtr
                     lda       vpr_stat,x
                     puls      x
-                    clrb
+                    clrb                          Convert MSBit of payload status byte into a fake Count value of 0 or 1
                     lsla
                     rolb
                     clra
-                    cmpd      #$0000
+                    cmpd      #$0000              Test the available number of bytes
 *                    lbsr      RxCCheck
                     lbeq      NRdyErr             none, go report error
 
@@ -759,7 +598,7 @@ GetComSt            cmpa      #SS.ComSt
                     bitb      #Mask.DCD
                     beq       CheckDSR            no, go check DSR status
                     ora       #DCDStBit
-CheckDSR            bitb      Mask.DSR,u           DSR bit set (disabled)?
+CheckDSR            bitb      Mask.DSR,u          DSR bit set (disabled)?
                     beq       SaveCDSt            no, go set DCD/DSR status
                     ora       #DSRStBit
 SaveCDSt            sta       R$B,x               set 6551 ACIA style DCD/DSR status in caller's [B]
@@ -795,7 +634,7 @@ SetSSig             cmpa      #SS.SSig
                     ldb       R$X+1,x             LSB of [X] is signal code
  bra RSendSig
                     pshs      d
-                    ldb       DeviceChannel,u
+                    ldb       DevChan,u
                     lbsr      GetVpPtr
                     lda       vpr_stat,x
                     clrb
@@ -864,9 +703,9 @@ NoReleas            puls      cc,pc               restore IRQ enable status, ret
 
 SetPort             pshs      cc                  save IRQ enable and Carry status
                     orcc      #IntMasks           disable IRQs while setting up ACIA registers
-                    std       Wrk.Type,u           save type/baud in data area
+                    std       Wrk.Type,u          save type/baud in data area
 
-                    lbsr      GetDeviceChannel
+                    lbsr      GetDevChan
 
                     puls      cc,pc               recover IRQ enable and Carry status, return...
 
