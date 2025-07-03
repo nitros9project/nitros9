@@ -1,5 +1,7 @@
-echo AT+UART_CUR=115200,8,1,0,0>/wz
+modem "ATE1"
+modem /wz /wz /wz
+modem "AT+UART_CUR=115200,8,1,0,0"
 modem /wz /wz /wz
 xmode /wz bau=0
-echo AT>/wz
-modem /wz /wz
+modem "AT"
+modem /wz /wz /wz
