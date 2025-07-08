@@ -219,6 +219,8 @@ shift@              leay      SHIFTScanMap,pcr    point to the SHIFT scan map
 pastshift@          ldx       V.KCVect,u          get the current key code handler
                     jsr       ,x                  branch into it
                     bcs       IRQExit             if the carry is set, don't wake process
+                    tsta      			  test for 0 (null) character in scanmap
+                    beq       IRQExit             exit for any key that returns 0
                     cmpa      V.PCHR,u  pause character?
                     bne       int@      branch if not
                     ldx       V.DEV2,u  else get dev2 statics
