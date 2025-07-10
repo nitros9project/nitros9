@@ -82,11 +82,13 @@ ifeq ($(PORT),dplus)
 SCF +=  codplus.io term_dplus.dt
 endif
 
+ACIA51MODS      = acia51.dd t1_acia51.dt
+
 PIPE		= pipeman.mn \
 		piper.dr \
 		pipe.dd
 
-ALLOBJS		= $(BOOTTRACK) $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(PIPE) 
+ALLOBJS		= $(BOOTTRACK) $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(PIPE) $(ACIA51MODS)
 
 all:	$(ALLOBJS)
 
