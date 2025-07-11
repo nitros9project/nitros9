@@ -4,7 +4,9 @@
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
-
+ ifndef Pauses
+Pauses equ 1        ; Default for IT.PAU pause:0=no end of page pause
+ endif
                     nam       Term
                     ttl       sc6850 Device Descriptor
 
@@ -33,7 +35,7 @@ rev                 set       $00
                     fcb       $01                 IT.EKO echo:0=no echo
                     fcb       $01                 IT.ALF auto line feed:0=off
                     fcb       $00                 IT.NUL end of line null count
-                    fcb       $01                 IT.PAU pause:0=no end of page pause
+                    fcb       Pauses              IT.PAU pause:0=no end of page pause
 * IT.PAG and IT.ROW are set to 25 to match the Multicomp6809 hardware
 * terminal. Applications (eg scred) inspect this value and need it to be
 * correct. In the case of a "glass teletype" (aka terminal emulator)

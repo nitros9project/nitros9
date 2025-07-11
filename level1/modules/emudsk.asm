@@ -46,6 +46,10 @@ buffer              equ       $FF84               pointer to the buffer
 *   $FF86: controls .vhd drive 0=drive1 1=drive2
 vhdnum              equ       $FF86
 
+ ifndef MaxVhd
+MaxVhd              equ       2   ; Default is 2; use -D'MaxVhd'=... to increase.
+ endif
+
 * Returns:
 *
 * 0=successful
@@ -76,10 +80,13 @@ rev                 set       $02
                     mod       eom,name,tylg,atrv,start,size
 
                     org       0
-                    rmb       DRVBEG+(DRVMEM*2)   Normal RBF device mem for 2 drives RG
+                    rmb       DRVBEG+(DRVMEM*MaxVhd)   Normal RBF device mem for MaxVhd drives RG
 prevdr              rmb       1                   previously used drive RG
-                    rmb       255-.               residual page RAM for stack etc. RG
-size                equ       .
+residual            rmb       30                  residual page RAM for stack etc. RG
+                                                  ;   -- Q: What stack?
+                                                  ;   -- How much scratch needed?
+                                                  ;   -- Is it used at all?  --strick
+size                equ       (.+255)&$FF00       Align up to next page size.
 
                     fcb       $FF                 This byte is the driver permissions
 name                fcs       /EmuDsk/
@@ -102,11 +109,12 @@ name                fcs       /EmuDsk/
 *   Set V.TRACK to $FF
 *   Initialize device control registers?
 *
-* Default to only one drive supported, there's really no need for more.
-* Since MESS now offers second vhd drive, EmuDsk will support it. RG
+* Old: Default to only one drive supported, there's really no need for more.
+* Old: Since MESS now offers second vhd drive, EmuDsk will support it. RG
+* Since TFR9 now offers more vhd drives, allow -D'MaxVhd=N'.  --strick
 **************************************************************************
 
-INIT                ldd       #$FF02              'Invalid' value & # of drives
+INIT                ldd       #$FF00+MaxVhd       'Invalid' value & # of drives
                     stb       V.NDRV,u            Tell RBF how many drives
                     leax      DRVBEG,u            Point to start of drive tables
 init2               sta       DD.TOT+2,x          Set media size to bogus value $FF0000
@@ -181,10 +189,13 @@ READ                clra                          READ command value=0
 * Copy LSN0 data to the drive table each time LSN0 is
 * read because emulators allow drive swaps on the fly
                     ldx       PD.BUF,y            get ptr to sector buffer
+
                     leau      DRVBEG,u            point to first drive table
                     lda       PD.DRV,y            get vhd drive number from descriptor RG
-                    beq       copy.0              go if first vhd drive
-                    leau      DRVMEM,u            point to second drive table
+                    ldb       #DRVMEM             size of per-drv memory
+                    mul                           offset for this vhd's memory
+                    leau      d,u                 address for this vhd's memory
+
                     IFNE      H6309
 copy.0              ldw       #DD.SIZ             # bytes to copy over
                     tfm       x+,u+
@@ -195,6 +206,7 @@ copy.1              lda       ,x+                 grab from LSN0
                     decb
                     bne       copy.1
                     ENDC
+
 noerr               clrb
                     rts
 
@@ -246,7 +258,7 @@ reterr              tfr       a,b                 Move error code to reg B
 
 GetSect             pshs      x,a                 Save regs x and a
                     lda       PD.DRV,y            Get drive number requested
-                    cmpa      #2                  Only two drives allowed. RG
+                    cmpa      #MaxVhd             Only two drives allowed. RG
                     bhs       DriveErr            Too many?
                     cmpa      prevdr,u            did the drive change? RG
                     beq       gs.1                no, then don't reset the drive
@@ -338,7 +350,7 @@ SETSTA              ldx       PD.RGS,y            Get caller's register stack pt
 * real hardware, this is important as would be closing all open files. RG
 
 park                lda       PD.DRV,y            get drive number RG
-                    cmpa      #2                  test for illegal value RG
+                    cmpa      #MaxVhd             test for illegal value RG
                     bhs       format              ignore if illegal RG
                     sta       >vhdnum             tell which drive to halt RG
                     ldb       #$02                close the drive

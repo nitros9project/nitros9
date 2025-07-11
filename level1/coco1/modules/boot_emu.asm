@@ -15,11 +15,22 @@
 *   0      2024/02/15  E J Jaquay
 * Created.
 
-* Defines for boot device
+* Defines for boot device can be overridden with `-D` flags.
+ ifndef DEVADDR
 DEVADDR             equ       $FF80
+ endif
+
+ ifndef DISKNUM
 DISKNUM             equ       0
+ endif
+
+ ifndef LSN24BIT
 LSN24BIT            equ       1
+ endif
+
+ ifndef FLOPPY
 FLOPPY              equ       0
+ endif
 
                     nam       Boot
                     ttl       CoCo Emulator Virtual Hard Disk Boot
