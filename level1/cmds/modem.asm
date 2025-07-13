@@ -6,25 +6,13 @@
 * but aimed at Telnet/WIFI Modem devices.
 * Will evolve into a full AT command issuer and response parser.
 *
-* Modem tokens table format:
-* 8 characters for the name, 2 bytes for the string address/offset, 16 bytes for the string
-* Token = @r
-* String = 13,0,0,0,0,0,0,0
-* Address = $00
-*
-* Token = @n
-* String = 10,0,0,0,0,0,0,0
-* Address = $00
-*
-* Token = @rn
-* String = $80,$81,0,0,0,0,0,0
-* Address = $0000
-
-
 
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
+*          2025/07/13  R Taylor
+* Added -r option to reset the FIFO
+
 
                     ifp1
                     use       defsfile
@@ -101,10 +89,6 @@ start               subd      #$0001              if this becomes zero,
                     sty       <d.ptr
                     bra       do.opts
 
-do.t                ldb       #3                  -t option sets default 3-second timeout
-                    stb       <timeout
-                    bra       do.opts2            do more args
-
 quote               lda       ,x+                 grab a character
                     cmpa      #34                 Double Quote?
                     beq       quote               yes, skip it
@@ -142,24 +126,42 @@ do.opts2            lbsr      space
 
                     bsr       nonspace            else skip nonspace chars
                     cmpa      #C$CR               end of line?
-                    beq       do.file             branch if so
+                    lbeq      do.file             branch if so
 
                     bra       do.opts2            else continue parsing for options
 
+********************************************************************
 do.dash             leax      1,x                 skip over dash
                     lda       ,x+                 get char after dash
                     cmpa      #C$CR               CR?
                     lbeq      Exit                yes, exit
-
                     anda      #$DF                make uppercase
                     cmpa      #'T
                     beq       do.t
+                    cmpa      #'R
+                    beq       do.reset
                     cmpa      #'Z                 input from stdin?
                     lbeq      do.z
                     lbra      Exit
 
 ********************************************************************
+do.t                ldb       #3                  -t option sets default 3-second timeout
+                    stb       <timeout
+                    bra       do.opts2            do more args
 
+********************************************************************
+do.reset            lda       WizFi.Base
+                    pshs      a
+                    ora       #WizFi.Reset
+                    sta       WizFi.Base
+                    exg       a,a
+                    exg       a,a
+                    puls      a
+                    anda      #^WizFi.Reset
+                    sta       WizFi.Base
+                    bra       do.opts2
+
+********************************************************************
 do.string           leax      1,x
                     stx       <param
                     leax      devicestr,pcr
@@ -274,6 +276,7 @@ Error               coma                          set carry
 Exit                clrb
                     os9       F$Exit              and exit
 
+********************************************************************
 * read from stdin until eof or blank line
 * skip lines that begin with * (these are comments)
 do.z                leax      d.buff,u
