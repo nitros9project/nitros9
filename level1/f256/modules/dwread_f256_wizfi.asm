@@ -28,7 +28,7 @@ DWRead              clra                          clear carry (no framing error)
 
 loop@               ldd       #$0000              store counter
                     std       1+1,s               ?+1,s considering extra stack byte
-loop2@              ldd       $FF20+WizFi_RxD_WR_Cnt
+loop2@              ldd       WizFi.Base+WizFi_RxD_WR_Cnt
                     bne       getbyte@            if available, get byte
                     mul                           extend the timeout much longer due to faster CPU
                     mul
@@ -44,7 +44,7 @@ loop2@              ldd       $FF20+WizFi_RxD_WR_Cnt
                     anda      #^$04               clear the Z flag to indicate not all bytes received.
                     sta       0+1,s               ?+1,s considering extra stack byte
                     bra       bye@
-getbyte@            ldb       $FF20+WizFi_DataReg get the data byte
+getbyte@            ldb       WizFi.Base+WizFi_DataReg get the data byte
                     stb       ,u+                 save off acquired byte
                     abx                           update checksum
                     leay      ,-y                 decrement Y
