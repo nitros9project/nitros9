@@ -10,4 +10,6 @@ modem "AT+CIPMODE=1"
 modem /wz /wz /wz
 modem "AT+CIPSERVER=1,23"
 modem /wz /wz /wz
+modem "AT+CIPSTO=0"
+modem /wz /wz /wz
 echo * Done
