@@ -1,16 +1,15 @@
 echo * WizFi360 Helper - Start packet server
 xmode /wz eko=0
-modem "ATE0"
-modem /wz
-modem /wz /wz
+modem "ATE1"
+modem /wz /wz /wz
 modem "AT+CIPMODE=0"
-modem /wz /wz
+modem /wz /wz /wz
 modem "AT+CIPMUX=1"
-modem /wz /wz
+modem /wz /wz /wz
 modem "AT+CIPSERVERMAXCONN=4"
-modem /wz /wz
+modem /wz /wz /wz
 modem "AT+CIPSERVER=1,23"
-modem /wz /wz
+modem /wz /wz /wz
 modem "AT+CIPSTO=0"
-modem /wz /wz
+modem /wz /wz /wz
 echo * Done
