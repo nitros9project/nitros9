@@ -2,5 +2,5 @@ modem "AT+CIPMODE=0"
 modem /wz /wz /wz
 modem "AT+CIPMUX=1"
 modem /wz /wz /wz
-modem "AT+CIPSTART=0,\"TCP\",\"ip\",23"
+modem "AT+CIPSTART=0,""TCP"",""ip"",23"
 modem /wz /wz /wz

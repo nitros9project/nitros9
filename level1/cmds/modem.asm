@@ -151,26 +151,27 @@ do.t                ldb       #3                  -t option sets default 3-secon
 
 ********************************************************************
 do.reset            lda       WizFi.Base
-                    pshs      a
                     ora       #WizFi.Reset
                     sta       WizFi.Base
                     exg       a,a
                     exg       a,a
-                    puls      a
                     anda      #^WizFi.Reset
                     sta       WizFi.Base
                     bra       do.opts2
 
 ********************************************************************
-do.string           leax      1,x
-                    stx       <param
+do.string           stx       <param
                     leax      devicestr,pcr
                     lda       #WRITE.
                     os9       I$Open              open the file for reading
                     lbcs      read.ex             crap out if error
                     sta       <path
-do.sw               ldx       <param
-                    lda       ,x
+                    ldx       <param
+do.s1               leax      1,x
+                    stx       <param
+do.sw               ldd       ,x
+                    cmpd      #$2222
+                    beq       do.esc
                     cmpa      #34
                     beq       do.sx
                     cmpa      #'\
@@ -178,30 +179,23 @@ do.sw               ldx       <param
 do.esc              leax      1,x
                     stx       <param
                     lda       ,x
-
 do.chr              cmpa      #$00
                     lbeq      Exit
                     cmpa      #C$CR
                     lbeq      Exit
                     ldy       #1
-*                    ldx       <param
                     lda       <path
                     os9       I$WritLn
                     lbcs      read.ex             crap out if error
-                    ldx       <param
-                    leax      1,x
-                    stx       <param
-                    bra       do.sw
-do.sx               leax      1,x
-                    stx       <param
-                    leax      crlf,pcr
+                    lbra      do.s1
+do.sx               leax      crlf,pcr
                     ldy       #2
                     lda       <path
                     os9       I$WritLn
                     lbcs      read.ex             crap out if error
                     lda       <path               get the current path number
                     os9       I$Close             close it
-                    lbra      do.opts2
+                    bra       do.opts
 
 ********************************************************************
 do.file             ldx       <param
