@@ -74,6 +74,8 @@ Init
                     
                     lda       #$F4                load the start scanning command
                     lbsr      SendToPS2           send it to the keyboard
+
+		    clr	      D.KySns
                     
                     leax      KCHandler,pcr       get the PS/2 key code handler routine
                     stx       V.KCVect,u          and store it as the current handler address
@@ -265,9 +267,9 @@ ex@                 rts                           return
 *             carry set: don't wake up a sleeping process waiting on input
 KCHandler
                     cmpa      #$E0                is it the $E0 preface byte?
-                    beq       ProcE0              branch if so
+                    lbeq       ProcE0              branch if so
                     cmpa      #$F0                is it the $F0 preface byte?
-                    beq       ProcF0              branch if so
+                    lbeq      ProcF0              branch if so
                     cmpa      #$58                is this the Caps Lock byte?
                     beq       DoCapsLockDown      branch if so                    
                     cmpa      #$11                is this the Left Alt byte?
@@ -294,6 +296,8 @@ CheckCAPSLock       tst       V.CAPSLck,u         is the CAPS Lock on?
                     suba      #$20                else make the character uppercase
 * Advance the circular buffer one character.
 BufferChar          ldb       V.IBufH,u           get buffer head pointer in B
+		    leay      V.KSBuf,u
+		    leay      b,y
                     leax      V.InBuf,u           point X to the input buffer
                     abx                           X now holds address of the head pointer
                     lbsr      IncNCheck           increment the pointer and check for tail wrap
@@ -301,6 +305,11 @@ BufferChar          ldb       V.IBufH,u           get buffer head pointer in B
                     beq       bye@                branch if the input buffer is full (drop the character)
                     stb       V.IBufH,u           update the buffer head pointer
                     sta       ,x                  place the character in the buffer
+* Store the KySns in the KSBuf
+BufferKSns          pshs      a
+		    lda	      D.KySns
+                    sta       ,y                  place the D.KySns in the KS buffer
+		    puls      a
 bye@                clrb                          clear carry
                     rts                           return
 

@@ -358,6 +358,9 @@ l@                  std       ,x++
 * NOTE: If we fail to find the 'keydrv' module, carry is returned set, but
 * the caller can chose to ignore the error condition.
 InitKeyboard        clr       D.KySns
+		    clr	      V.KySns,u
+		    clr	      V.IBufH,u
+		    clr       V.IBufT,u
                     leax      keydrvmod,pcr         point to the keydrv module name
                     lda       #Systm+Objct               it's a system module
                     pshs      u save U on the stack
@@ -485,6 +488,12 @@ read1               lda       <V.SSigID,u         data ready signal trap set up?
                     beq       nitenite@           if so, the buffer is empty, so put the reader to sleep
                     abx                           X now points to the current character to fetch from the buffer
                     lda       ,x                  get that character now
+		    pshs      a,x		  store character
+		    leax      V.KSBuf,u		  update V.KySns
+		    abx
+		    lda	      ,x
+		    sta	      V.KySns,u
+		    puls      a,x		    
                     bsr       IncNCheck           check for tail wrap
                     stb       V.IBufT,u           store the updated tail
                     andcc     #^(IRQMask+Carry)   unmask interrupts
@@ -1226,11 +1235,11 @@ Do1C                lbsr      RawWrite
 
 * Return special key status
 GSKySns 
-*            ldy       <D.CCMem            get ptr to CC mem
+*            ldy       <D.CCMem                   get ptr to CC mem
                     clrb                          clear key code
-*                    cmpu      <G.CurDev,y         are we the active device?
-*                    bne       actv@               branch if not
-                    ldb       D.KySns          get key codes
+*                    cmpu      <G.CurDev,y        are we the active device?
+*                    bne       actv@              branch if not
+                    ldb       V.KySns,u           get key codes
 actv@               stb       R$A,x               save to caller reg
                     clrb                          return w/o error
                     rts
