@@ -169,6 +169,7 @@ V.FONTNAME	    RMB	     33
                     endc
 
 V.InBuf             RMB       KBufSz              the input buffer
+V.KSBuf		    RMB	      KBufSz
                     RMB       250-.
 V.Last              EQU       .
 
