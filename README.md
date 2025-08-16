@@ -32,6 +32,12 @@ export NITROS9DIR=$HOME/nitros9
 make
 ```
 
+Then to build all of the disk images:
+
+```
+make dsk
+```
+
 The result is a number of disk images (ending in .dsk) that can be used on real floppy drives, emulators, and DriveWire.
 
 # Contributing
