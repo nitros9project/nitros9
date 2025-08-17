@@ -195,7 +195,7 @@ do.sx               leax      crlf,pcr
                     lbcs      read.ex             crap out if error
                     lda       <path               get the current path number
                     os9       I$Close             close it
-                    lbra       do.opts
+                    lbra      do.opts
 
 ********************************************************************
 do.file             ldx       <param
