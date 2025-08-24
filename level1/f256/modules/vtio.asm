@@ -937,11 +937,11 @@ OneEffHandler2
 ResetHandler        leax      DefaultHandler,pcr
                     bra       SetHandler
 revoff              tst       V.Reverse,u         is reverse already off?
-                    beq       SetHandler          branch if so
+                    beq       ResetHandler          branch if so
                     com       V.Reverse,u
                     bra       DoReverse
 revon               tst       V.Reverse,u         is reverse already on?
-                    bne       SetHandler          branch if so
+                    bne       ResetHandler          branch if so
                     com       V.Reverse,u
 DoReverse
 * swap foreground and background color bits
