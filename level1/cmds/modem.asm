@@ -196,7 +196,6 @@ do.sx               leax      crlf,pcr
                     lda       <path               get the current path number
                     os9       I$Close             close it
                     lbra      do.opts
-
 ********************************************************************
 do.file             ldx       <param
                     lbsr      space
