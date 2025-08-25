@@ -1,8 +1,6 @@
 ********************************************************************
 * FTDD - VRN (VIRQ/RAM/NIL driver) device descriptor
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

@@ -1,8 +1,6 @@
 ********************************************************************
 * Boot - MMC Boot Module
 *
-* $Id$
-*
 * This module allows booting from MMC devices using Jim Hathaway's
 * MMC Interface for the Color Computer.
 *

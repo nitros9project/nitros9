@@ -1,8 +1,6 @@
 ********************************************************************
 * RBF - Random Block File Manager
 *
-* $Id$
-*
 * Modified for 6309 Native mode by Bill Nobel, L. Curtis Boyle & Wes Gale
 *
 * This also contains the patch for un-deleting files

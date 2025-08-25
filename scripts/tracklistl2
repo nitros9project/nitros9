@@ -1,8 +1,6 @@
 ***************************************
 * NitrOS-9 Level 2 Boot Track List
 *
-* $Id$
-*
 * This boot track list is presented as an example for creating custom
 * boot track files.
 * A module may be excluded from the track file if an asterisk (*) is the

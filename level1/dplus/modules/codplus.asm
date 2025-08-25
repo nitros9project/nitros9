@@ -1,8 +1,6 @@
 ********************************************************************
 * CO80 - Dragon Plus 80 columns support for VTIO
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * 2021/04/10 - Initial driver implementation from CoWPRS - lfantoniosi

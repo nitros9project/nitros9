@@ -1,8 +1,6 @@
 *******************************************************************
 * CoGrf/CoWin - NitrOS-9 Text/Graphics Window Module
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

@@ -39,7 +39,7 @@ dd_ide_l2.dd: idedesc.asm
 	$(AS) $(ASOUT)$@ $< $(IDEL2FLAGS) -DITDRV=0 -DDD=1
 
 clean:
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 dsk:
 dskcopy:

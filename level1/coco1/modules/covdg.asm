@@ -1,8 +1,6 @@
 ********************************************************************
 * CoVDG - VDG Console Output Subroutine for VTIO
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

@@ -1,8 +1,6 @@
 ********************************************************************
 * dwio - DriveWire Low Level Subroutine Module
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

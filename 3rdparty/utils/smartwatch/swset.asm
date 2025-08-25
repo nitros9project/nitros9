@@ -1,8 +1,6 @@
 ********************************************************************
 * SWSet - Set time in SmartWatch
 *
-* $Id$
-*
 * Copyright May, 1990 by Robert Gault
 *
 * SWSET will set the smartwatch in either 12hr or 24hr mode

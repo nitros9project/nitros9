@@ -1,8 +1,6 @@
 ********************************************************************
 * Boot - CoCo Emulator Virtual Hard Disk Booter
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

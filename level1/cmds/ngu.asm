@@ -1,8 +1,6 @@
 ********************************************************************
 * NGU - The "Next Great Utility"
 *
-* $Id$
-*
 * NGU is a template for writing utilities under OS-9/6809. It has
 * robust option handling and is littered with comments to help you
 * write your own utilities.

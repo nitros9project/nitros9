@@ -29,7 +29,7 @@ banner:
 coco3vtio.d: $(DEFSDIR)/cocovtio.d
 	$(AS) $(AFLAGS) $(DEFOPTS) -DCOCOVTIO.D=0 $< > $@
 
-gfx2: gfx2.asm
+gfx2: gfx2.asm coco3vtio.d
 	$(AS) $(ASOUT)$@ $< $(M6809) -DLevel=2
 
 basic09_6309: basic09.asm
@@ -48,7 +48,7 @@ runbt_6809: basic09.asm
 	$(AS) $(ASOUT)$@ $< $(M6809) -aRUNTIME=1
 
 clean: dskclean
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 dsk: $(DSK)
 

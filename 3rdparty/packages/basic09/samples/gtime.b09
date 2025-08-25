@@ -1,0 +1,1 @@
+PROCEDURE gtimeDIM hour,min,sec:INTEGERRUN foenix("GetTime",hour,min,sec)PRINT hour,min,sec

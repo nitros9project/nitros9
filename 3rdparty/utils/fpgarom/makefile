@@ -46,7 +46,7 @@ dskclean:
 	$(RM) $(DSKS)
 
 clean: dskclean
-	$(RM) $(ALLJOBS) *.o rom.map test.map
+	$(RM) $(ALLJOBS) *.o *.list *.map
 
 info:
 	@$(ECHO) "*** Brett Gordon's CocoFPGA Boot ROM ***"

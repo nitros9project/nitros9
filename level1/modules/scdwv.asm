@@ -1,8 +1,6 @@
 ********************************************************************
 * scdwv - DriveWire Virtual Channel Driver
 *
-* $Id$
-*
 * How this wildcard /N stuff works:
 * A process interested in obtaining a path to a network device
 * can open any /Nx descriptor but it may be in use by another process.

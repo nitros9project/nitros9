@@ -1,8 +1,6 @@
 ********************************************************************
 * telnet - telnet client
 *
-* $Id$
-*
 * Notes:
 * This utility works in similar fashion to telnet commands on other systems.
 * The user can telnet to a location, and once there, press the TELESCAPE key

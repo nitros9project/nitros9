@@ -1,8 +1,6 @@
 ********************************************************************
 * Dump - Show file contents in hex
 *
-* $Id$
-*
 * Dump follows the function of the original Microware version but now
 * supports large files over 64K, and is free from the problems of garbage
 * in wide listings.

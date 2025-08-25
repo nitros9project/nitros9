@@ -1,8 +1,6 @@
 ********************************************************************
 * Boot Common - Common code for NitrOS-9 booters
 *
-* $Id$
-*
 * This common file is not a stand-alone module, but is 'used' by boot module
 * source files to bring in support for booting from RBF file systems that have
 * either standard or new-style fragmented bootfiles.

@@ -1,8 +1,6 @@
 ********************************************************************
 * RamPak - Disto RAM Pak device driver
 *
-* $Id$
-*
 * Ed.    Comments                                       Who YY/MM/DD
 * ------------------------------------------------------------------
 * 2      Original Disto version by Brian Lantz          BL

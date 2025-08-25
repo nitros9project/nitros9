@@ -2,8 +2,6 @@
 * Co42 - Hi-Res 42x24 Graphics Console Output Subroutine for VTIO
 * Based from CoHR
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

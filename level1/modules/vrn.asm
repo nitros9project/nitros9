@@ -1,8 +1,6 @@
 ********************************************************************
 * VRN - VIRQ/RAM/Nil device driver
 *
-* $Id$
-*
 * Copyright (C) 1989, 1990 Bruce Isted
 *
 * This program may be freely distributed as long as the copyright notice

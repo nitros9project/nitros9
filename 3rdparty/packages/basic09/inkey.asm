@@ -1,8 +1,6 @@
 ********************************************************************
 * Inkey - Key detect subroutine
 *
-* $Id$
-*
 * Called by: RUN INKEY(StrVar)
 *            RUN INKEY(Path, StrVar)
 * Inkey determines if a key has been typed on the given path

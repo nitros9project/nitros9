@@ -1,8 +1,6 @@
 ********************************************************************
 * Dir - Show directory
 *
-* $Id$
-*
 * This dir initially started from the dir command that came with
 * the OS-9 Level Two package, then incorporated Glenside's Y2K
 * fix.

@@ -1,8 +1,6 @@
 ********************************************************************
 * ddiskdesc - ddisk Device Descriptor Template
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * Converted rb1773 to ddisk for Dragon disks.

@@ -1,0 +1,34 @@
+
+  Usage: XCom9 [modem port] [#Mem] e.g. XCom9 /T2 #4K
+
+ @  Send break if supported
+ $  Shell command
+ A toggle Ascii,strip CTRL codes
+ B  set Baud rate
+ D  Auto dial (RS232 Pak only)
+ E  toggle local Echo mode
+ F  specify Flow ctl (xon/xoff)
+ H  Help - show this menu
+ M  toggle Modem path enable
+ O  show Option settings
+ Q  Quit - end XCom9
+ R  Receive a file ASCII
+ S  Send a file ASCII
+ V  toggle View modem data
+ X  send/receive XMODEM protocol
+ CTRL-R Opens/Closes rec Buff
+
+ The files xrs232 and xt1 are a driver and device descriptor to allow xcom9
+work on the 4 pin port on a Color Computer with no RS232 pak or modem pak.
+They require a modification to the cable as follows, disconnect the carrier
+detect line from the computer end of the 4-pin cable and connect the receive
+data to both carrier and receive data.
+
+
+
+
+
+
+
+
+

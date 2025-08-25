@@ -1,8 +1,6 @@
 *******************************************************************
 * SMap - Show System Memory Map
 *
-* $Id$
-*
 * From "Inside OS9 Level II", by Kevin Darling
 *
 * Edt/Rev  YYYY/MM/DD  Modified by

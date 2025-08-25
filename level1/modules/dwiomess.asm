@@ -1,8 +1,6 @@
 ********************************************************************
 * dwio - DriveWire I/O Subroutine Module - MESS version
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

@@ -5,8 +5,6 @@
 *
 * Based on Microware/Tandy Clock Module for CC3/L2
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

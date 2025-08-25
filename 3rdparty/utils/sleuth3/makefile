@@ -66,7 +66,7 @@ dskclean:
 	$(RM) $(DSKS)
 
 clean: dskclean
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 info:
 	@$(ECHO) "*** Sleuth3 OS9 Disassembler ***"

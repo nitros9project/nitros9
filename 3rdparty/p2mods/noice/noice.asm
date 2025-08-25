@@ -1,8 +1,6 @@
 ********************************************************************
 * KrnP3 - NoICE Serial Debugger for 6809/6309
 *
-* $Id$
-*
 * This module is called by the kernel at boot time and initializes itself
 * by creating a new system call: os9 F$Debug
 *

@@ -1,8 +1,6 @@
 ********************************************************************
 * wbug - WireBug for 6809/6309
 *
-* $Id$
-*
 * For Level 1, wbug must be run from the command line in order for
 * the debugger to be properly setup.
 *

@@ -1,8 +1,6 @@
 ********************************************************************
 * Setime - Set Date/Time
 *
-* $Id$
-*
 * This is a Setime for use when a Y2K compliant system is required.
 *
 * This is somewhat of a cheat in that any attempts to do a full

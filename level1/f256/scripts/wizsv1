@@ -1,0 +1,15 @@
+echo * WizFi360 Helper - Start passthrough server
+xmode /wz eko=0
+modem "ATE1"
+modem /wz /wz /wz
+modem "AT+CIPSERVERMAXCONN=1"
+modem /wz /wz /wz
+modem "AT+CIPMUX=1"
+modem /wz /wz /wz
+modem "AT+CIPMODE=1"
+modem /wz /wz /wz
+modem "AT+CIPSERVER=1,23"
+modem /wz /wz /wz
+modem "AT+CIPSTO=0"
+modem /wz /wz /wz
+echo * Done

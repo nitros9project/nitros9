@@ -1,8 +1,6 @@
 ********************************************************************
 * GrfDrv - NitrOS-9 Windowing Driver
 *
-* $Id$
-*
 * Copyright (c) 1982 Microware Corporation
 * Modified for 6309 Native mode by Bill Nobel - Gale Force Enterprises
 * Also contains Kevin Darlings FstGrf patches & 1 meg routines

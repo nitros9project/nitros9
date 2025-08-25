@@ -1,8 +1,6 @@
 ********************************************************************
 * scbbp.asm - CoCo Bit-Banger Printer Driver
 *
-* $Id$
-*
 * Enhanced and re-written by Alan DeKok
 *
 * Problems with original:

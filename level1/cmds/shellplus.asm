@@ -3,8 +3,6 @@
 *
 * Modified by L. Curtis Boyle from original 2.2 disassembly
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

@@ -1,8 +1,6 @@
 ********************************************************************
 * Koronis - Koronis Rift Program
 *
-* $Id$
-*
 * NOTE:  This code assembles to the EXACT same object code found on
 *        the original Koronis Rift disk.
 *

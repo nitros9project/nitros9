@@ -30,8 +30,6 @@ F256.D              set       1
 * F256 hardware is documented here:
 *   https://github.com/pweingar/C256jrManual/blob/main/tex/f256jr_ref.pdf
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
@@ -119,6 +117,16 @@ HW.Page             SET       $7        device descriptor hardware page
 KrnBlk              SET       $7
 
                   ENDC
+
+********************************************************************
+* Custom SetStats for F256
+*
+		    org	      $C0
+SS.FntLoadM	    rmb	      1
+SS.FntLoadF         rmb	      1
+SS.FntChar	    rmb	      1
+SS.SOLIRQ	    rmb	      1
+SS.SOLMUTE	    rmb	      1
 
 ********************************************************************
 * System control definitions
@@ -224,7 +232,7 @@ INT_VKY_SOL         equ       %00000010 TinyVicky start of line interrupt
 INT_PS2_KBD         equ       %00000100 PS/2 keyboard event
 INT_PS2_MOUSE       equ       %00001000 PS/2 mouse event
 INT_TIMER_0         equ       %00010000 TIMER0 has reached its target value
-INT_TIMER_1         equ       %00010000 TIMER1 has reached its target value
+INT_TIMER_1         equ       %00100000 TIMER1 has reached its target value
 INT_CARTRIDGE       equ       %10000000 Interrupt asserted by the cartridge
 
 * Interrupt group 1 flags
@@ -268,10 +276,10 @@ KEMP                equ       %00000001
 * 0=System handles x/y  1=harware interprets PS/2 packets
 * Enable is bit 0.  1=show mouse pointer 0 = hide mouse pointer
 MS_MEN		    equ	      $FEA0     mouse mode-enable
-MS_XL		    equ	      $FEA2	mouse x low byte
-MS_XH		    equ	      $FEA3	mouse x high byte	    
-MS_YL		    equ	      $FEA4	mouse y low byte
-MS_YH		    equ	      $FEA5	mouse y high byte
+MS_XH		    equ	      $FEA2	mouse x low byte
+MS_XL		    equ	      $FEA3	mouse x high byte	    
+MS_YH		    equ	      $FEA4	mouse y low byte
+MS_YL		    equ	      $FEA5	mouse y high byte
 MS_PS2B0	    equ	      $FEA6	mouse PS/2 Byte 0
 MS_PS2B1	    equ	      $FEA7	mouse PS/2 Byte 1
 MS_PS2B2	    equ	      $FEA8	mouse PS/2 Byte 2
@@ -494,13 +502,23 @@ CODECCtrl           equ       CODECStat
 ******************************************************************
 * F256 text lookup definitions
 *
-TEXT_LUT_FG         equ       $FF00
-TEXT_LUT_BG         equ       $FF40
+* These are relative offsets to block $C2
+*
+TEXT_LUT_BLK	    equ	      $C1      $18_2000 to $18_3FFF
+TEXT_LUT_FG         equ       $1800
+TEXT_LUT_BG         equ       $1840
+
+********************************************************************
+* F256 font definitions
+FONT_BLK            equ	      $C1
+FONT_0_OFFSET	    equ	      $0000
+FONT_1_OFFSET	    equ	      $0800
 
 ********************************************************************
 * F256 SD card interface definitions
 *
-SDC.Base            equ       $FE90
+SDC0.Base           equ       $FE90
+SDC1.Base           equ       $FF00
                     org       0
 SDC_STAT            rmb       1
 SDC_DATA            rmb       1
@@ -540,19 +558,19 @@ VKY_TXT_CURSOR_CTRL_REG rmb       1         [0] Enable Text Mode
 VKY_TXT_START_ADD_PTR rmb       1         this is an offset to change the starting address of the text mode Buffer (in X)
 VKY_TXT_CURSOR_CHAR_REG rmb       1
 VKY_TXT_CURSOR_COLR_REG rmb       1
-VKY_TXT_CURSOR_X_REG_L rmb       1
 VKY_TXT_CURSOR_X_REG_H rmb       1
-VKY_TXT_CURSOR_Y_REG_L rmb       1
+VKY_TXT_CURSOR_X_REG_L rmb       1
 VKY_TXT_CURSOR_Y_REG_H rmb       1
+VKY_TXT_CURSOR_Y_REG_L rmb       1
 ; Line interrupt
 VKY_LINE_IRQ_CTRL_REG rmb       1         [0] - enable line 0 - write only
-VKY_LINE_CMP_VALUE_LO rmb       1         write only [7:0]
-VKY_LINE_CMP_VALUE_HI rmb       1         write only [3:0]
+VKY_LINE_CMP_VALUE_HI rmb       1         write only [7:0]
+VKY_LINE_CMP_VALUE_LO rmb       1         write only [3:0]
 
-VKY_PIXEL_X_POS_LO  equ       VKY_LINE_IRQ_CTRL_REG this is where on the video line is the pixel
-VKY_PIXEL_X_POS_HI  equ       VKY_LINE_CMP_VALUE_LO or what pixel is being displayed when the register is read
-VKY_LINE_Y_POS_LO   equ       VKY_LINE_CMP_VALUE_HI this is the line value of the raster
-VKY_LINE_Y_POS_HI   rmb       1
+VKY_PIXEL_X_POS_HI  equ       VKY_LINE_IRQ_CTRL_REG this is where on the video line is the pixel
+VKY_PIXEL_X_POS_LO  equ       VKY_LINE_CMP_VALUE_LO or what pixel is being displayed when the register is read
+VKY_LINE_Y_POS_HI   equ       VKY_LINE_CMP_VALUE_HI this is the line value of the raster
+VKY_LINE_Y_POS_LO   rmb       1
 
 * Text control bit definitions
 Mstr_Ctrl_Text_Mode_En equ       $01       enable the text mode
@@ -586,26 +604,26 @@ TyVKY_BM0_CTRL_REG  equ       $F000
 BM0_Ctrl            equ       $01       enable the BM0
 BM0_LUT0            equ       $02       LUT0
 BM0_LUT1            equ       $04       LUT1
-TyVKY_BM0_START_ADDY_L equ       $F001
+TyVKY_BM0_START_ADDY_H equ       $F001
 TyVKY_BM0_START_ADDY_M equ       $F002
-TyVKY_BM0_START_ADDY_H equ       $F003
+TyVKY_BM0_START_ADDY_L equ       $F003
 ;BM1
 TyVKY_BM1_CTRL_REG  equ       $F008
 BM1_Ctrl            equ       $01       enable the BM0
 BM1_LUT0            equ       $02       LUT0
 BM1_LUT1            equ       $04       LUT1
-TyVKY_BM1_START_ADDY_L equ       $F009
+TyVKY_BM1_START_ADDY_H equ       $F009
 TyVKY_BM1_START_ADDY_M equ       $F00A
-TyVKY_BM1_START_ADDY_H equ       $F00B
+TyVKY_BM1_START_ADDY_L equ       $F00B
 ;BM2
 TyVKY_BM2_CTRL_REG  equ       $F010
 BM2_Ctrl            equ       $01       enable the BM0
 BM2_LUT0            equ       $02       LUT0
 BM2_LUT1            equ       $04       LUT1
 BM2_LUT2            equ       $08       LUT2
-TyVKY_BM2_START_ADDY_L equ       $F011
+TyVKY_BM2_START_ADDY_H equ       $F011
 TyVKY_BM2_START_ADDY_M equ       $F012
-TyVKY_BM2_START_ADDY_H equ       $F013
+TyVKY_BM2_START_ADDY_L equ       $F013
 
 **  THESE ARE DUPLICATES, RECONCILE THIS LATER
 ********************************************************************
@@ -700,19 +718,19 @@ TILE_MAP_ADDY7      equ       $F19C
 
 
 XYMATH_CTRL_REG     equ       $D300     reserved
-XYMATH_ADDY_L       equ       $D301     w
+XYMATH_ADDY_H       equ       $D301     w
 XYMATH_ADDY_M       equ       $D302     w
-XYMATH_ADDY_H       equ       $D303     w
-XYMATH_ADDY_POSX_L  equ       $D304     r/w
-XYMATH_ADDY_POSX_H  equ       $D305     r/w
-XYMATH_ADDY_POSY_L  equ       $D306     r/w
-XYMATH_ADDY_POSY_H  equ       $D307     r/w
-XYMATH_BLOCK_OFF_L  equ       $D308     r only - low block offset
-XYMATH_BLOCK_OFF_H  equ       $D309     r only - hi block offset
+XYMATH_ADDY_L       equ       $D303     w
+XYMATH_ADDY_POSX_H  equ       $D304     r/w
+XYMATH_ADDY_POSX_L  equ       $D305     r/w
+XYMATH_ADDY_POSY_H  equ       $D306     r/w
+XYMATH_ADDY_POSY_L  equ       $D307     r/w
+XYMATH_BLOCK_OFF_H  equ       $D308     r only - low block offset
+XYMATH_BLOCK_OFF_L  equ       $D309     r only - hi block offset
 XYMATH_MMU_BLOCK    equ       $D30A     r only - which mmu block
-XYMATH_ABS_ADDY_L   equ       $D30B     low absolute results
+XYMATH_ABS_ADDY_H   equ       $D30B     low absolute results
 XYMATH_ABS_ADDY_M   equ       $D30C     mid absolute results
-XYMATH_ABS_ADDY_H   equ       $D30D     hi absolute results
+XYMATH_ABS_ADDY_L   equ       $D30D     hi absolute results
 
 ; Sprite block0
 SPRITE_Ctrl_Enable  equ       $01
@@ -844,4 +862,26 @@ DMA_CTRL_Start_Trf  equ       $80
 * DMA_STATUS_REG bit definitions
 DMA_STATUS_TRF_IP   equ       $80       transfer in progress
 
-                  ENDC
+
+
+* WizFi360 Registers, 2K x 2 FIFO
+* Wifi_Control_Register:
+* Bit[0] = 0 = 115,200K Mode, 1 = 921,600K Mode
+* Bit[1] = 0 Default, 1 = Reset FIFO (you need to bring it back to 0) This is directly connected to reset line of the FIFO
+* Bit[2] = RX FIFO Empty ( 1 = Empty, 0 = Data Available)
+* Bit[3] = TX FIFO Empty ( 1 = Empty, 0 = Data Available)
+WizFi.Base          equ       $FF20
+WizFi.TxEmpty       equ       %00001000
+WizFi.RxEmpty       equ       %00000100
+WizFi.Reset         equ       %00000010
+WizFi.Rate          equ       %00000001
+                    org       $0
+WizFi_CtrlReg       rmb       1
+WizFi_DataReg       rmb       1
+WizFi_RxD_RD_Cnt    rmb       2
+WizFi_RxD_WR_Cnt    rmb       2
+WizFi_TxD_RD_Cnt    rmb       2
+WizFi_TxD_WR_Cnt    rmb       2
+
+
+                    ENDC

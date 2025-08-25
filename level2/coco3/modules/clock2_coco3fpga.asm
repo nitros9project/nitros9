@@ -3,8 +3,6 @@
 * for the Maxim Integrated DS3231 RTC
 * Coco3FPGA ONLY!
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

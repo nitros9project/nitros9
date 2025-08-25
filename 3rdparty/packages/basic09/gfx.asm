@@ -1,8 +1,6 @@
 ********************************************************************
 * GFX - CoCo 2 graphics subroutine module
 *
-* $Id$
-*
 * NOTE: GCOLR is mentioned in the level 2 manual (in the index of level 1
 *   Basic09 text/graphics functions), but there is no manual specific page
 *   for it. Should add in to new version of manual.

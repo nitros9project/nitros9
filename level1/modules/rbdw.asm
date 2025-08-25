@@ -1,8 +1,6 @@
 ********************************************************************
 * rbdw - DriveWire RBF driver
 *
-* $Id$
-*
 * This driver works in conjuction with the DriveWire Server on Linux,
 * Mac or Windows, providing the CoCo with pseudo-disk access through
 * the serial port.

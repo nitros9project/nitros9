@@ -1,8 +1,6 @@
 ********************************************************************
 * TOCGEN - Kings Quest III Table of Contents module
 *
-* $Id$
-*
 *        Module header for original tocgen
 *
 *

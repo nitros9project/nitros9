@@ -1,8 +1,6 @@
 ********************************************************************
 * Date - Print Date/Time
 *
-* $Id$
-*
 * Greetings;                                     September 25, 1996
 *
 * This 'Date' module, date5, has been expanded a wee bit to

@@ -1,8 +1,6 @@
 ********************************************************************
 * autoexec - automatic program booter for the Foenix F256
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

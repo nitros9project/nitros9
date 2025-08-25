@@ -15,7 +15,7 @@ shanghai: shanghai.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 clean:
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 showobjs:
 	@$(ECHO) $(CMDS)

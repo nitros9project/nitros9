@@ -1,8 +1,6 @@
 ********************************************************************
 * scsiquery - Get info on SCSI device through SS.DCmd call
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

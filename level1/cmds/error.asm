@@ -1,8 +1,6 @@
 ********************************************************************
 * Error - Show text error messages
 *
-* $Id$
-*
 * By Bob Devries (c) 2003; bdevries@gil.com.au
 *
 * Released under the GNU public licence

@@ -22,7 +22,7 @@ hires_l2: hires.asm
 	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DLevel=2
 
 clean:
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 dsk:
 dskcopy:

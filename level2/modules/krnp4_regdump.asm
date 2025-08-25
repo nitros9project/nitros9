@@ -1,8 +1,6 @@
 ********************************************************************
 * krnp4 - User Register Dump System Call for NitrOS9 Level 2
 *
-* $Id$
-*
 * Copyright February,1989 by Ron Lammardo
 *
 * This system call can be used in an application program to dump the

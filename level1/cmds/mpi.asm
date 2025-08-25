@@ -1,8 +1,6 @@
 ********************************************************************
 * mpi - Determines if a Multi-Pak Interface is present
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

@@ -3,8 +3,6 @@
 * Provides HWInit, HWTerm, HWRead which are called by code in
 * "use"d boot_common.asm
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

@@ -1,8 +1,6 @@
 ********************************************************************
 * rbcshsd - Corsham SD driver
 *
-* $Id$
-*
 * This driver works with the Corsham SS=50 SD/RTC Shield
 *
 * Edt/Rev  YYYY/MM/DD  Modified by

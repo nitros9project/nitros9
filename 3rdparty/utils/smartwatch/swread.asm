@@ -1,8 +1,6 @@
 ********************************************************************
 * SWRead - Read SmartWatch clock
 *
-* $Id$
-*
 * Copyright May, 1990 by Robert Gault
 
 * SWREAD will read smartwatch compensating for 12hr mode if active

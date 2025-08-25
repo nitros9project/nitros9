@@ -1,8 +1,6 @@
 ********************************************************************
 * Format - RBF Disk format program
 *
-* $Id$
-*
 * Notes:
 *   1. If the TYP.DSQ bit in IT.TYP is clear, then the total number
 *      of sectors is NOT multiplied by the bytes per sector.  This

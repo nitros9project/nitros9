@@ -82,7 +82,7 @@ r0_512_l2.dd: r0.asm
 	$(AS) $(ASOUT)$@ $< $(L2_512)
 
 clean:
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 dsk:
 dskcopy:

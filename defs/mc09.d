@@ -32,8 +32,6 @@ MC09.D              SET       1
 *
 * The 16-location I/O space and the interrupt hook-up are described below.
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

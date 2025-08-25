@@ -6,8 +6,6 @@ COCOVTIO.D          SET       1
 ********************************************************************
 * VTIODefs - Video Terminal I/O Definitions for CoCo 1/2
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
@@ -190,8 +188,6 @@ CFlash60Hz          EQU       30                  * 60Hz flash counter
 
 ********************************************************************
 * VTIODefs - Video Terminal I/O Definitions for CoCo 3
-*
-* $Id$
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment

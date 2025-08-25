@@ -2,8 +2,6 @@
 * SndDrv - Sound Driver for CoCo 3
 * NOTE: Does not use ANY of current 8 byte data area.
 * It also never modifies U, so U is the same on exit as entry
-* $Id$
-*
 * Should be fully compatible with old SS.Tone.
 * (needs cleaning up for space)
 *

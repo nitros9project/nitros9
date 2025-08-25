@@ -1,0 +1,8 @@
+Brainf*ck is a dead-simple, Turing complete computer language.
+This is a dead-simple interpreter for the language. It takes a single parameter: the name of the source file.
+
+e.g.
+
+bf helloworld.bf
+
+Learn more about Brainf*ck here: https://en.wikipedia.org/wiki/Brainf*ck

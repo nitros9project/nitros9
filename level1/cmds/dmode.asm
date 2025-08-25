@@ -1,8 +1,6 @@
 ********************************************************************
 * DMode - Disk descriptor utility
 *
-* $Id$
-*
 * RBF descriptor utility similar to xmode.
 * Use: dmode </devicename> [options]
 *      dmode -<filename>   [options]

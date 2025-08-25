@@ -5,8 +5,6 @@
 * disk driver, but it does not use interrupts. Thus it is safe to use
 * this driver with other hardware uses interrupts.
 *
-* $Id$
-*
 * Ed.    Comments                                       Who YY/MM/DD
 * ------------------------------------------------------------------
 *  02    Fist disassembled                              tjl 02/08/27

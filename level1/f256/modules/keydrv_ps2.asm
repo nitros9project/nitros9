@@ -74,6 +74,8 @@ Init
                     
                     lda       #$F4                load the start scanning command
                     lbsr      SendToPS2           send it to the keyboard
+
+		    clr	      D.KySns
                     
                     leax      KCHandler,pcr       get the PS/2 key code handler routine
                     stx       V.KCVect,u          and store it as the current handler address
@@ -219,6 +221,8 @@ shift@              leay      SHIFTScanMap,pcr    point to the SHIFT scan map
 pastshift@          ldx       V.KCVect,u          get the current key code handler
                     jsr       ,x                  branch into it
                     bcs       IRQExit             if the carry is set, don't wake process
+                    tsta      			  test for 0 (null) character in scanmap
+                    beq       IRQExit             exit for any key that returns 0
                     cmpa      V.PCHR,u  pause character?
                     bne       int@      branch if not
                     ldx       V.DEV2,u  else get dev2 statics
@@ -263,9 +267,9 @@ ex@                 rts                           return
 *             carry set: don't wake up a sleeping process waiting on input
 KCHandler
                     cmpa      #$E0                is it the $E0 preface byte?
-                    beq       ProcE0              branch if so
+                    lbeq       ProcE0              branch if so
                     cmpa      #$F0                is it the $F0 preface byte?
-                    beq       ProcF0              branch if so
+                    lbeq      ProcF0              branch if so
                     cmpa      #$58                is this the Caps Lock byte?
                     beq       DoCapsLockDown      branch if so                    
                     cmpa      #$11                is this the Left Alt byte?
@@ -292,6 +296,8 @@ CheckCAPSLock       tst       V.CAPSLck,u         is the CAPS Lock on?
                     suba      #$20                else make the character uppercase
 * Advance the circular buffer one character.
 BufferChar          ldb       V.IBufH,u           get buffer head pointer in B
+		    leay      V.KSBuf,u
+		    leay      b,y
                     leax      V.InBuf,u           point X to the input buffer
                     abx                           X now holds address of the head pointer
                     lbsr      IncNCheck           increment the pointer and check for tail wrap
@@ -299,6 +305,11 @@ BufferChar          ldb       V.IBufH,u           get buffer head pointer in B
                     beq       bye@                branch if the input buffer is full (drop the character)
                     stb       V.IBufH,u           update the buffer head pointer
                     sta       ,x                  place the character in the buffer
+* Store the KySns in the KSBuf
+BufferKSns          pshs      a
+		    lda	      D.KySns
+                    sta       ,y                  place the D.KySns in the KS buffer
+		    puls      a
 bye@                clrb                          clear carry
                     rts                           return
 
@@ -455,7 +466,7 @@ SetDefaultHandler
 * These tables map PS/2 key codes to characters in both non-SHIFT and SHIFT cases.
 * If the high bit of a character is set, it is a special flag and therefore
 * is handled differently.
-ScanMap             fcb       0,0,0,0,0,0,0,0,0,0,0,0,0,0,'`,0
+ScanMap             fcb       0,0,0,0,0,$b1,$b2,0,0,0,0,0,0,0,'`,0
                     fcb       0,0,0,0,0,'q,'1,0,0,0,'z,'s,'a,'w,'2,0
                     fcb       0,'c,'x,'d,'e,'4,'3,0,0,C$SPAC,'v,'f,'t,'r,'5,0
                     fcb       0,'n,'b,'h,'g,'y,'6,0,0,0,'m,'j,'u,'7,'8,0
@@ -464,7 +475,7 @@ ScanMap             fcb       0,0,0,0,0,0,0,0,0,0,0,0,0,0,'`,0
                     fcb       0,0,0,0,0,0,$8,0,0,'1,0,'4,'7,0,0,0
                     fcb       '0,'.,'2,'5,'6,'8,$05,0,0,'+,'3,'-,'*,'9,$17,0
 
-SHIFTScanMap        fcb       0,0,0,0,0,0,0,0,0,0,0,0,0,0,'~,0
+SHIFTScanMap        fcb       0,0,0,0,0,$b3,$b4,0,0,0,0,0,0,0,'~,0
                     fcb       0,0,0,0,0,'Q,'!,0,0,0,'Z,'S,'A,'W,'@,0
                     fcb       0,'C,'X,'D,'E,'$,'#,0,0,C$SPAC,'V,'F,'T,'R,'%,0
                     fcb       0,'N,'B,'H,'G,'Y,'^,0,0,0,'M,'J,'U,'&,'*,0

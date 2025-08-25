@@ -48,8 +48,6 @@ ATARI.D             set       1
 * Atari Hardware is documented here:
 *   http://user.xmission.com/~trevin/atari/pokey_regs.html
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
@@ -64,8 +62,8 @@ ATARI.D             set       1
 **********************************
 * Power Line Frequency Definitions
 *
-Hz50                equ       1                   Assemble clock for 50 hz power
-Hz60                equ       2                   Assemble clock for 60 hz power
+Hz50                equ       50                  Assemble clock for 50 hz power
+Hz60                equ       60                  Assemble clock for 60 hz power
                     IFNDEF    PwrLnFrq
 PwrLnFrq            set       Hz60                Set to Appropriate freq
                     ENDC

@@ -1,8 +1,6 @@
 ********************************************************************
 * sc6850 - Motorola 6850 UART Driver
 *
-* $Id$
-*
 * Data sheet for 6850 is here:
 *     http://www.classiccmp.org/dunfield/r/6850.pdf
 *

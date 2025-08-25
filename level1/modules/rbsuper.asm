@@ -1,8 +1,6 @@
 ********************************************************************
 * rbsuper - RBF Super Caching Device Driver
 *
-* $Id$
-*
 * (C) 2004 Boisy G. Pitre - Licensed to Cloud-9
 *
 * RBSuper is the framework for a new type of RBF device driver -- one

@@ -2,8 +2,6 @@
 * Emudsk - Virtual disk driver for CoCo emulators
 * Descriptor Template
 *
-* $Id$
-*
 * Ed.    Comments                                       Who YY/MM/DD
 * ------------------------------------------------------------------
 *  01    Modified to compile under OS9Source            tjl 02/08/28
