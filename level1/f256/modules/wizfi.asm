@@ -14,7 +14,9 @@
 * ------------------------------------------------------------------
 *          2025/06/17  Roger Taylor
 * Single IRQ, multi device process coupling attempt
-
+*
+*          2025/08/28  Roger Taylor
+* Added new INT_WIZFI interrupt for K2, other non Jr2 machines
 
                     ifp1
                     use       defsfile
@@ -26,12 +28,13 @@
 * 25,175,000 / 92160 Bytes Per Second  =  273 ticks @ 25.175Mhz (1,  17)
 
 TRATE               equ       350                 Tweak for goldilox (300 = quick response) (800 = choppy response)
-WIZFI_INTERRUPT     equ       INT_TIMER_0         Convenience placement
 D.WZStatTbl         equ       D.SWPage            Borrowed from incompatible SmartWatch variable
 WORK_SLOT	    equ       MMU_SLOT_2
 MMU_WINDOW          equ       $4000
 Mask_SocketDev      equ       %00001000
 IRQ_State_ListenPkt equ       %00000001
+INT_WIZFI           equ       %00000001
+SYS0_MACHINE_ID     equ       SYS0+7
 
 *============================================================================
 
@@ -145,9 +148,14 @@ strCipSend          fcc       "AT+CIPSEND="
 ***********************************************************************************
 * F$IRQ packet.
 *
-IRQ_Pckt            equ       *
-IRQ_Pckt.Flip       fcb       %00000000           the flip byte
-IRQ_Pckt.Mask       fcb       WIZFI_INTERRUPT     the mask byte
+T0IRQ_Pckt          equ       *
+T0IRQ_Pckt.Flip     fcb       %00000000           the flip byte
+T0IRQ_Pckt.Mask     fcb       INT_TIMER_0         the mask byte for machines without actual WizFi Interrupt
+                    fcb       $F1                 the priority byte
+
+WIIRQ_Pckt          equ       *
+WIIRQ_Pckt.Flip     fcb       %00000000           the flip byte
+WIIRQ_Pckt.Mask     fcb       INT_WIZFI           the mask byte for WizFi Interrupt
                     fcb       $F1                 the priority byte
 
 
@@ -194,7 +202,16 @@ c@                  clr       ,x+
                     decb
                     bne       c@
 
-Init2               ldd       #TRATE
+Init2               lda       SYS0_MACHINE_ID
+                    cmpa      #$1A                 at this time the Jr2 doesn't have the WizFi Interrupt
+                    beq       InstallTimer0
+InstallWizIRQ       lda       >INT_MASK_3          else get the interrupt mask byte
+                    anda      #^INT_WIZFI          enable the WizFi interrupt
+                    sta       >INT_MASK_3          and save it back
+                    ldd       #INT_PENDING_3       assume all other machines with WizFi will have the WizFi Interrupt
+                    leax      WIIRQ_Pckt,pcr       point to the IRQ packet
+                    bra       Install
+InstallTimer0       ldd       #TRATE
                     sta       T0_VAL+0            registers are still Little Endian?
                     stb       T0_VAL+1
                     clr       T0_VAL+2
@@ -202,15 +219,16 @@ Init2               ldd       #TRATE
                     sta       >T0_CTR
                     lda       #%00000010          Timer reloads Value, for continuous run
                     sta       >T0_CMP_CTR
+                    lda       >INT_MASK_0         else get the interrupt mask byte
+                    anda      #^INT_TIMER_0       enable the TIMER_0 interrupt
+                    sta       >INT_MASK_0         and save it back
                     ldd       #INT_PENDING_0      get the pending interrupt pending address
-                    leax      IRQ_Pckt,pcr        point to the IRQ packet
-                    leay      iService,pcr       and the service routine
+                    leax      T0IRQ_Pckt,pcr      point to the IRQ packet
+
+Install             leay      iService,pcr        and the service routine
                     os9       F$IRQ               install the interrupt handler
-*                    bcc       g@                  branch if success
+*                    bcc       g@                 branch if success
 *                    os9       F$PErr
-                    lda       >INT_MASK_0          else get the interrupt mask byte
-                    anda      #^WIZFI_INTERRUPT   set the interrupt
-                    sta       >INT_MASK_0          and save it back
                     clr       OutPktLaydown,u
                     clr       OutPktPickup,u
                     clr       PktReadPos,u
@@ -306,9 +324,14 @@ RxFCheck            ldd       [ind_RxD_WR_CountReg,u]
 
 iService            pshs      cc,dp,x
 
-                    lda       #WIZFI_INTERRUPT    clear pending interrupt
-                    sta       INT_PENDING_0
-
+                    lda       SYS0_MACHINE_ID
+                    cmpa      #$1A                at this time the Jr2 doesn't have the WizFi Interrupt
+                    beq       ClearTimer0
+                    lda       #INT_WIZFI          clear pending interrupt
+                    sta       >INT_PENDING_3
+                    bra       iSendPkt
+ClearTimer0         lda       #INT_TIMER_0
+                    sta       >INT_PENDING_0
 iSendPkt            ldb       OutPktLaydown,u
                     subb      OutPktPickup,u
                     lbeq      iRead
