@@ -495,15 +495,15 @@ k2@                 ldb       V.PORT+1,u
                     ldb       #$AA
                     stb       >$4AAA
 *
-                    ldb       V.PORT+1,u
-                    andb      #$C0               Align to top of Flash chip
-                    stb       >MMU_WORKSLOT
+*                    ldb       V.PORT+1,u
+*                    andb      #$C0               Align to top of Flash chip
+*                    stb       >MMU_WORKSLOT
                     ldb       #$55
                     stb       >$4555
 *
-                    ldb       V.PORT+1,u
-                    andb      #$C0               Align to top of Flash chip
-                    stb       >MMU_WORKSLOT
+*                    ldb       V.PORT+1,u
+*                    andb      #$C0               Align to top of Flash chip
+*                    stb       >MMU_WORKSLOT
                     ldb       #$A0
                     stb       >$4AAA
                     bra       p@
