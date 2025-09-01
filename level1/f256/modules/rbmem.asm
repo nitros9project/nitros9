@@ -373,12 +373,12 @@ SET_STAGE_1         pshs      a
 *      the address $5555 translates to $5555, because $5555 becomes $1555 then added to $4000.
                     adda      #$02
                     sta       >MMU_WORKSLOT
-                    stb       >$5555             <2MB chip
+                    stb       >$1555+$4000        <2MB chip
                     bra       x@
 * K2:  Address $0AAA in Flash cartridge is in block $80 and when block $80 is mapped to $4000 (MMU SLOT 2),
 *      the address $0AAA translates to $4AAA
 a@                  sta       >MMU_WORKSLOT
-                    stb       >$4AAA             2MB chip
+                    stb       >$0AAA+$4000        2MB chip
 x@                  puls      a,pc
 
 
@@ -392,12 +392,12 @@ SET_STAGE_2         pshs      a
 *      the address $2AAA translates to $4AAA, because $2AAA becomes $0AAA then added to $4000.
                     inca
                     sta       >MMU_WORKSLOT
-                    stb       >$4AAA             <2MB chip
+                    stb       >$0AAA+$4000        <2MB chip
                     bra       x@
 * K2:  Address $0555 in Flash cartridge is in block $80 and when block $80 is mapped to $4000 (MMU SLOT 2),
 *      the address $0555 translates to $4555
 a@                  sta       >MMU_WORKSLOT
-                    stb       >$4555             2MB chip
+                    stb       >$0555+$4000        2MB chip
 x@                  puls      a,pc
 
 SET_STAGE_X         pshs      a
@@ -409,12 +409,12 @@ SET_STAGE_X         pshs      a
 *      the address $5555 translates to $5555, because $5555 becomes $1555 then added to $4000.
                     adda      #$02
                     sta       >MMU_WORKSLOT
-                    stb       >$5555             <2MB chip
+                    stb       >$1555+$4000        <2MB chip
                     bra       x@
 * K2:  Address $0AAA in Flash cartridge is in block $80 and when block $80 is mapped to $4000 (MMU SLOT 2),
 *      the address $0AAA translates to $4AAA
 a@                  sta       >MMU_WORKSLOT
-                    stb       >$4AAA             2MB chip
+                    stb       >$0AAA+$4000        2MB chip
 x@                  puls      a,pc
 
 
@@ -493,19 +493,11 @@ k2@                 ldb       V.PORT+1,u
                     andb      #$C0               Align to top of Flash chip
                     stb       >MMU_WORKSLOT
                     ldb       #$AA
-                    stb       >$4AAA
-*
-*                    ldb       V.PORT+1,u
-*                    andb      #$C0               Align to top of Flash chip
-*                    stb       >MMU_WORKSLOT
+                    stb       >$0AAA+$4000
                     ldb       #$55
-                    stb       >$4555
-*
-*                    ldb       V.PORT+1,u
-*                    andb      #$C0               Align to top of Flash chip
-*                    stb       >MMU_WORKSLOT
+                    stb       >$0555+$4000
                     ldb       #$A0
-                    stb       >$4AAA
+                    stb       >$0AAA+$4000
                     bra       p@
 * for <2MB chips only, or what's in Jr2
 j2@                 ldb       V.PORT+1,u
@@ -513,21 +505,19 @@ j2@                 ldb       V.PORT+1,u
                     addb      #$02
                     stb       >MMU_WORKSLOT
                     ldb       #$AA
-                    stb       >$5555
-*
+                    stb       >$1555+$4000
                     ldb       V.PORT+1,u
                     andb      #$C0               Align to top of Flash chip
                     incb
                     stb       >MMU_WORKSLOT
                     ldb       #$55
-                    stb       >$4AAA
-*
+                    stb       >$0AAA+$4000
                     ldb       V.PORT+1,u
                     andb      #$C0               Align to top of Flash chip
                     addb      #$02
                     stb       >MMU_WORKSLOT
                     ldb       #$A0
-                    stb       >$5555
+                    stb       >$1555+$4000
 * Reduce the above area eventually
 p@                  ldb       FlashBlock,u
                     stb       >MMU_WORKSLOT
@@ -551,6 +541,7 @@ g@                  leay      -1,y
                     andcc     #^IntMasks          turn on interrupts and clear carry to indicate no error
                     clrb                          no errors
                     rts
+
 
 * 3.3 Sector Erase Operation
 * The Sector Erase operation allows the system to erase
