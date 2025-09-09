@@ -286,6 +286,8 @@ ReadFlashID         pshs      cc
                     lbsr      SET_STAGE_2
                     ldb       #$F0
                     lbsr      SET_STAGE_X
+*                    cmpx      FLASH_ID_F256,pcr
+*                    beq       f@
                     cmpx      FLASH_ID_128K_JR2,pcr
                     beq       f@
                     cmpx      FLASH_ID_256K_JR2,pcr
