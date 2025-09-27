@@ -1,7 +1,7 @@
 include ../port.mak
 
 vpath %.as $(LEVEL1)/f256/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds
-vpath %.asm $(LEVEL1)/f256/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/bf:$(3RDPARTY)/packages/cpm:$(3RDPARTY)/packages/rogue
+vpath %.asm $(LEVEL2)/f256/cmds:$(LEVEL2)/cmds:$(LEVEL1)/f256/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/bf:$(3RDPARTY)/packages/cpm:$(3RDPARTY)/packages/rogue
 
 DEPENDS		= ./makefile $(NOSLIB)/net.o
 
@@ -9,7 +9,6 @@ AFLAGS      += -I$(LEVEL2)/$(PORT)
 AFLAGS      += -I$(3RDPARTY)/packages/basic09
 AFLAGS      += -I$(3RDPARTY)/packages/bf
 AFLAGS      += -I$(3RDPARTY)/packages/cpm
-AFLAGS      += -I../defs
 LFLAGS		+= -L$(NITROS9DIR)/lib -L$(LEVEL2)/$(PORT)/libs
 LFLAGS		+= -lf256 -lfnxsnd
 LFLAGS		+= -lnet -lalib -lnos96809l2
@@ -26,7 +25,7 @@ CMDS    = asm attr backup bawk binex build cmp copy \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
 		bootos9 fnxinfo fnxreset rogue fstatus fcfg xtclut drawtest play foenix shellbg shellbgoff \
-		$(CMDS_DW) $(BASIC09) $(BF) $(CPM)
+		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) grfdrvf256
 
 CMDS_CART      = asm attr backup bawk binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \

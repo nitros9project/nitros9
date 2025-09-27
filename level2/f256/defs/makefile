@@ -3,8 +3,8 @@ include ../port.mak
 DEPENDS		= ./makefile
 
 DEFOPTS		= --preprocess -DLevel=2
-PERMDEFS	= Defsfile
-DEFS		= os9.d rbf.d scf.d coco.d coco3vtio.d
+PERMDEFS	= defsfile
+DEFS		= os9.d rbf.d scf.d f256.d f256vtio.d
 ALLOBJS		= $(DEFS) $(PERMDEFS)
 
 all:	$(ALLOBJS)
@@ -21,12 +21,12 @@ scf.d: $(DEFSDIR)/scf.d
 	$(AS) $(AFLAGS) $(DEFOPTS) -DSCF.D=0 $< > $@
 	$(DROP_EXTRA_SPACES) $@
 
-coco.d: $(DEFSDIR)/coco.d
-	$(AS) $(AFLAGS) $(DEFOPTS) -DCOCO.D=0 $< > $@
+f256.d: $(DEFSDIR)/f256.d
+	$(AS) $(AFLAGS) $(DEFOPTS) -DF256.D=0 $< > $@
 	$(DROP_EXTRA_SPACES) $@
 
-coco3vtio.d: $(DEFSDIR)/cocovtio.d
-	$(AS) $(AFLAGS) $(DEFOPTS) -DCOCOVTIO.D=0 $< > $@
+f256vtio.d: $(DEFSDIR)/f256vtio.d
+	$(AS) $(AFLAGS) $(DEFOPTS) -DF256VTIO.D=0 $< > $@
 	$(DROP_EXTRA_SPACES) $@
 
 clean:

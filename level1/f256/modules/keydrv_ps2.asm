@@ -23,11 +23,6 @@ atrv                set       ReEnt+rev
 rev                 set       $00
 edition             set       3
 
-
-* We can use a different MMU slot if we want.
-MAPSLOT             equ       MMU_SLOT_1
-MAPADDR             equ       (MAPSLOT-MMU_SLOT_0)*$2000
-
                     mod       eom,name,tylg,atrv,start,size
 
 size                equ       V.Last
@@ -76,7 +71,7 @@ Init
                     lbsr      SendToPS2           send it to the keyboard
 
 		    clr	      D.KySns
-                    
+
                     leax      KCHandler,pcr       get the PS/2 key code handler routine
                     stx       V.KCVect,u          and store it as the current handler address
                     ldd       #INT_PENDING_0      get the pending interrupt pending address

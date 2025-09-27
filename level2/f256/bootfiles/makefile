@@ -45,8 +45,8 @@ SC16550	 = $(MD)/sc16550.dr $(MD)/t0_sc16550.dd
 WIZFI = $(MD)/wizfi.dr $(MD)/wz.dd $(MD)/n0.dd $(MD)/n1.dd $(MD)/n2.dd $(MD)/n3.dd
 
 # SCF video terminal
-SCVT_F256K	 = $(MD)/vtio.dr $(MD)/keydrv_f256k.sb $(MD)/mousedrv_ps2.sb $(MD)/term.dt
-SCVT_F256JR  = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/mousedrv_ps2.sb $(MD)/term.dt
+SCVT_F256K	 = $(MD)/vtio.dr $(CMDSDIR)/grfdrvf256 $(MD)/keydrv_f256k.sb $(MD)/mousedrv_ps2.sb $(MD)/term.dt
+SCVT_F256JR  = $(MD)/vtio.dr $(CMDSDIR)/grfdrvf256 $(MD)/keydrv_ps2.sb $(MD)/mousedrv_ps2.sb $(MD)/term.dt
 
 # Font & palette
 #FONT		 = $(FNT)/bannerfont.sb
