@@ -42,20 +42,22 @@ start               lbra      Init
                     lbra      SetStat
                     lbra      Term
 
-llpath              fcc       "../CMDS/"
+llpath              fcc       "/dd/CMDS/"
 llnam               fcs       "llfnx"
 
 Init                
 * Link to module
 linkmod
-                    ifgt      Level-1
+                    ifgt      Level-2
                     leas      -2,s                Make buffer for current process dsc.
                     bsr       tosysproc               Swap to system process
                     endc
                     lda       #Systm+Objct        Link module
                     leax      llnam,pcr
+                    pshs      u
                     os9       F$Link
-                    ifgt      Level-1
+                    puls      u
+                    ifgt      Level-2
                     bsr       toproc               Swap back to current process
                     endc
                     bcc       save                 Return
@@ -64,27 +66,30 @@ linkmod
 
 * Load a module
 loadmod
-                    ifgt      Level-1
+                    ifgt      Level-2
                     leas      -2,s                Make a buffer for current process ptr
                     bsr       tosysproc               Switch to system process descriptor
                     ldu       <D.Proc
                     endc
                     lda       #Systm+Objct        Load module
                     leax      llpath,pcr
+                    pshs      u
                     os9       F$Load
+                    puls      u
+                    bcs       ex
 
-                    ifgt      Level-1
+                    ifgt      Level-2
                     bsr       toproc               Swap back to current process
                     endc
 save
-                    ifgt      Level-1
+                    ifgt      Level-2
                     leas      2,s                 Purge stack & return
                     endc
                     sty       V.LLEntry,u
                     jmp       ,y
 ex                  rts
 
-                    ifgt      Level-1
+                    ifgt      Level-2
 * Switch to system process descriptor
 tosysproc           pshs      d                   Preserve D
                     ldd       <D.Proc             Get current process dsc. ptr
