@@ -12,6 +12,7 @@ KBufSz              EQU       8                   the circular buffer size
 
 * Driver static memory.
                     ORG       V.SCF
+V.LLEntry	        RMB	      2
 V.CurRow            RMB       1                   current row where the next character goes
 V.CurCol            RMB       1                   current column where the next character goes
 V.CapsLck           RMB       1                   CAPS LOCK key up/down flag ($00 = up)
