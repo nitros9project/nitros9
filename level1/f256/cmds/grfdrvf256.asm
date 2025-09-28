@@ -7,7 +7,7 @@
 *  1       2025/09/26  Boisy G. Pitre
 * Started.
 
-                    use       ../defsfile
+                    use       defsfile
                     use       f256vtio.d
                     use       scf.d
                     
