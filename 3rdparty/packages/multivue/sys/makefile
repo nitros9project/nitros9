@@ -2,6 +2,8 @@ include ../../../../rules.mak
 
 vpath %.asm	$(LEVEL2)/sys
 
+AFLAGS      += -I.
+
 DEPENDS		= ./makefile
 
 SYSFILES	= env.file

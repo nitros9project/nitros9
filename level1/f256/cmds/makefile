@@ -3,6 +3,8 @@ include ../port.mak
 vpath %.as $(LEVEL1)/cmds
 vpath %.asm $(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/bf
 
+AFLAGS      += -I.
+
 DEPENDS		= ./makefile $(NOSLIB)/net.o
 
 

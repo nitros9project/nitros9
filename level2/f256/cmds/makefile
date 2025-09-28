@@ -1,5 +1,7 @@
 include ../port.mak
 
+AFLAGS      += -I.
+
 vpath %.as $(LEVEL1)/f256/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds
 vpath %.asm $(LEVEL2)/f256/cmds:$(LEVEL2)/cmds:$(LEVEL1)/f256/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/bf:$(3RDPARTY)/packages/cpm:$(3RDPARTY)/packages/rogue
 

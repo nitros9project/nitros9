@@ -2,6 +2,8 @@ include $(NITROS9DIR)/rules.mak
 
 vpath %.asm ../cmds
 
+AFLAGS += -I.
+
 DSK	= OS9L2BBS.dsk
 BBS	= ../bbs
 
@@ -40,7 +42,7 @@ dskcopy: $(DSK)
 	$(CP) $(DSK) $(DSKDIR)
 
 clean: dskclean
-	$(RM) $(CMDS)
+	$(RM) $(CMDS) *.list *.map
 
 dskclean:
 	$(RM) $(DSK)

@@ -9,11 +9,7 @@
 *   2      2024/11/02  Matt Massie - Added Foenix F256 Graphics, Mouse, Joystick functions
 
                   IFP1
-                    use       ../defs/os9.d
-                    use       scf.d
-                    use       ../defs/f256.d
-                    use       f256vtio.d
-                    *use      defsfile
+                  use         defsfile
                   ENDC
 
 tylg                set       Sbrtn+Objct
