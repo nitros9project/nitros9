@@ -3,10 +3,19 @@ include ../port.mak
 vpath %.as $(LEVEL1)/cmds
 vpath %.asm $(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/bf
 
+AFLAGS      += -I.
+
 DEPENDS		= ./makefile $(NOSLIB)/net.o
 
-AFLAGS         += --includedir=$(3RDPARTY)/packages/basic09 --includedir=$(3RDPARTY)/packages/bf
-LFLAGS         += -L $(NITROS9DIR)/lib -L $(LEVEL1)/$(PORT)/libs -L $(LEVEL1)/$(PORT)/libs/fnxsnd -lnet -lf256 -lalib -lfnxsnd
+
+AFLAGS      += -I$(LEVEL1)/$(PORT)
+AFLAGS      += -I$(3RDPARTY)/packages/basic09
+AFLAGS      += -I$(3RDPARTY)/packages/bf
+AFLAGS      += -I$(3RDPARTY)/packages/cpm
+AFLAGS      += -I.
+LFLAGS		+= -L$(NITROS9DIR)/lib -L$(LEVEL1)/$(PORT)/libs/fnxsnd
+LFLAGS		+= -lf256 -lfnxsnd
+LFLAGS		+= -lnet -lalib -lfnxsnd -lnos96809l1
 
 BASIC09		= basic09 runb inkey syscall
 BF  		= bf

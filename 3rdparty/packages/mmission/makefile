@@ -48,7 +48,7 @@ ALLOBJS		= $(CMDS)
 all:	$(ALLOBJS)
 
 clean:	dskclean
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 dsk:	all $(DSKS)
 
