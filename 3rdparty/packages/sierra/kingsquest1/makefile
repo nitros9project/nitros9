@@ -2,6 +2,8 @@ include ../../../../rules.mak
 
 vpath %.asm ../objs_lsl
 
+AFLAGS      += -I.
+
 DEPENDS		= ./makefile
 
 DISK_40D	= KingsQuestI_40d.dsk
@@ -62,7 +64,7 @@ ALLOBJS		= $(CMDS)
 all:	$(ALLOBJS)
 
 clean:	dskclean
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 dsk:	all $(DISK_40D) $(DSKDW) $(DSKDWBECKER)
 
