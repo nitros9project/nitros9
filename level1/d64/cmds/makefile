@@ -7,6 +7,7 @@ DEPENDS		= ./makefile
 
 AFLAGS		+= -I$(LEVEL1)/$(PORT)
 AFLAGS		+= -I$(3RDPARTY)/packages/basic09
+AFLAGS		+= -I.
 LFLAGS		+= -L $(NITROS9DIR)/lib -lnet -ldragon -lalib
 
 CMDS		= asm attr backup bawk binex build cmp cobbler cobbler_dragon copy cputype \

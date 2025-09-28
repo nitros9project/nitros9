@@ -21,7 +21,7 @@ $(HELPMSG): $(HELPFILES)
 	$(MERGE) $(HELPFILES) > $@
 
 clean:
-	$(RM) $(HELPMSG) $(ASSETFILES)
+	$(RM) $(HELPMSG) $(ASSETFILES) *.list *.map
 
 showbinobjs:
 	@$(ECHO) $(ASSETFILES)

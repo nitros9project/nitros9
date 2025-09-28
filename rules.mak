@@ -40,9 +40,9 @@ DSKDIR		= $(NITROS9DIR)/dsks
 
 # Use the cross assembler
 #AS		= os9asm -i=$(DEFSDIR)
-AS		= lwasm --no-warn=ifp1 --6309 --format=os9 --pragma=pcaspcr,nosymbolcase,condundefzero,undefextern,dollarnotlocal,noforwardrefmax --includedir=. --includedir=$(DEFSDIR)
-ASROM		= lwasm --no-warn=ifp1 --6309 --format=raw --pragma=pcaspcr,nosymbolcase,condundefzero,undefextern,dollarnotlocal,noforwardrefmax --includedir=. --includedir=$(DEFSDIR)
-ASBIN		= lwasm --no-warn=ifp1 --6309 --format=decb --pragma=pcaspcr,nosymbolcase,condundefzero,undefextern,dollarnotlocal,noforwardrefmax --includedir=. --includedir=$(DEFSDIR)
+AS		= lwasm --no-warn=ifp1 --6309 --format=os9 --pragma=pcaspcr,nosymbolcase,condundefzero,undefextern,dollarnotlocal,noforwardrefmax --includedir=$(DEFSDIR)
+ASROM		= lwasm --no-warn=ifp1 --6309 --format=raw --pragma=pcaspcr,nosymbolcase,condundefzero,undefextern,dollarnotlocal,noforwardrefmax --includedir=$(DEFSDIR)
+ASBIN		= lwasm --no-warn=ifp1 --6309 --format=decb --pragma=pcaspcr,nosymbolcase,condundefzero,undefextern,dollarnotlocal,noforwardrefmax --includedir=$(DEFSDIR)
 ASOUT		= -o
 ifdef LISTDIR
 ASOUT		= --list=$(LISTDIR)/$@.lst --symbols -o
