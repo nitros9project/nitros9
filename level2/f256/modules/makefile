@@ -4,13 +4,13 @@ vpath %.as $(LEVEL1)/$(PORT)/modules
 vpath %.asm kernel:$(LEVEL1)/$(PORT)/modules:$(LEVEL2)/modules:$(LEVEL1)/modules
 
 # Select one of the dwio modules below based on your desired configuration:
-#DWIO 	= dwio_wizfi.sb
-DWIO 	= dwio_serial.sb
+#DWIO	= dwio_wizfi.sb
+DWIO	= dwio_serial.sb
 
 AFLAGS		+= -I$(LEVEL2)/$(PORT)
 AFLAGS		+= -I$(LEVEL1)/$(PORT)/modules
 AFLAGS		+= -I$(LEVEL1)/modules
-LFLAGS      += -L $(NITROS9DIR)/lib -L $(LEVEL2)/$(PORT)/libs -lnet -lf256 -lalib -lfnxsnd
+LFLAGS	    += -L $(NITROS9DIR)/lib -L $(LEVEL2)/$(PORT)/libs -lnet -lf256 -lalib -lfnxsnd
 
 DEPENDS		= ./makefile
 TPB		= $(3RDPARTY)/booters
@@ -20,14 +20,14 @@ SYSMODS		= ioman init sysgo
 CLOCKS		= clock clock2_f256
 
 RBF		= rbf.mn rbdw.dr $(DWIO) ddx0.dd x0.dd x1.dd x2.dd x3.dd \
-                rbmem.dr ddc0.dd c0.dd c1.dd f0.dd f1.dd \
+		rbmem.dr ddc0.dd c0.dd c1.dd f0.dd f1.dd \
 		rbsuper.dr \
-                llfnxsd.sb dds0.dd s0.dd s1.dd
+		llfnxsd.sb dds0.dd s0.dd s1.dd
 
 SCF		= scf.mn \
 		vrn.dr nil.dd \
-		vtio.dr keydrv_f256k.sb keydrv_ps2.sb mousedrv_ps2.sb term.dt \
-	        SOLdrv.sb fSOL.dd \
+		vtio.dr keydrv_f256k2.sb keydrv_f256k.sb keydrv_ps2.sb mousedrv_ps2.sb term.dt \
+		SOLdrv.sb fSOL.dd \
 		sc16550.dr t0_sc16550.dd \
 		scdwp.dr p_scdwp.dd \
 		scdwv.dr term_scdwv.dt n_scdwv.dd \
@@ -38,7 +38,7 @@ SCF		= scf.mn \
 		z1_scdwv.dd z2_scdwv.dd z3_scdwv.dd z4_scdwv.dd z5_scdwv.dd \
 		z6_scdwv.dd z7_scdwv.dd z8_scdwv.dd z9_scdwv.dd z10_scdwv.dd \
 		z11_scdwv.dd z12_scdwv.dd z13_scdwv.dd z14_scdwv.dd \
-                wizfi.dr wz.dd n0.dd n1.dd n2.dd n3.dd
+		wizfi.dr wz.dd n0.dd n1.dd n2.dd n3.dd
 
 PIPE		= pipeman.mn pipeman_named.mn piper.dr pipe.dd
 
