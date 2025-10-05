@@ -327,10 +327,12 @@ iService            pshs      cc,dp,x
                     lda       SYS0_MACHINE_ID
                     cmpa      #$1A                at this time the Jr2 doesn't have the WizFi Interrupt
                     beq       ClearTimer0
-                    lda       #INT_WIZFI          clear pending interrupt
+                    lda       >INT_PENDING_3
+                    ora       #INT_WIZFI          clear pending interrupt by setting its bit
                     sta       >INT_PENDING_3
                     bra       iSendPkt
-ClearTimer0         lda       #INT_TIMER_0
+ClearTimer0         lda       >INT_PENDING_0
+                    ora       #INT_TIMER_0        clear pending interrupt by setting its bit
                     sta       >INT_PENDING_0
 iSendPkt            ldb       OutPktLaydown,u
                     subb      OutPktPickup,u
