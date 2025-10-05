@@ -285,6 +285,15 @@ MS_PS2B1	    equ	      $FEA7	mouse PS/2 Byte 1
 MS_PS2B2	    equ	      $FEA8	mouse PS/2 Byte 2
 MS_SRATE	    equ	      $28	mouse sample rate $A,$14,$28,$3C,$50,$64,$C8
 
+********************************************************************
+* F256K2 optical keyboard definitions
+*
+OKB.Base            equ       $FE10
+                    org       0
+OKB.Data            rmb       1         keyboard data
+OKB.Stat            rmb       1         bit 7 = 1 (mechanical) or 0 (optical), bit 0 = 1 (FIFO empty) or 0 (FIFO full)
+OKB.CntLo           rmb       1
+OKB.CntHi           rmb       1
 
 ********************************************************************
 * F256 timer definitions

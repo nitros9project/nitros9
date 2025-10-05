@@ -83,7 +83,14 @@ AltISR
                     else
                     beq       HandleSound
                     endc
-                    jsr       6,x                       call AltIRQ routine in keydrv
+                    lda       V.LastCh,u                 if LastCh=0, skip keyrepeat handling
+                    beq       HandleKeyboard@            
+                    dec       V.KRTimer,u                decrement repeat timer
+                    bne       HandleKeyboard@            if not 0, then don't repeat yet
+                    ldx       V.KeyDrvEPtr,u             
+                    jsr       9,x                        else jmp to keyrepeat routine
+HandleKeyboard@     ldx       V.KeyDrvEPtr,u                
+                    jsr       6,x                        call AltIRQ routine in keydrv
                     ifgt      Level-1
 * Handle Mouse Timer. When timer wraps to zero, turn it off
 * Mouse does not hide correctly, so park it at right side of screen
@@ -102,19 +109,19 @@ HandleMSTimer       tst       MS_MEN             check if mouse cursor already o
                     endc
 * Handle sound.
 HandleSound
-                    tst       D.TnCnt          get the tone counter
-                    beq       ex@           branch if zero
-                    dec       D.TnCnt          else decrement the counter
-                    bne       ex@       branch not zero; leave the sound on
-sndoff              pshs      cc save the condition code register
-                    orcc      #IntMasks mask interrupts
-                    ldb       MAPSLOT         get the MMU slot we'll map to
-                    lda       #$C4                get the sound MMU block
-                    sta       MAPSLOT             store it in the MMU slot to map it in
+                    tst       D.TnCnt            get the tone counter
+                    beq       ex@                branch if zero
+                    dec       D.TnCnt            else decrement the counter
+                    bne       ex@                branch not zero; leave the sound on
+sndoff              pshs      cc                 save the condition code register
+                    orcc      #IntMasks          mask interrupts
+                    ldb       MAPSLOT            get the MMU slot we'll map to
+                    lda       #$C4               get the sound MMU block
+                    sta       MAPSLOT            store it in the MMU slot to map it in
 * Turn off PSG channel 0
-                    lda       #%10011111          set attenuation for channel 0
+                    lda       #%10011111         set attenuation for channel 0
                     sta       MAPADDR+PSG.Base
-                    stb       MAPSLOT restore it in the MMU slot
+                    stb       MAPSLOT            restore it in the MMU slot
 * Wake up process that started sound, if any
                     lda       D.SndPrcID
                     beq       g@                    
@@ -122,7 +129,7 @@ sndoff              pshs      cc save the condition code register
                     os9       F$Send
                     clr       D.SndPrcID
 g@                  puls      cc
-ex@                 jmp       [D.OrgAlt] branch to the original alternate IRQ routine
+ex@                 jmp       [D.OrgAlt]         branch to the original alternate IRQ routine
 
 *******************************************************
 * Bell ($07) (called via Bell vector D.Bell):
@@ -140,7 +147,7 @@ BellTone            tst       D.SndPrcID
                     stb       D.TnCnt             store the duration counter in the global
                     pshs      cc,a
                     lda       #$C4                get the sound MMU block
-                    orcc      #IntMasks mask interrupts
+                    orcc      #IntMasks           mask interrupts
                     ldb       MAPSLOT             get the MMU slot we'll map to
                     sta       MAPSLOT             store it in the MMU slot to map it in
 * Turn off attenuation for tones 2, 3, and noise channel.
@@ -159,8 +166,8 @@ BellTone            tst       D.SndPrcID
                     sta       ,x                  store in PSG hardware
 
 * Set frequency of tone
-                    pshs      b save original MAP slot value                    
-                    tfr       y,d transfer frequency over
+                    pshs      b                   save original MAP slot value                    
+                    tfr       y,d                 transfer frequency over
                     coma
                     comb
                     pshs      d                   only 10 bits are significant
@@ -207,10 +214,10 @@ l@                  cmpa      CODECCtrl,x
 * Initialize the F256 sound hardware.
 InitSound           clr       D.SndPrcID          clear the process ID of the current sound emitter (none)
                     lda       SYS1                get the byte at SYS1
-                    anda      #^SYS_PSG_ST clear the stereo flag
+                    anda      #^SYS_PSG_ST        clear the stereo flag
                     sta       SYS1                and save it back
 
-InitPSG             pshs      cc                save the condition code register
+InitPSG             pshs      cc                  save the condition code register
                     lda       #$C4                get the sound MMU block
                     orcc      #IntMasks           mask interrupts
                     ldb       MAPSLOT             get the MMU slot we'll map to
@@ -286,13 +293,13 @@ l@                  tfr       d,x                 transfer it to X
                     bcs       installfont         branch if the link failed
                     pshs      y                   save Y
                     tfr       y,x                 transfer it to X
-		    lda	      #TEXT_LUT_BLK	  load text LUT block
-		    sta	      MAPSLOT
-		    ldy	      #MAPADDR
+                    lda       #TEXT_LUT_BLK       load text LUT block
+                    sta       MAPSLOT
+                    ldy       #MAPADDR
                     leay      TEXT_LUT_FG,y       load Y with the LUT foreground
                     bsr       copypal             copy the palette data for the foreground
                     puls      x                   restore Y into X
-		    ldy	      #MAPADDR
+                    ldy       #MAPADDR
                     leay      TEXT_LUT_BG,y       load Y with the LUT background
                     bsr       copypal             copy the palette data for the background
 
@@ -344,7 +351,7 @@ l@                  ldd       ,x++                get two bytes from the source
                     std       ,y++                and save it to the destination
                     leau      -4,u                subtract 4 from the counter
                     cmpu      #0000               are we done?
-                    bne       l@               branch if not
+                    bne       l@                  branch if not
                     rts                           return
 
 * Clear memory at MAPADDR with the contents of D.
@@ -358,44 +365,45 @@ l@                  std       ,x++
 * NOTE: If we fail to find the 'keydrv' module, carry is returned set, but
 * the caller can chose to ignore the error condition.
 InitKeyboard        clr       D.KySns
-		    clr	      V.KySns,u
-		    clr	      V.IBufH,u
-		    clr       V.IBufT,u
-                    leax      keydrvmod,pcr         point to the keydrv module name
-                    lda       #Systm+Objct               it's a system module
-                    pshs      u save U on the stack
+                    clr       V.KySns,u
+                    clr       V.IBufH,u
+                    clr       V.IBufT,u
+                    clr       V.LastCh,u          clear LastCh so no keyrepeat
+                    leax      keydrvmod,pcr       point to the keydrv module name
+                    lda       #Systm+Objct        it's a system module
+                    pshs      u                   save U on the stack
                     os9       F$Link              link to it
-                    tfr       u,x move the module address to X
-                    puls      u restore U from the stack
-                    bcs       ex@         branch if the link failed
-                    stx       V.KeyDrvMPtr,u save the module pointer
-                    sty       V.KeyDrvEPtr,u save the entry pointer
+                    tfr       u,x                 move the module address to X
+                    puls      u                   restore U from the stack
+                    bcs       ex@                 branch if the link failed
+                    stx       V.KeyDrvMPtr,u      save the module pointer
+                    sty       V.KeyDrvEPtr,u      save the entry pointer
                     jsr       ,y                  call the subroutine's Init entry point
                     rts                           return to the caller
-ex@                 ldd        #0 set D to 0
-                    std       V.KeyDrvMPtr,u clear the module pointer
-                    std       V.KeyDrvEPtr,u clear the entry pointer
-                    rts       return to the caller
+ex@                 ldd       #0                  set D to 0
+                    std       V.KeyDrvMPtr,u      clear the module pointer
+                    std       V.KeyDrvEPtr,u      clear the entry pointer
+                    rts                           return to the caller
 
                     ifgt      Level-1
 * Mouse initialization  
 * NOTE: If we fail to find the 'msdrv' module, carry is returned set, but
 * the caller can chose to ignore the error condition.
-InitMouse           leax      msdrvmod,pcr         point to the keydrv module name
-                    lda       #Systm+Objct               it's a system module
-                    pshs      u save U on the stack
+InitMouse           leax      msdrvmod,pcr        point to the keydrv module name
+                    lda       #Systm+Objct        it's a system module
+                    pshs      u                   save U on the stack
                     os9       F$Link              link to it
-                    tfr       u,x move the module address to X
-                    puls      u restore U from the stack
-                    bcs       ex@         branch if the link failed
-                    stx       V.MSDrvMPtr,u save the module pointer
-                    sty       V.MSDrvEPtr,u save the entry pointer
+                    tfr       u,x                 move the module address to X
+                    puls      u                   restore U from the stack
+                    bcs       ex@                 branch if the link failed
+                    stx       V.MSDrvMPtr,u       save the module pointer
+                    sty       V.MSDrvEPtr,u       save the entry pointer
                     jsr       ,y                  call the subroutine's Init entry point
                     rts                           return to the caller
-ex@                 ldd        #0 set D to 0
-                    std       V.MSDrvMPtr,u clear the module pointer
-                    std       V.MSDrvEPtr,u clear the entry pointer
-                    rts return to the caller
+ex@                 ldd       #0                  set D to 0
+                    std       V.MSDrvMPtr,u       clear the module pointer
+                    std       V.MSDrvEPtr,u       clear the entry pointer
+                    rts                           return to the caller
                     endc
 * Init              
 *
@@ -488,12 +496,12 @@ read1               lda       <V.SSigID,u         data ready signal trap set up?
                     beq       nitenite@           if so, the buffer is empty, so put the reader to sleep
                     abx                           X now points to the current character to fetch from the buffer
                     lda       ,x                  get that character now
-		    pshs      a,x		  store character
-		    leax      V.KSBuf,u		  update V.KySns
-		    abx
-		    lda	      ,x
-		    sta	      V.KySns,u
-		    puls      a,x		    
+                    pshs      a,x                 store character
+                    leax      V.KSBuf,u           update V.KySns
+                    abx
+                    lda       ,x
+                    sta       V.KySns,u
+                    puls      a,x
                     bsr       IncNCheck           check for tail wrap
                     stb       V.IBufT,u           store the updated tail
                     andcc     #^(IRQMask+Carry)   unmask interrupts
@@ -937,11 +945,11 @@ OneEffHandler2
 ResetHandler        leax      DefaultHandler,pcr
                     bra       SetHandler
 revoff              tst       V.Reverse,u         is reverse already off?
-                    beq       ResetHandler          branch if so
+                    beq       SetHandler          branch if so
                     com       V.Reverse,u
                     bra       DoReverse
 revon               tst       V.Reverse,u         is reverse already on?
-                    bne       ResetHandler          branch if so
+                    bne       SetHandler          branch if so
                     com       V.Reverse,u
 DoReverse
 * swap foreground and background color bits
@@ -1072,8 +1080,8 @@ SetWin80x60         clrb
 ;;; GVA = green component.
 ;;; BVA = blue component.
 ;;; AVA = alpha component.
-ChgForePal	    ldx       #MAPADDR	
-		    leax      TEXT_LUT_FG,x
+ChgForePal          ldx       #MAPADDR  
+                    leax      TEXT_LUT_FG,x
 ChgPal              stx       V.EscParms+4,u
                     leax      Do1B60_Param0,pcr
                     lbra      SetHandler
@@ -1098,12 +1106,12 @@ Do1B60_Param3
                     leax      Do1B60_Param4,pcr
                     lbra      SetHandler
 
-Do1B60_Param4	    pshs      cc
-		    orcc      #IntMasks
-		    ldb	      MAPSLOT
-		    pshs      b
-		    ldb	      #TEXT_LUT_BLK
-		    stb	      MAPSLOT
+Do1B60_Param4       pshs      cc
+                    orcc      #IntMasks
+                    ldb       MAPSLOT
+                    pshs      b
+                    ldb       #TEXT_LUT_BLK
+                    stb       MAPSLOT
                     ldx       V.EscParms+4,u
                     ldb       V.EscParms+0,u
                     lslb
@@ -1116,9 +1124,9 @@ Do1B60_Param4	    pshs      cc
                     sta       1,x
                     lda       V.EscParms+1,u get red component
                     sta       2,x
-		    puls      b
-		    stb	      MAPSLOT
-		    puls      cc
+                    puls      b
+                    stb       MAPSLOT
+                    puls      cc
                     lbra      ResetHandler
 
 ;;; ChgBackPal
@@ -1135,7 +1143,7 @@ Do1B60_Param4	    pshs      cc
 ;;; BVA = blue component.
 ;;; AVA = alpha component.
 ChgBackPal          ldx       #MAPADDR
-		    leax      TEXT_LUT_BG,x
+                    leax      TEXT_LUT_BG,x
                     bra       ChgPal
 
 * These do nothing for now.
@@ -1235,11 +1243,11 @@ Do1C                lbsr      RawWrite
 
 * Return special key status
 GSKySns 
-*            ldy       <D.CCMem                   get ptr to CC mem
+*            ldy       <D.CCMem            get ptr to CC mem
                     clrb                          clear key code
-*                    cmpu      <G.CurDev,y        are we the active device?
-*                    bne       actv@              branch if not
-                    ldb       V.KySns,u           get key codes
+*                    cmpu      <G.CurDev,y         are we the active device?
+*                    bne       actv@               branch if not
+                    ldb       V.KySns,u          get key codes
 actv@               stb       R$A,x               save to caller reg
                     clrb                          return w/o error
                     rts
