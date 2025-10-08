@@ -11,6 +11,9 @@
 *
 *  2       2013/12/-6  Boisy G. Pitre
 * Added SS.Joy support.
+*
+* 3        2025-10-08  John Federico
+* Changed behavior of line wrap to not erase line
 
                     nam       VTIO
                     ttl       NitrOS-9 video terminal I/O driver for the Foenix F256
@@ -590,7 +593,7 @@ RawWrite            pshs      a                   else save the character to wri
                     clrb                          else the column goes to 0
 incrow              inca                          and we increment the row
                     cmpa      V.WHeight,u         compare it against the number of rows
-                    blt       clrline             branch if we're less than (clear the new line we're on)
+                    blt       ok                  branch if we're less than (don't clear the new line we're on)
 SCROLL              equ       1
                     ifne      SCROLL
                     deca                          set A to V.WHeight - 1
