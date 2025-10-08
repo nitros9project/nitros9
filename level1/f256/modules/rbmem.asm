@@ -496,10 +496,16 @@ k2@                 ldb       V.PORT+1,u
                     stb       >MMU_WORKSLOT
                     ldb       #$AA
                     stb       >$0AAA+$4000
+ exg a,a
+ exg a,a
                     ldb       #$55
                     stb       >$0555+$4000
+ exg a,a
+ exg a,a
                     ldb       #$A0
                     stb       >$0AAA+$4000
+ exg a,a
+ exg a,a
                     bra       p@
 * for <2MB chips only, or what's in Jr2
 j2@                 ldb       V.PORT+1,u
