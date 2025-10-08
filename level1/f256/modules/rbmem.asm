@@ -274,27 +274,7 @@ SetStat             clrb
 ReadFlashID         pshs      cc
                     orcc      #IntMasks
                     clr       IsFlash,u
-                    ldb       >MMU_WORKSLOT
-                    pshs      b
-                    lbsr      SET_STAGE_1         Send command "Software ID Entry"
-                    lbsr      SET_STAGE_2
-                    ldb       #$90
-                    lbsr      SET_STAGE_X
-                    ldd       >MMU_WINDOW         Get ID of Flash Chip (if using MMU_SLOT_2)
-                    tfr       d,x
-                    lbsr      SET_STAGE_1         Send command "Software ID Exit"
-                    lbsr      SET_STAGE_2
-                    ldb       #$F0
-                    lbsr      SET_STAGE_X
-*                    cmpx      FLASH_ID_F256,pcr
-*                    beq       f@
-                    cmpx      FLASH_ID_128K_JR2,pcr
-                    beq       f@
-                    cmpx      FLASH_ID_256K_JR2,pcr
-                    beq       f@
-                    cmpx      FLASH_ID_512K_JR2,pcr
-                    beq       f@
-                    dec       IsFlash,u           Employ 2MB chip code
+                    dec       IsFlash,u           Employ K2 Flash
                     lbsr      SET_STAGE_1         Send command "Software ID Entry"
                     lbsr      SET_STAGE_2
                     ldb       #$90
@@ -311,9 +291,27 @@ ReadFlashID         pshs      cc
                     beq       s@
                     cmpx      FLASH_ID_2MB_K2B,pcr
                     beq       s@
+                    clr       IsFlash,u
+                    inc       IsFlash,u           Employ the Jr2 Flash
+                    ldb       >MMU_WORKSLOT
+                    pshs      b
+                    lbsr      SET_STAGE_1         Send command "Software ID Entry"
+                    lbsr      SET_STAGE_2
+                    ldb       #$90
+                    lbsr      SET_STAGE_X
+                    ldd       >MMU_WINDOW         Get ID of Flash Chip (if using MMU_SLOT_2)
+                    tfr       d,x
+                    lbsr      SET_STAGE_1         Send command "Software ID Exit"
+                    lbsr      SET_STAGE_2
+                    ldb       #$F0
+                    lbsr      SET_STAGE_X
+                    cmpx      FLASH_ID_128K_JR2,pcr
+                    beq       s@
+                    cmpx      FLASH_ID_256K_JR2,pcr
+                    beq       s@
+                    cmpx      FLASH_ID_512K_JR2,pcr
+                    beq       s@
                     clr       IsFlash,u           No Flash found
-                    bra       s@
-f@                  inc       IsFlash,u
 s@                  puls      b
                     stb       >MMU_WORKSLOT
                     puls      cc,pc
@@ -496,10 +494,22 @@ k2@                 ldb       V.PORT+1,u
                     stb       >MMU_WORKSLOT
                     ldb       #$AA
                     stb       >$0AAA+$4000
+ exg a,a
+ exg a,a
+ exg a,a
+ exg a,a
                     ldb       #$55
                     stb       >$0555+$4000
+ exg a,a
+ exg a,a
+ exg a,a
+ exg a,a
                     ldb       #$A0
                     stb       >$0AAA+$4000
+ exg a,a
+ exg a,a
+ exg a,a
+ exg a,a
                     bra       p@
 * for <2MB chips only, or what's in Jr2
 j2@                 ldb       V.PORT+1,u
