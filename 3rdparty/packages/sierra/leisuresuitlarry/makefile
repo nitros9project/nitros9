@@ -2,6 +2,8 @@ include ../../../../rules.mak
 
 vpath %.asm ../objs_lsl
 
+AFLAGS      += -I.
+
 DEPENDS		= ./makefile
 
 DSK_FLOPPY	= LeisureSuitLarry.dsk
@@ -55,7 +57,7 @@ ALLOBJS		= $(CMDS)
 all:	$(ALLOBJS)
 
 clean:	dskclean
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 dsk:	all $(DSKS)
 

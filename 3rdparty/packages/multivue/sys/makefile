@@ -2,6 +2,8 @@ include ../../../../rules.mak
 
 vpath %.asm	$(LEVEL2)/sys
 
+AFLAGS      += -I.
+
 DEPENDS		= ./makefile
 
 SYSFILES	= env.file
@@ -21,7 +23,7 @@ $(HELPMSG): $(HELPFILES)
 	$(MERGE) $(HELPFILES) > $@
 
 clean:
-	$(RM) $(HELPMSG) $(ASSETFILES)
+	$(RM) $(HELPMSG) $(ASSETFILES) *.list *.map
 
 showbinobjs:
 	@$(ECHO) $(ASSETFILES)

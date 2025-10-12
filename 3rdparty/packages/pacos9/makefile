@@ -26,7 +26,7 @@ dskclean:
 	$(RM) $(DSK)
 
 clean: dskclean
-	$(RM) $(OBJS) $(TARGET)
+	$(RM) $(OBJS) $(TARGET) *.list *.map
 
 info:
 	@$(ECHO) "*** Larry Olson's Pacos9 game ***"

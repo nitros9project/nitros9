@@ -2,6 +2,8 @@ include ../../../../rules.mak
 
 vpath %.asm ../objs_lsl
 
+AFLAGS      += -I.
+
 DEPENDS		= ./makefile
 
 DISK_1_40D	= PoliceQuestI_d1_40d.dsk
@@ -75,7 +77,7 @@ ALLOBJS		= $(CMDS)
 all:	$(ALLOBJS)
 
 clean:	dskclean
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 dsk:	all $(DSKS)
 

@@ -19,7 +19,7 @@ gshell: gshell.asm
 	$(AS) $(ASOUT)$@ $< $(AFLAGS)
 
 clean:
-	$(RM) $(CMDS)
+	$(RM) $(CMDS) *.list *.map
 
 showobjs:
 	@$(ECHO) $(ALLOBJS)

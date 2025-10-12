@@ -1,5 +1,7 @@
 include ../port.mak
 
+AFLAGS      += -I.
+
 vpath %.as $(LEVEL1)/f256/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds
 vpath %.asm $(LEVEL1)/f256/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/bf:$(3RDPARTY)/packages/cpm:$(3RDPARTY)/packages/rogue
 
@@ -9,7 +11,7 @@ AFLAGS      += -I$(LEVEL2)/$(PORT)
 AFLAGS      += -I$(3RDPARTY)/packages/basic09
 AFLAGS      += -I$(3RDPARTY)/packages/bf
 AFLAGS      += -I$(3RDPARTY)/packages/cpm
-AFLAGS      += -I../defs
+AFLAGS      += -I.
 LFLAGS		+= -L$(NITROS9DIR)/lib -L$(LEVEL2)/$(PORT)/libs
 LFLAGS		+= -lf256 -lfnxsnd
 LFLAGS		+= -lnet -lalib -lnos96809l2
