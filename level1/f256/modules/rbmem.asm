@@ -274,7 +274,7 @@ SetStat             clrb
 ReadFlashID         pshs      cc
                     orcc      #IntMasks
                     clr       IsFlash,u
-                    dec       IsFlash,u           Employ K2 Flash
+                    dec       IsFlash,u           Test K2 Flash
                     lbsr      SET_STAGE_1         Send command "Software ID Entry"
                     lbsr      SET_STAGE_2
                     ldb       #$90
@@ -292,7 +292,7 @@ ReadFlashID         pshs      cc
                     cmpx      FLASH_ID_2MB_K2B,pcr
                     beq       s@
                     clr       IsFlash,u
-                    inc       IsFlash,u           Employ the Jr2 Flash
+                    inc       IsFlash,u           Test Jr2 Flash
                     ldb       >MMU_WORKSLOT
                     pshs      b
                     lbsr      SET_STAGE_1         Send command "Software ID Entry"
@@ -496,18 +496,12 @@ k2@                 ldb       V.PORT+1,u
                     stb       >$0AAA+$4000
  exg a,a
  exg a,a
- exg a,a
- exg a,a
                     ldb       #$55
                     stb       >$0555+$4000
  exg a,a
  exg a,a
- exg a,a
- exg a,a
                     ldb       #$A0
                     stb       >$0AAA+$4000
- exg a,a
- exg a,a
  exg a,a
  exg a,a
                     bra       p@
@@ -586,6 +580,8 @@ Erase4KSector       pshs      x,b,a               reg.b = block num to erase
                     lbsr      SET_STAGE_X
                     lbsr      SET_STAGE_1
                     lbsr      SET_STAGE_2
+                    tst       IsFlash,u
+                    bmi       k2@
                     tst       ,s	                  which 4k sector of the 8k block do we erase?
                     bne       u@                  if reg.a = 1 then go erase 2nd sector
                     ldb       1,s                 get Flash block num from stack
@@ -598,6 +594,17 @@ u@                  ldb       1,s                 get Flash block num from stack
                     lda       #$30                place #$30 (Sector Erase Command) on the data bus
                     sta       >MMU_WINDOW+$1000   place address of 4k block on the address bus
                     bra       d@                  go to the delay routine
+k2@                 tst       ,s	                  which 4k sector of the 8k block do we erase?
+                    bne       u2@                  if reg.a = 1 then go erase 2nd sector
+                    ldb       1,s                 get Flash block num from stack
+                    stb       >MMU_WORKSLOT       map the Flash block in
+                    lda       #$50                place #$30 (Sector Erase Command) on the data bus
+                    sta       >MMU_WINDOW         place address of 4k block on the address bus
+                    bra       d@                  go to the delay routine
+u2@                 ldb       1,s                 get Flash block num from stack
+                    stb       >MMU_WORKSLOT       map the Flash block in
+                    lda       #$50                place #$30 (Sector Erase Command) on the data bus
+                    sta       >MMU_WINDOW+$1000   place address of 4k block on the address bus
 d@                  ldx       #ERASE_WAIT         delay to fully erase Flash sector
 w@                  leax      -1,x
                     cmpx      #0                  REQUIRED because the wait count of $2800 was
