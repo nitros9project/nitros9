@@ -335,11 +335,11 @@ ReadFlashID         pshs      cc
                     ldb       >MMU_WORKSLOT
                     pshs      b
                     ldb       #$90
-                    lbsr      SendCmd
+                    bsr       SendCmd
                     ldd       >MMU_WINDOW         Get ID of Flash Chip (if using MMU_SLOT_2)
                     tfr       d,x
                     ldb       #$F0
-                    lbsr      SendCmd
+                    bsr       SendCmd
                     cmpx      FLASH_ID_128K_JR2,pcr
                     beq       s@
                     cmpx      FLASH_ID_256K_JR2,pcr
