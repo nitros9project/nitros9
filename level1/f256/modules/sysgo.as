@@ -222,7 +222,7 @@ UCH                 set $16
 
 KPal
 * Set up 80x30 window with foreground and background colors as same
-                    fcb $1B,$20,$02,$00,$00,$50,$18,BGP,BGP,$00
+                    fcb $1B,$20,$02,$00,$00,$50,$18,FGP,BGP,$00
                     fcb $1B,$60,FGP,$FF,$FF,$00,$FF
                     fcb $1B,$60,BGP,$4F,$00,$80,$FF
                     fcb $1B,$61,BGP,$4F,$00,$80,$FF
@@ -230,7 +230,7 @@ KPalLen             equ *-KPal
 
 JrPal
 * Set up 80x30 window with foreground and background colors as same
-                    fcb $1B,$20,$02,$00,$00,$50,$18,BGP,BGP,$00
+                    fcb $1B,$20,$02,$00,$00,$50,$18,FGP,BGP,$00
                     fcb $1B,$60,FGP,$FF,$FF,$00,$FF
                     fcb $1B,$60,BGP,$50,$00,$00,$FF
                     fcb $1B,$61,BGP,$50,$00,$00,$FF
