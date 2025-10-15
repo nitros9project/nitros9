@@ -8,7 +8,7 @@
 *
 * On Init, this driver should detect the type of Flash
 * 
-* SST39VF1801 (K2/2MB)          undergoing testing
+* SST39VF1681 (K2/2MB)          undergoing testing
 * SST39VF040 (JR2/256KB/512KB)  WORKS
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
@@ -16,7 +16,7 @@
 * ------------------------------------------------------------------
 *
 *   0/0    ????/??/??   ?
-* Original rbmem was written by Boisy P. but had no revision notes
+* Original RAM-only rbmem was written by Boisy P. but had no revision notes
 *
 *   1/1    2025/05/11   R Taylor
 * Solid Flash writes, wear-reduction and write efficiency
@@ -24,6 +24,9 @@
 *   1/2    2025/08/25   R Taylor
 * Add support for 2MB SST Flash for K2
 *
+*   1/3    2025/10/15   R Taylor
+* Optimizations
+
                     use       defsfile
 
 * If 1, during Init the Flash ID is shown on the F256 text screen in the upper right corner.
@@ -271,49 +274,79 @@ SetStat             clrb
 *
 * In summary: We better see $BFD6/$BFD7 or $BFC8/$BFC9 as the chip ID.
 *
+
+InitCmd             pshs      d,x,u
+                    lda       V.PORT+1,u
+                    anda      #$C0               Align to top of Flash chip
+                    tst       isFlash,u
+                    bmi       k@
+                    adda      #$02               Flash chip block $02
+                    ldb       #$AA
+                    sta       >MMU_WORKSLOT
+                    stb       >$5555             $AA->$5555 on chip
+                    lda       V.PORT+1,u
+                    anda      #$C0               Align to top of Flash chip
+                    inca                         Flash chip block $01
+                    ldb       #$55
+                    sta       >MMU_WORKSLOT
+                    stb       >$4AAA             $55->$2AAA on chip
+                    bra       x@
+k@                  sta       >MMU_WORKSLOT
+                    ldb       #$AA
+                    stb       >$4AAA             $AA->$0AAA on chip
+                    ldb       #$55
+                    stb       >$4555             $55->$0555 on chip
+x@                  puls      d,x,u,pc
+
+SendCmd             pshs      d,x,u
+                    bsr       InitCmd
+                    ldb       1,s                Get command byte from stack
+                    lda       V.PORT+1,u
+                    anda      #$C0               Align to top of Flash chip
+                    tst       isFlash,u
+                    bmi       k@
+                    adda      #$02               Flash chip block $02
+                    sta       >MMU_WORKSLOT
+                    stb       >$5555
+                    bra       x@
+k@                  sta       >MMU_WORKSLOT
+                    stb       >$4AAA
+x@                  puls      d,x,u,pc
+
+
 ReadFlashID         pshs      cc
                     orcc      #IntMasks
                     clr       IsFlash,u
-                    ldb       >MMU_WORKSLOT
-                    pshs      b
-                    lbsr      SET_STAGE_1         Send command "Software ID Entry"
-                    lbsr      SET_STAGE_2
+                    dec       IsFlash,u           Test K2 Flash
                     ldb       #$90
-                    lbsr      SET_STAGE_X
+                    bsr       SendCmd
                     ldd       >MMU_WINDOW         Get ID of Flash Chip (if using MMU_SLOT_2)
                     tfr       d,x
-                    lbsr      SET_STAGE_1         Send command "Software ID Exit"
-                    lbsr      SET_STAGE_2
                     ldb       #$F0
-                    lbsr      SET_STAGE_X
-*                    cmpx      FLASH_ID_F256,pcr
-*                    beq       f@
-                    cmpx      FLASH_ID_128K_JR2,pcr
-                    beq       f@
-                    cmpx      FLASH_ID_256K_JR2,pcr
-                    beq       f@
-                    cmpx      FLASH_ID_512K_JR2,pcr
-                    beq       f@
-                    dec       IsFlash,u           Employ 2MB chip code
-                    lbsr      SET_STAGE_1         Send command "Software ID Entry"
-                    lbsr      SET_STAGE_2
-                    ldb       #$90
-                    lbsr      SET_STAGE_X
-                    ldd       >MMU_WINDOW         Get ID of Flash Chip (if using MMU_SLOT_2)
-                    tfr       d,x
-                    lbsr      SET_STAGE_1         Send command "Software ID Exit"
-                    lbsr      SET_STAGE_2
-                    ldb       #$F0
-                    lbsr      SET_STAGE_X
+                    bsr       SendCmd
                     ldd       >MMU_WINDOW         Get ID of Flash Chip (if using MMU_SLOT_2)
                     tfr       d,x
                     cmpx      FLASH_ID_2MB_K2A,pcr
                     beq       s@
                     cmpx      FLASH_ID_2MB_K2B,pcr
                     beq       s@
+                    clr       IsFlash,u
+                    inc       IsFlash,u           Test Jr2 Flash
+                    ldb       >MMU_WORKSLOT
+                    pshs      b
+                    ldb       #$90
+                    bsr       SendCmd
+                    ldd       >MMU_WINDOW         Get ID of Flash Chip (if using MMU_SLOT_2)
+                    tfr       d,x
+                    ldb       #$F0
+                    bsr       SendCmd
+                    cmpx      FLASH_ID_128K_JR2,pcr
+                    beq       s@
+                    cmpx      FLASH_ID_256K_JR2,pcr
+                    beq       s@
+                    cmpx      FLASH_ID_512K_JR2,pcr
+                    beq       s@
                     clr       IsFlash,u           No Flash found
-                    bra       s@
-f@                  inc       IsFlash,u
 s@                  puls      b
                     stb       >MMU_WORKSLOT
                     puls      cc,pc
@@ -332,11 +365,11 @@ ShowFlashID         lda       fDEBUG,u
                     lsra
                     lsra
                     bsr       Bin2AscHex
-                    sta       >MMU_WINDOW+80+76
+                    sta       >MMU_WINDOW+160+76
                     tfr       x,d
                     anda      #$0f
                     bsr       Bin2AscHex
-                    sta       >MMU_WINDOW+80+77
+                    sta       >MMU_WINDOW+160+77
                     tfr       x,d
                     tfr       b,a
                     lsra                          Do cheap binary to 4-digit HEX ASCII string
@@ -344,12 +377,12 @@ ShowFlashID         lda       fDEBUG,u
                     lsra
                     lsra
                     bsr       Bin2AscHex
-                    sta       >MMU_WINDOW+80+78
+                    sta       >MMU_WINDOW+160+78
                     tfr       x,d
                     tfr       b,a
                     anda      #$0f
                     bsr       Bin2AscHex
-                    sta       >MMU_WINDOW+80+79
+                    sta       >MMU_WINDOW+160+79
                     puls      b
                     stb       >MMU_WORKSLOT
                     puls      cc                  Does this restore CPU interrupt masks?
@@ -363,62 +396,6 @@ Bin2AscHex          anda      #$0f
                     bra       x@
 d@                  adda      #'0'
 x@                  rts
-
-
-SET_STAGE_1         pshs      a
-                    ldb       #$AA
-                    lda       V.PORT+1,u
-                    anda      #$C0               Align to top of Flash chip
-                    tst       IsFlash,u
-                    bmi       a@                 It's the 2MB Flash
-* Jr2: Address $5555 in Flash cartridge is in block $82 and when block $82 is mapped to $4000 (MMU SLOT 2),
-*      the address $5555 translates to $5555, because $5555 becomes $1555 then added to $4000.
-                    adda      #$02
-                    sta       >MMU_WORKSLOT
-                    stb       >$1555+$4000        <2MB chip
-                    bra       x@
-* K2:  Address $0AAA in Flash cartridge is in block $80 and when block $80 is mapped to $4000 (MMU SLOT 2),
-*      the address $0AAA translates to $4AAA
-a@                  sta       >MMU_WORKSLOT
-                    stb       >$0AAA+$4000        2MB chip
-x@                  puls      a,pc
-
-
-SET_STAGE_2         pshs      a
-                    ldb       #$55
-                    lda       V.PORT+1,u
-                    anda      #$C0               Align to top of Flash chip
-                    tst       IsFlash,u
-                    bmi       a@                 It's the 2MB Flash
-* Jr2: Address $2AAA in chip is in block $81 and when block $81 is mapped to $4000 (MMU SLOT 2),
-*      the address $2AAA translates to $4AAA, because $2AAA becomes $0AAA then added to $4000.
-                    inca
-                    sta       >MMU_WORKSLOT
-                    stb       >$0AAA+$4000        <2MB chip
-                    bra       x@
-* K2:  Address $0555 in Flash cartridge is in block $80 and when block $80 is mapped to $4000 (MMU SLOT 2),
-*      the address $0555 translates to $4555
-a@                  sta       >MMU_WORKSLOT
-                    stb       >$0555+$4000        2MB chip
-x@                  puls      a,pc
-
-SET_STAGE_X         pshs      a
-                    lda       V.PORT+1,u
-                    anda      #$C0               Align to top of Flash chip
-                    tst       IsFlash,u
-                    bmi       a@                 It's the 2MB Flash
-* Jr2: Address $5555 in Flash cartridge is in block $82 and when block $82 is mapped to $4000 (MMU SLOT 2),
-*      the address $5555 translates to $5555, because $5555 becomes $1555 then added to $4000.
-                    adda      #$02
-                    sta       >MMU_WORKSLOT
-                    stb       >$1555+$4000        <2MB chip
-                    bra       x@
-* K2:  Address $0AAA in Flash cartridge is in block $80 and when block $80 is mapped to $4000 (MMU SLOT 2),
-*      the address $0AAA translates to $4AAA
-a@                  sta       >MMU_WORKSLOT
-                    stb       >$0AAA+$4000        2MB chip
-x@                  puls      a,pc
-
 
 * 8K block copier, using single MMU slot
 * Entry: A = source block
@@ -486,48 +463,9 @@ c@                  tfr       y,x                 Y = address of OS-9 256-byte s
 w@                  ldb       CacheBlock,u
                     stb       >MMU_WORKSLOT
                     lda       ,x
-*
-* The following area needs to be reduced without affecting chip timing requirements
-*
-                    ldb       IsFlash,u
-                    bpl       j2@                Program the Jr2 chip
-k2@                 ldb       V.PORT+1,u
-                    andb      #$C0               Align to top of Flash chip
-                    stb       >MMU_WORKSLOT
-                    ldb       #$AA
-                    stb       >$0AAA+$4000
- exg a,a
- exg a,a
-                    ldb       #$55
-                    stb       >$0555+$4000
- exg a,a
- exg a,a
                     ldb       #$A0
-                    stb       >$0AAA+$4000
- exg a,a
- exg a,a
-                    bra       p@
-* for <2MB chips only, or what's in Jr2
-j2@                 ldb       V.PORT+1,u
-                    andb      #$C0               Align to top of Flash chip
-                    addb      #$02
-                    stb       >MMU_WORKSLOT
-                    ldb       #$AA
-                    stb       >$1555+$4000
-                    ldb       V.PORT+1,u
-                    andb      #$C0               Align to top of Flash chip
-                    incb
-                    stb       >MMU_WORKSLOT
-                    ldb       #$55
-                    stb       >$0AAA+$4000
-                    ldb       V.PORT+1,u
-                    andb      #$C0               Align to top of Flash chip
-                    addb      #$02
-                    stb       >MMU_WORKSLOT
-                    ldb       #$A0
-                    stb       >$1555+$4000
-* Reduce the above area eventually
-p@                  ldb       FlashBlock,u
+                    lbsr      SendCmd
+                    ldb       FlashBlock,u
                     stb       >MMU_WORKSLOT
                     ldb       ,x
                     sta       ,x+                 REQUIRED: when address changes the data is latched
@@ -576,24 +514,20 @@ g@                  leay      -1,y
 * edge of sixth WE# (or CE#) pulse.
 
 Erase4KSector       pshs      x,b,a               reg.b = block num to erase
-                    lbsr      SET_STAGE_1
-                    lbsr      SET_STAGE_2
                     ldb       #$80
-                    lbsr      SET_STAGE_X
-                    lbsr      SET_STAGE_1
-                    lbsr      SET_STAGE_2
-                    tst       ,s	                  which 4k sector of the 8k block do we erase?
-                    bne       u@                  if reg.a = 1 then go erase 2nd sector
-                    ldb       1,s                 get Flash block num from stack
+                    lbsr      SendCmd
+                    lbsr      InitCmd
+                    lda       #$50                Sector Erase command for K2
+                    tst       IsFlash,u
+                    bmi       k2@
+                    lda       #$30                Sector Erase command for Jr2
+k2@                 ldb       1,s                 get Flash block num from stack
                     stb       >MMU_WORKSLOT       map the Flash block in
-                    lda       #$30                place #$30 (Sector Erase Command) on the data bus
+                    tst       ,s	          which 4k sector of the 8k block do we erase?
+                    bne       u@                  if reg.a = 1 then go erase 2nd sector
                     sta       >MMU_WINDOW         place address of 4k block on the address bus
                     bra       d@                  go to the delay routine
-u@                  ldb       1,s                 get Flash block num from stack
-                    stb       >MMU_WORKSLOT       map the Flash block in
-                    lda       #$30                place #$30 (Sector Erase Command) on the data bus
-                    sta       >MMU_WINDOW+$1000   place address of 4k block on the address bus
-                    bra       d@                  go to the delay routine
+u@                  sta       >MMU_WINDOW+$1000   place address of 4k block on the address bus
 d@                  ldx       #ERASE_WAIT         delay to fully erase Flash sector
 w@                  leax      -1,x
                     cmpx      #0                  REQUIRED because the wait count of $2800 was
@@ -605,14 +539,10 @@ w@                  leax      -1,x
 Wipe                clrb
                     pshs      cc
                     orcc      #IntMasks
-                    lbsr      SET_STAGE_1
-                    lbsr      SET_STAGE_2
                     ldb       #$80
-                    lbsr      SET_STAGE_X
-                    lbsr      SET_STAGE_1
-                    lbsr      SET_STAGE_2
+                    lbsr      SendCmd
                     ldb       #$10			Place #$10 (Chip Erase Command) on the data bus
-                    lbsr      SET_STAGE_X
+                    lbsr      SendCmd
                     puls      cc
 x@                  rts                           return
 
