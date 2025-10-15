@@ -1,0 +1,58 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+      - '*'
+  pull_request:
+    branches:
+      - main
+      - '*'
+
+env:
+  # Path to the solution file relative to the root of the project.
+  SOLUTION_FILE_PATH: .
+
+permissions:
+  contents: read
+
+defaults:
+    run:
+        shell: bash {0}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+# disabled for now, uncomment if need to install package
+#    - name: Setup Requirements
+#      run: |
+#        sudo apt-get install mingw-w64
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Fetch Toolshed
+      uses: robinraju/release-downloader@v1
+      with:
+        repository: nitros9project/toolshed
+        fileName: toolshed-unix*.tgz
+        latest: true
+        extract: false
+        out-file-path: toolshed
+
+    - name: Install Toolshed
+      run: |
+        sudo tar xvf toolshed/toolshed-unix*.tgz --strip-components=1 -C /usr/local/bin
+
+    - name: Install Lwtools
+      run: |
+        sudo bash ./.github/workflows/lwtools.sh
+
+    - name: Build NitrOS9
+      run: |
+        sudo bash ./.github/workflows/nitros9.sh
+      
+
