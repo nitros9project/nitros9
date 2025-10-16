@@ -25,7 +25,7 @@
 * Add support for 2MB SST Flash for K2
 *
 *   1/3    2025/10/15   R Taylor
-* Optimizations
+* Optimizations, significant code reduction
 
                     use       defsfile
 
@@ -74,8 +74,6 @@ ModEntry            lbra      Init
                     lbra      GetStat
                     lbra      SetStat
                     lbra      Term
-
-
 
 * Init routine - only gets called once per driver initialized.
 * Called if you INIZ the device as well.
@@ -534,8 +532,6 @@ w@                  leax      -1,x
                     bne       w@                   discovered while 6 padding cycles was included
                     puls      a,b,x,pc
 
-
-* Chip Erase 5555H AAH,  2AAAH 55H,  5555H 80H,  5555H AAH,  2AAAH 55H,  5555H 10H
 Wipe                clrb
                     pshs      cc
                     orcc      #IntMasks
