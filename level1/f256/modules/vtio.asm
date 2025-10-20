@@ -233,18 +233,18 @@ InitCODEC
                     ldx       #CODEC.Base
 *                    ldd       #%0001010000000010                    R10 - DAC Interface Control         
 
-* [0001010][XXX][DS][0][0][DM]      DS=DAC size 16/20/24/32, DM=DAC mode Right Jstfied/Left Jstfied/I2S/DSP
-                    ldd        #%0001010000010010                   R10 - DAC Interface Control
+*                               [0001010][XXX][DS][0][0][DF]      DS=DAC size 16/20/24/32, DF=DAC Format  Right/Left/I2S/DSP
+                    ldd        #%0001010000110010                   R10 - DAC Interface Control
                     bsr       SendToCODEC
 
                     ldd       #%0001011000000010                    R11 - ADC Interface Control 
                     bsr       SendToCODEC
 
-* [0001100][0][0][DAC][0][ADC]       DAC rate  ADC rate, both were custom 101 in original vtio
+*                              [0001100][0][0][DAC][0][ADC]       DAC rate  ADC rate, both were custom 101 in original vtio
                     ldd       #%0001100111010101                    R12 - Master Mode Control
                     bsr       SendToCODEC
 
-* [0001101][XX][1][XX][H][D][A][C]   Headphones/DAC/ADC/Chip 0=Enabled 1=Muted
+*                              [0001101][XX][1][XX][H][D][A][C]   Headphones/DAC/ADC/Chip 0=Enabled 1=Muted
                     ldd       #%0001101001001010                    R13 - PWR Down Control
                     bsr       SendToCODEC
 
