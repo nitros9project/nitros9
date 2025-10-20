@@ -232,19 +232,20 @@ InitPSG             pshs      cc                save the condition code register
 * PSG Tones, but somewhat noisy
 InitCODEC
                     ldx       #CODEC.Base
-                    ldd       #%0001010000000010                    R10 - DAC Interface Control 
+*                    ldd       #%0001010000000010                    R10 - DAC Interface Control 
+                    ldd        #%0001010000010010                    R10 - DAC Interface Control 20-bit
                     bsr       SendToCODEC
                     ldd       #%0001011000000010                    R11 - ADC Interface Control 
                     bsr       SendToCODEC
                     ldd       #%0001100111010101                    R12 - Master Mode Control 
                     bsr       SendToCODEC
-                    ldd       #%0001101001001010                    R13 - PWR Down Control 
+                    ldd       #%0001101001001010                    R13 - PWR Down Control   bit 2 = '1' for DAC Enabled
                     bsr       SendToCODEC
                     ldd       #%0010001100000001                    R17 - ALC Control 2 
                     bsr       SendToCODEC
-                    ldd       #%0010101011000000                    R21 - ADC Mux Control 
+                    ldd       #%0010101011000000                    R21 - ADC Mux Control   Right/Left channels muted
                     bsr       SendToCODEC
-                    ldd       #%0010110000000001                    R22 - Output Mux 
+                    ldd       #%0010110000000001                    R22 - Output Mux MX[2:0] = "001" for DAC Enable
                     bsr       SendToCODEC
 
 InitBELL            leax      Bell,pcr point to the bell emission code
