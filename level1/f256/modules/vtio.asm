@@ -208,6 +208,7 @@ l@                  cmpa      CODECCtrl,x
 InitSound           clr       D.SndPrcID          clear the process ID of the current sound emitter (none)
                     lda       SYS1                get the byte at SYS1
                     anda      #^SYS_PSG_ST clear the stereo flag
+*                    ora       #SYS_PSG_ST
                     sta       SYS1                and save it back
 
 InitPSG             pshs      cc                save the condition code register
@@ -231,20 +232,27 @@ InitPSG             pshs      cc                save the condition code register
                     
 InitCODEC
                     ldx       #CODEC.Base
-*                    ldd       #%0001010000000010                    R10 - DAC Interface Control         
 
-*                               [0001010][XXX][DS][0][0][DF]      DS=DAC size 16/20/24/32, DF=DAC Format  Right/Left/I2S/DSP
+                    ldd       #%00101110000000001                   R23 - Reset chip
+                    bsr       SendToCODEC
+
+*                              [0001010][XXX][DS][0][0][DF]        DS=DAC size 16/20/24/32, DF=DAC Format  Right/Left/I2S/DSP
+*                    ldd       #%0001010000000010                    R10 - DAC Interface Control         
                     ldd        #%0001010000110010                   R10 - DAC Interface Control
                     bsr       SendToCODEC
 
                     ldd       #%0001011000000010                    R11 - ADC Interface Control 
                     bsr       SendToCODEC
 
-*                              [0001100][0][0][DAC][0][ADC]       DAC rate  ADC rate, both were custom 101 in original vtio
+*                              [0001100][0][0][DAC][0][ADC]         DAC rate  ADC rate, both were custom 101 in original vtio
                     ldd       #%0001100111010101                    R12 - Master Mode Control
                     bsr       SendToCODEC
 
-*                              [0001101][XX][1][XX][H][D][A][C]   Headphones/DAC/ADC/Chip 0=Enabled 1=Muted
+*                              [0001101][XX][1][XX][H][D][A][C]     Headphones/DAC/ADC/Chip 0=Enabled 1=Muted
+                    ldd       #%0001101001001010                    R13 - PWR Down Control
+                    bsr       SendToCODEC
+
+*                              [0001101][XX][1][XX][H][D][A][C]     Attenuation Headphones/DAC/ADC/Chip 0=Enabled 1=Muted
                     ldd       #%0001101001001010                    R13 - PWR Down Control
                     bsr       SendToCODEC
 
@@ -254,7 +262,8 @@ InitCODEC
                     ldd       #%0010101011000000                    R21 - ADC Mux Control   Right/Left channels muted
                     bsr       SendToCODEC
 
-                    ldd       #%0010110000000001                    R22 - Output Mux MX[2:0] = "001" for DAC Enable
+*                              [0010110][MUX]                       MUX  Bypass,Aux,DAC (bits 2,1,0)
+                    ldd       #%0010110000000001                    R22 - Output Mux MX[2:0] = "001" for DAC
                     bsr       SendToCODEC
 
 InitBELL            leax      Bell,pcr point to the bell emission code
