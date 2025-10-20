@@ -48,20 +48,21 @@ InitPSG             pshs      cc                save the condition code register
                     stb       MAPSLOT restore it in the MMU slot
                     puls      cc restore interrupts
 
-InitCODEC           ldx       #CODEC.Base
-                    ldd       #%0000000000011010                    R13 - turn on headphones
+                    ldx       #CODEC.Base
+*                    ldd       #%0001010000000010                    R10 - DAC Interface Control 
+                    ldd        #%0001010000010010                    R10 - DAC Interface Control 20-bit
                     bsr       SendToCODEC
-                    ldd       #%0000001100101010                    R21 - enable all analog in
+                    ldd       #%0001011000000010                    R11 - ADC Interface Control 
                     bsr       SendToCODEC
-                    ldd       #%0000000100100011                    R17 - enable all analog in
+                    ldd       #%0001100111010101                    R12 - Master Mode Control 
                     bsr       SendToCODEC
-                    ldd       #%0000011100101100                    R22 - enable all analog out
+                    ldd       #%0001101001001010                    R13 - PWR Down Control   bit 2 = '1' for DAC Enabled
                     bsr       SendToCODEC
-                    ldd       #%0000001000010100                    R10 - DAC interface control
+                    ldd       #%0010001100000001                    R17 - ALC Control 2 
                     bsr       SendToCODEC
-                    ldd       #%0000001000010110                    R11 - ADC interface control
+                    ldd       #%0010101011000000                    R21 - ADC Mux Control   Right/Left channels muted
                     bsr       SendToCODEC
-                    ldd       #%1101010100011001                    R12 - Master mode control
+                    ldd       #%0010110000000001                    R22 - Output Mux MX[2:0] = "001" for DAC Enable
                     bsr       SendToCODEC
                     puls      d,x,y,pc
 
@@ -69,7 +70,7 @@ InitCODEC           ldx       #CODEC.Base
 *
 * Entry: D = Value to send to CODEC.
 *        X = Base address of CODEC.
-SendToCODEC         
+SendToCODEC         exg       a,b
                     std       CODECCmdLo,x
                     lda       #$01
                     sta       CODECCtrl,x
