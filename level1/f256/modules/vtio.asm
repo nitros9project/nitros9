@@ -229,22 +229,31 @@ InitPSG             pshs      cc                save the condition code register
                     stb       MAPSLOT restore it in the MMU slot
                     puls      cc restore interrupts
                     
-* PSG Tones, but somewhat noisy
 InitCODEC
                     ldx       #CODEC.Base
-*                    ldd       #%0001010000000010                    R10 - DAC Interface Control 
-                    ldd        #%0001010000010010                    R10 - DAC Interface Control 20-bit
+*                    ldd       #%0001010000000010                    R10 - DAC Interface Control         
+
+* [0001010][XXX][DS][0][0][DM]      DS=DAC size 16/20/24/32, DM=DAC mode Right Jstfied/Left Jstfied/I2S/DSP
+                    ldd        #%0001010000010010                   R10 - DAC Interface Control
                     bsr       SendToCODEC
+
                     ldd       #%0001011000000010                    R11 - ADC Interface Control 
                     bsr       SendToCODEC
-                    ldd       #%0001100111010101                    R12 - Master Mode Control 
+
+* [0001100][0][0][DAC][0][ADC]       DAC rate  ADC rate, both were custom 101 in original vtio
+                    ldd       #%0001100111010101                    R12 - Master Mode Control
                     bsr       SendToCODEC
-                    ldd       #%0001101001001010                    R13 - PWR Down Control   bit 2 = '1' for DAC Enabled
+
+* [0001101][XX][1][XX][H][D][A][C]   Headphones/DAC/ADC/Chip 0=Enabled 1=Muted
+                    ldd       #%0001101001001010                    R13 - PWR Down Control
                     bsr       SendToCODEC
+
                     ldd       #%0010001100000001                    R17 - ALC Control 2 
                     bsr       SendToCODEC
+
                     ldd       #%0010101011000000                    R21 - ADC Mux Control   Right/Left channels muted
                     bsr       SendToCODEC
+
                     ldd       #%0010110000000001                    R22 - Output Mux MX[2:0] = "001" for DAC Enable
                     bsr       SendToCODEC
 
