@@ -289,6 +289,13 @@ CODEC_K2
 InitBELL            leax      Bell,pcr point to the bell emission code
                     stx       >D.Bell   save it in the system global's bell vector
                     rts
+
+* F256 identity routine
+* Exit: A = $02 (F256 Jr), $12 (F256K), $1A (F256 Jr2), $16 (F256K2)
+F256Type            pshs      x
+                    ldx       #SYS0
+                    lda       7,x
+                    puls      x,pc
                     
 * Initialize the F256 display.
 * Note: interrupts come in already masked.
