@@ -206,14 +206,17 @@ exit
 *
 * Entry: D = Value to send to CODEC.
 *        X = Base address of CODEC.
-SendToCODEC         
-                    std       CODECCmdLo,x
+SendToCODEC         pshs      d
+w@                  lda       CODECCtrl,x
+                    lsra
+                    bcs       w@
+                    puls      d
+                    sta       CODECCmdHi,x
+                    stb       CODECCmdLo,x
                     lda       #$01
                     sta       CODECCtrl,x
-l@                  cmpa      CODECCtrl,x
-                    beq       l@
                     rts
-                    
+
 * Initialize the F256 sound hardware.
 InitSound           clr       D.SndPrcID          clear the process ID of the current sound emitter (none)
                     lda       SYS1                get the byte at SYS1
@@ -250,32 +253,42 @@ InitPSG             pshs      cc                save the condition code register
 
 InitCODEC
                     ldx       #CODEC.Base
+
                     ldd       #%0010111000000000                    R23 - Reset chip
+                    lbsr      SendToCODEC
 
-                    bsr       SendToCODEC
                     ldd       #%0000000101011000                    R00 - Left Headphone Attenuation Control
-                    bsr       SendToCODEC
+                    lbsr      SendToCODEC
+
                     ldd       #%0000001101011000                    R01 - Right Headphone Attenuation Control
+                    lbsr      SendToCODEC
 
-                    bsr       SendToCODEC
                     ldd       #%0000011111110000                    R03 - Left DAC Attenuation
-                    bsr       SendToCODEC
-                    ldd       #%0000100111110000                    R04 - Right DAC Attenuation
+                    lbsr      SendToCODEC
 
-                    bsr       SendToCODEC
-                    ldd       #%0001010000000010                    R10 - DAC Interface Control 16-bit i2s
-                    bsr       SendToCODEC
+                    ldd       #%0000100111110000                    R04 - Right DAC Attenuation
+                    lbsr      SendToCODEC
+
+                    ldd       #%0001010000001010                    R10 - DAC Interface Control 16-bit i2s
+                    lbsr      SendToCODEC
+
                     ldd       #%0001011000000010                    R11 - ADC Interface Control 
-                    bsr       SendToCODEC
+                    lbsr      SendToCODEC
+
                     ldd       #%0001100111010101                    R12 - Master Mode Control
-                    bsr       SendToCODEC
+                    lbsr      SendToCODEC
+
                     ldd       #%0010001100000001                    R17 - ALC Control 2 
-                    bsr       SendToCODEC
-                    ldd       #%0010101011000000                    R21 - ADC Mux Control   Right/Left channels muted
-*                    ldd       #%0010101011011111                    R21 - ADC Mux Control   Right/Left channels muted but AIN#L/AIN#R all enabled
-                    bsr       SendToCODEC
-                    ldd       #%0010110000000001                    R22 - Output Mux MX[2:0] = "001" for DAC-only
-                    bsr       SendToCODEC
+                    lbsr      SendToCODEC
+
+                    ldd       #%0010101011000000                    6809 R21 - ADC Mux Control   Right/Left channels muted
+*                    ldd       #%0010101000000011                    6502 R21 - ADC Mux Control   Right/Left channels muted but AIN#L/AIN#R all enabled
+                    lbsr      SendToCODEC
+
+                    ldd       #%0010110000000001                    6809 R22 - Output Mux MX[2:0] = "001" for DAC-only
+*                    ldd       #%0010110000000111                    6502 R22 - Output Mux MX[2:0] = "111" 
+                    lbsr      SendToCODEC
+
                     bsr       F256Type
                     cmpa      #$16
                     beq       CODEC_K2
@@ -286,10 +299,11 @@ CODEC_JR2
 CODEC_K2
                     ldd       #%0001101001000010                    R13 - PWR Down Control, Headphones on
                     lbsr      SendToCODEC
+
 InitBELL            leax      Bell,pcr point to the bell emission code
                     stx       >D.Bell   save it in the system global's bell vector
                     rts
-
+                    
 * F256 identity routine
 * Exit: A = $02 (F256 Jr), $12 (F256K), $1A (F256 Jr2), $16 (F256K2)
 F256Type            pshs      x
