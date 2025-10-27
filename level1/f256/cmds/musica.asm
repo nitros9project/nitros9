@@ -146,7 +146,7 @@ SETMUS	            lda       ,x
                     bne       nd@
                     leax      5,x                  skip over DOS header
 nd@                 tfr       x,d		a=page# where music waveforms start
-                    sta       <muspag
+*                    sta       <muspag
                     leax      1024,x            skip over waveforms
                     leax      5,x               skip over Default 1st block
                     STX       <MUSTOP
