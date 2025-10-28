@@ -52,7 +52,7 @@ all:	$(ALLOBJS)
 sysgo: sysgo.o
 
 rbmem.dr: rbmem.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) --list
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
 
 # WizFi360 chip
 wizfi.dr: wizfi.asm
