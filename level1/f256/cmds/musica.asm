@@ -6,6 +6,9 @@
 * ------------------------------------------------------------------
 *   1      2025/10/27  R Taylor
 * Created
+*
+*   1      2025/10/28  R Taylor
+* Added -z playlist feature
 
                     nam       musica
                     ttl       Musica II Player
@@ -18,6 +21,8 @@ tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
 edition             set       1
+
+PLAYLISTITEM_MAXSTR equ       255
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -39,6 +44,9 @@ solpath	            rmb       1
 sequencer	    RMB       1
 filepath            rmb       1
 filebuf             rmb       2
+PlaylistMode        rmb       1
+PlaylistPath        rmb       1
+PlaylistItemStr     rmb       PLAYLISTITEM_MAXSTR
 
 	            rmb       250
 size                equ       .
@@ -56,14 +64,46 @@ start
                     std       fmemsize,u
                     stx       <clistart
                     stx       <cliptr
+                    clr       <PlaylistMode
 
-                    lda       #0
+GetOptions          ldx       <cliptr
+                    lda       ,x
+                    cmpa      #'-
+                    lbne      DoBusiness
+                    leax      1,x
+                    lda       ,x+
+                    cmpa      #'?
+                    beq       ShowHelp
+                    cmpa      #'h
+                    beq       ShowHelp
+                    cmpa      #'z
+                    beq       Option_Z
+                    cmpa      #'Z
+                    beq       Option_Z
+                    bra       DoBusiness
+
+Option_Z
+                    leax      1,x
+                    lda       ,x
+                    cmpa      #$0D
+                    lbeq      bye
+                    lda       #READ.
+                    os9       I$Open              Open the playlist path
+                    lbcs      err
+                    stx       <cliptr
+                    sta       <PlaylistPath
+                    ldb       #1
+                    stb       <PlaylistMode
+                    bra       DoBusiness
+
+ShowHelp            lda       #0
                     leax      greeting,pcr
                     ldy       #255
                     os9       I$WritLn
+                    bra       DoBusiness          This will be optimized out later
 
-                    lbsr      MAP_IN_SOUND
-                    lbsr      InstallSignals		install SOL to show different font on screen
+DoBusiness          lbsr      MAP_IN_SOUND
+                    lbsr      InstallSignals      Install SOL to show different font on screen
                     lbsr      MuteSignals
                     ldd       <psg_both
                     std       <psg_out
@@ -82,7 +122,18 @@ NextSong            clr       <sequencer
                     ldd       #$0000
                     std       <DUR
 
-                    ldx       <cliptr
+                    tst       <PlaylistMode
+                    beq       OpenMediaFile
+
+                    lda       <PlaylistPath
+                    leax      <PlaylistItemStr,u
+                    ldy       #PLAYLISTITEM_MAXSTR
+                    os9       I$ReadLn
+                    lbcs      bye
+                    leax      <PlaylistItemStr,u
+                    stx       <cliptr
+
+OpenMediaFile       ldx       <cliptr
                     lda       ,x
                     cmpa      #$0D
                     lbeq      bye
@@ -121,8 +172,8 @@ NextSong            clr       <sequencer
                     stb       <sequencer
 
 keyloop@            lda       <sequencer          Listen for IRQ to signal that the song is over
-                    beq       NextSong
-                    lbsr      INKEY  		  inkey routine with handlers for intergace
+                    lbeq      NextSong
+                    lbsr      INKEY  		  Inkey routine with handlers for intergace
                     cmpa      #$0D                $0D=ok shift+$0d=cancel
                     bne       keyloop@
 
@@ -131,7 +182,7 @@ err                 pshs      d,u,cc
                     orcc      #IntMasks
                     clr       <sequencer
 *                    lbsr      MuteSignals
-                    lbsr      RemoveSignals		clean up and remove signals and SOL
+                    lbsr      RemoveSignals       Clean up and remove signals and SOL
                     ldy       <psg_left
       	            bsr	      PSG_QUIET_ALL
                     ldy       <psg_right
@@ -281,9 +332,9 @@ Mf2Pf               lsra                          lower the Musica freq (octave?
                     ldd      #111563/2
                     std       $FEE6               numerator
                     ldd       $FEF4               quotient
-*                    lslb                          lower the PSG octave after the Fconv
+*                    lslb                          adjust the PSG freq after the Fconv
 *                    rola
-*                    lslb                          lower the PSG octave after the Fconv
+*                    lslb                          adjust the PSG freq after the Fconv
 *                    rola
                     cmpd      #1023               Is the result <1024, in PSG tone range?
                     bls       g@
