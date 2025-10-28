@@ -60,8 +60,8 @@ start
                     clrb
                     os9       F$Mem
                     lbcs      err
-                    sty       fmemupper,u
-                    std       fmemsize,u
+                    sty       fmemupper
+                    std       fmemsize
                     stx       <clistart
                     stx       <cliptr
                     clr       <PlaylistMode
@@ -141,25 +141,25 @@ OpenMediaFile       ldx       <cliptr
                     os9       I$Open
                     lbcs      err
                     stx       <cliptr
-                    sta       filepath,u
+                    sta       filepath
                     ldb       #SS.Size
                     pshs      u
                     os9       I$GetStt
                     tfr       u,x
                     puls      u
                     lbcs      err
-                    stx       filesize,u
+                    stx       filesize
                     tfr       x,d
-                    addd      fmemsize,u
+                    addd      fmemsize
                     os9       F$Mem
                     bcs       err
-                    sty       fmemupper,u
-                    std       fmemsize,u          
-                    ldd       fmemupper,u
-                    subd      filesize,u
+                    sty       fmemupper
+                    std       fmemsize          
+                    ldd       fmemupper
+                    subd      filesize
                     tfr       d,x
-                    ldy       filesize,u
-                    lda       filepath,u
+                    ldy       filesize
+                    lda       filepath
                     os9       I$Read
                     bcs       err
 
@@ -172,10 +172,15 @@ OpenMediaFile       ldx       <cliptr
                     stb       <sequencer
 
 keyloop@            lda       <sequencer          Listen for IRQ to signal that the song is over
-                    lbeq      NextSong
+                    beq       CloseAndNext
                     lbsr      INKEY  		  Inkey routine with handlers for intergace
                     cmpa      #$0D                $0D=ok shift+$0d=cancel
                     bne       keyloop@
+
+                *     lda       <filepath           There better be a path#
+                *     os9       I$Close
+                *     lda       <PlaylistPath       There better be a path#
+                *     os9       I$Close
 
 bye                 clrb
 err                 pshs      d,u,cc
@@ -192,6 +197,10 @@ err                 pshs      d,u,cc
 *                    os9       F$ClrBlk            return to OS-9 but is this needed if we're exiting a program?
                     puls      d,u,cc
                     os9       F$Exit
+
+CloseAndNext        lda       <filepath
+                    os9       I$Close
+                    lbra      NextSong
 
 SETMUS	            lda       ,x
                     bne       nd@
