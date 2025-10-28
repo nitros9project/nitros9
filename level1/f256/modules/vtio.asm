@@ -269,7 +269,8 @@ InitCODEC
                     ldd       #%0000100111110000                    R04 - Right DAC Attenuation
                     lbsr      SendToCODEC
 
-                    ldd       #%0001010000001010                    R10 - DAC Interface Control 16-bit i2s
+*                    ldd       #%0001010000001010                    R10 - DAC Interface Control 16-bit i2s (inverted DAC BCLK polarity)
+                    ldd       #%0001010000000010                    R10 - DAC Interface Control 16-bit i2s
                     lbsr      SendToCODEC
 
                     ldd       #%0001011000000010                    R11 - ADC Interface Control 
