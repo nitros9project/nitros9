@@ -62,6 +62,7 @@ start
                     lbcs      err
                     sty       fmemupper
                     std       fmemsize
+
                     stx       <clistart
                     stx       <cliptr
                     clr       <PlaylistMode
@@ -154,7 +155,7 @@ OpenMediaFile       ldx       <cliptr
                     os9       F$Mem
                     bcs       err
                     sty       fmemupper
-                    std       fmemsize          
+*                    std       fmemsize            Caused each music file to be appended to process mem
                     ldd       fmemupper
                     subd      filesize
                     tfr       d,x
