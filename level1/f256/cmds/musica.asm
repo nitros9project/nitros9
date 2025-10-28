@@ -45,7 +45,7 @@ size                equ       .
 name                fcs       /musica/
                     fcb       edition
 
-greeting            fcc       /MUSICA Player 0.1 by Roger Taylor/
+greeting            fcc       /MUSICA Player 0.2 by Roger Taylor/
                     fcb       $0d,0
 start
                     clra
@@ -270,6 +270,8 @@ WritePSG            pshs      cc,d
                     puls      cc,d,pc
 
 Mf2Pf               lsra                          lower the Musica freq (octave?) before Fconv
+                    rorb
+                    lsra                          lower the Musica freq (octave?) before Fconv
                     rorb
                     lsra                          lower the Musica freq (octave?) before Fconv
                     rorb
