@@ -245,7 +245,7 @@ InitPSG             pshs      cc                save the condition code register
 
 * WM8776 CODEC chip registers
 * R00 = [0000000][U][Z][AAAAAAA]             Headphone attenuation: U=Update, Z=Zero Crossing Detection, A=bB 1111001 default for 0dB
-* R10 = [0001010][XXX][DS][0][0][DF]         DS=DAC size 16/20/24/32, DF=DAC Format  Right/Left/I2S/DSP
+* R10 = [0001010][XXX][DS][0][0][DF]         DS=DAC input size 16/20/24/32, DF=DAC Format  Right/Left/I2S/DSP
 * R12 = [0001100][0][0][DAC][0][ADC]         DAC rate  ADC rate, both are custom 101 in original vtio
 * R13 = [0001101][XX][1][XX][H][D][A][C]     Headphones/DAC/ADC/Chip 0=Enabled 1=Muted
 * R22 = [0010110][MUX]                       MUX  Bypass,Aux,DAC (bits 2,1,0)
@@ -257,37 +257,37 @@ InitCODEC
                     ldd       #%0010111000000000                    R23 - Reset chip
                     lbsr      SendToCODEC
 
-                    ldd       #%0000000101011000                    R00 - Left Headphone Attenuation Control
-                    lbsr      SendToCODEC
+                *     ldd       #%0000000101011000                    R00 - Left Headphone Attenuation Control
+                *     lbsr      SendToCODEC
 
-                    ldd       #%0000001101011000                    R01 - Right Headphone Attenuation Control
-                    lbsr      SendToCODEC
+                *     ldd       #%0000001101011000                    R01 - Right Headphone Attenuation Control
+                *     lbsr      SendToCODEC
 
-                    ldd       #%0000011111110000                    R03 - Left DAC Attenuation
-                    lbsr      SendToCODEC
+                *     ldd       #%0000011111110000                    R03 - Left DAC Attenuation
+                *     lbsr      SendToCODEC
 
-                    ldd       #%0000100111110000                    R04 - Right DAC Attenuation
-                    lbsr      SendToCODEC
+                *     ldd       #%0000100111110000                    R04 - Right DAC Attenuation
+                *     lbsr      SendToCODEC
 
-*                    ldd       #%0001010000001010                    R10 - DAC Interface Control 16-bit i2s (inverted DAC BCLK polarity)
                     ldd       #%0001010000000010                    R10 - DAC Interface Control 16-bit i2s
+*                   ldd       #%0001010000001010                    R10 - DAC Interface Control 16-bit i2s (inverted DAC BCLK polarity)
                     lbsr      SendToCODEC
 
                     ldd       #%0001011000000010                    R11 - ADC Interface Control 
-                    lbsr      SendToCODEC
+*                    lbsr      SendToCODEC
 
                     ldd       #%0001100111010101                    R12 - Master Mode Control
-                    lbsr      SendToCODEC
+*                    lbsr      SendToCODEC
 
                     ldd       #%0010001100000001                    R17 - ALC Control 2 
                     lbsr      SendToCODEC
 
-                    ldd       #%0010101011000000                    6809 R21 - ADC Mux Control   Right/Left channels muted
-*                    ldd       #%0010101000000011                    6502 R21 - ADC Mux Control   Right/Left channels muted but AIN#L/AIN#R all enabled
+*                   ldd       #%0010101011000000                    6809 R21 - ADC Mux Control   Right/Left channels muted
+                    ldd       #%0010101000011111                    6502 R21 - ADC Mux Control   AIN4 enabled (vs1053 chip)
                     lbsr      SendToCODEC
 
-                    ldd       #%0010110000000001                    6809 R22 - Output Mux MX[2:0] = "001" for DAC-only
-*                    ldd       #%0010110000000111                    6502 R22 - Output Mux MX[2:0] = "111" 
+*                    ldd       #%0010110000000001                    6809 R22 - Output Mux MX[2:0] = "001" for DAC-only
+                   ldd       #%0010110000000111                    6502 R22 - Output Mux MX[2:0] = "111" 
                     lbsr      SendToCODEC
 
                     bsr       F256Type
