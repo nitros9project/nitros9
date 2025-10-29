@@ -260,9 +260,9 @@ InitCODEC
                     lbsr      SendToCODEC
                     ldd       #%0010001100000001                    R17 - ALC Control 2 
                     lbsr      SendToCODEC
-                    ldd       #%0010101000011111                    6502 R21 - ADC Mux Control   AIN4 enabled (vs1053 chip)
+                    ldd       #%0010101000011111                    R21 - ADC Mux Control   AIN4 enabled (vs1053 chip)
                     lbsr      SendToCODEC
-                    ldd       #%0010110000000111                    6502 R22 - Output Mux MX[2:0] = "111" 
+                    ldd       #%0010110000000111                    R22 - Output Mux MX[2:0] = "111" 
                     lbsr      SendToCODEC
                     ldd       #%0001101001000010                    R13 - PWR Down Control, Headphones on
                     lbsr      SendToCODEC
