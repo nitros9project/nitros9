@@ -1,13 +1,13 @@
 ********************************************************************
-* MUSICA II Player by Roger Taylor
+* MUSICA II Player
 * For the F256 Computer by Foenix Retro Systems
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
-*   1      2025/10/27  R Taylor
+*   1      2025/10/27  Roger Taylor
 * Created
 *
-*   1      2025/10/28  R Taylor
+*   1      2025/10/28  Roger Taylor
 * Added -z playlist feature
 
                     nam       musica
@@ -32,10 +32,10 @@ fmemupper           rmb       2
 fmemsize            rmb       2
 filesize            rmb       2
 SoundMem            rmb       2                   Points to 8K block of RAM where sound registers are
-MUSTOP	            RMB       2
-MUSPNT	            RMB       2
-MUSCLK	            RMB       2
-DUR	            RMB       2
+ScoreStart	    rmb       2
+ScoreCurrent	    rmb       2
+ScoreTempo	    rmb       1
+NoteCycles	    rmb       2
 psg_out             rmb       2
 psg_left            rmb       2
 psg_both            rmb       2
@@ -52,9 +52,19 @@ PlaylistItemStr     rmb       PLAYLISTITEM_MAXSTR
 size                equ       .
 name                fcs       /musica/
                     fcb       edition
+helpstr             fcc       /musica {file}/
+                    fcb       C$LF
+                    fcc       /musica -z {playlist file}/
+                    fcb       C$LF
+greeting            fcc       /MUSICA Player 0.3 by Roger Taylor/
+                    fcb       C$LF
+helplen             set       *-helpstr
+greetlen             set       *-greeting
+range               fcc       "out of range"
+                    fcb       C$LF,0
+memerr              fcc       "MapBlk should have returned $C000"
+                    fcb       C$LF,0
 
-greeting            fcc       /MUSICA Player 0.2 by Roger Taylor/
-                    fcb       $0d,0
 start
                     clra
                     clrb
@@ -69,10 +79,12 @@ start
 
 GetOptions          ldx       <cliptr
                     lda       ,x
+                    cmpa      #$0d
+                    beq       ShowGreeting
                     cmpa      #'-
                     lbne      DoBusiness
                     leax      1,x
-                    lda       ,x+
+                    lda       ,x
                     cmpa      #'?
                     beq       ShowHelp
                     cmpa      #'h
@@ -97,11 +109,14 @@ Option_Z
                     stb       <PlaylistMode
                     bra       DoBusiness
 
-ShowHelp            lda       #0
-                    leax      greeting,pcr
-                    ldy       #255
+ShowGreeting        leax      greeting,pcr
+                    ldy       #greetlen
+                    bra       p@
+ShowHelp            leax      helpstr,pcr
+                    ldy       #helplen
+p@                  lda       #2
                     os9       I$WritLn
-                    bra       DoBusiness          This will be optimized out later
+                    os9       F$Exit
 
 DoBusiness          lbsr      MAP_IN_SOUND
                     lbsr      InstallSignals      Install SOL to show different font on screen
@@ -121,10 +136,10 @@ NextSong            clr       <sequencer
                     ldy       <psg_right
                     lbsr      PSG_QUIET_ALL
                     ldd       #$0000
-                    std       <DUR
+                    std       <NoteCycles
 
                     tst       <PlaylistMode
-                    beq       OpenMediaFile
+                    beq       LoadMediaFile
 
                     lda       <PlaylistPath
                     leax      <PlaylistItemStr,u
@@ -134,7 +149,7 @@ NextSong            clr       <sequencer
                     leax      <PlaylistItemStr,u
                     stx       <cliptr
 
-OpenMediaFile       ldx       <cliptr
+LoadMediaFile       ldx       <cliptr
                     lda       ,x
                     cmpa      #$0D
                     lbeq      bye
@@ -149,28 +164,37 @@ OpenMediaFile       ldx       <cliptr
                     tfr       u,x
                     puls      u
                     lbcs      err
-                    stx       filesize
+                    stx       <filesize
                     tfr       x,d
-                    addd      fmemsize
+                    addd      <fmemsize
                     os9       F$Mem
                     bcs       err
-                    sty       fmemupper
-*                    std       fmemsize            Caused each music file to be appended to process mem
-                    ldd       fmemupper
-                    subd      filesize
+                    sty       <fmemupper
+*                   std       <fmemsize           Caused each music file to be appended to process mem
+                    ldd       <fmemupper
+                    subd      <filesize
                     tfr       d,x
-                    ldy       filesize
-                    lda       filepath
+                    ldy       <filesize
+                    lda       <filepath
                     os9       I$Read
                     bcs       err
 
-                    bsr       SETMUS
+                    lda       ,x                  Examine first byte of file
+                    bne       nd@                 Is non-zero, not a LOADM header
+                    leax      5,x                 Skip over the DOS LOADM header
+nd@                 tfr       x,d
+*                   sta       <muspag             MSB is CPU memory page# where music waveforms start
+                    leax      1024,x              Skip over the 4 waveforms (4*256)
+                    leax      5,x                 Skip over Default 1st music block
+                    stx       <ScoreStart         This is where our music starts
+                    stx       <ScoreCurrent       Set the running pointer
+
                     ldy       <psg_left
                     lbsr      PSG_LOUD_ALL
                     ldy       <psg_right
                     lbsr      PSG_LOUD_ALL
-                    ldb       #1
-                    stb       <sequencer
+                    ldb       #1                  Enable the player
+                    stb       <sequencer          Tell the ISR to PLAY THE MUSIC
 
 keyloop@            lda       <sequencer          Listen for IRQ to signal that the song is over
                     beq       CloseAndNext
@@ -178,41 +202,30 @@ keyloop@            lda       <sequencer          Listen for IRQ to signal that 
                     cmpa      #$0D                $0D=ok shift+$0d=cancel
                     bne       keyloop@
 
-                *     lda       <filepath           There better be a path#
-                *     os9       I$Close
-                *     lda       <PlaylistPath       There better be a path#
-                *     os9       I$Close
+*                   lda       <filepath           There better be a path#
+*                   os9       I$Close
+*                   lda       <PlaylistPath       There better be a path#
+*                   os9       I$Close
 
 bye                 clrb
 err                 pshs      d,u,cc
                     orcc      #IntMasks
                     clr       <sequencer
-*                    lbsr      MuteSignals
+*                   lbsr      MuteSignals         Not an audio mute, is an IRQ signal "mute"
                     lbsr      RemoveSignals       Clean up and remove signals and SOL
                     ldy       <psg_left
       	            bsr	      PSG_QUIET_ALL
                     ldy       <psg_right
       	            bsr	      PSG_QUIET_ALL
-*                    ldu       <SoundMem
-*                    ldb       #$01                need 1 block
-*                    os9       F$ClrBlk            return to OS-9 but is this needed if we're exiting a program?
+*                   ldu       <SoundMem
+*                   ldb       #$01                Return 1 block
+*                   os9       F$ClrBlk            Return to OS-9 but is this needed if we're exiting a program?
                     puls      d,u,cc
                     os9       F$Exit
 
 CloseAndNext        lda       <filepath
                     os9       I$Close
                     lbra      NextSong
-
-SETMUS	            lda       ,x
-                    bne       nd@
-                    leax      5,x                  skip over DOS header
-nd@                 tfr       x,d		a=page# where music waveforms start
-*                    sta       <muspag
-                    leax      1024,x            skip over waveforms
-                    leax      5,x               skip over Default 1st block
-                    STX       <MUSTOP
-                    STX       <MUSPNT
-                    RTS
 
 PSG_LOUD_ALL        ldd       #$B090
                     lbsr      WritePSG
@@ -226,13 +239,12 @@ PSG_QUIET_ALL       ldd       #$9FBF
                     lbsr      WritePSG
                     rts
 
-MAP_IN_SOUND
-                    pshs      u,cc
+MAP_IN_SOUND        pshs      u,cc
                     orcc      #IntMasks
                     tfr       u,y
                     ldx       #$C4
-                    ldb       #$01                need 1 block
-                    os9       F$MapBlk            map it into process address space
+                    ldb       #$01                Ask for 1 block
+                    os9       F$MapBlk            Map it into process address space
                     stu       <SoundMem
                     leau      $200,u              compute address of PSG Left channel
                     stu       <psg_left,y
@@ -248,81 +260,92 @@ MAP_IN_SOUND
                     ldy       #255
                     os9       I$WritLn
 x@                  puls      cc,u,pc
-memerr              fcc       "MapBlk should have returned $C000"
-                    fcb       $0d,$00
 
 ********************************************************************
 * cfIcptRtn
 * this handles the signals received by SOL
 * 
 cfIcptRtn
-                    pshs      cc,d,x,y,u
-                    LDX       <MUSPNT
-                    LDB       <sequencer          MUSIC DISABLED?
-                    LBEQ      IRQ800		  Don't do anything right now
-                    LDD       <DUR
-                    LBNE      IRQ750		  NOTE IS PLAYING
-                    LDA       ,X		  GET NOTE LENGTH
-                    lbeq      IRQ785		  END OF MUSIC
-                    BPL       IRQ730		  GO SET UP NOTE
-                    CMPA    #253		  REPEAT MUSIC
+                    pshs      cc,d,x,y,u          <--------- do we need to do this?
+                    LDB       <sequencer          Are we allowed to play music?
+                    LBEQ      SeqExit		  No, then exit
+                    LDX       <ScoreCurrent
+                    LDD       <NoteCycles
+                    lbne      NextCycle		  A note is currently playing
+                    LDA       ,X		  Get the new note length
+                    lbeq      IRQ785		  0 means End Of Score
+                    BPL       IRQ730		  Go set up the note
+                    CMPA      #$FD		  Repeat the score
                     LBEQ      IRQ785
-                    CMPA    #254		  GET CONTROL BLOCK PARAMS
-                    LBNE      IRQ780
-                    LBRA      IRQ780
+                    CMPA      #$FE		  Tempo and Instruments Block
+                    lbne      NextNote
+                    lda       5,x                 Get new tempo
+                    sta       <ScoreTempo
+                    lbra      NextNote
 IRQ730
-n@                  TFR       A,B                 ADJUST MUSICA NOTE LENGTH TO 60HZ TIMER
-                    LSRB
-                    CLRA
-*                    ADDD      <MUSCLK
-                    STD       <DUR
+                *     tfr       a,b                 Convert 8-bit note length into 16 bits
+                *     clra
+                *     lsrb
+                *     addd      #$0001
 
-                    LDD       1,X
-                    beq       v1@
-                    bsr       Mf2Pf
-v1@                 lbsr      psgv1
+                    tfr       a,b                 Convert 8-bit note length into 16 bits
+                    clra
+                    pshs      d
+                    lsr       1,s
+                    subd      ,s++
+                    addd      #$0001
+
+                    std       <NoteCycles
+
+* What are we doing here... since the 76489 chip only has 3 tone channels
+* and we need to hear all 4 Musica voices, we split Musica Voices 1,2 between
+* both PSG channels, we send the 3rd Musica voice to the Left PSG channel,
+* and the 4th Musica Voice to the Right PSG channel, all at the same time.
+
+                    LDD       1,X                 Get Musica Voice 1 16-bit frequency
+                    beq       v1@                 0 means Silence
+                    bsr       Mf2Pf               Convert to 10-bit PSG tone
+v1@                 lbsr      psgv1               Convert to PSG Voice 1 Command bytes
                     ldy       <psg_right
-                    bsr       WritePSG
+                    bsr       WritePSG            Output to right
                     ldy       <psg_left
-                    bsr       WritePSG
+                    bsr       WritePSG            Output to left
 
-                    LDD       3,X
-                    beq       v2@
-                    bsr       Mf2Pf
-v2@                 lbsr      psgv2
+                    LDD       3,X                 Get Musica Voice 2 16-bit frequency
+                    beq       v2@                 0 means Silence
+                    bsr       Mf2Pf               Convert to 10-bit PSG tone
+v2@                 lbsr      psgv2               Convert to PSG Voice 2 Command bytes
                     ldy       <psg_right
-                    bsr       WritePSG
+                    bsr       WritePSG            Output to right
                     ldy       <psg_left
-                    bsr       WritePSG
+                    bsr       WritePSG            Output to left
 
-                    LDD       5,X
-                    beq       v3@
-                    bsr       Mf2Pf
-v3@                 lbsr      psgv3
+                    LDD       5,X                 Get Musica Voice 3 16-bit frequency
+                    beq       v3@                 0 means Silence
+                    bsr       Mf2Pf               Convert to 10-bit PSG tone
+v3@                 lbsr      psgv3               Convert to PSG Voice 2 Command bytes
                     ldy       <psg_left
-                    bsr       WritePSG
+                    bsr       WritePSG            Output to left
 
-                    LDD       7,X
-                    beq       v4@
-                    bsr       Mf2Pf
-v4@                 lbsr      psgv3
+                    LDD       7,X                 Get Musica Voice 4 16-bit frequency
+                    beq       v4@                 0 means Silence
+                    bsr       Mf2Pf               Convert to 10-bit PSG tone
+v4@                 lbsr      psgv3               Convert to PSG Voice 2 Command bytes
                     ldy       <psg_right
-                    bsr       WritePSG
+                    bsr       WritePSG            Output to right
 
-                    LDD       <DUR
-IRQ750              SUBD      #1
-                    STD       <DUR
-                    BNE       IRQ900
-IRQ780              LEAX      9,X
-                    STX       <MUSPNT
-                    BRA       IRQ900
-IRQ785              LDX       <MUSTOP             at end of song, play it again
-                    STX       <MUSPNT
+                    ldd       <NoteCycles
+NextCycle           subd      #1
+                    std       <NoteCycles
+                    BNE       SeqExit
+NextNote            LEAX      9,X
+                    STX       <ScoreCurrent
+                    BRA       SeqExit
+IRQ785              LDX       <ScoreStart             at end of song, play it again
+                    STX       <ScoreCurrent
                     clr       <sequencer          Tell main code that the song is over
-                    BRA       IRQ900
-IRQ800
-                    BRA       IRQ900
-IRQ900              puls      cc,d,x,y,u
+                    BRA       SeqExit
+SeqExit             puls      cc,d,x,y,u
                     rti
 
 WritePSG            pshs      cc,d
@@ -354,8 +377,6 @@ Mf2Pf               lsra                          lower the Musica freq (octave?
 *                    ldy     #255
 *                    os9       I$WritLn
 g@                  rts
-range               fcc       "out of range "
-                    fcb       $0d,0
 
 * Assign a voice to a speaker, or both speakers
 *  Enter with PSG-format 10-bit tone value a/XXXXXXHH b/HHHHLLLL
