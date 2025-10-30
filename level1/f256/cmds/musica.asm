@@ -277,7 +277,7 @@ cfIcptRtn
                     lbeq      SeqExit		  No, then exit
                     ldx       <ScoreCurrent
                     ldd       <NoteCycles
-                    lbne      NextCycle		  A note is currently playing
+                    bne       NextCycle		  A note is currently playing
                     ldb       ,x		  Get the new note length
                     lbeq      SeqEnd		  0 means End Of Score
                     bpl       SeqGetNote		  Go set up the note
@@ -303,7 +303,7 @@ SeqGetNote          clra
                     ldd       1,X                 Get Musica Voice 1 16-bit frequency
                     beq       v1@                 0 means Silence
                     bsr       Mf2Pf               Convert to 10-bit PSG tone
-v1@                 lbsr      psgv1               Convert to PSG Voice 1 Command bytes
+v1@                 bsr       psgv1               Convert to PSG Voice 1 Command bytes
                     ldy       <psg_right
                     bsr       WritePSG            Output to right
                     ldy       <psg_left
@@ -312,7 +312,7 @@ v1@                 lbsr      psgv1               Convert to PSG Voice 1 Command
                     ldd       3,X                 Get Musica Voice 2 16-bit frequency
                     beq       v2@                 0 means Silence
                     bsr       Mf2Pf               Convert to 10-bit PSG tone
-v2@                 lbsr      psgv2               Convert to PSG Voice 2 Command bytes
+v2@                 bsr       psgv2               Convert to PSG Voice 2 Command bytes
                     ldy       <psg_right
                     bsr       WritePSG            Output to right
                     ldy       <psg_left
@@ -337,10 +337,10 @@ NextCycle           subd      #1
                     std       <NoteCycles
                     bne       SeqExit
 NextNote            leax      9,x
-                    STX       <ScoreCurrent
+                    stx       <ScoreCurrent
                     bra       SeqExit
-SeqRepeat           LDX       <ScoreStart
-                    STX       <ScoreCurrent
+SeqRepeat           ldx       <ScoreStart
+                    stx       <ScoreCurrent
                     bra       SeqExit
 SeqEnd              clr       <sequencer          Tell main code that the song is over
                     bra       SeqExit
