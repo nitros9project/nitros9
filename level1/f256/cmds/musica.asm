@@ -56,10 +56,10 @@ helpstr             fcc       /musica {file}/
                     fcb       C$LF
                     fcc       /musica -z {playlist file}/
                     fcb       C$LF
-greeting            fcc       /MUSICA Player 0.3 by Roger Taylor/
+greeting            fcc       /MUSICA II Player 0.4 by Roger Taylor/
                     fcb       C$LF
 helplen             set       *-helpstr
-greetlen             set       *-greeting
+greetlen            set       *-greeting
 range               fcc       "out of range"
                     fcb       C$LF,0
 memerr              fcc       "MapBlk should have returned $C000"
@@ -185,7 +185,7 @@ LoadMediaFile       ldx       <cliptr
 nd@                 tfr       x,d
 *                   sta       <muspag             MSB is CPU memory page# where music waveforms start
                     leax      1024,x              Skip over the 4 waveforms (4*256)
-                    leax      5,x                 Skip over Default 1st music block
+                    leax      5,x                 Skip over Default tone block, can be before the waves or after, but how do we tell??
                     stx       <ScoreStart         This is where our music starts
                     stx       <ScoreCurrent       Set the running pointer
 
@@ -237,6 +237,12 @@ PSG_QUIET_ALL       ldd       #$9FBF
                     lbsr      WritePSG
                     ldd       #$DFFF
                     lbsr      WritePSG
+                    ldd       #%1000000000000000  Set no freq
+                    lbsr      WritePSG
+                    ldd       #%1010000000000000  Set no freq
+                    lbsr      WritePSG
+                    ldd       #%1100000000000000  Set no freq
+                    lbsr      WritePSG
                     rts
 
 MAP_IN_SOUND        pshs      u,cc
@@ -267,34 +273,26 @@ x@                  puls      cc,u,pc
 * 
 cfIcptRtn
                     pshs      cc,d,x,y,u          <--------- do we need to do this?
-                    LDB       <sequencer          Are we allowed to play music?
-                    LBEQ      SeqExit		  No, then exit
-                    LDX       <ScoreCurrent
-                    LDD       <NoteCycles
+                    ldb       <sequencer          Are we allowed to play music?
+                    lbeq      SeqExit		  No, then exit
+                    ldx       <ScoreCurrent
+                    ldd       <NoteCycles
                     lbne      NextCycle		  A note is currently playing
-                    LDA       ,X		  Get the new note length
-                    lbeq      IRQ785		  0 means End Of Score
-                    BPL       IRQ730		  Go set up the note
-                    CMPA      #$FD		  Repeat the score
-                    LBEQ      IRQ785
-                    CMPA      #$FE		  Tempo and Instruments Block
-                    lbne      NextNote
+                    ldb       ,x		  Get the new note length
+                    lbeq      SeqEnd		  0 means End Of Score
+                    bpl       SeqGetNote		  Go set up the note
+                    cmpb      #$FD		  Barline Repeat
+                    beq       SeqRepeat
+                    cmpb      #$FE		  Tempo and Instruments Block
+                    bne       NextNote
                     lda       5,x                 Get new tempo
                     sta       <ScoreTempo
-                    lbra      NextNote
-IRQ730
-                *     tfr       a,b                 Convert 8-bit note length into 16 bits
-                *     clra
-                *     lsrb
-                *     addd      #$0001
-
-                    tfr       a,b                 Convert 8-bit note length into 16 bits
-                    clra
+                    bra       NextNote
+SeqGetNote          clra
                     pshs      d
                     lsr       1,s
                     subd      ,s++
                     addd      #$0001
-
                     std       <NoteCycles
 
 * What are we doing here... since the 76489 chip only has 3 tone channels
@@ -302,7 +300,7 @@ IRQ730
 * both PSG channels, we send the 3rd Musica voice to the Left PSG channel,
 * and the 4th Musica Voice to the Right PSG channel, all at the same time.
 
-                    LDD       1,X                 Get Musica Voice 1 16-bit frequency
+                    ldd       1,X                 Get Musica Voice 1 16-bit frequency
                     beq       v1@                 0 means Silence
                     bsr       Mf2Pf               Convert to 10-bit PSG tone
 v1@                 lbsr      psgv1               Convert to PSG Voice 1 Command bytes
@@ -311,7 +309,7 @@ v1@                 lbsr      psgv1               Convert to PSG Voice 1 Command
                     ldy       <psg_left
                     bsr       WritePSG            Output to left
 
-                    LDD       3,X                 Get Musica Voice 2 16-bit frequency
+                    ldd       3,X                 Get Musica Voice 2 16-bit frequency
                     beq       v2@                 0 means Silence
                     bsr       Mf2Pf               Convert to 10-bit PSG tone
 v2@                 lbsr      psgv2               Convert to PSG Voice 2 Command bytes
@@ -320,31 +318,32 @@ v2@                 lbsr      psgv2               Convert to PSG Voice 2 Command
                     ldy       <psg_left
                     bsr       WritePSG            Output to left
 
-                    LDD       5,X                 Get Musica Voice 3 16-bit frequency
+                    ldd       5,X                 Get Musica Voice 3 16-bit frequency
                     beq       v3@                 0 means Silence
                     bsr       Mf2Pf               Convert to 10-bit PSG tone
-v3@                 lbsr      psgv3               Convert to PSG Voice 2 Command bytes
+v3@                 bsr       psgv3               Convert to PSG Voice 2 Command bytes
                     ldy       <psg_left
                     bsr       WritePSG            Output to left
 
-                    LDD       7,X                 Get Musica Voice 4 16-bit frequency
+                    ldd       7,X                 Get Musica Voice 4 16-bit frequency
                     beq       v4@                 0 means Silence
                     bsr       Mf2Pf               Convert to 10-bit PSG tone
-v4@                 lbsr      psgv3               Convert to PSG Voice 2 Command bytes
+v4@                 bsr       psgv3               Convert to PSG Voice 2 Command bytes
                     ldy       <psg_right
                     bsr       WritePSG            Output to right
 
                     ldd       <NoteCycles
 NextCycle           subd      #1
                     std       <NoteCycles
-                    BNE       SeqExit
-NextNote            LEAX      9,X
+                    bne       SeqExit
+NextNote            leax      9,x
                     STX       <ScoreCurrent
-                    BRA       SeqExit
-IRQ785              LDX       <ScoreStart             at end of song, play it again
+                    bra       SeqExit
+SeqRepeat           LDX       <ScoreStart
                     STX       <ScoreCurrent
-                    clr       <sequencer          Tell main code that the song is over
-                    BRA       SeqExit
+                    bra       SeqExit
+SeqEnd              clr       <sequencer          Tell main code that the song is over
+                    bra       SeqExit
 SeqExit             puls      cc,d,x,y,u
                     rti
 
