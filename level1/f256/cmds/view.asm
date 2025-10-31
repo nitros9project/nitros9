@@ -312,8 +312,8 @@ BMClear             clr       pxlblk0
                     clra                      Path #
                     sta       currPath      store current path
                     ldd       bmblock             get first bitmap block
-                    clra                       clear block cnt
                     std       currBlk       store current block
+                    clra                       clear block cnt
                     sta       blkCnt       store block cnt
 clearimage          ldb       #1
                     ldx       currBlk       restore current block
@@ -322,18 +322,18 @@ clearimage          ldb       #1
                     bcc       noerr@
                     puls      u                restore U from stack
                     lbra      errcl2
-noerr@              stu       mapaddr+2     since U is pushed add 2 to variable ref.
+noerr@              stu       mapaddr     since U is pushed add 2 to variable ref.
                     puls      u                restore U from stack
                     lda       currPath      load path
                     ldx       mapaddr       map address in X
                     ldy       #$2000           number of bytes to clear
-                    ldd       #$ffff         load color
+                    ldd       #$55aa         load color
 pixelloop           std       ,x+              write pixel             
                     leay      -2,y             decrement Y pointer
                     bne       pixelloop        done?
 cont@               inc       blkCnt        increment blk cnt
                     pshs      u                F$ClrBlk will destroy U, so push it
-                    ldu       mapaddr+2     since U is pushed add 2 to variable ref.
+                    ldu       mapaddr     since U is pushed add 2 to variable ref.
                     ldb       #1
                     os9       F$ClrBlk
                     puls      u                restore U from stack                   
