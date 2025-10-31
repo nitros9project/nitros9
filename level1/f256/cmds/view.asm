@@ -265,12 +265,12 @@ cont@               ldx       clutnum
                     std       color
 r@                  ldy       #$0000
 l@                  bsr       Pixel
-                    ldd       color
-                    addd      #$0001              Fractional increment of color in MSB
-                    std       color
                     leay      1,y
                     cmpy      #203*320
                     blo       l@
+                    ldd       color
+                    addd      #$0100              Fractional increment of color in MSB
+                    std       color
 keyloop@            lbsr      INKEY               Inkey routine with handlers for intergace
                     cmpa      #$0D                $0D=ok shift+$0d=cancel
                     bne       r@
