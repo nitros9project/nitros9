@@ -288,7 +288,8 @@ cont@               puls      x                replaced following line with this
                     os9       I$SetStt         Turn on Graphics
                     clrb                       no error
 
-                    bsr       BMClear
+                    bsr       Cls
+                    bsr       Pixel
 
 keyloop@            lbsr      INKEY  		inkey routine with handlers for intergace
                     cmpa      #$0D			$0D=ok shift+$0d=cancel
@@ -296,7 +297,7 @@ keyloop@            lbsr      INKEY  		inkey routine with handlers for intergace
 
 bye                 clrb
 err                 pshs      cc,b
-                    bsr       Goff
+                    lbsr      Goff
                     puls      b,cc
                     os9       F$Exit
 
@@ -305,11 +306,38 @@ error_ds3           puls      u,y,x,a
 error_ds2           os9       F$Exit
 
 
-BMClear             clr       pxlblk0
-                    clr       pxlblk
-                    clr       pxlblkaddr
-                    clr       pxlblkaddr+1
-                    clra                      Path #
+Pixel               clra                      Path #
+                    sta       currPath      store current path
+                    ldd       bmblock             get first bitmap block
+                    std       currBlk       store current block
+
+                    ldb       #1
+                    ldx       currBlk       restore current block
+                    pshs      u                F$MapBlk with destroy U so push
+                    os9       F$MapBlk
+                    bcc       noerr@
+                    puls      u                restore U from stack
+                    lbra      err@
+noerr@              stu       mapaddr     since U is pushed add 2 to variable ref.
+                    puls      u                restore U from stack
+                    lda       currPath      load path
+                    ldx       mapaddr       map address in X
+                    leax      (24*320),x
+                    ldy       #320           number of bytes to clear
+                    ldd       #$aaaa         same color byte x 2
+p@                  std       ,x++                write pixel             
+                    leay      -2,y                decrement Y pointer
+                    bne       p@                  done?
+                    pshs      u                   F$ClrBlk will destroy U, so push it
+                    ldu       mapaddr             since U is pushed add 2 to variable ref.
+                    ldb       #1
+                    os9       F$ClrBlk
+                    puls      u                restore U from stack                   
+                    lda       currPath      restore path
+err@                rts                        return to the caller
+
+
+Cls                 clra                      Path #
                     sta       currPath      store current path
                     ldd       bmblock             get first bitmap block
                     std       currBlk       store current block
@@ -327,7 +355,7 @@ noerr@              stu       mapaddr     since U is pushed add 2 to variable re
                     lda       currPath      load path
                     ldx       mapaddr       map address in X
                     ldy       #$2000           number of bytes to clear
-                    ldd       #$55aa         load color
+                    ldd       #$0000         same color byte x 2
 pixelloop           std       ,x++              write pixel             
                     leay      -2,y             decrement Y pointer
                     bne       pixelloop        done?
@@ -347,9 +375,6 @@ errcl2              rts                        return to the caller
 
 
 
-;;; Graphics Off
-;;;
-;;; calling syntax: RUN FOENIX([path,],"Goff")
 Goff                ldx       #%00000001       Turn Text on BM_TXT = %00000001
                     ldy       #%11111111       Don't change FFC1  FT_OMIT = %11111111
                     lda       ,s               Path # from stack 
@@ -357,6 +382,13 @@ Goff                ldx       #%00000001       Turn Text on BM_TXT = %00000001
                     ldb       #SS.DScrn        Display screen with new settings
                     os9       I$SetStt
                     bcs       error_ds         Error
+
+                    ldy       #2               BM 0-2
+par2@               lda       #0
+                    ldb       #SS.FScrn        Free Bitmap
+                    os9       I$SetStt
+                    bcs       error_ds         Error
+
                     clrb                       No Error
 error_ds            rts                        return to the caller
                     
