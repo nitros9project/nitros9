@@ -185,75 +185,21 @@ start
                     sty       fmemupper
                     std       fmemsize
 
-                    clra                      Path #
-                    sta       currPath      store current path
 
                 *     lda       #READ.
                 *     os9       I$Open
                 *     lbcs      err
                 *     sta       filepath
 
+                    clra                      Path #
+                    sta       currPath        Store current path
+
                     ldd       #0
                     std       clutnum
-                    ldd       #0
-                    std       bitmapnum
-
-* A few moments later...
-
-                    ldy       bitmapnum
-                    ldx       #0                  2nd parameter screentype 0=320x240 1=320x200
-                    clra                          Path #
-                    ldb       #SS.AScrn           Assign and create bitmap
-                    os9       I$SetStt         
-                    bcc       storeblk            No error store block #
-                    cmpb      #E$WADef            Check if windows already defined
-                    lbne      error_ds2
-storeblk            tfr       x,d              
-                    stb       bmblock             Save BMBlock
-                    ldb       #-1
-                    stb       currBlk             Force first pixel to map in it's 8K block
-
-Clut                pshs      a,x,y,u             Preserve regs
-                    leax      clutpathname,pcr    6th parameter Get CLUT path
-                    lda       #0                  F$Load a=language, 0=Any
-                    os9       F$Link              Try linking module
-                    beq       cont@               Load CLUT if no error
-                    os9       F$Load              Load and set y=entry point
-                    bcs       error_ds3
-cont@               ldx       clutnum
-                    clra                          Path #
-                    ldb       #SS.DfPal           Define Palette CLUT#0 with Y data
-                    os9       I$SetStt
-                    os9       F$Unlink            Clut defined now this saves 8K for Basic09         
-                    bcs       error_ds3
-                    ldu       5,s                 F$Link,F$Load,F$Unlink all trash U
-                    **** Set CLUT0 to BM0
-                    ldx       clutnum             CLUT #
-                    ldy       bitmapnum           Bitmap # 1st param
-                    clra                          Path #
-                    ldb       #SS.Palet           Assign CLUT # to Bitmap #
-                    os9       I$SetStt
-                    
-                    puls      u,y,x,a
-
-                    **** Assign Bitmap to Layer
-                    ldx       #0                  Layer # 
-                    ldy       bitmapnum           Bitmap #
-                    clra                          Path #
-                    ldb       #SS.PScrn           Position Bitmap # to Layer #
-                    os9       I$SetStt
-
-                    ldx       #$2F                ;#%00001000+%00000100    Turn on Bitmaps and Graphics FX_BM = %00001000  FX_GRX = %00000100
-                    ldx       #%00001111
-*                     FX_OVR = %00000010          Overlay Text on Graphics
-*                     FX_TXT = %00000001          Text Mode On
-*                     Sprite = %00100000          Sprite Enable
-*                     TileMap= %00010000          TileMap Enable
-                    ldy       #%11111111          Don't change FFC1  FT_OMIT = %11111111
-                    clra                          Path #
-                    ldb       #SS.DScrn           Display Screen with new settings
-                    os9       I$SetStt            Turn on Graphics
-                    clrb                          no error
+                    lbsr      LoadClut
+                    lbsr      CreateBitmap
+                    lbsr      Bitmap2Layer
+                    lbsr      GrOn
 
                     ldd       #$0000
                     std       color
@@ -273,7 +219,7 @@ keyloop@            lbsr      INKEY               Inkey routine with handlers fo
 
 bye                 clrb
 err                 pshs      cc,b
-                    lbsr      Goff
+                    lbsr      GrOff
                     puls      b,cc
                     os9       F$Exit
 
@@ -306,9 +252,6 @@ SetPixel            pshs      y
                     stb       ,x                  write pixel             
 x                   puls      y,pc                Return to the caller
 
-
-
-
 MapInPixAddr        pshs      y
                     tfr       y,d
                     lsra
@@ -339,25 +282,84 @@ ok@                 stu       mapaddr
 exit@               puls      y,pc
 
 
+*                   FX_TXT  =  %00000001          Text Mode On
+*                   FX_OVR  =  %00000010          Overlay Text on Graphics
+*                   FX_GRX  =  %00000100          Graphics Mode On
+*                   FX_BM   =  %00001000          Bitmap Enable
+*                   TileMap =  %00010000          TileMap Enable
+*                   Sprite  =  %00100000          Sprite Enable
+GrOn                ldx       #%00001111
+                    ldy       #%11111111          Don't change FFC1  FT_OMIT = %11111111
+                    clra                          Path #
+                    ldb       #SS.DScrn           Display Screen with new settings
+                    os9       I$SetStt            Turn on Graphics
+                    bcs       x@
+                    clrb
+x@                  rts
 
-
-Goff                ldx       #%00000001          Turn Text on BM_TXT = %00000001
+GrOff               ldx       #%00000001          Turn Text on BM_TXT = %00000001
                     ldy       #%11111111          Don't change FFC1  FT_OMIT = %11111111
                     lda       ,s                  Path # from stack 
                     clra
                     ldb       #SS.DScrn           Display screen with new settings
                     os9       I$SetStt
-                    bcs       error_ds            Error
-
+                    bcs       x@            Error
                     ldy       #2                  BM 0-2
 par2@               lda       #0
                     ldb       #SS.FScrn           Free Bitmap
                     os9       I$SetStt
-                    bcs       error_ds            Error
-
+                    bcs       x@            Error
                     clrb                          No Error
-error_ds            rts                           return to the caller
+x@                  rts                           return to the caller
                     
+
+LoadClut            pshs      a,x,y,u             Preserve regs
+                    leax      clutpathname,pcr    6th parameter Get CLUT path
+                    lda       #0                  F$Load a=language, 0=Any
+                    os9       F$Link              Try linking module
+                    beq       cont@               Load CLUT if no error
+                    os9       F$Load              Load and set y=entry point
+                    bcs       x@
+cont@               ldx       clutnum
+                    clra                          Path #
+                    ldb       #SS.DfPal           Define Palette CLUT#0 with Y data
+                    os9       I$SetStt
+                    os9       F$Unlink            Clut defined now this saves 8K for Basic09         
+                    bcs       x@
+                    ldu       5,s                 F$Link,F$Load,F$Unlink all trash U
+                    **** Set CLUT0 to BM0
+                    ldx       clutnum             CLUT #
+                    ldy       bitmapnum           Bitmap # 1st param
+                    clra                          Path #
+                    ldb       #SS.Palet           Assign CLUT # to Bitmap #
+                    os9       I$SetStt
+                    clrb
+x@                  puls      u,y,x,a,pc
+
+CreateBitmap        ldy       #0
+                    sty       bitmapnum
+                    ldx       #0                  2nd parameter screentype 0=320x240 1=320x200
+                    clra                          Path #
+                    ldb       #SS.AScrn           Assign and create bitmap
+                    os9       I$SetStt         
+                    bcc       storeblk            No error store block #
+                    cmpb      #E$WADef            Check if windows already defined
+                    bne       x@
+storeblk            tfr       x,d              
+                    stb       bmblock             Save BMBlock
+                    ldb       #-1
+                    stb       currBlk             Force first pixel to map in it's 8K block
+                    clrb
+x@                  rts
+
+**** Assign Bitmap to Layer
+Bitmap2Layer        ldx       #0                  Layer # 
+                    ldy       bitmapnum           Bitmap #
+                    clra                          Path #
+                    ldb       #SS.PScrn           Position Bitmap # to Layer #
+                    os9       I$SetStt
+                    rts
+
 
 ********************************************************************
 * INKEY routine from alib
