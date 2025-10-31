@@ -255,25 +255,21 @@ cont@               ldx       clutnum
                     os9       I$SetStt            Turn on Graphics
                     clrb                          no error
 
-                    bsr       Cls                 Updates currBlk
+                    ldd       #$0000
+                    std       color
 
 * This color plotter is blazing fast compared to the one that
 * maps in and clears an 8K block for each pixel which is not
 * acceptable for any serious graphics.
 
-                    ldd       #$0000
-                    std       color
-r@                  ldy       #$0000
-l@                  bsr       Pixel
-                    leay      1,y
-                    cmpy      #203*320
-                    blo       l@
+demo                bsr       Cls                 Updates currBlk
                     ldd       color
                     addd      #$0100              Fractional increment of color in MSB
                     std       color
+
 keyloop@            lbsr      INKEY               Inkey routine with handlers for intergace
                     cmpa      #$0D                $0D=ok shift+$0d=cancel
-                    bne       r@
+                    bne       demo
 
 bye                 clrb
 err                 pshs      cc,b
@@ -281,13 +277,39 @@ err                 pshs      cc,b
                     puls      b,cc
                     os9       F$Exit
 
-
 error_ds3           puls      u,y,x,a
 error_ds2           os9       F$Exit
 
+Cls                 pshs      y
+                    ldy       #$0000
+l@                  bsr       MapInPixAddr
+                    bcs       x@
+                    tfr       y,d
+                    anda      #31
+                    adda      mapaddr
+                    tfr       d,x
+                    ldb       color
+                    stb       ,x                  write pixel             
+                    leay      1,y
+                    cmpy      #(203*320)
+                    bne       l@
+x@                  puls      y,pc
 
-Pixel               pshs      y
-                    sty       pixaddr
+SetPixel            pshs      y
+                    bsr       MapInPixAddr
+                    bcs       x
+                    tfr       y,d
+                    anda      #31
+                    adda      mapaddr
+                    tfr       d,x
+                    ldb       color
+                    stb       ,x                  write pixel             
+x                   puls      y,pc                Return to the caller
+
+
+
+
+MapInPixAddr        pshs      y
                     tfr       y,d
                     lsra
                     lsra
@@ -296,7 +318,7 @@ Pixel               pshs      y
                     lsra
                     adda      bmblock
                     cmpa      currBlk
-                    beq       already@            Block is already mapped in from the Cls routine
+                    beq       exit@               Block is already mapped in
                     sta       currBlk
                     pshs      u                   F$ClrBlk will destroy U, so push it
                     ldu       mapaddr
@@ -309,55 +331,13 @@ Pixel               pshs      y
                     ldb       #1
                     pshs      u                   F$MapBlk with destroy U so push
                     os9       F$MapBlk
-                    bcc       noerr@
+                    bcc       ok@
                     puls      u                   restore U from stack
-                    bra       err@
-noerr@              stu       mapaddr
+                    bra       exit@
+ok@                 stu       mapaddr
                     puls      u                   restore U from stack
-already@            ldd       pixaddr
-                    anda      #31
-                    adda      mapaddr
-                    tfr       d,x
-                    ldd       color
-p@                  sta       ,x                  write pixel             
-err@                puls      y,pc                Return to the caller
+exit@               puls      y,pc
 
-
-Cls
-                    ldb       bmblock             get first bitmap block
-                    stb       currBlk             store current block
-                    clra                          clear block cnt
-                    sta       blkCnt              store block cnt
-clearimage          clra
-                    ldb       currBlk
-                    tfr       d,x
-                    ldb       #1
-                    pshs      u                   F$MapBlk with destroy U so push
-                    os9       F$MapBlk
-                    bcc       noerr@
-                    puls      u                   restore U from stack
-                    lbra      errcl2
-noerr@              stu       mapaddr             since U is pushed add 2 to variable ref.
-                    puls      u                   restore U from stack
-                    ldx       mapaddr             map address in X
-                    ldy       #$2000              number of bytes to clear
-                    ldd       #$0000              same color byte x 2
-pixelloop           std       ,x++                write pixel             
-                    leay      -2,y                decrement Y pointer
-                    bne       pixelloop           done?
-cont@               inc       blkCnt              increment blk cnt
-                    pshs      u                   F$ClrBlk will destroy U, so push it
-                    ldu       mapaddr             since U is pushed add 2 to variable ref.
-                    ldb       #1
-                    os9       F$ClrBlk
-                    puls      u                   restore U from stack                   
-                    lda       blkCnt              load block cnt
-                    cmpa      #$0A                is it the end?
-                    beq       cleardone
-                    inc       currBlk             increment current block
-                    bra       clearimage
-cleardone
-errcl2              rts                           return to the caller
 
 
 
