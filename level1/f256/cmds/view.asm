@@ -261,19 +261,19 @@ cont@               ldx       clutnum
 * maps in and clears an 8K block for each pixel which is not
 * acceptable for any serious graphics.
 
-                    ldy       #$0000
                     ldd       #$0000
                     std       color
+r@                  ldy       #$0000
 l@                  bsr       Pixel
-                    addd      #$0003              Fractional increment of color in MSB
+                    ldd       color
+                    addd      #$0001              Fractional increment of color in MSB
                     std       color
                     leay      1,y
                     cmpy      #203*320
                     blo       l@
-
 keyloop@            lbsr      INKEY               Inkey routine with handlers for intergace
                     cmpa      #$0D                $0D=ok shift+$0d=cancel
-                    bne       keyloop@
+                    bne       r@
 
 bye                 clrb
 err                 pshs      cc,b
