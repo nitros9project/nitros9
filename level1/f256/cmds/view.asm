@@ -328,7 +328,7 @@ noerr@              stu       mapaddr     since U is pushed add 2 to variable re
                     ldx       mapaddr       map address in X
                     ldy       #$2000           number of bytes to clear
                     ldd       #$55aa         load color
-pixelloop           std       ,x+              write pixel             
+pixelloop           std       ,x++              write pixel             
                     leay      -2,y             decrement Y pointer
                     bne       pixelloop        done?
 cont@               inc       blkCnt        increment blk cnt
