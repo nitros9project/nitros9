@@ -4,7 +4,7 @@
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
-*   1      2025/10/25  R Taylor
+*   1      2025/10/31  Roger Taylor
 * Created.
 
                nam       view
@@ -46,44 +46,10 @@ ENDHEAD	EQU	*
 
 * Offsets for parameters accessed directly (there can be more, but they are handled in loops)
                     org       0
-Return              rmb       2         $00    Return address of caller
-PCount              rmb       2         $02    # of parameters following
-PrmPtr1             rmb       2         $04 00 pointer to 1st parameter data
-PrmLen1             rmb       2         $06 02 length of 1st parameter
-PrmPtr2             rmb       2         $08 04 pointer to 2nd parameter data
-PrmLen2             rmb       2         $0A 06 length of 2nd parameter
-PrmPtr3             rmb       2         $0C 08 pointer to 3rd parameter data
-PrmLen3             rmb       2         $0E 0A length of 3rd parameter
-PrmPtr4             rmb       2         $10 0C pointer to 4th parameter data
-PrmLen4             rmb       2         $12 0E length of 4th parameter
-PrmPtr5             rmb       2         $14 10 pointer to 5th parameter data
-PrmLen5             rmb       2         $16 12 length of 5th parameter
-PrmPtr6             rmb       2         $18 14 pointer to 6th parameter data
-PrmLen6             rmb       2         $1A 16 length of 6th parameter
-PrmPtr7             rmb       2         $1C 18 pointer to 7th parameter data
-PrmLen7             rmb       2         $1E 1A length of 7th parameter
-PrmPtr8             rmb       2         $20 1C pointer to 8th parameter data
-PrmLen8             rmb       2         $22 1E length of 8th parameter
-X1                  rmb       2         $24 20 Universal X1 Variable
-Y1                  rmb       2         $26 22 Universal Y1 Variable
-X2                  rmb       2         $28 24 Universal X2 Variable
-Y2                  rmb       2         $2A 26 Universal Y2 Variable
-dx                  rmb       2         $2C 28
-dy                  rmb       2         $2E 2A
-dx2                 rmb       2         $30 2C
-dy2                 rmb       2         $32 2E
-p                   rmb       2         $34 30
 currBlk             rmb       2         $36 32 Variable currBlk BMLoad
 mapaddr             rmb       2         $38 34 Variable mapaddr BMLoad
-pxlblk0             rmb       1         $3A 36 Variable for Pixel
-pxlblk              rmb       1         $3C 38 Variable for Pixel
-pxlblkaddr          rmb       2         $3E 3A
 bmblock             rmb       1         $40 3C first bitmap block
 steep               rmb       1         $41 3D line variables
-univ8a              rmb       1         $42 3E
-univ8b              rmb       1         $43 3F
-univ8c              rmb       1         $44 40
-univ8d              rmb       1         $45 41
 currPath            rmb       1         $46 42 Variable  currPath BMLoad
 blkCnt              rmb       1         $47 43 Variable blkCnt BMLoad
 slperr              rmb       2         $48 44 Slope error
@@ -96,8 +62,9 @@ layer               rmb       2
 offset              rmb       2      
 enable              rmb       2
 endian              rmb       1
-stkdepth            equ       .
 
+color               rmb       2
+pixaddr               rmb       2
 bitmapnum rmb 2
 filepath      rmb 1
 clutnum rmb 2
@@ -124,7 +91,6 @@ DISKBY	rmb	1		dskpop val
 WIDTH	rmb	2		image width
 HEIGHT	rmb	2		image height
 COLORS	rmb	2
-COLOR	rmb	2
 RGBCOL	equ	*		allow STQ <RGBCOL for setting r,g,b,color all at once
 RED	rmb	1
 GREEN	rmb	1
@@ -219,6 +185,9 @@ start
                     sty       fmemupper
                     std       fmemsize
 
+                    clra                      Path #
+                    sta       currPath      store current path
+
                 *     lda       #READ.
                 *     os9       I$Open
                 *     lbcs      err
@@ -238,9 +207,11 @@ start
                     os9       I$SetStt         
                     bcc       storeblk            No error store block #
                     cmpb      #E$WADef            Check if windows already defined
-                    bne       error_ds2
+                    lbne      error_ds2
 storeblk            tfr       x,d              
-                    std       bmblock             Save BMBlock                
+                    stb       bmblock             Save BMBlock
+                    ldb       #-1
+                    stb       currBlk             Force first pixel to map in it's 8K block
 
 Clut                pshs      a,x,y,u             Preserve regs
                     leax      clutpathname,pcr    6th parameter Get CLUT path
@@ -284,8 +255,21 @@ cont@               ldx       clutnum
                     os9       I$SetStt            Turn on Graphics
                     clrb                          no error
 
-                    bsr       Cls
-                    bsr       Pixel
+                    bsr       Cls                 Updates currBlk
+
+* This color plotter is blazing fast compared to the one that
+* maps in and clears an 8K block for each pixel which is not
+* acceptable for any serious graphics.
+
+                    ldy       #$0000
+                    ldd       #$0000
+                    std       color
+l@                  bsr       Pixel
+                    addd      #$0003              Fractional increment of color in MSB
+                    std       color
+                    leay      1,y
+                    cmpy      #203*320
+                    blo       l@
 
 keyloop@            lbsr      INKEY               Inkey routine with handlers for intergace
                     cmpa      #$0D                $0D=ok shift+$0d=cancel
@@ -302,111 +286,119 @@ error_ds3           puls      u,y,x,a
 error_ds2           os9       F$Exit
 
 
-Pixel               clra                      Path #
-                    sta       currPath      store current path
-                    ldd       bmblock             get first bitmap block
-                    std       currBlk       store current block
+Pixel
+                    pshs      d,y
 
+                    sty       pixaddr
+                    tfr       y,d
+                    lsra
+                    lsra
+                    lsra
+                    lsra
+                    lsra
+                    adda      bmblock
+                    cmpa      currBlk
+                    beq       already@            Block is already mapped in from the Cls routine
+                    sta       currBlk
+                    pshs      u                   F$ClrBlk will destroy U, so push it
+                    ldu       mapaddr
                     ldb       #1
-                    ldx       currBlk       restore current block
-                    pshs      u                F$MapBlk with destroy U so push
+                    os9       F$ClrBlk
+                    puls      u                   Restore U from stack                   
+                    ldb       currBlk
+                    clra
+                    tfr       d,x
+                    ldb       #1
+                    pshs      u                   F$MapBlk with destroy U so push
                     os9       F$MapBlk
                     bcc       noerr@
-                    puls      u                restore U from stack
-                    lbra      err@
-noerr@              stu       mapaddr     since U is pushed add 2 to variable ref.
-                    puls      u                restore U from stack
-                    lda       currPath      load path
-                    ldx       mapaddr       map address in X
-                    leax      (24*320),x
-                    ldy       #320           number of bytes to clear
-                    ldd       #$aaaa         same color byte x 2
-p@                  std       ,x++                write pixel             
+                    puls      u                   restore U from stack
+                    bra       err@
+noerr@              stu       mapaddr
+                    puls      u                   restore U from stack
+already@            ldd       pixaddr
+                    anda      #31
+                    adda      mapaddr
+                    tfr       d,x
+                    ldd       color
+p@                  sta       ,x                  write pixel             
+err@                puls      d,y,pc              Return to the caller
+
+
+Cls
+                    ldb       bmblock             get first bitmap block
+                    stb       currBlk             store current block
+                    clra                          clear block cnt
+                    sta       blkCnt              store block cnt
+clearimage          clra
+                    ldb       currBlk
+                    tfr       d,x
+                    ldb       #1
+                    pshs      u                   F$MapBlk with destroy U so push
+                    os9       F$MapBlk
+                    bcc       noerr@
+                    puls      u                   restore U from stack
+                    lbra      errcl2
+noerr@              stu       mapaddr             since U is pushed add 2 to variable ref.
+                    puls      u                   restore U from stack
+                    ldx       mapaddr             map address in X
+                    ldy       #$2000              number of bytes to clear
+                    ldd       #$0000              same color byte x 2
+pixelloop           std       ,x++                write pixel             
                     leay      -2,y                decrement Y pointer
-                    bne       p@                  done?
+                    bne       pixelloop           done?
+cont@               inc       blkCnt              increment blk cnt
                     pshs      u                   F$ClrBlk will destroy U, so push it
                     ldu       mapaddr             since U is pushed add 2 to variable ref.
                     ldb       #1
                     os9       F$ClrBlk
-                    puls      u                restore U from stack                   
-                    lda       currPath      restore path
-err@                rts                        return to the caller
-
-
-Cls                 clra                      Path #
-                    sta       currPath      store current path
-                    ldd       bmblock             get first bitmap block
-                    std       currBlk       store current block
-                    clra                       clear block cnt
-                    sta       blkCnt       store block cnt
-clearimage          ldb       #1
-                    ldx       currBlk       restore current block
-                    pshs      u                F$MapBlk with destroy U so push
-                    os9       F$MapBlk
-                    bcc       noerr@
-                    puls      u                restore U from stack
-                    lbra      errcl2
-noerr@              stu       mapaddr     since U is pushed add 2 to variable ref.
-                    puls      u                restore U from stack
-                    lda       currPath      load path
-                    ldx       mapaddr       map address in X
-                    ldy       #$2000           number of bytes to clear
-                    ldd       #$0000         same color byte x 2
-pixelloop           std       ,x++              write pixel             
-                    leay      -2,y             decrement Y pointer
-                    bne       pixelloop        done?
-cont@               inc       blkCnt        increment blk cnt
-                    pshs      u                F$ClrBlk will destroy U, so push it
-                    ldu       mapaddr     since U is pushed add 2 to variable ref.
-                    ldb       #1
-                    os9       F$ClrBlk
-                    puls      u                restore U from stack                   
-                    lda       blkCnt        load block cnt
-                    cmpa      #$0A             is it the end?
+                    puls      u                   restore U from stack                   
+                    lda       blkCnt              load block cnt
+                    cmpa      #$0A                is it the end?
                     beq       cleardone
-                    inc       currBlk+1     increment current block
+                    inc       currBlk             increment current block
                     bra       clearimage
-cleardone           lda       currPath      restore path
-errcl2              rts                        return to the caller
+cleardone
+errcl2              rts                           return to the caller
 
 
 
-Goff                ldx       #%00000001       Turn Text on BM_TXT = %00000001
-                    ldy       #%11111111       Don't change FFC1  FT_OMIT = %11111111
-                    lda       ,s               Path # from stack 
+Goff                ldx       #%00000001          Turn Text on BM_TXT = %00000001
+                    ldy       #%11111111          Don't change FFC1  FT_OMIT = %11111111
+                    lda       ,s                  Path # from stack 
                     clra
-                    ldb       #SS.DScrn        Display screen with new settings
+                    ldb       #SS.DScrn           Display screen with new settings
                     os9       I$SetStt
-                    bcs       error_ds         Error
+                    bcs       error_ds            Error
 
-                    ldy       #2               BM 0-2
+                    ldy       #2                  BM 0-2
 par2@               lda       #0
-                    ldb       #SS.FScrn        Free Bitmap
+                    ldb       #SS.FScrn           Free Bitmap
                     os9       I$SetStt
-                    bcs       error_ds         Error
+                    bcs       error_ds            Error
 
-                    clrb                       No Error
-error_ds            rts                        return to the caller
+                    clrb                          No Error
+error_ds            rts                           return to the caller
                     
 
 ********************************************************************
 * INKEY routine from alib
 *
-INKEY          clra                          std in
+INKEY          clra                             std in
                ldb       #SS.Ready
-               os9       I$GetStt            see if key ready
+               os9       I$GetStt               see if key ready
                bcc       getit
-               cmpb      #E$NotRdy           no keys ready=no error
-               bne       exit@               other error, report it
-               clra                          no error
+               cmpb      #E$NotRdy              no keys ready=no error
+               bne       exit@                  other error, report it
+               clra                             no error
                bra       exit@
-getit          lbsr      FGETC               go get the key
+getit          lbsr      FGETC                  go get the key
                tsta
 exit@          rts
 
 FGETC          pshs      a,x,y
-               ldy       #1                  number of char to print
-               tfr       s,x                 point x at 1 char buffer
+               ldy       #1                     number of char to print
+               tfr       s,x                    point x at 1 char buffer
                os9       I$Read
                puls      a,x,y,pc
 
