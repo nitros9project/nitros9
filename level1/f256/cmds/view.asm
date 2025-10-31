@@ -224,7 +224,6 @@ start
                 *     lbcs      err
                 *     sta       filepath
 
-;;; calling syntax: RUN FOENIX([path,],"Bitmap",bitmap#,screenmode,bmblock,layer,clut#,clutname)
                     ldd       #0
                     std       clutnum
                     ldd       #0
@@ -233,66 +232,63 @@ start
 * A few moments later...
 
                     ldy       bitmapnum
-                    ldx       #0               2nd parameter screentype 0=320x240 1=320x200
-                    clra                       Path #
-                    ldb       #SS.AScrn        Assign and create bitmap
+                    ldx       #0                  2nd parameter screentype 0=320x240 1=320x200
+                    clra                          Path #
+                    ldb       #SS.AScrn           Assign and create bitmap
                     os9       I$SetStt         
-                    bcc       storeblk         No error store block #
-                    cmpb      #E$WADef         Check if windows already defined
+                    bcc       storeblk            No error store block #
+                    cmpb      #E$WADef            Check if windows already defined
                     bne       error_ds2
 storeblk            tfr       x,d              
-                    std       bmblock          Save BMBlock                
+                    std       bmblock             Save BMBlock                
 
-Clut                pshs      a,x,y,u          push
-                    ldx       clutnum	        store x because need it later
-                    pshs      x                when u gets trashed
-                    leax      clutpathname,pcr          6th parameter Get CLUT path
-                    lda       #0               F$Load a=language, 0=Any
-                    os9       F$Link           Try linking module
-                    beq       cont@            Load CLUT if no error
-                    os9       F$Load           Load and set y=entry point
+Clut                pshs      a,x,y,u             Preserve regs
+                    leax      clutpathname,pcr    6th parameter Get CLUT path
+                    lda       #0                  F$Load a=language, 0=Any
+                    os9       F$Link              Try linking module
+                    beq       cont@               Load CLUT if no error
+                    os9       F$Load              Load and set y=entry point
                     bcs       error_ds3
-cont@               puls      x                replaced following line with this one
-*                   ldx       [$10,u]          CLUT # 5th parameter
-                    clra                       Path #
-                    ldb       #SS.DfPal        Define Palette CLUT#0 with Y data
+cont@               ldx       clutnum
+                    clra                          Path #
+                    ldb       #SS.DfPal           Define Palette CLUT#0 with Y data
                     os9       I$SetStt
-                    os9       F$Unlink         Clut defined now this saves 8K for Basic09         
+                    os9       F$Unlink            Clut defined now this saves 8K for Basic09         
                     bcs       error_ds3
-                    ldu       5,s              F$Link,F$Load,F$Unlink all trash U
+                    ldu       5,s                 F$Link,F$Load,F$Unlink all trash U
                     **** Set CLUT0 to BM0
-                    ldx       clutnum                clutnum,u          CLUT # 5th param
-                    ldy       bitmapnum             Bitmap # 1st param
-                    clra                       Path #
-                    ldb       #SS.Palet        Assign CLUT # to Bitmap #
+                    ldx       clutnum             CLUT #
+                    ldy       bitmapnum           Bitmap # 1st param
+                    clra                          Path #
+                    ldb       #SS.Palet           Assign CLUT # to Bitmap #
                     os9       I$SetStt
                     
                     puls      u,y,x,a
 
                     **** Assign Bitmap to Layer
-                    ldx       #0              [$0C,u]        4th parameter Layer # 
+                    ldx       #0                  Layer # 
                     ldy       bitmapnum           Bitmap #
-                    clra                       Path #
-                    ldb       #SS.PScrn       Position Bitmap # to Layer #
+                    clra                          Path #
+                    ldb       #SS.PScrn           Position Bitmap # to Layer #
                     os9       I$SetStt
 
-                    ldx       #$2F   ;#%00001000+%00000100    Turn on Bitmaps and Graphics FX_BM = %00001000  FX_GRX = %00000100
+                    ldx       #$2F                ;#%00001000+%00000100    Turn on Bitmaps and Graphics FX_BM = %00001000  FX_GRX = %00000100
                     ldx       #%00001111
-                    *         FX_OVR = %00000010      Overlay Text on Graphics
-                    *         FX_TXT = %00000001      Text Mode On
-                    *         Sprite = %00100000      Sprite Enable
-                    *         TileMap= %00010000      TileMap Enable
-                    ldy       #%11111111       Don't change FFC1  FT_OMIT = %11111111
-                    clra                       Path #
-                    ldb       #SS.DScrn        Display Screen with new settings
-                    os9       I$SetStt         Turn on Graphics
-                    clrb                       no error
+*                     FX_OVR = %00000010          Overlay Text on Graphics
+*                     FX_TXT = %00000001          Text Mode On
+*                     Sprite = %00100000          Sprite Enable
+*                     TileMap= %00010000          TileMap Enable
+                    ldy       #%11111111          Don't change FFC1  FT_OMIT = %11111111
+                    clra                          Path #
+                    ldb       #SS.DScrn           Display Screen with new settings
+                    os9       I$SetStt            Turn on Graphics
+                    clrb                          no error
 
                     bsr       Cls
                     bsr       Pixel
 
-keyloop@            lbsr      INKEY  		inkey routine with handlers for intergace
-                    cmpa      #$0D			$0D=ok shift+$0d=cancel
+keyloop@            lbsr      INKEY               Inkey routine with handlers for intergace
+                    cmpa      #$0D                $0D=ok shift+$0d=cancel
                     bne       keyloop@
 
 bye                 clrb
