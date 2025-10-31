@@ -286,9 +286,7 @@ error_ds3           puls      u,y,x,a
 error_ds2           os9       F$Exit
 
 
-Pixel
-                    pshs      d,y
-
+Pixel               pshs      y
                     sty       pixaddr
                     tfr       y,d
                     lsra
@@ -322,7 +320,7 @@ already@            ldd       pixaddr
                     tfr       d,x
                     ldd       color
 p@                  sta       ,x                  write pixel             
-err@                puls      d,y,pc              Return to the caller
+err@                puls      y,pc                Return to the caller
 
 
 Cls
