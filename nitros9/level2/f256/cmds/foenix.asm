@@ -7,6 +7,9 @@
 *   1      2024/03/13  Boisy Gene Pitre
 * Created.
 *   2      2024/11/02  Matt Massie - Added Foenix F256 Graphics, Mouse, Joystick functions
+*
+*   3      2025/10/25  Matt Massie - Added Display, JoyA, JoyB, FNSet, Sprite Commands
+*
 
                   IFP1
                     use       ../defs/os9.d
@@ -84,6 +87,8 @@ layer               rmb       2
 offset              rmb       2      
 enable              rmb       2
 endian              rmb       1
+stdinPD             rmb       32        Options buffer
+prevEKO             rmb       1         Previous echo state
 stkdepth            equ       .
 
 * Function table. Please note, that on entry to these subroutines, the main temp stack is already
@@ -103,6 +108,14 @@ FuncTbl
 
                     fdb       DWSet-FuncTbl
                     fcc       "DWSet"
+                    fcb       $FF
+
+                    fdb       JoyA-FuncTbl
+                    fcc       "JoyA"
+                    fcb       $FF
+
+                    fdb       JoyB-FuncTbl
+                    fcc       "JoyB"
                     fcb       $FF
 
                     fdb       Palette-FuncTbl
@@ -233,6 +246,10 @@ FuncTbl
                     fcc       "FNChar"
                     fcb       $FF
 
+                    fdb       FNSet-FuncTbl
+                    fcc       "FNSet"
+                    fcb       $FF
+
                     fdb       MouseHR-FuncTbl
                     fcc       "MouseHR"
                     fcb       $FF
@@ -336,7 +353,63 @@ FuncTbl
                     fdb       SPKill-FuncTbl
                     fcc       "SPKill"
                     fcb       $FF
+					
+					fdb       TSAddr-FuncTbl
+                    fcc       "TSAddr"
+                    fcb       $FF
+					
+					fdb       TSAlloc-FuncTbl
+                    fcc       "TSAlloc"
+                    fcb       $FF
+					
+					fdb       TSLoad-FuncTbl
+                    fcc       "TSLoad"
+                    fcb       $FF
                     
+					fdb       TSSave-FuncTbl
+                    fcc       "TSSave"
+                    fcb       $FF
+					
+					fdb       TSKill-FuncTbl
+                    fcc       "TSKill"
+                    fcb       $FF
+					
+					fdb       TMAlloc-FuncTbl
+                    fcc       "TMAlloc"
+                    fcb       $FF
+					
+					fdb       TMLoad-FuncTbl
+                    fcc       "TMLoad"
+                    fcb       $FF
+					
+					fdb       TMKill-FuncTbl
+                    fcc       "TMKill"
+                    fcb       $FF
+					
+					fdb       TMCfg-FuncTbl
+                    fcc       "TMCfg"
+                    fcb       $FF
+					
+					fdb       TMXYScrl-FuncTbl
+                    fcc       "TMXYScrl"
+                    fcb       $FF
+					
+					fdb       TMSave-FuncTbl
+                    fcc       "TMSave"
+                    fcb       $FF
+					
+					fdb       TMOn-FuncTbl
+                    fcc       "TMOn"
+                    fcb       $FF
+					
+					fdb       TMOff-FuncTbl
+                    fcc       "TMOff"
+                    fcb       $FF
+					
+					fdb       TMAddr-FuncTbl
+                    fcc       "TMAddr"
+                    fcb       $FF
+					
                     fdb       Peekw-FuncTbl
                     fcc       "Peekw"
                     fcb       $FF
@@ -356,10 +429,6 @@ FuncTbl
 * Test by sending non-existant function name
                     fcb       $00       end of table marker
 
-;stkdepth            equ       $21
-;stkdepth            equ       $27       BMLoad variables added
-;stkdepth            equ       $2C       Added Pixel Variables + carry 2B was 2C 
-;stkdepth            equ       $2B       BMLoad variables added
 * All functions (from the call table) are entered with the following parameters:
 *   Y = pointer to function subroutine
 *   X = pointer to "stkdepth" byte scratch variable area (same as stack pointer, which has allocated that extra memory)
@@ -396,13 +465,13 @@ start               leas      <-stkdepth,s reserve bytes on stack
                     tfr       b,a       it's an INTEGER value, so save LSB as path #
 byte@               sta       ,s        save on stack
                     dec       <stkdepth+PCount+1,s decrement # of parameters (to skip path #)
-                    ldx       <stkdepth+PrmPtr2,s X = pointer to function name we received
-                    leau      <stkdepth+PrmPtr3,s U = pointer to (possible) 1st parameter for function
+                    ldx       stkdepth+PrmPtr2,s X = pointer to function name we received
+                    leau      stkdepth+PrmPtr3,s U = pointer to (possible) 1st parameter for function
                     bra       L02B8
 * No optional path, set path to Std Out, and point X/U to function name and 1st parameter for it.
 nopath@             inc       ,s        no optional path # specified, set path to 1 (Std Out)
-                    ldx       <stkdepth+PrmPtr1,s point to function name
-                    leau      <stkdepth+PrmPtr2,s point to first parameter of function
+                    ldx       stkdepth+PrmPtr1,s point to function name
+                    leau      stkdepth+PrmPtr2,s point to first parameter of function
 * Entry here: X=pointer to function name passed from caller
 *             U=pointer to 1st parameter for function
 L02B8               pshs      u,x       save 1st parameter & function name pointers
@@ -431,7 +500,7 @@ L02D5               tst       -1,u      was hi bit set on matching character? (w
 
                     lda       #$1B      start it with an ESCAPE code (most functions use this)
                     sta       ,x+       store it in the output buffer
-                    ldd       <stkdepth+PCount,s get # of params again including path (if present) & function name pointer
+                    ldd       stkdepth+PCount,s get # of params again including path (if present) & function name pointer
                     jmp       ,y        call function subroutine & return from there
 
 L02F0               leas      4,s       clean the stack
@@ -450,15 +519,27 @@ L02F8               coma                set the carry
 *   D = # of parameters being passed (including optional path #, and function name pointer).
 
 ;;; INKEY
-;;;
-;;; calling syntax: RUN FOENIX([path,],"INKEY",keyval)
+;;; optional 3rd parameter enables echo of keys
+;;; calling syntax: RUN FOENIX([path,],"INKEY",keyval, [1])
 INKEY               cmpb      #2               2 parameters?
                     beq       InKey20          No Path just retkey
-                    ;cmpb      #3               3 parameters?
+                    cmpb      #3               3 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
+                    bra       Inkey30
 InKey20             pshs      a,x,y,u          Preserve registers
                     lda       ,s               Path # from stack
-                    ldb       #SS.Ready
+                    ldb       #SS.Opt          SS.Options system call
+                    leax      stdinPD,s        point to options buffer
+                    os9       I$GetStt         get options
+; preserve original echo value, turn echo off, and write back settings
+                    ldb       PD.EKO-PD.OPT,x  get echo flag byte
+                    stb       prevEKO,s        store previous value
+                    clr       PD.EKO-PD.OPT,x  clear echo
+                    lda       ,s               Path # from stack
+                    ldb       #SS.Opt          set options
+                    leax      stdinPD,s        point to updated table
+                    os9       I$SetStt        
+                    ldb       #SS.Ready        
                     os9       I$GetStt         see if key ready
                     bcc       getit
                     cmpb      #E$NotRdy        no keys ready=no error
@@ -470,7 +551,13 @@ getit               lbsr      FGETC            go get the key
                     clrb
                     exg       a,b              Swap A and B
                     std       [,u]
-exit@               puls      u,y,x,a
+exit@               leax      stdinPD,s        get options buffer
+                    ldb       #1               enable echo
+                    stb       PD.EKO-PD.OPT,x  
+                    lda       ,s               Path # from stack
+                    ldb       #SS.Opt
+                    os9       I$SetStt         update echo changes        
+                    puls      u,y,x,a
                     leas      <stkdepth,s      clean the stack
                     rts                        return to the caller   
 
@@ -479,6 +566,62 @@ FGETC               pshs      a,x,y
                     tfr       s,x              point x at 1 char buffer
                     os9       I$Read
                     puls      a,x,y,pc
+
+Inkey30             pshs      a,x,y,u          Preserve registers
+                    lda       ,s               Path # from stack
+                    ldb       #SS.Ready        
+                    os9       I$GetStt         see if key ready
+                    bcc       getit2
+                    cmpb      #E$NotRdy        no keys ready=no error
+                    bne       exit2@           other error, report it
+                    clra                       no error
+                    bra       exit2@
+getit2              lbsr      FGETC            go get the key
+                    tsta                       Nil?
+                    clrb
+                    exg       a,b              Swap A and B
+                    std       [,u]
+exit2@              puls      u,y,x,a
+                    leas      <stkdepth,s      clean the stack
+                    rts    
+
+;;; JoyA
+;;;
+;;; Joystick VIA 0 Port A
+;;; btn=239 UP=254 DWN=253 LEFT=251 RIGHT=247
+;;; UP/LFT=246 DWN/LFT=245 DWN/RGT=249 UP/RGT=250
+;;; calling syntax: RUN FOENIX([path,],"JoyA",value)
+JoyA                cmpb      #2               2 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    pshs      a
+                    clra
+                    clrb
+                    sta       $FEB3            clr port A data direction register VIA0
+                    ldb       $FEB1            read data port A
+                    std       [,u]             update return value
+                    puls      a
+                    leas      <stkdepth,s      clean the stack
+                    rts
+
+;;; JoyB
+;;;
+;;; Joystick VIA 0 Port B
+;;; btn=239 UP=254 DWN=253 LEFT=251 RIGHT=247
+;;; UP/LFT=246 DWN/LFT=245 DWN/RGT=249 UP/RGT=250
+;;; Bit 7 Port B is used for F256K keyboard, so or #$80 is masking this
+;;; calling syntax: RUN FOENIX([path,],"JoyB",value)
+JoyB                cmpb      #2               2 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    pshs      a
+                    clra
+                    clrb
+                    sta       $FEB2            clr port B data direction register VIA0
+                    ldb       $FEB0            read data port B
+                    orb       #$80             bit 7 is floating read 255 then 127 w nothing pressed
+                    std       [,u]             update return value
+                    puls      a
+                    leas      <stkdepth,s      clean the stack
+                    rts
 
 ;;; JoyR Right Joystick Input
 ;;;
@@ -517,11 +660,22 @@ Joyl                cmpb      #4               4 parameters?
 
 ;;; SPCreate - Create Spritesheet
 ;;;
-;;;
-;;; calling syntax: RUN FOENIX([path,],"SPCreate",bm)
-SPCreate            cmpb      #2               2 parameter
+;;; bm is MMU page to map for Sprite - addr is the mapped address
+;;; $2B or lower sprites & allows bm0, bm1 to be used for bitmaps
+;;; calling syntax: RUN FOENIX([path,],"SPCreate",bm, addr)
+SPCreate            cmpb      #3               3 parameters
                     lbne      ParamErr         no, exit with Parameter Error
-                    leas      <stkdepth,s      eat temporary stack
+                    ldx       [,u]             get page to map ex.
+                    pshs      u                preserve u
+                    ldb       #$01             need 1 block
+                    os9       F$MapBlk         map it into process address space
+                    lbcs      exiterr@
+                    exg       u,x              mapped block to x  
+                    puls      u
+                    stx       [<$04,u]         store mapaddr param 2
+                    bra       cont@
+exiterr@            puls      u                restore u
+cont@               leas      <stkdepth,s      eat temporary stack
                     rts                        return to the caller
 
 ;;; SPConfig - Configure Sprites
@@ -551,7 +705,6 @@ SPConfig            cmpb      #6               6 parameters?
                     lslb
                     rola                       multiply to get offset 8 bytes per sprite                    
                     std       <offset,s        save offset
-                    std       $fee2
                     ldd       [<$10,u]         get enable
                     ;andd      #$0001           isolate enable
                     std       <enable,s
@@ -560,7 +713,6 @@ SPConfig            cmpb      #6               6 parameters?
                     lslb
                     rola                       need LUT at bits 2-1, bit 0=enable
                     std       <lut,s
-                    ;std       $fee4
                     ldd       [<$08,u]         get layer
                     lslb
                     rola                       
@@ -603,7 +755,9 @@ err@                puls      u
                     rts                        return to the caller
 
 ;;; SPAssign - Assign sprite
-;;;
+;;; 
+;;; Example SPCreate 2B - The memory location for MMU page 2B is $05 $60 $00
+;;; assing 16x16 size next offset would be $05 $61 $00
 ;;; calling syntax: RUN FOENIX([path,],"SPAssign",sprite#,mem_loc)
 SPAssign            cmpb      #3               3 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
@@ -703,29 +857,135 @@ err@                puls      u
 ;;; SPLoad - Load Sprite
 ;;; 
 ;;; from file, from data module file or loaded data module (or memory?)
-;;; calling syntax: RUN FOENIX([path,],"SPLoad",sprite#,spritefile,bm)
-SPLoad              cmpb      #4               4 parameters?
+;;; use mapaddr from SPCreate. bitmappath of sprite file to load. 
+;;; calling syntax: RUN FOENIX([path,],"SPLoad", mapaddr, bitmappath)
+SPLoad              cmpb      #3               3 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
+                    pshs      a,x,y,u          Preserve registers
+                    lda       #READ.
+                    leax      [<$04,u]         Pointer to bitmap path
+                    os9       I$Open
+                    lbcs      errcl@
+                    sta       <currPath,s      store current path
+                    clra
+                    sta       <blkCnt,s        store block cnt
+                    ldd       [,u]             sprite map address
+                    std       <mapaddr,s       store map address
+                    lda       <currPath,s      load path
+                    ldx       <mapaddr,s       map address in X
+                    ldy       #$2000           bytes to load
+                    os9       I$Read
+                    bcc       noerr@
+                    cmpb      #E$EOF
+                    beq       loaddone@        load done?
+                    lbra      errcl@
+noerr@              inc       <blkCnt,s        increment blk cnt
+loaddone@           lda       <currPath,s      restore path
+                    os9       I$Close
+                    bcs       errcl@
+errcl@              puls      u,y,x,a
                     leas      <stkdepth,s      eat temporary stack
                     rts                        return to the caller
 
 ;;; SPSave - Save Sprite
 ;;;
-;;;
-;;; calling syntax: RUN FOENIX([path,],"SPSave",sprite#,spritefile)
-SPSave              cmpb      #3               3 parameters?
+;;; mapaddr from SPCreate. bitmappath to save sprites. Optional [size] if ommitted 8K default
+;;; ** if using [size] pass value in hex ie $400 to save 1KB
+;;; calling syntax: RUN FOENIX([path,],"SPSave", mapaddr, bitmappath, [size])
+SPSave              cmpb      #4               4 parameters?
+                    beq       params4
+                    cmpb      #3               3 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
+                    bra       params3
+params4             ldd       [<$08,u]         get # of bytes to save
+                    std       <ssize,s         store specified bytes to save
+                    std       $feee
+                    bra       cont@
+params3             ldd       #$2000           default save full 8K block
+                    std       <ssize,s
+cont@               pshs      x,y,u          Preserve registers
+                    sta       <currPath,s      store current path
+                    leax      [<$04,u]         Get the filename to save
+                    ldb       #$2F             03 0=R 2=W 2=E 3=PR 4=PW 5=PE
+                    lda       #WRITE.          #$04             Access Mode Write
+                    os9       I$Create         create and open file
+                    bcs       merr@            Error
+                    sta       <Univ8a,s        save file path
+                    clra
+                    sta       <blkCnt,s        store block count
+                    ldd       [,u]             sprite map address [<$08,u]
+                    std       <mapaddr,s       store map address
+                    lda       <Univ8a,s        get file path
+                    ldx       <mapaddr,s       put map address in X
+                    ldy       <ssize+6,s       restore bytes to save
+                    os9       I$Write
+                    bcc       nooerr@
+                    lbra      merr@            error
+nooerr@             inc       <blkCnt,s        increment block count
+done@               lda       <Univ8a,s        get the file path
+                    os9       I$Close
+merr@               lda       <currPath,s      get previous path
+                    puls      u,x,y            restore stack
                     leas      <stkdepth,s      eat temporary stack
                     rts                        return to the caller
 
 ;;; SPKill - Sprite Kill - Free sprite memory
 ;;;
-;;; calling syntax: RUN FOENIX([path,],"SPKill",sprite#,spritefile)
+;;; calling syntax: RUN FOENIX([path,],"SPKill",bm,addr)
 SPKill              cmpb      #3               3 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
+                    ldx       [<$04,u]         load map addr in x
+                    ldy       [,u]             get page to map
+                    pshs      u                clear MapBlk from DAT Image
+                    exg       x,u              put mapaddr in u
+                    exg       y,x              page to clear in x
+                    ldb       #$01             clearing 1 block
+                    os9       F$ClrBlk         remove block from DAT Image
+                    puls      u
+                    clrb
                     leas      <stkdepth,s      eat temporary stack
                     rts                        return to the caller
 
+*** TileSets
+;;; TSAddr - Return Address of TileSet
+;;;
+;;; alling syntax: RUN FOENIX([path,],"TSAddr",TS#, addr)
+TSAddr              cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    leas      <stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+					
+;;; TSAlloc - Allocates memory and puts address in TileSet register
+;;;
+;;; alling syntax: RUN FOENIX([path,],"TSAlloc",TS#, Size, Square)
+TSAlloc             cmpb      #4               4 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    leas      <stkdepth,s      eat temporary stack
+                    rts                        return to the caller					
+
+;;; TSLoad - Load TS from file
+;;;
+;;; alling syntax: RUN FOENIX([path,],"TSLoad",TS#, Size, path)
+TSLoad              cmpb      #4               4 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    leas      <stkdepth,s      eat temporary stack
+                    rts                        return to the caller		
+
+;;; TSSave - Save TS to a file
+;;; alling syntax: RUN FOENIX([path,],"TSSave",TS#, Size, path)
+TSSave              cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    leas      <stkdepth,s      eat temporary stack
+                    rts                        return to the caller	
+
+;;; TSKill - Erase registers and free memory from TS
+;;;
+;;; alling syntax: RUN FOENIX([path,],"TSKill",TS#, Size, path)
+TSKill              cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    leas      <stkdepth,s      eat temporary stack
+                    rts                        return to the caller	
+					
 ;;; Check for little/big endian Math Co-Pro
 ;;;
 chk_endian          ldd       #$0100           check for big endian
@@ -1559,9 +1819,7 @@ done@               lda       <Univ8a,s        get the file path
 merr                lda       <currPath,s      get previous path
                     puls      u,x,y,a          restore stack
                     leas      <stkdepth,s      eat temporary stack
-                    rts                        return to the caller
-                    
-                    
+                    rts                        return to the caller                  
 
 ;;; Graphics On
 ;;;
@@ -1612,7 +1870,7 @@ error_BG            leas      <stkdepth,s      eat temporary stack
 ;;; BMStatus - Bitmap Status
 ;;;  Returns 0 bm(x) if disabled, returns 1 bm(x) enabled
 ;;; calling syntax: RUN FOENIX([path,],"BMstatus",bm0,bm1,bm2)
-BMStatus            cmpb      #4               3 parameters?
+BMStatus            cmpb      #4               4 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
                     pshs      u
                     ldu       <mapaddr,s       u is address of mapped block
@@ -1627,7 +1885,7 @@ BMStatus            cmpb      #4               3 parameters?
                     puls      u
                     pshs      b
                     clrb                       
-                    ldx       <mapaddr-1,s       Get new mapped block
+                    ldx       <mapaddr-1,s     Get new mapped block
                     leax      $1000,x          bitmap registers are $1000 offset
                     lda       ,x+              Get BM0 status
                     anda      #$1              only want bit 0
@@ -1827,8 +2085,7 @@ FNLoad              cmpb      #3               3 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
                     pshs      a,x,y,u
                     ldy       [,u]             get param 1 fontnum
-                    ;exg       a,b
-                    lda       #0
+                    lda       #0               path
                     leax      [<$04,u]         get param 2 fontname to load
                     ldb       #SS.FntLoadF     load font from file
                     os9       I$SetStt
@@ -1842,10 +2099,9 @@ error@              puls      a,x,y,u
 ;;;
 ;;; fontnum = 0 or 1 - fontname specifies font in /dd/sys/fonts
 ;;; Calling syntax: RUN FOENIX([path,],"FNChar",fontset,fontnum,FONTCHAR) 
-FNChar              cmpb      #4               3 parameters?
+FNChar              cmpb      #4               4 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
                     pshs      a,x,y,u
-                    ldd       $A,u
                     ldd       [,u]             get param 1 fontnum
                     exg       a,b
                     clrb
@@ -1859,6 +2115,28 @@ error@              puls      a,x,y,u
                     leas      <stkdepth,s      eat temporary stack
                     rts
 
+;;; FNSet - Change font to font 0 or font 1
+;;;
+;;; Calling syntax: RUN FOENIX([path,],"FNSet",fontnum) 
+FNSet               cmpb      #2               2 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    ldd       [,u]             get fontnum
+                    bne       font1@           font1 ?
+                    lda       #$1b
+                    sta       ,x+
+                    lda       #$62             font0
+                    sta       ,x+
+                    bra       writeit@
+font1@              lda       #$1b
+                    sta       ,x+
+                    lda       #$63
+                    sta       ,x+
+writeit@            leax      -2,x
+                    ldy       #2               2 bytes to write
+                    lda       #2               path
+                    os9       I$Write
+                    leas      <stkdepth,s      eat temporary stack
+                    rts
 
 ;;; MapBlk - Map in Page
 ;;;
@@ -1880,16 +2158,15 @@ cont@               leas      <stkdepth,s      eat temporary stack
 
 ;;; ClrBlk - Clear Mapped in Page
 ;;;
+;;; MMU Block = page - The mapped address=addr
 ;;; Calling syntax: RUN FOENIX([path,],"ClrBlk",Page,addr)
 ClrBlk              cmpb      #3               2 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
                     ldx       [<$04,u]         load map addr in x
-                    ;ldy       #$C1
                     ldy       [,u]             get page to map
                     pshs      u                clear MapBlk from DAT Image
                     exg       x,u              put mapaddr in u
                     exg       y,x              page to clear in x
-                    ;ldu       <MAPADDR         u is address of mapped block
                     ldb       #$01             clearing 1 block
                     os9       F$ClrBlk         remove block from DAT Image
                     puls      u
@@ -1976,7 +2253,6 @@ GetTime             cmpb      #4              4 parameters?
                     sta       $FE4E           disable RTC updates
                     clrb
                     ldb       $FE44           read hours
-                    ;andb      $7F             mask off am/pm in 12 hour mode
                     lbsr      bcdtoint
                     std       [,u]            save first parameter hours
                     ldb       $FE42           read minutes
@@ -2060,7 +2336,6 @@ bcdtocentury        tfr       b,a             put a copy of b in a
                     lsra
                     lsra                      move upper 4 bits to lower 4 bits
                     sta       <pxlblk0,s      save muliplier
-                    ;tfr       a,b
                     ldb       #$03            multiply 16 by 8 bit ($03E8=1000)
                     mul
                     std       <univ8a,s       store 2 bytes
@@ -2073,7 +2348,6 @@ bcdtocentury        tfr       b,a             put a copy of b in a
                     lda       <univ8a,s
                     puls      cc
                     adca      #0              add in carry
-                    ;sta       <univ8a,s
                     ldd       <univ8a,s
                     addb      <pxlBlk,s
                     std       <univ8a,s
@@ -2102,9 +2376,7 @@ Pokew               cmpb      #3              3 parameters?
                     lbne      ParamErr        no, exit with Parameter Error
                     ldx       [,u]            get address to peek
                     ldd       [$04,u]         get value to store
-                    std       ,x++            store 2 bytes at addr x
-                    ;sta       ,x+             MSB $1FF4
-                    ;stb       ,x+             LSB $1FF5           
+                    std       ,x++            store 2 bytes at addr x        
                     clrb                      no error
                     leas      <stkdepth,s     eat temporary stack
                     rts                       return to the caller
@@ -2145,25 +2417,20 @@ L043B               leas      <stkdepth,s eat temporary stack
 WInfo               cmpb      #7        7 parameters?
                     lbne      ParamErr  no, exit with parameter error
                     lda       ,s        get path
-                    ldb       #SS.ScTyp get screen type system call
-                    os9       I$GetStt
-                    bcs       L0479     error, eat temp stack & exit
-                    tfr       a,b       D=screen type
-                    clra
-                    std       [,u]      save to caller
-                    lda       ,s        get path again
-                    ldb       #SS.ScSiz load screen size code
-                    os9       I$GetStt  perform the command
-                    bcs       L0479     error, eat temporary stack & exit
-                    stx       [<$04,u]  save # of columns in current working area
-                    sty       [<$08,u]  save # of rows in current working area
                     ldb       #SS.FBRgs load foreground/background/border color call
                     os9       I$GetStt  perform the command
                     bcs       L0479     error, eat temporary stack & exit
                     pshs      a         save foreground color on stack
+                    tfr       a,b
+                    andb      #%00001111
                     clra                D=background color
                     std       [<$10,u]  save to caller
                     puls      b         D=foreground color
+                    clra
+                    lsrb
+                    lsrb
+                    lsrb
+                    lsrb
                     std       [<$0C,u]  save to caller
                     stx       [<$14,u]  save border color to caller
 L0478               clrb                no error
@@ -2419,13 +2686,18 @@ Display             cmpb      #2        2 parameters?
                     lbne      ParamErr  no, exit with parameter error
                     ldb       3,u       Get length of bytes
                     leay      [,u]      get bytes
-                    ;lda       #$32
-                    ;sta       -1,x
 loop@               lda       ,y+
                     sta       ,x+
                     decb
                     bne       loop@
-                    lbra      L0901     write output buffer
+cont@               ldb       3,u       Get length of bytes
+                    clra
+                    tfr       d,y       put length in y
+                    leax      2,s       point to start of buffer
+                    lda       #2        get path for output
+                    os9       I$Write
+                    leas      <stkdepth,s
+                    rts                 return to the caller
 
 ;;; CRRTN - Send a carriage return.
 ;;;
