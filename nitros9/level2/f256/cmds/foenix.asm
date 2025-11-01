@@ -1817,9 +1817,10 @@ noerr@              stu       <mapaddr+2,s     since U is pushed add 2 to variab
                     ldx       <mapaddr,s       map address in X
                     ldy       #$2000           number of bytes to clear
                     ldd       [<$04,u]         load color
-                    tfr       b,a              out color in both bytes
-pixelloop           sta       ,x++             write pixels             
-                    leay      -2,y             decrement Y pointer
+                    exg       a,b
+                    clrb
+pixelloop           sta       ,x+              write pixels             
+                    leay      -1,y             decrement Y pointer
                     bne       pixelloop        done?
 cont@               inc       <blkCnt,s        increment blk cnt
                     pshs      u                F$ClrBlk will destroy U, so push it
