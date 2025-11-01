@@ -64,14 +64,15 @@ enable              rmb       2
 endian              rmb       1
 
 color               rmb       2
-pixaddr               rmb       2
-bitmapnum rmb 2
-filepath      rmb 1
-clutnum rmb 2
-filebuf             rmb       2
+pixaddr             rmb       2
+bitmapnum           rmb       2
+filepath            rmb       1
+filebyte            rmb       1
+clutnum             rmb       2
 fmemupper           rmb       2
 fmemsize            rmb       2
-
+tmp                 rmb       4
+ofsintoblk          rmb       4
 
 HEADER rmb	ENDHEAD
 BIT4PX	RMB	1
@@ -172,7 +173,7 @@ size           equ       .
 name           fcs       /view/
                fcb       edition
 
-inittext       fcc       /Picture Viewer 0.1 by Roger Taylor/
+inittext       fcc       /Picture Viewer 0.2 by Roger Taylor/
 	       fcb       $0d
 
 clutpathname   fcn       "/dd/cmds/xtclut"
@@ -185,11 +186,10 @@ start
                     sty       fmemupper
                     std       fmemsize
 
-
-                *     lda       #READ.
-                *     os9       I$Open
-                *     lbcs      err
-                *     sta       filepath
+                    lda       #READ.
+                    os9       I$Open
+                    lbcs      err
+                    sta       filepath
 
                     clra                      Path #
                     sta       currPath        Store current path
@@ -201,14 +201,12 @@ start
                     lbsr      Bitmap2Layer
                     lbsr      GrOn
 
-                    ldd       #$0000
+                    ldd       #$0200
                     std       color
 
-* This color plotter is blazing fast compared to the one that
-* maps in and clears an 8K block for each pixel which is not
-* acceptable for any serious graphics.
 
 demo                bsr       Cls                 Updates currBlk
+                    bcs       err
                     ldd       color
                     addd      #$0100              Fractional increment of color in MSB
                     std       color
@@ -226,48 +224,46 @@ err                 pshs      cc,b
 error_ds3           puls      u,y,x,a
 error_ds2           os9       F$Exit
 
-Cls                 pshs      y
-                    ldy       #$0000
-l@                  bsr       MapInPixAddr
+* Simple CLS uses Pixel
+Cls                 ldd       #$0000
+                    std       <PY
+                    std       <PX
+px@                 bsr       SetPixel
+                    ldd       <PX
+                    addd      #1
+                    std       <PX
+                    cmpd      #320
+                    blo       px@
+                    clr       <PX
+                    clr       <PX+1
+                    ldd       <PY
+                    addd      #1
+                    std       <PY
+                    cmpd      #200
+                    blo       px@
+x@                  rts
+
+SetPixel            bsr       GetXYBlk            Returns relative 8K block # in reg.b, offset into the block in reg.x
+                    stx       ofsintoblk
+                    bsr       MapInBlock          Maps in the associated block # of the bitmap screen
                     bcs       x@
-                    tfr       y,d
-                    anda      #31
+                    ldd       ofsintoblk
                     adda      mapaddr
                     tfr       d,x
                     ldb       color
                     stb       ,x                  write pixel             
-                    leay      1,y
-                    cmpy      #(203*320)
-                    bne       l@
-x@                  puls      y,pc
-
-SetPixel            pshs      y
-                    bsr       MapInPixAddr
-                    bcs       x
-                    tfr       y,d
-                    anda      #31
-                    adda      mapaddr
-                    tfr       d,x
-                    ldb       color
-                    stb       ,x                  write pixel             
-x                   puls      y,pc                Return to the caller
-
-MapInPixAddr        pshs      y
-                    tfr       y,d
-                    lsra
-                    lsra
-                    lsra
-                    lsra
-                    lsra
-                    adda      bmblock
-                    cmpa      currBlk
+x@                  rts                           Return to the caller
+MapInBlock          addb      bmblock
+                    cmpb      currBlk
                     beq       exit@               Block is already mapped in
-                    sta       currBlk
+                    stb       currBlk
                     pshs      u                   F$ClrBlk will destroy U, so push it
                     ldu       mapaddr
+                    cmpu      #-1
+                    beq       n@
                     ldb       #1
                     os9       F$ClrBlk
-                    puls      u                   Restore U from stack                   
+n@                  puls      u                   Restore U from stack                   
                     ldb       currBlk
                     clra
                     tfr       d,x
@@ -279,7 +275,40 @@ MapInPixAddr        pshs      y
                     bra       exit@
 ok@                 stu       mapaddr
                     puls      u                   restore U from stack
-exit@               puls      y,pc
+exit@               rts
+
+
+* Convert PX/PY into relative 8K block #
+* and offset into that block.
+* (PY*320) is the same as (PY*256)+(PY*64)
+* Then add PX, divide by 32 to get 8K block of the pixel.
+GetXYBlk            pshs      d
+
+                    lda       <PY+1               PY*256
+                    clrb
+                    std       ,s
+
+                    lda       <PY+1               *64 and /64 are the same here but a MUL uses more cycles
+                    clrb
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    addd      ,s                  (PY*256)+(PY*64)
+
+                    addd      <PX
+                    TFR       D,X
+                    LSRA
+                    LSRA
+                    LSRA
+	            LSRA
+	            LSRA
+                    sta       1,s
+
+                    TFR       X,D
+                    ANDA      #31
+                    tfr       d,x
+                    puls      d,pc
 
 
 *                   FX_TXT  =  %00000001          Text Mode On
@@ -303,12 +332,12 @@ GrOff               ldx       #%00000001          Turn Text on BM_TXT = %0000000
                     clra
                     ldb       #SS.DScrn           Display screen with new settings
                     os9       I$SetStt
-                    bcs       x@            Error
+                    bcs       x@                  Error
                     ldy       #2                  BM 0-2
 par2@               lda       #0
                     ldb       #SS.FScrn           Free Bitmap
                     os9       I$SetStt
-                    bcs       x@            Error
+                    bcs       x@                  Error
                     clrb                          No Error
 x@                  rts                           return to the caller
                     
@@ -343,14 +372,16 @@ CreateBitmap        ldy       #0
                     ldb       #SS.AScrn           Assign and create bitmap
                     os9       I$SetStt         
                     bcc       storeblk            No error store block #
-                    cmpb      #E$WADef            Check if windows already defined
+                    cmpb      #E$WADef            Check if window already defined
                     bne       x@
 storeblk            tfr       x,d              
                     stb       bmblock             Save BMBlock
-                    ldb       #-1
+x@                  ldb       #-1
                     stb       currBlk             Force first pixel to map in it's 8K block
+                    ldd       #-1
+                    std       mapaddr
                     clrb
-x@                  rts
+                    rts
 
 **** Assign Bitmap to Layer
 Bitmap2Layer        ldx       #0                  Layer # 
@@ -362,7 +393,7 @@ Bitmap2Layer        ldx       #0                  Layer #
 
 
 ********************************************************************
-* INKEY routine from alib
+* I/O stuff
 *
 INKEY          clra                             std in
                ldb       #SS.Ready
@@ -382,6 +413,13 @@ FGETC          pshs      a,x,y
                os9       I$Read
                puls      a,x,y,pc
 
+ReadFileByte        pshs      b,x,y
+                    lda       filepath
+                    leax      filebyte,u
+                    ldy       #1
+                    os9       I$Read
+                    lda       filebyte,u
+                    puls      b,x,y,pc
 
 
                emod
