@@ -266,9 +266,9 @@ InitCODEC
                     lbsr      SendToCODEC
                     ldd       #%0001101001000010                    R13 - PWR Down Control, Headphones on
                     lbsr      SendToCODEC
-                    ldd       #%0000011111110000                    R03 - Left DAC Attenuation
+                    ldd       #%0000011111010000                    R03 - Left DAC Attenuation
                     lbsr      SendToCODEC
-                    ldd       #%0000100111110000                    R04 - Right DAC Attenuation
+                    ldd       #%0000100111010000                    R04 - Right DAC Attenuation
                     lbsr      SendToCODEC
 *                   ldd       #%0000000101011000                    R00 - Left Headphone Attenuation Control
 *                   lbsr      SendToCODEC
