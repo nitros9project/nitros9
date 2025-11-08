@@ -1,31 +1,46 @@
 ********************************************************************
-* MUSICA II Player
+* MUSICA II Player by Roger Taylor
 * For the F256 Computer by Foenix Retro Systems
+*
+* Usage: 
+*   Play one or more files from the command line:
+*      musica peanuts.mus coming.mus
+*
+*   Play files from a text file:
+*      musica -z=music_list
+*
+*   Play files from standard input:
+*      musica -z (reads from standard input)
+*   
+*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
-*   1      2025/10/27  Roger Taylor
-* Created
+*   1      2025/10/27  R Taylor
+* Created.
 *
-*   1      2025/10/28  Roger Taylor
+*          2025/10/28  R Taylor
+* Added -z playlist feature.
+*
+*   2      2025/11/08  Boisy Gene Pitre
 * Added -z playlist feature
+*
+*   3      2025/11/08  R Taylor / Boisy Gene Pitre
+* Implemented abort.  Mini-overhaul of the sequencer.
 
                     nam       musica
                     ttl       Musica II Player
 
-                    ifp1
-                    use       defsfile
-                    endc
-
-tylg                set       Prgrm+Objct
-atrv                set       ReEnt+rev
-rev                 set       $00
-edition             set       1
+ section __os9
+edition = 3
+ endsect
+  
+* Here are some tweakable options
+DOHELP              set       1                   1 = include help info
 
 PLAYLISTITEM_MAXSTR equ       255
 
-                    mod       eom,name,tylg,atrv,start,size
-
+                    section   bss
 clistart            rmb       2
 cliptr              rmb       2
 fmemupper           rmb       2
@@ -40,91 +55,81 @@ psg_out             rmb       2
 psg_left            rmb       2
 psg_both            rmb       2
 psg_right           rmb       2
-solpath	            rmb       1
-sequencer	    RMB       1
 filepath            rmb       1
 filebuf             rmb       2
+sequencer	    RMB       1
+abort               rmb       1
 PlaylistMode        rmb       1
 PlaylistPath        rmb       1
 PlaylistItemStr     rmb       PLAYLISTITEM_MAXSTR
+                    endsect
 
-	            rmb       250
-size                equ       .
-name                fcs       /musica/
-                    fcb       edition
-helpstr             fcc       /musica {file}/
-                    fcb       C$LF
-                    fcc       /musica -z {playlist file}/
-                    fcb       C$LF
-greeting            fcc       /MUSICA II Player 0.4 by Roger Taylor/
-                    fcb       C$LF
-helplen             set       *-helpstr
-greetlen            set       *-greeting
-range               fcc       "out of range"
-                    fcb       C$LF,0
+                    section   code
+* Place constant strings here
+                    ifne      DOHELP
+helpstr             fcb       C$CR
+                    fcc       /Use: musica [<opts>] {file} {...}/
+                    fcb       C$CR
+                    fcc       /  -z = get files from standard input/
+                    fcb       C$CR
+                    fcc       /  -z=<file> = get files from <file>/
+                    fcb       C$CR
+                    fcb       $0
+                    endc
+
 memerr              fcc       "MapBlk should have returned $C000"
-                    fcb       C$LF,0
+                    fcb       C$CR,0
 
-start
+ShowHelp
+                    leax      helpstr,pcr
+                    lbsr      PUTS
+                    lbra      exit
+
+__start
                     clra
                     clrb
                     os9       F$Mem
                     lbcs      err
-                    sty       fmemupper
-                    std       fmemsize
+                    sty       <fmemupper
+                    std       <fmemsize
 
-                    stx       <clistart
-                    stx       <cliptr
+                    clr       <abort
                     clr       <PlaylistMode
-
+                    stx       <clistart
+GetOptions2         stx       <cliptr
 GetOptions          ldx       <cliptr
                     lda       ,x
-                    cmpa      #$0d
-                    beq       ShowGreeting
                     cmpa      #'-
                     lbne      DoBusiness
                     leax      1,x
-                    lda       ,x
+                    lda       ,x+
+                    ifne      DOHELP
                     cmpa      #'?
                     beq       ShowHelp
-                    cmpa      #'h
-                    beq       ShowHelp
-                    cmpa      #'z
-                    beq       Option_Z
-                    cmpa      #'Z
-                    beq       Option_Z
-                    bra       DoBusiness
+                    endc
+oz@                 cmpa      #'z
+                    bne       DoBusiness
 
 Option_Z
-                    leax      1,x
-                    lda       ,x
-                    cmpa      #$0D
-                    lbeq      bye
+                    lda       ,x+                 get character after 'z' and increment X
+                    cmpa      #'=                 is it the file indicator?
+                    bne       stdin@              branch if not
                     lda       #READ.
                     os9       I$Open              Open the playlist path
                     lbcs      err
                     stx       <cliptr
-                    sta       <PlaylistPath
+                    bra       s@
+stdin@              clra
+s@                  sta       <PlaylistPath
                     ldb       #1
                     stb       <PlaylistMode
-                    bra       DoBusiness
-
-ShowGreeting        leax      greeting,pcr
-                    ldy       #greetlen
-                    bra       p@
-ShowHelp            leax      helpstr,pcr
-                    ldy       #helplen
-p@                  lda       #2
-                    os9       I$WritLn
-                    os9       F$Exit
 
 DoBusiness          lbsr      MAP_IN_SOUND
-                    lbsr      InstallSignals      Install SOL to show different font on screen
-                    lbsr      MuteSignals
                     ldd       <psg_both
                     std       <psg_out
                     clr       <sequencer
-                    lbsr      UnMuteSignals
+                    leax      cfIcptRtn,pcr
+	            os9	      F$Icpt
 
 NextSong            clr       <sequencer
                     ldy       <psg_left
@@ -139,19 +144,21 @@ NextSong            clr       <sequencer
                     std       <NoteCycles
 
                     tst       <PlaylistMode
-                    beq       LoadMediaFile
+                    beq       OpenMediaFile
 
                     lda       <PlaylistPath
                     leax      <PlaylistItemStr,u
                     ldy       #PLAYLISTITEM_MAXSTR
                     os9       I$ReadLn
-                    lbcs      bye
-                    leax      <PlaylistItemStr,u
-                    stx       <cliptr
+                    bcc       ok@
+                    cmpb      #E$EOF
+                    lbne      err
+                    lbra      bye
+ok@                 stx       <cliptr
 
-LoadMediaFile       ldx       <cliptr
+OpenMediaFile       ldx       <cliptr
                     lda       ,x
-                    cmpa      #$0D
+                    cmpa      #C$CR
                     lbeq      bye
                     lda       #READ.
                     os9       I$Open
@@ -170,7 +177,6 @@ LoadMediaFile       ldx       <cliptr
                     os9       F$Mem
                     bcs       err
                     sty       <fmemupper
-*                   std       <fmemsize           Caused each music file to be appended to process mem
                     ldd       <fmemupper
                     subd      <filesize
                     tfr       d,x
@@ -183,7 +189,6 @@ LoadMediaFile       ldx       <cliptr
                     bne       nd@                 Is non-zero, not a LOADM header
                     leax      5,x                 Skip over the DOS LOADM header
 nd@                 tfr       x,d
-*                   sta       <muspag             MSB is CPU memory page# where music waveforms start
                     leax      1024,x              Skip over the 4 waveforms (4*256)
                     leax      5,x                 Skip over Default tone block, can be before the waves or after, but how do we tell??
                     stx       <ScoreStart         This is where our music starts
@@ -196,32 +201,29 @@ nd@                 tfr       x,d
                     ldb       #1                  Enable the player
                     stb       <sequencer          Tell the ISR to PLAY THE MUSIC
 
-keyloop@            lda       <sequencer          Listen for IRQ to signal that the song is over
+keyloop@            tst       <abort              Abort everything?
+                    bne       bye                 Yes, kill the sequencer, and get out of here
+                    tst       <sequencer
                     beq       CloseAndNext
-                    lbsr      INKEY  		  Inkey routine with handlers for intergace
-                    cmpa      #$0D                $0D=ok shift+$0d=cancel
-                    bne       keyloop@
+                    lbsr      Sequencer           keep calling the sequencer
+                    ldx       #$0002
+                    os9       F$Sleep
+                    bra       keyloop@
 
-*                   lda       <filepath           There better be a path#
-*                   os9       I$Close
-*                   lda       <PlaylistPath       There better be a path#
-*                   os9       I$Close
-
+* Exit routine
+* no need to return blocks allocated with F$MapBlk -- F$Exit will take care of it                  
 bye                 clrb
 err                 pshs      d,u,cc
+                    lda       <PlaylistPath
+                    os9       I$Close
                     orcc      #IntMasks
                     clr       <sequencer
-*                   lbsr      MuteSignals         Not an audio mute, is an IRQ signal "mute"
-                    lbsr      RemoveSignals       Clean up and remove signals and SOL
                     ldy       <psg_left
       	            bsr	      PSG_QUIET_ALL
                     ldy       <psg_right
       	            bsr	      PSG_QUIET_ALL
-*                   ldu       <SoundMem
-*                   ldb       #$01                Return 1 block
-*                   os9       F$ClrBlk            Return to OS-9 but is this needed if we're exiting a program?
                     puls      d,u,cc
-                    os9       F$Exit
+exit                os9       F$Exit
 
 CloseAndNext        lda       <filepath
                     os9       I$Close
@@ -261,19 +263,13 @@ MAP_IN_SOUND        pshs      u,cc
                     ldu       <SoundMem
                     cmpu      #$C000
                     beq       x@
-                    lda       #0
                     leax      memerr,pcr
-                    ldy       #255
-                    os9       I$WritLn
+                    lbsr      PUTS
 x@                  puls      cc,u,pc
 
 ********************************************************************
-* cfIcptRtn
-* this handles the signals received by SOL
-* 
-cfIcptRtn
-                    pshs      cc,d,x,y,u          <--------- do we need to do this?
-                    ldb       <sequencer          Are we allowed to play music?
+* Sequencer
+Sequencer           ldb       <sequencer          Are we allowed to play music?
                     lbeq      SeqExit		  No, then exit
                     ldx       <ScoreCurrent
                     ldd       <NoteCycles
@@ -344,8 +340,7 @@ SeqRepeat           ldx       <ScoreStart
                     bra       SeqExit
 SeqEnd              clr       <sequencer          Tell main code that the song is over
                     bra       SeqExit
-SeqExit             puls      cc,d,x,y,u
-                    rti
+SeqExit             rts
 
 WritePSG            pshs      cc,d
                     sta       ,y
@@ -364,17 +359,13 @@ Mf2Pf               lsra                          lower the Musica freq (octave?
                     ldd      #111563/2
                     std       $FEE6               numerator
                     ldd       $FEF4               quotient
-*                    lslb                          adjust the PSG freq after the Fconv
-*                    rola
-*                    lslb                          adjust the PSG freq after the Fconv
-*                    rola
+*                   lslb                          adjust the PSG freq after the Fconv
+*                   rola
+*                   lslb                          adjust the PSG freq after the Fconv
+*                   rola
                     cmpd      #1023               Is the result <1024, in PSG tone range?
                     bls       g@
                     ldd       #1023               Set upper freq limit for PSG
-*                    lda       #0                  Let the user know
-*                    leax      range,pcr
-*                    ldy     #255
-*                    os9       I$WritLn
 g@                  rts
 
 * Assign a voice to a speaker, or both speakers
@@ -407,100 +398,12 @@ psgout              stb       ,-s                 save command byte with lower 4
                     std       ,s                  save the 2 PSG command bytes for the caller
                     puls      d,pc
 
-********************************************************************
-* INKEY routine from alib
+* Signal intercept routine
 *
-INKEY               clra                          std in
-                    ldb       #SS.Ready
-                    os9       I$GetStt            see if key ready
-                    bcc       getit
-                    cmpb      #E$NotRdy           no keys ready=no error
-                    bne       exit@               other error, report it
-                    clra                          no error
-                    bra       exit@
-getit               lbsr      FGETC               go get the key
-                    tsta
-exit@               rts
+* Set the abort flag so that the play loop knows it's time to exit.
+cfIcptRtn           ldb       #-1
+                    stb       <abort
+                    clr       <sequencer
+                    rti
 
-FGETC               pshs      a,x,y
-                    ldy       #1                  number of char to print
-                    tfr       s,x                 point x at 1 char buffer
-                    os9       I$Read
-                    puls      a,x,y,pc
-
-
-
-********************************************************************
-* InstallSignals
-* Installs signal receiver and
-* opens path to SOL driver and installs SOL lines
-
-InstallSignals pshs      cc
-               orcc      #IntMasks
-               leax      cfIcptRtn,pcr
-	       os9	 F$Icpt
-	       lda	 #UPDAT.+SHARE.
-	       leax      fsol,pcr
-	       os9	 I$Open
-	       bcc	 storesol@
-	       os9	 F$PErr
-	       tfr	 a,b
-	       os9	 F$PErr
-storesol@      sta	 <solpath,u
-	       ldx	 #260
-	       ldy	 #$A0
-	       ldb	 #SS.SOLIRQ
-	       os9	 I$SetStt
-	       lda	 <solpath
-	       puls      cc,pc
-
-fsol	       fcc	 \/fSOL\
-	       fcb	 $0D
-
-********************************************************************
-* Mute Signals
-* turns off signals to this process from SOL
-* use these to reduce flicker when performing longer procedures
-*
-MuteSignals    pshs      a,b,x,y
-	       lda	 <solpath
-	       ldx	 #1
-	       ldb	 #SS.SOLMUTE
-	       os9	 I$SetStt
-	       puls      a,b,x,y
-	       rts
-
-********************************************************************
-* Unmute signals
-* turns signals back on
-*
-UnMuteSignals  pshs	 a,b,x
-	       lda	 <solpath,u
-	       ldx	 #0
-	       ldb	 #SS.SOLMUTE
-	       os9	 I$SetStt
-	       puls	 a,b,x
-	       rts
-
-********************************************************************
-* RemoveSignals
-* clean up irqs and signal handling on exit
-*
-RemoveSignals  lda	 <solpath,u
-	       ldx	 #260
-	       ldy	 #0
-	       ldb	 #SS.SOLIRQ
-	       os9	 I$SetStt
-	       lda	 <solpath,u
-	       ldx	 #385
-	       ldy	 #0
-	       ldb	 #SS.SOLIRQ
-	       os9	 I$SetStt
-	       lda	 <solpath,u
-	       os9	 I$Close
-	       rts
-
-
-               emod
-eom            equ *
-               end
+ endsect
