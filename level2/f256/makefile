@@ -70,6 +70,12 @@ ROGUE_FILES = $(shell $(CD) $(3RDPARTY)/packages/rogue; make --no-print-director
 BF_FILES = $(foreach file,$(3RDPARTY)/packages/bf/*.bf,$(file))
 CPM_FILES = $(3RDPARTY)/packages/cpm/software
 SOUND_FILES = $(foreach file,$(LEVEL1)/f256/sound/*,$(file))
+XMAS_BMP_FILES = $(foreach file,$(LEVEL2)/f256/demos/xmas/*.bmp,$(file))
+XMAS_MUS_FILES = $(foreach file,$(LEVEL2)/f256/demos/xmas/*.mus,$(file))
+XMAS_RUN_FILES = $(foreach file,$(LEVEL2)/f256/demos/xmas/*.run,$(file))
+SPACE_BMP_FILES = $(foreach file,$(LEVEL2)/f256/demos/space/*.bmp,$(file))
+SPACE_MUS_FILES = $(foreach file,$(LEVEL2)/f256/demos/space/*.mus,$(file))
+SPACE_RUN_FILES = $(foreach file,$(LEVEL2)/f256/demos/space/*.run,$(file))
 
 $(DSKSD_F256K2):
 	$(RM) $@
@@ -105,6 +111,15 @@ $(DSKSD_F256K2):
 	$(OS9ATTR_EXEC) $(foreach file,$(ROGUE_OBJS),$@,CMDS/$(file))
 	$(MAKDIR) $@,BF
 	$(CPL) $(BF_FILES) $@,BF
+	$(MAKDIR) $@,DEMOS
+	$(MAKDIR) $@,DEMOS/XMAS
+	$(MAKDIR) $@,DEMOS/SPACE
+	$(CD) demos/xmas; $(OS9COPY) $(XMAS_BMP_FILES) ../../$@,DEMOS/XMAS
+	$(CD) demos/xmas; $(OS9COPY) $(XMAS_MUS_FILES) ../../$@,DEMOS/XMAS
+	$(CD) demos/xmas; $(OS9COPY) -l $(XMAS_RUN_FILES) ../../$@,DEMOS/XMAS
+	$(CD) demos/space; $(OS9COPY) $(SPACE_BMP_FILES) ../../$@,DEMOS/SPACE
+	$(CD) demos/space; $(OS9COPY) $(SPACE_MUS_FILES) ../../$@,DEMOS/SPACE
+	$(CD) demos/space; $(OS9COPY) -l $(SPACE_RUN_FILES) ../../$@,DEMOS/SPACE
 	$(MAKDIR) $@,SOUNDS
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
 	os9 dsave -e $(CPM_FILES) $@,CPM
@@ -149,6 +164,15 @@ $(DSKDW_F256K2):
 	$(OS9ATTR_EXEC) $(foreach file,$(ROGUE_OBJS),$@,CMDS/$(file))
 	$(MAKDIR) $@,BF
 	$(CPL) $(BF_FILES) $@,BF
+	$(MAKDIR) $@,DEMOS
+	$(MAKDIR) $@,DEMOS/XMAS
+	$(MAKDIR) $@,DEMOS/SPACE
+	$(CD) demos/xmas; $(OS9COPY) $(XMAS_BMP_FILES) ../../$@,DEMOS/XMAS
+	$(CD) demos/xmas; $(OS9COPY) $(XMAS_MUS_FILES) ../../$@,DEMOS/XMAS
+	$(CD) demos/xmas; $(OS9COPY) -l $(XMAS_RUN_FILES) ../../$@,DEMOS/XMAS
+	$(CD) demos/space; $(OS9COPY) $(SPACE_BMP_FILES) ../../$@,DEMOS/SPACE
+	$(CD) demos/space; $(OS9COPY) $(SPACE_MUS_FILES) ../../$@,DEMOS/SPACE
+	$(CD) demos/space; $(OS9COPY) -l $(SPACE_RUN_FILES) ../../$@,DEMOS/SPACE
 	$(MAKDIR) $@,SOUNDS
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
 	os9 dsave -e $(CPM_FILES) $@,CPM	
@@ -193,6 +217,15 @@ $(DSKSD_F256K):
 	$(OS9ATTR_EXEC) $(foreach file,$(ROGUE_OBJS),$@,CMDS/$(file))
 	$(MAKDIR) $@,BF
 	$(CPL) $(BF_FILES) $@,BF
+	$(MAKDIR) $@,DEMOS
+	$(MAKDIR) $@,DEMOS/XMAS
+	$(MAKDIR) $@,DEMOS/SPACE
+	$(CD) demos/xmas; $(OS9COPY) $(XMAS_BMP_FILES) ../../$@,DEMOS/XMAS
+	$(CD) demos/xmas; $(OS9COPY) $(XMAS_MUS_FILES) ../../$@,DEMOS/XMAS
+	$(CD) demos/xmas; $(OS9COPY) -l $(XMAS_RUN_FILES) ../../$@,DEMOS/XMAS
+	$(CD) demos/space; $(OS9COPY) $(SPACE_BMP_FILES) ../../$@,DEMOS/SPACE
+	$(CD) demos/space; $(OS9COPY) $(SPACE_MUS_FILES) ../../$@,DEMOS/SPACE
+	$(CD) demos/space; $(OS9COPY) -l $(SPACE_RUN_FILES) ../../$@,DEMOS/SPACE
 	$(MAKDIR) $@,SOUNDS
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
 	os9 dsave -e $(CPM_FILES) $@,CPM
@@ -237,6 +270,15 @@ $(DSKDW_F256K):
 	$(OS9ATTR_EXEC) $(foreach file,$(ROGUE_OBJS),$@,CMDS/$(file))
 	$(MAKDIR) $@,BF
 	$(CPL) $(BF_FILES) $@,BF
+	$(MAKDIR) $@,DEMOS
+	$(MAKDIR) $@,DEMOS/XMAS
+	$(MAKDIR) $@,DEMOS/SPACE
+	$(CD) demos/xmas; $(OS9COPY) $(XMAS_BMP_FILES) ../../$@,DEMOS/XMAS
+	$(CD) demos/xmas; $(OS9COPY) $(XMAS_MUS_FILES) ../../$@,DEMOS/XMAS
+	$(CD) demos/xmas; $(OS9COPY) -l $(XMAS_RUN_FILES) ../../$@,DEMOS/XMAS
+	$(CD) demos/space; $(OS9COPY) $(SPACE_BMP_FILES) ../../$@,DEMOS/SPACE
+	$(CD) demos/space; $(OS9COPY) $(SPACE_MUS_FILES) ../../$@,DEMOS/SPACE
+	$(CD) demos/space; $(OS9COPY) -l $(SPACE_RUN_FILES) ../../$@,DEMOS/SPACE
 	$(MAKDIR) $@,SOUNDS
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
 	os9 dsave -e $(CPM_FILES) $@,CPM	
@@ -282,6 +324,15 @@ $(DSKSD_F256JR):
 	$(OS9ATTR_EXEC) $(foreach file,$(ROGUE_OBJS),$@,CMDS/$(file))
 	$(MAKDIR) $@,BF
 	$(CPL) $(BF_FILES) $@,BF
+	$(MAKDIR) $@,DEMOS
+	$(MAKDIR) $@,DEMOS/XMAS
+	$(MAKDIR) $@,DEMOS/SPACE
+	$(CD) demos/xmas; $(OS9COPY) $(XMAS_BMP_FILES) ../../$@,DEMOS/XMAS
+	$(CD) demos/xmas; $(OS9COPY) $(XMAS_MUS_FILES) ../../$@,DEMOS/XMAS
+	$(CD) demos/xmas; $(OS9COPY) -l $(XMAS_RUN_FILES) ../../$@,DEMOS/XMAS
+	$(CD) demos/space; $(OS9COPY) $(SPACE_BMP_FILES) ../../$@,DEMOS/SPACE
+	$(CD) demos/space; $(OS9COPY) $(SPACE_MUS_FILES) ../../$@,DEMOS/SPACE
+	$(CD) demos/space; $(OS9COPY) -l $(SPACE_RUN_FILES) ../../$@,DEMOS/SPACE
 	$(MAKDIR) $@,SOUNDS
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
 #	os9 dsave -e $(CPM_FILES) $@,CPM
@@ -327,6 +378,15 @@ $(DSKDW_F256JR):
 	$(OS9ATTR_EXEC) $(foreach file,$(ROGUE_OBJS),$@,CMDS/$(file))
 	$(MAKDIR) $@,BF
 	$(CPL) $(BF_FILES) $@,BF
+	$(MAKDIR) $@,DEMOS
+	$(MAKDIR) $@,DEMOS/XMAS
+	$(MAKDIR) $@,DEMOS/SPACE
+	$(CD) demos/xmas; $(OS9COPY) $(XMAS_BMP_FILES) ../../$@,DEMOS/XMAS
+	$(CD) demos/xmas; $(OS9COPY) $(XMAS_MUS_FILES) ../../$@,DEMOS/XMAS
+	$(CD) demos/xmas; $(OS9COPY) -l $(XMAS_RUN_FILES) ../../$@,DEMOS/XMAS
+	$(CD) demos/space; $(OS9COPY) $(SPACE_BMP_FILES) ../../$@,DEMOS/SPACE
+	$(CD) demos/space; $(OS9COPY) $(SPACE_MUS_FILES) ../../$@,DEMOS/SPACE
+	$(CD) demos/space; $(OS9COPY) -l $(SPACE_RUN_FILES) ../../$@,DEMOS/SPACE
 	$(MAKDIR) $@,SOUNDS
 	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
 	os9 dsave -e $(CPM_FILES) $@,CPM	
