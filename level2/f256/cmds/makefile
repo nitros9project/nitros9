@@ -28,7 +28,7 @@ CMDS    = asm attr backup bawk binex build cmp copy \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
 		bootos9 fnxinfo fnxreset rogue fstatus fcfg xtclut drawtest play foenix shellbg shellbgoff \
-		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) musica view
+		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) musica view dircb
 
 CMDS_CART      = asm attr backup bawk binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
@@ -50,6 +50,9 @@ all:	$(DEPENDS) $(CMDS) shell utilpak1
 # Some commands depend on net.o
 $(NOSLIB)/net.o:
 	cd $(NOSLIB); make
+
+dircb:  dir_cb.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 runb:	runb.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
