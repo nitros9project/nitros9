@@ -1,5 +1,5 @@
 ********************************************************************
-* MUSICA II Player by Roger Taylor
+* MUSICA II Player
 * For the F256 Computer by Foenix Retro Systems
 *
 * Usage: 
@@ -11,7 +11,7 @@
 *
 *   Play files from standard input:
 *      musica -z (reads from standard input)
-*   
+*
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
@@ -20,19 +20,25 @@
 * Created.
 *
 *          2025/10/28  R Taylor
-* Added -z playlist feature.
+* Added -z={playlist} feature
 *
 *   2      2025/11/08  Boisy Gene Pitre
 * Added -z playlist feature
 *
 *   3      2025/11/08  R Taylor / Boisy Gene Pitre
 * Implemented abort.  Mini-overhaul of the sequencer.
+*
+*   4      2025/11/09  R Taylor
+* Implemented bar repeat, section repeat.
+*
+*   5      2025/11/11  R Taylor
+* Fixed the note lengths and tempo.
 
                     nam       musica
                     ttl       Musica II Player
 
  section __os9
-edition = 2
+edition = 5
  endsect
   
 * Here are some tweakable options
@@ -46,21 +52,22 @@ cliptr              rmb       2
 fmemupper           rmb       2
 fmemsize            rmb       2
 filesize            rmb       2
+psg_out             rmb       2
+psg_left            rmb       2
+psg_both            rmb       2
+psg_right           rmb       2
 SoundMem            rmb       2                   Points to 8K block of RAM where sound registers are
 ScoreStart	    rmb       2
 ScoreCurrent	    rmb       2
 ScoreTempo	    rmb       1
 NoteCycles	    rmb       2
-psg_out             rmb       2
-psg_left            rmb       2
-psg_both            rmb       2
-psg_right           rmb       2
-solpath	            rmb       1
-filepath            rmb       1
-filebuf             rmb       2
-sequencer	    RMB       1
-abort               rmb       1
-interactive         rmb       1
+FilePath            rmb       1
+FileBuf             rmb       2
+DoSequencer         rmb       1
+DoAbort             rmb       1
+Interactive         rmb       1
+TotalSections       rmb       1
+SectionList         rmb       9*2
 PlaylistMode        rmb       1
 PlaylistPath        rmb       1
 PlaylistItemStr     rmb       PLAYLISTITEM_MAXSTR
@@ -79,8 +86,8 @@ helpstr             fcb       C$CR
                     fcb       $0
                     endc
 
-range               fcc       "out of range"
-                    fcb       C$LF,0
+*range              fcc       "out of range"
+*                   fcb       C$LF,0
 memerr              fcc       "MapBlk should have returned $C000"
                     fcb       C$LF,0
 
@@ -97,10 +104,13 @@ __start
                     sty       fmemupper
                     std       fmemsize
 
-                    clr       <interactive
-                    clr       <abort
+                    clr       <DoSequencer
+                    clr       <FilePath
+                    clr       <Interactive
+                    clr       <DoAbort
                     clr       <PlaylistMode
                     stx       <clistart
+
 GetOptions2         stx       <cliptr
 GetOptions          ldx       <cliptr
                     lda       ,x
@@ -114,13 +124,12 @@ GetOptions          ldx       <cliptr
                     endc
                     cmpa      #'i
                     bne       oz@
-                    sta       <interactive
+                    sta       <Interactive
                     bra       GetOptions2
 oz@                 cmpa      #'z
                     bne       DoBusiness
 
-Option_Z
-                    lda       ,x+                 get character after 'z' and increment X
+Option_Z            lda       ,x+                 get character after 'z' and increment X
                     cmpa      #'=                 is it the file indicator?
                     bne       stdin@              branch if not
                     lda       #READ.
@@ -136,11 +145,18 @@ s@                  sta       <PlaylistPath
 DoBusiness          lbsr      MAP_IN_SOUND
                     ldd       <psg_both
                     std       <psg_out
-                    clr       <sequencer
                     leax      cfIcptRtn,pcr
 	            os9	      F$Icpt
 
-NextSong            clr       <sequencer
+NextSong            clr       <DoSequencer
+                    clr       <TotalSections
+                    clra
+                    clrb
+                    std       <SectionList
+                    std       <SectionList+2
+                    std       <SectionList+4
+                    std       <SectionList+6
+                    stb       <SectionList+8
                     ldy       <psg_left
                     lbsr      PSG_QUIET_ALL
                     ldy       <psg_right
@@ -173,7 +189,7 @@ OpenMediaFile       ldx       <cliptr
                     os9       I$Open
                     lbcs      err
                     stx       <cliptr
-                    sta       filepath
+                    sta       <FilePath
                     ldb       #SS.Size
                     pshs      u
                     os9       I$GetStt
@@ -190,7 +206,7 @@ OpenMediaFile       ldx       <cliptr
                     subd      <filesize
                     tfr       d,x
                     ldy       <filesize
-                    lda       <filepath
+                    lda       <FilePath
                     os9       I$Read
                     bcs       err
 
@@ -202,27 +218,29 @@ nd@                 tfr       x,d
                     leax      5,x                 Skip over Default tone block, can be before the waves or after, but how do we tell??
                     stx       <ScoreStart         This is where our music starts
                     stx       <ScoreCurrent       Set the running pointer
+                    lda       #32
+                    sta       <ScoreTempo
 
                     ldy       <psg_left
                     lbsr      PSG_LOUD_ALL
                     ldy       <psg_right
                     lbsr      PSG_LOUD_ALL
-                    ldb       #1                  Enable the player
-                    stb       <sequencer          Tell the ISR to PLAY THE MUSIC
+                    ldb       #1                  Enable the sequencer
+                    stb       <DoSequencer
 
-keyloop@            tst       <abort              Abort everything?
+keyloop@            tst       <DoAbort            Abort everything?
                     bne       bye                 Yes, kill the sequencer, and get out of here
-                    tst       <sequencer
+                    tst       <DoSequencer
                     beq       CloseAndNext
-                    lbsr      Sequencer           keep calling the sequencer
+                    lbsr      Sequencer           Keep calling the sequencer
                     ldx       #$0002
                     os9       F$Sleep
                     bra       keyloop@
 
-*                   lbsr      INKEY  		  Inkey routine with handlers for interface
-*                   ldb       <interactive
+*                   ldb       <Interactive
 *                   beq       keyloop@            No keyboard interaction allowed
-*                   cmpa      #C$CR                C$CR=ok shift+C$CR=cancel
+*                   lbsr      INKEY  		  Inkey routine with handlers for interface
+*                   cmpa      #C$CR               C$CR=ok shift+C$CR=cancel
 *                   bne       keyloop@
 
 bye                 clrb
@@ -230,7 +248,7 @@ err                 pshs      d,u,cc
                     lda       <PlaylistPath
                     os9       I$Close
                     orcc      #IntMasks
-                    clr       <sequencer
+                    clr       <DoSequencer
                     ldy       <psg_left
       	            bsr	      PSG_QUIET_ALL
                     ldy       <psg_right
@@ -241,7 +259,7 @@ err                 pshs      d,u,cc
                     puls      d,u,cc
 exit                os9       F$Exit
 
-CloseAndNext        lda       <filepath
+CloseAndNext        lda       <FilePath
                     os9       I$Close
                     lbra      NextSong
 
@@ -285,31 +303,76 @@ MAP_IN_SOUND        pshs      u,cc
                     os9       I$WritLn
 x@                  puls      cc,u,pc
 
-********************************************************************
-* cfIcptRtn
-* this handles the signals received by SOL
-* 
-Sequencer           ldb       <sequencer          Are we allowed to play music?
-                    lbeq      SeqExit		  No, then exit
+Sequencer           ldb       <DoSequencer        Are we allowed to play music?
+                    lbeq      SeqExit             No, then exit
                     ldx       <ScoreCurrent
                     ldd       <NoteCycles
-                    bne       NextCycle		  A note is currently playing
-                    ldb       ,x		  Get the new note length
-                    lbeq      SeqEnd		  0 means End Of Score
-                    bpl       SeqGetNote		  Go set up the note
-                    cmpb      #$FD		  Barline Repeat
-                    beq       SeqRepeat
+                    lbne      NextCycle           A note is currently playing
+                    ldb       ,x                  Get the new note length
+                    lbeq      SeqEnd              0 means End Of Score
+                    bpl       SeqGetNote          Go set up the note
+                    cmpb      #$FB                Repeat a Section
+                    beq       SeqRepSection
+                    cmpb      #$FC                Section Marker (up to 9 tracked)
+                    beq       SeqAddSection
                     cmpb      #$FE		  Tempo and Instruments Block
-                    bne       NextNote
-                    lda       5,x                 Get new tempo
+                    beq       SeqSetTempo
+                    cmpb      #$FD		  Barline Repeat
+                    beq       SeqRepBar
+                    lbra      SeqNextNote         Skip the unknown block
+
+SeqRepSection       ldb       #$F0                Make into unused block code, ignored on next passby
+                    stb       ,x
+                    ldb       1,x                 Get the Section # to repeat (1-9)
+                    lbeq      SeqNextNote         Is out of range
+                    cmpb      #9
+                    lbhs      SeqNextNote         Is out of range
+                    leay      <SectionList,u
+                    lslb
+                    ldx       b,y                 Get the section # to repeat (1-9)
+                    lbra      SeqNextNote
+
+SeqRepBar           ldb       #$F0                Make into unused block code, ignored on next passby
+                    stb       ,x
+                    ldx       <ScoreStart
+                    stx       <ScoreCurrent
+                    lbra      SeqExit
+
+SeqAddSection       ldb       <TotalSections
+                    cmpb      #9
+                    bhs       SeqNextNote         Can't add more than 9 sections, ignore
+                    leay      <SectionList,u
+                    lslb
+                    leay      b,y 
+                    tfr       x,d
+                    addd      #9                  Section starts at next note
+                    std       ,y                  Store current score address in section slot
+                    inc       <TotalSections
+                    bra       SeqNextNote
+
+SeqSetTempo         lda       5,x                 Set new tempo
                     sta       <ScoreTempo
-                    bra       NextNote
-SeqGetNote          clra
-                    pshs      d
-                    lsr       1,s
-                    subd      ,s++
-                    addd      #$0001
-                    std       <NoteCycles
+                    bra       SeqNextNote
+
+SeqGetNote          lda       <ScoreTempo
+                    mul                           Multipy note length by the current tempo
+                    lsra                          Divide by 128 to get # of 60hz cycles for the note duration
+                    rorb
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    std       <NoteCycles         Update the cycles counter
+                    cmpd      #0                  Note has no length...
+                    beq       SeqExit             So just exit
 
 * What are we doing here... since the 76489 chip only has 3 tone channels
 * and we need to hear all 4 Musica voices, we split Musica Voices 1,2 between
@@ -352,14 +415,11 @@ v4@                 bsr       psgv3               Convert to PSG Voice 2 Command
 NextCycle           subd      #1
                     std       <NoteCycles
                     bne       SeqExit
-NextNote            leax      9,x
+SeqNextNote         leax      9,x
                     stx       <ScoreCurrent
                     bra       SeqExit
-SeqRepeat           ldx       <ScoreStart
-                    stx       <ScoreCurrent
-                    bra       SeqExit
-SeqEnd              clr       <sequencer          Tell main code that the song is over
-                    bra       SeqExit
+SeqEnd              clr       <DoSequencer        Tell main code that the song is over
+*                   bra       SeqExit
 SeqExit             rts
 
 WritePSG            pshs      cc,d
@@ -422,9 +482,13 @@ psgout              stb       ,-s                 save command byte with lower 4
                     std       ,s                  save the 2 PSG command bytes for the caller
                     puls      d,pc
 
+********************************************************************
+* cfIcptRtn
+* this handles the signals received to our app
+*
 cfIcptRtn           ldb       #-1
-                    stb       <abort
-                    clr       <sequencer
+                    stb       <DoAbort
+                    clr       <DoSequencer
                     rti
 
- endsect
+                    endsect
