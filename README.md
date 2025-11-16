@@ -53,6 +53,16 @@ This ensures a consistent experience and efficient representation in the reposit
 
 Put [this file](https://github.com/nitros9project/nitros9/blob/main/scripts/pre-commit) in your .git/hooks folder to ensure that any source code you submit is automatically formatted.
 
+## Make commits meaningful
+
+When you commit your changes, please use standard Git message style. The first line of your message should be short but descriptive, telling viewers of the source code what you have changed in 50 characters or less. This is like a "Subject:" line in an email, and `git format-patch` actually uses it as one.
+
+If the change is not 100% self-explanatory, the first line should be followed by a blank line and a message (word wrapped at 72 or fewer characters) telling everyone _why_ you made your changes. Be descriptive, someone (perhaps even you) will someday need to understand what you had in mind when you wrote something, and the easier that is for them the better.
+
+Everything in each commit should be related to a single change, described in the message. For example, if you are documenting a source file and also optimizing it, those actions are separate even if they touch the same file. Document it first, then optimize; so that if you accidentally make a mistake in one change, we can use Git tools to revert just that change without having to detangle two of them.
+
+That doesn't mean you need to do _everything_ separately, though. It's possible for one change to touch many files and still be a single change. One example would be renaming an assembly language symbol-- something like that should definitely be done in every file that uses it, so that there's no window during which the build process is broken.
+
 # Coding Style Guidelines
 
 Here are some general coding guidelines for the project.
