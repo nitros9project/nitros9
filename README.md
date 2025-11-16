@@ -47,10 +47,9 @@ If you wish to contribute, please fork the repository and submit pull requests.
 Also, assembly source code is formatted to the following specifications:
 
 - Spaces only (no tabs)
-- Labels start at column 1
-- Opcodes start at column 21
-- Operands start at column 31
-- Comments start at column 51
+- One space between opcode and operand, and operand and comments
+
+This ensures a consistent experience and efficient representation in the repository.
 
 Put [this file](https://github.com/nitros9project/nitros9/blob/main/scripts/pre-commit) in your .git/hooks folder to ensure that any source code you submit is automatically formatted.
 
@@ -64,18 +63,18 @@ Having a comment on each line of assembly may seem excessive, but doing so keeps
 
 ## Make comments meaningful
 
-Take time to write clearly about what a line of code is doing. Avoid repeating the obvious, if possible.
+Take time to write clearly about what a line of code is doing. Avoid repeating the obvious.
 
 Instead of this:
 
 ```
-     clra        clear A
+ clra clear A
 ```
 
 do this:
 
 ```
-     clra        set the path to standard input
+ clra set the path to standard input
 ```      
 
 ## Write comments in lowercase and don't use punctuation
@@ -85,13 +84,13 @@ Comments may or may not be complete sentences; as such, dispense with the formal
 Instead of this:
 
 ```
-     ldb   #E$PNNF      Prepare the "pathname not found" error.
+ ldb #E$PNNF Prepare the "pathname not found" error.
 ```
 
 do this:
 
 ```
-     ldb   #E$PNNF      prepare the "pathname not found" error
+ ldb #E$PNNF prepare the "pathname not found" error
 ```      
 ## Use full words
 
@@ -100,15 +99,15 @@ Avoid abbreviations. Spelling out words increases the readability of the comment
 Instead of this:
 
 ```
-     pshs  d,x,y,u      push regs
-     leax  ,u           load path desc ptr in X
+ pshs d,x,y,u push regs
+ leax ,u load path desc ptr in X
 ```
 
 do this:
 
 ```
-     pshs  d,x,y,u      save the registers on the stack
-     leax  ,u           load the path descriptor pointer in X
+ pshs d,x,y,u save the registers on the stack
+ leax ,u load the path descriptor pointer in X
 ```
 
 ## Ensure an empty line is at the end of a source file
@@ -119,12 +118,12 @@ the input do not abandon any important information on the last line.
 Instead of this:
 
 ```
-     rts
+ rts
 ```
 
 do this:
 
 ```
-     rts
+ rts
 
 ```
