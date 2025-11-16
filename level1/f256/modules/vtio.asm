@@ -260,20 +260,20 @@ InitCODEC
                     lbsr      SendToCODEC
                     ldd       #%0010001100000001                    R17 - ALC Control 2 
                     lbsr      SendToCODEC
-                    ldd       #%0010101000011111                    R21 - ADC Mux Control   AIN4 enabled (vs1053 chip)
+                    ldd       #%0010101000000011                    R21 - ADC Mux Control   AIN
                     lbsr      SendToCODEC
                     ldd       #%0010110000000111                    R22 - Output Mux MX[2:0] = "111" 
                     lbsr      SendToCODEC
-                    ldd       #%0001101001000010                    R13 - PWR Down Control, Headphones on
+                    ldd       #%0001101000000000                    R13 - PWR Down Control, Everything on
                     lbsr      SendToCODEC
-                    ldd       #%0000011111010000                    R03 - Left DAC Attenuation
+                    ldd       #%0000011111110000                    R03 - Left DAC Attenuation
                     lbsr      SendToCODEC
-                    ldd       #%0000100111010000                    R04 - Right DAC Attenuation
+                    ldd       #%0000100111110000                    R04 - Right DAC Attenuation
                     lbsr      SendToCODEC
-*                   ldd       #%0000000101011000                    R00 - Left Headphone Attenuation Control
-*                   lbsr      SendToCODEC
-*                   ldd       #%0000001101011000                    R01 - Right Headphone Attenuation Control
-*                   lbsr      SendToCODEC
+                    ldd       #%0000000101101100                    R00 - Left Headphone Attenuation Control
+                    lbsr      SendToCODEC
+                    ldd       #%0000001101101100                    R01 - Right Headphone Attenuation Control
+                    lbsr      SendToCODEC
 *                   ldd       #%0001011000000010                    R11 - ADC Interface Control 
 *                   lbsr      SendToCODEC
 *                   ldd       #%0001100111010101                    R12 - Master Mode Control
