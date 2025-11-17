@@ -37,14 +37,17 @@
 *   6      2025/11/13  R Taylor
 * Fixed the pitch-to-tone algorithm for the SN76489.
 * Added SID output.
+*
+*   7      2025/11/15  R Taylor
+* Added "F256" build condition.  If not set, build for the CoCo+GMC Cartridge.
 
                     nam       musica
                     ttl       Musica II Player
 
  section __os9
-edition = 6
+edition = 7
  endsect
-  
+
 * Here are some tweakable options
 DOHELP              set       1                   1 = include help info
 SID_MAX_VOL         equ       15                  (0 = silence, 15 = loud) for all SID Voices
@@ -73,15 +76,25 @@ psg_right           rmb       2
 sid_left            rmb       2
 sid_both            rmb       2
 sid_right           rmb       2
-freq_mv1            rmb       2
-freq_mv2            rmb       2
-freq_mv3            rmb       2
-freq_mv4            rmb       2
+freq_sid1           rmb       2
+freq_sid2           rmb       2
+freq_sid3           rmb       2
+freq_sid4           rmb       2
+freq_psg1           rmb       2
+freq_psg2           rmb       2
+freq_psg3           rmb       2
+freq_psg4           rmb       2
 F256SoundBlk        rmb       2                   The F256 has some HW in high RAM
 ScoreStart	    rmb       2
 ScoreCurrent	    rmb       2
 NoteCycles	    rmb       2
+HalfCycles	    rmb       2
 FileBuf             rmb       2
+DIVIDEND_HIGH       rmb       2
+DIVIDEND_LOW        rmb       2
+DIVISOR             rmb       2
+QUOTIENT            rmb       2
+REMAINDER           rmb       2
 ScoreTempo	    rmb       1
 FilePath            rmb       1
 DoSequencer         rmb       1
@@ -98,6 +111,8 @@ PlaylistItemStr     rmb       PLAYLISTITEM_MAXSTR
 * Place constant strings here
                     ifne      DOHELP
 helpstr             fcb       C$CR
+                    fcc       /Musica Player v7 by Roger Taylor/
+                    fcb       C$CR
                     fcc       /Use: musica [<opts>] {file} {...}/
                     fcb       C$CR
                     fcc       /  -z = get files from standard input/
@@ -174,13 +189,15 @@ NextSong            clr       <DoSequencer
                     std       <SectionList+4
                     std       <SectionList+6
                     stb       <SectionList+8
-                    ldy       <psg_left
-                    lbsr      PSG_QUIET_ALL
-                    ldy       <psg_right
-                    lbsr      PSG_QUIET_ALL
-                    ldy       <psg_left
-                    lbsr      PSG_QUIET_ALL
-                    ldy       <psg_right
+                    std       <freq_psg1
+                    std       <freq_psg2
+                    std       <freq_psg3
+                    std       <freq_psg4
+                    std       <freq_sid1
+                    std       <freq_sid2
+                    std       <freq_sid3
+                    std       <freq_sid4
+
                     lbsr      PSG_QUIET_ALL
                     ldd       #$0000
                     std       <NoteCycles
@@ -238,39 +255,6 @@ nd@                 tfr       x,d
                     lda       #32
                     sta       <ScoreTempo
 
-* Configure both SID chips
-
-                    ldy       <sid_right
-                    ldd       #SID_V1_ADSR
-                    lbsr      WriteSIDV1A
-                    ldd       #SID_V2_ADSR
-                    lbsr      WriteSIDV2A
-                    ldd       #SID_V3_ADSR
-                    lbsr      WriteSIDV3A
-                    ldd       #SID_V1_PULSE_DUTY
-                    lbsr      WriteSIDV1W
-                    ldd       #SID_V2_PULSE_DUTY
-                    lbsr      WriteSIDV2W
-                    ldd       #SID_V3_PULSE_DUTY
-                    lbsr      WriteSIDV3W
-
-                    ldy       <sid_left
-                    ldd       #SID_V1_ADSR
-                    lbsr      WriteSIDV1A
-                    ldd       #SID_V2_ADSR
-                    lbsr      WriteSIDV2A
-                    ldd       #SID_V3_ADSR
-                    lbsr      WriteSIDV3A
-                    ldd       #SID_V1_PULSE_DUTY
-                    lbsr      WriteSIDV1W
-                    ldd       #SID_V2_PULSE_DUTY
-                    lbsr      WriteSIDV2W
-                    ldd       #SID_V3_PULSE_DUTY
-                    lbsr      WriteSIDV3W
-
-                    ldy       <psg_left
-                    lbsr      PSG_LOUD_ALL
-                    ldy       <psg_right
                     lbsr      PSG_LOUD_ALL
                     ldb       #1                  Enable the sequencer
                     stb       <DoSequencer
@@ -296,9 +280,6 @@ err                 pshs      d,u,cc
                     os9       I$Close
                     orcc      #IntMasks
                     clr       <DoSequencer
-                    ldy       <psg_left
-      	            lbsr      PSG_QUIET_ALL
-                    ldy       <psg_right
       	            lbsr      PSG_QUIET_ALL
 *                   ldu       <F256SoundBlk
 *                   ldb       #$01                Return 1 block
@@ -314,9 +295,9 @@ Sequencer           ldb       <DoSequencer        Are we allowed to play music?
                     lbeq      SeqExit             No, then exit
                     ldx       <ScoreCurrent
                     ldd       <NoteCycles
-                    bne       NextCycle           A note is currently playing
+                    lbne      NextCycle           A note is currently playing
                     ldb       ,x                  Get the new note length
-                    beq       SeqEnd              0 means End Of Score
+                    lbeq      SeqEnd              0 means End Of Score
                     bpl       SeqGetNote          Go set up the note
                     cmpb      #$FB                Repeat a Section
                     beq       SeqRepSection
@@ -380,9 +361,17 @@ SeqGetNote          lda       <ScoreTempo
                     std       <NoteCycles         Update the cycles counter
                     cmpd      #0                  Note has no length...
                     beq       SeqExit             So just exit
+                    lsra
+                    rorb
+                    std       <HalfCycles         Planned: play 2 notes in sequence on same channel
 
-                    bsr       PlaySIDChord
-*                   lbsr      PlayPSGChord
+                ifne f256
+                    bsr       SetSIDChord
+                    lbsr      PlaySIDChord
+                else
+                    bsr       SetPSGChord
+                    lbsr      PlayPSGChord
+                endc
 
 GetCycles           ldd       <NoteCycles
 NextCycle           subd      #1
@@ -398,59 +387,127 @@ SeqExit             rts
 
 * This section translates the Musica pitches into their respective SID frequencies
 
-PlaySIDChord        ldd       1,X                 Get Musica Voice 1 16-bit frequency
+SetSIDChord         ldd       1,X                 Get Musica Voice 1 16-bit frequency
                     beq       v1@                 0 means Silence
-                    lbsr      Mf2SID              Convert to 16-bit SID tone
-v1@                 std       <freq_mv1
+                    bsr       Mf2SID              Convert to 16-bit SID tone
+v1@                 std       <freq_sid1
                     ldd       3,X                 Get Musica Voice 2 16-bit frequency
                     beq       v2@                 0 means Silence
-                    lbsr      Mf2SID              Convert to 16-bit SID tone
-v2@                 std       <freq_mv2
+                    bsr       Mf2SID              Convert to 16-bit SID tone
+v2@                 std       <freq_sid2
                     ldd       5,X                 Get Musica Voice 3 16-bit frequency
                     beq       v3@                 0 means Silence
-                    lbsr      Mf2SID              Convert to 16-bit SID tone
-v3@                 std       <freq_mv3
+                    bsr       Mf2SID              Convert to 16-bit SID tone
+v3@                 std       <freq_sid3
                     ldd       7,X                 Get Musica Voice 4 16-bit frequency
                     beq       v4@                 0 means Silence
-                    lbsr      Mf2SID              Convert to 16-bit SID tone
-v4@                 std       <freq_mv4
+                    bsr       Mf2SID              Convert to 16-bit SID tone
+v4@                 std       <freq_sid4
+                    rts
+
+SetPSGChord         ldd       1,X                 Get Musica Voice 1 16-bit frequency
+                    beq       v1@                 0 means Silence
+                    bsr       Mf2PSG              Convert to 10-bit PSG tone
+v1@                 std       <freq_psg1
+                    ldd       3,X                 Get Musica Voice 2 16-bit frequency
+                    beq       v2@                 0 means Silence
+                    bsr       Mf2PSG              Convert to 10-bit PSG tone
+v2@                 std       <freq_psg2
+                    ldd       5,X                 Get Musica Voice 3 16-bit frequency
+                    beq       v3@                 0 means Silence
+                    bsr       Mf2PSG              Convert to 10-bit PSG tone
+v3@                 std       <freq_psg3
+                    ldd       7,X                 Get Musica Voice 4 16-bit frequency
+                    beq       v4@                 0 means Silence
+                    bsr       Mf2PSG              Convert to 10-bit PSG tone
+v4@                 std       <freq_psg4
+                    rts
+
+* Translate a Musica Pitch into a SID freq
+* pitch / 674
+* or ((pitch * 10129) / 65536) * 10
+* or (pitch * 10129) then take upper 16 bits of 32-bit result and * 10
+
+Mf2SID              std       $FEE0               Put pitch in MULT-A
+                    ldd       #10129              pitch * 10129
+                    std       $FEE2               Put multiplier in MULT-B
+                    ldd       $FEF0               Get upper 16 bits of 32-bit result
+                    std       $FEE0               Put back in MULT-A
+                    ldd       #10
+                    std       $FEE2               Put 10 in MULT-B 
+                    ldd       $FEF2               Get lower 16-bit of result
+                    rts
+
+* Translate a Musica Pitch into a SN76489 tone
+* 60250 / (Pitch / 22)  Generates precise SN76489 tones, but the lowest octaves aren't supported.
+* 60250 / (Pitch / 11)  Generates more SN76489 tones but we have to go 1 octave higher.
+
+* Perform (662750 / x)   (60250 / (x/11))   A 1CDE
+* Perform (723000 / x)   (60250 / (x/12))   B 0838
+* Perform (1325500 / x)  (60250 / (x/22))  14 39BC
+Mf2PSG
+                ifeq      f256
+                    std       <DIVISOR
+                    ldd       #$000A
+                    std       <DIVIDEND_HIGH
+                    ldd       #$1CDE
+                    std       <DIVIDEND_LOW
+                    lbsr      DIV32_16
+                    ldd       <QUOTIENT
+                    rts
+                else
+                    std       $FEE6               Store pitch as numerator
+*                   ldd       #22                 Low octave, grindy
+*                   ldd       #11                 Higher octave, more accurate
+                    ldd       #12                 Best sounding, but notes are a bit off scale
+                    std       $FEE4               Denominator
+                    ldd       $FEF4               Get answer
+                    std       $FEE4               Store answer as new denominator
+                    ldd       #60250
+                    std       $FEE6               Numerator
+                    ldd       $FEF4               Quotient
+                    cmpd      #1023               Is the result <1024, in PSG tone range?
+                    bls       g@
+                    ldd       #1023               Set upper freq limit for PSG
+g@                  rts
+                endc
 
 * This section outputs the 4 translated pitches into a stereo chord for the SIDs.
 * The order in which we write may enhance the stereo effect.
 
-                    ldy       <sid_right
-                    ldd       <freq_mv1
-                    lbsr      WriteSIDV1F
+PlaySIDChord        ldy       <sid_right
+                    ldd       <freq_sid1
+                    bsr       WriteSIDV1F
                     lda       #SID_V1_CR1
-                    lbsr      WriteSIDV1G         Gate this tone
+                    bsr       WriteSIDV1G         Gate this tone
 
                     ldy       <sid_right
-                    ldd       <freq_mv2
-                    lbsr      WriteSIDV2F
+                    ldd       <freq_sid2
+                    bsr       WriteSIDV2F
                     lda       #SID_V2_CR1
-                    lbsr      WriteSIDV2G         Gate this tone
+                    bsr       WriteSIDV2G         Gate this tone
 
                     ldy       <sid_right
-                    ldd       <freq_mv3
-                    lbsr      WriteSIDV3F
+                    ldd       <freq_sid3
+                    bsr       WriteSIDV3F
                     lda       #SID_V3_CR1
                     ldy       <sid_right
-                    lbsr      WriteSIDV3G         Gate this tone
+                    bsr       WriteSIDV3G         Gate this tone
 
                     ldy       <sid_left
-                    ldd       <freq_mv4
-                    lbsr      WriteSIDV3F
+                    ldd       <freq_sid4
+                    bsr       WriteSIDV3F
                     lda       #SID_V3_CR1
-                    lbsr      WriteSIDV3G         Gate this tone
+                    bsr       WriteSIDV3G         Gate this tone
 
                     ldy       <sid_left
-                    ldd       <freq_mv2
-                    lbsr      WriteSIDV2F
+                    ldd       <freq_sid2
+                    bsr       WriteSIDV2F
                     lda       #SID_V2_CR1
-                    lbsr      WriteSIDV2G         Gate this tone
+                    bsr       WriteSIDV2G         Gate this tone
 
                     ldy       <sid_left
-                    ldd       <freq_mv1
+                    ldd       <freq_sid1
                     lbsr      WriteSIDV1F
                     lda       #SID_V1_CR1
                     lbsr      WriteSIDV1G         Gate this tone
@@ -490,79 +547,49 @@ WriteSIDV2G         sta       7+4,y
 WriteSIDV3G         sta       14+4,y
                     rts
 
-* Translate a Musica Pitch into a SID freq
-* pitch / 674
-* or ((pitch * 10129) / 65536) * 10
-* or (pitch * 10129) then take upper 16 bits of 32-bit result and * 10
 
-Mf2SID              std       $FEE0               Put pitch in MULT-A
-                    ldd       #10129              pitch * 10129
-                    std       $FEE2               Put multiplier in MULT-B
-                    ldd       $FEF0               Get upper 16 bits of 32-bit result
-                    std       $FEE0               Put back in MULT-A
-                    ldd       #10
-                    std       $FEE2               Put 10 in MULT-B 
-                    ldd       $FEF2               Get lower 16-bit of result
-                    rts
+* This section outputs the 4 translated pitches into a stereo chord for the SN76489 chip(s).
+* For the COCO version we output Musica Voices 1-3 to their respective GMC voice.
+* For the F256 version we split Musica Voices 1-4 between two chips for a stereo effect.
 
-* This section outputs the 4 translated pitches into a stereo chord for the PSGs.
-* The order in which we write may enhance the stereo effect.
-
-PlayPSGChord        ldd       1,X                 Get Musica Voice 1 16-bit frequency
-                    beq       v1@                 0 means Silence
-                    bsr       Mf2PSG              Convert to 10-bit PSG tone
-v1@                 bsr       psgv1               Convert to PSG Voice 1 Command bytes
+PlayPSGChord
+v1@                 ldd       <freq_psg1
+                    bsr       psgv1               Convert to PSG Voice 1 Command bytes
+                ifne f256
                     ldy       <psg_right
                     bsr       WritePSG            Output to right
                     ldy       <psg_left
                     bsr       WritePSG            Output to left
-
-                    ldd       5,X                 Get Musica Voice 3 16-bit frequency
-                    beq       v3@                 0 means Silence
-                    bsr       Mf2PSG              Convert to 10-bit PSG tone
-v3@                 bsr       psgv3               Convert to PSG Voice 2 Command bytes
-                    ldy       <psg_left
-                    bsr       WritePSG            Output to left
-
-                    ldd       7,X                 Get Musica Voice 4 16-bit frequency
-                    beq       v4@                 0 means Silence
-                    bsr       Mf2PSG              Convert to 10-bit PSG tone
-v4@                 bsr       psgv3               Convert to PSG Voice 2 Command bytes
-                    ldy       <psg_right
-                    bsr       WritePSG            Output to right
-
-                    ldd       3,X                 Get Musica Voice 2 16-bit frequency
-                    beq       v2@                 0 means Silence
-                    bsr       Mf2PSG              Convert to 10-bit PSG tone
-v2@                 bsr       psgv2               Convert to PSG Voice 2 Command bytes
+                else
+                    ldy       <psg_both
+                    bsr       WritePSG            Output
+                endc
+v2@                 ldd       <freq_psg2
+                    bsr       psgv2               Convert to PSG Voice 2 Command bytes
+                ifne f256
                     ldy       <psg_right
                     bsr       WritePSG            Output to right
                     ldy       <psg_left
                     bsr       WritePSG            Output to left
-                    rts
-
-* Translate a Musica Pitch into a SN76489 tone
-* 60250 / (Pitch / 22)  Generates precise SN76489 tones, but the lowest octaves aren't supported.
-* 60250 / (Pitch / 11)  Generates more SN76489 tones but we have to go 1 octave higher.
-
-Mf2PSG              std       $FEE6               Store pitch as numerator
-                    ldd       #11
-                    std       $FEE4               Denominator
-                    ldd       $FEF4               Get answer
-                    std       $FEE4               Store answer as new denominator
-                    ldd       #60250
-                    std       $FEE6               Numerator
-                    ldd       $FEF4               Quotient
-                    cmpd      #1023               Is the result <1024, in PSG tone range?
-                    bls       g@
-                    ldd       #1023               Set upper freq limit for PSG
-g@                  rts
-
-* This routine is correct.  The SN76489 takes commands in sequences.
-* We first write reg.a, then we write reg.b  TO THE SAME ADDRESS.
-*
-WritePSG            sta       ,y
-                    stb       ,y
+                else
+                    ldy       <psg_both
+                    bsr       WritePSG            Output
+                endc
+v3@                 ldd       <freq_psg3
+                    bsr       psgv3               Convert to PSG Voice 3 Command bytes
+                ifne f256
+                    ldy       <psg_left
+                    bsr       WritePSG            Output to left
+                else
+                    ldy       <psg_both
+                    bsr       WritePSG            Output
+                endc
+                ifne f256
+v4@                 ldd       <freq_psg4
+                    bsr       psgv3               Convert to PSG Voice 3 Command bytes
+                    ldy       <psg_right
+                    bsr       WritePSG            Output to right
+                endc
                     rts
 
 * Assign a voice to a speaker, or both speakers
@@ -595,6 +622,13 @@ psgout              stb       ,-s                 save command byte with lower 4
                     std       ,s                  save the 2 PSG command bytes for the caller
                     puls      d,pc
 
+* This routine is correct.  The SN76489 takes commands in sequences.
+* We first write reg.a, then we write reg.b  TO THE SAME ADDRESS.
+*
+WritePSG            sta       ,y
+                    stb       ,y
+                    rts
+
 ********************************************************************
 * cfIcptRtn
 * this handles the signals received to our app
@@ -604,18 +638,49 @@ cfIcptRtn           ldb       #-1
                     clr       <DoSequencer
                     rti
 
-PSG_LOUD_ALL        ldd       #$B090
-                    lbsr      WritePSG
-                    ldd       #$D0FF
-                    lbsr      WritePSG
+PSG_LOUD_ALL
+                ifne f256
                     lda       #SID_MAX_VOL
                     ldy       <sid_left
                     sta       24,y
                     ldy       <sid_right
                     sta       24,y
-                    rts
+                    ldy       <psg_left
+                    bsr       PSG_LOUD
+                    ldy       <psg_right
+                    bra       PSG_LOUD
+                else
+                    ldy       <psg_both
+                    bra       PSG_LOUD
+                endc
 
-PSG_QUIET_ALL       ldd       #$9FBF
+PSG_LOUD            ldd       #$B090
+                    lbsr      WritePSG
+                ifne f256
+                    ldd       #$D0FF
+                    lbra      WritePSG
+                else
+                    ldd       #$DFFF
+                    lbra      WritePSG
+                endc
+
+PSG_QUIET_ALL
+                ifne f256
+                    lda       #0
+                    ldy       <sid_left
+                    sta       24,y
+                    ldy       <sid_right
+                    sta       24,y
+                    ldy       <psg_left
+                    bsr       PSG_QUIET
+                    ldy       <psg_right
+                    bra       PSG_QUIET
+                else
+                    ldy       <psg_both
+                    bra       PSG_QUIET
+                endc
+
+PSG_QUIET           ldd       #$9FBF
                     lbsr      WritePSG
                     ldd       #$DFFF
                     lbsr      WritePSG
@@ -625,16 +690,15 @@ PSG_QUIET_ALL       ldd       #$9FBF
                     lbsr      WritePSG
                     ldd       #%1100000000000000  Set no freq
                     lbsr      WritePSG
-                    lda       #0
-                    ldy       <sid_left
-                    sta       24,y
-                    ldy       <sid_right
-                    sta       24,y
                     rts
 
+* Setup the sound registers depending on if this program was built
+* for a CoCo or the F256 computer
+
 SET_SOUND_REGS      pshs      u,cc
-                    orcc      #IntMasks
                     tfr       u,y
+                ifne      f256
+                    orcc      #IntMasks
                     ldx       #$C4
                     ldb       #$01                Ask for 1 block
                     os9       F$MapBlk            Map it into process address space
@@ -651,6 +715,32 @@ SET_SOUND_REGS      pshs      u,cc
                     stu       <sid_both,y         Compute address of SID Dual channel
                     leau      $80,u
                     stu       <sid_right,y        Compute address of SID Right channel
+                    ldy       <sid_right
+                    ldd       #SID_V1_ADSR
+                    lbsr      WriteSIDV1A
+                    ldd       #SID_V2_ADSR
+                    lbsr      WriteSIDV2A
+                    ldd       #SID_V3_ADSR
+                    lbsr      WriteSIDV3A
+                    ldd       #SID_V1_PULSE_DUTY
+                    lbsr      WriteSIDV1W
+                    ldd       #SID_V2_PULSE_DUTY
+                    lbsr      WriteSIDV2W
+                    ldd       #SID_V3_PULSE_DUTY
+                    lbsr      WriteSIDV3W
+                    ldy       <sid_left
+                    ldd       #SID_V1_ADSR
+                    lbsr      WriteSIDV1A
+                    ldd       #SID_V2_ADSR
+                    lbsr      WriteSIDV2A
+                    ldd       #SID_V3_ADSR
+                    lbsr      WriteSIDV3A
+                    ldd       #SID_V1_PULSE_DUTY
+                    lbsr      WriteSIDV1W
+                    ldd       #SID_V2_PULSE_DUTY
+                    lbsr      WriteSIDV2W
+                    ldd       #SID_V3_PULSE_DUTY
+                    lbsr      WriteSIDV3W
                     ldu       <F256SoundBlk
                     cmpu      #$C000              Give a noncritical mem warning
                     beq       x@
@@ -658,8 +748,65 @@ SET_SOUND_REGS      pshs      u,cc
                     leax      memerr,pcr
                     ldy       #255
                     os9       I$WritLn
-x@                  puls      cc,u,pc
+                    bra       x@
 memerr              fcc       "MapBlk should have returned $C000"
                     fcb       C$LF,0
+                else
+                    ldu       #$FF00
+                    lda       $7f,u		Read current Slot Selection
+                    anda      #$f0		Preserve CTS value, select Slot 1 for SCS
+                    sta       $7f,u		Set new Slot Selection
+                    lda       $01,u
+                    anda      #247
+                    sta       $01,u
+                    lda       $03,u
+                    ora       #$08
+                    sta       $03,u
+                    lda       $23,u
+                    ora       #$08
+                    sta       $23,u
+                    leax      $41,u               Game Master Cartridge w/single SN76489 chip @ $FF41
+                    stx       <psg_both,y
+                endc
+x@                  puls      cc,u,pc
+
+
+* 32/16 Division Routine
+DIV32_16
+ pshs x
+ CLR QUOTIENT+1
+ CLR QUOTIENT
+ CLR REMAINDER+1
+ CLR REMAINDER
+ LDA DIVISOR+1
+ ORA DIVISOR
+ BEQ DIV_BY_ZERO_ERROR ; Handle error if divisor is zero
+ LDD <DIVIDEND_HIGH
+ STD <REMAINDER
+ LDX #16               ; Loop counter
+DIV_LOOP
+ LSL REMAINDER+1
+ ROL REMAINDER
+ LSL DIVIDEND_LOW+1
+ ROL DIVIDEND_LOW
+ bcc a@
+ INC REMAINDER+1 
+a@ LDD REMAINDER       ; Load remainder into D
+ CMPD DIVISOR          ; Compare with divisor
+ BLT NO_SUBTRACT       ; If remainder < divisor, skip subtraction
+ SUBD DIVISOR
+ STD REMAINDER
+ LSL QUOTIENT+1
+ ROL QUOTIENT
+ INC QUOTIENT+1        ; Set the least significant bit of quotient
+ BRA END_LOOP
+NO_SUBTRACT
+ LSL QUOTIENT+1
+ ROL QUOTIENT
+END_LOOP
+ leax -1,x
+ BNE DIV_LOOP
+DIV_BY_ZERO_ERROR
+ puls x,pc
 
                     endsect
