@@ -8,7 +8,7 @@
 * Created.
 *   2      2024/11/02  Matt Massie - Added Foenix F256 Graphics, Mouse, Joystick functions
 *
-*   3      2025/10/25  Matt Massie - Added Display, JoyA, JoyB, FNSet, Sprite Commands
+*   3      2025/10/25  Matt Massie - Added Display, JoyA, JoyB, FNSet, Sprite Commands.
 *
 
                   IFP1
@@ -949,7 +949,7 @@ SPKill              cmpb      #3               3 parameters?
 *** TileSets
 ;;; TSAddr - Return Address of TileSet
 ;;;
-;;; calling syntax: RUN FOENIX([path,],"TSAddr",TS#, addr)
+;;; alling syntax: RUN FOENIX([path,],"TSAddr",TS#, addr)
 TSAddr              cmpb      #3               3 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
                     leas      <stkdepth,s      eat temporary stack
@@ -957,7 +957,7 @@ TSAddr              cmpb      #3               3 parameters?
 					
 ;;; TSAlloc - Allocates memory and puts address in TileSet register
 ;;;
-;;; calling syntax: RUN FOENIX([path,],"TSAlloc",TS#, Size, Square)
+;;; alling syntax: RUN FOENIX([path,],"TSAlloc",TS#, Size, Square)
 TSAlloc             cmpb      #4               4 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
                     leas      <stkdepth,s      eat temporary stack
@@ -965,14 +965,14 @@ TSAlloc             cmpb      #4               4 parameters?
 
 ;;; TSLoad - Load TS from file
 ;;;
-;;; calling syntax: RUN FOENIX([path,],"TSLoad",TS#, Size, path)
+;;; alling syntax: RUN FOENIX([path,],"TSLoad",TS#, Size, path)
 TSLoad              cmpb      #4               4 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
                     leas      <stkdepth,s      eat temporary stack
                     rts                        return to the caller		
 
 ;;; TSSave - Save TS to a file
-;;; calling syntax: RUN FOENIX([path,],"TSSave",TS#, Size, path)
+;;; alling syntax: RUN FOENIX([path,],"TSSave",TS#, Size, path)
 TSSave              cmpb      #3               3 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
                     leas      <stkdepth,s      eat temporary stack
@@ -980,86 +980,11 @@ TSSave              cmpb      #3               3 parameters?
 
 ;;; TSKill - Erase registers and free memory from TS
 ;;;
-;;; calling syntax: RUN FOENIX([path,],"TSKill",TS#, Size, path)
+;;; alling syntax: RUN FOENIX([path,],"TSKill",TS#, Size, path)
 TSKill              cmpb      #3               3 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
                     leas      <stkdepth,s      eat temporary stack
                     rts                        return to the caller	
-
-*** TileMaps
-;;; TMAlloc - Allocate Tile Map of size XY
-;;;
-;;; calling syntax: RUN FOENIX([path,],"TMAlloc",TM#, SzX, SzY)
-TMAlloc             cmpb      #4               4 parameters?
-                    lbne      ParamErr         no, exit with Parameter Error
-                    leas      <stkdepth,s      eat temporary stack
-                    rts                        return to the caller	
-					
-;;; TMLoad - Loads tilemap from disk
-;;;
-;;; calling syntax: RUN FOENIX([path,],"TMLoad",TM#, path)
-TMLoad              cmpb      #3               3 parameters?
-                    lbne      ParamErr         no, exit with Parameter Error
-                    leas      <stkdepth,s      eat temporary stack
-                    rts                        return to the caller	
-
-;;; TMKill - Erase registers and free memory from TM
-;;;
-;;; calling syntax: RUN FOENIX([path,],"TMKill",TM#)
-TMKill              cmpb      #2               2 parameters?
-                    lbne      ParamErr         no, exit with Parameter Error
-                    leas      <stkdepth,s      eat temporary stack
-                    rts                        return to the caller	
-
-;;; TMCfg - Each entry in the tile map at X,Y has a CLUT,SET, and Tile Number.
-;;; 16 bit value, 3 bits, 2bits clut, 3 bits Tile Set, 8 bits Tile#
-;;;
-;;; calling syntax: RUN FOENIX([path,],"TMCfg",X,Y,Value)
-TMCfg               cmpb      #4               4 parameters?
-                    lbne      ParamErr         no, exit with Parameter Error
-                    leas      <stkdepth,s      eat temporary stack
-                    rts                        return to the caller	
-					
-;;; TMXYScrl - SetXY Scroll of Tile Map
-;;;
-;;; calling syntax: RUN FOENIX([path,],"TMXYScrl",X,Y)
-TMXYScrl            cmpb      #3               3 parameters?
-                    lbne      ParamErr         no, exit with Parameter Error
-                    leas      <stkdepth,s      eat temporary stack
-                    rts                        return to the caller	
-
-;;; TMSave - Save TM to file
-;;;
-;;; calling syntax: RUN FOENIX([path,],"TMSave",TM#,path)
-TMSave              cmpb      #3               3 parameters?
-                    lbne      ParamErr         no, exit with Parameter Error
-                    leas      <stkdepth,s      eat temporary stack
-                    rts                        return to the caller					
-
-;;; TMOn - Enable Tile Map
-;;;
-;;; calling syntax: RUN FOENIX([path,],"TMOn",TM#,TileSize)
-TMOn                cmpb      #3               3 parameters?
-                    lbne      ParamErr         no, exit with Parameter Error
-                    leas      <stkdepth,s      eat temporary stack
-                    rts                        return to the caller
-
-;;; TMOff - Disable Tile Map
-;;;
-;;; calling syntax: RUN FOENIX([path,],"TMOff",TM#,TileSize)
-TMOff               cmpb      #3               3 parameters?
-                    lbne      ParamErr         no, exit with Parameter Error
-                    leas      <stkdepth,s      eat temporary stack
-                    rts                        return to the caller
-
-;;; TMAddr - Return address of TileMap
-;;;
-;;; calling syntax: RUN FOENIX([path,],"TMAddr",TM#, addr)
-TMAddr              cmpb      #3               3 parameters?
-                    lbne      ParamErr         no, exit with Parameter Error
-                    leas      <stkdepth,s      eat temporary stack
-                    rts                        return to the caller
-
 					
 ;;; Check for little/big endian Math Co-Pro
 ;;;
