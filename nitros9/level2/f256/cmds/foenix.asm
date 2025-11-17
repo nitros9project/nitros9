@@ -8,7 +8,7 @@
 * Created.
 *   2      2024/11/02  Matt Massie - Added Foenix F256 Graphics, Mouse, Joystick functions
 *
-*   3      2025/10/25  Matt Massie - Added Display, JoyA, JoyB, FNSet, Sprite Commands.
+*   3      2025/10/25  Matt Massie - Added Display, JoyA, JoyB, FNSet, Sprite Commands
 *
 
                   IFP1
