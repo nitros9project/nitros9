@@ -221,7 +221,7 @@ w@                  lda       CODECCtrl,x
 InitSound           clr       D.SndPrcID          clear the process ID of the current sound emitter (none)
                     lda       SYS1                get the byte at SYS1
 *                    anda      #^SYS_PSG_ST clear the stereo flag
-                    ora       #SYS_PSG_ST
+                    ora       #SYS_PSG_ST|SYS_SID_ST
                     sta       SYS1                and save it back
 
 InitPSG             pshs      cc                save the condition code register
