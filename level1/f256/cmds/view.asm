@@ -7,11 +7,11 @@
 *   1      2025/10/31  Roger Taylor
 * Created. Currently loads only Windows BMP format.
 *
-*          2025/11/05  Roger Taylor
+*   2      2025/11/05  Roger Taylor
 * Added ability to load 320x240 images.  If taller, each 240 lines
 * starting from the bottom will display on the same screen in series.
 *
-*          2025/11/08  Roger Taylor
+*   3      2025/11/08  Roger Taylor
 * Add option to show a specific bitmap # if no file is specified.
 
                     nam       view
@@ -93,7 +93,7 @@ size                equ       .
 name                fcs       /view/
                     fcb       edition
 
-inittext            fcc       /Picture Viewer 0.4 by Roger Taylor/
+inittext            fcc       /Picture Viewer by Roger Taylor/
                     fcb       $0d
 
 clutpathname        fcn       "/dd/cmds/xtclut"
@@ -194,6 +194,16 @@ SetPixel            bsr       GetXYBlk            Returns relative 8K block # in
                     ldb       <color
                     stb       ,x                  write pixel             
 x@                  rts                           Return to the caller
+
+PixelToX            bsr       GetXYBlk            Returns relative 8K block # in reg.b, offset into the block in reg.x
+                    stx       offset
+                    bsr       MapRelPicBlk        Maps in the relative block # of the bitmap screen
+                    bcs       x@
+                    ldd       offset
+                    adda      mapaddr
+                    tfr       d,x
+x@                  rts                           Return to the caller
+
 MapRelPicBlk        addb      bmblock
                     cmpb      currBlk
                     beq       exit@               Block is already mapped in
@@ -449,29 +459,90 @@ NOPAL               CLR	      <color	clear screen to the first color in the pale
                     CMPD      #16
                     LBEQ      BIT4	branch if a 16 color image
 
+
 * 8-bit BMP pictures contain a palette, and the colors are single bytes
-* Loads in about 3 seconds.
-BIT8                LBSR      UPDPY   update height; part of inversion
+BIT8                lbsr      UPDPY   update height; part of inversion
                     bmi       x@
-                    lbsr      ReadLineData
- bcs x@
+                    lda       filepath
+                    leax      LineData,u
+                    ldy       #320
+                    os9       I$Read
                     leay      LineData,u
 a@                  lda       ,y+
                     sta       <color
                     lbsr      SetPixel
-                    LBSR      UPDPX   update pixel number
-                    BLO       a@
-                    LDB       <WIDTH+1        8-bit bmp files stored in multiples of long numbers
-                    ANDB      #3
-                    BEQ       BIT8
-                    PSHS      B
-                    LDB       #4
-                    SUBB      ,S+
-c@                  lda       ,y+
-                    DECB
-                    BNE       c@
+                    ldd       <PX	update the horizontal pointer
+                    addd      #1
+                    std       <PX
+                    cmpd      <WIDTH
+                    blo       a@
+*                     LDB       <WIDTH+1        8-bit bmp files stored in multiples of long numbers
+*                     ANDB      #3
+*                     BEQ       BIT8
+*                     PSHS      B
+*                     LDB       #4
+*                     SUBB      ,S+
+* c@                  lda       ,x+
+*                     decb
+*                     bne       c@
                     bra       BIT8
 x@                  rts
+
+* 16 color mode
+* Load 160 bytes per line at once, then split each byte into two 4-bit colors.
+BIT4                lbsr      UPDPY   update height; part of inversion
+                    bmi       x@
+                    lda       filepath
+                    leax      LineData,u
+                    ldy       #160
+                    os9       I$Read
+                    leay      LineData,u
+a@                  lbsr      PixelToX
+                    lda       ,y+
+                    TFR       A,B
+                    ANDB      #15                 get low nibble
+                    stb       1,x
+                    LSRA		get high nibble
+                    LSRA
+                    LSRA
+                    LSRA
+                    sta       ,x
+                    ldd       <PX	update the horizontal pointer
+                    addd      #2
+                    std       <PX
+                    cmpd      <WIDTH
+                    blo       a@
+                    bra       BIT4
+x@                  rts
+
+* 	LDB	<WIDTH+1
+* 	BEQ	BIT4
+* 	LSRB		divide by 2 to get bytes
+* 	ADCB	#0	round up
+* 	ANDB	#3	check for incomplete long
+* 	BEQ	BIT4
+* 	PSHS	B
+* 	LDB	#4
+* 	SUBB	,S+
+* B@	lda     ,y+     skip over the fillers
+* 	DECB
+* 	BNE	B@
+* 	BRA	BIT4
+* 	lda	BIT4PX,u	recover second pixel
+*        sta     1,x
+* 	LDB	<WIDTH+1
+* 	LBEQ	BIT4
+* 	LSRB		divide by 2 to get bytes
+* 	ADCB	#0	round up
+* 	ANDB	#3	check for incomplete long
+* 	LBEQ	BIT4
+* 	PSHS	B	calculate the filler bytes
+* 	LDB	#4
+* 	SUBB	,S+
+* C@	lda     ,y+     skip over the fillers
+* 	DECB
+* 	BNE	C@
+* 	LBRA	BIT4
 
 * 16 million colors
 * Currently not supported.  Loading works but won't show anything.
@@ -546,57 +617,6 @@ C@	LDD	<PY
 	BNE	BIT1
 X@	RTS
 
-* 16 color mode
-* Currently loads in a very slow manner.
-* In Progress: needs to load 160 bytes per line at once, then split each byte into two 4-bit colors.
-BIT4	lbsr ReadFileByte	get two pixels
-	TFR	A,B
-	ANDB	#15	get low nibble
-	STB	BIT4PX,u
-	LSRA		get high nibble
-	LSRA
-	LSRA
-	LSRA
-	sta	<color		(RT)
-	lbsr SetPixel
-	LBSR	UPDPX	update horizontal pointer
-	BNE	A@
-	LBSR	UPDPY	update vertical pointer
-	BEQ	X@
-	LDB	<WIDTH+1
-	BEQ	BIT4
-	LSRB		divide by 2 to get bytes
-	ADCB	#0	round up
-	ANDB	#3	check for incomplete long
-	BEQ	BIT4
-	PSHS	B
-	LDB	#4
-	SUBB	,S+
-B@	lbsr ReadFileByte	skip over the fillers
-	DECB
-	BNE	B@
-	BRA	BIT4
-A@ 	lda	BIT4PX,u	recover second pixel
-	sta	<color		(RT)
-	lbsr SetPixel
-	BSR	UPDPX	update the horizontal pointer
-	BNE	BIT4
-	BSR	UPDPY	update the vertical pointer
-	BEQ	X@
-	LDB	<WIDTH+1
-	LBEQ	BIT4
-	LSRB		divide by 2 to get bytes
-	ADCB	#0	round up
-	ANDB	#3	check for incomplete long
-	LBEQ	BIT4
-	PSHS	B	calculate the filler bytes
-	LDB	#4
-	SUBB	,S+
-C@	lbsr ReadFileByte	skip over the fillers
-	DECB
-	BNE	C@
-	LBRA	BIT4
-X@	RTS
 
 SNDPLOT
 * 	LDX	600	get rgb colors and plot them

@@ -1,10 +1,11 @@
 ********************************************************************
 * MUSICA II Player
-* For the F256 Computer by Foenix Retro Systems
+* For the F256 Computer by Foenix Retro Systems,
+* and the Tandy Color Computer 3.
 *
 * Usage: 
 *   Play one or more files from the command line:
-*      musica peanuts.mus coming.mus
+*      musica peanuts.mus coming.mus archon.sdr
 *
 *   Play files from a text file:
 *      musica -z=music_list
@@ -40,12 +41,15 @@
 *
 *   7      2025/11/15  R Taylor
 * Added "F256" build condition.  If not set, build for the CoCo+GMC Cartridge.
+*
+*   8      2025/11/18  R Taylor
+* Added ability to play raw SID dumps (.sdr) on the F256.
 
                     nam       musica
                     ttl       Musica II Player
 
  section __os9
-edition = 7
+edition = 8
  endsect
 
 * Here are some tweakable options
@@ -62,6 +66,8 @@ SID_V2_ADSR         equ       $00F0
 SID_V3_ADSR         equ       $00F0
 
 PLAYLISTITEM_MAXSTR equ       255
+FILETYPE_MUSICA     equ       1
+FILETYPE_SIDRAW     equ       2
 
                     section   bss
 clistart            rmb       2
@@ -89,14 +95,14 @@ ScoreStart	    rmb       2
 ScoreCurrent	    rmb       2
 NoteCycles	    rmb       2
 HalfCycles	    rmb       2
-FileBuf             rmb       2
-DIVIDEND_HIGH       rmb       2
-DIVIDEND_LOW        rmb       2
-DIVISOR             rmb       2
-QUOTIENT            rmb       2
-REMAINDER           rmb       2
+Dividend_High       rmb       2
+Dividend_Low        rmb       2
+Divisor             rmb       2
+Quotient            rmb       2
+Remainder           rmb       2
 ScoreTempo	    rmb       1
 FilePath            rmb       1
+FileType            rmb       1
 DoSequencer         rmb       1
 DoAbort             rmb       1
 Interactive         rmb       1
@@ -104,6 +110,7 @@ TotalSections       rmb       1
 PlaylistMode        rmb       1
 PlaylistPath        rmb       1
 SectionList         rmb       9*2
+SampleBuf           rmb       25
 PlaylistItemStr     rmb       PLAYLISTITEM_MAXSTR
                     endsect
 
@@ -111,7 +118,7 @@ PlaylistItemStr     rmb       PLAYLISTITEM_MAXSTR
 * Place constant strings here
                     ifne      DOHELP
 helpstr             fcb       C$CR
-                    fcc       /Musica Player v7 by Roger Taylor/
+                    fcc       /Musica Player by Roger Taylor/
                     fcb       C$CR
                     fcc       /Use: musica [<opts>] {file} {...}/
                     fcb       C$CR
@@ -198,7 +205,7 @@ NextSong            clr       <DoSequencer
                     std       <freq_sid3
                     std       <freq_sid4
 
-                    lbsr      PSG_QUIET_ALL
+                    lbsr      QUIET_ALL
                     ldd       #$0000
                     std       <NoteCycles
 
@@ -216,15 +223,107 @@ NextSong            clr       <DoSequencer
 ok@                 stx       <cliptr
 
 OpenMediaFile       ldx       <cliptr
+                    clr       <FileType
                     lda       ,x
                     cmpa      #C$CR
                     lbeq      bye
+b@                  leay      FILETYPES,pcr
+d@                  lda       ,x                  Get 1st char of sliding window of ".ext"
+                    beq       o@
+                    cmpa      #32
+                    beq       o@
+                    cmpa      #C$CR
+                    beq       o@
+                    cmpa      ,y                  Compare 1st char against current table entry
+                    bne       n@
+                    lda       1,x
+                    lbsr      toLower
+                    cmpa      1,y                 Compare 2nd char
+                    bne       n@
+                    lda       2,x
+                    lbsr      toLower
+                    cmpa      2,y                 Compare 3rd char
+                    bne       n@
+                    lda       3,x
+                    lbsr      toLower
+                    cmpa      3,y                 Compare 4th char
+                    bne       n@
+                    lda       4,y
+                    sta       <FileType
+                    bra       o@
+n@                  leay      5,y
+                    ldb       ,y
+                    bne       d@
+                    leax      1,x
+                    bra       b@
+o@                  ldx       <cliptr
                     lda       #READ.
                     os9       I$Open
                     lbcs      err
                     stx       <cliptr
                     sta       <FilePath
-                    ldb       #SS.Size
+
+                    lda       <FileType
+                    cmpa      #FILETYPE_MUSICA 
+                    lbeq      PlayMusica
+                    cmpa      #FILETYPE_SIDRAW 
+                    beq       PlaySidRaw
+                    lbra      CloseAndNext        Filename extension not recognized, skip song
+
+PlaySidRaw          lbsr      LOUD_ALL
+PlaySidR2           leax      SampleBuf,u
+                    ldy       #25
+                    lda       <FilePath
+                    os9       I$Read
+                    lbcs      CloseAndNext
+
+                    ldy       <sid_both
+                    ldd       ,x 
+                    exg       a,b
+                    lbsr      WriteSIDV1F
+                    ldd       2,x 
+                    exg       a,b
+                    lbsr      WriteSIDV1W
+                    ldd       5,x 
+                    lbsr      WriteSIDV1A
+                    lda       4,x 
+                    sta       4,y 
+
+                    ldd       7,x 
+                    exg       a,b
+                    lbsr      WriteSIDV2F
+                    ldd       7+2,x 
+                    exg       a,b
+                    lbsr      WriteSIDV2W
+                    ldd       7+5,x 
+                    lbsr      WriteSIDV2A
+                    lda       7+4,x 
+                    sta       7+4,y 
+
+                    ldd       14,x 
+                    exg       a,b
+                    lbsr      WriteSIDV3F
+                    ldd       14+2,x 
+                    exg       a,b
+                    lbsr      WriteSIDV3W
+                    ldd       14+5,x 
+                    lbsr      WriteSIDV3A
+                    lda       14+4,x 
+                    sta       14+4,y 
+
+                    lda       22,x 
+                    sta       22,y
+                    lda       23,x 
+                    sta       23,y 
+                    lda       24,x 
+                    sta       24,y 
+
+                    ldx       #$0002
+                    os9       F$Sleep
+                    bra       PlaySidR2
+
+PlayMusica          ldb       #SS.Size
+                    lda       <FilePath
                     pshs      u
                     os9       I$GetStt
                     tfr       u,x
@@ -243,7 +342,6 @@ OpenMediaFile       ldx       <cliptr
                     lda       <FilePath
                     os9       I$Read
                     lbcs      err
-
                     lda       ,x                  Examine first byte of file
                     bne       nd@                 Is non-zero, not a LOADM header
                     leax      5,x                 Skip over the DOS LOADM header
@@ -255,7 +353,7 @@ nd@                 tfr       x,d
                     lda       #32
                     sta       <ScoreTempo
 
-                    lbsr      PSG_LOUD_ALL
+                    lbsr      LOUD_ALL
                     ldb       #1                  Enable the sequencer
                     stb       <DoSequencer
 
@@ -263,7 +361,7 @@ keyloop@            tst       <DoAbort            Abort everything?
                     bne       bye                 Yes, kill the sequencer, and get out of here
                     tst       <DoSequencer
                     beq       CloseAndNext
-                    lbsr      Sequencer           Keep calling the sequencer
+                    bsr       Sequencer           Keep calling the sequencer
                     ldx       #$0002
                     os9       F$Sleep
                     bra       keyloop@
@@ -275,22 +373,24 @@ keyloop@            tst       <DoAbort            Abort everything?
 *                   bne       keyloop@
 
 bye                 clrb
-err                 pshs      d,u,cc
+err                 pshs      d,u
                     lda       <PlaylistPath
                     os9       I$Close
-                    orcc      #IntMasks
                     clr       <DoSequencer
-      	            lbsr      PSG_QUIET_ALL
+      	            lbsr      QUIET_ALL
 *                   ldu       <F256SoundBlk
 *                   ldb       #$01                Return 1 block
 *                   os9       F$ClrBlk            Return to OS-9 but is this needed if we're exiting a program?
-                    puls      d,u,cc
+                    puls      d,u
 exit                os9       F$Exit
 
 CloseAndNext        lda       <FilePath
                     os9       I$Close
                     lbra      NextSong
 
+********************************************************************
+* Musica Sequencer
+*
 Sequencer           ldb       <DoSequencer        Are we allowed to play music?
                     lbeq      SeqExit             No, then exit
                     ldx       <ScoreCurrent
@@ -385,6 +485,7 @@ SeqEnd              clr       <DoSequencer        Current song is over
 SeqExit             rts
 
 
+********************************************************************
 * This section translates the Musica pitches into their respective SID frequencies
 
 SetSIDChord         ldd       1,X                 Get Musica Voice 1 16-bit frequency
@@ -423,6 +524,7 @@ v3@                 std       <freq_psg3
 v4@                 std       <freq_psg4
                     rts
 
+********************************************************************
 * Translate a Musica Pitch into a SID freq
 * pitch / 674
 * or ((pitch * 10129) / 65536) * 10
@@ -438,6 +540,7 @@ Mf2SID              std       $FEE0               Put pitch in MULT-A
                     ldd       $FEF2               Get lower 16-bit of result
                     rts
 
+********************************************************************
 * Translate a Musica Pitch into a SN76489 tone
 * 60250 / (Pitch / 22)  Generates precise SN76489 tones, but the lowest octaves aren't supported.
 * 60250 / (Pitch / 11)  Generates more SN76489 tones but we have to go 1 octave higher.
@@ -447,13 +550,13 @@ Mf2SID              std       $FEE0               Put pitch in MULT-A
 * Perform (1325500 / x)  (60250 / (x/22))  14 39BC
 Mf2PSG
                 ifeq      f256
-                    std       <DIVISOR
+                    std       <Divisor
                     ldd       #$000A
-                    std       <DIVIDEND_HIGH
+                    std       <Dividend_High
                     ldd       #$1CDE
-                    std       <DIVIDEND_LOW
+                    std       <Dividend_Low
                     lbsr      DIV32_16
-                    ldd       <QUOTIENT
+                    ldd       <Quotient
                     rts
                 else
                     std       $FEE6               Store pitch as numerator
@@ -472,6 +575,7 @@ Mf2PSG
 g@                  rts
                 endc
 
+********************************************************************
 * This section outputs the 4 translated pitches into a stereo chord for the SIDs.
 * The order in which we write may enhance the stereo effect.
 
@@ -547,7 +651,7 @@ WriteSIDV2G         sta       7+4,y
 WriteSIDV3G         sta       14+4,y
                     rts
 
-
+********************************************************************
 * This section outputs the 4 translated pitches into a stereo chord for the SN76489 chip(s).
 * For the COCO version we output Musica Voices 1-3 to their respective GMC voice.
 * For the F256 version we split Musica Voices 1-4 between two chips for a stereo effect.
@@ -592,6 +696,7 @@ v4@                 ldd       <freq_psg4
                 endc
                     rts
 
+********************************************************************
 * Assign a voice to a speaker, or both speakers
 *  Enter with PSG-format 10-bit tone value a/XXXXXXHH b/HHHHLLLL
 *  reg.y = psg_left, psg_both, psg_right
@@ -622,6 +727,7 @@ psgout              stb       ,-s                 save command byte with lower 4
                     std       ,s                  save the 2 PSG command bytes for the caller
                     puls      d,pc
 
+********************************************************************
 * This routine is correct.  The SN76489 takes commands in sequences.
 * We first write reg.a, then we write reg.b  TO THE SAME ADDRESS.
 *
@@ -638,13 +744,36 @@ cfIcptRtn           ldb       #-1
                     clr       <DoSequencer
                     rti
 
-PSG_LOUD_ALL
+SIDINIT             pshs      a                   Save volume on stack
+                    ldy       <sid_right
+                    bsr       SidInz
+                    ldy       <sid_left
+                    lda       ,s+                 Use same volume for both channels
+SidInz              sta       24,y                Set max vol
+                    lda       #$00
+                    lbsr      WriteSIDV1G
+                    lda       #$00
+                    lbsr      WriteSIDV2G
+                    lda       #$00
+                    lbsr      WriteSIDV3G
+                    ldd       #SID_V1_ADSR
+                    lbsr      WriteSIDV1A
+                    ldd       #SID_V2_ADSR
+                    lbsr      WriteSIDV2A
+                    ldd       #SID_V3_ADSR
+                    lbsr      WriteSIDV3A
+                    ldd       #SID_V1_PULSE_DUTY
+                    lbsr      WriteSIDV1W
+                    ldd       #SID_V2_PULSE_DUTY
+                    lbsr      WriteSIDV2W
+                    ldd       #SID_V3_PULSE_DUTY
+                    lbsr      WriteSIDV3W
+                    rts
+
+LOUD_ALL
                 ifne f256
                     lda       #SID_MAX_VOL
-                    ldy       <sid_left
-                    sta       24,y
-                    ldy       <sid_right
-                    sta       24,y
+                    lbsr      SIDINIT
                     ldy       <psg_left
                     bsr       PSG_LOUD
                     ldy       <psg_right
@@ -656,21 +785,13 @@ PSG_LOUD_ALL
 
 PSG_LOUD            ldd       #$B090
                     lbsr      WritePSG
-                ifne f256
                     ldd       #$D0FF
                     lbra      WritePSG
-                else
-                    ldd       #$DFFF
-                    lbra      WritePSG
-                endc
 
-PSG_QUIET_ALL
+QUIET_ALL
                 ifne f256
-                    lda       #0
-                    ldy       <sid_left
-                    sta       24,y
-                    ldy       <sid_right
-                    sta       24,y
+                    lda       #$00                Volume
+                    lbsr      SIDINIT
                     ldy       <psg_left
                     bsr       PSG_QUIET
                     ldy       <psg_right
@@ -692,9 +813,10 @@ PSG_QUIET           ldd       #$9FBF
                     lbsr      WritePSG
                     rts
 
-* Setup the sound registers depending on if this program was built
-* for a CoCo or the F256 computer
-
+********************************************************************
+* Set up the sound registers depending on whether this program was
+* built for a CoCo or the F256
+*
 SET_SOUND_REGS      pshs      u,cc
                     tfr       u,y
                 ifne      f256
@@ -715,32 +837,6 @@ SET_SOUND_REGS      pshs      u,cc
                     stu       <sid_both,y         Compute address of SID Dual channel
                     leau      $80,u
                     stu       <sid_right,y        Compute address of SID Right channel
-                    ldy       <sid_right
-                    ldd       #SID_V1_ADSR
-                    lbsr      WriteSIDV1A
-                    ldd       #SID_V2_ADSR
-                    lbsr      WriteSIDV2A
-                    ldd       #SID_V3_ADSR
-                    lbsr      WriteSIDV3A
-                    ldd       #SID_V1_PULSE_DUTY
-                    lbsr      WriteSIDV1W
-                    ldd       #SID_V2_PULSE_DUTY
-                    lbsr      WriteSIDV2W
-                    ldd       #SID_V3_PULSE_DUTY
-                    lbsr      WriteSIDV3W
-                    ldy       <sid_left
-                    ldd       #SID_V1_ADSR
-                    lbsr      WriteSIDV1A
-                    ldd       #SID_V2_ADSR
-                    lbsr      WriteSIDV2A
-                    ldd       #SID_V3_ADSR
-                    lbsr      WriteSIDV3A
-                    ldd       #SID_V1_PULSE_DUTY
-                    lbsr      WriteSIDV1W
-                    ldd       #SID_V2_PULSE_DUTY
-                    lbsr      WriteSIDV2W
-                    ldd       #SID_V3_PULSE_DUTY
-                    lbsr      WriteSIDV3W
                     ldu       <F256SoundBlk
                     cmpu      #$C000              Give a noncritical mem warning
                     beq       x@
@@ -752,11 +848,11 @@ SET_SOUND_REGS      pshs      u,cc
 memerr              fcc       "MapBlk should have returned $C000"
                     fcb       C$LF,0
                 else
-                    ldu       #$FF00
-                    lda       $7f,u		Read current Slot Selection
-                    anda      #$f0		Preserve CTS value, select Slot 1 for SCS
-                    sta       $7f,u		Set new Slot Selection
-                    lda       $01,u
+                    ldu       #$ff00            CoCo HW base
+                    lda       $7f,u		Read current MPI slot Selection
+                    anda      #$f0		Preserve CTS value, select slot 1 for SCS
+                    sta       $7f,u		Set new slot selection
+                    lda       $01,u             Enable Cartridge Sound
                     anda      #247
                     sta       $01,u
                     lda       $03,u
@@ -765,48 +861,61 @@ memerr              fcc       "MapBlk should have returned $C000"
                     lda       $23,u
                     ora       #$08
                     sta       $23,u
-                    leax      $41,u               Game Master Cartridge w/single SN76489 chip @ $FF41
+                    leax      $41,u               GMC w/single SN76489 chip @ $FF41
                     stx       <psg_both,y
                 endc
 x@                  puls      cc,u,pc
 
+********************************************************************
+* Convert Alpha Char to Lowercase
+*
+toLower             cmpa      #'A
+                    blo       x@
+                    cmpa      #'Z
+                    bhi       x@
+                    ora       #32
+x@                  rts
 
+********************************************************************
 * 32/16 Division Routine
-DIV32_16
- pshs x
- CLR QUOTIENT+1
- CLR QUOTIENT
- CLR REMAINDER+1
- CLR REMAINDER
- LDA DIVISOR+1
- ORA DIVISOR
- BEQ DIV_BY_ZERO_ERROR ; Handle error if divisor is zero
- LDD <DIVIDEND_HIGH
- STD <REMAINDER
- LDX #16               ; Loop counter
-DIV_LOOP
- LSL REMAINDER+1
- ROL REMAINDER
- LSL DIVIDEND_LOW+1
- ROL DIVIDEND_LOW
- bcc a@
- INC REMAINDER+1 
-a@ LDD REMAINDER       ; Load remainder into D
- CMPD DIVISOR          ; Compare with divisor
- BLT NO_SUBTRACT       ; If remainder < divisor, skip subtraction
- SUBD DIVISOR
- STD REMAINDER
- LSL QUOTIENT+1
- ROL QUOTIENT
- INC QUOTIENT+1        ; Set the least significant bit of quotient
- BRA END_LOOP
-NO_SUBTRACT
- LSL QUOTIENT+1
- ROL QUOTIENT
-END_LOOP
- leax -1,x
- BNE DIV_LOOP
-DIV_BY_ZERO_ERROR
- puls x,pc
+*
+DIV32_16            pshs      x
+                    clr      <Quotient+1
+                    clr      <Quotient
+                    clr      <Remainder+1
+                    clr      <Remainder
+                    lda      <Divisor+1
+                    ora      <Divisor
+                    beq      DIV_BY_ZERO_ERROR ; Handle error if divisor is zero
+                    ldd      <Dividend_High
+                    std      <Remainder
+                    ldx      #16               ; Loop counter
+DIV_LOOP            lsl      <Remainder+1
+                    rol      <Remainder
+                    lsl      <Dividend_Low+1
+                    rol      <Dividend_Low
+                    bcc      a@
+                    inc      <Remainder+1 
+a@                  ldd      <Remainder       ; Load remainder into D
+                    cmpd     <Divisor          ; Compare with divisor
+                    blt      NO_SUBTRACT       ; If remainder < divisor, skip subtraction
+                    subd     <Divisor
+                    std      <Remainder
+                    lsl      <Quotient+1
+                    rol      <Quotient
+                    inc      <Quotient+1        ; Set the least significant bit of quotient
+                    bra      END_LOOP
+NO_SUBTRACT         lsl      Quotient+1
+                    rol      <Quotient
+END_LOOP            leax     -1,x
+                    bne      DIV_LOOP
+DIV_BY_ZERO_ERROR   puls     x,pc
+
+FILETYPES
+                    fcc       ".sdr"
+                    fcb       FILETYPE_SIDRAW
+                    fcc       ".mus"
+                    fcb       FILETYPE_MUSICA
+                    fcb       0                   Mark end of table
 
                     endsect
