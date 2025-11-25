@@ -11,6 +11,8 @@
                     rmb       100
                     endsect
                     
+                    use       defsfile
+                    
 * Default process priority
 DefPrior            set       128
                     
