@@ -5,7 +5,7 @@
 *
 * Usage: 
 *   Play one or more files from the command line:
-*      musica peanuts.mus coming.mus archon.sdr
+*      musica peanuts.mus wmtell.lyr archon.sdr
 *
 *   Play files from a text file:
 *      musica -z=music_list
@@ -44,12 +44,15 @@
 *
 *   8      2025/11/18  R Taylor
 * Added ability to play raw SID dumps (.sdr) on the F256.
+*
+*   9      2025/11/29  R Taylor
+* Added ability to play Lyra (.lyr) files on the F256.
 
                     nam       musica
                     ttl       Musica II Player
 
  section __os9
-edition = 8
+edition = 9
  endsect
 
 * Here are some tweakable options
@@ -68,6 +71,7 @@ SID_V3_ADSR         equ       $00F0
 PLAYLISTITEM_MAXSTR equ       255
 FILETYPE_MUSICA     equ       1
 FILETYPE_SIDRAW     equ       2
+FILETYPE_COCOLYRA   equ       3
 
                     section   bss
 clistart            rmb       2
@@ -93,13 +97,17 @@ freq_psg4           rmb       2
 F256SoundBlk        rmb       2                   The F256 has some HW in high RAM
 ScoreStart	    rmb       2
 ScoreCurrent	    rmb       2
-NoteCycles	    rmb       2
+NoteCycles	    rmb       2                   Musica carries a chord for 1 duration
 HalfCycles	    rmb       2
 Dividend_High       rmb       2
 Dividend_Low        rmb       2
 Divisor             rmb       2
 Quotient            rmb       2
 Remainder           rmb       2
+file_block_start    rmb       2
+file_block_end      rmb       2
+LyraChannel         rmb       1
+MidiNote            rmb       1
 ScoreTempo	    rmb       1
 FilePath            rmb       1
 FileType            rmb       1
@@ -109,6 +117,8 @@ Interactive         rmb       1
 TotalSections       rmb       1
 PlaylistMode        rmb       1
 PlaylistPath        rmb       1
+LyraVelocities      rmb       8
+LyraTracks          rmb       8*4
 SectionList         rmb       9*2
 SampleBuf           rmb       25
 PlaylistItemStr     rmb       PLAYLISTITEM_MAXSTR
@@ -144,13 +154,16 @@ __start
                     lbcs      err
                     sty       fmemupper
                     std       fmemsize
+                    stx       <clistart
 
                     clr       <DoSequencer
                     clr       <FilePath
                     clr       <Interactive
                     clr       <DoAbort
                     clr       <PlaylistMode
-                    stx       <clistart
+
+                    ldd       #-1                 -1 means no MMU block is currently mapped in
+                    std       <file_block_start
 
 GetOptions2         stx       <cliptr
 GetOptions          ldx       <cliptr
@@ -268,6 +281,8 @@ o@                  ldx       <cliptr
                     lbeq      PlayMusica
                     cmpa      #FILETYPE_SIDRAW 
                     beq       PlaySidRaw
+                    cmpa      #FILETYPE_COCOLYRA 
+                    lbeq      PlayLyra
                     lbra      CloseAndNext        Filename extension not recognized, skip song
 
 PlaySidRaw          lbsr      LOUD_ALL
@@ -322,7 +337,7 @@ PlaySidR2           leax      SampleBuf,u
                     os9       F$Sleep
                     bra       PlaySidR2
 
-PlayMusica          ldb       #SS.Size
+Load2Local          ldb       #SS.Size
                     lda       <FilePath
                     pshs      u
                     os9       I$GetStt
@@ -341,7 +356,195 @@ PlayMusica          ldb       #SS.Size
                     ldy       <filesize
                     lda       <FilePath
                     os9       I$Read
-                    lbcs      err
+                    rts
+
+********************************************************************
+* Lyra Player
+* Outputs to SAM2695 MIDI Synth chip
+
+PlayLyra            lbsr      Load2Local
+                    lbcs      err                 Something went wrong, exit
+                    pshs      x
+                    leax      $10,x               Point to address holder of track 1
+                    leay      LyraTracks,u        Table holds Track block location, Cycles left for note/rest
+                    ldb       #8
+                    pshs      b
+a@                  ldd       1,s                  Recall address of top of file
+                    addd      ,x++                  Compute (top of file + track offset)
+                    std       ,y++                Save exact start of current track
+                    clr       ,y+                 Reset note cycles
+                    clr       ,y+
+                    dec       ,s 
+                    bne       a@
+                    puls      b
+                    puls      x
+                    ldb       #1                  Enable the sequencer
+                    stb       <DoSequencer
+
+LyraSeq             tst       <DoAbort            Abort everything?
+                    bne       LyraAbort
+                    tst       <DoSequencer
+                    beq       LyraEnd
+                    leax      LyraTracks,u
+                    ldd       [0,x]
+                    bne       v1@
+                    ldd       [4,x]
+                    bne       v1@
+                    ldd       [8,x]
+                    bne       v1@
+                    ldd       [12,x]
+                    bne       v1@
+                    ldd       [16,x]
+                    bne       v1@
+                    ldd       [20,x]
+                    bne       v1@
+                    ldd       [24,x]
+                    bne       v1@
+                    ldd       [28,x]
+                    bne       v1@
+LyraEnd             clr       <DoSequencer        If we made it here it means all tracks have ended
+                    bsr       SilenceMidi
+                    lbra      CloseAndNext        It's not an abort, so we keep processing all supplied files
+LyraAbort           clr       <DoSequencer
+                    bsr       SilenceMidi         Yes, kill the sequencer, and get out of here
+                    lbra      bye
+v1@                 clr       <LyraChannel
+                    ldb       #8                  Process all 8 channels
+                    pshs      b
+a@                  pshs      x
+                    ldy       2,x
+                    ldx       ,x 
+                    beq       s@
+                    bsr       LyraSubSeq          We process all tracks even if ended, for consistent time
+s@                  tfr       x,d 
+                    puls      x
+                    std       ,x                  Update track's note pointer
+                    sty       2,x                 Update track's current timer
+                    inc       <LyraChannel
+                    leax      4,x                 Location,Cycles
+                    dec       ,s
+                    bne       a@                  Do all Lyra channels
+                    puls      b
+ve@                 ldx       #$0002
+                    os9       F$Sleep
+                    bra       LyraSeq
+
+SilenceMidi         ldb       #$8
+                    pshs      b
+                    lda       #$0F                start with channel #15
+                    sta       <LyraChannel
+c@                  clr       <MidiNote
+n@                  lbsr      MidiNoteOff
+                    inc       <MidiNote
+                    bpl       n@                  do notes 0-127
+                    dec       <LyraChannel
+                    dec       ,s
+                    bpl       c@                  do MIDI channels 15..0
+                    puls      b,pc
+
+********************************************************************
+* Lyra Sequencer
+* Entry:  reg.x = pointer to current note of a LyraChannel
+*                 Note data is: Note/Length, Cycle Counter  (2+2 bytes)
+LyraSubSeq          cmpy      #0                  Is there a note playing?
+                    lbne      LyraNextCycle       Yes, decrement note timer and exit
+r@                  ldd       ,x                  Time for a new note
+                    lbeq      LyraSeqExit         Note marks the end of the track, just exit
+                    bita      #%10000000          Is this an event?
+                    beq       c@                  No, assume its a note or rest
+                    anda      #%11100000          Is this a Velocity Change event?
+                    cmpa      #%11100000
+                    bne       se@                 Assume this is a musical note/rest
+                    lda       1,x                 Get new track velocity
+                    anda      #7
+                    leay      LyraVelocities,u    Point to velocity table
+                    ldb       <LyraChannel
+                    sta       b,y                 Set new velocity for this channel
+                    bra       se@
+se@                 leax      2,x                 Immediately skip over Lyra Event in this clock cycle
+                    bra       r@
+c@                  ldb       1,x
+                    andb      #63                 This will expand into full MIDI notes 0-127
+                    clra
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    leay      LyraConvTab,pcr     Point to note conversion table
+                    leay      d,y                 Point to index of Lyra note
+                    lda       1,y                 Get Midi note value
+                    ldb       1,x                 Get Lyra note value
+                    bitb      #$80                Support situation where a note is marked Sharp AND Flat to neutralize it
+                    beq       sh@
+fl@                 deca                          Decrease Midi note by 1 to make Flat
+sh@                 bitb      #$40
+                    beq       p@
+                    inca                          Increase Midi note by 1 to make Sharp
+p@                  sta       <MidiNote
+                    ldb       ,x
+                    bitb      #8                  Is this a Note or a Rest
+                    beq       non@                BEQ means bit 8 is clear (it's a note)
+noff@               bsr       MidiNoteOff         It's a rest - turn off the note
+                    bra       nl@
+non@                lda       #$90                It's a Note
+                    adda      <LyraChannel
+                    sta       $ff31
+                    lda       <MidiNote
+                    sta       $ff31
+                    lda        #127
+                    sta       $ff31
+nl@                 ldb       ,x                  Get note code
+                    andb      #%0000111           Only use length bits 2..0
+                    leay      LyraLengths,pcr     Point to note Lyra length table
+                    ldb       b,y                 Point to index of Lyra note
+                    lda       #6                  (Length*6)/4 is same as length*1.5 slow down tempo a bit
+                    mul
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    pshs      d
+                    lda       ,x                  Get note code 
+                    anda      #$40                Is this a dotted note length?
+                    beq       l@                  No
+                    ldd       ,s                  It's a dotted note
+                    lsra                          So we add half its length To the length
+                    rorb
+                    addd      ,s                  Adjust length for dotted note
+                    std       ,s
+l@                  ldy       ,s++                Convert into Midi 60hz ticks
+LyraNextCycle       leay      -1,y
+                    bne       LyraSeqExit
+                    lda       2,x                 Peek ahead 1 note
+                    bita      #32                 Is next note tied to current note?
+                    beq       sn@                 It's tied, so don't release current note
+                    bsr       MidiNoteOff         It was a normal note and needs to be turned off now
+sn@                 leax      2,x
+LyraSeqExit         rts
+
+MidiNoteOff         ldb       #$80
+                    addb      <LyraChannel
+                    stb       $ff31
+                    lda       <MidiNote
+                    sta       $ff31               The note value to turn off
+                    lda       #$00
+                    sta       $ff31
+                    rts
+MidiNoteRest        ldb       #$90
+                    addb      <LyraChannel
+                    stb       $ff31
+                    lda       <MidiNote
+                    sta       $ff31               The note value to turn off
+                    lda       #$00
+                    sta       $ff31
+                    rts
+
+********************************************************************
+* Musica Player
+* Outputs to both SIDs on F256, or Game Master Cartridge on CoCo
+
+PlayMusica          lbsr      Load2Local
+                    lbcs      err                 Something went wrong, exit
                     lda       ,x                  Examine first byte of file
                     bne       nd@                 Is non-zero, not a LOADM header
                     leax      5,x                 Skip over the DOS LOADM header
@@ -391,6 +594,7 @@ CloseAndNext        lda       <FilePath
 ********************************************************************
 * Musica Sequencer
 *
+
 Sequencer           ldb       <DoSequencer        Are we allowed to play music?
                     lbeq      SeqExit             No, then exit
                     ldx       <ScoreCurrent
@@ -886,24 +1090,24 @@ DIV32_16            pshs      x
                     clr      <Remainder
                     lda      <Divisor+1
                     ora      <Divisor
-                    beq      DIV_BY_ZERO_ERROR ; Handle error if divisor is zero
+                    beq      DIV_BY_ZERO_ERROR    Handle error if divisor is zero
                     ldd      <Dividend_High
                     std      <Remainder
-                    ldx      #16               ; Loop counter
+                    ldx      #16                  Loop counter
 DIV_LOOP            lsl      <Remainder+1
                     rol      <Remainder
                     lsl      <Dividend_Low+1
                     rol      <Dividend_Low
                     bcc      a@
                     inc      <Remainder+1 
-a@                  ldd      <Remainder       ; Load remainder into D
-                    cmpd     <Divisor          ; Compare with divisor
-                    blt      NO_SUBTRACT       ; If remainder < divisor, skip subtraction
+a@                  ldd      <Remainder           Load remainder into D
+                    cmpd     <Divisor             Compare with divisor
+                    blt      NO_SUBTRACT          If remainder < divisor, skip subtraction
                     subd     <Divisor
                     std      <Remainder
                     lsl      <Quotient+1
                     rol      <Quotient
-                    inc      <Quotient+1        ; Set the least significant bit of quotient
+                    inc      <Quotient+1          Set the least significant bit of quotient
                     bra      END_LOOP
 NO_SUBTRACT         lsl      Quotient+1
                     rol      <Quotient
@@ -911,11 +1115,109 @@ END_LOOP            leax     -1,x
                     bne      DIV_LOOP
 DIV_BY_ZERO_ERROR   puls     x,pc
 
+
+MapInBlockAnywhere  pshs      cc,d,x,u            Preserve u
+                    ldu       <file_block_start
+                    cmpu      #-1
+                    beq       a@
+                    pshs      d,x
+                    ldb       #1
+                    os9       F$ClrBlk
+                    puls      d,x
+a@                  clra
+                    tfr       d,x                 Block # to map in
+                    ldu       5,s
+                    ldb       #$01                need 1 block
+                    os9       F$MapBlk            map it into process address space
+                    stu       <file_block_start
+                    tfr       u,y
+                    leau      $2000,u
+                    stu       <file_block_end
+                    puls      cc,d,x,u,pc
+
+WritePSG1           pshs      a,b,x,y,u           preserve u
+                    ldx       #$C4
+                    ldb       #$01                need 1 block
+                    os9       F$MapBlk            map it into process address space
+                    lda       ,s                  Get byte to write
+                    sta       $200,u
+                    sta       $210,u
+                    ldb       #1
+                    os9       F$ClrBlk
+                    puls      a,b,x,y,u,pc
+
+LyraLengths         fcb       $00               No length
+                    fcb       $40               Whole
+                    fcb       $20               Half
+                    fcb       $10               Quarter
+                    fcb       $08               8th
+                    fcb       $04               16th
+                    fcb       $02               32nd
+                    fcb       $01               64th
+
+**********************************************************
+* CoCo Lyra note, Midi Note #, Hz
+*
+LyraConvTab         fdb       $62,1175                    $00/Lyra  =  D6/Note  =  $62/Midi
+                    fdb       $60,1047                    $01       =  C6       =  $60
+                    fdb       $5F,988                     $02       =  B5       =  $5F
+                    fdb       $5D,880                     $03       =  A5       =  $5D
+                    fdb       $5B,784                     $04       =  G5       =  $5B
+                    fdb       $59,698                     $05       =  F5       =  $59
+                    fdb       $58,659                     $06       =  E5       =  $58
+                    fdb       $56,587                     $07       =  D5       =  $56
+                    fdb       $54,523                     $08       =  C5       =  $54
+                    fdb       $53,494                     $09       =  B4       =  $53
+                    fdb       $51,440                     $0A       =  A4       =  $51
+                    fdb       $4F,392                     $0B       =  G4       =  $4F
+                    fdb       $4D,349                     $0C       =  F4       =  $4D
+                    fdb       $4C,330                     $0D       =  E4       =  $4C
+                    fdb       $4A,294                     $0E       =  D4       =  $4A
+                    fdb       $48,262                     $0F       =  C4       =  $48
+                    fdb       $47,247                     $10       =  B3       =  $47
+                    fdb       $45,220                     $11       =  A3       =  $45
+                    fdb       $43,196                     $12       =  G3       =  $43 
+                    fdb       $41,175                     $13       =  F3       =  $41
+                    fdb       $40,165                     $14       =  E3       =  $40
+                    fdb       $3E,147                     $15       =  D3       =  $3E
+                    fdb       $3C,131                     $16       =  C3       =  $3C
+                    fdb       $3B,123                     $17       =  B2       =  $3B
+                    fdb       $39,110                     $18       =  A2       =  $39
+                    fdb       $37,98                      $19       =  G2       =  $37
+                    fdb       $35,87                      $1A       =  F2       =  $35
+                    fdb       $34,82                      $1B       =  E2       =  $34
+                    fdb       $32,73                      $1C       =  D2       =  $32
+                    fdb       $30,65                      $1D       =  C2       =  $30
+                    fdb       $2F,62                      $1E       =  B1       =  $2F
+                    fdb       $2D,55                      $1F       =  A1       =  $2D
+                    fdb       $2B,49                      $20       =  G1       =  $2B
+                    fdb       $29,44                      $21       =  F1       =  $29
+                    fdb       $28,41                      $22       =  E1       =  $28
+                    fdb       $26,37                      $23       =  D1       =  $26
+                    fdb       $24,33                      $24       =  C1       =  $24 
+                    fdb       $23,31                      $25       =  B0       =  $23
+                    fdb       $21,28                      $26       =  A0       =  ?
+                    fdb       $1F,27                      $27       =  G0       =  ?
+                    fdb       $1D,26                      $28       =  F0       =  ?
+                    fdb       $1C,25                      $29       =  E0       =  ?
+                    fdb       $1A,24                      $2A       =  D0       =  ?
+                    fdb       $18,23                      $2B       =  C0       =  ? 
+                    fdb       $17,22                       $2C       =  B-1
+                    fdb       $15,21                       $2D       =  A-1
+                    fdb       $13,20                       $2E       =  G-1
+                    fdb       $11,19                       $2F       =  F-1
+                    fdb       $10,18                       $30       =  E-1
+                    fdb       $0E,17                       $31       =  D-1
+                    fdb       $0C,16                       $32       =  C-1
+                    fdb       $0B,15                       $33       =  B-1
+
 FILETYPES
                     fcc       ".sdr"
                     fcb       FILETYPE_SIDRAW
                     fcc       ".mus"
                     fcb       FILETYPE_MUSICA
+                    fcc       ".lyr"
+                    fcb       FILETYPE_COCOLYRA
                     fcb       0                   Mark end of table
 
                     endsect
