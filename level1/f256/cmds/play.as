@@ -51,12 +51,16 @@
 *   10     2025/11/29  R Taylor
 * Morph into new "play" command, named some Lyra constants for easier tweaking.
 * Added triplet handling.
+*
+*   11     2025/12/01  R Taylor
+* Improved triplet notes. Consolidated Lyra tracker params.  Optimized code.
+* Added some Lyra-to-Midi instrument matching.
 
                     nam       music
                     ttl       Music Player
 
  section __os9
-edition = 10
+edition = 11
  endsect
 
 * Here are some tweakable options
@@ -75,13 +79,43 @@ SID_V3_ADSR         equ       $00F0
 LYRA_DATAOUT        equ       $ff31
 LYRA_EVENTBIT       equ       %10000000
 LYRA_LENGTHBITS     equ       %00000111
-LYRA_MIDIVELOC      equ       110                 0..127 for MIDI velocity
+LYRA_MIDIVELOC      equ       80    100                 0..127 for MIDI velocity
 LYRA_SHARPNOTE      equ       $80
 LYRA_FLATNOTE       equ       $40
 LYRA_RESTNOTE       equ       $08
 LYRA_DOTTEDNOTE     equ       $40
 LYRA_TIEDNOTE       equ       $20
 LYRA_TRIPLETNOTE    equ       $10
+* Offsets into 8-byte track packets
+LYRATRK_LOCATION    equ       0
+LYRATRK_CYCLES      equ       2
+LYRATRK_MIDINOTE    equ       4
+LYRATRK_VELOC       equ       5
+LYRATRK_TRIPLET     equ       6
+LYRATRK_MIDICHAN    equ       7                   Lyra supports 8 tracks that can each map to any 16 MIDI channel
+LYRATRK_ENTRYSIZE   equ       8                   We need 8 bytes per track
+
+MIDI_GRANDPIANO     equ       0
+MIDI_ACOUSTICPIANO  equ       1
+MIDI_ELECTRICGRAND  equ       2
+MIDI_HONKYTONK      equ       3
+MIDI_RHODESPIANO    equ       4
+MIDI_CHORUSEDPIANO  equ       5
+MIDI_HARPSICHORD    equ       6
+MIDI_CLAVINET       equ       7
+MIDI_CELESTA        equ       8
+MIDI_GLOCKENSPIEL   equ       9
+MIDI_MUSICBOX       equ       10
+MIDI_VIBRAPHONE     equ       11
+MIDI_TRUMPET        equ       56
+MIDI_PICCOLO        equ       72
+MIDI_FLUTE          equ       73
+MIDI_RECORDER       equ       74
+MIDI_PANFLUTE       equ       75
+MIDI_BOTTLEBLOW     equ       76
+MIDI_SHAKUHACHI     equ       77
+MIDI_WHISTLE        equ       78
+MIDI_OCARINA        equ       79
 
 PLAYLISTITEM_MAXSTR equ       255
 FILETYPE_MUSICA     equ       1
@@ -121,8 +155,6 @@ Quotient            rmb       2
 Remainder           rmb       2
 file_block_start    rmb       2
 file_block_end      rmb       2
-LyraChannel         rmb       1
-MidiNote            rmb       1
 ScoreTempo	    rmb       1
 FilePath            rmb       1
 FileType            rmb       1
@@ -132,9 +164,12 @@ Interactive         rmb       1
 TotalSections       rmb       1
 PlaylistMode        rmb       1
 PlaylistPath        rmb       1
-LyraTriplet         rmb       1
-LyraVelocities      rmb       16
-LyraTracks          rmb       16*4
+ThisLyraTrack       rmb       2                   Points to current track packet
+LyraChanMap         rmb       8
+LyraChannel         rmb       1
+LyraChannel2        rmb       1
+MidiInstrument      rmb       1
+LyraTracks          rmb       16*LYRATRK_ENTRYSIZE
 SectionList         rmb       9*2
 SampleBuf           rmb       25
 PlaylistItemStr     rmb       PLAYLISTITEM_MAXSTR
@@ -177,6 +212,7 @@ __start
                     clr       <Interactive
                     clr       <DoAbort
                     clr       <PlaylistMode
+                    clr       <PlaylistPath
 
                     ldd       #-1                 -1 means no MMU block is currently mapped in
                     std       <file_block_start
@@ -205,10 +241,11 @@ Option_Z            lda       ,x+                 get character after 'z' and in
                     lda       #READ.
                     os9       I$Open              Open the playlist path
                     lbcs      err
-                    stx       <cliptr
+*                    stx       <cliptr
                     bra       s@
 stdin@              clra
 s@                  sta       <PlaylistPath
+                    stx       <cliptr
                     ldb       #1
                     stb       <PlaylistMode
 
@@ -378,7 +415,7 @@ Load2Local          ldb       #SS.Size
 * Lyra Player
 * Outputs to SAM2695 MIDI Synth chip
 
-PlayLyra            lbsr      Load2Local
+PlayLyra            bsr       Load2Local
                     lbcs      err                 Something went wrong, exit
                     pshs      x
                     leax      $10,x               Point to address holder of track 1
@@ -387,125 +424,112 @@ PlayLyra            lbsr      Load2Local
                     pshs      b
 a@                  ldd       1,s                 Recall address of top of file
                     addd      ,x++                Compute (top of file + track offset)
-                    std       ,y++                Save exact start of current track
-                    clr       ,y+                 Reset note cycles
-                    clr       ,y+
+                    std       LYRATRK_LOCATION,y                Save exact start of current track
+                    clra
+                    clrb
+                    std       LYRATRK_CYCLES,y
+                    lda       #LYRA_MIDIVELOC     Reset velocity
+                    sta       LYRATRK_VELOC,y
+                    leay      8,y
                     dec       ,s 
                     bne       a@
                     puls      b
-                    puls      x
-                    lbsr      SilenceMidi
-                    clr       <LyraTriplet
+                    puls      x                   Restore pointer to top of file
+
+                    leay      $121,x              Point to Lyra channel map (8 entries)
+                    sty       <LyraChanMap
+                    lbsr      MidiMuteAll
+
+                    ldd       $104,x
+                    cmpd      #$435A              "CZ"
+                    bne       gm@                 Unknown MIDI device, don't remap instruments
+                    ldd       $106,x
+                    cmpd      #$2D32              "-2"
+                    bne       gm@                 Unknown MIDI device, don't remap instruments
+                    ldd       $108,x
+                    cmpd      #$3330              "30"
+                    bne       gm@                 Unknown MIDI device, don't remap instruments
+                    lbsr      Lyra2MidiInst       Match Lyra instruments to closest MIDI match
+gm@
                     ldb       #1                  Enable the sequencer
                     stb       <DoSequencer
 
-LyraSeq             tst       <DoAbort            Abort everything?
+LyraTracker         tst       <DoAbort            Abort everything?
                     bne       LyraAbort
                     tst       <DoSequencer
                     beq       LyraEnd
-                    leax      LyraTracks,u
-                    ldd       [0,x]
+                    leay      LyraTracks,u
+                    ldd       [0,y]
                     bne       v1@
-                    ldd       [4,x]
+                    ldd       [8,y]
                     bne       v1@
-                    ldd       [8,x]
+                    ldd       [16,y]
                     bne       v1@
-                    ldd       [12,x]
+                    ldd       [24,y]
                     bne       v1@
-                    ldd       [16,x]
+                    ldd       [32,y]
                     bne       v1@
-                    ldd       [20,x]
+                    ldd       [40,y]
                     bne       v1@
-                    ldd       [24,x]
+                    ldd       [48,y]
                     bne       v1@
-                    ldd       [28,x]
+                    ldd       [56,y]
                     bne       v1@
 LyraEnd             clr       <DoSequencer        If we made it here it means all tracks have ended
-                    bsr       SilenceMidi
+                    lbsr      MidiMuteAll
                     lbra      CloseAndNext        It's not an abort, so we keep processing all supplied files
 LyraAbort           clr       <DoSequencer
-                    bsr       SilenceMidi         Yes, kill the sequencer, and get out of here
+                    lbsr      MidiMuteAll         Yes, kill the sequencer, and get out of here
                     lbra      bye
 v1@                 clr       <LyraChannel
                     ldb       #8                  Process all 8 channels
                     pshs      b
-a@                  pshs      x
-                    ldy       2,x
-                    ldx       ,x 
-                    beq       s@
+a@                  sty       <ThisLyraTrack
+                    ldy       <LyraChanMap
+                    lda       <LyraChannel
+                    lda       a,y 
+                    ldy       <ThisLyraTrack
+                    sta       LYRATRK_MIDICHAN,y  The MIDI channel this Lyra channel targets
+                    ldd       LYRATRK_CYCLES,y    Enter subsequencer with D = Note Cycles Remaining
+                    ldx       LYRATRK_LOCATION,y
                     bsr       LyraSubSeq          We process all tracks even if ended, for consistent time
-s@                  tfr       x,d 
-                    puls      x
-                    std       ,x                  Update track's note pointer
-                    sty       2,x                 Update track's current timer
+s@                  ldy       <ThisLyraTrack
+                    stx       LYRATRK_LOCATION,y  Update track's note pointer
+                    std       LYRATRK_CYCLES,y    Update track's current timer
                     inc       <LyraChannel
-                    leax      4,x                 Location,Cycles
+                    leay      LYRATRK_ENTRYSIZE,y
                     dec       ,s
                     bne       a@                  Do all Lyra channels
                     puls      b
 ve@                 ldx       #$0002
                     os9       F$Sleep
-                    bra       LyraSeq
-
-SilenceMidi         ldb       #16
-                    pshs      b,y
-                    leay      LyraVelocities,u    Point to velocity table
-                    lda       #$0F                start with channel #15
-                    sta       <LyraChannel
-c@                  ldb       <LyraChannel
-                    lda       #LYRA_MIDIVELOC     Reset each channel's velocity
-                    sta       b,y                 Set velocity
-                    clr       <MidiNote
-n@                  lbsr      MidiNoteOff
-                    inc       <MidiNote
-                    bpl       n@                  Do notes 0-127
-                    dec       <LyraChannel
-                    dec       ,s
-                    bpl       c@                  Do MIDI channels 15..0
-                    puls      b,y,pc
-
-* Conversion table for Lyra volume (0-15) into MIDI velocity (0-127)
-LyraVelocConv       fcb       %00000000
-                    fcb       %01111100
-                    fcb       %01111100
-                    fcb       %01111100
-                    fcb       %01111110
-                    fcb       %01111110
-                    fcb       %01111111
-                    fcb       %01111111
-
-                    fcb       %01111111           Patches 8..15 get full velocity
-                    fcb       %01111111
-                    fcb       %01111111
-                    fcb       %01111111
-                    fcb       %01111111
-                    fcb       %01111111
-                    fcb       %01111111
-                    fcb       %01111111
+                    bra       LyraTracker
 
 ********************************************************************
 * Lyra Sequencer
 * Entry:  reg.x = pointer to current note of a LyraChannel
-*                 Note data is: Note/Length, Cycle Counter  (2+2 bytes)
+*         reg.d = cycles left for current note
 
-LyraSubSeq          cmpy      #0                  Is there a note playing?
+LyraSubSeq          cmpd      #0                  Is there a note playing?
                     lbne      LyraNextCycle       Yes, decrement note timer and exit
 r@                  ldd       ,x                  Time for a new note
-                    lbeq      LyraSeqExit         Note marks the end of the track, just exit
-                    bita      #LYRA_EVENTBIT      Is this an event?
+                    bne       ce@                 Check for event
+                    lbra      LyraSeqExit         Note marks the end of the track, just exit
+ce@                 bita      #LYRA_EVENTBIT      Is this an event?
                     beq       c@                  No, assume its a note or rest
+* Process Event Codes
                     anda      #%11100000          Is this a Velocity Change event?
                     cmpa      #%11100000
                     bne       se@                 Assume this is a musical note/rest
-                    lda       1,x                 Get new track velocity
-                    anda      #15
-                    leay      LyraVelocConv,u     Point to Lyra-to-MIDI velocity conversion table
+                    lda       1,x                 Get new velocity
+                    anda      #7
+                    leay      LyraVelocConv,pcr   Point to Lyra-to-MIDI velocity conversion table
                     lda       a,y                 Convert 0..7 to 0..127
-                    leay      LyraVelocities,u    Point to table of channel velocities
-                    ldb       <LyraChannel
-                    sta       b,y                 Set new velocity for this channel
-se@                 leax      2,x                 Immediately skip over Lyra Event in this clock cycle
+                    ldy       <ThisLyraTrack      Point to table of channel velocities
+                    sta       LYRATRK_VELOC,y     Set new velocity for this channel
+se@                 leax      2,x                 Immediately skip over Lyra Event and get next data
                     bra       r@
+* Process Note Value
 c@                  ldb       1,x
                     andb      #63                 This will expand into full MIDI notes 0-127
                     clra
@@ -523,78 +547,160 @@ fl@                 deca                          Decrease Midi note by 1 to mak
 sh@                 bitb      #LYRA_FLATNOTE
                     beq       p@
                     inca                          Increase Midi note by 1 to make Sharp
-p@                  sta       <MidiNote
+p@                  ldy       <ThisLyraTrack
+                    sta       LYRATRK_MIDINOTE,y  Track new note
+* Process Note Length
                     ldb       ,x
                     bitb      #LYRA_RESTNOTE      Is this a Note or a Rest
                     beq       non@                BEQ means bit 8 is clear (it's a note)
-noff@               bsr       MidiNoteOff         It's a rest - turn off the note
+                    bsr       MidiNoteOff         It's a rest - turn off the note (reg.a should still hold the note)
                     bra       nl@
 non@                lda       #$90                It's a Note
-                    adda      <LyraChannel
+                    ora       LYRATRK_MIDICHAN,y
                     sta       >LYRA_DATAOUT
-                    lda       <MidiNote
+                    lda       LYRATRK_MIDINOTE,y
                     sta       >LYRA_DATAOUT
-                    lda       #LYRA_MIDIVELOC     Hard-code velocity for now
+                    lda       LYRATRK_VELOC,y     Get velocity for this channel
                     sta       >LYRA_DATAOUT
-* Experimental Triplet Set handling
-nl@ ldb ,x 
- andb #LYRA_TRIPLETNOTE
- beq nt@ no
- lda <LyraTriplet
- adda #8
- cmpa #32
- blo j@
- lda #8
- bra j@
-nt@ clra
-j@ sta <LyraTriplet
-i@                  ldb       ,x                  Get note code
-                    andb      #LYRA_LENGTHBITS    Pick off only the Length bits
-                    addb      <LyraTriplet            8,16,24 offset into extended note length table
-                    leay      LyraLengths,pcr     Point to note Lyra length table
-                    ldb       b,y                 Point to index of Lyra note
-                    lda       #3                  (Length*6)/4 is same as length*1.5 slow down tempo a bit
-                    mul
-                    lsra
-                    rorb
-                    lsra
-                    rorb
+nl@                 lda       ,x
+                    bita      #LYRA_TRIPLETNOTE
+                    beq       lb@
+* Process Triplet Note Length (Method 1)
+                    ldb       LYRATRK_TRIPLET,y   Get triplet note # 1-3
+ftc@                incb
+                    cmpb      #4
+                    blo       tos@
+                    ldb       #1
+tos@                stb       LYRATRK_TRIPLET,y
+                    bra       nt@
+lb@                 clr       LYRATRK_TRIPLET,y
+nt@                 ldb       LYRATRK_TRIPLET,y   Get triplet note # for this channel
+                    leay      LyraLengths,pcr
+                    lslb
+                    lslb
+                    lslb
+                    leay      b,y
+*                   lda       ,x                  Get note code (got it at nl@)
+                    anda      #LYRA_LENGTHBITS    Pick off only the Length bits
+                    ldb       a,y                 Point to index of Lyra note
+                    lda       #3                  {5} (Length*6)/4
+                    mul                           {11}
+                    lsra                          {2}
+                    rorb                          {2}
+                    lsra                          {2}
+                    rorb                          {2} {{24}}
                     pshs      d
                     lda       ,x                  Get note code 
                     anda      #LYRA_DOTTEDNOTE    Is this a dotted note length?
                     beq       l@                  No
-                    ldd       ,s                  It's a dotted note
+                    ldd       ,s                  It's a dotted note, multiply it by 1.5
                     lsra                          So we add half its length To the length
                     rorb
                     addd      ,s                  Adjust length for dotted note
                     std       ,s
-l@                  ldy       ,s++                Convert into Midi 60hz ticks
+l@                  ldd       ,s++                Convert into 60hz ticks
                     beq       sn@
-LyraNextCycle       leay      -1,y
+LyraNextCycle       subd      #1                  Count down the note cycles
                     bne       LyraSeqExit
-                    lda       2,x                 Peek ahead 1 note
-                    bita      #LYRA_TIEDNOTE      Is next note tied to current note?
-*                    beq       sn@                 It's tied, so don't release current note
+*                   lda       ,x
+*                   bita      #LYRA_TIEDNOTE      Is next note tied to current note?
+*                   beq       st@                 It's tied, so don't release current note
+sn@                 ldy       <ThisLyraTrack
+                    lda       LYRATRK_MIDINOTE,y
                     bsr       MidiNoteOff         It was a normal note and needs to be turned off now
-sn@                 leax      2,x
+st@                 clra
+                    clrb
+                    leax      2,x
 LyraSeqExit         rts
 
-MidiNoteOff         ldb       #$80
-                    addb      <LyraChannel
-                    stb       >LYRA_DATAOUT
-                    lda       <MidiNote
-                    sta       >LYRA_DATAOUT               The note value to turn off
+MidiNoteOff         pshs      a
+                    lda       #$80
+                    ora       LYRATRK_MIDICHAN,y
+                    sta       >LYRA_DATAOUT
+                    lda       ,s 
+                    sta       >LYRA_DATAOUT       The note value to turn off
                     lda       #$00
                     sta       >LYRA_DATAOUT
-                    rts
-MidiNoteRest        ldb       #$90
-                    addb      <LyraChannel
-                    stb       >LYRA_DATAOUT
-                    lda       <MidiNote
-                    sta       >LYRA_DATAOUT               The note value to turn off
+                    puls      a,pc
+
+* Also resets instruments to defaults
+MidiMuteAll         clr       ,-s                 MIDI channel #
+a@                  lda       #$B0
+                    ora       ,s
+                    sta       >LYRA_DATAOUT
+                    ldb       #$7B
+                    stb       >LYRA_DATAOUT       The note value to turn off
                     lda       #$00
                     sta       >LYRA_DATAOUT
-                    rts
+                    inc       ,s
+                    lda       ,s
+                    cmpa      #16
+                    blo       a@
+* F0 7E 7F 09 01 F7
+                    ldd       #$F07E
+                    sta       >LYRA_DATAOUT
+                    stb       >LYRA_DATAOUT
+                    ldd       #$7F09
+                    sta       >LYRA_DATAOUT
+                    stb       >LYRA_DATAOUT
+                    ldd       #$01F7
+                    sta       >LYRA_DATAOUT
+                    stb       >LYRA_DATAOUT
+                    puls      a,pc
+
+* Lyra has 8 virtual channels, and each one can link to any physical MIDI channel.
+Lyra2MidiInst       pshs      x
+                    leax      $24,x               Point to first Lyra instrument def
+                    ldb       #8
+                    pshs      b
+a@                  lda       ,x                  Get Lyra channel # in ASCII
+                    suba      #'0
+                    leay      ASCIIHEX,pcr
+                    lda       a,y
+                    anda      #$0F                Lyra files show 16 voices in its header
+                    sta       <LyraChannel2
+                    ldb       2,x                 Get 1st digit in ASCII numeric instr #
+                    subb      #'0
+                    lda       #100
+                    mul
+                    pshs      d                   Save 100's place 
+                    ldb       3,x                 Get 2nd digit in ASCII numeric instr #
+                    subb      #'0
+                    lda       #10
+                    mul
+                    addd      ,s                  Add 10's place
+                    std       ,s 
+                    clra
+                    ldb       4,x                 Get 3rd digit in ASCII numeric instr #
+                    subb      #'0
+                    addd      ,s++                Add 1's place
+                    tstb
+                    beq       nn@
+                    decb
+nn@                 leay      CASIO_CZ230S,pcr
+                    andb      #127
+                    ldb       b,y
+                    stb       <MidiInstrument
+                    ldy       <LyraChanMap
+                    clrb
+b@                  lda       ,y+
+                    cmpa      <LyraChannel2
+                    bne       c@
+                    tfr       b,a
+                    ora       #$C0
+                    sta       >LYRA_DATAOUT
+                    lda       <MidiInstrument
+                    sta       >LYRA_DATAOUT
+c@                  incb
+                    cmpb      #8
+                    blo       b@
+                    leax      14,x                Point to next Lyra instrument def
+                    dec       ,s                  up to 8 Lyra channels
+                    bne       a@
+                    puls      b,x,pc
+
+* Subtract 48 from ASCII HEX digit
+ASCIIHEX            fcb       0,1,2,3,4,5,6,7,8,9,0,0,0,0,0,0,0,10,11,12,13,14,15
 
 ********************************************************************
 * Musica Player
@@ -621,7 +727,7 @@ keyloop@            tst       <DoAbort            Abort everything?
                     bne       bye                 Yes, kill the sequencer, and get out of here
                     tst       <DoSequencer
                     beq       CloseAndNext
-                    bsr       Sequencer           Keep calling the sequencer
+                    bsr       MusicaSeq           Keep calling the sequencer
                     ldx       #$0002
                     os9       F$Sleep
                     bra       keyloop@
@@ -652,25 +758,25 @@ CloseAndNext        lda       <FilePath
 * Musica Sequencer
 *
 
-Sequencer           ldb       <DoSequencer        Are we allowed to play music?
+MusicaSeq           ldb       <DoSequencer        Are we allowed to play music?
                     lbeq      SeqExit             No, then exit
                     ldx       <ScoreCurrent
                     ldd       <NoteCycles
-                    lbne      NextCycle           A note is currently playing
+                    lbne      MusicaNxtCyc        A note is currently playing
                     ldb       ,x                  Get the new note length
-                    lbeq      SeqEnd              0 means End Of Score
+                    lbeq      MusicaSeqEnd        0 means End Of Score
                     bpl       SeqGetNote          Go set up the note
                     cmpb      #$FB                Repeat a Section
-                    beq       SeqRepSection
+                    beq       MusicaSeqRepSct
                     cmpb      #$FC                Section Marker (up to 9 tracked)
                     beq       SeqAddSection
                     cmpb      #$FE		  Tempo and Instruments Block
                     beq       SeqSetTempo
                     cmpb      #$FD		  Barline Repeat
-                    beq       SeqRepBar
+                    beq       MusicaSeqRepBar
                     bra       SeqNextNote         Skip the unknown block
 
-SeqRepSection       ldb       #$F0                Make into unused block code, ignored on next passby
+MusicaSeqRepSct     ldb       #$F0                Make into unused block code, ignored on next passby
                     stb       ,x
                     ldb       1,x                 Get the Section # to repeat (1-9)
                     beq       SeqNextNote         Is out of range
@@ -681,7 +787,7 @@ SeqRepSection       ldb       #$F0                Make into unused block code, i
                     ldx       b,y                 Get the section # to repeat (1-9)
                     bra       SeqNextNote
 
-SeqRepBar           ldb       #$F0                Make into unused block code, ignored on next passby
+MusicaSeqRepBar     ldb       #$F0                Make into unused block code, ignored on next passby
                     stb       ,x
                     ldx       <ScoreStart
                     stx       <ScoreCurrent
@@ -735,13 +841,13 @@ SeqGetNote          lda       <ScoreTempo
                 endc
 
 GetCycles           ldd       <NoteCycles
-NextCycle           subd      #1
+MusicaNxtCyc        subd      #1
                     std       <NoteCycles
                     bne       SeqExit
 SeqNextNote         leax      9,x
                     stx       <ScoreCurrent
                     bra       SeqExit
-SeqEnd              clr       <DoSequencer        Current song is over
+MusicaSeqEnd        clr       <DoSequencer        Current song is over
 *                   bra       SeqExit
 SeqExit             rts
 
@@ -1212,30 +1318,42 @@ LyraLengths         fcb       $00               No length
                     fcb       $04               32nd
                     fcb       $02               64th
 
-Triplet1            fcb       $00
-                    fcb       88                  Whole    88+88+80 = 128+128
-                    fcb       44                  Half     44+44+40 = 64+64  
-                    fcb       22                  Quarter  22+22+20 = 32+32
-                    fcb       12                  8th       12+12+8 = 16+16
-                    fcb       6                   16th        6+6+4 = 8+8
-                    fcb       4                   32nd        4+2+2 = 4+4
-                    fcb       2                   64th        2+0+0 = 2+2
-Triplet2            fcb       $00
-                    fcb       88
-                    fcb       44
-                    fcb       22
-                    fcb       12
-                    fcb       6
-                    fcb       2
-                    fcb       0
-Triplet3            fcb       $00
-                    fcb       80
+TrioLengths         fcb       $00
+                    fcb       $40               [64,128,64]
+                    fcb       $20               [32,64,32]
+                    fcb       $10               [16,32,16]
+                    fcb       $08               [8,16,8]
+                    fcb       $04               [4,8,4]
+                    fcb       $02               [2,4,2]
+                    fcb       $00               [0,4,0]
+
+                    fcb       $00
+                    fcb       $80               [64,128,64]
+                    fcb       $40               [32,64,32]
+                    fcb       $20               [16,32,16]
+                    fcb       $10               [8,16,8]
+                    fcb       $08               [4,8,4]
+                    fcb       $04               [2,4,2]
+                    fcb       $04               [0,4,0]
+
+                    fcb       $00
+                    fcb       $40               [64,128,64]
+                    fcb       $20               [32,64,32]
+                    fcb       $10               [16,32,16]
+                    fcb       $08               [8,16,8]
+                    fcb       $04               [4,8,4]
+                    fcb       $02               [2,4,2]
+                    fcb       $00               [0,4,0]
+
+* Conversion table for Lyra volume (0-15) into MIDI velocity (0-127)
+LyraVelocConv       fcb       0
                     fcb       40
-                    fcb       20
-                    fcb       8
-                    fcb       4
-                    fcb       2
-                    fcb       0
+                    fcb       50
+                    fcb       60
+                    fcb       70
+                    fcb       80
+                    fcb       90
+                    fcb       100
 
 **********************************************************
 * CoCo Lyra note, Midi Note #, Hz
@@ -1292,6 +1410,138 @@ LyraConvTab         fdb       $62,1175                    $00/Lyra  =  D6/Note  
                     fdb       $0E,17                       $31       =  D-1
                     fdb       $0C,16                       $32       =  C-1
                     fdb       $0B,15                       $33       =  B-1
+
+* Lyra to Midi Instrument # lookup table
+* MidiInstrument = LYRAMIDIINSTR[LyraInstrument]
+CASIO_CZ230S
+                    fcb       61                  000 BRASS ENSEMBLE -> Brass Section
+                    fcb       61                  001 
+                    fcb       61                  002 
+                    fcb       62                  003
+                    fcb       62                  004
+                    fcb       63                  005
+                    fcb       48                  006 String Ensemble 1
+                    fcb       49                  007 String Ensemble 2
+                    fcb       50                  008 Synth Ensemble 1
+                    fcb       51                  009 Synth Ensemble 1
+                    fcb       46                  010 LT HARP -> Orchestral Harp
+                    fcb       88                  011 MARS -> New Age Sound
+                    fcb       11                  012 VIBRABL -> Bottle blow?
+                    fcb       00                  013
+                    fcb       69                  014 FUNKY HORN -> English Horn reed
+                    fcb       36                  015 SLAP HORN -> Slap Bass 1
+                    fcb       00                  016
+                    fcb       00                  017
+                    fcb       00                  018
+                    fcb       00                  019
+                    fcb       11                  020 GLOKEN -> 9 Glockenspiel is too loud, 13 Xylophone is like a stick hitting 
+                    fcb       00                  021
+                    fcb       16                  022 PIPE ORGAN 1
+                    fcb       17                  023 PIPE ORGAN 2
+                    fcb       21                  024 ACORDIN -> Accordian
+                    fcb       21                  025 FEMCHOR -> Choir?
+                    fcb       52                  026 
+                    fcb       00                  027
+                    fcb       00                  028
+                    fcb       00                  029
+                    fcb       56                  030 TRUMPET -> Trumpet
+                    fcb       73                  031 FLUTE -> Flute
+                    fcb       78                  032 WHISTLE
+                    fcb       40                  033 VIOLIN
+                    fcb       42                  034 CELLO -> Cello
+                    fcb       22                  035 BLUES HARMONICA -> Harmonica
+                    fcb       77                  036 Sakuhac -> Shakuhach
+                    fcb       00                  037
+                    fcb       00                  038
+                    fcb       00                  039
+                    fcb       70                  040 SYNTH REED -> Bassoon
+                    fcb       00                  041
+                    fcb       00                  042
+                    fcb       00                  043
+                    fcb       00                  044
+                    fcb       00                  045
+                    fcb       00                  046
+                    fcb       00                  047
+                    fcb       00                  048
+                    fcb       00                  049
+                    fcb       00                  050 PIANO
+                    fcb       01                  051 PIANO
+                    fcb       00                  052 PIANO                  
+                    fcb       03                  053 HONKEY TONK PIANO
+                    fcb       02                  054 ELECTRIC PIANO
+                    fcb       06                  055 HARPISCHORD 1
+                    fcb       06                  056 HARPISCHORD 2
+                    fcb       07                  057 SYNTH CLAVINET                  
+                    fcb       00                  058
+                    fcb       00                  059
+                    fcb       14                  060 BELLS -> Tubular Bells
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       13                  067 XYLOPHONE -> Xylophone
+                    fcb       15                  068 SOFY XYLOPHONE
+                    fcb       12                  069 MARIMBA -> Marimba
+                    fcb       00                  070
+                    fcb       00                  071
+                    fcb       00                  072 
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       33                  077 ELECBAS -> Fingered Electric Bass Guitar
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       21                  081 ACORDIN ->  Accordian
+                    fcb       11                  082 SYNTH DRUMS
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       73                  088 PIPE -> Piccolo
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       56                  092 TRUMPET -> Trumpet
+                    fcb       69                  093 FUNKHRN -> French Horn
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       95                  100 SWEEP -> Sweep Pad
+                    fcb       00                  
+                    fcb       9                   102 Glock -> Glockenspiel
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       77                  108 Sakuhac -> Shakuhachi
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       00                  
+                    fcb       119                 120 Cymbal -> Reverse Cymbal
+                    fcb       00                  121
+                    fcb       00                  122
+                    fcb       00                  123
+                    fcb       00                  124
+                    fcb       00                  125
+                    fcb       00                  126
+                    fcb       00                  127
 
 FILETYPES
                     fcc       ".sdr"
