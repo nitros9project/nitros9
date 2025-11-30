@@ -6,6 +6,9 @@
 *
 * Edt/Rev  2024/11/30  Modified by John Federico
 * Comment
+* Edt/Rev  2025/11/28  MOdified by Matt Massie
+* added sys/defaultsettings to store selected foreground, background, screensize, and font for updated sysgo
+* sys/currfont loads the currently select font on fcfg startup
 * ------------------------------------------------------------------
                nam       fcfg
                ttl       fcfg
@@ -32,9 +35,20 @@ hsize	       rmb	 1
 vsize	       rmb	 1
 oldhsize       rmb	 1
 oldvsize       rmb	 1
-listlen	       equ     	 8	       	        max length of listbox
-dirpath	       rmb       1
-dent	       rmb	 DIR.SZ			DIR.SZ defined in rbf.d as 29+3=32
+screensize     rmb   1
+SettingsPath   rmb   1          Settings file path number
+pathnum        rmb   1
+red            rmb   1
+green          rmb   1
+blue           rmb   1
+fg             rmb   1
+scsz           rmb   1
+palettebuf     rmb  31
+fgbuf          rmb   6
+WriteBuf       rmb  64          Write buffer for settings
+listlen	       equ   8	        max length of listbox
+dirpath	       rmb   1
+dent	       rmb	 DIR.SZ		DIR.SZ defined in rbf.d as 29+3=32
 drawchar       rmb	 1
 dbufcur	       rmb	 2
 dbufcntH       rmb	 1
@@ -44,11 +58,13 @@ listitem       rmb	 1			current item selected
 liststart      rmb	 1			index for top of list
 liststartmax   rmb	 1
 listmax	       rmb	 1			max # of items displayed
+curfnt	       rmb	 29
+curfntsz       rmb	 2
 popts	       rmb	 32
 oldchars       rmb	 96
 fntarray       rmb	 1550	                array of fonts, max 50 of 29+2 len each
 drawbuf	       rmb	 256
-	       rmb	 250
+	           rmb	 250
 size           equ       .
 name           fcs       /fcfg/
                fcb       edition
@@ -58,73 +74,79 @@ fontdir	       fcc 	 "/dd/sys/fonts"
 	       
 
 start
-
+           pshs  x
 	       lda	 #0			load current fg and bd colors
-	       ldb	 #SS.FBRgs		initialize old and new fg and bg to current colors
-	       os9	 I$GetStt		SS.FBRgs returns FG and BG in 1 byte
+	       ldb	 #SS.FBRgs	initialize old and new fg and bg to current colors
+	       os9	 I$GetStt	SS.FBRgs returns FG and BG in 1 byte
 	       pshs	 a		
-	       anda	 #$0F			bg color in low 4 bits. mask high bits
-	       sta	 <oldbg			initialize bg vars with current bg
+	       anda	 #$0F		bg color in low 4 bits. mask high bits
+	       sta	 <oldbg		initialize bg vars with current bg
 	       sta	 <newbg
 	       puls	 a			pull current colors
 	       lsra	 			shift right x4 to get current fg color     
 	       lsra
 	       lsra
 	       lsra
-	       sta	 <oldfg	                initialize current fg color with   
+	       sta	 <oldfg	    initialize current fg color with   
 	       sta	 <newfg
-	       clr	 <numfonts	        init number of fonts = 0
+           lbsr	 cursoroff	turn cursor off
+           puls  x
+           lbsr  parseopts
+	       clr	 <numfonts	    init number of fonts = 0
 	       clr 	 <listitem		init list item = 0
 	       clr	 <liststart		init list start = 0
-	       lbsr	 installchars		install drawing chars for screen boxes
+	       lbsr	 installchars	install drawing chars for screen boxes
 	       lbsr	 getopts		get current terminal options
 	       lbsr	 keyechooff		turn off key echo
-	       lbsr	 ldfontarr	        load font array with filenames from fontdir
-	       lbsr	 cursoroff		turn cursor off
+	       lbsr	 ldfontarr	    load font array with filenames from fontdir
 	       lbsr	 initscrnsz		init screen size vars and set to 80x30
-	       lbsr	 clearscreen		clear wscreen
+	       lbsr	 clearscreen	clear wscreen
 	       lbsr	 drawbox		draw box around font list
-	       lbsr      writefgc		write fg colors from current palette to screen
+	       lbsr      writefgc	write fg colors from current palette to screen
 	       lbsr	 drawfg			draw selection indicator at current color
 	       lbsr	 writebgc		write bg colors from current palette to screen
 	       lbsr	 drawbg			draw selection indicator at current color
+** Get curr font and set the index
+
+**
 	       lbsr	 writelist		write the list of fonts (max 8)
+           lbsr  getcurrfont    check for currfont
 	       lbsr	 wrtlabels		writes Arrows F/f B/b labels
-	       lbsr      printfont		print the current font on the screen
+	       lbsr  printfont		print the current font on the screen
 	       lbsr	 hvupdate
 	       lbsr	 InstallSignals		install SOL to show different font on screen
-keyloop@       lbsr	 handlekeyboard		inkey routine with handlers for intergace
-	       cmpa	 #$0D			$0D=ok shift+$0d=cancel
+keyloop@   lbsr	 handlekeyboard		inkey routine with handlers for intergace
+	       cmpa	 #$0D			    $0D=ok shift+$0d=cancel
 	       bne	 nextkey@		if it is not $0D(return), then continue
-	       lda	 #0			Else check for the shift key
+	       lda	 #0			    else check for the shift key
 	       ldb	 #SS.KySns
 	       os9	 I$GetStt
 	       bita	 #SHIFTBIT
-	       bne	 nochange@	        If shiftbit=1,then cancel and quit
+	       bne	 nochange@	    If shiftbit=1,then cancel and quit
 	       bra	 setfont		else, make changes with setfont
-nextkey@       cmpa	 #'u			
+nextkey@   cmpa	 #'u			
 	       beq	 update@
-	       bra	 keyloop@	        loop to keyloop
-update@	       lbsr	 printfont              update = redraw font 1
+	       bra	 keyloop@	    loop to keyloop
+update@	   lbsr	 printfont      update = redraw font 1
 	       bra	 keyloop@		loop to keyloop
 setfont
-               lbsr	 RemoveSignals		clean up and remove signals and SOL
-	       lbsr	 changesettings		apply new settings      
+           lbsr	 RemoveSignals	clean up and remove signals and SOL
+	       lbsr	 changesettings	apply new settings      
 	       bcs	 error@			
 	       bra	 exit2@
 nochange@
-	       lbsr	 RemoveSignals	        exit no changes, remove singals and SOL
+	       lbsr	 RemoveSignals	exit no changes, remove singals and SOL
 	       lbsr	 setoldscreen	       
-exit2@	       lbsr	 movecursor		clear screen  and reset termainl
+exit2@	   lbsr	 movecursor	    clear screen  and reset termainl
 	       lbsr	 keyechoon
 	       lbsr	 clearscreen
 	       lbsr	 cursoron
 	       clrb
-error@	       ldy	 #2
+error@	   ldy	 #2
 	       lda	 #1
 	       leax	 font0on,pcr	        make sure font0 is on
 	       os9	 I$Write
-	       os9       F$Exit
+	       os9   F$Exit
 
 ********************************************************************
 * handlekeyboard
@@ -151,22 +173,26 @@ handlekeyboard lbsr      INKEY
 	       lbeq	 vchange
 	       cmpa	 #'V
 	       lbeq	 vchange
-               rts
+           cmpa  #'D
+           lbeq  savedefset
+           cmpa  #'d
+           lbeq  savedefset
+           rts
 
 ********************************************************************
 * listbox uparrow
 * update interface and load new font1
 * signals need to be muted while loading to avoid interface flicker
 *
-uparrow	       lda       <liststart	   get the start of the current list
+uparrow	   lda   <liststart	   get the start of the current list
 	       beq	 cont1@		   if liststart is 0, then don't need to do anything
 	       cmpa	 <listitem	   compare to current list item
 	       bne	 cont1@		   if list item is not at the start of the list don't move list
 	       dec	 <liststart	   else move list and set list start item to one before
-cont1@	       lda	 <listitem         load current item
+cont1@	   lda	 <listitem         load current item
 	       beq	 cont2@		   if current=0 don't change
 	       dec	 <listitem	   else subtract 1 to move up
-cont2@	       lbsr	 writelist	   write the new list to the screen
+cont2@	   lbsr	 writelist	   write the new list to the screen
 	       lbsr	 MuteSignals	   turn off SOL to load font
 	       lbsr	 changefont1	   load new font1
 	       lbsr	 UnMuteSignals	   turn on SOL to display new font
@@ -178,7 +204,7 @@ cont2@	       lbsr	 writelist	   write the new list to the screen
 * update interface and load new font1
 * signals need to be muted while loading to avoid interface flicker
 *
-downarrow      lda	 <liststart	   get the start of the current list
+downarrow  lda	 <liststart	   get the start of the current list
 	       cmpa	 <liststartmax     if liststart is liststart max, don't adjust list
 	       beq	 cont1@
 * Adjust list display by 1 item down 	       
@@ -186,12 +212,12 @@ downarrow      lda	 <liststart	   get the start of the current list
 	       cmpa	 <listitem	       
 	       bne	 cont1@		   not last item, don't need to move list, continue     
 	       inc	 <liststart	   else inc start to move displayed items up 1 line	   
-cont1@	       lda	 <listitem	   
+cont1@	   lda	 <listitem	   
 	       inca			   increment selected item
 	       cmpa	 <numfonts	   are we at max?
 	       bge	 cont2@		   yes, just update screen
 	       inc	 <listitem	   else increase by 1 and update screen
-cont2@	       lbsr	 writelist	   redraw list in listbox
+cont2@	   lbsr	 writelist	   redraw list in listbox
 	       lbsr	 MuteSignals	   mute SOL signals
 	       lbsr	 changefont1	   load new font1
 	       lbsr	 UnMuteSignals	   turn on SOL to display new font
@@ -231,16 +257,63 @@ keyechoon      leax      >popts,u
                rts
 
 ********************************************************************
+* getcurrentfont
+* get the current font from the currfont file 
+* set the index to match that font
+*
+
+getcurrfont    lda	#READ.
+	       leax	fspath,pcr
+	       os9	I$Open
+	       bcs	nofile@
+	       leax     curfnt,u
+	       ldy	#29
+	       os9	I$Read
+	       sty      curfntsz,u
+	       bcc	cont@
+	       os9	I$Close	           read error
+	       bra	nofile@            close file and return
+cont@	       os9	I$Close
+	       clra
+loop2@     lbsr	arrayidx
+	       lbsr	matchstr
+	       bcc	matchfound@
+	       inca
+	       bra 	loop2@
+nofile@    rts	       
+matchfound@ rts
+matchstr       pshs     a,b,x,y
+	       ldy      ,x++
+	       cmpy	curfntsz,u
+	       bne	nomatch@
+	       tfr      y,d
+	       leay	curfnt,u
+loop@	       lda	,x+
+	       cmpa	,y+
+	       bne	nomatch@
+	       decb
+	       bne      loop@
+	       andcc	#$FE
+	       puls     a,b,x,y,pc
+nomatch@       orcc     #1
+	       puls     a,b,x,y,pc
+	       
+	       
+	       
+
+********************************************************************
 * changesettings
 * when the user hits return, change the settings to
 * match those selected by the user
 *
 
 * add full path + filename to drawbuf
-changesettings leay	 drawbuf,u
+changesettings  leax fspath,pcr    currfont file path
+                os9  I$Delete
+           leay	 drawbuf,u
 	       leax	 fontdir,pcr	   load fontdir path
 	       ldb	 #13
-fdirloop@      lda	 ,x+	           add dirname to drawbuf
+fdirloop@  lda	 ,x+	           add dirname to drawbuf
 	       sta	 ,y+
 	       decb
 	       bne	 fdirloop@
@@ -249,6 +322,27 @@ fdirloop@      lda	 ,x+	           add dirname to drawbuf
 	       lda	 <listitem	   Get the list item
 	       lbsr	 arrayidx	   Get the index
 	       leax	 1,x
+       	       pshs	 x,y
+	       lda	 #WRITE.
+	       ldb	 #READ.+PREAD.+WRITE.
+	       leax	 fspath,pcr
+	       os9	 I$Create
+	       bcs	 open@
+	       bra       writeit@
+open@	       lda	 #WRITE.
+	       leax	 fspath,pcr
+	       os9	 I$Open
+	       bcs	 cont@
+writeit@       ldx       ,s
+	       ldb	 ,x+
+	       pshs	 a
+	       clra
+	       tfr	 d,y
+	       puls   	 a
+	       os9	 I$Write
+	       os9	 I$Close
+cont@	       puls	 x,y	       
+
 	       ldb	 ,x+
 fnameloop@     lda	 ,x+		   add filename to drawbuf
 	       sta	 ,y+
@@ -358,6 +452,7 @@ setoldcolors   leax	 drawbuf,u
 initscrnsz     lda	#1		    get current screentype	
 	       ldb	#SS.ScTyp
 	       os9	I$GetStt
+           sta  screensize,u
 size1@	       cmpa	#1
 	       bne	size2@
 	       clr	<vsize
@@ -405,51 +500,51 @@ cont@	       leax	s80x30,pcr
 	       rts
 
 
-s80x30         fcb      $1B,$20,$02,$00,$00,$00,$00
+s80x30     fcb      $1B,$20,$02,$00,$00,$00,$00
 
 
-hchange        lda	<hsize
+hchange    lda	<hsize
 	       cmpa	#2
 	       bne	change80@
 	       lda	#1
 	       sta	<hsize
 	       bra	update@
-change80@      lda	#2
+change80@  lda	#2
 	       sta	<hsize
-update@	       bra      hvupdate
+update@	   bra      hvupdate
 
-vchange	       lda	<vsize
+vchange	   lda	<vsize
 	       cmpa	#0
 	       bne	change30@
 	       lda	#2
 	       sta	<vsize
 	       bra	hvupdate
-change30@      clr	<vsize	       
+change30@  clr	<vsize	       
 
-hvupdate       lda	<hsize
+hvupdate   lda	<hsize
 	       cmpa	#1
 	       beq	h40@
-h80@	       bsr	hposgo
+h80@	   bsr	hposgo
 	       bsr	hvwriteselect
 	       bsr	hpos2go
 	       bsr	hvwriteclear
 	       bra	gov@
-h40@	       bsr	hposgo
+h40@	   bsr	hposgo
 	       bsr	hvwriteclear
 	       bsr	hpos2go
 	       bsr	hvwriteselect
-gov@	       lda	<vsize
+gov@	   lda	<vsize
 	       beq	v30@
-v60@	       bsr	vposgo
+v60@	   bsr	vposgo
 	       bsr	hvwriteselect
 	       bsr	vpos2go
 	       bsr	hvwriteclear
 	       bra	return@
-v30@	       bsr	vposgo
+v30@	   bsr	vposgo
 	       bsr	hvwriteclear
 	       bsr	vpos2go
 	       bsr	hvwriteselect
-return@	       rts	       
+return@	   rts	       
 
 
 hvwriteselect  leax	hvselect,pcr
@@ -461,14 +556,14 @@ hvwrite	       ldy	#1
 	       rts
 
 
-hposgo	       leax	hpos,pcr
+hposgo	   leax	hpos,pcr
 	       bra	engage@
-hpos2go	       leax	hpos2,pcr
+hpos2go	   leax	hpos2,pcr
 	       bra	engage@
-vposgo	       leax	vpos,pcr
+vposgo	   leax	vpos,pcr
 	       bra	engage@
-vpos2go	       leax	vpos2,pcr
-engage@	       ldy	#3
+vpos2go	   leax	vpos2,pcr
+engage@	   ldy	#3
 	       lda	#1
 	       os9	I$Write
 	       rts
@@ -688,7 +783,7 @@ cmdrevvidon    fcb	 $1F,$20	  reverse video on
 cmdrevvidoff   fcb	 $1F,$21	  reverse video off
 font0on	       fcb	 $1B,$62          switch to font0
 
-movecursor     leay	 drawbuf,u
+movecursor leay	 drawbuf,u
 	       lda	 #$02
 	       sta	 ,y+
 	       lda	 #$30
@@ -701,7 +796,18 @@ movecursor     leay	 drawbuf,u
 	       os9	 I$Write
 	       rts
 
-
+movecursor2 leay	 drawbuf,u
+	       lda	 #$02
+	       sta	 ,y+
+	       lda	 #$20
+	       sta	 ,y+
+	       lda	 #$20
+	       sta	 ,y+
+	       lda	 #1
+	       leax	 drawbuf,u
+	       ldy	 #$03
+	       os9	 I$Write
+	       rts
 
 ********************************************************************
 * writelist
@@ -735,7 +841,7 @@ norev@	       lda	 #1
 	       puls      a
 	       cmpa	 <listitem
 	       bne	 norev2@
-	       bsr	 writerevoff
+	       lbsr	 writerevoff
 norev2@	       inc	 2,s
 	       inc	 3,s
 	       inca
@@ -904,8 +1010,8 @@ store@	       sty	 ,x++
 	       rts
 
 
-wrtlabels      leax	 flabel,pcr
-	       ldy	 #90
+wrtlabels      leax	 flabel,pcr	   this writes all labels on the screen 
+	       ldy	 #108    
 	       lda	 #0
 	       os9	 I$Write
 	       rts 
@@ -1095,7 +1201,7 @@ FGETC          pshs      a,x,y
 * change this from loop to screenchars for speed
 *
 printfont
-		lbsr      MuteSignals
+		   lbsr      MuteSignals
 	       leax      screenchars,pcr
 	       ldy	 #300
 	       lda	 #1
@@ -1116,7 +1222,7 @@ InstallSignals leax      cfIcptRtn,pcr
 	       os9	 F$PErr
 	       tfr	 a,b
 	       os9	 F$PErr
-storesol@      sta	 <solpath
+storesol@  sta	 <solpath
 	       ldx	 #260
 	       ldy	 #$A0
 	       ldb	 #SS.SOLIRQ
@@ -1128,14 +1234,14 @@ storesol@      sta	 <solpath
 	       os9	 I$SetStt
 	       rts
 
-fsol	       fcc	 \/fSOL\
+fsol	   fcc	 \/fSOL\
 	       fcb	 $0D
 
 ********************************************************************
 * cfIcptRtn
 * this handles the signals received by SOL
 * 
-cfIcptRtn      cmpb      #$A0
+cfIcptRtn  cmpb      #$A0
 	       beq	 changefont1@
 	       cmpb      #$A1
 	       beq	 changefont0@
@@ -1209,9 +1315,223 @@ RemoveSignals  lda	 <solpath
 	       lda	 <solpath
 	       os9	 I$Close
 	       rts
-		    
+
+********************************************************************
+* Save Default settings file /dd/sys/defaultsettings
+* clean up irqs and signal handling on exit
+*
+savedefset
+* Try to open existing file first
+                    lda       #WRITE.        Write mode
+                    ldb	      #READ.+PREAD.+WRITE.
+                    leax      FileName,pcr   Point to filename
+                    os9       I$Open         Try to open
+                    bcc       GotFile2@      Success - file exists                    
+* File doesn't exist - create it
+                    lda       #WRITE.+READ.  Read/Write mode
+                    ldb	      #READ.+PREAD.+WRITE.
+                    leax      FileName,pcr   Point to filename
+                    os9       I$Create       Create new file
+                    bcs       SaveError      Failed to create
+GotFile2@           sta       <SettingsPath  Save path number
+* Build the data to write
+                    leax      WriteBuf,u     Point to write buffer
+                    lda       <newfg         Get foreground
+                    sta       ,x+            Store in buffer
+                    lda       <newbg         Get background
+                    sta       ,x+            Store in buffer
+                    lda       <hsize         calculate screen size
+                    adda      <vsize
+                    sta       ,x+            Store in buffer
+* Get and copy font name
+                    lda       <listitem      Get the list item
+                    lbsr      arrayidx       Get the index
+                    leax      2,x            skip length
+                    pshs      x              Save font name pointer
+                    leax      WriteBuf,u     Restore write buffer pointer
+                    leax      3,x            Skip past the 3 bytes
+                    puls      y              Get font name pointer
+CopyFont2@          lda       ,y+            Get character
+                    beq       EndFont2@      End of string
+                    cmpa      #' '           Space?
+                    beq       EndFont2@      End of string
+                    cmpa      #$0D           CR?
+                    beq       EndFont2@      End of string
+                    sta       ,x+            Store character
+                    bra       CopyFont2@     Continue
+* Calculate length (no CR needed with WritLn)
+EndFont2@           lda       #$0D           Carriage return
+                    sta       ,x+
+                    tfr       x,d            End position
+                    leax      WriteBuf,u     Start position  
+                    pshs      x              Save start
+                    subd      ,s++           Calculate length
+                    tfr       d,y            Length to Y
+* Write the line (WritLn adds CR automatically)
+                    lda       <SettingsPath  Get path number
+                    leax      WriteBuf,u     Point to data
+                    os9       I$WritLn       Write line (adds CR)
+                    bcs       CloseError     Error writing                    
+* Close the file
+                    lda       <SettingsPath  Get path number
+                    os9       I$Close        Close file
+                    bcs       SaveError      Error closing                   
+                    clrb                     Success
+                    rts
+
+CloseError          pshs      b              save error code
+                    lda       <SettingsPath  get path
+                    os9       I$Close        try to close
+                    puls      b
+
+SaveError           comb                     set carry
+                    rts		    
+
+parseopts           lda ,x+    get options
+                    cmpa #$0D  no parameters?
+                    beq NoParms@
+                    cmpa #'-
+                    bne NoParms@
+                    lda ,x
+                    cmpa #'d
+                    beq loadset
+                    cmpa #'D
+                    beq loadset
+NoParms@            rts
+
+* Load defaultsettings file
+* Check for flash default settings
+Loadset             leax      ConfigDir,pcr               config directory file
+                    lda       #READ.
+                    os9       I$ChgDir
+                    lbcs      parsedone                   fail move on to signon
+getcurrfont2        lda       #READ.
+                    leax      fspath2,pcr                  defaultsettings file
+                    os9       I$Open
+                    bcc       readfile
+                    lbcs      DoneExit2                nofile@                      open failed, skip
+readfile            sta       pathnum,u                    save path
+                    leax      curfnt,u                     settings buffer
+                    ldy       #32
+                    os9       I$Read
+                    sty       curfntsz,u
+					lda       pathnum,u
+					lbcs      parsedone        SignOn
+                    os9       I$Close 
+                    bra       SetupPalette
+nofile@             ldy       #0                            set name length to 0
+                    sty       curfntsz,u
+                    rts
+
+SetupPalette        leax      KPal,pcr                      F256 K
+                    ldy       #KPalLen
+                    ldd       curfntsz,u                    font string size 0 skip
+                    beq       doit@
+                    ldb       #31                           31 bytes
+                    leay      palettebuf,u                  copy model palette to palette buffer
+paletteloop@        lda       ,x+
+                    sta       ,y+
+                    decb
+                    bne       paletteloop@
+                    leax      curfnt,u                      point to current settings
+                    leay      palettebuf,u                  prepare updated settings in buffer
+                    lda       ,x                            get fg
+                    sta       fg,u                          save fg
+                    sta       7,y                           set fg
+                    lda       1,x                           get bg
+                    sta       8,y                           set bg
+                    lda       2,x                           get size
+                    sta       scsz,u                        save screen size
+                    sta       2,y                           set size
+                    lda       #7                            def Font
+                    sta       12,y
+                    lda       #$A                           def fg
+                    sta       19,y
+                    sta       26,y
+                    lbsr      rgblookupbg                   rgb lookup for BG color set
+                    leay      palettebuf,u                  point to palette buffer and update
+                    lda       red,u
+                    sta       27,y
+                    lda       green,u
+                    sta       28,y
+                    lda       blue,u
+                    sta       29,y                    
+                    leax      palettebuf,u
+                    ldy       #31
+doit@               lda       #1
+                    os9       I$Write
+setfgcolor          pshs      x,y
+                    leax      fontfgcolor,pcr               set final font color
+                    leay      fgbuf,u
+                    ldb       #6                            6 bytes to write
+fgloop@             lda       ,x+
+                    sta       ,y+
+                    decb
+                    bne       fgloop@
+                    leay      fgbuf,u                       foreground color buffer
+                    lda       fg,u                          get foreground color and set it
+                    sta       5,y
+                    leax      fgbuf,u
+                    ldy       #6                            6 bytes to write
+                    lda       #1                            path
+                    os9       I$Write
+                    puls      x,y
+SetupFont           ldd       curfntsz,u                    no font skip
+                    beq       parsedone
+                    leax      sysfont,pcr                   point font directory
+                    lda       #READ.
+                    os9       I$ChgDir
+                    bcs       parsedone
+                    pshs      a,x,y,u
+                    leax      curfnt,u                      font to load
+                    leax      3,x                           skip colors and screen size - point to font name
+                    lda       #0                            path
+                    ldy       #0                            font 0
+                    ldb       #SS.FntLoadF                  load font from file
+                    os9       I$SetStt
+                    bcs       error@
+                    clrb
+error@              puls      a,x,y,u    
+DoneExit            lbsr      movecursor2
+                    lbsr	  cursoron		                turn cursor on           
+                    os9       F$Exit
+parsedone           rts
+DoneExit2           ldb       #216                          path not found error
+                    lbsr	  cursoron		                turn cursor on    
+                    os9       F$Exit
+
+rgblookupbg         pshs      x,y
+                    leax      curfnt,u
+                    lda       1,x                           get background color 
+                    lsla                                    multiply by 2
+                    lsla                                    multiply again x 4
+                    leay      BGPal,pcr                     rgb background palette
+                    leay      a,y                           point to RGB value
+                    lda       ,y+
+                    sta       red,u
+                    lda       ,y+
+                    sta       green,u
+                    lda       ,y
+                    sta       blue,u
+                    puls      x,y,pc
 
 
+FGP                 set $07
+FGP2                set $07
+BGP                 set $0A
+BGP2                set $20
+UCH                 set $16
+
+KPal
+* Set up 80x30 window with foreground and background colors as same
+                    fcb $1B,$20,$02,$00,$00,$50,$18,BGP,BGP,$00
+                    fcb $1B,$60,FGP,$FF,$FF,$00,$FF
+                    fcb $1B,$60,BGP,$4F,$00,$80,$FF
+                    fcb $1B,$61,BGP,$4F,$00,$80,$FF
+KPalLen             equ *-KPal
+
+fspath	       fcc       \/dd/SYS/currfont\		    File save path
+               fcb	 $0D
 flabel	       fcb	 $02,$58,$27
 	       fcb	 $46,$2F,$66
 blabel	       fcb	 $02,$58,$2C		    
@@ -1224,7 +1544,7 @@ hvlabel	       fcb	 $02,$52,$2E
 	       fcb	 $02,$52,$2F
 	       fcb	 $34,$30,$20,$20,$20,$20,$20,$20,$20
 	       fcb	 $33,$30
-oklabel	       fcb       $02,$41,$3B
+oklabel	   fcb       $02,$41,$3B
 	       fcc       \Ok\
 	       fcb	 $02,$4A,$3B
 	       fcc       \Cancel\
@@ -1232,6 +1552,8 @@ oklabel	       fcb       $02,$41,$3B
 	       fcc	 \Return\
 	       fcb	 $02,$47,$3C
 	       fcc	 \Shift+Return\
+	       fcb       $02,$60,$3C
+	       fcc 	 \d = Set Default\
 * Custom font characters for box
 ccorner1       fcb       $0F,$1F,$3F,$7C,$F8,$F1,$E3,$E6	   *243  F3
 ccorner2       fcb	 $F0,$F8,$FC,$3E,$1F,$8F,$C7,$67	   *244  F4
@@ -1286,6 +1608,35 @@ screenchars    fcb	 $02,$28,$34
 	       fcb	 $E8,$E9,$EA,$EB,$EC,$ED,$EE,$EF,$F0,$F1
 	       fcb	 $F2,$F3,$F4,$F5,$F6,$F7,$F8,$F9,$FA,$FB
 	       fcb	 $FC,$FD,$FE,$FF
+
+BGPal               fcb $00,$00,$00,$00
+                    fcb $ff,$ff,$ff,$00
+                    fcb $00,$80,$00,$00
+                    fcb $80,$80,$00,$00
+                    fcb $00,$00,$80,$00
+                    fcb $00,$cc,$55,$00
+                    fcb $00,$00,$aa,$00
+                    fcb $dd,$dd,$77,$00
+                    fcb $dd,$88,$55,$00
+                    fcb $66,$44,$00,$00
+                    fcb $ff,$77,$77,$00
+                    fcb $33,$33,$33,$00
+                    fcb $77,$77,$77,$00
+                    fcb $aa,$ff,$66,$00
+                    fcb $00,$88,$ff,$00
+                    fcb $bb,$bb,$bb,$00
+BGPalL              equ *-BGPal
+
+* Filename
+FileName   FCC       "/dd/sys/defaultsettings"
+                    FCB       $0D            CR terminator
+ConfigDir           fcc       "/DD/SYS"
+                    fcb       C$CR
+fspath2             fcc       "defaultsettings"
+                    fcb       C$CR
+sysfont             fcc       "/DD/SYS/FONTS"
+                    fcb       C$CR
+fontfgcolor         fcb $02,$20,$2a,$1b,$32,$01
 
                emod
 eom            equ *
