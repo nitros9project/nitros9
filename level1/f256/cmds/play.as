@@ -58,14 +58,17 @@
 *
 *   12     2025/12/08  R Taylor
 * Added support for tied notes.
-* Added .map file support for forced instrument matching.
+* Added .map file support for programming MIDI instruments.
 * Added automatic instrument matching for various target keyboards and synths.
+*
+*   13     2025/12/11  R Taylor
+* Added Ultimuse III format.  Lyra and Ultimuse use new master MIDI table.
 
                     nam       music
                     ttl       Music Player
 
  section __os9
-edition = 12
+edition = 13
  endsect
 
 * Here are some tweakable options
@@ -80,65 +83,48 @@ SID_V3_PULSE_DUTY   equ       $800
 SID_V1_ADSR         equ       $00F0
 SID_V2_ADSR         equ       $00F0
 SID_V3_ADSR         equ       $00F0
+MIDIVEL_DEFAULT     equ       80                  0..127 for MIDI velocity
+PLAYLISTITEM_MAXSTR equ       255
 
-MIDI_DATAOUT        equ       $ff31
-LYRA_MIDIVELOC      equ       80    100                 0..127 for MIDI velocity
-* Offsets into 8-byte track packets
-LYRATRK_LOCATION    equ       0                   Keep this as variable 0!
-LYRATRK_CYCLES      equ       2
-LYRATRK_MIDIPITCH   equ       4
-LYRATRK_VELOC       equ       5
-LYRATRK_TRIPLET     equ       6
-LYRATRK_MIDICHAN    equ       7                   Lyra supports 8 tracks that can each map to any 16 MIDI channel
-LYRATRK_LASTPITCH   equ       8
-LYRATRK_ENTRYSIZE   equ       9                   Bytes per track
+FILETYPE_MUSICA     equ       1
+FILETYPE_SIDRAW     equ       2
+FILETYPE_COCOLYRA   equ       3
+FILETYPE_ULTIMUSE   equ       4
+FILETYPE_MIDIPATCH  equ       5
+
+MIDI_StatusReg      equ       SAM2695.Base+MIDI_STATUS
+MIDI_DataReg        equ       SAM2695.Base+MIDI_FIFO_DATA
+
 * Byte 1 bits
 LYRA_EVENTBIT       equ       %10000000
 LYRA_DOTTEDNOTE     equ       %01000000
-LYRA_TIEDTOLAST     equ       %00100000                 Note is tied to previous note (length only)
+LYRA_TIEDTOLAST     equ       %00100000           Note is tied to previous note (length only)
 LYRA_TRIPLETNOTE    equ       %00010000
 LYRA_RESTNOTE       equ       %00001000
 LYRA_LENGTHBITS     equ       %00000111
 * Byte 2 bits
-LYRA_SHARPNOTE      equ       $80
-LYRA_FLATNOTE       equ       $40
+LYRA_FLATNOTE       equ       %10000000
+LYRA_SHARPNOTE      equ       %01000000
+LYRA_PITCHMASK      equ       %00111111
 
-LYRATARG_MIDI       equ       0
-LYRATARG_CZ230      equ       1
-LYRATARG_CT460      equ       2
-LYRATARG_MT540      equ       3
-LYRATARG_MS710      equ       4
-LYRATARG_FB01       equ       5
-LYRATARG_MT32       equ       6
-LYRATARG_PSR500     equ       7
+* 0=Treble, 1=Bass, 2=Guitenor, 3=Double Bass
+* 4=Percus, 5=Alto, 6=Tenor
+UMECLEF_TREBLE      equ       0
+UMECLEF_BASS        equ       1
+UMECLEF_GUITENOR    equ       2
+UMECLEF_DBLBASS     equ       3
+UMECLEF_PERCUSSION  equ       4
+UMECLEF_ALTO        equ       5
+UMECLEF_TENOR       equ       6
 
-MIDI_GRANDPIANO     equ       0
-MIDI_ACOUSTICPIANO  equ       1
-MIDI_ELECTRICGRAND  equ       2
-MIDI_HONKYTONK      equ       3
-MIDI_RHODESPIANO    equ       4
-MIDI_CHORUSEDPIANO  equ       5
-MIDI_HARPSICHORD    equ       6
-MIDI_CLAVINET       equ       7
-MIDI_CELESTA        equ       8
-MIDI_GLOCKENSPIEL   equ       9
-MIDI_MUSICBOX       equ       10
-MIDI_VIBRAPHONE     equ       11
-MIDI_TRUMPET        equ       56
-MIDI_PICCOLO        equ       72
-MIDI_FLUTE          equ       73
-MIDI_RECORDER       equ       74
-MIDI_PANFLUTE       equ       75
-MIDI_BOTTLEBLOW     equ       76
-MIDI_SHAKUHACHI     equ       77
-MIDI_WHISTLE        equ       78
-MIDI_OCARINA        equ       79
-
-PLAYLISTITEM_MAXSTR equ       255
-FILETYPE_MUSICA     equ       1
-FILETYPE_SIDRAW     equ       2
-FILETYPE_COCOLYRA   equ       3
-FILETYPE_MIDIPATCH  equ       4
+* Offsets into 8-byte track packets
+TRACK_LOCATION      equ       0                   Keep this as variable 0!
+TRACK_CYCLES        equ       2
+TRACK_MIDICHAN      equ       4                   Lyra supports 8 tracks that can each map to any 16 MIDI channel
+TRACK_MIDIPITCH     equ       5
+TRACK_VELOC         equ       6
+TRACK_TRIPLET       equ       7
+TRACK_ENTRYSIZE     equ       8                   Bytes per track
 
                     section   bss
 clistart            rmb       2
@@ -183,15 +169,19 @@ Interactive         rmb       1
 TotalSections       rmb       1
 PlaylistMode        rmb       1
 PlaylistPath        rmb       1
-ThisLyraTrack       rmb       2                   Points to current track packet
+ThisTrack           rmb       2                   Points to current track packet
 LyraChanMap         rmb       8
 LyraChannel         rmb       1
 LyraChannel2        rmb       1
 LyraMatchTable      rmb       2
 LyraTempo           rmb       1
 LyraUseMap          rmb       1                   If set, .map file was processed, do not use .lyr instrument table
-MidiInstrument      rmb       1
-LyraTracks          rmb       16*LYRATRK_ENTRYSIZE
+UMETicks            rmb       2
+UMEEvents           rmb       2                   Total number of events in file
+UMEEventCntr        rmb       2
+UMEParts            rmb       2
+UMEStaves           rmb       2
+ScoreTracks         rmb       16*TRACK_ENTRYSIZE
 SectionList         rmb       9*2
 SampleBuf           rmb       25
 HexStrDat           rmb       6
@@ -370,8 +360,10 @@ o@                  ldx       <cliptr
                     lbeq      PlayMusica
                     cmpa      #FILETYPE_SIDRAW 
                     beq       PlaySidRaw
-                    cmpa      #FILETYPE_COCOLYRA 
+                    cmpa      #FILETYPE_COCOLYRA
                     lbeq      PlayLyra
+                    cmpa      #FILETYPE_ULTIMUSE
+                    lbeq      PlayUltimuse
                     lbra      CloseAndNext        Filename extension not recognized, skip song
 
 PlaySidRaw          lbsr      LOUD_ALL
@@ -456,18 +448,18 @@ PlayLyra            bsr       Load2Local
                     lbcs      err                 Something went wrong, exit
                     pshs      x
                     leax      $10,x               Point to address holder of track 1
-                    leay      LyraTracks,u        Table holds Track block location, Cycles left for note/rest
+                    leay      ScoreTracks,u       Table holds Track block location, Cycles left for note/rest
                     ldb       #8
                     pshs      b
 a@                  ldd       1,s                 Recall address of top of file
                     addd      ,x++                Compute (top of file + track offset)
-                    std       LYRATRK_LOCATION,y                Save exact start of current track
+                    std       TRACK_LOCATION,y    Save exact start of current track
                     clra
                     clrb
-                    std       LYRATRK_CYCLES,y
-                    lda       #LYRA_MIDIVELOC     Reset velocity
-                    sta       LYRATRK_VELOC,y
-                    leay      LYRATRK_ENTRYSIZE,y
+                    std       TRACK_CYCLES,y
+                    lda       #MIDIVEL_DEFAULT    Reset velocity
+                    sta       TRACK_VELOC,y
+                    leay      TRACK_ENTRYSIZE,y
                     dec       ,s 
                     bne       a@
                     puls      b
@@ -488,60 +480,53 @@ a@                  ldd       1,s                 Recall address of top of file
 *                    os9       I$Write
 *                    lbsr      PrintCR
                     lbsr      MidiMuteAll
-                    lbsr      SetupInstruments    Aut-sensing instrument translation
+                    lbsr      SetupInstruments    Auto-sensing instrument translation
 gm@                 ldb       #1                  Enable the sequencer
                     stb       <DoSequencer
 
-LyraTracker         tst       <DoAbort            Abort everything?
+LyraLooper          ldb       <DoAbort            Abort everything?
                     bne       LyraAbort
-                    tst       <DoSequencer
+                    ldb       <DoSequencer
                     beq       LyraEnd
-                    leay      LyraTracks,u
-                    ldd       [LYRATRK_ENTRYSIZE*0,y]   Data at track note/event location
-                    bne       lt@
-                    ldd       [LYRATRK_ENTRYSIZE*1,y]
-                    bne       lt@
-                    ldd       [LYRATRK_ENTRYSIZE*2,y]
-                    bne       lt@
-                    ldd       [LYRATRK_ENTRYSIZE*3,y]
-                    bne       lt@
-                    ldd       [LYRATRK_ENTRYSIZE*4,y]
-                    bne       lt@
-                    ldd       [LYRATRK_ENTRYSIZE*5,y]
-                    bne       lt@
-                    ldd       [LYRATRK_ENTRYSIZE*6,y]
-                    bne       lt@
-                    ldd       [LYRATRK_ENTRYSIZE*7,y]
+                    leay      ScoreTracks,u
+                    lda       [TRACK_ENTRYSIZE*0,y]   When each tracks' note pointer is at a dead command (0)
+                    ora       [TRACK_ENTRYSIZE*1,y]   the piece is over
+                    ora       [TRACK_ENTRYSIZE*2,y]
+                    ora       [TRACK_ENTRYSIZE*3,y]
+                    ora       [TRACK_ENTRYSIZE*4,y]
+                    ora       [TRACK_ENTRYSIZE*5,y]
+                    ora       [TRACK_ENTRYSIZE*6,y]
+                    ora       [TRACK_ENTRYSIZE*7,y]
                     bne       lt@
 LyraEnd             clr       <DoSequencer        If we made it here it means all tracks have ended
-                    lbsr      MidiMuteAll
+                    lbsr      MidiMuteAll         kill the music and get out of here
                     lbra      CloseAndNext        It's not an abort, so we keep processing all supplied files
 LyraAbort           clr       <DoSequencer
-                    lbsr      MidiMuteAll         Yes, kill the sequencer, and get out of here
+                    lbsr      MidiMuteAll         Yes, kill the music and get out of here
                     lbra      bye
 lt@                 clr       <LyraChannel
-                    ldb       #8                  Process all 8 channels
+                    ldb       #8                  Process all 8 LYRA channels
                     pshs      b
-a@                  sty       <ThisLyraTrack
+a@                  sty       <ThisTrack
                     ldy       <LyraChanMap
                     lda       <LyraChannel
-                    lda       a,y 
-                    ldy       <ThisLyraTrack
-                    sta       LYRATRK_MIDICHAN,y  The MIDI channel (0-15) this Lyra channel (0-7)targets
-                    ldd       LYRATRK_CYCLES,y    Enter subsequencer with D = Note Cycles Remaining
-                    ldx       LYRATRK_LOCATION,y
+                    lda       a,y                 Get the MIDI channel that this LYRA channel targets
+                    ldy       <ThisTrack
+                    sta       TRACK_MIDICHAN,y    The MIDI channel (0-15) this Lyra channel (0-7)targets
+                    ldd       TRACK_CYCLES,y      Enter subsequencer with D = Note Cycles Remaining
+                    ldx       TRACK_LOCATION,y
                     bsr       LyraSubSeq          We process all tracks even if ended, for consistent time
-s@                  ldy       <ThisLyraTrack
-                    stx       LYRATRK_LOCATION,y  Update track's note pointer
-                    std       LYRATRK_CYCLES,y    Update track's current note length
+s@                  ldy       <ThisTrack
+                    stx       TRACK_LOCATION,y    Update track's note pointer
+                    std       TRACK_CYCLES,y      Update track's current note length
                     inc       <LyraChannel
-                    leay      LYRATRK_ENTRYSIZE,y
+                    leay      TRACK_ENTRYSIZE,y
                     dec       ,s
                     bne       a@                  Do all Lyra channels
                     puls      b
 ve@                 ldx       #$0002
                     os9       F$Sleep
-                    lbra      LyraTracker
+                    bra       LyraLooper
 
 ********************************************************************
 * Lyra Sequencer
@@ -549,87 +534,99 @@ ve@                 ldx       #$0002
 *         reg.d = cycles left for current note
 
 LyraSubSeq          cmpd      #0                  Is there a note playing?
-                    lbne      LyraNextCycle       Yes, decrement note timer and exit
-r@                  ldd       ,x                  Time for a new note
-                    lbeq      LyraSeqExit         Note marks the end of the track, stick and exit
+                    lbne      LyraDecCycle        Yes, decrement note timer and exit, long branch is helpful in balance
+r@                  ldd       ,x                  Get current note
+                    lbeq      LyraSeqExit         Note marks the end of the track,  long branch is helpful in balance
                     bita      #LYRA_EVENTBIT      Is this an event?
-                    beq       c@                  No, assume its a note or rest
+                    beq       c@                  No, it must be a note or rest
 * Process Event Codes
                     anda      #$F0                Mask out non event bits
-                    cmpa      #$E0
+                    cmpa      #$E0                Is this velocity control?
                     bne       te@                 Assume this is a musical note/rest
                     andb      #7                  Make safe velocity value
                     leay      LyraVelocConv,pcr   Point to Lyra-to-MIDI velocity conversion table
                     lda       b,y                 Convert 0..7 to 0..127
-                    ldy       <ThisLyraTrack      Restore track pointer
-                    sta       LYRATRK_VELOC,y     Set new velocity for this channel
+                    ldy       <ThisTrack          Restore track pointer
+                    sta       TRACK_VELOC,y       Set new velocity for this channel
                     bra       se@
 te@                 cmpa      #$A0                Tempo event?
                     bne       se@
                     stb       <LyraTempo
+                    bra       se@
+ie@                 cmpa      #$90                Instrument event?
+                    bne       se@
+                    lda       ,x 
+                    anda      #$0F                Get channel # for instrument change 
+                    ora       #$C0                MIDI instrument change code
+                    sta       >MIDI_DataReg
+                    stb       >MIDI_DataReg
 se@                 leax      2,x                 Immediately skip over Lyra Event and get next data
                     bra       r@
 * Process New Note Value before issuing any Note On or Note Off commands
-c@                  andb      #63                 This will expand into full MIDI notes 0-127
+c@                  andb      #LYRA_PITCHMASK     Clear off the Sharp/Flat indicators and leave 0-63
                     clra
                     lslb
                     rola
                     lslb
                     rola
-                    leay      LyraConvTab,pcr     Point to note conversion table
+                    leay      LyraRange,pcr       Point to starting notes in MIDI table conversion table
                     leay      d,y                 Point to index of Lyra note
                     lda       1,y                 Get Midi note value
-                    ldy       <ThisLyraTrack      Restore track pointer
+                    ldy       <ThisTrack      Restore track pointer
                     ldb       1,x                 Get Lyra note value
                     bitb      #LYRA_SHARPNOTE     Support situation where a note is marked Sharp AND Flat to neutralize it
                     beq       sh@
-fl@                 deca                          Decrease Midi note by 1 to make Flat
+fl@                 inca                          Decrease Midi note by 1 to make Flat
 sh@                 bitb      #LYRA_FLATNOTE
                     beq       p@
-                    inca                          Increase Midi note by 1 to make Sharp
-p@                  sta       LYRATRK_MIDIPITCH,y
+                    deca                          Increase Midi note by 1 to make Sharp
+p@                  sta       TRACK_MIDIPITCH,y
 * Process Note
-gn@                 ldd       ,x
+gn@                 ldd       ,x                  Get current note again
                     bita      #LYRA_RESTNOTE      Is this a Note or a Rest
                     beq       ntied@              It's sound, go check whether it's tied to last note
-                    bsr       MidiRestNote        It's a rest - silence this pitch
+                    lbsr      MidiRestNote        It's a rest - silence this pitch
                     bra       non@                Then jump to length calc of note
 * Tied Notes Logic: Tied notes have to be the same pitch.  Lyra marks a note as being tied to the previous note.
-ntied@              cmpb      3,x                 Note is different, so it can't be tied
+ntied@              cmpb      3,x                 Next note Pitch is different, so it can't be tied
                     bne       dn@                 That would be called Slur which we can't do at this time
                     bita      #LYRA_TIEDTOLAST    Is the current note tied to the previous note?
                     bne       non@                This note Should already be on, don't do it twice
-dn@                 lda       LYRATRK_MIDIPITCH,y
-                    lbsr      MidiNoteOn
+dn@                 lda       TRACK_MIDIPITCH,y
+                    bsr       MidiNoteOn
 * Process Note Length
-non@                ldy       <ThisLyraTrack
+non@                ldy       <ThisTrack
                     ldb       ,x
                     bitb      #LYRA_TRIPLETNOTE
                     beq       lb@
-                    ldb       LYRATRK_TRIPLET,y   Get triplet note # 1-3
+                    ldb       TRACK_TRIPLET,y     Get triplet note # 1-3
 ftc@                incb
                     cmpb      #4
                     blo       tos@
                     ldb       #1
-tos@                stb       LYRATRK_TRIPLET,y
+tos@                stb       TRACK_TRIPLET,y
                     bra       nt@
-lb@                 clr       LYRATRK_TRIPLET,y
-nt@                 ldb       LYRATRK_TRIPLET,y   Get triplet note # for this channel
+lb@                 clr       TRACK_TRIPLET,y
+nt@                 ldb       TRACK_TRIPLET,y     Get triplet note # for this channel
                     leay      LyraLengths,pcr
                     lslb
                     lslb
                     lslb
                     leay      b,y
-                    lda       ,x                  Get note code
-                    anda      #LYRA_LENGTHBITS    Pick off only the Length bits
-                    ldb       a,y                 Point to index of Lyra note
-                    ldy       <ThisLyraTrack      Restore track pointer
-                    lda       #3                  (Length*6)/4 For ALL Notes to adjust tempo
-                    mul                           
-                    lsra                          
-                    rorb                          
-                    lsra                          
-                    rorb                          
+                    ldb       ,x                  Get note code
+                    andb      #LYRA_LENGTHBITS    Pick off only the Length bits
+                    clra                          Make 16-bit offset and note length
+                    ldb       d,y                 Point to index of Lyra note
+* Slow the tempo a bit but not in half.  Reduction in any way prevents 64ths
+* notes from playing in a trio, so in the trio tables we use a total of 0,4,0
+* instead of 1,2,1 for the 64th note lengths.
+                    lda       #3                  Speed up all notes, L*.75, L*3/4
+                    mul
+                    lsra
+                    rorb
+                    lsra
+                    rorb
+                    ldy       <ThisTrack      Restore track pointer
                     pshs      d                   Save note length
                     lda       ,x                  Get note code 
                     anda      #LYRA_DOTTEDNOTE    Is this a dotted note length?
@@ -641,70 +638,309 @@ nt@                 ldb       LYRATRK_TRIPLET,y   Get triplet note # for this ch
                     std       ,s                  Save to stack just to pop it back in the next instruction?
 l@                  ldd       ,s++                Pop adjusted length from stack
                     beq       sn@                 Length is zero! But how, why, when, where, who.  Skip over decrement.
-LyraNextCycle       subd      #1                  Count down the note cycles
+LyraDecCycle        subd      #1                  Count down the note cycles
                     bne       LyraSeqExit
 sn@                 ldd       2,x
                     cmpb      1,x
                     bne       nof@                That would be called Slur which we can't do at this time
                     bita      #LYRA_TIEDTOLAST    Is the next note tied to the current note?
                     bne       nxn@
-nof@                lda       LYRATRK_MIDIPITCH,y Next note is tied to this note
-                    lbsr      MidiNoteOff
+nof@                lda       TRACK_MIDIPITCH,y   Next note is tied to this note
+                    bsr       MidiNoteOff
 nxn@                leax      2,x                 Point to the next note
                     clra
                     clrb
 LyraSeqExit         rts                           Return to sequencer
 
-MidiNoteOff         ldb       #$80
-                    orb       LYRATRK_MIDICHAN,y
-                    stb       >MIDI_DATAOUT
-                    sta       >MIDI_DATAOUT       The note value to turn off
-                    ldb       #$00
-                    stb       >MIDI_DATAOUT
+MidiNoteOn          ldb       #MIDICMD_NOTE_ON    Send MIDI Note On
+                    orb       TRACK_MIDICHAN,y    Get the target channel
+                    stb       >MIDI_DataReg
+                    sta       >MIDI_DataReg       The note value to turn on
+                    ldb       TRACK_VELOC,y       Get velocity for this channel
+                    stb       >MIDI_DataReg
                     rts
 
-MidiRestNote        ldb       #$90                Send MIDI Note On
-                    orb       LYRATRK_MIDICHAN,y  Get the target channel
-                    stb       >MIDI_DATAOUT
-                    sta       >MIDI_DATAOUT       The note value to turn on
+MidiNoteOff         ldb       #MIDICMD_NOTE_OFF
+                    bra       a@
+MidiRestNote        ldb       #MIDICMD_NOTE_ON    Send MIDI Note On
+a@                  orb       TRACK_MIDICHAN,y    Get the target channel
+                    stb       >MIDI_DataReg
+                    sta       >MIDI_DataReg       The note value to turn on
                     ldb       #$00 
-                    stb       >MIDI_DATAOUT
-                    rts
-
-MidiNoteOn          ldb       #$90                Send MIDI Note On
-                    orb       LYRATRK_MIDICHAN,y  Get the target channel
-                    stb       >MIDI_DATAOUT
-                    sta       >MIDI_DATAOUT       The note value to turn on
-                    ldb       LYRATRK_VELOC,y     Get velocity for this channel
-                    stb       >MIDI_DATAOUT
+                    stb       >MIDI_DataReg
                     rts
 
 MidiMuteAll         clr       ,-s                 First MIDI channel #
-a@                  lda       #$B0
-                    ora       ,s
-                    sta       >MIDI_DATAOUT
-                    ldb       #$7B
-                    stb       >MIDI_DATAOUT       The note value to turn off
+a@                  lda       #MIDICMD_CC         Control Change $Bx
+                    ora       ,s                  Mix in the channel (x)
+                    sta       >MIDI_DataReg
+                    ldb       #MIDICC_ALLNOTESOFF
+                    stb       >MIDI_DataReg       The note value to turn off
                     lda       #$00
-                    sta       >MIDI_DATAOUT
+                    sta       >MIDI_DataReg
                     inc       ,s
                     lda       ,s
                     cmpa      #16
                     blo       a@
-                    ldd       #$F07E              Reset all channels/instruments
-                    sta       >MIDI_DATAOUT
-                    stb       >MIDI_DATAOUT
-                    ldd       #$7F09
-                    sta       >MIDI_DATAOUT
-                    stb       >MIDI_DATAOUT
+                    ldd       #MIDICMD_SYSEX      Reset all channels/instruments
+                    sta       >MIDI_DataReg
+                    stb       >MIDI_DataReg
+                    lda       #MIDIMMC_DEVICE_ALL*256+$09
+                    sta       >MIDI_DataReg
+                    stb       >MIDI_DataReg
                     ldd       #$01F7
-                    sta       >MIDI_DATAOUT
-                    stb       >MIDI_DATAOUT
+                    sta       >MIDI_DataReg
+                    stb       >MIDI_DataReg
                     puls      a,pc
 
+*******************************************************************
+* Ultimuse III format (originally Tandy Color Computer)
+*
+PlayUltimuse        lbsr      Load2Local
+                    lbcs      err                 Something went wrong, exit
+                    ldd       4,x                 Top time, numer
+                    ldd       6,x                 Bottom time, denom, 4/4, 8/8, etc.
+                    ldd       8,x                 Get number of score events
+                    std       <UMEEvents          Save
+                    leay      $0A,x
+                    leay      4,y                 Skip over part #0
+                    sty       <UMEParts           Start of voice/part/channel table
+                    ldd       ,x                  Get music version and number of parts/voices
+                    lda       #4
+                    mul
+                    leay      d,y
+                    sty       <UMEStaves          Start of stave table
+                    ldb       3,x                 Get number of staves
+                    lda       #10
+                    mul
+                    leay      d,y
+                    tfr       y,x                 Put start of score in reg.x
+
+*******************************************************************
+* Test: If a .map file wasn't specified, put together some kind
+* of orchestra based on the clef types
+                    tst       <LyraUseMap         Check if a instrument map file was loaded
+                    bne       gm@                 User has applied a patch file
+                    ldy       <UMEParts
+                    ldb       #0
+                    pshs      b
+a@                  ldb       ,s
+                    cmpb      #9                  Don't change sam2695 channel 10
+                    beq       n@
+                    lda       3,y                 Get clef type
+                    cmpa      #UMECLEF_BASS       this is drum in Oh Come All Ye Faithful
+                    beq       sb1@
+                    cmpa      #UMECLEF_DBLBASS
+                    beq       sb1@
+                    cmpa      #UMECLEF_PERCUSSION     Percussion clef gets drum
+                    beq       sprc@
+                    cmpa      #UMECLEF_TENOR
+                    beq       sten@
+                    cmpa      #UMECLEF_ALTO
+                    beq       salt@
+*                    cmpa      #UMECLEF_GUITENOR
+*                    beq       sguit@
+streb@              ldb       ,s 
+                    andb      #7
+                    addb      #0
+                    bra       i@
+sguit@              ldb       ,s 
+                    andb      #7
+                    addb      #24
+                    bra       i@
+salt@               ldb       ,s 
+                    andb      #7
+                    addb      #65
+                    bra       i@
+sten@               ldb       ,s
+                    andb      #7
+                    addb      #66
+                    bra       i@
+sb1@                ldb       ,s 
+                    andb      #7
+                    addb      #32
+                    bra       i@
+sprc@               ldb       ,s
+                    andb      #3
+                    addb       #115
+i@                  lda       ,s
+                    ora       #$C0                Program the associated MIDI channel. Can this happen more than once?
+                    sta       >MIDI_DataReg
+                    stb       >MIDI_DataReg
+n@                  leay      4,y
+                    inc       ,s
+                    ldb       ,s 
+                    cmpb      #15 
+                    bls       a@
+gm@
+*******************************************************************
+
+                    ldd       #0
+                    std       <UMETicks
+                    std       <UMEEventCntr
+                    ldb       #1                  Enable the sequencer
+                    stb       <DoSequencer
+
+UmeLooper           ldb       <DoAbort            Abort everything?
+                    bne       Abort@
+                    ldb       <DoSequencer
+                    beq       End@
+                    bra       trns@
+End@                clr       <DoSequencer        If we made it here it means all tracks have ended
+                    lbsr      MidiMuteAll         kill the music and get out of here
+                    lbra      CloseAndNext        It's not an abort, so we keep processing all supplied files
+Abort@              clr       <DoSequencer
+                    lbsr      MidiMuteAll         Yes, kill the music and get out of here
+                    lbra      bye
+trns@               ldd       <UMETicks
+                    cmpd      1,x                 Compare to this event's clock
+                    beq       ev@
+                    pshs      x
+                    ldx       #$0002
+                    os9       F$Sleep
+                    puls      x
+                    ldd       <UMETicks
+                    addd      #2                  Increment the music clock
+                    std       <UMETicks
+                    bra       UmeLooper           Keep looping
+* Translate Ume event into our event
+ev@                 ldb       ,x                  Get event channel #
+                    lbeq      next@               Skip to next event
+                    decb                          Adjust event # to base 0
+                    cmpb      #$0F 
+                    lbhi      next@
+                    lda       #TRACK_ENTRYSIZE
+                    mul
+                    leay      ScoreTracks,u 
+                    leay      d,y 
+                    sty       <ThisTrack
+                    ldb       ,x
+                    decb
+                    stb       TRACK_MIDICHAN,y    The MIDI channel (0-15) this Lyra channel (0-7)targets
+* Incomplete feature.  We don't set a note length at this time.
+* Notes stop when a new one starts on the same channel.
+                    ldd       #30                 Make note 1/2 second long
+                    addd      1,x                 
+                    std       TRACK_CYCLES,y      Enter subsequencer with D = Clock cycle to turn note off
+                    lda       TRACK_MIDICHAN,y
+                    ldy       <UMEParts
+                    lsla
+                    lsla
+                    leay      a,y 
+                    ldb       1,y                 Get stave # of this part
+                    lda       #10
+                    mul
+                    ldy       <UMEStaves
+                    leay      d,y                 Point to stave block for this part
+                    ldb       3,y                 Get clef type for this part
+                    cmpb      #UMECLEF_GUITENOR
+                    beq       UmeGuitenor
+                    cmpb      #UMECLEF_BASS
+                    beq       UmeBass
+                    cmpb      #UMECLEF_DBLBASS
+                    beq       UmeDblBass
+                    cmpb      #UMECLEF_ALTO
+                    beq       UmeAlto
+                    cmpb      #UMECLEF_TENOR
+                    beq       UmeTenor
+                    cmpb      #UMECLEF_PERCUSSION
+                    beq       UmePercussion
+                    bra       UmeTreble
+UmeGuitenor         leay      Treble,pcr
+                    leay      -(7*4*1),y
+                    bra       UmeClef
+UmeAlto             leay      Treble,pcr
+                    bra       UmeClef
+UmeTenor            leay      Treble,pcr
+                    bra       UmeClef
+UmeBass             leay      Bass,pcr
+                    leay      +(7*4*1),y
+                    bra       UmeClef
+UmeDblBass          leay      Bass,pcr
+                    leay      +(7*4*2),y
+                    bra       UmeClef
+UmePercussion       leay      Percussion,pcr
+                    bra       UmeClef
+UmeTreble           leay      Treble,pcr
+UmeClef             pshs      y
+                    ldb       5,x                 Slot pos on staff (Range: -15<>+15, 32=rest)
+                    cmpb      #32
+                    beq       UmeNote             It's a rest
+* Compute note from MIDI table (each note occupies 4 bytes)
+                    negb
+                    sex                           Make +/- offset
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    addd      ,s++                Add +/- offset to base address
+                    tfr       d,y
+                    lda       1,y                 Get Midi note value from byte 1 (0,[1],2,3)
+* Adjust MIDI note value for Sharp or Flat
+                    ldb       6,x                 Pitch mod (0,1=none  2=sharp,3=dbl sharp  4,5=natural, 6=dbl flat,7=flat)
+                    cmpb      #2
+                    beq       UmeSharp
+                    cmpb      #3
+                    beq       UmeDSharp
+                    cmpb      #7
+                    beq       UmeFlat
+                    cmpb      #6
+                    beq       UmeDFlat
+                    bra       UmeNote
+UmeDSharp           inca
+UmeSharp            inca
+                    bra       UmeNote
+UmeDFlat            deca
+UmeFlat             deca
+UmeNote             ldb       ,x                  Get 1-based channel #
+                    cmpb      #10
+                    bne       UmeMusicN
+                    anda      #31
+                    adda      #35
+UmeMusicN           pshs      a
+                    ldy       <ThisTrack
+                    lda       TRACK_MIDIPITCH,y
+                    lbsr      MidiNoteOff
+                    puls      a
+                    sta       TRACK_MIDIPITCH,y
+                    ldb       #MIDIVEL_DEFAULT
+                    stb       TRACK_VELOC,y
+                    ldb       5,x
+                    cmpb      #32
+                    bne       nt@
+                    clr       TRACK_VELOC,y
+nt@                 ldb       TRACK_MIDICHAN,y
+                    lbsr      MidiNoteOn
+*next@               bsr       ctrl@               Debugger
+next@               leax      8,x
+                    ldd       <UMEEventCntr
+                    addd      #1
+                    std       <UMEEventCntr
+                    cmpd      <UMEEvents
+                    lblo      trns@
+                    lbra      CloseAndNext
+ctrl@
+ ldb      0,x 
+ lbsr PrintHex8
+ ldb      1,x 
+ lbsr PrintHex8
+ ldb      2,x 
+ lbsr PrintHex8
+ ldb      3,x 
+ lbsr PrintHex8
+ ldb      4,x 
+ lbsr PrintHex8
+ ldb      5,x 
+ lbsr PrintHex8
+ ldb      6,x 
+ lbsr PrintHex8
+ ldb      7,x 
+ lbsr PrintHex8
+ lbsr PrintCR
+ rts             
+
 * Try to match the Lyra device string to a device code
-SetupInstruments
-                    leay      LyraTargets+1,pcr     Point to list of 28-character device strings
+SetupInstruments    leay      MIDITARGets+1,pcr   Point to list of 28-character device strings
                     ldx       <FileTop
                     leax      $104,x
                     pshs      y,x,d               Save table pointer and 16-bit device name pointer
@@ -740,19 +976,19 @@ f@                  ldy       4,s
                     puls      d,x,y
                     leay      CASIO_CZ230S,pcr
                     ldb       #127                Last instrument # supported
-                    cmpa      #LYRATARG_CZ230
+                    cmpa      #MIDITARG_CZ230
                     beq       s@
                     leay      KAWAI_MS710,pcr
                     ldb       #127                Last instrument # supported
-                    cmpa      #LYRATARG_MS710
+                    cmpa      #MIDITARG_MS710
                     beq       s@                  Some songs use both GM and MS710 ?
                     leay      CASIO_MT540,pcr
                     ldb       #30                 Last instrument # supported
-                    cmpa      #LYRATARG_MT540
+                    cmpa      #MIDITARG_MT540
                     beq       s@
                     leay      CASIO_CT460,pcr
                     ldb       #30                 Last instrument # supported
-                    cmpa      #LYRATARG_CT460
+                    cmpa      #MIDITARG_CT460
                     beq       s@
                     ldy       #$0000
                     ldb       #127
@@ -762,27 +998,15 @@ s@                  sty       <LyraMatchTable
                     leax      $24,x               Point to first Lyra instrument def
                     ldb       #16                 16 MIDI channels defined in Lyra header
                     pshs      b
-a@                  lda       ,x                  Get MIDI channel # (1-digit ASCII HEX)
+a@                  lda       ,x++                Get MIDI channel # (1-digit ASCII HEX) and skip over ":"
                     suba      #'0
                     leay      ASCIIHEX,pcr
                     lda       a,y                 Get decimal value of HEX character
                     anda      #$0F                Lyra files show 16 voices in its header
                     sta       <LyraChannel2       Save as temp var
-                    ldb       2,x                 Get 1st digit in ASCII numeric instr #
-                    subb      #'0
-                    lda       #100
-                    mul
-                    pshs      d                   Save 100's place 
-                    ldb       3,x                 Get 2nd digit in ASCII numeric instr #
-                    subb      #'0
-                    lda       #10
-                    mul
-                    addd      ,s                  Add 10's place
-                    std       ,s 
-                    clra
-                    ldb       4,x                 Get 3rd digit in ASCII numeric instr #
-                    subb      #'0
-                    addd      ,s++                Add 1's place
+                    pshs      x
+                    lbsr      ASC2Int             Read decimal ASCII value via ,x+ into reg.b
+                    puls      x
                     ldy       <LyraMatchTable
                     cmpy      #$0000
                     beq       dm@
@@ -791,15 +1015,15 @@ a@                  lda       ,x                  Get MIDI channel # (1-digit AS
 tm@                 ldb       b,y                 Translate device instrument into MIDI instrument
 dm@                 lda       <LyraChannel2
                     ora       #$C0                Program the associated MIDI channel. Can this happen more than once?
-                    sta       >MIDI_DATAOUT
-                    stb       >MIDI_DATAOUT
-nm@                 leax      14,x                Point to next Lyra instrument def
+                    sta       >MIDI_DataReg
+                    stb       >MIDI_DataReg
+nm@                 leax      14-2,x              Point to next Lyra instrument def (already skipped #: chars)
                     dec       ,s                  up to 16 MIDI channels defined
                     bne       a@
                     puls      b                   Reclaim space used for MIDI channel counter
                     puls      b,x,y,pc
 
-**********
+********************************************************************
 * ASC2Int
 *   Convert Ascii Number (0-255) to Binary
 *
@@ -822,25 +1046,28 @@ shgn10 lda ,x+
 shgn20 
  rts
 
+********************************************************************
 * Program the sam2695 instruments from an ASCII file
 * with comma/space-separated values
 MidiPatch           lbsr      Load2Local
                     lbcs      err                 Something went wrong, exit
-                    ldy       #0
+MidiPatchX          ldy       #0
 a@                  bsr       ASC2Int
                     pshs      b
                     tfr       y,d
                     tfr       b,a
                     puls      b
                     ora       #$C0                Program the associated MIDI channel. Can this happen more than once?
-                    sta       >MIDI_DATAOUT
-                    stb       >MIDI_DATAOUT
+                    sta       >MIDI_DataReg
+                    stb       >MIDI_DataReg
                     leay      1,y
                     cmpy      #16
                     blo       a@
                     ldb       #-1
                     stb       <LyraUseMap
                     lbra      CloseAndNext
+* Eventually put programs here for quick switching between clef types
+UmePatch            fcc       "0,1,2,3,16,17,18,19,0,0,38,0,0,0,0,0;"
 
 ********************************************************************
 * Musica Player
@@ -890,7 +1117,8 @@ err                 pshs      d,u
                     puls      d,u
 exit                os9       F$Exit
 
-CloseAndNext        lda       <FilePath
+CloseAndNext        lbsr      MidiMuteAll
+                    lda       <FilePath
                     os9       I$Close
                     lbra      NextSong
 
@@ -1469,7 +1697,7 @@ TrioLengths         fcb       $00
                     fcb       $08               [8,16,8]
                     fcb       $04               [4,8,4]
                     fcb       $02               [2,4,2]
-                    fcb       $00               [0,4,0]
+                    fcb       $01               [0,4,0]       1,2,1 won't work because the 1s will reduce away by the tempo adjuster
 
                     fcb       $00
                     fcb       $80               [64,128,64]
@@ -1478,7 +1706,7 @@ TrioLengths         fcb       $00
                     fcb       $10               [8,16,8]
                     fcb       $08               [4,8,4]
                     fcb       $04               [2,4,2]
-                    fcb       $04               [0,4,0]
+                    fcb       $02               [0,4,0]
 
                     fcb       $00
                     fcb       $40               [64,128,64]
@@ -1487,7 +1715,7 @@ TrioLengths         fcb       $00
                     fcb       $08               [8,16,8]
                     fcb       $04               [4,8,4]
                     fcb       $02               [2,4,2]
-                    fcb       $00               [0,4,0]
+                    fcb       $01               [0,4,0]
 
 * Conversion table for Lyra volume (0-15) into MIDI velocity (0-127)
 LyraVelocConv       fcb       0
@@ -1500,125 +1728,281 @@ LyraVelocConv       fcb       0
                     fcb       100
 
 **********************************************************
-* CoCo Lyra note, Midi Note #, Hz
-*
-LyraConvTab         fdb       $62,1175                    $00/Lyra  =  D6/Note  =  $62/Midi
-                    fdb       $60,1047                    $01       =  C6       =  $60
-                    fdb       $5F,988                     $02       =  B5       =  $5F
-                    fdb       $5D,880                     $03       =  A5       =  $5D
-                    fdb       $5B,784                     $04       =  G5       =  $5B
-                    fdb       $59,698                     $05       =  F5       =  $59
-                    fdb       $58,659                     $06       =  E5       =  $58
-                    fdb       $56,587                     $07       =  D5       =  $56
-                    fdb       $54,523                     $08       =  C5       =  $54
-                    fdb       $53,494                     $09       =  B4       =  $53
-                    fdb       $51,440                     $0A       =  A4       =  $51
-                    fdb       $4F,392                     $0B       =  G4       =  $4F
-                    fdb       $4D,349                     $0C       =  F4       =  $4D
-                    fdb       $4C,330                     $0D       =  E4       =  $4C
-                    fdb       $4A,294                     $0E       =  D4       =  $4A
-                    fdb       $48,262                     $0F       =  C4       =  $48
-                    fdb       $47,247                     $10       =  B3       =  $47
-                    fdb       $45,220                     $11       =  A3       =  $45
-                    fdb       $43,196                     $12       =  G3       =  $43 
-                    fdb       $41,175                     $13       =  F3       =  $41
-                    fdb       $40,165                     $14       =  E3       =  $40
-                    fdb       $3E,147                     $15       =  D3       =  $3E
-                    fdb       $3C,131                     $16       =  C3       =  $3C
-                    fdb       $3B,123                     $17       =  B2       =  $3B
-                    fdb       $39,110                     $18       =  A2       =  $39
-                    fdb       $37,98                      $19       =  G2       =  $37
-                    fdb       $35,87                      $1A       =  F2       =  $35
-                    fdb       $34,82                      $1B       =  E2       =  $34
-                    fdb       $32,73                      $1C       =  D2       =  $32
-                    fdb       $30,65                      $1D       =  C2       =  $30
-                    fdb       $2F,62                      $1E       =  B1       =  $2F
-                    fdb       $2D,55                      $1F       =  A1       =  $2D
-                    fdb       $2B,49                      $20       =  G1       =  $2B
-                    fdb       $29,44                      $21       =  F1       =  $29
-                    fdb       $28,41                      $22       =  E1       =  $28
-                    fdb       $26,37                      $23       =  D1       =  $26
-                    fdb       $24,33                      $24       =  C1       =  $24 
-                    fdb       $23,31                      $25       =  B0       =  $23
-                    fdb       $21,28                      $26       =  A0       =  ?
-                    fdb       $1F,27                      $27       =  G0       =  ?
-                    fdb       $1D,26                      $28       =  F0       =  ?
-                    fdb       $1C,25                      $29       =  E0       =  ?
-                    fdb       $1A,24                      $2A       =  D0       =  ?
-                    fdb       $18,23                      $2B       =  C0       =  ? 
-                    fdb       $17,22                       $2C       =  B-1
-                    fdb       $15,21                       $2D       =  A-1
-                    fdb       $13,20                       $2E       =  G-1
-                    fdb       $11,19                       $2F       =  F-1
-                    fdb       $10,18                       $30       =  E-1
-                    fdb       $0E,17                       $31       =  D-1
-                    fdb       $0C,16                       $32       =  C-1
-                    fdb       $0B,15                       $33       =  B-1
+* MIDI/Ultimuse/Lyra notes
+* Sharps and Flats are calculated in code by inca/deca of MIDI note
+*      Octave       Note Number    Note Name        Frequency Hz
+*        9              127            G          12,543.8539514160
+              fdb       127,12544      G8
+*        9              126          F#/Gb        11,839.8215267723
+*        9              125            F          11,175.3034058561
+              fdb       125,11175      F8
+*        9              124            E          10,548.0818212118
+              fdb       124,10548      E8
+*        9              123          D#/Eb	  9,956.0634791066
+*        9              122            D          9,397.2725733570
+              fdb       122,9397       D8
+*        9              121          C#/Db        8,869.8441912599
+*        9              120            C          8,372.0180896192
+              fdb       120,8372       C8
+*        8              119            B          7,902.1328200980
+              fdb       119,7902       B8
+*        8              118          A#/Bb        7,458.6201842894
+*        8              117            A          7,040.0000000000
+              fdb       117,7040       A8
+*        8              116          G#/Ab        6,644.8751612791
+*        8              115            G          6,271.92697571
+              fdb       115,6272       G8
+*        8              114          F#/Gb        5,919.9107633862
+*        8              113            F          5,587.6517029281
+              fdb       113,5588       F8
+*        8              112            E          5,274.0409106059
+              fdb       112,5274       E8
+*        8              111          D#/Eb        4,978.0317395533
+*        8              110            D          4,698.6362866785
+              fdb       110,4699       D8
+*        8              109          C#/Db        4,434.9220956300
+*        8              108            C          4,186.0090448096
+              fdb       108,4186       C8
+*        7              107            B	  3,951.0664100490
+              fdb       107,3951       B7
+*        7              106          A#/Bb        3,729.3100921447
+*        7              105            A          3,520.0000000000
+              fdb       105,3520       A7
+*        7              104          G#/Ab        3,322.4375806396
+*        7              103            G          3,135.9634878540
+              fdb       103,3136       G7
+*        7              102          F#/Gb        2,959.9553816931
+*        7              101            F          2,793.8258514640
+              fdb       101,2794       F7
+*        7              100            E          2,637.0204553030
+              fdb       100,2637       E7
+*        7               99          D#/Eb        2,489.0158697766
+*        7               98            D          2,349.3181433393
+LyraRange     fdb        98,2349       D7
+*        7               97          C#/Db        2,217.4610478150
+*        7               96            C          2,093.0045224048
+              fdb        96,2093       C7
+*        6               95            B          1,975.5332050245
+              fdb        95,1976       B6
+*        6               94          A#/Bb        1,864.6550460724
+*        6               93            A          1,760.0000000000
+              fdb        93,1760       A6
+*        6               92          G#/Ab        1,661.2187903198
+*        6               91            G          1,567.9817439270
+              fdb        91,1568       G6
+*        6               90          F#/Gb        1,479.9776908465
+* High   6               89            F          1,396.9129257320
+              fdb        89,1397       F6
+* High   6               88            E          1,318.5102276515
+              fdb        88,1319       E6
+* High   6               87          D#/Eb        1,244.5079348883
+* High   6               86            D          1,174.6590716696
+              fdb        86,1175       D6
+* High   6               85          C#/Db        1,108.7305239075
+* High   6               84            C          1,046.5022612024
+              fdb        84,1047       C6
+* High   5               83            B            987.7666025122
+              fdb        83,988        B5
+* High   5               82          A#/Bb          932.3275230362
+* High   5               81            A            880.0000000000
+              fdb        81,880        A5
+* High   5               80          G#/Ab          830.6093951599
+* High   5               79            G            783.9908719635
+              fdb        79,784        G5
+* High   5               78           F#/Gb         739.9888454233
+* Treble 5               77            F            698.4564628660
+              fdb        77,698        F5
+* Treble 5               76            E            659.2551138257
+              fdb        76,659        E5
+* Treble 5               75          D#/Eb          622.2539674442
+* Treble 5               74            D            587.3295358348
+              fdb        74,587        D5
+* Treble 5               73          C#/Db          554.3652619537
+* Treble 5               72            C            523.2511306012
+              fdb        72,523        C5
+* Treble 4               71            B            493.8833012561
+              fdb        71,0          B4
+* Treble 4               70          A#/Bb          466.1637615181
+* Treble 4               69            A            440.0000000000
+              fdb        69,440        A4
+* Treble 4               68          G#/Ab          415.3046975799
+* Treble 4               67            G            391.9954359817
+              fdb        67,392        G4
+* Treble 4               66          F#/Gb          369.9944227116
+* Middle 4               65            F            349.2282314330
+              fdb        65,349        F4
+* Middle 4               64            E            329.6275569129
+Treble        fdb        64,330        E4
+* Middle 4               63          D#/Eb          311.1269837221
+* Middle 4               62            D            293.6647679174
+              fdb        62,294        D4
+* Middle 4               61          C#/Db          277.1826309769
+* Middle 4               60            C            261.6255653006
+MiddleC       fdb        60,262        C4
+* Middle 3               59            B            246.9416506281
+              fdb        59,247        B3
+* Middle 3               58          A#/Bb          233.0818807590
+* Middle 3               57            A            220.0000000000
+              fdb        57,220        A3
+* Middle 3               56          G#/Ab          207.6523487900
+* Middle 3               55            G            195.9977179909
+Bass          fdb        55,196        G3
+* Bass   3               54          F#/Gb          184.9972113558
+* Bass   3               53            F            174.6141157165
+Alto          fdb        53,175        F3
+* Bass   3               52            E            164.8137784564
+              fdb        52,165        E3
+* Bass   3               51          D#/Eb          155.5634918610
+* Bass   3               50            D            146.8323839587
+              fdb        50,147        D3
+* Bass   3               49          C#/Db          138.5913154884
+* Bass   3               48            C            130.8127826503
+              fdb        48,131        C3
+* Bass   2               47            B            123.4708253140
+              fdb        47,123        B2
+* Bass   2               46          A#/Bb          116.5409403795
+* Bass   2               45            A            110.0000000000
+              fdb        45,110        A2
+* Bass   2               44          G#/Ab          103.8261743950
+* Bass   2               43            G             97.9988589954
+              fdb        43,98         G2
+* Low    2               42          F#/Gb           92.4986056779
+* Low    2               41            F             87.3070578583
+              fdb        41,87         F2
+* Low    2               40            E             82.4068892282
+              fdb        40,82         E2
+* Low    2               39          D#/Eb           77.7817459305
+* Low    2               38            D             73.4161919794
+              fdb        38,73         D2
+* Low    2               37          C#/Db           69.2956577442
+* Low    2               36            C             65.4063913251
+              fdb        36,65         C2
+* Low    1               35            B             61.7354126570
+              fdb        35,62         B1
+* Low    1               34          A#/Bb           58.2704701898
+* Low    1               33            A             55.0000000000
+              fdb        33,55         A2
+* Low    1               32          G#/Ab           51.9130871975
+* Low    1               31            G             48.9994294977
+              fdb        31,49         G1
+*        1               30          F#/Gb           46.2493028390
+*        1               29            F             43.6535289291
+              fdb        29,44         F1
+*        1               28            E             41.2034446141
+              fdb        28,41         E1
+*        1               27          D#/Eb           38.8908729653
+*        1               26            D             36.7080959897
+              fdb        26,37         D1
+*        1               25          C#/Db           34.6478288721
+*        1               24            C             32.7031956626
+              fdb        24,33         C1
+*        0               23            B             30.8677063285
+              fdb        23,31         B0
+*        0               22          A#/Bb           29.1352350949
+*        0               21            A             27.5000000000
+              fdb        21,28         A0
+*        0               20          G#/Ab           25.9565435987
+*        0               19            G             24.4997147489
+              fdb        19,24         G0
+*        0               18          F#/Gb           23.1246514195
+*        0               17            F             21.8267644646
+              fdb        17,22         F0
+*        0               16            E             20.6017223071
+              fdb        16,21         E0
+*        0               15          D#/Eb           19.4454364826
+*        0               14            D             18.3540479948
+              fdb        14,18         D0
+*        0               13          C#/Db           17.3239144361
+*        0               12            C             16.3515978313
+Percussion    fdb        12,16         C0
+*       -1               11            B             15.4338531643
+              fdb        11,15         B-1
+*       -1               10          A#/Bb           14.5676175474
+*       -1                9            A             13.7500000000
+              fdb         9,14         A-1
+*       -1                8          G#/Ab           12.9782717994
+*       -1                7            G             12.2498573744
+              fdb         7,12         G-1
+*       -1                6          F#/Gb           11.5623257097
+*       -1                5            F             10.9133822323
+              fdb         5,11         F-1
+*       -1                4            E             10.3008611535
+              fdb         4,10         E-1
+*       -1                3          D#/Eb            9.7227182413
+*       -1                2            D              9.1770239974
+              fdb         2,9          D-1
+*       -1                1          C#/Db            8.6619572180
+*       -1                0            C              8.1757989156
+              fdb         0,8          C-1
+
 
 * Program the MIDI instruments per the Lyra header
 * Lyra has 8 virtual channels, and each one can link to any physical MIDI channel.
-LyraTargets         fcb       LYRATARG_CZ230
+MIDITARGets         fcb       MIDITARG_CZ230
                     fcc       "CASIO CZ-230* "
-                    fcb       LYRATARG_CZ230
+                    fcb       MIDITARG_CZ230
                     fcc       "CZ-230*       "
-                    fcb       LYRATARG_CT460
+                    fcb       MIDITARG_CT460
                     fcc       "CASIO CT-460* "
-                    fcb       LYRATARG_MT540
+                    fcb       MIDITARG_MT540
                     fcc       "CASIO MT-540* "
-                    fcb       LYRATARG_MS710
+                    fcb       MIDITARG_MS710
                     fcc       "KAWAI MS-710* "
-                    fcb       LYRATARG_FB01
+                    fcb       MIDITARG_FB01
                     fcc       "FB-01*        "
-                    fcb       LYRATARG_MT32
+                    fcb       MIDITARG_MT32
                     fcc       "MT-32*        "
-                    fcb       LYRATARG_PSR500
+                    fcb       MIDITARG_PSR500
                     fcc       "YAMAHA PSR*   "
                     fcb       -1
 
 * incomplete, needs 16..99
-YAMAHA_PSR500       fcb       0                    00 Piano
-                    fcb       1                    01 Flange piano
-                    fcb       3                    02 Honky-Tonk piano
-                    fcb       2,2,2                03-05 Electric piano 1,2,3
-                    fcb       6,6                  06-07 Harpischord 1,2
-                    fcb       7                    08 Clavi
-                    fcb       8                    09 Celesta
-                    fcb       18,20                10-11 Pipe organ 1,2
-                    fcb       16,17,18,19          12-15 Electronic organ 1,2,3,4
+YAMAHA_PSR500       fcb       MIDI_GRANDPIANO      00 Piano
+                    fcb       MIDI_ACOUSTICPIANO   01 Flange piano
+                    fcb       MIDI_HONKYTONKPIANO  02 Honky-Tonk piano
+                    fcb       MIDI_ELECTRICGRAND   03 Electric piano 1
+                    fcb       MIDI_ELECTRICGRAND   04 Electric piano 2
+                    fcb       MIDI_ELECTRICGRAND   05 Electric piano 3
+                    fcb       MIDI_HARPSICHORD     06 Harpischord 1
+                    fcb       MIDI_HARPSICHORD     07 Harpischord 2
+                    fcb       MIDI_CLAVINET        08 Clavi
+                    fcb       MIDI_CELESTA         09 Celesta
+                    fcb       MIDI_ROCKORGAN,MIDI_REEDORGAN                10-11 Pipe organ 1,2
+                    fcb       MIDI_HAMMONDORGAN,MIDI_PERCUSSIVEORG,MIDI_ROCKORGAN,MIDI_CHURCHORGAN          12-15 Electronic organ 1,2,3,4
 
 * incomplete
-MT_32               fcb       0
+MT_32               fcb       MIDI_GRANDPIANO
                     fcb       36                  001 Slap bass 1
                     fcb       48                  002 String section 1
                     fcb       62                  003 Synth brass
                     fcb       65                  004 Alto sax
                     fcb       96                  005 Ice rain
-                    fcb       2                   006 Electric piano
+                    fcb       MIDI_ELECTRICGRAND  006 Electric piano
                     fcb       76                  007 Bottle blow
                     fcb       55                  008 Ochestral hit
 
-CASIO_MT540         fcb       0                   000 Piano
-                    fcb       6                   001 Harpishord
-                    fcb       11                  002 Vibraphone
-                    fcb       18                  003 Jazz Organ
-                    fcb       19                  004 Pipe Organ
+CASIO_MT540         fcb       MIDI_GRANDPIANO     000 Piano
+                    fcb       MIDI_HARPSICHORD    001 Harpishord
+                    fcb       MIDI_VIBRAPHONE     002 Vibraphone
+                    fcb       MIDI_ROCKORGAN      003 Jazz Organ
+                    fcb       MIDI_CHURCHORGAN    004 Pipe Organ
                     fcb       62                  005 Brass Ensemble
                     fcb       48                  006 Strings
                     fcb       73                  007 Flute
                     fcb       54                  008 Chorus
                     fcb       26                  009 Jazz Guitar
-                    fcb       14                  010 Bells
-                    fcb       7                   011 Funky Clavi
+                    fcb       MIDI_TUBULARBELLS   010 Bells
+                    fcb       MIDI_CLAVINET       011 Funky Clavi
                     fcb       50                  012 Metallic Sound
                     fcb       117                 013 Synthetic Ensemble
-                    fcb       4                   014 Percussion
-                    fcb       20                  015 
+                    fcb       MIDI_RHODESPIANO    014 Percussion
+                    fcb       MIDI_REEDORGAN      015 
                     fcb       21                  016 Accordion
                     fcb       36                  017 Bass/Wood/Slap
                     fcb       119                 018 Sound Effect 1-2
                     fcb       123                 019
-                    fcb       03                  020 Honky-Tonk Piano
-                    fcb       12                  021 Marimba
+                    fcb       MIDI_HONKYTONKPIANO 020 Honky-Tonk Piano
+                    fcb       MIDI_MARIMBA        021 Marimba
                     fcb       68                  022 Oboe
                     fcb       92                  023 Synth Reed
                     fcb       46                  024 Harp
@@ -1629,25 +2013,25 @@ CASIO_MT540         fcb       0                   000 Piano
                     fcb       95                  029 Miracle
 
 
-CASIO_CT460         fcb       0                   000 Piano
-                    fcb       6                   001 Harpishord
-                    fcb       11                  002 Vibraphone
-                    fcb       18                  003 Jazz Organ
-                    fcb       19                  004 Pipe Organ
+CASIO_CT460         fcb       MIDI_GRANDPIANO     000 Piano
+                    fcb       MIDI_HARPSICHORD    001 Harpishord
+                    fcb       MIDI_VIBRAPHONE     002 Vibraphone
+                    fcb       MIDI_ROCKORGAN      003 Jazz Organ
+                    fcb       MIDI_CHURCHORGAN    004 Pipe Organ
                     fcb       62                  005 Brass Ensemble
                     fcb       73                  006 Flute
                     fcb       54                  007 Chorus
                     fcb       26                  008 Jazz Guitar?
-                    fcb       14                  009 Bells
-                    fcb       7                   010 Calvi
+                    fcb       MIDI_TUBULARBELLS   009 Bells
+                    fcb       MIDI_CLAVINET       010 Clavi
                     fcb       93                  011 Metallic Pad
                     fcb       50                  012 Synth Strings 1
                     fcb       117                 013 Melodic Tom Drum
-                    fcb       3                   014 Honky Tonk Piano
-                    fcb       4                   015 Rhodes Piano
-                    fcb       12                  016 Marimba
-                    fcb       16                  017 Hammond Organ
-                    fcb       21                  018 Accordion
+                    fcb       MIDI_HONKYTONKPIANO 014 Honky-Tonk Piano
+                    fcb       MIDI_RHODESPIANO    015 Rhodes Piano
+                    fcb       MIDI_MARIMBA        016 Marimba
+                    fcb       MIDI_HAMMONDORGAN   017 Hammond Organ
+                    fcb       MIDI_ACCORDION      018 Accordion
                     fcb       48                  019 String Ensemble 1
                     fcb       68                  020 Oboe
                     fcb       84                  021 Charang Lead
@@ -1663,10 +2047,10 @@ CASIO_CT460         fcb       0                   000 Piano
 
 KAWAI_MS710
 *                        0-7  Piano, Strings, Flute, Harmonica, Carinet, Piano, Electric Piano, Clavis
-                    fcb       0,50,73,48,71,0,2,7
+                    fcb       MIDI_GRANDPIANO,50,73,48,71,MIDI_ACOUSTICPIANO,MIDI_ELECTRICGRAND,MIDI_CLAVINET
 
 *                       8-15  Vibes, Jazz Organ, Rock Organ, Pipe Organ, Accordian, Alto Sax, Trumpet, Cosmic
-                    fcb       11,18,16,20,21,65,56,88
+                    fcb       MIDI_VIBRAPHONE,MIDI_ROCKORGAN,MIDI_HAMMONDORGAN,MIDI_REEDORGAN,MIDI_ACCORDION,65,56,88
 
 *                      16-23  Banjo, Acoustic Guitar, Electric Guitar, Acoustic Bass, Electric Bass, User1-3
                     fcb       105,25,27,32,33,40,41,42
@@ -1697,7 +2081,7 @@ CASIO_CZ230S
                     fcb       50,51               008-009 Synth Ensemble 1,2 -> Synth Strings 1,2
                     fcb       46                  010 LT HARP -> Orchestral Harp
                     fcb       88                  011 MARS -> New Age Sound
-                    fcb       11                  012 VIBRABL -> Bottle blow?
+                    fcb       MIDI_VIBRAPHONE     012 VIBRABL -> Bottle blow?
                     fcb       00                  013
                     fcb       69                  014 FUNKY HORN -> English Horn reed
                     fcb       36                  015 SLAP HORN -> Slap Bass 1
@@ -1705,9 +2089,9 @@ CASIO_CZ230S
                     fcb       00                  017
                     fcb       00                  018
                     fcb       00                  019
-                    fcb       18,20               020-021 JAZZ ORGAN 1,2 -> Rock Organ, Reed Organ
-                    fcb       16,17               022-023 PIPE ORGAN 1,2 -> Hammond Organ, Percussive Organ
-                    fcb       21                  024 ACORDIN -> Accordian
+                    fcb       MIDI_ROCKORGAN,20   020-021 JAZZ ORGAN 1,2 -> Rock Organ, Reed Organ
+                    fcb       MIDI_HAMMONDORGAN,MIDI_PERCUSSIVEORG               022-023 PIPE ORGAN 1,2 -> Hammond Organ, Percussive Organ
+                    fcb       MIDI_ACCORDION      024 ACORDIN -> Accordian
                     fcb       52                  025 FEMCHOR -> "Aah"
                     fcb       53                  026 MALECHOR -> "Ooh"
                     fcb       00                  027
@@ -1735,17 +2119,17 @@ CASIO_CZ230S
                     fcb       00                  049
                     fcb       0,1,4,3,2           050-054 PIANOS -> Acoustic Grand, Bright Acoustic, Rhodes, Honky-Tonk, Electric Grand
                     fcb       6,6                 055-056 HARPISCHORD 1,2
-                    fcb       07                  057 SYNTH CLAVINET                  
+                    fcb       MIDI_CLAVINET       057 SYNTH CLAVINET                  
                     fcb       00                  058
                     fcb       00                  059
-                    fcb       14                  060 BELLS -> Tubular Bells
+                    fcb       MIDI_TUBULARBELLS   060 BELLS -> Tubular Bells
                     fcb       00                  061
-                    fcb       08                  062 SYNTH CELESTA -> Celesta
+                    fcb       MIDI_CELESTA        062 SYNTH CELESTA -> Celesta
                     fcb       90,88,89            063-065 SYNTH VIB 1,2,3 -> Polysynth Pad, New Age Pad, Halo Pad?
-                    fcb       11                  066 BELL-LYRA -> Wood block
-                    fcb       13                  067 XYLOPHONE -> Xylophone
-                    fcb       15                  068 SOFY XYLOPHONE
-                    fcb       12                  069 MARIMBA -> Marimba
+                    fcb       MIDI_VIBRAPHONE     066 BELL-LYRA -> Wood block
+                    fcb       MIDI_XYLOPHONE      067 XYLOPHONE -> Xylophone
+                    fcb       MIDI_XYLOPHONE      068 SOFY XYLOPHONE
+                    fcb       MIDI_MARIMBA        069 MARIMBA -> Marimba
                     fcb       24,32               070-071 ACOUSTIC GUITAR 1,2 -> Acoustic Nylon Guitar, Acoustic Bass Timbre
                     fcb       26                  072 SEMI ACOUSTIC GUITAR -> Electric Jazz Guitar 
                     fcb       31                  073 FEEDBACK -> Guitar Harmonics?
@@ -1781,8 +2165,92 @@ FILETYPES
                     fcb       FILETYPE_MUSICA
                     fcc       ".lyr"
                     fcb       FILETYPE_COCOLYRA
+                    fcc       ".ume"
+                    fcb       FILETYPE_ULTIMUSE
                     fcc       ".map"
                     fcb       FILETYPE_MIDIPATCH
                     fcb       0                   Mark end of table
+
+PrintCR             pshs      cc,d,x,y
+                    lda       #0
+                    ldy       #1
+                    leax      CRStr,pcr
+                    os9       I$WritLn
+                    puls      cc,d,x,y,pc
+CRStr               fcb       $0d
+
+PrintSPC            pshs      cc,d,x,y
+                    lda       #0
+                    ldy       #1
+                    leax      SPCStr,pcr
+                    os9       I$WritLn
+                    puls      cc,d,x,y,pc
+SPCStr              fcb       C$SPAC
+
+PrintHex16          pshs      y,x,b,a,cc
+                    leax      HexStrDat,u
+
+                    lda       1,s
+                    lsra
+                    lsra
+                    lsra
+                    lsra
+                    bsr       Bin2AscHex
+                    sta       ,x+
+                    lda       1,s
+                    anda      #$F
+                    bsr       Bin2AscHex
+                    sta       ,x+
+
+                    lda       2,s
+                    lsra
+                    lsra
+                    lsra
+                    lsra
+                    bsr       Bin2AscHex
+                    sta       ,x+
+                    lda       2,s
+                    anda      #$F
+                    bsr       Bin2AscHex
+                    sta       ,x+
+
+                    lda       #0
+                    ldy       #4
+                    leax      HexStrDat,u
+                    os9       I$WritLn
+ lbsr PrintSPC
+                    puls      cc,d,x,y,pc
+
+PrintHex8           pshs      y,x,b,a,cc
+                    leax      HexStrDat,u
+
+                    lda       2,s
+                    lsra
+                    lsra
+                    lsra
+                    lsra
+                    bsr       Bin2AscHex
+                    sta       ,x+
+                    lda       2,s
+                    anda      #$F
+                    bsr       Bin2AscHex
+                    sta       ,x+
+
+                    lda       #0
+                    ldy       #2
+                    leax      HexStrDat,u
+                    os9       I$WritLn
+ lbsr PrintSPC
+                    puls      cc,d,x,y,pc
+
+Bin2AscHex          anda      #$0f
+                    cmpa      #9
+                    bls       d@
+                    suba      #10
+                    adda      #'A'
+                    bra       x@
+d@                  adda      #'0'
+x@                  rts
+
 
                     endsect
