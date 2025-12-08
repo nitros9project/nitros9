@@ -862,6 +862,16 @@ DMA_CTRL_Start_Trf  equ       $80
 DMA_STATUS_TRF_IP   equ       $80       transfer in progress
 
 
+* MIDI Synth Chip
+SAM2695.Base       equ        $FF30
+                   org        $0
+MIDI_STATUS        rmb        1                   Read: Bit[1] = Rx_empty, Bit[2] = Tx_empty
+MIDI_FIFO_DATA     rmb        1                   Read and Write Data Port 
+MIDI_RXD_COUNT_LOW rmb        1                   Rx FIFO Data Count LOW
+MIDI_RXD_COUNT_HI  rmb        1                   Rx FIFO Data Count Hi - Only the 4 first bit are valid
+MIDI_TXD_COUNT_LOW rmb        1                   Tx FIFO Data Count LOW 
+MIDI_TXD_COUNT_HI  rmb        1                   Tx FIFO Data Count Hi - Only the 4 first bit are valid
+
 
 * WizFi360 Registers, 2K x 2 FIFO
 * Wifi_Control_Register:
