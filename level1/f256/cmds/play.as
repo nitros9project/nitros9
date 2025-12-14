@@ -66,7 +66,7 @@
 *
 *   14     2025/12/15  R Taylor
 * Adjusted Ultimuse clef offsets in master MIDI table.
-* Aded -d# debug mode: any value currently shows tracker for Ultimuse.
+* Aded -d# debug mode: any value currently shows tracker for Lyra/Ume.
 * Added MIDI filter switch -m# where # is the additive bit mask of the MIDI channels allowed to output.
 * -m1 = only channel 1   (0000000000000001)
 * -m5 = channels 1 and 3 (0000000000000101)
@@ -165,7 +165,6 @@ F256SoundBlk        rmb       2                   The F256 has some HW in high R
 ScoreStart	    rmb       2
 ScoreCurrent	    rmb       2
 NoteCycles	    rmb       2                   Musica carries a chord for 1 duration
-*HalfCycles	    rmb       2
 Dividend_High       rmb       2
 Dividend_Low        rmb       2
 Divisor             rmb       2
@@ -313,7 +312,6 @@ s@                  sta       <PlaylistPath
                     stx       <cliptr
                     ldb       #1
                     stb       <PlaylistMode
-
 DoBusiness          lbsr      SET_SOUND_REGS
                     leax      cfIcptRtn,pcr
 	            os9	      F$Icpt
@@ -358,8 +356,8 @@ NextSong            clr       <DoSequencer
                     lbsr      ClearTracks
 
                     lbsr      QUIET_ALL
-                    ldd       #$0000
-                    std       <NoteCycles
+                    clr       <NoteCycles
+                    clr       <NoteCycles+1
 
                     tst       <PlaylistMode
                     beq       OpenMediaFile
@@ -581,7 +579,9 @@ s@                  ldy       <ThisTrack
                     dec       ,s
                     bne       a@                  Do all Lyra channels
                     puls      b
- lbsr DebugNotes
+                    ldb       <DebugMode
+                    beq       ve@
+                    lbsr      DebugNotes
 ve@                 ldx       #$0002
                     os9       F$Sleep
                     bra       LyraLooper
@@ -594,7 +594,7 @@ ve@                 ldx       #$0002
 LyraSubSeq          cmpd      #0                  Is there a note playing?
                     lbne      LyraDecCycle        Yes, decrement note timer and exit, long branch is helpful in balance
 r@                  ldd       ,x                  Get current note
-                    lbeq      LyraSeqExit         Note marks the end of the track,  long branch is helpful in balance
+                    lbeq      LyraMusSeqExt         Note marks the end of the track,  long branch is helpful in balance
                     bita      #LYRA_EVENTBIT      Is this an event?
                     beq       c@                  No, it must be a note or rest
 * Process Event Codes
@@ -674,7 +674,7 @@ nt@                 ldb       TRACK_TRIPLET,y     Get triplet note # for this ch
                     andb      #LYRA_LENGTHBITS    Pick off only the Length bits
                     clra                          Make 16-bit offset and note length
                     ldb       d,y                 Point to index of Lyra note
-* Slow the tempo a bit but not in half.  Reduction in any way prevents 64ths
+* Slow the tempo a bit but not in half.  Reduction-by-right-shifting prevents 64ths
 * notes from playing in a trio, so in the trio tables we use a total of 0,4,0
 * instead of 1,2,1 for the 64th note lengths.
                     lda       #3                  Speed up all notes, L*.75, L*3/4
@@ -683,7 +683,7 @@ nt@                 ldb       TRACK_TRIPLET,y     Get triplet note # for this ch
                     rorb
                     lsra
                     rorb
-                    ldy       <ThisTrack      Restore track pointer
+                    ldy       <ThisTrack          Restore track pointer
                     pshs      d                   Save note length
                     lda       ,x                  Get note code 
                     anda      #LYRA_DOTTEDNOTE    Is this a dotted note length?
@@ -696,7 +696,7 @@ nt@                 ldb       TRACK_TRIPLET,y     Get triplet note # for this ch
 l@                  ldd       ,s++                Pop adjusted length from stack
                     beq       sn@                 Length is zero! But how, why, when, where, who.  Skip over decrement.
 LyraDecCycle        subd      #1                  Count down the note cycles
-                    bne       LyraSeqExit
+                    bne       LyraMusSeqExt
 sn@                 ldd       2,x
                     cmpb      1,x
                     bne       nof@                That would be called Slur which we can't do at this time
@@ -706,7 +706,7 @@ nof@                bsr       MidiNoteOff
 nxn@                leax      2,x                 Point to the next note
                     clra
                     clrb
-LyraSeqExit         rts                           Return to sequencer
+LyraMusSeqExt       rts                           Return to sequencer
 
 MidiNoteOn          ldb       #MIDICMD_NOTE_ON    Send MIDI Note On
                     orb       TRACK_MIDICHAN,y    Get the target channel
@@ -836,11 +836,11 @@ UmeKick             lbsr      BuildClefMap
 *******************************************************************
 * Test: If a .map file wasn't specified, put together some kind
 * of orchestra based on the clef types
+
                     tst       <flgUseMapFile      Check if instrument map file was loaded
                     bne       UmeStart            User has already applied a patch file
                     leay      UMEPartClefs,u
-                    ldb       #0
-                    pshs      b
+                    clr       ,-s
 a@                  lda       ,y+                 Get clef type
                     ldb       ,s
                     cmpb      #9                  Don't change sam2695 channel 10
@@ -892,11 +892,13 @@ n@                  inc       ,s
                     ldb       ,s 
                     cmpb      <ScorePartsTot
                     blo       a@
+                    leas      1,s
 
 UmeStart            ldx       <UMEScoreStart
-                    ldd       #0
-                    std       <UMETicks
-                    std       <UMEEventCntr
+                    clr       <UMETicks
+                    clr       <UMETicks+1
+                    clr       <UMEEventCntr
+                    clr       <UMEEventCntr+1
                     ldb       #1                  Enable the sequencer
                     stb       <DoSequencer
 
@@ -911,8 +913,9 @@ End@                clr       <DoSequencer        If we made it here it means al
 Abort@              clr       <DoSequencer
                     lbsr      MidiMuteAll         Yes, kill the music and get out of here
                     lbra      bye
-trns1@
- lbsr DebugNotes
+trns1@              ldb       <DebugMode
+                    beq       trns@
+                    lbsr      DebugNotes
 trns@               ldd       <UMETicks
                     cmpd      1,x                 Compare to this event's clock
                     beq       ev@
@@ -1014,10 +1017,7 @@ next@               leax      8,x
                     lbra      CloseAndNext
 
 * Translate MIDI note value into named note (including sharps/flats)
-DebugNotes          tst       <DebugMode
-                    bne       a@
-                    rts
-a@                  pshs      d,x,y
+DebugNotes          pshs      d,x,y
                     leay      ScoreTracks,u 
                     ldb       <ScorePartsTot
                     pshs      b
@@ -1326,43 +1326,43 @@ CloseAndNext        lbsr      MidiMuteAll
 *
 
 MusicaSeq           ldb       <DoSequencer        Are we allowed to play music?
-                    lbeq      SeqExit             No, then exit
+                    lbeq      MusSeqExit             No, then exit
                     ldx       <ScoreCurrent
                     ldd       <NoteCycles
-                    lbne      MusicaNxtCyc        A note is currently playing
+                    lbne      MusSeqNxtCyc        A note is currently playing
                     ldb       ,x                  Get the new note length
-                    lbeq      MusicaSeqEnd        0 means End Of Score
-                    bpl       SeqGetNote          Go set up the note
+                    lbeq      MusSeqEnd        0 means End Of Score
+                    bpl       MusSeqGetNote          Go set up the note
                     cmpb      #$FB                Repeat a Section
                     beq       MusicaSeqRepSct
                     cmpb      #$FC                Section Marker (up to 9 tracked)
-                    beq       SeqAddSection
+                    beq       MusSeqAddSct
                     cmpb      #$FE		  Tempo and Instruments Block
-                    beq       SeqSetTempo
+                    beq       MusSeqSetTmp
                     cmpb      #$FD		  Barline Repeat
                     beq       MusicaSeqRepBar
-                    bra       SeqNextNote         Skip the unknown block
+                    bra       MusSeqNxtNote         Skip the unknown block
 
 MusicaSeqRepSct     ldb       #$F0                Make into unused block code, ignored on next passby
                     stb       ,x
                     ldb       1,x                 Get the Section # to repeat (1-9)
-                    beq       SeqNextNote         Is out of range
+                    beq       MusSeqNxtNote         Is out of range
                     cmpb      #9
-                    bhs       SeqNextNote         Is out of range
+                    bhs       MusSeqNxtNote         Is out of range
                     leay      <SectionList,u
                     lslb
                     ldx       b,y                 Get the section # to repeat (1-9)
-                    bra       SeqNextNote
+                    bra       MusSeqNxtNote
 
 MusicaSeqRepBar     ldb       #$F0                Make into unused block code, ignored on next passby
                     stb       ,x
                     ldx       <ScoreStart
                     stx       <ScoreCurrent
-                    bra       SeqExit
+                    bra       MusSeqExit
 
-SeqAddSection       ldb       <TotalSections
+MusSeqAddSct        ldb       <TotalSections
                     cmpb      #9
-                    lbhs      SeqNextNote         Can't add more than 9 sections, ignore
+                    lbhs      MusSeqNxtNote         Can't add more than 9 sections, ignore
                     leay      <SectionList,u
                     lslb
                     leay      b,y 
@@ -1370,13 +1370,13 @@ SeqAddSection       ldb       <TotalSections
                     addd      #9                  Section starts at next note
                     std       ,y                  Store current score address in section slot
                     inc       <TotalSections
-                    bra       SeqNextNote
+                    bra       MusSeqNxtNote
 
-SeqSetTempo         lda       5,x                 Set new tempo
+MusSeqSetTmp        lda       5,x                 Set new tempo
                     sta       <ScoreTempo
-                    bra       SeqNextNote
+                    bra       MusSeqNxtNote
 
-SeqGetNote          lda       <ScoreTempo
+MusSeqGetNote       lda       <ScoreTempo
                     mul                           Multipy note length by the current tempo
                     lsra                          Divide by 128 to get # of 60hz cycles for the note duration
                     rorb
@@ -1394,7 +1394,7 @@ SeqGetNote          lda       <ScoreTempo
                     rorb
                     std       <NoteCycles         Update the cycles counter
                     cmpd      #0                  Note has no length...
-                    beq       SeqExit             So just exit
+                    beq       MusSeqExit             So just exit
 *                    lsra
 *                    rorb
 *                    std       <HalfCycles         Planned: play 2 notes in sequence on same channel
@@ -1407,16 +1407,16 @@ SeqGetNote          lda       <ScoreTempo
                     lbsr      PlayPSGChord
                 endc
 
-GetCycles           ldd       <NoteCycles
-MusicaNxtCyc        subd      #1
+MusSeqGetCyc        ldd       <NoteCycles
+MusSeqNxtCyc        subd      #1
                     std       <NoteCycles
-                    bne       SeqExit
-SeqNextNote         leax      9,x
+                    bne       MusSeqExit
+MusSeqNxtNote       leax      9,x
                     stx       <ScoreCurrent
-                    bra       SeqExit
-MusicaSeqEnd        clr       <DoSequencer        Current song is over
-*                   bra       SeqExit
-SeqExit             rts
+                    bra       MusSeqExit
+MusSeqEnd           clr       <DoSequencer        Current song is over
+*                   bra       MusSeqExit
+MusSeqExit             rts
 
 
 ********************************************************************
@@ -2442,6 +2442,5 @@ Bin2AscHex          anda      #$0f
                     bra       x@
 d@                  adda      #'0'
 x@                  rts
-
 
                     endsect
