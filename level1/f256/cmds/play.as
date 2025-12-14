@@ -64,20 +64,23 @@
 *   13     2025/12/11  R Taylor
 * Added Ultimuse III format.  Lyra and Ultimuse use new master MIDI table.
 *
-*  14      2025/12/15  R Taylor
+*   14     2025/12/15  R Taylor
 * Adjusted Ultimuse clef offsets in master MIDI table.
 * Aded -d# debug mode: any value currently shows tracker for Ultimuse.
 * Added MIDI filter switch -m# where # is the additive bit mask of the MIDI channels allowed to output.
 * -m1 = only channel 1   (0000000000000001)
 * -m5 = channels 1 and 3 (0000000000000101)
 * -m65535 = all channels (1111111111111111)
-
+*
+*   15     2025/12/21   R Taylor
+* Bug fix: silenced note after rest in .ume format.
+* Renamed UMEPartsTot to ScorePartsTot in prep for Lyra/Ultimuse sharing some code.
 
                     nam       music
                     ttl       Music Player
 
  section __os9
-edition = 14
+edition = 15
  endsect
 
 * Here are some tweakable options
@@ -186,7 +189,7 @@ LyraTempo           rmb       1
 UMETicks            rmb       2
 UMEEventTot         rmb       2                   Total number of events in file
 UMEEventCntr        rmb       2
-UMEPartsTot         rmb       1
+ScorePartsTot       rmb       1
 UMEPartsAdr         rmb       2
 UMEStavesAdr        rmb       2
 UMEScoreStart       rmb       2
@@ -508,7 +511,7 @@ PlayLyra            bsr       Load2Local
                     leax      $10,x               Point to address holder of track 1
                     leay      ScoreTracks,u       Table holds Track block location, Cycles left for note/rest
                     ldb       #8
- stb <UMEPartsTot
+                    stb       <ScorePartsTot
                     pshs      b
 a@                  ldd       1,s                 Recall address of top of file
                     addd      ,x++                Compute (top of file + track offset)
@@ -640,7 +643,7 @@ p@                  sta       TRACK_MIDIPITCH,y
 gn@                 ldd       ,x                  Get current note again
                     bita      #LYRA_RESTNOTE      Is this a Note or a Rest
                     beq       ntied@              It's sound, go check whether it's tied to last note
-                    lbsr      MidiRestNote        It's a rest - silence this pitch
+                    lbsr      MidiNoteOff
                     bra       non@                Then jump to length calc of note
 * Tied Notes Logic: Tied notes have to be the same pitch.  Lyra marks a note as being tied to the previous note.
 ntied@              cmpb      3,x                 Next note Pitch is different, so it can't be tied
@@ -699,9 +702,7 @@ sn@                 ldd       2,x
                     bne       nof@                That would be called Slur which we can't do at this time
                     bita      #LYRA_TIEDTOLAST    Is the next note tied to the current note?
                     bne       nxn@
-nof@
-*                lda       TRACK_MIDIPITCH,y   Next note is tied to this note
-                    bsr       MidiNoteOff
+nof@                bsr       MidiNoteOff
 nxn@                leax      2,x                 Point to the next note
                     clra
                     clrb
@@ -724,6 +725,7 @@ a@                  orb       TRACK_MIDICHAN,y    Get the target channel
                     lda       TRACK_MIDIPITCH,y
                     sta       >MIDI_DataReg       The note value to turn on
                     ldb       #$00 
+*                    ldb       TRACK_VELOC,y       Get velocity for this channel
                     stb       >MIDI_DataReg
                     rts
 
@@ -758,13 +760,19 @@ c@                  clr       ,y+
                     bne       c@
                     puls      x,y,pc
 
-MultYxD             pshs      d,y
-                    ldd       ,s
-a@                  addd      ,s
-                    leay      -1,y
-                    bne       a@
-                    std       ,s
-x@                  puls      d,y,pc
+MultYxB             pshs      b,y
+                    tfr       y,d
+                    ldb       ,s
+                    mul
+                    tfr       b,a
+                    clrb
+                    std       1,s
+                    tfr       y,d
+                    lda       ,s
+                    mul
+                    addd      1,s
+                    std       1,s
+                    puls      b,y,pc
 
 *******************************************************************
 * Ultimuse III format (originally Tandy Color Computer)
@@ -783,7 +791,7 @@ PlayUltimuse        lbsr      Load2Local
                     leay      4,y                 Skip over unused part #0
                     sty       <UMEPartsAdr        Set start of part/voice table
                     ldb       1,x                 Get number of music parts
-                    stb       <UMEPartsTot        Save
+                    stb       <ScorePartsTot        Save
                     lslb
                     lslb
                     leay      b,y
@@ -794,15 +802,18 @@ PlayUltimuse        lbsr      Load2Local
                     leay      d,y
                     sty       <UMEScoreStart
                     ldy       <UMEEventTot
-                    ldd       #8
-                    lbsr      MultYxD            Multiply total events by 8
+                    ldb       #8
+                    lbsr      MultYxB            Multiply total events by 8
+                    tfr       y,d
                     addd      <UMEScoreStart
                     std       <UMEEndOfScore
                     tfr       d,y
-                    ldb       ,x                 Get UME level
-                    cmpb      #7
-                    blo       UmeKick
+                    ldd       ,y
+                    stb       <ScoreTempo
                     leay      2,y                 secmin            2     /* Speed scale factor in "seconds per minute" */
+                    ldb       ,x                  Get UME level
+                    cmpb      #7
+*                    blo       UmeKick
                     leay      16,y                array instvals[]  16    /* 16 bytes for patch change numbers */
                     leay      160,y               array instnames[] 16*10 /* array of 16*10 for 10 byte incl \0
                     leay      16,y                array chans[]     16    /* array of 16 midi channels, 1 per part */
@@ -879,7 +890,7 @@ i@                  lda       ,s
                     stb       >MIDI_DataReg
 n@                  inc       ,s
                     ldb       ,s 
-                    cmpb      <UMEPartsTot
+                    cmpb      <ScorePartsTot
                     blo       a@
 
 UmeStart            ldx       <UMEScoreStart
@@ -918,7 +929,7 @@ ev@
                     ldb       ,x                  Get event channel #1-16
                     lbeq      next@               Skip to next event
                     decb                          Adjust event # to base 0
-                    cmpb      <UMEPartsTot        Is channel between 0..15?
+                    cmpb      <ScorePartsTot        Is channel between 0..15?
                     lbhs      next@               Out of range, skip
                     lda       #TRACK_ENTRYSIZE    We use MUL in case track entry size changes
                     mul
@@ -986,6 +997,7 @@ UmeMusicN           pshs      a
 *                    lda       TRACK_MIDIPITCH,y   The previous pitch for this channel
                     lbsr      MidiNoteOff
                     puls      a
+                    clr       TRACK_VELOC,y
                     ldb       5,x
                     cmpb      #32
                     beq       next@                 Is it a rest?
@@ -1007,7 +1019,7 @@ DebugNotes          tst       <DebugMode
                     rts
 a@                  pshs      d,x,y
                     leay      ScoreTracks,u 
-                    ldb       <UMEPartsTot
+                    ldb       <ScorePartsTot
                     pshs      b
 l@                  lda       TRACK_MIDIPITCH,y
                     ldb       TRACK_VELOC,y
@@ -1051,7 +1063,7 @@ a@                  ldb       ,y+
                     bsr       PrintClefStr
                     inc       ,s
                     ldb       ,s
-                    cmpb      <UMEPartsTot
+                    cmpb      <ScorePartsTot
                     blo       a@
                     lbsr      PrintCR
 x@                  puls      d,y,pc
@@ -1076,7 +1088,7 @@ a@                  ldy       <UMEPartsAdr
                     stb       ,x+                 Set clef # for this part
                     inc       ,s
                     ldb       ,s
-                    cmpb      <UMEPartsTot
+                    cmpb      <ScorePartsTot
                     blo       a@
                     puls      b,x,y,pc
 
