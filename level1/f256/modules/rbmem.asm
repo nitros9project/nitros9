@@ -39,12 +39,12 @@ MMU_WORKSLOT        equ       MMU_SLOT_0+MMU_SLOT
 tylg                set       Drivr+Objct
 atrv                set       ReEnt+rev
 rev                 set       $01
-edition             set       2
+edition             set       3
 
                     mod       eom,name,tylg,atrv,ModEntry,size
 
                     org       DrvBeg
-DrvTab              rmb       MaxDrives*DrvMem       ; Drive tables, 1 per drive
+DrvTab              rmb       MAXDRIVES*DRVMEM       ; Drive tables, 1 per drive
 
 CDrvTab             rmb       2
 SaveMMU             rmb       1
@@ -131,7 +131,7 @@ CalcMMUBlock        lda       PD.DRV,y
                     bhs       drvex@
                     pshs      x,d
                     leax      DrvBeg,u
-                    ldb       #DrvMem
+                    ldb       #DRVMEM
                     lda       PD.DRV,y
                     mul
                     leax      d,x
@@ -272,58 +272,54 @@ SetStat             clrb
 *
 * In summary: We better see $BFD6/$BFD7 or $BFC8/$BFC9 as the chip ID.
 *
-
-InitCmd             pshs      d,x,u
+InitCmd             pshs      d
                     lda       V.PORT+1,u
                     anda      #$C0               Align to top of Flash chip
                     tst       isFlash,u
-                    bmi       k@
-                    adda      #$02               Flash chip block $02
+                    bmi       k2@
+jr2@                adda      #$02               Chip block $02
                     ldb       #$AA
                     sta       >MMU_WORKSLOT
-                    stb       >$5555             $AA->$5555 on chip
+                    stb       >MMU_WINDOW+$1555  $AA->$5555 on chip
                     lda       V.PORT+1,u
                     anda      #$C0               Align to top of Flash chip
                     inca                         Flash chip block $01
                     ldb       #$55
                     sta       >MMU_WORKSLOT
-                    stb       >$4AAA             $55->$2AAA on chip
+                    stb       >MMU_WINDOW+$AAA   $55->$2AAA on chip
                     bra       x@
-k@                  sta       >MMU_WORKSLOT
-                    ldb       #$AA
-                    stb       >$4AAA             $AA->$0AAA on chip
+k2@                 ldb       #$AA
+                    sta       >MMU_WORKSLOT
+                    stb       >MMU_WINDOW+$AAA   $AA->$0AAA on chip
                     ldb       #$55
-                    stb       >$4555             $55->$0555 on chip
-x@                  puls      d,x,u,pc
+                    stb       >MMU_WINDOW+$555   $55->$0555 on chip
+x@                  puls      d,pc
 
-SendCmd             pshs      d,x,u
+SendCmd             pshs      d
                     bsr       InitCmd
                     ldb       1,s                Get command byte from stack
                     lda       V.PORT+1,u
                     anda      #$C0               Align to top of Flash chip
                     tst       isFlash,u
-                    bmi       k@
-                    adda      #$02               Flash chip block $02
+                    bmi       k2@
+jr2@                adda      #$02               Flash chip block $02
                     sta       >MMU_WORKSLOT
-                    stb       >$5555
+                    stb       >MMU_WINDOW+$1555  $5555 on chip
                     bra       x@
-k@                  sta       >MMU_WORKSLOT
-                    stb       >$4AAA
-x@                  puls      d,x,u,pc
-
+k2@                 sta       >MMU_WORKSLOT
+                    stb       >MMU_WINDOW+$AAA   $0AAA on chip
+x@                  puls      d,pc
 
 ReadFlashID         pshs      cc
                     orcc      #IntMasks
                     clr       IsFlash,u
-                    dec       IsFlash,u           Test K2 Flash
+                    dec       IsFlash,u           Test K2 Flash (isFlash is negative)
                     ldb       #$90
                     bsr       SendCmd
                     ldd       >MMU_WINDOW         Get ID of Flash Chip (if using MMU_SLOT_2)
                     tfr       d,x
                     ldb       #$F0
                     bsr       SendCmd
-                    ldd       >MMU_WINDOW         Get ID of Flash Chip (if using MMU_SLOT_2)
-                    tfr       d,x
                     cmpx      FLASH_ID_2MB_K2A,pcr
                     beq       s@
                     cmpx      FLASH_ID_2MB_K2B,pcr
@@ -453,7 +449,7 @@ TfrFSect            lda       FlashBlock,u        copy from Flash block to Cache
                     lsra
                     lsra                          compute 0=1st half of 4K Flash sector, 1=2nd half
                     ldb       FlashBlock,u        what 8K Flash block is the sector in?
-                    lbsr      Erase4KSector
+                    bsr       Erase4KSector
                     ldy       #4096               at this point X needs to point to the 4K Sector within the 8K Cache
                     bra       w@                  start writing 4K Sector from 8K Cache to Flash
 c@                  tfr       y,x                 Y = address of OS-9 256-byte sector within the 8K Cache
