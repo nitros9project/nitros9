@@ -1463,7 +1463,7 @@ doit@               lda       #1
 setfgcolor          pshs      x,y
                     leax      fontfgcolor,pcr               set final font color
                     leay      fgbuf,u
-                    ldb       #6                            6 bytes to write
+                    ldb       #7                            6 bytes to write
 fgloop@             lda       ,x+
                     sta       ,y+
                     decb
@@ -1496,8 +1496,10 @@ DoneExit            lbsr      movecursor2
                     lbsr	  cursoron		                turn cursor on           
                     os9       F$Exit
 parsedone           rts
-DoneExit2           ldb       #216                          path not found error
-                    lbsr	  cursoron		                turn cursor on    
+DoneExit2           lbsr	  cursoron		                turn cursor on 
+                    lbsr      setupPalette2
+                    ;ldb       #216                          path not found error
+                    clrb   
                     os9       F$Exit
 
 rgblookupbg         pshs      x,y
@@ -1516,6 +1518,45 @@ rgblookupbg         pshs      x,y
                     puls      x,y,pc
 
 
+SetupPalette2       bsr       F256Type
+                    cmpa      #$02                          F256 Jr?
+                    beq       @showJr
+                    cmpa      #$1A                          F256 Jr2?
+                    beq       @showK
+                    cmpa      #$16                          F256 K2?
+                    beq       @showK2
+@showK              leax      KPal,pcr                      F256 K
+                    ldy       #KPalLen
+                    bra       show@
+@showJr             leax      JrPal,pcr
+                    ldy       #JrPalLen
+                    bra       show@
+@showK2             leax      K2Pal,pcr
+                    ldy       #K2PalLen
+show@               lda       #1
+                    os9       I$Write
+                    leax      fgbuf,u             foreground font color buffer
+                    lda       #$1b
+                    sta       ,x+
+                    lda       #$32
+                    sta       ,x+
+                    lda       #$7                 default foreground color fg,u
+                    sta       ,x+
+                    lda       #$0C                clear screen
+                    sta       ,x+
+                    lda       #$01                standard output
+                    leax      fgbuf,u
+                    ldy       #4                  3 bytes to write
+                    os9       I$Write
+                    rts
+
+* F256 identity routine
+* Exit: A = $02 (F256 Jr), $12 (F256K), $1A (F256 Jr2), $16 (F256K2)
+F256Type            pshs      x
+                    ldx       #SYS0
+                    lda       7,x
+                    puls      x,pc
+
 FGP                 set $07
 FGP2                set $07
 BGP                 set $0A
@@ -1529,6 +1570,22 @@ KPal
                     fcb $1B,$60,BGP,$4F,$00,$80,$FF
                     fcb $1B,$61,BGP,$4F,$00,$80,$FF
 KPalLen             equ *-KPal
+
+JrPal
+* Set up 80x30 window with foreground and background colors as same
+                    fcb $1B,$20,$02,$00,$00,$50,$18,BGP,BGP,$00
+                    fcb $1B,$60,FGP,$FF,$FF,$00,$FF
+                    fcb $1B,$60,BGP,$50,$00,$00,$FF
+                    fcb $1B,$61,BGP,$50,$00,$00,$FF
+JrPalLen            equ *-JrPal                    
+
+K2Pal
+* Set up 80x30 window with foreground and background colors as same
+                    fcb $1B,$20,$02,$00,$00,$50,$18,BGP,BGP,$00
+                    fcb $1B,$60,FGP,$FF,$FF,$00,$FF
+                    fcb $1B,$60,BGP,$50,$00,$FF,$00
+                    fcb $1B,$61,BGP,$50,$00,$DD,$00
+K2PalLen            equ *-K2Pal
 
 fspath	       fcc       \/dd/SYS/currfont\		    File save path
                fcb	 $0D
@@ -1636,7 +1693,7 @@ fspath2             fcc       "defaultsettings"
                     fcb       C$CR
 sysfont             fcc       "/DD/SYS/FONTS"
                     fcb       C$CR
-fontfgcolor         fcb $02,$20,$2a,$1b,$32,$01
+fontfgcolor         fcb $02,$20,$2a,$1b,$32,$01,$0C
 
                emod
 eom            equ *
