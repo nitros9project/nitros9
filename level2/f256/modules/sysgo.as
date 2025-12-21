@@ -196,9 +196,6 @@ init                leax      Init,pcr
 
 * Set default time
 SetDefTime          puls      u
-                    lbsr      F256Type             the K2 keyboard fails if F$STime is not executed
-                    cmpa      #$16                 the jr2 sets the time to 83/01/01 so we bypass for non K2 models
-                    bne       SetDirs
                     leax      >DefTime,pcr
                     os9       F$STime              set time to default
 
