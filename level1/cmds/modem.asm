@@ -11,7 +11,10 @@
 * Comment
 * ------------------------------------------------------------------
 *          2025/07/13  R Taylor
-* Added -r option to reset the FIFO
+* Added -R option to reset the FIFO
+*
+*          2025/12/23  R Taylor
+* Added -L option to specify # of lines to read from device
 
 
                     ifp1
@@ -21,7 +24,7 @@
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       5
+edition             set       6
 
 * Here are some tweakable options
 STACKSZ             set       128                 estimated stack size in bytes
@@ -33,6 +36,7 @@ PARMSZ              set       256                 estimated parameter size in by
 path                rmb       1
 cfgpath             rmb       1
 param               rmb       2
+linestoread         rmb       1
 d.ptr               rmb       2
 d.size              rmb       2
 timeout             rmb       1
@@ -76,7 +80,9 @@ start               subd      #$0001              if this becomes zero,
                 *     std       <d.device           |
                 *     std       <d.device+2         | clear device name string space (5 chars)
                 *     stb       <d.device+4         |
-
+                
+                    ldb       #1
+                    stb       <linestoread
                     leay      d.buffer,u          point Y to buffer offset in U
                     stx       <param              and parameter area start
                     tfr       s,d                 place top of stack in D
@@ -136,6 +142,8 @@ do.dash             leax      1,x                 skip over dash
                     cmpa      #C$CR               CR?
                     lbeq      Exit                yes, exit
                     anda      #$DF                make uppercase
+                    cmpa      #'L
+                    beq       do.l
                     cmpa      #'T
                     beq       do.t
                     cmpa      #'R
@@ -145,8 +153,18 @@ do.dash             leax      1,x                 skip over dash
                     lbra      Exit
 
 ********************************************************************
-do.t                ldb       #3                  -t option sets default 3-second timeout
-                    stb       <timeout
+do.t                lbsr      ASC2Int            get timeout seconds
+                    tstb
+                    bne       do.t1
+                    ldb       #1
+do.t1               stb       <timeout
+                    bra       do.opts2            do more args
+********************************************************************
+do.l                lbsr      ASC2Int            get # of lines to read 0-255
+                    tstb
+                    bne       do.l1
+                    ldb       #1
+do.l1               stb       <linestoread
                     bra       do.opts2            do more args
 
 ********************************************************************
@@ -253,6 +271,8 @@ d@                  lda       <path
                     lda       ,x
                     cmpa      #$0a
                     bne       l@
+                    dec       <linestoread
+                    bne       l@
                     lda       <path               get the current path number
                     os9       I$Close             close it
 read.ex             rts
@@ -292,6 +312,28 @@ do.z2               lda       ,x
                     puls      x
                     bcc       do.z                branch if ok
                     bra       Error
+
+********************************************************************
+* ASC2Int
+*   Convert Ascii Number (0-255) to Binary
+*
+* In:  (X)=Ascii String ptr
+* Out: (A)=next char After Number
+*      (B)=Number
+*      (X)=updated Past Number
+*      CC=set if Error
+*
+ASC2Int             clrb
+shgn10              lda       ,x+
+                    suba      #'0                 convert ascii to binary
+                    cmpa      #9                  valid decimal digit?
+                    bhi       shgn20              ..no; end of number
+                    pshs      a                   save digit
+                    lda       #10
+                    mul                           MULTIPLY Partial result times 10
+                    addb      ,s+                 add in next digit
+                    bcc       shgn10              get next digit if no overflow
+shgn20              rts
 
 
                     emod
