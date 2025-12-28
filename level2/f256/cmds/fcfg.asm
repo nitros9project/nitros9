@@ -6,9 +6,10 @@
 *
 * Edt/Rev  2024/11/30  Modified by John Federico
 * Comment
-* Edt/Rev  2025/11/28  MOdified by Matt Massie
+* Edt/Rev  2025/11/28  Modified by Matt Massie
 * added sys/defaultsettings to store selected foreground, background, screensize, and font for updated sysgo
 * sys/currfont loads the currently select font on fcfg startup
+* Edt/Rev  2025/12/26 Added NitrOS-9 logo to fcfg. fcfg -d pulls default settings. fcfg -dl pulls default settings and logo.
 * ------------------------------------------------------------------
                nam       fcfg
                ttl       fcfg
@@ -25,9 +26,9 @@ edition        set       1
                mod       eom,name,tylg,atrv,start,size
 
 *        [Data Section - Variables and Data Structures Here]
-SHIFTBIT       equ       %00000001
-solpath	       rmb       1
-oldbg	       rmb       1
+SHIFTBIT       equ   %00000001
+solpath	       rmb   1
+oldbg	       rmb   1
 oldfg	       rmb	 1
 newfg	       rmb	 1
 newbg	       rmb	 1
@@ -37,6 +38,7 @@ oldhsize       rmb	 1
 oldvsize       rmb	 1
 screensize     rmb   1
 SettingsPath   rmb   1          Settings file path number
+dobanner       rmb   1
 pathnum        rmb   1
 red            rmb   1
 green          rmb   1
@@ -62,7 +64,7 @@ curfnt	       rmb	 29
 curfntsz       rmb	 2
 popts	       rmb	 32
 oldchars       rmb	 96
-fntarray       rmb	 1550	                array of fonts, max 50 of 29+2 len each
+fntarray       rmb	 1550	    array of fonts, max 50 of 29+2 len each
 drawbuf	       rmb	 256
 	           rmb	 250
 size           equ       .
@@ -70,10 +72,13 @@ name           fcs       /fcfg/
                fcb       edition
 
 fontdir	       fcc 	 "/dd/sys/fonts"
-	       fcb	 $0D
+	           fcb	 $0D
 	       
 
 start
+           lda   #7     default foreground font color
+           sta   fg,u
+           clr   dobanner,u
            pshs  x
 	       lda	 #0			load current fg and bd colors
 	       ldb	 #SS.FBRgs	initialize old and new fg and bg to current colors
@@ -89,12 +94,12 @@ start
 	       lsra
 	       sta	 <oldfg	    initialize current fg color with   
 	       sta	 <newfg
-           lbsr	 cursoroff	turn cursor off
            puls  x
            lbsr  parseopts
 	       clr	 <numfonts	    init number of fonts = 0
 	       clr 	 <listitem		init list item = 0
 	       clr	 <liststart		init list start = 0
+           lbsr	 cursoroff	turn cursor off
 	       lbsr	 installchars	install drawing chars for screen boxes
 	       lbsr	 getopts		get current terminal options
 	       lbsr	 keyechooff		turn off key echo
@@ -102,7 +107,7 @@ start
 	       lbsr	 initscrnsz		init screen size vars and set to 80x30
 	       lbsr	 clearscreen	clear wscreen
 	       lbsr	 drawbox		draw box around font list
-	       lbsr      writefgc	write fg colors from current palette to screen
+	       lbsr  writefgc     	write fg colors from current palette to screen
 	       lbsr	 drawfg			draw selection indicator at current color
 	       lbsr	 writebgc		write bg colors from current palette to screen
 	       lbsr	 drawbg			draw selection indicator at current color
@@ -1392,11 +1397,18 @@ parseopts           lda ,x+    get options
                     beq NoParms@
                     cmpa #'-
                     bne NoParms@
-                    lda ,x
+                    lda ,x+
                     cmpa #'d
-                    beq loadset
+                    beq checkbanner
                     cmpa #'D
-                    beq loadset
+                    beq checkbanner
+                    bra NoParms@
+checkbanner         lda ,x
+                    cmpa #'l
+                    bne Loadset
+                    lda  #1
+                    sta  dobanner,u
+                    bra Loadset
 NoParms@            rts
 
 * Load defaultsettings file
@@ -1493,12 +1505,19 @@ SetupFont           ldd       curfntsz,u                    no font skip
                     clrb
 error@              puls      a,x,y,u    
 DoneExit            lbsr      movecursor2
-                    lbsr	  cursoron		                turn cursor on           
+                    lbsr	  cursoron		                turn cursor on
+                    lda       dobanner,u
+                    beq       noban
+                    lbsr      SignOn 
+noban               clrb          
                     os9       F$Exit
 parsedone           rts
-DoneExit2           lbsr	  cursoron		                turn cursor on 
-                    lbsr      setupPalette2
-                    ;ldb       #216                          path not found error
+DoneExit2           lbsr      setupPalette2
+                    lbsr	  cursoron		                turn cursor on 
+                    lda       dobanner,u
+                    beq       noban2
+                    lbsr      SignOn
+noban2              lbsr      setfinalfg2
                     clrb   
                     os9       F$Exit
 
@@ -1518,7 +1537,7 @@ rgblookupbg         pshs      x,y
                     puls      x,y,pc
 
 
-SetupPalette2       bsr       F256Type
+SetupPalette2       lbsr      F256Type
                     cmpa      #$02                          F256 Jr?
                     beq       @showJr
                     cmpa      #$1A                          F256 Jr2?
@@ -1540,13 +1559,67 @@ show@               lda       #1
                     sta       ,x+
                     lda       #$32
                     sta       ,x+
-                    lda       #$7                 default foreground color fg,u
+                    lda       #$07                default foreground color fg,u
                     sta       ,x+
-                    lda       #$0C                clear screen
+                    lda       #$0C
                     sta       ,x+
                     lda       #$01                standard output
                     leax      fgbuf,u
-                    ldy       #4                  3 bytes to write
+                    ldy       #4                  4 bytes to write
+                    os9       I$Write
+                    rts
+
+* Show banner
+SignOn              lda       scsz,u              get screen size
+                    cmpa      #1
+                    beq       lowresban
+                    cmpa      #3
+                    beq       lowresban  
+                    leax      Logo,pcr            point to Nitros-9 banner
+                    ldy       #LogoLen
+                    lda       #$01                standard output
+                    os9       I$Write
+                    leax      BLogo,pcr           newline
+                    ldy       #BLogoLen
+                    os9       I$Write
+                    leax      ColorBar,pcr        point to color bar
+                    ldy       #CBLen
+                    os9       I$Write
+                    lbsr      PUTCR
+                    ldd       curfntsz,u
+                    beq       setfinalfg2
+                    bra       setfinalfg
+lowresban           leax      NitrOS9,pcr         low resolution banner
+                    ldy       #NitrOS9L
+                    lda       #$01                path
+                    os9       I$WritLn        
+setfinalfg          leax      curfnt,u
+                    lda       ,x                  get foreground color
+                    sta       fg,u
+                    leax      fgbuf,u             foreground font color buffer
+                    lda       #$1b
+                    sta       ,x+
+                    lda       #$32
+                    sta       ,x+
+                    lda       fg,u
+                    sta       ,x+
+                    lda       #$01                standard output
+                    leax      fgbuf,u
+                    ldy       #3                  3 bytes to write
+                    os9       I$Write
+                    rts
+
+setfinalfg2         leax      fgbuf,u             foreground font color buffer
+                    lda       #$1b
+                    sta       ,x+
+                    lda       #$32
+                    sta       ,x+
+                    ;lda       fg,u
+                    lda       #$07
+                    sta       ,x+
+                    lda       #$01                standard output
+                    leax      fgbuf,u
+                    ldy       #3                  3 bytes to write
                     os9       I$Write
                     rts
 
@@ -1556,6 +1629,17 @@ F256Type            pshs      x
                     ldx       #SYS0
                     lda       7,x
                     puls      x,pc
+
+PUTCR               leas      -1,s                reserve 1 byte for stack
+                    lda       #$0D                escape
+                    sta       ,s
+                    lda       #$01                stdout
+                    ldy       #1                  number of characters to print
+                    tfr       s,x
+                    os9       I$WritLn
+                    leas      1,s                 return stack to normal
+                    rts
+
 
 FGP                 set $07
 FGP2                set $07
@@ -1587,15 +1671,15 @@ K2Pal
                     fcb $1B,$61,BGP,$50,$00,$DD,$00
 K2PalLen            equ *-K2Pal
 
-fspath	       fcc       \/dd/SYS/currfont\		    File save path
-               fcb	 $0D
-flabel	       fcb	 $02,$58,$27
+fspath	   fcc       \/dd/SYS/currfont\		    File save path
+           fcb	 $0D
+flabel	   fcb	 $02,$58,$27
 	       fcb	 $46,$2F,$66
-blabel	       fcb	 $02,$58,$2C		    
+blabel	   fcb	 $02,$58,$2C		    
 	       fcb	 $42,$2F,$62
-arrowlabel     fcb	 $02,$22,$26,$FC
+arrowlabel fcb	 $02,$22,$26,$FC
 	       fcb	 $02,$22,$28,$FD
-hvlabel	       fcb	 $02,$52,$2E
+hvlabel	   fcb	 $02,$52,$2E
 	       fcb	 $38,$30,$20,$48,$2F,$68,$20,$20,$20
 	       fcb	 $36,$30,$20,$56,$2F,$76
 	       fcb	 $02,$52,$2F
@@ -1612,7 +1696,7 @@ oklabel	   fcb       $02,$41,$3B
 	       fcb       $02,$60,$3C
 	       fcc 	 \d = Set Default\
 * Custom font characters for box
-ccorner1       fcb       $0F,$1F,$3F,$7C,$F8,$F1,$E3,$E6	   *243  F3
+ccorner1       fcb   $0F,$1F,$3F,$7C,$F8,$F1,$E3,$E6	   *243  F3
 ccorner2       fcb	 $F0,$F8,$FC,$3E,$1F,$8F,$C7,$67	   *244  F4
 ccorner3       fcb	 $E6,$E3,$F1,$F8,$7C,$3F,$1F,$0F	   *245  F5
 ccorner4       fcb	 $67,$C7,$8F,$1F,$3E,$FC,$F8,$F0	   *246  F6
@@ -1634,9 +1718,9 @@ screenchars    fcb	 $02,$28,$34
 	       fcb	 $1C,$05,$1C,$06,$1C,$07,$1C,$08,$1C,$09
 	       fcb	 $1C,$0A,$1C,$0B,$1C,$0C,$1C,$0D,$1C,$0E
 	       fcb	 $1C,$0F,$1C,$10,$1C,$11,$1C,$12,$1C,$13
-	       fcb       $1C,$14,$1C,$15,$1C,$16,$1C,$17,$1C,$18
-	       fcb       $1C,$19,$1C,$1A,$1C,$1B,$1C,$1C,$1C,$1D
-	       fcb       $1C,$1E,$1C,$1F,$20,$21,$22,$23,$24,$25
+	       fcb   $1C,$14,$1C,$15,$1C,$16,$1C,$17,$1C,$18
+	       fcb   $1C,$19,$1C,$1A,$1C,$1B,$1C,$1C,$1C,$1D
+	       fcb   $1C,$1E,$1C,$1F,$20,$21,$22,$23,$24,$25
 	       fcb	 $26,$27,$28,$29,$2A,$2B,$2C,$2D,$2E,$2F
 	       fcb	 $30,$31,$32,$33,$34,$35,$36,$37,$38,$39
 	       fcb	 $3A,$3B,$3C,$3D,$3E,$3F
@@ -1683,6 +1767,380 @@ BGPal               fcb $00,$00,$00,$00
                     fcb $00,$88,$ff,$00
                     fcb $bb,$bb,$bb,$00
 BGPalL              equ *-BGPal
+
+Logo                
+* Draw first line
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2	    center outline
+                    fcb $1B,$32,$00
+                    fcb $1C,$16,$1C,$16,$1C,$16
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2
+                    fcb $1B,$32,$00
+                    fcb $1C,$16,$1C,$16                                     outline
+                    fcb $1B,$32,BGP
+                    fcb BGP2
+                    fcb $1B,$32,$00
+                    fcb $1C,$16,$1C,$16
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2
+                    fcb $1B,$32,$00
+                    fcb $1C,$16,$1C,$16
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2        
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2
+                    fcb $1B,$32,$00
+                    fcb $1C,$16,$1C,$16,$1C,$16,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1B,$32,$0B
+                    fcb $1C,UCH
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2
+                    fcb $1B,$32,$00
+                    fcb $1C,UCH,$1C,UCH        
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1B,$32,$0B
+                    fcb $1C,UCH
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb $1B,$32,$00
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1B,$32,$0B
+                    fcb $1C,UCH
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2		center line
+                    fcb $1B,$32,$02
+                    fcb $1C,$11,$1C,$11,$1C,$11,$1C,$0A
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2
+                    fcb $1B,$32,$02
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00,$1C,$01
+                    fcb $1B,$32,$08
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$01
+                    fcb $1B,$32,BGP
+                    fcb BGP2
+                    fcb $1B,$32,$00
+                    fcb $1C,UCH,$1C,UCH	
+                    fcb $1B,$32,$07
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$02,$1C,UCH,$1C,UCH
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb $1B,$32,$01
+                    fcb $1C,$03,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
+                    fcb $1B,$33,$0B
+                    fcb $1C,$05
+                    fcb $1B,$33,BGP
+                    fcb $1B,$32,$0B
+                    fcb $1C,$01
+                    fcb $1B,$32,$01
+                    fcb $1C,$03,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
+                    fcb $1B,$33,$0B
+                    fcb $1C,$05
+                    fcb $1B,$33,BGP
+                    fcb $1B,$32,$0B
+                    fcb $1C,$01
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb $1B,$32,$01
+                    fcb $1C,$03,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
+                    fcb $1B,$33,$0B
+                    fcb $1C,$05
+                    fcb $1B,$33,BGP
+                    fcb $1B,$32,$0B
+                    fcb $1C,$01
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb $1B,$32,BGP                                                      end line 1
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2                                         center line
+                    fcb $1B,$32,$02
+                    fcb $1C,$11,$1C,$11,$1C,$09,$1C,$11,$1C,$0A
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2
+                    fcb $1B,$32,$02
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$01,$1C,UCH,$1C,UCH
+                    fcb $1B,$32,BGP
+                    fcb BGP2
+                    fcb $1B,$32,$00
+                    fcb $1B,$32,$07
+                    fcb $1C,$07,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$01
+                    fcb $1B,$32,BGP
+                    fcb BGP2
+                    fcb $1B,$32,$00
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1B,$32,$0B
+                    fcb $1C,UCH
+                    fcb $1B,$32,BGP
+                    fcb BGP2
+                    fcb $1B,$32,$01
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$01
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2
+                    fcb $1B,$32,$01
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$0B
+                    fcb $1C,$01
+                    fcb $1B,$32,$01
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$02,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1B,$32,$0B
+                    fcb $1C,UCH
+                    fcb $1B,$32,BGP
+                    fcb BGP2
+                    fcb $1B,$32,$00
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1B,$32,BGP
+                    fcb BGP2
+                    fcb $1B,$32,$01
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$02,$1C,UCH,$1C,UCH
+                    fcb $1B,$32,$01
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$0B
+                    fcb $1C,$01					                end line 2
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2            center line
+                    fcb BGP2,BGP2
+                    fcb $1B,$32,$02
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,BGP
+                    fcb BGP2
+                    fcb $1B,$32,$02
+                    fcb $1C,$09,$1C,$11,$1C,$0A
+                    fcb $1B,$32,BGP
+                    fcb BGP2
+                    fcb $1B,$32,$02
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00,$1C,$01
+                    fcb $1B,$32,$08
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$01
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2
+                    fcb $1B,$32,$07
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$01
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2
+                    fcb $1B,$32,$05
+                    fcb $1C,$03,$1C,$11,$1C,$11,$1C,$11,$1C,$11
+                    fcb $1B,$33,BGP
+                    fcb $1B,$33,$0B
+                    fcb $1C,$05
+                    fcb $1B,$33,BGP
+                    fcb $1B,$32,$0B
+                    fcb $1C,$01
+                    fcb $1B,$32,$01
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$01
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2
+                    fcb $1B,$32,$01
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$0B
+                    fcb $1C,$01
+                    fcb $1B,$32,$01
+                    fcb $1C,$04
+                    fcb $1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
+                    fcb $1B,$33,$0B
+                    fcb $1C,$05
+                    fcb $1B,$33,BGP
+                    fcb $1B,$32,$0B
+                    fcb $1C,$01
+                    fcb $1B,$32,$01
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$0F
+                    fcb $1C,$11
+                    fcb $1B,$32,$0C
+                    fcb $1C,$11
+                    fcb $1B,$32,$0B
+                    fcb $1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$11
+                    fcb $1B,$32,BGP
+                    fcb BGP2
+                    fcb $1B,$32,$01
+                    fcb $1C,$04,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
+                    fcb $1B,$32,$0B
+                    fcb $1C,$01				                                          end line 3
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2             center line
+                    fcb BGP2,BGP2
+                    fcb $1B,$32,$02
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2
+                    fcb $1B,$32,$02
+                    fcb $1C,$09,$1C,$11,$1C,$0A,$1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$01
+                    fcb $1B,$32,$08
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$01
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2
+                    fcb $1B,$32,$07
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$02,$1C,UCH
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2
+                    fcb $1B,$32,$05
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$01
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2
+                    fcb $1B,$32,$05
+                    fcb $1C,$14
+                    fcb $1B,$32,BGP
+                    fcb BGP2
+                    fcb $1B,$32,$01
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$02,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1B,$32,$01
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$0B
+                    fcb $1C,$01
+                    fcb $1B,$32,BGP
+                    fcb BGP2
+                    fcb $1B,$32,$00
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1B,$32,$01
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$0B
+                    fcb $1C,$01
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb $1B,$32,$00
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1B,$32,$01
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$0B
+                    fcb $1C,$01	                			                 end line 4
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2	
+                    fcb BGP2,BGP2                                            center font
+                    fcb $1B,$32,$02
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2
+                    fcb $1B,$32,$02
+                    fcb $1C,$09,$1C,$11,$1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$01
+                    fcb $1B,$32,$08
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$01
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2
+                    fcb $1B,$32,$07
+                    fcb $1C,$11,$1C,$11,$1C,$11,$1C,$08
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2
+                    fcb $1B,$32,$05
+                    fcb $1C,$11,$1C,$11
+                    fcb $1B,$32,$00
+                    fcb $1C,$01
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2
+                    fcb $1B,$32,$01
+                    fcb $1C,$04,$1C,$11,$1C,$11,$1C,$11,$1C,$11
+                    fcb $1C,$11,$1C,$11,$1C,$06
+                    fcb $1B,$32,BGP
+                    fcb BGP2
+                    fcb $1B,$32,$01
+                    fcb $1C,$07,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$06
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb $1B,$32,$01
+                    fcb $1C,$07,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
+                    fcb $1C,$06                                               end line 5
+                    fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb $1B,$32,FGP	                                          reset FG
+LogoLen             equ	*-Logo
+
+* Line above color bar
+BLogo               fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2	      center line
+                    fcb $1B,$32,$00
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
+                    fcb $1C,UCH
+                    fcb C$CR,C$LF
+BLogoLen            equ	*-BLogo
+
+* Color bar
+ColorBar            fcb $1B,$32,BGP
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2	 center bar
+                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
+                    fcb $1B,$32,$02
+                    fcb $1C,$14,$1C,$14,$1C,$14
+                    fcb $1B,$32,$08
+                    fcb $1C,$14,$1C,$14,$1C,$14                          	 color bar
+                    fcb $1B,$32,$07
+                    fcb $1C,$14,$1C,$14,$1C,$14
+                    fcb $1B,$32,$05
+                    fcb $1C,$14,$1C,$14,$1C,$14
+                    fcb $1B,$32,$0E
+                    fcb $1C,$14,$1C,$14,$1C,$14
+                    fcb $1B,$32,$04
+                    fcb $1C,$14,$1C,$14,$1C,$14
+                    fcb $1B,$32,$01
+                    fcb $1C,$14,$1C,$14,$1C,$14
+                    fcb $1B,$32,$0F
+                    fcb $1C,$14,$1C,$14,$1C,$14
+                    fcb $1B,$32,$0C
+                    fcb $1C,$14,$1C,$14,$1C,$14
+                    fcb $1B,$32,$0B
+                    fcb $1C,$14,$1C,$14,$1C,$14
+                    fcb $1B,$32,$03
+                    fcb $1C,$14,$1C,$14,$1C,$14
+                    fcb $1B,$32,$0A
+                    fcb $1C,$14,$1C,$14,$1C,$14
+                    fcb $1B,$32,$0D
+                    fcb $1C,$14,$1C,$14,$1C,$14
+                    fcb $1B,$32,$09
+                    fcb $1C,$14,$1C,$14,$1C,$14
+                    fcb $1B,$32,$00
+                    fcb $1C,$14,$1C,$14,$1C,$14
+                    fcb $1B,$32,FGP2,$0D,$0D                                 reset FG
+CBLen               equ	*-ColorBar
+
+NitrOS9             fcb $1b,$32,$02,$4e,$1b,$32,$08,$69,$1b,$32,$07,$74,$1b,$32,$05,$72
+                    fcb $1b,$32,$01,$4F,$53,$2D,$39,$0D
+NitrOS9L            equ *-NitrOS9
 
 * Filename
 FileName   FCC       "/dd/sys/defaultsettings"
