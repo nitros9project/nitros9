@@ -12,7 +12,7 @@
 * sys/defaultsettings for foreground, background, screen size, font to load. 
 
                     section   bss
-timebuf             rmb         6
+InitAddr            rmb       2                    
                     rmb       100
                     endsect
                     
@@ -20,9 +20,7 @@ timebuf             rmb         6
 DefPrior            set       128
                     
                     section   code
-DefDev              fcc       "/DD"
-                    fcb       C$CR
-ExecDir             fcc       "/DD/CMDS"
+ExecDir             fcc       ".../CMDS"
                     fcb       C$CR
 
 Shell               fcc       "Shell"
@@ -37,7 +35,7 @@ Startup             fcc       "startup -p"
                     fcb       C$CR
 StartupL            equ       *-Startup
 
-InitScrn            fcc       "/dd/cmds/fcfg"
+InitScrn            fcc       "fcfg"
                     fcb       C$CR
 InitScrn2           fcc       "-dl"
                     fcb       C$CR
@@ -59,12 +57,9 @@ Init                fcs       /Init/
 
 * F256 identity routine
 * Exit: A = $02 (F256 Jr), $12 (F256K), $1A (F256 Jr2), $16 (F256K2)
-F256Type            pshs      x
-                    ldx       #SYS0
-                    lda       7,x
-                    puls      x,pc
 
-ShowMachType        bsr       F256Type
+ShowMachType        ldx       #SYS0
+                    lda       7,x
                     cmpa      #$02                          F256 Jr?
                     beq       @showJr
                     cmpa      #$16
@@ -91,79 +86,54 @@ bye@                rts
 __start             leax      >IcptRtn,pcr
                     os9       F$Icpt
 
-* Set priority of this process
-                    os9       F$ID
-                    ldb       #DefPrior
-                    os9       F$SPrior
+* Set default time
+                    leax      DefTime,pcr
+                    os9       F$STime             set current time to start ticker (RTC will update time at top of minute)
 
-* Fork fcfg -d here
-* sets sys/defaultsettings if exists
-* Show banner
-DoScrnInit          pshs      x,y,u,b,a
-                    leax      >InitScrn,pcr
-                    leau      >InitScrn2,pcr
-                    ldd       #$0100
-                    ldy       #InitScrnL2
-                    os9       F$Fork
-                    bcs       Next@               startup failed
-                    os9       F$Wait
-Next@               puls      x,y,u,b,a
-
-* Write OS name and Machine name strings
-DoInit              leax      Init,pcr
+* Change DATA & EXEC directories
+                    leax      Init,pcr
                     clra
                     pshs      u
                     os9       F$Link
-                    bcs       SetDefTime
-                    ldd       OSName,u            point to OS name in INIT module
-                    leax      d,u                 
-                    lbsr      PUTS
-                    lbsr      PUTCR
-                    ldd       InstallName,u       point to install name in INIT module
-                    leax      d,u
-                    lbsr      PUTS
-                    lbsr      ShowMachType
-                    lbsr      PUTCR
-
-* Set default time
-SetDefTime          puls      u
-                    leax      timebuf,u
-                    os9       F$Time              get current time
-                    os9       F$STime             set time to default
-
-* Change EXEC and DATA dirs
-                    leax      >DefDev,pcr
+                    tfr       u,x
+                    puls      u
+                    lbcs      DeadEnd
+                    stx       InitAddr,u
+                    ldd       SysStr,x
+                    leax      d,x
                     lda       #READ.
-                    os9       I$ChgDir            change the data directory
+                    os9       I$ChgDir
+                    lbcs      DeadEnd
                     leax      >ExecDir,pcr
                     lda       #EXEC.
                     os9       I$ChgDir            change the execution directory
 
-L0125               equ       *
-                    pshs      u,y
-                    ifgt      Level-1
-                    os9       F$ID                get process ID
-                    lbcs      L01A9               fail
-                    leax      ,u
-                    os9       F$GPrDsc            get process descriptor copy
-                    lbcs      L01A9               fail
-                    leay      ,u
-                    ldx       #$0000
-                    ldb       #$01
-                    os9       F$MapBlk
-                    bcs       L01A9
+* Fork fcfg -d here
+* sets sys/defaultsettings if exists
+* Show banner
+DoScrnInit          pshs      u
+                    leax      >InitScrn,pcr
+                    leau      >InitScrn2,pcr
+                    ldd       #256
+                    ldy       #InitScrnL2
+                    os9       F$Fork
+                    bcs       Next@               startup failed
+                    os9       F$Wait
+Next@               puls      u
 
-* Copy our default I/O ptrs to the system process
-                    ldd       <D.SysPrc,u
-                    leau      d,u
-                    leau      <P$DIO,u
-                    leay      <P$DIO,y
-                    ldb       #DefIOSiz-1
-L0151               lda       b,y
-                    sta       b,u
-                    decb
-                    bpl       L0151
-                    endc
+* Write OS name and Machine name strings
+DoInit              ldx       InitAddr,u
+                    ldd       OSName,x            point to OS name in INIT module
+                    leax      d,x                 
+                    lbsr      PUTS
+                    lbsr      PUTCR
+                    ldx       InitAddr,u
+                    ldd       InstallName,x       point to install name in INIT module
+                    leax      d,x
+                    lbsr      PUTS
+                    lbsr      ShowMachType
+                    lbsr      PUTCR
+                    pshs      u,y
 
 * Fork shell startup here
 DoStartup           leax      >Shell,pcr
@@ -177,21 +147,19 @@ DoStartup           leax      >Shell,pcr
 * Fork AutoEx here
 DoAuto              leax      >AutoEx,pcr
                     leau      >CRtn,pcr
-                    ldd       #$0100
+                    ldd       #256
                     ldy       #$0001
                     os9       F$Fork
-                    bcs       L0186               autoex failed
+                    bcs       next@               autoex failed
                     os9       F$Wait
-
-L0186               equ       *
-                    puls      u,y
+next@               puls      u,y
 FrkShell            leax      >ShellPrm,pcr
                     leay      ,u
                     ldb       #ShellPL
-L0190               lda       ,x+
+loop@               lda       ,x+
                     sta       ,y+
                     decb
-                    bne       L0190
+                    bne       loop@
 * Fork final shell here
                     leax      >Shell,pcr
                     lda       #$01                D = 256 (B already 0 from above)
@@ -200,7 +168,7 @@ L0190               lda       ,x+
                     os9       F$Chain             this should not return
                     ldb       #$06                it did! Fatal. Load error code
                     bra       Crash
-L01A9               ldb       #$04                error code
+DeadEnd             ldb       #$04                error code
 Crash               jmp       <D.Crash            fatal error
                     else
                     os9       F$Fork              perform the fork
