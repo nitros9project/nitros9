@@ -4,5 +4,6 @@
 
                use       ../defs/f256.d
                use       ../defs/f256vtio.d
+               use       ../defs/midi.d
 
                endsect
