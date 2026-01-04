@@ -136,6 +136,7 @@ BOOTFILE_SD_F256JR = $(KERNELP2) \
 		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
 		$(MD)/dds0.dd \
 		$(SOL) \
+		$(SC16550) \
 		$(WIZFI) \
 		$(PIPE) \
 		$(CLOCK) \
