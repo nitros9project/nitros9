@@ -76,7 +76,7 @@ swFlowChar rmb 1
 txBuff rmb 256-. transmit buffer
 size equ .
 
- fcb READ.+WRIT.
+ fcb READ.+WRITE.
 
 name fcs /sc16550/
 

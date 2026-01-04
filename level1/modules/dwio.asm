@@ -21,6 +21,10 @@
                     use       drivewire.d
                     endc
 
+ ifne F256
+ use 16550.d
+ endc
+
 tylg                set       Sbrtn+Objct
 atrv                set       ReEnt+rev
 rev                 set       $01

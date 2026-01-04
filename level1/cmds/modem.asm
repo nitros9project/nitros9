@@ -36,6 +36,7 @@ PARMSZ              set       256                 estimated parameter size in by
 path                rmb       1
 cfgpath             rmb       1
 param               rmb       2
+d.linestoread       rmb       1
 linestoread         rmb       1
 d.ptr               rmb       2
 d.size              rmb       2
@@ -82,7 +83,7 @@ start               subd      #$0001              if this becomes zero,
                 *     stb       <d.device+4         |
                 
                     ldb       #1
-                    stb       <linestoread
+                    stb       <d.linestoread
                     leay      d.buffer,u          point Y to buffer offset in U
                     stx       <param              and parameter area start
                     tfr       s,d                 place top of stack in D
@@ -164,7 +165,7 @@ do.l                lbsr      ASC2Int            get # of lines to read 0-255
                     tstb
                     bne       do.l1
                     ldb       #1
-do.l1               stb       <linestoread
+do.l1               stb       <d.linestoread
                     bra       do.opts2            do more args
 
 ********************************************************************
@@ -233,7 +234,10 @@ itsfile             bsr       readfile
                     lbcs      Error
                     bra       do.file
 
-readfile            lda       #UPDAT.
+readfile            ldb       <d.linestoread
+                    beq       read.ex
+                    stb       <linestoread
+                    lda       #UPDAT.
                     os9       I$Open              open the file for reading
                     lbcs      read.ex             crap out if error
                     sta       <path               save path number
