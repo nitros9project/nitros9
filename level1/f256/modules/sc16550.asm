@@ -1,6 +1,15 @@
 ********************************************************************
 * sc16550 - 16550 Driver
 *
+* Comments from Deek's driver at https://github.com/Deek/MMSerial
+* were added on January 4, 2025.
+*
+* Symbols that affect assembly:
+* - f256: F256 Computer
+* - coco: CoCo (all models)
+* - coco3: CoCo 3
+* - fast232: Rick Ulland's Fast232 packet
+*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
@@ -25,8 +34,6 @@ tylg set Drivr+Objct
 atrv set ReEnt+rev
 rev set $01
 
- mod eom,name,tylg,atrv,start,size
-
 * V.ERR bit definitions
 DCDLstEr equ %00100000 DCD lost error
 BrkEr equ %00001000 break error
@@ -34,13 +41,30 @@ OvrFloEr equ %00000100 Rx data overrun or Rx buffer overflow error
 FrmingEr equ %00000010 Rx data framing error
 ParityEr equ %00000001 Rx data parity error
 
-* IT.PAR bit definitions
+* OS-9 IT.PAR flow control bit settings
 Parity equ %11100000 parity bits
+FCTXSW equ %00001000 Rx data software (XON/XOFF) flow control
+FCRXSW equ %00000100 Tx data software (XON/XOFF) flow control
+FCCTSRTS equ %00000010 CTS/RTS hardware flow control
+FCDSRDTR equ %00000001 DSR/DTR hardware flow control
+* these names are from xACIA
 MdmKill equ %00010000 modem kill option
-RxSwFlow equ %00001000 Rx data software (XON/XOFF) flow control
-TxSwFlow equ %00000100 Tx data software (XON/XOFF) flow control
-RTSFlow equ %00000010 CTS/RTS hardware flow control
-DSRFlow equ %00000001 DSR/DTR hardware flow control
+ForceDTR equ	%10000000 don't drop DTR in Term
+
+* Our own TxFloCtl bit settings
+* Free bits: %10000000
+TXF.Mask equ %01110000
+TXF.XOFF equ %01000000 xon/xoff software control
+TXF.RTS equ %00100000 cts/rts hardware control
+TXF.DTR equ %00010000 dsr/dtr hybrid control
+* Below are reasons we're _not_ sending
+TXF.NBRK equ %00001000 sending break signal
+* For various reasons, these must be identical to the bits in ITPARCopy
+TXF.NXON equ %00000100 currently waiting for XON
+TXF.NCTS equ %00000010 waiting for CTS to go back up
+TXF.NDSR equ %00000001 waiting for DSR to go back up
+
+ mod eom,name,tylg,atrv,start,size
 
 * Static memory storage.
 * NOTE: We reassign to DP for faster access in all driver branch routines
@@ -51,28 +75,28 @@ ITBAUCopy rmb 1 copy of baud rate from descriptor (IT.BAU)       / together
 altBauFl rmb 1 alternate baud rate table flag (0=normal); use for older comm programs with new baud rates
 msrCopy rmb 1 copy of MSR register
 fcrCopy rmb 1 copy of FCR register
-txSwFlowFlag rmb 1
+fcRXSWFlag rmb 1
 pathDescCPR rmb 1 process to receive signal (from path descriptor)
 pathDescSignal rmb 1 signal to send (from path descriptor)
 ssSigCPR rmb 1 process to receive signal (set by SS.SSig)
 ssSigSignal rmb 1 signal to send (set by SS.SSig)
 sigCode rmb 1  signal code (for send)
-mstatFlags rmb 1 modem status flags
+TxFloCtl rmb 1 modem status flags
 fifoSize rmb 1 16550 FIFO size
 u002A rmb 2
 rxNextAddressForIncomingByte rmb 2 pointer to the next place in the rx buffer to place incoming data
 rxNextAddressForOutgoingByte rmb 2 pointer to next place in the rx buffer to get data from
-rxAddressOfEndOfBuffer rmb 2 pointer to the end of the rx buffer
-rxBuffStartPtr rmb 2 rx buffer start pointer
-rxBuffNumBytes rmb 2 rx buffer - current number of bytes in it
+rxBufEnd rmb 2 pointer to the end of the rx buffer
+rxBufStrt rmb 2 rx buffer start pointer
+rxBufCnt rmb 2 rx buffer - current number of bytes in it
 rxBuffSize rmb 2 V.BUFSIZ (# of extra bytes we reserved in static memory >256 SCF gave us)
-txNextAddressForIncomingByte rmb 2 pointer to the next place in the tx buffer to place outgoing data
-txNextAddressForOutgoingByte rmb 2 pointer to next place in the tx buffer to get data from
-txAddressOfEndOfBuffer rmb 2 pointer to the end of the tx buffer
-txBuffStartPtr rmb 2 tx buffer start pointer
-txBuffNumBytes rmb 1 tx buffer - current number of bytes in it
+outNxt rmb 2 pointer to the next place in the tx buffer to place outgoing data
+txBufPos rmb 2 pointer to next place in the tx buffer to get data from
+txBufEnd rmb 2 pointer to the end of the tx buffer
+txBufStrt rmb 2 tx buffer start pointer
+txBufCnt rmb 1 tx buffer - current number of bytes in it
 txBuffAllocedSize rmb 2 allocated size of transmit buffer
-swFlowChar rmb 1
+txNow rmb 1 if set non-negative, this will be sent before buffer
 txBuff rmb 256-. transmit buffer
 size equ .
 
@@ -81,6 +105,10 @@ size equ .
 name fcs /sc16550/
 
 edition fcb 13
+
+ ifne coco+coco3
+MPISlot fcb MPI.Slot default MPI slot #3 (change to use descriptor later)
+ endc
 
 start
  lbra Init
@@ -105,7 +133,7 @@ Init clrb default to no error
  pshs dp,b,cc
  lbsr SetDPShortcut point DP to first 256 bytes of device memory area
  lda <M$Opt,y get number of option bytes in descriptor
- cmpa #IT.XTYP-IT.DTP ($1C) is there an extended type byte in descriptor?
+ cmpa #IT.XTYP-IT.DTP is there an extended type byte in descriptor?
  bls alloc@ no, skip ahead (and default to one 256 byte buffer page)
  lda <IT.XTYP,y else get the extended type byte
  anda #%00010000 alternate baud rate table flag only
@@ -120,16 +148,18 @@ clrlow@ clrb
  tfr u,x move pointer to newly allocated system RAM to X
  puls u restore device memory pointer
  bcc cont2@ we now have the memory; continue
+* Code here is in case of alloc error -- cleanup and return with error
  stb 1,s couldn't get the memory, so save error code into B on stack
  puls dp,b,cc restore registers and error number
  orcc #Carry return with error
  rts
-cont2@ stx <rxBuffStartPtr save pointer to start of receive buffer
+* D = size of allocated buffer in bytes
+cont2@ stx <rxBufStrt save pointer to start of receive buffer
  stx <rxNextAddressForIncomingByte save pointer to next incoming byte location
  stx <rxNextAddressForOutgoingByte save poniter to next outgoing byte location
  std <rxBuffSize save size of receive buffer
  leax d,x point to end of receive buffer
- stx <rxAddressOfEndOfBuffer save end of receive buffer pointer
+ stx <rxBufEnd save end of receive buffer pointer
  tfr a,b move number of 256 byte receive pages to B 
  clra
  orb #%00000010 force to multiples of 512 bytes
@@ -146,23 +176,23 @@ cont3@ pshs d
  subd ,s++ subtract ?
  std <u002A save it
  leax <txBuff,u point to transmit buffer
- stx <txBuffStartPtr save to transmit buffer start pointer
- stx <txNextAddressForIncomingByte save to active transmit buffer start pointer
- stx <txNextAddressForOutgoingByte save to active transmit buffer end pointer
+ stx <txBufStrt save to transmit buffer start pointer
+ stx <outNxt save to active transmit buffer start pointer
+ stx <txBufPos save to active transmit buffer end pointer
  leax >256,u advance to end of transmit buffer
- stx <txAddressOfEndOfBuffer save to transmit buffer end pointer
+ stx <txBufEnd save to transmit buffer end pointer
  ldd #size-txBuff size of transmit buffer
  std <txBuffAllocedSize save it
- clr <rxBuffNumBytes (RxBufSiz) Clear Receive buffer size (16 bit) 
- clr <rxBuffNumBytes+1 (RxBufSiz+1)
- clr <txBuffNumBytes clear transmit buffer size
+ clr <rxBufCnt (RxBufSiz) Clear Receive buffer size (16 bit) 
+ clr <rxBufCnt+1 (RxBufSiz+1)
+ clr <txBufCnt clear transmit buffer size
  ldd <IT.PAR,y get parity & baud rate settings from device descriptor
  std <ITPARCopy save copies in device memory
  lbsr SetBaud set some stuff up based on the data table at end of driver
  ldx <V.PORT get pointer to 16550 hardware
+* Read our ports to clear any crap out
  lda UART_LSR,x get line status register
  lda UART_TRHB,x get data register
-* Why are reading both into same register?
  lda UART_LSR,x get line status register again
  lda UART_MSR,x get modem status register
  anda #MSR_CD+MSR_DSR+MSR_CTS only keep receive data carrier detect, data set ready, and clear to send bits
@@ -170,20 +200,40 @@ cont3@ pshs d
  clrb clear our "results" register - all 3 of the above off
  bita #MSR_CTS is CTS bit set?
  bne cont4@ yes, skip ahead
- orb #RTSFlow else add that bit flag
+ orb #FCCTSRTS else add that bit flag
 cont4@ bita #MSR_DSR is DSR bit set?
  bne cont5@ yes, skip ahead
- orb #DSRFlow else add that bit flag
-cont5@ stb <mstatFlags save flags
+ orb #FCDSRDTR else add that bit flag
+cont5@ stb <TxFloCtl save flags
  ldd <V.PORT get pointer to 16550 hardware base address
  addd #UART_FCR point to 16550 status register
  leax >IRQPckt,pcr point to 5 byte IRQ packet settings
  leay >IRQSvc,pcr point to IRQ service routine
  os9 F$IRQ install ourselves in IRQ polling table
-* Turn on interrupt controller's interrupt for the UART         
+* System-dependent interrupt behavior goes here
+ ifne f256
+* F256: Turn on interrupt controller's interrupt for the UART         
  lda INT_MASK_1
  anda #~INT_UART
  sta INT_MASK_1
+ else
+* CoCo: set MPI select
+ orcc #IntMasks
+ lda >MPISlot,pcr
+ bmi cont6@
+ sta >MPI.Slct
+cont6@ lda >PIA1Base+3 fetch PIA1 CR B
+ anda #%11111100 disable *CART FIRQ
+ sta >PIA1Base+3 save it back
+ lda >PIA1Base+2 read any data out of PIA1
+ ifne coco3
+* CoCo 3: turn on interrupts in GIME 
+ lda >D.IRQER  read the GIME IRQ enable register copy
+ ora #$01 enable GIME *CART IRQ
+ sta >D.IRQER save it to the system...
+ sta >IrqEnR ...and the GIME itself.
+ endc
+ endc
 * Enable all 16550 IRQ sources *except* transmitter empty
  lda #UINT_MODEM_STATUS+UINT_LINE_STATUS+UINT_DATA_AVAIL enable modem status, receiver line status, and receive data available interrupts on 16550
  bsr SetIRQSources
@@ -202,26 +252,26 @@ cont5@ stb <mstatFlags save flags
 Write clrb
  pshs dp,b,cc
  lbsr SetDPShortcut point DP to first 256 bytes of device memory area
- ldx <txNextAddressForIncomingByte get pointer to next empty spot in our transmit buffer
+ ldx <outNxt get pointer to next empty spot in our transmit buffer
  sta ,x+ append the character
- cmpx <txAddressOfEndOfBuffer have we hit physical end of transmit buffer?
+ cmpx <txBufEnd have we hit physical end of transmit buffer?
  blo cont1@ no, skip ahead
- ldx <txBuffStartPtr yes, point to physical start of transmit buffer
+ ldx <txBufStrt yes, point to physical start of transmit buffer
 cont1@ orcc #IntMasks IRQs off
- cmpx <txNextAddressForOutgoingByte have we caught up with beginning in wraparound buffer?
+ cmpx <txBufPos have we caught up with beginning in wraparound buffer?
  bne cont3@ no, skip ahead
  pshs x else save pointer
  lbsr SuspendProc suspend current process
+ ldx >D.Proc get pointer to current process descriptor
+ ldb <P$Signal,x  get any current signal code
  puls x recover pointer
- ldu >D.Proc get pointer to current process descriptor
- ldb <P$Signal,u  get any current signal code
 * 6809/6309 - change to beq cont1@
  beq cont2@ no signal, go back
  cmpb #S$Intrpt is it a Keyboard Interrupt, Abort, or Wake signal?
  bls cont4@ yes, restore registers and return
 cont2@ bra cont1@ else loop back
-cont3@ stx <txNextAddressForIncomingByte save updated pointer to next free spot in transmit buffer
- inc <txBuffNumBytes increase number of bytes in driver's transmit buffer
+cont3@ stx <outNxt save updated pointer to next free spot in transmit buffer
+ inc <txBufCnt increase number of bytes in driver's transmit buffer
  bsr EnableIRQSources enable all IRQ's on 16550 *including* transmitter empty IRQ
 cont4@ puls pc,dp,b,cc 
 * Enable all 4 16550 IRQ sources
@@ -245,20 +295,20 @@ Read clrb clear carry
  pshs dp,b,cc save registers (B's position on the stack will be used as A (character return))
  lbsr SetDPShortcut point DP to first 256 bytes of device memory area
  orcc #IntMasks turn IRQs off
- ldd <rxBuffNumBytes get number of bytes in receive buffer
+ ldd <rxBufCnt get number of bytes in receive buffer
  beq suspend@ none, so go suspend process
- cmpd #16 expected bytes ready?
- lbne getchar@ no, skip ahead
+ cmpd #16 is buffer count 16?
+ lbne getchar@ no, go receive
  andcc #^IntMasks turn IRQs on
  bsr setirqs@
 chkfreebuff@ orcc #IntMasks turn IRQs off
- ldd <rxBuffNumBytes get receive buffer free count
+ ldd <rxBufCnt get receive buffer free count
  bne getchar@ branch if not zero
 suspend@ lbsr SuspendProc suspend current process
  ldx >D.Proc get the current process descriptor
  ldb <P$Signal,x get possible pending signal
- beq chkcondem@ branc if none
- cmpb #S$INTRPT interrupt signal?
+ beq chkcondem@ branch if none
+ cmpb #S$Intrpt interrupt signal?
  bls errexit@ branch if same or lower
 chkcondem@ ldb P$State,x
  andb #Condem process condemned?
@@ -273,12 +323,12 @@ errexit@ puls dp,a,cc exit with error
  orcc #Carry
  rts
 getchar@ subd #$0001 subtract receive buffer free count
- std <rxBuffNumBytes and save it back
+ std <rxBufCnt and save it back
  ldx <rxNextAddressForOutgoingByte get address of next byte in RX buffer to read
  lda ,x+ get that byte and increment X
- cmpx <rxAddressOfEndOfBuffer are we at the end of the RX buffer?
+ cmpx <rxBufEnd are we at the end of the RX buffer?
  bne geterr@ branch if not
- ldx <rxBuffStartPtr else wrap around to start of RX buffer
+ ldx <rxBufStrt else wrap around to start of RX buffer
 geterr@ stx <rxNextAddressForOutgoingByte save updated pointer
  andcc #^IntMasks turn IRQs on
  ldb <V.ERR get error accumulator
@@ -297,44 +347,44 @@ hangup@ ldb #E$HangUp exit with CD lost error
 exit2@ puls pc,dp,b,cc
 setirqs@ pshs cc save CC (use to restore interrupts)
  ldx <V.PORT get pointer to 16550 hardware
- ldb <mstatFlags get flag bits based on modem status
- bitb #%01110000 ???
+ ldb <TxFloCtl get flag bits based on modem status
+ bitb #TXF.Mask XOFF|RTS|DTR
  beq exit@ if none of the 3 bits are set, turn IRQs back on and return
- bitb #%00100000 is bit 5 alone set?
+ bitb #TXF.RTS RTS?
  beq cont1@ no, skip ahead
  orcc #IntMasks else turn IRQs off
-* 6309 - aim #$DF,<mstatFlags
- ldb <mstatFlags get flag bytes back (LCB NOTE: WE STILL HAVE THEM IN B, WHY ARE WE RELOADING?)
- andb #%11011111 clear bit 5
- stb <mstatFlags save flags back
+* 6309 - aim #$DF,<TxFloCtl
+ ldb <TxFloCtl get flag bytes back (LCB NOTE: WE STILL HAVE THEM IN B, WHY ARE WE RELOADING?)
+ andb #^TXF.RTS ^RTS
+ stb <TxFloCtl save flags back
 * 6309 - oim #RTS,UART_MCR,x
  lda UART_MCR,x get modem control register
  ora #MCR_RTS set RTS (request to send) bit
  sta UART_MCR,x save modified modem control register back
 exit@ puls pc,cc turn IRQs back on and return
-cont1@ bitb #%00010000 bit 4 set?
+cont1@ bitb #TXF.DTR DTR bit set?
  beq cont2@ no, skip ahead
  orcc #IntMasks shut off IRQs
-* 6309 - aim #$EF,<mstatFlags
- ldb <mstatFlags get flags
- andb #%11101111 clear bit 4
- stb <mstatFlags and write it back
+* 6309 - aim #$EF,<TxFloCtl
+ ldb <TxFloCtl get flags
+ andb #^TXF.DTR ^DTR
+ stb <TxFloCtl and write it back
 * 6309 - oim #
  lda UART_MCR,x get modem control register
  ora #MCR_DTR set DTR (data terminal ready) bit
  sta UART_MCR,x and write back to 16550
 * 6809/6309 - replace with puls pc,cc (same size, 3 cyc faster)
  bra exit@ turn IRQs back on and return
-cont2@ bitb #%01000000 bit 6 set?
+cont2@ bitb #TXF.XOFF XOFF bit set?
  beq exit@ no, turn IRQs back on and return
  ldb <V.XON else get XON char
  orcc #IntMasks turn IRQs off
- stb <swFlowChar save XON char
+ stb <txNow save XON char
  lbsr EnableIRQSources enable ALL 4 IRQs on 16550 (including transmit)
-* 6309 aim #$BF,<mstatFlags
- ldb <mstatFlags get flags byte again
- andb #%10111111 clear bit 6
- stb <mstatFlags and write it back
+* 6309 aim #$BF,<TxFloCtl
+ ldb <TxFloCtl get flags byte again
+ andb #^TXF.XOFF ^XOFF
+ stb <TxFloCtl and write it back
 * 6809/6309 - replace with puls pc,cc (same size, 3 cyc faster)
  bra exit@ turn IRQs back on and return
 
@@ -349,12 +399,21 @@ cont2@ bitb #%01000000 bit 6 set?
 * Exit:
 *    CC = carry set on error
 *    B  = error code
+*    Other registers depend on function code
+*
+* Extra Info:
+*      ANY codes not defined by IOMan or SCF are passed to the device driver.
+*
+*      The address of the registers at the time F$GetStt was called is in
+*      PD.RGS, in the path descriptor (PD.RGS,Y)
+*
+*      From there, R$(CC|D|A|B|DP|X|Y|U|PC) get you the appropriate register value.
 GetStat clrb  
  pshs dp,b,cc
  lbsr SetDPShortcut point DP to first 256 bytes of device memory area
  cmpa #SS.Ready data ready call?
  bne chkcomstt@ no, check next
- ldd <rxBuffNumBytes else any data ready in driver's receive buffer?
+ ldd <rxBufCnt else any data ready in driver's receive buffer?
  beq notready@ no, return with device not ready error
  tsta >255 bytes ready?
  beq ready@ no, use amount we have
@@ -393,6 +452,30 @@ chkeof@ cmpa  #SS.EOF end of file check?
  clrb else exit without error
 * 6809/6309 - replace with puls  pc,dp,b,cc (1 byte smaller, 4 or 5 cycles faster)
  bra  restoreandreturn@ restore registers and return
+********************
+* GSDvrID
+********************
+* Interrogates the driver for its capabilities.
+*
+* Entry:
+*.     A = $D2
+* Exit:
+*      A = Maximum baud rate code supported
+*		This is not the number of baud rates, but the highest
+*		permitted OS-9 baud rate code (currently $0B)
+*	B = Type of UART supported
+*		$01	6551/6551A
+*		$02	6552
+*		$04	16550 and derivatives
+*	X = Bit field of driver capabilities:
+*		$0001	Supports SS.HngUp (modem hangup via DTR)
+*		$0002	Supports SS.Break (send break signal)
+*		$0004	Supports SS.CDSig (signal on DCD drop)
+*		$0100	Supports SS.RdBlk (block read) command
+*		$0200	Supports SS.WrBlk (block write) command
+*		$0400	Supports SS.TxClr (clear transmit buffer) command
+*	Y = Driver's identification number (this driver returns 1)
+*
 chkdvrid@ cmpa #SS.DvrID return driver ID info?
  bne chkscsiz@ no, check next
  ldd #$0B04 driver max baud rate is $B (115200 currently), driver/chip type=4 (16550)
@@ -473,6 +556,15 @@ SetBaud pshs u save U
 * Exit:
 *    CC = carry set on error
 *    B  = error code
+*    Other registers depend on function code
+*
+* Extra Info:
+*      ANY codes not defined by IOMan or SCF are passed to the device driver.
+*
+*      The address of the registers at the time F$GetStt was called is in
+*      PD.RGS, in the path descriptor (PD.RGS,Y)
+*
+*      From there, R$(CC|D|A|B|DP|X|Y|U|PC) get you the appropriate register value.
 SetStat clrb  
  pshs dp,b,cc
  lbsr SetDPShortcut point DP to first 256 bytes of device memory area
@@ -488,7 +580,7 @@ SetStat clrb
  orb #$08
 cont1@ std <ITPARCopy save parity & baud rate settings
  lbsr SetBaud go set the baud rate
- clr <txSwFlowFlag assume tx sw flow mode
+ clr <fcRXSWFlag assume tx sw flow mode
  tst <V.QUIT is there a keyboard abort/quit character defined?
  bne cont2@ yes, skip ahead
  tst <V.INTR is there a keyboard interrupt character defined?
@@ -496,9 +588,9 @@ cont1@ std <ITPARCopy save parity & baud rate settings
  tst <V.PCHR is there a pause character set?
  bne cont2@ yes, skip ahead
  ldb <ITPARCopy get parity byte
- bitb #TxSwFlow is tx sw flow set?
+ bitb #FCRXSW is tx sw flow set?
  bne cont2@ branch if so
- inc <txSwFlowFlag set tx sw flow flag
+ inc <fcRXSWFlag set tx sw flow flag
 cont2@ lbra RestoreAndExit
 chkhngup@ cmpa #SS.HngUp hangup?
  bne chkbreak@ branch if not
@@ -518,15 +610,15 @@ chkbreak@ cmpa #SS.Break break?
 * SS.Break 
  orcc #IntMasks
  ldx <V.PORT get pointer to 16550
- lda <mstatFlags
- ora #%00001000
- sta <mstatFlags
+ lda <TxFloCtl
+ ora #TXF.NBRK stop transmit, sending break
+ sta <TxFloCtl
  lda #UINT_MODEM_STATUS+UINT_LINE_STATUS+UINT_DATA_AVAIL
  sta UART_IER,x
- clr <txBuffNumBytes
- ldd <txBuffStartPtr
- std <txNextAddressForOutgoingByte
- std <txNextAddressForIncomingByte
+ clr <txBufCnt
+ ldd <txBufStrt
+ std <txBufPos
+ std <outNxt
  lda <fcrCopy
  ora #$04
  sta UART_FCR,x
@@ -548,9 +640,9 @@ cont3@ lda UART_LCR,x
  ldx <V.PORT      Get pointer to 16550
  anda #^LSR_XMIT_DONE
  sta UART_LCR,x
- lda <mstatFlags
- anda #%11110111
- sta <mstatFlags
+ lda <TxFloCtl
+ anda #^TXF.NBRK no longer sending break, we can transmit again
+ sta <TxFloCtl
  lbra RestoreAndExit
 chkssig@ cmpa #SS.SSig
  bne chkrelea@
@@ -559,7 +651,7 @@ chkssig@ cmpa #SS.SSig
  ldy PD.RGS,y
  ldb R$X+1,y
  orcc #IntMasks
- ldx <rxBuffNumBytes
+ ldx <rxBufCnt
  bne sendsig@
  std <ssSigCPR save SS.SSig current process and signal code to send
  lbra RestoreAndExit
@@ -608,13 +700,13 @@ ssclose@ cmpa <pathDescCPR same as process from path descriptor
  bne ssclose1@ no 
  stx <pathDescCPR clear path descriptor process and signal
 ssclose1@ bra RestoreAndExit
-chkopen@ cmpa  #SS.Open open?
+chkopen@ cmpa #SS.Open open?
  bne unksvc@ branch if not
 * SS.Open
  ldx <V.PORT get pointer to 16550
- lda #$03
+ lda #MCR_RTS+MCR_DTR assert DTR & RTS
  sta UART_MCR,x
- ldb #UINT_MODEM_STATUS+UINT_LINE_STATUS+UINT_THR_EMPTY+UINT_DATA_AVAIL
+ ldb #UINT_MODEM_STATUS+UINT_LINE_STATUS+UINT_THR_EMPTY+UINT_DATA_AVAIL enable all interrupts
  stb UART_IER,x
  bra RestoreAndExit
 unksvc@ puls b,cc
@@ -639,8 +731,8 @@ Term clrb
  os9 F$IRQ
  clra  
  clrb  
- std <rxBuffNumBytes set receive buffer size to 0
- ldx <rxBuffStartPtr
+ std <rxBufCnt set receive buffer size to 0
+ ldx <rxBufStrt
  stx <rxNextAddressForIncomingByte
  stx <rxNextAddressForOutgoingByte
  pshs x,d save receive buffer size (0) and ? buffer pointer
@@ -651,7 +743,7 @@ Term clrb
  sta <V.BUSY set device as busy with current process
  sta <V.LPRC save as last active process
 loop@ orcc #IntMasks turn IRQs off
- tst <txBuffNumBytes
+ tst <txBufCnt
  bne cont0@
  ldx <V.PORT get pointer to 16550
  ldb UART_LSR,x get line status register
@@ -663,7 +755,7 @@ cont0@ orcc #IntMasks else turn IRQs off
  ldd 2,s get ? buffer pointer
  std <rxNextAddressForIncomingByte save in static memory
  ldd ,s get receive buffer size
- std <rxBuffNumBytes save it into static memory
+ std <rxBufCnt save it into static memory
  bra loop@ keep going until transmit buffer is empty
 * transmitter holding register on 16550 is empty
 cont1@ leas 4,s eat temporary stack
@@ -671,29 +763,32 @@ cont1@ leas 4,s eat temporary stack
  clr UART_MCR,x clear modem control register on 16550
  andcc #^IntMasks turn IRQs back on
  ldd <rxBuffSize get number of bytes to return to system
- ldu <rxBuffStartPtr get pointer to start page address to return RAM to system
+ ldu <rxBufStrt get pointer to start page address to return RAM to system
  os9 F$SRtMem return the RAM to the system
  puls pc,dp,b,cc
 
 * Suspend current process
-SuspendProc ldx >D.Proc get current process descriptor pointer
+SuspendProc 
  ifeq Level-1
- lda P$ID,x Level 1 - process id is stored in V.WAKE
+TimedSleep equ 0 
+ lda <V.BUSY
+ sta <V.WAKE
  else
+TimedSleep equ 1
+ ldx >D.Proc get current process descriptor pointer
  tfr x,d Level 2 - upper 8 bits of process descriptor are stored in V.WAKE
- endc
  sta <V.WAKE save process as one to wake up upon I/O completion
- ifgt Level-1
  lda P$State,x get process status
  ora #Suspend set suspend state
  sta P$State,x and save it back
- andcc #^IntMasks turn IRQs on
  endc
- ldx #$0001 sleep remainder of current time slice
+ ldx #TimedSleep sleep
+ pshs cc
+ andcc #^IntMasks turn IRQs on
  os9 F$Sleep  
- rts   
+ puls cc,pc
          
-* Set DP to point to start of device memory (pointed to by U)
+* Set DP to point to start of device mem ry (pointed to by U)
 SetDPShortcut pshs u save our device memory pointer on stack
  puls dp get high byte of device memory pointer into DP
  leas 1,s eat low byte (don't need it) and return
@@ -742,7 +837,7 @@ UnkIRQ ldb UART_IIR,y get interrupt identification register
  lda <V.WAKE no, get process to wake up
  beq bye@ none waiting, return
  ifgt Level-1
- clrb  
+ clrb clear lower 8 bits
  stb <V.WAKE clear process to wake
  tfr d,x X=process descriptor to wake
 * 6309 aim #^Suspend,P$State,x
@@ -750,8 +845,8 @@ UnkIRQ ldb UART_IIR,y get interrupt identification register
  anda #^Suspend unsuspend process
  sta P$State,x and save that back
  else 
- ldb <V.Wake
- lda #S$Wake
+ clr <V.WAKE
+ ldb #S$Wake
  os9 F$Send
  endc
 bye@ puls pc,dp,b,cc
@@ -794,7 +889,7 @@ cont1@ stx <rxNextAddressForIncomingByte
 * X=pointer in receive buffer to put next character
 GetNextRXByte lda UART_TRHB,y get character from data register on 16550
  beq SaveChar NUL, append to buffer
- tst <txSwFlowFlag are we in tx sw flow mode?
+ tst <fcRXSWFlag are we in tx sw flow mode?
  bne SaveChar yes, append character to buffer
  cmpa <V.QUIT was it keyboard abort/quit key? (CTRL-E usually)
  bne ckintr@ no, check next
@@ -812,71 +907,71 @@ ckxon@ cmpa <V.XON was it transmit on character?
  lbeq DoPause yes, skip ahead
 SaveChar pshs b save current FIFO bytes left counter
  sta ,x+ save character into receive buffer
- cmpx <rxAddressOfEndOfBuffer
+ cmpx <rxBufEnd
  bne cont0@
- ldx <rxBuffStartPtr
+ ldx <rxBufStrt
 cont0@ cmpx <rxNextAddressForOutgoingByte are we at the next outgoing byte?
  bne cont2@ nope, skip ahead
  ldb #FrmingEr else buffer is full... set 2nd bit in error accumulator
  orb <V.ERR merge with current error accumulator
  stb <V.ERR and save it back
- cmpx <rxBuffStartPtr
+ cmpx <rxBufStrt
  bne cont1@
- ldx <rxAddressOfEndOfBuffer
+ ldx <rxBufEnd
 cont1@ leax -1,x
  bra ex@
 cont2@ stx <rxNextAddressForIncomingByte get address of next incoming byte
- ldd <rxBuffNumBytes get number of bytes in buffer
+ ldd <rxBufCnt get number of bytes in buffer
  addd #$0001 increment
- std <rxBuffNumBytes save it back
+ std <rxBufCnt save it back
  cmpd <u002A
  beq cont3@ branch if equal
 ex@ puls pc,b
-cont3@ ldb <mstatFlags get status flags
+cont3@ ldb <TxFloCtl get status flags
  bitb #%01110000 any of these bits set?
  bne ex@ branch if so
  lda <ITPARCopy get copy of IT.PAR
- bita #RTSFlow is this bit set?
+ bita #FCCTSRTS is this bit set?
  beq cont4@ branch if not
  orb #%00100000 update with RTS flow bit
- stb <mstatFlags save status flags
+ stb <TxFloCtl save status flags
  lda UART_MCR,y get modem control register
  anda #^MCR_RTS force RTS high
  sta UART_MCR,y save to modem control register
  bra ex@ exit
-cont4@ bita #DSRFlow is this bit set?
+cont4@ bita #FCDSRDTR is this bit set?
  beq cont5@ branch if not
  orb #%00010000 update with DSR flow bit
- stb <mstatFlags save status flags
+ stb <TxFloCtl save status flags
  lda UART_MCR,y get modem control register
  anda #^MCR_DTR force DTR high
  sta UART_MCR,y save to modem control register
  bra ex@ exit
-cont5@ bita #RxSwFlow is this bit set?
+cont5@ bita #FCTXSW is this bit set?
  beq ex@ branch if not
  orb #%01000000 update with Rx sw flow bit
- stb <mstatFlags save status flags
+ stb <TxFloCtl save status flags
  lda <V.XOFF get transmit OFF character
  beq ex@ none, restore B and return
- sta <swFlowChar save to sw flow character
+ sta <txNow save to sw flow character
  ldb #UINT_MODEM_STATUS+UINT_LINE_STATUS+UINT_THR_EMPTY+UINT_DATA_AVAIL
  stb UART_IER,y
  bra ex@
 
 * XON char received
-DoXON lda <mstatFlags
- anda #^TxSwFlow turn off tx sw flow flag
- sta <mstatFlags
- tst <txBuffNumBytes test tx buffer size
+DoXON lda <TxFloCtl
+ anda #^FCRXSW turn off tx sw flow flag
+ sta <TxFloCtl
+ tst <txBufCnt test tx buffer size
  beq ex@ branch if empty
  lda #UINT_MODEM_STATUS+UINT_LINE_STATUS+UINT_THR_EMPTY+UINT_DATA_AVAIL else set interrupts
  sta UART_IER,y
 ex@ rts   
 
 * XOFF char received
-DoXOFF lda <mstatFlags
- ora #TxSwFlow
- sta <mstatFlags
+DoXOFF lda <TxFloCtl
+ ora #FCRXSW
+ sta <TxFloCtl
  lda #UINT_MODEM_STATUS+UINT_LINE_STATUS+UINT_DATA_AVAIL
  sta UART_IER,y
  rts   
@@ -897,28 +992,28 @@ DoPause ldu <V.DEV2 get pointer to static memory of echo device
 ex@ rts   
 
 * Handle empty TX IRQ by feeding outgoing data to the 16550
-EmptyTxIRQ ldx <txNextAddressForOutgoingByte get pointer to end of tx buffer
- lda <swFlowChar get XON character
+EmptyTxIRQ ldx <txBufPos get pointer to end of tx buffer
+ lda <txNow get XON character
  ble cont@ branch if is software flow character nul or high bit set
  sta UART_TRHB,y else send software flow character to 16550
  anda #$80 set high bit
- sta <swFlowChar save it back to statics
-cont@ tst <txBuffNumBytes check tx buffer size
+ sta <txNow save it back to statics
+cont@ tst <txBufCnt check tx buffer size
  beq cont2@ branch if buffer is empty
- ldb <mstatFlags get modem status flags from statics
- bitb #RxSwFlow test for Rx software flow control
+ ldb <TxFloCtl get modem status flags from statics
+ bitb #FCTXSW test for Rx software flow control
  bne cont2@ branch if set
- andb #RTSFlow+DSRFlow+TxSwFlow
- andb <ITPARCopy
- bne cont2@
- ldb <txNextAddressForOutgoingByte+1 get lower 8 bits of end pointer
- negb negate to get the remaining amount (256 - (txNextAddressForOutgoingByte+1))
+ andb #(TXF.NXON!TXF.NCTS!TXF.NDSR) are we waiting for flow contgrol?
+ andb <ITPARCopy do we care?
+ bne cont2@ yes, don't send
+ ldb <txBufPos+1 otherwise, start transmitting -- get lower 8 bits of end pointer
+ negb negate to get the remaining amount (256 - (txBufPos+1))
  cmpb #15 compare against 15
  bls cont1@ branch if lower or same
  ldb #15 else cap at 15
-cont1@ cmpb <txBuffNumBytes compare against number of tx bytes ready
+cont1@ cmpb <txBufCnt compare against number of tx bytes ready
  bls cont3@ branch if lower or same
- ldb <txBuffNumBytes else cap at number of tx bytes ready
+ ldb <txBufCnt else cap at number of tx bytes ready
 cont3@ pshs b save the count to the stack
 loop@ lda ,x+ get the next available byte
  sta UART_TRHB,y store it in the register
@@ -927,13 +1022,13 @@ loop1@ lda UART_LSR,y get value of line status register
  beq loop1@ branch if not
  decb decrement the count
  bne loop@ branch if 
- cmpx <txAddressOfEndOfBuffer
+ cmpx <txBufEnd
  bcs cont4@
- ldx <txBuffStartPtr
-cont4@ stx <txNextAddressForOutgoingByte
- ldb <txBuffNumBytes
+ ldx <txBufStrt
+cont4@ stx <txBufPos
+ ldb <txBufCnt
  subb ,s+
- stb <txBuffNumBytes
+ stb <txBufCnt
 cont5@ lbra UnkIRQ
 cont2@ lda #UINT_MODEM_STATUS+UINT_LINE_STATUS+UINT_DATA_AVAIL
  sta UART_IER,y update 16550 hardware
@@ -944,14 +1039,14 @@ ModemStatusIRQ lda UART_MSR,y get modem status register
  tfr a,b copy to B
  andb #MSR_CD+MSR_DSR+MSR_CTS save CD/DSR/CTS states
  stb <msrCopy and put into statics
- ldb <mstatFlags get modem status flags
- andb #^(RTSFlow+DSRFlow) turn off bits
- bita #MSR_CTS CTS set?
+ ldb <TxFloCtl get modem status flags
+ andb #^(TXF.NCTS!TXF.NDSR) the bits we might change
+ bita #MSR_CTS CTS up?
  bne cont0@ branch if so
- orb #RTSFlow set RTS flow bit
-cont0@ bita #MSR_DSR DSR set?
+ orb #TXF.NCTS no, start waiting for it
+cont0@ bita #MSR_DSR DSR up?
  bne cont1@ yes, skip ahead
- orb #DSRFlow set DSR flow bit
+ orb #TXF.NDSR no, wait for it
 cont1@ bita #MSR_DDCD change in DCD?
  beq cont4@ no, skip ahead
  bita #MSR_CD CD set?
@@ -968,10 +1063,10 @@ loop@ sta <PD.PST,x set carrier detect lost on current path
 cont2@ lda #DCDLstEr set DCD lost error in error accumulator
  ora <V.ERR merge with current error accumulator
  sta <V.ERR and save it back
- andb #^TxSwFlow clear bit for tx sw flow
+ andb #^FCRXSW clear bit for tx sw flow
 cont3@ tst <sigCode is there a signal code pending?
  bne cont4@ branch if so
- stb <mstatFlags else save off flags
+ stb <TxFloCtl else save off flags
  ldd <pathDescCPR get current process and signal
  tstb signal zero?
  beq cont5@ branch if so
@@ -981,7 +1076,7 @@ cont3@ tst <sigCode is there a signal code pending?
  clrb  
  std <pathDescCPR clear off path descriptor and current process
  bra cont5@
-cont4@ stb <mstatFlags save flags
+cont4@ stb <TxFloCtl save flags
 cont5@ lda #UINT_MODEM_STATUS+UINT_LINE_STATUS+UINT_THR_EMPTY+UINT_DATA_AVAIL load interrupts we want
  sta UART_IER,y set interrupts in 16550
  lbra UnkIRQ handle unknown IRQ
@@ -1022,7 +1117,9 @@ IRQPckt fcb $01 flip byte 16550 device address+2 is status register, and lowest
 *   ,2=UART_FCR settings EXCEPT FCR_RXR & FCR_TXR, which are forced on in calling routine
 *   ,3=FIFO trigger level ctr - must be 1,4,8 or 14 (used for read loop counters)
 * 25.175 MHz crystal based table - F256
-BaudTable fcb $37,$df,FCR_FIFOE,1 110 baud, 1 byte FIFO, 1 byte counter
+BaudTable
+ ifne f256
+ fcb $37,$df,FCR_FIFOE,1 110 baud, 1 byte FIFO, 1 byte counter
  fcb $14,$7c,FCR_FIFOE,1 300 baud, 1 byte FIFO, 1 byte counter
  fcb $0a,$3e,FCR_FIFOE+FCR_RXT_6,4 600 baud, 4 byte FIFO, 4 byte counter
  fcb $05,$1f,FCR_FIFOE+FCR_RXT_7,8 1200 baud, 8 byte FIFO, 8 byte counter
@@ -1038,7 +1135,46 @@ BaudTable fcb $37,$df,FCR_FIFOE,1 110 baud, 1 byte FIFO, 1 byte counter
  fcb $00,$0a,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
  fcb $00,$0a,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
  fcb $00,$32,FCR_FIFOE+FCR_RXT_7,8 31125 baud, 8 byte FIFO, 8 byte counter (for MIDI)
- 
+ else
+ ifne Fast232
+* 18.432 MHz crystal based table - CoNect Fast232
+ fcb $28,$e9,FCR_FIFOE,1 110 baud, 1 byte FIFO, 1 byte counter
+ fcb $0f,$00,FCR_FIFOE,1 300 baud, 1 byte FIFO, 1 byte counter
+ fcb $07,$80,FCR_FIFOE+FCR_RXT_6,4 600 baud, 4 byte FIFO, 4 byte counter
+ fcb $03,$c0,FCR_FIFOE+FCR_RXT_7,8 1200 baud, 8 byte FIFO, 8 byte counter
+ fcb $01,$e0,FCR_FIFOE+FCR_RXT_8,14 2400 baud, 14 byte FIFO, 14 byte counter
+ fcb $00,$f0,FCR_FIFOE+FCR_RXT_8,14 4800 baud, 14 byte FIFO, 14 byte counter
+ fcb $00,$78,FCR_FIFOE+FCR_RXT_8,14 9600 baud, 14 byte FIFO, 14 byte counter
+ fcb $00,$3c,FCR_FIFOE+FCR_RXT_7,8 19200 baud, 8 byte FIFO, 8 byte counter
+ fcb $00,$1e,FCR_FIFOE+FCR_RXT_7,8 38400 baud, 8 byte FIFO, 8 byte counter
+ fcb $00,$14,FCR_FIFOE+FCR_RXT_7,8 57600 baud, 8 byte FIFO, 8 byte counter (shouldn't Divs be $000F?)
+ fcb $00,$0f,FCR_FIFOE+FCR_RXT_7,8 115200 baud, 8 byte FIFO, 8 byte counter (shouldn't Divs be $0007?)
+ fcb $00,$0a,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
+ fcb $00,$0a,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
+ fcb $00,$0a,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
+ fcb $00,$0a,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
+ fcb $00,$25,FCR_FIFOE+FCR_RXT_7,8 31125 baud, 8 byte FIFO, 8 byte counter (for MIDI)
+ else
+* 29.4912 MHz crystal based table - Zippsterzone MegaMiniMPI - Deek's experimental settings.
+ fcb $41,$74,FCR_FIFOE,1 110 baud, 1 byte FIFO, 1 byte counter
+ fcb $18,$00,FCR_FIFOE,1 300 baud, 1 byte FIFO, 1 byte counter
+ fcb $0c,$00,FCR_FIFOE+FCR_RXT_6,4 600 baud, 4 byte FIFO, 4 byte counter
+ fcb $06,$00,FCR_FIFOE+FCR_RXT_7,8 1200 baud, 8 byte FIFO, 8 byte counter
+ fcb $03,$00,FCR_FIFOE+FCR_RXT_8,14 2400 baud, 14 byte FIFO, 14 byte counter
+ fcb $01,$80,FCR_FIFOE+FCR_RXT_8,14 4800 baud, 14 byte FIFO, 14 byte counter
+ fcb $00,$c0,FCR_FIFOE+FCR_RXT_8,14 9600 baud, 14 byte FIFO, 14 byte counter
+ fcb $00,$60,FCR_FIFOE+FCR_RXT_7,8 19200 baud, 8 byte FIFO, 8 byte counter
+ fcb $00,$30,FCR_FIFOE+FCR_RXT_7,8 38400 baud, 8 byte FIFO, 8 byte counter
+ fcb $00,$20,FCR_FIFOE+FCR_RXT_7,8 57600 baud, 8 byte FIFO, 8 byte counter (shouldn't Divs be $000F?)
+ fcb $00,$10,FCR_FIFOE+FCR_RXT_7,8 115200 baud, 8 byte FIFO, 8 byte counter (shouldn't Divs be $0007?)
+ fcb $00,$08,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
+ fcb $00,$04,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
+ fcb $00,$02,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
+ fcb $00,$01,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
+ fcb $00,$3b,FCR_FIFOE+FCR_RXT_7,8 31125 baud, 8 byte FIFO, 8 byte counter (for MIDI)
+ endc
+ endc
+
  emod
 eom equ *
  end
