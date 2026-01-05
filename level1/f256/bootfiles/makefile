@@ -46,6 +46,7 @@ SCVT_F256K  = $(MD)/vtio.dr $(MD)/keydrv_f256k.sb $(MD)/term.dt
 SCVT_F256JR = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/term.dt
 
 # SCF 16550 serial driver
+SC16550_TERM = $(MD)/sc16550.dr $(MD)/term_sc16550.dt
 SC16550	 = $(MD)/sc16550.dr $(MD)/t0_sc16550.dd
 
 # Font & palette
@@ -117,6 +118,17 @@ BOOTFILE_SD_F256JR = $(KERNEL) \
 		$(MD)/sysgo \
 		$(CMDSDIR)/shell_21
 
+BOOTFILE_SD_F256JR_SERIAL_TERM = $(KERNEL) \
+		$(SCF) $(SC16550_TERM) \
+		$(PIPE) \
+		$(RBF) \
+		$(RBSUPER) $(RBFNXSD) $(RBMEM) \
+		$(MD)/dds0.dd \
+		$(SC16550) \
+		$(CLOCK) \
+		$(MD)/sysgo \
+		$(CMDSDIR)/shell_21
+
 # NOTE!!!
 # VTIO must be near the top of the bootlist so that it can safely map
 # the F256's text and CLUT blocks into $E000-$FFFF.
@@ -159,7 +171,8 @@ BOOTFILE_DW_F256JR = $(KERNEL) \
 		$(CMDSDIR)/shell_21
 
 ALLOBJS		= bootfile_sd_f256k2 bootfile_sd_f256k bootfile_sd_f256jr \
-		  bootfile_dw_f256k bootfile_dw_f256k bootfile_dw_f256jr
+		  bootfile_dw_f256k bootfile_dw_f256k bootfile_dw_f256jr \
+		  bootfile_sd_f256jr_serial_term
 
 all: $(ALLOBJS)
 
@@ -175,6 +188,9 @@ bootfile_sd_f256k: $(BOOTFILE_SD_F256K) $(DEPENDS)
 
 bootfile_sd_f256jr: $(BOOTFILE_SD_F256JR) $(DEPENDS)
 	$(MERGE) $(BOOTFILE_SD_F256JR)>$@
+
+bootfile_sd_f256jr_serial_term: $(BOOTFILE_SD_F256JR_SERIAL_TERM) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_SD_F256JR_SERIAL_TERM)>$@
 
 bootfile_dw_f256k: $(BOOTFILE_DW_F256K2) $(DEPENDS)
 	$(MERGE) $(BOOTFILE_DW_F256K2)>$@

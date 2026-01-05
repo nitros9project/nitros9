@@ -28,9 +28,11 @@ DSKSD_F256K		= $(DISTROVER)k_sd.dsk
 DSKDW_F256K		= $(DISTROVER)k_dw.dsk
 
 DSKSD_F256JR		= $(DISTROVER)jr_sd.dsk
+DSKSD_F256JR_SERIAL_TERM = $(DISTROVER)jr_sd_serial_term.dsk
 DSKDW_F256JR		= $(DISTROVER)jr_dw.dsk
 
-DSKS		= $(DSKSD_F256K2) $(DSKDW_F256K2) $(DSKSD_F256K) $(DSKDW_F256K) $(DSKSD_F256JR) $(DSKDW_F256JR)
+DSKS		= $(DSKSD_F256K2) $(DSKDW_F256K2) $(DSKSD_F256K) $(DSKDW_F256K) $(DSKSD_F256JR) $(DSKDW_F256JR) \
+		  $(DSKSD_F256JR_SERIAL_TERM)
 
 # Make all components
 all:
@@ -188,6 +190,36 @@ $(DSKSD_F256JR):
 	$(RM) $@
 	$(OS9FORMAT_F256SD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9COPY) bootfiles/bootfile_sd_f256jr $@,OS9Boot
+	$(MAKDIR) $@,CMDS
+	$(MAKDIR) $@,SYS
+	$(MAKDIR) $@,DEFS
+	$(OS9COPY) modules/$(SYSGO) $@,sysgo
+	$(OS9ATTR_EXEC) $@,sysgo
+	$(CD) cmds; $(OS9COPY) $(CMDS) ../$@,CMDS
+	$(CD) cmds; $(OS9COPY) -r shellplus ../$@,CMDS/shell
+	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
+	$(CD) sys; $(CPL) $(SYSTEXT) ../$@,SYS
+	$(OS9ATTR_TEXT) $(foreach file,$(SYSTEXT),$@,SYS/$(file))
+	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
+	$(CD) defs; $(CPL) $(DEFS) ../$@,DEFS
+	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
+	$(CPL) $(STARTUP) $@,startup
+	$(OS9ATTR_TEXT) $@,startup
+	$(MAKDIR) $@,BASIC09
+	$(CPL) $(BASIC09_FILES) $@,BASIC09
+	$(MAKDIR) $@,BF
+	$(CPL) $(BF_FILES) $@,BF
+	$(MAKDIR) $@,SOUNDS
+	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
+	$(MAKDIR) $@,SCRIPTS
+	$(CD) scripts; $(CPL) $(SCRIPTS) ../$@,SCRIPTS
+	$(MAKDIR) $@,TESTS
+	$(CD) tests; $(CPL) $(TESTS) ../$@,TESTS
+
+$(DSKSD_F256JR_SERIAL_TERM):
+	$(RM) $@
+	$(OS9FORMAT_F256SD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
+	$(OS9COPY) bootfiles/bootfile_sd_f256jr_serial_term $@,OS9Boot
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
 	$(MAKDIR) $@,DEFS

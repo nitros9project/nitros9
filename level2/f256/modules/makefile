@@ -28,7 +28,7 @@ SCF		= scf.mn \
 		vrn.dr nil.dd \
 		vtio.dr keydrv_f256k2.sb keydrv_f256k.sb keydrv_ps2.sb mousedrv_ps2.sb term.dt \
 		SOLdrv.sb fSOL.dd \
-		sc16550.dr t0_sc16550.dd \
+		sc16550.dr term_sc16550.dt t0_sc16550.dd \
 		scdwp.dr p_scdwp.dd \
 		scdwv.dr term_scdwv.dt n_scdwv.dd \
 		n0_scdwv.dd n1_scdwv.dd n2_scdwv.dd \
@@ -104,6 +104,9 @@ ddc0.dd: rbmemdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=2 -DDD=1 -DC0=1
 
 # 16550 descriptors
+term_sc16550.dt: sc16550desc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DTERM=1
+
 t0_sc16550.dd: sc16550desc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
 

@@ -39,6 +39,7 @@ RBFNXSD = $(MD)/llfnxsd.sb $(MD)/s0.dd $(MD)/s1.dd
 SCF		 = $(MD)/scf.mn
 
 # SCF 16550
+SC16550_TERM = $(MD)/sc16550.dr $(MD)/term_sc16550.dt
 SC16550	 = $(MD)/sc16550.dr $(MD)/t0_sc16550.dd
 
 # WizFi360 drivers
@@ -142,6 +143,16 @@ BOOTFILE_SD_F256JR = $(KERNELP2) \
 		$(MD)/sysgo \
 		$(MD)/kernel/krn
 
+BOOTFILE_SD_F256JR_SERIAL_TERM = $(KERNELP2) \
+		$(SCF) $(SC16550_TERM) \
+		$(RBF) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
+		$(MD)/dds0.dd \
+		$(WIZFI) \
+		$(PIPE) \
+		$(CLOCK) \
+		$(MD)/sysgo \
+		$(MD)/kernel/krn
+
 BOOTFILE_DW_F256JR = $(KERNELP2) \
 		$(SCF) $(SCVT_F256JR) \
 		$(FONT) $(PALETTE) \
@@ -169,7 +180,8 @@ BOOTFILE_CART_F256JR = $(KERNELP2) \
 		$(MD)/kernel/krn
 
 ALLOBJS		= bootfile_sd_f256k2 bootfile_dw_f256k2 bootfile_sd_f256k bootfile_dw_f256k \
-		  bootfile_sd_f256jr bootfile_dw_f256jr bootfile_cart_f256jr
+		  bootfile_sd_f256jr bootfile_dw_f256jr bootfile_cart_f256jr \
+		  bootfile_sd_f256jr_serial_term
 
 all:	$(ALLOBJS)
 
@@ -197,6 +209,10 @@ upload_f256k: bootfile_dw_f256k
 
 bootfile_sd_f256jr: $(BOOTFILE_SD_F256JR) $(DEPENDS)
 	$(MERGE) $(BOOTFILE_SD_F256JR)>$@
+	./padup256 $@
+
+bootfile_sd_f256jr_serial_term: $(BOOTFILE_SD_F256JR_SERIAL_TERM) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_SD_F256JR_SERIAL_TERM)>$@
 	./padup256 $@
 
 bootfile_dw_f256jr: $(BOOTFILE_DW_F256JR) $(DEPENDS)
