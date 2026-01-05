@@ -107,7 +107,8 @@ start               leay      <linebuff,u         get ptr to line buffer
 * and do nothing in their I$GetStt routine.
                     ldx       #80
                     os9       I$GetStt            get it
-                    bcc       L0120               branch if gotten
+* If the getstat fails, X remains 80. If it works, X contains the width of the device. Either way
+* there's no point in checking.
 L0120               tfr       x,d
                     cmpb      #51
                     bgt       higher
