@@ -1,8 +1,6 @@
 ********************************************************************
 * CO80 - CRT9128 80 Column Co-Driver for VTIO
 *
-* $Id$
-*
 * This driver came with OS-9 Level One V2.00, but is not
 * written for the 6845-based WordPak RS (I/II).
 * It works with a rare CRT9128-based PBJ WordPak prototype.

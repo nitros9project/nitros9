@@ -3,8 +3,6 @@
 * Provides HWInit, HWTerm, HWRead which are called by code in
 * "use"d boot_common.asm
 *
-* $Id$
-*
 * This module allows booting from a hard drive that uses HDB-DOS
 * and is controlled by a TC^3, Ken-Ton or Disto SCSI controller.
 *

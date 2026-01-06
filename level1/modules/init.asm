@@ -1,8 +1,6 @@
 ********************************************************************
 * Init - NitrOS-9 Configuration module
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
@@ -65,11 +63,7 @@ edition             set       1
 start               equ       *
                     fcb       $27                 entries in device table
                     fdb       DefProg             offset to program to fork
-                    ifne      f256
-                    fdb       $0000
-                    else
                     fdb       DefDev              offset to default disk device
-                    endc
                     fdb       DefCons             offset to default console device
                     fdb       DefBoot             offset to boot module name
                     fcb       $01                 write protect flag (?)

@@ -1,8 +1,6 @@
 ********************************************************************
 * MMap - Show memory block map
 *
-* $Id$
-*
 * From Kevin Darling, "Inside OS9 Level II"
 *
 * Edt/Rev  YYYY/MM/DD  Modified by

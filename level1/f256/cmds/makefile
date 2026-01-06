@@ -1,12 +1,21 @@
 include ../port.mak
 
 vpath %.as $(LEVEL1)/cmds
-vpath %.asm $(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/brainfuck
+vpath %.asm $(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/bf
+
+AFLAGS      += -I.
 
 DEPENDS		= ./makefile $(NOSLIB)/net.o
 
-AFLAGS         += --includedir=$(3RDPARTY)/packages/basic09 --includedir=$(3RDPARTY)/packages/brainfuck
-LFLAGS         += -L $(NITROS9DIR)/lib -L $(LEVEL1)/$(PORT)/libs -L $(LEVEL1)/$(PORT)/libs/fnxsnd -lnet -lf256 -lalib -lfnxsnd
+
+AFLAGS      += -I$(LEVEL1)/$(PORT)
+AFLAGS      += -I$(3RDPARTY)/packages/basic09
+AFLAGS      += -I$(3RDPARTY)/packages/bf
+AFLAGS      += -I$(3RDPARTY)/packages/cpm
+AFLAGS      += -I.
+LFLAGS		+= -L$(NITROS9DIR)/lib -L$(LEVEL1)/$(PORT)/libs/fnxsnd
+LFLAGS		+= -lf256 -lfnxsnd
+LFLAGS		+= -lnet -lalib -lfnxsnd -lnos96809l1
 
 BASIC09		= basic09 runb inkey syscall
 BF  		= bf
@@ -14,11 +23,11 @@ CMDS		= asm attr backup bawk binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
 		display dmode dsave dump echo edit error exbin format \
 		free grep help ident iniz irqs link list load login makdir \
-		megaread mdir merge mfree more padrom park printerr procs prompt pwd pxd \
+		megaread mdir merge modem mfree more padrom park printerr procs prompt pwd pxd \
 		rename save setime shellplus shell_21 sleep \
 		tee tmode touch tsmon unlink verify xmode \
 		inetd telnet dw httpd $(BASIC09) $(BF) \
-		bootos9 fnxinfo fnxreset pick play
+		bootos9 fnxinfo fnxreset pick modem
 
 ALLOBJS		= $(CMDS)
 

@@ -1,0 +1,7 @@
+modem "ATE1"
+modem /wz /wz /wz
+modem "AT+UART_CUR=921600,8,1,0,0"
+modem /wz /wz /wz
+xmode /wz bau=1
+modem "AT"
+modem /wz /wz /wz

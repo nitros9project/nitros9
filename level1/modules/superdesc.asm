@@ -3,8 +3,6 @@
 *
 *	edited 12/10/2013 Gene Heskett
 *	see as noted within
-* $Id$
-*
 * RBSuper Defined Offsets
 *
 * IT.STP (offset $14)

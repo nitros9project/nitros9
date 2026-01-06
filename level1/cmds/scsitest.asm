@@ -1,8 +1,6 @@
 s******************************* ***************************
 * scsitest - Test a SCSI device through the SS.DCmd call
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

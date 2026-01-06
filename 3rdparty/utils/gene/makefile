@@ -39,7 +39,7 @@ dskclean:
 	$(RM) $(DSKS)
 
 clean: dskclean
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 info:
 	@$(ECHO) "*** Gene Heskett's Utilities ***"

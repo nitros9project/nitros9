@@ -1,8 +1,6 @@
 ********************************************************************
 * dwio - DriveWire Low Level Subroutine Module
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
@@ -22,6 +20,10 @@
                     use       defsfile
                     use       drivewire.d
                     endc
+
+ ifne F256
+ use 16550.d
+ endc
 
 tylg                set       Sbrtn+Objct
 atrv                set       ReEnt+rev

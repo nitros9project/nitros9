@@ -1,8 +1,6 @@
 ********************************************************************
 * WordPakII - Word-Pak II Driver
 *
-* $Id$
-*
 * NOTE: This driver is currently a stand-alone SCF driver.  Work has
 * started to convert it into a co-module that would fit under the
 * CCIO driver hierarchy, but that work is not complete.

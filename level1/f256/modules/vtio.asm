@@ -1,8 +1,6 @@
 *******************************************************************
 * VTIO - NitrOS-9 video terminal I/O driver for the Foenix F256
 *
-* $Id$
-*
 * https://wiki.osdev.org/PS2_Keyboard
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
@@ -13,6 +11,9 @@
 *
 *  2       2013/12/-6  Boisy G. Pitre
 * Added SS.Joy support.
+*
+* 3        2025-10-08  John Federico
+* Changed behavior of line wrap to not erase line
 
                     nam       VTIO
                     ttl       NitrOS-9 video terminal I/O driver for the Foenix F256
@@ -63,7 +64,7 @@ start               lbra      Init
 fontmod             fcs       /font/
 palettemod          fcs       /palette/
 keydrvmod           fcs       /keydrv/
-msdrvmod	    fcs	      /mousedrv/             mouse driver module
+msdrvmod            fcs       /mousedrv/             mouse driver module
 
 *
 * VTIO Alternate IRQ routine - Entered from Clock every 1/60th of a second
@@ -80,43 +81,50 @@ AltISR
 * Handle keyboard (if available)
                     ldx       V.KeyDrvEPtr,u
                     cmpx      #$0000
-		    ifgt      Level-1
+                    ifgt      Level-1
                     beq       HandleMSTimer
-		    else
-		    beq	      HandleSound
-		    endc
-                    jsr       6,x			call AltIRQ routine in keydrv
-		    ifgt      Level-1
+                    else
+                    beq       HandleSound
+                    endc
+                    lda       V.LastCh,u                 if LastCh=0, skip keyrepeat handling
+                    beq       HandleKeyboard@            
+                    dec       V.KRTimer,u                decrement repeat timer
+                    bne       HandleKeyboard@            if not 0, then don't repeat yet
+                    ldx       V.KeyDrvEPtr,u             
+                    jsr       9,x                        else jmp to keyrepeat routine
+HandleKeyboard@     ldx       V.KeyDrvEPtr,u                
+                    jsr       6,x                        call AltIRQ routine in keydrv
+                    ifgt      Level-1
 * Handle Mouse Timer. When timer wraps to zero, turn it off
 * Mouse does not hide correctly, so park it at right side of screen
 * Check if mouse is already off, if it is, then skip timer code
 * Mouse timer reset is in mousedrv_ps2.asm interrupt procedure
 * Mouse timer resets on every mouse interrupt
 * This should hide the mouse after 4 to 5 seconds of inactivity
-HandleMSTimer	    tst	      MS_MEN             check if mouse cursor already off
-		    beq	      HandleSound	 if cursor already off, skip timer code
-		    inc	      V.MSTimer,u	         increment mouse auto-hide timer
-		    bne	      HandleSound	 if it is not zero, then skip
-		    clr	      MS_MEN		 if timer flips to 0, turn off mouse cursor
-		    ldd	      #640		 park mouse at right border
-		    sta	      MS_XH		 turning off cursor doesn't work
-		    stb	      MS_XL		 correctly at the moment
-		    endc
+HandleMSTimer       tst       MS_MEN             check if mouse cursor already off
+                    beq       HandleSound        if cursor already off, skip timer code
+                    inc       V.MSTimer,u                increment mouse auto-hide timer
+                    bne       HandleSound        if it is not zero, then skip
+                    clr       MS_MEN             if timer flips to 0, turn off mouse cursor
+                    ldd       #640               park mouse at right border
+                    sta       MS_XH              turning off cursor doesn't work
+                    stb       MS_XL              correctly at the moment
+                    endc
 * Handle sound.
 HandleSound
-                    tst       D.TnCnt          get the tone counter
-                    beq       ex@           branch if zero
-                    dec       D.TnCnt          else decrement the counter
-                    bne       ex@       branch not zero; leave the sound on
-sndoff              pshs      cc save the condition code register
-                    orcc      #IntMasks mask interrupts
-                    ldb       MAPSLOT         get the MMU slot we'll map to
-                    lda       #$C4                get the sound MMU block
-                    sta       MAPSLOT             store it in the MMU slot to map it in
+                    tst       D.TnCnt            get the tone counter
+                    beq       ex@                branch if zero
+                    dec       D.TnCnt            else decrement the counter
+                    bne       ex@                branch not zero; leave the sound on
+sndoff              pshs      cc                 save the condition code register
+                    orcc      #IntMasks          mask interrupts
+                    ldb       MAPSLOT            get the MMU slot we'll map to
+                    lda       #$C4               get the sound MMU block
+                    sta       MAPSLOT            store it in the MMU slot to map it in
 * Turn off PSG channel 0
-                    lda       #%10011111          set attenuation for channel 0
+                    lda       #%10011111         set attenuation for channel 0
                     sta       MAPADDR+PSG.Base
-                    stb       MAPSLOT restore it in the MMU slot
+                    stb       MAPSLOT            restore it in the MMU slot
 * Wake up process that started sound, if any
                     lda       D.SndPrcID
                     beq       g@                    
@@ -124,7 +132,7 @@ sndoff              pshs      cc save the condition code register
                     os9       F$Send
                     clr       D.SndPrcID
 g@                  puls      cc
-ex@                 jmp       [D.OrgAlt] branch to the original alternate IRQ routine
+ex@                 jmp       [D.OrgAlt]         branch to the original alternate IRQ routine
 
 *******************************************************
 * Bell ($07) (called via Bell vector D.Bell):
@@ -142,7 +150,7 @@ BellTone            tst       D.SndPrcID
                     stb       D.TnCnt             store the duration counter in the global
                     pshs      cc,a
                     lda       #$C4                get the sound MMU block
-                    orcc      #IntMasks mask interrupts
+                    orcc      #IntMasks           mask interrupts
                     ldb       MAPSLOT             get the MMU slot we'll map to
                     sta       MAPSLOT             store it in the MMU slot to map it in
 * Turn off attenuation for tones 2, 3, and noise channel.
@@ -161,8 +169,8 @@ BellTone            tst       D.SndPrcID
                     sta       ,x                  store in PSG hardware
 
 * Set frequency of tone
-                    pshs      b save original MAP slot value                    
-                    tfr       y,d transfer frequency over
+                    pshs      b                   save original MAP slot value                    
+                    tfr       y,d                 transfer frequency over
                     coma
                     comb
                     pshs      d                   only 10 bits are significant
@@ -198,18 +206,22 @@ exit
 *
 * Entry: D = Value to send to CODEC.
 *        X = Base address of CODEC.
-SendToCODEC         
-                    std       CODECCmdLo,x
+SendToCODEC         pshs      d
+w@                  lda       CODECCtrl,x
+                    lsra
+                    bcs       w@
+                    puls      d
+                    sta       CODECCmdHi,x
+                    stb       CODECCmdLo,x
                     lda       #$01
                     sta       CODECCtrl,x
-l@                  cmpa      CODECCtrl,x
-                    beq       l@
                     rts
-                    
+
 * Initialize the F256 sound hardware.
 InitSound           clr       D.SndPrcID          clear the process ID of the current sound emitter (none)
                     lda       SYS1                get the byte at SYS1
-                    anda      #^SYS_PSG_ST clear the stereo flag
+*                    anda      #^SYS_PSG_ST clear the stereo flag
+                    ora       #SYS_PSG_ST|SYS_SID_ST
                     sta       SYS1                and save it back
 
 InitPSG             pshs      cc                save the condition code register
@@ -227,25 +239,45 @@ InitPSG             pshs      cc                save the condition code register
                     sta       MAPADDR+PSG.Base
                     lda       #%11111111                            set volume of channel to 3
                     sta       MAPADDR+PSG.Base
-                    
+
                     stb       MAPSLOT restore it in the MMU slot
                     puls      cc restore interrupts
 
-InitCODEC           ldx       #CODEC.Base
-                    ldd       #%0000000000011010                    R13 - turn on headphones
-                    bsr       SendToCODEC
-                    ldd       #%0000001100101010                    R21 - enable all analog in
-                    bsr       SendToCODEC
-                    ldd       #%0000000100100011                    R17 - enable all analog in
-                    bsr       SendToCODEC
-                    ldd       #%0000011100101100                    R22 - enable all analog out
-                    bsr       SendToCODEC
-                    ldd       #%0000001000010100                    R10 - DAC interface control
-                    bsr       SendToCODEC
-                    ldd       #%0000001000010110                    R11 - ADC interface control
-                    bsr       SendToCODEC
-                    ldd       #%1101010100011001                    R12 - Master mode control
-                    bsr       SendToCODEC
+* WM8776 CODEC chip registers
+* R00 = [0000000][U][Z][AAAAAAA]             Headphone attenuation: U=Update, Z=Zero Crossing Detection, A=bB 1111001 default for 0dB
+* R10 = [0001010][XXX][DS][0][0][DF]         DS=DAC input size 16/20/24/32, DF=DAC Format  Right/Left/I2S/DSP
+* R12 = [0001100][0][0][DAC][0][ADC]         DAC rate  ADC rate, both are custom 101 in original vtio
+* R13 = [0001101][XX][1][XX][H][D][A][C]     Headphones/DAC/ADC/Chip 0=Enabled 1=Muted
+* R22 = [0010110][MUX]                       MUX  Bypass,Aux,DAC (bits 2,1,0)
+* R23 = Write anything to Reset WM8776
+
+InitCODEC
+                    ldx       #CODEC.Base
+
+                    ldd       #%0010111000000000                    R23 - Reset chip
+                    lbsr      SendToCODEC
+                    ldd       #%0001010000000010                    R10 - DAC Interface Control 16-bit i2s
+                    lbsr      SendToCODEC
+                    ldd       #%0010001100000001                    R17 - ALC Control 2 
+                    lbsr      SendToCODEC
+                    ldd       #%0010101000000011                    R21 - ADC Mux Control   AIN
+                    lbsr      SendToCODEC
+                    ldd       #%0010110000000111                    R22 - Output Mux MX[2:0] = "111" 
+                    lbsr      SendToCODEC
+                    ldd       #%0001101000000000                    R13 - PWR Down Control, Everything on
+                    lbsr      SendToCODEC
+                    ldd       #%0000011111110000                    R03 - Left DAC Attenuation
+                    lbsr      SendToCODEC
+                    ldd       #%0000100111110000                    R04 - Right DAC Attenuation
+                    lbsr      SendToCODEC
+                    ldd       #%0000000101101100                    R00 - Left Headphone Attenuation Control
+                    lbsr      SendToCODEC
+                    ldd       #%0000001101101100                    R01 - Right Headphone Attenuation Control
+                    lbsr      SendToCODEC
+*                   ldd       #%0001011000000010                    R11 - ADC Interface Control 
+*                   lbsr      SendToCODEC
+*                   ldd       #%0001100111010101                    R12 - Master Mode Control
+*                   lbsr      SendToCODEC
 
 InitBELL            leax      Bell,pcr point to the bell emission code
                     stx       >D.Bell   save it in the system global's bell vector
@@ -288,17 +320,21 @@ l@                  tfr       d,x                 transfer it to X
                     bcs       installfont         branch if the link failed
                     pshs      y                   save Y
                     tfr       y,x                 transfer it to X
-                    ldy       #TEXT_LUT_FG        load Y with the LUT foreground
+                    lda       #TEXT_LUT_BLK       load text LUT block
+                    sta       MAPSLOT
+                    ldy       #MAPADDR
+                    leay      TEXT_LUT_FG,y       load Y with the LUT foreground
                     bsr       copypal             copy the palette data for the foreground
                     puls      x                   restore Y into X
-                    ldy       #TEXT_LUT_BG        load Y with the LUT background
+                    ldy       #MAPADDR
+                    leay      TEXT_LUT_BG,y       load Y with the LUT background
                     bsr       copypal             copy the palette data for the background
 
 * Install the font.
 installfont         leax      fontmod,pcr         point to the font module
                     lda       #Data               it's a data module
                     os9       F$Link              link to it
-                    bcs       setforeback         branch if the link failed
+                    bcs       initcursor          branch if the link failed
                     tfr       y,x                 transfer Y to X
                     lda       #$C1                get the font MMU block
                     sta       MAPSLOT             store it in the MMU slot to map it in
@@ -309,13 +345,13 @@ l@                  ldd       ,x++                get two bytes of font data
                     bne       l@                  branch if not
 
 * Initialize the cursor.
-                    ldx       #TXT.Base
+initcursor          ldx       #TXT.Base
                     lda       #Vky_Cursor_Enable|Vky_Cursor_Flash_Rate0|Vky_Cursor_Flash_Rate1
                     sta       VKY_TXT_CURSOR_CTRL_REG,x
                     clra
                     clrb
-                    std       VKY_TXT_CURSOR_Y_REG_L,x
-                    std       VKY_TXT_CURSOR_X_REG_L,x
+                    std       VKY_TXT_CURSOR_Y_REG_H,x
+                    std       VKY_TXT_CURSOR_X_REG_H,x
                     lda       #'_
                     sta       VKY_TXT_CURSOR_CHAR_REG,x
 
@@ -342,13 +378,13 @@ l@                  ldd       ,x++                get two bytes from the source
                     std       ,y++                and save it to the destination
                     leau      -4,u                subtract 4 from the counter
                     cmpu      #0000               are we done?
-                    bne       l@               branch if not
+                    bne       l@                  branch if not
                     rts                           return
 
 * Clear memory at MAPADDR with the contents of D.
 clr                 ldx       #MAPADDR
 l@                  std       ,x++
-                    cmpx      #MAPADDR+80*61
+                    cmpx      #MAPADDR+80*60     
                     bne       l@
                     rts
 
@@ -356,43 +392,47 @@ l@                  std       ,x++
 * NOTE: If we fail to find the 'keydrv' module, carry is returned set, but
 * the caller can chose to ignore the error condition.
 InitKeyboard        clr       D.KySns
-                    leax      keydrvmod,pcr         point to the keydrv module name
-                    lda       #Systm+Objct               it's a system module
-                    pshs      u save U on the stack
+                    clr       V.KySns,u
+                    clr       V.IBufH,u
+                    clr       V.IBufT,u
+                    clr       V.LastCh,u          clear LastCh so no keyrepeat
+                    leax      keydrvmod,pcr       point to the keydrv module name
+                    lda       #Systm+Objct        it's a system module
+                    pshs      u                   save U on the stack
                     os9       F$Link              link to it
-                    tfr       u,x move the module address to X
-                    puls      u restore U from the stack
-                    bcs       ex@         branch if the link failed
-                    stx       V.KeyDrvMPtr,u save the module pointer
-                    sty       V.KeyDrvEPtr,u save the entry pointer
+                    tfr       u,x                 move the module address to X
+                    puls      u                   restore U from the stack
+                    bcs       ex@                 branch if the link failed
+                    stx       V.KeyDrvMPtr,u      save the module pointer
+                    sty       V.KeyDrvEPtr,u      save the entry pointer
                     jsr       ,y                  call the subroutine's Init entry point
                     rts                           return to the caller
-ex@                 ldd        #0 set D to 0
-                    std       V.KeyDrvMPtr,u clear the module pointer
-                    std       V.KeyDrvEPtr,u clear the entry pointer
-                    rts       return to the caller
+ex@                 ldd       #0                  set D to 0
+                    std       V.KeyDrvMPtr,u      clear the module pointer
+                    std       V.KeyDrvEPtr,u      clear the entry pointer
+                    rts                           return to the caller
 
-		    ifgt      Level-1
+                    ifgt      Level-1
 * Mouse initialization  
 * NOTE: If we fail to find the 'msdrv' module, carry is returned set, but
 * the caller can chose to ignore the error condition.
-InitMouse    	    leax      msdrvmod,pcr         point to the keydrv module name
-                    lda       #Systm+Objct               it's a system module
-                    pshs      u save U on the stack
+InitMouse           leax      msdrvmod,pcr        point to the keydrv module name
+                    lda       #Systm+Objct        it's a system module
+                    pshs      u                   save U on the stack
                     os9       F$Link              link to it
-                    tfr       u,x move the module address to X
-                    puls      u restore U from the stack
-                    bcs       ex@         branch if the link failed
-                    stx       V.MSDrvMPtr,u save the module pointer
-                    sty       V.MSDrvEPtr,u save the entry pointer
+                    tfr       u,x                 move the module address to X
+                    puls      u                   restore U from the stack
+                    bcs       ex@                 branch if the link failed
+                    stx       V.MSDrvMPtr,u       save the module pointer
+                    sty       V.MSDrvEPtr,u       save the entry pointer
                     jsr       ,y                  call the subroutine's Init entry point
                     rts                           return to the caller
-ex@                 ldd        #0 set D to 0
-                    std       V.MSDrvMPtr,u clear the module pointer
-                    std       V.MSDrvEPtr,u clear the entry pointer
-                    rts return to the caller
-		    endc
-* Init		    
+ex@                 ldd       #0                  set D to 0
+                    std       V.MSDrvMPtr,u       clear the module pointer
+                    std       V.MSDrvEPtr,u       clear the entry pointer
+                    rts                           return to the caller
+                    endc
+* Init              
 *
 * Entry:
 *    Y  = address of device descriptor
@@ -414,9 +454,9 @@ Init                stu       D.KbdSta
                     lbsr      InitDisplay         initialize the display
                     lbsr      InitSound           initialize the sound
                     lbsr      InitKeyboard        initialize the keyboad
-		    ifgt      Level-1
+                    ifgt      Level-1
                     lbsr      InitMouse
-		    endc
+                    endc
 
                     ldx       >D.AltIRQ           get the current alternate IRQ vector
                     stx       >D.OrgAlt           save it off in the original vector
@@ -456,7 +496,7 @@ Term                ldx       >D.OrgAlt   get the original alternate IRQ vector
                     os9       F$Unlink
                     puls      u                    
                     std       V.MSDrvMPtr,u
-		    endc
+                    endc
 ex@                 clrb                          clear the carry
                     rts                           return to the caller
 
@@ -483,6 +523,12 @@ read1               lda       <V.SSigID,u         data ready signal trap set up?
                     beq       nitenite@           if so, the buffer is empty, so put the reader to sleep
                     abx                           X now points to the current character to fetch from the buffer
                     lda       ,x                  get that character now
+                    pshs      a,x                 store character
+                    leax      V.KSBuf,u           update V.KySns
+                    abx
+                    lda       ,x
+                    sta       V.KySns,u
+                    puls      a,x
                     bsr       IncNCheck           check for tail wrap
                     stb       V.IBufT,u           store the updated tail
                     andcc     #^(IRQMask+Carry)   unmask interrupts
@@ -540,7 +586,7 @@ Write
 
 DefaultHandler      cmpa      #C$SPAC             is the character a space or greater?
                     lbcs      ChkESC              branch if not; go check for escape codes
-                    pshs      a                   else save the character to write
+RawWrite            pshs      a                   else save the character to write
                     lda       V.CurRow,u          get the current row
                     ldb       V.WWidth,u          and the number of columns
                     mul                           calculate the row we should be on
@@ -571,7 +617,7 @@ DefaultHandler      cmpa      #C$SPAC             is the character a space or gr
                     clrb                          else the column goes to 0
 incrow              inca                          and we increment the row
                     cmpa      V.WHeight,u         compare it against the number of rows
-                    blt       clrline             branch if we're less than (clear the new line we're on)
+                    blt       ok                  branch if we're less than (don't clear the new line we're on)
 SCROLL              equ       1
                     ifne      SCROLL
                     deca                          set A to V.WHeight - 1
@@ -635,6 +681,8 @@ CurOff              ldx       #TXT.Base
 
 ChkESC              cmpa      #$1B                is the character ESC?
                     lbeq      EscHandler          if so, handle it
+                    cmpa      #$1C
+                    lbeq      OneSeeHandler
                     cmpa      #$1F                is this the 1F handler?
                     lbeq      OneEffHandler       if so, handle it
                     cmpa      #C$CR               is it a carriage return?
@@ -908,14 +956,14 @@ OneEffHandler       leax      OneEffHandler2,pcr  point to the 1F handler to the
                     stx       V.EscVect,u         store it in the vector
                     rts                           return
 
-* 1F 20	Turns on reverse video
-* 1F 21	Turns off reverse video
-* 1F 22	Turns on underlining.
-* 1F 23	Turns off underlining.
-* 1F 24	Turns on blinking.
-* 1F 25	Turns off blinking.
-* 1F 30	Inserts a line at the current cursor position.
-* 1F 31	Deletes the current line.
+* 1F 20 Turns on reverse video
+* 1F 21 Turns off reverse video
+* 1F 22 Turns on underlining.
+* 1F 23 Turns off underlining.
+* 1F 24 Turns on blinking.
+* 1F 25 Turns off blinking.
+* 1F 30 Inserts a line at the current cursor position.
+* 1F 31 Deletes the current line.
 OneEffHandler2
                     cmpa      #$20
                     beq       revon
@@ -1059,7 +1107,8 @@ SetWin80x60         clrb
 ;;; GVA = green component.
 ;;; BVA = blue component.
 ;;; AVA = alpha component.
-ChgForePal          ldx       #TEXT_LUT_FG
+ChgForePal          ldx       #MAPADDR  
+                    leax      TEXT_LUT_FG,x
 ChgPal              stx       V.EscParms+4,u
                     leax      Do1B60_Param0,pcr
                     lbra      SetHandler
@@ -1084,7 +1133,12 @@ Do1B60_Param3
                     leax      Do1B60_Param4,pcr
                     lbra      SetHandler
 
-Do1B60_Param4
+Do1B60_Param4       pshs      cc
+                    orcc      #IntMasks
+                    ldb       MAPSLOT
+                    pshs      b
+                    ldb       #TEXT_LUT_BLK
+                    stb       MAPSLOT
                     ldx       V.EscParms+4,u
                     ldb       V.EscParms+0,u
                     lslb
@@ -1097,6 +1151,9 @@ Do1B60_Param4
                     sta       1,x
                     lda       V.EscParms+1,u get red component
                     sta       2,x
+                    puls      b
+                    stb       MAPSLOT
+                    puls      cc
                     lbra      ResetHandler
 
 ;;; ChgBackPal
@@ -1112,7 +1169,8 @@ Do1B60_Param4
 ;;; GVA = green component.
 ;;; BVA = blue component.
 ;;; AVA = alpha component.
-ChgBackPal          ldx       #TEXT_LUT_BG
+ChgBackPal          ldx       #MAPADDR
+                    leax      TEXT_LUT_BG,x
                     bra       ChgPal
 
 * These do nothing for now.
@@ -1137,8 +1195,14 @@ IsIt60              cmpa      #$60                is it ChgForePal?
                     bne       IsIt61              branch if not
                     lbra      ChgForePal
 IsIt61              cmpa      #$61                is it ChgBackPal?
-                    bne       IsIt32              branch if not
+                    bne       IsIt62              branch if not
                     lbra      ChgBackPal
+IsIt62              cmpa      #$62                Change to Font0
+                    bne       IsIt63
+                    lbra      ChgFont0
+IsIt63              cmpa      #$63                Change to Font1
+                    bne       IsIt32
+                    lbra      ChgFont1              
 IsIt32              cmpa      #$32                is it the foreground color code?
                     bne       IsIt33              branch if not
                     leax      FColor,pcr          else point to the vector
@@ -1164,6 +1228,21 @@ BColor              bsr       SetBackColor
 Border              bsr       SetBorderColor
                     lbra      ResetHandler        reset the handler
 
+* Change to FontSet0
+ChgFont0            ldx       #TXT.Base
+                    ldb       MASTER_CTRL_REG_H,x
+                    andb      #~(FT_FSET)
+                    stb       MASTER_CTRL_REG_H,X
+                    lbra      ResetHandler
+
+* Change to FontSet1
+ChgFont1            ldx       #TXT.Base
+                    ldb       MASTER_CTRL_REG_H,x
+                    orb       #FT_FSET
+                    stb       MASTER_CTRL_REG_H,X
+                    lbra      ResetHandler
+
+
 * BoldSw - do nothing.
 BoldSw              lbra      ResetHandler        reset the handler
 
@@ -1183,13 +1262,19 @@ SetBackColor        anda      #$0F                mask out the upper 4 bits
                     andb      #$F0                mask out the lower 4 bits
                     bra       doout@              and do the OR
 
+OneSeeHandler       leax      Do1C,pcr
+                    lbra      SetHandler
+
+Do1C                lbsr      RawWrite
+                    lbra      ResetHandler
+
 * Return special key status
 GSKySns 
 *            ldy       <D.CCMem            get ptr to CC mem
                     clrb                          clear key code
 *                    cmpu      <G.CurDev,y         are we the active device?
 *                    bne       actv@               branch if not
-                    ldb       D.KySns          get key codes
+                    ldb       V.KySns,u          get key codes
 actv@               stb       R$A,x               save to caller reg
                     clrb                          return w/o error
                     rts
@@ -1221,10 +1306,14 @@ GetStat             cmpa      #SS.EOF             is this the EOF call?
                     lbeq      GSKySns             branch if so
                     cmpa      #SS.Joy             get joystick position?
                     beq       SSJoy               branch if so
-		    ifgt      Level-1
-		    cmpa      #SS.Mouse
-		    beq	      GSMouse
-		    endc
+                    ifgt      Level-1
+                    cmpa      #SS.Mouse
+                    beq       GSMouse
+                    cmpa      #SS.DScrn           SS.DScrn MCR to display text or graphics
+                    lbeq      GSDScrn
+                    cmpa      #SS.FntChar
+                    lbeq      GSFntChar       
+                    endc
                     cmpa      #SS.Palet           get palettes?
                     beq       GSPalet             yes, go process
                     cmpa      #SS.FBRgs           get colors?
@@ -1334,7 +1423,7 @@ s4@                 sta       R$A,u               store buttons in caller's A
                     clrb                          clear carry
                     rts                           return
 
-		    ifgt      Level-1
+                    ifgt      Level-1
 ;;; SS.Mouse
 ;;;
 ;;; Returns the mouse information.
@@ -1358,7 +1447,7 @@ GSMouse             lda       MS_XH
                     sta       R$A,x
                     clrb                          clear carry
                     rts   
-		    endc
+                    endc
 ;;; SS.Palet
 ;;;
 ;;; Return palette information.
@@ -1371,21 +1460,14 @@ GSPalet
 ;;; Entry:  A = The path number.
 ;;;         B = SS.FBRgs ($96)
 ;;;
-;;; Exit:   A = The foreground palette register number.
-;;;         B = The background palette register number.
+;;; Exit:   A = The foreground/background palette register numbers.
 ;;;         X = The least significant byte of the border palette register number.
 ;;;        CC = Carry flag clear to indicate success.
 ;;;
 ;;; Error:  B = A non-zero error code.
 ;;;        CC = Carry flag set to indicate error.
 SSFBRGs             lda                 V.FBCol,u
-                    tfr                 a,b
-                    lsra
-                    lsra
-                    lsra
-                    lsra
-                    andb                #$0F
-                    std                 R$D,x
+                    sta                 R$A,x
                     ldd                 #0
                     std                 R$X,x
                     rts
@@ -1426,42 +1508,46 @@ GSDfPal
 SS.DMAFill          equ       $B0
 SetStat             ldx       PD.RGS,y            get caller's registers in X
                     cmpa      #SS.SSig            send signal on data ready?
-                    beq       SSSig               yes, go process
+                    lbeq      SSSig               yes, go process
                     cmpa      #SS.Relea           release signal on data ready?
                     lbeq      SSRelea             yes, go process
                     cmpa      #SS.DMAFill         DMA Fill?
                     beq       SSDMAFill
                     cmpa      #SS.Tone
-		    beq       SSTone
- ifgt Level-1                                            
-		    cmpa      #SS.AScrn	          SS.AScrn allocated bitmap
-		    lbeq      SSAScrn
-		    cmpa      #SS.DScrn	          SS.DScrn MCR to display text or graphics
-		    lbeq      SSDScrn
-		    cmpa      #SS.FScrn           SS.FScrn frees bitmap memory
-		    lbeq      SSFScrn
-		    cmpa      #SS.PScrn		  SS.PScrn to set up layers
-		    lbeq      SSPScrn
-		    cmpa      #SS.Palet
-		    lbeq      SSPalet		  SS.Palet assigns palette to bitmap
-		    cmpa      #SS.DfPal
-		    lbeq      SSDfPal		  SS.DfPal defines and populates a CLUT
-  endc                                            
-		    comb                          set the carry
+                    beq       SSTone
+                    ifgt Level-1                                            
+                    cmpa      #SS.AScrn           SS.AScrn allocated bitmap
+                    lbeq      SSAScrn
+                    cmpa      #SS.DScrn           SS.DScrn MCR to display text or graphics
+                    lbeq      SSDScrn
+                    cmpa      #SS.FScrn           SS.FScrn frees bitmap memory
+                    lbeq      SSFScrn
+                    cmpa      #SS.PScrn           SS.PScrn to set up layers
+                    lbeq      SSPScrn
+                    cmpa      #SS.Palet
+                    lbeq      SSPalet             SS.Palet assigns palette to bitmap
+                    cmpa      #SS.DfPal
+                    lbeq      SSDfPal             SS.DfPal defines and populates a CLUT
+                    cmpa      #SS.FntLoadF
+                    lbeq      SSFntLoadF
+                    cmpa      #SS.FntChar
+                    lbeq      SSFntChar
+                    endc                                            
+                    comb                          set the carry
                     ldb       #E$UnkSvc           load the "unknown service" error
                     rts                           return
 
 SSTone              ldy       R$Y,x               check for 0-1023 range
-					cmpy      #1023
-					bgt       BadArgs
-					ldd       R$X,x               get vol, duration
+                    cmpy      #1023
+                    bgt       BadArgs
+                    ldd       R$X,x               get vol, duration
                     cmpa      #15
-					bgt       BadArgs
-					lbra      BellTone            do it
-
+                    bgt       BadArgs
+                    lbra      BellTone            do it
+ 
 BadArgs             comb                          Exit with Illegal Argument error
-					ldb       #E$IllArg
-					rts
+                    ldb       #E$IllArg
+                    rts
 
 * SS.DMAFill - fill memory
 DMF$DstAddrHi       equ       0
@@ -1521,6 +1607,206 @@ SSRelea             lda       PD.CPR,y            get the current process ID
 ex@                 rts
 
                     ifgt      Level-1
+;;; GS.FntChar
+;;;
+;;; Copy a font character from font bank 0 or 1 to a user memory location
+;;;
+;;; Entry: R$A = font set 0 or 1
+;;;        R$X = pointer to 8 byte memory
+;;;        R$Y = font character to get (0-255)
+;;;
+;;; Exit:  B = non-zero error code
+;;;       CC = carry flag clear to indicate success
+
+
+;;; SS.FntChar
+;;;
+;;; Set a font character in font bank 0 or 1 from a user memory location
+;;;
+;;; Entry: R$A = font set 0 or 1
+;;;        R$X = pointer to 8 byte memory
+;;;        R$Y = font character to set (0-255)
+;;;
+;;; Exit:  B = non-zero error code
+;;;       CC = carry flag clear to indicate success
+
+;;; difference between get and set is just two lines specifying
+;;; source and destination.  So procedures are combined.
+GSFntChar           lda       #0
+                    bra       DoFontGetSet
+SSFntChar           lda       #1
+DoFontGetSet        pshs      a 
+                    ldd       R$Y,x               get the char# and mulitply by 8
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    tfr       d,y                 transfer result to y
+                    lda       R$A,x               add offset for font bank 0 or 1
+                    beq       font0@
+font1@              leay      FONT_1_OFFSET,y
+                    bra       cont@
+font0@              leay      FONT_0_OFFSET,y
+cont@               leas      -2,s                reserve 2 bytes for mapped address
+                    pshs      x,u                 preserve x,u
+                    ldx       #FONT_BLK           map in $C1
+                    ldb       #$01                map 1 block at address x (x set on entry)
+                    os9       F$MapBlk            map block into caller DAT
+                    bcc       mapgood@            if success, then continue
+                    puls      x,u                 else: error
+                    puls      a,x,pc              clean stack and return if error
+mapgood@            stu       4,s                 store mapped address on stack [XUMO]
+                    ldd       4,s                 load into d and add to y
+                    leay      d,y                 Y now contains address of font char
+                    puls      x,u                 restore x,u [MO]
+                    pshs      x,u
+                    ldx       <D.Proc
+                    lda       P$Task,x            copy data from caller to caller memory
+                    ldb       P$Task,x
+                    ldx       ,s
+                    tst       6,s                 Get or Set?
+                    beq       getfont@            0 = getfont
+                    ldx       R$X,x               setfont: source is x
+                    tfr       y,u                 destination is y
+                    bra       contfont@
+getfont@            ldu       R$X,x               getfont: destination is x
+                    tfr       y,x                 source is y
+contfont@           ldy       #8                  copy 8 bytes
+                    os9       F$Move
+                    puls      x,u                 error or not, clear block and return
+                    puls      u                   pull blk addr and getset flag
+                    puls      a
+                    ldb       #$01
+                    os9       F$ClrBlk
+                    rts
+
+;;; SS.FntLoadF
+;;;
+;;; Load a font from a file.  File should be full path.
+;;; Don't load module into memory, just read directly from file.
+;;;
+;;; Entry: R$X = pointer to font name
+;;;        R$Y = font set 0 or 1
+;;;
+;;; Exit:  B = non-zero error code
+;;;       CC = carry flag clear to indicate success
+
+SSFntLoadF          ldy       R$Y,x
+                    beq       font0@
+font1@              ldy       #$800               FONT_1_OFFSET   $0800
+                    bra       storeaddr@
+font0@              ldy       #FONT_0_OFFSET      $0000
+storeaddr@          pshs      y                   store font offset on stack [O]      
+                    leas      -2,s                reserve 2 bytes on stack for mapped addr [MO]
+* s= ADDR|OFFSET|                   
+*                   ****      map block into user dat and store address on stack
+                    pshs      x,u                 preserve x,u
+                    ldx       #FONT_BLK           map in $C1
+                    ldb       #$01                map 1 block at address x (x set on entry)
+                    os9       F$MapBlk
+                    bcc       mapgood@            if success, then continue
+                    puls      x,u                 else: error
+                    lbra      error@
+mapgood@            stu       4,s                 store mapped address on stack [XUMO]
+                    puls      x,u                 restore x,u [MO]
+*                   ****      open file to read             
+endcopy@            ldx       R$X,x               pointer to file name in caller memory
+                    lda       #READ.              READ access mode
+                    os9       I$Open              
+                    bcc       modulecheck@
+                    bra       errormap@
+* Verify that file is module.
+* Load file's first two bytes onto the stack to verify and check for $87DC
+modulecheck@        leas      -2,s                 add space to stack to store 2 bytes [DMO]
+                    leax      ,s                   load x with stack address
+                    lbsr      Rd2B2Mem
+                    puls      x                    load x with the data [MO]
+                    cmpx      #$87CD               check if module
+                    bcc       getstart@            if module, get start of data
+                    ldb       #3
+                    bra       errorclose@          else, error
+* Module header byte $09-0A = Execution Offset.
+* This is the start of the data in a data module
+getstart@           pshs      u                    seek to data start address in file [UMO]
+                    ldx       #$00                 set high byte addr
+                    ldu       #$09                 set low byte
+                    os9       I$Seek
+                    bcc       readaddr@            if success, read font
+                    puls      u                    else error  [MO]
+                    ldb       #4
+                    bra       errorclose@
+* s= u|addr|offset                  
+readaddr@           leas      -2,s                 add 2 bytes stack storage [DUMO]
+                    leax      ,s                   use the 2 bytes in stack to store addr
+                    lbsr      Rd2B2Mem             read 2 bytes from file
+                    bcc       seekaddr@            if success, seek to data address
+                    leas      4,s                  else: clean stack and error [MO]
+                    bra       errorclose@
+* s= addr|u|addr|offset             
+seekaddr@           puls      u                    load u with low byte addr [UMO]
+* s= u|addr|offset
+                    ldx       #0                   load x high byte
+                    os9       I$Seek
+                    puls      u                    restore u [MO]
+* s=addr|offset             
+*                   ldx       ,s                   ldx with mapblock address
+                    pshs      a                    store path# on stack [AMO]
+                    ldd       1,s                  put offset in d
+                    addd      3,s
+                    tfr       d,x
+*                   leax      d,x                  add offset to x
+                    puls      a                    restore path# [MO]
+                    ldy       #$800                read 2K of font data into it
+                    os9       I$Read               a=path x=addr y=#bytes
+errorclose@         pshs      b                    [BMO]
+                    os9       I$Close              close the file
+                    puls      b                    [MO]
+errormap@           ldu       ,s
+                    pshs      b
+                    ldb       #$01
+                    os9       F$ClrBlk             Clear block from user space
+                    puls      b
+error@              leas      4,s                  clear stack
+                    tstb
+                    beq       quit@
+                    coma
+quit@               rts
+                    
+
+;;; Rd2B2Mem
+;;; Read 2 bytes to addr
+;;;
+;;; Entry:  A = path #
+;;;         X = memory address to read to
+;;;
+;;; Exit:   B = a non-zero error code (F$MapBlk)
+;;;        CC = carry flag clear=success set=error
+;;;
+;;; I$Read reads data into the current process in D.Proc
+;;; To use I$Read for the system, assign system to D.Proc
+;;; Call I$Read, then change the processes back
+;;; Make sure to mask interrupts so processes don't switch while
+;;; the change is happening
+;;;
+Rd2B2Mem            pshs      cc                  push cc and mask interrupts
+                    orcc      #IntMasks
+                    ldy       <D.Proc             ldy with current process descriptor
+                    pshs      y                   store current proc descriptor on stack
+                    ldy       <D.SysPrc           copy system proc descriptor to current
+                    sty       <D.Proc
+                    ldy       #$02                read 2 bytes from file 
+                    os9       I$Read
+                    puls      y                   pull current proc descriptor from stack
+                    sty       <D.Proc             and save it back
+                    bcs       errnomap@           if I$Read error, then handle error
+                    puls      cc,pc               if no error, pull cc and return
+errnomap@           puls      cc                  if error, pull cc
+                    coma                          set carry bit
+                    rts                           and return
+
+                    
 ;;; SS.AScrn
 ;;;
 ;;; Allocate a bitmap screen
@@ -1578,16 +1864,36 @@ map@                lda       R$Y+1,x             load bitmap@
                     pshs      a                   push high byte of bitmap address
                     lda       #%00000001          enable bitmapX with CLUT 0
                     sta       ,y+                 enable bitmap with CLUT 0
+                    puls      a                   
+                    std       ,y++
                     lda       #$0
                     sta       ,y+                 clear AD7-AD0
-                    stb       ,y+                 store AD15-AD8
-                    puls      a                   pull high byte of bitmap address
-                    sta       ,y                  store AD18-AD16
                     puls      b,a
                     sta       MAPSLOT
 noerror@            puls      cc,pc     
 error@              coma                          set carry bit on error
 end@                rts             
+
+
+;;;  GS.DScrn
+;;;  Get Display Screen Settings
+;;;
+;;; Return MCR values
+;;;
+;;; Entry: Nothing.  This returns values only
+;;;
+;;; Exit:  R$X = Vicky_MCR Low Byte
+;;;        R$Y = Vicky_MCR High Byte
+;;;
+GSDScrn             clr       R$X,x               load MCR low byte
+                    clr       R$Y,x               load MCR high byte
+                    ldy       #TXT.Base
+mcrlbit@            lda       MASTER_CTRL_REG_L,y   store new MCR low byte
+                    sta       R$X+1,x                 store copy in driver variables
+mcrhbit@            ldb       MASTER_CTRL_REG_H,y   store new MCR High byte     
+                    stb       R$Y+1,x           store copy in driver variables
+end@                clrb
+                    rts
 
 ;;;  SS.DScrn
 ;;;  Display Screen Settings
@@ -1646,7 +1952,7 @@ sl1@                cmpy      #$01                  test for layer 1
                     stb       VKY_LAYER_CTRL_0      store it
                     rts
 sl2@                cmpy      #$02                  test for Layer2
-                    rts
+                    bne       end@
                     ldb       R$Y+1,x
                     stb       VKY_LAYER_CTRL_1      store BM# or TM# in L2
                     clrb
@@ -1756,20 +2062,13 @@ SSPalet             pshs      cc
 ;;;
 ;;; Exit:  B = A non-zero error code.
 ;;;       CC = Carry flag clear to indicate success
-SSDfPal             pshs      cc,a,x,y,u
+SSDfPal             pshs      a,x,y,u
 *                   **** Map in $C1 for CLUT Registers
-                    orcc      #IntMasks
-                    ldy       <D.Proc
-                    pshs      y,x
-                    ldy       <D.SysPrc
-                    sty       <D.Proc
-                    ldb       #$01
-                    ldx       #$C1
-                    os9       F$MapBlk
-                    bcs       errnomap@
-                    puls      y,x
-                    sty       <D.Proc
-                    puls      cc
+                    pshs      x
+                    ldx       #$C1              
+                    lbsr      mapblock
+                    puls      x
+                    bcs       end@                if error, end and return error code
 *                   **** Calculate CLUT offset              
                     pshs      u                   push map logical addr
                     lda       R$X+1,x
@@ -1777,7 +2076,7 @@ SSDfPal             pshs      cc,a,x,y,u
                     pshs      x                   push pointer to caller Regs
                     leax      clutlookup,pcr
                     ldd       a,x
-                    leau      d,u                 ldx with $1000 offset for CLUT0
+                    leau      d,u                 ldu with offset for CLUT
 *                   **** Start F$Move (with U from above)
                     ldx       ,s                  load pointer to caller Regs
                     ldx       R$Y,x               x=Get pointer to caller data
@@ -1793,19 +2092,58 @@ noerror@            puls      u
                     bsr       clearblock
                     clrb                          no error code
                     bra       end@
-errnomap@           puls      y,x                 come here on F$MapBlk error
-                    sty       <D.Proc
-                    puls      cc
-                    coma                          set carry bit on error
-                    bra       end@
 errormove@          puls      x
                     puls      u                   come here on F$Move error
                     bsr       clearblock
                     coma                          set carry bit on error
-end@                puls      u,y,x,a
-                    rts
+end@                puls      u,y,x,a,pc
 
-clutlookup          fdb       $1000,$1400,$0800,$0C00
+clutlookup          fdb       $1000,$1400,$1800,$1C00
+
+
+;;; mapblock
+;;; Map a block into the system process map
+;;;
+;;; Entry:  X = block to map (like $C1)
+;;;
+;;; Exit:   U = address of first block
+;;;         B = a non-zero error code (F$MapBlk)
+;;;        CC = carry flag clear=success set=error
+;;;
+;;; F$MapBlk only works to map for the current processin D.Proc
+;;; To use F$MapBlk for the system, assign system to D.Proc
+;;; Call F$MapBlk, then change the processes back
+;;; Make sure to mask interrupts so processes don't switch while
+;;; the change is happening
+;;;
+;;; Does not preserve a,b,x,y,u
+mapblock            pshs      cc                  push cc and mask interrupts
+                    orcc      #IntMasks
+                    ldy       <D.Proc             ldy with current process descriptor
+                    pshs      y                   store current proc descriptor on stack
+                    ldy       <D.SysPrc           copy system proc descriptor to current
+                    sty       <D.Proc
+                    ldb       #$01                map 1 block at address x (x set on entry) 
+                    os9       F$MapBlk
+                    puls      y                   pull current proc descriptor from stack
+                    sty       <D.Proc             and save it back
+                    bcs       errnomap@           if F$MapBlok error, then handle error
+                    puls      cc,pc               if no error, pull cc and return
+errnomap@           puls      cc                  if error, pull cc
+                    coma                          set carry bit
+                    rts                           and return
+;;; clearblock
+;;; clear a mapped block from the system process map
+;;;
+;;; Entry:  U = address of first block to clear
+;;;
+;;; Exit:   Nothing
+;;;
+;;; F$ClrBlk only works with the current process, so assign
+;;; system process to current process, clear the block
+;;; then switch it back
+;;;
+;;; Does not preserve a,b
 
 clearblock          pshs      cc
                     orcc      #IntMasks           u=logical address of block on entry

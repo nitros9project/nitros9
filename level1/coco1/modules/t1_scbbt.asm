@@ -1,8 +1,6 @@
 ********************************************************************
 * T1 - CoCo Bit-Banger Terminal Device Descriptor
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

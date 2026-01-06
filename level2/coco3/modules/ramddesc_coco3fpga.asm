@@ -1,8 +1,6 @@
 ********************************************************************
 * ramddesc - SDRAM Disk Device Descriptor Template
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

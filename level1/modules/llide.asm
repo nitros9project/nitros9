@@ -1,8 +1,6 @@
 *******************************************************************
 * llide - Low-level IDE driver
 *
-* $Id$
-*
 * This low level driver works with both ATA and ATAPI devices.
 *
 * The type of device (ATA or ATAPI) is automatically detected

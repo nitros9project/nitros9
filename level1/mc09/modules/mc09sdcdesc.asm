@@ -1,8 +1,6 @@
 ********************************************************************
 * mc09sdcdesc - Multicomp09 SDCC Device Descriptor Template
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

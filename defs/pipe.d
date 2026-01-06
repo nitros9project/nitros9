@@ -5,8 +5,6 @@ PIPE.D              SET       1
 ********************************************************************
 * PipeDefs - Pipe File Manager Definitions
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
