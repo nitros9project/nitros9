@@ -14,10 +14,10 @@ UART_MSR            rmb       1         modem status register
 UART_SR             rmb       1         scratch register
 
 * FCR register definitions
-FCR_RXT_5           equ       0x00
-FCR_RXT_6           equ       0x40
-FCR_RXT_7           equ       0x80
-FCR_RXT_8           equ       0xC0
+FRT_1               equ       0x00
+FRT_4               equ       0x40
+FRT_8               equ       0x80
+FRT_14              equ       0xC0
 FCR_FIFO64          equ       0x20
 FCR_TXR             equ       0x04
 FCR_RXR             equ       0x02

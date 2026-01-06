@@ -1110,71 +1110,49 @@ IRQPckt fcb $01 flip byte 16550 device address+2 is status register, and lowest
  fcb $01 mask byte bit clear means IRQ needs to be serviced
  fcb $80 IRQ priority
          
-* Some other data table. Should be 4 bytes/entry, and 16 entries (0-15). Related to baud rate
+brate macro
+ fdb ClkRate/16/\1,((FCR_FIFOE!FRT_\2)*256)+\2
+ endm
+ 
+* Baud Rate Table. 4 bytes/entry, and 16 entries (0-15).
 * Byte order of each entry:
 *   ,0=HDiv (high byte of divisor latch) \ 16550 needs little endian, so we should swap these and
 *   ,1=LDiv (low byte of divisor latch)  / remove the exg a,b the calling routine currently uses LCB
 *   ,2=UART_FCR settings EXCEPT FCR_RXR & FCR_TXR, which are forced on in calling routine
 *   ,3=FIFO trigger level ctr - must be 1,4,8 or 14 (used for read loop counters)
-* 25.175 MHz crystal based table - F256
+*
+* Deek's convenience macro assists with easy conversion.
 BaudTable
  ifne f256
- fcb $37,$df,FCR_FIFOE,1 110 baud, 1 byte FIFO, 1 byte counter
- fcb $14,$7c,FCR_FIFOE,1 300 baud, 1 byte FIFO, 1 byte counter
- fcb $0a,$3e,FCR_FIFOE+FCR_RXT_6,4 600 baud, 4 byte FIFO, 4 byte counter
- fcb $05,$1f,FCR_FIFOE+FCR_RXT_7,8 1200 baud, 8 byte FIFO, 8 byte counter
- fcb $02,$8f,FCR_FIFOE+FCR_RXT_8,14 2400 baud, 14 byte FIFO, 14 byte counter
- fcb $01,$47,FCR_FIFOE+FCR_RXT_8,14 4800 baud, 14 byte FIFO, 14 byte counter
- fcb $00,$a3,FCR_FIFOE+FCR_RXT_8,14 9600 baud, 14 byte FIFO, 14 byte counter
- fcb $00,$51,FCR_FIFOE+FCR_RXT_7,8 19200 baud, 8 byte FIFO, 8 byte counter
- fcb $00,$28,FCR_FIFOE+FCR_RXT_7,8 38400 baud, 8 byte FIFO, 8 byte counter
- fcb $00,$1b,FCR_FIFOE+FCR_RXT_7,8 57600 baud, 8 byte FIFO, 8 byte counter (shouldn't Divs be $000F?)
- fcb $00,$0d,FCR_FIFOE+FCR_RXT_7,8 115200 baud, 8 byte FIFO, 8 byte counter (shouldn't Divs be $0007?)
- fcb $00,$0a,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
- fcb $00,$0a,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
- fcb $00,$0a,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
- fcb $00,$0a,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
- fcb $00,$32,FCR_FIFOE+FCR_RXT_7,8 31125 baud, 8 byte FIFO, 8 byte counter (for MIDI)
+* 25.175 MHz crystal - F256
+ClkRate set 25175000
  else
  ifne Fast232
-* 18.432 MHz crystal based table - CoNect Fast232
- fcb $28,$e9,FCR_FIFOE,1 110 baud, 1 byte FIFO, 1 byte counter
- fcb $0f,$00,FCR_FIFOE,1 300 baud, 1 byte FIFO, 1 byte counter
- fcb $07,$80,FCR_FIFOE+FCR_RXT_6,4 600 baud, 4 byte FIFO, 4 byte counter
- fcb $03,$c0,FCR_FIFOE+FCR_RXT_7,8 1200 baud, 8 byte FIFO, 8 byte counter
- fcb $01,$e0,FCR_FIFOE+FCR_RXT_8,14 2400 baud, 14 byte FIFO, 14 byte counter
- fcb $00,$f0,FCR_FIFOE+FCR_RXT_8,14 4800 baud, 14 byte FIFO, 14 byte counter
- fcb $00,$78,FCR_FIFOE+FCR_RXT_8,14 9600 baud, 14 byte FIFO, 14 byte counter
- fcb $00,$3c,FCR_FIFOE+FCR_RXT_7,8 19200 baud, 8 byte FIFO, 8 byte counter
- fcb $00,$1e,FCR_FIFOE+FCR_RXT_7,8 38400 baud, 8 byte FIFO, 8 byte counter
- fcb $00,$14,FCR_FIFOE+FCR_RXT_7,8 57600 baud, 8 byte FIFO, 8 byte counter (shouldn't Divs be $000F?)
- fcb $00,$0f,FCR_FIFOE+FCR_RXT_7,8 115200 baud, 8 byte FIFO, 8 byte counter (shouldn't Divs be $0007?)
- fcb $00,$0a,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
- fcb $00,$0a,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
- fcb $00,$0a,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
- fcb $00,$0a,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
- fcb $00,$25,FCR_FIFOE+FCR_RXT_7,8 31125 baud, 8 byte FIFO, 8 byte counter (for MIDI)
  else
-* 29.4912 MHz crystal based table - Zippsterzone MegaMiniMPI - Deek's experimental settings.
- fcb $41,$74,FCR_FIFOE,1 110 baud, 1 byte FIFO, 1 byte counter
- fcb $18,$00,FCR_FIFOE,1 300 baud, 1 byte FIFO, 1 byte counter
- fcb $0c,$00,FCR_FIFOE+FCR_RXT_6,4 600 baud, 4 byte FIFO, 4 byte counter
- fcb $06,$00,FCR_FIFOE+FCR_RXT_7,8 1200 baud, 8 byte FIFO, 8 byte counter
- fcb $03,$00,FCR_FIFOE+FCR_RXT_8,14 2400 baud, 14 byte FIFO, 14 byte counter
- fcb $01,$80,FCR_FIFOE+FCR_RXT_8,14 4800 baud, 14 byte FIFO, 14 byte counter
- fcb $00,$c0,FCR_FIFOE+FCR_RXT_8,14 9600 baud, 14 byte FIFO, 14 byte counter
- fcb $00,$60,FCR_FIFOE+FCR_RXT_7,8 19200 baud, 8 byte FIFO, 8 byte counter
- fcb $00,$30,FCR_FIFOE+FCR_RXT_7,8 38400 baud, 8 byte FIFO, 8 byte counter
- fcb $00,$20,FCR_FIFOE+FCR_RXT_7,8 57600 baud, 8 byte FIFO, 8 byte counter (shouldn't Divs be $000F?)
- fcb $00,$10,FCR_FIFOE+FCR_RXT_7,8 115200 baud, 8 byte FIFO, 8 byte counter (shouldn't Divs be $0007?)
- fcb $00,$08,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
- fcb $00,$04,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
- fcb $00,$02,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
- fcb $00,$01,FCR_FIFOE+FCR_RXT_7,8 undefined baud, 8 byte FIFO, 8 byte counter
- fcb $00,$3b,FCR_FIFOE+FCR_RXT_7,8 31125 baud, 8 byte FIFO, 8 byte counter (for MIDI)
+* 18.432 MHz crystal - CoNect Fast232
+ClkRate set 18432000
  endc
+* 29.4912 MHz crystal - Zippsterzone MegaMiniMPI - Deek's experimental settings
+ClkRate set 29491200
  endc
 
+ brate 110,1
+ brate 300,1
+ brate 600,4
+ brate 1200,8
+ brate 2400,14
+ brate 4800,14
+ brate 9600,14
+ brate 19200,8
+ brate 38400,8
+ brate 57600,8
+ brate 115200,8
+ brate 230400,8
+ brate 230400,8
+ brate 460800,8
+ brate 921600,8
+ brate 31125,8
+ 
  emod
 eom equ *
  end
