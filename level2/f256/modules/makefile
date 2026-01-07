@@ -36,9 +36,8 @@ SCF		= scf.mn \
 		n8_scdwv.dd n9_scdwv.dd n10_scdwv.dd n11_scdwv.dd n12_scdwv.dd \
 		n13_scdwv.dd midi_scdwv.dd \
 		z1_scdwv.dd z2_scdwv.dd z3_scdwv.dd z4_scdwv.dd z5_scdwv.dd \
-		z6_scdwv.dd z7_scdwv.dd z8_scdwv.dd z9_scdwv.dd z10_scdwv.dd \
-		z11_scdwv.dd z12_scdwv.dd z13_scdwv.dd z14_scdwv.dd \
-		wizfi.dr wz.dd n0.dd n1.dd n2.dd n3.dd
+		z6_scdwv.dd z7_scdwv.dd \
+		wizfi.dr wz.dd wz0.dd wz1.dd wz2.dd wz3.dd
 
 PIPE		= pipeman.mn pipeman_named.mn piper.dr pipe.dd
 
@@ -57,16 +56,21 @@ rbmem.dr: rbmem.asm
 # WizFi360 chip
 wizfi.dr: wizfi.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
-wz.dd: wz.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
-n0.dd: n0.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
-n1.dd: n1.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
-n2.dd: n2.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
-n3.dd: n3.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
+
+wz.dd: wizfidesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DConnection=0 -DDeviceMode=0
+
+wz0.dd: wizfidesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DConnection=0 -DDeviceMode=8
+
+wz1.dd: wizfidesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DConnection=1 -DDeviceMode=8
+
+wz2.dd: wizfidesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DConnection=2 -DDeviceMode=8
+
+wz3.dd: wizfidesc.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DConnection=3 -DDeviceMode=8
 
 # Kernel
 krn: $(LEVEL2)/modules/kernel/krn.asm
@@ -182,27 +186,6 @@ z6_scdwv.dd: scdwvdesc.asm
 
 z7_scdwv.dd: scdwvdesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=23
-
-z8_scdwv.dd: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=24
-
-z9_scdwv.dd: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=25
-
-z10_scdwv.dd: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=26
-
-z11_scdwv.dd: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=27
-
-z12_scdwv.dd: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=28
-
-z13_scdwv.dd: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=29
-
-z14_scdwv.dd: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=30
 
 # DriveWire dwio modules
 dwio_wizfi.sb: dwio.asm

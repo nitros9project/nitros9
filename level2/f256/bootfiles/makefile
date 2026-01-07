@@ -42,7 +42,7 @@ SCF		 = $(MD)/scf.mn
 SC16550	 = $(MD)/sc16550.dr $(MD)/t0_sc16550.dd
 
 # WizFi360 drivers
-WIZFI = $(MD)/wizfi.dr $(MD)/wz.dd $(MD)/n0.dd $(MD)/n1.dd $(MD)/n2.dd $(MD)/n3.dd
+WIZFI = $(MD)/wizfi.dr $(MD)/wz.dd $(MD)/wz0.dd $(MD)/wz1.dd $(MD)/wz2.dd $(MD)/wz3.dd
 
 # SCF video terminal
 SCVT_F256K2  = $(MD)/vtio.dr $(MD)/keydrv_f256k2.sb $(MD)/mousedrv_ps2.sb $(MD)/term.dt
@@ -67,9 +67,7 @@ SCDWV_NET  = $(MD)/n_scdwv.dd $(MD)/n1_scdwv.dd \
 # SCF DriveWire virtual window descriptors
 SCDWV_WIN  = $(MD)/z1_scdwv.dd $(MD)/z2_scdwv.dd $(MD)/z3_scdwv.dd \
 		$(MD)/z4_scdwv.dd $(MD)/z5_scdwv.dd $(MD)/z6_scdwv.dd \
-		$(MD)/z7_scdwv.dd $(MD)/z8_scdwv.dd $(MD)/z9_scdwv.dd \
-		$(MD)/z10_scdwv.dd $(MD)/z11_scdwv.dd $(MD)/z12_scdwv.dd \
-		$(MD)/z13_scdwv.dd $(MD)/z14_scdwv.dd
+		$(MD)/z7_scdwv.dd
 
 # SCF DriveWire virtual printer driver
 SCDWP	  = $(MD)/scdwp.dr $(MD)/p_scdwp.dd
@@ -136,8 +134,7 @@ BOOTFILE_SD_F256JR = $(KERNELP2) \
 		$(RBF) $(RBDW) $(RBSUPER) $(RBMEM) $(RBFNXSD) \
 		$(MD)/dds0.dd \
 		$(SOL) \
-		$(SC16550) \
-		$(WIZFI) \
+		$(SCDWV) \
 		$(PIPE) \
 		$(CLOCK) \
 		$(MD)/sysgo \
