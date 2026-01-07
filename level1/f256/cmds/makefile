@@ -15,10 +15,12 @@ AFLAGS      += -I$(3RDPARTY)/packages/cpm
 AFLAGS      += -I.
 LFLAGS		+= -L$(NITROS9DIR)/lib -L$(LEVEL1)/$(PORT)/libs/fnxsnd
 LFLAGS		+= -lf256 -lfnxsnd
-LFLAGS		+= -lnet -lalib -lfnxsnd -lnos96809l1
+LFLAGS		+= -lfuji -lnet -lalib -lfnxsnd -lnos96809l1
 
 BASIC09		= basic09 runb inkey syscall
 BF  		= bf
+CMDS_FN		= fngetdevfile fnsetdevfile
+
 CMDS		= asm attr backup bawk binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
 		display dmode dsave dump echo edit error exbin format \
@@ -27,7 +29,7 @@ CMDS		= asm attr backup bawk binex build cmp copy \
 		rename save setime shellplus shell_21 sleep \
 		tee tmode touch tsmon unlink verify xmode \
 		inetd telnet dw httpd $(BASIC09) $(BF) \
-		bootos9 fnxinfo fnxreset pick modem
+		bootos9 fnxinfo fnxreset pick modem $(CMDS_FN)
 
 ALLOBJS		= $(CMDS)
 

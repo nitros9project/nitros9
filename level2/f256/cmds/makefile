@@ -14,12 +14,14 @@ AFLAGS      += -I$(3RDPARTY)/packages/cpm
 AFLAGS      += -I.
 LFLAGS		+= -L$(NITROS9DIR)/lib -L$(LEVEL2)/$(PORT)/libs
 LFLAGS		+= -lf256 -lfnxsnd
-LFLAGS		+= -lnet -lalib -lnos96809l2
+LFLAGS		+= -lfuji -lnet -lalib -lnos96809l2
 
 BASIC09	= basic09 runb inkey syscall foenix
 BF      = bf
 CPM     = cpm
 CMDS_DW = inetd dw telnet httpd
+CMDS_FN		= fngetdevfile fnsetdevfile
+
 CMDS    = asm attr backup bawk binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
 		display dmem dmode dsave dump echo edit error exbin \
@@ -28,7 +30,7 @@ CMDS    = asm attr backup bawk binex build cmp copy \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
 		bootos9 fnxinfo fnxreset rogue fstatus fcfg xtclut drawtest play foenix shellbg shellbgoff ntptime \
-		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) view
+		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) view $(CMDS_FN)
 
 CMDS_CART      = asm attr backup bawk binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
@@ -37,7 +39,7 @@ CMDS_CART      = asm attr backup bawk binex build cmp copy \
 		makdir mdir merge modem mfree minted mmap more padrom park \
 		pmap proc procs prompt pwd pxd rename save setime \
 		sleep smap tee tmode touch tsmon unlink verify xmode \
-		bootos9 fnxinfo fnxreset rogue fstatus fcfg xtclut play foenix
+		bootos9 fnxinfo fnxreset rogue fstatus fcfg xtclut play foenix $(CMDS_FN)
 
 SHELLMODS	= shellplus echo iniz link load save unlink
 
