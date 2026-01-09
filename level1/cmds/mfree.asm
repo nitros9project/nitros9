@@ -43,7 +43,7 @@ header              fcb       C$LF
                     fcb       $80+C$CR
 totfree             fcb       C$LF
                     fcs       "Total pages free = "
-                    ifeq      f256+atari
+                    ifeq      wildbits+atari
 gfxmem              fcs       "Graphics Memory "
 notalloc            fcs       "Not Allocated"
 ataddr              fcs       "at: $"
@@ -75,7 +75,7 @@ nextbyte            lda       ,x+                 get the byte in the bitmap
                     ldb       <totalfree          get the total number of free pages
                     bsr       bDeci               convert it to decimal
                     bsr       print               print the line
-                    ifeq      f256+atari
+                    ifeq      wildbits+atari
                     lbsr      displaygfx          show graphics memory usage
                     endc
                     clrb                          clear carry and error code
@@ -182,7 +182,7 @@ dodigit@            pshs      a                   preserve registers
                     puls      a                   restore the register we pushed earlier
 convdigit@          anda      #$0F                clear the upper 4 bits of A
                     bra       setlead@            set the leading digit
-                    ifeq      f256+atari
+                    ifeq      wildbits+atari
 displaygfx          pshs      y,x                 preserve registers
                     leay      >gfxmem,pcr         point to graphics memory label
                     bsr       ApndStr             append the string to the buffer

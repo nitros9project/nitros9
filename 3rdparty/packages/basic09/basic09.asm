@@ -476,7 +476,7 @@ L0022               fdb       $1607               Edition #22 ($16)
 
 * Intro screen
 
-                    ifne      F256
+                    ifne      wildbits
 L0024               fcb       $0A
 				else
 L0024               fcb       $0C
@@ -1677,7 +1677,7 @@ L082E               lda       #$7E                Opcode for JMP Extended instru
                     stx       <u009E              Save it
                     ldb       ,y                  Get char from params
                     cmpb      #C$CR               Carriage return?
-                    ifne      F256
+                    ifne      wildbits
                     lbeq      BannerGo               Yes, go print the title screen L08A6
 				else
 				beq       L08A6
@@ -12769,7 +12769,7 @@ L5AC3               ldb       #48                 Unimplemented routine error
                     coma                          Exit with error
                     rts
 
-				ifne		F256
+				ifne		wildbits
 BannerGo            leax      NEWLN,pcr
                     ldy       #NEWLNLEN
                     lda       #1
@@ -12783,22 +12783,22 @@ BannerGo            leax      NEWLN,pcr
                     ldx       #$FE00
                     lda       7,x
                     cmpa      #$02
-                    bne       isItF256K
+                    bne       isItK
                     leax      OUTSTR2,pcr
                     ldy       #STRLEN2
                     lda       #1
                     os9       I$Writln
                     bcs       ERROR
                     bra       CONT
-isItF256K           cmpa      #$12
-                    bne       isItF256K2
+isItK           cmpa      #$12
+                    bne       isItK2
                     leax      OUTSTR3,pcr
                     ldy       #STRLEN3
                     lda       #1
                     os9       I$Writln
                     bcs       ERROR
                     bra       CONT
-isItF256K2          cmpa      #$16
+isItK2          cmpa      #$16
                     bne       isItJrJr
                     leax      OUTSTR4,pcr
                     ldy       #STRLEN4
@@ -12835,18 +12835,18 @@ OUTSTR              fcb       $1b,$32,$07,$1c,$13,$1c,$11,$1c,$11
                     fcb       $1b,$32,$01,$1c,$03,$1c,$11,$1c,$11,$1c,$11,$1c,$11
                     fcb       $1c,$05
                     fcb       $1b,$32,$06,$20,$20,$20,$20,$20,$20,$20,$20
-                    fcb       $20,$20,$1b,$32,$01
+                    fcb       $1b,$32,$01
 STRLEN              equ       *-OUTSTR
-OUTSTR2             fcc       /F256 Jr./
+OUTSTR2             fcc       " Wildbits/Jr"
                     fcb       $0D
 STRLEN2             equ       *-OUTSTR2
-OUTSTR3             fcc       / F256K/
+OUTSTR3             fcc       "  Wildbits/K"
                     fcb       $0D
 STRLEN3             equ       *-OUTSTR3
-OUTSTR4             fcc       /F256K2/
+OUTSTR4             fcc       "Wildbits/K2"
                     fcb       $0D
 STRLEN4             equ       *-OUTSTR4
-OUTSTR5             fcc       /F256 Jr2/
+OUTSTR5             fcc       "Wildbits/Jr2"
                     fcb       $0D
 STRLEN5             equ       *-OUTSTR5
 BASL2               fcb       $1b,$32,$07,$1c,$13,$1c,$11,$1b,$32,$06,$20,$20

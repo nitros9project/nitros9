@@ -83,13 +83,13 @@ name                fcs       /Krn/
 **************************
 * Kernel entry point
 *
-* Entry (Foenix Port):
+* Entry (Wildbits Port):
 *     X = The starting address of the bootfile.
 *     Y = The size of the bootfile in bytes.
 OS9Cold             equ       *
-                    ifne      f256
-*>>>>>>>>>> F256 PORT
-* In RAM mode, the F256 memory map looks like this:
+                    ifne      wildbits
+*>>>>>>>>>> Wildbits port
+* In RAM mode, the Wildbits memory map looks like this:
 *    $0000-$1FFF - RAM at $000000-$001FFF
 *    $2000-$3FFF - RAM at $002000-$003FFF
 *    $4000-$5FFF - RAM at $004000-$005FFF
@@ -98,7 +98,7 @@ OS9Cold             equ       *
 *    $A000-$BFFF - RAM at $00A000-$00BFFF
 *    $C000-$DFFF - RAM at $00C000-$00DFFF
 *    $E000-$FFFF - RAM at $00E000-$00FFFF
-* F256-specific initialization to get the F256 to a sane state.
+* Wildbits-specific initialization to get the Wildbits to a sane state.
                     orcc      #IntMasks           mask interrupts
                     lds       #$500               set the system stack
                     pshs      x,y                 save the bootfile pointer and size
@@ -108,7 +108,7 @@ OS9Cold             equ       *
                     sta       INT_MASK_1          mask all set 1 interrupts
                     sta       INT_PENDING_0       clear any pending set 0 interrupts
                     sta       INT_PENDING_1       clear any pending set 0 interrupts
-*<<<<<<<<<< F256 PORT
+*<<<<<<<<<< Wildbits port
                     endc
 
 * Clear out system globals from $0000-$0400.
@@ -140,15 +140,15 @@ loop@               std       ,x++                save off at X and increment
 * conditionalized.
                     ifne      CHECK_FOR_VALID_RAM
 *>>>>>>>>>> CHECK_FOR_VALID_RAM
-                    ifne      f256
-*>>>>>>>>>> F256 PORT
+                    ifne      wildbits
+*>>>>>>>>>> Wildbits port
                     ldx       ,s                  get start of bootfile
-*<<<<<<<<<< F256 PORT
+*<<<<<<<<<< Wildbits port
                     else
-*>>>>>>>>>> NOT(F256 PORT)
+*>>>>>>>>>> NOT(Wildbits port)
 * Check for valid RAM starting at $400
                     ldx       #Bt.Start           end at bootfile start
-*<<<<<<<<<< NOT(F256 PORT)
+*<<<<<<<<<< NOT(Wildbits port)
                     endc
                     pshs      x                   save it on the stack
 ChkRAM              leay      ,x                  point Y to X ($400)
@@ -171,29 +171,29 @@ EndOfRAM@           leax      ,y                  X = end of RAM
 *<<<<<<<<<< CHECK_FOR_VALID_RAM
                     else
 *>>>>>>>>>> NOT(CHECK_FOR_VALID_RAM)
-                    ifne      f256
-*>>>>>>>>>> F256 PORT
+                    ifne      wildbits
+*>>>>>>>>>> Wildbits port
 * NOTE: Krn must be the FIRST module in the bootlist.
                     puls      x                   get bootfile start
                     tfr       x,d                 transfer it to D
                     addd      ,s++                add the bootfile length to D
                     std       <D.BTHI             save as the bootfile high marker
                     stx       <D.BTLO             and x as the bootfile low marker
-*<<<<<<<<<< F256 PORT
+*<<<<<<<<<< Wildbits port
                     else
-*>>>>>>>>>> NOT(F256 PORT)
+*>>>>>>>>>> NOT(Wildbits port)
 * Check for valid RAM starting at $400
                     ldx       #Bt.Start           end at bootfile start
-*<<<<<<<<<< NOT(F256 PORT)
+*<<<<<<<<<< NOT(Wildbits port)
 *<<<<<<<<<< NOT(CHECK_FOR_VALID_RAM)
                     endc
                     endc
                     stx       <D.MLIM             save off as the memory limit
 
-                    ifne      f256
-*>>>>>>>>>> F256 PORT
+                    ifne      wildbits
+*>>>>>>>>>> Wildbits port
 * X = top of Krn, so start searching for modules there.
-*<<<<<<<<<< F256 PORT
+*<<<<<<<<<< Wildbits port
                     endc
 
 * Copy vector code over to D.XSWI3 ($0100).
@@ -209,29 +209,29 @@ loop@               lda       ,x+                 get source byte
 
 * Atari has bootfile already in memory
                     ifne      atari
-*>>>>>>>>>> ATARI LIBER809 PORT
+*>>>>>>>>>> ATARI LIBER809 port
 * Flag that we've booted and that Boot Low starts appropriately.
                     ldy       #$D000              Atari: I/O is at $D000-$D7FF
                     inc       <D.Boot
                     stx       <D.BTLO
                     ldx       #$FFFF
                     stx       <D.BTHI
-*<<<<<<<<<< ATARI LIBER809 PORT
+*<<<<<<<<<< ATARI LIBER809 port
                     else
                     ifne      corsham
-*>>>>>>>>>> CORSHAM PORT
+*>>>>>>>>>> CORSHAM port
                     ldx       #Bt.Start
                     ldy       #Bt.Start+Bt.Size-1
-*<<<<<<<<<< CORSHAM PORT
+*<<<<<<<<<< CORSHAM port
                     else
-                    ifne      f256
-*>>>>>>>>>> F256 PORT
+                    ifne      wildbits
+*>>>>>>>>>> Wildbits port
                     ldy       #MappedIOStart      stop short of I/O area
-*<<<<<<<<<< F256 PORT
+*<<<<<<<<<< Wildbits port
                     else
-*>>>>>>>>>> NOT(ATARI LIBER809PORT | CORSHAM PORT | F256 PORT)
+*>>>>>>>>>> NOT(ATARI LIBER809 port | CORSHAM port | Wildbits port)
                     ldy       #Bt.Start+Bt.Size
-*<<<<<<<<<< NOT(ATARI LIBER809PORT | CORSHAM PORT | F256 PORT)
+*<<<<<<<<<< NOT(ATARI LIBER809 port | CORSHAM port | Wildbits port)
                     endc
                     endc
                     endc
@@ -243,7 +243,7 @@ loop@               lda       ,x+                 get source byte
 * module scan to look for modules after those holes.
                     ifne      atari
 * Atari: look for more modules at $D800-$F3FF.
-*>>>>>>>>>> ATARI LIBER809 PORT
+*>>>>>>>>>> ATARI LIBER809 port
 * The next three lines reset the low memory and boot start areas so that we can use
 * free RAM above $8000. This code works because we just validated modules above and
 * the first module found above $8000 is the start of the bootfile.
@@ -254,7 +254,7 @@ loop@               lda       ,x+                 get source byte
                     ldx       #$D800              point to the area past I/O
                     ldy       #$F400              and up to this
                     lbsr      ValMods             validate mods here
-*<<<<<<<<<< ATARI LIBER809 PORT
+*<<<<<<<<<< ATARI LIBER809 port
                     endc
 
 * Copy vectors to system globals.
@@ -302,30 +302,30 @@ copy@               ldd       ,y++                get vector bytes
 *   bit 7 of 1,x corresponds to page 8, bit 6 to page 9 etc.
                     ldx       <D.FMBM             get free memory bitmap in X
                     ifne      atari
-*>>>>>>>>>> ATARI LIBER809 PORT
+*>>>>>>>>>> ATARI LIBER809 port
 * Atari needs $0000-$08FF and $D000-$D7FF reserved.
                     ldb       #%11111111
                     stb       ,x                  mark $0000-$07FF as allocated
                     stb       $1A,x               mark $D000-$D7FF I/O area as allocated
                     ldb       #%10000000
                     stb       1,x                 mark $0800-$08FF as allocated
-*<<<<<<<<<< ATARI LIBER809 PORT
+*<<<<<<<<<< ATARI LIBER809 port
                     else
                     ifne      corsham
-*>>>>>>>>>> CORSHAM PORT
+*>>>>>>>>>> CORSHAM port
 * Corsham needs $0000-$04FF and $E000-$EFFF reserved.
                     ldb       #%11111000
                     stb       ,x                  mark $0000-$04FF as allocated
                     ldb       #%11111111
                     stb       $1C,x               mark $E000-$E7FF I/O area as allocated
                     stb       $1D,x               mark $E800-$EFFF I/O area as allocated
-*<<<<<<<<<< CORSHAM PORT
+*<<<<<<<<<< CORSHAM port
                     else
-*>>>>>>>>>> NOT(ATARI LIBER809PORT | CORSHAM PORT)
+*>>>>>>>>>> NOT(ATARI LIBER809 port | CORSHAM port)
 * All other ports need $0000-$04FF reserved.
                     ldb       #%11111000
                     stb       ,x                  mark $0000-$04FF as allocated
-*<<<<<<<<<< NOT(ATARI LIBER809PORT | CORSHAM PORT)
+*<<<<<<<<<< NOT(ATARI LIBER809 port | CORSHAM port)
                     endc
                     endc
 
@@ -610,11 +610,11 @@ P2Nam               fcs       /krnp2/
 
 EOMTop              equ       *
 
-                    ifeq      corsham+f256
-*>>>>>>>>>> NOT(CORSHAM PORT | F256 PORT)
+                    ifeq      corsham+wildbits
+*>>>>>>>>>> NOT(CORSHAM port | Wildbits port)
                     emod
 eom                 equ       *
-*<<<<<<<<<< NOT(CORSHAM PORT | F256 PORT)
+*<<<<<<<<<< NOT(CORSHAM port | Wildbits port)
                     endc
 
 Vectors		        fdb	       SWI3		SWI3
@@ -625,16 +625,16 @@ Vectors		        fdb	       SWI3		SWI3
                     fdb	       SVCNMI		NMI
 
                     ifne      atari
-*>>>>>>>>>> ATARI LIBER809 PORT
+*>>>>>>>>>> ATARI LIBER809 port
                     fdb       $F3FE-(*-OS9Cold)
-*<<<<<<<<<< ATARI LIBER809 PORT
+*<<<<<<<<<< ATARI LIBER809 port
                     endc
                     
-                    ifne      corsham+f256
-*>>>>>>>>>> CORSHAM PORT | F256 PORT
+                    ifne      corsham+wildbits
+*>>>>>>>>>> CORSHAM port | Wildbits port
                     emod
 eom                 equ       *
-*<<<<<<<<<< CORSHAM PORT | F256 PORT
+*<<<<<<<<<< CORSHAM port | Wildbits port
                     endc
 EOMSize             equ       *-EOMTop
 

@@ -163,11 +163,11 @@ InstStr             equ       *
                     ifne      corsham
                     fcc       "Corsham 6809"
                     else
-                    ifne      f256
-                    fcc       "Foenix F256"
+                    ifne      wildbits
+                    fcc       "Wildbits"
                     else
                     fcc       "Unknown Machine"
-                    endc                          match IFNE f256
+                    endc                          match IFNE wildbits
                     endc                          match IFNE corsham
                     endc                          match IFNE coco3fpga
                     endc                          match IFNE mc09
