@@ -20,11 +20,11 @@
                     use dwwrite/dwwrite_mmmpi.asm
                     endc
 
-                    ifne      F256
+                    ifne      wildbits
                     ifne      DWIO_WIZFI
-                    use dwwrite_f256_wizfi.asm
+                    use dwwrite_wildbits_wizfi.asm
                     else
-                    use dwwrite_f256_serial.asm
+                    use dwwrite_wildbits_serial.asm
                     endc
                     endc
 
@@ -48,7 +48,7 @@
 		    use dwwrite/dwwrite_bb38400.asm
                     endc
 
-                    ifeq      BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+BAUD38400+f256+MEGAMINIMPI
+                    ifeq      BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+BAUD38400+wildbits+MEGAMINIMPI
                     ifeq      H6309
                     use dwwrite/dwwrite_bb6809.asm
                     else

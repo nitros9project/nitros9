@@ -1,1 +1,4 @@
-PROCEDURE gdowDIM dow:INTEGERRUN foenix("GetDow",dow)PRINT dow
+PROCEDURE gdow
+DIM dow:INTEGER
+RUN WILD("GetDow",dow)
+PRINT dow

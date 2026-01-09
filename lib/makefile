@@ -2,7 +2,7 @@ include $(NITROS9DIR)/rules.mak
 
 all: libnos96809l1.a libnos96809l2.a libnos96309l2.a libnet.a libalib.a \
 	libcoco.a libcoco3.a libcoco3_6309.a libdragon.a libatari.a \
-	libmc09.a libf256.a
+	libmc09.a libwildbits.a
 
 libnos96809l1.a: sys6809l1.o
 	$(LWAR) $@ $?
@@ -34,7 +34,7 @@ libdragon.a: dragon.o
 libmc09.a: mc09.o
 	$(LWAR) $@ $?
 
-libf256.a: f256.o
+libwildbits.a: wildbits.o
 	$(LWAR) $@ $?
 
 libalib.a:

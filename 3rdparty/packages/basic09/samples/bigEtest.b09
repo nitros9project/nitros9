@@ -184,39 +184,39 @@ PROCEDURE bitmaptest
 dim bm0,bm1,bm2:INTEGER
 dim choice:STRING
 (* allocate 3 bitmaps, with different cluts *)
-RUN FOENIX("Bitmap",0,0,bm0,0,0,"testclutbm0")
-RUN FOENIX("Bitmap",1,0,bm1,1,1,"testclutbm1")
-RUN FOENIX("Bitmap",2,0,bm2,2,2,"testclutbm2")
-RUN FOENIX("BMLoad",bm0,"/dd/cmds/testpixmapbm0")
-RUN FOENIX("BMLoad",bm1,"/dd/cmds/testpixmapbm1")
-RUN FOENIX("BMLoad",bm2,"/dd/cmds/testpixmapbm2")
-RUN FOENIX("Gon")
+RUN WILD("Bitmap",0,0,bm0,0,0,"testclutbm0")
+RUN WILD("Bitmap",1,0,bm1,1,1,"testclutbm1")
+RUN WILD("Bitmap",2,0,bm2,2,2,"testclutbm2")
+RUN WILD("BMLoad",bm0,"/dd/cmds/testpixmapbm0")
+RUN WILD("BMLoad",bm1,"/dd/cmds/testpixmapbm1")
+RUN WILD("BMLoad",bm2,"/dd/cmds/testpixmapbm2")
+RUN WILD("Gon")
 SHELL "fstatus"
 INPUT "Press enter to continue: ",choice
-RUN FOENIX("BMoff",0)
-RUN FOENIX("BMoff",1)
-RUN FOENIX("BMoff",2)
-RUN FOENIX("Goff")
+RUN WILD("BMoff",0)
+RUN WILD("BMoff",1)
+RUN WILD("BMoff",2)
+RUN WILD("Goff")
 END
 
 PROCEDURE checkimages
 dim bm0,bm1,bm2:INTEGER
 dim choice:STRING
 (* allocate 3 bitmaps, with different cluts *)
-RUN FOENIX("Gon")
-RUN FOENIX("Bitmap",0,0,bm0,0,0,"testclutbm0")
-RUN FOENIX("BMLoad",bm0,"/dd/cmds/testpixmapbm0")
+RUN WILD("Gon")
+RUN WILD("Bitmap",0,0,bm0,0,0,"testclutbm0")
+RUN WILD("BMLoad",bm0,"/dd/cmds/testpixmapbm0")
 INPUT "Press enter to switch to pixmap 1: ",choice
-RUN FOENIX("BMoff",0)
-RUN FOENIX("Bitmap",0,0,bm1,0,0,"testclutbm1")
-RUN FOENIX("BMLoad",bm1,"/dd/cmds/testpixmapbm1")
+RUN WILD("BMoff",0)
+RUN WILD("Bitmap",0,0,bm1,0,0,"testclutbm1")
+RUN WILD("BMLoad",bm1,"/dd/cmds/testpixmapbm1")
 INPUT "Press enter to switch to pixmap 2: ",choice
-RUN FOENIX("BMoff",0)
-RUN FOENIX("Bitmap",0,0,bm2,0,0,"testclutbm2")
-RUN FOENIX("BMLoad",bm2,"/dd/cmds/testpixmapbm2")
+RUN WILD("BMoff",0)
+RUN WILD("Bitmap",0,0,bm2,0,0,"testclutbm2")
+RUN WILD("BMLoad",bm2,"/dd/cmds/testpixmapbm2")
 INPUT "Press enter to exit",choice
-RUN FOENIX("BMoff",0)
-RUN FOENIX("Goff")
+RUN WILD("BMoff",0)
+RUN WILD("Goff")
 END
 
 procedure cluttest
@@ -226,34 +226,34 @@ dim choice:STRING
 PRINT "Test Cluts 0-3 on BM0, Layer0"
 PRINT ""
 PRINT "CLUT 0, BM0, Layer 0"
-RUN FOENIX("Gon")
-RUN FOENIX("Bitmap",0,0,bm0,0,0,"testclutbm0")
-RUN FOENIX("BMLoad",bm0,"/dd/cmds/testpixmapbm0")
+RUN WILD("Gon")
+RUN WILD("Bitmap",0,0,bm0,0,0,"testclutbm0")
+RUN WILD("BMLoad",bm0,"/dd/cmds/testpixmapbm0")
 SHELL "fstatus"
 INPUT "Press enter to switch to Clut 1: ",choice
 PRINT ""
 PRINT "CLUT 1, BM0, Layer 0"
-RUN FOENIX("BMoff",0)
-RUN FOENIX("Bitmap",0,0,bm1,0,1,"testclutbm1")
-RUN FOENIX("BMLoad",bm1,"/dd/cmds/testpixmapbm1")
+RUN WILD("BMoff",0)
+RUN WILD("Bitmap",0,0,bm1,0,1,"testclutbm1")
+RUN WILD("BMLoad",bm1,"/dd/cmds/testpixmapbm1")
 SHELL "fstatus"
 INPUT "Press enter to switch to CLUT 2: ",choice
 PRINT ""
 PRINT "CLUT 2, BM0, Layer 0"
-RUN FOENIX("BMoff",0)
-RUN FOENIX("Bitmap",0,0,bm2,0,2,"testclutbm2")
-RUN FOENIX("BMLoad",bm2,"/dd/cmds/testpixmapbm2")
+RUN WILD("BMoff",0)
+RUN WILD("Bitmap",0,0,bm2,0,2,"testclutbm2")
+RUN WILD("BMLoad",bm2,"/dd/cmds/testpixmapbm2")
 SHELL "fstatus"
 INPUT "Press enter to switch to CLUT 3",choice
 PRINT ""
 PRINT "CLUT 3, BM0, Layer 0"
-RUN FOENIX("BMoff",0)
-RUN FOENIX("Bitmap",0,0,bm0,0,3,"testclutbm0")
-RUN FOENIX("BMLoad",bm0,"/dd/cmds/testpixmapbm0")
+RUN WILD("BMoff",0)
+RUN WILD("Bitmap",0,0,bm0,0,3,"testclutbm0")
+RUN WILD("BMLoad",bm0,"/dd/cmds/testpixmapbm0")
 SHELL "fstatus"
 INPUT "Press enter to exit",choice
-RUN FOENIX("BMoff",0)
-RUN FOENIX("Goff")
+RUN WILD("BMoff",0)
+RUN WILD("Goff")
 END
 
 procedure bmtest
@@ -263,27 +263,27 @@ dim choice:STRING
 PRINT "Test BM 0-3 on Layer0"
 PRINT ""
 PRINT "** BM0, CLUT0, Layer 0 **"
-RUN FOENIX("Gon")
-RUN FOENIX("Bitmap",0,0,bm0,0,0,"testclutbm0")
-RUN FOENIX("BMLoad",bm0,"/dd/cmds/testpixmapbm0")
+RUN WILD("Gon")
+RUN WILD("Bitmap",0,0,bm0,0,0,"testclutbm0")
+RUN WILD("BMLoad",bm0,"/dd/cmds/testpixmapbm0")
 SHELL "fstatus"
 INPUT "Press enter to switch to BM1: ",choice
 PRINT ""
 PRINT "** BM1, CLUT1, Layer 0 **"
-RUN FOENIX("BMoff",0)
-RUN FOENIX("Bitmap",1,0,bm1,0,0,"testclutbm1")
-RUN FOENIX("BMLoad",bm1,"/dd/cmds/testpixmapbm1")
+RUN WILD("BMoff",0)
+RUN WILD("Bitmap",1,0,bm1,0,0,"testclutbm1")
+RUN WILD("BMLoad",bm1,"/dd/cmds/testpixmapbm1")
 SHELL "fstatus"
 INPUT "Press enter to switch to BM2: ",choice
 PRINT ""
 PRINT "** BM2, CLUT2, Layer 0 **"
-RUN FOENIX("BMoff",1)
-RUN FOENIX("Bitmap",2,0,bm2,0,0,"testclutbm2")
-RUN FOENIX("BMLoad",bm2,"/dd/cmds/testpixmapbm2")
+RUN WILD("BMoff",1)
+RUN WILD("Bitmap",2,0,bm2,0,0,"testclutbm2")
+RUN WILD("BMLoad",bm2,"/dd/cmds/testpixmapbm2")
 SHELL "fstatus"
 INPUT "Press enter to exit",choice
-RUN FOENIX("BMoff",2)
-RUN FOENIX("Goff")
+RUN WILD("BMoff",2)
+RUN WILD("Goff")
 END
 
 procedure dpoke
@@ -295,18 +295,18 @@ end
 procedure spritetest
 dim bm0:INTEGER
 dim choice:STRING
-RUN FOENIX("Gon")
-RUN FOENIX("Bitmap",0,0,bm0,0,0,"xtclut")
+RUN WILD("Gon")
+RUN WILD("Bitmap",0,0,bm0,0,0,"xtclut")
 PRINT "Trying to load BM"
-(* RUN FOENIX("BMLoad",bm0,"/dd/cmds/thing.bin") *)
+(* RUN WILD("BMLoad",bm0,"/dd/cmds/thing.bin") *)
 PRINT "Trying to load CLUT"
 RUN loadclut0
-RUN FOENIX("BMClear",bm0,0)
+RUN WILD("BMClear",bm0,0)
 RUN loadbm(bm0,"/dd/cmds/thing.bin")
 RUN setsprites(bm0)
 INPUT "Press enter to exit",choice
-RUN FOENIX("BMoff",0)
-RUN FOENIX("Goff")
+RUN WILD("BMoff",0)
+RUN WILD("Goff")
 END
 
 
@@ -316,7 +316,7 @@ dim cl0:INTEGER
 dim pg,loc,i,c,x:INTEGER
 dim p:byte
 pg = $C1
-RUN FOENIX("MapBlk",pg,loc)
+RUN WILD("MapBlk",pg,loc)
 i = $1000 + loc
 open #p,"/dd/cmds/grudge.pal":READ
 REPEAT
@@ -325,14 +325,14 @@ RUN dpoke(i,c)
 i = i + 2
 until i >= $1400 + loc
 close #p
-RUN FOENIX("ClrBlk",pg,loc)
+RUN WILD("ClrBlk",pg,loc)
 END
 
 procedure loadbm
 param bm:INTEGER; fname:STRING
 dim pg,loc,i,c,x:INTEGER
 dim p:byte
-RUN FOENIX("MapBlk",bm,loc)
+RUN WILD("MapBlk",bm,loc)
 i = loc
 open #p,fname:READ
 REPEAT
@@ -341,7 +341,7 @@ RUN dpoke(i,c)
 i = i + 2
 UNTIL EOF(#p)
 close #p
-RUN FOENIX("ClrBlk",bm,loc)
+RUN WILD("ClrBlk",bm,loc)
 END
 
 procedure setsprites
@@ -351,7 +351,7 @@ dim sprite(4):sprite_rec
 dim haddr,loc,i,j,k:INTEGER
 dim b:BYTE
 haddr = bm * 32
-RUN FOENIX("MapBlk",$C0,loc)
+RUN WILD("MapBlk",$C0,loc)
 i = $1300+loc
 for j = 1 to 4
 sprite(j).hloc = haddr + (j-1)
@@ -397,7 +397,7 @@ i = i + 2
 next j
 next k
 
-RUN FOENIX("ClrBlk",$C0,loc)
+RUN WILD("ClrBlk",$C0,loc)
 END
 
 

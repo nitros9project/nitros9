@@ -1,0 +1,289 @@
+include ../port.mak
+
+DEPENDS		= ./makefile $(NOSLIB)/net.o
+
+# Module directory
+LFLAGS		+= -L $(NITROS9DIR)/lib -lnet -lwildbits -lalib
+MD		= ../modules
+FNT		= ../sys/fonts
+# Commands directory
+CMDSDIR		= ../cmds
+
+# Kernel
+KERNEL	= $(MD)/krn $(MD)/krnp2 init $(MD)/ioman
+
+# Select one of the dwio modules below based on your desired configuration:
+#DWIO	= $(MD)/dwio_wizfi.sb
+DWIO	= $(MD)/dwio_serial.sb
+
+# RBF
+RBF		= $(MD)/rbf.mn
+
+# RBF DriveWire driver
+RBFDW	  = $(MD)/rbdw.dr $(MD)/x0.dd $(MD)/x1.dd $(MD)/x2.dd $(MD)/x3.dd
+
+# RBF Wildbits Cartridge/RAM disk driver
+RBMEM = $(MD)/rbmem.dr $(MD)/c0.dd $(MD)/f0.dd
+
+# RBF RBSuper driver
+RBSUPER	  = $(MD)/rbsuper.dr
+
+# RBF Wildbits SD card low level driver
+RBWBSD = $(MD)/llwbsd.sb $(MD)/s0.dd $(MD)/s1.dd
+
+# SCF
+SCF		 = $(MD)/scf.mn
+
+# Font & palette
+FONT		 = $(FNT)/bannerfont.sb
+PALETTE	 = $(MD)/palette.sb
+
+# SCF video terminal
+SCVT_JR  = $(MD)/vtio.dr $(MD)/keydrv_ps2.sb $(MD)/term.dt
+SCVT_K   = $(MD)/vtio.dr $(MD)/keydrv_k.sb $(MD)/term.dt
+SCVT_K2   = $(MD)/vtio.dr $(MD)/keydrv_k2.sb $(MD)/term.dt
+
+# SCF DriveWire virtual networking/window driver
+SCDWV =		$(MD)/scdwv.dr $(SCDWV_NET) $(SCDWV_WIN)
+
+# SCF DriveWire virtual networking descriptors
+SCDWV_NET  = $(MD)/n_scdwv.dd $(MD)/n1_scdwv.dd \
+		$(MD)/n2_scdwv.dd $(MD)/n3_scdwv.dd $(MD)/n4_scdwv.dd \
+		$(MD)/n5_scdwv.dd $(MD)/n6_scdwv.dd $(MD)/n7_scdwv.dd \
+
+# SCF DriveWire virtual window descriptors
+SCDWV_WIN  = $(MD)/z1_scdwv.dd $(MD)/z2_scdwv.dd $(MD)/z3_scdwv.dd \
+		$(MD)/z4_scdwv.dd $(MD)/z5_scdwv.dd $(MD)/z6_scdwv.dd \
+		$(MD)/z7_scdwv.dd $(MD)/z8_scdwv.dd $(MD)/z9_scdwv.dd \
+		$(MD)/z10_scdwv.dd $(MD)/z11_scdwv.dd $(MD)/z12_scdwv.dd \
+		$(MD)/z13_scdwv.dd $(MD)/z14_scdwv.dd
+
+# SCF DriveWire virtual printer driver
+SCDWP	  = $(MD)/scdwp.dr $(MD)/p_scdwp.dd
+
+# Pipe
+PIPE	= $(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd
+
+# Clock driver
+CLOCK	= $(MD)/clock $(MD)/clock2_wildbits
+
+# NOTE!!!
+# VTIO must be near the top of the bootlist so that it can safely map
+# the 's text and CLUT blocks into $E000-$FFFF.
+BOOTFILE_K2 = $(KERNEL) \
+		$(SCF) $(SCVT_K2) $(FONT) $(PALETTE) \
+		$(RBF) $(RBFDW) $(DWIO) \
+		$(RBSUPER) $(RBWBSD) $(RBMEM) \
+		$(CLOCK) \
+		sysgo $(CMDSDIR)/shell_21 \
+		$(CMDSDIR)/display \
+		$(CMDSDIR)/echo $(CMDSDIR)/wbreset \
+		$(CMDSDIR)/iniz $(CMDSDIR)/deiniz \
+		$(CMDSDIR)/load $(CMDSDIR)/link $(CMDSDIR)/unlink \
+		$(CMDSDIR)/bootos9
+
+# NOTE!!!
+# VTIO must be near the top of the bootlist so that it can safely map
+# the 's text and CLUT blocks into $E000-$FFFF.
+BOOTFILE_K = $(KERNEL) \
+		$(SCF) $(SCVT_K) $(FONT) $(PALETTE) \
+		$(RBF) $(RBFDW) $(DWIO) \
+		$(RBSUPER) $(RBWBSD) $(RBMEM) \
+		$(CLOCK) \
+		sysgo $(CMDSDIR)/shell_21 \
+		$(CMDSDIR)/display \
+		$(CMDSDIR)/echo $(CMDSDIR)/wbreset \
+		$(CMDSDIR)/iniz $(CMDSDIR)/deiniz \
+		$(CMDSDIR)/load $(CMDSDIR)/link $(CMDSDIR)/unlink \
+		$(CMDSDIR)/bootos9
+
+# NOTE!!!
+# VTIO must be near the top of the bootlist so that it can safely map
+# the 's text and CLUT blocks into $E000-$FFFF.
+BOOTFILE_JR = $(KERNEL) \
+		$(SCF) $(SCVT_JR) $(FONT) $(PALETTE) \
+		$(RBF) $(RBFDW) $(DWIO) \
+		$(RBSUPER) $(RBWBSD) $(RBMEM) \
+		$(CLOCK) \
+		sysgo $(CMDSDIR)/shell_21 \
+		$(CMDSDIR)/display \
+		$(CMDSDIR)/echo $(CMDSDIR)/wbreset \
+		$(CMDSDIR)/iniz $(CMDSDIR)/deiniz \
+		$(CMDSDIR)/load $(CMDSDIR)/link $(CMDSDIR)/unlink \
+		$(CMDSDIR)/bootos9
+
+F0_CMDS = $(CMDSDIR)/attr \
+		$(CMDSDIR)/build \
+		$(CMDSDIR)/copy \
+		$(CMDSDIR)/date \
+		$(CMDSDIR)/debug $(CMDSDIR)/del $(CMDSDIR)/deldir \
+		$(CMDSDIR)/devs $(CMDSDIR)/dir $(CMDSDIR)/dump \
+		$(CMDSDIR)/edit \
+		$(CMDSDIR)/wbinfo \
+		$(CMDSDIR)/ident $(CMDSDIR)/irqs \
+		$(CMDSDIR)/list \
+		$(CMDSDIR)/makdir $(CMDSDIR)/mfree $(CMDSDIR)/mdir \
+	    $(CMDSDIR)/pick \
+		$(CMDSDIR)/procs $(CMDSDIR)/pwd $(CMDSDIR)/pxd \
+		$(CMDSDIR)/setime $(CMDSDIR)/sleep \
+		$(CMDSDIR)/tmode
+
+ALLOBJS		= init sysgo bootfile_k2 bootfile_k bootfile_jr booter_ram_k2 booter_flash_k2 \
+		  booter_ram_k booter_flash_k booter_ram_jr booter_flash_jr
+
+all: $(DEPENDS) $(ALLOBJS) f0.dsk
+	
+# Some commands depend on net.o
+$(NOSLIB)/net.o:
+	cd $(NOSLIB); make
+	
+bootfile_k2: sysgo $(BOOTFILE_K2) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_K)>$@
+
+bootfile_k: sysgo $(BOOTFILE_K) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_K)>$@
+
+bootfile_jr: sysgo $(BOOTFILE_JR) $(DEPENDS)
+	$(MERGE) $(BOOTFILE_JR)>$@
+
+booter_ram_k2: bootfile_k2
+	$(MERGE) $(BOOTFILE_K2)>bootfile_k2
+	$(PADROM) 23552 bootfile_k2
+	$(AS) -DFLASH=0 --output=raw trampoline.asm -otrampoline
+	cat bootfile_k2 trampoline > $@
+	$(RM) trampoline
+
+booter_ram_k: bootfile_k
+	$(MERGE) $(BOOTFILE_K)>bootfile_k
+	$(PADROM) 23552 bootfile_k
+	$(AS) -DFLASH=0 --output=raw trampoline.asm -otrampoline
+	cat bootfile_k trampoline > $@
+	$(RM) trampoline
+
+booter_ram_jr: bootfile_jr
+	$(MERGE) $(BOOTFILE_JR)>bootfile_jr
+	$(PADROM) 23552 bootfile_jr
+	$(AS) -DFLASH=0 --output=raw trampoline.asm -otrampoline
+	cat bootfile_jr trampoline > $@
+	$(RM) trampoline
+
+booter_flash_k2: bootfile_k2
+	$(MERGE) $(BOOTFILE_K2)>bootfile_k2
+	$(PADROM) 23552 bootfile_k2
+	$(AS) -DFLASH=1 --output=raw trampoline.asm -otrampoline
+	cat bootfile_k2 trampoline > $@
+	$(RM) trampoline
+
+booter_flash_k: bootfile_k
+	$(MERGE) $(BOOTFILE_K)>bootfile_k
+	$(PADROM) 23552 bootfile_k
+	$(AS) -DFLASH=1 --output=raw trampoline.asm -otrampoline
+	cat bootfile_k trampoline > $@
+	$(RM) trampoline
+
+booter_flash_jr: bootfile_jr
+	$(MERGE) $(BOOTFILE_JR)>bootfile_jr
+	$(PADROM) 23552 bootfile_jr
+	$(AS) -DFLASH=1 --output=raw trampoline.asm -otrampoline
+	cat bootfile_jr trampoline > $@
+	$(RM) trampoline
+
+upload_k2: booter_ram_k2
+	upload $^ 8000
+
+upload_k: booter_ram_k
+	upload $^ 8000
+
+upload_jr: booter_ram_jr
+	upload $^ 8000
+
+k2.zip: booter_flash_k2
+	-rm booter_? bulk.csv
+	dd status=none bs=8k skip=0 count=1 if=$^ of=booter_0
+	dd status=none bs=8k skip=1 count=1 if=$^ of=booter_1
+	dd status=none bs=8k skip=2 count=1 if=$^ of=booter_2
+	echo "3d,booter_0" > bulk.csv
+	echo "3e,booter_1" >> bulk.csv
+	echo "3f,booter_2" >> bulk.csv
+	-rm -rf mapfiles
+	mkdir mapfiles
+	os9 ident -s $^ > mapfiles/bootlist
+	zip $@ bulk.csv booter_0 booter_1 booter_2 mapfiles/*
+
+flash_k2: k2.zip
+	bulk_flash bulk.csv
+
+k.zip: booter_flash_k
+	booter_? bulk.csv
+	dd status=none bs=8k skip=0 count=1 if=$^ of=booter_0
+	dd status=none bs=8k skip=1 count=1 if=$^ of=booter_1
+	dd status=none bs=8k skip=2 count=1 if=$^ of=booter_2
+	echo "3d,booter_0" > bulk.csv
+	echo "3e,booter_1" >> bulk.csv
+	echo "3f,booter_2" >> bulk.csv
+	-rm -rf mapfiles
+	mkdir mapfiles
+	os9 ident -s $^ > mapfiles/bootlist
+	zip $@ bulk.csv booter_0 booter_1 booter_2 mapfiles/*
+
+flash_k: k.zip
+	bulk_flash bulk.csv
+
+jr.zip: booter_flash_jr
+	-rm booter_? bulk.csv
+	dd status=none bs=8k skip=0 count=1 if=$^ of=booter_0
+	dd status=none bs=8k skip=1 count=1 if=$^ of=booter_1
+	dd status=none bs=8k skip=2 count=1 if=$^ of=booter_2
+	echo "3d,booter_0" > bulk.csv
+	echo "3e,booter_1" >> bulk.csv
+	echo "3f,booter_2" >> bulk.csv
+	-rm -rf mapfiles
+	mkdir mapfiles
+	os9 ident -s $^ > mapfiles/bootlist
+	zip $@ bulk.csv booter_0 booter_1 booter_2 mapfiles/*
+
+flash_jr: jr.zip
+	bulk_flash bulk.csv
+
+f0.zip: f0.dsk
+	-rm f0_? bulk.csv
+	dd status=none bs=8k skip=0 count=1 if=$^ of=f0_0
+	dd status=none bs=8k skip=1 count=1 if=$^ of=f0_1
+	dd status=none bs=8k skip=2 count=1 if=$^ of=f0_2
+	dd status=none bs=8k skip=3 count=1 if=$^ of=f0_3
+	dd status=none bs=8k skip=4 count=1 if=$^ of=f0_4
+	echo "38,f0_0" > bulk.csv
+	echo "39,f0_1" >> bulk.csv
+	echo "3a,f0_2" >> bulk.csv
+	echo "3b,f0_3" >> bulk.csv
+	echo "3c,f0_4" >> bulk.csv
+	zip $@ bulk.csv f0_0 f0_1 f0_2 f0_3 f0_4
+
+flash_f0: f0.zip
+	bulk_flash bulk.csv
+
+FEU_FILES = $(foreach file,feu/*,$(file))
+
+f0.dsk: feu/startup
+	$(OS9FORMAT) -q -t10 -st16 $@ -n"FEU"
+	$(MAKDIR) $@,CMDS
+	$(OS9COPY) $(F0_CMDS) $@,CMDS
+	$(OS9ATTR_EXEC) $(foreach file,$(F0_CMDS),$@,CMDS/$(file))
+	$(MAKDIR) $@,FEU
+	$(foreach file,$(FEU_FILES),$(OS9COPY) -l $(file) $@,FEU)
+	
+feu/startup: FORCE
+	echo "display 1b 61 1 ff 0 0 ff 5 22 f0 1b 20 2 0 0 50 18 0 1 0 1b 32 7" > $@
+	echo "echo FEU - First Execution Unit" >> $@
+	echo "echo Build date:" `date` >> $@
+	echo "wbinfo" >> $@
+	echo "chd .../feu" >> $@
+	echo "pick -pFEU: main.pick</1" >> $@
+
+FORCE: ;
+
+clean:
+	$(RM) $(ALLOBJS) *.o *.tmp vectors trampoline *.list *.map *.dsk bulk.csv f0_? booter_? *.zip feu/startup
+
+feu: feu.o
+	$(LINKER) $(LFLAGS) $^ -o$@
