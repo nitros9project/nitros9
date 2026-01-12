@@ -6,20 +6,24 @@
 * ------------------------------------------------------------------
 *   1      2024/03/06  Boisy G. Pitre
 * Forked from CoCo 3 specific port.
+*
+*   2      2025/08/23  Matt Massie
+* Support Wildbits K,K2,Jr,Jr2 models.
+*
+*   3      2025/12/26  Matt Massie
+* Forks fcfg -dl to  load default palettes for models or reads
+* sys/defaultsettings for foreground, background, screen size, font to load. 
 
                     section   bss
+InitAddr            rmb       2                    
                     rmb       100
                     endsect
-                    
-                    use       defsfile
                     
 * Default process priority
 DefPrior            set       128
                     
                     section   code
-DefDev              fcc       "/DD"
-                    fcb       C$CR
-ExecDir             fcc       "/DD/CMDS"
+ExecDir             fcc       ".../CMDS"
                     fcb       C$CR
 
 Shell               fcc       "Shell"
@@ -33,6 +37,12 @@ AutoExPrL           equ       *-AutoExPr
 Startup             fcc       "startup -p"
                     fcb       C$CR
 StartupL            equ       *-Startup
+
+InitScrn            fcc       "fcfg"
+                    fcb       C$CR
+InitScrn2           fcc       "-dl"
+                    fcb       C$CR
+InitScrnL2          equ       *-InitScrn2
 
 ShellPrm            equ       *
                     ifgt      Level-1
@@ -50,12 +60,9 @@ Init                fcs       /Init/
 
 * Identity routine
 * Exit: A = $02 (Wildbits/Jr), $12 (Wildbits/K), $1A (Wildbits/Jr2), $16 (Wildbits/K2)
-MachType            pshs      x
-                    ldx       #SYS0
-                    lda       7,x
-                    puls      x,pc
 
-ShowMachType        bsr       MachType
+ShowMachType        ldx       #SYS0
+                    lda       7,x
                     cmpa      #$02                          Jr?
                     beq       @showJr
                     cmpa      #$16
@@ -75,18 +82,6 @@ bye@                rts
 @showJr2            bsr       @showJr
 @show2              ldb       #'2
                     lbra      PUTC
-
-SetupPalette        bsr       MachType
-                    cmpa      #$02                          Jr?
-                    beq       @showJr
-@showK              leax      KPal,pcr
-                    ldy       #KPalLen
-                    bra       show@
-@showJr             leax      JrPal,pcr
-                    ldy       #JrPalLen
-show@               lda       #1
-                    os9       I$Write
-                    lbra      PUTCR
                                                                                 
 **********************************************************
 * SysGo Entry Point
@@ -94,79 +89,54 @@ show@               lda       #1
 __start             leax      >IcptRtn,pcr
                     os9       F$Icpt
 
-* Set priority of this process
-                    os9       F$ID
-                    ldb       #DefPrior
-                    os9       F$SPrior
+* Set default time
+                    leax      DefTime,pcr
+                    os9       F$STime             set current time to start ticker (RTC will update time at top of minute)
 
-* Show banner
-SignOn              bsr       SetupPalette
-                    leax      Logo,pcr            point to Nitros-9 banner
-                    ldy       #LogoLen
-                    lda       #$01                standard output
-                    os9       I$Write
-                    leax      BLogo,pcr           newline
-                    ldy       #BLogoLen
-                    os9       I$Write
-                    leax      ColorBar,pcr        point to color bar
-                    ldy       #CBLen
-                    os9       I$Write
-                    lbsr      PUTCR
-
-* Write OS name and Machine name strings
+* Change DATA & EXEC directories
                     leax      Init,pcr
                     clra
                     pshs      u
                     os9       F$Link
-                    bcs       SetDefTime
-                    ldd       OSName,u            point to OS name in INIT module
-                    leax      d,u                 
-                    lbsr      PUTS
-                    lbsr      PUTCR
-                    ldd       InstallName,u       point to install name in INIT module
-                    leax      d,u
-                    lbsr      PUTS
-                    lbsr      ShowMachType
-                    lbsr      PUTCR
-
-* Set default time
-SetDefTime          puls      u
-                    leax      >DefTime,pcr
-                    os9       F$STime             set time to default
-
-* Change EXEC and DATA dirs
-                    leax      >DefDev,pcr
+                    tfr       u,x
+                    puls      u
+                    lbcs      DeadEnd
+                    stx       InitAddr,u
+                    ldd       SysStr,x
+                    leax      d,x
                     lda       #READ.
-                    os9       I$ChgDir            change the data directory
+                    os9       I$ChgDir
+                    lbcs      DeadEnd
                     leax      >ExecDir,pcr
                     lda       #EXEC.
                     os9       I$ChgDir            change the execution directory
 
-L0125               equ       *
-                    pshs      u,y
-                    ifgt      Level-1
-                    os9       F$ID                get process ID
-                    lbcs      L01A9               fail
-                    leax      ,u
-                    os9       F$GPrDsc            get process descriptor copy
-                    lbcs      L01A9               fail
-                    leay      ,u
-                    ldx       #$0000
-                    ldb       #$01
-                    os9       F$MapBlk
-                    bcs       L01A9
+* Fork fcfg -d here
+* sets sys/defaultsettings if exists
+* Show banner
+DoScrnInit          pshs      u
+                    leax      >InitScrn,pcr
+                    leau      >InitScrn2,pcr
+                    ldd       #256
+                    ldy       #InitScrnL2
+                    os9       F$Fork
+                    bcs       Next@               startup failed
+                    os9       F$Wait
+Next@               puls      u
 
-* Copy our default I/O ptrs to the system process
-                    ldd       <D.SysPrc,u
-                    leau      d,u
-                    leau      <P$DIO,u
-                    leay      <P$DIO,y
-                    ldb       #DefIOSiz-1
-L0151               lda       b,y
-                    sta       b,u
-                    decb
-                    bpl       L0151
-                    endc
+* Write OS name and Machine name strings
+DoInit              ldx       InitAddr,u
+                    ldd       OSName,x            point to OS name in INIT module
+                    leax      d,x                 
+                    lbsr      PUTS
+                    lbsr      PUTCR
+                    ldx       InitAddr,u
+                    ldd       InstallName,x       point to install name in INIT module
+                    leax      d,x
+                    lbsr      PUTS
+                    lbsr      ShowMachType
+                    lbsr      PUTCR
+                    pshs      u,y
 
 * Fork shell startup here
 DoStartup           leax      >Shell,pcr
@@ -180,21 +150,19 @@ DoStartup           leax      >Shell,pcr
 * Fork AutoEx here
 DoAuto              leax      >AutoEx,pcr
                     leau      >CRtn,pcr
-                    ldd       #$0100
+                    ldd       #256
                     ldy       #$0001
                     os9       F$Fork
-                    bcs       L0186               autoex failed
+                    bcs       next@               autoex failed
                     os9       F$Wait
-
-L0186               equ       *
-                    puls      u,y
+next@               puls      u,y
 FrkShell            leax      >ShellPrm,pcr
                     leay      ,u
                     ldb       #ShellPL
-L0190               lda       ,x+
+loop@               lda       ,x+
                     sta       ,y+
                     decb
-                    bne       L0190
+                    bne       loop@
 * Fork final shell here
                     leax      >Shell,pcr
                     lda       #$01                D = 256 (B already 0 from above)
@@ -203,7 +171,7 @@ L0190               lda       ,x+
                     os9       F$Chain             this should not return
                     ldb       #$06                it did! Fatal. Load error code
                     bra       Crash
-L01A9               ldb       #$04                error code
+DeadEnd             ldb       #$04                error code
 Crash               jmp       <D.Crash            fatal error
                     else
                     os9       F$Fork              perform the fork
@@ -214,398 +182,5 @@ DeadEnd             bra       DeadEnd             else loop forever
                     endc
 
 IcptRtn             rti
-
-
-FGP                 set $07
-FGP2                set $07
-BGP                 set $0A
-BGP2                set $20
-UCH                 set $16
-
-KPal
-* Set up 80x30 window with foreground and background colors as same
-                    fcb $1B,$20,$02,$00,$00,$50,$18,FGP,BGP,$00
-                    fcb $1B,$60,FGP,$FF,$FF,$00,$FF
-                    fcb $1B,$60,BGP,$4F,$00,$80,$FF
-                    fcb $1B,$61,BGP,$4F,$00,$80,$FF
-KPalLen             equ *-KPal                    
-
-JrPal
-* Set up 80x30 window with foreground and background colors as same
-                    fcb $1B,$20,$02,$00,$00,$50,$18,FGP,BGP,$00
-                    fcb $1B,$60,FGP,$FF,$FF,$00,$FF
-                    fcb $1B,$60,BGP,$50,$00,$00,$FF
-                    fcb $1B,$61,BGP,$50,$00,$00,$FF
-JrPalLen            equ *-JrPal                    
-
-Logo                
-* Draw first line
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2	      center outline
-                    fcb $1B,$32,$00
-                    fcb $1C,$16,$1C,$16,$1C,$16
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2,BGP2
-                    fcb $1B,$32,$00
-                    fcb $1C,$16,$1C,$16                                     outline
-                    fcb $1B,$32,BGP
-                    fcb BGP2
-                    fcb $1B,$32,$00
-                    fcb $1C,$16,$1C,$16
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2,BGP2
-                    fcb $1B,$32,$00
-                    fcb $1C,$16,$1C,$16
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2        
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2,BGP2
-                    fcb $1B,$32,$00
-                    fcb $1C,$16,$1C,$16,$1C,$16,$1C,UCH,$1C,UCH,$1C,UCH
-                    fcb $1B,$32,$0B
-                    fcb $1C,UCH
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2
-                    fcb $1B,$32,$00
-                    fcb $1C,UCH,$1C,UCH        
-                    fcb $1C,UCH,$1C,UCH,$1C,UCH
-                    fcb $1B,$32,$0B
-                    fcb $1C,UCH
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
-                    fcb $1B,$32,$00
-                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
-                    fcb $1B,$32,$0B
-                    fcb $1C,UCH
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2		center line
-                    fcb $1B,$32,$02
-                    fcb $1C,$11,$1C,$11,$1C,$11,$1C,$0A
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2
-                    fcb $1B,$32,$02
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$00,$1C,$01
-                    fcb $1B,$32,$08
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$00
-                    fcb $1C,$01
-                    fcb $1B,$32,BGP
-                    fcb BGP2
-                    fcb $1B,$32,$00
-                    fcb $1C,UCH,$1C,UCH	
-                    fcb $1B,$32,$07
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$00
-                    fcb $1C,$02,$1C,UCH,$1C,UCH
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
-                    fcb $1B,$32,$01
-                    fcb $1C,$03,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
-                    fcb $1B,$33,$0B
-                    fcb $1C,$05
-                    fcb $1B,$33,BGP
-                    fcb $1B,$32,$0B
-                    fcb $1C,$01
-                    fcb $1B,$32,$01
-                    fcb $1C,$03,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
-                    fcb $1B,$33,$0B
-                    fcb $1C,$05
-                    fcb $1B,$33,BGP
-                    fcb $1B,$32,$0B
-                    fcb $1C,$01
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
-                    fcb $1B,$32,$01
-                    fcb $1C,$03,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
-                    fcb $1B,$33,$0B
-                    fcb $1C,$05
-                    fcb $1B,$33,BGP
-                    fcb $1B,$32,$0B
-                    fcb $1C,$01
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2
-                    fcb $1B,$32,BGP                                                      end line 1
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2                                         center line
-                    fcb $1B,$32,$02
-                    fcb $1C,$11,$1C,$11,$1C,$09,$1C,$11,$1C,$0A
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2
-                    fcb $1B,$32,$02
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$00
-                    fcb $1C,$01,$1C,UCH,$1C,UCH
-                    fcb $1B,$32,BGP
-                    fcb BGP2
-                    fcb $1B,$32,$00
-                    fcb $1B,$32,$07
-                    fcb $1C,$07,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
-                    fcb $1B,$32,$00
-                    fcb $1C,$01
-                    fcb $1B,$32,BGP
-                    fcb BGP2
-                    fcb $1B,$32,$00
-                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
-                    fcb $1B,$32,$0B
-                    fcb $1C,UCH
-                    fcb $1B,$32,BGP
-                    fcb BGP2
-                    fcb $1B,$32,$01
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$00
-                    fcb $1C,$01
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2
-                    fcb $1B,$32,$01
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$0B
-                    fcb $1C,$01
-                    fcb $1B,$32,$01
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$00
-                    fcb $1C,$02,$1C,UCH,$1C,UCH,$1C,UCH
-                    fcb $1B,$32,$0B
-                    fcb $1C,UCH
-                    fcb $1B,$32,BGP
-                    fcb BGP2
-                    fcb $1B,$32,$00
-                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
-                    fcb $1B,$32,BGP
-                    fcb BGP2
-                    fcb $1B,$32,$01
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$00
-                    fcb $1C,$02,$1C,UCH,$1C,UCH
-                    fcb $1B,$32,$01
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$0B
-                    fcb $1C,$01					                end line 2
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2            center line
-                    fcb BGP2,BGP2
-                    fcb $1B,$32,$02
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,BGP
-                    fcb BGP2
-                    fcb $1B,$32,$02
-                    fcb $1C,$09,$1C,$11,$1C,$0A
-                    fcb $1B,$32,BGP
-                    fcb BGP2
-                    fcb $1B,$32,$02
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$00,$1C,$01
-                    fcb $1B,$32,$08
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$00
-                    fcb $1C,$01
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2
-                    fcb $1B,$32,$07
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$00
-                    fcb $1C,$01
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2
-                    fcb $1B,$32,$05
-                    fcb $1C,$03,$1C,$11,$1C,$11,$1C,$11,$1C,$11
-                    fcb $1B,$33,BGP
-                    fcb $1B,$33,$0B
-                    fcb $1C,$05
-                    fcb $1B,$33,BGP
-                    fcb $1B,$32,$0B
-                    fcb $1C,$01
-                    fcb $1B,$32,$01
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$00
-                    fcb $1C,$01
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2
-                    fcb $1B,$32,$01
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$0B
-                    fcb $1C,$01
-                    fcb $1B,$32,$01
-                    fcb $1C,$04
-                    fcb $1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
-                    fcb $1B,$33,$0B
-                    fcb $1C,$05
-                    fcb $1B,$33,BGP
-                    fcb $1B,$32,$0B
-                    fcb $1C,$01
-                    fcb $1B,$32,$01
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$0F
-                    fcb $1C,$11
-                    fcb $1B,$32,$0C
-                    fcb $1C,$11
-                    fcb $1B,$32,$0B
-                    fcb $1C,$11
-                    fcb $1B,$32,$00
-                    fcb $1C,$11
-                    fcb $1B,$32,BGP
-                    fcb BGP2
-                    fcb $1B,$32,$01
-                    fcb $1C,$04,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
-                    fcb $1B,$32,$0B
-                    fcb $1C,$01				                        end line 3
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2             center line
-                    fcb BGP2,BGP2
-                    fcb $1B,$32,$02
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2
-                    fcb $1B,$32,$02
-                    fcb $1C,$09,$1C,$11,$1C,$0A,$1C,$11,$1C,$11
-                    fcb $1B,$32,$00
-                    fcb $1C,$01
-                    fcb $1B,$32,$08
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$00
-                    fcb $1C,$01
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2
-                    fcb $1B,$32,$07
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$00
-                    fcb $1C,$02,$1C,UCH
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2
-                    fcb $1B,$32,$05
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$00
-                    fcb $1C,$01
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2
-                    fcb $1B,$32,$05
-                    fcb $1C,$14
-                    fcb $1B,$32,BGP
-                    fcb BGP2
-                    fcb $1B,$32,$01
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$00
-                    fcb $1C,$02,$1C,UCH,$1C,UCH,$1C,UCH
-                    fcb $1B,$32,$01
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$0B
-                    fcb $1C,$01
-                    fcb $1B,$32,BGP
-                    fcb BGP2
-                    fcb $1B,$32,$00
-                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
-                    fcb $1B,$32,$01
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$0B
-                    fcb $1C,$01
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
-                    fcb $1B,$32,$00
-                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
-                    fcb $1B,$32,$01
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$0B
-                    fcb $1C,$01	                			end line 4
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2	
-                    fcb BGP2,BGP2                                            center font
-                    fcb $1B,$32,$02
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2
-                    fcb $1B,$32,$02
-                    fcb $1C,$09,$1C,$11,$1C,$11,$1C,$11
-                    fcb $1B,$32,$00
-                    fcb $1C,$01
-                    fcb $1B,$32,$08
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$00
-                    fcb $1C,$01
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2
-                    fcb $1B,$32,$07
-                    fcb $1C,$11,$1C,$11,$1C,$11,$1C,$08
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2
-                    fcb $1B,$32,$05
-                    fcb $1C,$11,$1C,$11
-                    fcb $1B,$32,$00
-                    fcb $1C,$01
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2,BGP2
-                    fcb $1B,$32,$01
-                    fcb $1C,$04,$1C,$11,$1C,$11,$1C,$11,$1C,$11
-                    fcb $1C,$11,$1C,$11,$1C,$06
-                    fcb $1B,$32,BGP
-                    fcb BGP2
-                    fcb $1B,$32,$01
-                    fcb $1C,$07,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$06
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
-                    fcb $1B,$32,$01
-                    fcb $1C,$07,$1C,$11,$1C,$11,$1C,$11,$1C,$11,$1C,$11
-                    fcb $1C,$06                                               end line 5
-                    fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
-                    fcb $1B,$32,FGP	                                        reset FG
-LogoLen             equ	*-Logo
-
-* Line above color bar
-BLogo               fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2	         center line
-                    fcb $1B,$32,$00
-                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
-                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
-                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
-                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
-                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
-                    fcb $1C,UCH,$1C,UCH,$1C,UCH
-                    fcb $1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH,$1C,UCH
-                    fcb $1C,UCH
-                    fcb C$CR,C$LF
-BLogoLen            equ	*-BLogo
-
-* Color bar
-ColorBar            fcb $1B,$32,BGP
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2,BGP2	 center bar
-                    fcb BGP2,BGP2,BGP2,BGP2,BGP2,BGP2
-                    fcb $1B,$32,$02
-                    fcb $1C,$14,$1C,$14,$1C,$14
-                    fcb $1B,$32,$08
-                    fcb $1C,$14,$1C,$14,$1C,$14                          	 color bar
-                    fcb $1B,$32,$07
-                    fcb $1C,$14,$1C,$14,$1C,$14
-                    fcb $1B,$32,$05
-                    fcb $1C,$14,$1C,$14,$1C,$14
-                    fcb $1B,$32,$0E
-                    fcb $1C,$14,$1C,$14,$1C,$14
-                    fcb $1B,$32,$04
-                    fcb $1C,$14,$1C,$14,$1C,$14
-                    fcb $1B,$32,$01
-                    fcb $1C,$14,$1C,$14,$1C,$14
-                    fcb $1B,$32,$0F
-                    fcb $1C,$14,$1C,$14,$1C,$14
-                    fcb $1B,$32,$0C
-                    fcb $1C,$14,$1C,$14,$1C,$14
-                    fcb $1B,$32,$0B
-                    fcb $1C,$14,$1C,$14,$1C,$14
-                    fcb $1B,$32,$03
-                    fcb $1C,$14,$1C,$14,$1C,$14
-                    fcb $1B,$32,$0A
-                    fcb $1C,$14,$1C,$14,$1C,$14
-                    fcb $1B,$32,$0D
-                    fcb $1C,$14,$1C,$14,$1C,$14
-                    fcb $1B,$32,$09
-                    fcb $1C,$14,$1C,$14,$1C,$14
-                    fcb $1B,$32,$00
-                    fcb $1C,$14,$1C,$14,$1C,$14
-                    fcb $1B,$32,FGP2                                          reset FG
-CBLen               equ	*-ColorBar
 
                     endsect
