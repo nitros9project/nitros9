@@ -27,7 +27,7 @@ Base                set       $FF20
                     fcb       $00                 case:0=up&lower,1=upper only
                     fcb       $01                 backspace:0=bsp,1=bsp then sp & bsp
                     fcb       $00                 delete:0=bsp over line,1=return
-                    fcb       $01                 echo:0=no echo
+                    fcb       $00                 echo:0=no echo (MUST be zero $00)
                     fcb       $01                 auto line feed:0=off
                     fcb       $00                 end of line null count
                     fcb       $00                 pause:0=no end of page pause
