@@ -3,13 +3,21 @@
 *
 * by John Federico
 *
-* Edt/Rev  2024/11/30  Modified by John Federico
+* Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
-* Edt/Rev  2025/11/28  Modified by Matt Massie
-* added sys/defaultsettings to store selected foreground, background, screensize, and font for updated sysgo
-* sys/currfont loads the currently select font on fcfg startup
-* Edt/Rev  2025/12/26 Added NitrOS-9 logo to fcfg. fcfg -d pulls default settings. fcfg -dl pulls default settings and logo.
 * ------------------------------------------------------------------
+*   1      2024/11/30  John Federico
+* Created.
+*
+*   2      2025/11/28  Matt Massie
+* Added sys/defaultsettings to store selected foreground, background, screensize,
+* and font for updated sysgo.
+* sys/currfont loads the currently select font on fcfg startup.
+*
+*   3      2025/12/26  Matt Massie
+* Added NitrOS-9 logo to fcfg.
+* fcfg -d pulls default settings.
+* fcfg -dl pulls default settings and logo.
 
                ifp1
                use       defsfile
@@ -18,7 +26,7 @@
 tylg           set       Prgrm+Objct
 atrv           set       ReEnt+rev
 rev            set       $00
-edition        set       1
+edition        set       3
 
                mod       eom,name,tylg,atrv,start,size
 

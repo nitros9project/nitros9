@@ -26,6 +26,7 @@ CMDS		= asm attr backup bawk binex build cmp copy \
 		megaread mdir merge modem mfree more padrom park printerr procs prompt pwd pxd \
 		rename save setime shellplus shell_21 sleep \
 		tee tmode touch tsmon unlink verify xmode \
+		fcfg \
 		inetd telnet dw httpd $(BASIC09) $(BF) \
 		bootos9 wbinfo wbreset pick modem
 
