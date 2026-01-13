@@ -14,14 +14,12 @@ atrv                set       ReEnt+rev
 rev                 set       $07
 
 Base                set       $FF20
-*Connection          set       $0
-*DeviceMode          set       $08
 
                     mod       eom,name,tylg,atrv,mgrnam,drvnam
 
                     fcb       UPDAT.       mode byte
                     fcb       HW.Page             extended controller address
-                    fdb       Base+Connection+DeviceMode               physical controller address has extra info
+                    fdb       Base+Connection+(DeviceMode*8)               physical controller address has extra info
                     fcb       initsize-*-1        initilization table size
                     fcb       DT.SCF              device type:0=scf,1=rbf,2=pipe,3=scf
                     fcb       $00                 case:0=up&lower,1=upper only
@@ -44,7 +42,7 @@ Base                set       $FF20
                     fcb       C$BSP               backspace echo character
                     fcb       C$BELL              line overflow character (bell)
                     fcb       PARNONE             parity
-                    fcb       STOP1+WORD8+1       stop bits/word size/baud rate
+                    fcb       STOP1+WORD8+DeviceMode       stop bits/word size/baud rate
                     fdb       name                copy of descriptor name address
                     fcb       $00                 acia xon char (not used, maybe future assignment?)
                     fcb       $00                 acia xoff char (not used, maybe future assignment?)
