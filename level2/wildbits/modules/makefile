@@ -61,16 +61,16 @@ wz.dd: wizfidesc.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DConnection=0 -DDeviceMode=0
 
 wz0.dd: wizfidesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DConnection=0 -DDeviceMode=8
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DConnection=0 -DDeviceMode=1
 
 wz1.dd: wizfidesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DConnection=1 -DDeviceMode=8
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DConnection=1 -DDeviceMode=1
 
 wz2.dd: wizfidesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DConnection=2 -DDeviceMode=8
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DConnection=2 -DDeviceMode=1
 
 wz3.dd: wizfidesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DConnection=3 -DDeviceMode=8
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DConnection=3 -DDeviceMode=1
 
 # Kernel
 krn: $(LEVEL2)/modules/kernel/krn.asm
