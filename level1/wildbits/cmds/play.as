@@ -141,6 +141,17 @@ TRACK_TRIPLET       equ       7
 TRACK_ENTRYSIZE     equ       8                   Bytes per track
 
                     section   bss
+bDebugMode          rmb       1
+fDoAbort            rmb       1
+isInteractive       rmb       1
+fDoSequencer        rmb       1
+fUseMapFile         rmb       1                   If set, .map file was processed, do not use .lyr instrument table
+bTempo	            rmb       1
+bFilePath           rmb       1
+bFileType           rmb       1
+pFileTop            rmb       2
+bPlaylistMode       rmb       1
+bPlaylistPath       rmb       1
 clistart            rmb       2
 cliptr              rmb       2
 fmemupper           rmb       2
@@ -167,24 +178,16 @@ ScoreCurrent	    rmb       2
 NoteCycles	    rmb       2                   Musica carries a chord for 1 duration
 Dividend_High       rmb       2
 Dividend_Low        rmb       2
-Divisor             rmb       2
-Quotient            rmb       2
-Remainder           rmb       2
+iDivisor            rmb       2
+iQuotient           rmb       2
+iRemainder          rmb       2
 file_block_start    rmb       2
 file_block_end      rmb       2
-ScoreTempo	    rmb       1
-FilePath            rmb       1
-FileType            rmb       1
-FileTop             rmb       2
-Interactive         rmb       1
 TotalSections       rmb       1
-PlaylistMode        rmb       1
-PlaylistPath        rmb       1
-ThisTrack           rmb       2                   Points to current track packet
+pThisTrack          rmb       2                   Points to current track's record
 LyraChannel         rmb       1
 LyraChannel2        rmb       1
 LyraMatchTable      rmb       2
-LyraTempo           rmb       1
 UMETicks            rmb       2
 UMEEventTot         rmb       2                   Total number of events in file
 UMEEventCntr        rmb       2
@@ -194,10 +197,6 @@ UMEStavesAdr        rmb       2
 UMEScoreStart       rmb       2
 UMEEndOfScore       rmb       2
 UMETranspose        rmb       2                   Signed offset
-flgUseMapFile       rmb       1                   If set, .map file was processed, do not use .lyr instrument table
-DoSequencer         rmb       1
-DoAbort             rmb       1
-DebugMode           rmb       1
 MIDIMask1           rmb       1
 MIDIMask2           rmb       1
 MIDIChanMap         rmb       16
@@ -254,14 +253,14 @@ __start
                     stx       <clistart
 
 * These values are cleared once per program run
-                    clr       <DebugMode
-                    clr       <DoSequencer
-                    clr       <FilePath
-                    clr       <Interactive
-                    clr       <DoAbort
-                    clr       <PlaylistMode
-                    clr       <PlaylistPath
-                    clr       <flgUseMapFile
+                    clr       <bDebugMode
+                    clr       <fDoSequencer
+                    clr       <bFilePath
+                    clr       <isInteractive
+                    clr       <fDoAbort
+                    clr       <bPlaylistMode
+                    clr       <bPlaylistPath
+                    clr       <fUseMapFile
                     ldd       #-1                 -1 means no MMU block is currently mapped in
                     std       <file_block_start
                     ldd       #-1
@@ -290,10 +289,10 @@ GetOptions          ldx       <cliptr
                     beq       Option_z
                     bra       DoBusiness
 
-Option_i            sta       <Interactive
+Option_i            sta       <isInteractive
                     bra       GetOptions2
 Option_d            lbsr      ASC2Int
-                    stb       <DebugMode
+                    stb       <bDebugMode
                     bra       GetOptions2
 Option_m            lbsr      GetAscInt16
                     std       <MIDIMask1
@@ -308,10 +307,10 @@ Option_z            lda       ,x+                 get character after 'z' and in
 *                    stx       <cliptr
                     bra       s@
 stdin@              clra
-s@                  sta       <PlaylistPath
+s@                  sta       <bPlaylistPath
                     stx       <cliptr
                     ldb       #1
-                    stb       <PlaylistMode
+                    stb       <bPlaylistMode
 DoBusiness          lbsr      SET_SOUND_REGS
                     leax      cfIcptRtn,pcr
 	            os9	      F$Icpt
@@ -336,7 +335,7 @@ DoBusiness          lbsr      SET_SOUND_REGS
                     sty       UMEClefTable+14,u      7 undocumented Clef type?
 
 * These values are cleared before each file play
-NextSong            clr       <DoSequencer
+NextSong            clr       <fDoSequencer
                     clr       <TotalSections
                     clra
                     clrb
@@ -359,10 +358,10 @@ NextSong            clr       <DoSequencer
                     clr       <NoteCycles
                     clr       <NoteCycles+1
 
-                    tst       <PlaylistMode
+                    tst       <bPlaylistMode
                     beq       OpenMediaFile
 
-                    lda       <PlaylistPath
+                    lda       <bPlaylistPath
                     leax      <PlaylistItemStr,u
                     ldy       #PLAYLISTITEM_MAXSTR
                     os9       I$ReadLn
@@ -373,7 +372,7 @@ NextSong            clr       <DoSequencer
 ok@                 stx       <cliptr
 
 OpenMediaFile       ldx       <cliptr
-                    clr       <FileType
+                    clr       <bFileType
                     lda       ,x
                     cmpa      #C$CR
                     lbeq      bye
@@ -399,7 +398,7 @@ d@                  lda       ,x                  Get 1st char of sliding window
                     cmpa      3,y                 Compare 4th char
                     bne       n@
                     lda       4,y
-                    sta       <FileType
+                    sta       <bFileType
                     bra       o@
 n@                  leay      5,y
                     ldb       ,y
@@ -411,8 +410,8 @@ o@                  ldx       <cliptr
                     os9       I$Open
                     lbcs      err
                     stx       <cliptr
-                    sta       <FilePath
-                    lda       <FileType
+                    sta       <bFilePath
+                    lda       <bFileType
                     cmpa      #FILETYPE_MIDIPATCH
                     lbeq      MidiPatch
                     cmpa      #FILETYPE_MUSICA 
@@ -428,7 +427,7 @@ o@                  ldx       <cliptr
 PlaySidRaw          lbsr      LOUD_ALL
 PlaySidR2           leax      SampleBuf,u
                     ldy       #25
-                    lda       <FilePath
+                    lda       <bFilePath
                     os9       I$Read
                     lbcs      CloseAndNext
 
@@ -478,7 +477,7 @@ PlaySidR2           leax      SampleBuf,u
                     bra       PlaySidR2
 
 Load2Local          ldb       #SS.Size
-                    lda       <FilePath
+                    lda       <bFilePath
                     pshs      u
                     os9       I$GetStt
                     tfr       u,x
@@ -494,9 +493,9 @@ Load2Local          ldb       #SS.Size
                     subd      <filesize
                     tfr       d,x
                     ldy       <filesize
-                    lda       <FilePath
+                    lda       <bFilePath
                     os9       I$Read
-                    stx       <FileTop
+                    stx       <pFileTop
                     rts
 
 ********************************************************************
@@ -524,24 +523,24 @@ a@                  ldd       1,s                 Recall address of top of file
                     bne       a@
                     puls      b
                     puls      x                   Restore pointer to top of file
-                    ldx       <FileTop
+                    ldx       <pFileTop
                     leay      $121,x              Point to Lyra channel map (8 entries)
                     sty       <MIDIChanMap
                     ldb       $0007,x             Only use LSB of 16-bit tempo 
-                    stb       <LyraTempo
-                    tst       <flgUseMapFile      Check if instrument map file was loaded
+                    stb       <bTempo
+                    tst       <fUseMapFile      Check if instrument map file was loaded
                     bne       gm@                 User has applied a patch file
                     lbsr      MidiMuteAll
                     lbsr      SetupInstruments    Auto-sensing instrument translation
 gm@                 ldb       #1                  Enable the sequencer
-                    stb       <DoSequencer
+                    stb       <fDoSequencer
 
 ********************************************************************
 * Main sequencer
 *
-LyraLooper          ldb       <DoAbort            Abort everything?
+LyraLooper          ldb       <fDoAbort            Abort everything?
                     bne       LyraAbort
-                    ldb       <DoSequencer
+                    ldb       <fDoSequencer
                     beq       LyraEnd
                     leay      ScoreTracks,u
                     lda       [TRACK_ENTRYSIZE*0,y]   When each tracks' note pointer is at a dead command (0)
@@ -553,25 +552,25 @@ LyraLooper          ldb       <DoAbort            Abort everything?
                     ora       [TRACK_ENTRYSIZE*6,y]
                     ora       [TRACK_ENTRYSIZE*7,y]
                     bne       lt@
-LyraEnd             clr       <DoSequencer        If we made it here it means all tracks have ended
+LyraEnd             clr       <fDoSequencer        If we made it here it means all tracks have ended
                     lbsr      MidiMuteAll         kill the music and get out of here
                     lbra      CloseAndNext        It's not an abort, so we keep processing all supplied files
-LyraAbort           clr       <DoSequencer
+LyraAbort           clr       <fDoSequencer
                     lbsr      MidiMuteAll         Yes, kill the music and get out of here
                     lbra      bye
 lt@                 clr       <LyraChannel
                     ldb       #8                  Process all 8 LYRA channels
                     pshs      b
-a@                  sty       <ThisTrack
+a@                  sty       <pThisTrack
                     ldy       <MIDIChanMap
                     lda       <LyraChannel
                     lda       a,y                 Get the MIDI channel that this LYRA channel targets
-                    ldy       <ThisTrack
+                    ldy       <pThisTrack
                     sta       TRACK_MIDICHAN,y    The MIDI channel (0-15) this Lyra channel (0-7)targets
                     ldd       TRACK_CYCLES,y      Enter subsequencer with D = Note Cycles Remaining
                     ldx       TRACK_LOCATION,y
                     bsr       LyraSubSeq          We process all tracks even if ended
-s@                  ldy       <ThisTrack
+s@                  ldy       <pThisTrack
                     stx       TRACK_LOCATION,y    Update track's note pointer
                     std       TRACK_CYCLES,y      Update track's current note length
                     inc       <LyraChannel
@@ -579,7 +578,7 @@ s@                  ldy       <ThisTrack
                     dec       ,s
                     bne       a@                  Do all Lyra channels
                     puls      b
-                    ldb       <DebugMode
+                    ldb       <bDebugMode
                     beq       ve@
                     lbsr      DebugNotes
 ve@                 ldx       #$0002
@@ -604,12 +603,12 @@ r@                  ldd       ,x                  Get current note
                     andb      #7                  Make safe velocity value
                     leay      LyraVelocConv,pcr   Point to Lyra-to-MIDI velocity conversion table
                     lda       b,y                 Convert 0..7 to 0..127
-                    ldy       <ThisTrack          Restore track pointer
+                    ldy       <pThisTrack          Restore track pointer
                     sta       TRACK_VELOC,y       Set new velocity for this channel
                     bra       se@
 te@                 cmpa      #$A0                Tempo event?
                     bne       se@
-                    stb       <LyraTempo
+                    stb       <bTempo
                     bra       se@
 ie@                 cmpa      #$90                Instrument event?
                     bne       se@
@@ -630,7 +629,7 @@ c@                  andb      #LYRA_PITCHMASK     Clear off the Sharp/Flat indic
                     leay      LyraRange,pcr       Point to starting notes in MIDI table conversion table
                     leay      d,y                 Point to index of Lyra note
                     lda       1,y                 Get Midi note value
-                    ldy       <ThisTrack      Restore track pointer
+                    ldy       <pThisTrack      Restore track pointer
                     ldb       1,x                 Get Lyra note value
                     bitb      #LYRA_SHARPNOTE     Support situation where a note is marked Sharp AND Flat to neutralize it
                     beq       sh@
@@ -652,7 +651,7 @@ ntied@              cmpb      3,x                 Next note Pitch is different, 
                     bne       non@                This note Should already be on, don't do it twice
 dn@                 bsr       MidiNoteOn
 * Process Note Length
-non@                ldy       <ThisTrack
+non@                ldy       <pThisTrack
                     ldb       ,x
                     bitb      #LYRA_TRIPLETNOTE
                     beq       lb@
@@ -683,7 +682,7 @@ nt@                 ldb       TRACK_TRIPLET,y     Get triplet note # for this ch
                     rorb
                     lsra
                     rorb
-                    ldy       <ThisTrack          Restore track pointer
+                    ldy       <pThisTrack          Restore track pointer
                     pshs      d                   Save note length
                     lda       ,x                  Get note code 
                     anda      #LYRA_DOTTEDNOTE    Is this a dotted note length?
@@ -809,7 +808,7 @@ PlayUltimuse        lbsr      Load2Local
                     std       <UMEEndOfScore
                     tfr       d,y
                     ldd       ,y
-                    stb       <ScoreTempo
+                    stb       <bTempo
                     leay      2,y                 secmin            2     /* Speed scale factor in "seconds per minute" */
                     ldb       ,x                  Get UME level
                     cmpb      #7
@@ -837,7 +836,7 @@ UmeKick             lbsr      BuildClefMap
 * Test: If a .map file wasn't specified, put together some kind
 * of orchestra based on the clef types
 
-                    tst       <flgUseMapFile      Check if instrument map file was loaded
+                    tst       <fUseMapFile      Check if instrument map file was loaded
                     bne       UmeStart            User has already applied a patch file
                     leay      UMEPartClefs,u
                     clr       ,-s
@@ -895,25 +894,25 @@ n@                  inc       ,s
                     leas      1,s
 
 UmeStart            ldx       <UMEScoreStart
-                    clr       <UMETicks
-                    clr       <UMETicks+1
-                    clr       <UMEEventCntr
-                    clr       <UMEEventCntr+1
+                    clra
+                    clrb
+                    std       <UMETicks
+                    std       <UMEEventCntr
                     ldb       #1                  Enable the sequencer
-                    stb       <DoSequencer
+                    stb       <fDoSequencer
 
-UmeLooper           ldb       <DoAbort            Abort everything?
+UmeLooper           ldb       <fDoAbort            Abort everything?
                     bne       Abort@
-                    ldb       <DoSequencer
+                    ldb       <fDoSequencer
                     beq       End@
                     bra       trns1@
-End@                clr       <DoSequencer        If we made it here it means all tracks have ended
+End@                clr       <fDoSequencer        If we made it here it means all tracks have ended
                     lbsr      MidiMuteAll         kill the music and get out of here
                     lbra      CloseAndNext        It's not an abort, so we keep processing all supplied files
-Abort@              clr       <DoSequencer
+Abort@              clr       <fDoSequencer
                     lbsr      MidiMuteAll         Yes, kill the music and get out of here
                     lbra      bye
-trns1@              ldb       <DebugMode
+trns1@              ldb       <bDebugMode
                     beq       trns@
                     lbsr      DebugNotes
 trns@               ldd       <UMETicks
@@ -938,14 +937,14 @@ ev@
                     mul
                     leay      ScoreTracks,u 
                     leay      d,y 
-                    sty       <ThisTrack
+                    sty       <pThisTrack
                     ldb       ,x
                     decb
                     stb       TRACK_MIDICHAN,y
                     leay      Powers,pcr 
                     lslb
                     ldd       b,y
-                    ldy       <ThisTrack
+                    ldy       <pThisTrack
                     bita      <MIDIMask1
                     bne       mf@
                     bitb      <MIDIMask2
@@ -990,7 +989,7 @@ UmeSharp            inca                          Adjust note into Sharp (half n
                     bra       UmeNote
 UmeDFlat            deca                          Adjust note into Double Flat (whole note lower)
 UmeFlat             deca                          Adjust note into Sharp (half note lower)
-UmeNote             ldy       <ThisTrack
+UmeNote             ldy       <pThisTrack
                     ldb       TRACK_MIDICHAN,y    Get 0-based channel # from file
                     cmpb      #9                  Percussion?
                     beq       UmeMusicN
@@ -1055,7 +1054,7 @@ NoteNames           fcc       "C   C#  D   D#  E   F   F#  G   G#  A   A#  B   "
 * Print a row containing all the Parts' clefs used in the score
 *
 PrintClefs          pshs      d,y
-                    tst       <DebugMode          Dump clef types of Ume file if an -m#,# filter is specified
+                    tst       <bDebugMode          Dump clef types of Ume file if an -m#,# filter is specified
                     beq       x@
                     leay      UMEPartClefs,u
                     clr       ,s
@@ -1117,7 +1116,7 @@ clefstr             fcc       "Trb "
 
 * Try to match the Lyra device string to a device code
 SetupInstruments    leay      MIDITARGets+1,pcr   Point to list of 28-character device strings
-                    ldx       <FileTop
+                    ldx       <pFileTop
                     leax      $104,x
                     pshs      y,x,d               Save table pointer and 16-bit device name pointer
 ne@                 lda       -1,y                Is this the last entry in the table?
@@ -1170,7 +1169,7 @@ f@                  ldy       4,s
                     ldb       #127
 s@                  sty       <LyraMatchTable
                     pshs      y,x,b
-                    ldx       <FileTop
+                    ldx       <pFileTop
                     leax      $24,x               Point to first Lyra instrument def
                     ldb       #16                 16 MIDI channels defined in Lyra header
                     pshs      b
@@ -1264,7 +1263,7 @@ a@                  bsr       ASC2Int
                     cmpy      #16
                     blo       a@
                     ldb       #-1
-                    stb       <flgUseMapFile      Set flag if instrument map file was loaded
+                    stb       <fUseMapFile      Set flag if instrument map file was loaded
                     lbra      CloseAndNext
 * Eventually put programs here for quick switching between clef types
 ExamplePatch        fcc       "0,1,2,3,16,17,18,19,0,0,38,0,0,0,0,0;"
@@ -1284,21 +1283,21 @@ nd@                 tfr       x,d
                     stx       <ScoreStart         This is where our music starts
                     stx       <ScoreCurrent       Set the running pointer
                     lda       #32
-                    sta       <ScoreTempo
+                    sta       <bTempo
                     lbsr      LOUD_ALL
                     ldb       #1                  Enable the sequencer
-                    stb       <DoSequencer
+                    stb       <fDoSequencer
 
-keyloop@            tst       <DoAbort            Abort everything?
+keyloop@            tst       <fDoAbort            Abort everything?
                     bne       bye                 Yes, kill the sequencer, and get out of here
-                    tst       <DoSequencer
+                    tst       <fDoSequencer
                     beq       CloseAndNext
                     bsr       MusicaSeq           Keep calling the sequencer
                     ldx       #$0002
                     os9       F$Sleep
                     bra       keyloop@
 
-*                   ldb       <Interactive
+*                   ldb       <isInteractive
 *                   beq       keyloop@            No keyboard interaction allowed
 *                   lbsr      INKEY  		  Inkey routine with handlers for interface
 *                   cmpa      #C$CR               C$CR=ok shift+C$CR=cancel
@@ -1306,9 +1305,9 @@ keyloop@            tst       <DoAbort            Abort everything?
 
 bye                 clrb
 err                 pshs      d,u
-                    lda       <PlaylistPath
+                    lda       <bPlaylistPath
                     os9       I$Close
-                    clr       <DoSequencer
+                    clr       <fDoSequencer
       	            lbsr      QUIET_ALL
 *                   ldu       <WBSoundBlk
 *                   ldb       #$01                Return 1 block
@@ -1317,7 +1316,7 @@ err                 pshs      d,u
 exit                os9       F$Exit
 
 CloseAndNext        lbsr      MidiMuteAll
-                    lda       <FilePath
+                    lda       <bFilePath
                     os9       I$Close
                     lbra      NextSong
 
@@ -1325,7 +1324,7 @@ CloseAndNext        lbsr      MidiMuteAll
 * Musica Sequencer
 *
 
-MusicaSeq           ldb       <DoSequencer        Are we allowed to play music?
+MusicaSeq           ldb       <fDoSequencer        Are we allowed to play music?
                     lbeq      MusSeqExit             No, then exit
                     ldx       <ScoreCurrent
                     ldd       <NoteCycles
@@ -1362,7 +1361,7 @@ MusicaSeqRepBar     ldb       #$F0                Make into unused block code, i
 
 MusSeqAddSct        ldb       <TotalSections
                     cmpb      #9
-                    lbhs      MusSeqNxtNote         Can't add more than 9 sections, ignore
+                    lbhs      MusSeqNxtNote       Can't add more than 9 sections, ignore
                     leay      <SectionList,u
                     lslb
                     leay      b,y 
@@ -1373,10 +1372,10 @@ MusSeqAddSct        ldb       <TotalSections
                     bra       MusSeqNxtNote
 
 MusSeqSetTmp        lda       5,x                 Set new tempo
-                    sta       <ScoreTempo
+                    sta       <bTempo
                     bra       MusSeqNxtNote
 
-MusSeqGetNote       lda       <ScoreTempo
+MusSeqGetNote       lda       <bTempo
                     mul                           Multipy note length by the current tempo
                     lsra                          Divide by 128 to get # of 60hz cycles for the note duration
                     rorb
@@ -1414,7 +1413,7 @@ MusSeqNxtCyc        subd      #1
 MusSeqNxtNote       leax      9,x
                     stx       <ScoreCurrent
                     bra       MusSeqExit
-MusSeqEnd           clr       <DoSequencer        Current song is over
+MusSeqEnd           clr       <fDoSequencer        Current song is over
 *                   bra       MusSeqExit
 MusSeqExit             rts
 
@@ -1490,7 +1489,7 @@ Mf2PSG
                     ldd       #$1CDE
                     std       <Dividend_Low
                     lbsr      DIV32_16
-                    ldd       <Quotient
+                    ldd       <iQuotient
                     rts
                 else
                     std       $FEE6               Store pitch as numerator
@@ -1674,8 +1673,8 @@ WritePSG            sta       ,y
 * this handles the signals received to our app
 *
 cfIcptRtn           ldb       #-1
-                    stb       <DoAbort
-                    clr       <DoSequencer
+                    stb       <fDoAbort
+                    clr       <fDoSequencer
                     rti
 
 SIDINIT             pshs      a                   Save volume on stack
@@ -1814,33 +1813,33 @@ x@                  rts
 * 32/16 Division Routine
 *
 DIV32_16            pshs      x
-                    clr      <Quotient+1
-                    clr      <Quotient
-                    clr      <Remainder+1
-                    clr      <Remainder
-                    lda      <Divisor+1
-                    ora      <Divisor
+                    clr      <iQuotient+1
+                    clr      <iQuotient
+                    clr      <iRemainder+1
+                    clr      <iRemainder
+                    lda      <iDivisor+1
+                    ora      <iDivisor
                     beq      DIV_BY_ZERO_ERROR    Handle error if divisor is zero
                     ldd      <Dividend_High
-                    std      <Remainder
+                    std      <iRemainder
                     ldx      #16                  Loop counter
-DIV_LOOP            lsl      <Remainder+1
-                    rol      <Remainder
+DIV_LOOP            lsl      <iRemainder+1
+                    rol      <iRemainder
                     lsl      <Dividend_Low+1
                     rol      <Dividend_Low
                     bcc      a@
-                    inc      <Remainder+1 
-a@                  ldd      <Remainder           Load remainder into D
-                    cmpd     <Divisor             Compare with divisor
+                    inc      <iRemainder+1 
+a@                  ldd      <iRemainder           Load remainder into D
+                    cmpd     <iDivisor             Compare with divisor
                     blt      NO_SUBTRACT          If remainder < divisor, skip subtraction
-                    subd     <Divisor
-                    std      <Remainder
-                    lsl      <Quotient+1
-                    rol      <Quotient
-                    inc      <Quotient+1          Set the least significant bit of quotient
+                    subd     <iDivisor
+                    std      <iRemainder
+                    lsl      <iQuotient+1
+                    rol      <iQuotient
+                    inc      <iQuotient+1          Set the least significant bit of quotient
                     bra      END_LOOP
-NO_SUBTRACT         lsl      Quotient+1
-                    rol      <Quotient
+NO_SUBTRACT         lsl      <iQuotient+1
+                    rol      <iQuotient
 END_LOOP            leax     -1,x
                     bne      DIV_LOOP
 DIV_BY_ZERO_ERROR   puls     x,pc
