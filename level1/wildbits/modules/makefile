@@ -10,7 +10,7 @@ DWIO	= dwio_serial.sb
 AFLAGS		+= -I$(LEVEL1)/$(PORT)
 AFLAGS		+= -I$(LEVEL1)/$(PORT)/modules
 AFLAGS		+= -I$(LEVEL1)/modules
-LFLAGS	    += -L $(NITROS9DIR)/lib -L $(LEVEL1)/$(PORT)/libs/wbsnd -lnet -lwildbits -lalib -lwbsnd
+LFLAGS	    += -L $(NITROS9DIR)/lib -L $(LEVEL1)/$(PORT)/libs/wbsnd -lnet -lwildbitsl1 -lalib -lwbsnd
 
 CLOCKSOFT	= -DRTCSoft=1
 
