@@ -18,6 +18,10 @@
 * Added NitrOS-9 logo to fcfg.
 * fcfg -d pulls default settings.
 * fcfg -dl pulls default settings and logo.
+*
+*   4      2026/01/15 Matt Massie
+* excluded font load Level-1 -dl
+* force Exit after parseopts fcfg Level-1
 
                ifp1
                use       defsfile
@@ -26,7 +30,7 @@
 tylg           set       Prgrm+Objct
 atrv           set       ReEnt+rev
 rev            set       $00
-edition        set       3
+edition        set       4
 
                mod       eom,name,tylg,atrv,start,size
 
@@ -101,6 +105,14 @@ start
 	       sta	 <newfg
            puls  x
            lbsr  parseopts
+           ifeq  Level-1
+           lda   #1         stdout
+           leax  lvl1msg,pcr Level-1 message
+           ldy   #lvl1msglen
+           os9   I$Writln 
+           clrb
+           os9   F$Exit
+           endc
 	       clr	 <numfonts	    init number of fonts = 0
 	       clr 	 <listitem		init list item = 0
 	       clr	 <liststart		init list start = 0
@@ -1495,6 +1507,7 @@ fgloop@             lda       ,x+
                     puls      x,y
 SetupFont           ldd       curfntsz,u                    no font skip
                     beq       parsedone
+                    ifgt      Level-1
                     leax      sysfont,pcr                   point font directory
                     lda       #READ.
                     os9       I$ChgDir
@@ -1507,6 +1520,7 @@ SetupFont           ldd       curfntsz,u                    no font skip
                     ldb       #SS.FntLoadF                  load font from file
                     os9       I$SetStt
                     bcs       error@
+                    endc
                     clrb
 error@              puls      a,x,y,u    
 DoneExit            lbsr      movecursor2
@@ -2157,6 +2171,10 @@ fspath2             fcc       "defaultsettings"
 sysfont             fcc       "/DD/SYS/FONTS"
                     fcb       C$CR
 fontfgcolor         fcb $02,$20,$2a,$1b,$32,$01,$0C
+
+lvl1msg             fcc !Level-1 only supports fcfg -d and fcfg -dl!
+                    fcb       C$CR
+lvl1msglen          equ *-lvl1msg
 
                emod
 eom            equ *
