@@ -3,7 +3,7 @@ include ../port.mak
 DEPENDS		= ./makefile $(NOSLIB)/net.o
 
 # Module directory
-LFLAGS		+= -L $(NITROS9DIR)/lib -lnet -lwildbits -lalib
+LFLAGS		+= -L $(NITROS9DIR)/lib -lnet -lwildbitsl1 -lalib
 MD		= ../modules
 FNT		= ../sys/fonts
 # Commands directory

@@ -10,7 +10,7 @@ DWIO	= dwio_serial.sb
 AFLAGS		+= -I$(LEVEL2)/$(PORT)
 AFLAGS		+= -I$(LEVEL1)/$(PORT)/modules
 AFLAGS		+= -I$(LEVEL1)/modules
-LFLAGS	    += -L $(NITROS9DIR)/lib -L $(LEVEL2)/$(PORT)/libs -lnet -lwildbits -lalib -lwbsnd
+LFLAGS	    += -L $(NITROS9DIR)/lib -L $(LEVEL2)/$(PORT)/libs -lnet -lwildbitsl2 -lalib -lwbsnd
 
 DEPENDS		= ./makefile
 TPB		= $(3RDPARTY)/booters

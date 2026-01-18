@@ -13,7 +13,7 @@ AFLAGS      += -I$(3RDPARTY)/packages/bf
 AFLAGS      += -I$(3RDPARTY)/packages/cpm
 AFLAGS      += -I.
 LFLAGS		+= -L$(NITROS9DIR)/lib -L$(LEVEL2)/$(PORT)/libs
-LFLAGS		+= -lwildbits -lwbsnd
+LFLAGS		+= -lwildbitsl2 -lwbsnd
 LFLAGS		+= -lnet -lalib -lnos96809l2
 
 BASIC09	= basic09 runb inkey syscall wild
