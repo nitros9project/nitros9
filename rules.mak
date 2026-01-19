@@ -9,19 +9,25 @@
 # If the defaults below are fine, then there is no need to set any
 # environment variables.
 
-
 # NitrOS-9 version, major and minor release numbers are here
-ifeq ($(PORT),wildbits)
-  NOS9VER	= $(shell date +%y)
-  NOS9MAJ	= $(shell date +%m)
-  NOS9MIN	= $(shell date +%d)
+BUILDDATE=$(shell git log -1 --format="%aD") # we can use this as a string in Init
+COMMITHASH=$(shell git log -1 --format="%h")
+-include $(NITROS9DIR)/Version
+ifeq ($(NOS9VER),) # Version didn't exist -- use date
+NOS9DBG=1 # 'dev version' enabled
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+    # macOS-specific settings
+    NOS9VER=$(shell date -z utc -v "$(BUILDDATE)" +%y)
+    NOS9MAJ=$(shell date -z utc -v "$(BUILDDATE)" +%-m)
+    NOS9MIN=$(shell date -z utc -v "$(BUILDDATE)" +%-d)
 else
-  NOS9VER	= 3
-  NOS9MAJ	= 3
-  NOS9MIN	= 0
+    # Non-macOS (Linux, etc.)
+    NOS9VER=$(shell date --utc --date="$(BUILDDATE)" +%y)
+    NOS9MAJ=$(shell date --utc --date="$(BUILDDATE)" +%-m)
+    NOS9MIN=$(shell date --utc --date="$(BUILDDATE)" +%-d)
 endif
-# Set this to 1 to turn on "DEVELOPMENT" message in sysgo
-NOS9DBG = 1
+endif
 
 #################### DO NOT CHANGE ANYTHING BELOW THIS LINE ####################
 
@@ -52,7 +58,7 @@ ASOUT		= -o
 ifdef LISTDIR
 ASOUT		= --list=$(LISTDIR)/$@.lst --symbols -o
 endif
-AFLAGS		= -DNOS9VER=$(NOS9VER) -DNOS9MAJ=$(NOS9MAJ) -DNOS9MIN=$(NOS9MIN) -DNOS9DBG=$(NOS9DBG)
+AFLAGS		= -DNOS9VER=$(NOS9VER) -DNOS9MAJ=$(NOS9MAJ) -DNOS9MIN=$(NOS9MIN) -DNOS9DBG=$(NOS9DBG) -DCOMMITHASH=$(COMMITHASH)
 ifdef PORT
 AFLAGS		+= -D$(PORT)=1
 endif
