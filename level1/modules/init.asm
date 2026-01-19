@@ -113,11 +113,20 @@ OSStr               equ       *
                     fcc       /Level /
                     fcb       '0+Level
                     fcc       / V/
-                    fcb       '0+NOS9VER
+                    ifgt      NOS9VER-25
+                    fcb       '0+(NOS9VER/10)
+                    endc
+                    fcb       '0+(NOS9VER%10)
                     fcc       /./
-                    fcb       '0+NOS9MAJ
+                    ifgt      NOS9VER-25
+                    fcb       '0+(NOS9MAJ/10)
+                    endc
+                    fcb       '0+(NOS9MAJ%10)
                     fcc       /./
-                    fcb       '0+NOS9MIN
+                    ifgt      NOS9VER-25
+                    fcb       '0+(NOS9MIN/10)
+                    endc
+                    fcb       '0+(NOS9MIN%10)
                     fcb       0
 
 InstStr             equ       *
