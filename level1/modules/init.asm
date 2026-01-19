@@ -127,6 +127,10 @@ OSStr               equ       *
                     fcb       '0+(NOS9MIN/10)
                     endc
                     fcb       '0+(NOS9MIN%10)
+
+* Include commit hash
+                    use       commithash
+                    
                     fcb       0
 
 InstStr             equ       *
