@@ -12,6 +12,9 @@
 # NitrOS-9 version, major and minor release numbers are here
 BUILDDATE=$(shell git log -1 --format="%aD") # we can use this as a string in Init
 COMMITHASH=$(shell git log -1 --format="%h")
+ECHOHASH=$(shell echo " fcs / commit "$(COMMITHASH)"/" > $(NITROS9DIR)/defs/commithash)
+ifeq ($(ECHOHASH),0)
+endif
 -include $(NITROS9DIR)/Version
 ifeq ($(NOS9VER),) # Version didn't exist -- use date
 NOS9DBG=1 # 'dev version' enabled
@@ -58,7 +61,7 @@ ASOUT		= -o
 ifdef LISTDIR
 ASOUT		= --list=$(LISTDIR)/$@.lst --symbols -o
 endif
-AFLAGS		= -DNOS9VER=$(NOS9VER) -DNOS9MAJ=$(NOS9MAJ) -DNOS9MIN=$(NOS9MIN) -DNOS9DBG=$(NOS9DBG) -DCOMMITHASH=$(COMMITHASH)
+AFLAGS		= -DNOS9VER=$(NOS9VER) -DNOS9MAJ=$(NOS9MAJ) -DNOS9MIN=$(NOS9MIN) -DNOS9DBG=$(NOS9DBG)
 ifdef PORT
 AFLAGS		+= -D$(PORT)=1
 endif
