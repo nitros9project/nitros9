@@ -11,10 +11,15 @@
 
 
 # NitrOS-9 version, major and minor release numbers are here
-NOS9VER	= 3
-NOS9MAJ	= 3
-NOS9MIN	= 0
-
+ifeq ($(PORT),wildbits)
+  NOS9VER	= $(shell date +%y)
+  NOS9MAJ	= $(shell date +%m)
+  NOS9MIN	= $(shell date +%d)
+else
+  NOS9VER	= 3
+  NOS9MAJ	= 3
+  NOS9MIN	= 0
+endif
 # Set this to 1 to turn on "DEVELOPMENT" message in sysgo
 NOS9DBG = 1
 
