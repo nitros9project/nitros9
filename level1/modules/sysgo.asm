@@ -50,7 +50,7 @@ Banner              equ       *
 CrRtn               fcb       C$CR,C$LF
 
                     ifeq      ROM
-                    ifne      NOS9DBG
+                    ifne      NOS9DEV
                     fcc       "**   DEVELOPMENT BUILD   **"
                     fcb       C$CR,C$LF
                     fcc       "** NOT FOR DISTRIBUTION! **"

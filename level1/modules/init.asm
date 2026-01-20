@@ -79,7 +79,8 @@ start               equ       *
                     fcb       $00                 feature byte #2
                     fdb       OSStr
                     fdb       InstStr
-                    fcb       0,0,0,0             reserved
+                    fdb       BuildStr
+                    fcb       0,0                 reserved
 
                     ifgt      Level-1
 * CC3IO section
@@ -112,25 +113,23 @@ OSStr               equ       *
                     endc
                     fcc       /Level /
                     fcb       '0+Level
+                    ifne      NOS9VER
                     fcc       / V/
-                    ifgt      NOS9VER-25
                     fcb       '0+(NOS9VER/10)
-                    endc
                     fcb       '0+(NOS9VER%10)
                     fcc       /./
-                    ifgt      NOS9VER-25
+                    ifgt      NOS9MAJ/10
                     fcb       '0+(NOS9MAJ/10)
                     endc
                     fcb       '0+(NOS9MAJ%10)
                     fcc       /./
-                    ifgt      NOS9VER-25
+                    ifgt      NOS9MAJ/10
                     fcb       '0+(NOS9MIN/10)
                     endc
                     fcb       '0+(NOS9MIN%10)
-
-* Include commit hash
-                    use       commithash
-                    
+                    else
+                    fcc       "-DEV"
+                    endc
                     fcb       0
 
 InstStr             equ       *
@@ -201,7 +200,10 @@ OSStr               equ       *
 InstStr             equ       *
                     fcb       0                   null-length string
                     endc                          match IFEQ dalpha
-
+BuildStr
+                    use       buildinfo
+                    fcb       0                   null-length string
+                    
                     emod
 eom                 equ       *
                     end

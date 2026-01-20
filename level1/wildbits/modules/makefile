@@ -21,6 +21,7 @@ KERNEL		= krn krnp2
 SYSMODS		= ioman init sysgo
 CLOCKS	    = clock clock2_wildbits
 
+init:          init.asm buildinfo
 
 RBF		= rbf.mn rbdw.dr $(DWIO) ddx0.dd x0.dd x1.dd x2.dd x3.dd \
 		rbmem.dr ddc0.dd c0.dd c1.dd f0.dd f1.dd \

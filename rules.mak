@@ -9,39 +9,12 @@
 # If the defaults below are fine, then there is no need to set any
 # environment variables.
 
-# NitrOS-9 version, major and minor release numbers are here
-BUILDDATE=$(shell git log -1 --format="%aD") # we can use this as a string in Init
-COMMITHASH=$(shell git log -1 --format="%h")
-ECHOHASH=$(shell echo " fcs / commit "$(COMMITHASH)"/" > $(NITROS9DIR)/defs/commithash)
-ifeq ($(ECHOHASH),0)
-endif
--include $(NITROS9DIR)/Version
-ifeq ($(NOS9VER),) # Version didn't exist -- use date
-NOS9DBG=1 # 'dev version' enabled
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Darwin)
-    # macOS-specific settings
-    NOS9VER=$(shell date -z utc -v "$(BUILDDATE)" +%y)
-    NOS9MAJ=$(shell date -z utc -v "$(BUILDDATE)" +%-m)
-    NOS9MIN=$(shell date -z utc -v "$(BUILDDATE)" +%-d)
-else
-    # Non-macOS (Linux, etc.)
-    NOS9VER=$(shell date --utc --date="$(BUILDDATE)" +%y)
-    NOS9MAJ=$(shell date --utc --date="$(BUILDDATE)" +%-m)
-    NOS9MIN=$(shell date --utc --date="$(BUILDDATE)" +%-d)
-endif
-endif
+# NitrOS-9 version
 
 #################### DO NOT CHANGE ANYTHING BELOW THIS LINE ####################
 
 CC		= c3
 OS9		= os9
-
-NITROS9VER	= v0$(NOS9VER)0$(NOS9MAJ)0$(NOS9MIN)
-
-ifeq ($(OS),Windows_NT)
-    OS := W
-endif
 
 DEFSDIR		= $(NITROS9DIR)/defs
 DSKDIR		= $(NITROS9DIR)/dsks
@@ -61,7 +34,7 @@ ASOUT		= -o
 ifdef LISTDIR
 ASOUT		= --list=$(LISTDIR)/$@.lst --symbols -o
 endif
-AFLAGS		= -DNOS9VER=$(NOS9VER) -DNOS9MAJ=$(NOS9MAJ) -DNOS9MIN=$(NOS9MIN) -DNOS9DBG=$(NOS9DBG)
+AFLAGS		= -DNOS9VER=$(NOS9VER) -DNOS9MAJ=$(NOS9MAJ) -DNOS9MIN=$(NOS9MIN)
 ifdef PORT
 AFLAGS		+= -D$(PORT)=1
 endif
@@ -189,3 +162,23 @@ MASTER = -DITDNS=0
 %: %.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
+# Include an optional release file based on the port name that contains
+# release variables set... e.g.:
+# NOS9MVER=26
+# NOS9MAJ=1
+# NOS9MIN=1
+-include $(NITROS9DIR)/release_$(PORT)
+
+ifeq ($(NOS9MAJ),)
+  NITROS9VER = v$(NOS9VER).$(NOS9MAJ).$(NOS9MIN)
+else
+  NITROS9VER = DEV
+endif
+
+default: all
+
+buildinfo:
+	@BUILDDATE="$$(git log -1 --format=%ad)"; \
+	COMMITHASH="$$(git rev-parse --short HEAD)"; \
+	BRANCHNAME="$$(git branch --show-current)"; \
+	echo " fcc !$${BUILDDATE} ($${COMMITHASH} - $${BRANCHNAME})!" > "$(NITROS9DIR)/defs/buildinfo";

@@ -135,6 +135,13 @@ DoInit              ldx       InitAddr,u
                     leax      d,x
                     lbsr      PUTS
                     lbsr      ShowMachType
+                    lbsr      PRINTS
+                    fcc       / - /
+                    fcb       $0
+                    ldx       InitAddr,u
+                    ldd       BuildInfo,x       point to build info in INIT module
+                    leax      d,x
+                    lbsr      PUTS
                     lbsr      PUTCR
                     pshs      u,y
 
