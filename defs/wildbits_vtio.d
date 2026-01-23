@@ -39,6 +39,15 @@ V.MSDrvEPtr         RMB       2                   mouse entry point address
 V.MouseVect         RMB       2
 V.MSButtons         RMB       1                   keeps the buttons for the SetStat call
 V.MSTimer           RMB       1                   this hides the cursor if inactive for more than 4 seconds
+V.MEMP		    RMB	      1			  Code to check PS2_STAT for empty buffer (channel 1 or 2)
+V.MS_IN		    RMB	      2			  Address of Channel 1 or 2
+V.M_WR		    RMB	      1			  PS2 Control Write Channel
+V.MCLR		    RMB	      1			  PS2 Clear FIFO Channel 1 or 2
+V.INT_PS2_MOUSE	    RMB	      1			  Interrupt Flag for Channel 1 or 2
+V.MSByte0	    RMB	      1			  mouse packet byte 1
+V.MSByte1	    RMB	      1			  mouse packet byte 2
+V.MSByte2   	    RMB	      1			  mouse packet byte 3
+V.MSByteCnt	    RMB	      1			  mouse packet byte counter
                     endc
 V.KeyDrvStat        equ       .
                     RMB       8
