@@ -27,7 +27,7 @@ CMDS    = asm attr backup bawk binex build cmp copy \
 		makdir mdir megaread merge modem mfree minted mmap modpatch more padrom park \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
-		bootos9 wbinfo wbreset rogue fstatus fcfg xtclut drawtest play wild shellbg shellbgoff ntptime \
+		bootos9 wbinfo wbreset rogue gfxstatus scfg xtclut drawtest play wild shellbg shellbgoff ntptime \
 		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) view
 
 CMDS_CART      = asm attr backup bawk binex build cmp copy \
