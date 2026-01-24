@@ -11,7 +11,7 @@
 * Support Wildbits K,K2,Jr,Jr2 models.
 *
 *   3      2025/12/26  Matt Massie
-* Forks fcfg -dl to  load default palettes for models or reads
+* Forks scfg -dl to  load default palettes for models or reads
 * sys/defaultsettings for foreground, background, screen size, font to load. 
 
                     section   bss
@@ -38,7 +38,7 @@ Startup             fcc       "startup -p"
                     fcb       C$CR
 StartupL            equ       *-Startup
 
-InitScrn            fcc       "fcfg"
+InitScrn            fcc       "scfg"
                     fcb       C$CR
 InitScrn2           fcc       "-dl"
                     fcb       C$CR
@@ -111,7 +111,7 @@ __start             leax      >IcptRtn,pcr
                     lda       #EXEC.
                     os9       I$ChgDir            change the execution directory
 
-* Fork fcfg -d here
+* Fork scfg -dl here
 * sets sys/defaultsettings if exists
 * Show banner
 DoScrnInit          pshs      u
