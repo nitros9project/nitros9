@@ -14,6 +14,8 @@
 * Forks scfg -dl to  load default palettes for models or reads
 * sys/defaultsettings for foreground, background, screen size, font to load. 
 
+                    use       defsfile
+
                     section   bss
 InitAddr            rmb       2                    
                     rmb       100
