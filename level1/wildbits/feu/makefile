@@ -149,44 +149,44 @@ bootfile_jr: sysgo $(BOOTFILE_JR) $(DEPENDS)
 booter_ram_k2: bootfile_k2
 	$(MERGE) $(BOOTFILE_K2)>bootfile_k2
 	$(PADROM) 23552 bootfile_k2
-	$(AS) -DFLASH=0 --output=raw trampoline.asm -otrampoline
-	cat bootfile_k2 trampoline > $@
-	$(RM) trampoline
+	$(AS) -DFLASH=0 --output=raw trampoline.asm -o$@.tmp
+	cat bootfile_k2 $@.tmp > $@
+	$(RM) $@.tmp
 
 booter_ram_k: bootfile_k
 	$(MERGE) $(BOOTFILE_K)>bootfile_k
 	$(PADROM) 23552 bootfile_k
-	$(AS) -DFLASH=0 --output=raw trampoline.asm -otrampoline
-	cat bootfile_k trampoline > $@
-	$(RM) trampoline
+	$(AS) -DFLASH=0 --output=raw trampoline.asm -o$@.tmp
+	cat bootfile_k $@.tmp > $@
+	$(RM) $@.tmp
 
 booter_ram_jr: bootfile_jr
 	$(MERGE) $(BOOTFILE_JR)>bootfile_jr
 	$(PADROM) 23552 bootfile_jr
-	$(AS) -DFLASH=0 --output=raw trampoline.asm -otrampoline
-	cat bootfile_jr trampoline > $@
-	$(RM) trampoline
+	$(AS) -DFLASH=0 --output=raw trampoline.asm -o$@.tmp
+	cat bootfile_jr $@.tmp > $@
+	$(RM) $@.tmp
 
 booter_flash_k2: bootfile_k2
 	$(MERGE) $(BOOTFILE_K2)>bootfile_k2
 	$(PADROM) 23552 bootfile_k2
-	$(AS) -DFLASH=1 --output=raw trampoline.asm -otrampoline
-	cat bootfile_k2 trampoline > $@
-	$(RM) trampoline
+	$(AS) -DFLASH=1 --output=raw trampoline.asm -o$@.tmp
+	cat bootfile_k2 $@.tmp > $@
+	$(RM) $@.tmp
 
 booter_flash_k: bootfile_k
 	$(MERGE) $(BOOTFILE_K)>bootfile_k
 	$(PADROM) 23552 bootfile_k
-	$(AS) -DFLASH=1 --output=raw trampoline.asm -otrampoline
-	cat bootfile_k trampoline > $@
-	$(RM) trampoline
+	$(AS) -DFLASH=1 --output=raw trampoline.asm -o$@.tmp
+	cat bootfile_k $@.tmp > $@
+	$(RM) $@.tmp
 
 booter_flash_jr: bootfile_jr
 	$(MERGE) $(BOOTFILE_JR)>bootfile_jr
 	$(PADROM) 23552 bootfile_jr
-	$(AS) -DFLASH=1 --output=raw trampoline.asm -otrampoline
-	cat bootfile_jr trampoline > $@
-	$(RM) trampoline
+	$(AS) -DFLASH=1 --output=raw trampoline.asm -o$@.tmp
+	cat bootfile_jr $@.tmp > $@
+	$(RM) $@.tmp
 
 upload_k2: booter_ram_k2
 	upload $^ 8000
@@ -283,7 +283,7 @@ feu/startup: FORCE
 FORCE: ;
 
 clean:
-	$(RM) $(ALLOBJS) *.o *.tmp vectors trampoline *.list *.map *.dsk bulk.csv f0_? booter_? *.zip feu/startup
+	$(RM) $(ALLOBJS) *.o *.tmp vectors *.list *.map *.dsk bulk.csv f0_? booter_? *.zip feu/startup
 
 feu: feu.o
 	$(LINKER) $(LFLAGS) $^ -o$@
