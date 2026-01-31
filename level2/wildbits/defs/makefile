@@ -4,7 +4,7 @@ DEPENDS		= ./makefile
 
 DEFOPTS		= --preprocess -DLevel=2
 PERMDEFS	= Defsfile
-DEFS		= os9.d rbf.d scf.d coco.d coco3vtio.d
+DEFS		= os9.d rbf.d scf.d wildbits.d wildbits_vtio.d
 ALLOBJS		= $(DEFS) $(PERMDEFS)
 
 all:	$(ALLOBJS)
@@ -21,12 +21,12 @@ scf.d: $(DEFSDIR)/scf.d
 	$(AS) $(AFLAGS) $(DEFOPTS) -DSCF.D=0 $< > $@
 	$(DROP_EXTRA_SPACES) $@
 
-coco.d: $(DEFSDIR)/coco.d
-	$(AS) $(AFLAGS) $(DEFOPTS) -DCOCO.D=0 $< > $@
+wildbits.d: $(DEFSDIR)/wildbits.d
+	$(AS) $(AFLAGS) $(DEFOPTS) -DWILDBITS.D=0 $< > $@
 	$(DROP_EXTRA_SPACES) $@
 
-coco3vtio.d: $(DEFSDIR)/cocovtio.d
-	$(AS) $(AFLAGS) $(DEFOPTS) -DCOCOVTIO.D=0 $< > $@
+wildbits_vtio.d: $(DEFSDIR)/wildbits_vtio.d
+	$(AS) $(AFLAGS) $(DEFOPTS) -DWILDBITS_VTIO.D=0 $< > $@
 	$(DROP_EXTRA_SPACES) $@
 
 clean:
