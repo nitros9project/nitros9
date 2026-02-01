@@ -1,1 +1,11 @@
-PROCEDURE circleDIM name:STRINGDIM bm0:INTEGERRUN foenix("Clear")RUN foenix("Bitmap",0,0,bm0,0,0,"/DD/CMDS/XTCLUT")RUN foenix("Gon")RUN foenix("BMClear",bm0,0)RUN foenix("Circle",100,100,15,0,6,bm0)INPUT "Cont <Enter>",nameRUN foenix("BMoff",0)RUN foenix("Goff")
+PROCEDURE circle
+DIM name:STRING
+DIM bm0:INTEGER
+RUN WILD("Clear")
+RUN WILD("Bitmap",0,0,bm0,0,0,"/DD/CMDS/XTCLUT")
+RUN WILD("Gon")
+RUN WILD("BMClear",bm0,0)
+RUN WILD("Circle",100,100,15,0,6,bm0)
+INPUT "Cont <Enter>",name
+RUN WILD("BMoff",0)
+RUN WILD("Goff")
