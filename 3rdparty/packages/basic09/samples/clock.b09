@@ -1,0 +1,35 @@
+PROCEDURE clock
+DIM hour,min,sec:INTEGER
+DIM x,y,dx,dy:INTEGER
+DIM px,py:INTEGER
+x=0
+y=0
+dx=1
+dy=1
+px=0
+py=0
+RUN wild("CurOff")
+10 RUN wild("GetTime",hour,min,sec)
+RUN wild("CurXY",px,py)
+PRINT "                                         "; 
+RUN wild("CurXY",x,y)
+PRINT ""; hour; ":"; min; ":"; sec
+px=x
+py=y
+x=x+dx
+y=y+dy
+IF x>=72 THEN 
+dx=-1
+ENDIF 
+IF y>=28 THEN 
+dy=-1
+ENDIF 
+IF x<=1 THEN 
+dx=1
+ENDIF 
+IF y<=1 THEN 
+dy=1
+ENDIF 
+FOR t=1 TO 500
+NEXT t
+GOTO 10

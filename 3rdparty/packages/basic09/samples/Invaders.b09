@@ -1,0 +1,631 @@
+PROCEDURE invaders
+DIM font:STRING
+DIM i,j,k,loopcbt,looplen,shipx,shipy,vector:INTEGER
+DIM top,r,key,frequency:INTEGER
+DIM alienpos,score,num_aliens,level,btm:INTEGER
+DIM alienfire,alienlvl:INTEGER
+DIM saucerx,saucer,saucerloop:INTEGER
+DIM num_missiles,misy,lives:INTEGER
+DIM check,one_shot,one_shot2:INTEGER
+DIM lastx,lastxx:INTEGER
+lastx=0 \lastxx=0
+check=0
+one_shot=1
+one_shot2=1
+num_missiles=0
+misy=0
+lives=0
+TYPE FNC=B0,B1,B2,B3,B4,B5,B6,B7:BYTE
+DIM FONTCHAR:FNC
+num_aliens=0
+alienfire=20
+alienlvl=4
+saucerx=74
+saucer=0
+saucerloop=0
+btm=4
+level=1
+alienpos=0
+score=0
+loopcnt=0
+looplen=500
+shipx=39 \shipy=28
+vector=1
+top=2
+key=0
+frequency=100
+DIM aliens(70,4):BYTE
+DIM missilesx(10):INTEGER
+DIM missilesy(10):INTEGER
+DIM ship(5):INTEGER
+FOR i=1 TO 10
+missilesx(i)=1
+missilesy(i)=29
+NEXT i
+FOR i=1 TO 5
+ship(i)=79
+NEXT i
+r=1
+font="/DD/SYS/FONTS/TECHFONT"
+RUN wild("FNLoad",0,font)
+RUN wild("Curoff")
+SHELL "display 1b 20 2 0 0 0 0 5 0 0"
+RUN wild("Clear")
+GOSUB 1090
+4 GOSUB 1050
+RUN wild("CurXY",shipx-1,shipy)
+PRINT " "+CHR$(236)+CHR$(237)+" "; 
+FOR i=1 TO 70 STEP 2
+aliens(i,1)=252
+aliens(i+1,1)=32
+aliens(i,2)=253
+aliens(i+1,2)=32
+aliens(i,3)=254
+aliens(i+1,3)=32
+aliens(i,4)=251
+aliens(i+1,4)=32
+NEXT i
+5 RUN wild("CurXY",r-1,top)
+PRINT " "; 
+FOR i=1 TO 70 STEP 2
+PRINT CHR$(aliens(i,1))+" "; 
+NEXT i
+RUN wild("CurXY",r-1,top+1)
+PRINT " "; 
+FOR i=1 TO 70 STEP 2
+PRINT CHR$(aliens(i,2))+" "; 
+NEXT i
+RUN wild("CurXY",r-1,top+2)
+PRINT " "; 
+FOR i=1 TO 70 STEP 2
+PRINT CHR$(aliens(i,3))+" "; 
+NEXT i
+RUN wild("CurXY",r-1,top+3)
+PRINT " "; 
+FOR i=1 TO 70 STEP 2
+PRINT CHR$(aliens(i,4))+" "; 
+NEXT i
+IF btm<=2 THEN 
+GOSUB 1040
+ENDIF 
+IF top+btm=27 THEN 1070
+10 RUN wild("Inkey",key)
+IF num_missiles>0 THEN 
+alienfire=alienfire+1
+IF alienfire>=17 THEN 
+GOSUB 1180
+ENDIF 
+ENDIF 
+IF top=4 AND saucer=0 THEN 1100
+IF top=12 AND saucer=0 THEN 1100
+IF lives<=0 THEN 1200
+IF one_shot=1 THEN 
+IF key=8 THEN 1000
+IF key=9 THEN 1010
+IF key=32 THEN 1030
+IF key=113 OR key=81 THEN 1020
+IF key=101 THEN 1230
+IF key=80 OR key=112 THEN 1250
+one_shot=0
+ELSE 
+one_shot=1
+ENDIF 
+IF num_aliens=6 THEN 
+looplen=150
+ENDIF 
+IF num_aliens=140 AND lives>0 THEN 1080
+14 IF saucer=1 THEN 
+GOSUB 1110
+ENDIF 
+IF lives<=0 THEN 1200
+15 loopcnt=loopcnt+1
+IF loopcnt>looplen THEN 
+RUN wild("Tone",frequency,1,15)
+IF frequency<301 THEN 
+frequency=frequency+100
+IF frequency=300 THEN 
+frequency=100
+ENDIF 
+ENDIF 
+loopcnt=0
+IF vector=1 THEN 
+IF r<10 THEN 
+r=r+1
+ENDIF 
+IF r>=10 THEN 
+RUN wild("CurXY",r-1,top)
+FOR i=1 TO 40 \ PRINT "  ";  \NEXT i
+vector=-1
+top=top+1
+IF looplen>=100 THEN 
+looplen=looplen-25
+ENDIF 
+ENDIF 
+ENDIF 
+IF vector=-1 THEN 
+IF r>1 THEN 
+r=r-1
+ENDIF 
+IF r<=1 THEN 
+RUN wild("CurXY",r+1,top)
+FOR i=1 TO 40 \ PRINT "  ";  \NEXT i
+vector=1
+r=r+1
+top=top+1
+ENDIF 
+ENDIF 
+GOTO 5
+ENDIF 
+GOTO 10
+END 
+1000 IF shipx>0 THEN 
+shipx=shipx-1
+ENDIF 
+key=0
+GOSUB 1040
+GOTO 10
+1010 IF shipx<77 THEN 
+shipx=shipx+1
+ENDIF 
+key=0
+GOSUB 1040
+GOTO 10
+1020 RUN wild("Curon")
+RUN wild("CurXY",1,59)
+SHELL "scfg -d"
+END 
+1030 FOR j=26 TO top+4 STEP -1
+loopcnt=loopcnt+10
+alienfire=alienfire+4
+IF saucer=1 THEN 
+GOSUB 1110
+ENDIF 
+RUN wild("Tone",1000,1,15)
+FOR k=1 TO 100 \NEXT k
+RUN wild("CurXY",shipx,j)
+PRINT CHR$(246); 
+FOR k=1 TO 15 \NEXT k
+RUN wild("CurXY",shipx,j+1)
+PRINT " "; 
+NEXT j
+FOR k=1 TO 50 \NEXT k
+RUN wild("CurXY",shipx,j+1)
+PRINT " "; 
+RUN wild("CurXY",shipx,j)
+PRINT " "; 
+key=0
+alienpos=shipx-r+1
+IF alienpos<=0 THEN 
+alienpos=1
+ENDIF 
+IF alienpos<=70 THEN 
+IF aliens(alienpos,4)<>32 THEN 
+RUN wild("CurXY",shipx,top+3)
+PRINT CHR$(250); 
+aliens(alienpos,4)=32
+alienlvl=3
+score=score+20
+GOSUB 1050
+GOSUB 1060
+num_aliens=num_aliens+1
+GOSUB 1140
+GOTO 15
+ENDIF 
+IF aliens(alienpos,3)<>32 THEN 
+RUN wild("CurXY",shipx,top+2)
+PRINT CHR$(250); 
+RUN wild("CurXY",shipx,top+3)
+PRINT CHR$(246); 
+FOR k=1 TO 22 \NEXT k
+aliens(alienpos,3)=32
+alienlvl=2
+score=score+40
+GOSUB 1050
+GOSUB 1060
+num_aliens=num_aliens+1
+GOSUB 1140
+GOTO 15
+ENDIF 
+IF aliens(alienpos,2)<>32 THEN 
+RUN wild("CurXY",shipx,top+1)
+PRINT CHR$(250); 
+RUN wild("CurXY",shipx,top+2)
+PRINT CHR$(246); 
+FOR k=1 TO 22 \NEXT k
+aliens(alienpos,2)=32
+alienlvl=1
+score=score+60
+GOSUB 1050
+GOSUB 1060
+num_aliens=num_aliens+1
+GOSUB 1140
+GOTO 15
+ENDIF 
+IF aliens(alienpos,1)<>32 THEN 
+RUN wild("CurXY",shipx,top)
+PRINT CHR$(250); 
+RUN wild("CurXY",shipx,top+1)
+PRINT CHR$(246); 
+FOR k=1 TO 22 \NEXT k
+aliens(alienpos,1)=32
+alienlvl=0
+score=score+100
+GOSUB 1050
+GOSUB 1060
+num_aliens=num_aliens+1
+GOTO 15
+ENDIF 
+ENDIF 
+RUN wild("CurXY",shipx,top+4)
+PRINT " "; 
+RUN wild("CurXY",shipx,top+3)
+PRINT " "; 
+IF shipx<=75 THEN 
+FOR j=top+3 TO 1 STEP -1
+RUN wild("CurXY",shipx,j)
+PRINT CHR$(246); 
+FOR k=1 TO 15 \NEXT k
+RUN wild("CurXY",shipx,j+1)
+PRINT " "; 
+IF shipx=saucerx OR shipx=saucer+1 AND saucer=1 AND j=1 THEN 
+RUN wild("CurXY",saucerx,1)
+PRINT CHR$(250)+CHR$(250); 
+RUN wild("CurXY",saucerx,1)
+GOSUB 1120
+score=score+200
+saucer=0
+saucerloop=0
+saucerx=76
+PRINT "   "; 
+ENDIF 
+NEXT j
+ENDIF 
+RUN wild("CurXY",shipx,1) \ PRINT " "; 
+GOTO 15
+1040 RUN wild("CurXY",shipx-2,shipy)
+PRINT " "+CHR$(236)+CHR$(237)+"  "; 
+RETURN 
+1050 RUN wild("CurXY",1,0)
+PRINT "SCORE: "; score
+RUN wild("CurXY",31,0)
+PRINT "BASIC09 INVADERS"; 
+RUN wild("CurXY",65,0)
+PRINT "L: "; lives; " LEVEL: "; level
+RETURN 
+1060 RUN wild("Tone",900,1,15)
+FOR k=1 TO 50 \NEXT k
+RUN wild("Tone",500,1,15)
+FOR k=1 TO 100 \NEXT k
+RETURN 
+1070 FOR i=1 TO 70 STEP 2
+IF aliens(i,4)<>32 THEN 
+btm=4
+ELSE 
+btm=3
+ENDIF 
+NEXT i
+IF btm=3 THEN 
+FOR i=1 TO 70 STEP 2
+IF aliens(i,3)<>32 THEN 
+btm=btm
+ELSE 
+btm=2
+ENDIF 
+NEXT i
+ENDIF 
+IF btm=2 THEN 
+FOR i=1 TO 60 STEP 2
+IF aliens(i,2)<>32 THEN 
+btm=btm
+ELSE 
+btm=1
+ENDIF 
+NEXT i
+ENDIF 
+IF top+btm<27 THEN 10
+RUN wild("CurXY",35,15)
+PRINT "GAME OVER"; 
+RUN wild("CurXY",r,top-1)
+FOR i=1023 TO 1000 STEP -1
+RUN wild("Tone",i,1,15)
+NEXT i
+RUN wild("CurXY",1,29)
+lives=0
+GOTO 1200
+1080 RUN wild("CurXY",36,15)
+level=level+1
+PRINT "Level "; level; 
+r=1
+num_aliens=0
+alienpos=0
+loopcnt=0
+looplen=400
+vector=1
+top=5
+FOR i=500 TO 950 STEP 25
+RUN wild("Tone",i,1,15)
+NEXT i
+SHELL "sleep 180"
+RUN wild("Clear")
+GOTO 4
+1090 FONTCHAR.B0=$18
+FONTCHAR.B1=$3C
+FONTCHAR.B2=$7E
+FONTCHAR.B3=$DB
+FONTCHAR.B4=$FF
+FONTCHAR.B5=$24
+FONTCHAR.B6=$5A
+FONTCHAR.B7=$A5
+RUN wild("FNChar",0,252,FONTCHAR)
+FONTCHAR.B0=$00
+FONTCHAR.B1=$3C
+FONTCHAR.B2=$7E
+FONTCHAR.B3=$F3
+FONTCHAR.B4=$F3
+FONTCHAR.B5=$FF
+FONTCHAR.B6=$24
+FONTCHAR.B7=$00
+RUN wild("FNChar",0,253,FONTCHAR)
+FONTCHAR.B0=$38
+FONTCHAR.B1=$54
+FONTCHAR.B2=$7C
+FONTCHAR.B3=$BA
+FONTCHAR.B4=$92
+FONTCHAR.B5=$28
+FONTCHAR.B6=$54
+FONTCHAR.B7=$C6
+RUN wild("FNChar",0,254,FONTCHAR)
+FONTCHAR.B0=$14
+FONTCHAR.B1=$22
+FONTCHAR.B2=$1C
+FONTCHAR.B3=$2A
+FONTCHAR.B4=$7F
+FONTCHAR.B5=$A3
+FONTCHAR.B6=$9D
+FONTCHAR.B7=$41
+RUN wild("FNChar",0,251,FONTCHAR)
+FONTCHAR.B0=$49
+FONTCHAR.B1=$2A
+FONTCHAR.B2=$18
+FONTCHAR.B3=$E7
+FONTCHAR.B4=$24
+FONTCHAR.B5=$5A
+FONTCHAR.B6=$95
+FONTCHAR.B7=$82
+RUN wild("FNChar",0,250,FONTCHAR)
+FONTCHAR.B0=$01
+FONTCHAR.B1=$03
+FONTCHAR.B2=$03
+FONTCHAR.B3=$1F
+FONTCHAR.B4=$3F
+FONTCHAR.B5=$3F
+FONTCHAR.B6=$3F
+FONTCHAR.B7=$3F
+RUN wild("FNChar",0,236,FONTCHAR)
+FONTCHAR.B0=$80
+FONTCHAR.B1=$C0
+FONTCHAR.B2=$C0
+FONTCHAR.B3=$F8
+FONTCHAR.B4=$FC
+FONTCHAR.B5=$FC
+FONTCHAR.B6=$FC
+FONTCHAR.B7=$FC
+RUN wild("FNChar",0,237,FONTCHAR)
+FONTCHAR.B0=$00
+FONTCHAR.B1=$07
+FONTCHAR.B2=$1F
+FONTCHAR.B3=$3F
+FONTCHAR.B4=$6D
+FONTCHAR.B5=$FF
+FONTCHAR.B6=$39
+FONTCHAR.B7=$10
+RUN wild("FNChar",0,248,FONTCHAR)
+FONTCHAR.B0=$00
+FONTCHAR.B1=$E0
+FONTCHAR.B2=$F8
+FONTCHAR.B3=$FC
+FONTCHAR.B4=$B6
+FONTCHAR.B5=$FF
+FONTCHAR.B6=$9C
+FONTCHAR.B7=$08
+RUN wild("FNChar",0,249,FONTCHAR)
+FONTCHAR.B0=$08
+FONTCHAR.B1=$08
+FONTCHAR.B2=$10
+FONTCHAR.B3=$08
+FONTCHAR.B4=$04
+FONTCHAR.B5=$08
+FONTCHAR.B6=$08
+FONTCHAR.B7=$08
+RUN wild("FNChar",0,235,FONTCHAR)
+FONTCHAR.B0=$00
+FONTCHAR.B1=$28
+FONTCHAR.B2=$14
+FONTCHAR.B3=$28
+FONTCHAR.B4=$14
+FONTCHAR.B5=$28
+FONTCHAR.B6=$14
+FONTCHAR.B7=$00
+RUN wild("FNChar",0,246,FONTCHAR)
+RETURN 
+1100 saucer=1
+GOTO 14
+1110 saucerloop=saucerloop+1
+IF saucerloop>35 THEN 
+saucerloop=0
+IF saucerx>2 THEN 
+RUN wild("CurXY",saucerx,1)
+PRINT "  "; 
+saucerx=saucerx-1
+RUN wild("CurXY",saucerx,1)
+PRINT CHR$(248)+CHR$(249); 
+IF saucerx=2 THEN 
+RUN wild("CurXY",saucerx,1)
+PRINT "  "; 
+saucerx=76
+saucer=0
+saucerloop=0
+ENDIF 
+ENDIF 
+ENDIF 
+IF saucerx=2 THEN 
+RUN wild("CurXY",saucerx,1)
+PRINT "   "; 
+ENDIF 
+RETURN 
+1120 FOR k=1 TO 2
+FOR i=700 TO 800 STEP 5
+RUN wild("Tone",i,1,15)
+NEXT i
+FOR i=800 TO 700 STEP -5
+RUN wild("Tone",i,1,15)
+FOR j=1 TO 100 \NEXT j
+NEXT i
+NEXT k
+saucer=0
+RETURN 
+1130 IF num_missiles<5 THEN 
+num_missiles=num_missiles+1
+missilesx(num_missiles)=shipx
+missilesy(num_missiles)=top+alienlvl
+ship(num_missiles)=shipx
+ENDIF 
+IF num_missiles>1 THEN 
+lastx=missilesx(1)
+ENDIF 
+alienlvl=4
+RETURN 
+1140 IF alienlvl<4 THEN 
+GOSUB 1130
+ENDIF 
+RETURN 
+1180 FOR i=1 TO num_missiles
+IF missilesy(i)<29 THEN 
+RUN wild("CurXY",missilesx(i),missilesy(i))
+PRINT CHR$(235); 
+missilesx(i+5)=missilesx(i)
+missilesy(i+5)=missilesy(i)
+misy=missilesy(i)
+misy=misy+1
+missilesy(i)=misy
+RUN wild("CurXY",missilesx(i),misy-2)
+PRINT " "; 
+IF misy=29 THEN 
+RUN wild("CurXY",missilesx(i),misy-1)
+PRINT " "; 
+RUN wild("CurXY",missilesx(i),misy-2)
+PRINT " "; 
+num_missiles=num_missiles-1
+IF shipx=missilesx(i) OR shipx+1=missilesx(i) THEN 
+GOSUB 1190
+ENDIF 
+GOSUB 1230
+RUN wild("CurXY",missilesx(i),28)
+PRINT "  "; 
+IF num_missiles>1 THEN 
+GOSUB 1260
+ENDIF 
+ENDIF 
+ENDIF 
+NEXT i
+alienfire=0
+RETURN 
+1190 RUN wild("CurXY",shipx-1,shipy)
+PRINT " "+CHR$(250)+CHR$(250)+" "; 
+FOR i=1 TO 2
+RUN wild("Tone",100,1,15)
+RUN wild("Tone",900,1,15)
+RUN wild("Tone",250,1,15)
+RUN wild("Tone",900,1,15)
+RUN wild("Tone",150,1,15)
+NEXT i
+lives=lives-1
+GOSUB 1050
+IF lives=0 THEN 
+GOTO 1200
+ENDIF 
+FOR k=1 TO 1000 \NEXT k
+RUN wild("CurXY",shipx,shipy)
+PRINT CHR$(236)+CHR$(237); " "; 
+RETURN 
+1200 RUN wild("CurXY",35,15)
+PRINT "GAME OVER"
+IF top<15 THEN 
+k=17
+ELSE 
+k=5
+ENDIF 
+RUN wild("CurXY",29,k)
+PRINT "Q to Quit"
+RUN wild("CurXY",29,k+2)
+PRINT "Left Right Arrows to move"
+RUN wild("CurXY",29,k+4)
+PRINT "Space to Shoot"
+RUN wild("CurXY",29,k+6)
+PRINT "<Enter> to Play Again"; 
+RUN wild("CurXY",29,k+8)
+PRINT "P to Pause Game"; 
+lives=0
+1210 RUN wild("Inkey",key)
+IF key=13 THEN 1220
+IF key=113 OR key=81 THEN 1020
+key=0
+GOTO 1210
+1220 top=2 \level=1 \score=0 \vector=1 \key=0
+looplen=250
+num_aliens=0
+lives=3
+loopcnt=0
+RUN wild("Clear")
+GOTO 4
+1230 check=0
+FOR i=1 TO 5
+IF missilesy(i)=29 THEN 
+check=check+1
+ENDIF 
+NEXT i
+IF check=5 THEN 
+lastxx=missilesx(1)
+num_missiles=0
+ENDIF 
+FOR i=1 TO 5
+IF missilesy(i+5)<29 THEN 
+FOR k=top+4 TO 28
+RUN wild("CurXY",missilesx(i+5),k)
+PRINT " "; 
+NEXT k
+ENDIF 
+NEXT i
+RETURN 
+1240 FOR i=1 TO num_missiles
+FOR k=top+4 TO 27
+RUN wild("CurXY",ship(i),k)
+PRINT " "; 
+NEXT k
+NEXT i
+RETURN 
+1250 RUN wild("CurXY",35,15)
+PRINT "PAUSED"; 
+FOR k=1 TO 2000 \NEXT k
+key=0
+1251 RUN wild("Inkey",key)
+IF key=32 THEN 1252
+key=0
+GOTO 1251
+1252 RUN wild("CurXY",35,15)
+PRINT "      "; 
+GOTO 10
+1260 FOR i=top+4 TO 28
+RUN wild("CurXY",lastxx,i)
+PRINT " "; 
+NEXT i
+FOR i=top+4 TO 28
+RUN wild("CurXY",lastx,i)
+PRINT " "; 
+NEXT i
+RETURN 
+1270 IF num_missiles<=4 THEN 
+GOTO 1030
+ELSE 
+GOTO 14
+ENDIF 
