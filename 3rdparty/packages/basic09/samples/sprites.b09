@@ -1,0 +1,124 @@
+PROCEDURE dpoke
+PARAM loc,value:INTEGER
+POKE loc,PEEK(ADDR(value))
+POKE loc+1,PEEK(ADDR(value)+1)
+END 
+
+PROCEDURE spcreate
+DIM str:STRING
+DIM i,radd:INTEGER
+TYPE fnc=b0,b1,b2:BYTE
+DIM spadd:fnc
+i=$2B
+print "SPCreate"
+RUN wild("SPCreate",i,radd)
+PRINT "Mapped Page"; i; " Addr="; radd
+print "SPLoad"
+RUN wild("SPLoad",radd,"/DD/SYS/BACKGROUNDS/THING.BIN")
+print "SPAssign"
+spadd.b0=$05
+spadd.b1=$60
+spadd.b2=$00
+RUN wild("SPAssign",0,spadd)
+spadd.b0=$05
+spadd.b1=$61
+spadd.b2=$00
+RUN wild("SPAssign",1,spadd)
+spadd.b0=$05
+spadd.b1=$62
+spadd.b2=$00
+RUN wild("SPAssign",2,spadd)
+spadd.b0=$05
+spadd.b1=$63
+spadd.b2=$00
+RUN wild("SPAssign",3,spadd)
+print "SPConfig"
+RUN wild("SPConfig",0,2,0,0,1)
+RUN wild("SPConfig",1,2,0,0,1)
+RUN wild("SPConfig",2,2,0,0,1)
+RUN wild("SPConfig",3,2,0,0,1)
+(* RUN wild("SPSave",radd,"/DD/TESTSPRT",400) *)
+print "SPKill"
+RUN wild("SPKill",i,radd)
+PROCEDURE loadclut0
+PARAM fname:STRING
+DIM cl0:INTEGER
+DIM pg,loc,i,c,x:INTEGER
+DIM p:BYTE
+pg=$C1
+RUN wild("MapBlk",pg,loc)
+i=$1000+loc
+OPEN #p,"/DD/SYS/BACKGROUNDS/GRUDGE.PAL":READ
+REPEAT 
+GET #p,c
+RUN dpoke(i,c)
+i=i+2
+UNTIL i>=$1400+loc
+CLOSE #p
+RUN wild("ClrBlk",pg,loc)
+END 
+
+PROCEDURE possprites
+RUN wild("Clear")
+DIM nm:STRING
+DIM x,xx:INTEGER
+RUN wild("Gon")
+FOR x=25 TO 350
+RUN wild("SPPos",0,x,70)
+RUN wild("SPPos",1,x,100)
+RUN wild("SPPos",2,x,125)
+RUN wild("SPPos",3,x,160)
+NEXT x
+INPUT "",nm
+RUN wild("Goff")
+PROCEDURE joyssprt
+DIM value,x,y,i:INTEGER
+x=120
+y=120
+RUN wild("CurOff")
+RUN wild("Clear")
+RUN wild("GOn")
+10 RUN wild("JoyA",value)
+IF value=251 THEN 100
+IF value=247 THEN 200
+IF value=239 THEN 300
+IF value=254 THEN 220
+IF value=253 THEN 230
+20 RUN wild("SPPos",0,x,y)
+FOR t=1 TO 50 \NEXT t
+GOTO 10
+100 IF x>=1 THEN 
+x=x-1
+ENDIF 
+GOTO 20
+200 IF x<=275 THEN 
+x=x+1
+ENDIF 
+GOTO 20
+220 IF y>=1 THEN 
+y=y-1
+ENDIF 
+GOTO 20
+230 IF y<=220 THEN 
+y=y+1
+ENDIF 
+GOTO 20
+300 RUN wild("Goff")
+RUN wild("CurOn")
+END 
+PROCEDURE sprites
+RUN loadclut0
+RUN spcreate
+DIM sel:INTEGER
+PRINT "Sprite Demo"
+PRINT "1 Sprite Test"
+PRINT "2 Joystick Sprite Test"
+INPUT "Selection [1:2] ",sel
+IF sel=1 THEN 
+RUN possprites
+END 
+ENDIF 
+IF sel=2 THEN 
+RUN joyssprt
+END 
+ENDIF 

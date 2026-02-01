@@ -1,0 +1,14 @@
+PROCEDURE gfxdemo
+DIM pau:STRING
+DIM bm0:INTEGER
+RUN wild("Clear")
+RUN wild("Bitmap",0,0,bm0,0,0,"/DD/CMDS/XTCLUT")
+RUN wild("Gon")
+RUN wild("BMClear",bm0,0)
+RUN wild("Line",110,120,210,120,6,bm0)
+RUN wild("Line",160,70,160,170,6,bm0)
+RUN wild("Circle",160,120,30,0,6,bm0)
+RUN wild("Box",110,70,210,170,6,bm0)
+INPUT "<Enter> Cont",pau
+RUN wild("BMoff",0)
+RUN wild("Goff")
