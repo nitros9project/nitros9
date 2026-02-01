@@ -1,8 +1,9 @@
 PROCEDURE sid
+(* SID Sound test by: Roger Taylor *)
 DIM rr,pp,page:INTEGER
 page=$C4
 pp=$00
-RUN foenix("MapBlk",page,rr)
+RUN wild("MapBlk",page,rr)
 m=rr+pp
 PRINT "Mapped in="; rr
 FOR Z=0 TO 23
@@ -33,7 +34,7 @@ FOR Z=1 TO g
 NEXT Z
 GOTO 100
 2000 POKE m+24,0
-RUN foenix("ClrBlk",page,r)
+RUN wild("ClrBlk",page,r)
 END 
 DATA 15,210,0,0,0,0,2000
 DATA 15,210,21,31,0,0,2000
