@@ -261,12 +261,7 @@ z01B1               pshs      x
                     lbcs      errexit
                     puls      x,pc
 
-z01CA               pshs      x
-                    ifgt      Level-1
-                    leax      poltable,u
-                    else
-                    ldx       <dpoltbl
-                    endc
+z01CA               pshs      x                   on entry, x points to which poltbl entry to display
                     ldb       <devcount
                     pshs      b
 * now we make an assumption that data
