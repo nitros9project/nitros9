@@ -15,6 +15,9 @@
 *
 *          2025/12/23  R Taylor
 * Added -L option to specify # of lines to read from device
+*
+*          2026/02/25  R Taylor
+* Added delay before closing modem device after last string char is sent
 
 
                     ifp1
@@ -24,10 +27,10 @@
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       6
+edition             set       7
 
 * Here are some tweakable options
-STACKSZ             set       128                 estimated stack size in bytes
+STACKSZ             set       256                 estimated stack size in bytes
 PARMSZ              set       256                 estimated parameter size in bytes
 
                     mod       eom,name,tylg,atrv,start,size
@@ -54,7 +57,7 @@ name                fcs       /Modem/
                     fcb       edition             change to 6, as merge 5 has problems?
 
 devicestr           fcs       "/wz"
-crlf                fcb       13,10
+crlf                fcb       13,10,0
 aliasdir            fcs       "/dd/sys/modem.conf"
 
 * Here's how registers are set when this process is forked:
@@ -157,7 +160,7 @@ do.dash             leax      1,x                 skip over dash
 do.t                lbsr      ASC2Int            get timeout seconds
                     tstb
                     bne       do.t1
-                    ldb       #1
+                    ldb       #2
 do.t1               stb       <timeout
                     bra       do.opts2            do more args
 ********************************************************************
@@ -179,42 +182,45 @@ do.reset            lda       WizFi.Base
                     bra       do.opts2
 
 ********************************************************************
-do.string           stx       <param
+do.string           leax      1,x
+                    pshs      x
                     leax      devicestr,pcr
                     lda       #WRITE.
                     os9       I$Open              open the file for reading
                     lbcs      read.ex             crap out if error
                     sta       <path
-                    ldx       <param
-do.s1               leax      1,x
-                    stx       <param
+                    puls      x
 do.sw               ldd       ,x
                     cmpd      #$2222
                     beq       do.esc
                     cmpa      #34
                     beq       do.sx
+                    cmpa      #$00
+                    lbeq      do.sx
+                    cmpa      #C$CR
+                    lbeq      do.sx
                     cmpa      #'\
                     bne       do.chr
 do.esc              leax      1,x
-                    stx       <param
-                    lda       ,x
-do.chr              cmpa      #$00
-                    lbeq      Exit
-                    cmpa      #C$CR
-                    lbeq      Exit
-                    ldy       #1
+do.chr              ldy       #1
                     lda       <path
-                    os9       I$WritLn
+                    os9       I$Write
                     lbcs      read.ex             crap out if error
-                    lbra      do.s1
+                    leax      1,x
+                    bra       do.sw
 do.sx               leax      crlf,pcr
                     ldy       #2
                     lda       <path
-                    os9       I$WritLn
+                    os9       I$Write
                     lbcs      read.ex             crap out if error
+                    ldx       #0
+do.delay            mul
+                    leax      -1,x
+                    bne       do.delay
                     lda       <path               get the current path number
                     os9       I$Close             close it
-                    lbra      do.opts
+                    lbra      Exit
+*                    lbra      do.opts
 ********************************************************************
 do.file             ldx       <param
                     lbsr      space
