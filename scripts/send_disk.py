@@ -23,6 +23,14 @@ Notes:
       speed depends on how fast the 6809 can poll the ACIA receive register.
     - The disk image is padded to a 512-byte boundary if necessary.
     - Run a short benchmark first (--sectors 100) to gauge throughput.
+Notes on the ring-buffer / chunk-delay issue:
+    The 6809 UART ring buffer (io.asm) is only 15 bytes.  If the Pico's
+    USB-CDC virtual ACIA delivers bytes faster than the 6809 can drain
+    the ring buffer, bytes are silently dropped and the checksum fails.
+    Use --chunk-delay to pace the payload into small bursts that the 6809
+    can keep up with.  Start with --chunk-delay 2 (2 ms per 8-byte chunk).
+    If the Pico firmware properly honours the 6809's RTS signal, no delay
+    is needed and the default (0) works fine.
 """
 
 import argparse
@@ -50,7 +58,11 @@ def xor_checksum(data):
     return chk
 
 
-def send_disk(port, baud, image_path, start_lba=0, max_sectors=None):
+CHUNK_SIZE = 8   # bytes per timed burst when --chunk-delay is used
+
+
+def send_disk(port, baud, image_path, start_lba=0, max_sectors=None,
+              chunk_delay=0.0):
     with open(image_path, 'rb') as fh:
         image = fh.read()
 
@@ -66,6 +78,9 @@ def send_disk(port, baud, image_path, start_lba=0, max_sectors=None):
     print(f"Size:       {len(image)} bytes  ({total} sectors of {SECTOR_SIZE} bytes)")
     print(f"Port:       {port}  baud={baud}")
     print(f"Start LBA:  {start_lba}")
+    if chunk_delay:
+        print(f"Chunk mode: {CHUNK_SIZE} bytes every {chunk_delay*1000:.0f} ms"
+              f"  (~{CHUNK_SIZE/chunk_delay/1024:.1f} KB/s)")
     print()
 
     ser = serial.Serial(port, baud, timeout=10)
@@ -93,10 +108,44 @@ def send_disk(port, baud, image_path, start_lba=0, max_sectors=None):
             return False
         print(" OK")
 
-        failed    = 0
-        t_start   = time.time()
-        t_last    = t_start
-        bytes_last = 0
+        BAR_WIDTH  = 30
+        failed     = 0
+        t_start    = time.time()
+        # Rolling rate: average over the last RATE_WINDOW sectors
+        RATE_WINDOW = 10
+        sector_times = []   # (completion_time, cumulative_bytes) ring
+
+        def render_progress(n, lba, retries):
+            done       = n + 1
+            pct        = done / total
+            filled     = int(BAR_WIDTH * pct)
+            bar        = '=' * filled + ('>' if filled < BAR_WIDTH else '') \
+                         + ' ' * (BAR_WIDTH - filled - (1 if filled < BAR_WIDTH else 0))
+            now        = time.time()
+            elapsed    = now - t_start
+            done_bytes = done * SECTOR_SIZE
+
+            # Rate: slope over the recent window, fall back to overall average
+            if len(sector_times) >= 2:
+                dt = sector_times[-1][0] - sector_times[0][0]
+                db = sector_times[-1][1] - sector_times[0][1]
+                rate = db / dt if dt > 0 else 0
+            else:
+                rate = done_bytes / elapsed if elapsed > 0 else 0
+
+            avg_rate = done_bytes / elapsed if elapsed > 0 else 0
+            remaining = (total - done) * SECTOR_SIZE
+            eta  = remaining / avg_rate if avg_rate > 0 else 0
+
+            retry_str = f"  retries={retries}" if retries else ''
+            sys.stdout.write(
+                f"\r  [{bar}] {pct:4.0%}"
+                f"  LBA {lba:6d}/{start_lba + total - 1}"
+                f"  {rate / 1024:5.1f} KB/s"
+                f"  ETA {int(eta):4d}s"
+                f"{retry_str}   "
+            )
+            sys.stdout.flush()
 
         for n in range(total):
             lba  = start_lba + n
@@ -113,50 +162,47 @@ def send_disk(port, baud, image_path, start_lba=0, max_sectors=None):
 
             success = False
             for attempt in range(MAX_RETRIES):
-                ser.write(frame)
+                if chunk_delay:
+                    for i in range(0, len(frame), CHUNK_SIZE):
+                        ser.write(frame[i:i + CHUNK_SIZE])
+                        time.sleep(chunk_delay)
+                else:
+                    ser.write(frame)
                 resp = ser.read(1)
                 if resp == ACK:
                     success = True
                     break
                 failed += 1
                 if attempt < MAX_RETRIES - 1:
-                    sys.stderr.write(
-                        f"\r  NAK at LBA {lba} attempt {attempt + 1}/{MAX_RETRIES}   \n"
+                    sys.stdout.write(
+                        f"\r  NAK at LBA {lba} attempt {attempt + 1}/{MAX_RETRIES}"
+                        f" — retrying...   \n"
                     )
+                    sys.stdout.flush()
 
             if not success:
-                print(f"\nFailed after {MAX_RETRIES} retries at LBA {lba}.")
+                sys.stdout.write(f"\n\nFailed after {MAX_RETRIES} retries at LBA {lba}.\n")
                 return False
 
-            # Progress line every 50 sectors or on the last one
-            if n % 50 == 49 or n == total - 1:
-                now      = time.time()
-                elapsed  = now - t_start
-                interval = now - t_last
-                done_bytes = (n + 1) * SECTOR_SIZE
-                rate     = (done_bytes - bytes_last) / interval if interval > 0 else 0
-                avg_rate = done_bytes / elapsed if elapsed > 0 else 0
-                pct      = (n + 1) * 100 // total
-                eta      = (total - n - 1) * SECTOR_SIZE / avg_rate if avg_rate > 0 else 0
-                print(
-                    f"\r  {pct:3d}%  LBA {lba:6d}/{start_lba + total - 1}"
-                    f"  {rate / 1024:5.1f} KB/s  ETA {int(eta):4d}s"
-                    f"  retries={failed}   ",
-                    end='', flush=True,
-                )
-                t_last     = now
-                bytes_last = done_bytes
+            now = time.time()
+            sector_times.append((now, (n + 1) * SECTOR_SIZE))
+            if len(sector_times) > RATE_WINDOW:
+                sector_times.pop(0)
+
+            render_progress(n, lba, failed)
 
         # Send end-of-transfer
         ser.write(bytes([EOT]))
         resp = ser.read(1)
-        print()
+        sys.stdout.write('\n')
 
-        elapsed = time.time() - t_start
+        elapsed    = time.time() - t_start
         total_bytes = total * SECTOR_SIZE
+        avg_rate   = total_bytes / elapsed if elapsed > 0 else 0
         print(
-            f"\nTransfer complete: {total_bytes} bytes in {elapsed:.1f}s "
-            f"({total_bytes / elapsed / 1024:.1f} KB/s avg)  retries={failed}"
+            f"\nTransfer complete: {total_bytes} bytes in {elapsed:.1f}s"
+            f"  ({avg_rate / 1024:.1f} KB/s avg)"
+            + (f"  {failed} retries" if failed else '')
         )
         return True
 
@@ -182,9 +228,18 @@ def main():
         '--sectors', type=int, default=None,
         help='Limit transfer to this many sectors (useful for benchmarking)',
     )
+    ap.add_argument(
+        '--chunk-delay', type=float, default=0.0, metavar='MS',
+        help=(
+            f'Pace payload in {CHUNK_SIZE}-byte bursts with this delay (ms) between '
+            'each burst.  Use when the Pico virtual ACIA floods the 6809 ring '
+            'buffer (symptoms: consistent NAK on every sector).  Try 2.'
+        ),
+    )
     args = ap.parse_args()
 
-    ok = send_disk(args.port, args.baud, args.image, args.start_lba, args.sectors)
+    ok = send_disk(args.port, args.baud, args.image, args.start_lba, args.sectors,
+                   chunk_delay=args.chunk_delay / 1000.0)
     sys.exit(0 if ok else 1)
 
 
