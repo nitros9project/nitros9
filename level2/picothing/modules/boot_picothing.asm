@@ -21,7 +21,7 @@
 
                   IFP1
                     use       defsfile
-                    use       ide.d
+                    use       ide_picothing.d
                   ENDC
 
 tylg                set       Systm+Objct

@@ -79,10 +79,9 @@ PTM.T1MSB           EQU       PTMBase+7 timer 1 MSB
 *
 * PATA Hard Disk (in I/O space $FF00-$FFBF)
 *
-* Note: PTIDEBase must be set to the actual base address of the PATA
-* registers on the Pico-Thing board. Update this value to match hardware.
-* The data register at offset 0 is 16-bit (use LDD/STD).
-* All other registers are 8-bit. There is no latch register.
+* Note: the Pico maps the 16-bit ATA data word at PTIDEBase+0, shifting
+* all other task-file registers up by one vs standard ATA.  Use
+* defs/ide_picothing.d (not ide.d) for register offsets.
 *
 PTIDEBase           EQU       $FF00     PATA base address
 

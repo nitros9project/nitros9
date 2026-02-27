@@ -28,7 +28,7 @@
                   IFP1
                     use       defsfile
                     use       rbsuper.d
-                    use       ide.d
+                    use       ide_picothing.d
                   ENDC
 
 tylg                set       Sbrtn+Objct
