@@ -29,6 +29,7 @@ clean:
 	$(RM) $(DSKDIR)/*.dsk $(DSKDIR)/*.DSK $(DSKDIR)/*.img
 	$(RM) $(DSKDIR)/ReadMe
 	$(RM) $(DSKDIR)/index.html $(DSKDIR)/index.shtml
+	$(RM) $(NITROS9DIR)/defs/buildinfo
 	$(foreach dir,$(dirs),$(MAKE) -C $(dir) clean &&) :
 	$(RM) defs/buildinfo
 

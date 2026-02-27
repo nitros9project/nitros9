@@ -22,6 +22,7 @@ TkPerTS             equ       2         ticks per time slice
 
                   IFP1
                     use       defsfile
+                    use       cocovtio.d
                   ENDC
 
 Edtn                equ       1

@@ -4,4 +4,3 @@ Level    equ   2
          use   scf.d
          use   rbf.d
          use   picothing.d
-         use   cocovtio.d
