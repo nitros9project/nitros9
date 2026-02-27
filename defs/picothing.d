@@ -84,12 +84,12 @@ PTM.T1MSB           EQU       PTMBase+7 timer 1 MSB
 * The data register at offset 0 is 16-bit (use LDD/STD).
 * All other registers are 8-bit. There is no latch register.
 *
-PTIDEBase           EQU       $FF40     PATA base address (update to match hardware)
+PTIDEBase           EQU       $FF00     PATA base address
 
 *
 * Boot
 *
-Bt.Start            EQU       $EE00     start address of bootfile in memory
+Bt.Start            EQU       $EC00     boot_picothing at $EC00 (padded to 512), krn at $EE00
 SHIFTBIT            EQU       0         no shift key on serial console
 
 *

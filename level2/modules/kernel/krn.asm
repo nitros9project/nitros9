@@ -54,8 +54,8 @@ Revision            set       00        module revision
 Edition             set       20        module Edition
 
 * The absolute address of where Kernel starts in memory.
-                  IFNE    wildbits
-Where               equ       $EE00     Wildbits
+                  IFNE    picothing+wildbits
+Where               equ       $EE00     picothing/Wildbits
                   ELSE
 Where               equ       $F000     CoCo 3
                   ENDC

@@ -27,8 +27,9 @@ PIPE        = $(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd
 # Sysgo
 SYSGO       = $(MD)/sysgo
 
-# Bootfile contents: krnp2 + init + ioman + boot + drivers + sysgo + krn
-# krn must be last (it scans backward to find other modules)
+# OS9Boot disk image: all modules loaded from PATA by boot_picothing.
+# boot_picothing and krn are already in RAM (loaded via SREC); including them
+# here is harmless - I.VBlock will simply ignore duplicate module names.
 BOOTFILE_PT = $(KERNELP2) \
               $(BOOT) \
               $(RBF) \
@@ -38,12 +39,17 @@ BOOTFILE_PT = $(KERNELP2) \
               $(SYSGO) \
               $(KERNEL)
 
-ALLOBJS     = bootfile_pt
+SREC        = boot_picothing.srec
+
+ALLOBJS     = bootfile_pt $(SREC)
 
 all:    $(ALLOBJS)
 
 bootfile_pt: $(BOOTFILE_PT) $(DEPENDS)
 	$(MERGE) $(BOOTFILE_PT) >$@
+
+$(SREC): $(BOOT) $(KERNEL) $(DEPENDS)
+	python3 $(NITROS9DIR)/scripts/mk_picothing_srec.py $(NITROS9DIR) >$@
 
 clean:
 	$(RM) $(ALLOBJS)
