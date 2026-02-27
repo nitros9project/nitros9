@@ -156,6 +156,22 @@ forever@            bra       forever@  simply branch forever
                   ENDC
 *<<<<<<<<<< Wildbits PORT
 
+*>>>>>>>>>> Pico-Thing PORT
+                  IFNE    picothing
+* PicoBtBug - boot debug character output to virtual MC6850 ACIA
+*
+* Called via D.BtBug (set up below).  Character to print is in A.
+* Polls TDRE (bit 1 of status register) before transmitting.
+* All registers preserved except CC.
+PicoBtBug           pshs      b
+p@                  ldb       ACIA.Ctrl   read ACIA status register
+                    bitb      #%00000010  transmit data register empty?
+                    beq       p@          no, keep polling
+                    sta       ACIA.Data   transmit the character
+                    puls      b,pc        restore B and return
+                  ENDC
+*<<<<<<<<<< Pico-Thing PORT
+
 * The Kernel entry point.
 entry               equ       *
 * Initialize the system block (the lowest 8KB of memory).
@@ -244,6 +260,18 @@ l@                  std       ,x++      now clear memory 16 bits at a time
                   ENDC
 *<<<<<<<<<< Wildbits PORT
 
+*>>>>>>>>>> Pico-Thing PORT
+* Set up D.BtBug as a JMP to PicoBtBug so boot progress prints on the ACIA console.
+                  IFNE    picothing
+                    pshs      b
+                    ldb       #$7E      JMP extended opcode
+                    stb       <D.BtBug  store opcode at D.BtBug
+                    leax      PicoBtBug,pcr address of the ACIA output routine
+                    stx       <D.BtBug+1 store 2-byte target address
+                    puls      b
+                  ENDC
+*<<<<<<<<<< Pico-Thing PORT
+
 * Set up system variables in DP
                     std       <D.Tasks  set the task structure pointer to $0100
                     addb      #$20      D is now $0120
@@ -310,7 +338,7 @@ l@                  std       ,x++      now clear memory 16 bits at a time
                     leay      >DisTable,pcr point to the table of absolute vector addresses
                   ELSE
 *<<<<<<<<<< Wildbits PORT
-                    leay      <DisTable,pcr point to the table of absolute vector addresses
+                    leay      >DisTable,pcr point to the table of absolute vector addresses
                   ENDC
                     ldx       #D.Clock  and get the address to put it in memory
                   IFNE    H6309
