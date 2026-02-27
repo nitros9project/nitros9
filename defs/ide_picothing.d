@@ -1,4 +1,4 @@
-                  IFNE      IDE_PICOTHING.D-1
+                  IFNE    IDE_PICOTHING.D-1
 
 IDE_PICOTHING.D     SET       1
 IDE.D               SET       1         suppress standard ide.d (offsets differ)
