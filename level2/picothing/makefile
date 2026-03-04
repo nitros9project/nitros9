@@ -48,7 +48,7 @@ dskcopy: $(DSKS)
 $(DSK_PT):
 	$(RM) $@
 	$(OS9FORMAT_SD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
-	$(OS9COPY) $(BOOTFILE_PT) $@,OS9Boot
+	$(OS9GEN) $@ -b=$(BOOTFILE_PT)
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
 	$(OS9COPY) modules/$(SYSGO) $@,sysgo

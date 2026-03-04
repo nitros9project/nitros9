@@ -55,7 +55,7 @@ Edition             set       20        module Edition
 
 * The absolute address of where Kernel starts in memory.
                   IFNE    picothing+wildbits
-Where               equ       $EE00     picothing/Wildbits
+Where               equ       $EC00     picothing/Wildbits
                   ELSE
 Where               equ       $F000     CoCo 3
                   ENDC
@@ -164,11 +164,48 @@ forever@            bra       forever@  simply branch forever
 * Polls TDRE (bit 1 of status register) before transmitting.
 * All registers preserved except CC.
 PicoBtBug           pshs      b
-p@                  ldb       ACIA.Ctrl   read ACIA status register
-                    bitb      #%00000010  transmit data register empty?
-                    beq       p@          no, keep polling
-                    sta       ACIA.Data   transmit the character
-                    puls      b,pc        restore B and return
+p@                  ldb       ACIA.Ctrl read ACIA status register
+                    bitb      #%00000010 transmit data register empty?
+                    beq       p@        no, keep polling
+                    sta       ACIA.Data transmit the character
+                    puls      b,pc      restore B and return
+
+* PicoBtHex - print B as two hex digits via D.BtBug
+*
+* Input:  B = byte to print
+* Output: none
+* All registers preserved
+PicoBtHex           pshs      a         save A (B preserved throughout)
+                    tfr       b,a       copy byte
+                    lsra                shift high nibble into low bits
+                    lsra
+                    lsra
+                    lsra
+                    anda      #$0F      mask to nibble
+                    adda      #'0       convert to ASCII digit
+                    cmpa      #'9+1     past '9'?
+                    blo       hi@       no, it is 0-9
+                    adda      #'A-'9-1  yes, shift to A-F
+hi@                 jsr       <D.BtBug  print high nibble character
+                    tfr       b,a       reload original byte
+                    anda      #$0F      mask low nibble
+                    adda      #'0       convert to ASCII digit
+                    cmpa      #'9+1     past '9'?
+                    blo       lo@       no, it is 0-9
+                    adda      #'A-'9-1  yes, shift to A-F
+lo@                 jsr       <D.BtBug  print low nibble character
+                    puls      a,pc      restore A and return
+
+* PicoCrash - crash handler for D.Crash
+*
+* Prints '!' on the ACIA and loops forever.
+PicoCrash           orcc      #IntMasks mask interrupts
+                    lda       #'!       crash marker character
+cr@                 ldb       ACIA.Ctrl read ACIA status register
+                    bitb      #%00000010 transmit data register empty?
+                    beq       cr@       no, keep polling
+                    sta       ACIA.Data transmit the character
+cr2@                bra       cr2@      loop forever
                   ENDC
 *<<<<<<<<<< Pico-Thing PORT
 
@@ -230,8 +267,13 @@ done@               ldx       #$0000    start clearing at this address
                     std       <D.CCStk  set pointer to top of global memory to $2000
                     lda       #$01      set task user table to $0100
                   ELSE
+                  IFNE    picothing
+                    ldx       #$0000    picothing has no REL to clear page 0
+                    ldy       #$2000    clear all of pages 0 and 1
+                  ELSE
                     ldx       #$100     start clearing at this address
                     ldy       #$2000-$100 for this many bytes
+                  ENDC
                   ENDC
                   ENDC
 
@@ -268,6 +310,9 @@ l@                  std       ,x++      now clear memory 16 bits at a time
                     stb       <D.BtBug  store opcode at D.BtBug
                     leax      PicoBtBug,pcr address of the ACIA output routine
                     stx       <D.BtBug+1 store 2-byte target address
+                    stb       <D.Crash  store JMP opcode at D.Crash
+                    leax      PicoCrash,pcr address of crash handler
+                    stx       <D.Crash+1 store 2-byte target address
                     puls      b
                   ENDC
 *<<<<<<<<<< Pico-Thing PORT
@@ -480,6 +525,19 @@ l@                  stu       ,x++      store it
 L0104               inc       ,x+       mark it as used
                     decb                done?
                     bne       L0104     no, go back till done
+
+*>>>>>>>>>> Pico-Thing PORT
+                  IFNE    picothing
+* Mark kernel block pages ($E0-$FF) as in-use so FSRqMem doesn't allocate them.
+* On CoCo3, block 7 is ROM/IO and handled by hardware. On picothing, block 7
+* is real RAM holding the kernel and must be reserved in D.SysMem.
+                    leax      $E0-$20,x point to page $E0 in system memory map
+                    ldb       #32       32 pages in block 7
+pt@                 inc       ,x+       mark page as used
+                    decb
+                    bne       pt@
+                  ENDC
+*<<<<<<<<<< Pico-Thing PORT
 
 *>>>>>>>>>> Wildbits PORT
                   IFNE    wildbits
@@ -753,6 +811,13 @@ GoUser              lbra      L0E5E     else call the users's routine
 XSWI2               ldx       <D.Proc   get the current process descriptor
                     ldu       P$SWI2,x  any SWI vector?
                     bne       GoUser    yes, go execute it
+                  IFNE    picothing
+* The Pico firmware routes SWI2 directly here, bypassing SWI2VCT/SWICall.
+* Read B with the function code and dispatch system-state calls via SysCall.
+                    ldb       [R$PC,s]  read function code from caller's memory
+                    lda       P$State,x already in system state?
+                    lbmi      SysCall   yes, dispatch via D.SysDis
+                  ENDC
 
 * Process software interrupts from a user state.
 *
@@ -900,7 +965,15 @@ l@                  ldu       ,x++      get the source bytes
 * Process software interrupts from system state.
 *
 * Entry: U = The register stack pointer.
-SysCall             leau      ,s        get the pointer to the register stack
+SysCall             equ       *
+                  IFNE    picothing
+* On picothing the SWI2 stub jumps here directly (D.XSWI2 = SysCall).
+* SWICall is not in the dispatch path, so B has not been loaded yet.
+* S still holds the raw SWI2 frame; R$PC offset $0A points to the
+* function code byte placed after the SWI2 instruction by the os9 macro.
+                    ldb       [R$PC,s]  read the function code from caller's memory
+                  ENDC
+                    leau      ,s        get the pointer to the register stack
                     lda       <D.SSTskN get the system task number (0 = system, 1 = GrfDrv)
                     clr       <D.SSTskN force the system process
                     pshs      a         save the system task number
@@ -1113,7 +1186,18 @@ l@                  ldx       ,u++      get the bytes
                     decb                decrement the counter
                     bne       l@        branch if not done
                   ENDC
-MyRTI               rti                 return from IRQ
+MyRTI
+                  IFNE    picothing
+                    pshs      a,b       save temporaries (offsets stack by 2)
+                    lda       #'R       print 'R' before RTI PC
+                    jsr       <D.BtBug
+                    ldb       2+R$PC,s  high byte of saved PC (stack offset by 2)
+                    lbsr      PicoBtHex print as 2 hex digits
+                    ldb       2+R$PC+1,s low byte of saved PC
+                    lbsr      PicoBtHex print as 2 hex digits
+                    puls      a,b       restore temporaries
+                  ENDC
+                    rti                 return from IRQ
 
 
 * Execute routine in task 1 pointed to by U.
@@ -1174,8 +1258,8 @@ L0E93               leau      1,u       point to the actual MMU block
 * 8 single-byte copies replace the 4 double-byte copies used by CoCo3.
                     lda       #DAT.BlCt loop counter for all 8 blocks
                     pshs      a         save counter
-PicoT_L             lda       ,u++      get block number
-                    sta       ,x++      store to DAT register
+PicoT_L             lda       ,u++      get block number (skip high byte of 2-byte entry)
+                    sta       ,x+       store to 1-byte DAT register
                     dec       ,s        done?
                     bne       PicoT_L   no, keep going
                     puls      a,pc      clean stack and return

@@ -40,12 +40,12 @@ TkPerSec            SET       50        ticks per second (50Hz timer)
 *
 DAT.BlCt            EQU       8         blocks per address space
 DAT.BlSz            EQU       (256/DAT.BlCt)*256 8KB block size
-DAT.ImSz            EQU       DAT.BlCt  8 bytes per DAT image (1 byte per block)
+DAT.ImSz            EQU       DAT.BlCt*2 16 bytes per DAT image (2 bytes per block, low byte = page)
 DAT.Task            EQU       $FFC0     task register (Pico)
 DAT.Regs            EQU       $FE00     DAT RAM base address
 DAT.TkCt            EQU       32        number of task slots
 DAT.BlMx            EQU       $FE       max user-allocatable block number
-DAT.Free            EQU       $FF       free block marker (sentinel, never allocated)
+DAT.Free            EQU       $333E     free block marker (matches CoCo3/wildbits convention)
 DAT.BMSz            EQU       $100      block map size (256 physical pages)
 DAT.WrPr            EQU       0         write protect (not supported)
 DAT.WrEn            EQU       0         write enable (not supported)
@@ -88,7 +88,7 @@ PTIDEBase           EQU       $FF00     PATA base address
 *
 * Boot
 *
-Bt.Start            EQU       $EC00     boot_picothing at $EC00 (padded to 512), krn at $EE00
+Bt.Start            EQU       $E800     boot_picothing at $E800 (padded to 1024), krn at $EC00
 SHIFTBIT            EQU       0         no shift key on serial console
 
 *
