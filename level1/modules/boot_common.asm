@@ -229,8 +229,10 @@ FragBoot            ldb       DD.BT,x   MSB fd sector location
 GrabBootMem
                   IFGT    Level-1
                   IFNE    picothing
+                    pshs      a
                     lda       #'B       about to call F$BtMem
                     jsr       <D.BtBug
+                    puls      a
                   ENDC
                     os9       F$BtMem
                   IFNE    picothing
@@ -254,6 +256,14 @@ btmok@              lda       #'A       F$BtMem returned OK
 
                   IFNE    picothing
                     pshs      x
+* Print blockloc (boot memory start address)
+                    lda       #'@
+                    jsr       <D.BtBug
+                    lda       blockloc,u boot memory high byte
+                    lbsr      PrHex
+                    lda       blockloc+1,u boot memory low byte
+                    lbsr      PrHex
+* Print segment info
                     lda       #'{
                     jsr       <D.BtBug
                     lda       FDSL.A,x  segment sector MSB
@@ -285,6 +295,10 @@ BL2                 ldx       FDSL.A+1,x LSW sector location
                   ENDC
                     lbeq      Back2Krn
 BL3                 lbsr      HWRead
+                  IFNE    picothing
+                    lda       #'.       progress dot per sector
+                    jsr       <D.BtBug
+                  ENDC
 
                     inc       blockloc,u point to next input sector in mem
 
@@ -302,5 +316,10 @@ BL3                 lbsr      HWRead
                   ENDC
                     bra       BL2
 
-NextSeg             leax      FDSL.S,x  advance to next segment entry
+NextSeg
+                  IFNE    picothing
+                    lda       #'N       next segment
+                    jsr       <D.BtBug
+                  ENDC
+                    leax      FDSL.S,x  advance to next segment entry
                     bra       BootLoop

@@ -73,7 +73,14 @@ FNProc
                     andcc     #^IntMasks re-enable IRQ's (to allow pending one through)
                     fcb       $8C       skip the next 2 bytes
 
-L0D91               cwai      #^IntMasks re-enable IRQ's and wait for one
+L0D91
+                  IFNE    picothing
+                    pshs      a
+                    lda       #'W       idle: waiting for process
+                    jsr       <D.BtBug
+                    puls      a
+                  ENDC
+                    cwai      #^IntMasks re-enable IRQ's and wait for one
 L0D93               orcc      #IntMasks Shut off interrupts again
                     lda       #Suspend  get suspend suspend state flag
                     ldx       #D.AProcQ-P$Queue For start of loop, setup to point to current process

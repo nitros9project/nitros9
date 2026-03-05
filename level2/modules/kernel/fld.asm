@@ -89,8 +89,6 @@ L0B02               pshs      u,y,x     Preserve regs
 * values so we restore exactly what was there (the DAT image may hold
 * DAT.Free for unallocated blocks, which differs from the identity map
 * the hardware was booted with).
-                    lda       #'<       debug: entering L0B02 DAT remap
-                    jsr       <D.BtBug
                     lda       1,y       Get MMU block #0 to map in
                     ldb       3,y       Get MMU block #1 to map in
                     pshs      cc        Preserve int. status
@@ -99,10 +97,6 @@ L0B02               pshs      u,y,x     Preserve regs
                     std       >DAT.Regs Map in both blocks
                     ldd       ,x        Get 2 bytes
                     stu       >DAT.Regs Restore original hardware slots
-                    pshs      d         save module data
-                    lda       #'>       debug: DAT remap complete
-                    jsr       <D.BtBug
-                    puls      d         restore module data
                   ELSE
                     ldu       <D.SysDAT Get sys DAT Image ptr
                     clra                system block 0 =0 always

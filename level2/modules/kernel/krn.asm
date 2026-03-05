@@ -936,6 +936,12 @@ l@                  ldx       ,--y      get the source bytes
 * Execute the system call.
                     ldy       <D.UsrDis get the user dispatch table pointer
                     lbsr      L033B     go execute the op-code
+                  IFNE    picothing
+                    pshs      a
+                    lda       #'U       user-state call returned
+                    jsr       <D.BtBug
+                    puls      a
+                  ENDC
                   IFNE    H6309
                     aim       #^IntMasks,R$CC,u unmask interrupts in the caller's CC
                   ELSE
@@ -1064,6 +1070,17 @@ SysCall             equ       *
                     stx       R$PC,u    save my caller's updated PC register
                     ldy       <D.SysDis get the system dispatch table pointer
                     bsr       L033B     execute the system call
+                  IFNE    picothing
+                    pshs      a
+                    lda       R$CC,u    get merged CC result
+                    bita      #$01      carry set = error
+                    bne       scerr@
+                    lda       #'+       success
+                    bra       scpr@
+scerr@              lda       #'-       error
+scpr@               jsr       <D.BtBug
+                    puls      a
+                  ENDC
                     puls      a         restore the system state task number
                     lbra      L0E2B     return to the process
 

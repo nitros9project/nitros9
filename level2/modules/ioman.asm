@@ -700,7 +700,22 @@ L023F               ldd       HWPORT,s
                     clr       V.PAGE,u            clear page byte
                     std       V.PORT,u            save port address
                     ldy       VDESC,s             load Y with desc ptr
+                  IFNE    picothing
+                    pshs      a
+                    lda       #'G       about to call driver Init
+                    jsr       <D.BtBug
+                    puls      a
+                  ENDC
                     jsr       [<DRVENT,s]         call driver init routine
+                  IFNE    picothing
+                    pshs      a
+                    bcs       ioerr@
+                    lda       #'g       driver Init returned OK
+                    bra       iopr@
+ioerr@              lda       #'!       driver Init returned ERROR
+iopr@               jsr       <D.BtBug
+                    puls      a
+                  ENDC
                     lbcs      L015C               branch if error
                     ldu       <CURDTE,s
 L0259

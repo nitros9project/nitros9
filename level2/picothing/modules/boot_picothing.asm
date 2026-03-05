@@ -159,10 +159,14 @@ HWRead              pshs      x,b
                     ror       3,s       rotate into bits 7-0
 
 * Wait for BSY clear and DRDY
+                    lda       #'b       debug: waiting for BSY clear
+                    jsr       <D.BtBug
 bsy@                tst       Status,y
                     bmi       bsy@
                     lda       mode,u
                     sta       DevHead,y
+                    lda       #'r       debug: waiting for DRDY
+                    jsr       <D.BtBug
 rdy@                ldb       Status,y
                     andb      #BusyBit+DrdyBit
                     cmpb      #DrdyBit
@@ -177,9 +181,26 @@ rdy@                ldb       Status,y
                     sta       CylLow,y
                     lda       #S$READ
                     sta       Command,y
+                    lda       #'q       debug: waiting for DRQ
+                    jsr       <D.BtBug
+                    ldx       #0        timeout counter (65536 polls)
 drq@                lda       Status,y
-                    anda      #DrqBit
-                    beq       drq@
+                    bita      #ErrBit   check for error
+                    bne       drqerr@
+                    bita      #DrqBit
+                    bne       drqok@
+                    leax      -1,x
+                    bne       drq@
+* timeout: print status, error, psn, half
+                    lda       #'T       timeout marker
+                    jsr       <D.BtBug
+                    bsr       PrIDE     print status/error/psn/half
+                    lbra      RdDone2   abort this read
+drqerr@             lda       #'E       error marker
+                    jsr       <D.BtBug
+                    bsr       PrIDE     print status/error/psn/half
+                    lbra      RdDone2   abort this read
+drqok@
 * Read 512-byte physical sector, keep only the wanted half
                     tst       ,s        which half?
                     bne       h1@
@@ -196,6 +217,34 @@ RdDone              lda       Status,y  read final status
                     ldx       blockloc,u X = data pointer for caller
                     leas      4,s       clean [half][psn]
                     clrb                clear carry
+                    rts
+RdDone2             lda       Status,y  read final status
+                    ldx       blockloc,u X = data pointer for caller
+                    leas      4,s       clean [half][psn]
+                    comb                set carry (error)
+                    rts
+
+* PrIDE - print IDE status, error register, PSN, and half
+* Stack at call: [half:4] [psn23-16:5] [psn15-8:6] [psn7-0:7]
+* (offset +4 because BSR pushes 2 bytes for return address)
+PrIDE               lda       Status,y  read status
+                    lbsr      PrHex
+                    lda       #'/
+                    jsr       <D.BtBug
+                    lda       ErrorReg,y read error register
+                    lbsr      PrHex
+                    lda       #'@
+                    jsr       <D.BtBug
+                    lda       5,s       psn 23-16
+                    lbsr      PrHex
+                    lda       6,s       psn 15-8
+                    lbsr      PrHex
+                    lda       7,s       psn 7-0
+                    lbsr      PrHex
+                    lda       #'.
+                    jsr       <D.BtBug
+                    lda       4,s       half
+                    lbsr      PrHex
                     rts
 
 * Rd256 - read 256 bytes (128 words) from DataReg into X
