@@ -84,6 +84,20 @@ L0B02               pshs      u,y,x               Preserve regs
                     leax      d,x
                     ENDC
                     bsr       AdjBlk0             Wrap address around for 1 block
+                  IFNE    picothing
+* Picothing DAT RAM is readable SRAM.  Read the actual hardware slot
+* values so we restore exactly what was there (the DAT image may hold
+* DAT.Free for unallocated blocks, which differs from the identity map
+* the hardware was booted with).
+                    lda       1,y                 Get MMU block #0 to map in
+                    ldb       3,y                 Get MMU block #1 to map in
+                    pshs      cc                  Preserve int. status
+                    orcc      #IntMasks           shut off int.
+                    ldu       >DAT.Regs           save actual hardware slots 0 and 1
+                    std       >DAT.Regs           Map in both blocks
+                    ldd       ,x                  Get 2 bytes
+                    stu       >DAT.Regs           Restore original hardware slots
+                  ELSE
                     ldu       <D.SysDAT           Get sys DAT Image ptr
                     clra                          system block 0 =0 always
                     ldb       3,u                 Get MMU block #1
@@ -95,4 +109,5 @@ L0B02               pshs      u,y,x               Preserve regs
                     std       >DAT.Regs           Map in both blocks
                     ldd       ,x                  Get 2 bytes
                     stu       >DAT.Regs           Map original blocks in
+                  ENDC
                     puls      pc,u,y,x,cc         Restore regs & return

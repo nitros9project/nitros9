@@ -49,9 +49,6 @@ blockimg            rmb       2         duplicate of above
 bootloc             rmb       3         sector pointer
 bootsize            rmb       2         size in bytes
 LSN0Ptr             rmb       2         LSN0 pointer
-cachepsn            rmb       3         cached physical sector (24-bit)
-cacheflg            rmb       1         $FF = cache valid, $00 = invalid
-cachebuf            rmb       256       cached other-half sector data
 size                equ       .
 
 name                fcs       /Boot/
@@ -72,7 +69,6 @@ FLOPPY              equ       0
 *
 HWInit              lda       #'H       entering HWInit
                     jsr       <D.BtBug
-                    clr       cacheflg,u invalidate cache
                     ldb       WhchDriv,pcr get drive select (0=master, 1=slave)
                     bne       slave@
                     lda       #%10100000 master: DEV=0
@@ -139,8 +135,9 @@ HWTerm              clrb
 *
 * HWRead - Read one 256-byte OS-9 sector from PATA device
 *
-* Physical sectors are 512 bytes.  We cache the other half of
-* each physical sector so consecutive reads avoid re-reading.
+* Physical sectors are 512 bytes.  Each call re-reads the full
+* physical sector and keeps only the wanted 256-byte half.
+* No on-stack cache buffer needed (saves 260 bytes of stack).
 *
 * Entry: Y = hardware address (PTIDEBase)
 *        B = bits 23-16 of LSN
@@ -149,59 +146,17 @@ HWTerm              clrb
 * Exit:  X = pointer to data (= blockloc,u)
 *        Carry clear = OK, Carry set = Error
 *
-HWRead              lda       #'r
-                    jsr       <D.BtBug
-                    pshs      x,b
+HWRead              pshs      x,b
 * Stack: [LSN23-16:0] [LSN15-8:1] [LSN7-0:2]
 * Compute half selector (bit 0 of LSN)
                     lda       2,s       LSN bits 7-0
                     anda      #$01      half = 0 or 1
                     pshs      a         save half
 * Stack: [half:0] [LSN23-16:1] [LSN15-8:2] [LSN7-0:3]
-* Shift 24-bit LSN right by 1 in place to get physical sector
+* Shift 24-bit LSN right by 1 to get physical sector number
                     lsr       1,s       shift bits 23-16
                     ror       2,s       rotate into bits 15-8
                     ror       3,s       rotate into bits 7-0
-* Stack: [half:0] [psn23-17:1] [psn15-8:2] [psn7-0:3]
-
-* Check cache: if valid and PSN matches, serve from cache
-                    tst       cacheflg,u cache valid?
-                    lbeq      CachMis
-                    lda       1,s
-                    cmpa      cachepsn,u
-                    lbne      CachMis
-                    ldd       2,s
-                    cmpd      cachepsn+1,u
-                    lbne      CachMis
-* Cache hit: copy cachebuf to blockloc
-                    lda       #'c
-                    jsr       <D.BtBug
-                    pshs      y         save hardware address
-                    leay      cachebuf,u source
-                    ldx       blockloc,u destination
-                    ldb       #128      128 words = 256 bytes
-                    pshs      b         counter on stack
-cp@                 ldd       ,y++
-                    std       ,x++
-                    dec       ,s        decrement counter
-                    bne       cp@
-                    leas      1,s       clean counter
-                    puls      y         restore hardware address
-                    ldx       blockloc,u X = data pointer for caller
-                    clr       cacheflg,u invalidate (each half used once)
-                    leas      4,s       clean [half][psn]
-                    lda       #'4       about to return from cache hit
-                    jsr       <D.BtBug
-                    clrb                clear carry
-                    rts
-
-* Cache miss: read physical sector from disk
-CachMis             lda       #'m
-                    jsr       <D.BtBug
-                    lda       1,s       save PSN in cache tag
-                    sta       cachepsn,u
-                    ldd       2,s
-                    std       cachepsn+1,u
 
 * Wait for BSY clear and DRDY
 bsy@                tst       Status,y
@@ -212,60 +167,55 @@ rdy@                ldb       Status,y
                     andb      #BusyBit+DrdyBit
                     cmpb      #DrdyBit
                     bne       rdy@
-                    lda       #'W       DRDY set, issuing command
-                    jsr       <D.BtBug
                     ldb       #$01
                     stb       SectCnt,y one physical sector
-* LBA addressing only (all PATA drives support LBA)
+* LBA addressing
                     lda       1,s       psn 23-17
                     sta       CylHigh,y
                     ldd       2,s       psn 15-0
                     stb       SectNum,y
                     sta       CylLow,y
-
-DoCmd               lda       #S$READ
+                    lda       #S$READ
                     sta       Command,y
 drq@                lda       Status,y
                     anda      #DrqBit
                     beq       drq@
-                    lda       #'d       DRQ set, reading data
-                    jsr       <D.BtBug
 
-* Read 512-byte physical sector
-* Strategy: if half=0, first half -> blockloc, second -> cache
-*           if half=1, first half -> cache, second -> blockloc
-* Push second-half target, load X with first-half target
-                    tst       ,s        half selector
+* Read 512-byte physical sector, keep only the wanted half
+                    tst       ,s        which half?
                     bne       h1@
-                    leax      cachebuf,u second target
-                    pshs      x
-                    ldx       blockloc,u first target
-                    bra       rdlp@
-h1@                 ldx       blockloc,u second target
-                    pshs      x
-                    leax      cachebuf,u first target
-rdlp@               ldb       #128      128 words = 256 bytes
-                    pshs      b         counter on stack
-rda@                ldd       DataReg,y read first 256 bytes
-                    std       ,x++
-                    dec       ,s        decrement counter
-                    bne       rda@
-                    leas      1,s       clean counter
-                    puls      x         get second target
-                    ldb       #128      128 words = 256 bytes
-                    pshs      b         counter on stack
-rdb@                ldd       DataReg,y read second 256 bytes
-                    std       ,x++
-                    dec       ,s        decrement counter
-                    bne       rdb@
-                    leas      1,s       clean counter
-
+* half=0: first 256 bytes -> blockloc, discard second 256
+                    ldx       blockloc,u
+                    bsr       Rd256     read first half into buffer
+                    bsr       Skip256   discard second half
+                    bra       RdDone
+* half=1: discard first 256 bytes, second -> blockloc
+h1@                 bsr       Skip256   discard first half
+                    ldx       blockloc,u
+                    bsr       Rd256     read second half into buffer
 RdDone              lda       Status,y  read final status
-                    lda       #$FF
-                    sta       cacheflg,u mark cache valid
                     ldx       blockloc,u X = data pointer for caller
                     leas      4,s       clean [half][psn]
                     clrb                clear carry
+                    rts
+
+* Rd256 - read 256 bytes (128 words) from DataReg into X
+Rd256               ldb       #128
+                    pshs      b
+rd@                 ldd       DataReg,y
+                    std       ,x++
+                    dec       ,s
+                    bne       rd@
+                    leas      1,s
+                    rts
+
+* Skip256 - read and discard 256 bytes (128 words) from DataReg
+Skip256             ldb       #128
+                    pshs      b
+sk@                 ldd       DataReg,y
+                    dec       ,s
+                    bne       sk@
+                    leas      1,s
                     rts
 
 *------------------------------------------------------------

@@ -500,6 +500,19 @@ l@                  stu       ,x++      store it
                     stu       ,x        and save it in the last 8K slot
                   ENDC
 
+                  IFNE    picothing
+* Verify P$DATImg was written correctly: print block 0 and block 7 low bytes
+                    ldx       <D.SysDAT
+                    pshs      a,b
+                    lda       #'D
+                    jsr       <D.BtBug
+                    ldb       1,x       block 0 low byte (expect $00)
+                    lbsr      PicoBtHex
+                    ldb       15,x      block 7 low byte (expect $07)
+                    lbsr      PicoBtHex
+                    puls      a,b
+                  ENDC
+
                     ldx       <D.Tasks  point to the task user table
                     inc       ,x        mark the 1st entry as used (system)
                     inc       1,x       mark the 2nd entry as used (GrfDrv)
@@ -579,6 +592,9 @@ l@                  sta       b,x       store the flag in the appropriate offset
                     ldd       <D.BtSz   get MSB of bootfile size
                   ELSE
 *<<<<<<<<<< Wildbits PORT
+
+* checkpoint 6 removed
+
 ********************************************************************
 * Determine how many 8KB blocks of physical memory are available and
 * update the memory block map end pointer (D.BlkMap+2) accordingly.
@@ -616,6 +632,15 @@ L0111               aslb                B <= 1 (hi bit goes into carry, 0 goes i
                   ENDC
                     std       <D.BlkMap+2 save the newly computed memory block map end pointer
 
+                  IFNE    picothing
+* Restore DAT slot 5 after memory sizing loop.  The ghost test exits
+* with B=0 (page 0) mapped into slot 5, creating an alias:
+* virtual $A000-$BFFF -> physical page 0.  D.SysDAT etc. live in
+* page 0, so any later access through slot 5 would corrupt them.
+                    ldb       #5
+                    stb       >DAT.Regs+5 restore slot 5 to identity map (page 5)
+                  ENDC
+
 ********************************************************************
 * Initial reservation of blocks in the memory block map. Code above
 * reserved one block (block 0) for global memory and one block
@@ -647,14 +672,65 @@ L0170
                   ENDC
 
 * Verify the modules in the boot area and update/build a module index.
+                  IFNE    picothing
+* Reset PTM before I.VBlock to quiesce any pending IRQ from
+* the Pico's virtual 6840.  If the PTM auto-starts on power-up
+* and asserts IRQ, it could race with ACIA bus access in the
+* Pico firmware, corrupting memory.
+                    pshs      a
+                    lda       #$01      hold MC6840 in reset until clock module init
+                    sta       >PTM.CR2
+                    lda       #$03      master reset MC6850 ACIA
+                    sta       >ACIA.Ctrl
+                    lda       #$16      8N1, /16, no IRQs (RTS low)
+                    sta       >ACIA.Ctrl
+                    lda       #'V
+                    jsr       <D.BtBug
+                    puls      a
+                  ENDC
                     lbsr      I.VBlock  perform module validation
+                  IFNE    picothing
+* Checkpoint v: print D.SysDAT before and after ACIA access
+                    ldd       <D.SysDAT
+                    std       >$07F0    save before ACIA
+                    lda       #'v
+                    sta       >ACIA.Data print 'v' via ACIA
+                    ldd       <D.SysDAT
+                    std       >$07F2    save after ACIA
+                    pshs      a,b,x
+                    ldb       >$07F0+1  low byte before
+                    lbsr      PicoBtHex
+                    lda       #'/
+                    jsr       <D.BtBug
+                    ldb       >$07F2+1  low byte after
+                    lbsr      PicoBtHex
+                    puls      a,b,x
+                  ENDC
                     bsr       L01D2     then mark the system map
 
                   IFEQ    wildbits
 * BGP - Load bootfile and link to init. We no longer try to link to init first and then
 * call F$Boot. This saves bytes.
+                  IFNE    picothing
+* Checkpoint 1: D.SysDAT before F$Boot
+                    pshs      a,b
+                    lda       #'1
+                    jsr       <D.BtBug
+                    ldb       <D.SysDAT+1
+                    lbsr      PicoBtHex
+                    puls      a,b
+                  ENDC
                     os9       F$Boot    load bootfile here +BGP+
                     bcs       L01CE     error, go crash +BGP+
+                  IFNE    picothing
+* Checkpoint 2: D.SysDAT after F$Boot
+                    pshs      a,b
+                    lda       #'2
+                    jsr       <D.BtBug
+                    ldb       <D.SysDAT+1
+                    lbsr      PicoBtHex
+                    puls      a,b
+                  ENDC
                   ENDC
                     leax      <init,pc  point to 'Init' module name
                     bsr       link      try & link it
@@ -967,11 +1043,15 @@ l@                  ldu       ,x++      get the source bytes
 * Entry: U = The register stack pointer.
 SysCall             equ       *
                   IFNE    picothing
-* On picothing the SWI2 stub jumps here directly (D.XSWI2 = SysCall).
-* SWICall is not in the dispatch path, so B has not been loaded yet.
-* S still holds the raw SWI2 frame; R$PC offset $0A points to the
-* function code byte placed after the SWI2 instruction by the os9 macro.
+* SWICall already loaded B via [R$PC,s] before reaching here through
+* MapT0 -> Vectors trampoline.  Re-read is harmless (same address).
                     ldb       [R$PC,s]  read the function code from caller's memory
+* Debug: print 'S' + hex function code on every system-state SWI2
+                    pshs      a
+                    lda       #'S
+                    jsr       <D.BtBug
+                    lbsr      PicoBtHex print function code in B as hex
+                    puls      a
                   ENDC
                     leau      ,s        get the pointer to the register stack
                     lda       <D.SSTskN get the system task number (0 = system, 1 = GrfDrv)
@@ -1024,6 +1104,12 @@ L0345
                     clra                clear the MSB of the offset
                     ldx       d,y       get the vector to call
                     bne       L034F     it's initialized, go execute it
+                  IFNE    picothing
+                    pshs      a
+                    lda       #'?       unknown service call
+                    jsr       <D.BtBug
+                    puls      a
+                  ENDC
                     comb                set the carry for error
                     ldb       #E$UnkSvc get the error code
                     bra       L0355     return with it

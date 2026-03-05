@@ -73,6 +73,18 @@ start               orcc      #IntMasks ensure IRQs are off (necessary?)
                     lbsr      HWInit
 
 * Read LSN0
+                  IFNE    picothing
+                    pshs      a,b
+                    lda       #'h
+                    jsr       <D.BtBug
+                    tfr       dp,a      get actual DP register
+                    lbsr      PrHex
+                    lda       #'/
+                    jsr       <D.BtBug
+                    lda       >$004D    extended read of D.SysDAT+1
+                    lbsr      PrHex
+                    puls      a,b
+                  ENDC
                   IFNE    LSN24BIT
                     clrb                MSB sector
                   ENDC
@@ -93,6 +105,15 @@ start               orcc      #IntMasks ensure IRQs are off (necessary?)
                     std       ddtks,u   TAKE NOTE!  ASSUMES ADJACENT VARS!
                   ENDC
                   IFNE    picothing
+* Check D.SysDAT after LSN0 read: DP-relative vs extended
+                    pshs      a,b
+                    lda       <D.SysDAT+1 DP-relative read
+                    lbsr      PrHex
+                    lda       #'/
+                    jsr       <D.BtBug
+                    lda       >$004D    extended read of same address
+                    lbsr      PrHex
+                    puls      a,b
 * Debug: print DD.BT (3 bytes) and DD.BSZ (2 bytes) from LSN0
                     pshs      x         save LSN0 pointer
                     lda       #'[       marker for LSN0 fields

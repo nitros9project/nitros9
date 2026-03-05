@@ -116,7 +116,43 @@ returnmem@          exg       a,b                 swap A/B
 * empty block is found, this routine re-does the 32 entries in the SMAP table to
 * indicate that they are free.
 
-FSRqMem             ldd       R$D,u               get the memory allocation size requested
+FSRqMem             equ       *
+                  IFNE    picothing
+                    pshs      a,b,x
+                    lda       #'m
+                    jsr       <D.BtBug
+* Print D.SysDAT pointer value then low byte of each 2-byte entry
+                    ldx       <D.SysDAT
+                    tfr       x,d               D = pointer value, A=hi B=lo
+                    pshs      b                 save low byte
+                    tfr       a,b               B = high byte
+                    lbsr      PicoBtHex         print high byte
+                    puls      b                 B = low byte
+                    lbsr      PicoBtHex         print low byte
+                    ldx       <D.SysDAT         reload pointer
+                    lda       #'[
+                    jsr       <D.BtBug
+                    ldb       1,x               block 0 low byte
+                    lbsr      PicoBtHex
+                    ldb       3,x               block 1
+                    lbsr      PicoBtHex
+                    ldb       5,x               block 2
+                    lbsr      PicoBtHex
+                    ldb       7,x               block 3
+                    lbsr      PicoBtHex
+                    ldb       9,x               block 4
+                    lbsr      PicoBtHex
+                    ldb       11,x              block 5
+                    lbsr      PicoBtHex
+                    ldb       13,x              block 6
+                    lbsr      PicoBtHex
+                    ldb       15,x              block 7
+                    lbsr      PicoBtHex
+                    lda       #']
+                    jsr       <D.BtBug
+                    puls      a,b,x
+                  ENDC
+                    ldd       R$D,u               get the memory allocation size requested
                     addd      #$00FF              round it up to the nearest 256 byte page (e.g. $1FF = $2FE)
                     clrb                          just keep the number of pages (and the starting 8K block number, e.g. $2FE = $200)
                     std       R$D,u               save the rounded up version back to the user's D
@@ -188,6 +224,12 @@ L0859               equ       *
                     cmpy      ,s++                compare Y to X
                     endc
                     bhi       L0863               if Y (end) is higher than X (start), continue looking
+                  IFNE    picothing
+                    pshs      a
+                    lda       #'n                 no system RAM
+                    jsr       <D.BtBug
+                    puls      a
+                  ENDC
                     comb                          else set the carry
                     ldb       #E$NoRAM            load the "no system RAM" error
                     bra       L0894               and branch to return
@@ -237,7 +279,26 @@ l@                  ldb       ,s                  get the starting block
                     bne       l@                  and go try next
 ok@                 puls      d,x                 recover registers
 **************************
+                  IFNE    picothing
+* Debug: print 'a' + starting block (A) + num blocks (B) before F$AllImg
+                    pshs      a,b
+                    lda       #'a
+                    jsr       <D.BtBug
+                    ldb       ,s                  B = saved A (starting block)
+                    lbsr      PicoBtHex
+                    ldb       1,s                 B = saved B (num blocks)
+                    lbsr      PicoBtHex
+                    puls      a,b
+                  ENDC
                     lbsr      L09BE               allocate an image with our start/end block numbers
+                  IFNE    picothing
+                    bcc       aok@
+                    pshs      a
+                    lda       #'f                 F$AllImg failed
+                    jsr       <D.BtBug
+                    puls      a
+aok@
+                  ENDC
                     bcs       L0894               branch if we couldn't do it
                     ldb       R$A,u               else get the number of requested pages
 *         lda   #RAMinUse    Get SMAP in use flag
@@ -371,10 +432,26 @@ L0908               leax      <boot,pcr
 L090C               lda       #Systm+Objct
                     os9       F$Link
                     bcs       L08F3               return with error.
+                  IFNE    picothing
+                    pshs      a,b
+                    lda       #'L
+                    jsr       <D.BtBug
+                    ldb       <D.SysDAT+1
+                    lbsr      PicoBtHex
+                    puls      a,b
+                  ENDC
                     lda       #'b                 calling boot
                     jsr       <D.BtBug
                     jsr       ,y                  load boot file
                     bcs       L08F3
+                  IFNE    picothing
+                    pshs      a,b
+                    lda       #'J
+                    jsr       <D.BtBug
+                    ldb       <D.SysDAT+1
+                    lbsr      PicoBtHex
+                    puls      a,b
+                  ENDC
                     std       <D.BtSz             save boot file size
                     stx       <D.BtPtr            save start pointer of bootfile
                     lda       #'b                 boot returns OK
@@ -442,6 +519,17 @@ name.prt            lda       ,x+                 get the character of the name
                     tfr       d,x                 X now holds the offset into the block of the module
                     tfr       y,d                 Y holds the offset into the block
                     os9       F$VModul            validate the module
+                  IFNE    picothing
+* Debug: check D.SysDAT after each F$VModul
+                    pshs      a,b
+                    ldb       <D.SysDAT+1         low byte of D.SysDAT
+                    cmpb      #$40                still correct ($0640)?
+                    beq       vmod_ok@
+                    lda       #'!                 corruption detected
+                    jsr       <D.BtBug
+                    lbsr      PicoBtHex           print corrupted low byte
+vmod_ok@            puls      a,b
+                  ENDC
                     pshs      b                   save B
                     ldd       1,s                 get the starting address
                     leax      d,x                 move X past it
@@ -456,6 +544,17 @@ L0954               leax      1,x                 move to the next byte
 L0956               cmpx      2,s                 have we gone through the whole bootfile?
                     bcs       L092D               no, keep looking
                     leas      4,s                 else recover the stack
+                  IFNE    picothing
+* Debug: check D.SysDAT at I.VBlock exit
+                    pshs      a,b
+                    ldb       <D.SysDAT+1
+                    cmpb      #$40
+                    beq       vblk_ok@
+                    lda       #'Z                 corruption at I.VBlock exit
+                    jsr       <D.BtBug
+                    lbsr      PicoBtHex
+vblk_ok@            puls      a,b
+                  ENDC
                     clrb                          clear the error code and carry
                     rts                           return
 
