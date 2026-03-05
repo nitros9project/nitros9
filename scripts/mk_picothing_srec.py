@@ -25,6 +25,7 @@ nitros9dir defaults to the current directory.
 import os
 import struct
 import sys
+from datetime import datetime
 
 BOOT_MOD_ADDR = 0xE800   # virtual/physical address for boot_picothing
 BOOT_MOD_PAD  = 1024     # pad boot_picothing to this many bytes
@@ -229,7 +230,8 @@ def main():
     )
 
     # --- Emit SREC --------------------------------------------------------
-    lines = [s0('Pico-Thing NitrOS-9 boot image')]
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    lines = [s0(f'Pico-Thing NitrOS-9 {timestamp}')]
 
     lines += list(emit_block(BOOT_MOD_ADDR, boot_padded))
     lines += list(emit_block(KRN_ADDR,      krn_data))

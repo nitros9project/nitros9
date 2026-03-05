@@ -180,7 +180,6 @@ rdy@                ldb       Status,y
 drq@                lda       Status,y
                     anda      #DrqBit
                     beq       drq@
-
 * Read 512-byte physical sector, keep only the wanted half
                     tst       ,s        which half?
                     bne       h1@

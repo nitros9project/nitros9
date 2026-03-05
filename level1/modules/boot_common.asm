@@ -90,7 +90,7 @@ start               orcc      #IntMasks ensure IRQs are off (necessary?)
                   ENDC
                     ldx       #0        LSW sector
                     lbsr      HWRead    read LSN 0
-                    bcs       error     branch if error
+                    lbcs      error     branch if error
 
                   IFGT    Level-1
                     lda       #'0       --- loaded in LSN0'
@@ -152,9 +152,25 @@ start               orcc      #IntMasks ensure IRQs are off (necessary?)
                     clr       FDSL.S+1,x
                     clr       FDSL.S+2,x
                     subd      #$00FF    undo previous add #$00FF
-                    bra       GrabBootMem
+                    lbra      GrabBootMem
 
-Back2Krn            lbsr      HWTerm    call HW termination routine
+Back2Krn
+                  IFNE    picothing
+* Print DAT slots 0-7 at boot loop completion
+                    pshs      a
+                    lda       #'K       boot loop complete
+                    jsr       <D.BtBug
+                    lda       >DAT.Regs
+                    lbsr      PrHex
+                    lda       >DAT.Regs+1
+                    lbsr      PrHex
+                    lda       >DAT.Regs+2
+                    lbsr      PrHex
+                    lda       >DAT.Regs+7
+                    lbsr      PrHex
+                    puls      a
+                  ENDC
+                    lbsr      HWTerm    call HW termination routine
                     ldx       blockimg,u pointer to start of os9boot in memory
                     clrb                clear carry
                     ldd       bootsize,u
@@ -270,19 +286,7 @@ BL2                 ldx       FDSL.A+1,x LSW sector location
                     lbeq      Back2Krn
 BL3                 lbsr      HWRead
 
-                  IFGT    Level-1
-                  IFNE    picothing
-                    lda       #'R       HWRead returned
-                    jsr       <D.BtBug
-                  ENDC
-                  ENDC
-
                     inc       blockloc,u point to next input sector in mem
-
-                  IFGT    Level-1
-                    lda       #'.       show .'
-                    jsr       <D.BtBug
-                  ENDC
 
                     ldx       seglist,u get pointer to segment list
                     dec       FDSL.B+1,x get segment size

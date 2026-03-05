@@ -246,6 +246,12 @@ ex@                 puls      pc,y,x              return to caller
                     else
 
 FVModul             pshs      u                   preserve register stack pointer
+                  IFNE    picothing
+                    pshs      a
+                    lda       #'f       entering FVModul
+                    jsr       <D.BtBug
+                    puls      a
+                  ENDC
                     ldx       R$X,u               get block offset
                     ldy       R$D,u               get DAT image pointer
                     bsr       L0463               validate it
