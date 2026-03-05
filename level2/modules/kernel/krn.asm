@@ -162,13 +162,15 @@ forever@            bra       forever@  simply branch forever
 *
 * Called via D.BtBug (set up below).  Character to print is in A.
 * Polls TDRE (bit 1 of status register) before transmitting.
-* All registers preserved except CC.
-PicoBtBug           pshs      b
+* Masks bit 7 off for printing (OS-9 name terminator) but preserves
+* CC so callers like I.VBlock's name.prt can test N after return.
+PicoBtBug           pshs      cc,a,b    save CC (for callers that test N after return)
+                    anda      #$7F      strip bit 7 so last-char-of-name prints as ASCII
 p@                  ldb       ACIA.Ctrl read ACIA status register
                     bitb      #%00000010 transmit data register empty?
                     beq       p@        no, keep polling
                     sta       ACIA.Data transmit the character
-                    puls      b,pc      restore B and return
+                    puls      cc,a,b,pc restore CC, A, B and return
 
 * PicoBtHex - print B as two hex digits via D.BtBug
 *
@@ -516,6 +518,28 @@ l@                  stu       ,x++      store it
                     ldx       <D.Tasks  point to the task user table
                     inc       ,x        mark the 1st entry as used (system)
                     inc       1,x       mark the 2nd entry as used (GrfDrv)
+
+*>>>>>>>>>> Pico-Thing PORT
+                  IFNE    picothing
+* Initialize DAT RAM for tasks 1-31: clear slots 0-6, set slot 7 = KrnBlk.
+* The Pico firmware identity-maps task 0 at power-on, but all other tasks
+* have random/identity values.  Without slot 7 = kernel page, any task
+* switch makes the kernel and interrupt stubs invisible -> instant crash.
+                    ldx       #DAT.Regs+8 start at task 1 (skip task 0)
+                    lda       #DAT.TkCt-1 31 tasks to initialize
+                    pshs      a
+pt_dat@             clra
+                    ldb       #DAT.BlCt-1 clear 7 slots
+pt_clr@             sta       ,x+       clear this slot
+                    decb
+                    bne       pt_clr@
+                    lda       #KrnBlk   kernel page for slot 7
+                    sta       ,x+       set slot 7 = kernel page
+                    dec       ,s        count tasks
+                    bne       pt_dat@   next task
+                    puls      a
+                  ENDC
+*<<<<<<<<<< Pico-Thing PORT
 
 ********************************************************************
 * The system memory map is a data structure that manages the
@@ -884,16 +908,10 @@ XSWI                lda       #P$SWI    point to the SWI vector
 GoUser              lbra      L0E5E     else call the users's routine
 
 * SWI2 vector entry
-XSWI2               ldx       <D.Proc   get the current process descriptor
+XSWI2
+                    ldx       <D.Proc   get the current process descriptor
                     ldu       P$SWI2,x  any SWI vector?
                     bne       GoUser    yes, go execute it
-                  IFNE    picothing
-* The Pico firmware routes SWI2 directly here, bypassing SWI2VCT/SWICall.
-* Read B with the function code and dispatch system-state calls via SysCall.
-                    ldb       [R$PC,s]  read function code from caller's memory
-                    lda       P$State,x already in system state?
-                    lbmi      SysCall   yes, dispatch via D.SysDis
-                  ENDC
 
 * Process software interrupts from a user state.
 *
@@ -935,12 +953,25 @@ l@                  ldx       ,--y      get the source bytes
                     stx       R$PC,u    save updated the update program counter back
 * Execute the system call.
                     ldy       <D.UsrDis get the user dispatch table pointer
+                  IFNE    picothing
+                    pshs      b         save function code for debug
+                  ENDC
                     lbsr      L033B     go execute the op-code
                   IFNE    picothing
                     pshs      a
-                    lda       #'U       user-state call returned
+                    lda       #'U       user-state call
                     jsr       <D.BtBug
+                    ldb       1,s       get saved function code (offset by pshs a)
+                    lbsr      PicoBtHex print function code as hex
+                    lda       R$CC,u    check result
+                    bita      #$01      carry set = error?
+                    bne       uerr@
+                    lda       #'+
+                    bra       upr@
+uerr@               lda       #'-
+upr@                jsr       <D.BtBug
                     puls      a
+                    leas      1,s       clean saved function code
                   ENDC
                   IFNE    H6309
                     aim       #^IntMasks,R$CC,u unmask interrupts in the caller's CC
@@ -1049,9 +1080,6 @@ l@                  ldu       ,x++      get the source bytes
 * Entry: U = The register stack pointer.
 SysCall             equ       *
                   IFNE    picothing
-* SWICall already loaded B via [R$PC,s] before reaching here through
-* MapT0 -> Vectors trampoline.  Re-read is harmless (same address).
-                    ldb       [R$PC,s]  read the function code from caller's memory
 * Debug: print 'S' + hex function code on every system-state SWI2
                     pshs      a
                     lda       #'S
@@ -1333,7 +1361,7 @@ S.Flip1             ldb       #2        get the tsk image entry number x2 for Gr
                     inc       <D.SSTskN increment the system state task number
                     rti                 return
 
-* Set up the MMU in task 1, B=Task # to swap to, shifted left 1 bit.
+* Set up the MMU, B=Task # to swap to, shifted left 1 bit.
 L0E8D               cmpb      <D.Task1N are we going back to the same task?
                     beq       L0EA3     without the DAT image changing?
                     stb       <D.Task1N no, save current task in map type 1
@@ -1365,6 +1393,10 @@ PicoT_L             lda       ,u++      get block number (skip high byte of 2-by
                     sta       ,x+       store to 1-byte DAT register
                     dec       ,s        done?
                     bne       PicoT_L   no, keep going
+* Force slot 7 to kernel page so stubs and vectors are always reachable.
+* Pico-Thing has no constant block; kernel page must always be in slot 7.
+                    lda       #KrnBlk   physical page of the kernel
+                    sta       -1,x      overwrite slot 7 (X points past it after loop)
                     puls      a,pc      clean stack and return
 *<<<<<<<<<< Pico-Thing PORT
                   ELSE

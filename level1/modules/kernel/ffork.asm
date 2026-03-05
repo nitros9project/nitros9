@@ -222,7 +222,10 @@ SveNPth        sta       ,u+                 save new path #
                bcs       L02CF               exit if error
                pshs      d
                os9       F$AllTsk            allocate the task & setup MMU
-               bcs       L02CF               Error, skip ahead
+               bcc       atok@               no error, continue
+               leas      2,s                 clean pshs d before error path
+               bra       L02CF               Error, skip ahead
+atok@          equ       *
 
 * Copy parameters to new process
                lda       P$PagCnt,x          get memory page count
@@ -270,6 +273,30 @@ SveNPth        sta       ,u+                 save new path #
 * Fork error goes here
 L02CF          puls      x
                pshs      b                   save error
+                  IFNE    picothing
+* Debug: print 'Z' + 2-hex-digit error code when fork fails
+               pshs      a,b
+               lda       #'Z
+               jsr       <D.BtBug
+               puls      a               get error code back (was in B before pshs)
+               pshs      a               save for low nibble
+               lsra
+               lsra
+               lsra
+               lsra
+               adda      #'0
+               cmpa      #'9+1
+               blo       zh@
+               adda      #7
+zh@            jsr       <D.BtBug
+               puls      a               get error code again
+               anda      #$0F
+               adda      #'0
+               cmpa      #'9+1
+               blo       zl@
+               adda      #7
+zl@            jsr       <D.BtBug
+                  ENDC
                lbsr      L05A5               close paths & unlink mem
                lda       P$ID,x              get bad ID
                lbsr      L0386               delete proc desc & task #

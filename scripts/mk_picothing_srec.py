@@ -13,7 +13,7 @@ before releasing reset.  Contains:
 Boot memory layout after SREC load (task 0, identity-mapped):
   $E800-$EBFF  boot_picothing (padded)   -- found by I.VBlock scan
   $EC00-$....  krn                        -- Where = $EC00
-  $FE00-$FE07  DAT RAM task 0 image
+  $FE00-$FEFF  DAT RAM (32 tasks x 8 slots)
   $FFF0-$FFFF  6809 vectors (if Pico reads from RAM; else configure in firmware)
 
 Usage:
@@ -31,15 +31,16 @@ BOOT_MOD_ADDR = 0xE800   # virtual/physical address for boot_picothing
 BOOT_MOD_PAD  = 1024     # pad boot_picothing to this many bytes
 KRN_ADDR      = 0xEC00   # virtual/physical address for krn  (= Where)
 DAT_RAM_ADDR  = 0xFE00   # DAT RAM base (32 tasks x 8 slots x 1 byte)
+DAT_TASK_CT   = 32       # number of hardware task slots
+DAT_RAM_SIZE  = DAT_TASK_CT * 8  # 256 bytes total
+KRN_PAGE      = 0x07     # physical page holding the kernel (slot 7)
 VEC_ADDR      = 0xFFF0   # 6809 hardware vector table start
 
-# Level 2 page-zero D.X* interrupt vector variables (os9.d ORG $E0)
-DPVAR_XSWI3   = 0x00E2
-DPVAR_XSWI2   = 0x00E4
-DPVAR_XFIRQ   = 0x00E6
-DPVAR_XIRQ    = 0x00E8
-DPVAR_XSWI    = 0x00EA
-DPVAR_XNMI    = 0x00EC
+# Number of BRA+NOP stubs at the end of the krn module (before CRC).
+# Order: SWI3, SWI2, FIRQ, IRQ, SWI, NMI — each 3 bytes (BRA rel + NOP).
+KRN_VCT_STUB_CT = 6
+KRN_VCT_STUB_SZ = 3   # bytes per stub (BRA + offset + NOP)
+KRN_CRC_SZ      = 3   # OS-9 module CRC size
 
 
 # ---------------------------------------------------------------------------
@@ -72,14 +73,36 @@ def s9(start_addr=0):
     return _srec('9', start_addr, b'')
 
 
-def make_jmp_indirect(dpvar):
-    """Build a 4-byte JMP [extended-indirect] stub for a page-zero D.X* variable.
+ACIA_DATA = 0xFFC4   # Pico-Thing ACIA data register for debug output
+DAT_TASK  = 0xFFC0   # Pico-Thing DAT task register
 
-    6809 encoding: $6E $9F addr_hi addr_lo
-    At runtime the CPU reads the 2-byte address from dpvar and jumps there.
-    This lets the kernel change D.XSWI2 etc. dynamically (SysCall vs XSWI2).
+
+def make_jmp_stub(target_addr, debug_char=None):
+    """Build a stub that JMPs to the kernel's VCT handler.
+
+    On Pico-Thing, the kernel code (slot 7 = KrnBlk) is visible in ALL
+    hardware tasks, just like CoCo3's constant block.  Stubs must NOT
+    switch to task 0 — the VCT handlers do it at the right point.
+
+    This is critical for SWI/SWI2/SWI3: SWICall reads [R$PC,s] (user
+    memory) BEFORE switching to task 0 at line 1470.  If the stub
+    switches early, SWICall reads garbage from task 0's mapping.
+
+    For IRQ/FIRQ/NMI, the L0EB8 handler switches to task 0 immediately,
+    so the stub doesn't need to either.
+
+    Encoding:
+      [optional debug: LDA #char $86 ch + STA >ACIA.Data $B7 hi lo = 5 bytes]
+      JMP >target     $7E hi lo        (3 bytes)
     """
-    return bytes([0x6E, 0x9F, (dpvar >> 8) & 0xFF, dpvar & 0xFF])
+    code = b''
+    if debug_char is not None:
+        code += bytes([
+            0x86, ord(debug_char),                  # LDA #char
+            0xB7, (ACIA_DATA >> 8) & 0xFF, ACIA_DATA & 0xFF,  # STA >ACIA.Data
+        ])
+    code += bytes([0x7E, (target_addr >> 8) & 0xFF, target_addr & 0xFF])
+    return code
 
 
 def emit_block(address, data, chunk=32):
@@ -133,27 +156,39 @@ def main():
     reset_vec = KRN_ADDR + exec_off
     print(f'RESET  vector:  ${reset_vec:04X}', file=sys.stderr)
 
-    # Parse the DisTable from the krn binary to get per-interrupt handler addresses.
-    # DisTable is a sequence of 9 FDB entries (18 bytes) that the kernel copies to
-    # D.Clock, D.XSWI3, D.XSWI2, D.XFIRQ, D.XIRQ, D.XSWI, D.XNMI, D.ErrRst, D.SVC.
-    # Each entry is already an absolute address (handler offset + KRN_ADDR).
-    # Locate DisTable by the D.Crash signature: $006B appears at entry[3] and entry[6],
-    # and $0055 appears at entry[7].
-    name_off = struct.unpack('>H', krn_data[4:6])[0]
-    dis_off = None
-    for i in range(name_off, exec_off - 18):
-        if (krn_data[i + 6] == 0x00 and krn_data[i + 7] == 0x6B and
-                krn_data[i + 12] == 0x00 and krn_data[i + 13] == 0x6B and
-                krn_data[i + 14] == 0x00 and krn_data[i + 15] == 0x55):
-            dis_off = i
-            break
-    if dis_off is None:
-        raise ValueError('Cannot find DisTable in krn binary (D.Crash/D.ErrRst signature not found)')
-    dis = [struct.unpack('>H', krn_data[dis_off + i*2: dis_off + i*2 + 2])[0] for i in range(9)]
-    dis_labels = ['D.Clock', 'D.XSWI3', 'D.XSWI2', 'D.XFIRQ', 'D.XIRQ', 'D.XSWI', 'D.XNMI', 'D.ErrRst', 'D.SVC']
-    print('DisTable:', file=sys.stderr)
-    for label, val in zip(dis_labels, dis):
-        print(f'  {label:10s} = ${val:04X}', file=sys.stderr)
+    # Parse the BRA stubs at the end of the krn module.
+    # The last thing before emod/CRC is a table of 6 BRA+NOP pairs:
+    #   bra SWI3VCT / nop
+    #   bra SWI2VCT / nop
+    #   bra FIRQVCT / nop
+    #   bra IRQVCT  / nop
+    #   bra SWIVCT  / nop
+    #   bra NMIVCT  / nop
+    # On CoCo3, these end up in the "constant block" ($FExx) and the
+    # hardware vectors at $FFF0 point to them.  We parse the BRA targets
+    # to get the absolute addresses of SWI2VCT, IRQVCT, etc.
+    #
+    # The BRA stubs are in the POST-MODULE area (after emod, before end),
+    # so they live at the very end of the file, not inside the module.
+    module_size = struct.unpack('>H', krn_data[2:4])[0]
+    stubs_off = len(krn_data) - KRN_VCT_STUB_CT * KRN_VCT_STUB_SZ
+    vct_names = ['SWI3VCT', 'SWI2VCT', 'FIRQVCT', 'IRQVCT', 'SWIVCT', 'NMIVCT']
+    vct_addrs = {}
+    print('VCT stubs (from BRA table):', file=sys.stderr)
+    for i, name in enumerate(vct_names):
+        off = stubs_off + i * KRN_VCT_STUB_SZ
+        opcode = krn_data[off]
+        if opcode != 0x20:
+            raise ValueError(
+                f'Expected BRA ($20) at stub {name} offset {off:#x}, '
+                f'got ${opcode:02X}'
+            )
+        # BRA is PC-relative: target = (stub_offset + 2) + signed_byte_offset
+        bra_rel = struct.unpack('b', krn_data[off+1:off+2])[0]
+        target_off = off + 2 + bra_rel
+        target_abs = KRN_ADDR + target_off
+        vct_addrs[name] = target_abs
+        print(f'  {name:10s} = ${target_abs:04X}', file=sys.stderr)
 
     # --- Post-module data (SWIStack + interrupt stubs) --------------------
     # krn.asm's SWICall contains  leay <SWIStack,pc  which references the
@@ -161,11 +196,13 @@ def main():
     # We must place the correct data there so the kernel can copy the
     # register stack during user-state SWI2 processing.
     #
-    # After SWIStack we place JMP [>D.Xxx] stubs for the hardware vectors.
-    # The Pico firmware may or may not use the vectors at $FFF0-$FFFF.
-    # The krn XSWI2 handler now has a picothing-specific patch that reads B
-    # and dispatches system-state calls via SysCall, so the stubs are
-    # belt-and-suspenders for the case where the firmware does honour them.
+    # After SWIStack we place interrupt stubs for the hardware vectors.
+    # Each stub forces task 0 then JMPs directly to the kernel's VCT
+    # handler (SWI2VCT, IRQVCT, etc.) — the same targets that CoCo3's
+    # constant-block BRA stubs branch to.  This ensures all SWI2s go
+    # through SWI2VCT → SWICall (which sets DP=0 and handles task
+    # switching), rather than through the software D.XSWI2 variable
+    # which changes at runtime.
     swistack_addr = KRN_ADDR + len(krn_data)
     # SWIStack: must match krn.asm's  fcc /REGISTER STACK/  (14 bytes for 6809)
     # followed by $55 (D.ErrRst marker).  SWICall references this via
@@ -173,18 +210,33 @@ def main():
     swistack_data = b'REGISTER STACK' + bytes([0x55])   # 15 bytes
 
     stub_addr = swistack_addr + len(swistack_data)
-    stub_data = (
-        make_jmp_indirect(DPVAR_XSWI3) +           # +0  SWI3 stub  (4 bytes)
-        make_jmp_indirect(DPVAR_XSWI2) +            # +4  SWI2 stub  (4 bytes)
-        make_jmp_indirect(DPVAR_XSWI)  +            # +8  SWI  stub  (4 bytes)
-        make_jmp_indirect(DPVAR_XIRQ)  +            # +12 IRQ  stub  (4 bytes)
-        make_jmp_indirect(DPVAR_XFIRQ) +            # +16 FIRQ stub  (4 bytes)
-        make_jmp_indirect(DPVAR_XNMI)               # +20 NMI  stub  (4 bytes)
-    )
+    # Build each stub individually so we can compute offsets for the vector table.
+    # Stubs do NOT switch tasks — VCT handlers do it at the right point.
+    # This is critical for SWI/SWI2/SWI3: SWICall must read [R$PC,s] from
+    # the user's task before switching to task 0.
+    stubs = [
+        ('SWI3', make_jmp_stub(vct_addrs['SWI3VCT'])),
+        ('SWI2', make_jmp_stub(vct_addrs['SWI2VCT'], debug_char='Q')),
+        ('SWI',  make_jmp_stub(vct_addrs['SWIVCT'])),
+        ('IRQ',  make_jmp_stub(vct_addrs['IRQVCT'])),
+        ('FIRQ', make_jmp_stub(vct_addrs['FIRQVCT'])),
+        ('NMI',  make_jmp_stub(vct_addrs['NMIVCT'])),
+    ]
+    # Compute each stub's starting address.
+    stub_offsets = {}
+    offset = 0
+    for name, data in stubs:
+        stub_offsets[name] = stub_addr + offset
+        offset += len(data)
+    stub_data = b''.join(data for _, data in stubs)
+
     print(f'SWIStack:       ${swistack_addr:04X}-${swistack_addr + len(swistack_data) - 1:04X}  '
           f'({len(swistack_data)} bytes)', file=sys.stderr)
     print(f'stubs:          ${stub_addr:04X}-${stub_addr + len(stub_data) - 1:04X}  '
-          f'({len(stub_data)} bytes, 6 x JMP [>D.Xxx])', file=sys.stderr)
+          f'({len(stub_data)} bytes)', file=sys.stderr)
+    for name, _ in stubs:
+        print(f'  {name:5s} stub @ ${stub_offsets[name]:04X}  ({len(dict(stubs)[name])} bytes)',
+              file=sys.stderr)
 
     # Check that the boot area + post-module data fits before DAT RAM
     boot_end = stub_addr + len(stub_data)
@@ -200,33 +252,31 @@ def main():
         )
     print(f'headroom:       {DAT_RAM_ADDR - boot_end} bytes', file=sys.stderr)
 
-    # --- DAT RAM: task 0 identity map -------------------------------------
-    # Slot N -> physical page N  (N = 0..7)
-    # This gives the 6809 an identity mapping so virtual == physical.
-    dat_data = bytes(range(8))
+    # --- DAT RAM --------------------------------------------------------------
+    # DAT RAM ($FE00-$FEFF) is NOT written by the SREC — the Pico firmware
+    # protects it.  Instead, the kernel init code in krn.asm initializes
+    # tasks 1-31 (slot 7 = KrnBlk, slots 0-6 = 0).  Task 0 is identity-
+    # mapped by the Pico firmware at power-on.
 
     # --- 6809 hardware vector table ($FFF0-$FFFF) -------------------------
-    # Each vector points to the corresponding indirect-jump stub above so the
-    # kernel can dynamically reroute interrupts by updating D.XSWI2 etc.
-    # $FFF0-FFF1: reserved -> RESET (safe fallback)
-    # $FFF2-FFF3: SWI3     -> stub → JMP [>D.XSWI3]
-    # $FFF4-FFF5: SWI2     -> stub → JMP [>D.XSWI2]
-    # $FFF6-FFF7: SWI      -> stub → JMP [>D.XSWI]
-    # $FFF8-FFF9: IRQ      -> stub → JMP [>D.XIRQ]
-    # $FFFA-FFFB: FIRQ     -> stub → JMP [>D.XFIRQ]
-    # $FFFC-FFFD: NMI      -> stub → JMP [>D.XNMI]
-    # $FFFE-FFFF: RESET    -> reset_vec
+    # Each vector points to the corresponding stub above.  Stubs just JMP
+    # to the kernel's VCT handler (like CoCo3's constant-block BRA stubs).
+    # The VCT handlers switch tasks at the right point.
+    #
+    # 6809 vector layout:
+    #   $FFF0  Reserved    $FFF2  SWI3    $FFF4  SWI2    $FFF6  FIRQ
+    #   $FFF8  IRQ         $FFFA  SWI     $FFFC  NMI     $FFFE  RESET
     def w(v):
         return bytes([(v >> 8) & 0xFF, v & 0xFF])
     vec_data = (
-        w(reset_vec)        +   # $FFF0 reserved → RESET
-        w(stub_addr + 0)    +   # $FFF2 SWI3
-        w(stub_addr + 4)    +   # $FFF4 SWI2
-        w(stub_addr + 8)    +   # $FFF6 SWI
-        w(stub_addr + 12)   +   # $FFF8 IRQ
-        w(stub_addr + 16)   +   # $FFFA FIRQ
-        w(stub_addr + 20)   +   # $FFFC NMI
-        w(reset_vec)            # $FFFE RESET
+        w(reset_vec)                +   # $FFF0 reserved → RESET
+        w(stub_offsets['SWI3'])     +   # $FFF2 SWI3
+        w(stub_offsets['SWI2'])     +   # $FFF4 SWI2
+        w(stub_offsets['FIRQ'])     +   # $FFF6 FIRQ
+        w(stub_offsets['IRQ'])      +   # $FFF8 IRQ
+        w(stub_offsets['SWI'])      +   # $FFFA SWI
+        w(stub_offsets['NMI'])      +   # $FFFC NMI
+        w(reset_vec)                    # $FFFE RESET
     )
 
     # --- Emit SREC --------------------------------------------------------
@@ -237,7 +287,6 @@ def main():
     lines += list(emit_block(KRN_ADDR,      krn_data))
     lines += list(emit_block(swistack_addr, swistack_data))
     lines += list(emit_block(stub_addr,     stub_data))
-    lines += list(emit_block(DAT_RAM_ADDR,  dat_data))
     lines += list(emit_block(VEC_ADDR,      vec_data))
 
     lines.append(s9(reset_vec))

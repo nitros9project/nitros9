@@ -307,6 +307,30 @@ L0474               lda       <D.SysTsk get system task number
 L04A1               puls      u,x
                     stx       <D.Proc
                     pshs      b
+                  IFNE    picothing
+* Debug: print 'Y' + 2-hex-digit error code when F$Chain's L04B1 fails
+                    pshs      a,b
+                    lda       #'Y
+                    jsr       <D.BtBug
+                    puls      a         get error code (was in B)
+                    pshs      a         save for low nibble
+                    lsra
+                    lsra
+                    lsra
+                    lsra
+                    adda      #'0
+                    cmpa      #'9+1
+                    blo       yh@
+                    adda      #7
+yh@                 jsr       <D.BtBug
+                    puls      a         get error code again
+                    anda      #$0F
+                    adda      #'0
+                    cmpa      #'9+1
+                    blo       yl@
+                    adda      #7
+yl@                 jsr       <D.BtBug
+                  ENDC
                     lda       ,u
                     lbsr      L0386     kill signals
                     puls      b

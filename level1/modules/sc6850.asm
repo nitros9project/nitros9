@@ -167,6 +167,12 @@ Pkt.Mask            fcb       Stat.Msk            mask byte
 * CC = carry set on error
 * B  = error code
 Init
+                  IFNE    picothing
+                    pshs      a
+                    lda       #'J       sc6850 Init entered
+                    sta       >ACIA.Data          write directly to ACIA (bypasses D.BtBug)
+                    puls      a
+                  ENDC
                     pshs      cc,dp               save IRQ/Carry status, system DP
                     ifne      H6309
                     tfr       u,w
@@ -175,6 +181,12 @@ Init
                     else
                     tfr       u,d                 get device memory area
                     tfr       a,dp                and make it the direct page
+                  IFNE    picothing
+                    pshs      a
+                    lda       #'1       after DP switch
+                    sta       >ACIA.Data
+                    puls      a
+                  ENDC
                     pshs      y                   save descriptor pointer
                     endc
 
@@ -183,10 +195,28 @@ Init
 * X address of the "packet" containing the flip/mask/priority
 * Y address of the device IRQ service routine
 * U address of the device IRQ service routine memory
+                  IFNE    picothing
+                    pshs      a
+                    lda       #'2       before V.PORT read
+                    sta       >ACIA.Data
+                    puls      a
+                  ENDC
                     ldd       <V.PORT             base hardware address (=status register)
+                  IFNE    picothing
+                    pshs      a
+                    lda       #'3       after V.PORT read
+                    sta       >ACIA.Data
+                    puls      a
+                  ENDC
 
                     leax      IRQPckt,pc
                     leay      IRQSvc,pc
+                  IFNE    picothing
+                    pshs      a
+                    lda       #'4       before F$IRQ
+                    sta       >ACIA.Data
+                    puls      a
+                  ENDC
                     os9       F$IRQ
 
                     ifne      H6309
