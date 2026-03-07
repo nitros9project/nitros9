@@ -99,7 +99,11 @@ StartupL            equ       *-Startup
 
 ShellPrm            equ       *
                     ifgt      Level-1
+                    ifne      picothing
+                    fcc       "i=/term"
+                    else
                     fcc       "i=/1"
+                    endc
                     endc
 CRtn                fcb       C$CR
 ShellPL             equ       *-ShellPrm
@@ -185,6 +189,9 @@ SignOn
 * Set default time
                     leax      >DefTime,pcr
                     os9       F$STime             set time to default
+                    ifne      picothing
+                    bra       L0125               skip I$ChgDir (no working disk yet)
+                    endc
                     ifeq      ROM
 * Change EXEC and DATA dirs
                     leax      >ExecDir,pcr
@@ -239,6 +246,9 @@ L0151               lda       b,y
                     endc
                     endc
 
+                    ifne      picothing
+                    bra       L0186               skip disk-dependent forks (no IDE yet)
+                    endc
                     ifeq      ROM
 * Fork shell startup here
                     ifeq      atari+corsham+wildbits

@@ -216,7 +216,7 @@ def main():
     # the user's task before switching to task 0.
     stubs = [
         ('SWI3', make_jmp_stub(vct_addrs['SWI3VCT'])),
-        ('SWI2', make_jmp_stub(vct_addrs['SWI2VCT'], debug_char='Q')),
+        ('SWI2', make_jmp_stub(vct_addrs['SWI2VCT'])),
         ('SWI',  make_jmp_stub(vct_addrs['SWIVCT'])),
         ('IRQ',  make_jmp_stub(vct_addrs['IRQVCT'])),
         ('FIRQ', make_jmp_stub(vct_addrs['FIRQVCT'])),

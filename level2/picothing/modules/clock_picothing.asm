@@ -102,12 +102,10 @@ virqent             ldx       ,y++
                     bne       virqloop
 
                     puls      a         get VIRQ status
-                    ora       <D.IRQS   check for other pending IRQs
-                    bita      #%10110111 any V/IRQ pending?
-                    beq       toggle
-                    bsr       DoPoll    yes, service them
-                    bra       KbdCheck
-toggle              bsr       DoToggle
+* Pico-Thing has no GIME — D.IRQS is never set by hardware.
+* Always call DoPoll so that device IRQs (ACIA etc.) get serviced
+* on every clock tick.
+                    bsr       DoPoll    poll all registered devices
 
 KbdCheck            jsr       [>D.AltIRQ] update keyboard/mouse/etc.
 
@@ -156,10 +154,14 @@ VIRQend             jmp       [>D.Clock] jump to kernel timeslice routine
 *
 * Poll interrupt sources
 *
-DoPoll
-                    jsr       [>D.Poll] call poll routine
-                    bcc       DoPoll    until error (no interrupt found)
-                    rts
+DoPoll              pshs      b         save B
+                    clrb                clear "serviced" flag
+DoPollLp            jsr       [>D.Poll] call poll routine
+                    bcs       DoPollDn  no device found, done polling
+                    incb                at least one device was serviced
+                    bra       DoPollLp  check for more
+DoPollDn            tstb                any device serviced?
+                    puls      b,pc      return; carry clear if serviced
 
 *
 * No hardware toggle needed (no GIME on Pico-Thing)

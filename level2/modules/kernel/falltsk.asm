@@ -56,6 +56,7 @@ TstImg              equ       *
 *
 * Error:  CC = C bit set; B = error code
 *
+* DAT IMAGE COPY: F$SetTsk copies process DAT image to hardware DAT registers
 FSetTsk             ldx       R$X,u               get process descriptor pointer
 L0C79               equ       *
                     IFNE      H6309
@@ -73,9 +74,20 @@ L0C79               equ       *
                     ldx       <D.TskIPt           get task image table pointer
                     lslb                          account for 2 bytes/entry
                     stu       b,x                 save DAT image pointer in task table
+                  IFNE      picothing
+* Pico-Thing: every task has its own hardware DAT registers.
+* Compute X = DAT.Regs + task# × 8.  B = task# × 2 here.
+                    pshs      b                   preserve B
+                    lslb                          task# × 4
+                    lslb                          task# × 8
+                    ldx       #DAT.Regs           base of hardware DAT registers
+                    abx                           X = DAT.Regs + task# × 8
+                    puls      b                   restore B
+                  ELSE
                     cmpb      #2                  is it either system or GrfDrv?
                     bhi       L0C9F               no, return
                     ldx       #DAT.Regs           update system DAT image
+                  ENDC
                     lbsr      L0E93               go bash the hardware
 L0C9F               puls      cc,d,x,u,pc
 

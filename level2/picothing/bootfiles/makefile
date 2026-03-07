@@ -27,6 +27,9 @@ PIPE        = $(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd
 # Sysgo
 SYSGO       = $(MD)/sysgo
 
+# Shell (merged module file built in cmds/)
+SHELLMOD    = ../cmds/shell
+
 # OS9Boot disk image: all modules loaded from PATA by boot_picothing.
 # boot_picothing and krn are already in RAM (loaded via SREC); including them
 # here is harmless - I.VBlock will simply ignore duplicate module names.
@@ -37,6 +40,7 @@ BOOTFILE_PT = $(KERNELP2) \
               $(CLOCK) \
               $(PIPE) \
               $(SYSGO) \
+              $(SHELLMOD) \
               $(KERNEL)
 
 SREC        = boot_picothing.srec

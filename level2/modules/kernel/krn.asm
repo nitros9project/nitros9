@@ -106,12 +106,22 @@ DisSize             equ       *-DisTable
 * DO NOT ADD ANYTHING BETWEEN THESE 2 TABLES: see code using 'SubSiz', below
 LowSub              equ       $0160     start of low memory subroutines
 SubStrt             equ       *
-* D.Flip0 - switch to system task 0.
+* DAT.Task WRITE SITE 1 of 10: switch to system task 0 (D.Flip0)
 R.Flip0             equ       *
                   IFNE    H6309
                     aim       #$FE,<D.TINIT map type 0
                     lde       <D.TINIT  another 2 bytes saved if GrfDrv does: tfr cc,e
                     ste       >DAT.Task and we can use A here, instead of E
+                  ELSE
+                  IFNE    picothing
+* Pico-Thing: D.TINIT holds raw task# (0-31), not CoCo3 GIME INIT0.
+* anda #$FE only clears bit 0, which doesn't give 0 for tasks > 1.
+* Write 0 directly to switch to system task.  D.TINIT is NOT modified
+* so the user's task# is preserved for later restore.
+                    pshs      a         save off A
+                    clra                task 0 = system
+                    sta       >DAT.Task switch to system task
+                    puls      a         recover A
                   ELSE
                     pshs      a         save off A
                     lda       <D.TINIT  get the value from the shadow register
@@ -119,6 +129,7 @@ R.Flip0             equ       *
                     sta       <D.TINIT  save it back to the shadow register
                     sta       >DAT.Task and to the DAT hardware
                     puls      a         recover A
+                  ENDC
                   ENDC
                     clr       <D.SSTskN clear the system task number
                     tfr       x,s       transfer X to the stack
@@ -305,13 +316,15 @@ l@                  std       ,x++      now clear memory 16 bits at a time
 *<<<<<<<<<< Wildbits PORT
 
 *>>>>>>>>>> Pico-Thing PORT
-* Set up D.BtBug as a JMP to PicoBtBug so boot progress prints on the ACIA console.
+* Enable D.BtBug - boot debug prints on the ACIA console.
+* Change $7E to $39 (RTS) and comment leax/stx to disable.
                   IFNE    picothing
                     pshs      b
                     ldb       #$7E      JMP extended opcode
                     stb       <D.BtBug  store opcode at D.BtBug
                     leax      PicoBtBug,pcr address of the ACIA output routine
                     stx       <D.BtBug+1 store 2-byte target address
+                    ldb       #$7E      JMP opcode for D.Crash (always active)
                     stb       <D.Crash  store JMP opcode at D.Crash
                     leax      PicoCrash,pcr address of crash handler
                     stx       <D.Crash+1 store 2-byte target address
@@ -502,19 +515,6 @@ l@                  stu       ,x++      store it
                     stu       ,x        and save it in the last 8K slot
                   ENDC
 
-                  IFNE    picothing
-* Verify P$DATImg was written correctly: print block 0 and block 7 low bytes
-                    ldx       <D.SysDAT
-                    pshs      a,b
-                    lda       #'D
-                    jsr       <D.BtBug
-                    ldb       1,x       block 0 low byte (expect $00)
-                    lbsr      PicoBtHex
-                    ldb       15,x      block 7 low byte (expect $07)
-                    lbsr      PicoBtHex
-                    puls      a,b
-                  ENDC
-
                     ldx       <D.Tasks  point to the task user table
                     inc       ,x        mark the 1st entry as used (system)
                     inc       1,x       mark the 2nd entry as used (GrfDrv)
@@ -697,64 +697,24 @@ L0170
 
 * Verify the modules in the boot area and update/build a module index.
                   IFNE    picothing
-* Reset PTM before I.VBlock to quiesce any pending IRQ from
-* the Pico's virtual 6840.  If the PTM auto-starts on power-up
-* and asserts IRQ, it could race with ACIA bus access in the
-* Pico firmware, corrupting memory.
+* Reset ACIA before I.VBlock to ensure clean serial state.
                     pshs      a
-                    lda       #$01      hold MC6840 in reset until clock module init
-                    sta       >PTM.CR2
                     lda       #$03      master reset MC6850 ACIA
                     sta       >ACIA.Ctrl
-                    lda       #$16      8N1, /16, no IRQs (RTS low)
+                    lda       #$14      8N1, /1, no IRQs (RTS low) — avoid $16 which sets Pico queue loopback
                     sta       >ACIA.Ctrl
-                    lda       #'V
-                    jsr       <D.BtBug
                     puls      a
+                    lda       #'V       debug: ACIA reset complete, entering I.VBlock
+                    jsr       <D.BtBug
                   ENDC
                     lbsr      I.VBlock  perform module validation
-                  IFNE    picothing
-* Checkpoint v: print D.SysDAT before and after ACIA access
-                    ldd       <D.SysDAT
-                    std       >$07F0    save before ACIA
-                    lda       #'v
-                    sta       >ACIA.Data print 'v' via ACIA
-                    ldd       <D.SysDAT
-                    std       >$07F2    save after ACIA
-                    pshs      a,b,x
-                    ldb       >$07F0+1  low byte before
-                    lbsr      PicoBtHex
-                    lda       #'/
-                    jsr       <D.BtBug
-                    ldb       >$07F2+1  low byte after
-                    lbsr      PicoBtHex
-                    puls      a,b,x
-                  ENDC
                     bsr       L01D2     then mark the system map
 
                   IFEQ    wildbits
 * BGP - Load bootfile and link to init. We no longer try to link to init first and then
 * call F$Boot. This saves bytes.
-                  IFNE    picothing
-* Checkpoint 1: D.SysDAT before F$Boot
-                    pshs      a,b
-                    lda       #'1
-                    jsr       <D.BtBug
-                    ldb       <D.SysDAT+1
-                    lbsr      PicoBtHex
-                    puls      a,b
-                  ENDC
                     os9       F$Boot    load bootfile here +BGP+
                     bcs       L01CE     error, go crash +BGP+
-                  IFNE    picothing
-* Checkpoint 2: D.SysDAT after F$Boot
-                    pshs      a,b
-                    lda       #'2
-                    jsr       <D.BtBug
-                    ldb       <D.SysDAT+1
-                    lbsr      PicoBtHex
-                    puls      a,b
-                  ENDC
                   ENDC
                     leax      <init,pc  point to 'Init' module name
                     bsr       link      try & link it
@@ -953,26 +913,7 @@ l@                  ldx       ,--y      get the source bytes
                     stx       R$PC,u    save updated the update program counter back
 * Execute the system call.
                     ldy       <D.UsrDis get the user dispatch table pointer
-                  IFNE    picothing
-                    pshs      b         save function code for debug
-                  ENDC
                     lbsr      L033B     go execute the op-code
-                  IFNE    picothing
-                    pshs      a
-                    lda       #'U       user-state call
-                    jsr       <D.BtBug
-                    ldb       1,s       get saved function code (offset by pshs a)
-                    lbsr      PicoBtHex print function code as hex
-                    lda       R$CC,u    check result
-                    bita      #$01      carry set = error?
-                    bne       uerr@
-                    lda       #'+
-                    bra       upr@
-uerr@               lda       #'-
-upr@                jsr       <D.BtBug
-                    puls      a
-                    leas      1,s       clean saved function code
-                  ENDC
                   IFNE    H6309
                     aim       #^IntMasks,R$CC,u unmask interrupts in the caller's CC
                   ELSE
@@ -1078,16 +1019,7 @@ l@                  ldu       ,x++      get the source bytes
 * Process software interrupts from system state.
 *
 * Entry: U = The register stack pointer.
-SysCall             equ       *
-                  IFNE    picothing
-* Debug: print 'S' + hex function code on every system-state SWI2
-                    pshs      a
-                    lda       #'S
-                    jsr       <D.BtBug
-                    lbsr      PicoBtHex print function code in B as hex
-                    puls      a
-                  ENDC
-                    leau      ,s        get the pointer to the register stack
+SysCall             leau      ,s        get the pointer to the register stack
                     lda       <D.SSTskN get the system task number (0 = system, 1 = GrfDrv)
                     clr       <D.SSTskN force the system process
                     pshs      a         save the system task number
@@ -1098,17 +1030,6 @@ SysCall             equ       *
                     stx       R$PC,u    save my caller's updated PC register
                     ldy       <D.SysDis get the system dispatch table pointer
                     bsr       L033B     execute the system call
-                  IFNE    picothing
-                    pshs      a
-                    lda       R$CC,u    get merged CC result
-                    bita      #$01      carry set = error
-                    bne       scerr@
-                    lda       #'+       success
-                    bra       scpr@
-scerr@              lda       #'-       error
-scpr@               jsr       <D.BtBug
-                    puls      a
-                  ENDC
                     puls      a         restore the system state task number
                     lbra      L0E2B     return to the process
 
@@ -1257,11 +1178,18 @@ S.SysIRQ
                     beq       FastIRQ   use the super-fast version for system state
                     clr       <D.SSTskN clear out the memory copy (task 0)
                     jsr       [>D.SvcIRQ] call the routine (normally Clock calling D.Poll)
+* DAT.Task WRITE SITE 2 of 10: return from IRQ to user task (S.SysIRQ)
                     inc       <D.SSTskN save the task number for system state
+                  IFNE    picothing
+* Pico-Thing: D.TINIT holds raw task#, just write it to DAT.Task
+                    lda       <D.TINIT  get the user's task number
+                    sta       >DAT.Task switch to user task
+                  ELSE
                     lda       #1        get task 1
                     ora       <D.TINIT  merge the task bit into the shadow version
                     sta       <D.TINIT  update the shadow register
                     sta       >DAT.Task save to the DAT as well
+                  ENDC
                     bra       DoneIRQ   check for error and exit
 
 FastIRQ             jsr       [>D.SvcIRQ] call the orutine (normally Clock calling D.Poll)
@@ -1275,20 +1203,25 @@ DoneIRQ             bcc       L0E28     no error on IRQ, so exit
                   ENDC
 L0E28               rti                 return
 
-* Return from a system call.
+* DAT.Task WRITE SITE 3 of 10: return from system call (L0E2B)
 L0E29               clra                force system task # to 0 (system)
 L0E2B               ldx       <D.SysPrc get the system process descriptor pointer
                     lbsr      TstImg    check the image, and F$SetTsk (preserves A)
                     orcc      #IntMasks shut off interrupts
                     sta       <D.SSTskN save the task number for system state
                     beq       Fst2      if task 0, we're done
+                  IFNE    picothing
+* Pico-Thing: D.TINIT holds raw task#, just write it to DAT.Task
+                    lda       <D.TINIT  get the user's task number
+                  ELSE
                     ora       <D.TINIT  merge task bit into the shadow register
                     sta       <D.TINIT  update the shadow register
+                  ENDC
                     sta       >DAT.Task save to the DAT as well
 Fst2                leas      ,u        put stack ptr into U
                     rti                 return
 
-* Switch to a new process.
+* DAT.Task WRITE SITE 4 of 10: switch to new process (L0E4C)
 *
 * Entry: X = The Process descriptor pointer.
 *        U = The stack pointer.
@@ -1297,9 +1230,14 @@ L0E4C               equ       *
                     oim       #$01,<D.TINIT switch the shadow register to task 1
                     lda       <D.TINIT  get the shadow register
                   ELSE
+                  IFNE    picothing
+* Pico-Thing: D.TINIT holds raw task# (set by L0E8D), write directly
+                    lda       <D.TINIT  get the user's task number
+                  ELSE
                     lda       <D.TINIT  get the shadow register
                     ora       #$01      set it to task 1
                     sta       <D.TINIT  save it back
+                  ENDC
                   ENDC
                     sta       >DAT.Task save it to the DAT
                     leas      ,y        point to the new stack
@@ -1317,55 +1255,68 @@ l@                  ldx       ,u++      get the bytes
                     decb                decrement the counter
                     bne       l@        branch if not done
                   ENDC
-MyRTI
-                  IFNE    picothing
-                    pshs      a,b       save temporaries (offsets stack by 2)
-                    lda       #'R       print 'R' before RTI PC
-                    jsr       <D.BtBug
-                    ldb       2+R$PC,s  high byte of saved PC (stack offset by 2)
-                    lbsr      PicoBtHex print as 2 hex digits
-                    ldb       2+R$PC+1,s low byte of saved PC
-                    lbsr      PicoBtHex print as 2 hex digits
-                    puls      a,b       restore temporaries
-                  ENDC
-                    rti                 return from IRQ
+MyRTI               rti                 return from IRQ
 
 
-* Execute routine in task 1 pointed to by U.
-* This comes from user requested SWI vectors.
+* DAT.Task WRITE SITE 5 of 10: execute user SWI vector routine (L0E5E)
 L0E5E               equ       *
                   IFNE    H6309
                     oim       #$01,<D.TINIT switch the shadow register to task 1
                     ldb       <D.TINIT  get the shadow register
                   ELSE
+                  IFNE    picothing
+* Pico-Thing: D.TINIT holds raw task#, write directly
+                    ldb       <D.TINIT  get the user's task number
+                  ELSE
                     ldb       <D.TINIT  get the shadow register
                     orb       #$01      set it to task 1
                     stb       <D.TINIT  save it back
                   ENDC
+                  ENDC
                     stb       >DAT.Task save it to the DAT
                     jmp       ,u        jump to the routine
 
-* Flip to task 1 (used by WindInt to switch to GrfDrv) (pointed to
-*  by <D.Flip1). All registers are already preserved on stack for the RTI.
+* DAT.Task WRITE SITE 6 of 10: flip to task 1 for GrfDrv (S.Flip1)
 S.Flip1             ldb       #2        get the tsk image entry number x2 for Grfdrv (task 1)
                     bsr       L0E8D     copy over the DAT image
                   IFNE    H6309
                     oim       #$01,<D.TINIT switch the shadow register to task 1
                     lda       <D.TINIT  get a copy of the shadow register
                   ELSE
+                  IFNE    picothing
+* Pico-Thing: D.TINIT set by L0E8D, write directly (GrfDrv not used)
+                    lda       <D.TINIT  get the task number
+                  ELSE
                     lda       <D.TINIT  get a copy of the shadow register
                     ora       #$01      force task register to 1
                     sta       <D.TINIT  save it back
+                  ENDC
                   ENDC
                     sta       >DAT.Task save it to the DAT
                     inc       <D.SSTskN increment the system state task number
                     rti                 return
 
-* Set up the MMU, B=Task # to swap to, shifted left 1 bit.
+* DAT IMAGE COPY: set up MMU for task B (B = task# x 2)
 L0E8D               cmpb      <D.Task1N are we going back to the same task?
                     beq       L0EA3     without the DAT image changing?
                     stb       <D.Task1N no, save current task in map type 1
+*>>>>>>>>>> Pico-Thing PORT
+                  IFNE    picothing
+* Pico-Thing: save raw task# in D.TINIT and compute hardware DAT
+* register address.  Each task has 8 one-byte registers at
+* DAT.Regs + task# × 8.  B enters as task# × 2.
+                    pshs      b         preserve B for D.TskIPt index below
+                    lsrb                B = raw task number (task# × 2 / 2)
+                    stb       <D.TINIT  save for DAT.Task write sites
+                    lslb                task# × 2
+                    lslb                task# × 4
+                    lslb                task# × 8
+                    ldx       #DAT.Regs base of hardware DAT registers
+                    abx                 X = DAT.Regs + task# × 8
+                    puls      b         restore B = task# × 2
+*<<<<<<<<<< Pico-Thing PORT
 *>>>>>>>>>> Wildbits PORT
+                  ELSE
                   IFNE    wildbits
                     lda       MMU_MEM_CTRL get the memory control register
                     anda      #~EDIT_LUT turn off all EDIT_LUT bits
@@ -1375,6 +1326,7 @@ L0E8D               cmpb      <D.Task1N are we going back to the same task?
 *<<<<<<<<<< Wildbits PORT
                   ELSE
                     ldx       #DAT.Regs+8 get the MMU start register for process
+                  ENDC
                   ENDC
                     ldu       <D.TskIPt get the task image pointer table
                     ldu       b,u       and the address of the DAT image
@@ -1442,7 +1394,7 @@ FIRQVCT             ldx       #D.FIRQ   get the DP offset of the vector
 IRQVCT              orcc      #IntMasks disable interrupts
                     ldx       #D.IRQ    get the DP offset of the vector
 
-* Execute interrupt vector, B=DP Vector offset
+* DAT.Task WRITE SITE 7 of 10: interrupt entry, force task 0 (L0EB8)
 L0EB8               clra                (faster than CLR >$xxxx)
                     sta       >DAT.Task force to task 0 (system state)
                   IFNE    H6309
@@ -1450,14 +1402,20 @@ L0EB8               clra                (faster than CLR >$xxxx)
                   ELSE
                     tfr       a,dp      ASSUME: A=0 from earlier
                   ENDC
+* DAT.Task WRITE SITE 8 of 10: MapGrf/MapT0 switch to system (also entry from SWICall)
 MapGrf              equ       *         come here from elsewhere, too
                   IFNE    H6309
                     aim       #$FE,<D.TINIT switch the shadow register to system state
                     lda       <D.TINIT  set the DAT again just in case timer is used
                   ELSE
+                  IFNE    picothing
+* Pico-Thing: force task 0 directly (anda #$FE doesn't work for tasks > 1)
+                    clra                task 0 = system
+                  ELSE
                     lda       <D.TINIT  get the shadow register
                     anda      #$FE      clear the task 0 bit
                     sta       <D.TINIT  and save it back
+                  ENDC
                   ENDC
 MapT0               sta       >DAT.Task come here from elsewhere, too
                     jmp       [,x]      execute it
@@ -1479,6 +1437,7 @@ SWICall             ldb       [R$PC,s]  get the op-code of the system call
 * NOTE: Alan DeKok claims that this is BAD.  It crashed Colin McKay's
 * CoCo 3.  Instead, we should do a clra/sta >DAT.Task.
 *         clr   >DAT.Task       go to map type 1
+* DAT.Task WRITE SITE 9: SWI entry, force task 0
                     clra                clear A
                     sta       >DAT.Task and save it in the DAT
                   IFNE    H6309
@@ -1495,7 +1454,14 @@ SWICall             ldb       [R$PC,s]  get the op-code of the system call
 * CANNOT be vectored to L0EBF because the user SWI service routine has been
 * changed.
                     lda       <D.TINIT  get the shadow register
+                  IFNE    picothing
+* Pico-Thing uses task numbers 0,2,3,4... (not just 0/1 like CoCo3).
+* CoCo3's bita #$01 fails for even task numbers > 0 (treats them as
+* system state).  Use tsta instead: task 0 = system, anything else = user.
+                    tsta                task 0 (system state)?
+                  ELSE
                     bita      #$01      check it without changing it
+                  ENDC
 
 * Change to LBEQ R.SysSvc to avoid JMP [,X]
 * and add R.SysSvc STA >DAT.Task ???
@@ -1506,6 +1472,7 @@ SWICall             ldb       [R$PC,s]  get the op-code of the system call
 * The preceding few lines are necessary, as all SWI's still pass through
 * here before being vectored to the system service routine, which
 * doesn't copy the stack from user state.
+* DAT.Task WRITE SITE 10: temporarily switch to user task to copy stack
                     sta       >DAT.Task go to map type X again to get the user's stack
 * a byte less, a cycle more than ldy #$FEED-R$Size, or ldy #$F000+SWIStack
                     leay      <SWIStack,pc where to put the register stack: to $DF in the constant page

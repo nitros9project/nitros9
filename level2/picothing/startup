@@ -1,9 +1,5 @@
 * Echo welcome message
 echo * Welcome to NitrOS-9 Level 2 on the Pico-Thing *
-* Lock shell and std utils into memory
+* Lock shell into memory
 link shell
-load utilpak1
-* Start system time from keyboard
-setime </1
-date -t
 

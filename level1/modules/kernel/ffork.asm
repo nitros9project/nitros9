@@ -219,13 +219,64 @@ SveNPth        sta       ,u+                 save new path #
                ldx       ,s                  get pointer to new descriptor
                ldu       2,s                 get pointer to register stack
                lbsr      L04B1               link to module & setup register stack
-               bcs       L02CF               exit if error
+               lbcs      L02CF               exit if error
                pshs      d
                os9       F$AllTsk            allocate the task & setup MMU
                bcc       atok@               no error, continue
+               ifne      picothing
+* Debug: print 'a' + 2-hex-digit error code when F$AllTsk fails
+* B has the error code; BtBug preserves B
+               pshs      a,b
+               lda       #'a       debug: F$AllTsk failed
+               jsr       <D.BtBug
+               tfr       b,a       error code to A
+               lsra
+               lsra
+               lsra
+               lsra
+               adda      #'0
+               cmpa      #'9+1
+               blo       ah@
+               adda      #7
+ah@            jsr       <D.BtBug
+               tfr       b,a       error code to A again
+               anda      #$0F
+               adda      #'0
+               cmpa      #'9+1
+               blo       al@
+               adda      #7
+al@            jsr       <D.BtBug
+               puls      a,b
+               endc
                leas      2,s                 clean pshs d before error path
-               bra       L02CF               Error, skip ahead
+               lbra      L02CF               Error, skip ahead
 atok@          equ       *
+               ifne      picothing
+* Debug: print 'A' + 2-hex-digit task number on F$AllTsk success
+               pshs      a,b
+               lda       #'A       debug: F$AllTsk succeeded
+               jsr       <D.BtBug
+               ldb       P$Task,x  get allocated task number
+               tfr       b,a
+               lsra
+               lsra
+               lsra
+               lsra
+               adda      #'0
+               cmpa      #'9+1
+               blo       ath@
+               adda      #7
+ath@           jsr       <D.BtBug
+               ldb       P$Task,x
+               tfr       b,a
+               anda      #$0F
+               adda      #'0
+               cmpa      #'9+1
+               blo       atl@
+               adda      #7
+atl@           jsr       <D.BtBug
+               puls      a,b
+               endc
 
 * Copy parameters to new process
                lda       P$PagCnt,x          get memory page count
@@ -238,6 +289,12 @@ atok@          equ       *
                leax      ,y                  point to parameters
                puls      y                   restore parameter count
                os9       F$Move              move parameters to new process
+               ifne      picothing
+               pshs      a
+               lda       #'M       debug: first F$Move done
+               jsr       <D.BtBug
+               puls      a
+               endc
 
 * Setup the new stack
                ldx       ,s                  get pointer to process descriptor
@@ -246,6 +303,12 @@ atok@          equ       *
                leax      >(P$Stack-R$Size),x point to register stack
                ldy       #R$Size             get size of register stack
                os9       F$Move              move the register stack over
+               ifne      picothing
+               pshs      a
+               lda       #'N       debug: second F$Move done
+               jsr       <D.BtBug
+               puls      a
+               endc
                puls      u,x
                os9       F$DelTsk
                ldy       <D.Proc
@@ -267,13 +330,25 @@ atok@          equ       *
 *         leax   P$DatBeg,x point to time buffer
 *         os9    F$Time     put date/time into it
 *         puls   x          restore pointer
+               ifne      picothing
+               pshs      a
+               lda       #'P       debug: about to F$AProc
+               jsr       <D.BtBug
+               puls      a
+               endc
                os9       F$AProc             and start the process
+               ifne      picothing
+               pshs      a
+               lda       #'Q       debug: F$AProc returned
+               jsr       <D.BtBug
+               puls      a
+               endc
                rts                           return
 
 * Fork error goes here
 L02CF          puls      x
                pshs      b                   save error
-                  IFNE    picothing
+               ifne      picothing
 * Debug: print 'Z' + 2-hex-digit error code when fork fails
                pshs      a,b
                lda       #'Z
@@ -296,7 +371,7 @@ zh@            jsr       <D.BtBug
                blo       zl@
                adda      #7
 zl@            jsr       <D.BtBug
-                  ENDC
+               endc
                lbsr      L05A5               close paths & unlink mem
                lda       P$ID,x              get bad ID
                lbsr      L0386               delete proc desc & task #

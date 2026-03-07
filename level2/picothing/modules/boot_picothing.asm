@@ -67,9 +67,7 @@ FLOPPY              equ       0
 * Entry: Y = hardware address (PTIDEBase)
 * Exit:  Carry clear = OK, Carry set = Error, B = error code
 *
-HWInit              lda       #'H       entering HWInit
-                    jsr       <D.BtBug
-                    ldb       WhchDriv,pcr get drive select (0=master, 1=slave)
+HWInit              ldb       WhchDriv,pcr get drive select (0=master, 1=slave)
                     bne       slave@
                     lda       #%10100000 master: DEV=0
                     fcb       $8C       skip next instruction (cmpx immediate)
@@ -78,8 +76,6 @@ slave@              lda       #%10110000 slave: DEV=1
                     stb       DevHead,y select device
 a@                  tst       Status,y  wait for BSY to clear
                     bmi       a@
-                    lda       #'I       IDENTIFY starting
-                    jsr       <D.BtBug
                     lda       #$EC      IDENTIFY DEVICE command
                     sta       Command,y
 b@                  lda       Status,y  wait for BSY to clear
@@ -126,8 +122,6 @@ left@               ldd       DataReg,y discard remaining words
                     leax      -1,x
                     bne       left@
                     puls      x         restore X
-                    lda       #'D       done reading IDENTIFY
-                    jsr       <D.BtBug
 HWTerm              clrb
                     rts
 
@@ -159,14 +153,10 @@ HWRead              pshs      x,b
                     ror       3,s       rotate into bits 7-0
 
 * Wait for BSY clear and DRDY
-                    lda       #'b       debug: waiting for BSY clear
-                    jsr       <D.BtBug
 bsy@                tst       Status,y
                     bmi       bsy@
                     lda       mode,u
                     sta       DevHead,y
-                    lda       #'r       debug: waiting for DRDY
-                    jsr       <D.BtBug
 rdy@                ldb       Status,y
                     andb      #BusyBit+DrdyBit
                     cmpb      #DrdyBit
@@ -181,8 +171,6 @@ rdy@                ldb       Status,y
                     sta       CylLow,y
                     lda       #S$READ
                     sta       Command,y
-                    lda       #'q       debug: waiting for DRQ
-                    jsr       <D.BtBug
                     ldx       #0        timeout counter (65536 polls)
 drq@                lda       Status,y
                     bita      #ErrBit   check for error
@@ -191,15 +179,8 @@ drq@                lda       Status,y
                     bne       drqok@
                     leax      -1,x
                     bne       drq@
-* timeout: print status, error, psn, half
-                    lda       #'T       timeout marker
-                    jsr       <D.BtBug
-                    bsr       PrIDE     print status/error/psn/half
-                    lbra      RdDone2   abort this read
-drqerr@             lda       #'E       error marker
-                    jsr       <D.BtBug
-                    bsr       PrIDE     print status/error/psn/half
-                    lbra      RdDone2   abort this read
+                    lbra      RdDone2   timeout, abort this read
+drqerr@             lbra      RdDone2   error, abort this read
 drqok@
 * Read 512-byte physical sector, keep only the wanted half
                     tst       ,s        which half?
@@ -224,29 +205,6 @@ RdDone2             lda       Status,y  read final status
                     comb                set carry (error)
                     rts
 
-* PrIDE - print IDE status, error register, PSN, and half
-* Stack at call: [half:4] [psn23-16:5] [psn15-8:6] [psn7-0:7]
-* (offset +4 because BSR pushes 2 bytes for return address)
-PrIDE               lda       Status,y  read status
-                    lbsr      PrHex
-                    lda       #'/
-                    jsr       <D.BtBug
-                    lda       ErrorReg,y read error register
-                    lbsr      PrHex
-                    lda       #'@
-                    jsr       <D.BtBug
-                    lda       5,s       psn 23-16
-                    lbsr      PrHex
-                    lda       6,s       psn 15-8
-                    lbsr      PrHex
-                    lda       7,s       psn 7-0
-                    lbsr      PrHex
-                    lda       #'.
-                    jsr       <D.BtBug
-                    lda       4,s       half
-                    lbsr      PrHex
-                    rts
-
 * Rd256 - read 256 bytes (128 words) from DataReg into X
 Rd256               ldb       #128
                     pshs      b
@@ -264,25 +222,6 @@ sk@                 ldd       DataReg,y
                     dec       ,s
                     bne       sk@
                     leas      1,s
-                    rts
-
-*------------------------------------------------------------
-* PrHex - print byte in A as two hex digits via D.BtBug
-* Preserves all registers except CC
-*
-PrHex               pshs      a         save original byte
-                    lsra                shift high nibble down
-                    lsra
-                    lsra
-                    lsra
-                    bsr       PrNib     print high nibble
-                    puls      a         restore original byte
-PrNib               anda      #$0F      mask low nibble
-                    adda      #'0       convert to ASCII
-                    cmpa      #'9       is it a letter?
-                    bls       PrNib1
-                    adda      #7        adjust for A-F
-PrNib1              jsr       <D.BtBug  print it
                     rts
 
 *------------------------------------------------------------
