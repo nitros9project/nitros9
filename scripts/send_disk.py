@@ -50,12 +50,57 @@ NAK         = bytes([0x15])
 SECTOR_SIZE = 512
 MAX_RETRIES = 5
 
+# Set to True to enable PackBits RLE compression of sector payloads.
+# Both ends must agree: the 6809 diskload.c must be built with -DUSE_PACKBITS.
+USE_PACKBITS = True
+
 
 def xor_checksum(data):
     chk = 0
     for b in data:
         chk ^= b
     return chk
+
+
+def packbits_encode(data):
+    """PackBits RLE encoder.  Returns a bytes object.
+
+    Control byte semantics (matching the decoder in diskload.c):
+      0..127   -> next (n+1) bytes are literals   (1-128 bytes)
+      129..255 -> repeat next byte (257-n) times   (2-128 copies)
+      128      -> end-of-block marker
+
+    The end marker (0x80) is appended automatically.
+    """
+    out = bytearray()
+    i = 0
+    n = len(data)
+    while i < n:
+        # Look for a run of identical bytes (min 3 to be worth encoding)
+        if i + 2 < n and data[i] == data[i + 1] == data[i + 2]:
+            val = data[i]
+            run = 3
+            while i + run < n and data[i + run] == val and run < 128:
+                run += 1
+            out.append((257 - run) & 0xFF)  # 129..255
+            out.append(val)
+            i += run
+        else:
+            # Literal run: collect up to 128 non-run bytes
+            lit_start = i
+            lit_end = i + 1
+            while lit_end < n and (lit_end - lit_start) < 128:
+                # Stop if the next 3 bytes form a run
+                if (lit_end + 2 < n
+                        and data[lit_end] == data[lit_end + 1] == data[lit_end + 2]):
+                    break
+                lit_end += 1
+            count = lit_end - lit_start
+            out.append(count - 1)            # 0..127
+            out.extend(data[lit_start:lit_end])
+            i = lit_end
+    out.append(0x80)  # end-of-block marker
+    return bytes(out)
 
 
 CHUNK_SIZE = 8   # bytes per timed burst when --chunk-delay is used
@@ -158,7 +203,8 @@ def send_disk(port, baud, image_path, start_lba=0, max_sectors=None,
                 (lba >> 8)  & 0xFF,
                 lba         & 0xFF,
             ])
-            frame = header + data + bytes([chk])
+            payload = packbits_encode(data) if USE_PACKBITS else data
+            frame = header + payload + bytes([chk])
 
             success = False
             for attempt in range(MAX_RETRIES):

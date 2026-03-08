@@ -52,7 +52,11 @@ all:    $(ALLOBJS)
 bootfile_pt: $(BOOTFILE_PT) $(DEPENDS)
 	$(MERGE) $(BOOTFILE_PT) >$@
 
-$(SREC): $(BOOT) $(KERNEL) $(DEPENDS)
+DBGMON      = $(MD)/dbgmon
+
+# SREC contains boot module, krn, and dbgmon — but also embeds SWIStack
+# and interrupt stubs derived from krn.  Rebuild whenever any input changes.
+$(SREC): $(BOOT) $(KERNEL) $(KERNELP2) $(DBGMON) $(DEPENDS)
 	python3 $(NITROS9DIR)/scripts/mk_picothing_srec.py $(NITROS9DIR) >$@
 
 clean:

@@ -67,7 +67,9 @@ FLOPPY              equ       0
 * Entry: Y = hardware address (PTIDEBase)
 * Exit:  Carry clear = OK, Carry set = Error, B = error code
 *
-HWInit              ldb       WhchDriv,pcr get drive select (0=master, 1=slave)
+HWInit              lda       #%00000010 nIEN: disable IDE interrupts
+                    sta       AltStatus,y write device control register
+                    ldb       WhchDriv,pcr get drive select (0=master, 1=slave)
                     bne       slave@
                     lda       #%10100000 master: DEV=0
                     fcb       $8C       skip next instruction (cmpx immediate)

@@ -1,19 +1,15 @@
 ********************************************************************
 * clock_picothing - Clock module for Pico-Thing Level 2
 *
-* Uses the virtual MC6840 PTM at $FFC8-$FFCF (provided by Pico).
-*
-* The MC6840 timer 1 generates periodic IRQs for OS timeslicing.
-*
-* Important: the Pico firmware must route the MC6840 interrupt to
-* the 6809 IRQ line (not FIRQ). NitrOS-9's timeslicing infrastructure
-* is built around IRQ; FIRQ cannot drive the scheduler without
-* significant kernel modifications.
+* Uses the Pico's 50Hz tick timer at $FFC8-$FFC9.
+*   $FFC8 write: bit 0 = enable (1) / disable (0)
+*   $FFC9 read:  bit 7 = IRQ pending; reading clears it
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
 *     1    2025       Initial version for Pico-Thing
+*     2    2026/03/08 Replaced MC6840 PTM with simple tick timer
 
                     nam       clock_picothing
                     ttl       Clock for Pico-Thing Level 2
@@ -54,23 +50,22 @@ NewSvc              fcb       F$Time
 *
 * IRQ handler entry point
 *
-* Called by the kernel on every IRQ. We check whether the MC6840
-* fired and route to either SvcVIRQ (clock tick) or DoPoll (other IRQ).
+* Called by the kernel on every IRQ. We check whether the tick
+* timer fired and route to either SvcVIRQ (clock tick) or DoPoll.
+*
+* Reading TICK.Stat both tests and acknowledges the timer IRQ.
 *
 SvcIRQ
-                    ldx       #PTMBase  point to MC6840
-                    lda       PTM.CR,x  read status register
-                    bita      #PTM.IRQFlag did MC6840 fire?
-                    beq       NoClock   no, handle as generic IRQ
+                    lda       >TICK.Stat read and acknowledge tick timer
+                    bmi       YesClock  bit 7 set = tick timer fired
 
-                    sta       PTM.CR,x  write back to acknowledge interrupt
-                    ldx       <D.VIRQ   set VIRQ routine to be executed
-                    clr       <D.QIRQ   flag as clock IRQ
-                    bra       ContIRQ
-
-NoClock             leax      DoPoll,pcr not clock IRQ, poll other sources
+                    leax      DoPoll,pcr not clock IRQ, poll other sources
                     lda       #$FF
                     sta       <D.QIRQ   flag as non-clock IRQ
+                    bra       ContIRQ
+
+YesClock            ldx       <D.VIRQ   set VIRQ routine to be executed
+                    clr       <D.QIRQ   flag as clock IRQ
 ContIRQ             stx       <D.SvcIRQ
                     jmp       [D.XIRQ]  chain to kernel timeslice handler
 
@@ -80,7 +75,8 @@ ContIRQ             stx       <D.SvcIRQ
 *
 * Counts down VIRQ timers, updates system time, checks alarm.
 *
-SvcVIRQ             clra                flag for VIRQ pending
+SvcVIRQ
+                    clra                flag for VIRQ pending
                     pshs      a
                     ldy       <D.CLTb   get address of VIRQ table
                     bra       virqent
@@ -284,9 +280,10 @@ Clock2              fcs       "Clock2"
 * Clock Initialization
 *
 * Called by the kernel to service the first F$STime call.
-* Initializes the MC6840 PTM and installs IRQ handler.
+* Enables the 50Hz tick timer and installs IRQ handler.
 *
-Init                ldx       <D.Proc   save user proc
+Init
+                    ldx       <D.Proc   save user proc
                     pshs      x
                     ldx       <D.SysPrc make sys for link
                     stx       <D.Proc
@@ -307,37 +304,9 @@ LinkOk              sty       <D.Clock2 save Clock2 entry point
                     pshs      cc        save IRQ enable status
                     orcc      #IntMasks disable interrupts
 
-* Initialize MC6840 PTM:
-* - Reset the chip (write any value to CR with reset bit set)
-* - Configure timer 1 for continuous mode, internal clock, interrupt enable
-* - Load timer 1 with count value for desired tick rate
-*
-* Timer tick rate = input_clock / (count + 1)
-* For 50Hz ticks with a 1MHz clock: count = 1000000/50 - 1 = 19999 = $4E1F
-* For 60Hz ticks with a 1MHz clock: count = 1000000/60 - 1 = 16665 = $4119
-* Update TkPerSec, PTClkCnt values to match your clock frequency.
-*
-                    ldx       #PTMBase  point to MC6840
-
-                    lda       #$01      reset MC6840 (bit 0 of CR2 = reset)
-                    sta       PTM.CR2,x
-
-                    lda       #$00      clear reset bit
-                    sta       PTM.CR2,x
-
-                    lda       #$C3      timer 1: continuous, internal clock, 16-bit
-                    sta       PTM.CR1,x write CR1
-
-                  IFEQ    TkPerSec-50
-                    ldd       #$4E1F    19999 = 50Hz with 1MHz clock
-                  ELSE
-                    ldd       #$4119    16665 = 60Hz with 1MHz clock
-                  ENDC
-                    sta       PTM.T1MSB,x write MSB first
-                    stb       PTM.T1MSB+1,x write LSB (note: virtual 6840 may differ)
-
-                    lda       #$C3      enable interrupt, start timer 1
-                    sta       PTM.CR1,x
+* Enable the 50Hz tick timer
+                    lda       #$01      bit 0 = enable
+                    sta       >TICK.Ctrl start tick timer
 
                     ldd       #59*256+TkPerTS trigger RTC read soon
                     std       <D.Sec    will prompt Clock2 read at next timeslice
@@ -350,7 +319,6 @@ LinkOk              sty       <D.Clock2 save Clock2 entry point
                     stx       <D.VIRQ
                     leay      NewSvc,pcr insert service calls
                     os9       F$SSvc
-
                     ldy       <D.Clock2 call Clock2 init
                     jsr       ,y
                     puls      cc,pc     restore IRQ status and return

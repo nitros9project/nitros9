@@ -7,6 +7,7 @@ before releasing reset.  Contains:
 
   $E800  boot_picothing module, padded to 1024 bytes (= BOOT_MOD_PAD)
   $EC00  krn module (= Where / Bt.Start + BOOT_MOD_PAD)
+  $FC00  dbgmon debug monitor (512 bytes, optional)
   $FE00  DAT RAM: task 0 identity map (slot N -> physical page N)
   $FFF0  6809 hardware vectors
 
@@ -30,6 +31,7 @@ from datetime import datetime
 BOOT_MOD_ADDR = 0xE800   # virtual/physical address for boot_picothing
 BOOT_MOD_PAD  = 1024     # pad boot_picothing to this many bytes
 KRN_ADDR      = 0xEC00   # virtual/physical address for krn  (= Where)
+DBGMON_ADDR   = 0xFC00   # debug monitor routines (512 bytes)
 DAT_RAM_ADDR  = 0xFE00   # DAT RAM base (32 tasks x 8 slots x 1 byte)
 DAT_TASK_CT   = 32       # number of hardware task slots
 DAT_RAM_SIZE  = DAT_TASK_CT * 8  # 256 bytes total
@@ -131,8 +133,9 @@ def parse_exec_offset(data):
 def main():
     nitros9dir = sys.argv[1] if len(sys.argv) > 1 else '.'
 
-    boot_path = os.path.join(nitros9dir, 'level2', 'picothing', 'modules', 'boot_picothing')
-    krn_path  = os.path.join(nitros9dir, 'level2', 'picothing', 'modules', 'krn')
+    boot_path   = os.path.join(nitros9dir, 'level2', 'picothing', 'modules', 'boot_picothing')
+    krn_path    = os.path.join(nitros9dir, 'level2', 'picothing', 'modules', 'krn')
+    dbgmon_path = os.path.join(nitros9dir, 'level2', 'picothing', 'modules', 'dbgmon')
 
     # --- boot_picothing ---------------------------------------------------
     with open(boot_path, 'rb') as fh:
@@ -189,6 +192,21 @@ def main():
         target_abs = KRN_ADDR + target_off
         vct_addrs[name] = target_abs
         print(f'  {name:10s} = ${target_abs:04X}', file=sys.stderr)
+
+    # --- dbgmon (debug monitor) -------------------------------------------
+    if os.path.exists(dbgmon_path):
+        with open(dbgmon_path, 'rb') as fh:
+            dbgmon_data = fh.read()
+        print(f'dbgmon:         {len(dbgmon_data)} bytes @ ${DBGMON_ADDR:04X}', file=sys.stderr)
+        dbgmon_end = DBGMON_ADDR + len(dbgmon_data)
+        if dbgmon_end > DAT_RAM_ADDR:
+            raise ValueError(
+                f'dbgmon ends at ${dbgmon_end:04X}, overflowing into '
+                f'DAT RAM at ${DAT_RAM_ADDR:04X}'
+            )
+    else:
+        dbgmon_data = None
+        print('dbgmon:         not found, skipping', file=sys.stderr)
 
     # --- Post-module data (SWIStack + interrupt stubs) --------------------
     # krn.asm's SWICall contains  leay <SWIStack,pc  which references the
@@ -263,13 +281,15 @@ def main():
     # to the kernel's VCT handler (like CoCo3's constant-block BRA stubs).
     # The VCT handlers switch tasks at the right point.
     #
-    # 6809 vector layout:
-    #   $FFF0  Reserved    $FFF2  SWI3    $FFF4  SWI2    $FFF6  FIRQ
+    # 6809/6309 vector layout:
+    #   $FFF0  Reserved (6309: illegal opcode / div-by-zero trap)
+    #   $FFF2  SWI3    $FFF4  SWI2    $FFF6  FIRQ
     #   $FFF8  IRQ         $FFFA  SWI     $FFFC  NMI     $FFFE  RESET
+    DBGMON_ILLOP = DBGMON_ADDR + 0x12   # DBG.IllegalOp entry point
     def w(v):
         return bytes([(v >> 8) & 0xFF, v & 0xFF])
     vec_data = (
-        w(reset_vec)                +   # $FFF0 reserved → RESET
+        w(DBGMON_ILLOP)             +   # $FFF0 6309 illegal opcode trap → dbgmon
         w(stub_offsets['SWI3'])     +   # $FFF2 SWI3
         w(stub_offsets['SWI2'])     +   # $FFF4 SWI2
         w(stub_offsets['FIRQ'])     +   # $FFF6 FIRQ
@@ -287,6 +307,8 @@ def main():
     lines += list(emit_block(KRN_ADDR,      krn_data))
     lines += list(emit_block(swistack_addr, swistack_data))
     lines += list(emit_block(stub_addr,     stub_data))
+    if dbgmon_data is not None:
+        lines += list(emit_block(DBGMON_ADDR, dbgmon_data))
     lines += list(emit_block(VEC_ADDR,      vec_data))
 
     lines.append(s9(reset_vec))

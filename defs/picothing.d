@@ -16,7 +16,7 @@ PICOTHING.D         SET       1
 *   $FF00-$FFBF   I/O space (PATA HD, etc.)
 *   $FFC0         Task register (Pico)
 *   $FFC3-$FFC4   Virtual MC6850 ACIA (serial console)
-*   $FFC8-$FFCF   Virtual MC6840 PTM (timer/clock, fires IRQ)
+*   $FFC8-$FFC9   Virtual 50Hz tick timer (fires IRQ)
 *   $FFF0-$FFFF   6809 hardware vectors (provided by Pico)
 *
 * DAT Structure:
@@ -60,21 +60,13 @@ ACIA.Ctrl           EQU       ACIABase+0 status (read) / control (write)
 ACIA.Data           EQU       ACIABase+1 receive (read) / transmit (write)
 
 *
-* Virtual MC6840 PTM (programmable timer module, via Pico at $FFC8-$FFCF)
+* Virtual 50 Hz Tick Timer (via Pico at $FFC8-$FFC9)
 *
-* Note: this virtual timer fires the 6809 IRQ line (not FIRQ).
-* NitrOS-9's timeslicing infrastructure is built around IRQ; connecting
-* the timer to IRQ is required for proper process scheduling.
+* Minimal tick timer using Pico SDK hardware alarm.
+* Fires IRQ at 50Hz.  Reading the status register acknowledges the IRQ.
 *
-PTMBase             EQU       $FFC8     6840 base address
-PTM.CR              EQU       PTMBase+0 control/status register
-PTM.CR2             EQU       PTMBase+1 control register 2
-PTM.CR1             EQU       PTMBase+2 control register 1
-PTM.T3MSB           EQU       PTMBase+3 timer 3 MSB
-PTM.T3LSB           EQU       PTMBase+4 timer 3 LSB
-PTM.T2MSB           EQU       PTMBase+5 timer 2 MSB
-PTM.T2LSB           EQU       PTMBase+6 timer 2 LSB
-PTM.T1MSB           EQU       PTMBase+7 timer 1 MSB
+TICK.Ctrl           EQU       $FFC8     write: bit 0 = enable (1) / disable (0)
+TICK.Stat           EQU       $FFC9     read: bit 7 = IRQ pending; cleared on read
 
 *
 * PATA Hard Disk (in I/O space $FF00-$FFBF)
@@ -92,13 +84,38 @@ Bt.Start            EQU       $E800     boot_picothing at $E800 (padded to 1024)
 SHIFTBIT            EQU       0         no shift key on serial console
 
 *
-* MC6840 PTM control register bits
+* Debug shared buffer ($FFD0-$FFDF)
 *
-PTM.IRQEn           EQU       %01000000 interrupt enable bit (CR bit 6)
-PTM.IRQFlag         EQU       %10000000 interrupt flag bit (status register bit 7)
-PTM.T1En            EQU       %00000001 timer 1 enable (CR1 bit 0)
-PTM.ClkSrc          EQU       %00000010 clock source select (internal)
-PTM.CntMode         EQU       %00001000 continuous mode (repeat)
+* 16 bytes of Pico/6809 shared memory. The 6809 writes trace markers
+* here; the Pico can read them for debug display. The Pico overwrites
+* this range during many console actions, so nothing persistent goes here.
+*
+DBG.Base            EQU       $FFD0     debug buffer base
+DBG.IRQ             EQU       $FFD0     user-state IRQ entry marker
+DBG.SWI2            EQU       $FFD1     user-state SWI2 entry marker
+DBG.CWAI            EQU       $FFD2     F$NProc cwai idle loop counter
+DBG.TICK            EQU       $FFD3     clock timeslice handler entry counter
+DBG.WAKE            EQU       $FFD4     sleep queue wake counter
+DBG.SIRQ            EQU       $FFD5     system-state IRQ (S.SysIRQ/FastIRQ) counter
+DBG.POLL            EQU       $FFD6     DoPoll entry counter (clock module)
+DBG.TRACE           EQU       $FFD7     general trace marker (single byte, working range)
+DBG.PC              EQU       $FFD8     captured PC from FastIRQ (2 bytes, big-endian)
+DBG.IDEX            EQU       $FFDA     IDE: hardware address X (2 bytes, big-endian)
+DBG.IDES            EQU       $FFDC     IDE: Status register value read by StatusWait
+DBG.DrvW            EQU       $FFDD     sc6850 Write call counter
+DBG.DrvR            EQU       $FFDE     sc6850 Read call counter
+DBG.DrvI            EQU       $FFDF     sc6850 IRQSvc call counter
+
+*
+* Debug monitor entry points ($FC00-$FDFF, always mapped in kernel page)
+*
+DBG.PrintChar       EQU       $FC00     print character in A
+DBG.Print2Hex       EQU       $FC03     print byte in A as 2 hex digits
+DBG.Print4Hex       EQU       $FC06     print D as 4 hex digits
+DBG.PrintStr        EQU       $FC09     print null-terminated string at X
+DBG.PrintCR         EQU       $FC0C     print CR+LF
+DBG.PrintRegs       EQU       $FC0F     print CC,A,B,DP,X,Y,U,S
+DBG.IllegalOp       EQU       $FC12     6309 illegal opcode trap (does not return)
 
                   ENDC
 

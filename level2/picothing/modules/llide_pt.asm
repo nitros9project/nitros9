@@ -111,8 +111,11 @@ start               bra       ll_init
 * IT IS NOT CALLED PER DEVICE!
 *
 ll_init
-*         clrb
-*         rts
+                    ldx       V.PORT-UOFFSET,u get hw address
+                    lda       #%00000010 nIEN bit: disable IDE interrupts
+                    sta       AltStatus,x write device control register
+                    clrb
+                    rts
 
 
 * ll_term - Low level term routine
@@ -511,6 +514,11 @@ ex@                 puls      x,pc
 *         X = HW address
 *         Y = pointer to current device table
 IOSetup             ldx       V.PORT-UOFFSET,u get hw address
+                  IFNE    picothing
+                    stx       >DBG.IDEX trace: capture IDE hardware address
+                    lda       Status,x  read IDE status before doing anything
+                    sta       >DBG.IDES trace: capture initial IDE status
+                  ENDC
                     lda       PD.DNS,y  get device ID bit
                     lsra                shift device ID into carry
                     bcs       slave@

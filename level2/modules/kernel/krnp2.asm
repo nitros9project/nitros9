@@ -75,14 +75,14 @@
                     ttl       NitrOS-9 Level 2 Kernel Part 2
 
 ** If Network I/O ptrs are disabled, F$Fork runs 72 cycles faster
-Network             equ       0                   Set to 1 to enable network I/O ptrs
+Network             equ       0         Set to 1 to enable network I/O ptrs
 
-                    ifp1
+                  IFP1
                     use       defsfile
                     use       cocovtio.d
-                    endc
+                  ENDC
 
-TC9                 set       false               "true" use TC-9 6309 trap vector
+TC9                 set       false     "true" use TC-9 6309 trap vector
 Edition             equ       20
 Revision            equ       0
 
@@ -91,158 +91,144 @@ Revision            equ       0
 MName               fcs       /KrnP2/
                     fcb       Edition
 
-                    ifeq      TC9-1
+                  IFEQ    TC9-1
 * Entry: None
 * Exit : Process killed & register dump produced for user
-Trap                bitmd     #%01000000          illegal instruction?
-                    bne       BadIns              yes, go process
-                    bitmd     #%10000000          division by 0?
-                    bne       Div0                yes, go process
-                    jmp       [<D.XSWI]           act as if nothing happened
+Trap                bitmd     #%01000000 illegal instruction?
+                    bne       BadIns    yes, go process
+                    bitmd     #%10000000 division by 0?
+                    bne       Div0      yes, go process
+                    jmp       [<D.XSWI] act as if nothing happened
 
 * Process illegal instruction trap
-BadIns              bsr       SetProc             move the register stack here
-                    ldb       #18                 get error code for F$Exit
+BadIns              bsr       SetProc   move the register stack here
+                    ldb       #18       get error code for F$Exit
                     bra       TrapDone
 
 * Process division by 0 trap
-Div0                bsr       SetProc             move the register stack
-                    ldb       #45                 get error code for F$Exit
+Div0                bsr       SetProc   move the register stack
+                    ldb       #45       get error code for F$Exit
 * Return to system after the trap
 * Entry: B=Error code
 *        U=Pointer to register stack
-TrapDone            stb       R$B,u               save the error code to register stack for F$Exit
-                    lbra      FExit               enter F$Exit directly
+TrapDone            stb       R$B,u     save the error code to register stack for F$Exit
+                    lbra      FExit     enter F$Exit directly
 
 * Set process to system state & copy register stack for trap processing
-SetProc             ldd       <D.SysSvc           set system call processor to system side
+SetProc             ldd       <D.SysSvc set system call processor to system side
                     std       <D.XSWI2
-                    ldd       <D.SysIRQ           do the same thing for IRQ's
+                    ldd       <D.SysIRQ do the same thing for IRQ's
                     std       <D.XIRQ
-                    ldx       <D.Proc             get current process pointer
-                    ifne      H6309
+                    ldx       <D.Proc   get current process pointer
+                  IFNE    H6309
                     oim       #SysState,P$State,x mark process as system state
-                    else
+                  ELSE
                     ldb       P$State,x
                     orb       #SysState
                     stb       P$State,x
-                    endc
+                  ENDC
 * copy register stack to process descriptor
-                    sts       P$SP,x              save stack pointer
-                    leas      (P$Stack-R$Size),x  point S to register stack destination
-                    andcc     #^IntMasks          force interrupts back on
-                    leau      ,s                  point to destination register stack
-                    ldb       P$Task,x            get task # of destination
-                    ldx       P$SP,x              get the user/system stack pointer
-                    pshs      b                   preserve task for a moment
-                    tfr       x,d                 copy it for easier calcs
-                    bita      #%11100000          offset above block 0?
-                    beq       done                yes, no calc needed get out
-                    anda      #%00011111          make it a offset within a block
-                    tfr       d,x                 copy new offset
-                    lsra                          make A an offset into DAT image
+                    sts       P$SP,x    save stack pointer
+                    leas      (P$Stack-R$Size),x point S to register stack destination
+                    andcc     #^IntMasks force interrupts back on
+                    leau      ,s        point to destination register stack
+                    ldb       P$Task,x  get task # of destination
+                    ldx       P$SP,x    get the user/system stack pointer
+                    pshs      b         preserve task for a moment
+                    tfr       x,d       copy it for easier calcs
+                    bita      #%11100000 offset above block 0?
+                    beq       done      yes, no calc needed get out
+                    anda      #%00011111 make it a offset within a block
+                    tfr       d,x       copy new offset
+                    lsra                make A an offset into DAT image
                     lsra
                     lsra
                     lsra
-done                puls      b                   restore task #
-                    leax      -$6000,x            make it a pointer to where I'll map the block
+done                puls      b         restore task #
+                    leax      -$6000,x  make it a pointer to where I'll map the block
                     tfr       u,y
-                    pshs      cc,u                preserve IRQ status & dest pointer
+                    pshs      cc,u      preserve IRQ status & dest pointer
                     ldu       <D.TskIPt
-                    lslb                          adjust task # to fit table
-                    ldu       b,u                 get the DAT image pointer
-                    leau      a,u                 point to the blocks needed
-                    lda       1,u                 get 1st block
-                    ldb       3,u                 get a second in case of overlap
-                    orcc      #IntMasks           shut IRQ's down
-                    std       >DAT.Regs+5         map in the blocks
-                    ifne      H6309
-                    ldw       #R$Size             get size of register stack
-                    tfm       x+,y+               move 'em to process descriptor
-                    else
+                    lslb                adjust task # to fit table
+                    ldu       b,u       get the DAT image pointer
+                    leau      a,u       point to the blocks needed
+                    lda       1,u       get 1st block
+                    ldb       3,u       get a second in case of overlap
+                    orcc      #IntMasks shut IRQ's down
+                    std       >DAT.Regs+5 map in the blocks
+                  IFNE    H6309
+                    ldw       #R$Size   get size of register stack
+                    tfm       x+,y+     move 'em to process descriptor
+                  ELSE
                     ldb       #R$Size
 Uday                lda       ,x+
                     sta       ,y+
                     decb
                     bne       Uday
-                    endc
-                    ldx       <D.SysDAT           get the system DAT image pointer
-                    lda       $0B,x               get the original blocks
+                  ENDC
+                    ldx       <D.SysDAT get the system DAT image pointer
+                    lda       $0B,x     get the original blocks
                     ldb       $0D,x
-                    std       >DAT.Regs+5         map 'em back in
-                    puls      cc,u,pc             restore IRQ's, register stack pointer & return
-                    endc
+                    std       >DAT.Regs+5 map 'em back in
+                    puls      cc,u,pc   restore IRQ's, register stack pointer & return
+                  ENDC
 
-krnp2               lda       #'2                 debug: signal that we made it into krnp2
-                    jsr       <D.BtBug
-                    ifne      H6309
-                    leay      <SvcTab,pc          install system calls
-                    else
-                    leay      SvcTab,pc           install system calls
-                    endc
+krnp2               equ       *
+                  IFNE    H6309
+                    leay      <SvcTab,pc install system calls
+                  ELSE
+                    leay      SvcTab,pc install system calls
+                  ENDC
                     os9       F$SSvc
-                    ifeq      TC9-1
+                  IFEQ    TC9-1
                     leax      Trap,pc
                     stx       <D.SWI
-                    endc
+                  ENDC
 * Change to default directory
-L003A               ldu       <D.Init             get init module pointer
-                    ldd       SysStr,u            get pointer to system device name (usually '/DD')
-                    beq       L004F               don't exist, open std device
-                    leax      d,u                 point to name
-                    lda       #'x                 debug: signal that we tried chd'ing
-                    jsr       <D.BtBug
-                    lda       #(EXEC.+READ.)      get file mode
-                    os9       I$ChgDir            change to it
-                    bcc       L004F               went ok, go on
-                    os9       F$Boot              try & load boot file
-                    bcc       L003A               go try again
-L004F               ldu       <D.Init             get init module pointer
-                    ldd       <StdStr,u           point to default device (usually '/Term')
-                    beq       L0077               don't exist go do OS9P3
-                    leax      d,u                 point to it
-                    lda       #'o                 debug: signal that we tried opening output window
-                    jsr       <D.BtBug
-                    lda       #UPDAT.             get file mode
-                    os9       I$Open              open path to it
-                    bcc       L0066               went ok, save path #
-* LCB - not sure why this is remarked out and replaced with NOP's?
-*         os9    F$Boot      try & re-boot
-* nop
-* nop
-* nop
-*         bcc    L004F       go try again
-* nop
-* nop
-                    bra       L009B               crash machine
+L003A               ldu       <D.Init   get init module pointer
+                    ldd       SysStr,u  get pointer to system device name (usually '/DD')
+                    beq       L004F     don't exist, open std device
+                    leax      d,u       point to name
+                    lda       #(EXEC.+READ.) get file mode
+                    os9       I$ChgDir  change to it
+                    bcc       L004F     went ok, go on
+                    os9       F$Boot    try & load boot file
+                    bcc       L003A     go try again
+L004F
+                    ldu       <D.Init   get init module pointer
+                    ldd       <StdStr,u point to default device (usually '/Term')
+                    beq       L0077     don't exist go do OS9P3
+                    leax      d,u       point to it
+                    lda       #UPDAT.   get file mode
+                    os9       I$Open    open path to it
+                    bcc       L0066     went ok, save path #
+                    bra       L009B     crash machine
 
-L0066               ldx       <D.Proc             get current process pointer
-                    sta       <P$Path,x           save stdin path
-                    os9       I$Dup               dupe it
-                    sta       <P$Path+1,x         save stdout path
-                    os9       I$Dup               dupe it again
-                    sta       <P$Path+2,x         save stderr path
-L0077               leax      <L0096,pc           point to 'krnp3'
-                    lda       #Systm              get type
-                    os9       F$Link              try to link
-                    bcs       L0083               not there, go on
-                    jsr       ,y                  execute it
+L0066               ldx       <D.Proc   get current process pointer
+                    sta       <P$Path,x save stdin path
+                    os9       I$Dup     dupe it
+                    sta       <P$Path+1,x save stdout path
+                    os9       I$Dup     dupe it again
+                    sta       <P$Path+2,x save stderr path
+L0077               leax      <L0096,pc point to 'krnp3'
+                    lda       #Systm    get type
+                    os9       F$Link    try to link
+                    bcs       L0083     not there, go on
+                    jsr       ,y        execute it
 * Execute module listed in Init module
-L0083               ldu       <D.Init             get init module pointer
-                    ldd       InitStr,u           get offset to name of first module
-                    leax      d,u                 point to it
-                    lda       #'C                 debug: signal that we tried to go to SysGo
-                    jsr       <D.BtBug
-                    lda       #Objct              get module type
-                    clrb                          get mem size
-                    ifne      H6309
-                    tfr       0,y                 Get parameter size
-                    else
+L0083               ldu       <D.Init   get init module pointer
+                    ldd       InitStr,u get offset to name of first module
+                    leax      d,u       point to it
+                    lda       #Objct    get module type
+                    clrb                get mem size
+                  IFNE    H6309
+                    tfr       0,y       Get parameter size
+                  ELSE
                     ldy       #$0000
-                    endc
-                    os9       F$Fork              fork it
-                    bcs       L009B               if error, crash the system
-L0093               os9       F$NProc             let it take over
+                  ENDC
+                    os9       F$Fork    fork it
+                    bcs       L009B     if error, crash the system
+L0093               os9       F$NProc   let it take over
 
 L0096               fcs       /krnp3/
 
@@ -296,11 +282,11 @@ svctab              fcb       F$UnLink
                     fdb       FGBlkMp-*-2
                     fcb       F$GModDr
                     fdb       FGModDr-*-2
-                    IFEQ      H6309+wildbits
+                  IFEQ    H6309+wildbits
                     fcb       F$DelRAM
                     fdb       FDelRAM-*-2
-                    ENDC
-                    fcb       F$SUser             Added back here for room in OS9p1
+                  ENDC
+                    fcb       F$SUser   Added back here for room in OS9p1
                     fdb       FSUser-*-2
                     fcb       F$UnLoad
                     fdb       FUnLoad-*-2
@@ -326,7 +312,7 @@ svctab              fcb       F$UnLink
                     fdb       FGCMDir-*-2
                     fcb       F$Debug
                     fdb       FDebug-*-2
-                    fcb       F$CRCMod            new system call to change module CRC calcs on/off
+                    fcb       F$CRCMod  new system call to change module CRC calcs on/off
                     fdb       FCRCMod-*-2
                     fcb       $7f
                     fdb       GetIOMan-*-2
@@ -337,28 +323,28 @@ svctab              fcb       F$UnLink
 * Link & execute IOMan
 * Entry: None
 * Exit : I/O handling installed & ready for use
-GetIOMan            pshs      d,x,y,u             preserve regs
-                    bsr       LnkIOMan            link to ioman
-                    bcc       GotIOMan            no errors, go on
-                    os9       F$Boot              re-load boot file
-                    bcs       IOManErr            error loading, return
-                    bsr       LnkIOMan            link to ioman
-                    bcs       IOManErr            error, save it & return
-GotIOMan            jsr       ,y                  execute IOMan's init routine
-                    puls      d,x,y,u             restore registers
-                    jmp       [IOEntry,y]         Execute I/O vector
+GetIOMan            pshs      d,x,y,u   preserve regs
+                    bsr       LnkIOMan  link to ioman
+                    bcc       GotIOMan  no errors, go on
+                    os9       F$Boot    re-load boot file
+                    bcs       IOManErr  error loading, return
+                    bsr       LnkIOMan  link to ioman
+                    bcs       IOManErr  error, save it & return
+GotIOMan            jsr       ,y        execute IOMan's init routine
+                    puls      d,x,y,u   restore registers
+                    jmp       [IOEntry,y] Execute I/O vector
 
-IOManErr            stb       1,s                 save error if any
-                    puls      d,x,y,u,pc          restore & return
+IOManErr            stb       1,s       save error if any
+                    puls      d,x,y,u,pc restore & return
 
 * Link to IOMan
 * Entry: None
 * Exit : U=Pointer to IOMan module header
 *        Y=Pointer to IOMan entry point
-LnkIOMan            leax      <IOMan,pc           point to name
-                    lda       #(Systm+Objct)      get type
-                    os9       F$Link              link it
-                    rts                           return
+LnkIOMan            leax      <IOMan,pc point to name
+                    lda       #(Systm+Objct) get type
+                    os9       F$Link    link it
+                    rts                 return
 
 IOMan               fcs       /IOMan/
 
@@ -386,9 +372,9 @@ IOMan               fcs       /IOMan/
 
                     use       fid.asm
 
-                    ifeq      H6309+wildbits
+                  IFEQ    H6309+wildbits
                     use       fdelram.asm
-                    endc
+                  ENDC
 
                     use       fsswi.asm
 

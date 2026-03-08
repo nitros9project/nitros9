@@ -1070,12 +1070,6 @@ L0345
                     clra                clear the MSB of the offset
                     ldx       d,y       get the vector to call
                     bne       L034F     it's initialized, go execute it
-                  IFNE    picothing
-                    pshs      a
-                    lda       #'?       unknown service call
-                    jsr       <D.BtBug
-                    puls      a
-                  ENDC
                     comb                set the carry for error
                     ldb       #E$UnkSvc get the error code
                     bra       L0355     return with it
@@ -1164,7 +1158,7 @@ L0D7C               anda      #^TimOut  clear the timeout flag
                     sta       P$State,x and save it to the process descriptor
 
 L0D80               equ       *
-L0D83               bsr       L0D11     activate next process
+L0D83               lbsr      L0D11     activate next process
 
                     use       fnproc.asm
 
@@ -1192,7 +1186,8 @@ S.SysIRQ
                   ENDC
                     bra       DoneIRQ   check for error and exit
 
-FastIRQ             jsr       [>D.SvcIRQ] call the orutine (normally Clock calling D.Poll)
+FastIRQ             equ       *
+                    jsr       [>D.SvcIRQ] call the orutine (normally Clock calling D.Poll)
 DoneIRQ             bcc       L0E28     no error on IRQ, so exit
                   IFNE    H6309
                     oim       #IntMasks,0,s setup RTI to shut interrupts off again

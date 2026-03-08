@@ -18,14 +18,18 @@ RBF         = rbf.mn rbsuper.dr llide_pt.dr ddi0_pt.dd i0_pt.dd
 SCF         = scf.mn sc6850.dr term_pt.dd
 PIPE        = pipeman.mn piper.dr pipe.dd
 
-ALLOBJS     = $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(PIPE)
+DBGMON      = dbgmon
+ALLOBJS     = $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(PIPE) $(DBGMON)
 
 all:    $(ALLOBJS)
 
 # Kernel (built in kernel/ subdirectory)
-krn krnp2:
+# Always recurse into kernel/ so its own makefile can check dependencies.
+krn krnp2: FORCE
 	$(CD) kernel; make $@
 	$(CP) kernel/$@ .
+
+FORCE:
 
 # Pico-Thing PATA IDE low-level driver
 llide_pt.dr: llide_pt.asm
@@ -53,6 +57,10 @@ clock2_null: clock2_null.asm
 # Console terminal descriptor
 term_pt.dd: term_pt.asm
 	$(AS) $(AFLAGS) $(ASOUT)$@ $<
+
+# Debug monitor (raw binary at $FC00, loaded via SREC)
+dbgmon: dbgmon.asm
+	$(AS) --format=raw $(AFLAGS) $(ASOUT)$@ $<
 
 clean:
 	$(CD) kernel; make $@
