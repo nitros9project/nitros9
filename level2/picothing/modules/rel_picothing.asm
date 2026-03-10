@@ -20,8 +20,10 @@
 *   8. Initialize IDE or DriveWire (per DrvWire flag)
 *   9. Print boot message with device type
 *  10. Load OS9Kernel from disk directly to $EC00
-*  11. Load OS9Boot from disk to $2000
-*  12. Find Krn module at $EC00 and jump to entry point
+*  11. Find Krn module at $EC00 and jump to entry point
+*
+* The kernel finds boot_picothing (merged into OS9Kernel)
+* and uses it via F$Boot to load OS9Boot from disk.
 *
 * On entry there is no stack; step 3 sets one up at STKADDR.
 *
@@ -198,19 +200,18 @@ E_CRC               equ       $F3       crc error code
 OpJMP               equ       $7E       6809 JMP extended opcode
 Stat.TxE            equ       %00000010 acia tx data register empty
 STKADDR             equ       $2000     initial stack (pre-decrements)
-BTBUF               equ       $2000     24k boot buffer ($2000-$7fff)
-BTBFSZ              equ       $6000
 KERADDR             equ       $EC00     kernel loaded directly here
 SECBUF              equ       $B000     256 byte sector buffer
 SEGBUF              equ       $B100     segment list buffer (240 bytes)
 SEG_ENT             equ       5         bytes per segment entry
 
 *------------------------------------------------------------
-* LOADO9 - load os9kernel and os9boot from disk
+* LOADO9 - load os9kernel from disk and jump to kernel
 *
-* reads lsn 0, finds os9kernel and os9boot in root
-* directory, loads kernel directly to KERADDR, loads
-* boot file to BTBUF, and jumps to kernel.
+* reads lsn 0, finds os9kernel in root directory, loads
+* it directly to KERADDR ($EC00). os9kernel contains krn
+* and boot_picothing merged together. the kernel uses
+* boot_picothing via F$Boot to load os9boot from disk.
 *
 * entry: called from rel after hardware init
 * exit:  no return if successful
@@ -268,36 +269,7 @@ gtkr1@              ldx       ModNam,pcr print file name and fd lsn
                     ldy       #KERADDR
                     lbsr      FIND
                     lbcs      LExit
-* find and load os9boot file
-                    lbsr      PCRLF
-                    ldx       #BTBUF    zero out boot buffer
-clrbt@              clr       ,x+
-                    cmpx      #BTBUF+BTBFSZ
-                    blo       clrbt@
-                    ldx       RtDir,pcr get root dir fd lsn
-                    lbsr      FINDDT
-                    lbcs      LExit
-                    clrb                lsn 23-16 = 0
-                    ldy       #SECBUF   read first dir sector
-                    lbsr      READLS
-                    lbcs      LExit
-                    clr       FFSkip,pcr reset first-sector flag
-                    leax      BtNam,pcr find os9boot in directory
-                    lbsr      FINDFL
-                    bcc       gtbt1@
-                    leax      O9BtErr,pcr "os9boot file not found"
-                    bra       LError
-gtbt1@              ldx       ModNam,pcr print file name and fd lsn
-                    lbsr      PHDATA
-                    lbsr      OUT1SP
-                    ldx       ModLSN,pcr
-                    lbsr      OUT4HX
-                    lbsr      FINDDT    get segment list and size
-                    bcs       LExit
-                    ldy       #BTBUF
-                    lbsr      READCF    load os9boot into buffer
-                    bcs       LExit
-* jump to kernel
+* jump to kernel (it will load os9boot via F$Boot)
                     lbsr      PCRLF
                     bra       JMPKER
 * error return
@@ -957,7 +929,6 @@ DForm               fcs       "Format: "
 DSPT                fcs       "Sectors/Track: "
 DRoot               fcs       "Root dir: "
 O9KrErr             fcs       "OS9Kernel file not found"
-O9BtErr             fcs       "OS9Boot file not found"
 DSiz                fcs       " sz="
 DSeg                fcs       " sg:"
 DRdSg               fcs       "rd "
@@ -966,7 +937,6 @@ DRdSg               fcs       "rd "
 * Module name strings (fcs format, hi bit set on last char)
 *
 KerNam              fcs       /OS9Kernel/
-BtNam               fcs       /OS9Boot/
 NKrn                fcs       /Krn/
 
 *------------------------------------------------------------

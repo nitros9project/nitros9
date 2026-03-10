@@ -12,7 +12,7 @@ DEPENDS     = ./makefile
 IDEFLAGS    = $(AFLAGS) -DIDE=1 $(FLAGS)
 
 KERNEL      = krn krnp2
-SYSMODS     = ioman init sysgo boot_picothing rel_picothing
+SYSMODS     = ioman init sysgo boot_picothing boot_dw_pt rel_picothing
 CLOCKS      = clock_picothing clock2_null
 RBF         = rbf.mn rbsuper.dr llide_pt.dr ddi0_pt.dd \
               i0_pt.dd i1_pt.dd i2_pt.dd i3_pt.dd \
@@ -75,6 +75,10 @@ i7_pt.dd: ptidedesc.asm
 # Pico-Thing boot module (PATA IDE boot)
 boot_picothing: boot_picothing.asm
 	$(AS) $(AFLAGS) $(ASOUT)$@ $<
+
+# Pico-Thing boot module (DriveWire boot via auxiliary ACIA)
+boot_dw_pt: boot_dw_pt.asm
+	$(AS) $(AFLAGS) -Dpicothing=1 $(ASOUT)$@ $<
 
 # REL - early hardware init and relocation chunk (raw binary at Bt.Start)
 rel_picothing: rel_picothing.asm

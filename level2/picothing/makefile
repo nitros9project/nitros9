@@ -23,8 +23,9 @@ STARTUP     = startup
 SYSGO       = sysgo
 
 DSK_PT      = $(DISTROVER).dsk
+DSK_DW      = $(DISTROVER)_dw.dsk
 DSK_I0      = $(DISTROVER)_i0.dsk
-DSKS        = $(DSK_PT) $(DSK_I0)
+DSKS        = $(DSK_PT) $(DSK_DW) $(DSK_I0)
 
 # Make all components
 all:
@@ -48,7 +49,27 @@ dsk: all $(DSKS)
 dskcopy: $(DSKS)
 	$(CP) $(DSKS) $(DSKDIR)
 
+# Standard SD boot disk (SS35, boots from /DD = /I0 via IDE)
 $(DSK_PT):
+	$(RM) $@
+	$(OS9FORMAT_DS80) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
+	$(OS9GEN) $@ -b=$(BOOTFILE_PT)
+	$(MAKDIR) $@,CMDS
+	$(MAKDIR) $@,SYS
+	$(OS9COPY) bootfiles/os9kernel $@,OS9Kernel
+	$(OS9ATTR_EXEC) $@,OS9Kernel
+	$(OS9COPY) modules/$(SYSGO) $@,sysgo
+	$(OS9ATTR_EXEC) $@,sysgo
+	$(CD) cmds; $(OS9COPY) $(CMDS) ../$@,CMDS
+	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
+	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
+	$(OS9ATTR_TEXT) $(foreach file,$(SYSBIN),$@,SYS/$(file))
+	$(CD) sys; $(CPL) $(SYSTEXT) ../$@,SYS
+	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
+	$(CPL) $(STARTUP) $@,startup
+	$(OS9ATTR_TEXT) $@,startup
+
+$(DSK_DW):
 	$(RM) $@
 	$(OS9FORMAT) -l4194304 -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9GEN) $@ -b=$(BOOTFILE_PT)
