@@ -44,11 +44,14 @@ SYSGO       = $(MD)/sysgo
 # Shell (merged module file built in cmds/)
 SHELLMOD    = ../cmds/shell
 
-# OS9Boot: all modules for IDE + DriveWire + graphics.
-# boot_picothing and krn are already in RAM (loaded via REL/SREC);
-# including them here is harmless — the kernel ignores duplicate names.
+# OS9Kernel: krn + boot module, loaded by REL before the kernel runs.
+# The kernel scans this block for modules, finding both.
+OS9KERNEL   = $(KERNEL) $(BOOT)
+
+# OS9Boot: all remaining modules for IDE + DriveWire + graphics.
+# krn and boot_picothing are NOT included here — they arrive via
+# OS9Kernel (loaded by REL) or via the SREC fallback path.
 BOOTFILE_PT = $(KERNELP2) \
-              $(BOOT) \
               $(RBF) \
               $(RBDW) \
               $(SCF) \
@@ -57,17 +60,19 @@ BOOTFILE_PT = $(KERNELP2) \
               $(CLOCK) \
               $(PIPE) \
               $(SYSGO) \
-              $(SHELLMOD) \
-              $(KERNEL)
+              $(SHELLMOD)
 
 SREC        = boot_picothing.srec
 
-ALLOBJS     = bootfile_pt $(SREC)
+ALLOBJS     = bootfile_pt os9kernel $(SREC)
 
 all:    $(ALLOBJS)
 
 bootfile_pt: $(BOOTFILE_PT) $(DEPENDS)
 	$(MERGE) $(BOOTFILE_PT) >$@
+
+os9kernel: $(OS9KERNEL) $(DEPENDS)
+	$(MERGE) $(OS9KERNEL) >$@
 
 DBGMON      = $(MD)/dbgmon
 
@@ -78,3 +83,4 @@ $(SREC): $(BOOT) $(KERNEL) $(KERNELP2) $(DBGMON) $(DEPENDS)
 
 clean:
 	$(RM) $(ALLOBJS)
+

@@ -54,7 +54,7 @@ $(DSK_PT):
 	$(OS9GEN) $@ -b=$(BOOTFILE_PT)
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
-	$(OS9COPY) modules/krn $@,OS9Kernel
+	$(OS9COPY) bootfiles/os9kernel $@,OS9Kernel
 	$(OS9ATTR_EXEC) $@,OS9Kernel
 	$(OS9COPY) modules/$(SYSGO) $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
@@ -74,7 +74,7 @@ $(DSK_I0):
 	$(OS9GEN) $@ -b=$(BOOTFILE_PT)
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
-	$(OS9COPY) modules/krn $@,OS9Kernel
+	$(OS9COPY) bootfiles/os9kernel $@,OS9Kernel
 	$(OS9ATTR_EXEC) $@,OS9Kernel
 	$(OS9COPY) modules/$(SYSGO) $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
