@@ -12,8 +12,10 @@ KERNELP2    = $(MD)/krnp2 $(MD)/init $(MD)/ioman
 # Boot module (PATA IDE boot)
 BOOT        = $(MD)/boot_picothing
 
-# RBF stack (PATA IDE)
-RBF         = $(MD)/rbf.mn $(MD)/rbsuper.dr $(MD)/llide_pt.dr $(MD)/ddi0_pt.dd
+# RBF stack (PATA IDE, 8 x 512MB partitions = 4GB)
+RBF         = $(MD)/rbf.mn $(MD)/rbsuper.dr $(MD)/llide_pt.dr $(MD)/ddi0_pt.dd \
+              $(MD)/i0_pt.dd $(MD)/i1_pt.dd $(MD)/i2_pt.dd $(MD)/i3_pt.dd \
+              $(MD)/i4_pt.dd $(MD)/i5_pt.dd $(MD)/i6_pt.dd $(MD)/i7_pt.dd
 
 # RBF DriveWire stack
 RBDW        = $(MD)/rbdw.dr $(MD)/dwio.sb \

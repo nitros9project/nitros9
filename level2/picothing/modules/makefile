@@ -14,7 +14,9 @@ IDEFLAGS    = $(AFLAGS) -DIDE=1 $(FLAGS)
 KERNEL      = krn krnp2
 SYSMODS     = ioman init sysgo boot_picothing rel_picothing
 CLOCKS      = clock_picothing clock2_null
-RBF         = rbf.mn rbsuper.dr llide_pt.dr ddi0_pt.dd i0_pt.dd
+RBF         = rbf.mn rbsuper.dr llide_pt.dr ddi0_pt.dd \
+              i0_pt.dd i1_pt.dd i2_pt.dd i3_pt.dd \
+              i4_pt.dd i5_pt.dd i6_pt.dd i7_pt.dd
 SCF         = scf.mn sc6850.dr term_pt.dd
 GFX         = vtio_picothing.dr copico term_gfx.dd
 DW          = dwio.sb rbdw.dr ddx0.dd x0.dd x1.dd x2.dd x3.dd \
@@ -40,12 +42,35 @@ FORCE:
 llide_pt.dr: llide_pt.asm
 	$(AS) $(AFLAGS) $(ASOUT)$@ $<
 
-# Pico-Thing PATA disk descriptors (default drive)
+# Pico-Thing PATA disk descriptors
+# DD = default drive (partition 0), I0-I7 = partitions 0-7
+# Each partition is 512MB (2097152 sectors, SOFF1 steps by $20)
 ddi0_pt.dd: ptidedesc.asm
 	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DDD=1
 
 i0_pt.dd: ptidedesc.asm
-	$(AS) $(ASOUT)$@ $< $(AFLAGS)
+	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DSOFF1=0x00
+
+i1_pt.dd: ptidedesc.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DSOFF1=0x20
+
+i2_pt.dd: ptidedesc.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DSOFF1=0x40
+
+i3_pt.dd: ptidedesc.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DSOFF1=0x60
+
+i4_pt.dd: ptidedesc.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DSOFF1=0x80
+
+i5_pt.dd: ptidedesc.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DSOFF1=0xA0
+
+i6_pt.dd: ptidedesc.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DSOFF1=0xC0
+
+i7_pt.dd: ptidedesc.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DSOFF1=0xE0
 
 # Pico-Thing boot module (PATA IDE boot)
 boot_picothing: boot_picothing.asm

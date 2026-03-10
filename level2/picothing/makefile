@@ -23,7 +23,8 @@ STARTUP     = startup
 SYSGO       = sysgo
 
 DSK_PT      = $(DISTROVER).dsk
-DSKS        = $(DSK_PT)
+DSK_I0      = $(DISTROVER)_i0.dsk
+DSKS        = $(DSK_PT) $(DSK_I0)
 
 # Make all components
 all:
@@ -49,7 +50,27 @@ dskcopy: $(DSKS)
 
 $(DSK_PT):
 	$(RM) $@
-	$(OS9FORMAT_SD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
+	$(OS9FORMAT) -l4194304 -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
+	$(OS9GEN) $@ -b=$(BOOTFILE_PT)
+	$(MAKDIR) $@,CMDS
+	$(MAKDIR) $@,SYS
+	$(OS9COPY) modules/krn $@,OS9Kernel
+	$(OS9ATTR_EXEC) $@,OS9Kernel
+	$(OS9COPY) modules/$(SYSGO) $@,sysgo
+	$(OS9ATTR_EXEC) $@,sysgo
+	$(CD) cmds; $(OS9COPY) $(CMDS) ../$@,CMDS
+	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
+	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
+	$(OS9ATTR_TEXT) $(foreach file,$(SYSBIN),$@,SYS/$(file))
+	$(CD) sys; $(CPL) $(SYSTEXT) ../$@,SYS
+	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
+	$(CPL) $(STARTUP) $@,startup
+	$(OS9ATTR_TEXT) $@,startup
+
+# IDE partition volume (512MB = 2097152 sectors, matches /I0 geometry)
+$(DSK_I0):
+	$(RM) $@
+	$(OS9FORMAT) -l2097152 -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9GEN) $@ -b=$(BOOTFILE_PT)
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS

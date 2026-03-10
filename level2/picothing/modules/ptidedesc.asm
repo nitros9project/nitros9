@@ -5,10 +5,17 @@
 * Uses rbsuper.dr as the file manager driver and llide_pt.dr
 * as the low-level PATA interface driver.
 *
+* Assembly-time defines:
+*   DD=1    - names the descriptor "DD" (default drive)
+*   SOFF1   - sector offset high byte (partition number * $20)
+*             each unit of $20 = 2097152 sectors = 512MB
+*             default 0 (no offset)
+*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
 *     1    2025       Initial version for Pico-Thing
+*     2    2026/03/10 MarkM - add SOFF1 partitioning support
 
                   IFP1
                     use       defsfile
@@ -16,15 +23,27 @@
                     use       ide.d
                   ENDC
 
+* Sector offset for partitioning (default 0)
+* SOFF1 = high byte of 24-bit sector offset ($20 per 512MB partition)
+* PNUM = partition number for device name (0-7)
+                    ifndef    SOFF1
+SOFF1               set       0
+                  ENDC
+                    ifndef    PNUM
+PNUM                set       SOFF1/$20
+                  ENDC
+
 ITDRV               set       0         drive number (master)
 ITSTP               set       0         step rate (not used for PATA)
 ITTYP               set       $81       hard disk, drive size query on
 ITDNS               set       0         media density: master (IDE ID 0)
 
-Sides               set       $40       default geometry (LBA drive auto-detects)
-Cyls                set       $007f
-SectTrk             set       $0020
-SectTrk0            set       $0020
+* Geometry: 512MB partition (2097152 sectors)
+* 1024 cyls x 64 sides x 32 sectors/track = 2097152 sectors
+Cyls                set       1024
+Sides               set       64
+SectTrk             set       32
+SectTrk0            set       32
 Interlv             set       $01
 SAS                 set       $10
 
@@ -57,9 +76,9 @@ rev                 set       $00
                     fcb       0         IT.TFM
                     fdb       0         IT.Exten
                     fcb       0         IT.STOff
-                    fcb       0         IT.WPC
-                    fcb       0         IT.OFS
-                    fcb       0         IT.SOffset3
+                    fcb       SOFF1     IT.SOFF1 (partition sector offset high byte)
+                    fcb       0         IT.SOFF2
+                    fcb       0         IT.SOFF3
 initsize            equ       *
                     fdb       lldrv     low-level driver reference
                     fcb       0         IT.MPI
@@ -68,7 +87,7 @@ initsize            equ       *
 name                fcs       /DD/
                   ELSE
 name                fcc       /I/
-                    fcb       '0+ITDNS+$80
+                    fcb       '0+PNUM+$80
                   ENDC
 
 mgrnam              fcs       /RBF/

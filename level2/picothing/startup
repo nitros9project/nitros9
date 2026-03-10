@@ -1,5 +1,2 @@
-* Echo welcome message
-echo * Welcome to NitrOS-9 Level 2 on the Pico-Thing *
-* Lock shell into memory
+load utilpak1
 link shell
-
