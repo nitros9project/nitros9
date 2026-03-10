@@ -12,14 +12,19 @@ DEPENDS     = ./makefile
 IDEFLAGS    = $(AFLAGS) -DIDE=1 $(FLAGS)
 
 KERNEL      = krn krnp2
-SYSMODS     = ioman init sysgo boot_picothing
+SYSMODS     = ioman init sysgo boot_picothing rel_picothing
 CLOCKS      = clock_picothing clock2_null
 RBF         = rbf.mn rbsuper.dr llide_pt.dr ddi0_pt.dd i0_pt.dd
 SCF         = scf.mn sc6850.dr term_pt.dd
+GFX         = vtio_picothing.dr copico term_gfx.dd
+DW          = dwio.sb rbdw.dr ddx0.dd x0.dd x1.dd x2.dd x3.dd \
+              scdwv.dr term_scdwv.dt n_scdwv.dd \
+              n1_scdwv.dd n2_scdwv.dd n3_scdwv.dd n4_scdwv.dd \
+              clock2_dw
 PIPE        = pipeman.mn piper.dr pipe.dd
 
 DBGMON      = dbgmon
-ALLOBJS     = $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(PIPE) $(DBGMON)
+ALLOBJS     = $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(GFX) $(DW) $(PIPE) $(DBGMON)
 
 all:    $(ALLOBJS)
 
@@ -46,6 +51,10 @@ i0_pt.dd: ptidedesc.asm
 boot_picothing: boot_picothing.asm
 	$(AS) $(AFLAGS) $(ASOUT)$@ $<
 
+# REL - early hardware init and relocation chunk (raw binary at Bt.Start)
+rel_picothing: rel_picothing.asm
+	$(AS) --format=raw $(AFLAGS) $(ASOUT)$@ $<
+
 # Clock module
 clock_picothing: clock_picothing.asm
 	$(AS) $(AFLAGS) $(ASOUT)$@ $<
@@ -54,8 +63,70 @@ clock_picothing: clock_picothing.asm
 clock2_null: clock2_null.asm
 	$(AS) $(AFLAGS) $(ASOUT)$@ $<
 
-# Console terminal descriptor
+# Console terminal descriptor (serial)
 term_pt.dd: term_pt.asm
+	$(AS) $(AFLAGS) $(ASOUT)$@ $<
+
+# VTIO driver for graphical console
+vtio_picothing.dr: vtio_picothing.asm
+	$(AS) $(AFLAGS) $(ASOUT)$@ $<
+
+# CoPico co-module (graphical console rendering)
+copico: copico.asm
+	$(AS) $(AFLAGS) $(ASOUT)$@ $<
+
+# Graphical console terminal descriptor
+term_gfx.dd: term_gfx.asm
+	$(AS) $(AFLAGS) $(ASOUT)$@ $<
+
+# DriveWire I/O subroutine module (auxiliary ACIA at $FFC5-$FFC6)
+dwio.sb: dwio.asm
+	$(AS) $(AFLAGS) -Dpicothing=1 $(ASOUT)$@ $<
+
+# DriveWire RBF driver
+rbdw.dr: rbdw.asm
+	$(AS) $(AFLAGS) $(ASOUT)$@ $<
+
+# DriveWire disk descriptors (virtual drives via DW server)
+ddx0.dd: dwdesc.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDD=1 -DDNum=0
+
+x0.dd: dwdesc.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
+
+x1.dd: dwdesc.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=1
+
+x2.dd: dwdesc.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=2
+
+x3.dd: dwdesc.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=3
+
+# DriveWire SCF virtual channel driver and descriptors
+scdwv.dr: scdwv.asm
+	$(AS) $(AFLAGS) $(ASOUT)$@ $<
+
+term_scdwv.dt: scdwvdesc.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=0
+
+n_scdwv.dd: scdwvdesc.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=255
+
+n1_scdwv.dd: scdwvdesc.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=1
+
+n2_scdwv.dd: scdwvdesc.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=2
+
+n3_scdwv.dd: scdwvdesc.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=3
+
+n4_scdwv.dd: scdwvdesc.asm
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=4
+
+# DriveWire clock2 module (time sync via DW server)
+clock2_dw: clock2_dw.asm
 	$(AS) $(AFLAGS) $(ASOUT)$@ $<
 
 # Debug monitor (raw binary at $FC00, loaded via SREC)
@@ -83,6 +154,12 @@ showrbf:
 
 showscf:
 	@$(ECHO) $(SCF)
+
+showgfx:
+	@$(ECHO) $(GFX)
+
+showdw:
+	@$(ECHO) $(DW)
 
 showpipe:
 	@$(ECHO) $(PIPE)

@@ -1,5 +1,3 @@
-LISTDIR     = .
-
 include ../../port.mak
 
 vpath %.asm $(LEVEL2)/modules/kernel:$(LEVEL1)/modules/kernel

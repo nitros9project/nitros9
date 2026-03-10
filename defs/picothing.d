@@ -16,6 +16,7 @@ PICOTHING.D         SET       1
 *   $FF00-$FFBF   I/O space (PATA HD, etc.)
 *   $FFC0         Task register (Pico)
 *   $FFC3-$FFC4   Virtual MC6850 ACIA (serial console)
+*   $FFC5-$FFC6   Virtual MC6850 ACIA (auxiliary)
 *   $FFC8-$FFC9   Virtual 50Hz tick timer (fires IRQ)
 *   $FFF0-$FFFF   6809 hardware vectors (provided by Pico)
 *
@@ -53,11 +54,18 @@ KrnBlk              SET       $07       physical page number of the kernel (page
 HW.Page             EQU       $FF       high byte of I/O address space
 
 *
-* Virtual MC6850 ACIA (serial console, via Pico at $FFC3-$FFC4)
+* Virtual MC6850 ACIA — console (via Pico at $FFC3-$FFC4)
 *
-ACIABase            EQU       $FFC3     6850 base address
+ACIABase            EQU       $FFC3     console 6850 base address
 ACIA.Ctrl           EQU       ACIABase+0 status (read) / control (write)
 ACIA.Data           EQU       ACIABase+1 receive (read) / transmit (write)
+
+*
+* Virtual MC6850 ACIA — auxiliary (via Pico at $FFC5-$FFC6)
+*
+AuxBase             EQU       $FFC5     auxiliary 6850 base address
+Aux.Ctrl            EQU       AuxBase+0 status (read) / control (write)
+Aux.Data            EQU       AuxBase+1 receive (read) / transmit (write)
 
 *
 * Virtual 50 Hz Tick Timer (via Pico at $FFC8-$FFC9)

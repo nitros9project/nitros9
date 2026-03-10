@@ -41,6 +41,7 @@ A$STOP              EQU       $1B
 *
 S$READ              EQU       $20
 S$WRITE             EQU       $30
+S$IDENTIFY          EQU       $EC       identify device
 
 *
 * IDE Task File Registers (offsets from PTIDEBase)

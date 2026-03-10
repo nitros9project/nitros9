@@ -12,14 +12,26 @@ KERNELP2    = $(MD)/krnp2 $(MD)/init $(MD)/ioman
 # Boot module (PATA IDE boot)
 BOOT        = $(MD)/boot_picothing
 
-# RBF stack
+# RBF stack (PATA IDE)
 RBF         = $(MD)/rbf.mn $(MD)/rbsuper.dr $(MD)/llide_pt.dr $(MD)/ddi0_pt.dd
 
-# SCF stack
+# RBF DriveWire stack
+RBDW        = $(MD)/rbdw.dr $(MD)/dwio.sb \
+              $(MD)/ddx0.dd $(MD)/x0.dd $(MD)/x1.dd $(MD)/x2.dd $(MD)/x3.dd
+
+# SCF stack (serial console)
 SCF         = $(MD)/scf.mn $(MD)/sc6850.dr $(MD)/term_pt.dd
 
+# SCF DriveWire virtual channels
+SCDWV       = $(MD)/scdwv.dr $(MD)/term_scdwv.dt $(MD)/n_scdwv.dd \
+              $(MD)/n1_scdwv.dd $(MD)/n2_scdwv.dd \
+              $(MD)/n3_scdwv.dd $(MD)/n4_scdwv.dd
+
+# Graphics console (CoPico)
+GFX         = $(MD)/vtio_picothing.dr $(MD)/copico $(MD)/term_gfx.dd
+
 # Clock
-CLOCK       = $(MD)/clock_picothing $(MD)/clock2_null
+CLOCK       = $(MD)/clock_picothing $(MD)/clock2_dw
 
 # PIPE
 PIPE        = $(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd
@@ -30,13 +42,16 @@ SYSGO       = $(MD)/sysgo
 # Shell (merged module file built in cmds/)
 SHELLMOD    = ../cmds/shell
 
-# OS9Boot disk image: all modules loaded from PATA by boot_picothing.
-# boot_picothing and krn are already in RAM (loaded via SREC); including them
-# here is harmless - I.VBlock will simply ignore duplicate module names.
+# OS9Boot: all modules for IDE + DriveWire + graphics.
+# boot_picothing and krn are already in RAM (loaded via REL/SREC);
+# including them here is harmless — the kernel ignores duplicate names.
 BOOTFILE_PT = $(KERNELP2) \
               $(BOOT) \
               $(RBF) \
+              $(RBDW) \
               $(SCF) \
+              $(SCDWV) \
+              $(GFX) \
               $(CLOCK) \
               $(PIPE) \
               $(SYSGO) \

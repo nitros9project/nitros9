@@ -2,39 +2,43 @@
 *
 * DWInit
 *    Initialize DriveWire for CoCo Bit Banger
-    
-                    ifne      MEGAMINIMPI
-                    use dwinit/dwinit_mmmpi.asm
-                    endc
 
-                    ifne      wildbits
-                    ifne      DWIO_WIZFI
-                    use dwinit_wildbits_wizfi.asm
-                    else
-                    use dwinit_wildbits_serial.asm
-                    endc
-                    endc
+                  IFNE    MEGAMINIMPI
+                    use       dwinit/dwinit_mmmpi.asm
+                  ENDC
 
-                    ifne      ARDUINO
-                    use dwinit/dwinit_arduino.asm
-                    endc
+                  IFNE    wildbits
+                  IFNE    DWIO_WIZFI
+                    use       dwinit_wildbits_wizfi.asm
+                  ELSE
+                    use       dwinit_wildbits_serial.asm
+                  ENDC
+                  ENDC
 
-                    ifne      BECKER
-                    use dwinit/dwinit_none.asm
-                    endc
+                  IFNE    ARDUINO
+                    use       dwinit/dwinit_arduino.asm
+                  ENDC
 
-                    ifne      JMCPBCK+atari
-                    use dwinit/dwinit_none.asm
-                    endc
+                  IFNE    BECKER
+                    use       dwinit/dwinit_none.asm
+                  ENDC
 
-                    ifne      BECKERTO
-                    use dwinit/dwinit_none.asm
-                    endc
+                  IFNE    JMCPBCK+atari
+                    use       dwinit/dwinit_none.asm
+                  ENDC
 
-                    ifne      SY6551N
-                    use dwinit/dwinit_none.asm
-                    endc
+                  IFNE    BECKERTO
+                    use       dwinit/dwinit_none.asm
+                  ENDC
 
-                    ifeq      BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+wildbits+MEGAMINIMPI+atari
-                    use dwinit/dwinit_bb.asm
-                    endc
+                  IFNE    SY6551N
+                    use       dwinit/dwinit_none.asm
+                  ENDC
+
+                  IFNE    picothing
+                    use       dwinit/dwinit_picothing.asm
+                  ENDC
+
+                  IFEQ    BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+wildbits+MEGAMINIMPI+atari+picothing
+                    use       dwinit/dwinit_bb.asm
+                  ENDC

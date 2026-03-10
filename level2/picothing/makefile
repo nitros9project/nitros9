@@ -13,6 +13,8 @@ SYSMODS     = $(shell $(CD) modules; make --no-print-directory showsysmods)
 CLOCKS      = $(shell $(CD) modules; make --no-print-directory showclocks)
 RBF         = $(shell $(CD) modules; make --no-print-directory showrbf)
 SCF         = $(shell $(CD) modules; make --no-print-directory showscf)
+GFX         = $(shell $(CD) modules; make --no-print-directory showgfx)
+DW          = $(shell $(CD) modules; make --no-print-directory showdw)
 PIPE        = $(shell $(CD) modules; make --no-print-directory showpipe)
 
 SYSBIN      = $(shell $(CD) sys; make --no-print-directory showbinobjs)
@@ -51,6 +53,8 @@ $(DSK_PT):
 	$(OS9GEN) $@ -b=$(BOOTFILE_PT)
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
+	$(OS9COPY) modules/krn $@,OS9Kernel
+	$(OS9ATTR_EXEC) $@,OS9Kernel
 	$(OS9COPY) modules/$(SYSGO) $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
 	$(CD) cmds; $(OS9COPY) $(CMDS) ../$@,CMDS

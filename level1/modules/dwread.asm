@@ -17,47 +17,51 @@
 *    U is preserved.  All accumulators are clobbered
 *
 
-                    ifne      MEGAMINIMPI
-                    use dwread/dwread_mmmpi.asm
-                    endc
+                  IFNE    MEGAMINIMPI
+                    use       dwread/dwread_mmmpi.asm
+                  ENDC
 
-                    ifne      wildbits
-                    ifne      DWIO_WIZFI
-                    use dwread_wildbits_wizfi.asm
-                    else
-                    use dwread_wildbits_serial.asm
-                    endc
-                    endc
+                  IFNE    wildbits
+                  IFNE    DWIO_WIZFI
+                    use       dwread_wildbits_wizfi.asm
+                  ELSE
+                    use       dwread_wildbits_serial.asm
+                  ENDC
+                  ENDC
 
-                    ifne      ARDUINO
-                    use dwread/dwread_arduino.asm
-                    endc
+                  IFNE    ARDUINO
+                    use       dwread/dwread_arduino.asm
+                  ENDC
 
-                    ifne      SY6551N
-                    use dwread/dwread_sy6551.asm
-                    endc
+                  IFNE    SY6551N
+                    use       dwread/dwread_sy6551.asm
+                  ENDC
 
-                    ifne      JMCPBCK
-                    use dwread/dwread_jmpcbck.asm
-                    endc
+                  IFNE    JMCPBCK
+                    use       dwread/dwread_jmpcbck.asm
+                  ENDC
 
-                    ifne      BECKER
-                    use dwread/dwread_becker.asm
-                    endc
+                  IFNE    BECKER
+                    use       dwread/dwread_becker.asm
+                  ENDC
 
-                    ifne      BECKERTO
-                    use dwread/dwread_beckerto.asm
-                    endc
+                  IFNE    BECKERTO
+                    use       dwread/dwread_beckerto.asm
+                  ENDC
 
-                    ifne      BAUD38400
-                    use dwread/dwread_bb38400.asm
-                    endc
+                  IFNE    BAUD38400
+                    use       dwread/dwread_bb38400.asm
+                  ENDC
 
-                    ifeq      BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+BAUD38400+wildbits+MEGAMINIMPI
-                    ifeq      H6309
-                    use dwread/dwread_bb6809.asm
-                    else
-                    use dwread/dwread_bb6309.asm
-                    endc
-                    endc
+                  IFNE    picothing
+                    use       dwread/dwread_picothing.asm
+                  ENDC
+
+                  IFEQ    BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+BAUD38400+wildbits+MEGAMINIMPI+picothing
+                  IFEQ    H6309
+                    use       dwread/dwread_bb6809.asm
+                  ELSE
+                    use       dwread/dwread_bb6309.asm
+                  ENDC
+                  ENDC
 
