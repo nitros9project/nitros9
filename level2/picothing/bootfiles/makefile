@@ -13,25 +13,13 @@ KERNELP2    = $(MD)/krnp2 $(MD)/init $(MD)/ioman
 BOOT_IDE    = $(MD)/boot_picothing
 BOOT_DW     = $(MD)/boot_dw_pt
 
-# RBF stack (PATA IDE, 8 x 512MB partitions = 4GB)
-RBF         = $(MD)/rbf.mn $(MD)/rbsuper.dr $(MD)/llide_pt.dr $(MD)/ddi0_pt.dd \
-              $(MD)/i0_pt.dd $(MD)/i1_pt.dd $(MD)/i2_pt.dd $(MD)/i3_pt.dd \
-              $(MD)/i4_pt.dd $(MD)/i5_pt.dd $(MD)/i6_pt.dd $(MD)/i7_pt.dd
+# --- Essential modules (in bootfile, needed to boot) ---
 
-# RBF DriveWire stack (disabled until DW server is working)
-#RBDW        = $(MD)/rbdw.dr $(MD)/dwio.sb \
-#              $(MD)/x0.dd $(MD)/x1.dd $(MD)/x2.dd $(MD)/x3.dd
+# RBF core + /DD descriptor (minimum to read the boot disk)
+RBF_CORE    = $(MD)/rbf.mn $(MD)/rbsuper.dr $(MD)/llide_pt.dr $(MD)/ddi0_pt.dd
 
 # SCF stack (serial console)
 SCF         = $(MD)/scf.mn $(MD)/sc6850.dr $(MD)/term_pt.dd
-
-# SCF DriveWire virtual channels (disabled until DW server is working)
-#SCDWV       = $(MD)/scdwv.dr $(MD)/term_scdwv.dt $(MD)/n_scdwv.dd \
-#              $(MD)/n1_scdwv.dd $(MD)/n2_scdwv.dd \
-#              $(MD)/n3_scdwv.dd $(MD)/n4_scdwv.dd
-
-# Graphics console (CoPico)
-GFX         = $(MD)/vtio_picothing.dr $(MD)/copico $(MD)/term_gfx.dd
 
 # Clock
 CLOCK       = $(MD)/clock_picothing $(MD)/clock2_null
@@ -45,27 +33,52 @@ SYSGO       = $(MD)/sysgo
 # Shell (merged module file built in cmds/)
 SHELLMOD    = ../cmds/shell
 
+# --- Loadable modules (on disk in /Modules, load as needed) ---
+
+# IDE partition descriptors
+IDE_PARTS   = $(MD)/i0_pt.dd $(MD)/i1_pt.dd $(MD)/i2_pt.dd $(MD)/i3_pt.dd \
+              $(MD)/i4_pt.dd $(MD)/i5_pt.dd $(MD)/i6_pt.dd $(MD)/i7_pt.dd
+
+# RAM disk
+RAMDISK     = $(MD)/rammer.dr $(MD)/r0.dd
+
+# Graphics console (CoPico)
+GFX         = $(MD)/vtio_picothing.dr $(MD)/copico $(MD)/term_gfx.dd
+
+# RBF DriveWire stack
+RBDW        = $(MD)/rbdw.dr $(MD)/dwio.sb \
+              $(MD)/x0.dd $(MD)/x1.dd $(MD)/x2.dd $(MD)/x3.dd
+
+# SCF DriveWire virtual channels
+SCDWV       = $(MD)/scdwv.dr $(MD)/term_scdwv.dt $(MD)/n_scdwv.dd \
+              $(MD)/n1_scdwv.dd $(MD)/n2_scdwv.dd \
+              $(MD)/n3_scdwv.dd $(MD)/n4_scdwv.dd
+
+# DriveWire clock2
+CLOCK2_DW   = $(MD)/clock2_dw
+
+# All loadable modules
+LOADMODS    = $(IDE_PARTS) $(RAMDISK) $(GFX) $(RBDW) $(SCDWV) $(CLOCK2_DW)
+
 # OS9Kernel: krn + boot module, loaded by REL before the kernel runs.
 # The kernel scans this block for modules, finding both.
 # Two variants: IDE (for PATA disks) and DW (for DriveWire server).
 OS9KERNEL_IDE = $(KERNEL) $(BOOT_IDE)
 OS9KERNEL_DW  = $(KERNEL) $(BOOT_DW)
 
-# OS9Boot: all remaining modules for IDE + DriveWire + graphics.
-# krn and boot_picothing are NOT included here — they arrive via
-# OS9Kernel (loaded by REL) or via the SREC fallback path.
+# OS9Boot: essential modules only.  Everything else is in /Modules
+# on disk for load/unload experimentation.
 BOOTFILE_PT = $(KERNELP2) \
-              $(RBF) \
+              $(RBF_CORE) \
               $(SCF) \
-              $(GFX) \
               $(CLOCK) \
               $(PIPE) \
               $(SYSGO) \
               $(SHELLMOD)
 
-SREC        = boot_picothing.srec
+REL         = rel_picothing
 
-ALLOBJS     = bootfile_pt os9kernel os9kernel_dw $(SREC)
+ALLOBJS     = bootfile_pt os9kernel os9kernel_dw $(REL)
 
 all:    $(ALLOBJS)
 
@@ -78,13 +91,13 @@ os9kernel: $(OS9KERNEL_IDE) $(DEPENDS)
 os9kernel_dw: $(OS9KERNEL_DW) $(DEPENDS)
 	$(MERGE) $(OS9KERNEL_DW) >$@
 
-DBGMON      = $(MD)/dbgmon
-
-# SREC contains boot module, krn, and dbgmon — but also embeds SWIStack
-# and interrupt stubs derived from krn.  Rebuild whenever any input changes.
-$(SREC): $(BOOT_IDE) $(KERNEL) $(KERNELP2) $(DBGMON) $(DEPENDS)
-	python3 $(NITROS9DIR)/scripts/mk_picothing_srec.py $(NITROS9DIR) >$@
+# REL boot loader (raw binary, copied from modules/)
+$(REL): $(MD)/$(REL) $(DEPENDS)
+	$(CP) $(MD)/$(REL) $@
 
 clean:
 	$(RM) $(ALLOBJS)
+
+showloadmods:
+	@$(ECHO) $(LOADMODS)
 

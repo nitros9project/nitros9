@@ -514,11 +514,6 @@ ex@                 puls      x,pc
 *         X = HW address
 *         Y = pointer to current device table
 IOSetup             ldx       V.PORT-UOFFSET,u get hw address
-                  IFNE    picothing
-                    stx       >DBG.IDEX trace: capture IDE hardware address
-                    lda       Status,x  read IDE status before doing anything
-                    sta       >DBG.IDES trace: capture initial IDE status
-                  ENDC
                     lda       PD.DNS,y  get device ID bit
                     lsra                shift device ID into carry
                     bcs       slave@

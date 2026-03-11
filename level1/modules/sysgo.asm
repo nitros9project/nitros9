@@ -189,9 +189,6 @@ SignOn
 * Set default time
                     leax      >DefTime,pcr
                     os9       F$STime   set time to default
-                  IFNE    picothing
-                    bra       L0125     skip I$ChgDir (no working disk yet)
-                  ENDC
                   IFEQ    ROM
 * Change EXEC and DATA dirs
                     leax      >ExecDir,pcr
@@ -246,9 +243,6 @@ L0151               lda       b,y
                   ENDC
                   ENDC
 
-                  IFNE    picothing
-                    bra       L0186     skip disk-dependent forks (no IDE yet)
-                  ENDC
                   IFEQ    ROM
 * Fork shell startup here
                   IFEQ    atari+corsham+wildbits

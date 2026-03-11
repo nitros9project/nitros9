@@ -14,7 +14,7 @@ CMDS        = asm attr backup bawk binex build cmp copy \
               display dmem dmode dsave dump echo edit error exbin \
               format free grep help ident iniz irqs link list load login \
               makdir mdir megaread merge mfree minted mmap modpatch more padrom park \
-              pmap proc procs prompt pwd pxd rename save setime \
+              pmap proc procs printerr prompt pwd pxd rename save setime \
               sleep smap tee tmode touch tsmon unlink verify xmode
 
 SHELLMODS   = shellplus echo iniz link load save unlink

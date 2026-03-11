@@ -16,7 +16,8 @@ SYSMODS     = ioman init sysgo boot_picothing boot_dw_pt rel_picothing
 CLOCKS      = clock_picothing clock2_null
 RBF         = rbf.mn rbsuper.dr llide_pt.dr ddi0_pt.dd \
               i0_pt.dd i1_pt.dd i2_pt.dd i3_pt.dd \
-              i4_pt.dd i5_pt.dd i6_pt.dd i7_pt.dd
+              i4_pt.dd i5_pt.dd i6_pt.dd i7_pt.dd \
+              rammer.dr r0.dd
 SCF         = scf.mn sc6850.dr term_pt.dd
 GFX         = vtio_picothing.dr copico term_gfx.dd
 DW          = dwio.sb rbdw.dr ddx0.dd x0.dd x1.dd x2.dd x3.dd \
@@ -25,8 +26,7 @@ DW          = dwio.sb rbdw.dr ddx0.dd x0.dd x1.dd x2.dd x3.dd \
               clock2_dw
 PIPE        = pipeman.mn piper.dr pipe.dd
 
-DBGMON      = dbgmon
-ALLOBJS     = $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(GFX) $(DW) $(PIPE) $(DBGMON)
+ALLOBJS     = $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(GFX) $(DW) $(PIPE)
 
 all:    $(ALLOBJS)
 
@@ -71,6 +71,13 @@ i6_pt.dd: ptidedesc.asm
 
 i7_pt.dd: ptidedesc.asm
 	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DSOFF1=0xE0
+
+# RAM disk driver and descriptor (128KB default)
+rammer.dr: $(LEVEL2)/coco3/modules/rammer.asm
+	$(AS) $(AFLAGS) $(ASOUT)$@ $<
+
+r0.dd: $(LEVEL2)/coco3/modules/r0.asm
+	$(AS) $(AFLAGS) $(ASOUT)$@ $<
 
 # Pico-Thing boot module (PATA IDE boot)
 boot_picothing: boot_picothing.asm
@@ -157,10 +164,6 @@ n4_scdwv.dd: scdwvdesc.asm
 # DriveWire clock2 module (time sync via DW server)
 clock2_dw: clock2_dw.asm
 	$(AS) $(AFLAGS) $(ASOUT)$@ $<
-
-# Debug monitor (raw binary at $FC00, loaded via SREC)
-dbgmon: dbgmon.asm
-	$(AS) --format=raw $(AFLAGS) $(ASOUT)$@ $<
 
 clean:
 	$(CD) kernel; make $@

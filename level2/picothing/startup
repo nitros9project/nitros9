@@ -1,2 +1,7 @@
+load modules/rammer.dr
+load modules/r0.dd
+iniz /r0
 load utilpak1
+load printerr
+link printerr
 link shell

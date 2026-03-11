@@ -20,7 +20,8 @@
 *   8. Initialize IDE or DriveWire (per DrvWire flag)
 *   9. Print boot message with device type
 *  10. Load OS9Kernel from disk directly to $EC00
-*  11. Find Krn module at $EC00 and jump to entry point
+*  11. Compute BRA stub addresses from krn and write hardware vectors
+*  12. Find Krn module at $EC00 and jump to entry point
 *
 * The kernel finds boot_picothing (merged into OS9Kernel)
 * and uses it via F$Boot to load OS9Boot from disk.
@@ -48,6 +49,7 @@ Chunk               equ       $0130     rel load address
 *
 start               bra       start2
 DrvWire             fcb       0         0=ide, 1=drivewire (Chunk+2)
+RELVer              fcb       0,0,1     rel version major.minor.patch (Chunk+3)
 start2              orcc      #IntMasks disable all interrupts
                     clra
                     tfr       a,dp      set direct page to $0000
@@ -201,6 +203,9 @@ OpJMP               equ       $7E       6809 JMP extended opcode
 Stat.TxE            equ       %00000010 acia tx data register empty
 STKADDR             equ       $2000     initial stack (pre-decrements)
 KERADDR             equ       $EC00     kernel loaded directly here
+SWIStkSz            equ       15        SWIStack size after emod (14 chars + $55)
+VCT.Ct              equ       6         number of BRA stubs (SWI3..NMI)
+VCT.Sz              equ       3         bytes per stub (BRA + offset + NOP)
 SECBUF              equ       $B000     256 byte sector buffer
 SEGBUF              equ       $B100     segment list buffer (240 bytes)
 SEG_ENT             equ       5         bytes per segment entry
@@ -269,6 +274,21 @@ gtkr1@              ldx       ModNam,pcr print file name and fd lsn
                     ldy       #KERADDR
                     lbsr      FIND
                     lbcs      LExit
+* set up hardware vectors from krn BRA stubs
+* krn file layout after emod: [SWIStack 15 bytes] [6 x 3-byte BRA stubs]
+* stubs: SWI3 SWI2 FIRQ IRQ SWI NMI (same order as $FFF2-$FFFC)
+                    ldx       #KERADDR
+                    ldd       M$Size,x  get krn module size (through emod)
+                    leax      d,x       point past emod
+                    leax      SWIStkSz,x skip SWIStack
+* x now points to first BRA stub (SWI3)
+* write 6 vector addresses to $FFF2-$FFFD
+                    ldy       #$FFF2
+                    ldb       #VCT.Ct
+veclp@              stx       ,y++      write stub address to vector slot
+                    leax      VCT.Sz,x  advance to next stub
+                    decb
+                    bne       veclp@
 * jump to kernel (it will load os9boot via F$Boot)
                     lbsr      PCRLF
                     bra       JMPKER

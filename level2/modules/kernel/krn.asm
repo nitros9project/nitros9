@@ -661,8 +661,10 @@ L0111               aslb                B <= 1 (hi bit goes into carry, 0 goes i
 * with B=0 (page 0) mapped into slot 5, creating an alias:
 * virtual $A000-$BFFF -> physical page 0.  D.SysDAT etc. live in
 * page 0, so any later access through slot 5 would corrupt them.
+                    pshs      b         save B (must be 0 for L0170)
                     ldb       #5
                     stb       >DAT.Regs+5 restore slot 5 to identity map (page 5)
+                    puls      b         restore B=0
                   ENDC
 
 ********************************************************************
@@ -692,21 +694,14 @@ l@                  sta       ,x+       mark them all
 * ASSUME: however we got here, B=0
 L0170
                     ldx       #Bt.Start start address of the boot track in memory
-                    lda       #18       size of the boot track is $1800
+                  IFNE    picothing
+                    lda       #22       scan $E800-$FE00 (modules extend past $FA00)
+                  ELSE
+                    lda       #18       size of the boot track is $1200
+                  ENDC
                   ENDC
 
 * Verify the modules in the boot area and update/build a module index.
-                  IFNE    picothing
-* Reset ACIA before I.VBlock to ensure clean serial state.
-                    pshs      a
-                    lda       #$03      master reset MC6850 ACIA
-                    sta       >ACIA.Ctrl
-                    lda       #$14      8N1, /1, no IRQs (RTS low) — avoid $16 which sets Pico queue loopback
-                    sta       >ACIA.Ctrl
-                    puls      a
-                    lda       #'V       debug: ACIA reset complete, entering I.VBlock
-                    jsr       <D.BtBug
-                  ENDC
                     lbsr      I.VBlock  perform module validation
                     bsr       L01D2     then mark the system map
 

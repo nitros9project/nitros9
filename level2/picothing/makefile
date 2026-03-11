@@ -22,6 +22,12 @@ SYSTEXT     = $(shell $(CD) sys; make --no-print-directory showtextobjs)
 STARTUP     = startup
 SYSGO       = sysgo
 
+# Loadable modules — on disk in /Modules, not baked into bootfile
+LOADMODS    = $(addprefix modules/,$(GFX) $(DW) \
+              i0_pt.dd i1_pt.dd i2_pt.dd i3_pt.dd \
+              i4_pt.dd i5_pt.dd i6_pt.dd i7_pt.dd \
+              rammer.dr r0.dd clock2_dw)
+
 DSK_PT      = $(DISTROVER).dsk
 DSK_DW      = $(DISTROVER)_dw.dsk
 DSK_I0      = $(DISTROVER)_i0.dsk
@@ -68,6 +74,9 @@ $(DSK_PT):
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
+	$(MAKDIR) $@,Modules
+	$(OS9COPY) $(LOADMODS) $@,Modules
+	$(OS9ATTR_EXEC) $(foreach mod,$(notdir $(LOADMODS)),$@,Modules/$(mod))
 
 $(DSK_DW):
 	$(RM) $@
@@ -87,6 +96,9 @@ $(DSK_DW):
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
+	$(MAKDIR) $@,Modules
+	$(OS9COPY) $(LOADMODS) $@,Modules
+	$(OS9ATTR_EXEC) $(foreach mod,$(notdir $(LOADMODS)),$@,Modules/$(mod))
 
 # IDE partition volume (512MB = 2097152 sectors, matches /I0 geometry)
 $(DSK_I0):
@@ -107,6 +119,9 @@ $(DSK_I0):
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
+	$(MAKDIR) $@,Modules
+	$(OS9COPY) $(LOADMODS) $@,Modules
+	$(OS9ATTR_EXEC) $(foreach mod,$(notdir $(LOADMODS)),$@,Modules/$(mod))
 
 info:
 	@$(ECHO) "*** NitrOS-9/$(CPU) Level $(LEVEL) for the $(MACHINE) ***"
