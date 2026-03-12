@@ -27,6 +27,12 @@ CLOCK       = $(MD)/clock_picothing $(MD)/clock2_null
 # PIPE
 PIPE        = $(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd
 
+# RAM disk
+RAMDISK     = $(MD)/rammer.dr $(MD)/r0.dd
+
+# DriveWire /X0 (RBF driver + I/O subroutine + descriptor)
+DW_X0       = $(MD)/rbdw.dr $(MD)/dwio.sb $(MD)/x0.dd
+
 # Sysgo
 SYSGO       = $(MD)/sysgo
 
@@ -39,26 +45,18 @@ SHELLMOD    = ../cmds/shell
 IDE_PARTS   = $(MD)/i0_pt.dd $(MD)/i1_pt.dd $(MD)/i2_pt.dd $(MD)/i3_pt.dd \
               $(MD)/i4_pt.dd $(MD)/i5_pt.dd $(MD)/i6_pt.dd $(MD)/i7_pt.dd
 
-# RAM disk
-RAMDISK     = $(MD)/rammer.dr $(MD)/r0.dd
-
 # Graphics console (CoPico)
 GFX         = $(MD)/vtio_picothing.dr $(MD)/copico $(MD)/term_gfx.dd
 
-# RBF DriveWire stack
-RBDW        = $(MD)/rbdw.dr $(MD)/dwio.sb \
-              $(MD)/x0.dd $(MD)/x1.dd $(MD)/x2.dd $(MD)/x3.dd
-
-# SCF DriveWire virtual channels
-SCDWV       = $(MD)/scdwv.dr $(MD)/term_scdwv.dt $(MD)/n_scdwv.dd \
+# Additional DriveWire descriptors (x1-x3, SCF channels, clock2)
+DW_EXTRA    = $(MD)/ddx0.dd $(MD)/x1.dd $(MD)/x2.dd $(MD)/x3.dd \
+              $(MD)/scdwv.dr $(MD)/term_scdwv.dt $(MD)/n_scdwv.dd \
               $(MD)/n1_scdwv.dd $(MD)/n2_scdwv.dd \
-              $(MD)/n3_scdwv.dd $(MD)/n4_scdwv.dd
+              $(MD)/n3_scdwv.dd $(MD)/n4_scdwv.dd \
+              $(MD)/clock2_dw
 
-# DriveWire clock2
-CLOCK2_DW   = $(MD)/clock2_dw
-
-# All loadable modules
-LOADMODS    = $(IDE_PARTS) $(RAMDISK) $(GFX) $(RBDW) $(SCDWV) $(CLOCK2_DW)
+# All loadable modules (on disk in /Modules, not in bootfile)
+LOADMODS    = $(IDE_PARTS) $(GFX) $(DW_EXTRA)
 
 # OS9Kernel: krn + boot module, loaded by REL before the kernel runs.
 # The kernel scans this block for modules, finding both.
@@ -73,6 +71,8 @@ BOOTFILE_PT = $(KERNELP2) \
               $(SCF) \
               $(CLOCK) \
               $(PIPE) \
+              $(RAMDISK) \
+              $(DW_X0) \
               $(SYSGO) \
               $(SHELLMOD)
 

@@ -23,10 +23,14 @@ STARTUP     = startup
 SYSGO       = sysgo
 
 # Loadable modules — on disk in /Modules, not baked into bootfile
-LOADMODS    = $(addprefix modules/,$(GFX) $(DW) \
+# Note: rammer.dr, r0.dd, rbdw.dr, dwio.sb, x0.dd are in bootfile
+LOADMODS    = $(addprefix modules/,$(GFX) \
+              ddx0.dd x1.dd x2.dd x3.dd \
+              scdwv.dr term_scdwv.dt n_scdwv.dd \
+              n1_scdwv.dd n2_scdwv.dd n3_scdwv.dd n4_scdwv.dd \
               i0_pt.dd i1_pt.dd i2_pt.dd i3_pt.dd \
               i4_pt.dd i5_pt.dd i6_pt.dd i7_pt.dd \
-              rammer.dr r0.dd clock2_dw)
+              clock2_dw)
 
 DSK_PT      = $(DISTROVER).dsk
 DSK_DW      = $(DISTROVER)_dw.dsk

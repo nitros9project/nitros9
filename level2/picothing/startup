@@ -1,5 +1,4 @@
-load modules/rammer.dr
-load modules/r0.dd
+chx /dd/cmds
 iniz /r0
 load utilpak1
 load printerr
