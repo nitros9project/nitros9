@@ -628,7 +628,7 @@ l@                  sta       b,x       store the flag in the appropriate offset
 * this occurs, because that block needs to be reserved as it's used for
 * global memory.
                     ldx       <D.BlkMap get the pointer to 8KB block map
-                    inc       <KrnBlk,x mark the block holding kernel as used
+                    inc       KrnBlk,x  mark the block holding kernel as used
 
                   IFNE    H6309
                     ldq       #$00080100 E=Marker, D=Block # to check
@@ -767,7 +767,7 @@ L01E1               sta       ,x+       mark this page
                     decb                done?
                     bne       L01E1     no, keep going
                     ldx       <D.BlkMap get the pointer to the start of the block map
-                    sta       <KrnBlk,x mark kernel block as "RAM in use", instead of "Module in block"
+                    sta       KrnBlk,x  mark kernel block as "RAM in use", instead of "Module in block"
 S.AltIRQ            rts                 return
 
 * Link module pointed to by X

@@ -27,6 +27,8 @@ PICOTHING.D         SET       1
 *   - Each byte is the 8-bit physical page number (0-255)
 *   - Task 0 base: DAT.Regs + 0*8 = $FE00
 *   - Task 1 base: DAT.Regs + 1*8 = $FE08  (matches CoCo3's DAT.Regs+8)
+*   - Task 2 base: DAT.Regs + 2*8 = $FE10
+*   - ... etc
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
@@ -37,33 +39,38 @@ picothing           SET       1         conditional assembly symbol
 TkPerSec            SET       50        ticks per second (50Hz timer)
 
 *
+* Physical address space
+*
+HW.Page             EQU       $FF       high byte of I/O address space
+IO.Base             EQU       HW.Page*256 base of I/O address space
+
+*
 * DAT (Dynamic Address Translator)
 *
 DAT.BlCt            EQU       8         blocks per address space
-DAT.BlSz            EQU       (256/DAT.BlCt)*256 8KB block size
+DAT.BlSz            EQU       (256/DAT.BlCt)*256 block size
 DAT.ImSz            EQU       DAT.BlCt*2 16 bytes per DAT image (2 bytes per block, low byte = page)
-DAT.Task            EQU       $FFC0     task register (Pico)
+DAT.Task            EQU       IO.Base+$C0 task register (Pico)
 DAT.Regs            EQU       $FE00     DAT RAM base address
 DAT.TkCt            EQU       32        number of task slots
 DAT.BlMx            EQU       $FE       max user-allocatable block number
-DAT.Free            EQU       $333E     free block marker (matches CoCo3/wildbits convention)
-DAT.BMSz            EQU       $100      block map size (256 physical pages)
+DAT.Free            EQU       $33FF     free block marker (page $FF = no RAM in hardware)
+DAT.BMSz            EQU       $100      block map size
 DAT.WrPr            EQU       0         write protect (not supported)
 DAT.WrEn            EQU       0         write enable (not supported)
-KrnBlk              SET       $07       physical page number of the kernel (page 7)
-HW.Page             EQU       $FF       high byte of I/O address space
+KrnBlk              SET       $FF       physical page number of the kernel
 
 *
 * Virtual MC6850 ACIA — console (via Pico at $FFC3-$FFC4)
 *
-ACIABase            EQU       $FFC3     console 6850 base address
+ACIABase            EQU       IO.Base+$C3 console 6850 base address
 ACIA.Ctrl           EQU       ACIABase+0 status (read) / control (write)
 ACIA.Data           EQU       ACIABase+1 receive (read) / transmit (write)
 
 *
 * Virtual MC6850 ACIA — auxiliary (via Pico at $FFC5-$FFC6)
 *
-AuxBase             EQU       $FFC5     auxiliary 6850 base address
+AuxBase             EQU       IO.Base+$C5 auxiliary 6850 base address
 Aux.Ctrl            EQU       AuxBase+0 status (read) / control (write)
 Aux.Data            EQU       AuxBase+1 receive (read) / transmit (write)
 
@@ -73,8 +80,8 @@ Aux.Data            EQU       AuxBase+1 receive (read) / transmit (write)
 * Minimal tick timer using Pico SDK hardware alarm.
 * Fires IRQ at 50Hz.  Reading the status register acknowledges the IRQ.
 *
-TICK.Ctrl           EQU       $FFC8     write: bit 0 = enable (1) / disable (0)
-TICK.Stat           EQU       $FFC9     read: bit 7 = IRQ pending; cleared on read
+TICK.Ctrl           EQU       IO.Base+$C8 write: bit 0 = enable (1) / disable (0)
+TICK.Stat           EQU       IO.Base+$C9 read: bit 7 = IRQ pending; cleared on read
 
 *
 * PATA Hard Disk (in I/O space $FF00-$FFBF)
@@ -83,7 +90,7 @@ TICK.Stat           EQU       $FFC9     read: bit 7 = IRQ pending; cleared on re
 * all other task-file registers up by one vs standard ATA.  Use
 * defs/ide_picothing.d (not ide.d) for register offsets.
 *
-PTIDEBase           EQU       $FF00     PATA base address
+PTIDEBase           EQU       IO.Base+$00 PATA base address
 
 *
 * Boot
@@ -92,30 +99,7 @@ Bt.Start            EQU       $E800     boot_picothing at $E800 (padded to 1024)
 SHIFTBIT            EQU       0         no shift key on serial console
 
 *
-* Debug shared buffer ($FFD0-$FFDF)
-*
-* 16 bytes of Pico/6809 shared memory. The 6809 writes trace markers
-* here; the Pico can read them for debug display. The Pico overwrites
-* this range during many console actions, so nothing persistent goes here.
-*
-DBG.Base            EQU       $FFD0     debug buffer base
-DBG.IRQ             EQU       $FFD0     user-state IRQ entry marker
-DBG.SWI2            EQU       $FFD1     user-state SWI2 entry marker
-DBG.CWAI            EQU       $FFD2     F$NProc cwai idle loop counter
-DBG.TICK            EQU       $FFD3     clock timeslice handler entry counter
-DBG.WAKE            EQU       $FFD4     sleep queue wake counter
-DBG.SIRQ            EQU       $FFD5     system-state IRQ (S.SysIRQ/FastIRQ) counter
-DBG.POLL            EQU       $FFD6     DoPoll entry counter (clock module)
-DBG.TRACE           EQU       $FFD7     general trace marker (single byte, working range)
-DBG.PC              EQU       $FFD8     captured PC from FastIRQ (2 bytes, big-endian)
-DBG.IDEX            EQU       $FFDA     IDE: hardware address X (2 bytes, big-endian)
-DBG.IDES            EQU       $FFDC     IDE: Status register value read by StatusWait
-DBG.DrvW            EQU       $FFDD     sc6850 Write call counter
-DBG.DrvR            EQU       $FFDE     sc6850 Read call counter
-DBG.DrvI            EQU       $FFDF     sc6850 IRQSvc call counter
-
-*
-* Debug monitor entry points ($FC00-$FDFF, always mapped in kernel page)
+* Debug monitor entry points always present in kernel space
 *
 DBG.PrintChar       EQU       $FC00     print character in A
 DBG.Print2Hex       EQU       $FC03     print byte in A as 2 hex digits

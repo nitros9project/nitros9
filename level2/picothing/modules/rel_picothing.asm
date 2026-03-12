@@ -49,7 +49,7 @@ Chunk               equ       $0130     rel load address
 *
 start               bra       start2
 DrvWire             fcb       0         0=ide, 1=drivewire (Chunk+2)
-RELVer              fcb       0,0,1     rel version major.minor.patch (Chunk+3)
+RELVer              fcb       0,0,2     rel version major.minor.patch (Chunk+3)
 start2              orcc      #IntMasks disable all interrupts
                     clra
                     tfr       a,dp      set direct page to $0000
