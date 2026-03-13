@@ -30,8 +30,8 @@ PIPE        = $(MD)/pipeman.mn $(MD)/piper.dr $(MD)/pipe.dd
 # RAM disk
 RAMDISK     = $(MD)/rammer.dr $(MD)/r0.dd
 
-# DriveWire /X0 (RBF driver + I/O subroutine + descriptor)
-DW_X0       = $(MD)/rbdw.dr $(MD)/dwio.sb $(MD)/x0.dd
+# DriveWire (RBF driver + I/O subroutine + descriptors)
+DW          = $(MD)/rbdw.dr $(MD)/dwio.sb $(MD)/x0.dd $(MD)/x1.dd $(MD)/x2.dd $(MD)/x3.dd
 
 # Sysgo
 SYSGO       = $(MD)/sysgo
@@ -48,8 +48,8 @@ IDE_PARTS   = $(MD)/i0_pt.dd $(MD)/i1_pt.dd $(MD)/i2_pt.dd $(MD)/i3_pt.dd \
 # Graphics console (CoPico)
 GFX         = $(MD)/vtio_picothing.dr $(MD)/copico $(MD)/term_gfx.dd
 
-# Additional DriveWire descriptors (x1-x3, SCF channels, clock2)
-DW_EXTRA    = $(MD)/ddx0.dd $(MD)/x1.dd $(MD)/x2.dd $(MD)/x3.dd \
+# Additional DriveWire descriptors (SCF channels, clock2)
+DW_EXTRA    = $(MD)/ddx0.dd \
               $(MD)/scdwv.dr $(MD)/term_scdwv.dt $(MD)/n_scdwv.dd \
               $(MD)/n1_scdwv.dd $(MD)/n2_scdwv.dd \
               $(MD)/n3_scdwv.dd $(MD)/n4_scdwv.dd \
@@ -72,7 +72,7 @@ BOOTFILE_PT = $(KERNELP2) \
               $(CLOCK) \
               $(PIPE) \
               $(RAMDISK) \
-              $(DW_X0) \
+              $(DW) \
               $(SYSGO) \
               $(SHELLMOD)
 

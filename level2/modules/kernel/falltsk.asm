@@ -66,7 +66,9 @@ L0C79               equ       *
                     andb      #^ImgChg
                     stb       P$State,x
                   ENDC
+                  IFEQ    picothing
                     clr       <D.Task1N task 1 DAT image has changed
+                  ENDC
                     andcc     #^Carry   clear carry
                     pshs      cc,d,x,u  preserve everything
                     ldb       P$Task,x  get task #

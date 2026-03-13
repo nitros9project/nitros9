@@ -1287,23 +1287,19 @@ S.Flip1             ldb       #2        get the tsk image entry number x2 for Gr
                     rti                 return
 
 * DAT IMAGE COPY: set up MMU for task B (B = task# x 2)
-L0E8D               cmpb      <D.Task1N are we going back to the same task?
+L0E8D
+                  IFEQ    picothing
+                    cmpb      <D.Task1N are we going back to the same task?
                     beq       L0EA3     without the DAT image changing?
                     stb       <D.Task1N no, save current task in map type 1
+                  ENDC
 *>>>>>>>>>> Pico-Thing PORT
                   IFNE    picothing
-* Pico-Thing: save raw task# in D.TINIT and compute hardware DAT
-* register address.  Each task has 8 one-byte registers at
-* DAT.Regs + task# × 8.  B enters as task# × 2.
-                    pshs      b         preserve B for D.TskIPt index below
-                    lsrb                B = raw task number (task# × 2 / 2)
+* hardware DAT registers are persistent per task.
+* TstImg/F$SetTsk already copied if ImgChg was set.
+                    lsrb                raw task number
                     stb       <D.TINIT  save for DAT.Task write sites
-                    lslb                task# × 2
-                    lslb                task# × 4
-                    lslb                task# × 8
-                    ldx       #DAT.Regs base of hardware DAT registers
-                    abx                 X = DAT.Regs + task# × 8
-                    puls      b         restore B = task# × 2
+                    rts
 *<<<<<<<<<< Pico-Thing PORT
 *>>>>>>>>>> Wildbits PORT
                   ELSE
@@ -1318,8 +1314,10 @@ L0E8D               cmpb      <D.Task1N are we going back to the same task?
                     ldx       #DAT.Regs+8 get the MMU start register for process
                   ENDC
                   ENDC
+                  IFEQ    picothing
                     ldu       <D.TskIPt get the task image pointer table
                     ldu       b,u       and the address of the DAT image
+                  ENDC
 * COME HERE FROM FALLTSK
 * Update 8 MMU mappings.
 * X = address of 1st DAT MMU register to update

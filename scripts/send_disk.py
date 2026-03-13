@@ -103,7 +103,7 @@ def packbits_encode(data):
     return bytes(out)
 
 
-CHUNK_SIZE = 8   # bytes per timed burst when --chunk-delay is used
+CHUNK_SIZE = 1   # bytes per timed burst when --chunk-delay is used
 
 
 def send_disk(port, baud, image_path, start_lba=0, max_sectors=None,

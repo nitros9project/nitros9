@@ -4,7 +4,7 @@ vpath %.hp $(LEVEL2)/sys:$(LEVEL1)/sys
 
 DEPENDS     = ./makefile
 
-L1TXTFILES  = errmsg password
+L1TXTFILES  = errmsg inetd.conf password
 L2TXTFILES  = $(LEVEL2)/sys/motd
 BINFILES    =
 

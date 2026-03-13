@@ -25,17 +25,21 @@ SYSGO       = sysgo
 # Loadable modules — on disk in /Modules, not baked into bootfile
 # Note: rammer.dr, r0.dd, rbdw.dr, dwio.sb, x0.dd are in bootfile
 LOADMODS    = $(addprefix modules/,$(GFX) \
-              ddx0.dd x1.dd x2.dd x3.dd \
+              ddx0.dd \
               scdwv.dr term_scdwv.dt n_scdwv.dd \
               n1_scdwv.dd n2_scdwv.dd n3_scdwv.dd n4_scdwv.dd \
               i0_pt.dd i1_pt.dd i2_pt.dd i3_pt.dd \
               i4_pt.dd i5_pt.dd i6_pt.dd i7_pt.dd \
               clock2_dw)
 
+# All modules for large disk images (everything except kernel pair and raw REL)
+ALLMODS      = $(addprefix modules/,$(filter-out krn krnp2 rel_picothing,\
+                  $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(GFX) $(DW) $(PIPE)))
+
 DSK_PT      = $(DISTROVER).dsk
-DSK_DW      = $(DISTROVER)_dw.dsk
+DSK_X0      = $(DISTROVER)_x0.dsk
 DSK_I0      = $(DISTROVER)_i0.dsk
-DSKS        = $(DSK_PT) $(DSK_DW) $(DSK_I0)
+DSKS        = $(DSK_PT) $(DSK_X0) $(DSK_I0)
 
 # Make all components
 all:
@@ -82,7 +86,7 @@ $(DSK_PT):
 	$(OS9COPY) $(LOADMODS) $@,Modules
 	$(OS9ATTR_EXEC) $(foreach mod,$(notdir $(LOADMODS)),$@,Modules/$(mod))
 
-$(DSK_DW):
+$(DSK_X0):
 	$(RM) $@
 	$(OS9FORMAT) -l4194304 -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9GEN) $@ -b=$(BOOTFILE_PT)
@@ -101,8 +105,8 @@ $(DSK_DW):
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,Modules
-	$(OS9COPY) $(LOADMODS) $@,Modules
-	$(OS9ATTR_EXEC) $(foreach mod,$(notdir $(LOADMODS)),$@,Modules/$(mod))
+	$(OS9COPY) $(ALLMODS) $@,Modules
+	$(OS9ATTR_EXEC) $(foreach mod,$(notdir $(ALLMODS)),$@,Modules/$(mod))
 
 # IDE partition volume (512MB = 2097152 sectors, matches /I0 geometry)
 $(DSK_I0):
@@ -124,8 +128,8 @@ $(DSK_I0):
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,Modules
-	$(OS9COPY) $(LOADMODS) $@,Modules
-	$(OS9ATTR_EXEC) $(foreach mod,$(notdir $(LOADMODS)),$@,Modules/$(mod))
+	$(OS9COPY) $(ALLMODS) $@,Modules
+	$(OS9ATTR_EXEC) $(foreach mod,$(notdir $(ALLMODS)),$@,Modules/$(mod))
 
 info:
 	@$(ECHO) "*** NitrOS-9/$(CPU) Level $(LEVEL) for the $(MACHINE) ***"
