@@ -19,23 +19,39 @@
 *   7. Install D.Crash handler
 *   8. Initialize IDE or DriveWire (per DrvWire flag)
 *   9. Print boot message with device type
-*  10. Load OS9Kernel from disk directly to $EC00
+*  10. Load OS9Kernel from disk directly to Bt.Start
 *  11. Compute BRA stub addresses from krn and write hardware vectors
-*  12. Find Krn module at $EC00 and jump to entry point
+*  12. Find Krn module and jump to entry point
 *
 * The kernel finds boot_picothing (merged into OS9Kernel)
 * and uses it via F$Boot to load OS9Boot from disk.
 *
 * On entry there is no stack; step 3 sets one up at STKADDR.
 *
+* Shared between Level 1 and Level 2 builds.  Level is set
+* by the defsfile (Level equ 1 or 2).  At Level 1, D.BtBug
+* and D.Crash DP offsets are defined locally since they do
+* not exist in the Level 1 system direct page.  The kernel
+* overwrites these locations after boot so there is no conflict.
+*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
 *     1    2025       Initial version for Pico-Thing
+*     2    2026/03/14 Unified L1/L2 with conditional assembly
 
                   IFP1
                     use       defsfile
                     use       ide_picothing.d
+                  ENDC
+
+* Level 1 does not define D.BtBug or D.Crash in os9.d.
+* Define them locally at the same offsets as Level 2.
+* REL owns the direct page at boot time; the kernel will
+* reclaim these bytes later.
+                  IFEQ    Level-1
+D.BtBug             equ       $5E       boot debug vector (3 bytes)
+D.Crash             equ       $6B       crash handler vector (6 bytes)
                   ENDC
 
 Chunk               equ       $0130     rel load address
@@ -49,7 +65,7 @@ Chunk               equ       $0130     rel load address
 *
 start               bra       start2
 DrvWire             fcb       0         0=ide, 1=drivewire (Chunk+2)
-RELVer              fcb       0,0,2     rel version major.minor.patch (Chunk+3)
+RELVer              fcb       0,0,3     rel version major.minor.patch (Chunk+3)
 start2              orcc      #IntMasks disable all interrupts
                     clra
                     tfr       a,dp      set direct page to $0000
@@ -153,7 +169,11 @@ btbusy@             ldb       >ACIA.Ctrl read ACIA status
 *------------------------------------------------------------
 * Boot message
 *
+                  IFEQ    Level-1
+BootMsg             fcs       "NitrOS9 L1 Boot "
+                  ELSE
 BootMsg             fcs       "NitrOS9 Boot "
+                  ENDC
 MsgIDE              fcs       "(IDE)"
 MsgDW               fcs       "(DriveWire)"
 BootFail            fcs       "Boot failed"
@@ -202,7 +222,7 @@ E_CRC               equ       $F3       crc error code
 OpJMP               equ       $7E       6809 JMP extended opcode
 Stat.TxE            equ       %00000010 acia tx data register empty
 STKADDR             equ       $2000     initial stack (pre-decrements)
-KERADDR             equ       $EC00     kernel loaded directly here
+KERADDR             equ       Bt.Start  kernel loaded here (Level-dependent)
 SWIStkSz            equ       15        SWIStack size after emod (14 chars + $55)
 VCT.Ct              equ       6         number of BRA stubs (SWI3..NMI)
 VCT.Sz              equ       3         bytes per stub (BRA + offset + NOP)
@@ -214,7 +234,7 @@ SEG_ENT             equ       5         bytes per segment entry
 * LOADO9 - load os9kernel from disk and jump to kernel
 *
 * reads lsn 0, finds os9kernel in root directory, loads
-* it directly to KERADDR ($EC00). os9kernel contains krn
+* it directly to KERADDR. os9kernel contains krn
 * and boot_picothing merged together. the kernel uses
 * boot_picothing via F$Boot to load os9boot from disk.
 *

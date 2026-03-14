@@ -95,7 +95,15 @@ PTIDEBase           EQU       IO.Base+$00 PATA base address
 *
 * Boot
 *
+                  IFEQ    Level-1
+* Level 1 boot definitions
+* L1 kernel at $F000, boot module merged, $F000-$FDFF = 3.5KB
+Bt.Start            EQU       $F000     kernel starts here
+Bt.Size             EQU       $0E00     kernel area ($F000-$FDFF)
+                  ELSE
+* Level 2 boot definitions
 Bt.Start            EQU       $E800     boot_picothing at $E800 (padded to 1024), krn at $EC00
+                  ENDC
 SHIFTBIT            EQU       0         no shift key on serial console
 
 *

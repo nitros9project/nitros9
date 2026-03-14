@@ -1,5 +1,5 @@
 ********************************************************************
-* boot_picothing - PATA IDE Boot Module for Pico-Thing Level 2
+* boot_picothing - PATA IDE Boot Module for Pico-Thing
 *
 * Provides HWInit, HWTerm, HWRead for boot_common.asm.
 *
@@ -23,7 +23,7 @@
 *     1    2025       Initial version for Pico-Thing
 
                     nam       Boot
-                    ttl       PATA IDE Boot Module for Pico-Thing Level 2
+                    ttl       PATA IDE Boot Module for Pico-Thing
 
                   IFP1
                     use       defsfile
