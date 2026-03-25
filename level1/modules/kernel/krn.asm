@@ -87,6 +87,8 @@ name                fcs       /Krn/
 *     X = The starting address of the bootfile.
 *     Y = The size of the bootfile in bytes.
 OS9Cold             equ       *
+                    orcc      #IntMasks           mask interrupts
+                    lds       #$500               set the system stack
                     ifne      wildbits
 *>>>>>>>>>> Wildbits port
 * In RAM mode, the Wildbits memory map looks like this:
@@ -99,11 +101,8 @@ OS9Cold             equ       *
 *    $C000-$DFFF - RAM at $00C000-$00DFFF
 *    $E000-$FFFF - RAM at $00E000-$00FFFF
 * Wildbits-specific initialization to get the Wildbits to a sane state.
-                    orcc      #IntMasks           mask interrupts
-                    lds       #$500               set the system stack
                     pshs      x,y                 save the bootfile pointer and size
-                    ldd       #$FF00              A = 255, B = 0
-                    tfr       b,dp                transfer to DP
+                    lda       #$FF                A = $FF
                     sta       INT_MASK_0          mask all set 0 interrupts
                     sta       INT_MASK_1          mask all set 1 interrupts
                     sta       INT_PENDING_0       clear any pending set 0 interrupts
@@ -116,6 +115,7 @@ OS9Cold             equ       *
                     ldy       #$0400              get the number of bytes to clear
                     clra                          clear A
                     clrb                          clear B (D now $0000)
+                    tfr       b,dp                transfer to DP
 loop@               std       ,x++                save off at X and increment
                     leay      -2,y                decrement counter
                     bne       loop@               continue if not zero
