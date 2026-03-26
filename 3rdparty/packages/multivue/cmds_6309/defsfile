@@ -1,5 +1,0 @@
-H6309    equ   1
-Level    equ   2
-         use   os9.d   
-         use   scf.d   
-         use   rbf.d   

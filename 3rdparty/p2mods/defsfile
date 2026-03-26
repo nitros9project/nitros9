@@ -1,6 +1,0 @@
-        IFEQ    Level
-Level   equ     2
-        ENDC
-
-	use	os9.d
-        use     coco.d
