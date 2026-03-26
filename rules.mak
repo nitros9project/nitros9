@@ -181,4 +181,4 @@ buildinfo:
 	@BUILDDATE="$$(git log -1 --format=%ad)"; \
 	COMMITHASH="$$(git rev-parse --short HEAD)"; \
 	BRANCHNAME="$$(git branch --show-current)"; \
-	echo " fcc !$${BUILDDATE} ($${COMMITHASH} - $${BRANCHNAME})!" > "$(NITROS9DIR)/defs/buildinfo";
+	echo " fcc !$${BUILDDATE} ($${COMMITHASH} - $${BRANCHNAME})!" > buildinfo;

@@ -46,20 +46,8 @@ name                fcs       /SysGo/
 DefPrior            set       128
 
 Banner              equ       *
-                    fcc       /(C) 2014 The NitrOS-9 Project/
-CrRtn               fcb       C$CR,C$LF
-
-                    ifeq      ROM
-                    ifne      NOS9DEV
-                    fcc       "**   DEVELOPMENT BUILD   **"
-                    fcb       C$CR,C$LF
-                    fcc       "** NOT FOR DISTRIBUTION! **"
-                    fcb       C$CR,C$LF
-                    endc
-                    dts
-                    fcb       C$CR,C$LF
                     fcc       !http://www.nitros9.org!
-                    fcb       C$CR,C$LF
+CrRtn               fcb       C$CR,C$LF
                     endc
 
                     fcb       C$LF
@@ -168,6 +156,14 @@ start               leax      >IcptRtn,pcr
                     bsr       WriteCR
                     ldd       InstallName,u
                     leax      d,u                 point to install name in INIT module
+                    bsr       strlen
+                    tfr       d,y
+                    lda       #$01
+                    os9       I$Write
+                    bsr       WriteCR
+                    ldx       <InitAddr
+                    ldd       BuildInfo,u       point to build info in INIT module
+                    leax      d,u
                     bsr       strlen
                     tfr       d,y
                     lda       #$01
