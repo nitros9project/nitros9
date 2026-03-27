@@ -58,11 +58,10 @@ DW_EXTRA    = $(MD)/ddx0.dd \
 # All loadable modules (on disk in /Modules, not in bootfile)
 LOADMODS    = $(IDE_PARTS) $(GFX) $(DW_EXTRA)
 
-# OS9Kernel: krn + boot module, loaded by REL before the kernel runs.
-# The kernel scans this block for modules, finding both.
+# OS9Kernel: boot module (padded to 1024 bytes) + krn, loaded by REL at
+# Bt.Start ($E800).  Boot sits at $E800, krn at $EC00 (= Where).
 # Two variants: IDE (for PATA disks) and DW (for DriveWire server).
-OS9KERNEL_IDE = $(KERNEL) $(BOOT_IDE)
-OS9KERNEL_DW  = $(KERNEL) $(BOOT_DW)
+BOOT_PAD      = 1024
 
 # OS9Boot: essential modules only.  Everything else is in /Modules
 # on disk for load/unload experimentation.
@@ -85,11 +84,13 @@ all:    $(ALLOBJS)
 bootfile_pt: $(BOOTFILE_PT) $(DEPENDS)
 	$(MERGE) $(BOOTFILE_PT) >$@
 
-os9kernel: $(OS9KERNEL_IDE) $(DEPENDS)
-	$(MERGE) $(OS9KERNEL_IDE) >$@
+os9kernel: $(BOOT_IDE) $(KERNEL) $(DEPENDS)
+	dd if=$(BOOT_IDE) of=$@ bs=$(BOOT_PAD) conv=sync 2>/dev/null
+	cat $(KERNEL) >>$@
 
-os9kernel_dw: $(OS9KERNEL_DW) $(DEPENDS)
-	$(MERGE) $(OS9KERNEL_DW) >$@
+os9kernel_dw: $(BOOT_DW) $(KERNEL) $(DEPENDS)
+	dd if=$(BOOT_DW) of=$@ bs=$(BOOT_PAD) conv=sync 2>/dev/null
+	cat $(KERNEL) >>$@
 
 # REL boot loader (raw binary, copied from modules/)
 $(REL): $(MD)/$(REL) $(DEPENDS)

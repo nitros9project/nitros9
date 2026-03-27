@@ -297,7 +297,7 @@ gtkr1@              ldx       ModNam,pcr print file name and fd lsn
 * set up hardware vectors from krn BRA stubs
 * krn file layout after emod: [SWIStack 15 bytes] [6 x 3-byte BRA stubs]
 * stubs: SWI3 SWI2 FIRQ IRQ SWI NMI (same order as $FFF2-$FFFC)
-                    ldx       #KERADDR
+                    leax      ,y        use krn address returned by FIND
                     ldd       M$Size,x  get krn module size (through emod)
                     leax      d,x       point past emod
                     leax      SWIStkSz,x skip SWIStack
