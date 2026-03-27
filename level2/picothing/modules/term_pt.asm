@@ -2,7 +2,7 @@
 * term_pt - Pico-Thing Virtual 6850 ACIA Device Descriptor
 *
 * Console terminal descriptor for the virtual MC6850 ACIA
-* provided by the Pico at $FFC3-$FFC4.
+* provided by the Pico at $FFC4-$FFC5.
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
@@ -22,7 +22,7 @@ rev                 set       $00
                     fcb       UPDAT.    mode byte
                     fcb       HW.Page   extended controller address ($FF)
 
-                    fdb       ACIABase  physical controller address ($FFC3)
+                    fdb       ACIABase  physical controller address ($FFC4)
 
                     fcb       initsize-*-1 initialization table size
                     fcb       DT.SCF    IT.DVC device type: scf

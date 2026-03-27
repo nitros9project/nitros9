@@ -1,7 +1,7 @@
 ********************************************************************
 * dwread_picothing.asm - DriveWire Read for Pico-Thing
 *
-* Receive bytes from the auxiliary virtual MC6850 ACIA at $FFC5-$FFC6.
+* Receive bytes from the auxiliary virtual MC6850 ACIA at $FFC6-$FFC7.
 * Polls RDRF (bit 0 of status register) with a $7FFF countdown timeout.
 *
 * Entry:

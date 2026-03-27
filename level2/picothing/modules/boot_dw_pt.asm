@@ -3,7 +3,7 @@
 *
 * Provides HWInit, HWTerm, HWRead for boot_common.asm.
 *
-* Uses the auxiliary virtual MC6850 ACIA at $FFC5-$FFC6 for
+* Uses the auxiliary virtual MC6850 ACIA at $FFC6-$FFC7 for
 * DriveWire 3 protocol communication with the DW server.
 *
 * Edt/Rev  YYYY/MM/DD  Modified by

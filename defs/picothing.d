@@ -15,8 +15,8 @@ PICOTHING.D         SET       1
 *   $FE00-$FEFF   DAT RAM (32 tasks * 8 regs * 1 byte = 256 bytes)
 *   $FF00-$FFBF   I/O space (PATA HD, etc.)
 *   $FFC0         Task register (Pico)
-*   $FFC3-$FFC4   Virtual MC6850 ACIA (serial console)
-*   $FFC5-$FFC6   Virtual MC6850 ACIA (auxiliary)
+*   $FFC4-$FFC5   Virtual MC6850 ACIA (serial console)
+*   $FFC6-$FFC7   Virtual MC6850 ACIA (auxiliary)
 *   $FFC8-$FFC9   Virtual 50Hz tick timer (fires IRQ)
 *   $FFF0-$FFFF   6809 hardware vectors (provided by Pico)
 *
@@ -61,16 +61,16 @@ DAT.WrEn            EQU       0         write enable (not supported)
 KrnBlk              SET       $FF       physical page number of the kernel
 
 *
-* Virtual MC6850 ACIA — console (via Pico at $FFC3-$FFC4)
+* Virtual MC6850 ACIA — console (via Pico at $FFC4-$FFC5)
 *
-ACIABase            EQU       IO.Base+$C3 console 6850 base address
+ACIABase            EQU       IO.Base+$C4 console 6850 base address
 ACIA.Ctrl           EQU       ACIABase+0 status (read) / control (write)
 ACIA.Data           EQU       ACIABase+1 receive (read) / transmit (write)
 
 *
-* Virtual MC6850 ACIA — auxiliary (via Pico at $FFC5-$FFC6)
+* Virtual MC6850 ACIA — auxiliary (via Pico at $FFC6-$FFC7)
 *
-AuxBase             EQU       IO.Base+$C5 auxiliary 6850 base address
+AuxBase             EQU       IO.Base+$C6 auxiliary 6850 base address
 Aux.Ctrl            EQU       AuxBase+0 status (read) / control (write)
 Aux.Data            EQU       AuxBase+1 receive (read) / transmit (write)
 

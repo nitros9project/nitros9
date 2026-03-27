@@ -1,7 +1,7 @@
 ********************************************************************
 * dwinit_picothing.asm - DriveWire Init for Pico-Thing
 *
-* Initializes the auxiliary virtual MC6850 ACIA at $FFC5-$FFC6
+* Initializes the auxiliary virtual MC6850 ACIA at $FFC6-$FFC7
 * for DriveWire communication.
 *
 * The virtual ACIA has no physical baud rate — a master reset

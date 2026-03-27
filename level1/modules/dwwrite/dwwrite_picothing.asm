@@ -1,7 +1,7 @@
 ********************************************************************
 * dwwrite_picothing.asm - DriveWire Write for Pico-Thing
 *
-* Send bytes via the auxiliary virtual MC6850 ACIA at $FFC5-$FFC6.
+* Send bytes via the auxiliary virtual MC6850 ACIA at $FFC6-$FFC7.
 * Polls TDRE (bit 1 of status register) before each byte.
 *
 * Entry:
