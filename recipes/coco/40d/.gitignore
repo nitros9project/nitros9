@@ -1,0 +1,14 @@
+# Build intermediates
+.mods/
+.obj/
+.lib/
+
+# Assembler/linker listings and maps
+*.list
+*.map
+*.o
+
+# Generated modules and outputs from this recipe directory
+bootfile
+kerneltrack
+*.dsk
