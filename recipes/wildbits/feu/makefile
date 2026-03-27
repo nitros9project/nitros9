@@ -1,14 +1,9 @@
 LEVEL = 1
 PORT = wildbits
+MODDIR = .mods
 vpath %.asm $(NITROS9DIR)/level1/$(PORT)/feu
 vpath %.as $(NITROS9DIR)/level1/$(PORT)/feu
 include ../../rules.mak
-
-# Bare target rule for this recipe's in-directory build style
-%: %.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@
-
-init: buildinfo
 
 ifeq ($(PLATFORM), jr2)
   KEYSUB = keydrv_ps2
@@ -33,7 +28,7 @@ PIPE = pipeman piper pipe
 SC16550 = sc16550 t0_sc16550
 CLOCK = clock clock2_wildbits
 
-sysgo: $(OBJDIR)/sysgo.o
+$(MODDIR)/sysgo: $(OBJDIR)/sysgo.o | $(MODDIR)
 	$(LINKER) $(LFLAGS) $^ -o$@
 
 $(OBJDIR)/sysgo.o: sysgo.as
@@ -71,8 +66,8 @@ all: libs bootfile booter
 
 include ../../libs.mak
 
-bootfile: $(BOOTMODS)
-	$(MERGE) $(BOOTMODS)>$@
+bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
+	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
 
 booter: bootfile
 	$(PADROM) 23552 bootfile
@@ -81,7 +76,7 @@ booter: bootfile
 	$(RM) $@.tmp
 
 flash: flash_booter flash_f0
-	
+
 flash_booter: all booter.zip
 	bulk_flash bulk_booter.csv
 
@@ -118,15 +113,15 @@ booter.zip: booter
 
 FEU_FILES = $(foreach file,$(NITROS9DIR)/level1/$(PORT)/feu/feu/*,$(file))
 
-f0.dsk: startup $(F0_CMDS)
+f0.dsk: startup $(addprefix $(MODDIR)/,$(F0_CMDS))
 	$(OS9FORMAT) -q -t10 -st16 $@ -n"FEU"
 	$(MAKDIR) $@,CMDS
-	$(OS9COPY) $(F0_CMDS) $@,CMDS
+	$(OS9COPY) $(addprefix $(MODDIR)/,$(F0_CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(F0_CMDS),$@,CMDS/$(file))
 	$(MAKDIR) $@,FEU
 	$(OS9COPY) -l startup $@,FEU
 	$(foreach file,$(FEU_FILES),$(OS9COPY) -l $(file) $@,FEU)
-	
+
 startup:
 	echo "display 1b 61 1 ff 0 0 ff 5 22 f0 1b 20 2 0 0 50 18 0 1 0 1b 32 7" > $@
 	echo "echo FEU - First Execution Unit" >> $@
@@ -135,200 +130,183 @@ startup:
 	echo "chd .../feu" >> $@
 	echo "pick -pFEU: main.pick</1" >> $@
 
-$(DSKIMAGE): bootfile $(CMDS)
+$(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS))
 	$(RM) $@
 	$(OS9FORMAT_DW) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9COPY) bootfile $@,OS9Boot
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
 	$(MAKDIR) $@,DEFS
-	$(OS9COPY) $(CMDS) $@,CMDS
+	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
-#	$(CD) sys; $(CPL) $(SYSTEXT) ../$@,SYS
-#	$(OS9ATTR_TEXT) $(foreach file,$(SYSTEXT),$@,SYS/$(file))
-#	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
-#	$(CD) defs; $(CPL) $(DEFS) ../$@,DEFS
-#	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
-#	$(CPL) $(STARTUP) $@,startup
-#	$(OS9ATTR_TEXT) $@,startup
-#	$(MAKDIR) $@,BASIC09
-#	$(CPL) $(BASIC09_FILES) $@,BASIC09
-#	$(MAKDIR) $@,BF
-#	$(CPL) $(BF_FILES) $@,BF
-#	$(MAKDIR) $@,SOUNDS
-#	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
-#	$(MAKDIR) $@,SCRIPTS
-#	$(CD) scripts; $(CPL) $(SCRIPTS) ../$@,SCRIPTS
-#	$(MAKDIR) $@,TESTS
-#	$(CD) tests; $(CPL) $(TESTS) ../$@,TESTS
 
 # Command rules
-pwd:    pd.asm
+$(MODDIR)/pwd: pd.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DPWD=1
 
-pxd:    pd.asm
+$(MODDIR)/pxd: pd.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DPXD=1
 
-xmode:  xmode.asm
+$(MODDIR)/xmode: xmode.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DXMODE=1
-                
-tmode:  xmode.asm
+
+$(MODDIR)/tmode: xmode.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DTMODE=1
 
 # Descriptor rules
 # SD card descriptors
-dds0: rbwbsddesc.asm
+$(MODDIR)/dds0: rbwbsddesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(WBSDFLAGS) -DSD=0 -DDD=1
 
-s0: rbwbsddesc.asm
+$(MODDIR)/s0: rbwbsddesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(WBSDFLAGS) -DSD=0
 
-s1: rbwbsddesc.asm
+$(MODDIR)/s1: rbwbsddesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(WBSDFLAGS) -DSD=1
 
 # rbmem descriptors
-f0: rbmemdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
+$(MODDIR)/f0: rbmemdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=0
 
-f1: rbmemdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=1 -DF1=1
+$(MODDIR)/f1: rbmemdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=1 -DF1=1
 
-c0: rbmemdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=2 -DC0=1
+$(MODDIR)/c0: rbmemdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=2 -DC0=1
 
-c1: rbmemdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=3 -DC1=1
+$(MODDIR)/c1: rbmemdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=3 -DC1=1
 
-ddc0: rbmemdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=2 -DDD=1 -DC0=1
+$(MODDIR)/ddc0: rbmemdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=2 -DDD=1 -DC0=1
 
 # DriveWire dwio modules
-dwio_wizfi: dwio.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDWIO_WIZFI
+$(MODDIR)/dwio_wizfi: dwio.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDWIO_WIZFI
 
-dwio_serial: dwio.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDWIO_SERIAL
+$(MODDIR)/dwio_serial: dwio.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDWIO_SERIAL
 
 # DriveWire 3 RBF descriptors
-ddx0: dwdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDD=1 -DDNum=0
+$(MODDIR)/ddx0: dwdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDD=1 -DDNum=0
 
-x0: dwdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
+$(MODDIR)/x0: dwdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=0
 
-x1: dwdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=1
+$(MODDIR)/x1: dwdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=1
 
-x2: dwdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=2
+$(MODDIR)/x2: dwdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=2
 
-x3: dwdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=3
+$(MODDIR)/x3: dwdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=3
 
 # 16550 descriptors
-t0_sc16550: sc16550desc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
+$(MODDIR)/t0_sc16550: sc16550desc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 # DriveWire 3 SCF descriptors
-term_n.dt: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=0
+$(MODDIR)/term_n.dt: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=0
 
-n: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=255
+$(MODDIR)/n: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=255
 
-n0: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=0
+$(MODDIR)/n0: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=0
 
-n1: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=1
+$(MODDIR)/n1: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=1
 
-n2: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=2
+$(MODDIR)/n2: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=2
 
-n3: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=3
+$(MODDIR)/n3: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=3
 
-n4: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=4
+$(MODDIR)/n4: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=4
 
-n5: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=5
+$(MODDIR)/n5: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=5
 
-n6: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=6
+$(MODDIR)/n6: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=6
 
-n7: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=7
+$(MODDIR)/n7: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=7
 
-n8: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=8
+$(MODDIR)/n8: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=8
 
-n9: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=9
+$(MODDIR)/n9: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=9
 
-n10: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=10
+$(MODDIR)/n10: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=10
 
-n11: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=11
+$(MODDIR)/n11: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=11
 
-n12: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=12
+$(MODDIR)/n12: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=12
 
-n13: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=13
+$(MODDIR)/n13: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=13
 
-midi: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=14
+$(MODDIR)/midi: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=14
 
-term_z.dt: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=16
+$(MODDIR)/term_z.dt: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=16
 
-z1: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=17
+$(MODDIR)/z1: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=17
 
-z2: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=18
+$(MODDIR)/z2: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=18
 
-z3: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=19
+$(MODDIR)/z3: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=19
 
-z4: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=20
+$(MODDIR)/z4: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=20
 
-z5: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=21
+$(MODDIR)/z5: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=21
 
-z6: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=22
+$(MODDIR)/z6: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=22
 
-z7: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=23
+$(MODDIR)/z7: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=23
 
-z8: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=24
+$(MODDIR)/z8: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=24
 
-z9: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=25
+$(MODDIR)/z9: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=25
 
-z10: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=26
+$(MODDIR)/z10: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=26
 
-z11: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=27
+$(MODDIR)/z11: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=27
 
-z12: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=28
+$(MODDIR)/z12: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=28
 
-z13: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=29
+$(MODDIR)/z13: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=29
 
-z14: scdwvdesc.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=30
+$(MODDIR)/z14: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=30
 
 clean:
-	$(RM) $(BOOTMODS) $(F0_CMDS) *.list *.map bootfile *.dsk booter* *.zip *.csv f0_? sysgo startup
-	-rm -rf $(OBJDIR) $(LIBDIR)
+	$(RM) *.list *.map bootfile *.dsk booter* *.zip *.csv f0_? sysgo startup
+	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
 
 help:
 	@echo "Make scenarios:"

@@ -206,9 +206,9 @@ $(MODDIR)/%: $(OBJDIR)/%.o | $(MODDIR)
 -include $(NITROS9DIR)/release_$(PORT)
 
 ifeq ($(NOS9MAJ),)
-  NITROS9VER = v$(NOS9VER).$(NOS9MAJ).$(NOS9MIN)
-else
   NITROS9VER = DEV
+else
+  NITROS9VER = v$(NOS9VER).$(NOS9MAJ).$(NOS9MIN)
 endif
 
 default: all
@@ -216,7 +216,7 @@ default: all
 .PHONY: buildinfo
 
 buildinfo:
-	@BUILDDATE="$$(git log -1 --format=%ad)"; \
+	@BUILDDATE="$$(git log -1 --format=%as)"; \
 	COMMITHASH="$$(git rev-parse --short HEAD)"; \
 	BRANCHNAME="$$(git branch --show-current)"; \
 	echo " fcc !$${BUILDDATE} ($${COMMITHASH} - $${BRANCHNAME})!" > buildinfo;

@@ -41,8 +41,6 @@ CMDS += $(CMDS_BASE) \
 
 all: libs $(DSKIMAGE)
 
-$(MODDIR)/init: buildinfo
-
 LIB_NAMES = libnos96809l1.a libnet.a libalib.a libcoco.a
 include ../../libs.mak
 

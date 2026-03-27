@@ -1,5 +1,6 @@
 PORT ?= wildbits
 RECIPE ?= wildbits
+MODDIR = .mods
 include ../../rules.mak
 -include recipe.mak
 
@@ -56,12 +57,10 @@ CMDS += $(STDCMDS) \
 
 all: libs $(DSKIMAGE)
 
-$(MODDIR)/init: buildinfo
-
 include ../../libs.mak
 
 ifeq ($(LEVEL),2)
-	PADUP ?= ./padup256 bootfile
+  PADUP ?= ./padup256 bootfile
 endif
 bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
@@ -125,143 +124,143 @@ $(MODDIR)/s1: rbwbsddesc.asm | $(MODDIR)
 
 # rbmem descriptors
 $(MODDIR)/f0: rbmemdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=0
 
 $(MODDIR)/f1: rbmemdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=1 -DF1=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=1 -DF1=1
 
 $(MODDIR)/c0: rbmemdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=2 -DC0=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=2 -DC0=1
 
 $(MODDIR)/c1: rbmemdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=3 -DC1=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=3 -DC1=1
 
 $(MODDIR)/ddc0: rbmemdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=2 -DDD=1 -DC0=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=2 -DDD=1 -DC0=1
 
 # DriveWire dwio modules
 $(MODDIR)/dwio_wizfi: dwio.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDWIO_WIZFI
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDWIO_WIZFI
 
 $(MODDIR)/dwio_serial: dwio.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDWIO_SERIAL
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDWIO_SERIAL
 
 # DriveWire 3 RBF descriptors
 $(MODDIR)/ddx0: dwdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDD=1 -DDNum=0
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDD=1 -DDNum=0
 
 $(MODDIR)/x0: dwdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=0
 
 $(MODDIR)/x1: dwdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=1
 
 $(MODDIR)/x2: dwdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=2
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=2
 
 $(MODDIR)/x3: dwdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=3
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=3
 
 # 16550 descriptors
 $(MODDIR)/t0_sc16550: sc16550desc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 # DriveWire 3 SCF descriptors
 $(MODDIR)/term_n.dt: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=0
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=0
 
 $(MODDIR)/n: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=255
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=255
 
 $(MODDIR)/n0: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=0
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=0
 
 $(MODDIR)/n1: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=1
 
 $(MODDIR)/n2: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=2
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=2
 
 $(MODDIR)/n3: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=3
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=3
 
 $(MODDIR)/n4: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=4
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=4
 
 $(MODDIR)/n5: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=5
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=5
 
 $(MODDIR)/n6: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=6
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=6
 
 $(MODDIR)/n7: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=7
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=7
 
 $(MODDIR)/n8: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=8
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=8
 
 $(MODDIR)/n9: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=9
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=9
 
 $(MODDIR)/n10: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=10
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=10
 
 $(MODDIR)/n11: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=11
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=11
 
 $(MODDIR)/n12: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=12
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=12
 
 $(MODDIR)/n13: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=13
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=13
 
 $(MODDIR)/midi: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=14
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=14
 
 $(MODDIR)/term_z.dt: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=16
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=16
 
 $(MODDIR)/z1: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=17
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=17
 
 $(MODDIR)/z2: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=18
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=18
 
 $(MODDIR)/z3: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=19
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=19
 
 $(MODDIR)/z4: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=20
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=20
 
 $(MODDIR)/z5: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=21
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=21
 
 $(MODDIR)/z6: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=22
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=22
 
 $(MODDIR)/z7: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=23
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=23
 
 $(MODDIR)/z8: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=24
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=24
 
 $(MODDIR)/z9: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=25
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=25
 
 $(MODDIR)/z10: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=26
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=26
 
 $(MODDIR)/z11: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=27
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=27
 
 $(MODDIR)/z12: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=28
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=28
 
 $(MODDIR)/z13: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=29
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=29
 
 $(MODDIR)/z14: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=30
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=30
 
 clean:
 	$(RM) *.list *.map bootfile *.dsk

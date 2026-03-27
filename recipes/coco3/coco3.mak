@@ -45,8 +45,6 @@ CMDS += $(CMDS_BASE) \
 
 all: libs $(DSKIMAGE)
 
-$(MODDIR)/init: buildinfo
-
 LIB_NAMES = libnos96809l2.a libnet.a libalib.a libcoco3.a
 include ../../libs.mak
 
@@ -96,6 +94,9 @@ $(MODDIR)/sysgo_dd: sysgo.asm | $(MODDIR)
 
 $(MODDIR)/clock_60hz: clock.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $(ASOUT)$@ $< -DPwrLnFrq=60
+
+$(MODDIR)/clock_50hz: clock.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $(ASOUT)$@ $< -DPwrLnFrq=50
 
 # CoCo 3 rel variant
 $(MODDIR)/rel_80: rel.asm | $(MODDIR)
