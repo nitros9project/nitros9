@@ -42,13 +42,19 @@ DSK_I0      = $(DISTROVER)_i0.dsk
 DSKS        = $(DSK_PT) $(DSK_X0) $(DSK_I0)
 
 # Make all components
-all:
+all: _build_banner _build_subdirs
+
+.PHONY: _build_banner _build_subdirs
+
+_build_banner:
 	@$(ECHO) "************************************************************"
 	@$(ECHO) "*"
 	@$(ECHO) "*      NitrOS-9/$(CPU) Level $(LEVEL) $(MACHINE) ($(PORT))"
 	@$(ECHO) "*"
 	@$(ECHO) "************************************************************"
 	$(MAKE) -C $(NITROS9DIR)/lib
+
+_build_subdirs: _build_banner
 	$(foreach dir,$(DIRS),$(MAKE) -C $(dir) &&) :
 
 # Clean all components
@@ -58,9 +64,10 @@ clean: dskclean
 dskclean:
 	$(RM) $(DSKS)
 
-dsk: all $(DSKS)
+# dsk always rebuilds subdirs first, then disk images
+dsk: _build_subdirs $(DSKS)
 
-dskcopy: $(DSKS)
+dskcopy: dsk
 	$(CP) $(DSKS) $(DSKDIR)
 
 # Standard SD boot disk (SS35, boots from /DD = /I0 via IDE)

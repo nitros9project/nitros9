@@ -204,7 +204,8 @@ L004F
                     bcc       L0066     went ok, save path #
                     bra       L009B     crash machine
 
-L0066               ldx       <D.Proc   get current process pointer
+L0066
+                    ldx       <D.Proc   get current process pointer
                     sta       <P$Path,x save stdin path
                     os9       I$Dup     dupe it
                     sta       <P$Path+1,x save stdout path

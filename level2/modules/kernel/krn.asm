@@ -328,6 +328,8 @@ l@                  std       ,x++      now clear memory 16 bits at a time
                     stb       <D.Crash  store JMP opcode at D.Crash
                     leax      PicoCrash,pcr address of crash handler
                     stx       <D.Crash+1 store 2-byte target address
+                    ldb       #$01      protect vector area from stray writes
+                    stb       >$FFCA    arm watchpoint: $FFF0-$FFFF becomes read-only
                     puls      b
                   ENDC
 *<<<<<<<<<< Pico-Thing PORT
