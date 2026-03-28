@@ -57,6 +57,7 @@ CMDS += $(STDCMDS) \
 
 all: libs $(DSKIMAGE)
 
+LIB_NAMES = libwildbitsl$(LEVEL).a libnet.a libalib.a
 include ../../libs.mak
 
 ifeq ($(LEVEL),2)
@@ -114,13 +115,13 @@ $(MODDIR)/tmode: xmode.asm | $(MODDIR)
 # Descriptor rules
 # SD card descriptors
 $(MODDIR)/dds0: rbwbsddesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(WBSDFLAGS) -DSD=0 -DDD=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(WBSDFLAGS) -DSD=0 -DDD=1
 
 $(MODDIR)/s0: rbwbsddesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(WBSDFLAGS) -DSD=0
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(WBSDFLAGS) -DSD=0
 
 $(MODDIR)/s1: rbwbsddesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(WBSDFLAGS) -DSD=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(WBSDFLAGS) -DSD=1
 
 # rbmem descriptors
 $(MODDIR)/f0: rbmemdesc.asm | $(MODDIR)

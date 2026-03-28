@@ -164,7 +164,7 @@ MASTER = -DITDNS=0
 
 # Include an optional release file based on the port name that contains
 # release variables set... e.g.:
-# NOS9MVER=26
+# NOS9VER=26
 # NOS9MAJ=1
 # NOS9MIN=1
 -include $(NITROS9DIR)/release_$(PORT)

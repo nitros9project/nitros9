@@ -64,6 +64,7 @@ F0_CMDS = attr \
 
 all: libs bootfile booter
 
+LIB_NAMES = libwildbitsl$(LEVEL).a libnet.a libalib.a
 include ../../libs.mak
 
 bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
@@ -156,13 +157,13 @@ $(MODDIR)/tmode: xmode.asm | $(MODDIR)
 # Descriptor rules
 # SD card descriptors
 $(MODDIR)/dds0: rbwbsddesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(WBSDFLAGS) -DSD=0 -DDD=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(WBSDFLAGS) -DSD=0 -DDD=1
 
 $(MODDIR)/s0: rbwbsddesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(WBSDFLAGS) -DSD=0
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(WBSDFLAGS) -DSD=0
 
 $(MODDIR)/s1: rbwbsddesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $(ASOUT)$@ $< $(WBSDFLAGS) -DSD=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(WBSDFLAGS) -DSD=1
 
 # rbmem descriptors
 $(MODDIR)/f0: rbmemdesc.asm | $(MODDIR)
@@ -317,4 +318,4 @@ help:
 	@echo "  make flash_f0 PLATFORM=jr2: flash /f0 for Jr2"
 	@echo "  make flash_f0 PLATFORM=k2: flash /f0 for K2"
 
-.PHONY: all clean upload flash flash_booter flash_f0 libs
+.PHONY: all clean flash flash_booter flash_f0 libs

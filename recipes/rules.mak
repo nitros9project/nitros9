@@ -57,7 +57,7 @@ endif
 OBJDIR		?= .obj
 LIBDIR		?= .lib
 MODDIR		?= .mods
-AFLAGS		= -DNOS9VER=$(NOS9VER) -DNOS9MAJ=$(NOS9MAJ) -DNOS9MIN=$(NOS9MIN)
+AFLAGS		=
 ifdef PORT
 AFLAGS		+= -D$(PORT)=1
 endif
@@ -209,6 +209,7 @@ ifeq ($(NOS9MAJ),)
   NITROS9VER = DEV
 else
   NITROS9VER = v$(NOS9VER).$(NOS9MAJ).$(NOS9MIN)
+  AFLAGS += -DNOS9VER=$(NOS9VER) -DNOS9MAJ=$(NOS9MAJ) -DNOS9MIN=$(NOS9MIN)
 endif
 
 default: all

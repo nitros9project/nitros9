@@ -87,71 +87,71 @@ $(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1)) | $(MODDIR)
 
 # CoCo 3 kernel/booter variants
 $(MODDIR)/boot_1773_6ms: boot_1773.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DSTEP=0
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DSTEP=0
 
 $(MODDIR)/sysgo_dd: sysgo.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDD=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDD=1
 
 $(MODDIR)/clock_60hz: clock.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $(ASOUT)$@ $< -DPwrLnFrq=60
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DPwrLnFrq=60
 
 $(MODDIR)/clock_50hz: clock.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $(ASOUT)$@ $< -DPwrLnFrq=50
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DPwrLnFrq=50
 
 # CoCo 3 rel variant
 $(MODDIR)/rel_80: rel.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $(ASOUT)$@ $< -DWidth=80
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DWidth=80
 
 # CoCo 3 floppy descriptors
 $(MODDIR)/ddd0_40d.dd: rb1773desc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) $(DSDD40) -DDNum=0 -DDD=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD40) -DDNum=0 -DDD=1
 
 $(MODDIR)/d0_40d.dd: rb1773desc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) $(DSDD40) -DDNum=0
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD40) -DDNum=0
 
 $(MODDIR)/d1_40d.dd: rb1773desc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) $(DSDD40) -DDNum=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD40) -DDNum=1
 
 $(MODDIR)/d2_40d.dd: rb1773desc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) $(DSDD40) -DDNum=2
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD40) -DDNum=2
 
 # DriveWire RBF descriptors
 $(MODDIR)/ddx0.dd: dwdesc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDD=1 -DDNum=0
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDD=1 -DDNum=0
 
 $(MODDIR)/x0.dd: dwdesc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=0
 
 $(MODDIR)/x1.dd: dwdesc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=1
 
 $(MODDIR)/x2.dd: dwdesc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=2
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=2
 
 $(MODDIR)/x3.dd: dwdesc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=3
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=3
 
 # DriveWire SCF descriptors
 $(MODDIR)/term_scdwv.dt: scdwvdesc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=0
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=0
 
 $(MODDIR)/n_scdwv.dd: scdwvdesc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=255
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=255
 
 $(MODDIR)/n1_scdwv.dd: scdwvdesc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=1
 
 $(MODDIR)/n2_scdwv.dd: scdwvdesc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=2
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=2
 
 $(MODDIR)/n3_scdwv.dd: scdwvdesc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=3
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=3
 
 $(MODDIR)/n4_scdwv.dd: scdwvdesc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=4
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=4
 
 $(MODDIR)/n5_scdwv.dd: scdwvdesc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=5
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=5
 
 clean:
 	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo

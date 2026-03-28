@@ -77,71 +77,71 @@ $(MODDIR)/tmode: xmode.asm | $(MODDIR)
 
 # CoCo 1 floppy descriptors
 $(MODDIR)/boot_1773: boot_1773.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0 -DSTEP=0
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=0 -DSTEP=0
 
 $(MODDIR)/sysgo_dd: sysgo.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $(ASOUT)$@ $< -DDD=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDD=1
 
 $(MODDIR)/clock_60hz: clock.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $(ASOUT)$@ $< -DPwrLnFrq=60
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DPwrLnFrq=60
 
 $(MODDIR)/clock_50hz: clock.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $(ASOUT)$@ $< -DPwrLnFrq=50
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DPwrLnFrq=50
 
 $(MODDIR)/ddd0_35s: rb1773desc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) $(SSDD35) -DDNum=0 -DDD=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(SSDD35) -DDNum=0 -DDD=1
 
 $(MODDIR)/d0_35s: rb1773desc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) $(SSDD35) -DDNum=0
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(SSDD35) -DDNum=0
 
 $(MODDIR)/d1_35s: rb1773desc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) $(SSDD35) -DDNum=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(SSDD35) -DDNum=1
 
 $(MODDIR)/d2_35s: rb1773desc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) $(SSDD35) -DDNum=2
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(SSDD35) -DDNum=2
 
 $(MODDIR)/d3_35s: rb1773desc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) $(SSDD35) -DDNum=3
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(SSDD35) -DDNum=3
 
 $(MODDIR)/ddd0_40d: rb1773desc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) $(DSDD40) -DDNum=0 -DDD=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD40) -DDNum=0 -DDD=1
 
 $(MODDIR)/d0_40d: rb1773desc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) $(DSDD40) -DDNum=0
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD40) -DDNum=0
 
 $(MODDIR)/d1_40d: rb1773desc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) $(DSDD40) -DDNum=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD40) -DDNum=1
 
 $(MODDIR)/d2_40d: rb1773desc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) $(DSDD40) -DDNum=2
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD40) -DDNum=2
 
 $(MODDIR)/ddd0_80d: rb1773desc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) $(DSDD80) -DDNum=0 -DDD=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD80) -DDNum=0 -DDD=1
 
 $(MODDIR)/d0_80d: rb1773desc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) $(DSDD80) -DDNum=0
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD80) -DDNum=0
 
 $(MODDIR)/d1_80d: rb1773desc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) $(DSDD80) -DDNum=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD80) -DDNum=1
 
 $(MODDIR)/d2_80d: rb1773desc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) $(DSDD80) -DDNum=2
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD80) -DDNum=2
 
 # DriveWire RBF descriptors
 $(MODDIR)/ddx0: dwdesc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDD=1 -DDNum=0
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDD=1 -DDNum=0
 
 $(MODDIR)/x0: dwdesc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=0
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=0
 
 $(MODDIR)/x1: dwdesc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=1
 
 $(MODDIR)/x2: dwdesc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=2
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=2
 
 $(MODDIR)/x3: dwdesc.asm | $(MODDIR)
-	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DDNum=3
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=3
 
 clean:
 	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo
