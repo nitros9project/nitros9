@@ -217,6 +217,8 @@ default: all
 
 .PHONY: buildinfo
 
+.mods/init: buildinfo
+
 buildinfo:
 	@BUILDDATE="$$(git log -1 --format=%as)"; \
 	COMMITHASH="$$(git rev-parse --short HEAD)"; \

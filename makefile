@@ -30,6 +30,7 @@ clean:
 	$(RM) $(DSKDIR)/ReadMe
 	$(RM) $(DSKDIR)/index.html $(DSKDIR)/index.shtml
 	$(foreach dir,$(dirs),$(MAKE) -C $(dir) clean &&) :
+	$(RM) defs/buildinfo
 
 # Make DSK images
 dsk:	all
