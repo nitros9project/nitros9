@@ -9,6 +9,15 @@
 # Example: l2_coco3custom.dsk
 RECIPE ?= coco3
 
+# Set to 32, 40, or 80 to select the /TERM display width (default: 80).
+#   32 uses the VDG chip (covdg.io + term_vdg.dt, 32x16 CoCo 1/2-style).
+#   40 and 80 use the CoCo 3 window system (cowin.io + term_win{40,80}.dt).
+# TERM_COLS = 32
+
+# Set to 1 for black/white /TERM colors instead of the default black/green
+# (applies to 40- and 80-column window modes only).
+# TERM_ALTCOLOR = 1
+
 # Append additional compiler/linker flags
 # AFLAGS_EXTRA += -DMY_FEATURE=1
 # LFLAGS_EXTRA += -L /path/to/extra/libdir

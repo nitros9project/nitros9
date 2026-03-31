@@ -6,6 +6,27 @@ RECIPE ?= coco3
 -include recipe.mak
 vpath %.asm $(LEVEL1)/coco1/modules
 
+# Set TERM_COLS to 32, 40, or 80 to select the /TERM display width (default: 80).
+#   32 uses the VDG chip via covdg.io + term_vdg.dt (32x16, CoCo 1/2-style).
+#   40 and 80 use the CoCo 3 window system via cowin.io + term_win{40,80}.dt.
+# Set TERM_ALTCOLOR=1 for black/white colors instead of the default black/green
+# (applies to 40- and 80-column window modes only).
+TERM_COLS ?= 80
+TERM_ALTCOLOR ?= 0
+REL = rel_$(TERM_COLS)
+ifeq ($(TERM_COLS),32)
+TERM_WIN_DT = term_vdg.dt
+TERM_IO = covdg.io
+else
+TERM_WIN_DT = term_win$(TERM_COLS).dt
+TERM_IO = cowin.io
+endif
+ifeq ($(TERM_ALTCOLOR),1)
+TERM_ALTCOLOR_FLAGS = -DALTCOLOR=1
+else
+TERM_ALTCOLOR_FLAGS =
+endif
+
 DSKIMAGE ?= l$(LEVEL)_$(RECIPE).dsk
 OS9FORMAT_CMD ?= $(OS9FORMAT_DS40)
 
@@ -19,12 +40,12 @@ LFLAGS += $(LFLAGS_EXTRA)
 DSDD40 = -DCyls=40 -DSides=2 -DSectTrk=18 -DSectTrk0=18 -DInterlv=3 -DSAS=8 -DDensity=1
 
 RBF ?= rbf.mn rb1773.dr ddd0_40d.dd d0_40d.dd d1_40d.dd d2_40d.dd
-SCF ?= scf.mn vtio.dr snddrv_cc3.sb joydrv_joy.sb cowin.io \
-	term_win80.dt w.dw w1.dw w2.dw w3.dw w4.dw w5.dw w6.dw w7.dw \
+SCF ?= scf.mn vtio.dr snddrv_cc3.sb joydrv_joy.sb $(TERM_IO) \
+	$(TERM_WIN_DT) w.dw w1.dw w2.dw w3.dw w4.dw w5.dw w6.dw w7.dw \
 	w8.dw w9.dw w10.dw w11.dw w12.dw w13.dw w14.dw w15.dw
 PIPE ?= pipeman.mn piper.dr pipe.dd
 CLOCK ?= clock_60hz clock2_soft
-KERNEL_TRACK ?= rel_80 boot_1773_6ms krn
+KERNEL_TRACK ?= $(REL) boot_1773_6ms krn
 KERNELFILE = kerneltrack
 STARTUP ?= $(NITROS9DIR)/level2/$(PORT)/startup
 
@@ -66,6 +87,17 @@ $(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP)
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 
+# /TERM window descriptors — column count and colors controlled by TERM_COLS and TERM_ALTCOLOR
+$(MODDIR)/term_win40.dt: term_win40.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(TERM_ALTCOLOR_FLAGS)
+
+$(MODDIR)/term_win80.dt: term_win80.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(TERM_ALTCOLOR_FLAGS)
+
+# VDG I/O module for 32-column mode (TERM_COLS=32)
+$(MODDIR)/covdg.io: covdg.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DCOCO2=1
+
 # Command rules
 $(MODDIR)/pwd: pd.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DPWD=1
@@ -98,7 +130,13 @@ $(MODDIR)/clock_60hz: clock.asm | $(MODDIR)
 $(MODDIR)/clock_50hz: clock.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DPwrLnFrq=50
 
-# CoCo 3 rel variant
+# CoCo 3 rel variants — width tracks TERM_COLS
+$(MODDIR)/rel_32: rel.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DWidth=32
+
+$(MODDIR)/rel_40: rel.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DWidth=40
+
 $(MODDIR)/rel_80: rel.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DWidth=80
 
