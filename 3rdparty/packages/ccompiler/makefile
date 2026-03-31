@@ -1,7 +1,7 @@
 include ../../../rules.mak
 
 DSK		= CCompiler.dsk
-CMDS		= cc1 c.prep c.pass1 c.pass2 c.opt c.asm c.link make
+CMDS		= cc1 c.prep c.pass1 c.pass2 c.opt c.asm c_asm c.link make
 
 ALLOBJS		= $(CMDS)
 
@@ -20,6 +20,9 @@ clean:	dskclean
 	$(RM) $(ALLOBJS) *.list *.map
 
 dsk: $(DSK)
+
+c.asm: c_asm
+	$(CP) $^ $@
 
 $(DSK): all
 	$(RM) $@

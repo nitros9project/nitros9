@@ -19,14 +19,14 @@ banner:
 	@$(ECHO) "*                                                *"
 	@$(ECHO) "**************************************************"
 
-$(DSKSUPERCOMM): $(CMDS)
+dsk: all $(DSKS)
+
+$(DSK): all
 	$(RM) $@
 	$(OS9FORMAT) -q $@ -n"Xcom9"
 	$(MAKDIR) $@,CMDS
 	$(OS9COPY) $(CMDS) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
-
-dsk: all $(DSKS)
 
 dskcopy: dsk
 	$(CP) $(DSKS) $(DSKDIR)

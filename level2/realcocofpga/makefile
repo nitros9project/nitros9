@@ -49,6 +49,17 @@ SYSGO		= sysgo_dd
 SYSGOBD		= sysgo_bd
 CCBKRN		= ccbkrn
 
+# Make all components
+all:
+	@$(ECHO) "************************************************************"
+	@$(ECHO) "*"
+	@$(ECHO) "*      NitrOS-9/$(CPU) Level $(LEVEL) $(MACHINE) ($(PORT))"
+	@$(ECHO) "*"
+	@$(ECHO) "************************************************************"
+	$(MAKE) -C $(NITROS9DIR)/lib
+	$(foreach dir,$(DIRS),$(MAKE) -C $(dir) &&) :
+
+
 # Make sure is defined before the DSKS list!
 VHD_REALCOCOFPGA_ALLBOARDS = $(DISTRODSK)_allboards.vhd
 
@@ -88,17 +99,6 @@ $(VHD_REALCOCOFPGA_ALLBOARDS):
 	$(OS9ATTR_EXEC) $@,sysgo
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
-
-
-# Make all components
-all:
-	@$(ECHO) "************************************************************"
-	@$(ECHO) "*"
-	@$(ECHO) "*      NitrOS-9/$(CPU) Level $(LEVEL) $(MACHINE) ($(PORT))"
-	@$(ECHO) "*"
-	@$(ECHO) "************************************************************"
-	$(MAKE) -C $(NITROS9DIR)/lib
-	$(foreach dir,$(DIRS),$(MAKE) -C $(dir) &&) :
 
 
 # Clean all components

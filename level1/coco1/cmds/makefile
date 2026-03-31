@@ -7,6 +7,7 @@ DEPENDS		= ./makefile $(NOSLIB)/net.o
 
 AFLAGS		+= -I$(LEVEL1)/$(PORT)
 AFLAGS		+= -I$(3RDPARTY)/packages/basic09
+AFLAGS		+= -I.
 LFLAGS		+= -L $(NITROS9DIR)/lib -lnet -lcoco -lalib
 
 CMDS		= asm attr backup bawk binex build calldbg cmp cobbler copy cputype \

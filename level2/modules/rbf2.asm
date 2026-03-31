@@ -295,7 +295,7 @@ Creat131            ldb       ,s                  get p hysical sector # of segm
                     ldx       PD.Exten,y          get path extension pointer
                     lda       #EofLock            set the file to EOF lock
                     sta       PE.Lock,x
-                    bra       Open1CC
+                    lbra      Open1CC
 * Error on fD write to disk
 Creat151            puls      u,x,a               restore segment start & size
                     sta       PD.SBP,y            put it into path descriptor
@@ -1839,7 +1839,7 @@ L0A0C               leas      $02,s               purge attributes from stack
                     coma                          set carry
                     puls      pc,x                restore & return
 
-L0A11               ldb       #E$Share,s          get shareable file error
+L0A11               ldb       #E$Share            get shareable file error
                     bra       L0A0C               return
 
 L0A15               ldb       1,s                 get directory bits
@@ -3059,20 +3059,20 @@ L11CB               lda       P$IOQN,x            any process waiting?
 L11E9               puls      pc,u,y,x,b,a,cc     restore & return
 
 * Execute device driver
-* Entry: A=Driver command offset
+* Entry: A=Driver command offset      (one of D$INIT=0, D$READ=3, D$WRIT=6, etc.)
 *        B=MSB of logical sector #
 *        X=LSW of logical sector #
 *        Y=Path descriptor pointer
 *        U=Static memory pointer
-L11EB               pshs      pc,x,b,a
-                    ldx       $03,y
-                    ldd       ,x
-                    ldx       ,x
-                    addd      $09,x
-                    addb      ,s
-                    adca      #$00
-                    std       $04,s
-                    puls      pc,x,b,a
+L11EB               pshs      pc,x,b,a           pushes PC just to reserve space
+                    ldx       PD.DEV,y
+                    ldd       V$DRIV,x           device driver module
+                    ldx       V$DRIV,x           device driver module, again
+                    addd      M$Exec,x           where in drive module the entry table is
+                    addb      ,s                 adds driver offset to D by adding it to B
+                    adca      #$00               correct A, in case of carry out of B.
+                    std       $04,s              overwrite PC with Driver Entry address
+                    puls      pc,x,b,a           jumps to driver entry, restoring LSN
 
 * Write file descriptor to disk
 * Entry: Y=Path descriptor pointer

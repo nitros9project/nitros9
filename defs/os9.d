@@ -795,7 +795,8 @@ Feature1            RMB       1                   feature byte 1
 Feature2            RMB       1                   feature byte 2
 OSName              RMB       2                   OS revision name string (nul terminated)
 InstallName         RMB       2                   installation name string (nul terminated)
-                    RMB       4                   reserved for future use
+BuildInfo           RMB       2                   build information string (nul terminated)
+                    RMB       2                   reserved for future use
 
                     IFGT      Level-1
 * -- VTIO area -- (NitrOS-9 Level 2 and above) *

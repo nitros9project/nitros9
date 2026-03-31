@@ -839,10 +839,11 @@ IRQSvc
                     lda       <V.QUIT             default to keyboard quit ("Break") code
                     bra       RxBreak             go pretend we've received V.QUIT character...
 
-ChkParty            bitb      #Stat.Par           parity error?
+ChkParty            clra                          default to no errors marked
+                    bitb      #Stat.Par           parity error?
                     beq       ChkOvRun            no, go check overrun error...
                     lda       #ParityEr           mark parity error
-ChkOvRun            bita      #Stat.Ovr           overrun error?
+ChkOvRun            bitb      #Stat.Ovr           overrun error?
                     beq       SaveErrs            no, go save errors...
                     ora       #OvrFloEr           mark overrun error
 SaveErrs            ora       <V.ERR

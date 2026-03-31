@@ -6,6 +6,7 @@ vpath %.asm $(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09
 DEPENDS		= ./makefile
 
 AFLAGS          += --includedir=$(3RDPARTY)/packages/basic09
+AFLAGS          += -I.
 LFLAGS          += -L $(NITROS9DIR)/lib -lnet -latari -lalib
 
 CMDS		= asm attr backup bawk binex build calldbg cmp copy cputype \

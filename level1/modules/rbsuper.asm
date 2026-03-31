@@ -59,9 +59,9 @@
                     use       rbsuper.d
                     endc
 
-* F256 port doesn't use HDB-DOS. Other ports that don't need it should have their
+* Wildbits port doesn't use HDB-DOS. Other ports that don't need it should have their
 * flags added on the next line as well.
-                    ifeq      f256
+                    ifeq      wildbits
 HDBDOS              set       1
                     endc
                     

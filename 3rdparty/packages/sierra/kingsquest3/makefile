@@ -2,6 +2,8 @@ include ../../../../rules.mak
 
 vpath %.asm ../objs_lsl
 
+AFLAGS      += -I.
+
 DEPENDS		= ./makefile
 
 DISK_1_40D	= KingsQuestIII_d1_40d.dsk
@@ -87,7 +89,7 @@ ALLOBJS		= $(CMDS)
 all:	$(ALLOBJS)
 
 clean:	dskclean
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 $(DISK_1_40D): all
 	$(RM) $@

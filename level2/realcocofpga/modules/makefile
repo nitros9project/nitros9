@@ -3,6 +3,7 @@ include ../port.mak
 vpath %.asm $(LEVEL2)/coco3/modules/kernel:$(LEVEL2)/coco3/modules:$(LEVEL2)/modules:$(LEVEL1)/coco1/modules:$(LEVEL1)/modules
 
 AFLAGS		+= -I$(LEVEL2)/$(PORT) -I$(LEVEL1)/modules
+AFLAGS      += -I.
 
 CLOCKELIM       = -DRTCElim=1
 CLOCKDISTO2     = -DRTCDsto2=1
@@ -535,7 +536,7 @@ clock2_bnb: clock2_ds1315.asm
 
 clean:
 	$(CD) kernel; make $@
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 showobjs:
 	@$(ECHO) $(ALLOBJS)

@@ -37,6 +37,8 @@ CLOCKS          = clock_60hz clock_50hz \
                 clock2_smart clock2_harris clock2_cloud9 clock2_soft \
 		clock2_messemu clock2_jvemu clock2_dw
 
+init:          init.asm buildinfo
+
 RBF		= rbf.mn \
 		rbdw.dr dwio.sb dwio_38400.sb dwio_becker.sb dwio_arduino.sb \
 		dwio_rs232pak.sb dwio_directmodempak.sb dwio_cocolink.sb \

@@ -1,0 +1,7 @@
+PROCEDURE joyprta
+DIM value:INTEGER
+value:=0
+10 RUN wild("JoyA",value)
+RUN wild("CurXY",0,5)
+PRINT value
+GOTO 10
