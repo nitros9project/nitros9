@@ -11,6 +11,8 @@
 
 # NitrOS-9 version
 
+NITROS9DIR:=$(shell if test -z "$$NITROS9DIR"; then pwd | sed 's|/recipes/.*||'; else echo "$$NITROS9DIR"; fi)
+
 #################### DO NOT CHANGE ANYTHING BELOW THIS LINE ####################
 
 CC		= c3
