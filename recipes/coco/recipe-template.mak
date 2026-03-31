@@ -9,6 +9,10 @@
 # Example: l1_mykit.dsk
 RECIPE ?= coco
 
+# Set to 1 to enable true lowercase on CoCo 2 boards with the 6847T1 VDG chip.
+# Assembles term_vdg with ModCoVDG+1 instead of ModCoVDG.
+# VDG_T1 = 1
+
 # Append additional compiler/linker flags
 # AFLAGS_EXTRA += -DMY_FEATURE=1
 # LFLAGS_EXTRA += -L /path/to/extra/libdir

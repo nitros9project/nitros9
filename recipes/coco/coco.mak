@@ -5,6 +5,15 @@ include ../../rules.mak
 RECIPE ?= coco
 -include recipe.mak
 
+# Set VDG_T1=1 to enable true lowercase support for CoCo 2 boards
+# equipped with the Motorola 6847T1 VDG chip.
+VDG_T1 ?= 0
+ifeq ($(VDG_T1),1)
+VDG_T1_FLAGS = -Dcoco2b=1
+else
+VDG_T1_FLAGS =
+endif
+
 DSKIMAGE ?= l$(LEVEL)_$(RECIPE).dsk
 OS9FORMAT_CMD ?= $(OS9FORMAT_DS40)
 STARTUP ?= $(NITROS9DIR)/level1/$(PORT)/startup
@@ -61,6 +70,10 @@ $(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP)
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
+
+# VDG terminal descriptor — conditionally enables 6847T1 true lowercase
+$(MODDIR)/term_vdg: term_vdg.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(VDG_T1_FLAGS)
 
 # Command rules
 $(MODDIR)/pwd: pd.asm | $(MODDIR)
