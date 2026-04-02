@@ -13,6 +13,7 @@ on:
 env:
   # Path to the solution file relative to the root of the project.
   SOLUTION_FILE_PATH: .
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 permissions:
   contents: read
@@ -32,7 +33,7 @@ jobs:
 #        sudo apt-get install mingw-w64
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Fetch Toolshed
       uses: robinraju/release-downloader@v1
