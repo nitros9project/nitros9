@@ -1,0 +1,43 @@
+* Publish 4 topics to Home Assistant MQTT Broker
+echo ATE1>/wz
+modem /wz
+echo AT+CIPMUX=0>/wz
+modem /wz
+echo AT+MQTTSET="mqttuser","mqttpass","wizfi360",300>/wz
+modem /wz
+*
+echo AT+MQTTTOPIC="os9station1/stat","os9station1/stat">/wz
+modem /wz
+echo AT+MQTTCON=0,"192.168.1.85",1883>/wz
+modem /wz
+echo AT+MQTTPUB="{"freeram":111,"totalprocs":11,"cpu":"ping"}">/wz
+modem /wz
+echo AT+MQTTDIS>/wz
+modem /wz
+*
+echo AT+MQTTTOPIC="os9station2/stat","os9station2/stat">/wz
+modem /wz
+echo AT+MQTTCON=0,"192.168.1.85",1883>/wz
+modem /wz
+echo AT+MQTTPUB="{"freeram":222,"totalprocs":12,"cpu":"ping"}">/wz
+modem /wz
+echo AT+MQTTDIS>/wz
+modem /wz
+*
+echo AT+MQTTTOPIC="espstation1/stat","espstation1/stat">/wz
+modem /wz
+echo AT+MQTTCON=0,"192.168.1.85",1883>/wz
+modem /wz
+echo AT+MQTTPUB="{"freeram":333,"totalprocs":13,"cpu":"ping"}">/wz
+modem /wz
+echo AT+MQTTDIS>/wz
+modem /wz
+*
+echo AT+MQTTTOPIC="espstation2/stat","espstation2/stat">/wz
+modem /wz
+echo AT+MQTTCON=0,"192.168.1.85",1883>/wz
+modem /wz
+echo AT+MQTTPUB="{"freeram":555,"totalprocs":5,"cpu":"ping"}">/wz
+modem /wz
+echo AT+MQTTDIS>/wz
+modem /wz

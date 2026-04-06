@@ -1,7 +1,8 @@
-modem "ATE1"
-modem /wz /wz /wz
-modem "AT+UART_CUR=921600,8,1,0,0"
-modem /wz /wz /wz
+echo * WizFi360 Helper - Fast mode
+echo ATE1>/wz
+modem /wz
+echo AT+UART_CUR=921600,8,1,0,0>/wz
+modem /wz
 xmode /wz bau=1
-modem "AT"
-modem /wz /wz /wz
+modem AT>/wz
+modem /wz

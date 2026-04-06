@@ -1,0 +1,41 @@
+WizFi helper scripts
+
+wizi
+Initializes /wz and purges the ready status messages.
+I have these commands directly in my startup file instead of calling scripts/wizi.
+   iniz /wz
+   modem /wz
+
+
+wizcon
+Make connection to router which persists between reboots.
+You'll need to edit "ssid" and "password" to match that of your network or router.
+
+wizsv1
+Enable the single-connection server (no packets, direct bytes).
+
+wizlog1
+Wait for a remote system to connect to us via Telnet, then run TSMON to let them log in.
+
+
+wizsv4
+Enable the multiple-connection server (uses packets).
+
+wizlog4
+Wait for a remote system to connect to us via Telnet, then run TSMON over /wz0, /wz1, /wz2, or /wz3
+As of 4-6-2026 OS-9 doesn't have support for running multiple terminals over WizFi, but attempts are being made.
+
+wizfast
+Switch the WizFi360 to use the Fast FIFO mode
+
+wizloginfast
+Wait for a remote system to connect to us via Telnet, then run TSMON over /wz0 (packets)
+As of 4-6-2026 OS-9 doesn't have support for running multiple terminals over WizFi, but attempts are being made.
+
+wizslow
+Switch the WizFi360 to use the Normal FIFO mode
+
+wizstat
+Show our current IP address and other IP info
+
+

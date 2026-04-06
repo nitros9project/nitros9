@@ -1,6 +1,7 @@
+echo * Connect to Google
 echo AT+CIPMODE=0>/wz
 modem /wz
 echo AT+CIPMUX=1>/wz
 modem /wz
-echo AT+CIPSTART=0,"TCP","ip",23>/wz
+echo AT+CIPSTART=0,"TCP","google.com",80,10>/wz
 modem /wz

@@ -1,10 +1,11 @@
 echo * WizFi360 Helper - Connection to Router
-modem "ATE1"
-modem -t /wz /wz /wz
-modem "AT+CWMODE_DEF=1"
-modem -t /wz /wz /wz
-modem "AT+CWDHCP_DEF=1,1"
-modem -t /wz /wz /wz
-modem "AT+CWJAP_DEF=""ssid"",""pass"""
-modem -t /wz /wz /wz
-modem -t /wz /wz /wz
+echo ATE1>/wz
+modem /wz
+echo AT+CWMODE_DEF=1>/wz
+modem /wz
+echo AT+CWDHCP_DEF=1,1>/wz
+modem /wz
+echo AT+CWJAP_DEF="ssid","pass">/wz
+modem /wz
+echo AT+CIPSTA_CUR?>/wz
+modem /wz
