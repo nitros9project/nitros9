@@ -67,7 +67,11 @@ bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
 	$(PADUP)
 
-$(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS))
+ifeq ($(LEVEL),2)
+SYSGO = $(MODDIR)/sysgo
+endif
+
+$(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(SYSGO)
 	$(RM) $@
 	$(OS9FORMAT_SD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9COPY) bootfile $@,OS9Boot
@@ -100,6 +104,9 @@ endif
 #	$(CD) tests; $(CPL) $(TESTS) ../$@,TESTS
 
 # Command rules
+$(MODDIR)/sysgo: $(OBJDIR)/sysgo.o | $(MODDIR)
+	$(LINKER) $(LFLAGS) $^ -o$@
+
 $(MODDIR)/pwd: pd.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DPWD=1
 
