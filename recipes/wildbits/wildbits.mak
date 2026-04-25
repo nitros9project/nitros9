@@ -104,9 +104,6 @@ endif
 #	$(CD) tests; $(CPL) $(TESTS) ../$@,TESTS
 
 # Command rules
-$(MODDIR)/sysgo: $(OBJDIR)/sysgo.o | $(MODDIR)
-	$(LINKER) $(LFLAGS) $^ -o$@
-
 $(MODDIR)/pwd: pd.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DPWD=1
 
