@@ -4,6 +4,8 @@ MODDIR = .mods
 include ../../rules.mak
 -include recipe.mak
 
+vpath %.asm $(3RDPARTY)/packages/basic09
+
 ifeq ($(PLATFORM), jr2)
   KEYSUB = keydrv_ps2
 else
@@ -18,6 +20,7 @@ ifeq ($(LEVEL),2)
 AFLAGS += -I$(L2MD)/kernel -I$(L2PMD)
 endif
 AFLAGS += -I$(L1MD)/kernel -I$(L1PMD)
+AFLAGS += -I$(3RDPARTY)/packages/basic09
 AFLAGS += $(AFLAGS_EXTRA)
 LFLAGS += -L $(LIBDIR) -lwildbitsl$(LEVEL) -lnet -lalib
 LFLAGS += $(LFLAGS_EXTRA)
@@ -55,6 +58,13 @@ CMDS += $(STDCMDS) \
 	inetd telnet dw httpd $(BASIC09) $(BF) \
 	$(CMDS_EXTRA)
 
+BASIC09 = basic09 runb inkey syscall
+BASIC09_FILES = $(wildcard $(3RDPARTY)/packages/basic09/samples/*.b09)
+SCRIPTS_DIR = $(LEVEL1)/wildbits/scripts
+TESTS_DIR = $(LEVEL1)/wildbits/tests
+SCRIPTS = $(notdir $(wildcard $(SCRIPTS_DIR)/*))
+TESTS = $(notdir $(wildcard $(TESTS_DIR)/*))
+
 all: libs $(DSKIMAGE)
 
 LIB_NAMES = libwildbitsl$(LEVEL).a libnet.a libalib.a
@@ -67,7 +77,11 @@ bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
 	$(PADUP)
 
+ifeq ($(LEVEL),2)
+$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(addprefix $(MODDIR)/,$(CMDS))
+else
 $(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS))
+endif
 	$(RM) $@
 	$(OS9FORMAT_SD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9COPY) bootfile $@,OS9Boot
@@ -81,23 +95,12 @@ endif
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 	$(OS9RENAME) $@,CMDS/shellplus shell
-#	$(CD) sys; $(CPL) $(SYSTEXT) ../$@,SYS
-#	$(OS9ATTR_TEXT) $(foreach file,$(SYSTEXT),$@,SYS/$(file))
-#	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
-#	$(CD) defs; $(CPL) $(DEFS) ../$@,DEFS
-#	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
-#	$(CPL) $(STARTUP) $@,startup
-#	$(OS9ATTR_TEXT) $@,startup
-#	$(MAKDIR) $@,BASIC09
-#	$(CPL) $(BASIC09_FILES) $@,BASIC09
-#	$(MAKDIR) $@,BF
-#	$(CPL) $(BF_FILES) $@,BF
-#	$(MAKDIR) $@,SOUNDS
-#	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
-#	$(MAKDIR) $@,SCRIPTS
-#	$(CD) scripts; $(CPL) $(SCRIPTS) ../$@,SCRIPTS
-#	$(MAKDIR) $@,TESTS
-#	$(CD) tests; $(CPL) $(TESTS) ../$@,TESTS
+	$(MAKDIR) $@,BASIC09
+	$(CPL) $(BASIC09_FILES) $@,BASIC09
+	$(MAKDIR) $@,SCRIPTS
+	$(foreach file,$(SCRIPTS),$(CPL) $(SCRIPTS_DIR)/$(file) $@,SCRIPTS;)
+	$(MAKDIR) $@,TESTS
+	$(foreach file,$(TESTS),$(CPL) $(TESTS_DIR)/$(file) $@,TESTS;)
 
 # Command rules
 $(MODDIR)/pwd: pd.asm | $(MODDIR)
