@@ -317,14 +317,10 @@ l@                  tfr       d,x                 transfer it to X
                     bcs       installfont         branch if the link failed
                     pshs      y                   save Y
                     tfr       y,x                 transfer it to X
-                    lda       #TEXT_LUT_BLK       load text LUT block
-                    sta       MAPSLOT
-                    ldy       #MAPADDR
-                    leay      TEXT_LUT_FG,y       load Y with the LUT foreground
+                    ldy       #TEXT_LUT_FG        load Y with the LUT foreground
                     bsr       copypal             copy the palette data for the foreground
                     puls      x                   restore Y into X
-                    ldy       #MAPADDR
-                    leay      TEXT_LUT_BG,y       load Y with the LUT background
+                    ldy       #TEXT_LUT_BG        load Y with the LUT background
                     bsr       copypal             copy the palette data for the background
 
 * Install the font.
@@ -347,8 +343,8 @@ initcursor          ldx       #TXT.Base
                     sta       VKY_TXT_CURSOR_CTRL_REG,x
                     clra
                     clrb
-                    std       VKY_TXT_CURSOR_Y_REG_H,x
-                    std       VKY_TXT_CURSOR_X_REG_H,x
+                    std       VKY_TXT_CURSOR_Y_REG_L,x
+                    std       VKY_TXT_CURSOR_X_REG_L,x
                     lda       #'_
                     sta       VKY_TXT_CURSOR_CHAR_REG,x
 
@@ -1104,8 +1100,7 @@ SetWin80x60         clrb
 ;;; GVA = green component.
 ;;; BVA = blue component.
 ;;; AVA = alpha component.
-ChgForePal          ldx       #MAPADDR  
-                    leax      TEXT_LUT_FG,x
+ChgForePal          ldx       #TEXT_LUT_FG
 ChgPal              stx       V.EscParms+4,u
                     leax      Do1B60_Param0,pcr
                     lbra      SetHandler
@@ -1130,12 +1125,7 @@ Do1B60_Param3
                     leax      Do1B60_Param4,pcr
                     lbra      SetHandler
 
-Do1B60_Param4       pshs      cc
-                    orcc      #IntMasks
-                    ldb       MAPSLOT
-                    pshs      b
-                    ldb       #TEXT_LUT_BLK
-                    stb       MAPSLOT
+Do1B60_Param4
                     ldx       V.EscParms+4,u
                     ldb       V.EscParms+0,u
                     lslb
@@ -1148,9 +1138,6 @@ Do1B60_Param4       pshs      cc
                     sta       1,x
                     lda       V.EscParms+1,u get red component
                     sta       2,x
-                    puls      b
-                    stb       MAPSLOT
-                    puls      cc
                     lbra      ResetHandler
 
 ;;; ChgBackPal
@@ -1166,8 +1153,7 @@ Do1B60_Param4       pshs      cc
 ;;; GVA = green component.
 ;;; BVA = blue component.
 ;;; AVA = alpha component.
-ChgBackPal          ldx       #MAPADDR
-                    leax      TEXT_LUT_BG,x
+ChgBackPal          ldx       #TEXT_LUT_BG
                     bra       ChgPal
 
 * These do nothing for now.
@@ -1861,10 +1847,11 @@ map@                lda       R$Y+1,x             load bitmap@
                     pshs      a                   push high byte of bitmap address
                     lda       #%00000001          enable bitmapX with CLUT 0
                     sta       ,y+                 enable bitmap with CLUT 0
-                    puls      a                   
-                    std       ,y++
                     lda       #$0
                     sta       ,y+                 clear AD7-AD0
+                    stb       ,y+                 store AD15-AD8
+                    puls      a                   pull high byte of bitmap address
+                    sta       ,y                  store AD18-AD16
                     puls      b,a
                     sta       MAPSLOT
 noerror@            puls      cc,pc     
