@@ -130,6 +130,11 @@ SS.SOLMUTE	    rmb	      1
 *
 SYS0                equ       $FE00
 SYS1                equ       $FE01
+SYS0_MACHINE_ID     equ       SYS0+7
+WB_MODEL_JR         equ       $02
+WB_MODEL_K          equ       $12
+WB_MODEL_JR2        equ       $1A
+WB_MODEL_K2         equ       $16
 RST0                equ       $FE02
 RST1                equ       $FE03
 

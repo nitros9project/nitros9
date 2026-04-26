@@ -31,6 +31,7 @@ V.WWidth            RMB       1                   window width
 V.WHeight           RMB       1                   window height
 V.FBCol             RMB       1                   currently selected foreground and background color
 V.BordCol           RMB       1                   currently selected border color
+V.VickyLE           RMB       1                   non-zero when Vicky word registers are little endian
 V.KeyDrvMPtr        RMB       2                   keydrv module address
 V.KeyDrvEPtr        RMB       2                   keydrv entry point address
                     ifgt      Level-1

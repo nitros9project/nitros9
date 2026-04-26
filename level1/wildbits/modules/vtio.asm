@@ -104,8 +104,7 @@ HandleMSTimer       tst       MS_MEN             check if mouse cursor already o
                     bne       HandleSound        if it is not zero, then skip
                     clr       MS_MEN             if timer flips to 0, turn off mouse cursor
                     ldd       #640               park mouse at right border
-                    sta       MS_XH              turning off cursor doesn't work
-                    stb       MS_XL              correctly at the moment
+                    lbsr      StoreMouseX        turning off cursor doesn't work
                     endc
 * Handle sound.
 HandleSound
@@ -440,6 +439,7 @@ ex@                 ldd       #0                  set D to 0
 *    B  = error code
 *
 Init                stu       D.KbdSta
+                    lbsr      InitVickyEndian     set Vicky register byte order
                     leax      DefaultHandler,pcr  get the default character processing routine
                     stx       V.EscVect,u         store it in the vector
                     ldb       #$10                assume this foreground/background
@@ -462,6 +462,16 @@ Init                stu       D.KbdSta
 
                     clrb                          clear the carry and error code
                     rts return to the caller
+
+* Jr and K cores expose multi-byte Vicky registers little endian; Jr2 and K2 are big endian.
+InitVickyEndian     clr       V.VickyLE,u
+                    lda       SYS0_MACHINE_ID
+                    cmpa      #WB_MODEL_JR
+                    beq       little@
+                    cmpa      #WB_MODEL_K
+                    bne       ex@
+little@             inc       V.VickyLE,u
+ex@                 rts
                     
 * Term
 *
@@ -570,9 +580,9 @@ Write
                     pshs      d                   save D since we modify it here
                     lda       V.CurCol,u          get the current row in A
                     ldx       #TXT.Base
-                    sta       VKY_TXT_CURSOR_X_REG_L,x
+                    lbsr      StoreCursorX
                     lda       V.CurRow,u          get the current row in A
-                    sta       VKY_TXT_CURSOR_Y_REG_L,x
+                    lbsr      StoreCursorY
                     ldb       V.WWidth,u          and the current column in B
                     mul                           get the product
                     addb      V.CurCol,u          add it to the current column
@@ -580,6 +590,20 @@ Write
                     ldx       #G.ScrStart         point to the start of the screen
                     leax      d,x                 point X to the current position
                     puls      d,pc                restore register and return
+
+StoreCursorX        tst       V.VickyLE,u
+                    bne       little@
+                    sta       VKY_TXT_CURSOR_X_REG_L,x
+                    rts
+little@             sta       VKY_TXT_CURSOR_X_REG_H,x
+                    rts
+
+StoreCursorY        tst       V.VickyLE,u
+                    bne       little@
+                    sta       VKY_TXT_CURSOR_Y_REG_L,x
+                    rts
+little@             sta       VKY_TXT_CURSOR_Y_REG_H,x
+                    rts
 
 DefaultHandler      cmpa      #C$SPAC             is the character a space or greater?
                     lbcs      ChkESC              branch if not; go check for escape codes
@@ -1312,11 +1336,11 @@ GetStat             cmpa      #SS.EOF             is this the EOF call?
                     lbeq      GSFntChar       
                     endc
                     cmpa      #SS.Palet           get palettes?
-                    beq       GSPalet             yes, go process
+                    lbeq      GSPalet             yes, go process
                     cmpa      #SS.FBRgs           get colors?
                     lbeq      SSFBRgs             yes, go process
                     cmpa      #SS.DfPal           get default colors?
-                    beq       GSDfPal             yes, go process
+                    lbeq      GSDfPal             yes, go process
                     comb                          set the carry
                     ldb       #E$UnkSvc           load the "unknown service" error
                     rts                           return
@@ -1434,16 +1458,42 @@ s4@                 sta       R$A,u               store buttons in caller's A
 ;;;
 ;;; Error:  B = A non-zero error code.
 ;;;        CC = Carry flag set to indicate error.
-GSMouse             lda       MS_XH
-                    ldb       MS_XL
+GSMouse             lbsr      LoadMouseX
                     std       R$X,x
-                    lda       MS_YH
-                    ldb       MS_YL
+                    lbsr      LoadMouseY
                     std       R$Y,x
                     lda       V.MSButtons,u
                     sta       R$A,x
                     clrb                          clear carry
                     rts   
+
+                    ifgt      Level-1
+StoreMouseX         tst       V.VickyLE,u
+                    bne       little@
+                    std       MS_XH
+                    rts
+little@             stb       MS_XH
+                    sta       MS_XL
+                    rts
+
+LoadMouseX          tst       V.VickyLE,u
+                    bne       little@
+                    lda       MS_XH
+                    ldb       MS_XL
+                    rts
+little@             lda       MS_XL
+                    ldb       MS_XH
+                    rts
+
+LoadMouseY          tst       V.VickyLE,u
+                    bne       little@
+                    lda       MS_YH
+                    ldb       MS_YL
+                    rts
+little@             lda       MS_YL
+                    ldb       MS_YH
+                    rts
+                    endc
                     endc
 ;;; SS.Palet
 ;;;
@@ -1862,14 +1912,22 @@ map@                lda       R$Y+1,x             load bitmap@
                     lda       #%00000001          enable bitmapX with CLUT 0
                     sta       ,y+                 enable bitmap with CLUT 0
                     puls      a                   
-                    std       ,y++
-                    lda       #$0
-                    sta       ,y+                 clear AD7-AD0
+                    lbsr      StoreBMAddr
                     puls      b,a
                     sta       MAPSLOT
 noerror@            puls      cc,pc     
 error@              coma                          set carry bit on error
 end@                rts             
+
+StoreBMAddr         tst       V.VickyLE,u
+                    bne       little@
+                    std       ,y++                store AD18-AD16 and AD15-AD8
+                    clr       ,y+                 clear AD7-AD0
+                    rts
+little@             clr       ,y+                 clear AD7-AD0
+                    stb       ,y+                 store AD15-AD8
+                    sta       ,y+                 store AD18-AD16
+                    rts
 
 
 ;;;  GS.DScrn
