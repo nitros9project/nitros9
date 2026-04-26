@@ -315,6 +315,8 @@ l@                  tfr       d,x                 transfer it to X
                     lda       #Data               it's a data module
                     os9       F$Link              link to it
                     bcs       installfont         branch if the link failed
+                    lda       #TEXT_LUT_BLK       map in the text LUT/font block
+                    sta       MAPSLOT
                     pshs      y                   save Y
                     tfr       y,x                 transfer it to X
                     ldy       #TEXT_LUT_FG        load Y with the LUT foreground
@@ -1126,6 +1128,10 @@ Do1B60_Param3
                     lbra      SetHandler
 
 Do1B60_Param4
+                    lda       MAPSLOT             save the current MMU slot value
+                    pshs      a
+                    lda       #TEXT_LUT_BLK       map in the text LUT block
+                    sta       MAPSLOT
                     ldx       V.EscParms+4,u
                     ldb       V.EscParms+0,u
                     lslb
@@ -1138,6 +1144,8 @@ Do1B60_Param4
                     sta       1,x
                     lda       V.EscParms+1,u get red component
                     sta       2,x
+                    puls      a
+                    sta       MAPSLOT             restore the original MMU slot
                     lbra      ResetHandler
 
 ;;; ChgBackPal
