@@ -486,19 +486,19 @@ VKY_TXT_CURSOR_CTRL_REG rmb       1         [0] Enable Text Mode
 VKY_TXT_START_ADD_PTR rmb       1         this is an offset to change the starting address of the text mode Buffer (in X)
 VKY_TXT_CURSOR_CHAR_REG rmb       1
 VKY_TXT_CURSOR_COLR_REG rmb       1
-VKY_TXT_CURSOR_X_REG_H rmb       1
 VKY_TXT_CURSOR_X_REG_L rmb       1
-VKY_TXT_CURSOR_Y_REG_H rmb       1
+VKY_TXT_CURSOR_X_REG_H rmb       1
 VKY_TXT_CURSOR_Y_REG_L rmb       1
+VKY_TXT_CURSOR_Y_REG_H rmb       1
 ; Line interrupt
 VKY_LINE_IRQ_CTRL_REG rmb       1         [0] - enable line 0 - write only
-VKY_LINE_CMP_VALUE_HI rmb       1         write only [7:0]
-VKY_LINE_CMP_VALUE_LO rmb       1         write only [3:0]
+VKY_LINE_CMP_VALUE_LO rmb       1         write only [7:0]
+VKY_LINE_CMP_VALUE_HI rmb       1         write only [3:0]
 
-VKY_PIXEL_X_POS_HI  equ       VKY_LINE_IRQ_CTRL_REG this is where on the video line is the pixel
-VKY_PIXEL_X_POS_LO  equ       VKY_LINE_CMP_VALUE_LO or what pixel is being displayed when the register is read
-VKY_LINE_Y_POS_HI   equ       VKY_LINE_CMP_VALUE_HI this is the line value of the raster
-VKY_LINE_Y_POS_LO   rmb       1
+VKY_PIXEL_X_POS_LO  equ       VKY_LINE_IRQ_CTRL_REG this is where on the video line is the pixel
+VKY_PIXEL_X_POS_HI  equ       VKY_LINE_CMP_VALUE_LO or what pixel is being displayed when the register is read
+VKY_LINE_Y_POS_LO   equ       VKY_LINE_CMP_VALUE_HI this is the line value of the raster
+VKY_LINE_Y_POS_HI   rmb       1
 
 * Text control bit definitions
 Mstr_Ctrl_Text_Mode_En equ       $01       enable the text mode
@@ -532,26 +532,26 @@ TyVKY_BM0_CTRL_REG  equ       $F000
 BM0_Ctrl            equ       $01       enable the BM0
 BM0_LUT0            equ       $02       LUT0
 BM0_LUT1            equ       $04       LUT1
-TyVKY_BM0_START_ADDY_H equ       $F001
-TyVKY_BM0_START_ADDY_M equ       $F002
 TyVKY_BM0_START_ADDY_L equ       $F003
+TyVKY_BM0_START_ADDY_M equ       $F002
+TyVKY_BM0_START_ADDY_H equ       $F001
 ;BM1
 TyVKY_BM1_CTRL_REG  equ       $F008
 BM1_Ctrl            equ       $01       enable the BM0
 BM1_LUT0            equ       $02       LUT0
 BM1_LUT1            equ       $04       LUT1
-TyVKY_BM1_START_ADDY_H equ       $F009
-TyVKY_BM1_START_ADDY_M equ       $F00A
 TyVKY_BM1_START_ADDY_L equ       $F00B
+TyVKY_BM1_START_ADDY_M equ       $F00A
+TyVKY_BM1_START_ADDY_H equ       $F009
 ;BM2
 TyVKY_BM2_CTRL_REG  equ       $F010
 BM2_Ctrl            equ       $01       enable the BM0
 BM2_LUT0            equ       $02       LUT0
 BM2_LUT1            equ       $04       LUT1
 BM2_LUT2            equ       $08       LUT2
-TyVKY_BM2_START_ADDY_H equ       $F011
-TyVKY_BM2_START_ADDY_M equ       $F012
 TyVKY_BM2_START_ADDY_L equ       $F013
+TyVKY_BM2_START_ADDY_M equ       $F012
+TyVKY_BM2_START_ADDY_H equ       $F011
 
 **  THESE ARE DUPLICATES, RECONCILE THIS LATER
 ********************************************************************
