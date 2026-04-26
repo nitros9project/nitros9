@@ -273,10 +273,10 @@ KEMP                equ       %00000001
 * 0=System handles x/y  1=harware interprets PS/2 packets
 * Enable is bit 0.  1=show mouse pointer 0 = hide mouse pointer
 MS_MEN		    equ	      $FEA0     mouse mode-enable
-MS_XH		    equ	      $FEA2	mouse x low byte
-MS_XL		    equ	      $FEA3	mouse x high byte	    
-MS_YH		    equ	      $FEA4	mouse y low byte
-MS_YL		    equ	      $FEA5	mouse y high byte
+MS_XH		    equ	      $FEA2	mouse x high byte
+MS_XL		    equ	      $FEA3	mouse x low byte	    
+MS_YH		    equ	      $FEA4	mouse y high byte
+MS_YL		    equ	      $FEA5	mouse y low byte
 MS_PS2B0	    equ	      $FEA6	mouse PS/2 Byte 0
 MS_PS2B1	    equ	      $FEA7	mouse PS/2 Byte 1
 MS_PS2B2	    equ	      $FEA8	mouse PS/2 Byte 2

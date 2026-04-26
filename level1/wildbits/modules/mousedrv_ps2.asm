@@ -345,7 +345,7 @@ posxvalue           clra
 contx@              ldb       V.MSByte1,u         load byte#1 - x offet
                     beq       computey            if 0, then skip comps and jump straight to y
                     pshs      d                   not 0, push offset
-                    ldd       MS_XH               load current X value
+                    bsr       LoadMouseX          load current X value
                     addd      ,s                  add offset
                     cmpd      #0                  if <0, handle 0 limiter
                     blt       xzero
@@ -355,7 +355,7 @@ contx@              ldb       V.MSByte1,u         load byte#1 - x offet
 xzero               ldd       #0                  handle 0 limiter
                     bra       storex
 x640                ldd       #640                handle 640 limiter  
-storex              std       MS_XH               store new x value
+storex              bsr       StoreMouseX         store new x value
                     puls      d
 * Compute new Y value and store in registers
 computey            lda       ,s
@@ -367,7 +367,7 @@ posyvalue           clra
 conty@              ldb       V.MSByte2,u         load byte#2 - y offet
                     beq       finish@             if 0, then skip comps and jump to end
                     pshs      d                   not 0, push offset
-                    ldd       MS_YH               load current Y value
+                    bsr       LoadMouseY          load current Y value
                     subd      ,s                  subtract offset (backwards b/c Y=0 at top of screen)
                     cmpd      #0                  if <0, handle 0 limiter
                     blt       yzero
@@ -377,7 +377,7 @@ conty@              ldb       V.MSByte2,u         load byte#2 - y offet
 yzero               ldd       #0                  handle 0 limiter
                     bra       storey
 y480                ldd       #480                handle 480 limiter  
-storey              std       MS_YH               store new y value
+storey              bsr       StoreMouseY         store new y value
                     puls      d  
 finish@             puls      a
 		    clr	      V.MSByteCnt,u
@@ -390,6 +390,38 @@ ex2@                rts                           return
 * MSHandler
 * Not sure we need a mouse handler routine at this point
 MSHandler           andcc     #$FE
+                    rts
+
+LoadMouseX          tst       V.VickyLE,u
+                    bne       little@
+                    ldd       MS_XH
+                    rts
+little@             lda       MS_XL
+                    ldb       MS_XH
+                    rts
+
+StoreMouseX         tst       V.VickyLE,u
+                    bne       little@
+                    std       MS_XH
+                    rts
+little@             stb       MS_XH
+                    sta       MS_XL
+                    rts
+
+LoadMouseY          tst       V.VickyLE,u
+                    bne       little@
+                    ldd       MS_YH
+                    rts
+little@             lda       MS_YL
+                    ldb       MS_YH
+                    rts
+
+StoreMouseY         tst       V.VickyLE,u
+                    bne       little@
+                    std       MS_YH
+                    rts
+little@             stb       MS_YH
+                    sta       MS_YL
                     rts
                     
 ***********************************************************************************
