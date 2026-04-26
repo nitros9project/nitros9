@@ -29,7 +29,8 @@ SC16550 = sc16550 t0_sc16550
 CLOCK = clock clock2_wildbits
 
 $(MODDIR)/sysgo: $(OBJDIR)/sysgo.o | $(MODDIR)
-	$(LINKER) $(LFLAGS) $^ -o$@
+	$(LINKER) $(LFLAGS) $^ -osysgo
+	$(MOVE) sysgo $@
 
 $(OBJDIR)/sysgo.o: sysgo.as
 

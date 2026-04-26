@@ -198,7 +198,8 @@ $(MODDIR)/%: %.asm | $(MODDIR)
 
 # Modules built from RMA/RLINK-format .as files (assemble then link)
 $(MODDIR)/%: $(OBJDIR)/%.o | $(MODDIR)
-	$(LINKER) $(LFLAGS) $^ -o$@
+	$(LINKER) $(LFLAGS) $^ -o$*
+	$(MOVE) $* $@
 
 # Include an optional release file based on the port name that contains
 # release variables set... e.g.:
