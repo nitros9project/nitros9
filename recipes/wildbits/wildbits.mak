@@ -65,6 +65,7 @@ CMDS += $(STDCMDS) \
 
 BASIC09 = basic09 runb inkey syscall
 BASIC09_FILES = $(wildcard $(3RDPARTY)/packages/basic09/samples/*.b09)
+STARTUP = $(LEVEL2)/wildbits/startup
 SCRIPTS_DIR = $(LEVEL1)/wildbits/scripts
 TESTS_DIR = $(LEVEL1)/wildbits/tests
 SCRIPTS = $(notdir $(wildcard $(SCRIPTS_DIR)/*))
@@ -83,9 +84,9 @@ bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(PADUP)
 
 ifeq ($(LEVEL),2)
-$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(addprefix $(MODDIR)/,$(CMDS))
+$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP)
 else
-$(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS))
+$(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP)
 endif
 	$(RM) $@
 	$(OS9FORMAT_SD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
@@ -100,6 +101,8 @@ endif
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 	$(OS9RENAME) $@,CMDS/shellplus shell
+	$(CPL) $(STARTUP) $@,startup
+	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
 	$(MAKDIR) $@,SCRIPTS
