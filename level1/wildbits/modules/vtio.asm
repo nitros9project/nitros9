@@ -315,14 +315,16 @@ l@                  tfr       d,x                 transfer it to X
                     lda       #Data               it's a data module
                     os9       F$Link              link to it
                     bcs       installfont         branch if the link failed
-                    lda       #TEXT_LUT_BLK       map in the text LUT/font block
-                    sta       MAPSLOT
                     pshs      y                   save Y
                     tfr       y,x                 transfer it to X
-                    ldy       #TEXT_LUT_FG        load Y with the LUT foreground
+                    lda       #TEXT_LUT_BLK       load text LUT block
+                    sta       MAPSLOT
+                    ldy       #MAPADDR
+                    leay      TEXT_LUT_FG,y       load Y with the LUT foreground
                     bsr       copypal             copy the palette data for the foreground
                     puls      x                   restore Y into X
-                    ldy       #TEXT_LUT_BG        load Y with the LUT background
+                    ldy       #MAPADDR
+                    leay      TEXT_LUT_BG,y       load Y with the LUT background
                     bsr       copypal             copy the palette data for the background
 
 * Install the font.
@@ -331,7 +333,7 @@ installfont         leax      fontmod,pcr         point to the font module
                     os9       F$Link              link to it
                     bcs       initcursor          branch if the link failed
                     tfr       y,x                 transfer Y to X
-                    lda       #$C1                get the font MMU block
+                    lda       #FONT_BLK           get the font MMU block
                     sta       MAPSLOT             store it in the MMU slot to map it in
                     ldy       #MAPADDR            get the address to write to
 l@                  ldd       ,x++                get two bytes of font data
@@ -345,8 +347,8 @@ initcursor          ldx       #TXT.Base
                     sta       VKY_TXT_CURSOR_CTRL_REG,x
                     clra
                     clrb
-                    std       VKY_TXT_CURSOR_Y_REG_L,x
-                    std       VKY_TXT_CURSOR_X_REG_L,x
+                    std       VKY_TXT_CURSOR_Y_REG_H,x
+                    std       VKY_TXT_CURSOR_X_REG_H,x
                     lda       #'_
                     sta       VKY_TXT_CURSOR_CHAR_REG,x
 
@@ -1102,7 +1104,8 @@ SetWin80x60         clrb
 ;;; GVA = green component.
 ;;; BVA = blue component.
 ;;; AVA = alpha component.
-ChgForePal          ldx       #TEXT_LUT_FG
+ChgForePal          ldx       #MAPADDR  
+                    leax      TEXT_LUT_FG,x
 ChgPal              stx       V.EscParms+4,u
                     leax      Do1B60_Param0,pcr
                     lbra      SetHandler
@@ -1127,11 +1130,12 @@ Do1B60_Param3
                     leax      Do1B60_Param4,pcr
                     lbra      SetHandler
 
-Do1B60_Param4
-                    lda       MAPSLOT             save the current MMU slot value
-                    pshs      a
-                    lda       #TEXT_LUT_BLK       map in the text LUT block
-                    sta       MAPSLOT
+Do1B60_Param4       pshs      cc
+                    orcc      #IntMasks
+                    ldb       MAPSLOT
+                    pshs      b
+                    ldb       #TEXT_LUT_BLK
+                    stb       MAPSLOT
                     ldx       V.EscParms+4,u
                     ldb       V.EscParms+0,u
                     lslb
@@ -1144,8 +1148,9 @@ Do1B60_Param4
                     sta       1,x
                     lda       V.EscParms+1,u get red component
                     sta       2,x
-                    puls      a
-                    sta       MAPSLOT             restore the original MMU slot
+                    puls      b
+                    stb       MAPSLOT
+                    puls      cc
                     lbra      ResetHandler
 
 ;;; ChgBackPal
@@ -1161,7 +1166,8 @@ Do1B60_Param4
 ;;; GVA = green component.
 ;;; BVA = blue component.
 ;;; AVA = alpha component.
-ChgBackPal          ldx       #TEXT_LUT_BG
+ChgBackPal          ldx       #MAPADDR
+                    leax      TEXT_LUT_BG,x
                     bra       ChgPal
 
 * These do nothing for now.
@@ -1174,26 +1180,19 @@ Do1B                cmpa      #$20                is it the window mode?
                     leax      Do1B20,pcr          else point to the vector
                     lbra      SetHandler          and set the handler
 IsIt21              cmpa      #$21                is it DWSelect?
-                    bne       IsIt24              branch if not
-                    lbra      DWSelect
+                    beq       DWSelect            branch if so
 IsIt24              cmpa      #$24                is it DWEnd?
-                    bne       IsIt30              branch if not
-                    lbra      DWEnd
+                    beq       DWEnd               branch if so
 IsIt30              cmpa      #$30                is it DefColr?
-                    bne       IsIt60              branch if not
-                    lbra      DefColr
+                    beq       DefColr             branch if so
 IsIt60              cmpa      #$60                is it ChgForePal?
-                    bne       IsIt61              branch if not
-                    lbra      ChgForePal
+                    lbeq      ChgForePal          branch if so
 IsIt61              cmpa      #$61                is it ChgBackPal?
-                    bne       IsIt62              branch if not
-                    lbra      ChgBackPal
-IsIt62              cmpa      #$62                Change to Font0
-                    bne       IsIt63
-                    lbra      ChgFont0
-IsIt63              cmpa      #$63                Change to Font1
-                    bne       IsIt32
-                    lbra      ChgFont1              
+                    beq       ChgBackPal          branch if so
+IsIt62              cmpa      #$62                is it change to font 0?
+                    beq       ChgFont0            branch if so
+IsIt63              cmpa      #$63                is it change to font 1?
+                    beq       ChgFont1            branch if so
 IsIt32              cmpa      #$32                is it the foreground color code?
                     bne       IsIt33              branch if not
                     leax      FColor,pcr          else point to the vector
@@ -1223,14 +1222,12 @@ Border              bsr       SetBorderColor
 ChgFont0            ldx       #TXT.Base
                     ldb       MASTER_CTRL_REG_H,x
                     andb      #~(FT_FSET)
-                    stb       MASTER_CTRL_REG_H,X
-                    lbra      ResetHandler
-
+                    bra       chg@
 * Change to FontSet1
 ChgFont1            ldx       #TXT.Base
                     ldb       MASTER_CTRL_REG_H,x
                     orb       #FT_FSET
-                    stb       MASTER_CTRL_REG_H,X
+chg@                stb       MASTER_CTRL_REG_H,X
                     lbra      ResetHandler
 
 
@@ -1642,7 +1639,7 @@ font1@              leay      FONT_1_OFFSET,y
 font0@              leay      FONT_0_OFFSET,y
 cont@               leas      -2,s                reserve 2 bytes for mapped address
                     pshs      x,u                 preserve x,u
-                    ldx       #FONT_BLK           map in $C1
+                    ldx       #FONT_BLK           map in block for fonts
                     ldb       #$01                map 1 block at address x (x set on entry)
                     os9       F$MapBlk            map block into caller DAT
                     bcc       mapgood@            if success, then continue
@@ -1694,7 +1691,7 @@ storeaddr@          pshs      y                   store font offset on stack [O]
 * s= ADDR|OFFSET|                   
 *                   ****      map block into user dat and store address on stack
                     pshs      x,u                 preserve x,u
-                    ldx       #FONT_BLK           map in $C1
+                    ldx       #FONT_BLK           map in block for fonts
                     ldb       #$01                map 1 block at address x (x set on entry)
                     os9       F$MapBlk
                     bcc       mapgood@            if success, then continue
@@ -1855,11 +1852,10 @@ map@                lda       R$Y+1,x             load bitmap@
                     pshs      a                   push high byte of bitmap address
                     lda       #%00000001          enable bitmapX with CLUT 0
                     sta       ,y+                 enable bitmap with CLUT 0
+                    puls      a                   
+                    std       ,y++
                     lda       #$0
                     sta       ,y+                 clear AD7-AD0
-                    stb       ,y+                 store AD15-AD8
-                    puls      a                   pull high byte of bitmap address
-                    sta       ,y                  store AD18-AD16
                     puls      b,a
                     sta       MAPSLOT
 noerror@            puls      cc,pc     
@@ -2055,9 +2051,9 @@ SSPalet             pshs      cc
 ;;; Exit:  B = A non-zero error code.
 ;;;       CC = Carry flag clear to indicate success
 SSDfPal             pshs      a,x,y,u
-*                   **** Map in $C1 for CLUT Registers
+*                   **** Map in block for for CLUT registers
                     pshs      x
-                    ldx       #$C1              
+                    ldx       #TEXT_LUT_BLK
                     lbsr      mapblock
                     puls      x
                     bcs       end@                if error, end and return error code
@@ -2096,7 +2092,7 @@ clutlookup          fdb       $1000,$1400,$1800,$1C00
 ;;; mapblock
 ;;; Map a block into the system process map
 ;;;
-;;; Entry:  X = block to map (like $C1)
+;;; Entry:  X = block to map (e.g. $C1)
 ;;;
 ;;; Exit:   U = address of first block
 ;;;         B = a non-zero error code (F$MapBlk)
