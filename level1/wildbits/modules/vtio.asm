@@ -604,7 +604,10 @@ RawWrite            pshs      a                   else save the character to wri
                     stb       MAPSLOT             set the MMU block number to the text attributes block
                     lda       V.FBCol,u           get the current foreground/background color
                     sta       ,x                  save it at the same location in the text attributes
-                    lda       ,s+                 recover the initial MMU slot value
+                    cmpx      #G.ScrStart+(80*60)-1 are we at the end of largest possible screen?
+                    bcc       l@                  branch if so
+                    sta       1,x                 and the next location (for the cursor)
+l@                  lda       ,s+                 recover the initial MMU slot value
                     sta       MAPSLOT             and restore it
                     puls      cc                  recover CC (this may unmask interrupts)
                     ldd       V.CurRow,u          get the current row and column
@@ -712,7 +715,7 @@ DCodeTbl            fdb       NoOp-DCodeTbl       $00:no-op (null)
 ;;; Code: 03
 EraseLine           clrb                          start erasing at column 0
                     lda       V.CurRow,u          of the current row
-* Entry:  A = The row to erase.
+* Entry:  A = The row to erase. 
 *         B = The column to start erasing on.
 EraseLineCore       pshs      b                   save the number of columns
                     ldb       V.WWidth,u
