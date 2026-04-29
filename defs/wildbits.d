@@ -430,12 +430,17 @@ CODECCtrl           equ       CODECStat
 ******************************************************************
 * Text lookup definitions
 *
-TEXT_LUT_BLK        equ       $C0
+TEXT_LUT_BLK	    equ	      $C0
+ ifne jr+k
 TEXT_LUT_FG         equ       $FF00
 TEXT_LUT_BG         equ       $FF40
-
+ else
+TEXT_LUT_FG         equ       $1700
+TEXT_LUT_BG         equ       $1740
+ endc
 ********************************************************************
 * Font definitions
+*
 FONT_BLK            equ	      $C1
 FONT_0_OFFSET	    equ	      $0000
 FONT_1_OFFSET	    equ	      $0800

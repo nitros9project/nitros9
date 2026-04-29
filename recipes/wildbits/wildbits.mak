@@ -20,7 +20,7 @@ endif
 
 DSKIMAGE ?= l$(LEVEL)_$(RECIPE)$(PLATFORM).dsk
 
-AFLAGS += -I.
+AFLAGS += -D$(PLATFORM) -I.
 ifeq ($(LEVEL),2)
 AFLAGS += -I$(L2MD)/kernel -I$(L2PMD)
 endif
@@ -30,7 +30,14 @@ AFLAGS += $(AFLAGS_EXTRA)
 LFLAGS += -L $(LIBDIR) -lwildbitsl$(LEVEL) -lnet -lalib
 LFLAGS += $(LFLAGS_EXTRA)
 
-RBF = rbf rbsuper llwbsd rbmem dds0 s1 f0 f1
+SD_RBF = dds0
+ifneq ($(filter $(PLATFORM),jr k),)
+SD_RBF += s0
+else
+SD_RBF += s0 s1
+endif
+
+RBF = rbf rbsuper llwbsd rbmem $(SD_RBF) f0 f1
 SCF = scf vtio $(KEYSUB) term bannerfont palette
 DRIVEWIRE_RBF = rbdw x0 x1 x2 x3
 DRIVEWIRE_SCF = scdwv n1 n2 n3 n4 n5
