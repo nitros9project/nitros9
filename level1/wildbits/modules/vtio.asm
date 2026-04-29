@@ -1183,26 +1183,19 @@ Do1B                cmpa      #$20                is it the window mode?
                     leax      Do1B20,pcr          else point to the vector
                     lbra      SetHandler          and set the handler
 IsIt21              cmpa      #$21                is it DWSelect?
-                    bne       IsIt24              branch if not
-                    lbra      DWSelect
+                    beq       DWSelect            branch if so
 IsIt24              cmpa      #$24                is it DWEnd?
-                    bne       IsIt30              branch if not
-                    lbra      DWEnd
+                    beq       DWEnd               branch if so
 IsIt30              cmpa      #$30                is it DefColr?
-                    bne       IsIt60              branch if not
-                    lbra      DefColr
+                    beq       DefColr             branch if so
 IsIt60              cmpa      #$60                is it ChgForePal?
-                    bne       IsIt61              branch if not
-                    lbra      ChgForePal
+                    lbeq      ChgForePal          branch if so
 IsIt61              cmpa      #$61                is it ChgBackPal?
-                    bne       IsIt62              branch if not
-                    lbra      ChgBackPal
-IsIt62              cmpa      #$62                Change to Font0
-                    bne       IsIt63
-                    lbra      ChgFont0
-IsIt63              cmpa      #$63                Change to Font1
-                    bne       IsIt32
-                    lbra      ChgFont1              
+                    beq       ChgBackPal          branch if so
+IsIt62              cmpa      #$62                is it change to font 0?
+                    beq       ChgFont0            branch if so
+IsIt63              cmpa      #$63                is it change to font 1?
+                    beq       ChgFont1            branch if so
 IsIt32              cmpa      #$32                is it the foreground color code?
                     bne       IsIt33              branch if not
                     leax      FColor,pcr          else point to the vector
@@ -1232,14 +1225,12 @@ Border              bsr       SetBorderColor
 ChgFont0            ldx       #TXT.Base
                     ldb       MASTER_CTRL_REG_H,x
                     andb      #~(FT_FSET)
-                    stb       MASTER_CTRL_REG_H,X
-                    lbra      ResetHandler
-
+                    bra       chg@
 * Change to FontSet1
 ChgFont1            ldx       #TXT.Base
                     ldb       MASTER_CTRL_REG_H,x
                     orb       #FT_FSET
-                    stb       MASTER_CTRL_REG_H,X
+chg@                stb       MASTER_CTRL_REG_H,X
                     lbra      ResetHandler
 
 
