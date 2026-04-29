@@ -14,7 +14,7 @@ endif
 
 DSKIMAGE = feu_wildbits$(PLATFORM).dsk
 
-AFLAGS += -I.
+AFLAGS += -D$(PLATFORM) -I.
 AFLAGS += -I$(L1MD)/kernel -I$(L1PMD)
 LFLAGS += -L $(LIBDIR) -lwildbitsl$(LEVEL) -lnet -lalib
 

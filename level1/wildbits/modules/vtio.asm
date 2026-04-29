@@ -317,14 +317,10 @@ l@                  tfr       d,x                 transfer it to X
                     bcs       installfont         branch if the link failed
                     pshs      y                   save Y
                     tfr       y,x                 transfer it to X
-                    lda       #TEXT_LUT_BLK       load text LUT block
-                    sta       MAPSLOT
-                    ldy       #MAPADDR
-                    leay      TEXT_LUT_FG,y       load Y with the LUT foreground
+                    ldy       #TEXT_LUT_FG        load Y with the LUT foreground
                     bsr       copypal             copy the palette data for the foreground
                     puls      x                   restore Y into X
-                    ldy       #MAPADDR
-                    leay      TEXT_LUT_BG,y       load Y with the LUT background
+                    ldy       #TEXT_LUT_BG        load Y with the LUT background
                     bsr       copypal             copy the palette data for the background
 
 * Install the font.
@@ -347,8 +343,8 @@ initcursor          ldx       #TXT.Base
                     sta       VKY_TXT_CURSOR_CTRL_REG,x
                     clra
                     clrb
-                    std       VKY_TXT_CURSOR_Y_REG_H,x
-                    std       VKY_TXT_CURSOR_X_REG_H,x
+                    std       VKY_TXT_CURSOR_Y_REG_L,x
+                    std       VKY_TXT_CURSOR_X_REG_L,x
                     lda       #'_
                     sta       VKY_TXT_CURSOR_CHAR_REG,x
 
@@ -1107,8 +1103,7 @@ SetWin80x60         clrb
 ;;; GVA = green component.
 ;;; BVA = blue component.
 ;;; AVA = alpha component.
-ChgForePal          ldx       #MAPADDR  
-                    leax      TEXT_LUT_FG,x
+ChgForePal          ldx       #TEXT_LUT_FG
 ChgPal              stx       V.EscParms+4,u
                     leax      Do1B60_Param0,pcr
                     lbra      SetHandler
@@ -1169,8 +1164,7 @@ Do1B60_Param4       pshs      cc
 ;;; GVA = green component.
 ;;; BVA = blue component.
 ;;; AVA = alpha component.
-ChgBackPal          ldx       #MAPADDR
-                    leax      TEXT_LUT_BG,x
+ChgBackPal          ldx       #TEXT_LUT_BG
                     bra       ChgPal
 
 * These do nothing for now.
