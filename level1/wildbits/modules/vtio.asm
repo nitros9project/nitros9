@@ -300,7 +300,7 @@ InitDisplay         pshs      u                   save important registers
                     clr       VKY_TXT_CURSOR_CTRL_REG,x
 
 * Initialize the gamma.
-                    lda       #$C0                get the gamma MMU block
+                    lda       #TEXT_LUT_BLK       get the gamma MMU block
                     sta       MAPSLOT             store it in the MMU slot to map it in
                     ldd       #0                  get the clear value
 l@                  tfr       d,x                 transfer it to X
@@ -604,7 +604,10 @@ RawWrite            pshs      a                   else save the character to wri
                     stb       MAPSLOT             set the MMU block number to the text attributes block
                     lda       V.FBCol,u           get the current foreground/background color
                     sta       ,x                  save it at the same location in the text attributes
-                    lda       ,s+                 recover the initial MMU slot value
+                    cmpx      #G.ScrStart+(80*60)-1 are we at the end of largest possible screen?
+                    bcc       l@                  branch if so
+                    sta       1,x                 and the next location (for the cursor)
+l@                  lda       ,s+                 recover the initial MMU slot value
                     sta       MAPSLOT             and restore it
                     puls      cc                  recover CC (this may unmask interrupts)
                     ldd       V.CurRow,u          get the current row and column
@@ -712,7 +715,7 @@ DCodeTbl            fdb       NoOp-DCodeTbl       $00:no-op (null)
 ;;; Code: 03
 EraseLine           clrb                          start erasing at column 0
                     lda       V.CurRow,u          of the current row
-* Entry:  A = The row to erase.
+* Entry:  A = The row to erase. 
 *         B = The column to start erasing on.
 EraseLineCore       pshs      b                   save the number of columns
                     ldb       V.WWidth,u
@@ -1639,7 +1642,7 @@ font1@              leay      FONT_1_OFFSET,y
 font0@              leay      FONT_0_OFFSET,y
 cont@               leas      -2,s                reserve 2 bytes for mapped address
                     pshs      x,u                 preserve x,u
-                    ldx       #FONT_BLK           map in block for fonts
+                    ldx       #FONT_BLK           map in font block
                     ldb       #$01                map 1 block at address x (x set on entry)
                     os9       F$MapBlk            map block into caller DAT
                     bcc       mapgood@            if success, then continue
@@ -1691,7 +1694,7 @@ storeaddr@          pshs      y                   store font offset on stack [O]
 * s= ADDR|OFFSET|                   
 *                   ****      map block into user dat and store address on stack
                     pshs      x,u                 preserve x,u
-                    ldx       #FONT_BLK           map in block for fonts
+                    ldx       #FONT_BLK           map in font block
                     ldb       #$01                map 1 block at address x (x set on entry)
                     os9       F$MapBlk
                     bcc       mapgood@            if success, then continue
@@ -1835,7 +1838,7 @@ map@                lda       R$Y+1,x             load bitmap@
                     orcc      #IntMasks           mask interrupts
                     lda       MAPSLOT
                     pshs      a
-                    lda       #$C0                get the MMU Block for bitmap addresses
+                    lda       #BITMAP_BLK         get the MMU Block for bitmap addresses
                     sta       MAPSLOT             store it in the MMU slot to map it in
 *                   **** Calculate starting address at 1000,1008,1010
                     pshs      b                   push block# to stack
@@ -1984,7 +1987,7 @@ clr_bmReg@          pshs      cc                   clear the bitmap registers,di
                     orcc      #IntMasks            mask interrupts
                     lda       MAPSLOT
                     pshs      a                    preserve current mmu block
-                    lda       #$C0                 get the MMU Block for bitmap addresses
+                    lda       #BITMAP_BLK          get the MMU Block for bitmap addresses
                     sta       MAPSLOT              store it in the MMU slot to map it in
 * Calculate starting address at 1000,1008,1010
                     ldb       R$Y+1,x              ldb with bitmap#
@@ -2021,7 +2024,7 @@ SSPalet             pshs      cc
                     orcc      #IntMasks           mask interrupts
                     lda       MAPSLOT
                     pshs      a
-                    lda       #$C0                get the MMU Block for bitmap addresses
+                    lda       #TEXT_LUT_BLK       get the MMU Block for bitmap addresses
                     sta       MAPSLOT             store it in the MMU slot to map it in
 *                   **** Calculate starting address at 1000,1008,1010
                     ldb       R$Y+1,x             ldb with bitmap#
@@ -2051,7 +2054,7 @@ SSPalet             pshs      cc
 ;;; Exit:  B = A non-zero error code.
 ;;;       CC = Carry flag clear to indicate success
 SSDfPal             pshs      a,x,y,u
-*                   **** Map in block for for CLUT registers
+*                   **** Map in block for CLUT Registers
                     pshs      x
                     ldx       #TEXT_LUT_BLK
                     lbsr      mapblock
@@ -2092,7 +2095,7 @@ clutlookup          fdb       $1000,$1400,$1800,$1C00
 ;;; mapblock
 ;;; Map a block into the system process map
 ;;;
-;;; Entry:  X = block to map (e.g. $C1)
+;;; Entry:  X = block to map
 ;;;
 ;;; Exit:   U = address of first block
 ;;;         B = a non-zero error code (F$MapBlk)
