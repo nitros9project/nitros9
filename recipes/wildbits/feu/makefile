@@ -5,12 +5,7 @@ vpath %.asm $(NITROS9DIR)/level1/$(PORT)/feu
 vpath %.as $(NITROS9DIR)/level1/$(PORT)/feu
 include ../../rules.mak
 
-ifeq ($(strip $(PLATFORM)),)
-  $(info PLATFORM not set; defaulting to jr2)
-  PLATFORM = jr2
-endif
-
-ifneq ($(filter $(PLATFORM),jr jr2),)
+ifeq ($(PLATFORM), jr2)
   KEYSUB = keydrv_ps2
 else
   KEYSUB = keydrv_k2
@@ -312,7 +307,7 @@ $(MODDIR)/z14: scdwvdesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=30
 
 clean:
-	$(RM) *.list *.map bootfile *.dsk booter* *.zip *.csv f0_? sysgo startup buildinfo
+	$(RM) *.list *.map bootfile *.dsk booter* *.zip *.csv f0_? sysgo startup
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
 
 help:

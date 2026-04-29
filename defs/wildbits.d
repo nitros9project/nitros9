@@ -430,13 +430,14 @@ CODECCtrl           equ       CODECStat
 ******************************************************************
 * Text lookup definitions
 *
-TEXT_LUT_BLK	    equ	      $C1      $18_2000 to $18_3FFF
-TEXT_LUT_FG         equ       $1800
-TEXT_LUT_BG         equ       $1840
+* These are relative offsets to block $C2
+*
+TEXT_LUT_BLK	    equ	      $C0      $18_2000 to $18_3FFF
+TEXT_LUT_FG         equ       $1700
+TEXT_LUT_BG         equ       $1740
 
 ********************************************************************
 * Font definitions
-*
 FONT_BLK            equ	      $C1
 FONT_0_OFFSET	    equ	      $0000
 FONT_1_OFFSET	    equ	      $0800
