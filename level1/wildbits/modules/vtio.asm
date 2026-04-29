@@ -300,7 +300,7 @@ InitDisplay         pshs      u                   save important registers
                     clr       VKY_TXT_CURSOR_CTRL_REG,x
 
 * Initialize the gamma.
-                    lda       #$C0                get the gamma MMU block
+                    lda       #TEXT_LUT_BLK       get the gamma MMU block
                     sta       MAPSLOT             store it in the MMU slot to map it in
                     ldd       #0                  get the clear value
 l@                  tfr       d,x                 transfer it to X
@@ -333,7 +333,7 @@ installfont         leax      fontmod,pcr         point to the font module
                     os9       F$Link              link to it
                     bcs       initcursor          branch if the link failed
                     tfr       y,x                 transfer Y to X
-                    lda       #$C1                get the font MMU block
+                    lda       #FONT_BLK           get the font MMU block
                     sta       MAPSLOT             store it in the MMU slot to map it in
                     ldy       #MAPADDR            get the address to write to
 l@                  ldd       ,x++                get two bytes of font data
@@ -1651,7 +1651,7 @@ font1@              leay      FONT_1_OFFSET,y
 font0@              leay      FONT_0_OFFSET,y
 cont@               leas      -2,s                reserve 2 bytes for mapped address
                     pshs      x,u                 preserve x,u
-                    ldx       #FONT_BLK           map in $C1
+                    ldx       #FONT_BLK           map in font block
                     ldb       #$01                map 1 block at address x (x set on entry)
                     os9       F$MapBlk            map block into caller DAT
                     bcc       mapgood@            if success, then continue
@@ -1703,7 +1703,7 @@ storeaddr@          pshs      y                   store font offset on stack [O]
 * s= ADDR|OFFSET|                   
 *                   ****      map block into user dat and store address on stack
                     pshs      x,u                 preserve x,u
-                    ldx       #FONT_BLK           map in $C1
+                    ldx       #FONT_BLK           map in font block
                     ldb       #$01                map 1 block at address x (x set on entry)
                     os9       F$MapBlk
                     bcc       mapgood@            if success, then continue
@@ -1847,7 +1847,7 @@ map@                lda       R$Y+1,x             load bitmap@
                     orcc      #IntMasks           mask interrupts
                     lda       MAPSLOT
                     pshs      a
-                    lda       #$C0                get the MMU Block for bitmap addresses
+                    lda       #BITMAP_BLK         get the MMU Block for bitmap addresses
                     sta       MAPSLOT             store it in the MMU slot to map it in
 *                   **** Calculate starting address at 1000,1008,1010
                     pshs      b                   push block# to stack
@@ -1996,7 +1996,7 @@ clr_bmReg@          pshs      cc                   clear the bitmap registers,di
                     orcc      #IntMasks            mask interrupts
                     lda       MAPSLOT
                     pshs      a                    preserve current mmu block
-                    lda       #$C0                 get the MMU Block for bitmap addresses
+                    lda       #BITMAP_BLK          get the MMU Block for bitmap addresses
                     sta       MAPSLOT              store it in the MMU slot to map it in
 * Calculate starting address at 1000,1008,1010
                     ldb       R$Y+1,x              ldb with bitmap#
@@ -2033,7 +2033,7 @@ SSPalet             pshs      cc
                     orcc      #IntMasks           mask interrupts
                     lda       MAPSLOT
                     pshs      a
-                    lda       #$C0                get the MMU Block for bitmap addresses
+                    lda       #TEXT_LUT_BLK       get the MMU Block for bitmap addresses
                     sta       MAPSLOT             store it in the MMU slot to map it in
 *                   **** Calculate starting address at 1000,1008,1010
                     ldb       R$Y+1,x             ldb with bitmap#
@@ -2063,9 +2063,9 @@ SSPalet             pshs      cc
 ;;; Exit:  B = A non-zero error code.
 ;;;       CC = Carry flag clear to indicate success
 SSDfPal             pshs      a,x,y,u
-*                   **** Map in $C1 for CLUT Registers
+*                   **** Map in block for CLUT Registers
                     pshs      x
-                    ldx       #$C1              
+                    ldx       #TEXT_LUT_BLK
                     lbsr      mapblock
                     puls      x
                     bcs       end@                if error, end and return error code
@@ -2104,7 +2104,7 @@ clutlookup          fdb       $1000,$1400,$1800,$1C00
 ;;; mapblock
 ;;; Map a block into the system process map
 ;;;
-;;; Entry:  X = block to map (like $C1)
+;;; Entry:  X = block to map
 ;;;
 ;;; Exit:   U = address of first block
 ;;;         B = a non-zero error code (F$MapBlk)
