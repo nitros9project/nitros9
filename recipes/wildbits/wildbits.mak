@@ -76,6 +76,12 @@ all: libs $(DSKIMAGE)
 LIB_NAMES = libwildbitsl$(LEVEL).a libnet.a libalib.a
 include ../../libs.mak
 
+$(MODDIR)/sysgo: $(OBJDIR)/sysgo.o | $(MODDIR)
+	$(LINKER) $(LFLAGS) $^ -osysgo
+	$(MOVE) sysgo $@
+
+$(OBJDIR)/sysgo.o: sysgo.as | $(OBJDIR)
+
 ifeq ($(LEVEL),2)
   PADUP ?= ./padup256 bootfile
 endif
