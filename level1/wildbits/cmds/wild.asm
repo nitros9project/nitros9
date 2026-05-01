@@ -6,6 +6,16 @@
 * ------------------------------------------------------------------
 *   1      2024/03/13  Boisy Gene Pitre
 * Created.
+*   2      2024/11/02  Matt Massie
+* Added Graphics, Mouse, Joystick functions
+*
+*   3      2025/10/25  Matt Massie
+* Added Display, JoyA, JoyB, FNSet, Sprite commands
+*
+*   4      2026/05/01  Boisy Gene Pitre
+* Made wild.asm both Level 1 and Level 2 compatible, fixed case issues,
+* and renamed certain functions for clarity
+*
 
                     use       defsfile
 
@@ -27,26 +37,69 @@ name                fcs       /wild/
 
 * Offsets for parameters accessed directly (there can be more, but they are handled in loops)
                     org       0
-Return              rmb       2         $00 Return address of caller
-PCount              rmb       2         $02 # of parameters following
-PrmPtr1             rmb       2         $04 pointer to 1st parameter data
-PrmLen1             rmb       2         $06 length of 1st parameter
-PrmPtr2             rmb       2         $08 pointer to 2nd parameter data
-PrmLen2             rmb       2         $0A length of 2nd parameter
-PrmPtr3             rmb       2         $0C pointer to 3rd parameter data
-PrmLen3             rmb       2         $0E length of 3rd parameter
-PrmPtr4             rmb       2         $10 pointer to 4th parameter data
-PrmLen4             rmb       2         $12 length of 4th parameter
-PrmPtr5             rmb       2         $14 pointer to 5th parameter data
-PrmLen5             rmb       2         $16 length of 5th parameter
-PrmPtr6             rmb       2         $18 pointer to 6th parameter data
-PrmLen6             rmb       2         $1A length of 6th parameter
-PrmPtr7             rmb       2         $1C pointer to 7th parameter data
-PrmLen7             rmb       2         $1E length of 7th parameter
-PrmPtr8             rmb       2         $20 pointer to 8th parameter data
-PrmLen8             rmb       2         $22 length of 8th parameter
-PrmPtr9             rmb       2         $24 pointer to 9th parameter data
-PrmLen9             rmb       2         $26 length of 9th parameter
+Return              rmb       2         $00    Return address of caller
+PCount              rmb       2         $02    # of parameters following
+PrmPtr1             rmb       2         $04 00 pointer to 1st parameter data
+PrmLen1             rmb       2         $06 02 length of 1st parameter
+PrmPtr2             rmb       2         $08 04 pointer to 2nd parameter data
+PrmLen2             rmb       2         $0A 06 length of 2nd parameter
+PrmPtr3             rmb       2         $0C 08 pointer to 3rd parameter data
+PrmLen3             rmb       2         $0E 0A length of 3rd parameter
+PrmPtr4             rmb       2         $10 0C pointer to 4th parameter data
+PrmLen4             rmb       2         $12 0E length of 4th parameter
+PrmPtr5             rmb       2         $14 10 pointer to 5th parameter data
+PrmLen5             rmb       2         $16 12 length of 5th parameter
+PrmPtr6             rmb       2         $18 14 pointer to 6th parameter data
+PrmLen6             rmb       2         $1A 16 length of 6th parameter
+PrmPtr7             rmb       2         $1C 18 pointer to 7th parameter data
+PrmLen7             rmb       2         $1E 1A length of 7th parameter
+PrmPtr8             rmb       2         $20 1C pointer to 8th parameter data
+PrmLen8             rmb       2         $22 1E length of 8th parameter
+X1                  rmb       2         $24 20 Universal X1 Variable
+Y1                  rmb       2         $26 22 Universal Y1 Variable
+X2                  rmb       2         $28 24 Universal X2 Variable
+Y2                  rmb       2         $2A 26 Universal Y2 Variable
+dx                  rmb       2         $2C 28
+dy                  rmb       2         $2E 2A
+dx2                 rmb       2         $30 2C
+dy2                 rmb       2         $32 2E
+p                   rmb       2         $34 30
+currBlk             rmb       2         $36 32 Variable currBlk BMLoad
+mapaddr             rmb       2         $38 34 Variable mapaddr BMLoad
+pxlblk0             rmb       1         $3A 36 Variable for Pixel
+pxlblk              rmb       1         $3C 38 Variable for Pixel
+pxlblkaddr          rmb       2         $3E 3A
+bmblock             rmb       1         $40 3C first bitmap block
+steep               rmb       1         $41 3D line variables
+univ8a              rmb       1         $42 3E
+univ8b              rmb       1         $43 3F
+univ8c              rmb       1         $44 40
+univ8d              rmb       1         $45 41
+currPath            rmb       1         $46 42 Variable  currPath BMLoad
+blkCnt              rmb       1         $47 43 Variable blkCnt BMLoad
+slperr              rmb       2         $48 44 Slope error
+d                   rmb       2         $4A 46 Decision
+cnt                 rmb       2         $4C 48 count 
+radius              rmb       1         $4E 4A radius
+ssize               rmb       2
+lut                 rmb       2
+layer               rmb       2
+offset              rmb       2      
+enable              rmb       2
+endian              rmb       1
+stdinPD             rmb       32        Options buffer
+prevEKO             rmb       1         Previous echo state
+c0addr		        rmb	      2
+clutheader          rmb       2		Header for CLUT module
+clutdata            rmb       2
+ts0blk		    rmb	      2
+ts1blk		    rmb	      2
+ts2blk		    rmb	      2
+tm0addr		    rmb	      2
+tm1addr		    rmb	      2
+tm2addr		    rmb	      2
+tmblk		    rmb	      2
+x3		    rmb	      2
 stkdepth            equ       .
 
 * Function table. Please note, that on entry to these subroutines, the main temp stack is already
@@ -66,6 +119,14 @@ FuncTbl
 
                     fdb       DWSet-FuncTbl
                     fcc       "DWSet"
+                    fcb       $FF
+
+                    fdb       JoyA-FuncTbl
+                    fcc       "JoyA"
+                    fcb       $FF
+
+                    fdb       JoyB-FuncTbl
+                    fcc       "JoyB"
                     fcb       $FF
 
                     fdb       Palette-FuncTbl
@@ -127,6 +188,10 @@ FuncTbl
                     fdb       Clear-FuncTbl
                     fcc       "Clear"
                     fcb       $FF
+                    
+                    fdb       Display-FuncTbl
+                    fcc       "Display"
+                    fcb       $FF
 
                     fdb       CrRtn-FuncTbl
                     fcc       "CrRtn"
@@ -152,6 +217,236 @@ FuncTbl
                     fcc       "ID"
                     fcb       $FF
 
+                    fdb       GetDayOfWeek-FuncTbl
+                    fcc       "GetDayOfWeek"
+                    fcb       $FF
+
+                    fdb       GetDate-FuncTbl
+                    fcc       "GetDate"
+                    fcb       $FF
+
+                    fdb       GetTime-FuncTbl
+                    fcc       "GetTime"
+                    fcb       $FF
+
+                    fdb       JoyL-FuncTbl
+                    fcc       "JoyL"
+                    fcb       $FF
+                    
+                    fdb       JoyR-FuncTbl
+                    fcc       "JoyR"
+                    fcb       $FF
+                    
+                    fdb       Inkey-FuncTbl
+                    fcc       "Inkey"
+                    fcb       $FF
+
+                    fdb       Mult-FuncTbl
+                    fcc       "Mult"
+                    fcb       $FF
+
+                    fdb       Real-FuncTbl
+                    fcc       "Real"
+                    fcb       $FF
+
+                    fdb       FNLoad-FuncTbl
+                    fcc       "FNLoad"
+                    fcb       $FF
+                    
+                    fdb       FNChar-FuncTbl
+                    fcc       "FNChar"
+                    fcb       $FF
+
+                    fdb       FNSet-FuncTbl
+                    fcc       "FNSet"
+                    fcb       $FF
+
+                    fdb       MouseHR-FuncTbl
+                    fcc       "MouseHR"
+                    fcb       $FF
+                    
+                    fdb       Mouse-FuncTbl
+                    fcc       "Mouse"
+                    fcb       $FF
+                    
+                    fdb       GFree-FuncTbl
+                    fcc       "GFree"
+                    fcb       $FF
+                                       
+                    fdb       Bitmap-FuncTbl
+                    fcc       "Bitmap"
+                    fcb       $FF
+                    
+                    fdb       ClutLoad-FuncTbl
+                    fcc       "ClutLoad"
+                    fcb       $FF
+                    
+                    fdb       ClutFree-FuncTbl
+                    fcc       "ClutFree"
+                    fcb       $FF
+                    
+                    ifgt      Level-1
+                    fdb       BMStatus-FuncTbl
+                    fcc       "BMStatus"
+                    fcb       $FF
+                    endc
+                    
+                    fdb       BMOff-FuncTbl
+                    fcc       "BMOff"
+                    fcb       $FF                    
+                    
+                    fdb       GOn-FuncTbl
+                    fcc       "GOn"
+                    fcb       $FF
+                    
+                    fdb       GOff-FuncTbl
+                    fcc       "GOff"
+                    fcb       $FF
+                    
+                    ifgt      Level-1
+                    fdb       BMSave-FuncTbl
+                    fcc       "BMSave"
+                    fcb       $FF
+                    
+                    fdb       BMClear-FuncTbl
+                    fcc       "BMClear"
+                    fcb       $FF
+                    
+                    fdb       BMLoad-FuncTbl
+                    fcc       "BMLoad"
+                    fcb       $FF
+
+                    fdb       Pixel-FuncTbl
+                    fcc       "Pixel"
+                    fcb       $FF
+                    
+                    fdb       GetPixel-FuncTbl
+                    fcc       "GetPixel"
+                    fcb       $FF
+                    
+                    fdb       Box-FuncTbl
+                    fcc       "Box"
+                    fcb       $FF
+                    
+                    fdb       Bar-FuncTbl
+                    fcc       "Bar"
+                    fcb       $FF
+                    
+                    fdb       Line-FuncTbl
+                    fcc       "Line"
+                    fcb       $FF
+                    
+                    fdb       Circle-FuncTbl
+                    fcc       "Circle"
+                    fcb       $FF
+                    
+                    fdb       SPCreate-FuncTbl
+                    fcc       "SPCreate"
+                    fcb       $FF
+                    
+                    fdb       SPConfig-FuncTbl
+                    fcc       "SPConfig"
+                    fcb       $FF
+                    
+                    fdb       SPAssign-FuncTbl
+                    fcc       "SPAssign"
+                    fcb       $FF
+                    
+                    fdb       SPPos-FuncTbl
+                    fcc       "SPPos"
+                    fcb       $FF
+                    
+                    fdb       SPLoad-FuncTbl
+                    fcc       "SPLoad"
+                    fcb       $FF
+                    
+                    fdb       SPSave-FuncTbl
+                    fcc       "SPSave"
+                    fcb       $FF
+                    
+                    fdb       SPKill-FuncTbl
+                    fcc       "SPKill"
+                    fcb       $FF
+					
+	 	fdb       TSAddr-FuncTbl
+                    fcc       "TSAddr"
+                    fcb       $FF
+					
+		fdb       TSAlloc-FuncTbl
+                    fcc       "TSAlloc"
+                    fcb       $FF
+					
+					fdb       TSLoad-FuncTbl
+                    fcc       "TSLoad"
+                    fcb       $FF
+                    
+					fdb       TSSave-FuncTbl
+                    fcc       "TSSave"
+                    fcb       $FF
+					
+					fdb       TSKill-FuncTbl
+                    fcc       "TSKill"
+                    fcb       $FF
+					
+					fdb       TMAlloc-FuncTbl
+                    fcc       "TMAlloc"
+                    fcb       $FF
+					
+					fdb       TMLoad-FuncTbl
+                    fcc       "TMLoad"
+                    fcb       $FF
+					
+					fdb       TMKill-FuncTbl
+                    fcc       "TMKill"
+                    fcb       $FF
+					
+					fdb       TMCfg-FuncTbl
+                    fcc       "TMCfg"
+                    fcb       $FF
+					
+					fdb       TMXYScrl-FuncTbl
+                    fcc       "TMXYScrl"
+                    fcb       $FF
+					
+					fdb       TMSave-FuncTbl
+                    fcc       "TMSave"
+                    fcb       $FF
+					
+					fdb       TMOn-FuncTbl
+                    fcc       "TMOn"
+                    fcb       $FF
+					
+					fdb       TMOff-FuncTbl
+                    fcc       "TMOff"
+                    fcb       $FF
+					
+					fdb       TMAddr-FuncTbl
+                    fcc       "TMAddr"
+                    fcb       $FF
+
+                    fdb       Layers-FuncTbl
+                    fcc       "Layers"
+                    fcb       $FF
+                    endc
+					
+                    fdb       WPeek-FuncTbl
+                    fcc       "WPeek"
+                    fcb       $FF
+                    
+                    fdb       WPoke-FuncTbl
+                    fcc       "WPoke"
+                    fcb       $FF
+                    
+                    ifgt      Level-1
+                    fdb       MapBlk-FuncTbl
+                    fcc       "MapBlk"
+                    fcb       $FF
+                    
+                    fdb       ClrBlk-FuncTbl
+                    fcc       "ClrBlk"
+                    fcb       $FF
+                    endc
+
 * Test by sending non-existant function name
                     fcb       $00       end of table marker
 
@@ -171,28 +466,33 @@ FuncTbl
 * (pointer/value and length).
 * The temporary stack uses 0,s as the path #, and 1,s + as the output buffer.
 
-start               leas      <-stkdepth,s reserve bytes on stack
+start               leas      >-stkdepth,s reserve bytes on stack
+                    clr       <pxlblk0,s
+                    clr       <pxlblk,s
+                    clr       <pxlblkaddr,s
+                    clr       <pxlblkaddr+1,s
+                    clr       <bmblock,s
                     clr       ,s        clear optional path # is BYTE or INTEGER flag
-                    ldd       <stkdepth+PCount,s get # of parameters
+                    ldd       >stkdepth+PCount,s get # of parameters
                     beq       ParamErr  if 0, exit with parameter error
                     tsta                if >255, exit with parameter error
                     bne       ParamErr  branch if >255
-                    ldd       [<stkdepth+PrmPtr1,s] get value from first parameter (optional path #)
-                    ldx       <stkdepth+PrmLen1,s get length of 1st parameter
+                    ldd       [>stkdepth+PrmPtr1,s] get value from first parameter (optional path #)
+                    ldx       >stkdepth+PrmLen1,s get length of 1st parameter
                     leax      -1,x      decrement length
                     beq       byte@     if zero, it's a BYTE value, so save path #
                     leax      -1,x      decrement length again
                     bne       nopath@   if not INTEGER value, no optional path, 1st parameter is keyword
                     tfr       b,a       it's an INTEGER value, so save LSB as path #
 byte@               sta       ,s        save on stack
-                    dec       <stkdepth+PCount+1,s decrement # of parameters (to skip path #)
-                    ldx       <stkdepth+PrmPtr2,s X = pointer to function name we received
-                    leau      <stkdepth+PrmPtr3,s U = pointer to (possible) 1st parameter for function
+                    dec       >stkdepth+PCount+1,s decrement # of parameters (to skip path #)
+                    ldx       >stkdepth+PrmPtr2,s X = pointer to function name we received
+                    leau      >stkdepth+PrmPtr3,s U = pointer to (possible) 1st parameter for function
                     bra       L02B8
 * No optional path, set path to Std Out, and point X/U to function name and 1st parameter for it.
 nopath@             inc       ,s        no optional path # specified, set path to 1 (Std Out)
-                    ldx       <stkdepth+PrmPtr1,s point to function name
-                    leau      <stkdepth+PrmPtr2,s point to first parameter of function
+                    ldx       stkdepth+PrmPtr1,s point to function name
+                    leau      stkdepth+PrmPtr2,s point to first parameter of function
 * Entry here: X=pointer to function name passed from caller
 *             U=pointer to 1st parameter for function
 L02B8               pshs      u,x       save 1st parameter & function name pointers
@@ -221,7 +521,7 @@ L02D5               tst       -1,u      was hi bit set on matching character? (w
 
                     lda       #$1B      start it with an ESCAPE code (most functions use this)
                     sta       ,x+       store it in the output buffer
-                    ldd       <stkdepth+PCount,s get # of params again including path (if present) & function name pointer
+                    ldd       stkdepth+PCount,s get # of params again including path (if present) & function name pointer
                     jmp       ,y        call function subroutine & return from there
 
 L02F0               leas      4,s       clean the stack
@@ -230,7 +530,7 @@ L02F0               leas      4,s       clean the stack
 
 ParamErr            ldb       #E$ParmEr parameter error
 L02F8               coma                set the carry
-                    leas      <stkdepth,s clean the stack
+                    leas      >stkdepth,s clean the stack
                     rts                 return to the caller
 
 * For all calls from table, entry is:
@@ -239,7 +539,2376 @@ L02F8               coma                set the carry
 *   U = Pointer to 1st parameter for function.
 *   D = # of parameters being passed (including optional path #, and function name pointer).
 
-;;; ID - Get the calling process' user ID.
+;;; Inkey
+;;; optional 3rd parameter enables echo of keys
+;;; calling syntax: RUN WILD([path,],"Inkey",keyval, [1])
+Inkey               cmpb      #2               2 parameters?
+                    beq       InKey20          No Path just retkey
+                    cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    bra       Inkey30
+InKey20             pshs      a,x,y,u          Preserve registers
+                    lda       ,s               Path # from stack
+                    ldb       #SS.Opt          SS.Options system call
+                    leax      stdinPD,s        point to options buffer
+                    os9       I$GetStt         get options
+; preserve original echo value, turn echo off, and write back settings
+                    ldb       PD.EKO-PD.OPT,x  get echo flag byte
+                    stb       prevEKO,s        store previous value
+                    clr       PD.EKO-PD.OPT,x  clear echo
+                    lda       ,s               Path # from stack
+                    ldb       #SS.Opt          set options
+                    leax      stdinPD,s        point to updated table
+                    os9       I$SetStt        
+                    ldb       #SS.Ready        
+                    os9       I$GetStt         see if key ready
+                    bcc       getit
+                    cmpb      #E$NotRdy        no keys ready=no error
+                    bne       exit@            other error, report it
+                    clra                       no error
+                    bra       exit@
+getit               lbsr      FGETC            go get the key
+                    tsta                       Nil?
+                    clrb
+                    exg       a,b              Swap A and B
+                    std       [,u]
+exit@               leax      stdinPD,s        get options buffer
+                    ldb       #1               enable echo
+                    stb       PD.EKO-PD.OPT,x  
+                    lda       ,s               Path # from stack
+                    ldb       #SS.Opt
+                    os9       I$SetStt         update echo changes        
+                    puls      u,y,x,a
+                    leas      >stkdepth,s      clean the stack
+                    rts                        return to the caller   
+
+FGETC               pshs      a,x,y
+                    ldy       #1               number of char to print
+                    tfr       s,x              point x at 1 char buffer
+                    os9       I$Read
+                    puls      a,x,y,pc
+
+Inkey30             pshs      a,x,y,u          Preserve registers
+                    lda       ,s               Path # from stack
+                    ldb       #SS.Ready        
+                    os9       I$GetStt         see if key ready
+                    bcc       getit2
+                    cmpb      #E$NotRdy        no keys ready=no error
+                    bne       exit2@           other error, report it
+                    clra                       no error
+                    bra       exit2@
+getit2              lbsr      FGETC            go get the key
+                    tsta                       Nil?
+                    clrb
+                    exg       a,b              Swap A and B
+                    std       [,u]
+exit2@              puls      u,y,x,a
+                    leas      >stkdepth,s      clean the stack
+                    rts    
+
+;;; JoyA
+;;;
+;;; Joystick VIA 0 Port A
+;;; btn=239 UP=254 DWN=253 LEFT=251 RIGHT=247
+;;; UP/LFT=246 DWN/LFT=245 DWN/RGT=249 UP/RGT=250
+;;; calling syntax: RUN WILD([path,],"JoyA",value)
+JoyA                cmpb      #2               2 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    pshs      a
+                    clra
+                    clrb
+                    sta       $FEB3            clr port A data direction register VIA0
+                    ldb       $FEB1            read data port A
+                    std       [,u]             update return value
+                    puls      a
+                    leas      >stkdepth,s      clean the stack
+                    rts
+
+;;; JoyB
+;;;
+;;; Joystick VIA 0 Port B
+;;; btn=239 UP=254 DWN=253 LEFT=251 RIGHT=247
+;;; UP/LFT=246 DWN/LFT=245 DWN/RGT=249 UP/RGT=250
+;;; Bit 7 Port B is used for K keyboard, so or #$80 is masking this
+;;; calling syntax: RUN WILD([path,],"JoyB",value)
+JoyB                cmpb      #2               2 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    pshs      a
+                    clra
+                    clrb
+                    sta       $FEB2            clr port B data direction register VIA0
+                    ldb       $FEB0            read data port B
+                    orb       #$80             bit 7 is floating read 255 then 127 w nothing pressed
+                    std       [,u]             update return value
+                    puls      a
+                    leas      >stkdepth,s      clean the stack
+                    rts
+
+;;; JoyR Right Joystick Input
+;;;
+;;; calling syntax: RUN WILD([path,],"JoyR",x,y,btn)
+JoyR                cmpb      #4               4 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    lda       ,s               Path # from stack
+                    ldx       #$00             Right Joystick
+                    ldb       #SS.Joy          Joystick Code
+                    os9       I$GetStt
+                    stx       [,u]             Store X value 1st parameter
+                    sty       [<$04,u]         Store Y value 2nd parameter
+                    clrb                       Clear B - A = 255 Fire Btn
+                    exg       a,b              Swap A and B
+                    std       [<$08,u] 
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+;;; JoyL Left Joystick Input
+;;;
+;;; calling syntax: RUN WILD([path,],"JoyL",x,y,btn)
+JoyL                cmpb      #4               4 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    ;lda       ,s               Path # from stack
+                    lda       #1               Output Path
+                    ldx       #$01             Left Joystick
+                    ldb       #SS.Joy          Joystick Code
+                    os9       I$GetStt
+                    stx       [,u]             Store X value 1st parameter
+                    sty       [<$04,u]         Store Y value 2nd parameter
+                    clrb                       Clear B - A = 255 Fire Btn
+                    exg       a,b      
+                    std       [<$08,u] 
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+                    ifgt      Level-1
+;;; SPCreate - Create Spritesheet
+;;;
+;;; bm is MMU page to map for Sprite - addr is the mapped address
+;;; $2B or lower sprites & allows bm0, bm1 to be used for bitmaps
+;;; calling syntax: RUN WILD([path,],"SPCreate",bm, addr)
+SPCreate            cmpb      #3               3 parameters
+                    lbne      ParamErr         no, exit with Parameter Error
+                    ldx       [,u]             get page to map ex.
+                    pshs      u                preserve u
+                    ldb       #$01             need 1 block
+                    os9       F$MapBlk         map it into process address space
+                    lbcs      exiterr@
+                    exg       u,x              mapped block to x  
+                    puls      u
+                    stx       [<$04,u]         store mapaddr param 2
+                    bra       cont@
+exiterr@            puls      u                restore u
+cont@               leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+;;; SPConfig - Configure Sprites
+;;;
+;;; SIZE 0=32x32,1=24x24, 2=16x16, 3=8x8
+;;; LAYER 0-3
+;;; LUT 0-3
+;;; Enable 1=Enabled 0=Disabled
+;;; calling syntax: RUN WILD([path,],"SPConfig",sprite#,size,layer,LUT, Enable)
+SPConfig            cmpb      #6               6 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    pshs      a,b,x,y,u        Put the variables on the stack
+                    ldx       #$c0             map page with sprite control reg
+                    pshs      u                preserve u
+                    ldb       #$01             need 1 block
+                    os9       F$MapBlk         map it into process address space
+                    lbcs      err@
+                    exg       u,x              mapped block to x
+                    puls      u
+                    stx       <mapaddr,s       mapped address
+* config sprite
+                    ldd       [,u]             get sprite #
+                    lslb
+                    rola                       
+                    lslb
+                    rola                       
+                    lslb
+                    rola                       multiply to get offset 8 bytes per sprite                    
+                    std       <offset,s        save offset
+                    ldd       [<$10,u]         get enable
+                    ;andd      #$0001           isolate enable
+                    std       <enable,s
+                    ldd       [<$0C,u]         get LUT
+                    ;andd      #$0003           isolate lut 2 bit
+                    lslb
+                    rola                       need LUT at bits 2-1, bit 0=enable
+                    std       <lut,s
+                    ldd       [<$08,u]         get layer
+                    lslb
+                    rola                       
+                    lslb
+                    rola                       
+                    lslb
+                    rola                       need layer at bits 4-3
+                    std       <layer,s
+                    ldd       [<$04,u]             size value
+                    lslb
+                    rola                       
+                    lslb
+                    rola                       
+                    lslb
+                    rola
+                    lslb
+                    rola                       need size at bits 6-5                  
+                    std       <ssize,s
+                    clrd                       d=0
+                    addd      <enable,s        setup sprite config byte
+                    addd      <lut,s
+                    addd      <layer,s
+                    addd      <ssize,s
+                    std       $fee0
+                    exg       x,d              mapaddr to d, sprite config bytes x
+                    addd      #$1300           add offset to sprite register
+                    addd      <offset,s        sprite # offset
+                    exg       x,d              x calculated offset, sprite config d
+                    stb       ,x               store sprite config in sprite register
+* clrblk
+                    ldu       <mapaddr,s       get mapped address
+                    pshs      u                clear MapBlk from DAT Image
+                    ldx       #$C0             page to unmap
+                    ldb       #1               clearing 1 block
+                    os9       F$ClrBlk         remove block from DAT Image
+                    clrb
+err@                puls      u
+                    puls      u,y,x,b,a
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+;;; SPAssign - Assign sprite
+;;; 
+;;; Example SPCreate 2B - The memory location for MMU page 2B is $05 $60 $00
+;;; assing 16x16 size next offset would be $05 $61 $00
+;;; calling syntax: RUN WILD([path,],"SPAssign",sprite#,mem_loc)
+SPAssign            cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    lda       7,u              get the length of the 2nd parameter
+                    cmpa      #3               3 bytes?
+                    lbne      ParamErr         no, return an error
+                    pshs      a,b,x,y,u        Put the variables on the stack
+                    ldx       #$c0             map page with sprite control reg
+                    pshs      u                preserve u
+                    ldb       #$01             need 1 block
+                    os9       F$MapBlk         map it into process address space
+                    lbcs      err@
+                    exg       u,x              mapped block to x
+                    puls      u
+                    stx       <mapaddr,s       mapped address
+                    ldd       [,u]             get sprite #
+                    lslb
+                    rola                       
+                    lslb
+                    rola                       
+                    lslb
+                    rola                       multiply to get offset 8 bytes per sprite                    
+                    std       <offset,s        save offset
+                    tfr       x,d              mapped addr to d
+                    addd      #$1300           sprite registers offset
+                    addd      <offset,s        sprite # offset
+                    tfr       d,y              y=sprite # base register
+                    leax      [<$04,u]         get address of 2nd parameter
+                    lda       ,x+              get first byte of 3
+                    sta       1,y              store first byte memory addr  H
+                    lda       ,x+              get second byte of 3
+                    sta       2,y              store second byte memory addr M
+                    lda       ,x+              get third byte of memory addr 
+                    sta       3,y              store third byte              L
+* clrblk
+                    ldu       <mapaddr,s       get mapped address
+                    pshs      u                clear MapBlk from DAT Image
+                    ldx       #$C0             page to unmap
+                    ldb       #1               clearing 1 block
+                    os9       F$ClrBlk         remove block from DAT Image
+                    clrb
+err@                puls      u
+                    puls      u,y,x,b,a
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+;;; SPPos -  Sprite Position
+;;;
+;;; calling syntax: RUN WILD([path,],"SPPos",sprite#,X,Y)
+SPPos               cmpb      #4               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    pshs      a,b,x,y,u        Put the variables on the stack
+                    lbsr      chk_endian
+                    ldd       <endian,s
+                    std       $fee0
+                    ldx       #$c0             map page with sprite control reg
+                    pshs      u                preserve u
+                    ldb       #$01             need 1 block
+                    os9       F$MapBlk         map it into process address space
+                    lbcs      err@
+                    exg       u,x              mapped block to x
+                    puls      u
+                    stx       <mapaddr,s       mapped address
+* calc offset                    
+                    ldd       [,u]             get sprite #
+                    lslb
+                    rola                       
+                    lslb
+                    rola                       
+                    lslb
+                    rola                       multiply to get offset 8 bytes per sprite                    
+                    std       <offset,s        save offset
+                    exg       x,d              mapaddr to d
+                    addd      #$1300           add offset to sprite register
+                    addd      <offset,s        sprite # offset
+                    exg       x,d              x = sprite # base address
+                    ldd       [<$04,u]         get x position
+                    std       4,x              store x value in sprite register
+                    ;stb       4,x
+                    ;sta       5,x
+                    ldd       [<$08,u]         get y position
+                    std       6,x              store y value in sprite register
+                    ;stb       6,x
+                    ;sta       7,x
+* clrblk
+                    ldu       <mapaddr,s       get mapped address
+                    pshs      u                clear MapBlk from DAT Image
+                    ldx       #$C0             page to unmap
+                    ldb       #1               clearing 1 block
+                    os9       F$ClrBlk         remove block from DAT Image
+                    clrb
+err@                puls      u
+                    puls      u,y,x,b,a
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+;;; SPLoad - Load Sprite
+;;; 
+;;; from file, from data module file or loaded data module (or memory?)
+;;; use mapaddr from SPCreate. bitmappath of sprite file to load. 
+;;; calling syntax: RUN WILD([path,],"SPLoad", mapaddr, bitmappath)
+SPLoad              cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    pshs      a,x,y,u          Preserve registers
+                    lda       #READ.
+                    leax      [<$04,u]         Pointer to bitmap path
+                    os9       I$Open
+                    lbcs      errcl@
+                    sta       <currPath,s      store current path
+                    clra
+                    sta       <blkCnt,s        store block cnt
+                    ldd       [,u]             sprite map address
+                    std       <mapaddr,s       store map address
+                    lda       <currPath,s      load path
+                    ldx       <mapaddr,s       map address in X
+                    ldy       #$2000           bytes to load
+                    os9       I$Read
+                    bcc       noerr@
+                    cmpb      #E$EOF
+                    beq       loaddone@        load done?
+                    lbra      errcl@
+noerr@              inc       <blkCnt,s        increment blk cnt
+loaddone@           lda       <currPath,s      restore path
+                    os9       I$Close
+                    bcs       errcl@
+errcl@              puls      u,y,x,a
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+;;; SPSave - Save Sprite
+;;;
+;;; mapaddr from SPCreate. bitmappath to save sprites. Optional [size] if ommitted 8K default
+;;; ** if using [size] pass value in hex ie $400 to save 1KB
+;;; calling syntax: RUN WILD([path,],"SPSave", mapaddr, bitmappath, [size])
+SPSave              cmpb      #4               4 parameters?
+                    beq       params4
+                    cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    bra       params3
+params4             ldd       [<$08,u]         get # of bytes to save
+                    std       <ssize,s         store specified bytes to save
+                    std       $feee
+                    bra       cont@
+params3             ldd       #$2000           default save full 8K block
+                    std       <ssize,s
+cont@               pshs      x,y,u          Preserve registers
+                    sta       <currPath,s      store current path
+                    leax      [<$04,u]         Get the filename to save
+                    ldb       #$2F             03 0=R 2=W 2=E 3=PR 4=PW 5=PE
+                    lda       #WRITE.          #$04             Access Mode Write
+                    os9       I$Create         create and open file
+                    bcs       merr@            Error
+                    sta       <Univ8a,s        save file path
+                    clra
+                    sta       <blkCnt,s        store block count
+                    ldd       [,u]             sprite map address [<$08,u]
+                    std       <mapaddr,s       store map address
+                    lda       <Univ8a,s        get file path
+                    ldx       <mapaddr,s       put map address in X
+                    ldy       <ssize+6,s       restore bytes to save
+                    os9       I$Write
+                    bcc       nooerr@
+                    lbra      merr@            error
+nooerr@             inc       <blkCnt,s        increment block count
+done@               lda       <Univ8a,s        get the file path
+                    os9       I$Close
+merr@               lda       <currPath,s      get previous path
+                    puls      u,x,y            restore stack
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+;;; SPKill - Sprite Kill - Free sprite memory
+;;;
+;;; calling syntax: RUN WILD([path,],"SPKill",bm,addr)
+SPKill              cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    ldx       [<$04,u]         load map addr in x
+                    ldy       [,u]             get page to map
+                    pshs      u                clear MapBlk from DAT Image
+                    exg       x,u              put mapaddr in u
+                    exg       y,x              page to clear in x
+                    ldb       #$01             clearing 1 block
+                    os9       F$ClrBlk         remove block from DAT Image
+                    puls      u
+                    clrb
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+*** TileSets
+;;; TSAddr - Return Address of TileSet
+;;;
+;;; calling syntax: RUN WILD([path,],"TSAddr",TS#, addr)
+TSAddr              cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+					
+;;; TSAlloc - Allocates memory and puts address in TileSet register
+;;;
+;;; TS# - Tile Set number 0-3
+;;; Square 0 = 8 or 16 wide by Y deep. 
+;;; Square = 1 
+;;; 128x128 = 8x8 tiles
+;;; 256x256 = 16x16    *size removed
+;;; calling syntax: RUN WILD([path,],"TSAlloc",TS#, Square)
+TSAlloc             cmpb      #4               4 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    pshs      a,x,y,u
+                    pshs      u
+	                ldb	      #1
+	                ldx	      #$C0
+	                os9	      F$MapBlk
+             	    tfr	      u,x
+	                puls      u
+	                stx	      <c0addr,s
+                    ldd       [,u]             get the tileset #
+                    bne       ts1@
+                    ldx       #$1180           ts0reg
+                    bra       cont@
+ts1@                cmpb      #1
+                    bne       ts2@            
+                    ldx       #$1184           ts1reg
+                    bra       cont@
+ts2@                cmpb      #2
+                    bne       ts3@
+                    ldx       #$1188           ts2reg
+                    bra       cont@
+ts3@                ldx       #$118C           ts3reg
+* Need to allocate memory here...
+cont@               ldd       [<$04,u]         get square
+                    andb      #$01
+                    lslb
+                    lslb
+                    lslb                       need square at Bit 3
+                    pshs      b                stash value             
+                    ldd       <c0addr,s        get mapped address
+                    leax      3,x              offset for square
+                    puls      b
+                    stb       ,x               update settings
+                    pshs      u                clear MapBlk from DAT Image
+                    ldu       <c0addr,s        address
+                    ldx	      #$C0             page
+                    ldb	      #1               1 block
+                    os9       F$ClrBlk         remove block from DAT Image
+                    puls      u
+                    clrb
+error@              puls      a,x,y,u
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller					
+
+;;; TSLoad - Load TS from file
+;;;
+;;; size = 1 - 8x8 pixels | size = 0 - 16x16 pixels
+;;; calling syntax: RUN WILD([path,],"TSLoad",TS#, Size, filepath)
+TSLoad              cmpb      #4               4 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    ldd       #$2A             MMU page
+                    leax      [<$08,u]         file path
+                    lbsr      FileGetAllData
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller		
+
+;;; TSSave - Save TS to a file
+;;;
+;;; size = 1 - 8x8 pixels | size = 0 - 16x16 pixels
+;;; calling syntax: RUN WILD([path,],"TSSave",TS#, Size, filepath)
+TSSave              cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller	
+
+;;; TSKill - Erase registers and free memory from TS
+;;;
+;;; size = 1 - 8x8 pixels | size = 0 - 16x16 pixels
+;;; calling syntax: RUN WILD([path,],"TSKill",TS#, Size, path)
+TSKill              cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller	
+
+*** TileMaps
+;;; TMAlloc - Allocate Tile Map of size XY
+;;; Tile map # 0-2
+;;; SzX = width of tile map
+;;; SzY = height of the tile map
+;;; size = 1 - 8x8 pixels | size = 0 - 16x16 pixels
+;;; calling syntax: RUN WILD([path,],"TMAlloc",TM#, SzX, SzY, Size)
+TMAlloc             cmpb      #5               5 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    pshs      u
+	                ldb	      #1
+	                ldx	      #$C0
+	                os9	      F$MapBlk
+             	    tfr	      u,x
+	                puls      u
+	                stx	      <c0addr
+                    ldd       [,u]             get the tilemap #
+                    bne       tm1@
+                    ldx       #$1100           tm0reg
+                    bra       cont@
+tm1@                cmpb      #1
+                    bne       tm2@            
+                    ldx       #$110C           tm1reg
+                    bra       cont@
+tm2@                ldx       #$1118           tm2reg
+cont@               ldd       [<$0C,u]         get size
+                    andb      #$01             mask only valid 0-1
+                    lslb
+                    lslb
+                    lslb
+                    lslb                       bit 0 to bit 4
+                    stb       ,x               update tile size
+                    ldd       [<$04,u]         get Map Size X
+                    leax      4,x              offset for Map Size X
+                    stb       ,x               
+                    ldd       [<$08,u]         get Map Size Y
+                    leax      4,x              offset for Map Size Y
+                    stb       ,x
+done@               pshs      u                clear MapBlk from DAT Image
+                    ldu       <c0addr          address
+                    ldx	      #$C0             page
+                    ldb	      #1               1 block
+                    os9       F$ClrBlk         remove block from DAT Image
+                    puls      u
+                    clrb
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller	
+					
+;;; TMLoad - Loads tilemap from disk
+;;;
+;;; calling syntax: RUN WILD([path,],"TMLoad",TM#, filepath)
+TMLoad              cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    ldd       #$2B             MMU page
+                    leax      [<$04,u]         file path
+                    lbsr      FileGetAllData
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller	
+
+;;; TMKill - Erase registers and free memory from TM
+;;; * see TSAlloc for params
+;;; calling syntax: RUN WILD([path,],"TMKill",TM#)
+TMKill              cmpb      #2               2 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller	
+
+;;; TMCfg - Each entry in the tile map at X,Y has a CLUT,SET, and Tile Number.
+;;; 16 bit value, 3 bits, 2bits clut, 3 bits Tile Set, 8 bits Tile#
+;;;
+;;; calling syntax: RUN WILD([path,],"TMCfg", TM#, X, Y, Clut, Set, Tile#)
+TMCfg               cmpb      #4               4 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller	
+					
+;;; TMXYScrl - SetXY Scroll of Tile Map
+;;;
+;;; SSX - scroll pixel X 0-15 16x16 Size 0
+;;; SSY - scroll pixel Y 0-15 16x16 Size 0
+;;; SSX - scroll pixel X 0-7 8x8 Size 1
+;;; SSY - scroll pixel Y 0-7 8x8 Size 1
+;;; size = 1 - 8x8 pixels | size = 0 - 16x16 pixels
+;;; calling syntax: RUN WILD([path,],"TMXYScrl",TM#, SSX, SSY, size)
+TMXYScrl            cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    pshs      u
+	                ldb	      #1
+	                ldx	      #$C0
+	                os9	      F$MapBlk
+             	    tfr	      u,x
+	                puls      u
+	                stx	      <c0addr
+                    ldd       [,u]             get the tilemap #
+                    bne       tm1@
+                    ldx       #$1100           tm0reg
+                    bra       cont@
+tm1@                cmpb      #1
+                    bne       tm2@            
+                    ldx       #$110C           tm1reg
+                    bra       cont@
+tm2@                ldx       #$1118           tm2reg
+cont@               ldd       [<$0C,u]         get size
+                    bne       next@
+** Might need to read upper nibble and add with SSX SSY value
+                    ldd       [<$04,u]         get SzX
+                    andb      #$0F             mask unused bits
+                    leax      8,x              need to update byte 8 in register
+                    stb       ,x               store SSX
+                    leax      2,x
+                    ldd       [<$08,u]
+                    andb      #$0F
+                    stb       ,x               store SSY
+                    bra       done@
+next@               ldd       [<$04,u]         get SSX
+                    andb      #$07             mask unused bits
+                    lslb                       rotate left       
+                    leax      8,x              need to update 9 byte in register
+                    stb       ,x               store SzX
+                    leax      2,x
+                    ldd       [<$08,u]
+                    andb      #$0F
+                    stb       ,x               store SSY
+                    pshs      u                clear MapBlk from DAT Image
+                    ldu       <c0addr          address
+                    ldx	      #$C0             page
+                    ldb	      #1               1 block
+                    os9       F$ClrBlk         remove block from DAT Image
+                    puls      u
+                    clrb
+done@               leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller	
+
+;;; TMSave - Save TM to file
+;;;
+;;; calling syntax: RUN WILD([path,],"TMSave",TM#, filepath)
+TMSave              cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller					
+
+;;; TMOn - Enable Tile Map
+;;;
+;;; size = 1 - 8x8 pixels | size = 0 - 16x16 pixels
+;;; calling syntax: RUN WILD([path,],"TMOn",TM#, TileSize)
+TMOn                cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    pshs      u
+	                ldb	      #1
+	                ldx	      #$C0
+	                os9	      F$MapBlk
+             	    tfr	      u,x
+	                puls      u
+	                stx	      <c0addr
+                    ldd       [,u]             get the tilemap #
+                    bne       tm1@
+                    ldx       #$1100           tm0reg
+                    bra       cont@
+tm1@                cmpb      #1
+                    bne       tm2@            
+                    ldx       #$110C           tm1reg
+                    bra       cont@
+tm2@                ldx       #$1118           tm2reg
+cont@               ldd       [<$04,u]         get the size
+                    andb      #$10                      
+                    pshs      b                push first value
+                    ;ldd       [<$08,u]         get square
+                    ;andb      #$01
+                    ;tfr       b,a              value to a
+                    lda       #1               enable tilemap
+                    adda      ,s+              add pushed value to a, advance stack
+                    clrb
+                    pshs      a                push config byte
+                    ldd       <c0addr          get mapped address
+                    leax      d,x
+                    puls      a                restore config byte
+                    sta       $feee
+                    stx       $feec
+                    sta       ,x               update settings
+** clr
+                    pshs      u                clear MapBlk from DAT Image
+                    ldu       <c0addr          address
+                    ldx	      #$C0             page
+                    ldb	      #1               1 block
+                    os9       F$ClrBlk         remove block from DAT Image
+                    puls      u
+                    clrb
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+;;; TMOff - Disable Tile Map
+;;;
+;;; size = 1 - 8x8 pixels | size = 0 - 16x16 pixels
+;;; calling syntax: RUN WILD([path,],"TMOff",TM#, TileSize)
+TMOff               cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    pshs      u
+	                ldb	      #1
+	                ldx	      #$C0
+	                os9	      F$MapBlk
+             	    tfr	      u,x
+	                puls      u
+	                stx	      <c0addr
+                    ldd       [,u]             get the tilemap #
+                    bne       tm1@
+                    ldx       #$1100           tm0reg
+                    bra       cont@
+tm1@                cmpb      #1
+                    bne       tm2@            
+                    ldx       #$110C           tm1reg
+                    bra       cont@
+tm2@                ldx       #$1118           tm2reg
+cont@               ldd       [<$04,u]         get the size
+                    andb      #$10                      
+                    pshs      b                push first value
+                    lda       #0               disable tilemap
+                    adda      ,s+              add pushed value to a, advance stack
+                    clrb
+                    pshs      a                push config byte
+                    ldd       <c0addr          get mapped address
+                    leax      d,x
+                    puls      a                restore config byte
+                    sta       ,x               update settings
+                    pshs      u                clear MapBlk from DAT Image
+                    ldu       <c0addr          address
+                    ldx	      #$C0             page
+                    ldb	      #1               1 block
+                    os9       F$ClrBlk         remove block from DAT Image
+                    puls      u
+                    clrb
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+;;; TMAddr - Return address of TileMap
+;;;
+;;; calling syntax: RUN WILD([path,],"TMAddr",TM#, addr)
+TMAddr              cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+;;; Layers - Assign Bitmaps and Tilemaps to specified Layer
+;;;
+;;; CODE | Layer
+;;;   0  | Bitmap Layer 0
+;;;   1  | Bitmap Layer 1
+;;;   2  | Bitmap Layer 2
+;;;   4  | Tilemap Layer 0
+;;;   5  | Tilemap Layer 1
+;;;   6  | Tilemap Layer 2
+;;; calling syntax: RUN WILD([path,],"Layers",Layer0, Layer1, Layer2)
+Layers              cmpb      #4               4 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    ldd       [,u]             layer0
+                    andb      #$07             maskoff unused bits only need bits[2-0]
+                    pshs      b                stash layer0
+                    ldd       [<$04,u]         layer1
+                    andb      #$07
+                    lslb
+                    lslb
+                    lslb
+                    lslb                       need bits[2-0] in bits[6-4]
+                    tfr       b,a
+                    adda      ,s+              add previous value to complete byte
+                    sta       $FFC2            VKY_LAYER_CNTL_0
+                    ldd       [<$08,u]         layer2
+                    andb      #$07             maskoff unused bits only bits[2-0]
+                    stb       $FFC3            VKY_LAYER_CNTL_1
+                    clrb
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+;;; FileGetAllData
+;;; Reads the contents of a file into memeory
+;;; Starting at a particular block
+;;; Will read until EOF
+;;;
+;;; Entry:  B = block#
+;;;         R$X = address for file path from calling process
+;;;
+;;; Exit:   B = a non-zero error code (F$MapBlk)
+;;;        CC = carry flag clear=success set=error
+;;;
+;;; This is a utility function used to load bitmaps, tilesets
+;;; tilemaps and sprites from files into an allocated block of
+;;; memory.  The fundtion will continue to read until EOF
+;;; Most of the work occurs in the calling process' memory space
+;;;
+;;; I$Read reads data into the current process in D.Proc
+;;; To use I$Read for the system, assign system to D.Proc
+;;; Call I$Read, then change the processes back
+;;; Make sure to mask interrupts so processes don't switch while
+;;; the change is happening
+;;;
+
+FileGetAllData      pshs      a,x,y,u
+                    clra
+                    pshs      d                   store block # as 16 bit value $00XX
+*                   ****      open file to read
+*                   ldx       R$X,x               pointer to file name in caller memory
+                    lda       #READ.              READ access mode
+                    os9       I$Open
+                    bcc       modulecheck@        if no error, check for module
+                    lbra      FGDAerr             can't open file, so quit
+* Verify that file is module.
+* Load file's first two bytes onto the stack to verify and check for $87DC
+modulecheck@        leas      -2,s                 add space to stack to store 2 bytes [bbD]
+                    leax      ,s                   load x with stack address
+                    lbsr      Rd2B2Mem
+                    puls      x                    load x with the data [D]
+                    cmpx      #$87CD               check if module
+                    beq       getstart@            if module, get start of data
+                    bra       loadraw@             if not module, load raw data
+* Module header byte $09-0A = Execution Offset.
+* This is the start of the data in a data module
+getstart@           pshs      u                    seek to data start address in file [UD]
+                    ldx       #$00                 set high byte addr
+                    ldu       #$09                 set low byte
+                    os9       I$Seek
+                    bcc       readaddr@            if success, read data addr
+else2@              puls      u                    else error  [D]
+                    bra       errorclose@
+* s= u|addr|offset                  
+readaddr@           leas      -2,s                 add 2 bytes stack storage [bbUD]
+                    leax      ,s                   use the 2 bytes in stack to store addr
+                    lbsr      Rd2B2Mem             read 2 bytes from file
+                    bcc       seekaddr@            if success, seek to data address
+                    leas      2,s                  else: clean stack and error [UD]
+                    puls      u                    [D]
+                    bra       errorclose@
+* s= addr|u|addr|offset             
+seekaddr@           puls      u                    load u with low byte addr [b] from stack [UD]
+                    bra       contseek@
+loadraw@            pshs      u                    loadraw preserve U [UD]
+                    ldu       #0                   for raw seek beginning of file                             
+contseek@           ldx       #0                   load x high byte
+                    os9       I$Seek
+                    puls      u                    restore u [D]
+* s=addr|offset             
+*                   ldx       ,s                   ldx with mapblock address
+readloop@           pshs      x,u                 preserve x,u  [XUD]
+                    ldx       4,s                 map in block#
+                    ldb       #$01                map 1 block at address x (x set on entry)
+                    os9       F$MapBlk
+                    bcc       mapgood@            if success, then continue
+                    puls      x,u                 else: error [D]
+                    lbra      FGDAerr
+mapgood@            ldy       #$2000              attempt to read 8K block
+                    tfr       u,x
+                    os9       I$Read
+                    bcc       cont@
+cont@               ldb       #$01
+                    os9       F$ClrBlk             Clear block from user space
+                    puls      x,u                  [D]
+                    inc       1,s
+                    ldb       #SS.EOF
+                    os9       I$GetStt
+                    bcc       readloop@
+errorclose@         pshs      b                    [bD]
+                    os9       I$Close              close the file
+                    puls      b                    [D]
+FGDAerr             leas      2,s                  clear stack []
+                    tstb
+                    beq       quit@
+                    coma
+quit@               puls      a,x,y,u   
+                    rts
+                    endc
+
+;;; Rd2B2Mem
+;;; Read 2 bytes to addr
+;;;
+;;; Entry:  A = path #
+;;;         X = memory address to read to
+;;;
+;;; Exit:   B = a non-zero error code (F$MapBlk)
+;;;        CC = carry flag clear=success set=error
+;;;
+;;; I$Read reads data into the current process in D.Proc
+;;; To use I$Read for the system, assign system to D.Proc
+;;; Call I$Read, then change the processes back
+;;; Make sure to mask interrupts so processes don't switch while
+;;; the change is happening
+;;;
+Rd2B2Mem	    
+                    ldy       #$02                read 2 bytes from file 
+                    os9       I$Read
+		            bcs       errnomap@		      if I$Read error, then handle error
+		            puls      pc		          if no error, pull cc and return
+errnomap@	        coma      			          set carry bit
+		            rts				              and return
+					
+;;; Check for little/big endian Math Co-Pro
+;;;
+chk_endian          ldd       #$0100           check for big endian
+                    std       $fee0
+                    ldd       #$0200
+                    std       $fee2
+                    lda       $fef1            big endian should be 2
+                    cmpa       #$02
+                    beq       big@
+                    clra
+                    sta       <endian+2,s      0 = little endian
+                    bra       cont@
+big@                lda       #1               1 = big endian
+                    sta       <endian+2,s         
+cont@               rts
+
+* Block to Address: Convert block# to high 16 bits in D
+* b = block#, a = 0.  d = high 16 bits of address
+* Try to replace with math coprocessor multiply in Vicky?
+Blk2Addr            clra                          clear a, block # is in b
+                    lslb                          multiply block# by $20 to get top 16 bits x2
+                    rola                          of physical address (ex $3F*$20 = $07E0)
+                    lslb                          x4
+                    rola                          roll carry into a
+                    lslb                          x8
+                    rola                          roll carry into a
+                    lslb                          x16
+                    rola                          roll carry into a
+                    lslb                          x32 ($20)
+                    rola
+                    rts
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; clut Load2
+; extry:  x is address of file path/name
+; Loads CLUT from file or link
+clutload2
+*                   **** try to link clut data module
+*                   **** if link fails, then load the module from default chx
+                    pshs      a,b,x,y,u
+                    lda       #0                  F$Load a=langauge, 0=any
+                    os9       F$Link              try linking module
+                    beq       cont@               link CLUT if no error, if error, try load
+                    os9       F$Load              load and set Y=entry point of module
+                    lbcs      err@
+cont@               stu       <clutheader+2,s
+                    sty       <clutdata+2,s
+err@                puls      u,y,x,b,a,pc
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; clut copy
+; extry:  none
+; copies clut from loaded module to clut#0
+; x = clut#
+clutcopy            ldy       <clutdata+2,s
+                    lda       #$0                 path #
+                    ldb       #SS.DfPal           define palette clut#0 with data y
+                    os9       I$SetStt
+err@                puls      u,y,a,b,pc
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; unlink clut
+; extry:  none
+; unlink the current clut module from memory
+unlinkclut          pshs      u
+                    ldu       <clutheader+2,s
+                    os9       F$Unlink
+                    puls      u,pc
+
+
+                    ifgt      Level-1
+;;; Pixel - Draw Pixel
+;;;
+;;; takes X,Y and color and puts it in the bitmap bmblock
+;;; x=X
+;;; y=Y
+;;; a=color
+;;; calling syntax: RUN WILD([path,],"Pixel",X,Y,Color,bmblock)
+Pixel               cmpb      #5               5 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    clr       <pxlblk0,s
+                    clr       <pxlblk,s
+                    clr       <pxlblkaddr,s
+                    clr       <pxlblkaddr+1,s
+                    clr       <bmblock,s
+                    ldx       [,u]             X value 1st parameter
+                    ldy       [<$04,u]         Y value 2nd parameter
+                    ldd       [<$0C,u]         Get BMBlock
+                    exg       a,b              LSB to A
+                    sta       <bmblock,s       store in stack variable
+                    sta       <$1F,u           store bmblock in u
+                    ldd       [<$08,u]         Color 3rd parameter
+                    exg       a,b              LSB to A
+                    pshs      a,b,x,y,u        Put the variables on the stack
+                    leas      -1,s             add 1 byte to stack for carry -1
+                    clr       ,s               0=carry,1=color,2=y,3=X
+*                   **** D = 320 * gy.
+*                   **** 320 = 256 + 64, so use MUL for the lower byte,
+*                   **** and then add gy (gy * 256) to the upper byte.
+                    lda       6,s              py     ; 8 bits.
+                    ldb       #64
+                    mul
+                    adda      6,s              py
+                    ror       ,s               <pcarry  ; Collect the carry bit.
+*                   **** D += gx.
+                    addd      3,s              px     ; 16 bits.
+                    ror       ,s               <pcarry  ; Collect the carry bit.
+*                   **** Stash the block ID bits.
+                    pshs      a
+*                   **** Move the lower 13 bits (8191) into a pointer.
+                    anda      #31
+                    tfr       d,x
+*                   **** Restore the carry.
+*                   **** This add will set/clear the carry
+*                   **** based on the previously collected carry bits.
+                    ldb       1,s                   carry bit 
+                    addb      #192
+*                   **** ror it into the top of the block bits.
+                    puls      a
+                    rora
+*                   **** Shift the block bits to the bottom of A. 
+                    lsra
+                    lsra
+                    lsra
+                    lsra
+*                   **** A now contains the relative block number,
+*                   **** and X contains the block relative offset.xxxxxxxx               
+                    pshs      x                   stx pixel offset
+                    ;adda      #$36                  bmblock
+                    adda       <$1F,u             bmblock
+                    ;adda      [<$0C,u]           add bmblock
+mapit@              sta       <pxlblk+2,s              store the new block we will map
+                    ldx       <pxlblk0+2,s             load x with mapblock for F$MapBlk
+                    ldb       #1                  map 1 block
+                    pshs      u                   push u (F$MapBlk returns address in u)
+                    os9       F$MapBlk            Map the block
+                    lbcc      mapgood@            if successful, finish
+                    puls      u,x                 error, clean up and return
+                    bra       cleanup@            
+mapgood@            stu       <pxlblkaddr+4,s         store the logical address
+                    puls      u
+storepixel@         ldd       <pxlblkaddr+2,s
+                    puls      x                   pull blk relative offset
+                    leax      d,x                 add in logical start of block
+                    lda       1,s                 lda with the color
+                    sta       ,x                  write the pixel
+cleanup@            leas      1,s                 pull carry byte off stack
+*                    lbsr      fclrblk
+                    pshs      b,u
+                    ldu       <pxlblkaddr+2,s    ; was 4
+                    ldb       #1
+                    os9       F$ClrBlk
+                    puls      b,u 
+stkclean            puls      u,y,x,b,a           clean up stack 
+                    clrb                          No routine returns an error here so return 0
+                    leas      >stkdepth,s         eat temporary stack
+                    rts                           return to the caller
+
+;;; GetPixel - Return the color of pixel at x,y
+;;;
+;;; takes X,Y and color and puts it in the bitmap bmblock
+;;; x=X
+;;; y=Y
+;;; a=color
+;;; calling syntax: RUN WILD([path,],"GetPixel",X,Y,Color,bmblock)
+GetPixel            cmpb      #5               5 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    clr       <pxlblk0,s
+                    clr       <pxlblk,s
+                    clr       <pxlblkaddr,s
+                    clr       <pxlblkaddr+1,s
+                    clr       <bmblock,s
+                    clr       <$1F,u
+                    ldx       [,u]             X value 1st parameter
+                    ldy       [<$04,u]         Y value 2nd parameter
+                    ldd       [<$0C,u]         Get BMBlock
+                    exg       a,b              LSB to A
+                    ;sta       <bmblock,s       store in stack variable
+                    sta       <$1F,u           store bmblock in u
+                    ldd       [<$08,u]         Color 3rd parameter
+                    exg       a,b              LSB to A
+                    pshs      a,b,x,y,u        Put the variables on the stack
+                    leas      -1,s             add 1 byte to stack for carry -1
+                    clr       ,s               0=carry,1=color,2=y,3=X
+*                   **** D = 320 * gy.
+*                   **** 320 = 256 + 64, so use MUL for the lower byte,
+*                   **** and then add gy (gy * 256) to the upper byte.
+                    lda       6,s              py     ; 8 bits.
+                    ldb       #64
+                    mul
+                    adda      6,s              py
+                    ror       ,s               <pcarry  ; Collect the carry bit.
+*                   **** D += gx.
+                    addd      3,s              px     ; 16 bits.
+                    ror       ,s               <pcarry  ; Collect the carry bit.
+*                   **** Stash the block ID bits.
+                    pshs      a
+*                   **** Move the lower 13 bits (8191) into a pointer.
+                    anda      #31
+                    tfr       d,x
+*                   **** Restore the carry.
+*                   **** This add will set/clear the carry
+*                   **** based on the previously collected carry bits.
+                    ldb       1,s                   carry bit 
+                    addb      #192
+*                   **** ror it into the top of the block bits.
+                    puls      a
+                    rora
+*                   **** Shift the block bits to the bottom of A. 
+                    lsra
+                    lsra
+                    lsra
+                    lsra
+*                   **** A now contains the relative block number,
+*                   **** and X contains the block relative offset.xxxxxxxx               
+                    pshs      x                   stx pixel offset
+                    ;adda      #$36                  bmblock
+                    ;adda      #$2C                   bmblock
+                    adda       <$1F,u             add bmblock to relative block
+mapit@              sta       <pxlblk+2,s              store the new block we will map
+                    ldx       <pxlblk0+2,s             load x with mapblock for F$MapBlk
+                    ldb       #1                  map 1 block
+                    pshs      u                   push u (F$MapBlk returns address in u)
+                    os9       F$MapBlk            Map the block
+                    lbcc      mapgood@            if successful, finish
+                    puls      u,x                 error, clean up and return
+                    bra       clean            
+mapgood@            stu       <pxlblkaddr+4,s         store the logical address
+                    puls      u
+storepixel@         ldd       <pxlblkaddr+2,s
+                    puls      x                   pull blk relative offset
+                    leax      d,x                 add in logical start of block
+                    ;lda       1,s                 lda with the color
+                    ;sta       ,x                  write the pixel
+                    pshs      b
+                    clrb
+                    lda       ,x                  get the color at pixel x,y
+                    exg       a,b
+                    std       [<$08,u]            return the value
+                    puls      b
+clean               leas      1,s                 pull carry byte off stack
+                    pshs      b,u
+                    ldu       <pxlblkaddr+2,s    ; was 4
+                    ldb       #1
+                    os9       F$ClrBlk
+                    puls      b,u 
+                    puls      u,y,x,b,a           clean up stack 
+                    clrb                          No routine returns an error here so return 0
+                    leas      >stkdepth,s         eat temporary stack
+                    rts                           return to the calle
+
+;;; Box- Draw a rectangle.
+;;;
+;;; calling syntax: RUN WILD([path,],"Box",X1,Y1,X2,Y2,color,bmblock)
+Box                 cmpb      #7                  7 parameters?
+                    lbne      ParamErr            no, exit with Parameter Error
+                    pshs      a,b,x,y,u           push registers on the stack
+*                   get caller params and store variables on stack 
+                    ldd       [<$10,u]            get lcolor 
+                    stb       <univ8c,s           save color
+                    ldy       [<$0C,u]            get Y2 from basic
+                    sty       <Y2,s               store Y2 in variable  
+                    ldx       [<$08,u]            get X2 from basic
+                    stx       <X2,s               store in X2 variable
+                    ldy       [<$04,u]            get Y1 from basic
+                    sty       <Y1,s
+                    ldx       [,u]                get X1 from basic
+                    stx       <X1,s               store in X1 variable
+                    ;lbsr      writepixel2
+loop@               ldy       <Y1,s
+                    lbsr      writepixel2
+                    ldy       <Y2,s
+                    lbsr      writepixel2
+                    leax      1,x
+                    cmpx      <X2,s
+                    bne       loop@
+                    lbsr      writepixel2
+                    ldy       <Y1,s
+loop2@              ldx       <X1,s
+                    lbsr      writepixel2
+                    ldx       <X2,s
+                    lbsr      writepixel2
+                    leay      1,y
+                    cmpy      <Y2,s
+                    bne       loop2@
+exit@               puls      u,y,x,b,a           restore previous regs from stack
+                    clrb                          math results in B causes strange error
+                    leas      >stkdepth,s         eat temporary stack
+                    rts  
+
+;;; Bar - Draw a filled rectangle.
+;;;
+;;; calling syntax: RUN WILD([path,],"Bar",X1,Y1,X2,Y2,color,bmblock)
+Bar                 cmpb      #7                  7 parameters?
+                    lbne      ParamErr            no, exit with Parameter Error
+                    pshs      a,b,x,y,u           push registers on the stack
+*                   get caller params and store variables on stack 
+                    ldd       [<$10,u]            get lcolor 
+                    stb       <univ8c,s           save color
+                    ldy       [<$0C,u]            get Y2 from basic
+                    sty       <Y2,s               store Y2 in variable  
+                    ldx       [<$08,u]            get X2 from basic
+                    stx       <X2,s               store in X2 variable
+                    ldy       [<$04,u]            get Y1 from basic
+                    sty       <Y1,s
+                    ldx       [,u]                get X1 from basic
+                    stx       <X1,s               store in X1 variable
+                    ;lbsr      writepixel2
+                    ;ldy       <Y1,s
+loop@               ldx       <X1,s
+loop2@              lbsr      writepixel2
+                    leax      1,x
+                    cmpx      <X2,s
+                    bne       loop2@
+                    leay      1,y
+                    cmpy      <Y2,s
+                    bne       loop@
+exit@               puls      u,y,x,b,a           restore previous regs from stack
+                    clrb                          math results in B causes strange error
+                    leas      >stkdepth,s         eat temporary stack
+                    rts  
+
+;;; Circle - Draw a circle.
+;;; 
+;;; CX1=Center X, CY=Center Y, r=Radius,P2=Reserved Future 0, Color, BM First mapped block
+;;; calling syntax: RUN WILD([path,],"Circle",cX1,cY1,r,p2,color,bmblock)
+Circle              cmpb      #7                  7 parameters?
+                    lbne      ParamErr            no, exit with Parameter Error
+                    pshs      a,b,x,y,u           push registers on the stack
+*                   get caller params and store variables on stack 
+                    ldd       [<$10,u]            color
+                    stb       <univ8c,s
+                    ldx       [,u]                X1
+                    stx       <X1,s
+                    ldy       [<$04,u]            Y1
+                    sty       <Y1,s
+                    ldd       [<$08,u]            Radius
+                    ldx       #0                  initial x=0
+                    stx       <X2,s               Store X
+                    tfr       d,y                 set y = radius
+                    sty       <Y2,s               Store Y
+                    lslb
+                    rola
+                    std       <radius,s           2 * radius
+                    ldd       #3                  d=3
+                    subd      <radius,s           d=3-(2*Radius)
+                    std       <d,s                store decision parameter
+*                   drawcircle
+                    ldd       <X1,s               get center X
+                    addd      <X2,s               add offset
+                    tfr       d,x                 store X value
+                    ldd       <Y1,s               get center Y
+                    addd      <Y2,s               add offset
+                    tfr       d,y
+                    lbsr      writepixel2
+                    ldd       <X1,s               get center X
+                    subd      <X2,s               subract offset
+                    tfr       d,x                 store X value
+                    lbsr      writepixel2         y should already be set Y1+Y2
+                    ldd       <X1,s               get center X
+                    addd      <X2,s               add offset
+                    tfr       d,x                 store X value
+                    ldd       <Y1,s               get center Y
+                    subd      <Y2,s               subtract offset
+                    tfr       d,y
+                    lbsr      writepixel2
+                    ldd       <X1,s               get center X
+                    subd      <X2,s               subract offset
+                    tfr       d,x                 store X value
+                    lbsr      writepixel2         y should already be Y1-Y2
+                    ldd       <X1,s               get center X
+                    addd      <Y2,s               add offset
+                    tfr       d,x                 store X value
+                    ldd       <Y1,s               get center Y
+                    addd      <X2,s               add offset
+                    tfr       d,y
+                    lbsr      writepixel2
+                    ldd       <X1,s               get center X
+                    subd      <Y2,s
+                    tfr       d,x                 store X value
+                    ldd       <Y1,s               get center Y
+                    addd      <X2,s               add offset
+                    tfr       d,y
+                    lbsr      writepixel2
+                    ldd       <X1,s               get center X
+                    addd      <Y2,s               add offset
+                    tfr       d,x                 store X value
+                    ldd       <Y1,s               get center Y
+                    subd      <X2,s               subtract offset
+                    tfr       d,y
+                    lbsr      writepixel2
+                    ldd       <X1,s               get center X
+                    subd      <Y2,s
+                    tfr       d,x                 store X value
+                    ldd       <Y1,s               get center Y
+                    subd      <X2,s               subtract offset
+                    tfr       d,y
+                    lbsr      writepixel2
+*                   end drawcircle
+cont@               ldd       <d,s                get decision
+                    cmpd      #0
+                    bgt       cont2@              if d>0
+                    ldd       <X2,s               get X value
+                    lslb
+                    rola                          multiply by 2
+                    lslb
+                    rola                          multiply by 2 = *4
+                    addd      <d,s
+                    addd      #6                  d=d + 4 * X2 + 6
+                    std       <d,s
+                    bra       cont3@
+cont2@              ldy       <Y2,s
+                    leay      -1,y                decrement
+                    sty       <Y2,s
+                    ldd       <X2,s               get X value
+                    subd      <Y2,s
+                    lslb
+                    rola                          multiply by 2
+                    lslb
+                    rola                          multiply by 2 = *4
+                    addd      <d,s                 add d
+                    addd      #10                 add 10   d=d + 4 * (x-y) + 10
+                    std       <d,s
+cont3@              ldx       <X2,s
+                    leax      1,x                 increment X
+                    stx       <X2,s               store X
+*                   drawcircle
+                    ldd       <X1,s               get center X
+                    addd      <X2,s               add offset
+                    tfr       d,x                 store X value
+                    ldd       <Y1,s               get center Y
+                    addd      <Y2,s               add offset
+                    tfr       d,y
+                    lbsr      writepixel2
+                    ldd       <X1,s               get center X
+                    subd      <X2,s               subract offset
+                    tfr       d,x                 store X value
+                    lbsr      writepixel2         y should already be set Y1+Y2
+                    ldd       <X1,s               get center X
+                    addd      <X2,s               add offset
+                    tfr       d,x                 store X value
+                    ldd       <Y1,s               get center Y
+                    subd      <Y2,s               subtract offset
+                    tfr       d,y
+                    lbsr      writepixel2
+                    ldd       <X1,s               get center X
+                    subd      <X2,s               subract offset
+                    tfr       d,x                 store X value
+                    lbsr      writepixel2         y should already be Y1-Y2
+                    ldd       <X1,s               get center X
+                    addd      <Y2,s               add offset
+                    tfr       d,x                 store X value
+                    ldd       <Y1,s               get center Y
+                    addd      <X2,s               add offset
+                    tfr       d,y
+                    lbsr      writepixel2
+                    ldd       <X1,s               get center X
+                    subd      <Y2,s
+                    tfr       d,x                 store X value
+                    ldd       <Y1,s               get center Y
+                    addd      <X2,s               add offset
+                    tfr       d,y
+                    lbsr      writepixel2
+                    ldd       <X1,s               get center X
+                    addd      <Y2,s               add offset
+                    tfr       d,x                 store X value
+                    ldd       <Y1,s               get center Y
+                    subd      <X2,s               subtract offset
+                    tfr       d,y
+                    lbsr      writepixel2
+                    ldd       <X1,s               get center X
+                    subd      <Y2,s
+                    tfr       d,x                 store X value
+                    ldd       <Y1,s               get center Y
+                    subd      <X2,s               subtract offset
+                    tfr       d,y
+                    lbsr      writepixel2
+*                   end drawcircle
+                    ldd       <Y2,s
+                    cmpd      <x2,s               x2=y2
+                    lbge      cont@
+exit@               puls      u,y,x,b,a           restore previous regs from stack
+                    clrb                          math results in B causes strange error
+                    leas      >stkdepth,s         eat temporary stack
+                    rts  
+                    
+;;; Line - draw line between 2 coordinates
+;;; 
+;;; pull from stack: x, y, x, y, color
+;;; x=16 bit value, y=8 bit value
+;;; pc=01 x=23 y=4 x=56 y=7 c=8
+;;; calling syntax: RUN WILD([path,],"Line",X1,Y1,X2,Y2,color,bmblock)                   
+Line                cmpb      #7                  7 parameters?
+                    lbne      ParamErr            no, exit with Parameter Error
+                    pshs      a,b,x,y,u           push registers on the stack                    
+*                   get caller params and store variables on stack 
+                    ldd       [<$10,u]          color
+                    stb       <univ8c,s
+                    ldx       [,u]              X1
+                    stx       <X1,s
+                    ldy       [<$04,u]          Y1
+                    sty       <Y1,s
+                    ldx       [<$08,u]          X2
+                    stx       <X2,s
+                    ldy       [<$0C,u]          Y2
+                    sty       <Y2,s
+*                      check for straight line
+                    cmpy      <Y1,s
+                    lbeq      linehori    Check for horizontal line
+*                      check for vertical line
+                    cmpx      <X1,s
+                    lbeq      linevert    Check for vertical  line
+*                      Check for uphill line
+                    ldy       <Y1,s
+                    cmpy      <Y2,s
+                    bhi       uphill@  
+*                      Initial X1/X2 comparison
+                    ldx       <X1,s
+                    cmpx      <X2,s             Compare X1 with X2
+                    lblo      cont@             
+                    ldd       <X1,s             x1 switchpoints
+                    ldx       <x2,s             x2
+                    std       <X2,S             x2
+                    stx       <X1,s             x1
+                    ldd       <Y1,s             y1
+                    ldx       <Y2,s             y2
+                    std       <Y2,s             y2
+                    stx       <Y1,s             y1
+                    bra       cont@
+uphill@             ldd       <X2,s             get X2
+                    subd      <X1,s             sub X1
+                    std       $fee6             store Math Co-Pro numerator
+                    ldd       <Y1,s             get Y1
+                    subd      <Y2,s             sub Y2
+                    std       $fee4             store Math Co-Pro denominator
+                    ldd       $fef4             Get results from Div Co-Pro
+                    std       <cnt,s            save
+                    ldd       #0                d=0
+                    std       <d,s              clear d
+                    ldx       <X1,s             starting X
+                    ldy       <Y1,s             starting Y
+uloop@              lbsr      writepixel2
+                    ldd       <d,s              load D
+                    addd      #1                increment D
+                    std       <d,s              store D
+                    cmpd      <cnt,s
+                    bne       incx@
+                    leay      -1,y
+                    ldd       #0
+                    std       <d,s              d=0 reset counter
+incx@               leax      1,x               increment X
+                    cmpx      <X2,s             at end of line
+                    bne       uloop@
+                    lbra      exit@
+cont@               lbsr       calcdxdy         Calculate dx, dy once
+*                      Determine steepness
+                    ldd       <dx,s             Calculate dx*2
+                    lslb
+                    rola
+                    std       <dx2,s            dx2 = 2 * dx
+                    ldd       <dy,s             Calculate dy*2  
+                    lslb
+                    rola
+                    std       <dy2,s            dy2 = 2*dy  m_new
+                    subd      <dx,s             slope_error_new
+                    ;std       $fee4
+                    std       <slperr,s         store slope error
+                    ldx       <X1,s             starting X
+                    ldy       <Y1,s             starting Y
+loop@               lbsr      writepixel2
+                    ldd       <slperr,s
+                    addd      <dy2,s            m_new add slope to increment angle formed
+                    std       <slperr,s
+                    ;std       $fee2
+                    bge       slopenew@
+cont2@              leax      1,x               increment X
+                    cmpx      <X2,s             check for end
+                    beq       exit@
+                    bra       loop@
+slopenew@           leay      1,y               increment y
+                    ;ldd       #0
+                    ldd       <slperr,s
+                    subd      <dx2,s
+                    std       <slperr,s         update slope error
+                    ;std       $fee0
+                    bra       cont2@            
+exit@               lbsr      writepixel2
+                    puls      u,y,x,b,a         restore previous regs from stack
+                    clrb                        math results in B causes strange error
+                    leas      >stkdepth,s       eat temporary stack
+                    rts                         return to the caller 
+                    
+absd                tsta
+                    bge       end@
+                    coma
+                    comb
+                    addd      #1
+end@                rts
+
+calcdxdy            ldd       <X2+2,s            x2
+                    subd      <X1+2,s            x1
+                    lbsr      absd
+                    std       <dx+2,s            <dx,s   dx=x2-x1
+                    ldd       <Y2+2,s            y2
+                    subd      <Y1+2,s            y1
+                    lbsr      absd
+                    std       <dy+2,s            <dy,s   dy=y2-y1 
+                    rts                    
+
+linehori            ldx       <X1,s               Get start of X1
+                    cmpx      <X2,s               compare with X2
+                    blo       loop@
+                    ldy       <X2,s               get X2 value
+                    sty       <X1,s
+                    stx       <X2,s               
+                    exg       x,y            
+loop@               ldy       <Y1,s               Get Y1
+                    lbsr      writepixel2
+                    leax      1,x                 increment X1
+                    cmpx      <X2,s
+                    bne       loop@
+                    lbsr      writepixel2
+                    puls      u,y,x,b,a           restore previous regs from stack
+                    clrb                          math results in B causes strange error
+                    leas      >stkdepth,s         eat temporary stack
+                    rts                           return to the caller 
+
+linevert            ldy       <Y1,s               Get Start of Y
+                    cmpy      <Y2,s
+                    blo       loop2@
+                    ldx       <Y2,s
+                    stx       <Y1,s
+                    sty       <Y2,s
+                    ldy       <Y1,s
+loop2@              ldx       <X1,s               Get X
+                    lbsr      writepixel2
+                    leay      1,y
+                    cmpy      <Y2,s
+                    bne       loop2@
+                    puls      u,y,x,b,a           restore previous regs from stack
+                    clrb                          math results in B causes strange error
+                    leas      >stkdepth,s         eat temporary stack
+                    rts                           return to the caller 
+
+;;; write pixel - Subroutine
+;;; takes X,Y and color and puts it in the bitmap bmblock
+;;; x=X
+;;; y=Y
+;;; BMBlock pulled from parameter 6
+;;; Color pulled from parameter 5
+;;; 
+writepixel2         clr       <pxlblk0+4,s
+                    clr       <pxlblk+4,s
+                    clr       <pxlblkaddr+4,s
+                    clr       <pxlblkaddr+5,s
+                    clrb
+                    ldd       [<$14,u]            get bmblock
+                    stb       <$1F,u              store bmblock referenced to u
+                    ldd       [<$10,u]            get lcolor
+                    exg       a,b                 color to a
+                    pshs      a,b,x,y,u
+                    leas      -1,s                  add 1 byte to stack for carry
+                    clr       ,s                    0=carry,1=color,2=y,3=X
+*                   **** D = 320 * gy.
+*                   **** 320 = 256 + 64, so use MUL for the lower byte,
+*                   **** and then add gy (gy * 256) to the upper byte.
+                    lda       6,s                   py     ; 8 bits.
+                    ldb       #64
+                    mul
+                    adda      6,s                   py
+                    ror       ,s                    <pcarry  ; Collect the carry bit.
+*                   **** D += gx.
+                    addd      3,s                   px     ; 16 bits.
+                    ror       ,s                    <pcarry  ; Collect the carry bit.
+*                   **** Stash the block ID bits.
+                    pshs      a
+
+*                   **** Move the lower 13 bits (8191) into a pointer.
+                    anda      #31
+                    tfr       d,x
+*                   **** Restore the carry.
+*                   **** This add will set/clear the carry
+*                   **** based on the previously collected carry bits.
+                    ldb       1,s                   carry bit 
+                    addb      #192
+*                   **** ror it into the top of the block bits.
+                    puls      a
+                    rora
+*                   **** Shift the block bits to the bottom of A. 
+                    lsra
+                    lsra
+                    lsra
+                    lsra
+*                   **** A now contains the relative block number,
+*                   **** and X contains the block relative offset.xxxxxxxxw
+                    pshs      x                   stx pixel offset
+                    adda      <$1F,u              add bmblock start of bitmap to relative to get block#
+;                   adda      #$36                bmblock
+mapit@              sta       <pxlblk+6,s         store the new block we will map
+                    ldx       <pxlblk0+6,s        load x with mapblock for F$MapBlk
+                    ldb       #1                  map 1 block
+                    pshs      u                   push u (F$MapBlk returns address in u)
+                    os9       F$MapBlk            Map the block
+                    lbcc      mapgood@            if successful, finish
+                    puls      u,x                 error, clean up and return
+                    bra       cleanup@            
+mapgood@            stu       <pxlblkaddr+8,s     store the logical address
+                    puls      u
+storepixel@         ldd       <pxlblkaddr+6,s     
+                    puls      x                   pull blk relative offset
+                    leax      d,x                 add in logical start of block
+                    lda       1,s                 lda with the color
+                    sta       ,x                  write the pixel
+cleanup@            leas      1,s                 pull carry byte off stack
+                    pshs      b,u
+                    ldu       <pxlblkaddr+6,s     
+                    ldb       #1
+                    os9       F$ClrBlk
+                    puls      b,u 
+                    puls      u,y,x,b,a           clean up stack 
+                    rts
+
+;;; BMLoad - Load Bitmap file into allocated Bitmap
+;;;
+;;; calling syntax: RUN WILD([path,],"BMLoad",bmblock,bitmappath)
+BMLoad              cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    pshs      a,x,y,u          Preserve registers
+                    lda       #READ.
+                    leax      [<$04,u]         Pointer to bitmap path
+                    os9       I$Open
+                    lbcs      errcl
+                    sta       <currPath,s      store current path
+                    
+                    ldd       [,u]             get first bitmap block
+                    clra
+                    std       <currBlk,s       store current block
+                    sta       <blkCnt,s        store block cnt
+loadimage           ldb       #1
+                    ldx       <currBlk,s       restore current block
+                    pshs      u                F$MapBlk with destroy U so push
+                    os9       F$MapBlk
+                    bcc       noerr@
+                    puls      u                restore U from stack
+                    lbra      errcl
+noerr@              stu       <mapaddr+2,s     since U is pushed add 2 to variable ref.
+                    puls      u                restore U from stack
+
+                    lda       <currPath,s      load path
+                    ldx       <mapaddr,s       map address in X
+                    ldy       #$2000           location to load
+                    os9       I$Read
+                    bcc       noerr@
+                    cmpb      #E$EOF
+                    beq       loaddone         load done?
+                    lbra      errcl
+noerr@              inc       <blkCnt,s        increment blk cnt
+
+                    pshs      u                F$ClrBlk will destroy U, so push it
+                    ldu       <mapaddr+2,s     since U is pushed add 2 to variable ref.
+                    ldb       #1
+                    os9       F$ClrBlk
+                    puls      u                restore U from stack
+                    
+                    lda       <blkCnt,s        load block cnt
+                    cmpa      #$0A             is it the end?
+                    beq       loaddone
+                    inc       <currBlk+1,s     increment current block
+                    bra       loadimage
+
+loaddone            lda       <currPath,s      restore path
+                    os9       I$Close
+                    bcs       errcl
+
+errcl               puls      u,y,x,a
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+;;; BMClear - Clear image of allocated Bitmap
+;;;
+;;; calling syntax: RUN WILD([path,],"BMClear",bmblock, color)
+BMClear             cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    clr       <pxlblk0,s
+                    clr       <pxlblk,s
+                    clr       <pxlblkaddr,s
+                    clr       <pxlblkaddr+1,s
+                    clr       <bmblock,s
+                    clr       <currBlk,s
+                    clr       <blkCnt,s
+                    pshs      a,x,y,u          Preserve registers
+                    sta       <currPath,s      store current path
+                    ldd       [,u]             get first bitmap block
+                    clra                       clear block cnt
+                    std       <currBlk,s       store current block
+                    sta       <blkCnt,s        store block cnt
+clearimage          ldb       #1
+                    ldx       <currBlk,s       restore current block
+                    pshs      u                F$MapBlk with destroy U so push
+                    os9       F$MapBlk
+                    bcc       noerr@
+                    puls      u                restore U from stack
+                    lbra      errcl2
+noerr@              stu       <mapaddr+2,s     since U is pushed add 2 to variable ref.
+                    puls      u                restore U from stack
+                    lda       <currPath,s      load path
+                    ldx       <mapaddr,s       map address in X
+                    ldy       #$2000           number of bytes to clear
+                    ldd       [<$04,u]         load color
+                    tfr       b,a
+pixelloop           std       ,x++             write pixels             
+                    leay      -2,y             decrement Y pointer
+                    bne       pixelloop        done?
+cont@               inc       <blkCnt,s        increment blk cnt
+                    pshs      u                F$ClrBlk will destroy U, so push it
+                    ldu       <mapaddr+2,s     since U is pushed add 2 to variable ref.
+                    ldb       #1
+                    os9       F$ClrBlk
+                    puls      u                restore U from stack                   
+                    lda       <blkCnt,s        load block cnt
+                    cmpa      #$0A             is it the end?
+                    beq       cleardone
+                    inc       <currBlk+1,s     increment current block
+                    bra       clearimage
+cleardone           lda       <currPath,s      restore path
+errcl2              puls      u,y,x,a
+                    clrb
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+;;; BMSave - Save current Bitmap
+;;;
+;;; calling syntax: RUN WILD([path,],"BMClear",bmblock, filename)
+BMSave              cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    clr       <pxlblk0,s
+                    clr       <pxlblk,s
+                    clr       <pxlblkaddr,s
+                    clr       <pxlblkaddr+1,s
+                    clr       <bmblock,s
+                    clr       <currBlk,s
+                    clr       <blkCnt,s
+                    pshs      a,x,y,u          Preserve registers
+                    sta       <currPath,s      store current path
+                    leax      [<$04,u]         Get the filename to save
+                    ldb       #$2F             03 0=R 2=W 2=E 3=PR 4=PW 5=PE
+                    lda       #WRITE.          #$04             Access Mode Write
+                    os9       I$Create         create and open file
+                    bcs       merr             Error
+                    sta       <Univ8a,s        save file path
+                    ldd       [,u]             get first bmblock
+                    clra
+                    std       <currBlk,s       get current block
+                    sta       <blkCnt,s        store block count
+mapblock            ldb       #1               map 1 block
+                    ldx       <currBlk,s       X with current address
+                    pshs      u                F$MapBlk destroys U
+                    os9       F$Mapblk         map in block
+                    bcc       noerr@
+                    puls      u                restore U
+                    lbra      merr             error
+noerr@              stu       <mapaddr+2,s    store map address
+                    puls      u                get U off stack
+                    lda       <Univ8a,s        get file path
+                    ldx       <mapaddr,s       put map address in X
+                    ldy       #$2000           8K Block - num bytes
+                    os9       I$Write
+                    bcc       nooerr@
+                    lbra      merr             error
+nooerr@             inc       <blkCnt,s        increment block count
+                    pshs      u                F$Clrblk destroys U
+                    ldu       <mapaddr+2,s     get mapaddr
+                    ldb       #1               clear 1 block
+                    os9       F$Clrblk         clear the block
+                    puls      u                restore u
+                    lda       <blkCnt,s        load block count
+                    cmpa      #$0A             10th block?
+                    beq       done@
+                    inc       <currBlk+1,s
+                    bra       mapblock
+done@               lda       <Univ8a,s        get the file path
+                    os9       I$Close
+merr                lda       <currPath,s      get previous path
+                    puls      u,x,y,a          restore stack
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller                  
+                    endc
+
+;;; Graphics On
+;;;
+;;; calling syntax: RUN WILD([path,],"GOn")
+GOn                 ldx       #$3F   ;#%00001000+%00000100    Turn on Bitmaps and Graphics FX_BM = %00001000
+                    *         FX_GRX = %00000100
+                    *         FX_OVR = %00000010      Overlay Text on Graphics
+                    *         FX_TXT = %00000001      Text Mode On
+                    *         Sprite = %00100000      Sprite Enable
+                    *         TileMap= %00010000      TileMap Enable
+                    ldy       #%11111111       Don't change FFC1  FT_OMIT = %11111111
+                    lda       ,s               Path # from stack
+                    ldb       #SS.DScrn        Display Screen with new settings
+                    os9       I$SetStt         Turn on Graphics
+                    clrb                       no error
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller             
+
+
+;;; Graphics Off
+;;;
+;;; calling syntax: RUN WILD([path,],"GOff")
+GOff                ldx       #%00000001       Turn Text on BM_TXT = %00000001
+                    ldy       #%11111111       Don't change FFC1  FT_OMIT = %11111111
+                    lda       ,s               Path # from stack 
+                    ldb       #SS.DScrn        Display screen with new settings
+                    os9       I$SetStt
+                    bcs       error_ds         Error
+                    clrb                       No Error
+error_ds            leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+                    
+;;; BMOff - Bitmap Off/Free
+;;; 
+;;; calling syntax: RUN WILD([path,],"BMOff",bitmap#)
+BMOff               cmpb      #1               1 parameters?
+                    beq       par1@            1 param clear BM0
+                    cmpb      #2
+                    lbne      ParamErr         no, exit with Parameter Error
+                    ldy       [,u]             Get BM# to free
+                    bra       par2@
+par1@               ldy       #0               BM 0-2
+par2@               lda       #0
+                    ldb       #SS.FScrn        Free Bitmap
+                    os9       I$SetStt
+error_BG            leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+                    ifgt      Level-1
+;;; BMStatus - Bitmap Status
+;;;  Returns 0 bm(x) if disabled, returns 1 bm(x) enabled
+;;; calling syntax: RUN WILD([path,],"BMstatus",bm0,bm1,bm2)
+BMStatus            cmpb      #4               4 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    pshs      u
+                    ldu       <mapaddr,s       u is address of mapped block
+                    ldb       #$01             clearing 1 block
+                    os9       F$ClrBlk         remove block from DAT Image
+                    ldx       #$C0             need to map in BM registers block
+                    ldb       #$01
+                    os9       F$MapBlk         Map in Bitmap registers
+                    lbcs      exiterr
+                    stu       <mapaddr,s
+                    stu       <$20,u
+                    puls      u
+                    pshs      b
+                    clrb                       
+                    ldx       <mapaddr-1,s     Get new mapped block
+                    leax      $1000,x          bitmap registers are $1000 offset
+                    lda       ,x+              Get BM0 status
+                    anda      #$1              only want bit 0
+                    exg       a,b
+                    std       [,u]             store bm0
+                    clrb
+                    leax      7,x              Get BM1 status
+                    lda       ,x+
+                    anda      #$1              only want bit 0
+                    exg       a,b
+                    std       [<$04,u]         store bm1
+                    clrb
+                    leax      7,x              Get BM2 status
+                    lda       ,x+
+                    anda      #$1              only want bit 0
+                    exg       a,b
+                    std       [<$08,u]         store bm2
+                    puls      b
+                    pshs      u                clear MapBlk from DAT Image
+                    ldu       <mapaddr,s       u is address of mapped block
+                    ldb       #$01             clearing 1 block
+                    os9       F$ClrBlk         remove block from DAT Image
+                    puls      u
+exiterr             leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+                    endc
+                    
+;;; Clut Unlink
+;;; 
+;;; calling syntax: RUN WILD([path,],"ClutFree",clutheader)
+ClutFree            cmpb      #1               1 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    pshs      u
+                    ;ldu       [,u]            Get CLUT filename to free
+                    ldu       $feea            clut header address
+                    os9       F$Unlink
+                    puls      u
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+
+
+;;; Clutload - Load a CLUT in specified clut#
+;;; 
+;;; calling syntax: RUN WILD([path,],"ClutLoad",clut#,clutfile)
+ClutLoad            cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    pshs      a,x,y,u          push registers
+                    ldx       [,u]	         clut# store x because need it later
+                    pshs      x                when u gets trashed
+                    leax      [$04,u]          6th parameter Get CLUT path
+                    lda       #0               F$Load a=language, 0=Any
+                    os9       F$Link           Try linking module
+                    beq       cont@            Load CLUT if no error
+                    os9       F$Load           Load and set y=entry point
+                    bcs       error_cl3@
+cont@               puls      x                replaced following line with this one
+*                   ldx       [,u]             CLUT # 1st parameter
+                    lda       ,s               Path #
+                    ldb       #SS.DfPal        Define Palette CLUT#0 with Y data
+                    os9       I$SetStt
+                    os9       F$Unlink         Clut defined now this saves 8K for Basic09         
+                    bcs       error_ds3
+                    ldu       5,s              F$Link,F$Load,F$Unlink all trash U
+error_cl3@          puls      u,y,x,a
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+;;; Bitmap - Allocate Bitmap
+;;; 
+;;; calling syntax: RUN WILD([path,],"Bitmap",bitmap#,screenmode,bmblock,layer,clut#,clutname)
+Bitmap              cmpb      #7               6 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    ldy       [,u]             1st parameter bitmap #
+                    ldx       [$04,u]          2nd parameter screentype 0=320x240 1=320x200
+                    lda       ,s               Path # from stack
+                    ldb       #SS.AScrn        Assign and create bitmap
+                    os9       I$SetStt         
+                    bcc       storeblk         No error store block #
+                    cmpb      #E$WADef         Check if windows already defined
+                    bne       error_ds2
+storeblk            tfr       x,d              
+                    std       [$08,u]          Save BMBlock to 3rd parameter                
+
+Clut                pshs      a,x,y,u          push
+                    ldx       [$10,u]	        store x because need it later
+                    pshs      x                when u gets trashed
+                    leax      [$14,u]          6th parameter Get CLUT path
+                    lda       #0               F$Load a=language, 0=Any
+                    os9       F$Link           Try linking module
+                    beq       cont@            Load CLUT if no error
+                    os9       F$Load           Load and set y=entry point
+                    bcs       error_ds3
+cont@               puls      x                replaced following line with this one
+*                   ldx       [$10,u]          CLUT # 5th parameter
+                    lda       ,s               Path #
+                    ldb       #SS.DfPal        Define Palette CLUT#0 with Y data
+                    os9       I$SetStt
+                    os9       F$Unlink         Clut defined now this saves 8K for Basic09         
+                    bcs       error_ds3
+                    ldu       5,s              F$Link,F$Load,F$Unlink all trash U
+                    **** Set CLUT0 to BM0
+                    ldx       [$10,u]          CLUT # 5th param
+                    ldy       [,u]             Bitmap # 1st param
+                    lda       ,s               Path #
+                    ldb       #SS.Palet        Assign CLUT # to Bitmap #
+                    os9       I$SetStt
+                    
+                    **** Assign Bitmap to Layer
+                    ldx       [$0C,u]        4th parameter Layer # 
+                    ldy       [,u]           Bitmap #
+                    lda       ,s              Path #
+                    ldb       #SS.PScrn       Position Bitmap # to Layer #
+                    os9       I$SetStt
+error_ds3           puls      u,y,x,a
+error_ds2           leas      >stkdepth,s     eat temporary stack
+                    rts                       return to the caller
+                    
+                    
+;;;  GFfee
+;;;
+;;;  Calling syntax: RUN WILD([path,],"GFree",bitmap#)             
+GFree               cmpb      #2              2 parameters?
+                    lbne      ParamErr        no, exit with Parameter Error
+                    ldy       [,u]            1st parameter Bitmap #
+                    lda       ,s              Path #
+                    ldb       #SS.FScrn       Free Screen Ram
+                    os9       I$SetStt
+                    bcs       error_ds4
+                    clrb
+error_ds4           leas      >stkdepth,s     eat temporary stack
+                    rts                       return to the caller
+                                  
+;; SS.Mouse
+;;; Mouse - Return Mouse coordinates 320x240
+;;; Returns the mouse information.
+;;;
+;;; Entry:  B  = SS.Mouse 
+;;;
+;;; Exit:   A = Button state.
+;;;         X = Horizontal position (0 - 640).
+;;;         Y = Vertical position (0 - 480).
+;;;        CC = Carry flag clear to indicate success.
+;;;
+;;; Error:  B = A non-zero error code.
+;;;        CC = Carry flag set to indicate error.
+;;; Mouse returns 320x240 XY
+;;; calling syntax: RUN WILD([path,],"Mouse",X,Y,Button)
+Mouse               cmpb      #4               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    ldx       [,u]             X value 1st parameter
+                    ldy       [<$04,u]         Y value 2nd parameter
+                    ldd       [<$08,u]         Button 3rd parameter
+                    ldb       #SS.Mouse
+                    clra
+                    os9       I$GetStt
+                    exg       x,d              Move X data to D
+                    lsra                       divide Y/2
+                    rorb
+                    exg       x,d              swap X data back into X
+                    exg       y,d              move Y data to D
+                    lsra                       divide Y/2
+                    rorb
+                    exg       y,d
+                    stx       [,u]             return X value 1st parameter
+                    sty       [<$04,u]         return Y value 2nd parameter
+                    clrb
+                    exg       a,b              LSB to A, byte button data to A
+                    anda      #$03             Bit 0 = Left, Bit 1 = Right, Bit 2 = Middle button
+                    std       [<$08,u]         Return Button 3rd parameter    
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+;;; MouseHR - returns 640x480 XY
+;;; calling syntax: RUN WILD([path,],"MouseHR",X,Y,Button)
+MouseHR             cmpb      #4               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    ldx       [,u]             X value 1st parameter
+                    ldy       [<$04,u]         Y value 2nd parameter
+                    ldd       [<$08,u]         Button 3rd parameter
+                    ldb       #SS.Mouse
+                    clra
+                    os9       I$GetStt
+                    stx       [,u]             return X value 1st parameter
+                    sty       [<$04,u]         return Y value 2nd parameter
+                    clrb
+                    exg       a,b              LSB to A, byte button data to A
+                    anda      #$03             Bit 0 = Left, Bit 1 = Right, Bit 2 = Middle button
+                    std       [<$08,u]         Return Button 3rd parameter    
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+
+;;; FNLoad - Load a font into specified font position
+;;;
+;;; fontnum = 0 or 1 - fontname specifies font in /dd/sys/fonts
+;;; Calling syntax: RUN WILD([path,],"FNLoad",fontnum,fontname) 
+FNLoad              cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    pshs      a,x,y,u
+                    ldy       [,u]             get param 1 fontnum
+                    lda       #0               path
+                    leax      [<$04,u]         get param 2 fontname to load
+                    ldb       #SS.FntLoadF     load font from file
+                    os9       I$SetStt
+                    bcs       error@
+                    clrb                   
+error@              puls      a,x,y,u
+                    leas      >stkdepth,s      eat temporary stack
+                    rts 
+                    
+;;; FNChar - Load a font into specified font position
+;;;
+;;; fontnum = 0 or 1 - fontname specifies font in /dd/sys/fonts
+;;; Calling syntax: RUN WILD([path,],"FNChar",fontset,fontnum,FONTCHAR) 
+FNChar              cmpb      #4               4 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    pshs      a,x,y,u
+                    ldd       [,u]             get param 1 fontnum
+                    exg       a,b
+                    clrb
+                    ldy       [<$04,u]         get param 2 fontname to load
+                    leax      [<$08,u]         get param 3 8 Bytes
+                    ldb       #SS.FntChar      Set Font 
+                    os9       I$SetStt
+                    bcs       error@
+                    clrb                   
+error@              puls      a,x,y,u
+                    leas      >stkdepth,s      eat temporary stack
+                    rts
+
+;;; FNSet - Change font to font 0 or font 1
+;;;
+;;; Calling syntax: RUN WILD([path,],"FNSet",fontnum) 
+FNSet               cmpb      #2               2 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    ldd       [,u]             get fontnum
+                    bne       font1@           font1 ?
+                    lda       #$1b
+                    sta       ,x+
+                    lda       #$62             font0
+                    sta       ,x+
+                    bra       writeit@
+font1@              lda       #$1b
+                    sta       ,x+
+                    lda       #$63
+                    sta       ,x+
+writeit@            leax      -2,x
+                    ldy       #2               2 bytes to write
+                    lda       #2               path
+                    os9       I$Write
+                    leas      >stkdepth,s      eat temporary stack
+                    rts
+
+                    ifgt      Level-1
+;;; MapBlk - Map in Page
+;;;
+;;; Calling syntax: RUN WILD([path,],"MapBlk",Page,addr)
+MapBlk              cmpb      #3               3 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    ldx       [,u]             get page to map ex. $C1 $C2
+                    pshs      u                preserve u
+                    ldb       #$01             need 1 block
+                    os9       F$MapBlk         map it into process address space
+                    lbcs      exiterr4
+                    exg       u,x              mapped block to x  
+                    puls      u
+                    stx       [<$04,u]         store mapaddr param 2
+                    bra       cont@
+exiterr4            puls      u                restore u
+cont@               leas      >stkdepth,s      eat temporary stack
+                    rts
+
+;;; ClrBlk - Clear Mapped in Page
+;;;
+;;; MMU Block = page - The mapped address=addr
+;;; Calling syntax: RUN WILD([path,],"ClrBlk",Page,addr)
+ClrBlk              cmpb      #3               2 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    ldx       [<$04,u]         load map addr in x
+                    ldy       [,u]             get page to map
+                    pshs      u                clear MapBlk from DAT Image
+                    exg       x,u              put mapaddr in u
+                    exg       y,x              page to clear in x
+                    ldb       #$01             clearing 1 block
+                    os9       F$ClrBlk         remove block from DAT Image
+                    puls      u
+                    clrb
+                    leas      >stkdepth,s      eat temporary stack
+                    rts
+                    endc
+
+;;;
+;;;
+;;; Calling syntax: RUN WILD([path,],"Real",realval) 
+Real                cmpb      #2               2 parameters?
+                    lbne      ParamErr         no, exit with Parameter Error
+                    leax      [,u]            get first parameter
+                    lda       ,x+
+                    sta       $FEE0
+                    lda       ,x+
+                    sta       $FEE1
+                    lda       ,x+
+                    sta       $FEE2
+                    lda       ,x+
+                    sta       $FEE3
+                    lda       ,x
+                    sta       $FEE4
+                    leas      >stkdepth,s      eat temporary stack
+                    rts                        return to the caller
+                    
+;;; Multiply - Multiply 2 16 bit integers
+;;;
+;;; Calling syntax: RUN WILD([path,],"MULTIPLY", integer_A, integer_B,result_REAL)
+Mult                cmpb      #4              3 parameters?
+                    lbne      ParamErr        no, exit with Parameter Error
+                    lda       3,u             get the length of the 1st parameter
+                    cmpa      #2              is it an integer?
+                    lbne      ParamErr        no, return an error
+                    lda       7,u             get the length of the 2nd parameter
+                    cmpa      #2              is it an integer?
+                    lbne      ParamErr        no, return an error
+                    ldb       #11
+                    lda       b,u             get the length of the 3rd parameter
+                    cmpa      #5              is it a real?
+                    lbne      ParamErr        no, return an error
+                    ldd       [,u]            get first parameter
+                    std       $FEE0           store 16 word in math coprocessor word A
+                    ldd       [<$04,u]        get second parameter
+                    std       $FEE2
+                    ldd       $FEF0           get least significant result word
+                    std       [,u]            save to caller 1st parameter
+                    ldd       $FEF2           get most significant result word
+                    std       [<$04,u]        save to caller 2nd parameter
+                    ldd       [<$08,u]        get first 2 bytes of REAL
+                    stb       $FEE0
+                    sta       $FEE1       
+                    clrb                      no error
+                    leas      >stkdepth,s     eat temporary stack
+                    rts                       return to the caller
+
+;;; GetDayOfWeek - Get Day of week
+;;; Returns integer day of week
+;;; Calling syntax: RUN WILD([path,] "GetDayOfWeek", dow)
+GetDayOfWeek        cmpb      #2              2 parameters?
+                    lbne      ParamErr        no, exit with Parameter Error
+                    lda       $FE4E           get RTC control
+                    ora       $08             RTC_UTI
+                    sta       $FE4E           disable RTC updates
+                    clra
+                    ldb       $FE48           RTC_DOW - Get day of week
+                    lbsr      bcdtoint        bcd to integer
+                    std       [,u]            return dow value
+                    lda       $FE4E           get RTC control
+                    anda      $F7             RTC_UTI
+                    sta       $FE4E           enable RTC updates
+                    clrb                      no error
+                    leas      >stkdepth,s     eat temporary stack
+                    rts                       return to the caller
+                    
+                    
+;;; GetTime - Get the current time.
+;;;
+;;; Calling syntax: RUN WILD([path,] "GetTime", hour,minute,seconds)
+GetTime             cmpb      #4              4 parameters?
+                    lbne      ParamErr        no, exit with Parameter Error
+                    lda       $FE4E           get RTC control
+                    ora       $08             RTC_UTI
+                    sta       $FE4E           disable RTC updates
+                    clrb
+                    ldb       $FE44           read hours
+                    lbsr      bcdtoint
+                    std       [,u]            save first parameter hours
+                    ldb       $FE42           read minutes
+                    lbsr      bcdtoint
+                    std       [<$04,u]        save 2nd parameter minutes
+                    ldb       $fE40
+                    lbsr      bcdtoint
+                    std       [<$08,u]        save 3rd parameter seconds
+                    lda       $FE4E           get RTC control
+                    anda      $F7             RTC_UTI
+                    sta       $FE4E           enable RTC updates
+                    clrb
+                    leas      >stkdepth,s     eat temporary stack
+                    rts                       return to the caller
+
+;;; GetTime - Get the current time.
+;;;
+;;; RTC.Base $FE40
+;;; Calling syntax: RUN WILD([path,] "GetDate", month,day,year)
+GetDate             cmpb      #4              4 parameters?
+                    lbne      ParamErr        no, exit with Parameter Error
+                    clrb
+                    lda       $FE4E           get RTC control
+                    ora       $08             RTC_UTI
+                    sta       $FE4E           disable RTC updates
+                    ldb       $FE49           RTC_MONTH read month
+                    lbsr      bcdtoint
+                    std       [,u]            save first parameter month
+                    ldb       $FE46           RTC_DAY read day
+                    lbsr      bcdtoint
+                    std       [<$04,u]        save 2nd parameter days
+                    ldb       $fE4A           RTC_YEAR read year
+                    lbsr      bcdtoint
+                    stb       Univ8d,s        store value year
+                    ;ldb       $FE4F           RTC_CENTURY get century
+                    ldb       #$20            RTC_CENTURY invaled value returned
+                    lbsr      bcdtocentury
+                    ldd       <univ8a-2,s     restore calculated century -2 subroutine call
+                    addb      Univ8d,s        add lsb years
+                    std       [<$08,u]        save 3rd parameter year
+                    lda       $FE4E           get RTC control
+                    anda      $F7             RTC_UTI
+                    sta       $FE4E           enable RTC updates
+                    clrb
+                    leas      >stkdepth,s     eat temporary stack
+                    rts                       return to the caller
+
+; Entry B register contains BCD byte
+; Return D Integer value                    
+bcdtoint            tfr       b,a             put a copy of b in a
+                    andb      #$0F            mask off top 4 bits
+                    stb       <pxlBlk,s       save a on stack 8 bit
+                    anda      #$F0            mask off lower 4 bits
+                    lsra
+                    lsra
+                    lsra
+                    lsra                      move upper 4 bits to lower 4 bits
+                    tfr       a,b
+                    ldb       #10
+                    mul
+                    addb     <pxlBlk,s
+                    rts
+
+; Entry B register contains BCD byte
+; Return D Integer value
+bcdtocentury        tfr       b,a             put a copy of b in a
+                    clr       <univ8a,s
+                    clr       <univ8b,s
+                    clr       <univ8c,s
+                    sta       <bmblock,s
+                    andb      #$0F            mask off top 4 bits
+                    tfr       b,a
+                    ldb       #100            multiple by 100
+                    mul
+                    sta       <pxlBlk,s       save B on stack 8 bit
+                    
+                    lda       <bmblock,s      reload original value
+                    anda      #$F0            mask off lower 4 bits
+                    lsra
+                    lsra
+                    lsra
+                    lsra                      move upper 4 bits to lower 4 bits
+                    sta       <pxlblk0,s      save muliplier
+                    ldb       #$03            multiply 16 by 8 bit ($03E8=1000)
+                    mul
+                    std       <univ8a,s       store 2 bytes
+                    ldb       <pxlblk0,s      restore msn bcd
+                    lda       #$E8            16 bit multiply by 1000
+                    mul
+                    addd      <univ8b,s       ls byte
+                    pshs      cc              preserve carry
+                    std       <univ8b,s
+                    lda       <univ8a,s
+                    puls      cc
+                    adca      #0              add in carry
+                    ldd       <univ8a,s
+                    addb      <pxlBlk,s
+                    std       <univ8a,s
+                    rts
+
+
+;;; WPeek - Peek word.
+;;;
+;;; Return 16 bit value at specified address. Valid values -32768 - +32767
+;;; Calling syntax: RUN WILD([path,] "WPeek", address,return_value)
+WPeek               cmpb      #3              3 parameters?
+                    lbne      ParamErr        no, exit with Parameter Error
+                    ldx       [,u]            get address to peek
+                    ldd       ,x++            read 2 bytes
+                    std       [$04,u]
+                    clrb                      no error
+                    leas      >stkdepth,s     eat temporary stack
+                    rts                       return to the caller
+ 
+                    
+;;; WPoke - poke word.
+;;;
+;;; Store 16 bit value at specified address. Valid values -32768 - +32767
+;;; Calling syntax: RUN WILD([path,] "WPoke", address,value)
+WPoke               cmpb      #3              3 parameters?
+                    lbne      ParamErr        no, exit with Parameter Error
+                    ldx       [,u]            get address to peek
+                    ldd       [$04,u]         get value to store
+                    std       ,x++            store 2 bytes at addr x        
+                    clrb                      no error
+                    leas      >stkdepth,s     eat temporary stack
+                    rts                       return to the caller
+
+
+;;; ID - Get the calling process' user ID
 ;;;
 ;;; Calling syntax: RUN WILD([path,] "ID", id)
 ID                  os9       F$ID      get process ID # into D
@@ -247,7 +2916,7 @@ ID                  os9       F$ID      get process ID # into D
                     clra                and clear A (D = process ID)
                     std       [,u]      save it in caller's parameter 1 variable
 L0305               clrb                no error
-                    leas      <stkdepth,s eat temporary stack
+                    leas      >stkdepth,s eat temporary stack
                     rts                 return to the caller
 
 ;;; TONE - Generate a sound.
@@ -265,7 +2934,7 @@ Tone                cmpb      #4        4 parameters?
                     lda       ,s        get path
                     ldb       #SS.Tone  load tone code
                     os9       I$SetStt  perform the command
-L043B               leas      <stkdepth,s eat temporary stack
+L043B               leas      >stkdepth,s eat temporary stack
                     rts                 return to the caller
 
 ;;; WINFO - Get window information.
@@ -274,29 +2943,24 @@ L043B               leas      <stkdepth,s eat temporary stack
 WInfo               cmpb      #7        7 parameters?
                     lbne      ParamErr  no, exit with parameter error
                     lda       ,s        get path
-                    ldb       #SS.ScTyp get screen type system call
-                    os9       I$GetStt
-                    bcs       L0479     error, eat temp stack & exit
-                    tfr       a,b       D=screen type
-                    clra
-                    std       [,u]      save to caller
-                    lda       ,s        get path again
-                    ldb       #SS.ScSiz load screen size code
-                    os9       I$GetStt  perform the command
-                    bcs       L0479     error, eat temporary stack & exit
-                    stx       [<$04,u]  save # of columns in current working area
-                    sty       [<$08,u]  save # of rows in current working area
                     ldb       #SS.FBRgs load foreground/background/border color call
                     os9       I$GetStt  perform the command
                     bcs       L0479     error, eat temporary stack & exit
                     pshs      a         save foreground color on stack
+                    tfr       a,b
+                    andb      #%00001111
                     clra                D=background color
                     std       [<$10,u]  save to caller
                     puls      b         D=foreground color
+                    clra
+                    lsrb
+                    lsrb
+                    lsrb
+                    lsrb
                     std       [<$0C,u]  save to caller
                     stx       [<$14,u]  save border color to caller
 L0478               clrb                no error
-L0479               leas      <stkdepth,s eat temporary stack
+L0479               leas      >stkdepth,s eat temporary stack
                     rts                 return to the caller
 
 ;;; DWSET - Define a device window.
@@ -407,7 +3071,7 @@ Seed
                     exg       a,b       swap bytes
                     std       4,x       store in hardware
                     clrb                no error, eat temp stack & return
-                    leas      <stkdepth,s
+                    leas      >stkdepth,s
                     rts                 return to the caller
 
 ;;; RANDOM - Returns a hardware-based random number.
@@ -424,7 +3088,7 @@ Random
                     exg       a,b       swap 'em
                     std       [,u]      save in caller's parameter 1 variable
                     clrb                no error, eat temp stack & return
-                    leas      <stkdepth,s
+                    leas      >stkdepth,s
                     rts                 return to the caller
 L060F               cmpb      #3        3 parameters?
                     beq       L061D     yes, process (just end point)
@@ -541,6 +3205,26 @@ L0859               leax      -1,x      bump back output buffer pointer
 Clear               lda       #$C       clear window code
                     bra       L0859     overwrite default ESC code in output buffer with new code, write it out
 
+;;; Display - Similar to Display without need call shell.
+;;;
+;;; Calling syntax: RUN WILD([path,] "Display",bytes)
+Display             cmpb      #2        2 parameters?
+                    lbne      ParamErr  no, exit with parameter error
+                    ldb       3,u       Get length of bytes
+                    leay      [,u]      get bytes
+loop@               lda       ,y+
+                    sta       ,x+
+                    decb
+                    bne       loop@
+cont@               ldb       3,u       Get length of bytes
+                    clra
+                    tfr       d,y       put length in y
+                    leax      2,s       point to start of buffer
+                    lda       #2        get path for output
+                    os9       I$Write
+                    leas      >stkdepth,s
+                    rts                 return to the caller
+
 ;;; CRRTN - Send a carriage return.
 ;;;
 ;;; Calling syntax: RUN WILD([path,] "CRRTN")
@@ -646,7 +3330,7 @@ L08FB               bsr       AppendParam append 16 bit value to output buffer (
 L08FD               bsr       AppendParam append 16 bit value to output buffer (2 16 bit parameters)
 L08FF               bsr       AppendParam append 16 bit value to output buffer (1 16 bit parameter)
 L0901               bsr       L0907     write output buffer out
-                    leas      <stkdepth,s eat main temp stack & return
+                    leas      >stkdepth,s eat main temp stack & return
                     rts                 return to the caller
 
 * Write output buffer out
@@ -694,7 +3378,14 @@ L0932               pshs      y,d       save registers
                     stb       -1,x      save LSB overtop original one (which would have been 0 to get here)
 L0944               puls      pc,y,d    return to the caller
 
+
+ts0reg	            equ	      $1180
+ts1reg	            equ	      $1184
+ts2reg	            equ	      $1188
+tm0reg	            equ	      $1100
+tm1reg	            equ	      $110C
+tm2reg	            equ	      $1118
+
                     emod
 eom                 equ       *
                     end
-
