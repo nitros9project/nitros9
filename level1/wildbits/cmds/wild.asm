@@ -7,11 +7,7 @@
 *   1      2024/03/13  Boisy Gene Pitre
 * Created.
 
-                  IFP1
-                    use       os9.d
-                    use       scf.d
-                    use       wildbits_vtio.d
-                  ENDC
+                    use       defsfile
 
 tylg                set       Sbrtn+Objct
 atrv                set       ReEnt+rev

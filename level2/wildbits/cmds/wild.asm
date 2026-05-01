@@ -11,13 +11,7 @@
 *   3      2025/10/25  Matt Massie - Added Display, JoyA, JoyB, FNSet, Sprite Commands
 *
 
-                  IFP1
                     use       defsfile
-                    use       ../defs/os9.d
-                    use       scf.d
-                    use       ../defs/wildbits.d
-                    use       wildbits_vtio.d
-                  ENDC
 
 tylg                set       Sbrtn+Objct
 atrv                set       ReEnt+rev
