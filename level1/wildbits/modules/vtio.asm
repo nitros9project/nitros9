@@ -333,11 +333,7 @@ installfont         leax      fontmod,pcr         point to the font module
                     os9       F$Link              link to it
                     bcs       initcursor          branch if the link failed
                     tfr       y,x                 transfer Y to X
-<<<<<<< HEAD
                     lda       #FONT_BLK           get the font MMU block
-=======
-                    lda       #FONT_BLK           $C1           get the font MMU block
->>>>>>> df5dc4c0 (wildbits: clarify vtio block mappings)
                     sta       MAPSLOT             store it in the MMU slot to map it in
                     ldy       #MAPADDR            get the address to write to
 l@                  ldd       ,x++                get two bytes of font data
@@ -1646,11 +1642,7 @@ font1@              leay      FONT_1_OFFSET,y
 font0@              leay      FONT_0_OFFSET,y
 cont@               leas      -2,s                reserve 2 bytes for mapped address
                     pshs      x,u                 preserve x,u
-<<<<<<< HEAD
                     ldx       #FONT_BLK           map in font block
-=======
-                    ldx       #FONT_BLK           $C1           map in font block
->>>>>>> df5dc4c0 (wildbits: clarify vtio block mappings)
                     ldb       #$01                map 1 block at address x (x set on entry)
                     os9       F$MapBlk            map block into caller DAT
                     bcc       mapgood@            if success, then continue
@@ -1702,11 +1694,7 @@ storeaddr@          pshs      y                   store font offset on stack [O]
 * s= ADDR|OFFSET|                   
 *                   ****      map block into user dat and store address on stack
                     pshs      x,u                 preserve x,u
-<<<<<<< HEAD
-                    ldx       #FONT_BLK           map in font block
-=======
-                    ldx       #$C1           map in font block
->>>>>>> df5dc4c0 (wildbits: clarify vtio block mappings)
+                    ldx       #$C1                map in font block
                     ldb       #$01                map 1 block at address x (x set on entry)
                     os9       F$MapBlk
                     bcc       mapgood@            if success, then continue
@@ -2066,11 +2054,7 @@ SSPalet             pshs      cc
 SSDfPal             pshs      a,x,y,u
 *                   **** Map in block for CLUT Registers
                     pshs      x
-<<<<<<< HEAD
-                    ldx       #TEXT_LUT_BLK
-=======
                     ldx       #$C1
->>>>>>> df5dc4c0 (wildbits: clarify vtio block mappings)
                     lbsr      mapblock
                     puls      x
                     bcs       end@                if error, end and return error code
