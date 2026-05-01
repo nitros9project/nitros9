@@ -427,6 +427,12 @@ CODECCmdHi          rmb       1
 CODECStat           rmb       1
 CODECCtrl           equ       CODECStat
 
+
+******************************************************************
+* Bitmap definitions
+*
+GAMMA_BLK           equ       $C0
+
 ******************************************************************
 * Text lookup definitions
 *

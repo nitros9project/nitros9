@@ -300,7 +300,7 @@ InitDisplay         pshs      u                   save important registers
                     clr       VKY_TXT_CURSOR_CTRL_REG,x
 
 * Initialize the gamma.
-                    lda       #TEXT_LUT_BLK       get the gamma MMU block
+                    lda       #GAMMA_BLK          get the gamma MMU block
                     sta       MAPSLOT             store it in the MMU slot to map it in
                     ldd       #0                  get the clear value
 l@                  tfr       d,x                 transfer it to X
@@ -1623,7 +1623,7 @@ ex@                 rts
 
 ;;; difference between get and set is just two lines specifying
 ;;; source and destination.  So procedures are combined.
-GSFntChar           lda       #0
+GSFntChar           clra
                     bra       DoFontGetSet
 SSFntChar           lda       #1
 DoFontGetSet        pshs      a 
@@ -1694,7 +1694,7 @@ storeaddr@          pshs      y                   store font offset on stack [O]
 * s= ADDR|OFFSET|                   
 *                   ****      map block into user dat and store address on stack
                     pshs      x,u                 preserve x,u
-                    ldx       #FONT_BLK           map in font block
+                    ldx       #$C1                map in font block
                     ldb       #$01                map 1 block at address x (x set on entry)
                     os9       F$MapBlk
                     bcc       mapgood@            if success, then continue
@@ -1843,10 +1843,10 @@ map@                lda       R$Y+1,x             load bitmap@
 *                   **** Calculate starting address at 1000,1008,1010
                     pshs      b                   push block# to stack
                     ldb       R$Y+1,x             ldb with bitmap#
-                    lda       #$08                multiply by 8 (to start at 0, 8 or 16)
-                    mul                           d should be 0,8,or 16
-                    addd      #MAPADDR
-                    addd      #$1000
+                    lslb                          multiply by 8
+                    lslb
+                    lslb
+                    lda       #(MAPADDR+$1000)/256
                     tfr       d,y                 y is address of BM(0-2) registers
 *                   **** Convert b from block number to physical address
                     ldb       ,s                  load b with block# from stack
@@ -1991,12 +1991,10 @@ clr_bmReg@          pshs      cc                   clear the bitmap registers,di
                     sta       MAPSLOT              store it in the MMU slot to map it in
 * Calculate starting address at 1000,1008,1010
                     ldb       R$Y+1,x              ldb with bitmap#
-                    clra
                     lslb                           multiply by 8
                     lslb
                     lslb
-                    addd      #MAPADDR
-                    addd      #$1000
+                    lda       #(MAPADDR+$1000)/256
                     tfr       d,y                  y is address of BM(0-2) registers
 * Load Bitmap start block physical address into Vicky BM0, BM1 or BM2
                     clra                           enable bitmapX with CLUT 0
@@ -2024,14 +2022,14 @@ SSPalet             pshs      cc
                     orcc      #IntMasks           mask interrupts
                     lda       MAPSLOT
                     pshs      a
-                    lda       #TEXT_LUT_BLK       get the MMU Block for bitmap addresses
+                    lda       #$C0                was TEXT_LUT_BLK - get the MMU Block
                     sta       MAPSLOT             store it in the MMU slot to map it in
 *                   **** Calculate starting address at 1000,1008,1010
                     ldb       R$Y+1,x             ldb with bitmap#
-                    lda       #$08                multiply by 8 (to start at 0, 8 or 16)
-                    mul                           d should be 0,8,or 16
-                    addd      #MAPADDR
-                    addd      #$1000
+                    lslb                          multiply by 8
+                    lslb
+                    lslb
+                    lda       #(MAPADDR+$1000)/256
                     tfr       d,y                 y is address of BM(0-2) registers
                     ldd       R$X,x               d now has CLUT#
                     orcc      #Carry              set carry bit
@@ -2056,7 +2054,7 @@ SSPalet             pshs      cc
 SSDfPal             pshs      a,x,y,u
 *                   **** Map in block for CLUT Registers
                     pshs      x
-                    ldx       #TEXT_LUT_BLK
+                    ldx       #$C1
                     lbsr      mapblock
                     puls      x
                     bcs       end@                if error, end and return error code
