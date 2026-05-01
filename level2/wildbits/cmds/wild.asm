@@ -12,11 +12,11 @@
 *
 
                   IFP1
+                    use       defsfile
                     use       ../defs/os9.d
                     use       scf.d
                     use       ../defs/wildbits.d
                     use       wildbits_vtio.d
-                    *use      defsfile
                   ENDC
 
 tylg                set       Sbrtn+Objct
@@ -3377,4 +3377,3 @@ tm2reg	            equ	      $1118
                     emod
 eom                 equ       *
                     end
-

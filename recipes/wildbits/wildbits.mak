@@ -22,6 +22,7 @@ DSKIMAGE ?= l$(LEVEL)_$(RECIPE)$(PLATFORM).dsk
 
 AFLAGS += -I.
 ifeq ($(LEVEL),2)
+AFLAGS += -I$(L2PD)
 AFLAGS += -I$(L2MD)/kernel -I$(L2PMD)
 endif
 AFLAGS += -I$(L1MD)/kernel -I$(L1PMD)
@@ -59,9 +60,16 @@ BOOTMODS = krn krnp2 ioman init \
 endif
 
 CMDS += $(STDCMDS) \
-	bootos9 wbinfo wbreset modem \
+	bootos9 scfg wbinfo wbreset modem \
 	inetd telnet dw httpd $(BASIC09) $(BF) \
 	$(CMDS_EXTRA)
+
+ifeq ($(LEVEL),2)
+CMDS += dmem minted mmap modpatch \
+	proc pmap smap \
+	gfxstatus xtclut drawtest play wild \
+	shellbg shellbgoff ntptime view
+endif
 
 BASIC09 = basic09 runb inkey syscall
 BASIC09_FILES = $(wildcard $(3RDPARTY)/packages/basic09/samples/*.b09)
