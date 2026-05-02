@@ -346,8 +346,12 @@ DSKM07 pshs u save data pointer
  
 DSKM08 ldd M$ID,x get the module ID
  cmpd #M$ID12 really a module header?
- lbne IDNT11 no, print error and exit
- 
+ beq DSKM10 ..yes, continue
+ ldd #$0001 skip non-module bytes and continue scanning
+ std <dskmodln
+ lbra DSKM05
+
+DSKM10
  pshs u,x save data pointers
  ldd M$Size,x get the module size
  std <dskmodln save the module length
