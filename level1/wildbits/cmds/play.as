@@ -75,12 +75,15 @@
 *   15     2025/12/21   R Taylor
 * Bug fix: silenced note after rest in .ume format.
 * Renamed UMEPartsTot to ScorePartsTot in prep for Lyra/Ultimuse sharing some code.
+*
+*   16     2026/04/28   R Taylor
+* Tighten up the help message to save space.
 
                     nam       music
                     ttl       Music Player
 
  section __os9
-edition = 15
+edition = 16
  endsect
 
 * Here are some tweakable options
@@ -222,15 +225,15 @@ helpstr             fcb       C$CR
                     fcb       C$CR
                     fcc       /  -z=<file> get files from <file>/
                     fcb       C$CR
-                    fcc       /  {file}.map apply MIDI patch for subsequent scores on command line/
+                    fcc       /  *.map apply MIDI patch for subsequent scores on command line/
                     fcb       C$CR
-                    fcc       /  {file}.ume = Ultimuse/
+                    fcc       /  *.ume = Ultimuse/
                     fcb       C$CR
-                    fcc       /  {file}.lyr = Lyra/
+                    fcc       /  *.lyr = Lyra/
                     fcb       C$CR
-                    fcc       /  {file}.mus = Musica/
+                    fcc       /  *.mus = Musica/
                     fcb       C$CR
-                    fcc       /  {file}.rsd = raw SID dump/
+                    fcc       /  *.rsd = raw SID dump/
                     fcb       C$CR
                     fcb       $0
                     endc
@@ -528,7 +531,7 @@ a@                  ldd       1,s                 Recall address of top of file
                     sty       <MIDIChanMap
                     ldb       $0007,x             Only use LSB of 16-bit tempo 
                     stb       <bTempo
-                    tst       <fUseMapFile      Check if instrument map file was loaded
+                    tst       <fUseMapFile        Check if instrument map file was loaded
                     bne       gm@                 User has applied a patch file
                     lbsr      MidiMuteAll
                     lbsr      SetupInstruments    Auto-sensing instrument translation
@@ -538,7 +541,7 @@ gm@                 ldb       #1                  Enable the sequencer
 ********************************************************************
 * Main sequencer
 *
-LyraLooper          ldb       <fDoAbort            Abort everything?
+LyraLooper          ldb       <fDoAbort           Abort everything?
                     bne       LyraAbort
                     ldb       <fDoSequencer
                     beq       LyraEnd
@@ -552,8 +555,8 @@ LyraLooper          ldb       <fDoAbort            Abort everything?
                     ora       [TRACK_ENTRYSIZE*6,y]
                     ora       [TRACK_ENTRYSIZE*7,y]
                     bne       lt@
-LyraEnd             clr       <fDoSequencer        If we made it here it means all tracks have ended
-                    lbsr      MidiMuteAll         kill the music and get out of here
+LyraEnd             clr       <fDoSequencer       If we made it here it means all tracks have ended
+                    lbsr      MidiMuteAll         Kill the music and get out of here
                     lbra      CloseAndNext        It's not an abort, so we keep processing all supplied files
 LyraAbort           clr       <fDoSequencer
                     lbsr      MidiMuteAll         Yes, kill the music and get out of here
@@ -593,7 +596,7 @@ ve@                 ldx       #$0002
 LyraSubSeq          cmpd      #0                  Is there a note playing?
                     lbne      LyraDecCycle        Yes, decrement note timer and exit, long branch is helpful in balance
 r@                  ldd       ,x                  Get current note
-                    lbeq      LyraMusSeqExt         Note marks the end of the track,  long branch is helpful in balance
+                    lbeq      LyraMusSeqExt       Note marks the end of the track,  long branch is helpful in balance
                     bita      #LYRA_EVENTBIT      Is this an event?
                     beq       c@                  No, it must be a note or rest
 * Process Event Codes
@@ -603,7 +606,7 @@ r@                  ldd       ,x                  Get current note
                     andb      #7                  Make safe velocity value
                     leay      LyraVelocConv,pcr   Point to Lyra-to-MIDI velocity conversion table
                     lda       b,y                 Convert 0..7 to 0..127
-                    ldy       <pThisTrack          Restore track pointer
+                    ldy       <pThisTrack         Restore track pointer
                     sta       TRACK_VELOC,y       Set new velocity for this channel
                     bra       se@
 te@                 cmpa      #$A0                Tempo event?
@@ -629,7 +632,7 @@ c@                  andb      #LYRA_PITCHMASK     Clear off the Sharp/Flat indic
                     leay      LyraRange,pcr       Point to starting notes in MIDI table conversion table
                     leay      d,y                 Point to index of Lyra note
                     lda       1,y                 Get Midi note value
-                    ldy       <pThisTrack      Restore track pointer
+                    ldy       <pThisTrack         Restore track pointer
                     ldb       1,x                 Get Lyra note value
                     bitb      #LYRA_SHARPNOTE     Support situation where a note is marked Sharp AND Flat to neutralize it
                     beq       sh@
@@ -790,7 +793,7 @@ PlayUltimuse        lbsr      Load2Local
                     leay      4,y                 Skip over unused part #0
                     sty       <UMEPartsAdr        Set start of part/voice table
                     ldb       1,x                 Get number of music parts
-                    stb       <ScorePartsTot        Save
+                    stb       <ScorePartsTot      Save
                     lslb
                     lslb
                     leay      b,y
@@ -802,7 +805,7 @@ PlayUltimuse        lbsr      Load2Local
                     sty       <UMEScoreStart
                     ldy       <UMEEventTot
                     ldb       #8
-                    lbsr      MultYxB            Multiply total events by 8
+                    lbsr      MultYxB             Multiply total events by 8
                     tfr       y,d
                     addd      <UMEScoreStart
                     std       <UMEEndOfScore
