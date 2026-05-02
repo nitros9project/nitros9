@@ -74,6 +74,7 @@ endif
 BASIC09 = basic09 runb inkey syscall wild
 BASIC09_FILES = $(wildcard $(3RDPARTY)/packages/basic09/samples/*.b09)
 STARTUP = $(LEVEL2)/wildbits/startup
+FEU_STARTUP = feu.startup
 SCRIPTS_DIR = $(LEVEL1)/wildbits/scripts
 TESTS_DIR = $(LEVEL1)/wildbits/tests
 SCRIPTS = $(notdir $(wildcard $(SCRIPTS_DIR)/*))
@@ -119,6 +120,11 @@ wildbits-sys-assets:
 	$(MAKE) -C $(FONT_DIR)
 	$(MAKE) -C $(BACKGROUND_DIR)
 
+$(FEU_STARTUP): FORCE
+	echo "bootos9 /s0/OS9Boot" >> $@
+
+FORCE: ;
+
 ifeq ($(LEVEL),2)
   PADUP ?= ./padup256 bootfile
 endif
@@ -127,9 +133,9 @@ bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(PADUP)
 
 ifeq ($(LEVEL),2)
-$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) wildbits-sys-assets
+$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets
 else
-$(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) wildbits-sys-assets
+$(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets
 endif
 	$(RM) $@
 	$(OS9FORMAT_SD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
@@ -161,6 +167,8 @@ endif
 	$(foreach file,$(SCRIPTS),$(CPL) $(SCRIPTS_DIR)/$(file) $@,SCRIPTS;)
 	$(MAKDIR) $@,TESTS
 	$(foreach file,$(TESTS),$(CPL) $(TESTS_DIR)/$(file) $@,TESTS;)
+	$(MAKDIR) $@,FEU
+	$(CPL) $(FEU_STARTUP) $@,FEU/startup
 
 # Command rules
 $(MODDIR)/pwd: pd.asm | $(MODDIR)
@@ -327,7 +335,7 @@ $(MODDIR)/z14: scdwvdesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=30
 
 clean:
-	$(RM) *.list *.map bootfile *.dsk buildinfo
+	$(RM) *.list *.map bootfile *.dsk buildinfo feu.startup
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
 
 .PHONY: all clean libs
