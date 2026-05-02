@@ -67,11 +67,11 @@ CMDS += $(STDCMDS) \
 ifeq ($(LEVEL),2)
 CMDS += dmem minted mmap modpatch \
 	proc pmap smap \
-	gfxstatus xtclut drawtest play wild \
+	gfxstatus xtclut drawtest play \
 	shellbg shellbgoff ntptime view
 endif
 
-BASIC09 = basic09 runb inkey syscall
+BASIC09 = basic09 runb inkey syscall wild
 BASIC09_FILES = $(wildcard $(3RDPARTY)/packages/basic09/samples/*.b09)
 STARTUP = $(LEVEL2)/wildbits/startup
 SCRIPTS_DIR = $(LEVEL1)/wildbits/scripts
