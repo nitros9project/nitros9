@@ -78,6 +78,30 @@ SCRIPTS_DIR = $(LEVEL1)/wildbits/scripts
 TESTS_DIR = $(LEVEL1)/wildbits/tests
 SCRIPTS = $(notdir $(wildcard $(SCRIPTS_DIR)/*))
 TESTS = $(notdir $(wildcard $(TESTS_DIR)/*))
+FONT_DIR = $(LEVEL1)/wildbits/sys/fonts
+BACKGROUND_DIR = $(LEVEL1)/wildbits/sys/backgrounds
+FONTS = 800yfont applefont bigbluefont boxedfont bannerfont.sb \
+	c256seriffont cbmfont commodedorfont enemigafont f256standardfont \
+	IIishfont jessefont msxbannerfont msxfont petticoatsfont \
+	phoenixegafont.sb quadrotextfont techfont thickefont
+BACKGROUNDS = clutbeach clutgrid clutmeadow clutmetal clutspace clutstone clutstone2 clutwood \
+	pixmapbeach pixmapgrid pixmapmeadow pixmapmetal pixmapspace pixmapstone \
+	pixmapstone2 pixmapwood pixmappaintspl pixmappaint2 clutpaintspl clutpaint2 \
+	pixmapwizfi pixmapwizfi2 clutwizfi clutwizfi2 testclutbm0 testclutbm1 testclutbm2 \
+	testpixmapbm0 testpixmapbm1 testpixmapbm2
+
+ifeq ($(LEVEL),2)
+SYS_DIR = $(LEVEL2)/wildbits/sys
+SYS_TEXT_FILES = $(LEVEL2)/sys/motd $(LEVEL1)/sys/errmsg $(LEVEL1)/sys/password \
+	$(SYS_DIR)/helpmsg $(SYS_DIR)/inetd.conf
+SYS_BIN_FILES = $(addprefix $(SYS_DIR)/,stdfonts stdpats_2 stdpats_4 stdpats_16 stdptrs \
+	ibmedcfont isolatin1font)
+else
+SYS_DIR = $(LEVEL1)/wildbits/sys
+SYS_TEXT_FILES = $(LEVEL1)/sys/motd $(LEVEL1)/sys/errmsg $(LEVEL1)/sys/password \
+	$(SYS_DIR)/helpmsg $(SYS_DIR)/inetd.conf
+SYS_BIN_FILES =
+endif
 
 all: libs $(DSKIMAGE)
 
@@ -89,6 +113,11 @@ $(MODDIR)/sysgo: $(OBJDIR)/sysgo.o | $(MODDIR)
 	$(MOVE) sysgo $@
 
 $(OBJDIR)/sysgo.o: sysgo.as | $(OBJDIR)
+.PHONY: wildbits-sys-assets
+wildbits-sys-assets:
+	$(MAKE) -C $(SYS_DIR)
+	$(MAKE) -C $(FONT_DIR)
+	$(MAKE) -C $(BACKGROUND_DIR)
 
 ifeq ($(LEVEL),2)
   PADUP ?= ./padup256 bootfile
@@ -98,9 +127,9 @@ bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(PADUP)
 
 ifeq ($(LEVEL),2)
-$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP)
+$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) wildbits-sys-assets
 else
-$(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP)
+$(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) wildbits-sys-assets
 endif
 	$(RM) $@
 	$(OS9FORMAT_SD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
@@ -115,6 +144,15 @@ endif
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 	$(OS9RENAME) $@,CMDS/shellplus shell
+	$(CPL) $(SYS_TEXT_FILES) $@,SYS
+	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYS_TEXT_FILES)),$@,SYS/$(file))
+ifneq ($(strip $(SYS_BIN_FILES)),)
+	$(OS9COPY) $(SYS_BIN_FILES) $@,SYS
+endif
+	$(MAKDIR) $@,SYS/fonts
+	$(OS9COPY) $(addprefix $(FONT_DIR)/,$(FONTS)) $@,SYS/fonts
+	$(MAKDIR) $@,SYS/backgrounds
+	$(OS9COPY) $(addprefix $(BACKGROUND_DIR)/,$(BACKGROUNDS)) $@,SYS/backgrounds
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
