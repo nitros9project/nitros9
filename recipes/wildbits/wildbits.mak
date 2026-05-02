@@ -33,6 +33,9 @@ LFLAGS += $(LFLAGS_EXTRA)
 
 RBF = rbf rbsuper llwbsd rbmem dds0 s1 f0 f1
 SCF = scf vtio $(KEYSUB) term bannerfont palette
+ifeq ($(LEVEL),2)
+SCF += mousedrv_ps2
+endif
 DRIVEWIRE_RBF = rbdw x0 x1 x2 x3
 DRIVEWIRE_SCF = scdwv n1 n2 n3 n4 n5
 DRIVEWIRE = dwio_serial $(DRIVEWIRE_RBF) $(DRIVEWIRE_SCF)
