@@ -65,10 +65,12 @@ CMDS += $(STDCMDS) \
 	$(CMDS_EXTRA)
 
 ifeq ($(LEVEL),2)
+UTILPAK1_MODS = attr copy date del deiniz dir display list makdir mdir \
+	merge mfree procs rename tmode unlink
 CMDS += dmem minted mmap modpatch \
 	proc pmap smap \
 	gfxstatus xtclut drawtest play \
-	shellbg shellbgoff ntptime view
+	shellbg shellbgoff ntptime view utilpak1
 endif
 
 BASIC09 = basic09 runb inkey syscall wild
@@ -182,6 +184,12 @@ $(MODDIR)/xmode: xmode.asm | $(MODDIR)
 
 $(MODDIR)/tmode: xmode.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DTMODE=1
+
+ifeq ($(LEVEL),2)
+$(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1_MODS)) | $(MODDIR)
+	$(MERGE) $^ > utilpak1
+	$(MOVE) utilpak1 $@
+endif
 
 # Descriptor rules
 # SD card descriptors
