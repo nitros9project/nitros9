@@ -442,6 +442,6 @@ mspointerdata       fcb       255,2,0,14
                     fcb       255,1,1,1,255,4,1,2,255,1,0,7
                     fcb       255,2,0,4,255,3,0,7,0,0
 
-emod
+                    emod
 eom                 equ       *
                     end

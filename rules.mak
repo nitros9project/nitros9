@@ -170,9 +170,9 @@ MASTER = -DITDNS=0
 -include $(NITROS9DIR)/release_$(PORT)
 
 ifeq ($(NOS9MAJ),)
-  NITROS9VER = v$(NOS9VER).$(NOS9MAJ).$(NOS9MIN)
-else
   NITROS9VER = DEV
+else
+  NITROS9VER = v$(NOS9VER).$(NOS9MAJ).$(NOS9MIN)
 endif
 
 default: all
