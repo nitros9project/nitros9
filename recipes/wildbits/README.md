@@ -41,6 +41,8 @@ export NITROS9DIR=/Users/boisy/Projects/coco-shelf/nitros9
 
 - [`l1/`](l1/) builds Wildbits Level 1 disk images
 - [`l2/`](l2/) builds Wildbits Level 2 disk images
+- [`l1dw/`](l1dw/) builds Wildbits Level 1 DriveWire disk images
+- [`l2dw/`](l2dw/) builds Wildbits Level 2 DriveWire disk images
 - [`feu/`](feu/) builds FEU artifacts (`bootfile`, `booter`, flash packages)
 
 Each build directory keeps intermediate artifacts local:
@@ -78,6 +80,17 @@ Useful targets:
 - `make all` (same as `make`)
 - `make clean`
 
+## Level 1 DriveWire Build ([`wildbits/l1dw`](l1dw/))
+
+```sh
+cd l1dw
+make
+```
+
+Primary output:
+
+- `l1_wildbits_dwjr2.dsk` (or `l1_wildbits_dwk2.dsk`, etc.)
+
 ## Level 2 Build ([`wildbits/l2`](l2/))
 
 ```sh
@@ -93,6 +106,17 @@ Useful targets:
 
 - `make all` (same as `make`)
 - `make clean`
+
+## Level 2 DriveWire Build ([`wildbits/l2dw`](l2dw/))
+
+```sh
+cd l2dw
+make
+```
+
+Primary output:
+
+- `l2_wildbits_dwjr2.dsk` (or `l2_wildbits_dwk2.dsk`, etc.)
 
 ## FEU Build ([`wildbits/feu`](feu/))
 
