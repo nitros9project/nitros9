@@ -8,39 +8,51 @@
 * "PROGRAM" literal changed to "Program"
 * Formatted strings could exceed field size
 * Formatted boolean output phrases reversed
+*
 *  18      1982/10/18  Robert F. Doggett (Microware)
 * Assembly subroutine errors now recognized
+*
 *  18      1982/10/19  Robert F. Doggett (Microware)
 * Mem directive fixed to take more than 32k
 * ------------------------------------------------------------------
 *  19      1982/11/02  Robert F. Doggett (Microware)
 * Default USING field size 1 if unspecified
 * Prevent death on out of range input
+*
 *  19      1982/11/16  Robert F. Doggett (Microware)
 * Compiler var "CNTASS" initialized to fix random crash if T.CXAS inserted by mistake
 * Mem comand made to request 1 less byte
 * ------------------------------------------------------------------
 *  20      1983/01/12  Robert F. Doggett (Microware)
 * Changed string terminator from $FF to $00, allowing 8-bit data in string functions
+*
 *  20      1983/01/17  Microware
 * General clean up
+*
 *  20      1983/01/19  Robert F. Doggett (Microware)
 * Changed string terminator from $00 to $FF to maintain I-Code compatability
+*
 *  20      1983/01/21  Robert F. Doggett (Microware)
 * Fixed problem in USING with Real Zero
+*
 *  20      1983/01/24  Robert F. Doggett (Microware)
 * Struct assignment of exactly 256 crashed
 * Rename any Proc to number crashed system
+*
 *  20      1983/01/25  Robert F. Doggett (Microware)
 * Startup now clears all DP Globals
 * IOBuff could overflow into system stack
+*
 *  20      1983/02/07  Larry Crane (Microware)
 * Kept Opstack from going crazy, killing system when exponentiation overflow occurred
+*
 *  20      1983/02/10  Robert F. Doggett (Microware)
 * Added conditional asm for Tandy ^N
 * Prevented DEBUG mode from recursive entry
+*
 *  20      1983/02/15  Robert F. Doggett (Microware)
 * Made aborted RunB return error to Shell
+*
 *  20      1983/02/17  Robert F. Doggett (Microware)
 * Added Microware to copyright notice
 * CTL-Q was ignored in asm subroutines
@@ -51,8 +63,10 @@
 * ------------------------------------------------------------------
 *  22      1983/04/27  Robert F. Doggett (Microware)
 * Added conditionals for Basic09 minus trig
+*
 *  22      1983/05/26  MGH (Microware)
 * Changed message printed on tandy version
+*
 *  22      1983/06/28  MGH (Microware)
 * Added conditionals for dragon startup msg
 * ------------------------------------------------------------------
@@ -94,6 +108,7 @@
 *          2   BHI  START0      1   NOP
 * Bytes:  15                  15
 * Changed CLRA/LDB #$01 to LDD #$0001 @ end of start
+*
 *  V1.21   1994/06/22  NitrOS-9 Project
 * Changed L0DBB (reset temp buffer to empty state) to use PSHS D
 * LDA #1 / STA <u007D / LDD <u0080 / STD <u0082 / PULS PC,D
@@ -101,10 +116,13 @@
 * Changed BEQ L08E3 to BEQ L08E5 @ RUNCMD (Std in for commands)
 * Changed numerous CLRA/CLRB and COMA/COMB to CLRD & COMD respectiv
 *            just to shorten source
+*
 *  V1.21   1994/06/27  NitrOS-9 Project
 * Added 2nd TFM to init routine to clear out $400-$4ff
+*
 *  V1.21   1994/06/28  NitrOS-9 Project
 * Changed BRA OUTCHR99 @ OUTCHR to PULS PC,U,A (6809 TOO)
+*
 *  V1.21   1994/12/22  NitrOS-9 Project
 * BIG TEST: TOOK OUT NOP'D CODE - SEE IF IT STILL WORKS
 * IT DOESN'T - MOVED ALL NOPS TO JUST BEFORE ICPT ROUTINE TO
@@ -112,8 +130,10 @@
 * THIS APPEARS TO WORK...THEREFORE, SOME REFERENCES TO THE DATA
 *            AT THE BEGINNING OF BASIC09 IS STILL BEING REFERRED TO BY OFFSETS
 *            IN THE CODE, THAT HAVE NOT BEEN FIXED UP YET.
+*
 *  V1.21   1994/12/23  NitrOS-9 Project
 * AFTER FIXING L03F0 TABLE, ATTEMPTED TO REMOVE 'TEST'
+*
 *  V1.21   1994/12/28  NitrOS-9 Project
 * Worked, changed 16 bit,pc's to 8 bit,pc's @:
 *            L0DFC  leax INTRTS,pc  *
@@ -127,8 +147,10 @@
 *            L4B03  leau L4AF4,pc  *
 *            L4B0A  leau L4AF9,pc  *
 *            NXTFM3  leax L5723,pc  *
+*
 *  V1.21   1995/01/03  NitrOS-9 Project
 * Changed a ChgDir @ CHDSTM to do it in READ mode, not UPDATE
+*
 *  V1.21   1995/01/04  NitrOS-9 Project
 * Changed L0C18 - 3 CLR ,Y+ to LEAY 3,Y
 *            Changed LEAU ,Y / STD ,--U / STA ,-U to LEAU -3,y/STD ,u/
@@ -137,24 +159,29 @@
 *              (create output file)
 * Replaced BEQ L2D17 @ L2D0B with BEQ POPE30, removed L2D17 altog-
 *            ether, change LBSR ERIET @ L2D0B with LBRA ERIET
+*
 *  V1.21   1995/01/09  NitrOS-9 Project
 * Attempted to change both CLRA/CLRB (CLRD)'s @ DIRLN1 to CLRA for
 *            F$Load/F$Link (since neither require B)
 * Changed DEFILE frm LBSR L12CF to LBSR L1371
 * Changed L12CF from LDA #C$CR/LBRA L1373 to LBRA L1371
+*
 *  V1.21   1995/01/12  NitrOS-9 Project
 * Attempted to remove LDD <U002F / ADDD $F,x @ L1A2E, move TFR
 *            D,Y to earlier in code when [u002F]+($F,x) is calculated
+*
 *  V1.21   1995/01/17  NitrOS-9 Project
 * Removed useless CMPB #$00 @ L1E9B
 * Moved L1FF5 label to an earlier RTS, removed original (saves 1 by
 * Removed useless CMPA #$00 @ L2115
+*
 *  V1.21   1995/01/19  NitrOS-9 Project
 * Changed STB <u00A4 / STA <u00A3 to STD <u00A3 @ L236A
 * Changed LDA <u00A3/CMPA <u00A3 to LDA <u00A3/ORCC #Zero @ L218E
 *             (1 cycle faster)
 * Changed NAMSY1: took out LEAY -1,y, added BRA L2453 (saves 2 cycle
 *             from original method)
+*
 *  V1.21   1995/01/20  NitrOS-9 Project
 * Changed L1B09 from to auto-inc Y, skip LEAY 1,Y entirely, & chang
 *            LEAY 5,Y to LEAY 4,Y (+2 cyc if [,y]=$4F, but -3 cyc on any other
@@ -169,6 +196,7 @@
 *            STD <u00A3 / BRA OUTCOD
 * Changed LBHS PBEXPR / BRA L27CE @ PDECL3 to BLO L27CE / LBRA PBEXPR
 * Attempted Mod @ L2D2C - Changed LEAX B,X to ABX
+*
 *  V1.21   1995/01/23  NitrOS-9 Project
 * Made following mods involving L2E3B routine:
 *            Changed CMPA #0 to TSTA, reversed L2EDC's LDA <u00D1 & LEAY 3,Y
@@ -184,14 +212,18 @@
 *            bra CHKV90          sta <u00D1
 *              (std <u00D4/     rts
 *               lda <u00D1/rts
+*
 *  V1.21   1995/01/31  NitrOS-9 Project
 * Moved L308D to just before ERROR (eliminates LBRA)
+*
 *  V1.21   1995/02/03  NitrOS-9 Project
 * Changed LBRA L1EC9 @ ARRNA9 to LBRA PRSLF (saves extra LBRA, saves
 *            5/4 cycles)
+*
 *  V1.21   1995/02/13  NitrOS-9 Project
 * Moved JSR <u001B / FCB 8 from L3C29 to just after SUBFNC to change
 *            LBSR to BSR
+*
 *  V1.21   1995/02/14  NitrOS-9 Project
 * Moved 3 text strings that are only referred to once to their res-
 *            pective routines in the code: L07AA to near L1882, L078B to near
@@ -202,6 +234,7 @@
 *            L0AC3 (change some LBSR's to BSR's)
 * Moved L0110 (JSR <u001E / fcb 0) to just before INTE30
 * Moved L0113 (JSR <u0021 / fcb 0) to just before INTE30
+*
 *  V1.21   1995/02/15  NitrOS-9 Project
 * Moved L0116 (JSR <u0024 / fcb 0) to just after START15
 * Moved L0119 (JSR <u0024 / fcb 0) to just after L0DFC
@@ -226,6 +259,7 @@
 * Eliminated L2572 since duplicate of L1CC1, & not speed crucial
 * Eliminated L2575 since duplicate of L1CC7, changed LBRA L2575 @
 *            PBEXPR to LBRA L1CC7
+*
 *  V1.21   1995/02/16  NitrOS-9 Project
 * Moved L2578 (JSR <u001B / fcb $14) to end of L2FDA (replacing
 *            LBRA to it)
@@ -236,10 +270,12 @@
 * Moved L3209 to just after table @ L323F, changed table entry from
 *            L35F0 to L3209, eliminated L35F0 LBRA entirely
 * Moved SYSSTM (JSR <u001B / fcb $E) to end of CHNSTM
+*
 *  V1.21   1995/02/24  NitrOS-9 Project
 * Eliminated L320F since dupe of L1CC1, change appropriate LBSR's @
 *            EXCER4 & DEBUG
 * Moved L3212 (JSR <u001B / fcb 0) to end of L3A89
+*
 *  V1.21   1995/02/27  NitrOS-9 Project
 * Moved L3215 (JSR <u001B / fcb $A) to end of L3BF3
 * Moved L3218 (JSR <u001B / fcb $10) to end of BASSTM
@@ -254,6 +290,7 @@
 * Moved L322D (JSR <u0027/fcb 0) to after L3BFF
 * Moved L3230 (JSR <u002A/fcb 2), even though dupe of L011F, to
 *            after ASGVAR
+*
 *  V1.21   1995/02/28  NitrOS-9 Project
 * Embedded L3233 (JSR <u001B/fcb $18) @ L35F3 & DEBUG, changed LBSR
 *            @ STMLUP to point to L35F3 version
@@ -269,16 +306,20 @@
 * Removed L3C2F (dupe of L011F), changed LBSR's @ L471F & STRF10 to
 *            it
 * Moved L3C32 to after INIT1 (shorten LEAX)
+*
 *  V1.21   1995/03/01  NitrOS-9 Project
 * Modified Integer Multiply to use MULD @ INML25
+*
 *  V1.21   1995/03/10  NitrOS-9 Project
 * Modified Negate of REAL #'s to use EIM @ NEGRL (saves 4 cyc)
 * Changed L3FBB (Real add with dest var=0) to use LDQ/STQ (saves
 *            6 cyc)
+*
 *  V1.21   1995/03/13  NitrOS-9 Project
 * Changed NEGA/NEGB/SBCA #0 to NEGD @ FLOAT1 & FIX4A
 * Changed BPL L451E to BPL L451F @ FLOAT1 (eliminates 2nd useless
 *            TSTA)
+*
 *  V1.21   1995/03/15  NitrOS-9 Project
 * Changed LDB $B,y/ANDB #$FE/STB $B,y & LDB 5,y/ANDB #$FE/STB $B,y
 *            to AIM's @ L3FE5 (Real Add & Subtract)
@@ -290,42 +331,54 @@
 * Ditched special checks for 0 or 2 in Integer Multiply (INMUL),
 *            since overhead from checks is as slow or slower as straight MULD
 *            except in dest. var=0's case
+*
 *  V1.21   1995/03/16  NitrOS-9 Project
 * Changed 2 LDD/STD's @ L3F93 to LDQ/STQ
+*
 *  V1.21   1995/03/18  NitrOS-9 Project
 * Changed Integer Divide (and MOD) routines to use DIVQ
+*
 *  V1.21   1995/03/20  NitrOS-9 Project
 * Changed L3F7C (copy Real # to temp var from inc'd X) to use
 *            LDQ/STQ/LDB #4/ABX
 * Moved Integer MOD routine (INDV10) to nearer divide (changes LBSR
 *            to BSR)
+*
 *  V1.21   1995/04/23  NitrOS-9 Project
 * Changed Real Add/Subtract mantissa shift (L4082-L40C9) to use
 *            <u0014 (unused in BASIC09) to hold shift count instead of stack
 *            (saves 2 cyc for STA vs. PSHS, saves 1 cyc per DEC, & saves 5 cyc
 *            by eliminating LEAS 1,s) (6809)
+*
 *  V1.21   1995/04/26  NitrOS-9 Project
 * Split real add/subtract out & made two versions: 6809 & 6309
+*
 *  V1.21   1995/06/09  NitrOS-9 Project
 * Modified 6309 REAL add/subtract routine - now 13-15% faster
+*
 *  V1.21   1995/06/20  NitrOS-9 Project
 * Took out useless LDB 2,s @ L412D (Real Multiply)
+*
 *  V1.21   1995/07/18  NitrOS-9 Project
 * Changed sign fix in Real Add @ L4071 to use TFR w,d/lsrb/lslb/orb
 *            ,y/std $a,y
 * Split real multiply out & made two versions: 6809 & 6309
+*
 *  V1.21   1995/08/11  NitrOS-9 Project
 * Removed useless LEAS 1,s in Init routine
 * Split real divide out & made two versions: 6809 & 6309
+*
 *  V1.21   1995/08/15  NitrOS-9 Project
 * Removed useless: STA <u00BD in start, useless CLR <u0035 @ START05,
 *            Changed LDD #1 to LDB #1/STD <u002D to STB <u002E in start, and
 *            START05/START15 routine to use W instead of stack for base address
 * Changed 'bye <CR>' buffer fill @ L08E5 to use LDQ/STQ
+*
 *  V1.21   1995/11/12  NitrOS-9 Project
 * Changed NXTIN1 to use INCD instead of ADDD #1 (NEXT Integer STEP 1
 * Changed NXTINT to TFR A,E instead of PSHS A, changed TST ,S+ to
 *            TSTE (NEXT Integer STEP <>1)
+*
 *  V1.21   1995/11/16  NitrOS-9 Project
 * Changed to L345E (REAL NEXT STEP 1) to do direct call to REAL add
 *            routine (changed BSR L321E/BSR FORSTM to LBSR L3FB1)
@@ -333,20 +386,25 @@
 *            eliminated L321E completely
 * @ NXTRL1 & NXTRL2, eliminated L3221 calls, replaced BSR L3221's
 *            with LBSR RLCMP (Real Compare) (in REAL NEXT, both cases)
+*
 *  V1.21   1995/11/25  NitrOS-9 Project
 * Remove L50A1 & L509E (calls to REAL Multiply & REAL divide),
 *            changed CNVOPR to call them directly (prints exponents?)
+*
 *  V1.21   1995/11/30  NitrOS-9 Project
 * Changed RUNS30 to use SUBR (saves 1 byte/9 cyc on RUN (mlsub)
+*
 *  V1.21   1995/12/05  NitrOS-9 Project
 * Changed L3A48 (called by REM) to use ABX instead of CLRA/LEAX D,X
 *            (used to jump ahead in I-Code to skip remark text)
 * Attempted to just move L33DF (NEXT) & L34E5 (FOR) Tables to just
 *            after L3446 for 8 bit offsets - also removed LSLB @ L33EA
+*
 *  V1.21   1995/02/12  NitrOS-9 Project
 * Changed routines around BADNUM to skip ORCC if not necessary (blo&
 *            bcs)
 * Changed LEAX to 8 bit from 16 @ CIRCOR
+*
 *  V1.21   2014/06/07  RG (NitrOS-9 Project)
 * Changed Date$ to conform with Y2K changes in F$Time
 ********************************
