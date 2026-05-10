@@ -13,6 +13,7 @@ vpath %.asm $(LEVEL1)/coco1/modules
 # (applies to 40- and 80-column window modes only).
 TERM_COLS ?= 80
 TERM_ALTCOLOR ?= 0
+FUJINET ?= 0
 REL = rel_$(TERM_COLS)
 ifeq ($(TERM_COLS),32)
 TERM_WIN_DT = term_vdg.dt
@@ -59,6 +60,12 @@ BOOTMODS ?= krnp2 ioman init \
 
 SHELLMODS = shellplus date deiniz echo iniz link load save unlink
 UTILPAK1 = attr build copy del deldir dir display list makdir mdir merge mfree procs rename tmode
+FUJINET_CMDS = fngetdevfile fnsetdevfile fnlisthosts fngethost fnsethost fnlistdevs fnmount fnstatus
+
+ifeq ($(FUJINET),1)
+LFLAGS += -lfuji
+CMDS_EXTRA += $(FUJINET_CMDS)
+endif
 
 CMDS_BASE ?= $(STDCMDS) grfdrv shell utilpak1
 CMDS += $(CMDS_BASE) \
@@ -67,6 +74,9 @@ CMDS += $(CMDS_BASE) \
 all: libs $(DSKIMAGE)
 
 LIB_NAMES = libnos96809l2.a libnet.a libalib.a libcoco3.a
+ifeq ($(FUJINET),1)
+LIB_NAMES += libfuji.a
+endif
 include ../../libs.mak
 
 kernelfile: $(addprefix $(MODDIR)/,$(KERNEL_TRACK))

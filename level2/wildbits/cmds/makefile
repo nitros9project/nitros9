@@ -20,7 +20,7 @@ BASIC09	= basic09 runb inkey syscall wild
 BF      = bf
 CPM     = cpm
 CMDS_DW = inetd dw telnet httpd
-CMDS_FN		= fngetdevfile fnsetdevfile
+CMDS_FN		= fngetdevfile fnsetdevfile fnlisthosts fngethost fnsethost fnlistdevs fnmount fnstatus
 
 CMDS    = asm attr backup bawk binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \

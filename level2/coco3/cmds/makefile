@@ -28,7 +28,7 @@ CMDS_D2         = basic09 runb gfx2 gfx inkey syscall copy del echo format \
                 merge os9gen prompt tmode
 
 CMDS_DW		= inetd dw telnet httpd
-CMDS_FN		= fngetdevfile fnsetdevfile
+CMDS_FN		= fngetdevfile fnsetdevfile fnlisthosts fngethost fnsethost fnlistdevs fnmount fnstatus
 
 SHELLMODS	= shellplus date deiniz echo iniz link load save unlink
 

@@ -18,7 +18,7 @@ LFLAGS		+= -lnet -lalib -lwildbitsl1 -lwbsnd -lfuji
 
 BASIC09		= basic09 runb inkey syscall
 BF  		= bf
-CMDS_FN		= fngetdevfile fnsetdevfile
+CMDS_FN		= fngetdevfile fnsetdevfile fnlisthosts fngethost fnsethost fnlistdevs fnmount fnstatus
 
 CMDS		= asm attr backup bawk binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
