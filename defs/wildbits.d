@@ -432,17 +432,22 @@ CODECCmdHi          rmb       1
 CODECStat           rmb       1
 CODECCtrl           equ       CODECStat
 
+
+******************************************************************
+* Bitmap definitions
+*
+GAMMA_BLK           equ       $C0
+
 ******************************************************************
 * Text lookup definitions
 *
-* These are relative offsets to block $C2
-*
-TEXT_LUT_BLK	    equ	      $C1      $18_2000 to $18_3FFF
-TEXT_LUT_FG         equ       $1800
-TEXT_LUT_BG         equ       $1840
+TEXT_LUT_BLK	    equ	      $C0
+TEXT_LUT_FG         equ       $1700
+TEXT_LUT_BG         equ       $1740
 
 ********************************************************************
 * Font definitions
+*
 FONT_BLK            equ	      $C1
 FONT_0_OFFSET	    equ	      $0000
 FONT_1_OFFSET	    equ	      $0800
@@ -531,6 +536,7 @@ CLK_70              equ       %00000001
 * Border control bit definitions
 Border_Ctrl_Enable  equ       $01
 
+BITMAP_BLK            equ	      $C0
 ; Bitmap
 ;BM0
 TyVKY_BM0_CTRL_REG  equ       $F000

@@ -4,7 +4,14 @@ MODDIR = .mods
 include ../../rules.mak
 -include recipe.mak
 
-ifeq ($(PLATFORM), jr2)
+vpath %.asm $(3RDPARTY)/packages/basic09
+
+ifeq ($(strip $(PLATFORM)),)
+  $(info PLATFORM not set; defaulting to jr2)
+  PLATFORM = jr2
+endif
+
+ifneq ($(filter $(PLATFORM),jr jr2),)
   KEYSUB = keydrv_ps2
 else
   KEYSUB = keydrv_k2
@@ -12,21 +19,29 @@ else
 endif
 
 DSKIMAGE ?= l$(LEVEL)_$(RECIPE)$(PLATFORM).dsk
+OS9FORMAT_CMD ?= $(OS9FORMAT_SD)
 
-AFLAGS += -I.
+AFLAGS += -D$(PLATFORM) -I.
 ifeq ($(LEVEL),2)
+AFLAGS += -I$(L2PD)
 AFLAGS += -I$(L2MD)/kernel -I$(L2PMD)
 endif
 AFLAGS += -I$(L1MD)/kernel -I$(L1PMD)
+AFLAGS += -I$(3RDPARTY)/packages/basic09
 AFLAGS += $(AFLAGS_EXTRA)
 LFLAGS += -L $(LIBDIR) -lwildbitsl$(LEVEL) -lnet -lalib
 LFLAGS += $(LFLAGS_EXTRA)
 
-RBF = rbf rbsuper llwbsd rbmem dds0 s1 f0 f1
-SCF = scf vtio $(KEYSUB) term bannerfont palette
+BOOT_RBF ?= dds0
+RBF = rbf rbsuper llwbsd rbmem $(BOOT_RBF) s1 f0 f1 $(RBF_EXTRA)
+SCF = scf vtio $(KEYSUB) term bannerfont palette $(SCF_EXTRA)
+ifeq ($(LEVEL),2)
+SCF += mousedrv_ps2
+endif
 DRIVEWIRE_RBF = rbdw x0 x1 x2 x3
 DRIVEWIRE_SCF = scdwv n1 n2 n3 n4 n5
 DRIVEWIRE = dwio_serial $(DRIVEWIRE_RBF) $(DRIVEWIRE_SCF)
+DRIVEWIRE_BOOTMODS = dwio_serial $(PIPE) $(SC16550)
 PIPE = pipeman piper pipe
 SC16550 = sc16550 t0_sc16550
 CLOCK = clock clock2_wildbits
@@ -51,14 +66,72 @@ BOOTMODS = krn krnp2 ioman init \
 endif
 
 CMDS += $(STDCMDS) \
-	bootos9 wbinfo wbreset modem \
+	bootos9 scfg wbinfo wbreset modem \
 	inetd telnet dw httpd $(BASIC09) $(BF) \
 	$(CMDS_EXTRA)
+
+ifeq ($(LEVEL),2)
+UTILPAK1_MODS = attr copy date del deiniz dir display list makdir mdir \
+	merge mfree procs rename tmode unlink
+CMDS += dmem minted mmap modpatch \
+	proc pmap smap \
+	gfxstatus xtclut drawtest play \
+	shellbg shellbgoff ntptime view utilpak1
+endif
+
+BASIC09 = basic09 runb inkey syscall wild
+BASIC09_FILES = $(wildcard $(3RDPARTY)/packages/basic09/samples/*.b09)
+STARTUP = $(LEVEL2)/wildbits/startup
+FEU_STARTUP = feu.startup
+SCRIPTS_DIR = $(LEVEL1)/wildbits/scripts
+TESTS_DIR = $(LEVEL1)/wildbits/tests
+SCRIPTS = $(notdir $(wildcard $(SCRIPTS_DIR)/*))
+TESTS = $(notdir $(wildcard $(TESTS_DIR)/*))
+FONT_DIR = $(LEVEL1)/wildbits/sys/fonts
+BACKGROUND_DIR = $(LEVEL1)/wildbits/sys/backgrounds
+FONTS = 800yfont applefont bigbluefont boxedfont bannerfont.sb \
+	c256seriffont cbmfont commodedorfont enemigafont f256standardfont \
+	IIishfont jessefont msxbannerfont msxfont petticoatsfont \
+	phoenixegafont.sb quadrotextfont techfont thickefont
+BACKGROUNDS = clutbeach clutgrid clutmeadow clutmetal clutspace clutstone clutstone2 clutwood \
+	pixmapbeach pixmapgrid pixmapmeadow pixmapmetal pixmapspace pixmapstone \
+	pixmapstone2 pixmapwood pixmappaintspl pixmappaint2 clutpaintspl clutpaint2 \
+	pixmapwizfi pixmapwizfi2 clutwizfi clutwizfi2 testclutbm0 testclutbm1 testclutbm2 \
+	testpixmapbm0 testpixmapbm1 testpixmapbm2
+
+ifeq ($(LEVEL),2)
+SYS_DIR = $(LEVEL2)/wildbits/sys
+SYS_TEXT_FILES = $(LEVEL2)/sys/motd $(LEVEL1)/sys/errmsg $(LEVEL1)/sys/password \
+	$(SYS_DIR)/helpmsg $(SYS_DIR)/inetd.conf
+SYS_BIN_FILES = $(addprefix $(SYS_DIR)/,stdfonts stdpats_2 stdpats_4 stdpats_16 stdptrs \
+	ibmedcfont isolatin1font)
+else
+SYS_DIR = $(LEVEL1)/wildbits/sys
+SYS_TEXT_FILES = $(LEVEL1)/sys/motd $(LEVEL1)/sys/errmsg $(LEVEL1)/sys/password \
+	$(SYS_DIR)/helpmsg $(SYS_DIR)/inetd.conf
+SYS_BIN_FILES =
+endif
 
 all: libs $(DSKIMAGE)
 
 LIB_NAMES = libwildbitsl$(LEVEL).a libnet.a libalib.a
 include ../../libs.mak
+
+$(MODDIR)/sysgo: $(OBJDIR)/sysgo.o | $(MODDIR)
+	$(LINKER) $(LFLAGS) $^ -osysgo
+	$(MOVE) sysgo $@
+
+$(OBJDIR)/sysgo.o: sysgo.as | $(OBJDIR)
+.PHONY: wildbits-sys-assets
+wildbits-sys-assets:
+	$(MAKE) -C $(SYS_DIR)
+	$(MAKE) -C $(FONT_DIR)
+	$(MAKE) -C $(BACKGROUND_DIR)
+
+$(FEU_STARTUP): FORCE
+	echo "bootos9 /s0/OS9Boot" >> $@
+
+FORCE: ;
 
 ifeq ($(LEVEL),2)
   PADUP ?= ./padup256 bootfile
@@ -67,9 +140,13 @@ bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
 	$(PADUP)
 
-$(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS))
+ifeq ($(LEVEL),2)
+$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets
+else
+$(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets
+endif
 	$(RM) $@
-	$(OS9FORMAT_SD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
+	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9COPY) bootfile $@,OS9Boot
 ifeq ($(LEVEL),2)
 	$(OS9COPY) $(MODDIR)/sysgo $@,sysgo
@@ -81,23 +158,25 @@ endif
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 	$(OS9RENAME) $@,CMDS/shellplus shell
-#	$(CD) sys; $(CPL) $(SYSTEXT) ../$@,SYS
-#	$(OS9ATTR_TEXT) $(foreach file,$(SYSTEXT),$@,SYS/$(file))
-#	$(CD) sys; $(OS9COPY) $(SYSBIN) ../$@,SYS
-#	$(CD) defs; $(CPL) $(DEFS) ../$@,DEFS
-#	$(OS9ATTR_TEXT) $(foreach file,$(DEFS),$@,DEFS/$(file))
-#	$(CPL) $(STARTUP) $@,startup
-#	$(OS9ATTR_TEXT) $@,startup
-#	$(MAKDIR) $@,BASIC09
-#	$(CPL) $(BASIC09_FILES) $@,BASIC09
-#	$(MAKDIR) $@,BF
-#	$(CPL) $(BF_FILES) $@,BF
-#	$(MAKDIR) $@,SOUNDS
-#	$(OS9COPY) $(SOUND_FILES) $@,SOUNDS
-#	$(MAKDIR) $@,SCRIPTS
-#	$(CD) scripts; $(CPL) $(SCRIPTS) ../$@,SCRIPTS
-#	$(MAKDIR) $@,TESTS
-#	$(CD) tests; $(CPL) $(TESTS) ../$@,TESTS
+	$(CPL) $(SYS_TEXT_FILES) $@,SYS
+	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYS_TEXT_FILES)),$@,SYS/$(file))
+ifneq ($(strip $(SYS_BIN_FILES)),)
+	$(OS9COPY) $(SYS_BIN_FILES) $@,SYS
+endif
+	$(MAKDIR) $@,SYS/fonts
+	$(OS9COPY) $(addprefix $(FONT_DIR)/,$(FONTS)) $@,SYS/fonts
+	$(MAKDIR) $@,SYS/backgrounds
+	$(OS9COPY) $(addprefix $(BACKGROUND_DIR)/,$(BACKGROUNDS)) $@,SYS/backgrounds
+	$(CPL) $(STARTUP) $@,startup
+	$(OS9ATTR_TEXT) $@,startup
+	$(MAKDIR) $@,BASIC09
+	$(CPL) $(BASIC09_FILES) $@,BASIC09
+	$(MAKDIR) $@,SCRIPTS
+	$(foreach file,$(SCRIPTS),$(CPL) $(SCRIPTS_DIR)/$(file) $@,SCRIPTS;)
+	$(MAKDIR) $@,TESTS
+	$(foreach file,$(TESTS),$(CPL) $(TESTS_DIR)/$(file) $@,TESTS;)
+	$(MAKDIR) $@,FEU
+	$(CPL) $(FEU_STARTUP) $@,FEU/startup
 
 # Command rules
 $(MODDIR)/pwd: pd.asm | $(MODDIR)
@@ -111,6 +190,12 @@ $(MODDIR)/xmode: xmode.asm | $(MODDIR)
 
 $(MODDIR)/tmode: xmode.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DTMODE=1
+
+ifeq ($(LEVEL),2)
+$(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1_MODS)) | $(MODDIR)
+	$(MERGE) $^ > utilpak1
+	$(MOVE) utilpak1 $@
+endif
 
 # Descriptor rules
 # SD card descriptors
@@ -264,7 +349,7 @@ $(MODDIR)/z14: scdwvdesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=30
 
 clean:
-	$(RM) *.list *.map bootfile *.dsk
+	$(RM) *.list *.map bootfile *.dsk buildinfo feu.startup
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
 
 .PHONY: all clean libs
