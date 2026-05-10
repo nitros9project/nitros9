@@ -745,39 +745,40 @@ PSGR.Base           equ       SND.Base+$0210
 ********************************************************************
 * Direct Memory Access (DMA) definitions
 *
-DMA.Base            equ       $FEE0
+DMA.Base            equ       $FEC0
 
                     org       0
-DMA_CTRL_REG        rmb       1
-DMA_STATUS_REG      rmb       1         read only
+DMA_CTRL_REG        rmb       1         fec0
+DMA_STATUS_REG      rmb       1         fec1 read only
 DMA_DATA_2_WRITE    equ       DMA_STATUS_REG write only
-DMA_RESERVED_0      rmb       1
-DMA_RESERVED_1      rmb       1
+DMA_RESERVED_0      rmb       1         fec2
+DMA_RESERVED_1      rmb       1         fec3
 * Source address.
-DMA_SOURCE_ADDR_L   rmb       1
-DMA_SOURCE_ADDR_M   rmb       1
-DMA_SOURCE_ADDR_H   rmb       1
-DMA_RESERVED_2      rmb       1
+DMA_SOURCE_ADDR_H   rmb       1         fec4
+DMA_SOURCE_ADDR_M   rmb       1         fec5
+DMA_SOURCE_ADDR_L   rmb       1         fec6
+DMA_RESERVED_2      rmb       1         fec7
 * Destination address.
-DMA_DEST_ADDR_L     rmb       1
-DMA_DEST_ADDR_M     rmb       1
-DMA_DEST_ADDR_H     rmb       1
-DMA_RESERVED_3      rmb       1
+DMA_DEST_ADDR_H     rmb       1         fec8
+DMA_DEST_ADDR_M     rmb       1         fec9
+DMA_DEST_ADDR_L     rmb       1         feca
+DMA_RESERVED_3      rmb       1         fecb
+DMA_RESERVED_4      rmb       1         fecc
 * Size in 1D mode.
-DMA_SIZE_1D_L       rmb       1
-DMA_SIZE_1D_M       rmb       1
-DMA_SIZE_1D_H       rmb       1
-DMA_RESERVED_4      rmb       1
-* Size in 1D mode.
-DMA_SIZE_X_L        equ       DMA_SIZE_1D_L
-DMA_SIZE_X_M        equ       DMA_SIZE_1D_M
-DMA_SIZE_Y_L        equ       DMA_SIZE_1D_H
-DMA_SIZE_Y_H        equ       DMA_RESERVED_4
+DMA_SIZE_1D_H       rmb       1         fecd
+DMA_SIZE_1D_M       rmb       1         fece
+DMA_SIZE_1D_L       rmb       1         fecf
+* Size in 2D mode.
+DMA_SIZE_X_H        rmb       1         fed0
+DMA_SIZE_X_L        rmb       1         fed1
+DMA_SIZE_Y_H        rmb       1         fed2
+DMA_SIZE_Y_L        rmb       1         fed3
 * Stride in 2D mode.
-DMA_SRC_STRIDE_X_L  rmb       1
-DMA_SRC_STRIDE_X_H  rmb       1
-DMA_DST_STRIDE_Y_L  rmb       1
-DMA_DST_STRIDE_Y_H  rmb       1
+DMA_SRC_STRIDE_X_H  rmb       1         fed4
+DMA_SRC_STRIDE_X_L  rmb       1         fed5
+DMA_DST_STRIDE_Y_H  rmb       1         fed6
+DMA_DST_STRIDE_Y_L  rmb       1         fed7
+
 DMA_RESERVED_5      rmb       1
 DMA_RESERVED_6      rmb       1
 DMA_RESERVED_7      rmb       1
