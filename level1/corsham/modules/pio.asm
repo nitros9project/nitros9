@@ -1,8 +1,6 @@
 ********************************************************************
 * pio - Corsham Arduino Parallel I/O Low Level Subroutine Module
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

@@ -1,8 +1,6 @@
 ********************************************************************
 * Disasm - 6809/6309 disassembler
 *
-* $Id$
-*
 * Disasm v1.5 (c) 1988 by Ron Lammardo
 * 6309 additions by L. Curtis Boyle Jan. 1993
 *

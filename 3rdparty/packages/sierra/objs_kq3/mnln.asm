@@ -1,8 +1,6 @@
 ********************************************************************
 * MNLN - Kings Quest III main line module
 *
-* $Id$
-*
 *        Header for : mnln
 *        Module size: $602E  #24622
 *        Module CRC : $4A3F24 (Good)

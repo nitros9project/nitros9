@@ -20,7 +20,7 @@ New features:
 - DriveWire CocoLINK and other disk images (David Ladd)
 - CoCoVGA support (Boisy Pitre, David Ladd)
 - Corsham 6809 System support (Boisy Pitre)
-- brainfuck interpreter (Boisy Pitre)
+- brainf*ck interpreter (Boisy Pitre)
 - Co42 console (Luis Fantoniosi)
 - mc09 L1 & L2 hardware ports (Neal Crook)
 Fixes, improvements:

@@ -12,7 +12,7 @@ ALLOBJS		= $(DRIVERS) $(DESCS) $(PROGRAMS)
 all:	$(ALLOBJS) $(DEPENDS)
 
 clean:
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 dsk:
 dskcopy:

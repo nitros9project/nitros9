@@ -1,0 +1,4 @@
+PROCEDURE gdow
+DIM dow:INTEGER
+RUN WILD("GetDow",dow)
+PRINT dow

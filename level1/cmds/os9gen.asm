@@ -1,8 +1,6 @@
 ********************************************************************
 * OS9Gen - OS-9 bootfile generator
 *
-* $Id$
-*
 *  -e = extended boot (fragmented)
 *  -q=<path> = quick gen .. set sector zero pointing to <path>
 *  -r = remove pointer to boot file (does not delete file)

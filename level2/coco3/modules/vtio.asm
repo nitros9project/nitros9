@@ -1,7 +1,6 @@
 ********************************************************************
 * VTIO - Video Terminal I/O Driver for CoCo 3
 *
-* $Id$
 * Need to add SS.GIP2 as well (see notes in code below). May also want to add
 * a new SetStat call to allow changing a device descriptor between CoVDG and CoWin
 *   types (without needing XMODE)

@@ -1,0 +1,229 @@
+#!/bin/sh
+
+REPODIR=$(pwd)
+
+# Until the github repo is converted to condensed format we use 
+# asmalign with defaults as the clean filter.  The asmalign filter
+# accepts Opcode, Operand, and Comment start positions as arguments.
+# These default to columns 21, 31, and 51 respectively. Additionally
+# an optional argument can be used to turn on direcive indenting.
+# The defaults match the "spread out" github repo formatting that is
+# being depreciated.
+
+ASMCLEAN=$REPODIR/scripts/asmalign
+
+# After the github repo is converted to the new "condensed" formatting
+# we should to use asmclean as the filter and the following line should
+# be uncommented:
+
+#ASMCLEAN=$REPODIR/scripts/asmclean
+
+# The asmclean filter accepts no arguments and produces the most compact
+# assembly source possible.
+
+# Asmpp is another filter that could be used. The difference between it and
+# asmalign is with the arguments used to control formatting. They use the
+# same logic to find fields in the source and can be used to produce
+# identical formatting in most cases. The differences in result occur when
+# fields overflow, asmalign is more capable of maintaining alignment of
+# fields in those cases. Another difference is asmalign by default does
+# not indent directives two spaces while asmpp will. This allows is to
+# work as a clean filter to match "spread out" formatting. Because of these
+# advantages asmalign is used here but asmpp could be used instead by
+# editing the .git/config file.
+
+ASMINDENT=$REPODIR/scripts/asmalign
+
+# Verify the filters can be found
+if [ ! -x $ASMCLEAN -o ! -x $ASMINDENT ]; then
+  echo
+  echo Setup must run from the root of the nitros9 repository.
+  echo Change to that directory then run 'scripts/setup-filters'.
+  echo If you already did that and you still get this message
+  echo the filters are missing from the scripts subdirectory.
+  echo
+  return
+fi
+
+echo
+echo This script will set up clean and smudge filters for nitros9
+echo assembler sources. This will allow the sources in your working 
+echo directory to have the format of your choice. If the files in
+echo the git index are not in a clean state adding the clean filter
+echo can have the undesired effect of causing git to assume files
+echo have been changed. You should check that you have a clean
+echo repository before proceeding.  If for some reason you move your
+echo working directory you must run this script again.
+echo
+echo Git attributes for assembler source files must be setup to use
+echo the filters.  This only needs to be done once. If you want this
+echo script to write a new .git/info/attributes file with settings 
+echo for Nitros9 assembler source files just press enter.
+echo
+while true; do
+  read -p "Create new attributes file for assembler source? [y] " ans
+  case $ans in
+    [Qq]* ) return;;
+    [Nn]* ) 
+      break;;
+    * ) 
+      cat << EOS > .git/info/attributes
+*.a      filter=assembly
+*.asm    filter=assembly
+*.as     filter=assembly
+*.d      filter=assembly
+defsfile filter=assembly
+EOS
+      echo Created new attributes file
+      break;;
+  esac
+done
+
+# Verify clean filter will run
+if echo -n | $ASMCLEAN; then
+  echo 
+else
+  echo
+  echo Clean filter does not seem to work. Is Python3 in your
+  echo environment?
+  echo
+  return
+fi
+
+read -p "Install the clean filter? [y] " ans
+case $ans in
+  [Nn]* )
+      read -p "Are you sure? [n] " ans;; 
+  [Yy]* | '' ) ans='true';;
+esac
+case $ans in
+  [Qq]* ) return;;
+  [Nn]* ) return;;
+  [Yy]* ) break;;
+  * )
+    git config filter.assembly.clean "$ASMCLEAN"
+    if [ $? -ne 0 ] ; then
+      echo Clean filter config failed. Something is wrong with your
+      echo git configuration.
+      return
+    fi
+    echo Clean filter installed;;
+esac
+
+echo
+echo Field spacing is controlled by specifying field columns. The label, 
+echo opcode, operand, and comment are kept in order and separated by at
+echo least one space. Columns are numbered starting with one. A field 
+echo column specified as zero has the effect of separating it from the
+echo previous field by just one space.
+echo
+
+read -p "Proceed with re-alignment (smudge) filter? [y] " ans
+case $ans in
+  [Nn]* ) return;;
+  [Qq]* ) return;;
+esac
+
+echo
+echo Some nice settings are suggested. Use or change them to suit. If you
+echo want to match the original spread out formatting use 21, 31, and 51.
+echo
+
+opcode="12"
+operand="0"
+comment="32"
+
+while true; do
+  while true; do
+    read -p "Opcode column? [$opcode] " ans
+    case $ans in
+      *[!0-9]*) echo enter a column number;;
+      * | '') break;;
+    esac
+  done
+  [ -n "$ans" ] && opcode=$ans;
+
+  while true; do
+    read -p "Operand column? [$operand] " ans
+    case $ans in
+      *[!0-9]*) echo enter a column number;;
+      * | '') break;;
+    esac
+  done
+  [ -n "$ans" ] && operand=$ans;
+
+  while true; do
+    read -p "Comment column? [$comment] " ans
+    case $ans in
+      *[!0-9]*) echo enter a column number;;
+      * | '') break;;
+    esac
+  done
+  [ -n "$ans" ] && comment=$ans;
+
+  echo
+  read -p "Is $opcode, $operand, $comment okay? [y] " ans
+  case $ans in
+    [Nn]*) ;;
+    * ) break;;
+  esac
+done
+
+echo
+read -p "Two space indenting of directives? [n] " ans
+case $ans in
+  [Yy]* ) dirs="-d"; break;;
+  * ) dirs=""; break;;
+esac
+
+# set up smudge filter
+ARGS="$dirs -o$opcode -p$operand -c$comment"
+git config filter.assembly.smudge "$ASMINDENT $ARGS"
+if [ $? -ne 0 ] ; then
+  echo "Realignment filter configure failed"
+  return
+fi
+
+echo
+echo Filters are setup but assembler source in your working directory
+echo might not reflect the updated alignment. To fix the formatting for
+echo a source file you can delete it and use git checkout to replace
+echo it with the new formatting.  Instead the entire working directory
+echo can be updated now by allowing this script to do that for all
+echo assembler source files.
+echo  
+
+while true; do
+  read -p "Update your entire working directory to new format? [n] " ans
+  case $ans in
+    [Yy]* ) break;;
+    * ) return;;
+  esac
+done
+
+# Check if there are any uncommitted changes
+if [ -n "$(git status -s)" ]; then
+  echo
+  echo There are uncommitted changes in your working directory. If they
+  echo are assembler source they might be lost. If you know this is not
+  echo a problem you can continue.
+  echo
+  read -p "Are you sure you want to continue? [n] " ans
+  case $ans in
+    [Yy]* ) break;;
+    * ) return;;
+  esac
+fi
+
+# Test checkout
+git checkout -q main
+if [ $? -ne 0 ] ; then
+  echo The script could not checkout the main branch.
+  echo Sorry. You have to investigate why and try again
+  return
+fi
+
+echo Updating the working directory. This might take a while.
+git ls-files **.a **.asm **.as **.d **defsfile | xargs rm
+git checkout main -- .
+

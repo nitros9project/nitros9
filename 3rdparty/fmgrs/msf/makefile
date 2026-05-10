@@ -12,7 +12,7 @@ ALLOBJS		= $(FMGRS) $(DESCS)
 all:	$(ALLOBJS) $(DEPENDS)
 
 clean:
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 msf_6309.mn: msf.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DH6309=1

@@ -1,8 +1,6 @@
 ********************************************************************
 * Boot - Eliminator WD1002-05 Boot Module
 *
-* $Id$
-*
 * WD 1002-05 OS-9 Boot Subroutine (called by OS9p1)
 * Copyright 1988, 1989 Bruce Isted
 * All Rights Reserved

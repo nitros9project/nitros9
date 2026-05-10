@@ -1,8 +1,6 @@
 ********************************************************************
 * XMode/TMode - SCF device/path descriptor utility
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

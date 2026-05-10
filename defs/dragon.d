@@ -4,8 +4,6 @@ DRAGON.D            set       1
 ********************************************************************
 * DgnDefs - Dragon I/O Definitions
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
@@ -34,8 +32,8 @@ HW.Page             SET       $FF                 Device descriptor hardware pag
 **********************************
 * Power Line Frequency Definitions
 *
-Hz50                EQU       1                   Assemble clock for 50 hz power
-Hz60                EQU       2                   Assemble clock for 60 hz power
+Hz50                EQU       50                  Assemble clock for 50 hz power
+Hz60                EQU       60                  Assemble clock for 60 hz power
                     IFNDEF    PwrLnFrq
 PwrLnFrq            SET       Hz60                Set to Appropriate freq
                     ENDC

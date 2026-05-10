@@ -3,8 +3,6 @@ DRIVEWIRE.D         SET       1
 ********************************************************************
 * drivewire.d - DriveWire Definitions File
 *
-* $Id$
-*
 * Ed.    Comments                                       Who YY/MM/DD
 * ------------------------------------------------------------------
 *   1    Started                                        BGP 03/04/03

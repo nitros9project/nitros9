@@ -1,7 +1,5 @@
 ********************************************************************
 * SHDW - Kings Quest III screen rendering module??
-* $Id$
-*
 * Note the header shows a data size of 0 called from the sierra
 * module and accesses data set up in that module.
 *

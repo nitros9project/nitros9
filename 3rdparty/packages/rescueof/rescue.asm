@@ -1,8 +1,6 @@
 ********************************************************************
 * Rescue - Rescue On Fractalus Program
 *
-* $Id$
-*
 * NOTE:  This code assembles to the EXACT same object code found on
 *        the original Rescue on Fractalus disk.
 *

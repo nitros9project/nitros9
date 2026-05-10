@@ -3230,20 +3230,20 @@ L11CB               lda       P$IOQN,x            any process waiting?
 L11E9               puls      pc,u,y,x,b,a,cc     restore & return
 
 * Execute device driver
-* Entry: A=Driver command offset
+* Entry: A=Driver command offset      (one of D$INIT=0, D$READ=3, D$WRIT=6, etc.)
 *        B=MSB of logical sector #
 *        X=LSW of logical sector #
 *        Y=Path descriptor pointer
 *        U=Static memory pointer
-L11EB               pshs      pc,x,b,a
+L11EB               pshs      pc,x,b,a           pushes PC just to reserve space
                     ldx       PD.DEV,y
-                    ldd       V$DRIV,x
-                    ldx       V$DRIV,x
-                    addd      M$Exec,x
-                    addb      ,s
-                    adca      #$00
-                    std       $04,s
-                    puls      pc,x,b,a
+                    ldd       V$DRIV,x           device driver module
+                    ldx       V$DRIV,x           device driver module, again
+                    addd      M$Exec,x           where in drive module the entry table is
+                    addb      ,s                 adds driver offset to D by adding it to B
+                    adca      #$00               correct A, in case of carry out of B.
+                    std       $04,s              overwrite PC with Driver Entry address
+                    puls      pc,x,b,a           jumps to driver entry, restoring LSN
 
 * Write file descriptor to disk
 * Entry: Y=Path descriptor pointer
@@ -3286,7 +3286,7 @@ L1220               ldd       PD.CP+1,y           get current logical sector loa
 L1237               clrb                          clear carry
                     pshs      u,x                 preserve regs
                     ldb       PD.SMF,y            get state flags
-                    andb      #(BufBusy!FDBUF!SINBUF) aynything in buffer?
+                    andb      #(BufBusy!FDBUF!SINBUF) anything in buffer?
                     beq       L1254               no, return
                     tfr       b,a                 duplicate flags
                     eorb      PD.SMF,y            clear them

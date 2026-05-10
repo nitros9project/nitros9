@@ -168,8 +168,8 @@ L084F               inc       1,s                 Bump up to next block to check
 * (Already permanently marked @ L01D2)
 * At the start, Y is pointing to the end of the SMAP table+1
                     ldx       <D.SysMem           get the starting address of the system free memory map
-                    ifne      f256
-* Under OS-9 Level 2 for the F256, the entire bootfile is loaded into RAM by FEU.
+                    ifne      wildbits
+* Under OS-9 Level 2 for the Wildbits, the entire bootfile is loaded into RAM by FEU.
 * There is no F$Boot. Because of this, we start searching for free memory at the
 * very end of the system free memory map.
                     leay      256,x               point Y to very end of system free memory map
@@ -348,8 +348,8 @@ L08F3               rts                           return
 ;;;
 
 FBoot
-                    ifne      f256
-                    rts                           the F256 port doesn't use F$Boot
+                    ifne      wildbits
+                    rts                           the Wildbits port doesn't use F$Boot
                     else
                     lda       #'t                 tried to boot
                     jsr       <D.BtBug

@@ -21,8 +21,12 @@
                     use dwread/dwread_mmmpi.asm
                     endc
 
-                    ifne      f256
-                    use dwread_f256.asm
+                    ifne      wildbits
+                    ifne      DWIO_WIZFI
+                    use dwread_wildbits_wizfi.asm
+                    else
+                    use dwread_wildbits_serial.asm
+                    endc
                     endc
 
                     ifne      ARDUINO
@@ -49,7 +53,7 @@
                     use dwread/dwread_bb38400.asm
                     endc
 
-                    ifeq      BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+BAUD38400+f256+MEGAMINIMPI
+                    ifeq      BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+BAUD38400+wildbits+MEGAMINIMPI
                     ifeq      H6309
                     use dwread/dwread_bb6809.asm
                     else

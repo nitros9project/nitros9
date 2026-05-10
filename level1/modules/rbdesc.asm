@@ -1,8 +1,6 @@
 ********************************************************************
 * rbdesc - Device Descriptor Template
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * 1/1	2013-12/10 Gene heskett

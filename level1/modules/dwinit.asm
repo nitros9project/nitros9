@@ -7,8 +7,12 @@
                     use dwinit/dwinit_mmmpi.asm
                     endc
 
-                    ifne      f256
-                    use dwinit_f256.asm
+                    ifne      wildbits
+                    ifne      DWIO_WIZFI
+                    use dwinit_wildbits_wizfi.asm
+                    else
+                    use dwinit_wildbits_serial.asm
+                    endc
                     endc
 
                     ifne      ARDUINO
@@ -31,6 +35,6 @@
                     use dwinit/dwinit_none.asm
                     endc
 
-                    ifeq      BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+f256+MEGAMINIMPI+atari
+                    ifeq      BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+wildbits+MEGAMINIMPI+atari
                     use dwinit/dwinit_bb.asm
                     endc

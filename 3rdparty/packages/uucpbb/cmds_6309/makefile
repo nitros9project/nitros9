@@ -11,7 +11,7 @@ ALLOBJS		= $(CMDS_TCAP) $(CMDS_WIN) $(CMDS)
 all:	$(ALLOBJS)
 
 clean:
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 showtcapobjs:
 	@$(ECHO) $(CMDS_TCAP)

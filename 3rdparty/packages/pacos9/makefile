@@ -7,6 +7,13 @@ LFLAGS += -L$(NITROS9DIR)/lib -lnos96809l2
 
 DSK = PacOS9.dsk
 
+all: $(TARGET)
+	@$(ECHO) "**************************************************"
+	@$(ECHO) "*                                                *"
+	@$(ECHO) "*                    Pac OS-9                    *"
+	@$(ECHO) "*                                                *"
+	@$(ECHO) "**************************************************"
+
 $(TARGET): $(OBJS)
 	$(LINKER) $(LFLAGS) $^ -o$@
 
@@ -26,7 +33,7 @@ dskclean:
 	$(RM) $(DSK)
 
 clean: dskclean
-	$(RM) $(OBJS) $(TARGET)
+	$(RM) $(OBJS) $(TARGET) *.list *.map
 
 info:
 	@$(ECHO) "*** Larry Olson's Pacos9 game ***"

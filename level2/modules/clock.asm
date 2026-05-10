@@ -8,8 +8,6 @@
 *
 * Based on Microware/Tandy Clock Module for CC3/L2
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
@@ -68,7 +66,7 @@ NewSvc         fcb       F$Time
 *         Stack is set up by the kernel between here and SvcVIRQ.
 *
 SvcIRQ
-               ifne      f256
+               ifne      wildbits
                lda       INT_PENDING_0
                bita      #INT_VKY_SOF
                beq       NoClock
@@ -468,7 +466,7 @@ InitCont
                orcc      #IntMasks           stop interrupts
 
 * Initialize clock hardware
-               ifne      f256
+               ifne      wildbits
 * Use the SOF to get a 1/60th or 1/70th interrupt
                orcc      #IntMasks
                lda       #$FF
@@ -514,7 +512,7 @@ InitCont
                leay      NewSvc,pcr          insert syscalls
                os9       F$SSvc
                
-               ifne      f256
+               ifne      wildbits
                else
 * H6309 optimization opportunity here using oim
                lda       <D.IRQER            get shadow GIME IRQ enable register

@@ -3,8 +3,6 @@ COCO.D              SET       1
 ********************************************************************
 * CoCoDefs - NitrOS-9 System Definitions for the Tandy Color Computer
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

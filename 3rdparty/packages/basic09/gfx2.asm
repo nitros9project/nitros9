@@ -3,8 +3,6 @@
 * NOTE: NEED TO ADD SUPPORT FOR FILLED CIRCLE AND FILLED ELLIPSE
 * Also, DRAW has undocumented feature of specifying starting X,Y
 * coord
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

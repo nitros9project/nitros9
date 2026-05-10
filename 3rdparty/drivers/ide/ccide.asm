@@ -1,8 +1,6 @@
 ********************************************************************
 * CCIDE - IDE device driver for CoCo
 *
-* $Id$
-*
 * DO NOT FORGET TO SET H6309 FLAG IN DEFSFILE APPROPRIATELY FOR 6809 VS.
 *   6309 CODE WHEN ASSEMBLING!!
 *

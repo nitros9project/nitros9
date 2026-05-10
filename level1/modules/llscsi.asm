@@ -1,8 +1,6 @@
 ********************************************************************
 * llscsi - Low-level SCSI driver
 *
-* $Id$
-*
 * Drives tested with this driver:
 * -------------------------------
 * Conner DCP30200 Hard Drive - Sends out a SDTR message immediately,

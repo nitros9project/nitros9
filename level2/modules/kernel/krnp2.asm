@@ -1,8 +1,6 @@
 ********************************************************************
 * krnp2 - NitrOS-9 Level 2 Kernel Part 2
 *
-* $Id$
-*
 * Copyright (c) 1982 Microware Corporation
 *
 * Modified for 6309 Native mode by:
@@ -298,7 +296,7 @@ svctab              fcb       F$UnLink
                     fdb       FGBlkMp-*-2
                     fcb       F$GModDr
                     fdb       FGModDr-*-2
-                    IFEQ      H6309+F256
+                    IFEQ      H6309+wildbits
                     fcb       F$DelRAM
                     fdb       FDelRAM-*-2
                     ENDC
@@ -388,7 +386,7 @@ IOMan               fcs       /IOMan/
 
                     use       fid.asm
 
-                    ifeq      H6309+F256
+                    ifeq      H6309+wildbits
                     use       fdelram.asm
                     endc
 

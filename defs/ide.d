@@ -3,8 +3,6 @@ IDE.D               SET       1
 ********************************************************************
 * ide.d - IDE definitions
 *
-* $Id$
-*
 * (C) 2004 Boisy G. Pitre - Licensed to Cloud-9
 *
 * Edt/Rev  YYYY/MM/DD  Modified by

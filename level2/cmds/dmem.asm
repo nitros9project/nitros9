@@ -4,8 +4,6 @@
 * dmem  <block> <offset> [<length>] ! dump
 * dmem -<proc#> <offset> [<length>] ! dump
 *
-* $Id$
-*
 * From "Inside OS9 Level II", by Kevin Darling
 *
 * Edt/Rev  YYYY/MM/DD  Modified by

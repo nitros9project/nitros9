@@ -111,7 +111,7 @@ badex@              os9       F$Exit    exit
 *    * This is a comment (ignored)
 *    o|Boot OS-9|bootos9 /x0/OS9Boot
 *    # This is another comment (ignored)
-*    r|Reset|fnxreset
+*    r|Reset|wbreset
 *
 * To use scripts:
 *   1. Show the script menu by calling SHOWSCRMENU.

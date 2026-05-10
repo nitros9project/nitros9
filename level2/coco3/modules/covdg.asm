@@ -1,8 +1,6 @@
 ********************************************************************
 * CoVDG - CoCo 3 VDG I/O module
 *
-* $Id$
-*
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment

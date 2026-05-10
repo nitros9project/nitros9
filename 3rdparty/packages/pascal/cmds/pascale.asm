@@ -1,8 +1,6 @@
 ********************************************************************
 * progname - program module
 *
-* $Id$
-*
 * Ed.    Comments                                       Who YY/MM/DD
 * ------------------------------------------------------------------
 *  -     Original Pascal 2.0 distribution version

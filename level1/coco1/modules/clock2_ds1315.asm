@@ -1,8 +1,6 @@
 ********************************************************************
 * Clock2 - Dallas Semiconductor DS1315 RTC Driver
 *
-* $Id$
-*
 * The Burke & Burke HD Controller as well as Cloud-9's products
 * use the DS1315.
 *

@@ -4,8 +4,6 @@ RBSUPER.D           SET       1
 ********************************************************************
 * rbsuper.d - rbsuper definitions
 *
-* $Id$
-*
 * (C) 2004 Boisy G. Pitre - Licensed to Cloud-9
 *
 * These definitions make up the static storage environment for the

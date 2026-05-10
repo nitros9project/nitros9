@@ -1,8 +1,6 @@
 ********************************************************************
 * BootFix - D.P. Johnson boot track fix
 *
-* $Id$
-*
 * Ed.    Comments                                       Who YY/MM/DD
 * ------------------------------------------------------------------
 *   4    D.P. Johnson original version

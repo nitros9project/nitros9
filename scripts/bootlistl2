@@ -1,8 +1,6 @@
 ***************************************
 * NitrOS-9 Level 2 Bootlist
 *
-* $Id$
-*
 * This bootlist is presented as an example for creating custom bootfiles.
 * A module may be excluded from the bootfile if an asterisk (*) is the
 * first character of the line.

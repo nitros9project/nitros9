@@ -4,8 +4,6 @@
 * by Bruce Isted (CIS 76625,2273)
 * released to the Public Domain 87/05/02
 
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

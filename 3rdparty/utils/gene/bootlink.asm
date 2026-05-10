@@ -960,7 +960,7 @@ baddat              leax      FMTSTR,pcr
 forker1             clrb                          we just reported the error folks
 * arriving here with possible bsr on stack - restore
 * but make sure U is correct, a Link call screws it!
-* and this sp reload with U fucked is my crash just like
+* and this sp reload with U borked is my crash just like
 * little green apples. GIGO of the hidden  sort. So...
                     ldu       #$0000              this seems to be where we started
                     lds       stackp,u            clear it for exit, leave b, cc as is

@@ -1,8 +1,6 @@
 ********************************************************************
 * CPU - CPU Determiner Subroutine Module
 *
-* $Id$
-*
 * Basic09 subroutine module to determine the CPU type of the computer
 * Test via:
 *

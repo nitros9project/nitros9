@@ -14,7 +14,7 @@ banner:
 	@$(ECHO) "**************************************************"
 
 clean:
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 dsk:
 dskcopy:

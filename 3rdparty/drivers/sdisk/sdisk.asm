@@ -1,8 +1,6 @@
 ********************************************************************
 * SDisk - D.P. Johnson floppy driver for CoCo
 *
-* $Id$
-*
 * Ed.    Comments                                       Who YY/MM/DD
 * ------------------------------------------------------------------
 * 18     D.P. Johnson original version

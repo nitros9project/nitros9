@@ -2,6 +2,8 @@ include ../../../../rules.mak
 
 vpath %.asm ../objs_lsl
 
+AFLAGS      += -I.
+
 DEPENDS		= ./makefile
 
 DSKDW		= GoldRush_dw.dsk
@@ -74,7 +76,7 @@ ALLOBJS		= $(CMDS)
 all:	$(ALLOBJS)
 
 clean:	dskclean
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 dsk:	all $(DSKDW) $(DSKDWBECKER) $(DISK_1_80D) $(DISK_2_80D) $(DISK_3_80D)
 

@@ -1,8 +1,6 @@
 ********************************************************************
 * SCF - NitrOS-9 Sequential Character File Manager
 *
-* $Id$
-*
 * This contains an added SetStat call to allow placing prearranged data
 * into the keyboard buffer of ANY SCF related device.
 *

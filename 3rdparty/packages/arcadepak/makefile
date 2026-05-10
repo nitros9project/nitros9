@@ -201,7 +201,7 @@ $(DISK_BECKER): all
 	$(CPL) startup $@,
 
 clean:	dskclean
-	$(RM) shell
+	$(RM) shell *.list *.map
 	$(CD) smash; make clean
 	$(CD) thexder; make clean
 	$(CD) shanghai; make clean

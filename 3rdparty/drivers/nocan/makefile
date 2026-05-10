@@ -19,7 +19,7 @@ r0_nocan.dd: r0.asm
 	$(AS) $(ASOUT)$@ $< $(AFLAGS)
 
 clean:
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 dskclean:
 	$(RM) $(DSK)

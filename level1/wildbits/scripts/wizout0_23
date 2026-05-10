@@ -1,0 +1,6 @@
+echo AT+CIPMODE=0>/wz
+modem /wz
+echo AT+CIPMUX=1>/wz
+modem /wz
+echo AT+CIPSTART=0,"TCP","ip",23>/wz
+modem /wz

@@ -6,7 +6,7 @@ include ../../../rules.mak
 DEPENDS		= ./makefile
 
 CMDS		= del mode send timer bigbro font makdir \
-		more tee joypoll
+		 tee joypoll
 
 ALLOBJS		= $(CMDS)
 
@@ -39,7 +39,7 @@ dskclean:
 	$(RM) $(DSKS)
 
 clean: dskclean
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 info:
 	@$(ECHO) "*** Boisy Pitre's Utilities ***"

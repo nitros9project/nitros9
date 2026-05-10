@@ -4,8 +4,6 @@ SCF.D               SET       1
 ********************************************************************
 * scf.d - Sequential Character File Manager Definitions
 *
-* $Id$
-*
 * SCF stands for 'Sequential Character Filemanager' and is a package of subroutines
 * that define the logical structure of a serial device.
 *

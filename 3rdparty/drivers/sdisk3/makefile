@@ -58,7 +58,7 @@ d1_80d.dd: sdisk3desc.asm
 	$(AS) $(ASOUT)$@ $< $(AFLAGS) $(DSDD80) -DDNum=1
 
 clean:
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 dsk:
 dskcopy:

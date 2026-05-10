@@ -1,8 +1,6 @@
 ********************************************************************
 * Dir - Show directory
 *
-* $Id$
-*
 * This dir initially started from the dir command that came with
 * the OS-9 Level Two package, then incorporated Glenside's Y2K
 * fix.
@@ -26,6 +24,9 @@
 *
 *  12      2005/11/22  Boisy G. Pitre
 * -e option now uses SS.FDInf for portability to other file managers
+*
+*  13      2025/12/06  Boisy G. Pitre
+* Fix issue where dir -e output would go into 32 column mode when piped.
 
 ;;; dir
 ;;;
@@ -47,7 +48,7 @@
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       12
+edition             set       13
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -102,9 +103,12 @@ start               leay      <linebuff,u         get ptr to line buffer
                     clr       <dircount
                     pshs      y,x,b,a
                     ldd       #$01*256+SS.ScSiz   standard output and screen size call
-                    os9       I$GetStt            get it
-                    bcc       L0120               branch if gotten
+* Ed13 fix: load X BEFORE calling I$GetStt in case some drivers (like piper) simply return carry clear
+* and do nothing in their I$GetStt routine.
                     ldx       #80
+                    os9       I$GetStt            get it
+* If the getstat fails, X remains 80. If it works, X contains the width of the device. Either way
+* there's no point in checking.
 L0120               tfr       x,d
                     cmpb      #51
                     bgt       higher

@@ -5,8 +5,6 @@
 * (multitasking) disk driver that uses interrupts. Care must be
 * taken that no other hardware will conflict.
 *
-* $Id$
-*
 * Ed.    Comments                                       Who YY/MM/DD
 * ------------------------------------------------------------------
 *  02    Fist disassembled                              tjl 02/08/27

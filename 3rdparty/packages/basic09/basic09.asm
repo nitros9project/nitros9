@@ -1,8 +1,6 @@
 ********************************************************************
 * Basic09 - BASIC for OS-9
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
@@ -478,7 +476,7 @@ L0022               fdb       $1607               Edition #22 ($16)
 
 * Intro screen
 
-                    ifne      F256
+                    ifne      wildbits
 L0024               fcb       $0A
 				else
 L0024               fcb       $0C
@@ -1679,7 +1677,7 @@ L082E               lda       #$7E                Opcode for JMP Extended instru
                     stx       <u009E              Save it
                     ldb       ,y                  Get char from params
                     cmpb      #C$CR               Carriage return?
-                    ifne      F256
+                    ifne      wildbits
                     lbeq      BannerGo               Yes, go print the title screen L08A6
 				else
 				beq       L08A6
@@ -12771,7 +12769,7 @@ L5AC3               ldb       #48                 Unimplemented routine error
                     coma                          Exit with error
                     rts
 
-				ifne		F256
+				ifne		wildbits
 BannerGo            leax      NEWLN,pcr
                     ldy       #NEWLNLEN
                     lda       #1
@@ -12785,17 +12783,33 @@ BannerGo            leax      NEWLN,pcr
                     ldx       #$FE00
                     lda       7,x
                     cmpa      #$02
-                    bne       isItF256K
+                    bne       isItK
                     leax      OUTSTR2,pcr
                     ldy       #STRLEN2
                     lda       #1
                     os9       I$Writln
                     bcs       ERROR
                     bra       CONT
-isItF256K           cmpa      #$12
-                    bne       ERROR
+isItK           cmpa      #$12
+                    bne       isItK2
                     leax      OUTSTR3,pcr
                     ldy       #STRLEN3
+                    lda       #1
+                    os9       I$Writln
+                    bcs       ERROR
+                    bra       CONT
+isItK2          cmpa      #$16
+                    bne       isItJrJr
+                    leax      OUTSTR4,pcr
+                    ldy       #STRLEN4
+                    lda       #1
+                    os9       I$Writln
+                    bcs       ERROR
+                    bra       CONT
+isItJrJr            cmpa      #$1A
+                    bne       ERROR
+                    leax      OUTSTR5,pcr
+                    ldy       #STRLEN5
                     lda       #1
                     os9       I$Writln
                     bcs       ERROR
@@ -12806,80 +12820,96 @@ CONT                leax      BASL2,pcr
                     bcs       ERROR
 DONE                ldb       #0
 ERROR               lbra      L08A6
-OUTSTR              fcb       $1b,$32,$07,$de,$db,$db,$db,$db,$db,$b7
-                    fcb       $1b,$32,$06,$db,$db,$1b,$32,$08,$c2,$db
-                    fcb       $db,$db,$bc,$1b,$32,$06,$db,$db,$1b,$32
-                    fcb       $04,$b5,$db,$db,$db,$db,$db,$b7,$1b,$32
-                    fcb       $06,$db,$1b,$32,$0e,$db,$dd,$1b,$32,$06
-                    fcb       $db,$1b,$32,$05,$b5,$db,$db,$db,$db,$b7
-                    fcb       $1b,$32,$06,$db,$db,$1b,$32,$0f,$c2,$db
-                    fcb       $db,$db,$db,$db,$bc,$1b,$32,$06,$db,$db
-                    fcb       $1b,$32,$01,$b5,$db,$db,$db,$db,$b7,$1b
-                    fcb       $32,$06,$db,$db,$db,$db,$db,$db,$db,$db
-                    fcb       $db,$db,$1b,$32,$01
+OUTSTR              fcb       $1b,$32,$07,$1c,$13,$1c,$11,$1c,$11
+                    fcb       $1c,$11,$1c,$11,$1c,$11,$1c,$05
+                    fcb       $1b,$32,$06,$20,$20,$1b,$32,$08,$1c,$10,$1c,$11
+                    fcb       $1c,$11,$1c,$11,$1c,$0a,$1b,$32,$06,$20,$20
+                    fcb       $1b,$32,$04,$1c,$03,$1c,$11,$1c,$11,$1c,$11,$1c
+                    fcb       $11,$1c,$11,$1c,$05
+                    fcb       $1b,$32,$06,$20,$1b,$32,$0e,$1c,$11,$1c,$12,$1b,$32,$06
+                    fcb       $20,$1b,$32,$05,$1c,$03,$1c,$11,$1c,$11,$1c,$11,$1c,$11
+                    fcb       $1c,$05
+                    fcb       $1b,$32,$06,$20,$20,$1b,$32,$0f,$1c,$10,$1c,$11
+                    fcb       $1c,$11,$1c,$11,$1c,$11,$1c,$11,$1c,$0a
+                    fcb       $1b,$32,$06,$20,$20
+                    fcb       $1b,$32,$01,$1c,$03,$1c,$11,$1c,$11,$1c,$11,$1c,$11
+                    fcb       $1c,$05
+                    fcb       $1b,$32,$06,$20,$20,$20,$20,$20,$20,$20,$20
+                    fcb       $1b,$32,$01
 STRLEN              equ       *-OUTSTR
-OUTSTR2             fcc       /F256 Jr./
+OUTSTR2             fcc       " Wildbits/Jr"
                     fcb       $0D
 STRLEN2             equ       *-OUTSTR2
-OUTSTR3             fcc       / F256K/
+OUTSTR3             fcc       "  Wildbits/K"
                     fcb       $0D
 STRLEN3             equ       *-OUTSTR3
-BASL2               fcb       $1b,$32,$07,$de,$db,$1b,$32,$06,$db,$db
-                    fcb       $db,$1b,$32,$07,$de,$db,$1b,$32,$06,$db
-                    fcb       $1b,$32,$08,$c2,$db,$c3,$1b,$32,$06,$db
-                    fcb       $1b,$32,$08,$bb,$db,$bc,$1b,$32,$06,$db
-                    fcb       $1b,$32,$04,$db,$dd,$1b,$32,$06,$db,$db
-                    fcb       $db,$db,$db,$db,$1b,$32,$0e,$db,$dd,$1b
-                    fcb       $32,$06,$db,$1b,$32,$05,$db,$dd,$1b,$32
-                    fcb       $06,$db,$db,$db,$db,$db,$db,$1b,$32,$0f
-                    fcb       $db,$be,$1b,$32,$06,$db,$1b,$32,$0f,$c2
-                    fcb       $c3,$c1,$db,$1b,$32,$06,$db,$db,$1b,$32
-                    fcb       $01,$db,$dd
-                    fcb       $1b,$32,$06,$db,$db,$1b,$32,$01,$de,$db
-                    fcb       $1b,$32,$06,$db,$db,$db,$db,$db,$db,$db
-                    fcb       $db,$db,$db,$db,$db,$db,$db,$db,$db,$db
-                    fcb       $db,$db,$db,$db,$db,$db,$db,$db,$db,$db
-                    fcb       $db,$db,$db
-                    fcb       $1b,$32,$07,$de,$db,$db,$db,$db,$db,$bd
-                    fcb       $1b,$32,$06,$db,$1b,$32,$08,$db,$db,$db
-                    fcb       $db,$db,$db,$db,$1b,$32,$06,$db,$1b,$32
-                    fcb       $04,$b6,$db,$db,$db,$db,$db,$b7,$1b,$32
-                    fcb       $06,$db,$1b,$32,$0e,$db,$dd,$1b,$32,$06
-                    fcb       $db,$1b,$32,$05,$db,$dd,$1b,$32,$06,$db
-                    fcb       $db,$db,$db,$db,$db,$1b,$32,$0f,$db,$dd
-                    fcb       $1b,$32,$0f,$c2,$db,$c3,$de,$db,$1b,$32
-                    fcb       $06,$db,$db,$1b,$32,$01,$b6,$db,$db,$db
-                    fcb       $db,$db,$1b,$32,$06,$db,$db,$db,$db,$db
-                    fcb       $db,$db,$db,$db,$db,$1b,$32,$01,$40,$4d
-                    fcb       $72,$50,$69,$74,$72,$65,$1b,$32,$06,$db
-                    fcb       $db
-                    fcb       $db,$db,$db,$db,$db,$db,$db,$db,$db,$db
-                    fcb       $1b,$32,$07,$de,$db,$1b,$32,$06,$db,$db
-                    fcb       $db,$1b,$32,$07,$de,$db,$1b,$32,$06,$db
-                    fcb       $1b,$32,$08,$db,$db,$1b,$32,$06,$db,$db
-                    fcb       $db,$1b,$32,$08,$db,$db,$1b,$32,$06,$db
-                    fcb       $db,$db,$db,$db,$db,$1b,$32,$04,$de,$db
-                    fcb       $1b,$32,$06,$db,$1b,$32,$0e,$db,$dd,$1b
-                    fcb       $32,$06,$db,$1b,$32,$05,$db,$dd,$1b,$32
-                    fcb       $06,$db,$db,$db,$db,$db,$db,$1b,$32,$0f
-                    fcb       $db,$c0,$c2,$c3,$1b,$32,$06,$db,$1b,$32
-                    fcb       $0f,$bf,$db,$1b,$32,$06,$db,$db,$db,$db
-                    fcb       $db,$db,$1b,$32,$01,$de,$db
-                    fcb       $1b,$32,$06,$db,$db,$db,$db,$db,$db,$db
-                    fcb       $db,$db,$db,$db,$1b,$32,$01,$40,$4a,$46
-                    fcb       $65,$64,$1b,$32,$06,$db,$db,$db,$db,$db
-                    fcb       $db,$db,$db,$db,$db,$db,$db,$db,$db
-                    fcb       $1b,$32,$07,$de,$db,$db,$db,$db,$db,$b8
-                    fcb       $1b,$32,$06,$db,$1b,$32,$08,$db,$c3
-                    fcb       $1b,$32,$06,$db,$db,$db,$1b,$32,$08,$bb
-                    fcb       $db,$1b,$32,$06,$db,$1b,$32,$04,$b9,$db
-                    fcb       $db,$db,$db,$db,$b8,$1b,$32,$06,$db,$1b
-                    fcb       $32,$0e,$db,$dd,$1b,$32,$06,$db,$1b,$32
-                    fcb       $05,$b6,$db,$db,$db,$db,$b8,$1b,$32,$06
-                    fcb       $db,$db,$1b,$32,$0f,$bb,$db,$db,$db,$db
-                    fcb       $db,$c3,$1b,$32,$06,$db,$db,$1b,$32
-                    fcb       $01,$b9,$db,$db,$db,$db,$b8,$1b,$32,$06
-                    fcb       $db,$db,$db,$db,$db,$db,$db,$db,$1b,$32
+OUTSTR4             fcc       "Wildbits/K2"
+                    fcb       $0D
+STRLEN4             equ       *-OUTSTR4
+OUTSTR5             fcc       "Wildbits/Jr2"
+                    fcb       $0D
+STRLEN5             equ       *-OUTSTR5
+BASL2               fcb       $1b,$32,$07,$1c,$13,$1c,$11,$1b,$32,$06,$20,$20
+                    fcb       $20,$1b,$32,$07,$1c,$13,$1c,$11,$1b,$32,$06,$20
+                    fcb       $1b,$32,$08,$1c,$10,$1c,$11,$1c,$15,$1b,$32,$06,$20
+                    fcb       $1b,$32,$08,$1c,$09,$1c,$11,$1c,$0a,$1b,$32,$06,$20
+                    fcb       $1b,$32,$04,$1c,$11,$1c,$12,$1b,$32,$06,$20,$20
+                    fcb       $20,$20,$20,$20,$1b,$32,$0e,$1c,$11,$1c,$12,$1b
+                    fcb       $32,$06,$20,$1b,$32,$05,$1c,$11,$1c,$12,$1b,$32
+                    fcb       $06,$20,$20,$20,$20,$20,$20,$1b,$32,$0f
+                    fcb       $1c,$11,$1c,$0c,$1b,$32,$06,$20,$1b,$32,$0f,$1c,$10
+                    fcb       $1c,$15,$1c,$0f,$1c,$11,$1b,$32,$06,$20,$20,$1b,$32
+                    fcb       $01,$1c,$11,$1c,$12
+                    fcb       $1b,$32,$06,$20,$20,$1b,$32,$01,$1c,$13,$1c,$11
+                    fcb       $1b,$32,$06,$20,$20,$20,$20,$20,$20,$20
+                    fcb       $20,$20,$20,$20,$20,$20,$20,$20,$20,$20
+                    fcb       $20,$20,$20,$20,$20,$20,$20,$20,$20,$20
+                    fcb       $20,$20,$20
+                    fcb       $1b,$32,$07,$1c,$13,$1c,$11,$1c,$11,$1c
+                    fcb       $11,$1c,$11,$1c,$11,$1c,$0b
+                    fcb       $1b,$32,$06,$20,$1b,$32,$08,$1c,$11,$1c,$11,$1c,$11
+                    fcb       $1c,$11,$1c,$11,$1c,$11,$1c,$11
+                    fcb       $1b,$32,$06,$20,$1b,$32,$04
+                    fcb       $1c,$04,$1c,$11,$1c,$11,$1c,$11,$1c,$11
+                    fcb       $1c,$11,$1c,$05,$1b,$32
+                    fcb       $06,$20,$1b,$32,$0e,$1c,$11,$1c,$12,$1b,$32,$06
+                    fcb       $20,$1b,$32,$05,$1c,$11,$1c,$12,$1b,$32,$06,$20
+                    fcb       $20,$20,$20,$20,$20,$1b,$32,$0f,$1c,$11,$1c,$12
+                    fcb       $1b,$32,$0f,$1c,$10,$1c,$11,$1c,$15,$1c,$13,$1c,$11
+                    fcb       $1b,$32,$06,$20,$20,$1b,$32,$01,$1c,$04,$1c,$11,$1c,$11
+                    fcb       $1c,$11,$1c,$11,$1c,$11,$1b,$32,$06,$20,$20,$20,$20,$20
+                    fcb       $20,$20,$20,$20,$20,$1b,$32,$01,$40,$44
+                    fcb       $72,$50,$69,$74,$72,$65,$1b,$32,$06,$20,$20
+                    fcb       $20,$20,$20,$20,$20,$20,$20,$20,$20,$20
+                    fcb       $1b,$32,$07,$1c,$13,$1c,$11,$1b,$32,$06,$20,$20
+                    fcb       $20,$1b,$32,$07,$1c,$13,$1c,$11,$1b,$32,$06,$20
+                    fcb       $1b,$32,$08,$1c,$11,$1c,$11,$1b,$32,$06,$20,$20
+                    fcb       $20,$1b,$32,$08,$1c,$11,$1c,$11,$1b,$32,$06,$20
+                    fcb       $20,$20,$20,$20,$20,$1b,$32,$04,$1c,$13,$1c,$11
+                    fcb       $1b,$32,$06,$20,$1b,$32,$0e,$1c,$11,$1c,$12,$1b
+                    fcb       $32,$06,$20,$1b,$32,$05,$1c,$11,$1c,$12,$1b,$32
+                    fcb       $06,$20,$20,$20,$20,$20,$20,$1b,$32,$0f
+                    fcb       $1c,$11,$1c,$0e,$1c,$10,$1c,$15,$1b,$32,$06,$20
+                    fcb       $1b,$32,$0f,$1c,$0d,$1c,$11,$1b,$32,$06,$20,$20
+                    fcb       $20,$20,$20,$20,$1b,$32,$01,$1c,$13,$1c,$11
+                    fcb       $1b,$32,$06,$20,$20,$20,$20,$20,$1b,$32,$01,$40,$4a,$46
+                    fcb       $65,$64,$20,$40,$4E,$69,$74,$72,$6f,$62,$6f,$74,$69
+                    fcb       $63,$73,$1b,$32,$06
+                    fcb       $20,$20,$20,$20,$20,$20,$20
+                    fcb       $1b,$32,$07,$1c,$13,$1c,$11,$1c,$11,$1c
+                    fcb       $11,$1c,$11,$1c,$11,$1c,$06
+                    fcb       $1b,$32,$06,$20,$1b,$32,$08,$1c,$11,$1c,$15
+                    fcb       $1b,$32,$06,$20,$20,$20,$1b,$32,$08,$1c,$09
+                    fcb       $1c,$11,$1b,$32,$06,$20,$1b,$32,$04,$1c,$07,$1c,$11
+                    fcb       $1c,$11,$1c,$11,$1c,$11,$1c,$11,$1c,$06
+                    fcb       $1b,$32,$06,$20,$1b
+                    fcb       $32,$0e,$1c,$11,$1c,$12,$1b,$32,$06,$20,$1b,$32
+                    fcb       $05,$1c,$04,$1c,$11,$1c,$11,$1c,$11,$1c,$11,$1c,$06
+                    fcb       $1b,$32,$06
+                    fcb       $20,$20,$1b,$32,$0f,$1c,$09,$1c,$11,$1c,$11,$1c,$11
+                    fcb       $1c,$11,$1c,$11,$1c,$15,$1b,$32,$06,$20,$20,$1b,$32
+                    fcb       $01,$1c,$07,$1c,$11,$1c,$11,$1c,$11,$1c,$11,$1c,$06
+                    fcb       $1b,$32,$06,$20,$20,$20,$20,$20,$20,$20,$20,$1b,$32
                     fcb       $01,$40,$4d,$61,$74,$74,$20,$4d,$61,$73
                     fcb       $73,$69,$65,$1b,$32,$01
 BASLEN2             equ       *-BASL2

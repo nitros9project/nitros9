@@ -2,6 +2,8 @@ include ../../../rules.mak
 
 vpath %.asm $(LEVEL2)/modules:$(LEVEL1)/modules
 
+AFLAGS += -I.
+
 L1_256 = $(AFLAGS) -DLevel=1 -DRAMSize=1
 L2_256 = $(AFLAGS) -DLevel=2 -DRAMSize=1
 L1_512 = $(AFLAGS) -DLevel=1 -DRAMSize=2
@@ -82,7 +84,7 @@ r0_512_l2.dd: r0.asm
 	$(AS) $(ASOUT)$@ $< $(L2_512)
 
 clean:
-	$(RM) $(ALLOBJS)
+	$(RM) $(ALLOBJS) *.list *.map
 
 dsk:
 dskcopy:

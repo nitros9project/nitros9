@@ -1,8 +1,6 @@
 ********************************************************************
 * rb1773 - Western Digital 1773 Disk Controller Driver
 *
-* $Id$
-*
 * This driver has been tested with the following controllers:
 *   - Tandy FD-502 "shortie" disk controller
 *   - Disto Super Controller I

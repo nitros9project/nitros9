@@ -1,8 +1,6 @@
 ********************************************************************
 * Clock - NitrOS-9 System Clock
 *
-* $Id$
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
@@ -151,7 +149,7 @@ InitCont
 around@
 
 * Initialize clock hardware
-                    ifne      f256
+                    ifne      wildbits
 * Use the SOF to get a 1/60th or 1/70th interrupt
                     pshs      cc
                     orcc      #IntMasks
@@ -286,7 +284,7 @@ ClkEx
 SvcIRQ
                     clra
                     tfr       a,dp                set direct page to zero
-                    ifne      f256
+                    ifne      wildbits
                     lda       INT_PENDING_0
                     bita      #INT_VKY_SOF
                     bne       ClearInt            it's a clock interrupt -- clear it
