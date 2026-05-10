@@ -13247,12 +13247,12 @@ BannerGo            leax      NEWLN,pcr
                     ldy       #NEWLNLEN
                     lda       #1
                     os9       I$Writln
-                    bcs       ERROR
+                    bcs       BNRERR
                     leax      OUTSTR,pcr
                     ldy       #STRLEN
                     lda       #1
                     os9       I$Write
-                    bcs       ERROR
+                    bcs       BNRERR
                     ldx       #$FE00
                     lda       7,x
                     cmpa      #$02
@@ -13261,7 +13261,7 @@ BannerGo            leax      NEWLN,pcr
                     ldy       #STRLEN2
                     lda       #1
                     os9       I$Writln
-                    bcs       ERROR
+                    bcs       BNRERR
                     bra       CONT
 isItK           cmpa      #$12
                     bne       isItK2
@@ -13269,7 +13269,7 @@ isItK           cmpa      #$12
                     ldy       #STRLEN3
                     lda       #1
                     os9       I$Writln
-                    bcs       ERROR
+                    bcs       BNRERR
                     bra       CONT
 isItK2          cmpa      #$16
                     bne       isItJrJr
@@ -13277,22 +13277,22 @@ isItK2          cmpa      #$16
                     ldy       #STRLEN4
                     lda       #1
                     os9       I$Writln
-                    bcs       ERROR
+                    bcs       BNRERR
                     bra       CONT
 isItJrJr            cmpa      #$1A
-                    bne       ERROR
+                    bne       BNRERR
                     leax      OUTSTR5,pcr
                     ldy       #STRLEN5
                     lda       #1
                     os9       I$Writln
-                    bcs       ERROR
+                    bcs       BNRERR
 CONT                leax      BASL2,pcr
                     ldy       #BASLEN2
                     lda       #1
                     os9       I$Write
-                    bcs       ERROR
-DONE                ldb       #0
-ERROR               lbra      COMAND
+                    bcs       BNRERR
+BNRDONE                ldb       #0
+BNRERR               lbra      COMAND
 OUTSTR              fcb       $1b,$32,$07,$1c,$13,$1c,$11,$1c,$11
                     fcb       $1c,$11,$1c,$11,$1c,$11,$1c,$05
                     fcb       $1b,$32,$06,$20,$20,$1b,$32,$08,$1c,$10,$1c,$11
