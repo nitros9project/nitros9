@@ -687,7 +687,8 @@ L0025               fcc       '            BASIC09'
 				endc
                     fcb       $8A
 
-* Jump vector @ $1B goes here
+* Jump vector @ $1B goes here (BASIC09 dispatch — EDITOR only)
+                    ifne      INCLUDED&EDITOR
 L00DC               pshs      x,d                 Preserve regs
                     ldb       [<$04,s]            Get function offset
                     leax      <L00EC,pc           Point to vector table
@@ -713,12 +714,59 @@ L00EC               fdb       DIRLNK-L00EC         Function 0
                     fdb       L1026-L00EC         Function 18
                     fdb       L10AC-L00EC         Function 1A (Pointed to by <u0019 & <u0017)
                     fdb       L10B1-L00EC         Function 1C
+                    endc
+
+* RunB mode: $1B dispatch and stubs replacing EDITOR-only functions
+                    ifeq      INCLUDED&EDITOR
+L00DC               pshs      x,d
+                    ldb       [<$04,s]
+                    leax      <L00EC,pc
+                    ldd       b,x
+                    leax      d,x
+                    stx       $4,s
+                    puls      d,x,pc
+L00EC               fdb       DIRLNK-L00EC
+                    fdb       L1287-L00EC
+                    fdb       SETEXT-L00EC
+                    fdb       EXIT-L00EC
+                    fdb       L18BE-L00EC
+                    fdb       KILLEX-L00EC
+                    fdb       BYEBYE-L00EC
+                    fdb       KILALL-L00EC
+                    fdb       L1BA2-L00EC
+                    fdb       L12F9-L00EC
+                    fdb       L19B1-L00EC
+                    fdb       L110C-L00EC
+                    fdb       L1026-L00EC
+                    fdb       L10AC-L00EC
+                    fdb       L10B1-L00EC
+DIRLNK
+L1287
+SETEXT
+EXIT
+L18BE
+KILLEX
+BYEBYE
+KILALL
+L1BA2
+L12F9
+L19B1
+L110C
+L1026
+L10AC
+L10B1              rts
+L011F               jsr       <u002A
+                    fcb       $02
+L0116               jsr       <u0024
+                    fcb       $00
+                    endc
 
 * UNUSED IN BASIC09
 *L0131    jsr   <u0024
 *         fcb   $0A
 
-* token/command type & command list?
+* token/command type & command list? (EDITOR only -- RunB has no keyword scanner)
+                    ifne      INCLUDED&EDITOR
                     fdb       114                 # entries in table
                     fcb       2                   # bytes to start text
 
@@ -1750,6 +1798,7 @@ L07A2               fcs       'ok'
 L07A4               fcs       'D:'
 L07A6               fcs       'E:'
 L07A8               fcs       'B:'
+                    endc
 
 * F$Icpt routine
 INTCPT               lda       R$DP,s              Get DP register from stack
@@ -1854,8 +1903,13 @@ START15               lda       #$7E                Opcode for JMP Extended inst
                     ifeq      H6309
                     leas      2,s                 eat X on stack
                     endc
+                    ifne      INCLUDED&EDITOR
                     bsr       L0116               Go init <$50 vars, & some table ptrs
+                    else
+                    lbsr      L0116               Go init <$50 vars, & some table ptrs
+                    endc
                     puls      y                   Get parameter ptr
+                    ifne      INCLUDED&EDITOR
                     leax      >L0140,pc           Point to main command token list
                     stx       <u009E              Save it
                     ldb       ,y                  Get char from params
@@ -4611,6 +4665,15 @@ L1BD5               fcb       $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$0
                     fcb       $00,$00,$00,$00,$00,$b0,$00,$00,$00,$00,$b0,$c0,$00,$b0,$c0,$00
                     fcb       $b0,$c0,$d0,$00,$b0,$c0,$d0,$00,$b0,$c0,$00,$b0,$c0,$00,$b0,$c0
                     fcb       $00,$b0,$00,$b0,$00,$b0,$00,$00,$e2,$e2,$e2,$e2,$e2,$e2,$e2,$e2
+                    endc
+
+* RunB-mode: enter interpreter (BASIC09 mode enters COMAND above)
+                    ifeq      INCLUDED&EDITOR
+                    ldx       <u0004              Get ptr to module list
+                    ldd       ,x                  Get ptr to 1st module
+                    std       <u002F              Save it
+                    lbsr      CMPRAM              Enter RunB interpreter
+                    endc
 
 L1CA5               pshs      x,d                 Preserve regs
                     ldb       [<4,s]              Get function code

@@ -44,6 +44,12 @@ runb_6309: runb.asm
 runb_6809: runb.asm
 	$(AS) $(ASOUT)$@ $< $(M6809)
 
+runb2_6809: basic09.asm
+	$(AS) $(ASOUT)$@ $< $(M6809) -DINCLUDED="RUNTIM+MATHPAK"
+
+runb2_6309: basic09.asm
+	$(AS) $(ASOUT)$@ $< $(H6309) -DINCLUDED="RUNTIM+MATHPAK"
+
 runbt_6809: basic09.asm
 	$(AS) $(ASOUT)$@ $< $(M6809) -aRUNTIME=1
 
