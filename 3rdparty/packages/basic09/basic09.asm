@@ -80,10 +80,11 @@
 *           |            |   0000000x - 1=Line with compiler error
 *           |            |              0=No lines with compiler errors
 *   $0018   |  ???       | Size of module name
-* NitrOS9 V1.21 mods
-* 06/17/94 - Changed intercept routine @ INTCPT: Replaced LSL <u0034/COMA/
+* ------------------------------------------------------------------
+*  V1.21   1994/06/17  NitrOS-9 Project
+* Changed intercept routine @ INTCPT: Replaced LSL <u0034/COMA/
 *            ROR <u0034/RTI with OIM #$80,<u0034/RTI/NOP/NOP
-*          - Changed routine @ start:
+* Changed routine @ start:
 *               FROM                TO
 *          4   LEAU >$100,u    4   LDW #$100
 *          1   CLRA            2   CLR ,-s
@@ -92,23 +93,29 @@
 *          3   CMPU ,s         1   NOP
 *          2   BHI  START0      1   NOP
 * Bytes:  15                  15
-*          - Changed CLRA/LDB #$01 to LDD #$0001 @ end of start
-* 06/22/94 - Changed L0DBB (reset temp buffer to empty state) to use PSHS D
-*          - LDA #1 / STA <u007D / LDD <u0080 / STD <u0082 / PULS PC,D
+* Changed CLRA/LDB #$01 to LDD #$0001 @ end of start
+*  V1.21   1994/06/22  NitrOS-9 Project
+* Changed L0DBB (reset temp buffer to empty state) to use PSHS D
+* LDA #1 / STA <u007D / LDD <u0080 / STD <u0082 / PULS PC,D
 *            (saves 5 cycles) ALSO WORKS AS 6809 MOD
-*          - Changed BEQ L08E3 to BEQ L08E5 @ RUNCMD (Std in for commands)
-*          - Changed numerous CLRA/CLRB and COMA/COMB to CLRD & COMD respectiv
+* Changed BEQ L08E3 to BEQ L08E5 @ RUNCMD (Std in for commands)
+* Changed numerous CLRA/CLRB and COMA/COMB to CLRD & COMD respectiv
 *            just to shorten source
-* 06/27/94 - Added 2nd TFM to init routine to clear out $400-$4ff
-* 06/28/94 - Changed BRA OUTCHR99 @ OUTCHR to PULS PC,U,A (6809 TOO)
-* 12/22/94 - BIG TEST: TOOK OUT NOP'D CODE - SEE IF IT STILL WORKS
-*          - IT DOESN'T - MOVED ALL NOPS TO JUST BEFORE ICPT ROUTINE TO
+*  V1.21   1994/06/27  NitrOS-9 Project
+* Added 2nd TFM to init routine to clear out $400-$4ff
+*  V1.21   1994/06/28  NitrOS-9 Project
+* Changed BRA OUTCHR99 @ OUTCHR to PULS PC,U,A (6809 TOO)
+*  V1.21   1994/12/22  NitrOS-9 Project
+* BIG TEST: TOOK OUT NOP'D CODE - SEE IF IT STILL WORKS
+* IT DOESN'T - MOVED ALL NOPS TO JUST BEFORE ICPT ROUTINE TO
 *            SEE IF THE SEPARATION OF CODE & DATA MAKES A DIFFERENCE
-*          - THIS APPEARS TO WORK...THEREFORE, SOME REFERENCES TO THE DATA
+* THIS APPEARS TO WORK...THEREFORE, SOME REFERENCES TO THE DATA
 *            AT THE BEGINNING OF BASIC09 IS STILL BEING REFERRED TO BY OFFSETS
 *            IN THE CODE, THAT HAVE NOT BEEN FIXED UP YET.
-* 12/23/94 - AFTER FIXING L03F0 TABLE, ATTEMPTED TO REMOVE 'TEST'
-* 12/28/94 - Worked, changed 16 bit,pc's to 8 bit,pc's @:
+*  V1.21   1994/12/23  NitrOS-9 Project
+* AFTER FIXING L03F0 TABLE, ATTEMPTED TO REMOVE 'TEST'
+*  V1.21   1994/12/28  NitrOS-9 Project
+* Worked, changed 16 bit,pc's to 8 bit,pc's @:
 *            L0DFC  leax INTRTS,pc  *
 *            L1436  leax L1434,pc  *
 *            L15B3  leax L15AA,pc  *
@@ -120,48 +127,56 @@
 *            L4B03  leau L4AF4,pc  *
 *            L4B0A  leau L4AF9,pc  *
 *            NXTFM3  leax L5723,pc  *
-* 01/03/95 - Changed a ChgDir @ CHDSTM to do it in READ mode, not UPDATE
-* 01/04/95 - Changed L0C18 - 3 CLR ,Y+ to LEAY 3,Y
+*  V1.21   1995/01/03  NitrOS-9 Project
+* Changed a ChgDir @ CHDSTM to do it in READ mode, not UPDATE
+*  V1.21   1995/01/04  NitrOS-9 Project
+* Changed L0C18 - 3 CLR ,Y+ to LEAY 3,Y
 *            Changed LEAU ,Y / STD ,--U / STA ,-U to LEAU -3,y/STD ,u/
 *              STD 2,u
-*          - Changed LDA #$02 / LDB #SS.Size to LDD #$02*256+SS.Size @ OPNCH0
+* Changed LDA #$02 / LDB #SS.Size to LDD #$02*256+SS.Size @ OPNCH0
 *              (create output file)
-*          - Replaced BEQ L2D17 @ L2D0B with BEQ POPE30, removed L2D17 altog-
+* Replaced BEQ L2D17 @ L2D0B with BEQ POPE30, removed L2D17 altog-
 *            ether, change LBSR ERIET @ L2D0B with LBRA ERIET
-* 01/09/95 - Attempted to change both CLRA/CLRB (CLRD)'s @ DIRLN1 to CLRA for
+*  V1.21   1995/01/09  NitrOS-9 Project
+* Attempted to change both CLRA/CLRB (CLRD)'s @ DIRLN1 to CLRA for
 *            F$Load/F$Link (since neither require B)
-*          - Changed DEFILE frm LBSR L12CF to LBSR L1371
-*          - Changed L12CF from LDA #C$CR/LBRA L1373 to LBRA L1371
-* 01/12/95 - Attempted to remove LDD <U002F / ADDD $F,x @ L1A2E, move TFR
+* Changed DEFILE frm LBSR L12CF to LBSR L1371
+* Changed L12CF from LDA #C$CR/LBRA L1373 to LBRA L1371
+*  V1.21   1995/01/12  NitrOS-9 Project
+* Attempted to remove LDD <U002F / ADDD $F,x @ L1A2E, move TFR
 *            D,Y to earlier in code when [u002F]+($F,x) is calculated
-* 01/17/95 - Removed useless CMPB #$00 @ L1E9B
-*          - Moved L1FF5 label to an earlier RTS, removed original (saves 1 by
-*          - Removed useless CMPA #$00 @ L2115
-* 01/19/95 - Changed STB <u00A4 / STA <u00A3 to STD <u00A3 @ L236A
-*          - Changed LDA <u00A3/CMPA <u00A3 to LDA <u00A3/ORCC #Zero @ L218E
+*  V1.21   1995/01/17  NitrOS-9 Project
+* Removed useless CMPB #$00 @ L1E9B
+* Moved L1FF5 label to an earlier RTS, removed original (saves 1 by
+* Removed useless CMPA #$00 @ L2115
+*  V1.21   1995/01/19  NitrOS-9 Project
+* Changed STB <u00A4 / STA <u00A3 to STD <u00A3 @ L236A
+* Changed LDA <u00A3/CMPA <u00A3 to LDA <u00A3/ORCC #Zero @ L218E
 *             (1 cycle faster)
-*          - Changed NAMSY1: took out LEAY -1,y, added BRA L2453 (saves 2 cycle
+* Changed NAMSY1: took out LEAY -1,y, added BRA L2453 (saves 2 cycle
 *             from original method)
-* 01/20/95 - Changed L1B09 from to auto-inc Y, skip LEAY 1,Y entirely, & chang
+*  V1.21   1995/01/20  NitrOS-9 Project
+* Changed L1B09 from to auto-inc Y, skip LEAY 1,Y entirely, & chang
 *            LEAY 5,Y to LEAY 4,Y (+2 cyc if [,y]=$4F, but -3 cyc on any other
 *            value)
-*          - Changed L1B6D: changed CLRA / LDB D,X to to ABX / LDB ,X (3 cyc
+* Changed L1B6D: changed CLRA / LDB D,X to to ABX / LDB ,X (3 cyc
 *            faster on 6809/2 cyc faster on 6309)
-*          - Mod @ PRSLF: Changed LBSR NAMSYM to LBSR L2432 (just did
+* Mod @ PRSLF: Changed LBSR NAMSYM to LBSR L2432 (just did
 *            L245D call, and 2nd call to it will return same Y anyways)
-*          - Changed CLR ,Y+ to STB ,Y+ @ ADDSYM
-*          - Attempted to move L2368 routine to just before PRSHEX routine to
+* Changed CLR ,Y+ to STB ,Y+ @ ADDSYM
+* Attempted to move L2368 routine to just before PRSHEX routine to
 *            change LBRA OUTCOD to BRA OUTCOD. Changed L23EC from LBRA L236A to
 *            STD <u00A3 / BRA OUTCOD
-*          - Changed LBHS PBEXPR / BRA L27CE @ PDECL3 to BLO L27CE / LBRA PBEXPR
-*          - Attempted Mod @ L2D2C - Changed LEAX B,X to ABX
-* 01/23/95 - Made following mods involving L2E3B routine:
+* Changed LBHS PBEXPR / BRA L27CE @ PDECL3 to BLO L27CE / LBRA PBEXPR
+* Attempted Mod @ L2D2C - Changed LEAX B,X to ABX
+*  V1.21   1995/01/23  NitrOS-9 Project
+* Made following mods involving L2E3B routine:
 *            Changed CMPA #0 to TSTA, reversed L2EDC's LDA <u00D1 & LEAY 3,Y
 *            so TSTA not needed, changed BRA L2E3B to BRA L2E41 @: L2E89,
 *            L2E8F, PSLIT, PADDR1. Changed BRA L2E3B to BRA L2E3C @ L2EDC
-*          - Changed LDA #1 to INCA @ L2E3B (since A=0 at this point)
-*          - Took out CMPA #0, changed LDD #$0060 to LDB #$60 @ L2EE3
-*          - Changed TST <u00D0 to LDA <u00D0 (saves 2 cyc) and following 4
+* Changed LDA #1 to INCA @ L2E3B (since A=0 at this point)
+* Took out CMPA #0, changed LDD #$0060 to LDB #$60 @ L2EE3
+* Changed TST <u00D0 to LDA <u00D0 (saves 2 cyc) and following 4
 *            lines @ L2F5E to version on right (+1 byte, -5 cycles):
 *            lda #5             ldd #$ffff
 *            sta <u00D1         std <u00D4
@@ -169,141 +184,171 @@
 *            bra CHKV90          sta <u00D1
 *              (std <u00D4/     rts
 *               lda <u00D1/rts
-* 01/31/95 - Moved L308D to just before ERROR (eliminates LBRA)
-* 02/03/95 - Changed LBRA L1EC9 @ ARRNA9 to LBRA PRSLF (saves extra LBRA, saves
+*  V1.21   1995/01/31  NitrOS-9 Project
+* Moved L308D to just before ERROR (eliminates LBRA)
+*  V1.21   1995/02/03  NitrOS-9 Project
+* Changed LBRA L1EC9 @ ARRNA9 to LBRA PRSLF (saves extra LBRA, saves
 *            5/4 cycles)
-* 02/13/95 - Moved JSR <u001B / FCB 8 from L3C29 to just after SUBFNC to change
+*  V1.21   1995/02/13  NitrOS-9 Project
+* Moved JSR <u001B / FCB 8 from L3C29 to just after SUBFNC to change
 *            LBSR to BSR
-* 02/14/95 - Moved 3 text strings that are only referred to once to their res-
+*  V1.21   1995/02/14  NitrOS-9 Project
+* Moved 3 text strings that are only referred to once to their res-
 *            pective routines in the code: L07AA to near L1882, L078B to near
 *            L198A, and L0799 to L1211
-*          - Moved JSR <u001E / FCB 4 from L010A to after RUNC20 (called twice
+* Moved JSR <u001E / FCB 4 from L010A to after RUNC20 (called twice
 *            from just before here)
-*          - Attempted to move JSR <u001E / fcb 2 from L010D to just before
+* Attempted to move JSR <u001E / fcb 2 from L010D to just before
 *            L0AC3 (change some LBSR's to BSR's)
-*          - Moved L0110 (JSR <u001E / fcb 0) to just before INTE30
-*          - Moved L0113 (JSR <u0021 / fcb 0) to just before INTE30
-* 02/15/95 - Moved L0116 (JSR <u0024 / fcb 0) to just after START15
-*          - Moved L0119 (JSR <u0024 / fcb 0) to just after L0DFC
-*          - Moved L011C (JSR <u0024 / fcb 2) to just after L0DFC
-*          - Moved L011F (JSR <u002A / fcb 2) to just after L1394
-*          - Moved L0122 (JSR <u001E / fcb A) to just before L1606
-*          - Moved L0125 (JSR <u001E / fcb 6) to just after L19D1
-*          - Moved L0128 (JSR <u001E / fcb 6) to just after DUMP
-*          - Moved L012B (JSR <u0021 / fcb 6) to just after L110A
-*          - Moved L012E (JSR <u0021 / fcb 4) to just after L119E
-*          - REMARKED OUT L0131 JSR VECTOR - NOT CALLED IN BASIC09
-*          - Moved L0134 (JSR <u0024 / fcb C) to just after L104E
-*          - Moved L0137 (JSR <u0024 / fcb 8) to just after L119E
-*          - Moved L013A (JSR <u002A / fcb 0) to just after L175A
-*          - Moved L1CC1 (JSR <u001B / fcb 2) to just after L1E1C
-*          - Moved L1CC4 (JSR <u001B / fcb 4) to just after PRTLIN
-*          - Moved L1CC7 (JSR <u001B / fcb 6) to replace LBRA L1CC7 @ L1E1C
+* Moved L0110 (JSR <u001E / fcb 0) to just before INTE30
+* Moved L0113 (JSR <u0021 / fcb 0) to just before INTE30
+*  V1.21   1995/02/15  NitrOS-9 Project
+* Moved L0116 (JSR <u0024 / fcb 0) to just after START15
+* Moved L0119 (JSR <u0024 / fcb 0) to just after L0DFC
+* Moved L011C (JSR <u0024 / fcb 2) to just after L0DFC
+* Moved L011F (JSR <u002A / fcb 2) to just after L1394
+* Moved L0122 (JSR <u001E / fcb A) to just before L1606
+* Moved L0125 (JSR <u001E / fcb 6) to just after L19D1
+* Moved L0128 (JSR <u001E / fcb 6) to just after DUMP
+* Moved L012B (JSR <u0021 / fcb 6) to just after L110A
+* Moved L012E (JSR <u0021 / fcb 4) to just after L119E
+* REMARKED OUT L0131 JSR VECTOR - NOT CALLED IN BASIC09
+* Moved L0134 (JSR <u0024 / fcb C) to just after L104E
+* Moved L0137 (JSR <u0024 / fcb 8) to just after L119E
+* Moved L013A (JSR <u002A / fcb 0) to just after L175A
+* Moved L1CC1 (JSR <u001B / fcb 2) to just after L1E1C
+* Moved L1CC4 (JSR <u001B / fcb 4) to just after PRTLIN
+* Moved L1CC7 (JSR <u001B / fcb 6) to replace LBRA L1CC7 @ L1E1C
 *            & embedded JSR <u001B/fcb 4 @ L2428 since LBRA, not LBSR
-*          - Moved L1CCA (JSR <u002A / fcb 0) to just after PRSHEX
-*          - Moved L1CCD (JSR <u001B / fcb $12) to just after ERMRP9
-*          - Took out 2nd TST <u0035 / BNE L194C @ L191C
-*          - Eliminated L2572 since duplicate of L1CC1, & not speed crucial
-*          - Eliminated L2575 since duplicate of L1CC7, changed LBRA L2575 @
+* Moved L1CCA (JSR <u002A / fcb 0) to just after PRSHEX
+* Moved L1CCD (JSR <u001B / fcb $12) to just after ERMRP9
+* Took out 2nd TST <u0035 / BNE L194C @ L191C
+* Eliminated L2572 since duplicate of L1CC1, & not speed crucial
+* Eliminated L2575 since duplicate of L1CC7, changed LBRA L2575 @
 *            PBEXPR to LBRA L1CC7
-* 02/16/95 - Moved L2578 (JSR <u001B / fcb $14) to end of L2FDA (replacing
+*  V1.21   1995/02/16  NitrOS-9 Project
+* Moved L2578 (JSR <u001B / fcb $14) to end of L2FDA (replacing
 *            LBRA to it)
-*          - Moved L257B (JSR <u001E / fcb 8) to end of L3069
-*          - Moved L257E (JSR <u001E / fcb 6) to end of DONE50
-*          - Eliminated L3206 since duplicate of L1CC7, changed 3 LBRA calls
+* Moved L257B (JSR <u001E / fcb 8) to end of L3069
+* Moved L257E (JSR <u001E / fcb 6) to end of DONE50
+* Eliminated L3206 since duplicate of L1CC7, changed 3 LBRA calls
 *            to it to go to L1CC7 instead (saves 3 bytes)
-*          - Moved L3209 to just after table @ L323F, changed table entry from
+* Moved L3209 to just after table @ L323F, changed table entry from
 *            L35F0 to L3209, eliminated L35F0 LBRA entirely
-*          - Moved SYSSTM (JSR <u001B / fcb $E) to end of CHNSTM
-* 02/24/95 - Eliminated L320F since dupe of L1CC1, change appropriate LBSR's @
+* Moved SYSSTM (JSR <u001B / fcb $E) to end of CHNSTM
+*  V1.21   1995/02/24  NitrOS-9 Project
+* Eliminated L320F since dupe of L1CC1, change appropriate LBSR's @
 *            EXCER4 & DEBUG
-*          - Moved L3212 (JSR <u001B / fcb 0) to end of L3A89
-* 02/27/95 - Moved L3215 (JSR <u001B / fcb $A) to end of L3BF3
-*          - Moved L3218 (JSR <u001B / fcb $10) to end of BASSTM
-*          - Took out L321B (JSR <u001E/fcb 6), replaced LBRA to it @ POKSTM
+* Moved L3212 (JSR <u001B / fcb 0) to end of L3A89
+*  V1.21   1995/02/27  NitrOS-9 Project
+* Moved L3215 (JSR <u001B / fcb $A) to end of L3BF3
+* Moved L3218 (JSR <u001B / fcb $10) to end of BASSTM
+* Took out L321B (JSR <u001E/fcb 6), replaced LBRA to it @ POKSTM
 *            with JSR/fcb
-*          - Moved L321E (JSR <u0027/fcb 4) to end of NXTRL1
-*          - Moved L3221 (JSR <u0027/fcb $A) to end of NXTRLA
-*          - Moved L3224 (JSR <u0027/fcb 2) to before L3A8A, and moved 2 lines
+* Moved L321E (JSR <u0027/fcb 4) to end of NXTRL1
+* Moved L3221 (JSR <u0027/fcb $A) to end of NXTRLA
+* Moved L3224 (JSR <u0027/fcb 2) to before L3A8A, and moved 2 lines
 *            from L35BB to here too)
-*          - Moved ASGSTM (JSR <u0027/fcb $C) to after L381C
-*          - Moved L322A (JSR <u0027/fcb $E) to after L381C
-*          - Moved L322D (JSR <u0027/fcb 0) to after L3BFF
-*          - Moved L3230 (JSR <u002A/fcb 2), even though dupe of L011F, to
+* Moved ASGSTM (JSR <u0027/fcb $C) to after L381C
+* Moved L322A (JSR <u0027/fcb $E) to after L381C
+* Moved L322D (JSR <u0027/fcb 0) to after L3BFF
+* Moved L3230 (JSR <u002A/fcb 2), even though dupe of L011F, to
 *            after ASGVAR
-* 02/28/95 - Embedded L3233 (JSR <u001B/fcb $18) @ L35F3 & DEBUG, changed LBSR
+*  V1.21   1995/02/28  NitrOS-9 Project
+* Embedded L3233 (JSR <u001B/fcb $18) @ L35F3 & DEBUG, changed LBSR
 *            @ STMLUP to point to L35F3 version
-*          - Moved L3236 (JSR <u001B/fcb $16) to after L3391
-*          - L3239 (JSR <u001B/fcb $1A) is NEVER CALLED IN BASIC09.
+* Moved L3236 (JSR <u001B/fcb $16) to after L3391
+* L3239 (JSR <u001B/fcb $1A) is NEVER CALLED IN BASIC09.
 *            Removed L3239 entirely
-*          - Embedded L323C (JSR <u001B/fcb $1C) @ FORSTM since LBRA
-*          - Changed LDB #0 @ L388F to CLRB
-*          - Embedded L3C2C (JSR <u0024/fcb 6 (error handler)) @ L3DD5,CMPTRU,
+* Embedded L323C (JSR <u001B/fcb $1C) @ FORSTM since LBRA
+* Changed LDB #0 @ L388F to CLRB
+* Embedded L3C2C (JSR <u0024/fcb 6 (error handler)) @ L3DD5,CMPTRU,
 *            L3F2E,L44C2,L458C,FPOVRF,L4FC7) Moved it to just after L40CC.
-*          - Changed LDB #0 @ L4409 to CLRB (part of Boolean routines)
-*          - Changed LDB #0 @ L5046 to CLRB
-*          - Removed L3C2F (dupe of L011F), changed LBSR's @ L471F & STRF10 to
+* Changed LDB #0 @ L4409 to CLRB (part of Boolean routines)
+* Changed LDB #0 @ L5046 to CLRB
+* Removed L3C2F (dupe of L011F), changed LBSR's @ L471F & STRF10 to
 *            it
-*          - Moved L3C32 to after INIT1 (shorten LEAX)
-* 03/01/95 - Modified Integer Multiply to use MULD @ INML25
-* 03/10/95 - Modified Negate of REAL #'s to use EIM @ NEGRL (saves 4 cyc)
-*          - Changed L3FBB (Real add with dest var=0) to use LDQ/STQ (saves
+* Moved L3C32 to after INIT1 (shorten LEAX)
+*  V1.21   1995/03/01  NitrOS-9 Project
+* Modified Integer Multiply to use MULD @ INML25
+*  V1.21   1995/03/10  NitrOS-9 Project
+* Modified Negate of REAL #'s to use EIM @ NEGRL (saves 4 cyc)
+* Changed L3FBB (Real add with dest var=0) to use LDQ/STQ (saves
 *            6 cyc)
-* 03/13/95 - Changed NEGA/NEGB/SBCA #0 to NEGD @ FLOAT1 & FIX4A
-*          - Changed BPL L451E to BPL L451F @ FLOAT1 (eliminates 2nd useless
+*  V1.21   1995/03/13  NitrOS-9 Project
+* Changed NEGA/NEGB/SBCA #0 to NEGD @ FLOAT1 & FIX4A
+* Changed BPL L451E to BPL L451F @ FLOAT1 (eliminates 2nd useless
 *            TSTA)
-* 03/15/95 - Changed LDB $B,y/ANDB #$FE/STB $B,y & LDB 5,y/ANDB #$FE/STB $B,y
+*  V1.21   1995/03/15  NitrOS-9 Project
+* Changed LDB $B,y/ANDB #$FE/STB $B,y & LDB 5,y/ANDB #$FE/STB $B,y
 *            to AIM's @ L3FE5 (Real Add & Subtract)
-*          - Changed ADCB 3,y/ADCA 2,y to ADCD 2,y @ L4039 (Real Add/Subtact)
-*          - Changed SBCB 3,y/SBCA 2,y TO SBCD 2,y @ L400B (Real Add/Subtact)
-*          - Changed LDA 5,y/ANDA #$FE/STA 5,y to AIM #$FE,5,y @ ABSFNR (ABS
+* Changed ADCB 3,y/ADCA 2,y to ADCD 2,y @ L4039 (Real Add/Subtact)
+* Changed SBCB 3,y/SBCA 2,y TO SBCD 2,y @ L400B (Real Add/Subtact)
+* Changed LDA 5,y/ANDA #$FE/STA 5,y to AIM #$FE,5,y @ ABSFNR (ABS
 *            for real #'s
-*          - Changed NEGA/NEGB/SBCA #0 to NEGD @ L45B5 (ABS for Integers)
-*          - Ditched special checks for 0 or 2 in Integer Multiply (INMUL),
+* Changed NEGA/NEGB/SBCA #0 to NEGD @ L45B5 (ABS for Integers)
+* Ditched special checks for 0 or 2 in Integer Multiply (INMUL),
 *            since overhead from checks is as slow or slower as straight MULD
 *            except in dest. var=0's case
-* 03/16/95 - Changed 2 LDD/STD's @ L3F93 to LDQ/STQ
-* 03/18/95 - Changed Integer Divide (and MOD) routines to use DIVQ
-* 03/20/95 - Changed L3F7C (copy Real # to temp var from inc'd X) to use
+*  V1.21   1995/03/16  NitrOS-9 Project
+* Changed 2 LDD/STD's @ L3F93 to LDQ/STQ
+*  V1.21   1995/03/18  NitrOS-9 Project
+* Changed Integer Divide (and MOD) routines to use DIVQ
+*  V1.21   1995/03/20  NitrOS-9 Project
+* Changed L3F7C (copy Real # to temp var from inc'd X) to use
 *            LDQ/STQ/LDB #4/ABX
-*          - Moved Integer MOD routine (INDV10) to nearer divide (changes LBSR
+* Moved Integer MOD routine (INDV10) to nearer divide (changes LBSR
 *            to BSR)
-* 04/23/95 - Changed Real Add/Subtract mantissa shift (L4082-L40C9) to use
+*  V1.21   1995/04/23  NitrOS-9 Project
+* Changed Real Add/Subtract mantissa shift (L4082-L40C9) to use
 *            <u0014 (unused in BASIC09) to hold shift count instead of stack
 *            (saves 2 cyc for STA vs. PSHS, saves 1 cyc per DEC, & saves 5 cyc
 *            by eliminating LEAS 1,s) (6809)
-* 04/26/95 - Split real add/subtract out & made two versions: 6809 & 6309
-* 06/09/95 - Modified 6309 REAL add/subtract routine - now 13-15% faster
-* 06/20/95 - Took out useless LDB 2,s @ L412D (Real Multiply)
-* 07/18/95 - Changed sign fix in Real Add @ L4071 to use TFR w,d/lsrb/lslb/orb
+*  V1.21   1995/04/26  NitrOS-9 Project
+* Split real add/subtract out & made two versions: 6809 & 6309
+*  V1.21   1995/06/09  NitrOS-9 Project
+* Modified 6309 REAL add/subtract routine - now 13-15% faster
+*  V1.21   1995/06/20  NitrOS-9 Project
+* Took out useless LDB 2,s @ L412D (Real Multiply)
+*  V1.21   1995/07/18  NitrOS-9 Project
+* Changed sign fix in Real Add @ L4071 to use TFR w,d/lsrb/lslb/orb
 *            ,y/std $a,y
-*          - Split real multiply out & made two versions: 6809 & 6309
-* 08/11/95 - Removed useless LEAS 1,s in Init routine
-*          - Split real divide out & made two versions: 6809 & 6309
-* 08/15/95 - Removed useless: STA <u00BD in start, useless CLR <u0035 @ START05,
+* Split real multiply out & made two versions: 6809 & 6309
+*  V1.21   1995/08/11  NitrOS-9 Project
+* Removed useless LEAS 1,s in Init routine
+* Split real divide out & made two versions: 6809 & 6309
+*  V1.21   1995/08/15  NitrOS-9 Project
+* Removed useless: STA <u00BD in start, useless CLR <u0035 @ START05,
 *            Changed LDD #1 to LDB #1/STD <u002D to STB <u002E in start, and
 *            START05/START15 routine to use W instead of stack for base address
-*          - Changed 'bye <CR>' buffer fill @ L08E5 to use LDQ/STQ
-* 11/12/95 - Changed NXTIN1 to use INCD instead of ADDD #1 (NEXT Integer STEP 1
-*          - Changed NXTINT to TFR A,E instead of PSHS A, changed TST ,S+ to
+* Changed 'bye <CR>' buffer fill @ L08E5 to use LDQ/STQ
+*  V1.21   1995/11/12  NitrOS-9 Project
+* Changed NXTIN1 to use INCD instead of ADDD #1 (NEXT Integer STEP 1
+* Changed NXTINT to TFR A,E instead of PSHS A, changed TST ,S+ to
 *            TSTE (NEXT Integer STEP <>1)
-* 11/16/95 - Changed to L345E (REAL NEXT STEP 1) to do direct call to REAL add
+*  V1.21   1995/11/16  NitrOS-9 Project
+* Changed to L345E (REAL NEXT STEP 1) to do direct call to REAL add
 *            routine (changed BSR L321E/BSR FORSTM to LBSR L3FB1)
-*          - As per above, changed same call @ NXTRL (REAL NEXT STEP <>1), and
+* As per above, changed same call @ NXTRL (REAL NEXT STEP <>1), and
 *            eliminated L321E completely
-*          - @ NXTRL1 & NXTRL2, eliminated L3221 calls, replaced BSR L3221's
+* @ NXTRL1 & NXTRL2, eliminated L3221 calls, replaced BSR L3221's
 *            with LBSR RLCMP (Real Compare) (in REAL NEXT, both cases)
-* 11/25/95 - Remove L50A1 & L509E (calls to REAL Multiply & REAL divide),
+*  V1.21   1995/11/25  NitrOS-9 Project
+* Remove L50A1 & L509E (calls to REAL Multiply & REAL divide),
 *            changed CNVOPR to call them directly (prints exponents?)
-* 11/30/95 - Changed RUNS30 to use SUBR (saves 1 byte/9 cyc on RUN (mlsub)
-* 12/05/95 - Changed L3A48 (called by REM) to use ABX instead of CLRA/LEAX D,X
+*  V1.21   1995/11/30  NitrOS-9 Project
+* Changed RUNS30 to use SUBR (saves 1 byte/9 cyc on RUN (mlsub)
+*  V1.21   1995/12/05  NitrOS-9 Project
+* Changed L3A48 (called by REM) to use ABX instead of CLRA/LEAX D,X
 *            (used to jump ahead in I-Code to skip remark text)
-*          - Attempted to just move L33DF (NEXT) & L34E5 (FOR) Tables to just
+* Attempted to just move L33DF (NEXT) & L34E5 (FOR) Tables to just
 *            after L3446 for 8 bit offsets - also removed LSLB @ L33EA
-* 02/12/95 - Changed routines around BADNUM to skip ORCC if not necessary (blo&
+*  V1.21   1995/02/12  NitrOS-9 Project
+* Changed routines around BADNUM to skip ORCC if not necessary (blo&
 *            bcs)
-*          - Changed LEAX to 8 bit from 16 @ CIRCOR
-* 06/07/14 - Changed Date$ to conform with Y2K changes in F$Time. RG
+* Changed LEAX to 8 bit from 16 @ CIRCOR
+*  V1.21   2014/06/07  RG (NitrOS-9 Project)
+* Changed Date$ to conform with Y2K changes in F$Time
 ********************************
 
 * Version Numbers
