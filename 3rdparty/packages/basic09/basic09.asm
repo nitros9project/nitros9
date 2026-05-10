@@ -73,28 +73,6 @@
 *  22      2002/10/09  Boisy G. Pitre
 * Obtained from Curtis Boyle, marked V1.1.0.
 *
-* BASIC09 - Copyright (C) 1980 by Microware & Motorola
-***********
-* Basic09 & RunB programs have extended memory module headers. Layout is as
-*  follows:
-*   Offset  | Name       | Purpose
-*   --------+------------+----------
-*   $0000   |  M$ID      | Module sync bytes ($87CD)
-*   $0002   |  M$Size    | Size of module
-*   $0004   |  M$Name    | Offset to module name
-*   $0006   |  M$Type    | Type/Language ($22 for RUNB modules)
-*   $0007   |  M$Revs    | Attributes/Revision level
-*   $0008   |  M$Parity  | Header parity check
-*   $0009   |  M$Exec    | Execution offset (start of tokenized RUNB code)
-*   $000B   |  ???       | Data area size required
-*   $000D   |  ???       | ???
-*   $0017   |  ???       | Flags:
-*           |            |   x0000000 - 1=Packed, 0=Not packed
-*           |            |   0x000000 - ??? but 1 when CRC has just been made
-*           |            |   0000000x - 1=Line with compiler error
-*           |            |              0=No lines with compiler errors
-*   $0018   |  ???       | Size of module name
-*
 *  V1.21   1994/06/17  NitrOS-9 Project
 * Changed intercept routine @ INTCPT: Replaced LSL <u0034/COMA/
 *            ROR <u0034/RTI with OIM #$80,<u0034/RTI/NOP/NOP
@@ -408,6 +386,28 @@
 *  V1.21   2014/06/07  RG (NitrOS-9 Project)
 * Changed Date$ to conform with Y2K changes in F$Time
 ********************************
+
+* BASIC09 - Copyright (C) 1980 by Microware & Motorola
+***********
+* Basic09 & RunB programs have extended memory module headers. Layout is as
+*  follows:
+*   Offset  | Name       | Purpose
+*   --------+------------+----------
+*   $0000   |  M$ID      | Module sync bytes ($87CD)
+*   $0002   |  M$Size    | Size of module
+*   $0004   |  M$Name    | Offset to module name
+*   $0006   |  M$Type    | Type/Language ($22 for RUNB modules)
+*   $0007   |  M$Revs    | Attributes/Revision level
+*   $0008   |  M$Parity  | Header parity check
+*   $0009   |  M$Exec    | Execution offset (start of tokenized RUNB code)
+*   $000B   |  ???       | Data area size required
+*   $000D   |  ???       | ???
+*   $0017   |  ???       | Flags:
+*           |            |   x0000000 - 1=Packed, 0=Not packed
+*           |            |   0x000000 - ??? but 1 when CRC has just been made
+*           |            |   0000000x - 1=Line with compiler error
+*           |            |              0=No lines with compiler errors
+*   $0018   |  ???       | Size of module name
 
 * Version Numbers
 B09Vrsn             equ       1
