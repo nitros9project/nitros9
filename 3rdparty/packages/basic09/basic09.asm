@@ -409,13 +409,28 @@
 *           |            |              0=No lines with compiler errors
 *   $0018   |  ???       | Size of module name
 
+* Included module bitmask (mirrors original Microware b09type)
+EDITOR              equ       $01                 Edit/Compile/Load/Save
+RUNTIM              equ       $02                 Interpreter minus Cordic
+MATHPAK             equ       $04                 Cordic trig functions
+FULL                equ       RUNTIM+MATHPAK+EDITOR Normal BASIC09
+* Default: build full BASIC09. Override with -aINCLUDED=RUNTIM+MATHPAK for RunB.
+                    ifndef    INCLUDED
+INCLUDED            set       FULL
+                    endc
+
 * Version Numbers
 B09Vrsn             equ       1
 B09Major            equ       1
 B09Minor            equ       0
 
+                    ifne      INCLUDED&EDITOR
                     nam       Basic09
                     ttl       BASIC for OS-9
+                    else
+                    nam       RunB
+                    ttl       Basic09 Runtime
+                    endc
 
                     ifp1
                     use       defsfile
@@ -608,24 +623,36 @@ u00FA               rmb       4
 u00FE               rmb       1
 u00FF               rmb       1
 u0100               rmb       $100                256 byte temporary buffer for various things
+                    ifne      INCLUDED&EDITOR
 u0200               rmb       $100                ??? ($200-$2ff) built backwards 2 bytes/time
 u0300               rmb       $100                BASIC09 stack area ($300-$3ff)
 u0400               rmb       $100                List of module ptrs (modules in BASIC09 workspace)
 u0500               rmb       $100                I-Code buffer (for running)
 u0600               rmb       $2000-.             Default buffer for BASIC09 programs & data
+                    else
+u0200               rmb       $E00                RunB workspace pool ($0200-$0FFF)
+                    endc
 size                equ       .
 
 * Jump tables installed at $1b in DP: in form of JMP to (address of BASIC09's
 * header in memory + 2 byte in table). In other words, jump to LXXXX
 L000D               fdb       L00DC               $1b jump vector
                     fdb       L1CA5               $1e jump vector
+                    ifne      INCLUDED&EDITOR
                     fdb       PLREF               $21 jump vector
+                    else
+                    fdb       PRPRAM              $21 jump vector (RunB: rts stub)
+                    endc
                     fdb       L31E8               $24 jump vector
                     fdb       L3C09               $27 jump vector
                     fdb       L5084               $2A jump vector
                     fdb       $0000               End of jump vector table marker
 
+                    ifne      INCLUDED&EDITOR
 name                fcs       /Basic09/
+                    else
+name                fcs       /RunB/
+                    endc
 
 L0022               fdb       $1607               Edition #22 ($16)
 
@@ -4599,9 +4626,12 @@ L1CB5               fdb       CMPRAM-L1CB5         $00 function
                     fdb       NAMSYM-L1CB5         $02 function
                     fdb       SEARC0-L1CB5         $04 function
                     fdb       MOVDWN-L1CB5         $06 function
-                    fdb       L24BD-L1CB5         $08 function
-                    fdb       DIM1-L1CB5         $0A function
+                    ifne      INCLUDED&EDITOR
+                    fdb       L24BD-L1CB5         $08 function (EXPDSC - expand description table)
+                    fdb       DIM1-L1CB5         $0A function (COMPIL - compile one statement)
+                    endc
 
+                    ifne      INCLUDED&EDITOR
 * Data of some sort: Appears to be special symbols
 L1CD0               fdb       33                  (# of entries-33)
                     fcb       $03                 (# bytes to skip to start of next?)
@@ -5043,6 +5073,18 @@ ON3               inc       [,s]
 L1F87               lbsr      ERMASS
 L1F8A               lbsr      L2156
 GOTO9               lbra      STOP
+                    endc
+
+* RunB stubs: EREVRB/ERRDIE normally defined in EDITOR block above.
+* In RunB mode these error-dispatch stubs replace symbols defined in EDITOR blocks.
+                    ifeq      INCLUDED&EDITOR
+EREVRB
+ERRDIE              rts
+L1CC1               jsr       <u001B
+                    fcb       $02
+L1CC7               jsr       <u001B
+                    fcb       $06
+                    endc
 
 L1F90               sty       <u00A7              Save ptr to end of string name
                     ldx       <u004A              ??? Get ptr to start of I-code
@@ -5056,13 +5098,14 @@ L1FF5               rts
 CMPRAM               bsr       L1F90               Set up some ptrs
                     inc       <u00A0              ??? Set flag? (think it is 3-way flag)
                     lbsr      STOP               ??? Go process source line? (A returns token)
-                    bsr       L1FC0               Go check for "(" command grouping start
+                    lbsr      L1FC0               Go check for "(" command grouping start
                     clr       <u00A0              ??? Clear flag?
                     lda       <u00A3              Get 1st byte from command table (token)?
                     cmpa      #$3F                Was it a carriage return token?
                     lbne      EREVRB               No, go process token
 CMPRA9               lbra      OUTCOD               Add token to I-code buffer, check for overflow
 
+                    ifne      INCLUDED&EDITOR
 RUN               lbsr      ERMASS
                     pshs      x             save it for return
                     lbsr      L2193         get procedure name
@@ -5674,6 +5717,158 @@ L240C               bsr       OUTCOD
                     rts
 
 OUTCDB               tfr       b,a
+                    endc
+
+* ================================================================
+* RunB-mode STOP, L1FC0, and token scanner (not present in BASIC09)
+* ================================================================
+                    ifeq      INCLUDED&EDITOR
+
+* RunB number parser via <u002A (= L1CCA in BASIC09, L0489 in runb.asm)
+RNB_GNUM            jsr       <u002A
+                    fcb       $00
+                    fdb       $0007
+                    fcb       $03
+
+* RunB token scanner: parse one token from source text (= L056B in runb.asm)
+* Entry: Y = ptr into source text
+* Exit:  u00A3 = token, u00A4 = type; token+data output to I-code; Y advanced
+RNB_SCAN            ldd       <u00AB              Save I-code end to prev
+                    std       <u00AD
+                    lbsr      L245D               Skip spaces/LFs; Y -> first non-space
+                    sty       <u00B9              Save ptr
+                    lda       ,y                  Get first non-space char
+                    lbsr      L246E               Decimal digit?
+                    bcc       RNB_NUM             Yes, parse number
+                    cmpa      #'.                 Period?
+                    beq       RNB_DOT
+                    cmpa      #'(
+                    beq       RNB_LPAR
+                    cmpa      #')
+                    beq       RNB_RPAR
+                    cmpa      #',
+                    beq       RNB_COMMA
+                    cmpa      #'"
+                    lbeq      RNB_STR
+                    cmpa      #'$
+                    beq       RNB_DLLAR
+                    cmpa      #$0D                CR?
+                    beq       RNB_CR
+                    lda       #$0A                Unrecognized symbol error
+                    lbra      EREVRB
+
+RNB_DOT             leay      1,y                 Skip '.'
+                    lda       ,y                  Peek at next char
+                    lbsr      L246E               Is it a digit?
+                    bcs       RNB_DOT9            No: '.' alone is a separator token
+                    leay      -1,y                Yes: back up and parse as float
+                    bra       RNB_NUM
+RNB_DOT9            ldd       #$890C              '.' separator: token=$89, type=$0C
+                    bra       RNB_SETYP
+RNB_LPAR            leay      1,y
+                    ldd       #$4D0C              '(': token=$4D, type=$0C
+                    bra       RNB_SETYP
+RNB_RPAR            leay      1,y
+                    ldd       #$4E0C              ')': token=$4E, type=$0C
+                    bra       RNB_SETYP
+RNB_COMMA           leay      1,y
+                    ldd       #$4B0C              ',': token=$4B, type=$0C
+                    bra       RNB_SETYP
+RNB_CR              ldd       #$3F02              CR: token=$3F, type=$02
+RNB_SETYP           sta       <u00A3
+                    stb       <u00A4
+                    lbra      OUTCOD              Output token to I-code and return
+
+* Number literal: parse via <u002A (same dispatch as BASIC09's GETNUM)
+RNB_NUM             leax      ,y                  X = ptr to number start
+                    ldy       <u0044              Y = error address
+                    bsr       RNB_GNUM            Parse number via <u002A
+                    exg       x,y
+                    lbcs      EREVRB              Illegal literal error
+                    lda       ,x+                 First byte: 0=real, else=integer indicator
+                    cmpa      #2
+                    bne       RNB_INT             Integer
+* Real number: token=$8F, 5 data bytes follow
+                    ldd       #$8F05
+RNB_NUMST           sta       <u00A3              Store token
+RNB_NUMOUT          lbsr      OUTCOD              Output token/data byte
+                    lda       ,x+                 Get next data byte
+                    decb
+                    bpl       RNB_NUMOUT          Loop until all bytes out
+                    lda       #$06                Type = literal (6)
+                    sta       <u00A4
+                    ldy       <u00B9              Restore source ptr
+                    rts
+RNB_INT             ldd       #$8E02              2-byte integer token=$8E
+                    tst       ,x                  Is first byte zero (byte literal)?
+                    bne       RNB_NUMST           No: regular 2-byte integer
+                    ldd       #$8D01              Yes: byte literal token=$8D, 1 data byte
+                    leax      1,x                 Skip the zero byte
+                    bra       RNB_NUMST
+
+* '$' prefix: hex/string-var; back up and let RNB_GNUM parse
+RNB_DLLAR           leay      -1,y                Back up to '$'
+                    leax      ,y
+                    ldy       <u0044
+                    lbsr      RNB_GNUM
+                    exg       x,y
+                    lbcs      EREVRB
+                    lda       ,x+
+                    cmpa      #2
+                    ldd       #$9102              string-var token=$91, type=$02
+                    bra       RNB_NUMST
+
+* String literal '"': output $90 token, then chars to closing quote, then $FF
+RNB_STR             lda       #$90                String literal token
+                    ldb       #$06                Type = 6
+                    sta       <u00A3
+                    stb       <u00A4
+                    lbsr      OUTCOD              Output $90 token
+RNB_STRLP           lda       ,y+                 Get char from source
+                    cmpa      #$0D                CR = no closing quote
+                    beq       RNB_NOQT
+                    cmpa      #'"                 Closing quote?
+                    bne       RNB_STRCH           No, output char
+                    cmpa      ,y+                 Doubled quote?
+                    beq       RNB_STRCH           Yes, output it
+                    leay      -1,y                No: back up, end of string
+                    lda       #$FF                String terminator
+                    lbsr      OUTCOD
+                    rts
+RNB_STRCH           lbsr      OUTCOD              Output string char
+                    bra       RNB_STRLP           Loop
+RNB_NOQT            lda       #$29                No ending quote error
+                    lbra      EREVRB
+
+* RunB-mode STOP: scan one token and undo I-code advance (= L0542 in runb.asm)
+* Caller must re-output the token via OUTCOD/CMPRA9 if needed
+STOP                lbsr      RNB_SCAN            Scan one token (outputs to I-code)
+                    ldx       <u00AD              Restore I-code end to pre-scan value
+                    stx       <u00AB
+                    lda       <u00A3              Return token in A
+                    rts
+
+* RunB-mode L1FC0: handle '(' parameter grouping (simplified from runb.asm L0523)
+* Entry: A = current token (from STOP)
+L1FC0               cmpa      #$4D                Is it '(' token?
+                    lbne      L1FF5               No, return (L1FF5 = rts, defined above)
+                    lbsr      CMPRA9              Yes, output '(' to I-code (lbra OUTCOD)
+                    ldd       <u00AB              Save I-code ptr
+                    lbsr      STOP                Scan next token
+                    ldb       <u00A4              Get type
+                    cmpb      #$06                Is it a literal?
+                    lbne      L1FF5               No, done (no loop for RunB)
+                    lbsr      STOP                Scan another token (e.g. ',' or ')')
+                    lda       <u00A3              Get it
+                    cmpa      #$4B                Is it ',' (comma token)?
+                    beq       L1FC0               Yes, re-enter for next param
+                    cmpa      #$4E                Is it ')' (close paren)?
+                    lbeq      L1FF5               Yes, done
+                    lda       #$25                No: missing ')' error
+                    lbra      EREVRB
+
+                    endc
+
 OUTCOD               pshs      x,d                 Preserve Table ptr & 2 mystery bytes
                     ldx       <u00AB              Get ptr to end of current I-code line
                     sta       ,x+                 Save token for operator
@@ -5755,6 +5950,7 @@ ALPHA7               orcc      #$01                Error, non-alpha char
 ALPHA8               andcc     #$FE                No error, alphabetic char
 L2493               rts
 
+                    ifne      INCLUDED&EDITOR
 ADDSYM               ldx       <u0062
                     ldd       -3,x
                     addd      #1                  INCD
@@ -5775,7 +5971,9 @@ ADDSY1               lda       ,x+
                     bpl       ADDSY1
                     leay      ,x            get ptr/size ptr
                     puls      pc,x
+                    endc
 
+                    ifne      INCLUDED&EDITOR
 L24BD               pshs      u,d
                     ldd       <u000C
                     subd      ,s
@@ -5815,6 +6013,7 @@ EXPSYM               pshs      u,d
                     std       <u0064
                     leax      ,u
                     puls      pc,u
+                    endc
 
 MOVDWN               pshs      x,d
                     leax      d,u
@@ -5869,6 +6068,7 @@ SEARC6               tst       -1,x                Check the byte
                     sty       3,s                 Entry matched, save new source ptr
 L2558               puls      pc,u,y,x,a          Restore regs & return
 
+                    ifne      INCLUDED&EDITOR
 PLREF               pshs      x,d                 Preserve regs
                     ldb       [<$04,s]            Get table entry #
                     leax      <L256A,pc           Point to vector table
@@ -7585,6 +7785,9 @@ DONE75               lda       ,u+
 L31E2               cmpu      <u004A
                     blo       L3188
                     rts
+                    else
+PRPRAM              rts
+                    endc
 
 * Called by <$24 JMP vector
 * Entry: X=byte after the last vector installed ($2D)
