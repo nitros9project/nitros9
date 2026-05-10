@@ -3,7 +3,7 @@
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
-* ------------------------------------------------------------------
+*
 *  18      1982/10/13  Robert F. Doggett (Microware)
 * "PROGRAM" literal changed to "Program"
 * Formatted strings could exceed field size
@@ -14,7 +14,7 @@
 *
 *  18      1982/10/19  Robert F. Doggett (Microware)
 * Mem directive fixed to take more than 32k
-* ------------------------------------------------------------------
+*
 *  19      1982/11/02  Robert F. Doggett (Microware)
 * Default USING field size 1 if unspecified
 * Prevent death on out of range input
@@ -22,7 +22,7 @@
 *  19      1982/11/16  Robert F. Doggett (Microware)
 * Compiler var "CNTASS" initialized to fix random crash if T.CXAS inserted by mistake
 * Mem comand made to request 1 less byte
-* ------------------------------------------------------------------
+*
 *  20      1983/01/12  Robert F. Doggett (Microware)
 * Changed string terminator from $FF to $00, allowing 8-bit data in string functions
 *
@@ -57,10 +57,10 @@
 * Added Microware to copyright notice
 * CTL-Q was ignored in asm subroutines
 * RunB ON ERROR now intercepts CTL-C, CTL-Q
-* ------------------------------------------------------------------
+*
 *  21      1983/03/16  Robert F. Doggett (Microware)
 * Fixed bug in TRON caused in edition 20
-* ------------------------------------------------------------------
+*
 *  22      1983/04/27  Robert F. Doggett (Microware)
 * Added conditionals for Basic09 minus trig
 *
@@ -69,7 +69,7 @@
 *
 *  22      1983/06/28  MGH (Microware)
 * Added conditionals for dragon startup msg
-* ------------------------------------------------------------------
+*
 *  22      2002/10/09  Boisy G. Pitre
 * Obtained from Curtis Boyle, marked V1.1.0.
 *
@@ -94,7 +94,7 @@
 *           |            |   0000000x - 1=Line with compiler error
 *           |            |              0=No lines with compiler errors
 *   $0018   |  ???       | Size of module name
-* ------------------------------------------------------------------
+*
 *  V1.21   1994/06/17  NitrOS-9 Project
 * Changed intercept routine @ INTCPT: Replaced LSL <u0034/COMA/
 *            ROR <u0034/RTI with OIM #$80,<u0034/RTI/NOP/NOP
