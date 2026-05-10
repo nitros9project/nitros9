@@ -1,0 +1,3 @@
+echo * Show WizFi360 Connection Status
+echo AT+CIPSTA_CUR?>/wz
+modem /wz

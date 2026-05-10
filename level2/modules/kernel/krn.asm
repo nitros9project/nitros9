@@ -37,10 +37,10 @@
 *   much faster. (6809)
 *
 *  20r00   2023/10/17  Boisy Gene Pitre
-* Ported to the Foenix F256.
+* Ported to the Wildbits 6809
 *
 *  20r01   2024/01/05  E. J. Jaquay
-* Correct overlapping ifne f256 and ifne H6308 conditionals near line 163
+* Correct overlapping ifne wildbits and ifne H6308 conditionals near line 163
 
                     nam       krn
                     ttl       NitrOS-9 Level 2 Kernel
@@ -54,8 +54,8 @@ Revision            set       00                  module revision
 Edition             set       20                  module Edition
 
 * The absolute address of where Kernel starts in memory.
-                  IFNE        f256
-Where               equ       $EE00               F256
+                  IFNE        wildbits
+Where               equ       $EE00               Wildbits
                   ELSE
 Where               equ       $F000               CoCo 3
                   ENDC
@@ -76,7 +76,7 @@ MName               fcs       /Krn/
                     fcc       /www.nitros9.org /
                     fcc       /www/
                   ELSE
-                  IFNE        f256
+                  IFNE        wildbits
                     fcc       /www.nitros9.org /
                     fcc       /www.nitros9.org /
                     fcc       /www.nitros9.org /
@@ -129,9 +129,9 @@ SubSiz              equ       *-SubStrt
 * Interrupt service routine
 Vectors             jmp       [<-(D.SWI3-D.XSWI3),x] (-$10) (Jmp to 2ndary vector)
 
-*>>>>>>>>>> F256 PORT
-                  IFNE        f256
-* F256 crash code dumps the registers at the shadow RAM page in $FDXX and
+*>>>>>>>>>> Wildbits PORT
+                  IFNE        wildbits
+* Wildbits crash code dumps the registers at the shadow RAM page in $FDXX and
 * then loops forever
 CrashCode
 * Dump the registers.
@@ -154,14 +154,14 @@ loop@               ldd       ,x++                get two source bytes
 * Branch forever.
 forever@            bra       forever@            simply branch forever
                   ENDC
-*<<<<<<<<<< F256 PORT
+*<<<<<<<<<< Wildbits PORT
 
 * The Kernel entry point.
 entry               equ       *
 * Initialize the system block (the lowest 8KB of memory).
-*>>>>>>>>>> F256 PORT
-                  IFNE        f256
-* F256-specific initialization to get the F256 to a sane state.
+*>>>>>>>>>> Wildbits PORT
+                  IFNE        wildbits
+* Wildbits-specific initialization to get the Wildbits to a sane state.
                     orcc      #IntMasks           mask interrupts
                     stx       $2000               stash pointer to bootfile in memory
                     sty       $2002               stash size of bootfile
@@ -178,7 +178,7 @@ loop@               stb       ,x+                 write 8K bank to DAT to bank r
                     cmpb      #8                  are we done?
                     bne       loop@               branch if not
 
-* The F256 allows for both $FDXX and $FFFX to be held constant regardless of the
+* The Wildbits allows for both $FDXX and $FFFX to be held constant regardless of the
 * state of the MMU DAT registers. This feature is turned on by two bits that
 * expose internal RAM of those areas.
 * When the kernel loads in RAM, we must copy $FDXX into this internal RAM by
@@ -204,7 +204,7 @@ l@                  std       ,x++                store the vector value in the 
                     bra       l@                  and do again
 done@               ldx       #$0000              start clearing at this address
                     ldy       #$2000              for this many bytes
-*<<<<<<<<<< F256 PORT
+*<<<<<<<<<< Wildbits PORT
                   ELSE
 * REL has cleared page 0 already, so start at address $100.
                   IFNE        H6309
@@ -229,20 +229,20 @@ l@                  std       ,x++                now clear memory 16 bits at a 
                     inca                          set D to $0100
                   ENDC
 
-*>>>>>>>>>> F256 PORT
+*>>>>>>>>>> Wildbits PORT
 * Use <D.Crash to store a crash routine that we can use for debugging.
-                  IFNE        f256
+                  IFNE        wildbits
                     pshs      b                   save B onto the stack
                     ldb       #$7E                get the JMP instruction op-code
                     stb       <D.Crash            and save it at D.Crash
                     leax      CrashCode,pcr       then get the address of the crash code
                     stx       <D.Crash+1          and store it at D.Crash+1
-* F256 doesn't use D.BtBug. We put an RTS here just in case it's called somewhere.
+* Wildbits doesn't use D.BtBug. We put an RTS here just in case it's called somewhere.
                     ldb       #$39                put RTS instruction
                     stb       <D.BtBug            in D.BtBug since we don't use it
                     puls      b                   recover B from the stack
                   ENDC
-*<<<<<<<<<< F256 PORT
+*<<<<<<<<<< Wildbits PORT
 
 * Set up system variables in DP
                     std       <D.Tasks            set the task structure pointer to $0100
@@ -295,21 +295,21 @@ l@                  std       ,x++                now clear memory 16 bits at a 
 * In following line, CRC=ON if it is STA <D.CRC, CRC=OFF if it is a STB <D.CRC
                     stb       <D.CRC              set the CRC checking flag to off
 
-*>>>>>>>>>> F256 PORT
-                  IFNE        f256
+*>>>>>>>>>> Wildbits PORT
+                  IFNE        wildbits
                     ldx       $2000               get pointer to bootfile in memory stashed earlier
                     stx       <D.BtPtr            save it in globals
                     ldx       $2002               get bootfile size stashed earlier
                     stx       <D.BtSz             save it in globals
                   ENDC
-*<<<<<<<<<< F256 PORT
+*<<<<<<<<<< Wildbits PORT
 
 * Initialize the interrupt vector tables, and move pointer data down to page 0.
-*>>>>>>>>>> F256 PORT
-                  IFNE        f256
+*>>>>>>>>>> Wildbits PORT
+                  IFNE        wildbits
                     leay      >DisTable,pcr       point to the table of absolute vector addresses
                   ELSE
-*<<<<<<<<<< F256 PORT
+*<<<<<<<<<< Wildbits PORT
                     leay      <DisTable,pcr       point to the table of absolute vector addresses
                   ENDC
                     ldx       #D.Clock            and get the address to put it in memory
@@ -363,7 +363,7 @@ l@                  stu       ,x++                set all IRQ vectors to go to v
                     stx       <D.Poll             and store it in the IRQ polling routine vector
                     leax      >S.AltIRQ,pc        get the alternate IRQ entry point
                     stx       <D.AltIRQ           and store it in the alternate IRQ polling routine vector
-                    ifeq      f256
+                    ifeq      wildbits
                     lda       #'K                 debug: signal that we are in Kernel
                     jsr       <D.BtBug            ---
                   ENDC
@@ -406,12 +406,12 @@ l@                  stu       ,x++                set all IRQ vectors to go to v
 ********************************************************************
 * The DAT image is a data structure that indicates which
 * Dynamic Address Translator (DAT) mapping registers are in use.
-*>>>>>>>>>> F256 PORT
+*>>>>>>>>>> Wildbits PORT
 * Dat.BlCt-ROMCount-RAMCount = 8 - 1 = 7
-                  IFNE        f256
+                  IFNE        wildbits
                     lda       #$07                initialize all rest of the blocks to be free
                   ELSE
-*<<<<<<<<<< F256 PORT
+*<<<<<<<<<< Wildbits PORT
 * Dat.BlCt-ROMCount-RAMCount = 8 - 1 - 1 = 6
                     lda       #$06                initialize the rest of the blocks to be free
                   ENDC
@@ -420,9 +420,9 @@ l@                  stu       ,x++                store it
                     deca                          bump up the counter
                     bne       l@                  loop if not done
 
-* F256: we call F$SRqMem later on the entire bootfile which includes krn starting
+* Wildbits: we call F$SRqMem later on the entire bootfile which includes krn starting
 * at Bt.Start. So we DON'T mark the kernel block as allocated in our DAT image.
-                    ifeq      f256
+                    ifeq      wildbits
                     ldu       #KrnBlk             get the block where the kernel resides
                     stu       ,x                  and save it in the last 8K slot
                   ENDC
@@ -453,8 +453,8 @@ L0104               inc       ,x+                 mark it as used
                     decb                          done?
                     bne       L0104               no, go back till done
 
-*>>>>>>>>>> F256 PORT
-                  IFNE        f256
+*>>>>>>>>>> Wildbits PORT
+                  IFNE        wildbits
 * We already know we have 512K of RAM, so we won't go through a memory
 * sizing check.
                     ldx       <D.BlkMap           get the pointer to 8KB block map
@@ -462,9 +462,9 @@ L0104               inc       ,x+                 mark it as used
                     sta       ,x                  mark block 0 as allocated
                     inca                          D = $240 (512K)
                     std       <D.BlkMap+2         save the newly computed memory block map end pointer
-* For the F256 port, the entire bootfile is loaded into RAM by FEU, so we call
+* For the Wildbits port, the entire bootfile is loaded into RAM by FEU, so we call
 * F$SRqMem to allocate the memory we need (F$Boot would normally do this, but we
-* don't use F$Boot on F256).
+* don't use F$Boot on Wildbits).
 * Because FEU loads the bootfile into 8KB blocks starting DOWN from 7, we need
 * to temporarly fake out the DAT block map to show lower blocks as allocated
 * so that F$SRqMem (and F$AllImg) allocate the correct 8K blocks that contain
@@ -492,7 +492,7 @@ l@                  sta       b,x                 store the flag in the appropri
                     ldx       <D.BtPtr            get start address of the bootfile in memory
                     ldd       <D.BtSz             get MSB of bootfile size
                   ELSE
-*<<<<<<<<<< F256 PORT
+*<<<<<<<<<< Wildbits PORT
 ********************************************************************
 * Determine how many 8KB blocks of physical memory are available and
 * update the memory block map end pointer (D.BlkMap+2) accordingly.
@@ -564,7 +564,7 @@ L0170
                     lbsr      I.VBlock            perform module validation
                     bsr       L01D2               then mark the system map
 
-                    ifeq      f256
+                    ifeq      wildbits
 * BGP - Load bootfile and link to init. We no longer try to link to init first and then
 * call F$Boot. This saves bytes.
                     os9       F$Boot              load bootfile here +BGP+
@@ -588,7 +588,7 @@ L01BF               stu       <D.Init             save the init module pointer
                     inc       <D.CRC              else increment the CRC flag
 
 ShowI
-                    ifeq      f256
+                    ifeq      wildbits
                     lda       #'i                 debug: signal that we found the init module
                     jsr       <D.BtBug            perform the action
                   ENDC
@@ -612,7 +612,7 @@ L01CE               jmp       <D.Crash            obviously can't do it, crash m
 
 * Update the system memory map to reserve the area the kernel uses.
 L01D2               ldx       <D.SysMem           get the system memory map pointer
-                  IFNE        f256
+                  IFNE        wildbits
                     lda       #NotRAM             get the "not RAM" flag
                     ldb       <D.BtPtr            and the boot pointer MSB
                   ELSE
@@ -704,7 +704,7 @@ SysCalls            fcb       F$Link
                     fdb       FFModul-*-2
                     fcb       F$VBlock+SysState
                     fdb       FVBlock-*-2
-                    IFNE      H6309+F256
+                    IFNE      H6309+wildbits
                     fcb       F$DelRAM
                     fdb       FDelRAM-*-2
                     ENDC
@@ -941,7 +941,7 @@ L0345
 
                     use       fsrqmem.asm
 
-                    IFNE      H6309+F256
+                    IFNE      H6309+wildbits
                     use       fdelram.asm
                     ENDC
 
@@ -1016,8 +1016,8 @@ L0D83               bsr       L0D11               activate next process
                     use       fnproc.asm
 
 * The following routines must appear no earlier than $E00 for the CoCo 3
-* (or $D00 for the F256) when assembled, as they have to always be in the
-* constant RAM page ($FE00-$FEFF for CoCo 3, $FD00-$FDFF for the F256).
+* (or $D00 for the Wildbits) when assembled, as they have to always be in the
+* constant RAM page ($FE00-$FEFF for CoCo 3, $FD00-$FDFF for the Wildbits).
 
 * The default routine for D.SysIRQ.
 S.SysIRQ
@@ -1122,14 +1122,14 @@ S.Flip1             ldb       #2                  get the tsk image entry number
 L0E8D               cmpb      <D.Task1N           are we going back to the same task?
                     beq       L0EA3               without the DAT image changing?
                     stb       <D.Task1N           no, save current task in map type 1
-*>>>>>>>>>> F256 PORT
-                  IFNE        f256
+*>>>>>>>>>> Wildbits PORT
+                  IFNE        wildbits
                     lda       MMU_MEM_CTRL        get the memory control register
                     anda      #~EDIT_LUT          turn off all EDIT_LUT bits
                     ora       #EDIT_LUT_1         and OR with EDIT_LUT_1
                     sta       MMU_MEM_CTRL        save it back to the memory control register
                     ldx       #DAT.Regs           get the MMU start register for the process
-*<<<<<<<<<< F256 PORT
+*<<<<<<<<<< Wildbits PORT
                   ELSE
                     ldx       #DAT.Regs+8         get the MMU start register for process
                   ENDC
@@ -1160,18 +1160,18 @@ L0E9B               lda       ,u++                get a bank
 *                   leas      1,s                 eat temporary stack
                     puls      a,pc                eat temporary stack and return
                   ENDC
-*>>>>>>>>>> F256 PORT
-                  IFNE        f256
+*>>>>>>>>>> Wildbits PORT
+                  IFNE        wildbits
                     clr       MMU_MEM_CTRL        clear the DAT control flags
                   ENDC
-*<<<<<<<<<< F256 PORT
+*<<<<<<<<<< Wildbits PORT
 L0EA3               rts                           return
 
-*>>>>>>>>>> F256 PORT
-                  IFNE        f256
+*>>>>>>>>>> Wildbits PORT
+                  IFNE        wildbits
 CrashDump           fill      255,32
                   ENDC
-*<<<<<<<<<< F256 PORT
+*<<<<<<<<<< Wildbits PORT
 
 * Execute FIRQ vector (called from $FEF4)
 FIRQVCT             ldx       #D.FIRQ             get the DP offset of the vector
@@ -1276,11 +1276,11 @@ NMIVCT              ldx       #D.NMI              get the DP offset of the vecto
 eom                 equ       *
 
 * What follows after the kernel module is the register stack, starting
-* at $FEDD (6309), $FEDF (CoCo 3 6809), or $FDDF (F256).
+* at $FEDD (6309), $FEDF (CoCo 3 6809), or $FDDF (Wildbits).
 * The kernel uses this register stack area to save the caller's registers in
 * the constant page because it doesn't get "switched out" no matter the
 * contents of the MMU registers.
-                  IFNE        f256
+                  IFNE        wildbits
                     fdb       Where+CrashCode
                   ENDC
 
@@ -1292,7 +1292,7 @@ SWIStack
 
                     fcb       $55                 D.ErrRst
 
-* This list of addresses ends up at $FEEE (CoCo 3) or $FDEE (F256) after the
+* This list of addresses ends up at $FEEE (CoCo 3) or $FDEE (Wildbits) after the
 * kernel loads into memory.  All interrupts come through the 6809 vectors at
 * $FFF0-$FFFE and get directed to here. From here, the BRA takes CPU control
 * to the various handlers in the kernel.

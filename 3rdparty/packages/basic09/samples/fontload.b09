@@ -1,1 +1,6 @@
-PROCEDURE fontloadDIM fn:INTEGERDIM font:STRINGfn=0font="/DD/SYS/FONTS/TECHFONT"RUN foenix("FNLoad",fn,font)
+PROCEDURE fontload
+DIM fn:INTEGER
+DIM font:STRING
+fn=0
+font="/DD/SYS/FONTS/TECHFONT"
+RUN WILD("FNLoad",fn,font)

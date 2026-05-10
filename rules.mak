@@ -9,25 +9,12 @@
 # If the defaults below are fine, then there is no need to set any
 # environment variables.
 
-
-# NitrOS-9 version, major and minor release numbers are here
-NOS9VER	= 3
-NOS9MAJ	= 3
-NOS9MIN	= 0
-
-# Set this to 1 to turn on "DEVELOPMENT" message in sysgo
-NOS9DBG = 1
+# NitrOS-9 version
 
 #################### DO NOT CHANGE ANYTHING BELOW THIS LINE ####################
 
 CC		= c3
 OS9		= os9
-
-NITROS9VER	= v0$(NOS9VER)0$(NOS9MAJ)0$(NOS9MIN)
-
-ifeq ($(OS),Windows_NT)
-    OS := W
-endif
 
 DEFSDIR		= $(NITROS9DIR)/defs
 DSKDIR		= $(NITROS9DIR)/dsks
@@ -47,7 +34,7 @@ ASOUT		= -o
 ifdef LISTDIR
 ASOUT		= --list=$(LISTDIR)/$@.lst --symbols -o
 endif
-AFLAGS		= -DNOS9VER=$(NOS9VER) -DNOS9MAJ=$(NOS9MAJ) -DNOS9MIN=$(NOS9MIN) -DNOS9DBG=$(NOS9DBG)
+AFLAGS		= -DNOS9VER=$(NOS9VER) -DNOS9MAJ=$(NOS9MAJ) -DNOS9MIN=$(NOS9MIN)
 ifdef PORT
 AFLAGS		+= -D$(PORT)=1
 endif
@@ -81,7 +68,7 @@ OS9FORMAT_DS40	= os9 format -e -t40 -ds -dd
 OS9FORMAT_DS80	= os9 format -e -t80 -ds -dd
 OS9FORMAT_DW	= os9 format -t29126 -ss -dd
 OS9FORMAT_SDC  = os9 format -e -t29126 -ss -dd
-OS9FORMAT_F256SD  = os9 format -t29126 -ss -dd
+OS9FORMAT_SD  = os9 format -t29126 -ss -dd
 OS9FORMAT_CART  = os9 format -e -t64 -ss -st16 -sa1
 OS9GEN		= os9 gen
 OS9RENAME	= os9 rename
@@ -175,3 +162,27 @@ MASTER = -DITDNS=0
 %: %.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
+# Include an optional release file based on the port name that contains
+# release variables set... e.g.:
+# NOS9VER=26
+# NOS9MAJ=1
+# NOS9MIN=1
+-include $(NITROS9DIR)/release_$(PORT)
+
+ifeq ($(NOS9MAJ),)
+  NITROS9VER = DEV
+else
+  NITROS9VER = v$(NOS9VER).$(NOS9MAJ).$(NOS9MIN)
+endif
+
+default: all
+
+.PHONY: buildinfo
+
+init: buildinfo
+
+buildinfo:
+	@BUILDDATE="$$(git log -1 --format=%as)"; \
+	COMMITHASH="$$(git rev-parse --short HEAD)"; \
+	BRANCHNAME="$$(git branch --show-current)"; \
+	echo " fcc !$${BUILDDATE} ($${COMMITHASH} - $${BRANCHNAME})!" > "$(NITROS9DIR)/defs/buildinfo";

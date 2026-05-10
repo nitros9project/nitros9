@@ -1,0 +1,8 @@
+echo * WizFi360 Helper - Fast mode
+echo ATE1>/wz
+modem /wz
+echo AT+UART_CUR=921600,8,1,0,0>/wz
+modem /wz
+xmode /wz bau=1
+modem AT>/wz
+modem /wz

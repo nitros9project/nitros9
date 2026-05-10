@@ -21,7 +21,7 @@
                     use       drivewire.d
                     endc
 
- ifne F256
+ ifne wildbits
  use 16550.d
  endc
 

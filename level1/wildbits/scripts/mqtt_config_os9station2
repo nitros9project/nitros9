@@ -1,0 +1,14 @@
+* Publish this msg to topic "os9station2/config" to have Home Assistant auto-discover the device and its sensors. 
+* or to "homeassistant/device/os9station2/config" if you have a custom MQTT discovery topic configured in Home Assistant
+{
+  "device": { "ids": "os9mqtt4AFFD2", "name": "OS-9 Station 2", "mf": "Roger Taylor Software", "mdl": "OS-9 Health Sensor", "sw": "1.0", "sn": "20250330A", "hw": "1.0rev1" },
+  "origin": { "name":"Roger Taylor", "sw": "1.0", "url": "http://www.patreon.com/rogertaylor" },
+  "components": {
+    "os9healthcompid001": { "unique_id":"uid201", "platform": "sensor", "name":"Free RAM", "unit_of_measurement":"KB", "value_template":"{{ value_json.freeram}}" },
+    "os9healthcompid002": { "unique_id":"uid202", "platform": "sensor", "name":"Running Processes", "unit_of_measurement":"total", "value_template":"{{ value_json.totalprocs}}" },
+    "os9healthcompid003": { "unique_id":"uid203", "platform": "sensor", "name":"CPU State", "value_template":"{{ value_json.cpu}}" },
+    "os9healthcompid004": { "unique_id":"uid204", "platform": "sensor", "name":"Clock", "value_template":"{{ value_json.clock}}" }
+  },
+  "state_topic":"os9station2/stat",
+  "qos": 2
+}
