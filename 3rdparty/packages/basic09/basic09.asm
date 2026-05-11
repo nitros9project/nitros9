@@ -664,10 +664,14 @@ L0024               fcb       $0A
 L0024               fcb       $0C
 L0025               fcc       '            BASIC09'
                     fcb       $0A
+                    ifeq      INCLUDED&EDITOR
+                    fcc       '      RS VERSION 0'
+                    else
                     ifne      H6309
                     fcc       '     6309 VERSION 0'
                     else
                     fcc       '     6809 VERSION 0'
+                    endc
                     endc
                     fcb       B09Vrsn+$30
                     fcc       '.0'
@@ -718,6 +722,11 @@ L00EC               fdb       DIRLNK-L00EC         Function 0
 
 * RunB mode: $1B dispatch and stubs replacing EDITOR-only functions
                     ifeq      INCLUDED&EDITOR
+* RunB dispatch equates
+moddir              equ       u0004
+pgmaddr             equ       u002F
+u0030               equ       u002F+1
+* $1B dispatch vector - RunB: 9-entry table
 L00DC               pshs      x,d
                     ldb       [<$04,s]
                     leax      <L00EC,pc
@@ -734,31 +743,236 @@ L00EC               fdb       DIRLNK-L00EC
                     fdb       BYEBYE-L00EC
                     fdb       KILALL-L00EC
                     fdb       L1BA2-L00EC
-                    fdb       L12F9-L00EC
-                    fdb       L19B1-L00EC
-                    fdb       L110C-L00EC
-                    fdb       L1026-L00EC
-                    fdb       L10AC-L00EC
-                    fdb       L10B1-L00EC
-DIRLNK
-L1287
-SETEXT
-EXIT
-L18BE
-KILLEX
-BYEBYE
-KILALL
-L1BA2
-L12F9
-L19B1
-L110C
-L1026
-L10AC
-L10B1              rts
-L011F               jsr       <u002A
+* Dispatch thunks
+L00FB               jsr       <u001E
+                    fcb       $04
+L00FE               jsr       <u001E
                     fcb       $02
+L0101               jsr       <u001E
+                    fcb       $00
+L0104               jsr       <u0021
+                    fcb       $00
+L0107
 L0116               jsr       <u0024
                     fcb       $00
+L010A               jsr       <u0024
+                    fcb       $04
+L010D               jsr       <u0024
+                    fcb       $02
+L011F               jsr       <u002A
+                    fcb       $02
+* String table
+                    fcb       $0E
+                    fcs       "Ready"
+                    fcs       "What?"
+                    fcs       " free"
+RNB_L0123           fcs       "Program"
+                    fcs       "PROCEDURE"
+                    fcb       C$CR
+                    fcb       C$LF
+                    fcs       "  Name      Proc-Size  Data-Size"
+                    fcc       "Rewrite?: "
+                    fcc       "RANGE"
+                    fcb       $87
+                    fcb       $0E
+                    fcs       "BREAK: "
+                    fcs       "called by"
+                    fcs       "ok"
+                    fcs       "D:"
+                    fcs       "E:"
+                    fcs       "B:"
+                    fcs       "can't find:"
+* SETEXT: save return context
+SETEXT              ldd       <u00B7
+                    pshs      b,a
+                    sts       <u00B7
+                    ldd       $02,s
+                    stx       $02,s
+                    tfr       d,pc
+* EXIT: restore return context and reset temp buffer
+EXIT                lds       <u00B7
+                    puls      b,a
+                    std       <u00B7
+                    lbra      RNB_L02AD
+* Error: print error message and exit
+RNB_L0262           lbsr      L1287
+                    lbra      EXIT
+* RNB_L02AD: reset temp buffer to empty state
+RNB_L02AD           clr       <u007D
+                    inc       <u007D
+                    pshs      x
+                    ldx       <u0080
+                    stx       <u0082
+                    puls      pc,x
+* RNB_L028D: rebuild module directory list from moddir into u0044/u0046
+RNB_L028D           ldu       <u0046
+                    stu       <u0044
+                    ldx       <moddir
+RNB_L0293           ldd       ,x
+                    beq       RNB_L029B
+                    tfr       x,d
+                    leax      $02,x
+RNB_L029B           std       ,--u
+                    bne       RNB_L0293
+                    stu       <u0044
+                    lda       ,y
+                    cmpa      #$0D
+                    beq       RNB_L02A9
+                    leay      $01,y
+RNB_L02A9           sty       <u0082
+                    rts
+* BYEBYE: unlink all modules and exit RunB
+BYEBYE              bsr       KILALL
+                    clrb
+                    os9       F$Exit
+* KILLEX: unlink a specific executing process
+KILLEX              lbsr      L00FE
+                    beq       RNB_L037D
+                    lbsr      RNB_L03C6
+                    bcs       RNB_L037D
+                    ldu       <u0046
+                    clra
+                    clrb
+                    pshu      x,b,a
+                    inca
+                    sta       <u0035
+                    bsr       RNB_L0391
+                    clr       <u0035
+                    rts
+RNB_L037D           comb
+                    ldb       #E$UnkPrc
+                    rts
+* KILALL: kill all linked modules
+KILALL              ldy       <u0082
+                    lda       #$2A
+                    sta       ,y
+                    sta       <u0035
+                    lbsr      RNB_L028D
+                    clr       <pgmaddr
+                    clr       <u0030
+RNB_L0391           ldu       <u0046
+                    stu       <u0044
+                    bra       RNB_L03A7
+RNB_L0397           ldx       ,x
+                    pshs      u
+                    leau      ,x
+                    os9       F$UnLink
+                    puls      u
+                    ldd       #$FFFF
+                    std       [,u]
+RNB_L03A7           ldx       ,--u
+                    bne       RNB_L0397
+                    ldx       <moddir
+                    tfr       x,y
+RNB_L03AF           ldd       ,x++
+                    cmpd      #$FFFF
+                    beq       RNB_L03AF
+RNB_L03B7           std       ,y++
+                    bne       RNB_L03AF
+                    cmpd      ,y
+                    bne       RNB_L03B7
+                    rts
+* RNB_L03C6: DIRSCH - search procedure in module directory (case-insensitive)
+RNB_L03C6           pshs      u,y
+                    ldx       <moddir
+RNB_L03CA           ldy       ,s
+                    ldu       ,x++
+                    beq       RNB_L03E6
+                    ldd       4,u
+                    leau      d,u
+RNB_L03D5           lda       ,y+
+                    eora      ,u+
+                    anda      #$DF
+                    bne       RNB_L03CA
+                    clra
+                    tst       -1,u
+                    bpl       RNB_L03D5
+RNB_L03E2           leax      -$02,x
+                    puls      pc,u,b,a
+RNB_L03E6           coma
+                    bra       RNB_L03E2
+* DIRLNK: find procedure in directory, or link/load if not found
+DIRLNK              bsr       RNB_L03C6
+                    bcs       RNB_L03EE
+                    rts
+RNB_L03C1           ldb       #$20
+                    lbra      RNB_L0262
+RNB_L03EE           pshs      u,y,x
+                    ldb       $01,s
+                    cmpb      #$FE
+                    beq       RNB_L03C1
+                    leax      ,y
+                    clra
+                    clrb
+                    os9       F$Link
+                    bcc       RNB_L0408
+                    ldx       $02,s
+                    clra
+                    clrb
+                    os9       F$Load
+                    bcs       RNB_L040C
+RNB_L0408           stx       $02,s
+                    stu       [,s]
+RNB_L040C           puls      pc,u,y,x
+* L1287: print error message (F$PErr)
+L1287               os9       F$PErr
+                    rts
+* L18BE: type scanner - scan I-code token type from list
+L18BE               pshs      b,a
+                    bra       RNB_L0426
+RNB_L0416           pshs      y,x
+RNB_L0418           lda       ,x+
+                    cmpa      #$FF
+                    beq       RNB_L042E
+                    cmpa      ,y+
+                    beq       RNB_L0418
+                    puls      y,x
+                    leay      $01,y
+RNB_L0426           cmpy      ,s
+                    bls       RNB_L0416
+                    coma
+                    puls      pc,b,a
+RNB_L042E           puls      y,x
+                    clra
+RNB_L0431           puls      pc,b,a
+* L1BA2: token dispatch - advance Y past current I-code token
+L1BA2               pshs      x,b,a
+RNB_L0435           leax      <RNB_L0442,pcr
+                    lda       ,y+
+RNB_L043A           cmpa      ,x++
+                    bcs       RNB_L043A
+                    ldb       ,-x
+                    jmp       b,x
+RNB_L0442           fcb       $F2
+                    fcb       RNB_L045A-*
+RNB_L0444           fcb       $92
+                    fcb       RNB_L045E-*
+RNB_L0446           fcb       $91
+                    fcb       RNB_L045A-*
+RNB_L0448           fcb       $90
+                    fcb       RNB_L0460-*
+RNB_L044A           fcb       $8F
+                    fcb       RNB_L0458-*
+RNB_L044C           fcb       $8E
+                    fcb       RNB_L045A-*
+RNB_L044E           fcb       $8D
+                    fcb       RNB_L045C-*
+RNB_L0450           fcb       $55
+                    fcb       RNB_L045A-*
+RNB_L0452           fcb       $4B
+                    fcb       RNB_L045E-*
+RNB_L0454           fcb       $3E
+                    fcb       RNB_L0466-*
+RNB_L0456           fcb       $00
+                    fcb       RNB_L045E-*
+RNB_L0458           leay      $03,y
+RNB_L045A           leay      $01,y
+RNB_L045C           leay      $01,y
+RNB_L045E           bra       RNB_L0435
+RNB_L0460           tst       ,y+
+                    bpl       RNB_L0460
+                    bra       RNB_L0435
+RNB_L0466           puls      pc,x,b,a
                     endc
 
 * UNUSED IN BASIC09
