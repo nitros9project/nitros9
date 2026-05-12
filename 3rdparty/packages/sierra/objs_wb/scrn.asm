@@ -532,7 +532,29 @@ L01FC               decb
                     beq       L0208
                     ldb       <u00A2              stride delta
                     beq       L01F8
-                    abx                           advance X (TODO: block crossing)
+                    abx                           advance X by stride delta
+                    cmpx      <scr_end
+                    blo       L01F8               within block, continue
+* Stride advance crossed a block boundary; remap and adjust X.
+L01D4_remap_stride  pshs      a,b                 save fill color (A) and B
+                    tfr       x,d                 D = overflowed X position
+                    subd      <scr_end            D = offset into new block
+                    pshs      d                   save 2-byte offset
+                    ldb       <scr_cblk
+                    incb
+                    stb       <scr_cblk
+                    clra
+                    tfr       d,x                 X = 0:new_block#
+                    ldb       #1
+                    os9       F$MapBlk
+                    stu       <scr_map
+                    tfr       u,d
+                    addd      #$2000
+                    std       <scr_end
+                    tfr       u,x                 X = new block base
+                    puls      d                   D = offset into new block
+                    leax      d,x                 X = new_base + offset
+                    puls      a,b
                     bra       L01F8
 
 L0208               ldu       <scr_map

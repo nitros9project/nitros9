@@ -132,9 +132,6 @@ L0086               lbsr      L011A
 
 L0089               ldd       <u0000
                     beq       L00DF
-                    lbsr      mmuini2
-                    ldd       mmubuf+9,pcr
-                    std       <u000A
                     lda       #$00
                     sta       <u0011
                     ldx       <u0024
@@ -313,10 +310,10 @@ L01A3               sta       ,x+
                     rts
 
 *--------------------------------------------------------------------
-* L01AF - Wildbits stub (CoCo 3 GIME MMU init not needed).
-* On CoCo 3 this duplicated the data-area block into slots 1-2.
-* On Wildbits the OS manages process address spaces; no direct MMU
-* manipulation is required.
+* L01AF - MMU/DBlk8K initialization.
+* mmuini2 uses F$GPrDsc and works on Wildbits.  DBlk8K (u0043) needs
+* an explicit init here: point it at the u0xxx scratch area so that
+* mnln L280B/L2DED writes land in the data segment (not address 0).
 *--------------------------------------------------------------------
 L01AF               orcc      #IntMasks
                     ldx       #$0002
@@ -324,6 +321,9 @@ L01AF               orcc      #IntMasks
                     lbsr      mmuini2
                     ldd       mmubuf+9,pcr
                     std       <u000A
+* Wildbits: init DBlk8K to scratch area (no GIME bank switching)
+                    ldd       #u0xxx
+                    std       <u0043
                     andcc     #^IntMasks
                     rts
 
