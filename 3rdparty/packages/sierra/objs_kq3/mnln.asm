@@ -9258,11 +9258,13 @@ L4E22               fdb       $0000
 
 L4E26               leau      >L4E26,pcr          load our own address
                     ldd       ,s
-                    pshu      u,b,a
+                    std       >L4E22,pcr
+                    stu       >(L4E22+2),pcr
                     rts
 
 L4E2F               leau      >L4E22,pcr          2 data words
-                    pulu      u,b,a
+                    ldd       >L4E22,pcr
+                    ldu       >(L4E22+2),pcr
                     std       ,s
                     rts
 

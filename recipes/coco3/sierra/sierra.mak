@@ -1,0 +1,82 @@
+LEVEL = 2
+include ../coco3.mak
+
+SHELLMODS = shell_21 date echo link setime
+
+ifeq ($(CPU),6309)
+AFLAGS := $(filter-out -DH6309=1,$(AFLAGS))
+else
+AFLAGS := $(filter-out -DH6309=0,$(AFLAGS))
+endif
+
+vpath %.as $(LEVEL2)/cmds:$(LEVEL1)/cmds
+vpath %.asm $(LEVEL2)/coco3/modules/kernel:$(LEVEL2)/coco3/modules:$(LEVEL2)/modules:$(LEVEL2)/cmds:$(LEVEL1)/coco1/modules:$(LEVEL1)/modules:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09
+
+SIERRA_TOC ?= ./tOC
+SIERRA_MAKE_TOC ?= ../sierra/make_toc.py
+DSDD80 = -DCyls=80 -DSides=2 -DSectTrk=18 -DSectTrk0=18 -DInterlv=3 -DSAS=8 -DDensity=1
+DSDD40 = -DCyls=40 -DSides=2 -DSectTrk=18 -DSectTrk0=18 -DInterlv=3 -DSAS=8 -DDensity=1
+
+$(MODDIR)/covdg_small.io: covdg.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/shell_21: $(LEVEL1)/cmds/shell_21.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/date: $(LEVEL1)/cmds/date.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/echo: $(LEVEL1)/cmds/echo.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/link: $(LEVEL1)/cmds/link.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/setime: $(LEVEL1)/cmds/setime.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
+	$(MERGE) $(addprefix $(MODDIR)/,$(SHELLMODS)) >$@
+
+$(MODDIR)/sierra: | $(MODDIR)
+	test -f $(SIERRA_DIR)/sierra || $(MAKE) -C $(SIERRA_DIR) sierra
+	$(CP) $(SIERRA_DIR)/sierra $@
+
+$(MODDIR)/mnln: | $(MODDIR)
+	test -f $(SIERRA_DIR)/mnln || $(MAKE) -C $(SIERRA_DIR) mnln
+	$(CP) $(SIERRA_DIR)/mnln $@
+
+$(MODDIR)/scrn: | $(MODDIR)
+	test -f $(SIERRA_DIR)/scrn || $(MAKE) -C $(SIERRA_DIR) scrn
+	$(CP) $(SIERRA_DIR)/scrn $@
+
+$(MODDIR)/shdw: | $(MODDIR)
+	test -f $(SIERRA_DIR)/shdw || $(MAKE) -C $(SIERRA_DIR) shdw
+	$(CP) $(SIERRA_DIR)/shdw $@
+
+$(MODDIR)/ddd0_40d.dd: rb1773desc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD40) -DDNum=0 -DDD=1
+
+$(MODDIR)/ddd0_80d.dd: rb1773desc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD80) -DDNum=0 -DDD=1
+
+$(SIERRA_TOC): $(SIERRA_TOC_TXT) $(SIERRA_MAKE_TOC)
+	python3 $(SIERRA_MAKE_TOC) $(SIERRA_TOC_TXT) $@
+
+$(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(SIERRA_TOC)
+	$(RM) $@
+	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
+	$(OS9GEN) $@ -b=bootfile -t=$(KERNELFILE)
+	$(MAKDIR) $@,CMDS
+	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
+	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
+	$(OS9RENAME) $@,CMDS/sierra AutoEx
+	$(OS9COPY) $(addprefix $(SIERRA_DIR)/,$(SIERRA_DATA_FILES)) $@,.
+	$(CPL) $(SIERRA_TOC_TXT) $@,tOC.txt
+	$(CPL) $(SIERRA_TOC) $@,tOC
+	$(CPL) $(STARTUP) $@,startup
+	$(OS9ATTR_TEXT) $@,startup
+
+clean:
+	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo $(SIERRA_TOC)
+	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
