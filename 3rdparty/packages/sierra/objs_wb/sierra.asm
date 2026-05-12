@@ -769,14 +769,14 @@ L0557               fcb       $73,$69,$65,$72,$72,$61,$00
 * dbg_putc - write char in A to StdErr. Preserves all registers.
 * Remove before final release.
 *--------------------------------------------------------------------
-dbg_putc            pshs      d,x,cc
+dbg_putc            pshs      d,x,y,cc
                     pshs      a
                     lda       #StdErr
-                    ldb       #1
+                    ldy       #1
                     tfr       s,x
                     os9       I$Write
                     leas      1,s
-                    puls      d,x,cc,pc
+                    puls      d,x,y,cc,pc
 
 * MMU helper routines (use F$GPrDsc; work on Wildbits via NitrOS-9)
 mmuini1             pshs      cc,x,y

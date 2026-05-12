@@ -29,7 +29,7 @@ $(addprefix $(MODDIR)/,$(SIERRA_EXES)): $(MODDIR)/%: %.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 sierra.startup: FORCE
-	printf "load utilpak1\nlink shell\niniz wz\nchd GAMES/$(GAME_DIR_NAME)\nsierra\n" > $@
+	printf "link shell\niniz wz\nchd GAMES/$(GAME_DIR_NAME)\nsierra\n" > $@
 
 .PHONY: game-data
 game-data: $(DSKIMAGE)
