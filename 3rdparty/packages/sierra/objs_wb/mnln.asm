@@ -222,6 +222,12 @@ XFFA9               equ       $FFA9               task 1 block 2
 * Pixel data starts at wb_picbuf+$40; total allocation is $6940 bytes.
 wb_picbuf           equ       $2000
 
+* SN76489 PSG equates (Wildbits FPGA sound hardware)
+PSG_BLOCK           equ       $C4                 MMU block number for PSG I/O
+PSG_MONO            equ       $0208               PSGM offset within block (single channel)
+PSG_SILENCE         equ       $9F                 channel 0 volume: max attenuation
+PSG_CH0_VOL         equ       $90                 channel 0 volume: full output
+
 * Program equates
 *  Cycle Types
 CY_NORM             equ       0
@@ -8850,6 +8856,71 @@ L5275               fcb       $07,$78
                     fcb       $00,$40
                     fcb       $00,$42
 
+* SN76489 channel 0 frequency table: 61 entries matching L5275 pitches.
+* Each entry is [latch_byte, data_byte] for N = round(inner*7/4), max 1023.
+* N encodes: latch=$80|(N&$0F), data=(N>>4)&$3F. PSG_CLK = crystal = 4*E_CLK.
+L5275_PSG           fcb       $8F,$3F             ; pitch  0 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch  1 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch  2 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch  3 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch  4 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch  5 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch  6 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch  7 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch  8 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch  9 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch 10 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch 11 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch 12 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch 13 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch 14 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch 15 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch 16 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch 17 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch 18 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch 19 (N=1023, clamped)
+                    fcb       $8F,$3F             ; pitch 20 (N=1023, clamped)
+                    fcb       $82,$3E             ; pitch 21 (N= 994, ~113 Hz)
+                    fcb       $8A,$3A             ; pitch 22 (N= 938, ~119 Hz)
+                    fcb       $86,$37             ; pitch 23 (N= 886, ~126 Hz)
+                    fcb       $85,$34             ; pitch 24 (N= 837, ~134 Hz)
+                    fcb       $84,$31             ; pitch 25 (N= 788, ~142 Hz)
+                    fcb       $8A,$2E             ; pitch 26 (N= 746, ~150 Hz)
+                    fcb       $80,$2C             ; pitch 27 (N= 704, ~159 Hz)
+                    fcb       $86,$29             ; pitch 28 (N= 662, ~169 Hz)
+                    fcb       $83,$27             ; pitch 29 (N= 627, ~179 Hz)
+                    fcb       $80,$25             ; pitch 30 (N= 592, ~189 Hz)
+                    fcb       $8D,$22             ; pitch 31 (N= 557, ~201 Hz)
+                    fcb       $8D,$20             ; pitch 32 (N= 525, ~213 Hz)
+                    fcb       $81,$1F             ; pitch 33 (N= 497, ~225 Hz)
+                    fcb       $85,$1D             ; pitch 34 (N= 469, ~239 Hz)
+                    fcb       $89,$1B             ; pitch 35 (N= 441, ~254 Hz)
+                    fcb       $81,$1A             ; pitch 36 (N= 417, ~268 Hz)
+                    fcb       $8C,$18             ; pitch 37 (N= 396, ~282 Hz)
+                    fcb       $83,$17             ; pitch 38 (N= 371, ~301 Hz)
+                    fcb       $8E,$15             ; pitch 39 (N= 350, ~320 Hz)
+                    fcb       $8D,$14             ; pitch 40 (N= 333, ~336 Hz)
+                    fcb       $88,$13             ; pitch 41 (N= 312, ~359 Hz)
+                    fcb       $86,$12             ; pitch 42 (N= 294, ~381 Hz)
+                    fcb       $81,$11             ; pitch 43 (N= 273, ~410 Hz)
+                    fcb       $87,$10             ; pitch 44 (N= 263, ~425 Hz)
+                    fcb       $89,$0F             ; pitch 45 (N= 249, ~449 Hz)
+                    fcb       $8B,$0E             ; pitch 46 (N= 235, ~477 Hz)
+                    fcb       $8D,$0D             ; pitch 47 (N= 221, ~507 Hz)
+                    fcb       $82,$0D             ; pitch 48 (N= 210, ~534 Hz)
+                    fcb       $84,$0C             ; pitch 49 (N= 196, ~572 Hz)
+                    fcb       $8A,$0B             ; pitch 50 (N= 186, ~602 Hz)
+                    fcb       $8F,$0A             ; pitch 51 (N= 175, ~640 Hz)
+                    fcb       $85,$0A             ; pitch 52 (N= 165, ~679 Hz)
+                    fcb       $8E,$09             ; pitch 53 (N= 158, ~709 Hz)
+                    fcb       $83,$09             ; pitch 54 (N= 147, ~762 Hz)
+                    fcb       $8C,$08             ; pitch 55 (N= 140, ~800 Hz)
+                    fcb       $85,$08             ; pitch 56 (N= 133, ~842 Hz)
+                    fcb       $8B,$07             ; pitch 57 (N= 123, ~910 Hz)
+                    fcb       $84,$07             ; pitch 58 (N= 116, ~965 Hz)
+                    fcb       $8D,$06             ; pitch 59 (N= 109, ~1027 Hz)
+                    fcb       $89,$06             ; pitch 60 (N= 105, ~1066 Hz)
+
 L5369               fcb       0
                     fcb       $1f,$1c
                     fcb       $1f,$1e
@@ -9029,9 +9100,8 @@ L54ED               ldb       ,u+
                     cmpb      #$FF
                     beq       L553E
                     lslb
+                    stb       >L5272,pcr          save 2*pitch_idx before D gets clobbered
                     lda       ,u+
-                    ora       #2
-                    sta       >$FF20
                     ldy       ,u++
                     leax      >L5275,pcr
                     abx
@@ -9040,75 +9110,78 @@ L54ED               ldb       ,u+
                     leax      >$007A,x
                     ldd       ,x
                     std       <$0090
-* The RS-232 line is now masked and forced high.
-* Therefore $FF20 can't be tested for $00 but we can test the actual
-* data stream. RG
-*         tst   $FF20	old
-                    tst       -3,u                new
-                    beq       L5528
+                    tst       -3,u
+                    beq       L54ED_sil
+* tone note: program SN76489 channel 0 frequency and volume
+                    pshs      u                   save sound data ptr
+                    ldb       >L5272,pcr          restore 2*pitch_idx
+                    leax      >L5275_PSG,pcr
+                    abx                           X = PSG table entry
+                    lda       ,x+                 A = latch byte
+                    ldb       ,x                  B = data byte
+                    pshs      b,a                 save latch(A) and data(B)
+                    ldx       #PSG_BLOCK
+                    ldb       #1
+                    os9       F$MapBlk            U = mapped base of PSG block
+                    puls      a,b                 restore A=latch, B=data
+                    bcs       L54ED_tskip         skip write on error
+                    sta       PSG_MONO,u          write freq latch
+                    stb       PSG_MONO,u          write freq data
+                    lda       #PSG_CH0_VOL
+                    sta       PSG_MONO,u          full volume
+                    ldb       #1
+                    os9       F$ClrBlk
+L54ED_tskip         puls      u                   restore sound data ptr
+                    bra       L5512
+* rest/silence note: mute SN76489 channel 0
+L54ED_sil           pshs      u
+                    ldx       #PSG_BLOCK
+                    ldb       #1
+                    os9       F$MapBlk
+                    bcs       L54ED_sskip
+                    lda       #PSG_SILENCE
+                    sta       PSG_MONO,u
+                    ldb       #1
+                    os9       F$ClrBlk
+L54ED_sskip         puls      u
+* duration timing loop (no hardware access; SN76489 sustains tone autonomously)
 L5512               ldx       <$0090
 L5514               ldd       <$008E
 L5516               subd      #$0001
                     bne       L5516
-*         com   $FF20
-                    lda       $ff20               patch RG
-                    coma
-                    ora       #2
-                    sta       $ff20
                     leax      -1,x
                     bne       L5514
                     leay      -$01,y
                     bne       L5512
-                    bra       L54ED
-L5528               ldx       <$0090
-L552A               ldd       <$008E
-L552C               subd      #$0001
-                    bne       L552C
-* This is a meaningless test and must be here to balance cycles. RG
-                    tst       >$FF20
-                    leax      -$01,x
-                    bne       L552A
-                    leay      -$01,y
-                    bne       L5528
                     bra       L54ED
 L553E               bsr       L556F
                     ldd       ,u
                     puls      y
                     rts
 
-*Sound on
-* RS-232 toggle change. RG
-
+*Sound on (SN76489)
 L5545               orcc      #IntMasks
-*        clr   $FF20		this would trash the RS-232 line while zeroing the DAC
-                    lda       #2                  patch RG
-                    sta       $ff20
-                    lda       >$FF01              save PIA setting
-                    sta       >L5272,pcr
-                    anda      #$F7                set MUX to 0
-                    sta       >$FF01
-                    lda       >$FF03              save PIA setting
-                    sta       >L5273,pcr
-                    anda      #$F7                set MUX to 0
-                    sta       >$FF03              DAC now selected
-                    lda       >$FF23              save Sound setting
-                    sta       >L5274,pcr
-                    ora       #$08                turn sound on
-                    sta       >$FF23
-                    rts
+                    ldx       #PSG_BLOCK
+                    ldb       #1
+                    os9       F$MapBlk
+                    bcs       L5545_done
+                    lda       #PSG_SILENCE
+                    sta       PSG_MONO,u
+                    ldb       #1
+                    os9       F$ClrBlk
+L5545_done          rts
 
-*Sound off
-* RS-232 toggle change. RG
-L556F               lda       >L5272,pcr          get saved PIA HSYNC setting
-                    sta       >$FF01              restore it
-                    lda       >L5273,pcr          get saved PIA VSYNC setting
-                    sta       >$FF03              restore it
-                    lda       >L5274,pcr          get Sound setting (presumably off)
-                    sta       >$FF23              restore it
-                    lda       #2                  patch RG
-                    sta       $FF20
-                    lda       $FF02
-                    lda       $FF22
+*Sound off (SN76489)
+L556F               pshs      x
+                    ldx       #PSG_BLOCK
+                    ldb       #1
+                    os9       F$MapBlk
+                    bcs       L556F_done
+                    lda       #PSG_SILENCE
+                    sta       PSG_MONO,u
+                    ldb       #1
+                    os9       F$ClrBlk
+L556F_done          puls      x
                     andcc     #$AF
                     rts
 

@@ -81,7 +81,7 @@ endif
 
 BASIC09 = basic09 runb inkey syscall wild
 BASIC09_FILES = $(wildcard $(3RDPARTY)/packages/basic09/samples/*.b09)
-STARTUP = $(LEVEL2)/wildbits/startup
+STARTUP ?= $(LEVEL2)/wildbits/startup
 FEU_STARTUP = feu.startup
 SCRIPTS_DIR = $(LEVEL1)/wildbits/scripts
 TESTS_DIR = $(LEVEL1)/wildbits/tests
@@ -349,7 +349,7 @@ $(MODDIR)/z14: scdwvdesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=30
 
 clean:
-	$(RM) *.list *.map bootfile *.dsk buildinfo feu.startup
+	$(RM) *.list *.map bootfile *.dsk buildinfo feu.startup sierra.startup
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
 
 .PHONY: all clean libs
