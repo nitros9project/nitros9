@@ -20,7 +20,7 @@ include ../wildbits.mak
 
 # Sierra games need only a minimal command set on disk.
 # utilpak1 (loaded at startup) provides dir, mfree, procs, etc.
-CMDS = shellplus utilpak1 bootos9 $(SIERRA_EXES)
+CMDS = shellplus utilpak1 bootos9 dir mdir mfree $(SIERRA_EXES)
 
 vpath %.asm $(3RDPARTY)/packages/sierra/objs_wb
 vpath %.asm $(3RDPARTY)/packages/sierra/$(OBJS_SUBDIR)
