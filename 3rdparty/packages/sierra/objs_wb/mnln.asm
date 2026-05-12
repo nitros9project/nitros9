@@ -9095,10 +9095,10 @@ L54DE               lda       ,y+
 L54E6               pshs      y
                     clrb
                     ldu       $03,u
-                    bsr       L5545
+                    lbsr      L5545
 L54ED               ldb       ,u+
                     cmpb      #$FF
-                    beq       L553E
+                    lbeq      L553E
                     lslb
                     stb       >L5272,pcr          save 2*pitch_idx before D gets clobbered
                     lda       ,u+
@@ -9153,7 +9153,7 @@ L5516               subd      #$0001
                     bne       L5514
                     leay      -$01,y
                     bne       L5512
-                    bra       L54ED
+                    lbra      L54ED
 L553E               bsr       L556F
                     ldd       ,u
                     puls      y
