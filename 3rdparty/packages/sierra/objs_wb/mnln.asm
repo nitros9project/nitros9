@@ -218,6 +218,10 @@ XFF23               equ       $FF23               control reg
 XFFA9               equ       $FFA9               task 1 block 2
 
 
+* Wildbits picture buffer base address (in sierra module data segment).
+* Pixel data starts at wb_picbuf+$40; total allocation is $6940 bytes.
+wb_picbuf           equ       $2000
+
 * Program equates
 *  Cycle Types
 CY_NORM             equ       0
@@ -4638,17 +4642,17 @@ L2D70               lda       $02,s
                     lbsr      L2E72
                     tst       <$009F
                     bne       L2DE8
-                    ldu       #$6000
+                    ldu       #wb_picbuf
                     ldx       $04,s
-L2D8B               cmpu      #$63FE
+L2D8B               cmpu      #(wb_picbuf+$3FE)
                     bcs       L2DA4
                     stx       <$00B7
                     tfr       u,d
-                    subd      #$6000
+                    subd      #wb_picbuf
                     lbsr      L2E62
                     tst       <$009F
                     bne       L2DE8
-                    ldu       #$6000
+                    ldu       #wb_picbuf
                     ldx       <$00B7
 L2DA4               ldb       ,u
                     lda       <$00BC
@@ -4723,7 +4727,7 @@ L2E25               ldu       <$00A4
                     rorb
                     lsra
                     rorb
-                    ldx       #$6000
+                    ldx       #wb_picbuf
                     leax      d,x
                     lda       $01,x
                     ldb       ,x
@@ -4749,14 +4753,14 @@ L2E4F               ldb       <$00A5
                     andb      $01,x
 L2E5F               ldx       <$00B7
                     rts
-L2E62               ldu       #$6000
+L2E62               ldu       #wb_picbuf
                     ldu       d,u
-                    stu       >$6000
+                    stu       >wb_picbuf
                     subd      #$0400
                     negb
                     lbsr      L2E72
                     rts
-L2E72               ldx       #$6000
+L2E72               ldx       #wb_picbuf
                     abx
                     negb
                     sex

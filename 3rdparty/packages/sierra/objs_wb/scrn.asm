@@ -12,7 +12,7 @@
 *   - Screen base: block# stored in u0047 (set by sierra.asm)
 *   - Block access: F$MapBlk / F$ClrBlk (like CoCo3 $FFA9 switching)
 *   - Color table: 4-bit color -> 8-bit CLUT index (identity 0-15)
-*   - No GIME: picbuff at $6040 is directly accessible
+*   - No GIME: picbuff at wb_picbuf+$40 ($2040) in sierra data segment
 *
 * Memory layout (Sierra direct-page area, all new Wildbits vars):
 *   u0047 ($0047) - BM0 start block# (word, low byte used; set by sierra.asm)
@@ -58,6 +58,10 @@ u0043               equ       $0043
 u0045               equ       $0045
 u0046               equ       $0046
 u0047               equ       $0047               Wildbits: BM0 start block#
+
+* Wildbits picture buffer base address (in sierra module data segment).
+* Pixel data starts at wb_picbuf+$40; total allocation is $6940 bytes.
+wb_picbuf           equ       $2000
 
 * Block-mapping state (within the u005F rmb 163 free area)
 scr_cblk            equ       $007E               current mapped absolute block#
@@ -298,10 +302,10 @@ L015A               pshs      y
                     subb      $06,s               B = row_delta = top_row
                     stb       <scr_row            save row_delta
 
-* Picbuff source: x = $6040 + row_delta * 160
+* Picbuff source: x = (wb_picbuf+$40) + row_delta * 160
                     lda       #$A0
                     mul                           D = row_delta * 160
-                    addd      #$6040
+                    addd      #(wb_picbuf+$40)
                     tfr       d,x                 X = picbuff source
 
 * Screen byte offset = row_delta * 320 + u002C (col offset)

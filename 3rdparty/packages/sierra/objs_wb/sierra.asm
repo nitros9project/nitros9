@@ -103,6 +103,9 @@ int5EE              rmb       1
 sub659              rmb       1
                     rmb       116
 u0xxx               rmb       6281
+* Wildbits picture buffer: $40-byte header + 168 rows * 160 bytes = $6940 total.
+* Starts at $2000 (immediately after u0xxx which ends at $1FFF).
+wb_picbuf           rmb       $6940
 size                equ       .
 
 name                fcs       /sierra/
@@ -711,8 +714,6 @@ L04D9               rts
 L04DA               ldd       ,s++
                     std       <u002A
                     orcc      #IntMasks
-                    lda       <u0042
-                    sta       ,x
                     ldu       <u0043
                     lda       $06,x
                     sta       u000C,u
@@ -732,7 +733,6 @@ L04DA               ldd       ,s++
                     jsr       a,u
 
                     orcc      #IntMasks
-                    lda       <u0042
                     ldu       <u0043
                     lda       <u0010
                     sta       u000C,u
