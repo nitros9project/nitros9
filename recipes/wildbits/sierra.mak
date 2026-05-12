@@ -20,7 +20,7 @@ include ../wildbits.mak
 
 # Sierra games need only a minimal command set on disk.
 # utilpak1 (loaded at startup) provides dir, mfree, procs, etc.
-CMDS = shellplus utilpak1 bootos9 dir mdir mfree $(SIERRA_EXES)
+CMDS = shellplus utilpak1 bootos9 dir mdir mfree copy load link $(SIERRA_EXES)
 
 vpath %.asm $(3RDPARTY)/packages/sierra/objs_wb
 vpath %.asm $(3RDPARTY)/packages/sierra/$(OBJS_SUBDIR)
@@ -29,7 +29,7 @@ $(addprefix $(MODDIR)/,$(SIERRA_EXES)): $(MODDIR)/%: %.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 sierra.startup: FORCE
-	printf "load utilpak1\nlink shell\niniz wz\nchdir GAMES/$(GAME_DIR_NAME)\nsierra\n" > $@
+	printf "load utilpak1\nlink shell\niniz wz\nchd GAMES/$(GAME_DIR_NAME)\nsierra\n" > $@
 
 .PHONY: game-data
 game-data: $(DSKIMAGE)
