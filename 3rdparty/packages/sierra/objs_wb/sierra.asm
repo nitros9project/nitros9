@@ -17,9 +17,9 @@
 *   0      2025/xx/xx  Wildbits port
 
 *Monitor defs
-#COMP               equ       0
-#RGB                equ       1
-#MONO               equ       2
+COMP                equ       0
+RGB                 equ       1
+MONO                equ       2
 
 * I/O path definitions
 StdIn               equ       0
@@ -75,7 +75,8 @@ u0041               rmb       1
 u0042               rmb       1
 u0043               rmb       2
 u0045               rmb       1
-u0046               rmb       2                   Wildbits: u0046 unused / u0047 = BM0 start block#
+u0046               rmb       1                   Wildbits: unused
+u0047               rmb       1                   Wildbits: BM0 start block#
 u0048               rmb       2
 u004A               rmb       5
 u004F               rmb       4
@@ -425,13 +426,13 @@ L026B               leas      -$04,s              scratch on stack (2 words)
 * Build CLUT data on stack (1K = 256 x 4 bytes BGRX).
 * Zero all 1K, then copy the 16 AGI palette entries.
                     leas      -$0400,s            allocate 1K CLUT buffer on stack
-                    ldu       s                   U -> buffer start
+                    tfr       s,u                 U -> buffer start
                     ldy       #$0400              1K bytes to zero
 L026B_zero          clr       ,u+
                     leay      -1,y
                     bne       L026B_zero
 * Copy 64 bytes (16 entries) of AGI colors into buffer start
-                    ldu       s                   U -> buffer start again
+                    tfr       s,u                 U -> buffer start again
                     leax      >wb_agi_clut,pcr    X -> AGI color table
                     ldy       #wb_agi_clut_sz     Y = 64
 L026B_copy          lda       ,x+

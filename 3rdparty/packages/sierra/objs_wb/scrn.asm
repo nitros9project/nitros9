@@ -83,6 +83,7 @@ u00A9               equ       $00A9
 u00AA               equ       $00AA
 u00AB               equ       $00AB
 u00AC               equ       $00AC
+u00AD               equ       $00AD
 u00C0               equ       $00C0
 u00C6               equ       $00C6
 u00CC               equ       $00CC
@@ -450,7 +451,7 @@ L01A9_remap_r
                     std       <scr_end
                     tfr       u,y
                     puls      a,b,x,u
-                    bra       L01AE
+                    lbra      L01AE
 
 *--------------------------------------------------------------------
 * L01D4 - Fill a rectangular screen region with a solid color.
@@ -636,7 +637,7 @@ L0209               leas      -$04,s
                     lsla
                     lsla
                     lsla                         pixel rows to copy
-                    beq       L0261              zero rows: nothing to do
+                    lbeq      L0261              zero rows: nothing to do
                     sta       <u00A0
 
 L0209_row
@@ -722,7 +723,7 @@ L0209_d1            ldd       <u00AB
                     addd      #320
                     std       <u00A8
                     dec       <u00A0
-                    bne       L0209_row
+                    lbne      L0209_row
 
 L0261               leas      $04,s
                     rts
@@ -1245,7 +1246,7 @@ L074C_wr3           leax      -1,x
                     addd      #16
                     std       <u00A6
                     ldx       $06,s
-                    bra       L074C_chr
+                    lbra      L074C_chr
 
 L07B7               puls      y
                     leas      $02,s
