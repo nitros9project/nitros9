@@ -109,6 +109,7 @@ wb_picbuf           rmb       $6940
 * MMU helper buffers moved from module text to data segment (prevent write-to-module-text crash)
 mmubuf              rmb       16
 gprbuf              rmb       512
+dbg_char            rmb       1               debug sentinel counter (remove before release)
 size                equ       .
 
 name                fcs       /sierra/
@@ -140,7 +141,6 @@ L0089               ldd       <u0000
                     beq       L00DF
                     lda       #$00
                     sta       <u0011
-                    lda       #'K'
                     lbsr      dbg_putc
                     ldx       <u0024
                     jsr       sub659
@@ -235,34 +235,29 @@ L0117               fcb       $00
 L0118               fcb       $00
 L0119               fcb       $00
 
-L011A               lda       #'A'
+L011A               lbsr      L0140
+                    lda       #'A'
+                    sta       >dbg_char
                     lbsr      dbg_putc
-                    lbsr      L0140
 * mmuini1 reads system MMU block values - works on Wildbits via F$GPrDsc
                     lbsr      mmuini1
-                    lda       #'B'
                     lbsr      dbg_putc
 * L01AF: stubbed on Wildbits (no GIME twiddles needed)
                     lbsr      L01AF
-                    lda       #'C'
                     lbsr      dbg_putc
 L0120               lbsr      L01FA
-                    lda       #'D'
                     lbsr      dbg_putc
 
                     lbsr      L0419
                     bcs       L0139
-                    lda       #'E'
                     lbsr      dbg_putc
 
                     lbsr      L0229
                     bcs       L0136
-                    lda       #'I'
                     lbsr      dbg_putc
 
                     lbsr      L026B
                     bcs       L0133
-                    lda       #'J'
                     lbsr      dbg_putc
                     rts
 
@@ -382,7 +377,6 @@ L0229               tfr       b,a
                     leax      >L0106,pcr
                     lbsr      L03D0
                     bcs       L026A
-                    lda       #'F'
                     lbsr      dbg_putc
 
                     ldu       #$0012
@@ -390,18 +384,17 @@ L0229               tfr       b,a
                     leax      >L010B,pcr
                     lbsr      L03D0
                     bcs       L026A
-                    lda       #'G'
                     lbsr      dbg_putc
 
                     ldu       #$000A
                     stu       <u0024
                     leax      >L0110,pcr
                     lbsr      L03D0
+                    bcs       L026A
 
 * Wildbits: u002E = mnln's actual entry address (stored at handle $000A by L03D0)
                     ldd       <u000A
                     std       <u002E
-                    lda       #'H'
                     lbsr      dbg_putc
 L026A               rts
 
@@ -766,16 +759,19 @@ L054F               fcb       $00,$00,$00,$00,$00,$00,$00,$00
 L0557               fcb       $73,$69,$65,$72,$72,$61,$00
 
 *--------------------------------------------------------------------
-* dbg_putc - write char in A to StdErr. Preserves all registers.
-* Remove before final release.
+* dbg_putc - write current sentinel char to StdErr, then advance.
+* Uses >dbg_char absolute addressing (safe even when U is corrupted).
+* Preserves all registers. Remove before final release.
 *--------------------------------------------------------------------
 dbg_putc            pshs      d,x,y,cc
+                    lda       >dbg_char
                     pshs      a
                     lda       #StdErr
                     ldy       #1
                     tfr       s,x
                     os9       I$Write
                     leas      1,s
+                    inc       >dbg_char
                     puls      d,x,y,cc,pc
 
 * MMU helper routines (use F$GPrDsc; work on Wildbits via NitrOS-9)
