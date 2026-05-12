@@ -140,6 +140,8 @@ L0089               ldd       <u0000
                     beq       L00DF
                     lda       #$00
                     sta       <u0011
+                    lda       #'K'
+                    lbsr      dbg_putc
                     ldx       <u0024
                     jsr       sub659
                     rts
@@ -233,21 +235,35 @@ L0117               fcb       $00
 L0118               fcb       $00
 L0119               fcb       $00
 
-L011A               lbsr      L0140
+L011A               lda       #'A'
+                    lbsr      dbg_putc
+                    lbsr      L0140
 * mmuini1 reads system MMU block values - works on Wildbits via F$GPrDsc
                     lbsr      mmuini1
+                    lda       #'B'
+                    lbsr      dbg_putc
 * L01AF: stubbed on Wildbits (no GIME twiddles needed)
                     lbsr      L01AF
+                    lda       #'C'
+                    lbsr      dbg_putc
 L0120               lbsr      L01FA
+                    lda       #'D'
+                    lbsr      dbg_putc
 
                     lbsr      L0419
                     bcs       L0139
+                    lda       #'E'
+                    lbsr      dbg_putc
 
                     lbsr      L0229
                     bcs       L0136
+                    lda       #'I'
+                    lbsr      dbg_putc
 
                     lbsr      L026B
                     bcs       L0133
+                    lda       #'J'
+                    lbsr      dbg_putc
                     rts
 
 agi_shutdown
@@ -366,12 +382,16 @@ L0229               tfr       b,a
                     leax      >L0106,pcr
                     lbsr      L03D0
                     bcs       L026A
+                    lda       #'F'
+                    lbsr      dbg_putc
 
                     ldu       #$0012
                     stu       <u0026
                     leax      >L010B,pcr
                     lbsr      L03D0
                     bcs       L026A
+                    lda       #'G'
+                    lbsr      dbg_putc
 
                     ldu       #$000A
                     stu       <u0024
@@ -381,6 +401,8 @@ L0229               tfr       b,a
 * Wildbits: u002E = mnln's actual entry address (stored at handle $000A by L03D0)
                     ldd       <u000A
                     std       <u002E
+                    lda       #'H'
+                    lbsr      dbg_putc
 L026A               rts
 
 *--------------------------------------------------------------------
@@ -742,6 +764,19 @@ L04DA               ldd       ,s++
 
 L054F               fcb       $00,$00,$00,$00,$00,$00,$00,$00
 L0557               fcb       $73,$69,$65,$72,$72,$61,$00
+
+*--------------------------------------------------------------------
+* dbg_putc - write char in A to StdErr. Preserves all registers.
+* Remove before final release.
+*--------------------------------------------------------------------
+dbg_putc            pshs      d,x,cc
+                    pshs      a
+                    lda       #StdErr
+                    ldb       #1
+                    tfr       s,x
+                    os9       I$Write
+                    leas      1,s
+                    puls      d,x,cc,pc
 
 * MMU helper routines (use F$GPrDsc; work on Wildbits via NitrOS-9)
 mmuini1             pshs      cc,x,y
