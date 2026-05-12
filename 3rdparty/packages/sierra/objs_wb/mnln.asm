@@ -3332,13 +3332,13 @@ L2177               fcc       /words.tok/
 L2181               fcc       /object/
                     fcb       0
 
-L2188               ldd       #$e000
+L2188               ldx       <$0028
+                    ldd       ,x
                     std       <$2e
                     ldd       #$4040
                     pshs      d
                     lda       #$18
                     sta       <$0021
-                    ldx       <$0028
                     jsr       >$0701
                     leas      $02,s
                     lbsr      L12FC

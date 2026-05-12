@@ -106,6 +106,9 @@ u0xxx               rmb       6281
 * Wildbits picture buffer: $40-byte header + 168 rows * 160 bytes = $6940 total.
 * Starts at $2000 (immediately after u0xxx which ends at $1FFF).
 wb_picbuf           rmb       $6940
+* MMU helper buffers moved from module text to data segment (prevent write-to-module-text crash)
+mmubuf              rmb       16
+gprbuf              rmb       512
 size                equ       .
 
 name                fcs       /sierra/
@@ -313,17 +316,10 @@ L01A3               sta       ,x+
                     rts
 
 *--------------------------------------------------------------------
-* L01AF - MMU/DBlk8K initialization.
-* mmuini2 uses F$GPrDsc and works on Wildbits.  DBlk8K (u0043) needs
-* an explicit init here: point it at the u0xxx scratch area so that
-* mnln L280B/L2DED writes land in the data segment (not address 0).
+* L01AF - stub: just initialize DBlk8K pointer.
+* All CoCo3 GIME/MMU twiddles removed for Wildbits.
 *--------------------------------------------------------------------
 L01AF               orcc      #IntMasks
-                    ldx       #$0002
-                    stx       <u0022
-                    lbsr      mmuini2
-                    ldd       mmubuf+9,pcr
-                    std       <u000A
 * Wildbits: init DBlk8K to scratch area (no GIME bank switching)
                     ldd       #u0xxx
                     std       <u0043
@@ -361,6 +357,10 @@ L0229               tfr       b,a
                     std       <u000C
                     std       <u000E
 
+* Wildbits: store sierra's own entry address so mnln can dispatch back into sierra
+                    leax      start,pcr
+                    stx       <u0022
+
                     ldu       #$001A
                     stu       <u0028
                     leax      >L0106,pcr
@@ -378,8 +378,9 @@ L0229               tfr       b,a
                     leax      >L0110,pcr
                     lbsr      L03D0
 
-                    leau      >$2000,u
-                    stu       <u002E
+* Wildbits: u002E = mnln's actual entry address (stored at handle $000A by L03D0)
+                    ldd       <u000A
+                    std       <u002E
 L026A               rts
 
 *--------------------------------------------------------------------
@@ -557,15 +558,15 @@ L0388               clra
 L03B6               tfr       x,d
                     ldb       #8
                     mul
-                    pshs      a
-                    leau      mmubuf+8,pcr
+                    pshs      u,a
+                    leau      >mmubuf+8,u
                     lda       a,u
                     ldb       ,s
                     incb
                     andb      #$07
                     ldb       b,u
                     tfr       d,u
-                    puls      a
+                    leas      3,s
                     rts
 
 * Load named module (unchanged)
@@ -580,21 +581,11 @@ L03D0               leas      -$08,s
                     ldx       $02,s
                     os9       F$Link
                     bcs       L0408
-                    stu       $06,s
-                    tfr       u,x
-                    lbsr      mmuini2
-L03E8               stx       $04,s
-                    lbsr      L03B6
-                    ldx       ,s
-                    leax      a,x
-                    exg       d,u
-                    sta       ,x
-                    exg       d,u
-                    cmpa      #$06
-                    beq       L0403
-                    ldx       $04,s
-                    leax      >$2000,x
-                    bra       L03E8
+                    stu       $06,s               save module header for F$UnLink
+* Wildbits: store F$Link entry (Y) at handle[0:1] so dispatcher can find it
+                    ldx       ,s                  X = handle address ($000A/$0012/$001A)
+                    sty       ,x                  [handle] = module entry address
+                    bra       L0403               skip CoCo3 MMU block loop
 
 L0403               ldu       $06,s
                     os9       F$UnLink
@@ -729,7 +720,6 @@ L04DA               ldd       ,s++
 
                     lda       $07,x
                     ldu       <u002E
-                    adda      u000A,u
                     jsr       a,u
 
                     orcc      #IntMasks
@@ -754,16 +744,13 @@ L054F               fcb       $00,$00,$00,$00,$00,$00,$00,$00
 L0557               fcb       $73,$69,$65,$72,$72,$61,$00
 
 * MMU helper routines (use F$GPrDsc; work on Wildbits via NitrOS-9)
-mmubuf              fcb       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-gprbuf              fzb       512
-
 mmuini1             pshs      cc,x,y
                     orcc      #$50
                     lda       #1
-                    leax      gprbuf,pcr
+                    leax      >gprbuf,u
                     os9       F$GPrDsc
                     leay      $41,x
-                    leax      mmubuf,pcr
+                    leax      >mmubuf,u
                     ldb       #8
 m2lup               lda       ,y++
                     sta       ,x+
@@ -774,10 +761,10 @@ m2lup               lda       ,y++
 mmuini2             pshs      cc,x,y
                     orcc      #$50
                     os9       F$ID
-                    leax      gprbuf,pcr
+                    leax      >gprbuf,u
                     os9       F$GPrDsc
                     leay      $41,x
-                    leax      mmubuf+8,pcr
+                    leax      >mmubuf+8,u
                     ldb       #8
 mloop               lda       ,y++
                     sta       ,x+
