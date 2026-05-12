@@ -12,6 +12,7 @@ SIERRA_EXES  = sierra mnln scrn shdw tocgen
 CMDS_EXTRA  += $(SIERRA_EXES)
 AFLAGS_EXTRA += -I$(3RDPARTY)/packages/sierra/$(GAME_SUBDIR)
 
+BOOTMODS_EXTRA += vrn vi
 PADUP = ../l2/padup256 bootfile
 
 include ../wildbits.mak

@@ -27,7 +27,7 @@ RBF		= rbf.mn rbdw.dr $(DWIO) ddx0.dd x0.dd x1.dd x2.dd x3.dd \
 		llwbsd.sb dds0.dd s0.dd s1.dd
 
 SCF		= scf.mn \
-		vrn.dr nil.dd \
+		vrn.dr nil.dd vi.dd \
 		vtio.dr keydrv_k2.sb keydrv_k.sb keydrv_ps2.sb mousedrv_ps2.sb term.dt \
 		SOLdrv.sb fSOL.dd \
 		sc16550.dr t0_sc16550.dd \
