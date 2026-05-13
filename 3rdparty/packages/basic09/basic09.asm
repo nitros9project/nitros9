@@ -692,7 +692,7 @@ L00EC               fdb       DIRLNK-L00EC         Function 0
 *         fcb   $0A
 
 * token/command type & command list?
-                    fdb       114                 # entries in table
+                    fdb       116                 # entries in table
                     fcb       2                   # bytes to start text
 
 L0140               fdb       $0101
@@ -769,6 +769,11 @@ L021C               fcs       'PRINT'
 L0223               fcs       'CHD'
                     fdb       $2801
 L0228               fcs       'CHX'
+                    fdb       $2901
+* Aliases for CHD and CHX
+                    fcs       'CD'
+                    fdb       $2801
+                    fcs       'CX'
                     fdb       $2901
 L022D               fcs       'CREATE'
                     fdb       $2A01
@@ -1430,11 +1435,11 @@ L03F5               fcb       $40                 ???
                     fdb       L03D1-*             NOT ($FDF2)
 
                     fcb       $51
-                    fcc       '-'                 ??? (Sign as opposed to subtract?)
+                    fcc       '-'                 ??? (Sign as opposed to subtract?) negate (REAL)
                     fcb       $00
 
                     fcb       $51
-                    fcc       '-'                 ??? (Sign as opposed to subtract?)
+                    fcc       '-'                 ??? (Sign as opposed to subtract?) negate (BYTE/INTEGER)
                     fcb       $00
 
                     fcb       $0A
@@ -1608,7 +1613,7 @@ L0668               fdb       L09F9-L0668
 L066B               fdb       L094F-L066B
                     fcb       C$CR+$80            (Carriage return)
 
-                    fdb       14                  # commands this table
+                    fdb       16                  # commands this table
                     fcb       2                   # bytes to first command string
 L0671               fdb       BYEBYE-L0671
                     fcs       'BYE'
@@ -1638,6 +1643,11 @@ L06B4               fdb       CHDDIR-L06B4
                     fcs       'CHD'
 L06B9               fdb       L0A28-L06B9
                     fcs       'CHX'
+* Aliases for CHD and CHX
+L06BE               fdb       CHDDIR-L06BE
+                    fcs       'CD'
+L06C2               fdb       L0A28-L06C2
+                    fcs       'CX'
 
 * Debug mode commands (offsets done by current base + offset)
                     fdb       2                   # of entries this table (-3,x)
