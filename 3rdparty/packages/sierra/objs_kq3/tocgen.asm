@@ -22,6 +22,10 @@
 * C-modules from dev system disk; currently assembles to the
 * duplicate of the original module.
 *
+* Annotated by /annotate-asm (Claude Code) 2026-05-12:
+*   - Renamed disassembled labels to meaningful names
+*   - Added inline comments to every instruction
+*
 ********************************************************************
 ***
 ***
@@ -58,9 +62,9 @@ nfiles              equ       2                   stdin and stdout at least
 Stk                 equ       nfiles*256+128+256  stdin,stdout,stderr and fudge
 
 * These are probably defined in scfdefs
-C$CR                equ       $0D
+* C$CR  equ $0D   (defined in scf.d -- local copy removed to avoid duplicate)
 C$SPC               equ       $20
-C$COMA              equ       $2C
+* C$COMA equ $2C  (defined in scf.d -- local copy removed to avoid duplicate)
 C$DQUt              equ       $22
 C$SQUT              equ       $27
 
@@ -103,20 +107,20 @@ rev                 set       $00
 
 ********************************************************************
 btext               equ       .
-u0000               rmb       1                   I think this is the __$$ fcb 0 vsect.
+NullGuard           rmb       1                   I think this is the __$$ fcb 0 vsect.
 dpsiz               rmb       1
-u0002               rmb       2
-u0004               rmb       2
-u0006               rmb       2
-u0008               rmb       2
-u000A               rmb       1
-u000B               rmb       2
+StrmBufBase         rmb       2
+StrmBufEnd          rmb       2
+StrmFlags           rmb       2
+StrmPath            rmb       2
+StrmMode            rmb       1
+StrmBufSize         rmb       2
 
-u000D               rmb       2
-u000F               rmb       2
-u0011               rmb       1
-u0012               rmb       2
-u0014               rmb       335
+StrmStride          rmb       2
+ReservedF           rmb       2
+Reserved11          rmb       1
+StrmTable           rmb       2
+StrmDataBuf         rmb       335
 
 *u0020    rmb   5
 *u0025    rmb   2
@@ -188,8 +192,8 @@ start               equ       *                   _cstart code
                     clra                          set up to clear
                     clrb                          256 bytes
 csta05              sta       ,u+                 clear dp bytes
-                    decb
-                    bne       csta05
+                    decb                          decrement byte counter
+                    bne       csta05              loop until 256 bytes cleared
 
 *
 * This code segment sets up to move the
@@ -231,7 +235,7 @@ csta15              leau      >dpsiz,u            point to where non-dp should s
 *  now clear out the rest of the uninitialized data area.
 *
 
-                    clra
+                    clra                          clear A for bss zero-fill
 clrbss              cmpu      ,s                  reached the end ??
                     beq       reldt               if so branch to relocate
                     sta       ,u+                 if not end clear it
@@ -289,7 +293,7 @@ reldd               ldd       ,y++                get the count of the data refs
 
 restack             leas      $04,s               reset stack
                     puls      x                   restore 'memend'
-                    stx       >memend,u
+                    stx       >memend,u           save memory end pointer into data area
 
 ******************************************************************
 *
@@ -304,14 +308,14 @@ restack             leas      $04,s               reset stack
 * (an extra name inserted here for just this purpose
 * - undocumented as yet)
 
-                    sty       >argv,u
+                    sty       >argv,u             store program name ptr in argv[0]
                     ldd       #$0001              at least one arg
-                    std       >argc,u
+                    std       >argc,u             initialize argc to 1
                     leay      >argv+2,u           point y at second slot
-                    leax      ,s                  point x at params
-                    lda       ,x+                 initialize
+                    leax      ,s                  point X at OS9 parameter area
+                    lda       ,x+                 fetch first character of params
 
-aloop               ldb       >argc+1,u
+aloop               ldb       >argc+1,u           load current arg count low byte
                     cmpb      #MAXARGS-1          about to overflow ??
                     beq       final               branch out
 
@@ -340,17 +344,17 @@ qloop               lda       ,x+                 get the next char
                     cmpa      ,s                  is it a delim char
                     bne       qloop               no then lop to the next
 
-aloop50             puls      b                   clean up stack
-                    clr       -$01,x
-                    cmpa      #C$CR
-                    beq       final
-                    lda       ,x+
-                    bra       aloop
+aloop50             puls      b                   pop saved delimiter off stack
+                    clr       -$01,x              null-terminate this arg
+                    cmpa      #C$CR               was it end-of-line?
+                    beq       final               yes — done parsing args
+                    lda       ,x+                 skip delimiter, get next char
+                    bra       aloop               loop for more args
 
-aloop60             leax      -$01,x              point at first char
-                    stx       ,y++                put address in vector
-                    leax      $01,x               bump it back
-                    inc       >argc+1,u           bump up the arg count
+aloop60             leax      -$01,x              back up to first char of token
+                    stx       ,y++                store pointer in argv vector
+                    leax      $01,x               advance past first char
+                    inc       >argc+1,u           increment arg count
 
 * at least one none space character has been seen
 aloop70             cmpa      #C$CR               Have
@@ -359,11 +363,11 @@ aloop70             cmpa      #C$CR               Have
                     beq       loopend             the end
                     cmpa      #C$COMA             comma?
                     beq       loopend             look some more
-                    lda       ,x+
-                    bra       aloop70
+                    lda       ,x+                 get next character
+                    bra       aloop70             keep scanning token
 
-loopend             clr       -$01,x
-                    bra       aloop
+loopend             clr       -$01,x              null-terminate the token
+                    bra       aloop               scan for next arg
 
 *`
 * Now put the pointers on the stack
@@ -372,10 +376,10 @@ final               leax      >argv,u             get the address of the arg vec
                     pshs      x                   goes on the stack first
                     ldd       >argc,u             get the arg count
 
-                    pshs      b,a
+                    pshs      b,a                 push argc onto stack for main()
 *        pshs  d          push it on the stack
 
-                    leay      0,u                 C progs. assume data and bss offset from y
+                    leay      0,u                 set Y = data base pointer (C convention)
 *                         see note above in restack
 *
 *    end of argv and argc processing
@@ -428,8 +432,8 @@ _fixtop             leax      end,y               get the initial memeory end
 *                         (unitilaized data "bss"address)
                     stx       _mtop,y             its the current memory top
                     sts       _sttop,y            this is really two bytes short
-                    sts       _stbot,y
-                    ldd       #-126               give ourselfs some breathing space
+                    sts       _stbot,y            save initial stack bottom limit
+                    ldd       #-126               breathing room below stack
 
 *        stx   >$01AD,y   ---- disassembly
 *        sts   >$01A1,y   ---- disassembly
@@ -498,9 +502,9 @@ stacksiz
 *
 
 freemem
-                    ldd       _stbot,y
-                    subd      _mtop,y
-                    rts
+                    ldd       _stbot,y            load current stack bottom limit
+                    subd      _mtop,y             subtract heap top → free memory size
+                    rts                           return free bytes in D
 
 
 
@@ -539,20 +543,20 @@ patch10             ldd       ,y++                get the offset
 
 
 
-main                pshs      u
-                    ldd       #$FD57
-                    lbsr      _stkcheck:          check for sufficient stack available:
+main                pshs      u                   save frame pointer
+                    ldd       #$FD57              required stack depth for main()
+                    lbsr      _stkcheck           check for sufficient stack available:
 
-                    leas      >-$025D,s
-                    ldd       >$0261,s
+                    leas      >-$025D,s           allocate 605-byte local frame
+                    ldd       >$0261,s            load argc from stack
                     cmpd      #$0002              looks like we check for two args
                     beq       gotargs             if good number go
-                    ldd       [>$0263,s]
-                    pshs      b,a
+                    ldd       [>$0263,s]          load argv[0] (program name)
+                    pshs      b,a                 push for printf
                     leax      >usemsg,pcr         load address of usage message
                     pshs      x                   push it on the stack
 
-                    lbsr      L07EF
+                    lbsr      PrintfEntry
                     leas      $04,s               clean up stack
                     clra                          clear the exit codes
                     clrb                          from d
@@ -560,320 +564,320 @@ main                pshs      u
                     lbsr      exit
 
 
-                    leas      $02,s
+                    leas      $02,s               (dead — exit doesn't return)
 
-gotargs             leax      >L04C8,pcr          Load address data after usage message
+gotargs             leax      >OpenReadFlag,pcr   push "r" mode string
                     pshs      x
-                    ldx       >$0265,s
-                    ldd       $02,x
-                    pshs      b,a
-                    lbsr      L06CF
-                    leas      $04,s
-                    std       >$025B,s
-                    bne       L01E1
-                    ldx       >$0263,s
-                    ldd       $02,x
-                    pshs      b,a
+                    ldx       >$0265,s            load argv pointer
+                    ldd       $02,x               get argv[1] (input filename)
+                    pshs      b,a                 push filename for fopen
+                    lbsr      FopenWrapper
+                    leas      $04,s               pop fopen args
+                    std       >$025B,s            save input FILE*
+                    bne       ArgCountOk          branch if fopen succeeded
+                    ldx       >$0263,s            load argv for error message
+                    ldd       $02,x               get argv[1]
+                    pshs      b,a                 push filename
                     leax      >cntread,pcr        Load address can't open for reading message
                     pshs      x
-                    lbsr      L07EF
+                    lbsr      PrintfEntry
                     leas      $04,s
                     clra
                     clrb
-                    pshs      b,a
+                    pshs      b,a                 push exit code 0
                     lbsr      exit
 
-                    leas      $02,s
-L01E1               clra
+                    leas      $02,s               (dead — exit doesn't return)
+ArgCountOk          clra
                     clrb
-                    std       >$0082,s
+                    std       >$0082,s            init entry count to 0
                     lslb
-                    rola
-                    leax      ,s
-                    leax      d,x
+                    rola                          D = entry_count * 2 (word index)
+                    leax      ,s                  base of local frame
+                    leax      d,x                 point into disk-side table
                     clra
                     clrb
-                    std       ,x
-                    leax      >$0084,s
-                    stx       >$0255,s
-                    lbra      L0396
+                    std       ,x                  zero first table slot
+                    leax      >$0084,s            address of output buffer in frame
+                    stx       >$0255,s            save output write pointer
+                    lbra      ReadTOCLine         begin reading TOC input
 
-L01FC               ldd       >$0257,s
-                    addd      #$0001
-                    std       >$0257,s
-L0207               ldb       [>$0257,s]
-                    cmpb      #C$CR
-                    beq       L021F
-                    ldb       [>$0257,s]
-                    cmpb      #$64                'd
-                    beq       L021F
-                    ldb       [>$0257,s]
-                    cmpb      #$44                'D
-                    bne       L01FC
-L021F               ldb       [>$0257,s]
-                    cmpb      #C$CR
-                    beq       L0247
-                    ldd       >$0257,s
-                    addd      #$0001
-                    std       >$0257,s
-                    pshs      b,a
-                    lbsr      L11C2
-                    leas      $02,s
-                    ldx       >$0255,s
-                    leax      $01,x
-                    stx       >$0255,s
-                    stb       -$01,x
-                    bra       L026E
+AdvanceDiskScan     ldd       >$0257,s            load current scan pointer
+                    addd      #$0001              advance one character
+                    std       >$0257,s            store updated scan pointer
+CheckDiskLetter     ldb       [>$0257,s]          read character at scan pointer
+                    cmpb      #C$CR               end of line?
+                    beq       ParseDiskDigit      yes — treat as implicit disk token
+                    ldb       [>$0257,s]          re-read character
+                    cmpb      #$64                'd (lowercase d = disk)?
+                    beq       ParseDiskDigit      yes — found disk letter
+                    ldb       [>$0257,s]          re-read character
+                    cmpb      #$44                'D (uppercase D = disk)?
+                    bne       AdvanceDiskScan     not D/d — keep scanning
+ParseDiskDigit      ldb       [>$0257,s]          read char following disk letter
+                    cmpb      #C$CR               end of line?
+                    beq       MissingDiskNumErr   yes — disk number absent
+                    ldd       >$0257,s            load scan pointer
+                    addd      #$0001              advance past disk letter
+                    std       >$0257,s            store updated pointer
+                    pshs      b,a                 push pointer for AtoI
+                    lbsr      AtoI                convert ASCII digits to integer
+                    leas      $02,s               pop argument
+                    ldx       >$0255,s            load output write pointer
+                    leax      $01,x               advance one byte
+                    stx       >$0255,s            store updated output pointer
+                    stb       -$01,x              store disk number byte to output
+                    bra       CheckSideLetter     now scan for side letter
 
-L0247               leax      >$0204,s
+MissingDiskNumErr   leax      >$0204,s            load address buffer for printf
                     pshs      x
                     leax      >dsknmsg,pcr        Load address of disk number ?? mising
                     pshs      x
-                    lbsr      L07EF
+                    lbsr      PrintfEntry
                     leas      $04,s
                     clra
                     clrb
-                    pshs      b,a
+                    pshs      b,a                 exit code 0
                     lbsr      exit
-                    leas      $02,s
-                    bra       L026E
-L0263               ldd       >$0257,s
-                    addd      #$0001
-                    std       >$0257,s
-L026E               ldb       [>$0257,s]
-                    cmpb      #C$CR
-                    beq       L0286
-                    ldb       [>$0257,s]
-                    cmpb      #$73                's
-                    beq       L0286
-                    ldb       [>$0257,s]
-                    cmpb      #$53                'S
-                    bne       L0263
-L0286               ldb       [>$0257,s]
-                    cmpb      #C$CR
-                    beq       L02CE
-                    ldd       >$0257,s
-                    addd      #$0001
-                    std       >$0257,s
-                    pshs      b,a
-                    lbsr      L11C2
-                    leas      $02,s
-                    stb       >$025A,s
-                    cmpb      #$01
-                    beq       L02B0
-                    ldb       >$025A,s
-                    cmpb      #$02
-                    bne       L02C2
-L02B0               ldb       >$025A,s
-                    ldx       >$0255,s
-                    leax      $01,x
-                    stx       >$0255,s
-                    stb       -$01,x
-                    bra       L02E8
-L02C2               leax      >$0204,s
+                    leas      $02,s               (dead)
+                    bra       CheckSideLetter
+AdvanceSideScan     ldd       >$0257,s            load scan pointer
+                    addd      #$0001              advance one character
+                    std       >$0257,s            store updated pointer
+CheckSideLetter     ldb       [>$0257,s]          read char at scan pointer
+                    cmpb      #C$CR               end of line?
+                    beq       ParseSideDigit      yes — implicit side token
+                    ldb       [>$0257,s]          re-read character
+                    cmpb      #$73                's (lowercase side)?
+                    beq       ParseSideDigit      yes — found side letter
+                    ldb       [>$0257,s]          re-read character
+                    cmpb      #$53                'S (uppercase side)?
+                    bne       AdvanceSideScan     not S/s — keep scanning
+ParseSideDigit      ldb       [>$0257,s]          read char following side letter
+                    cmpb      #C$CR               end of line?
+                    beq       MissingSideErr      yes — side number absent
+                    ldd       >$0257,s            load scan pointer
+                    addd      #$0001              advance past side letter
+                    std       >$0257,s            store updated pointer
+                    pshs      b,a                 push pointer for AtoI
+                    lbsr      AtoI                convert side number string to integer
+                    leas      $02,s               pop argument
+                    stb       >$025A,s            save parsed side number
+                    cmpb      #$01                is it side 1?
+                    beq       ValidSideNum        yes — valid
+                    ldb       >$025A,s            reload side number
+                    cmpb      #$02                is it side 2?
+                    bne       InvalidSideErr      no — error
+ValidSideNum        ldb       >$025A,s            load validated side number
+                    ldx       >$0255,s            load output write pointer
+                    leax      $01,x               advance one byte
+                    stx       >$0255,s            store updated output pointer
+                    stb       -$01,x              store side byte to output
+                    bra       AfterSideNum        continue to volume scan
+InvalidSideErr      leax      >$0204,s            load address buffer for printf
                     pshs      x
                     leax      >invside,pcr        load address of the invalid side message
-                    bra       L02D8
-L02CE               leax      >$0204,s
+                    bra       PrintErrExit
+MissingSideErr      leax      >$0204,s            load address buffer for printf
                     pshs      x
                     leax      >snmiss,pcr         load address of side number missing mesg
-L02D8               pshs      x
-                    lbsr      L07EF
-                    leas      $04,s
+PrintErrExit        pshs      x                   push error message address
+                    lbsr      PrintfEntry
+                    leas      $04,s               pop printf args
                     clra
                     clrb
-                    pshs      b,a
+                    pshs      b,a                 exit code 0
                     lbsr      exit
-                    leas      $02,s
-L02E8               clra
+                    leas      $02,s               (dead)
+AfterSideNum        clra
                     clrb
-                    stb       >$0259,s
-                    bra       L0342
-L02F0               ldd       >$0257,s
-                    addd      #$0001
-                    std       >$0257,s
-L02FB               ldb       [>$0257,s]
-                    cmpb      #C$CR
-                    beq       L0313
-                    ldb       [>$0257,s]
-                    cmpb      #$76                's
-                    beq       L0313
-                    ldb       [>$0257,s]
-                    cmpb      #$56                'S
-                    bne       L02F0
-L0313               ldb       [>$0257,s]
-                    cmpb      #C$CR
-                    beq       L034A
-                    ldd       >$0257,s
-                    addd      #$0001
-                    std       >$0257,s
-                    pshs      b,a
-                    lbsr      L11C2
-                    leas      $02,s
-                    ldx       >$0255,s
-                    leax      $01,x
-                    stx       >$0255,s
-                    stb       -$01,x
-                    ldd       #$0001
-                    stb       >$0259,s
-                    bra       L0342
-L0342               ldb       [>$0257,s]
-                    cmpb      #C$CR
-                    bne       L02FB
-L034A               ldb       >$0259,s
-                    bne       L036A
-                    leax      >$0204,s
-                    pshs      x
+                    stb       >$0259,s            clear volume-found flag
+                    bra       VolScanLoop         skip to loop entry
+AdvanceVolScan      ldd       >$0257,s            load scan pointer
+                    addd      #$0001              advance one character
+                    std       >$0257,s            store updated pointer
+CheckVolLetter      ldb       [>$0257,s]          read char at scan pointer
+                    cmpb      #C$CR               end of line?
+                    beq       ParseVolDigit       yes — treat as implicit volume token
+                    ldb       [>$0257,s]          re-read char for lowercase 'v' check
+                    cmpb      #$76                'v' ?
+                    beq       ParseVolDigit       yes — parse volume number
+                    ldb       [>$0257,s]          re-read char for uppercase 'V' check
+                    cmpb      #$56                'V' ?
+                    bne       AdvanceVolScan      no — keep scanning
+ParseVolDigit       ldb       [>$0257,s]          read char after volume letter
+                    cmpb      #C$CR               end of line (no digit follows)?
+                    beq       CheckVolFound       yes — check if volume was found
+                    ldd       >$0257,s            load pointer to volume digit
+                    addd      #$0001              advance past volume letter
+                    std       >$0257,s            store updated pointer
+                    pshs      b,a                 push pointer for AtoI
+                    lbsr      AtoI                parse ASCII integer from string
+                    leas      $02,s               discard pointer arg
+                    ldx       >$0255,s            load output buffer write pointer
+                    leax      $01,x               advance write pointer by one
+                    stx       >$0255,s            store updated write pointer
+                    stb       -$01,x              store parsed volume number in buffer
+                    ldd       #$0001              set found flag = 1
+                    stb       >$0259,s            mark volume as found
+                    bra       VolScanLoop         continue scanning
+VolScanLoop         ldb       [>$0257,s]          read char at scan pointer
+                    cmpb      #C$CR               end of line?
+                    bne       CheckVolLetter      no — check for volume letter
+CheckVolFound       ldb       >$0259,s            load volume-found flag
+                    bne       ArgsParseDone       non-zero — args successfully parsed
+                    leax      >$0204,s            pointer to line buffer for error message
+                    pshs      x                   push line buffer pointer
                     leax      >vnmiss,pcr         load address of volume missing mesg
-                    pshs      x
-                    lbsr      L07EF
-                    leas      $04,s
-                    clra
-                    clrb
-                    pshs      b,a
+                    pshs      x                   push format string
+                    lbsr      PrintfEntry         print "volume number missing" error
+                    leas      $04,s               discard printf args
+                    clra                          clear exit code high byte
+                    clrb                          clear exit code low byte
+                    pshs      b,a                 push exit(0)
                     lbsr      exit                head out
 
-                    leas      $02,s
-L036A               ldx       >$0255,s
-                    ldb       -$01,x
-                    sex
-                    orb       #$80
-                    stb       -$01,x
-                    ldd       >$0082,s
-                    addd      #$0001
-                    std       >$0082,s
-                    lslb
-                    rola
-                    leax      ,s
-                    leax      d,x
-                    pshs      x
-                    leax      >$0086,s
-                    pshs      x
-                    ldd       >$0259,s
-                    subd      ,s++
-                    std       [,s++]
-L0396               ldd       >$025B,s
-                    pshs      b,a
-                    ldd       #$0051
-                    pshs      b,a
-                    leax      >$0208,s
-                    pshs      x
-                    lbsr      L075C
-                    leas      $06,s
-                    std       >$0257,s
-                    lbne      L0207
-                    clra
-                    clrb
-                    bra       L03D7
-L03B8               ldd       >$0080,s
-                    lslb
-                    rola
-                    leax      ,s
-                    leax      d,x
-                    ldd       ,x
-                    pshs      x,b,a
-                    ldd       >$0086,s
-                    lslb
-                    rola
-                    addd      ,s++
-                    std       [,s++]
-                    ldd       >$0080,s
-                    addd      #$0001
-L03D7               std       >$0080,s
-                    ldd       >$0080,s
-                    cmpd      >$0082,s
-                    bcs       L03B8
-                    ldd       >$025B,s
-                    pshs      b,a
-                    lbsr      L0DE4
-                    leas      $02,s
-                    leax      >L0548,pcr
-                    pshs      x
-                    leax      >dpsiz,y
-                    pshs      x
-                    lbsr      L06CF
-                    leas      $04,s
-                    std       >$025B,s
-                    bne       L0422
+                    leas      $02,s               (dead — never reached)
+ArgsParseDone       ldx       >$0255,s            load end of volume buffer
+                    ldb       -$01,x              read last byte stored (final volume)
+                    sex                           sign-extend B to D
+                    orb       #$80                set high bit to mark end of list
+                    stb       -$01,x              store back end-of-list sentinel
+                    ldd       >$0082,s            load total arg count
+                    addd      #$0001              increment arg count
+                    std       >$0082,s            store updated arg count
+                    lslb                          multiply arg count × 2 (low byte)
+                    rola                          multiply arg count × 2 (high byte)
+                    leax      ,s                  base of stack frame
+                    leax      d,x                 point to arg slot at stack + 2*count
+                    pshs      x                   push pointer to arg slot
+                    leax      >$0086,s            load second parameter address
+                    pshs      x                   push it
+                    ldd       >$0259,s            load volume scan position
+                    subd      ,s++                subtract arg slot pointer (pop)
+                    std       [,s++]              store result indirect (pop)
+ReadTOCLine         ldd       >$025B,s            load input FILE* stream
+                    pshs      b,a                 push FILE* arg
+                    ldd       #$0051              buffer size = 81 chars
+                    pshs      b,a                 push size arg
+                    leax      >$0208,s            address of line input buffer
+                    pshs      x                   push buffer pointer
+                    lbsr      FGetsEntry          read one line from TOC file
+                    leas      $06,s               discard three args
+                    std       >$0257,s            save fgets result (NULL = EOF)
+                    lbne      CheckDiskLetter     if got a line, parse it
+                    clra                          EOF — set return value high = 0
+                    clrb                          EOF — set return value low = 0
+                    bra       BuildEntryNext      advance past entry loop
+BuildEntryLoop      ldd       >$0080,s            load current entry index
+                    lslb                          multiply index × 2 (low)
+                    rola                          multiply index × 2 (high)
+                    leax      ,s                  base of stack
+                    leax      d,x                 point to entry slot = stack + 2*index
+                    ldd       ,x                  load pointer from entry slot
+                    pshs      x,b,a               save slot address and loaded pointer
+                    ldd       >$0086,s            load arg buffer base pointer
+                    lslb                          multiply × 2 (low)
+                    rola                          multiply × 2 (high)
+                    addd      ,s++                add saved slot address, pop X
+                    std       [,s++]              write result indirect through saved D, pop
+                    ldd       >$0080,s            reload current entry index
+                    addd      #$0001              increment index
+BuildEntryNext      std       >$0080,s            store updated index
+                    ldd       >$0080,s            reload index for comparison
+                    cmpd      >$0082,s            compare to total arg count
+                    bcs       BuildEntryLoop      if more entries remain, keep looping
+                    ldd       >$025B,s            load input FILE*
+                    pshs      b,a                 push FILE* arg
+                    lbsr      FClose              close input TOC file
+                    leas      $02,s               discard arg
+                    leax      >OpenWriteFlag,pcr  point to "w" open mode string
+                    pshs      x                   push mode arg
+                    leax      >dpsiz,y            point to output filename (from data segment)
+                    pshs      x                   push filename arg
+                    lbsr      FopenWrapper        open output file for writing
+                    leas      $04,s               discard fopen args
+                    std       >$025B,s            save output FILE*
+                    bne       OpenOutputFile      non-null — file opened OK
 
-                    leax      >dpsiz,y
-                    pshs      x
+                    leax      >dpsiz,y            load output filename for error message
+                    pshs      x                   push filename arg
                     leax      >cntwrit,pcr        load address of can't write mesg
-                    pshs      x
-                    lbsr      L07EF
-                    leas      $04,s
-                    clra
-                    clrb
-                    pshs      b,a
-                    lbsr      exit
+                    pshs      x                   push format string
+                    lbsr      PrintfEntry         print "can't open for writing" error
+                    leas      $04,s               discard args
+                    clra                          clear exit code high byte
+                    clrb                          clear exit code low byte
+                    pshs      b,a                 push exit(0)
+                    lbsr      exit                terminate with error
 
-                    leas      $02,s
-L0422               ldd       >$025B,s
-                    pshs      b,a
-                    ldd       >$0084,s
-                    pshs      b,a
-                    lbsr      egg2
-                    leas      $04,s
-                    cmpd      #$FFFF
-                    beq       L0481
-                    ldd       >$025B,s
-                    pshs      b,a
-                    ldd       #$0001
-                    pshs      b,a
-                    ldd       >$0086,s
-                    lslb
-                    rola
-                    pshs      b,a
-                    leax      $06,s
-                    pshs      x
-                    lbsr      L07A5
-                    leas      $08,s
-                    std       -$02,s
-                    beq       L0481
-                    ldd       >$025B,s
-                    pshs      b,a
-                    ldd       #$0001
-                    pshs      b,a
-                    leax      >$0088,s
-                    pshs      x
-                    ldd       >$025B,s
-                    subd      ,s++
-                    pshs      b,a
-                    leax      >$008A,s
-                    pshs      x
-                    lbsr      L07A5
-                    leas      $08,s
-                    std       -$02,s
-                    bne       L049B
-L0481               leax      >dpsiz,y
-                    pshs      x
+                    leas      $02,s               (dead — never reached)
+OpenOutputFile      ldd       >$025B,s            load output FILE*
+                    pshs      b,a                 push FILE* arg
+                    ldd       >$0084,s            load TOC entry count
+                    pshs      b,a                 push count arg
+                    lbsr      egg2                write TOC header record
+                    leas      $04,s               discard args
+                    cmpd      #$FFFF              check for write error
+                    beq       WriteErrExit        error — report and exit
+                    ldd       >$025B,s            reload output FILE*
+                    pshs      b,a                 push FILE* arg
+                    ldd       #$0001              item count = 1
+                    pshs      b,a                 push count arg
+                    ldd       >$0086,s            load number of entries
+                    lslb                          multiply by 2 (low byte) for byte length
+                    rola                          multiply by 2 (high byte)
+                    pshs      b,a                 push byte length
+                    leax      $06,s               address of TOC data buffer on stack
+                    pshs      x                   push buffer pointer
+                    lbsr      FWriteEntry         write first TOC chunk to output file
+                    leas      $08,s               discard four args
+                    std       -$02,s              save write result
+                    beq       WriteErrExit        zero bytes written — write error
+                    ldd       >$025B,s            reload output FILE*
+                    pshs      b,a                 push FILE* arg
+                    ldd       #$0001              item count = 1
+                    pshs      b,a                 push count arg
+                    leax      >$0088,s            address of second TOC data block
+                    pshs      x                   push buffer pointer
+                    ldd       >$025B,s            load FILE* for size calculation
+                    subd      ,s++                subtract buffer pointer (pop), get byte count
+                    pshs      b,a                 push computed byte count
+                    leax      >$008A,s            address of output area for second block
+                    pshs      x                   push destination pointer
+                    lbsr      FWriteEntry         write second TOC chunk to output file
+                    leas      $08,s               discard four args
+                    std       -$02,s              save write result
+                    bne       CleanExit           success — proceed to clean exit
+WriteErrExit        leax      >dpsiz,y            load output filename for error message
+                    pshs      x                   push filename arg
                     leax      errwrit,pcr         load address of error writing mesg
-                    pshs      x
-                    lbsr      L07EF
-                    leas      $04,s
-                    clra
-                    clrb
-                    pshs      b,a
-                    lbsr      exit
+                    pshs      x                   push format string
+                    lbsr      PrintfEntry         print "error writing" message
+                    leas      $04,s               discard args
+                    clra                          clear exit code high byte
+                    clrb                          clear exit code low byte
+                    pshs      b,a                 push exit(0)
+                    lbsr      exit                terminate with write error
 
-                    leas      $02,s
-L049B               ldd       >$025B,s
-                    pshs      b,a
-                    lbsr      L0DE4
-                    leas      $02,s
-                    clra
-                    clrb
-                    pshs      b,a
-                    lbsr      exit
-                    leas      $02,s
-                    leas      >$025D,s
-                    puls      pc,u
+                    leas      $02,s               (dead — never reached)
+CleanExit           ldd       >$025B,s            load output FILE*
+                    pshs      b,a                 push FILE* arg
+                    lbsr      FClose              close output file
+                    leas      $02,s               discard arg
+                    clra                          exit code high = 0
+                    clrb                          exit code low = 0
+                    pshs      b,a                 push exit(0)
+                    lbsr      exit                terminate successfully
+                    leas      $02,s               (dead — never reached)
+                    leas      >$025D,s            deallocate main stack frame
+                    puls      pc,u                restore frame pointer and return
 
 usemsg              fcc       /Usage: %s pathlist/ c-string
                     fcb       $00                 null terminator c-string
 
 
-L04C8               fcb       $72,$00             what am I
+OpenReadFlag        fcb       $72,$00             what am I
 
 cntread             fcc       /Can't open %s for reading./ c-string
                     fcb       C$CR,$00            cr and null term
@@ -898,7 +902,7 @@ vnmiss              fcc       /Volume number missing:/
                     fcc       /%s/
                     fcb       $00
 
-L0548               fcb       $77,$00             what am i
+OpenWriteFlag       fcb       $77,$00             what am i
 
 cntwrit             fcc       /Can't open %s for writing./
                     fcb       C$CR,$00
@@ -917,876 +921,876 @@ errwrit             fcc       /Error writing %s./
 
 egg1                pshs      u                   ***  pshs u incorrectly decoded
 
-L057B               leau      >u0012,y
-L057F               ldd       u0006,u
-                    clra
-                    andb      #$03
-                    lbeq      L05F0
-                    leau      u000D,u
-                    pshs      u
-                    leax      >$00E2,y
-                    cmpx      ,s++
-                    bhi       L057F
-                    ldd       #E$PthFul           $00C8
-                    std       >errno,y            01b1
-                    lbra      L05F4
-                    puls      pc,u
+ScanStreamStart     leau      >StrmTable,y        point U to first stream table entry
+ScanStreamLoop      ldd       StrmFlags,u         load mode flags for this stream slot
+                    clra                          ignore high byte
+                    andb      #$03                keep only read/write mode bits
+                    lbeq      ReturnStreamPtr     mode == 0 — this slot is free, return it
+                    leau      StrmStride,u        advance U to next stream entry
+                    pshs      u                   push current U for boundary check
+                    leax      >$00E2,y            X = one past end of stream table
+                    cmpx      ,s++                compare table-end to current U (pop)
+                    bhi       ScanStreamLoop      still within table — keep scanning
+                    ldd       #E$PthFul           no free slots — path table full error
+                    std       >errno,y            store error code in errno
+                    lbra      ReturnNullStream    return NULL to caller
+                    puls      pc,u                (dead — never reached)
 
-L05A0               pshs      u
-                    ldu       $08,s
-                    bne       L05AA
+GetOrAllocStream    pshs      u                   save U (frame pointer)
+                    ldu       $08,s               load caller's stream pointer arg
+                    bne       StreamFound         non-NULL — use supplied stream
                     bsr       egg1                ***  pshs u incorrectly decoded
-                    tfr       d,u
-L05AA               stu       -$02,s
-                    beq       L05F4
-                    ldd       $04,s
-                    std       u0008,u
-                    ldx       $06,s
-                    ldb       $01,x
-                    cmpb      #$2B                '+   ?????
-                    beq       L05C2
-                    ldx       $06,s
-                    ldb       $02,x
-                    cmpb      #$2B                '+   ??????
-                    bne       L05C8
-L05C2               ldd       u0006,u
-                    orb       #$03
-                    bra       L05E6
-L05C8               ldd       u0006,u
-                    pshs      b,a
-                    ldb       [<$08,s]
-                    cmpb      #$72                'r
-                    beq       L05DA
-                    ldb       [<$08,s]
-                    cmpb      #$64                'd
-                    bne       L05DF
-L05DA               ldd       #$0001
-                    bra       L05E2
-L05DF               ldd       #$0002
-L05E2               ora       ,s+
-L05E4               orb       ,s+
-L05E6               std       u0006,u
-                    ldd       u0002,u
-                    addd      u000B,u
-                    std       u0004,u
-                    std       ,u
-L05F0               tfr       u,d
-                    puls      pc,u
+                    tfr       d,u                 move allocated stream pointer to U
+StreamFound         stu       -$02,s              save stream pointer as local
+                    beq       ReturnNullStream    NULL result — allocation failed
+                    ldd       $04,s               load path number from caller arg
+                    std       StrmPath,u          store path in stream struct
+                    ldx       $06,s               load mode string pointer
+                    ldb       $01,x               read second char of mode string
+                    cmpb      #$2B                '+' (update/append mode flag)?
+                    beq       SetRWFlags          yes — set read+write
+                    ldx       $06,s               reload mode string pointer
+                    ldb       $02,x               read third char of mode string
+                    cmpb      #$2B                '+' in position 2?
+                    bne       ParseModeStr        no — parse mode char normally
+SetRWFlags          ldd       StrmFlags,u         load current stream flags
+                    orb       #$03                set both read and write bits
+                    bra       StoreModeFlags      apply combined flags
+ParseModeStr        ldd       StrmFlags,u         load current flags for OR
+                    pshs      b,a                 save current flags on stack
+                    ldb       [<$08,s]            read first char of mode string
+                    cmpb      #$72                'r' (read mode)?
+                    beq       SetReadMode         yes — read-only
+                    ldb       [<$08,s]            re-read first mode char
+                    cmpb      #$64                'd' (delete/read mode)?
+                    bne       SetWriteMode        no — default to write
+SetReadMode         ldd       #$0001              read flag = bit 0
+                    bra       OrFlagsHigh         merge into saved flags
+SetWriteMode        ldd       #$0002              write flag = bit 1
+OrFlagsHigh         ora       ,s+                 OR high byte with saved, pop A
+OrFlagsLow          orb       ,s+                 OR low byte with saved, pop B
+StoreModeFlags      std       StrmFlags,u         write combined mode flags to stream
+                    ldd       StrmBufBase,u       load buffer base address
+                    addd      StrmBufSize,u       add buffer size to get end address
+                    std       StrmBufEnd,u        store buffer end pointer
+                    std       ,u                  also update current buffer pointer
+ReturnStreamPtr     tfr       u,d                 return stream pointer in D
+                    puls      pc,u                restore U and return
 
-L05F4               clra
-                    clrb
-                    puls      pc,u
+ReturnNullStream    clra                          return NULL high byte
+                    clrb                          return NULL low byte
+                    puls      pc,u                restore U and return
 
-L05F8               pshs      u
-                    ldu       $04,s
-                    leas      -$04,s
-                    clra
-                    clrb
-                    std       ,s
-                    ldx       $0A,s
-                    ldb       $01,x
-                    sex
-                    tfr       d,x
-                    bra       L0629
-L060B               ldx       $0A,s
-                    ldb       $02,x
-                    cmpb      #$2B                '+
-                    bne       L0618
-                    ldd       #$0007
-                    bra       L0620
-L0618               ldd       #$0004
-                    bra       L0620
-L061D               ldd       #$0003
-L0620               std       ,s
-                    bra       L0639
-L0624               leax      $04,s
-                    lbra      L0691
-L0629               stx       -$02,s
-                    beq       L0639
-                    cmpx      #$0078
-                    beq       L060B
-                    cmpx      #$002B
-                    beq       L061D
-                    bra       L0624
-L0639               ldb       [<$0A,s]
-                    sex
-                    tfr       d,x
-                    lbra      L069E
-L0642               ldd       ,s
-                    orb       #$01
-                    bra       L0684
-L0648               ldd       ,s
-                    orb       #$02
-                    pshs      b,a
-                    pshs      u
-                    lbsr      open:
-                    leas      $04,s
-                    std       $02,s
-                    cmpd      #$FFFF
-                    beq       L0673
-                    ldd       #$0002
-                    pshs      b,a
-                    clra
-                    clrb
-                    pshs      b,a
-                    pshs      b,a
-                    ldd       $08,s
-                    pshs      b,a
-                    lbsr      lseek:
-                    leas      $08,s
-                    bra       L06B8
-L0673               ldd       ,s
-                    orb       #$02
-                    pshs      b,a
-                    pshs      u
-                    lbsr      creat:
-                    bra       L068B
-L0680               ldd       ,s
-                    orb       #$81
-L0684               pshs      b,a
-                    pshs      u
-                    lbsr      open:
-L068B               leas      $04,s
-                    std       $02,s
-                    bra       L06B8
-L0691               leas      -$04,x
-L0693               ldd       #$00CB
-                    std       >errno,y            01b1
-                    clra
-                    clrb
-                    bra       L06BA
-L069E               cmpx      #$0072
-                    lbeq      L0642
-                    cmpx      #$0061
-                    lbeq      L0648
-                    cmpx      #$0077
-                    beq       L0673
-                    cmpx      #$0064
-                    beq       L0680
-                    bra       L0693
-L06B8               ldd       $02,s
-L06BA               leas      $04,s
-                    puls      pc,u
-                    pshs      u
-                    clra
-                    clrb
-                    pshs      b,a
-                    ldd       $08,s
-                    pshs      b,a
-                    ldd       $08,s
-                    pshs      b,a
-                    lbra      L071A
-L06CF               pshs      u
-                    ldd       $06,s
-                    pshs      b,a
-                    ldd       $06,s
-                    pshs      b,a
-                    lbsr      L05F8
-                    leas      $04,s
-                    tfr       d,u
-                    cmpu      #$FFFF
-                    bne       L06EA
-                    clra
-                    clrb
-                    bra       L071F
-L06EA               clra
-                    clrb
-                    bra       L0712
-                    pshs      u
-                    ldd       $08,s
-                    pshs      b,a
-                    lbsr      L0DE4
-                    leas      $02,s
-                    ldd       $06,s
-                    pshs      b,a
-                    ldd       $06,s
-                    pshs      b,a
-                    lbsr      L05F8
-                    leas      $04,s
-                    tfr       d,u
-                    stu       -$02,s
-                    bge       L0710
-                    clra
-                    clrb
-                    bra       L071F
-L0710               ldd       $08,s
-L0712               pshs      b,a
-                    ldd       $08,s
-                    pshs      b,a
-                    pshs      u
-L071A               lbsr      L05A0
-                    leas      $06,s
-L071F               puls      pc,u
-                    pshs      u,b,a
-                    ldu       $06,s
-                    bra       L072B
-L0727               ldd       ,s
-                    stb       ,u+
-L072B               leax      >u0012,y
-                    pshs      x
-                    lbsr      L0F0E
-                    leas      $02,s
-                    std       ,s
-                    cmpd      #$000D
-                    beq       L0746
-                    ldd       ,s
-                    cmpd      #$FFFF
-                    bne       L0727
-L0746               ldd       ,s
-                    cmpd      #$FFFF
-                    bne       L0752
-                    clra
-                    clrb
-                    bra       L0758
-L0752               clra
-                    clrb
-                    stb       ,u
-                    ldd       $06,s
-L0758               leas      $02,s
-                    puls      pc,u
+FOpenMode           pshs      u                   save U (frame pointer)
+                    ldu       $04,s               load data pointer from arg
+                    leas      -$04,s              allocate 4 bytes local storage
+                    clra                          clear open-mode high byte
+                    clrb                          clear open-mode low byte
+                    std       ,s                  initialize mode storage to zero
+                    ldx       $0A,s               load mode string pointer from arg
+                    ldb       $01,x               read first mode character
+                    sex                           sign-extend B to D
+                    tfr       d,x                 move mode char value to X
+                    bra       CheckModeCode       go check mode character
+CheckOpenMode2      ldx       $0A,s               reload mode string pointer
+                    ldb       $02,x               read second mode character
+                    cmpb      #$2B                '+' (update/r+w mode)?
+                    bne       OpenModeOfs4        no — use offset 4
+                    ldd       #$0007              mode offset = 7 (read+write+update)
+                    bra       StoreOpenMode       store mode and proceed
+OpenModeOfs4        ldd       #$0004              mode offset = 4 (exclusive)
+                    bra       StoreOpenMode       store and proceed
+OpenModeOfs3        ldd       #$0003              mode offset = 3 (exclusive write)
+StoreOpenMode       std       ,s                  store computed open mode
+                    bra       GetAccessChar       go parse access character
+JumpFOpenPath       leax      $04,s               compute cleanup pointer
+                    lbra      FOpenFail           jump to failure path
+CheckModeCode       stx       -$02,s              save mode char in local
+                    beq       GetAccessChar       NUL → default access
+                    cmpx      #$0078              'x' (exclusive mode)?
+                    beq       CheckOpenMode2      yes — check for '+' update
+                    cmpx      #$002B              '+' (update directly)?
+                    beq       OpenModeOfs3        yes — use offset 3
+                    bra       JumpFOpenPath       unknown mode char — fail
+GetAccessChar       ldb       [<$0A,s]            read first character of mode string
+                    sex                           sign-extend B to D
+                    tfr       d,x                 move access char value to X
+                    lbra      DispatchOpenMode    dispatch on access character
+OpenReadMode        ldd       ,s                  load open mode word
+                    orb       #$01                set read-access bit
+                    bra       OpenWithFlags       open file with read flags
+OpenAppendMode      ldd       ,s                  load open mode word
+                    orb       #$02                set write/append-access bit
+                    pshs      b,a                 push flags
+                    pshs      u                   push filename pointer
+                    lbsr      open                try to open existing file
+                    leas      $04,s               discard two args
+                    std       $02,s               save file descriptor
+                    cmpd      #$FFFF              open failed?
+                    beq       CreateAppendFile    yes — create the file instead
+                    ldd       #$0002              seek relative = SEEK_END
+                    pshs      b,a                 push seek mode
+                    clra                          seek offset high word = 0
+                    clrb                          seek offset high word low byte = 0
+                    pshs      b,a                 push high word of offset
+                    pshs      b,a                 push low word of offset (0)
+                    ldd       $08,s               load file descriptor
+                    pshs      b,a                 push fd
+                    lbsr      lseek               seek to end of file
+                    leas      $08,s               discard four args
+                    bra       ReturnFD            return file descriptor
+CreateAppendFile    ldd       ,s                  load open mode word
+                    orb       #$02                set write bit for create
+                    pshs      b,a                 push flags
+                    pshs      u                   push filename pointer
+                    lbsr      creat               create new file
+                    bra       AfterOpenCreat      merge with open path
+OpenDeleteMode      ldd       ,s                  load open mode word
+                    orb       #$81                set delete-on-close flag
+OpenWithFlags       pshs      b,a                 push open flags
+                    pshs      u                   push filename pointer
+                    lbsr      open                open file with given flags
+AfterOpenCreat      leas      $04,s               discard two args
+                    std       $02,s               save file descriptor
+                    bra       ReturnFD            return fd
+FOpenFail           leas      -$04,x              restore stack from X
+SetErrnoInval       ldd       #$00CB              errno = E$BPath (invalid path)
+                    std       >errno,y            store in errno
+                    clra                          return NULL high byte
+                    clrb                          return NULL low byte
+                    bra       CleanStackReturn    clean up and return
+DispatchOpenMode    cmpx      #$0072              'r' (read)?
+                    lbeq      OpenReadMode        yes — read mode
+                    cmpx      #$0061              'a' (append)?
+                    lbeq      OpenAppendMode      yes — append mode
+                    cmpx      #$0077              'w' (write/create)?
+                    beq       CreateAppendFile    yes — create/truncate
+                    cmpx      #$0064              'd' (delete)?
+                    beq       OpenDeleteMode      yes — delete mode
+                    bra       SetErrnoInval       unknown access char — fail
+ReturnFD            ldd       $02,s               load file descriptor to return
+CleanStackReturn    leas      $04,s               deallocate locals
+                    puls      pc,u                restore U and return
+                    pshs      u                   (dead code — never reached)
+                    clra                          (dead)
+                    clrb                          (dead)
+                    pshs      b,a                 (dead)
+                    ldd       $08,s               (dead)
+                    pshs      b,a                 (dead)
+                    ldd       $08,s               (dead)
+                    pshs      b,a                 (dead)
+                    lbra      AllocStreamCall     (dead)
+FopenWrapper        pshs      u                   save U (frame pointer)
+                    ldd       $06,s               load mode string pointer from caller
+                    pshs      b,a                 push mode pointer arg
+                    ldd       $06,s               reload mode string pointer
+                    pshs      b,a                 push mode pointer arg (second copy)
+                    lbsr      FOpenMode           call fopen mode dispatcher
+                    leas      $04,s               discard two args
+                    tfr       d,u                 move file descriptor to U
+                    cmpu      #$FFFF              open failed?
+                    bne       FopenAfterOpen      no — proceed with stream setup
+                    clra                          return NULL high byte
+                    clrb                          return NULL low byte
+                    bra       FopenReturn         return NULL on failure
+FopenAfterOpen      clra                          clear stream-search high byte
+                    clrb                          clear stream-search low byte
+                    bra       FopenSetup          jump to stream allocation
+                    pshs      u                   (dead — alternate re-open path)
+                    ldd       $08,s               (dead)
+                    pshs      b,a                 (dead)
+                    lbsr      FClose              (dead)
+                    leas      $02,s               (dead)
+                    ldd       $06,s               (dead)
+                    pshs      b,a                 (dead)
+                    ldd       $06,s               (dead)
+                    pshs      b,a                 (dead)
+                    lbsr      FOpenMode           (dead)
+                    leas      $04,s               (dead)
+                    tfr       d,u                 (dead)
+                    stu       -$02,s              (dead)
+                    bge       FopenContinue       (dead)
+                    clra                          (dead)
+                    clrb                          (dead)
+                    bra       FopenReturn         (dead)
+FopenContinue       ldd       $08,s               load stream arg for allocation
+FopenSetup          pshs      b,a                 push stream base for GetOrAllocStream
+                    ldd       $08,s               load stream arg
+                    pshs      b,a                 push stream arg
+                    pshs      u                   push file descriptor
+AllocStreamCall     lbsr      GetOrAllocStream    allocate or associate stream
+                    leas      $06,s               discard three args
+FopenReturn         puls      pc,u                restore U and return
+                    pshs      u,b,a               (dead — unreachable after puls pc,u)
+                    ldu       $06,s               (dead)
+                    bra       GetCharLoop         (dead)
+StoreByte           ldd       ,s                  reload last character value
+                    stb       ,u+                 store char to output buffer, advance U
+GetCharLoop         leax      >StrmTable,y        point X to stream table
+                    pshs      x                   push stream pointer
+                    lbsr      FGetCharFill        read next character from stream
+                    leas      $02,s               discard stream arg
+                    std       ,s                  save character result on stack
+                    cmpd      #$000D              is it carriage return?
+                    beq       CheckGetChar        yes — check for CR handling
+                    ldd       ,s                  reload result
+                    cmpd      #$FFFF              is it EOF?
+                    bne       StoreByte           not EOF — store char and continue
+CheckGetChar        ldd       ,s                  reload result
+                    cmpd      #$FFFF              is it EOF?
+                    bne       GotChar             no — got the CR char
+                    clra                          EOF — return 0 high byte
+                    clrb                          EOF — return 0 low byte
+                    bra       GetCharReturn       return EOF indicator
+GotChar             clra                          clear high byte of result
+                    clrb                          clear low byte
+                    stb       ,u                  NUL-terminate buffer at current position
+                    ldd       $06,s               load return value (buffer pointer)
+GetCharReturn       leas      $02,s               discard saved char local
+                    puls      pc,u                restore U and return
 
-L075C               pshs      u
-                    ldu       $06,s
-                    leas      -$04,s
-                    ldd       $08,s
-                    std       ,s
-                    bra       L0776
-L0768               ldd       $02,s
-                    ldx       ,s
-                    leax      $01,x
-                    stx       ,s
-                    stb       -$01,x
-                    cmpb      #C$CR
-                    beq       L078F
-L0776               tfr       u,d
-                    leau      -dpsiz,u
-                    std       -$02,s
-                    ble       L078F
-                    ldd       $0C,s
-                    pshs      b,a
-                    lbsr      L0F0E
-                    leas      $02,s
-                    std       $02,s
-                    cmpd      #$FFFF
-                    bne       L0768
-L078F               clra
-                    clrb
-                    stb       [,s]
-                    ldd       $02,s
-                    cmpd      #$FFFF
-                    bne       L079F
-                    clra
-                    clrb
-                    bra       L07A1
-L079F               ldd       $08,s
-L07A1               leas      $04,s
-                    puls      pc,u
+FGetsEntry          pshs      u                   save U (frame pointer)
+                    ldu       $06,s               load FILE* stream pointer from arg
+                    leas      -$04,s              allocate 4 bytes local storage
+                    ldd       $08,s               load dest buffer pointer
+                    std       ,s                  save buffer write pointer as local
+                    bra       CheckRemaining      enter loop at boundary check
+FGetsBufStore       ldd       $02,s               load last char read
+                    ldx       ,s                  load current write pointer
+                    leax      $01,x               advance write pointer by one
+                    stx       ,s                  store updated write pointer
+                    stb       -$01,x              store char before advanced pointer
+                    cmpb      #C$CR               was it a CR?
+                    beq       NullTermBuf         yes — line complete, terminate
+CheckRemaining      tfr       u,d                 copy current position to D
+                    leau      -dpsiz,u            back up U by dpsiz (update stream pos)
+                    std       -$02,s              save remaining byte count
+                    ble       NullTermBuf         zero or less — buffer full
+                    ldd       $0C,s               load stream pointer for next read
+                    pshs      b,a                 push stream arg
+                    lbsr      FGetCharFill        read next character
+                    leas      $02,s               discard arg
+                    std       $02,s               save char result
+                    cmpd      #$FFFF              EOF?
+                    bne       FGetsBufStore       no — store char and loop
+NullTermBuf         clra                          clear high byte
+                    clrb                          clear low byte
+                    stb       [,s]                NUL-terminate buffer at write pointer
+                    ldd       $02,s               load last char read
+                    cmpd      #$FFFF              was it EOF?
+                    bne       FGetsSuccess        no — return buffer pointer
+                    clra                          EOF — return NULL high byte
+                    clrb                          EOF — return NULL low byte
+                    bra       ReturnCount         return zero/null
+FGetsSuccess        ldd       $08,s               return dest buffer pointer
+ReturnCount         leas      $04,s               deallocate locals
+                    puls      pc,u                restore U and return
 
-L07A5               pshs      u
-                    ldu       $04,s
-                    leas      -$04,s
-                    clra
-                    clrb
-                    bra       L07E0
-L07AF               clra
-                    clrb
-                    std       ,s
-                    bra       L07CC
-L07B5               ldd       $0E,s
-                    pshs      b,a
-                    ldb       ,u+
-                    sex
-                    pshs      b,a
-                    lbsr      egg2
-                    leas      $04,s
-                    ldx       $0E,s
-                    ldd       $06,x
-                    clra
-                    andb      #C$SPC
-                    bne       L07E9
-L07CC               ldd       ,s
-                    addd      #$0001
-                    std       ,s
-                    subd      #$0001
-                    cmpd      $0A,s
-                    blt       L07B5
-                    ldd       $02,s
-                    addd      #$0001
-L07E0               std       $02,s
-                    ldd       $02,s
-                    cmpd      $0C,s
-                    blt       L07AF
-L07E9               ldd       $02,s
-                    leas      $04,s
-                    puls      pc,u
+FWriteEntry         pshs      u                   save U (frame pointer)
+                    ldu       $04,s               load FILE* stream pointer from arg
+                    leas      -$04,s              allocate 4 bytes locals (written count)
+                    clra                          clear outer loop index high byte
+                    clrb                          clear outer loop index low byte
+                    bra       FWriteOuterUpdate   enter outer loop at update step
+FWriteInit          clra                          clear inner count high byte
+                    clrb                          clear inner count low byte
+                    std       ,s                  init inner written count to zero
+                    bra       FWriteIncCount      enter inner loop at count check
+FWriteCharLoop      ldd       $0E,s               load FILE* for output
+                    pshs      b,a                 push FILE* arg
+                    ldb       ,u+                 read byte from source buffer, advance U
+                    sex                           sign-extend B to D
+                    pshs      b,a                 push character arg
+                    lbsr      egg2                write one character to output stream
+                    leas      $04,s               discard two args
+                    ldx       $0E,s               load stream pointer
+                    ldd       $06,x               load stream flags word
+                    clra                          clear high byte
+                    andb      #C$SPC              check error/status bits
+                    bne       FWriteReturn        stream error — stop writing
+FWriteIncCount      ldd       ,s                  load inner written count
+                    addd      #$0001              increment count
+                    std       ,s                  store updated count
+                    subd      #$0001              restore to previous value (for compare)
+                    cmpd      $0A,s               compare to inner limit
+                    blt       FWriteCharLoop      less than limit — write next char
+                    ldd       $02,s               load outer loop counter
+                    addd      #$0001              increment outer counter
+FWriteOuterUpdate   std       $02,s               store outer counter
+                    ldd       $02,s               reload outer counter
+                    cmpd      $0C,s               compare to outer limit (nmemb arg)
+                    blt       FWriteInit          less — start next inner loop
+FWriteReturn        ldd       $02,s               load final written count to return
+                    leas      $04,s               deallocate locals
+                    puls      pc,u                restore U and return
 
-L07EF               pshs      u
-                    leax      >$001F,y
-                    stx       >varnum1,y          $01B3,y
-                    leax      $06,s
-                    pshs      x
-                    ldd       $06,s
-                    bra       L080F
-                    pshs      u
-                    ldd       $04,s
-                    std       >varnum1,y
-                    leax      $08,s
-                    pshs      x
-                    ldd       $08,s
-L080F               pshs      b,a
-                    leax      >L0CC7,pcr
-                    pshs      x
-                    bsr       L0841
-                    leas      $06,s
-                    puls      pc,u
-                    pshs      u
-                    ldd       $04,s
-                    std       >varnum1,y
-                    leax      $08,s
-                    pshs      x
-                    ldd       $08,s
-                    pshs      b,a
-                    leax      >L0CDA,pcr
-                    pshs      x
-                    bsr       L0841
-                    leas      $06,s
-                    clra
-                    clrb
-                    stb       [>varnum1,y]
-                    ldd       $04,s
-                    puls      pc,u
-L0841               pshs      u
-                    ldu       $06,s
-                    leas      -$0B,s
-                    bra       L0859
-L0849               ldb       $08,s
-                    lbeq      L0A8A
-                    ldb       $08,s
-                    sex
-                    pshs      b,a
-                    jsr       [<$11,s]
-                    leas      $02,s
-L0859               ldb       ,u+
-                    stb       $08,s
-                    cmpb      #$25                '%
-                    bne       L0849
-                    ldb       ,u+
-                    stb       $08,s
-                    clra
-                    clrb
-                    std       $02,s
-                    std       $06,s
-                    ldb       $08,s
-                    cmpb      #$2D                '-
-                    bne       L087E
-                    ldd       #$0001
-                    std       >varnum4,y
-                    ldb       ,u+
-                    stb       $08,s
-                    bra       L0884
-L087E               clra
-                    clrb
-                    std       >varnum4,y
-L0884               ldb       $08,s
-                    cmpb      #$30                '0
-                    bne       L088F
-                    ldd       #$0030
-                    bra       L0892
-L088F               ldd       #$0020
-L0892               std       >varnum5,y
-                    bra       L08B2
-L0898               ldd       $06,s
-                    pshs      b,a
-                    ldd       #$000A
-                    lbsr      L1235
-                    pshs      b,a
-                    ldb       $0A,s
-                    sex
-                    addd      #$FFD0
-                    addd      ,s++
-                    std       $06,s
-                    ldb       ,u+
-                    stb       $08,s
-L08B2               ldb       $08,s
-                    sex
-                    leax      >$00E3,y
-                    leax      d,x
-                    ldb       ,x
-                    clra
-                    andb      #$08
-                    bne       L0898
-                    ldb       $08,s
-                    cmpb      #$2E                '. period
-                    bne       L08FB
-                    ldd       #$0001
-                    std       $04,s
-                    bra       L08E5
-L08CF               ldd       $02,s
-                    pshs      b,a
-                    ldd       #$000A
-                    lbsr      L1235
-                    pshs      b,a
-                    ldb       $0A,s
-                    sex
-                    addd      #$FFD0
-                    addd      ,s++
-                    std       $02,s
-L08E5               ldb       ,u+
-                    stb       $08,s
-                    ldb       $08,s
-                    sex
-                    leax      >$00E3,y
-                    leax      d,x
-                    ldb       ,x
-                    clra
-                    andb      #$08
-                    bne       L08CF
-                    bra       L08FF
-L08FB               clra
-                    clrb
-                    std       $04,s
-L08FF               ldb       $08,s
-                    sex
-                    tfr       d,x
-                    lbra      L0A2D
-L0907               ldd       $06,s
-                    pshs      b,a
-                    ldx       <$15,s
-                    leax      $02,x
-                    stx       <$15,s
-                    ldd       -$02,x
-                    pshs      b,a
-                    lbsr      L0A8E
-                    bra       L092F
-L091C               ldd       $06,s
-                    pshs      b,a
-                    ldx       <$15,s
-                    leax      $02,x
-                    stx       <$15,s
-                    ldd       -$02,x
-                    pshs      b,a
-                    lbsr      L0B4B
-L092F               std       ,s
-                    lbra      L0A13
-L0934               ldd       $06,s
-                    pshs      b,a
-                    ldb       $0A,s
-                    sex
-                    leax      >$00E3,y
-                    leax      d,x
-                    ldb       ,x
-                    clra
-                    andb      #$02
-                    pshs      b,a
-                    ldx       <$17,s
-                    leax      $02,x
-                    stx       <$17,s
-                    ldd       -$02,x
-                    pshs      b,a
-                    lbsr      L0B93
-                    lbra      L0A0F
-L095A               ldd       $06,s
-                    pshs      b,a
-                    ldx       <$15,s
-                    leax      $02,x
-                    stx       <$15,s
-                    ldd       -$02,x
-                    pshs      b,a
-                    leax      >varnum2,y
-                    pshs      x
-                    lbsr      L0AD2
-                    lbra      L0A0F
-L0976               ldd       $04,s
-                    bne       L097F
-                    ldd       #$0006
-                    std       $02,s
-L097F               ldd       $06,s
-                    pshs      b,a
-                    leax      <$15,s
-                    pshs      x
-                    ldd       $06,s
-                    pshs      b,a
-                    ldb       $0E,s
-                    sex
-                    pshs      b,a
-                    lbsr      egg3
-                    leas      $06,s
-                    lbra      L0A11
-L0999               ldx       <$13,s
-                    leax      $02,x
-                    stx       <$13,s
-                    ldd       -$02,x
-                    lbra      L0A23
-L09A6               ldx       <$13,s
-                    leax      $02,x
-                    stx       <$13,s
-                    ldd       -$02,x
-                    std       $09,s
-                    ldd       $04,s
-                    beq       L09EE
-                    ldd       $09,s
-                    std       $04,s
-                    bra       L09C8
-L09BC               ldb       [<$09,s]
-                    beq       L09D4
-                    ldd       $09,s
-                    addd      #$0001
-                    std       $09,s
-L09C8               ldd       $02,s
-                    addd      #$FFFF
-                    std       $02,s
-                    subd      #$FFFF
-                    bne       L09BC
-L09D4               ldd       $06,s
-                    pshs      b,a
-                    ldd       $0B,s
-                    subd      $06,s
-                    pshs      b,a
-                    ldd       $08,s
-                    pshs      b,a
-                    ldd       <$15,s
-                    pshs      b,a
-                    lbsr      L0BFE
-                    leas      $08,s
-                    bra       L0A1D
-L09EE               ldd       $06,s
-                    pshs      b,a
-                    ldd       $0B,s
-                    bra       L0A11
-L09F6               ldb       ,u+
-                    stb       $08,s
-                    bra       L09FE
-                    leas      -$0B,x
-L09FE               ldd       $06,s
-                    pshs      b,a
-                    leax      <$15,s
-                    pshs      x
-                    ldb       $0C,s
-                    sex
-                    pshs      b,a
-                    lbsr      L10F2
-L0A0F               leas      $04,s
-L0A11               pshs      b,a
-L0A13               ldd       <$13,s
-                    pshs      b,a
-                    lbsr      L0C60
-                    leas      $06,s
-L0A1D               lbra      L0859
+PrintfEntry         pshs      u                   save U (frame pointer)
+                    leax      >$001F,y            point X to output putchar context
+                    stx       >varnum1,y          store putchar context pointer
+                    leax      $06,s               point to format string arg on stack
+                    pshs      x                   push format string pointer
+                    ldd       $06,s               load first vararg value
+                    bra       PrintfPushArgs      push args and call format proc
+                    pshs      u                   (dead — alternate fprintf entry)
+                    ldd       $04,s               (dead)
+                    std       >varnum1,y          (dead)
+                    leax      $08,s               (dead)
+                    pshs      x                   (dead)
+                    ldd       $08,s               (dead)
+PrintfPushArgs      pshs      b,a                 push first vararg
+                    leax      >FWriteCallback,pcr load address of write callback
+                    pshs      x                   push callback function pointer
+                    bsr       FormatStrProc       call format string processor
+                    leas      $06,s               discard three pushed args
+                    puls      pc,u                restore U and return
+                    pshs      u                   (dead — alternate sprintf entry)
+                    ldd       $04,s               (dead)
+                    std       >varnum1,y          (dead)
+                    leax      $08,s               (dead)
+                    pshs      x                   (dead)
+                    ldd       $08,s               (dead)
+                    pshs      b,a                 (dead)
+                    leax      >PutCharCallback,pcr (dead)
+                    pshs      x                   (dead)
+                    bsr       FormatStrProc       (dead)
+                    leas      $06,s               (dead)
+                    clra                          (dead)
+                    clrb                          (dead)
+                    stb       [>varnum1,y]        (dead)
+                    ldd       $04,s               (dead)
+                    puls      pc,u                (dead)
+FormatStrProc       pshs      u                   save U (frame pointer)
+                    ldu       $06,s               load format string pointer from arg
+                    leas      -$0B,s              allocate 11 bytes of local workspace
+                    bra       GetFormatChar       start at top of format char fetch
+FormatCharLoop      ldb       $08,s               load current format character
+                    lbeq      FormatDone          NUL — end of format string
+                    ldb       $08,s               reload char
+                    sex                           sign-extend B to D
+                    pshs      b,a                 push char for output callback
+                    jsr       [<$11,s]            call output character callback
+                    leas      $02,s               discard char arg
+GetFormatChar       ldb       ,u+                 fetch next byte from format string
+                    stb       $08,s               save as current format char
+                    cmpb      #$25                '%' (format specifier start)?
+                    bne       FormatCharLoop      no — output literal char
+                    ldb       ,u+                 fetch char after '%'
+                    stb       $08,s               save as specifier char
+                    clra                          clear precision high byte
+                    clrb                          clear precision low byte
+                    std       $02,s               init precision accumulator to 0
+                    std       $06,s               init width accumulator to 0
+                    ldb       $08,s               reload specifier char
+                    cmpb      #$2D                '-' (left-justify flag)?
+                    bne       NoLeftJust          no — right-justify (default)
+                    ldd       #$0001              left-justify flag = 1
+                    std       >varnum4,y          store left-justify flag
+                    ldb       ,u+                 consume '-', fetch next format char
+                    stb       $08,s               save it
+                    bra       CheckPadChar        check for pad character
+NoLeftJust          clra                          clear left-justify flag high byte
+                    clrb                          clear left-justify flag low byte
+                    std       >varnum4,y          store right-justify (0 = default)
+CheckPadChar        ldb       $08,s               load current format char
+                    cmpb      #$30                '0' (zero-pad)?
+                    bne       PadWithSpace        no — pad with spaces
+                    ldd       #$0030              pad character = '0'
+                    bra       StorePadChar        store and proceed
+PadWithSpace        ldd       #$0020              pad character = ' ' (space)
+StorePadChar        std       >varnum5,y          store pad character
+                    bra       CheckWidthDigit     start width accumulation
+AccumWidth          ldd       $06,s               load current width accumulator
+                    pshs      b,a                 push accumulator
+                    ldd       #$000A              multiplier = 10
+                    lbsr      UMul16              width = width × 10
+                    pshs      b,a                 push product
+                    ldb       $0A,s               load current digit char
+                    sex                           sign-extend digit to D
+                    addd      #$FFD0              subtract $30 (convert ASCII digit to value)
+                    addd      ,s++                add to product (pop)
+                    std       $06,s               store updated width
+                    ldb       ,u+                 fetch next format char
+                    stb       $08,s               save it
+CheckWidthDigit     ldb       $08,s               load current char
+                    sex                           sign-extend to D
+                    leax      >$00E3,y            point to character class table
+                    leax      d,x                 index by char value
+                    ldb       ,x                  load character class byte
+                    clra                          clear high byte
+                    andb      #$08                test digit class bit
+                    bne       AccumWidth          digit — accumulate into width
+                    ldb       $08,s               load char after width digits
+                    cmpb      #$2E                '.' (precision specifier)?
+                    bne       ZeroPrecision       no — precision = 0
+                    ldd       #$0001              precision seen flag = 1
+                    std       $04,s               set precision-seen flag
+                    bra       PrecisionLoop       start precision accumulation
+AccumPrecision      ldd       $02,s               load current precision accumulator
+                    pshs      b,a                 push accumulator
+                    ldd       #$000A              multiplier = 10
+                    lbsr      UMul16              precision = precision × 10
+                    pshs      b,a                 push product
+                    ldb       $0A,s               load current digit char
+                    sex                           sign-extend digit to D
+                    addd      #$FFD0              subtract $30 (ASCII digit to value)
+                    addd      ,s++                add to product (pop)
+                    std       $02,s               store updated precision
+PrecisionLoop       ldb       ,u+                 fetch next format char
+                    stb       $08,s               save it
+                    ldb       $08,s               reload
+                    sex                           sign-extend to D
+                    leax      >$00E3,y            point to character class table
+                    leax      d,x                 index by char value
+                    ldb       ,x                  load class byte
+                    clra                          clear high byte
+                    andb      #$08                test digit class bit
+                    bne       AccumPrecision      digit — accumulate precision
+                    bra       FormatDispatch      done — dispatch on specifier char
+ZeroPrecision       clra                          precision not specified — clear high
+                    clrb                          precision not specified — clear low
+                    std       $04,s               store zero precision flag
+FormatDispatch      ldb       $08,s               load format specifier character
+                    sex                           sign-extend to D
+                    tfr       d,x                 move to X for comparison
+                    lbra      FmtSpecDispatch     jump to format type dispatcher
+FmtDecimalSigned    ldd       $06,s               load width argument
+                    pshs      b,a                 push width
+                    ldx       <$15,s              load vararg pointer
+                    leax      $02,x               advance vararg pointer by 2
+                    stx       <$15,s              store updated vararg pointer
+                    ldd       -$02,x              load integer value from varargs
+                    pshs      b,a                 push value
+                    lbsr      ItoA                convert signed integer to ASCII string
+                    bra       StoreFormatted      store result and output
+FmtOctal            ldd       $06,s               load width argument
+                    pshs      b,a                 push width
+                    ldx       <$15,s              load vararg pointer
+                    leax      $02,x               advance vararg pointer by 2
+                    stx       <$15,s              store updated vararg pointer
+                    ldd       -$02,x              load value from varargs
+                    pshs      b,a                 push value
+                    lbsr      UtoOct              convert unsigned to octal string
+StoreFormatted      std       ,s                  save string pointer result
+                    lbra      CallOutputFunc      output the formatted string
+FmtHex              ldd       $06,s               load width argument
+                    pshs      b,a                 push width
+                    ldb       $0A,s               load format char ('x' or 'X')
+                    sex                           sign-extend to D
+                    leax      >$00E3,y            point to character class table
+                    leax      d,x                 index by char value
+                    ldb       ,x                  load class byte
+                    clra                          clear high byte
+                    andb      #$02                test uppercase bit (class 2 = upper)
+                    pshs      b,a                 push uppercase flag
+                    ldx       <$17,s              load vararg pointer
+                    leax      $02,x               advance vararg pointer by 2
+                    stx       <$17,s              store updated pointer
+                    ldd       -$02,x              load value from varargs
+                    pshs      b,a                 push value
+                    lbsr      UtoHex              convert unsigned to hex string
+                    lbra      FormatCleanup       clean up and output
+FmtUnsigned         ldd       $06,s               load width argument
+                    pshs      b,a                 push width
+                    ldx       <$15,s              load vararg pointer
+                    leax      $02,x               advance vararg pointer by 2
+                    stx       <$15,s              store updated pointer
+                    ldd       -$02,x              load value from varargs
+                    pshs      b,a                 push value
+                    leax      >varnum2,y          point to conversion buffer
+                    pshs      x                   push buffer pointer
+                    lbsr      UtoA                convert unsigned integer to ASCII
+                    lbra      FormatCleanup       clean up and output
+FmtFloat            ldd       $04,s               load precision-seen flag
+                    bne       FmtFloatPrecSet     precision was specified — use it
+                    ldd       #$0006              default float precision = 6 digits
+                    std       $02,s               store default precision
+FmtFloatPrecSet     ldd       $06,s               load width argument
+                    pshs      b,a                 push width
+                    leax      <$15,s              address of vararg pointer
+                    pshs      x                   push pointer-to-pointer
+                    ldd       $06,s               load width (second copy)
+                    pshs      b,a                 push width again
+                    ldb       $0E,s               load format specifier char
+                    sex                           sign-extend to D
+                    pshs      b,a                 push specifier char
+                    lbsr      egg3                convert float to formatted string
+                    leas      $06,s               discard four args
+                    lbra      PushFormatResult    push result and output
+FmtChar             ldx       <$13,s              load vararg pointer
+                    leax      $02,x               advance vararg pointer by 2
+                    stx       <$13,s              store updated pointer
+                    ldd       -$02,x              load character value from varargs
+                    lbra      CallOutputIndirect  output the character directly
+FmtString           ldx       <$13,s              load vararg pointer
+                    leax      $02,x               advance vararg pointer by 2
+                    stx       <$13,s              store updated pointer
+                    ldd       -$02,x              load string pointer from varargs
+                    std       $09,s               save string pointer locally
+                    ldd       $04,s               load precision-seen flag
+                    beq       NullStringPad       precision = 0 (none) — just pad
+                    ldd       $09,s               load string pointer
+                    std       $04,s               use string pointer as precision limit
+                    bra       StrCopyChar         enter string copy loop
+StrCopyLoop         ldb       [<$09,s]            read char at string pointer
+                    beq       PadString           NUL — end of string, pad to width
+                    ldd       $09,s               load current string pointer
+                    addd      #$0001              advance by one character
+                    std       $09,s               store updated string pointer
+StrCopyChar         ldd       $02,s               load remaining width count
+                    addd      #$FFFF              decrement remaining count
+                    std       $02,s               store updated count
+                    subd      #$FFFF              restore to previous value
+                    bne       StrCopyLoop         more chars to copy
+PadString           ldd       $06,s               load width for padding calc
+                    pshs      b,a                 push width
+                    ldd       $0B,s               load original string end
+                    subd      $06,s               subtract width → pad count
+                    pshs      b,a                 push pad count
+                    ldd       $08,s               load output context
+                    pshs      b,a                 push context
+                    ldd       <$15,s              load vararg base pointer
+                    pshs      b,a                 push base pointer
+                    lbsr      FmtFloatImpl        output padded string
+                    leas      $08,s               discard four args
+                    bra       BackToFormatLoop    return to format char fetch
+NullStringPad       ldd       $06,s               load width
+                    pshs      b,a                 push width
+                    ldd       $0B,s               load string end (for length)
+                    bra       PushFormatResult    push and output
+FmtLong             ldb       ,u+                 fetch 'l' modifier char (already consumed)
+                    stb       $08,s               save modifier
+                    bra       FmtLongCont         continue with long handler
+                    leas      -$0B,x              (dead — unreachable)
+FmtLongCont         ldd       $06,s               load width
+                    pshs      b,a                 push width
+                    leax      <$15,s              address of vararg pointer
+                    pshs      x                   push pointer-to-pointer
+                    ldb       $0C,s               load format specifier after 'l'
+                    sex                           sign-extend to D
+                    pshs      b,a                 push specifier
+                    lbsr      GetFmtSpecArg       fetch long-size argument from varargs
+FormatCleanup       leas      $04,s               discard three args
+PushFormatResult    pshs      b,a                 push string result
+CallOutputFunc      ldd       <$13,s              load output context
+                    pshs      b,a                 push context
+                    lbsr      PaddedOutput        output with padding applied
+                    leas      $06,s               discard three args
+BackToFormatLoop    lbra      GetFormatChar       loop back to next format char
 
-L0A20               ldb       $08,s
-                    sex
-L0A23               pshs      b,a
-                    jsr       [<$11,s]
-                    leas      $02,s
-                    lbra      L0859
+DefaultFmtChar      ldb       $08,s               load char that wasn't a specifier
+                    sex                           sign-extend to D
+CallOutputIndirect  pshs      b,a                 push char/value arg
+                    jsr       [<$11,s]            call output callback indirectly
+                    leas      $02,s               discard arg
+                    lbra      GetFormatChar       loop to next format char
 
-L0A2D               cmpx      #$0064              'd
-                    lbeq      L0907
-                    cmpx      #$006F              'o
-                    lbeq      L091C
-                    cmpx      #$0078              'x
-                    lbeq      L0934
-                    cmpx      #$0058              'X
-                    lbeq      L0934
-                    cmpx      #$0075              'u
-                    lbeq      L095A
-                    cmpx      #$0066              'f
-                    lbeq      L0976
-                    cmpx      #$0065              'e
-                    lbeq      L0976
-                    cmpx      #$0067              'g
-                    lbeq      L0976
-                    cmpx      #$0045              'E
-                    lbeq      L0976
-                    cmpx      #$0047              'G
-                    lbeq      L0976
-                    cmpx      #$0063              'c
-                    lbeq      L0999
-                    cmpx      #$0073              's
-                    lbeq      L09A6
-                    cmpx      #$006C              'l
-                    lbeq      L09F6
-                    bra       L0A20
+FmtSpecDispatch     cmpx      #$0064              'd' (signed decimal)?
+                    lbeq      FmtDecimalSigned    yes
+                    cmpx      #$006F              'o' (octal)?
+                    lbeq      FmtOctal            yes
+                    cmpx      #$0078              'x' (hex lowercase)?
+                    lbeq      FmtHex              yes
+                    cmpx      #$0058              'X' (hex uppercase)?
+                    lbeq      FmtHex              yes
+                    cmpx      #$0075              'u' (unsigned decimal)?
+                    lbeq      FmtUnsigned         yes
+                    cmpx      #$0066              'f' (float fixed)?
+                    lbeq      FmtFloat            yes
+                    cmpx      #$0065              'e' (float scientific)?
+                    lbeq      FmtFloat            yes
+                    cmpx      #$0067              'g' (float shortest)?
+                    lbeq      FmtFloat            yes
+                    cmpx      #$0045              'E' (float scientific upper)?
+                    lbeq      FmtFloat            yes
+                    cmpx      #$0047              'G' (float shortest upper)?
+                    lbeq      FmtFloat            yes
+                    cmpx      #$0063              'c' (character)?
+                    lbeq      FmtChar             yes
+                    cmpx      #$0073              's' (string)?
+                    lbeq      FmtString           yes
+                    cmpx      #$006C              'l' (long modifier)?
+                    lbeq      FmtLong             yes
+                    bra       DefaultFmtChar      unknown specifier — output literally
 
-L0A8A               leas      $0B,s
-                    puls      pc,u
-L0A8E               pshs      u,b,a
-                    leax      >varnum2,y
-                    stx       ,s
-                    ldd       $06,s
-                    bge       L0AC3
-                    ldd       $06,s
-                    nega
-                    negb
-                    sbca      #$00
-                    std       $06,s
-                    bge       L0AB8
-                    leax      >L0CEC,pcr
-                    pshs      x
-                    leax      >varnum2,y
-                    pshs      x
-                    lbsr      L114C
-                    leas      $04,s
-                    lbra      L0B8F
-L0AB8               ldd       #$002D
-                    ldx       ,s
-                    leax      $01,x
-                    stx       ,s
-                    stb       -$01,x
-L0AC3               ldd       $06,s
-                    pshs      b,a
-                    ldd       $02,s
-                    pshs      b,a
-                    bsr       L0AD2
-                    leas      $04,s
-                    lbra      L0B89
-L0AD2               pshs      u,y,x,b,a
-                    ldu       $0A,s
-                    clra
-                    clrb
-                    std       $02,s
-                    clra
-                    clrb
-                    std       ,s
-                    bra       L0AEF
-L0AE0               ldd       ,s
-                    addd      #$0001
-                    std       ,s
-                    ldd       $0C,s
-                    subd      >$0005,y
-                    std       $0C,s
-L0AEF               ldd       $0C,s
-                    blt       L0AE0
-                    leax      >$0005,y
-                    stx       $04,s
-                    bra       L0B31
-L0AFB               ldd       ,s
-                    addd      #$0001
-                    std       ,s
-L0B02               ldd       $0C,s
-                    subd      [<$04,s]
-                    std       $0C,s
-                    bge       L0AFB
-                    ldd       $0C,s
-                    addd      [<$04,s]
-                    std       $0C,s
-                    ldd       ,s
-                    beq       L0B1B
-                    ldd       #$0001
-                    std       $02,s
-L0B1B               ldd       $02,s
-                    beq       L0B26
-                    ldd       ,s
-                    addd      #$0030
-                    stb       ,u+
-L0B26               clra
-                    clrb
-                    std       ,s
-                    ldd       $04,s
-                    addd      #$0002
-                    std       $04,s
-L0B31               ldd       $04,s
-                    cmpd      >$000D,y
-                    bne       L0B02
-                    ldd       $0C,s
-                    addd      #$0030
-                    stb       ,u+
-                    clra
-                    clrb
-                    stb       ,u
-                    ldd       $0A,s
-                    leas      $06,s
-                    puls      pc,u
-L0B4B               pshs      u,b,a
-                    leax      >varnum2,y
-                    stx       ,s
-                    leau      >varnum3,y
-L0B57               ldd       $06,s
-                    clra
-                    andb      #$07
-                    addd      #$0030
-                    stb       ,u+
-                    ldd       $06,s
-                    lsra
-                    rorb
-                    lsra
-                    rorb
-                    lsra
-                    rorb
-                    std       $06,s
-                    bne       L0B57
-                    bra       L0B79
-L0B6F               ldb       ,u
-                    ldx       ,s
-                    leax      $01,x
-                    stx       ,s
-                    stb       -$01,x
-L0B79               leau      -dpsiz,u
-                    pshs      u
-                    leax      >varnum3,y
-                    cmpx      ,s++
-                    bls       L0B6F
-                    clra
-                    clrb
-                    stb       [,s]
-L0B89               leax      >varnum2,y
-                    tfr       x,d
-L0B8F               leas      $02,s
-                    puls      pc,u
-L0B93               pshs      u,x,b,a
-                    leax      >varnum2,y
-                    stx       $02,s
-                    leau      >varnum3,y
-L0B9F               ldd       $08,s
-                    clra
-                    andb      #$0F
-                    std       ,s
-                    pshs      b,a
-                    ldd       $02,s
-                    cmpd      #$0009
-                    ble       L0BC1
-                    ldd       $0C,s
-                    beq       L0BB9
-                    ldd       #$0041
-                    bra       L0BBC
-L0BB9               ldd       #$0061
-L0BBC               addd      #$FFF6
-                    bra       L0BC4
-L0BC1               ldd       #$0030
-L0BC4               addd      ,s++
-                    stb       ,u+
-                    ldd       $08,s
-                    lsra
-                    rorb
-                    lsra
-                    rorb
-                    lsra
-                    rorb
-                    lsra
-                    rorb
-                    anda      #$0F
-                    std       $08,s
-                    bne       L0B9F
-                    bra       L0BE4
-L0BDA               ldb       ,u
-                    ldx       $02,s
-                    leax      $01,x
-                    stx       $02,s
-                    stb       -$01,x
-L0BE4               leau      -dpsiz,u
-                    pshs      u
-                    leax      >varnum3,y
-                    cmpx      ,s++
-                    bls       L0BDA
-                    clra
-                    clrb
-                    stb       [<$02,s]
-                    leax      >varnum2,y
-                    tfr       x,d
-                    lbra      L0CD6
-L0BFE               pshs      u
-                    ldu       $06,s
-                    ldd       $0A,s
-                    subd      $08,s
-                    std       $0A,s
-                    ldd       >varnum4,y
-                    bne       L0C33
-                    bra       L0C1B
-L0C10               ldd       >varnum5,y
-                    pshs      b,a
-                    jsr       [<$06,s]
-                    leas      $02,s
-L0C1B               ldd       $0A,s
-                    addd      #$FFFF
-                    std       $0A,s
-                    subd      #$FFFF
-                    bgt       L0C10
-                    bra       L0C33
-L0C29               ldb       ,u+
-                    sex
-                    pshs      b,a
-                    jsr       [<$06,s]
-                    leas      $02,s
-L0C33               ldd       $08,s
-                    addd      #$FFFF
-                    std       $08,s
-                    subd      #$FFFF
-                    bne       L0C29
-                    ldd       >varnum4,y
-                    beq       L0C5E
-                    bra       L0C52
-L0C47               ldd       >varnum5,y
-                    pshs      b,a
-                    jsr       [<$06,s]
-                    leas      $02,s
-L0C52               ldd       $0A,s
-                    addd      #$FFFF
-                    std       $0A,s
-                    subd      #$FFFF
-                    bgt       L0C47
-L0C5E               puls      pc,u
-L0C60               pshs      u
-                    ldu       $06,s
-                    ldd       $08,s
-                    pshs      b,a
-                    pshs      u
-                    lbsr      egg4
-                    leas      $02,s
-                    nega
-                    negb
-                    sbca      #$00
-                    addd      ,s++
-                    std       $08,s
-                    ldd       >varnum4,y
-                    bne       L0CA2
-                    bra       L0C8A
-L0C7F               ldd       >varnum5,y
-                    pshs      b,a
-                    jsr       [<$06,s]
-                    leas      $02,s
-L0C8A               ldd       $08,s
-                    addd      #$FFFF
-                    std       $08,s
-                    subd      #$FFFF
-                    bgt       L0C7F
-                    bra       L0CA2
-L0C98               ldb       ,u+
-                    sex
-                    pshs      b,a
-                    jsr       [<$06,s]
-                    leas      $02,s
-L0CA2               ldb       ,u
-                    bne       L0C98
-                    ldd       >varnum4,y
-                    beq       L0CC5
-                    bra       L0CB9
-L0CAE               ldd       >varnum5,y
-                    pshs      b,a
-                    jsr       [<$06,s]
-                    leas      $02,s
-L0CB9               ldd       $08,s
-                    addd      #$FFFF
-                    std       $08,s
-                    subd      #$FFFF
-                    bgt       L0CAE
-L0CC5               puls      pc,u
+FormatDone          leas      $0B,s               deallocate format locals
+                    puls      pc,u                restore U and return
+ItoA                pshs      u,b,a               save registers (U,B,A on stack)
+                    leax      >varnum2,y          point X to conversion output buffer
+                    stx       ,s                  save buffer pointer as local
+                    ldd       $06,s               load integer value to convert
+                    bge       CallUtoA            non-negative — convert directly
+                    ldd       $06,s               reload negative value
+                    nega                          negate high byte
+                    negb                          negate low byte
+                    sbca      #$00                propagate borrow for 2's complement
+                    std       $06,s               store negated (positive) value
+                    bge       PrependMinus        overflow safe — prepend '-'
+                    leax      >MinIntStr,pcr      special case: $8000 (most negative int)
+                    pshs      x                   push source string pointer
+                    leax      >varnum2,y          point to output buffer
+                    pshs      x                   push dest buffer pointer
+                    lbsr      StrCopyFunc         copy MinInt string constant
+                    leas      $04,s               discard two args
+                    lbra      ConvCleanReturn     clean up and return
+PrependMinus        ldd       #$002D              '-' character as D
+                    ldx       ,s                  load current write pointer
+                    leax      $01,x               advance write pointer
+                    stx       ,s                  store updated pointer
+                    stb       -$01,x              store '-' before advanced pointer
+CallUtoA            ldd       $06,s               load value to convert
+                    pshs      b,a                 push value
+                    ldd       $02,s               load write pointer
+                    pshs      b,a                 push pointer
+                    bsr       UtoA                convert unsigned integer to ASCII
+                    leas      $04,s               discard two args
+                    lbra      OctReturn           return via Oct cleanup path
+UtoA                pshs      u,y,x,b,a           save all needed registers
+                    ldu       $0A,s               load pointer to output buffer from arg
+                    clra                          clear quotient accumulator high
+                    clrb                          clear quotient accumulator low
+                    std       $02,s               init quotient to 0
+                    clra                          clear digit quotient high
+                    clrb                          clear digit quotient low
+                    std       ,s                  init digit quotient to 0
+                    bra       DivSetup            enter division loop at setup
+DivLoop             ldd       ,s                  load digit quotient
+                    addd      #$0001              increment quotient
+                    std       ,s                  store updated quotient
+                    ldd       $0C,s               load dividend
+                    subd      >$0005,y            subtract smallest power-of-10 constant
+                    std       $0C,s               store updated dividend
+DivSetup            ldd       $0C,s               load current dividend
+                    blt       DivLoop             still subtracting — continue
+                    leax      >$0005,y            point to power-of-10 table
+                    stx       $04,s               save table pointer
+                    bra       DivLoopCheck        enter multi-digit loop
+DivSubLoop          ldd       ,s                  load digit quotient
+                    addd      #$0001              increment quotient
+                    std       ,s                  store updated quotient
+DivContLoop         ldd       $0C,s               load current remainder
+                    subd      [<$04,s]            subtract current divisor from table
+                    std       $0C,s               store updated remainder
+                    bge       DivSubLoop          still positive — keep subtracting
+                    ldd       $0C,s               load negative remainder
+                    addd      [<$04,s]            add back divisor to restore
+                    std       $0C,s               store corrected remainder
+                    ldd       ,s                  load digit quotient (result digit)
+                    beq       StoreDivDigit       digit is zero — check suppression
+                    ldd       #$0001              set non-zero digit seen flag
+                    std       $02,s               update leading-zero suppression flag
+StoreDivDigit       ldd       $02,s               load non-zero-seen flag
+                    beq       ClearQuot           still leading zero — suppress
+                    ldd       ,s                  load digit value
+                    addd      #$0030              convert to ASCII ('0'+digit)
+                    stb       ,u+                 store ASCII digit, advance output
+ClearQuot           clra                          clear digit quotient high
+                    clrb                          clear digit quotient low
+                    std       ,s                  reset digit quotient for next iteration
+                    ldd       $04,s               load table pointer
+                    addd      #$0002              advance to next entry (2 bytes each)
+                    std       $04,s               store updated pointer
+DivLoopCheck        ldd       $04,s               load current table pointer
+                    cmpd      >$000D,y            compare to table end sentinel
+                    bne       DivContLoop         not done — continue division
+                    ldd       $0C,s               load final remainder (last digit)
+                    addd      #$0030              convert to ASCII
+                    stb       ,u+                 store last digit
+                    clra                          NUL terminator high byte
+                    clrb                          NUL terminator low byte
+                    stb       ,u                  NUL-terminate the string
+                    ldd       $0A,s               load buffer pointer to return
+                    leas      $06,s               restore stack past locals
+                    puls      pc,u                restore registers and return
+UtoOct              pshs      u,b,a               save registers (U,B,A)
+                    leax      >varnum2,y          point to output string buffer
+                    stx       ,s                  save write pointer as local
+                    leau      >varnum3,y          point U to temp digit buffer
+OctDigitLoop        ldd       $06,s               load value to convert
+                    clra                          clear high byte (only low 3 bits matter)
+                    andb      #$07                extract lowest octal digit (bits 0–2)
+                    addd      #$0030              convert to ASCII ('0'+digit)
+                    stb       ,u+                 store octal digit, advance U
+                    ldd       $06,s               reload value
+                    lsra                          shift value right 1 bit (high)
+                    rorb                          shift value right 1 bit (low)
+                    lsra                          shift right again (total 3 bits needed)
+                    rorb                          shift right 2
+                    lsra                          shift right 3
+                    rorb                          logical shift right to get next octal group
+                    std       $06,s               store shifted value
+                    bne       OctDigitLoop        more digits remain — continue
+                    bra       OctReverseLoop      digits are reversed — fix order
+OctCopyReverse      ldb       ,u                  read byte at current temp pointer
+                    ldx       ,s                  load current output write pointer
+                    leax      $01,x               advance write pointer
+                    stx       ,s                  store updated write pointer
+                    stb       -$01,x              store byte at previous write position
+OctReverseLoop      leau      -dpsiz,u            back up temp pointer by one
+                    pshs      u                   push for boundary comparison
+                    leax      >varnum3,y          X = start of temp buffer
+                    cmpx      ,s++                compare start to current temp ptr (pop)
+                    bls       OctCopyReverse      not past start — copy another digit
+                    clra                          NUL terminator high byte
+                    clrb                          NUL terminator low byte
+                    stb       [,s]                NUL-terminate at write pointer
+OctReturn           leax      >varnum2,y          load address of output string
+                    tfr       x,d                 return string pointer in D
+ConvCleanReturn     leas      $02,s               restore stack past saved registers
+                    puls      pc,u                restore U and return
+UtoHex              pshs      u,x,b,a             save registers (U,X,B,A)
+                    leax      >varnum2,y          point to output string buffer
+                    stx       $02,s               save write pointer
+                    leau      >varnum3,y          point U to temp digit buffer
+HexDigitLoop        ldd       $08,s               load value to convert
+                    clra                          clear high byte
+                    andb      #$0F                extract lowest hex digit (4 bits)
+                    std       ,s                  save digit value on stack
+                    pshs      b,a                 push digit for comparison
+                    ldd       $02,s               load digit again (was pushed earlier)
+                    cmpd      #$0009              digit > 9?
+                    ble       HexDigitOffset      no — use '0'+digit
+                    ldd       $0C,s               load uppercase flag
+                    beq       HexLowerA           zero → lowercase 'a'–'f'
+                    ldd       #$0041              'A' (uppercase)
+                    bra       HexAlphaOffset      compute letter offset
+HexLowerA           ldd       #$0061              'a' (lowercase)
+HexAlphaOffset      addd      #$FFF6              subtract 10 (make 'a'+digit-10 or 'A'+digit-10)
+                    bra       StoreHexDigit       store the letter
+HexDigitOffset      ldd       #$0030              '0' base for numeric digits
+StoreHexDigit       addd      ,s++                add digit value, pop digit (pop)
+                    stb       ,u+                 store ASCII hex char, advance U
+                    ldd       $08,s               reload value
+                    lsra                          shift right 4 bits (high)
+                    rorb                          shift right 4 bits (2)
+                    lsra                          shift right 4 bits (3)
+                    rorb                          shift right 4 bits (4)
+                    lsra                          shift right 4 bits (5) — low nibble gone
+                    rorb                          shift right 4 bits (6)
+                    lsra                          shift right 4 bits (7)
+                    rorb                          shift right 4 bits — next nibble in low
+                    anda      #$0F                mask to 4 bits for next digit
+                    std       $08,s               store shifted value
+                    bne       HexDigitLoop        more digits — continue
+                    bra       HexReverseLoop      digits reversed — fix order
+HexCopyReverse      ldb       ,u                  read byte at current temp pointer
+                    ldx       $02,s               load output write pointer
+                    leax      $01,x               advance write pointer
+                    stx       $02,s               store updated pointer
+                    stb       -$01,x              store digit at previous position
+HexReverseLoop      leau      -dpsiz,u            back up temp pointer by one
+                    pshs      u                   push for boundary comparison
+                    leax      >varnum3,y          X = start of temp buffer
+                    cmpx      ,s++                compare start to current temp ptr (pop)
+                    bls       HexCopyReverse      not past start — copy another digit
+                    clra                          NUL terminator high byte
+                    clrb                          NUL terminator low byte
+                    stb       [<$02,s]            NUL-terminate output string
+                    leax      >varnum2,y          load start of output string
+                    tfr       x,d                 return string pointer in D
+                    lbra      FWriteCleanup       jump to shared cleanup path
+FmtFloatImpl        pshs      u                   save U (frame pointer)
+                    ldu       $06,s               load output callback from arg
+                    ldd       $0A,s               load width
+                    subd      $08,s               width - string length = pad count
+                    std       $0A,s               save padding count
+                    ldd       >varnum4,y          load left-justify flag
+                    bne       FloatCountLoop      non-zero — left-justify, skip left pad
+                    bra       FloatPadLoop        zero — right-justify, apply left pad
+FloatLeftPad        ldd       >varnum5,y          load pad character
+                    pshs      b,a                 push pad char
+                    jsr       [<$06,s]            call output callback
+                    leas      $02,s               discard arg
+FloatPadLoop        ldd       $0A,s               load remaining pad count
+                    addd      #$FFFF              decrement pad count
+                    std       $0A,s               store updated count
+                    subd      #$FFFF              restore to previous for comparison
+                    bgt       FloatLeftPad        more padding needed — continue
+                    bra       FloatCountLoop      done padding — copy string
+FloatCopyLoop       ldb       ,u+                 read byte from string, advance U
+                    sex                           sign-extend to D
+                    pshs      b,a                 push character
+                    jsr       [<$06,s]            call output callback
+                    leas      $02,s               discard arg
+FloatCountLoop      ldd       $08,s               load remaining char count
+                    addd      #$FFFF              decrement count
+                    std       $08,s               store updated count
+                    subd      #$FFFF              restore for comparison
+                    bne       FloatCopyLoop       more chars — continue
+                    ldd       >varnum4,y          load left-justify flag
+                    beq       FloatReturn         right-justify — no right padding
+                    bra       FloatRightCount     left-justify — apply right padding
+FloatRightPad       ldd       >varnum5,y          load pad character
+                    pshs      b,a                 push pad char
+                    jsr       [<$06,s]            call output callback
+                    leas      $02,s               discard arg
+FloatRightCount     ldd       $0A,s               load remaining pad count
+                    addd      #$FFFF              decrement count
+                    std       $0A,s               store updated count
+                    subd      #$FFFF              restore for comparison
+                    bgt       FloatRightPad       more right-padding needed
+FloatReturn         puls      pc,u                restore U and return
+PaddedOutput        pshs      u                   save U (frame pointer)
+                    ldu       $06,s               load string pointer from arg
+                    ldd       $08,s               load string/count arg
+                    pshs      b,a                 push for egg4 call
+                    pshs      u                   push string pointer
+                    lbsr      egg4                measure string length
+                    leas      $02,s               discard one arg
+                    nega                          negate length high byte (2's complement)
+                    negb                          negate length low byte
+                    sbca      #$00                propagate borrow
+                    addd      ,s++                add width arg (pop) → pad count
+                    std       $08,s               save padding count
+                    ldd       >varnum4,y          load left-justify flag
+                    bne       CheckEndOfStr       left-justify — skip left padding
+                    bra       LeftCountLoop       right-justify — apply left padding
+LeftPadLoop         ldd       >varnum5,y          load pad character
+                    pshs      b,a                 push pad char
+                    jsr       [<$06,s]            call output callback
+                    leas      $02,s               discard arg
+LeftCountLoop       ldd       $08,s               load remaining pad count
+                    addd      #$FFFF              decrement count
+                    std       $08,s               store updated count
+                    subd      #$FFFF              restore for comparison
+                    bgt       LeftPadLoop         more left padding needed
+                    bra       CheckEndOfStr       done padding — copy string
+CopyCharsLoop       ldb       ,u+                 read byte from string, advance U
+                    sex                           sign-extend to D
+                    pshs      b,a                 push character
+                    jsr       [<$06,s]            call output callback
+                    leas      $02,s               discard arg
+CheckEndOfStr       ldb       ,u                  peek at current string byte
+                    bne       CopyCharsLoop       non-NUL — copy next char
+                    ldd       >varnum4,y          load left-justify flag
+                    beq       PaddedOutputRet     right-justify — no trailing pad
+                    bra       RightCountLoop      left-justify — apply right padding
+RightPadLoop        ldd       >varnum5,y          load pad character
+                    pshs      b,a                 push pad char
+                    jsr       [<$06,s]            call output callback
+                    leas      $02,s               discard arg
+RightCountLoop      ldd       $08,s               load remaining pad count
+                    addd      #$FFFF              decrement count
+                    std       $08,s               store updated count
+                    subd      #$FFFF              restore for comparison
+                    bgt       RightPadLoop        more right padding needed
+PaddedOutputRet     puls      pc,u                restore U and return
 
-L0CC7               pshs      u
-                    ldd       >varnum1,y
-                    pshs      b,a
-                    ldd       $06,s
-                    pshs      b,a
-                    lbsr      egg2
-L0CD6               leas      $04,s
-                    puls      pc,u
-L0CDA               pshs      u
-                    ldd       $04,s
-                    ldx       >varnum1,y
-                    leax      $01,x
-                    stx       >varnum1,y
-                    stb       -$01,x
-                    puls      pc,u
-L0CEC               blt       L0D21
+FWriteCallback      pshs      u                   save U (frame pointer)
+                    ldd       >varnum1,y          load output FILE* from global
+                    pshs      b,a                 push FILE* arg
+                    ldd       $06,s               load character to write
+                    pshs      b,a                 push character arg
+                    lbsr      egg2                write character to stream
+FWriteCleanup       leas      $04,s               discard two args
+                    puls      pc,u                restore U and return
+PutCharCallback     pshs      u                   save U (frame pointer)
+                    ldd       $04,s               load character to store
+                    ldx       >varnum1,y          load string write pointer from global
+                    leax      $01,x               advance write pointer
+                    stx       >varnum1,y          store updated write pointer
+                    stb       -$01,x              store character at previous position
+                    puls      pc,u                restore U and return
+MinIntStr           blt       PushWriteArgs
                     leas      -$09,y
                     pshu      y,x,dp
 
@@ -1799,739 +1803,738 @@ L0CEC               blt       L0D21
 
                     fcb       $00                 what function in life do I have
 egg2                pshs      u                   disassembled as neg <u0034 then neg
-                    ldu       $06,s
-                    ldd       u0006,u
-                    anda      #$80
-                    andb      #$22
-                    cmpd      #$8002
-                    beq       L0D17
-                    ldd       u0006,u
-                    clra
-                    andb      #$22
-                    cmpd      #$0002
-                    lbne      L0E2F
-                    pshs      u
-                    lbsr      L1062
-                    leas      $02,s
-L0D17               ldd       u0006,u
-                    clra
-                    andb      #$04
-                    beq       L0D53
-                    ldd       #$0001
-L0D21               pshs      b,a
-                    leax      $07,s
-                    pshs      x
-                    ldd       u0008,u
-                    pshs      b,a
-                    ldd       u0006,u
-                    clra
-                    andb      #$40
-                    beq       L0D38
-                    leax      >L13EC,pcr          writeln: ??
-                    bra       L0D3C
-L0D38               leax      >L13D3,pcr          write:  ??
-L0D3C               tfr       x,d
-                    tfr       d,x
-                    jsr       ,x
-                    leas      $06,s
-                    cmpd      #$FFFF
-                    bne       L0D94
-                    ldd       u0006,u
-                    orb       #C$SPC
-                    std       u0006,u
-                    lbra      L0E2F
-L0D53               ldd       u0006,u
-                    anda      #$01
-                    clrb
-                    std       -$02,s
-                    bne       L0D63
-                    pshs      u
-                    lbsr      L0E4C
-                    leas      $02,s
-L0D63               ldd       ,u
-                    addd      #$0001
-                    std       ,u
-                    subd      #$0001
-                    tfr       d,x
-                    ldd       $04,s
-                    stb       ,x
-                    ldd       ,u
-                    cmpd      u0004,u
-                    bcc       L0D89
-                    ldd       u0006,u
-                    clra
-                    andb      #$40
-                    beq       L0D94
-                    ldd       $04,s
-                    cmpd      #$000D
-                    bne       L0D94
-L0D89               pshs      u
-                    lbsr      L0E4C
-                    std       ,s++
-                    lbne      L0E2F
-L0D94               ldd       $04,s
-                    puls      pc,u
-                    pshs      u
-                    ldu       $04,s
-                    ldd       $06,s
-                    pshs      b,a
-                    pshs      u
-                    ldd       #$0008
-                    lbsr      L1294
-                    pshs      b,a
-                    lbsr      egg2
-                    leas      $04,s
-                    ldd       $06,s
-                    pshs      b,a
-                    pshs      u
-                    lbsr      egg2
-                    lbra      L0F06
-L0DBB               pshs      u,b,a
-                    leau      >u0012,y
-                    clra
-                    clrb
-                    std       ,s
-                    bra       L0DD1
-L0DC7               tfr       u,d
-                    leau      u000D,u
-                    pshs      b,a
-                    bsr       L0DE4
-                    leas      $02,s
-L0DD1               ldd       ,s
-                    addd      #$0001
-                    std       ,s
-                    subd      #$0001
-                    cmpd      #$0010
-                    blt       L0DC7
-                    lbra      L0E48
-L0DE4               pshs      u
-                    ldu       $04,s
-                    leas      -$02,s
-                    cmpu      #$0000
-                    beq       L0DF4
-                    ldd       u0006,u
-                    bne       L0DFA
-L0DF4               ldd       #$FFFF
-                    lbra      L0E48
-L0DFA               ldd       u0006,u
-                    clra
-                    andb      #$02
-                    beq       L0E09
-                    pshs      u
-                    bsr       L0E1E
-                    leas      $02,s
-                    bra       L0E0B
-L0E09               clra
-                    clrb
-L0E0B               std       ,s
-                    ldd       u0008,u
-                    pshs      b,a
-                    lbsr      close:
-                    leas      $02,s
-                    clra
-                    clrb
-                    std       u0006,u
-                    ldd       ,s
-                    bra       L0E48
-L0E1E               pshs      u
-                    ldu       $04,s
-                    beq       L0E2F
-                    ldd       u0006,u
-                    clra
-                    andb      #$22
-                    cmpd      #$0002
-                    beq       L0E34
-L0E2F               ldd       #$FFFF
-                    puls      pc,u
+                    ldu       $06,s               load FILE* stream pointer from arg
+                    ldd       StrmFlags,u         load stream flags word
+                    anda      #$80                isolate read-mode bit (high)
+                    andb      #$22                isolate write/buffered bits (low)
+                    cmpd      #$8002              read mode + write bit set?
+                    beq       ReadBitSet          yes — stream is readable, write anyway
+                    ldd       StrmFlags,u         reload flags for write-mode check
+                    clra                          clear high byte
+                    andb      #$22                isolate write/buffered bits
+                    cmpd      #$0002              write-mode only?
+                    lbne      ReturnError         neither read nor write — error
+                    pshs      u                   push stream pointer
+                    lbsr      SetStreamMode       set write mode on stream
+                    leas      $02,s               discard arg
+ReadBitSet          ldd       StrmFlags,u         load stream flags
+                    clra                          clear high byte
+                    andb      #$04                isolate block-mode bit
+                    beq       WriteOnlyMode       not block mode — write directly
+                    ldd       #$0001              write count = 1
+PushWriteArgs       pshs      b,a                 push count arg
+                    leax      $07,s               point to character arg on stack
+                    pshs      x                   push pointer to char arg
+                    ldd       StrmPath,u          load path number from stream
+                    pshs      b,a                 push path number
+                    ldd       StrmFlags,u         load stream flags
+                    clra                          clear high byte
+                    andb      #$40                test line-buffered bit
+                    beq       WriteLnFuncPtr      not line-buffered → use WriteFuncEntry
+                    leax      >WriteLnFuncEntry,pcr writeln: ??
+                    bra       CallWriteFunc       call write with line function
+WriteLnFuncPtr      leax      >WriteFuncEntry,pcr write  ??
+CallWriteFunc       tfr       x,d                 copy function pointer to D
+                    tfr       d,x                 then back to X for indirect call
+                    jsr       ,x                  call write function via pointer
+                    leas      $06,s               discard three args
+                    cmpd      #$FFFF              write failed?
+                    bne       ReturnChar          success — return char
+                    ldd       StrmFlags,u         load flags for error update
+                    orb       #C$SPC              set error bit in flags
+                    std       StrmFlags,u         store updated flags
+                    lbra      ReturnError         return error
+WriteOnlyMode       ldd       StrmFlags,u         load stream flags
+                    anda      #$01                test unbuffered bit
+                    clrb                          clear low byte
+                    std       -$02,s              save unbuffered flag as local
+                    bne       StoreCharInBuf      buffered — store in buffer
+                    pshs      u                   push stream pointer
+                    lbsr      FlushBuf            flush buffer before writing
+                    leas      $02,s               discard arg
+StoreCharInBuf      ldd       ,u                  load current buffer pointer (StrmBufBase)
+                    addd      #$0001              advance buffer pointer
+                    std       ,u                  store updated pointer
+                    subd      #$0001              restore previous pointer
+                    tfr       d,x                 move to X for indexed store
+                    ldd       $04,s               load character to store
+                    stb       ,x                  store char at previous buffer position
+                    ldd       ,u                  load updated buffer pointer
+                    cmpd      StrmBufEnd,u        compare to buffer end
+                    bcc       BufFull             at or past end — flush buffer
+                    ldd       StrmFlags,u         load flags
+                    clra                          clear high byte
+                    andb      #$40                test line-buffered bit
+                    beq       ReturnChar          not line-buffered — just return
+                    ldd       $04,s               load character again
+                    cmpd      #$000D              is it CR?
+                    bne       ReturnChar          not CR — return char
+BufFull             pshs      u                   push stream pointer for flush
+                    lbsr      FlushBuf            flush full (or CR-triggered) buffer
+                    std       ,s++                save result, pop stream pointer
+                    lbne      ReturnError         flush failed — return error
+ReturnChar          ldd       $04,s               load character to return
+                    puls      pc,u                restore U and return
+                    pshs      u                   (dead — write word to stream helper)
+                    ldu       $04,s               (dead)
+                    ldd       $06,s               (dead)
+                    pshs      b,a                 (dead)
+                    pshs      u                   (dead)
+                    ldd       #$0008              (dead)
+                    lbsr      LShiftRight         (dead)
+                    pshs      b,a                 (dead)
+                    lbsr      egg2                (dead)
+                    leas      $04,s               (dead)
+                    ldd       $06,s               (dead)
+                    pshs      b,a                 (dead)
+                    pshs      u                   (dead)
+                    lbsr      egg2                (dead)
+                    lbra      FinalCleanup        (dead)
+CloseAllStreams     pshs      u,b,a               save registers for stream iteration
+                    leau      >StrmTable,y        point U to first stream table entry
+                    clra                          clear stream index high byte
+                    clrb                          clear stream index low byte
+                    std       ,s                  init index = 0
+                    bra       StreamCountLoop     start at count check
+AdvanceStream       tfr       u,d                 save old U for FClose arg
+                    leau      StrmStride,u        advance U to next stream entry
+                    pshs      b,a                 push old stream pointer as arg
+                    bsr       FClose              close this stream
+                    leas      $02,s               discard arg
+StreamCountLoop     ldd       ,s                  load stream index
+                    addd      #$0001              increment index
+                    std       ,s                  store updated index
+                    subd      #$0001              restore for comparison
+                    cmpd      #$0010              processed all 16 entries?
+                    blt       AdvanceStream       no — close next stream
+                    lbra      CleanupReturn       yes — done
+FClose              pshs      u                   save U (frame pointer)
+                    ldu       $04,s               load FILE* stream pointer from arg
+                    leas      -$02,s              allocate 2 bytes local storage
+                    cmpu      #$0000              is stream pointer NULL?
+                    beq       NullStream          yes — return $FFFF (invalid)
+                    ldd       StrmFlags,u         load stream mode flags
+                    bne       CheckCloseFlags     flags non-zero — stream is open
+NullStream          ldd       #$FFFF              return $FFFF for null/closed stream
+                    lbra      CleanupReturn       clean up and return
+CheckCloseFlags     ldd       StrmFlags,u         load mode flags
+                    clra                          clear high byte
+                    andb      #$02                isolate write-mode bit
+                    beq       NotFlushed          not write mode — no flush needed
+                    pshs      u                   push stream pointer
+                    bsr       CheckBufWrite       flush dirty write buffer
+                    leas      $02,s               discard arg
+                    bra       ClosePath           proceed to close path
+NotFlushed          clra                          no flush — clear result high
+                    clrb                          no flush — clear result low
+ClosePath           std       ,s                  save flush result as local
+                    ldd       StrmPath,u          load OS path number
+                    pshs      b,a                 push path arg
+                    lbsr      close               call OS close
+                    leas      $02,s               discard arg
+                    clra                          clear flags high byte
+                    clrb                          clear flags low byte
+                    std       StrmFlags,u         zero stream flags (mark closed)
+                    ldd       ,s                  load saved result
+                    bra       CleanupReturn       clean up and return
+CheckBufWrite       pshs      u                   save U
+                    ldu       $04,s               load stream pointer
+                    beq       ReturnError         NULL stream — return error
+                    ldd       StrmFlags,u         load stream flags
+                    clra                          clear high byte
+                    andb      #$22                isolate write flags
+                    cmpd      #$0002              write-mode set?
+                    beq       FlushDirtyBuf       yes — flush the buffer
+ReturnError         ldd       #$FFFF              return $FFFF (error/not writable)
+                    puls      pc,u                restore U and return
 
-L0E34               ldd       u0006,u
-                    anda      #$80
-                    clrb
-                    std       -$02,s
-                    bne       L0E44
-                    pshs      u
-                    lbsr      L1062
-                    leas      $02,s
-L0E44               pshs      u
-                    bsr       L0E4C
-L0E48               leas      $02,s
-                    puls      pc,u                return
+FlushDirtyBuf       ldd       StrmFlags,u         load stream flags
+                    anda      #$80                test read-mode bit
+                    clrb                          clear low byte
+                    std       -$02,s              save read-mode flag as local
+                    bne       FlushAndReturn      read-mode set — flush directly
+                    pshs      u                   push stream pointer
+                    lbsr      SetStreamMode       ensure stream is in write mode
+                    leas      $02,s               discard arg
+FlushAndReturn      pshs      u                   push stream pointer for flush
+                    bsr       FlushBuf            flush buffer to OS
+CleanupReturn       leas      $02,s               deallocate locals
+                    puls      pc,u                restore U and return
 
-L0E4C               pshs      u
-                    ldu       $04,s
-                    leas      -$04,s
-                    ldd       u0006,u
-                    anda      #$01
-                    clrb
-                    std       -$02,s
-                    bne       L0E7E
-                    ldd       ,u
-                    cmpd      u0004,u
-                    beq       L0E7E
-                    clra
-                    clrb
-                    pshs      b,a
-                    pshs      u
-                    lbsr      L0F0A
-                    leas      $02,s
-                    ldd       $02,x
-                    pshs      b,a
-                    ldd       ,x
-                    pshs      b,a
-                    ldd       u0008,u
-                    pshs      b,a
-                    lbsr      lseek:
-                    leas      $08,s
-L0E7E               ldd       ,u
-                    subd      u0002,u
-                    std       $02,s
-                    lbeq      L0EF6
-                    ldd       u0006,u
-                    anda      #$01
-                    clrb
-                    std       -$02,s
-                    lbeq      L0EF6
-                    ldd       u0006,u
-                    clra
-                    andb      #$40
-                    beq       L0ECD
-                    ldd       u0002,u
-                    bra       L0EC5
-L0E9E               ldd       $02,s
-                    pshs      b,a
-                    ldd       ,u
-                    pshs      b,a
-                    ldd       u0008,u
-                    pshs      b,a
-                    lbsr      writeln
-                    leas      $06,s
-                    std       ,s
-                    cmpd      #$FFFF
-                    bne       L0EBB
-                    leax      $04,s
-                    bra       L0EE5
-L0EBB               ldd       $02,s
-                    subd      ,s
-                    std       $02,s
-                    ldd       ,u
-                    addd      ,s
-L0EC5               std       ,u
-                    ldd       $02,s
-                    bne       L0E9E
-                    bra       L0EF6
-L0ECD               ldd       $02,s
-                    pshs      b,a
-                    ldd       u0002,u
-                    pshs      b,a
-                    ldd       u0008,u
-                    pshs      b,a
-                    lbsr      write:              was L13D3
-                    leas      $06,s
-                    cmpd      $02,s
-                    beq       L0EF6
-                    bra       L0EE7
-L0EE5               leas      -$04,x
-L0EE7               ldd       u0006,u
-                    orb       #C$SPC
-                    std       u0006,u
-                    ldd       u0004,u
-                    std       ,u
-                    ldd       #$FFFF
-                    bra       L0F06
-L0EF6               ldd       u0006,u
-                    ora       #$01
-                    std       u0006,u
-                    ldd       u0002,u
-                    std       ,u
-                    addd      u000B,u
-                    std       u0004,u
-                    clra
-                    clrb
-L0F06               leas      $04,s
-                    puls      pc,u
-L0F0A               pshs      u
-                    puls      pc,u
-L0F0E               pshs      u
-                    ldu       $04,s
-                    beq       L0F5A
-                    ldd       u0006,u
-                    anda      #$01
-                    clrb
-                    std       -$02,s
-                    bne       L0F5A
-                    ldd       ,u
-                    cmpd      u0004,u
-                    bcc       L0F36
-                    ldd       ,u
-                    addd      #$0001
-                    std       ,u
-                    subd      #$0001
-                    tfr       d,x
-                    ldb       ,x
-                    clra
-                    lbra      L1060
-L0F36               pshs      u
-                    lbsr      L0FA9
-                    lbra      L105E
-                    pshs      u
-                    ldu       $06,s
-                    beq       L0F5A
-                    ldd       u0006,u
-                    clra
-                    andb      #$01
-                    beq       L0F5A
-                    ldd       $04,s
-                    cmpd      #$FFFF
-                    beq       L0F5A
-                    ldd       ,u
-                    cmpd      u0002,u
-                    bhi       L0F5F
-L0F5A               ldd       #$FFFF
-                    puls      pc,u
-L0F5F               ldd       ,u
-                    addd      #$FFFF
-                    std       ,u
-                    tfr       d,x
-                    ldd       $04,s
-                    stb       ,x
-                    ldd       $04,s
-                    puls      pc,u
-                    pshs      u
-                    ldu       $04,s
-                    leas      -$04,s
-                    pshs      u
-                    lbsr      L0F0E
-                    leas      $02,s
-                    std       $02,s
-                    cmpd      #$FFFF
-                    beq       L0F94
-                    pshs      u
-                    lbsr      L0F0E
-                    leas      $02,s
-                    std       ,s
-                    cmpd      #$FFFF
-                    bne       L0F99
-L0F94               ldd       #$FFFF
-                    bra       L0FA5
-L0F99               ldd       $02,s
-                    pshs      b,a
-                    ldd       #$0008
-                    lbsr      L12AB
-                    addd      ,s
-L0FA5               leas      $04,s
-                    puls      pc,u
-L0FA9               pshs      u
-                    ldu       $04,s
-                    leas      -$02,s
-                    ldd       u0006,u
-                    anda      #$80
-                    andb      #$31
-                    cmpd      #$8001
-                    beq       L0FCF
-                    ldd       u0006,u
-                    clra
-                    andb      #$31
-                    cmpd      #$0001
-                    lbne      L1048
-                    pshs      u
-                    lbsr      L1062
-                    leas      $02,s
-L0FCF               leax      >u0012,y
-                    pshs      x
-                    cmpu      ,s++
-                    bne       L0FEC
-                    ldd       u0006,u
-                    clra
-                    andb      #$40
-                    beq       L0FEC
-                    leax      >$001F,y
-                    pshs      x
-                    lbsr      L0E1E
-                    leas      $02,s
-L0FEC               ldd       u0006,u
-                    clra
-                    andb      #$08
-                    beq       L1018
-                    ldd       u000B,u
-                    pshs      b,a
-                    ldd       u0002,u
-                    pshs      b,a
-                    ldd       u0008,u
-                    pshs      b,a
-                    ldd       u0006,u
-                    clra
-                    andb      #$40
-                    beq       L100C
-                    leax      >L13C3,pcr          readln:
-                    bra       L1010
-L100C               leax      >L13A2,pcr          compiler dosent like "read:" label
-L1010               tfr       x,d
-                    tfr       d,x
-                    jsr       ,x
-                    bra       L102A
-L1018               ldd       #$0001
-                    pshs      b,a
-                    leax      u000A,u
-                    stx       u0002,u
-                    pshs      x
-                    ldd       u0008,u
-                    pshs      b,a
-                    lbsr      read:
+FlushBuf            pshs      u                   save U (frame pointer)
+                    ldu       $04,s               load FILE* stream pointer from arg
+                    leas      -$04,s              allocate 4 bytes local storage
+                    ldd       StrmFlags,u         load stream flags
+                    anda      #$01                test buffered bit
+                    clrb                          clear low byte
+                    std       -$02,s              save buffered flag as local
+                    bne       FlushWritePath      buffered — skip seek on flush
+                    ldd       ,u                  load current buffer pointer
+                    cmpd      StrmBufEnd,u        compare to buffer end
+                    beq       FlushWritePath      at end — nothing to flush
+                    clra                          seek offset high word high byte
+                    clrb                          seek offset high word low byte
+                    pshs      b,a                 push high word of seek offset
+                    pshs      u                   push stream pointer
+                    lbsr      GetFilePosStub      get/calculate current file position
+                    leas      $02,s               discard stream pointer
+                    ldd       $02,x               load low word of position from result
+                    pshs      b,a                 push low word
+                    ldd       ,x                  load high word of position
+                    pshs      b,a                 push high word
+                    ldd       StrmPath,u          load path number
+                    pshs      b,a                 push path
+                    lbsr      lseek               seek to correct position
+                    leas      $08,s               discard four args
+FlushWritePath      ldd       ,u                  load current write pointer
+                    subd      StrmBufBase,u       subtract buffer base → bytes to write
+                    std       $02,s               save byte count
+                    lbeq      FlushSuccess        nothing buffered — done
+                    ldd       StrmFlags,u         reload flags
+                    anda      #$01                test buffered bit
+                    clrb                          clear low byte
+                    std       -$02,s              save flag
+                    lbeq      FlushSuccess        unbuffered — nothing to write
+                    ldd       StrmFlags,u         reload flags for line-mode check
+                    clra                          clear high byte
+                    andb      #$40                test line-buffer bit
+                    beq       RawWritePath        not line-buffered — raw write
+                    ldd       StrmBufBase,u       load buffer base as write position
+                    bra       AdvanceBufPtr       go store updated buf pointer
+WriteLineLoop       ldd       $02,s               load remaining byte count
+                    pshs      b,a                 push count arg
+                    ldd       ,u                  load current write pointer
+                    pshs      b,a                 push data pointer
+                    ldd       StrmPath,u          load OS path number
+                    pshs      b,a                 push path
+                    lbsr      writeln             write one line to OS path
+                    leas      $06,s               discard three args
+                    std       ,s                  save bytes written
+                    cmpd      #$FFFF              write failed?
+                    bne       UpdateAfterWrite    success — update pointers
+                    leax      $04,s               compute cleanup pointer
+                    bra       FlushWriteErr       handle write error
+UpdateAfterWrite    ldd       $02,s               load remaining byte count
+                    subd      ,s                  subtract bytes written this call
+                    std       $02,s               store updated remaining count
+                    ldd       ,u                  load current write pointer
+                    addd      ,s                  add bytes written
+AdvanceBufPtr       std       ,u                  store updated buffer pointer
+                    ldd       $02,s               load remaining count
+                    bne       WriteLineLoop       more bytes remain — write next line
+                    bra       FlushSuccess        all written — success
+RawWritePath        ldd       $02,s               load total byte count
+                    pshs      b,a                 push count arg
+                    ldd       StrmBufBase,u       load buffer base address
+                    pshs      b,a                 push data pointer
+                    ldd       StrmPath,u          load OS path number
+                    pshs      b,a                 push path
+                    lbsr      write               write buffer to OS path (was L13D3)
+                    leas      $06,s               discard three args
+                    cmpd      $02,s               compare written to requested
+                    beq       FlushSuccess        match — success
+                    bra       SetErrorFlags       mismatch — set error
+FlushWriteErr       leas      -$04,x              restore stack via X pointer
+SetErrorFlags       ldd       StrmFlags,u         load stream flags
+                    orb       #C$SPC              set error/EOF bit
+                    std       StrmFlags,u         store updated flags
+                    ldd       StrmBufEnd,u        load buffer end
+                    std       ,u                  store as current ptr (mark buf full)
+                    ldd       #$FFFF              return $FFFF (error)
+                    bra       FinalCleanup        clean up and return
+FlushSuccess        ldd       StrmFlags,u         load stream flags
+                    ora       #$01                set buffered/valid bit
+                    std       StrmFlags,u         store updated flags
+                    ldd       StrmBufBase,u       reset buffer write pointer to base
+                    std       ,u                  store reset pointer
+                    addd      StrmBufSize,u       compute new buffer end
+                    std       StrmBufEnd,u        store buffer end
+                    clra                          return 0 high byte (success)
+                    clrb                          return 0 low byte
+FinalCleanup        leas      $04,s               deallocate locals
+                    puls      pc,u                restore U and return
+GetFilePosStub      pshs      u                   save U (stub — no real implementation)
+                    puls      pc,u                restore U and return immediately
+FGetCharFill        pshs      u                   save U (frame pointer)
+                    ldu       $04,s               load FILE* stream pointer from arg
+                    beq       ReturnEOF           NULL stream — return EOF
+                    ldd       StrmFlags,u         load stream flags
+                    anda      #$01                test EOF/error bit
+                    clrb                          clear low byte
+                    std       -$02,s              save flag as local
+                    bne       ReturnEOF           error set — return EOF
+                    ldd       ,u                  load current buffer read pointer
+                    cmpd      StrmBufEnd,u        compare to buffer end
+                    bcc       FillReadBuf         at or past end — refill buffer
+                    ldd       ,u                  reload read pointer
+                    addd      #$0001              advance read pointer
+                    std       ,u                  store updated pointer
+                    subd      #$0001              restore previous pointer
+                    tfr       d,x                 move to X for indexed load
+                    ldb       ,x                  read character from buffer
+                    clra                          clear high byte (char is 8-bit)
+                    lbra      PopAndReturn        clean up and return char
+FillReadBuf         pshs      u                   push stream pointer for ReadBufFill
+                    lbsr      ReadBufFill         refill the read buffer
+                    lbra      ReadCleanup         clean up result and return
+                    pshs      u                   (dead — unget helper entry)
+                    ldu       $06,s               (dead)
+                    beq       ReturnEOF           (dead)
+                    ldd       StrmFlags,u         (dead)
+                    clra                          (dead)
+                    andb      #$01                (dead)
+                    beq       ReturnEOF           (dead)
+                    ldd       $04,s               (dead)
+                    cmpd      #$FFFF              (dead)
+                    beq       ReturnEOF           (dead)
+                    ldd       ,u                  (dead)
+                    cmpd      StrmBufBase,u       (dead)
+                    bhi       ReturnGetChar       (dead)
+ReturnEOF           ldd       #$FFFF              return $FFFF (EOF/error)
+                    puls      pc,u                restore U and return
+ReturnGetChar       ldd       ,u                  load current read pointer
+                    addd      #$FFFF              back up read pointer by one (unget)
+                    std       ,u                  store decremented pointer
+                    tfr       d,x                 move pointer to X
+                    ldd       $04,s               load character to unget
+                    stb       ,x                  store character back into buffer
+                    ldd       $04,s               reload character
+                    puls      pc,u                restore U and return char
+                    pshs      u                   (dead — fgetword entry)
+                    ldu       $04,s               (dead)
+                    leas      -$04,s              (dead)
+                    pshs      u                   (dead)
+                    lbsr      FGetCharFill        (dead)
+                    leas      $02,s               (dead)
+                    std       $02,s               (dead)
+                    cmpd      #$FFFF              (dead)
+                    beq       EofOnFirstRead      (dead)
+                    pshs      u                   (dead)
+                    lbsr      FGetCharFill        (dead)
+                    leas      $02,s               (dead)
+                    std       ,s                  (dead)
+                    cmpd      #$FFFF              (dead)
+                    bne       CombineChars        (dead)
+EofOnFirstRead      ldd       #$FFFF              EOF on first byte — return EOF
+                    bra       ReturnCombined      return EOF value
+CombineChars        ldd       $02,s               load first byte (high byte of word)
+                    pshs      b,a                 push first byte
+                    ldd       #$0008              shift count = 8
+                    lbsr      LShiftLeft          shift first byte left 8 bits
+                    addd      ,s                  add second byte to form 16-bit word
+ReturnCombined      leas      $04,s               deallocate locals
+                    puls      pc,u                restore U and return
+ReadBufFill         pshs      u                   save U (frame pointer)
+                    ldu       $04,s               load FILE* stream pointer from arg
+                    leas      -$02,s              allocate 2 bytes local storage
+                    ldd       StrmFlags,u         load stream flags
+                    anda      #$80                isolate read-mode bit (high byte)
+                    andb      #$31                isolate read/buffered bits (low byte)
+                    cmpd      #$8001              read-mode + buffered ready?
+                    beq       CheckStdinStream    yes — stream set up, check stdin
+                    ldd       StrmFlags,u         reload flags for write-mode check
+                    clra                          clear high byte
+                    andb      #$31                isolate read/buffered bits
+                    cmpd      #$0001              read-only buffered?
+                    lbne      ReturnEOFVal        not read mode — return EOF
+                    pshs      u                   push stream pointer
+                    lbsr      SetStreamMode       initialize stream for reading
+                    leas      $02,s               discard arg
+CheckStdinStream    leax      >StrmTable,y        point X to stdin stream entry
+                    pshs      x                   push pointer for comparison
+                    cmpu      ,s++                is this stream the stdin stream? (pop)
+                    bne       CheckReadMode       no — skip stdin flush
+                    ldd       StrmFlags,u         load stdin flags
+                    clra                          clear high byte
+                    andb      #$40                test line-buffered bit
+                    beq       CheckReadMode       not line-buffered — skip
+                    leax      >$001F,y            point to stdout stream
+                    pshs      x                   push stdout pointer
+                    lbsr      CheckBufWrite       flush stdout before reading stdin
+                    leas      $02,s               discard arg
+CheckReadMode       ldd       StrmFlags,u         load stream flags
+                    clra                          clear high byte
+                    andb      #$08                test block-read bit
+                    beq       SingleByteRead      not block — single-byte read
+                    ldd       StrmBufSize,u       load buffer size for block read
+                    pshs      b,a                 push size arg
+                    ldd       StrmBufBase,u       load buffer base address
+                    pshs      b,a                 push buffer pointer
+                    ldd       StrmPath,u          load OS path number
+                    pshs      b,a                 push path
+                    ldd       StrmFlags,u         load flags for line-mode check
+                    clra                          clear high byte
+                    andb      #$40                test line-buffered bit
+                    beq       LoadReadFuncPtr     not line-buffered → use read
+                    leax      >ReadLnFuncEntry,pcr readln:
+                    bra       CallReadFunc        call readln
+LoadReadFuncPtr     leax      >ReadFuncEntry,pcr  compiler doesn't like "read" label
+CallReadFunc        tfr       x,d                 copy function pointer to D
+                    tfr       d,x                 then back to X for indirect call
+                    jsr       ,x                  call read/readln function
+                    bra       ProcessReadResult   handle result
+SingleByteRead      ldd       #$0001              single-byte count
+                    pshs      b,a                 push count arg
+                    leax      StrmMode,u          use StrmMode field as 1-byte buffer
+                    stx       StrmBufBase,u       set buffer base to StrmMode
+                    pshs      x                   push buffer address
+                    ldd       StrmPath,u          load OS path number
+                    pshs      b,a                 push path
+                    lbsr      read                read one byte from OS path
 
-L102A               leas      $06,s
-                    std       ,s
-                    ldd       ,s
-                    bgt       L104D
-                    ldd       u0006,u
-                    pshs      b,a
-                    ldd       $02,s
-                    beq       L103F
-                    ldd       #$0020
-                    bra       L1042
-L103F               ldd       #$0010
-L1042               ora       ,s+
-                    orb       ,s+
-                    std       u0006,u
-L1048               ldd       #$FFFF
-                    bra       L105E
-L104D               ldd       u0002,u
-                    addd      #$0001
-                    std       ,u
-                    ldd       u0002,u
-                    addd      ,s
-                    std       u0004,u
-                    ldb       [<u0002,u]
-                    clra
-L105E               leas      $02,s
-L1060               puls      pc,u
-L1062               pshs      u
-                    ldu       $04,s
-                    ldd       u0006,u
-                    clra
-                    andb      #$C0
-                    bne       L109A
-                    leas      <-$20,s
-                    leax      ,s
-                    pshs      x
-                    ldd       u0008,u
-                    pshs      b,a
-                    clra
+ProcessReadResult   leas      $06,s               discard three args
+                    std       ,s                  save bytes-read result
+                    ldd       ,s                  reload result for comparison
+                    bgt       AdvanceBufRead      positive count — data was read
+                    ldd       StrmFlags,u         load stream flags for error update
+                    pshs      b,a                 save current flags
+                    ldd       $02,s               load the bytes-read result
+                    beq       SetEofBit           zero bytes → EOF condition
+                    ldd       #$0020              error flag bit
+                    bra       ApplyEofFlags       apply error flag
+SetEofBit           ldd       #$0010              EOF flag bit
+ApplyEofFlags       ora       ,s+                 OR into saved flags high byte (pop A)
+                    orb       ,s+                 OR into saved flags low byte (pop B)
+                    std       StrmFlags,u         store updated flags with EOF/error set
+ReturnEOFVal        ldd       #$FFFF              return $FFFF (EOF)
+                    bra       ReadCleanup         clean up and return
+AdvanceBufRead      ldd       StrmBufBase,u       load buffer base
+                    addd      #$0001              advance by one (past first byte)
+                    std       ,u                  store as current read pointer
+                    ldd       StrmBufBase,u       reload buffer base
+                    addd      ,s                  add bytes-read count
+                    std       StrmBufEnd,u        set buffer end = base + count
+                    ldb       [<StrmBufBase,u]    read first byte from buffer
+                    clra                          clear high byte (char is 8-bit)
+ReadCleanup         leas      $02,s               deallocate locals
+PopAndReturn        puls      pc,u                restore U and return
+SetStreamMode       pshs      u                   save U (frame pointer)
+                    ldu       $04,s               load FILE* stream pointer
+                    ldd       StrmFlags,u         load stream flags
+                    clra                          clear high byte
+                    andb      #$C0                check if mode already initialized
+                    bne       SetOpenedFlag       already set — skip getstat
+                    leas      <-$20,s             allocate $20-byte buffer for getstat
+                    leax      ,s                  X points to getstat result buffer
+                    pshs      x                   push buffer pointer
+                    ldd       StrmPath,u          load OS path number
+                    pshs      b,a                 push path
+                    clra                          getstat option = SS_OPT (0)
                     clrb
-                    pshs      b,a
-                    lbsr      getstat:
-                    leas      $06,s
-                    ldd       u0006,u
-                    pshs      b,a
-                    ldb       $02,s
-                    bne       L108E
-                    ldd       #$0040
-                    bra       L1091
-L108E               ldd       #$0080
-L1091               ora       ,s+
-                    orb       ,s+
-                    std       u0006,u
-                    leas      <$20,s
-L109A               ldd       u0006,u
-                    ora       #$80
-                    std       u0006,u
-                    clra
-                    andb      #$0C
-                    beq       L10A7
-                    puls      pc,u
+                    pshs      b,a                 push option code
+                    lbsr      getstat             call OS getstat to probe stream type
+                    leas      $06,s               discard three args
+                    ldd       StrmFlags,u         reload flags to combine with mode
+                    pshs      b,a                 save current flags on stack
+                    ldb       $02,s               load stream-type byte from getstat result
+                    bne       SetBlockModeFlag    non-zero → block device
+                    ldd       #$0040              line-buffered flag (character device)
+                    bra       ApplyModeFlags      apply mode flag
+SetBlockModeFlag    ldd       #$0080              block-mode flag (block device)
+ApplyModeFlags      ora       ,s+                 OR high byte into saved flags (pop)
+                    orb       ,s+                 OR low byte into saved flags (pop)
+                    std       StrmFlags,u         store combined mode flags
+                    leas      <$20,s              deallocate getstat buffer
+SetOpenedFlag       ldd       StrmFlags,u         reload flags
+                    ora       #$80                set stream-opened bit
+                    std       StrmFlags,u         store updated flags
+                    clra                          clear high byte for buffer-state check
+                    andb      #$0C                test buffer-error/single-byte bits
+                    beq       CheckBufSizeSet     not set — determine buffer size
+                    puls      pc,u                buffer state valid — return
 
-L10A7               ldd       u000B,u
-                    bne       L10BC
-                    ldd       u0006,u
-                    clra
-                    andb      #$40
-                    beq       L10B7
-                    ldd       #$0080
-                    bra       L10BA
-L10B7               ldd       #$0100
-L10BA               std       u000B,u
-L10BC               ldd       u0002,u
-                    bne       L10D1
-                    ldd       u000B,u
-                    pshs      b,a
-                    lbsr      ibrk                L14BA
-                    leas      $02,s
-                    std       u0002,u
-                    cmpd      #$FFFF
-                    beq       L10D9
-L10D1               ldd       u0006,u
-                    orb       #$08
-                    std       u0006,u
-                    bra       L10E8
-L10D9               ldd       u0006,u
-                    orb       #$04
-                    std       u0006,u
-                    leax      u000A,u
-                    stx       u0002,u
-                    ldd       #$0001
-                    std       u000B,u
-L10E8               ldd       u0002,u
-                    addd      u000B,u
-                    std       u0004,u
-                    std       ,u
-                    puls      pc,u
+CheckBufSizeSet     ldd       StrmBufSize,u       load buffer size
+                    bne       CheckBufAllocated   non-zero — size already set
+                    ldd       StrmFlags,u         load flags for line/block check
+                    clra                          clear high byte
+                    andb      #$40                test line-buffered flag
+                    beq       DefaultLineBufSize  not line-buffered → use default
+                    ldd       #$0080              line-buffer size = $80 (128)
+                    bra       StoreBufSizeVal     store size
+DefaultLineBufSize  ldd       #$0100              block-buffer size = $100 (256)
+StoreBufSizeVal     std       StrmBufSize,u       store buffer size in stream struct
+CheckBufAllocated   ldd       StrmBufBase,u       load buffer base pointer
+                    bne       MarkBufReady        non-NULL — already allocated
+                    ldd       StrmBufSize,u       load size needed
+                    pshs      b,a                 push size arg
+                    lbsr      ibrk                allocate memory from heap (L14BA)
+                    leas      $02,s               discard arg
+                    std       StrmBufBase,u       store allocated buffer pointer
+                    cmpd      #$FFFF              allocation failed?
+                    beq       MarkBufError        yes — use single-byte fallback
+MarkBufReady        ldd       StrmFlags,u         load stream flags
+                    orb       #$08                set block-buffer-ready bit
+                    std       StrmFlags,u         store updated flags
+                    bra       CalcBufEnd          compute buffer end pointer
+MarkBufError        ldd       StrmFlags,u         load stream flags
+                    orb       #$04                set single-byte-buffer bit
+                    std       StrmFlags,u         store updated flags
+                    leax      StrmMode,u          use StrmMode field as 1-byte buffer
+                    stx       StrmBufBase,u       set buffer base to StrmMode
+                    ldd       #$0001              single-byte buffer size
+                    std       StrmBufSize,u       store buffer size = 1
+CalcBufEnd          ldd       StrmBufBase,u       load buffer base
+                    addd      StrmBufSize,u       add size to get end address
+                    std       StrmBufEnd,u        store buffer end
+                    std       ,u                  initialize current read pointer to end
+                    puls      pc,u                restore U and return
 
-L10F2               pshs      u
-                    ldb       $05,s
-                    sex
-                    tfr       d,x
-                    bra       L1118
-L10FB               ldd       [<$06,s]
-                    addd      #$0004
-                    std       [<$06,s]
-                    leax      >L112F,pcr
-                    bra       L1114
-L110A               ldb       $05,s
-                    stb       >$0010,y
-                    leax      >$000F,y
-L1114               tfr       x,d
-                    puls      pc,u
-L1118               cmpx      #$0064              'd
-                    beq       L10FB
-                    cmpx      #$006F              'o
-                    lbeq      L10FB
-                    cmpx      #$0078              'x
-                    lbeq      L10FB
-                    bra       L110A
-                    puls      pc,u
+GetFmtSpecArg       pshs      u                   save U (frame pointer)
+                    ldb       $05,s               load format specifier char from arg
+                    sex                           sign-extend B to D
+                    tfr       d,x                 move specifier to X for comparison
+                    bra       CheckFmtSpecChar    dispatch on specifier type
+DispatchFmtArg      ldd       [<$06,s]            load vararg pointer (indirect)
+                    addd      #$0004              advance vararg pointer by 4 bytes (long)
+                    std       [<$06,s]            store updated vararg pointer
+                    leax      >Egg3FuncByte,pcr   load address of egg3 function byte
+                    bra       ReturnFmtSpecVal    return function pointer in D
+StoreFmtCharResult  ldb       $05,s               load specifier char for char result
+                    stb       >$0010,y            store char in format scratch area
+                    leax      >$000F,y            point X to scratch area
+ReturnFmtSpecVal    tfr       x,d                 return pointer/value in D
+                    puls      pc,u                restore U and return
+CheckFmtSpecChar    cmpx      #$0064              'd' (decimal)?
+                    beq       DispatchFmtArg      yes — fetch as integer
+                    cmpx      #$006F              'o' (octal)?
+                    lbeq      DispatchFmtArg      yes — fetch as integer
+                    cmpx      #$0078              'x' (hex)?
+                    lbeq      DispatchFmtArg      yes — fetch as integer
+                    bra       StoreFmtCharResult  other — store specifier char
+                    puls      pc,u                (dead — never reached)
 
 *L112F    neg   <u0034 branch in here ?
 *L112F    fcb $00
 *L1130    fcb $34
 *         nega
 
-L112F               fcb       $00                 used above
+Egg3FuncByte        fcb       $00                 used above
 egg3                pshs      u                   disassembled as neg <u0034 then neg
 
-                    leax      >L113A,pcr
-                    tfr       x,d
-                    puls      pc,u
+                    leax      >Egg4FuncByte,pcr   load address of egg4 function byte
+                    tfr       x,d                 return address in D
+                    puls      pc,u                restore U and return
 *
 * L113A    neg   <u0034 same story here except somebody jumps
 *                        to the front byte too
 *
 
-L113A               fcb       $00                 what do i do?
+Egg4FuncByte        fcb       $00                 what do i do?
 egg4                pshs      u                   disassembled as neg <u0034 then neg
-                    ldu       $04,s
-L113F               ldb       ,u+
-                    bne       L113F
-                    tfr       u,d
-                    subd      $04,s
-                    addd      #$FFFF
-                    puls      pc,u
+                    ldu       $04,s               load string pointer from arg
+StrLenLoop          ldb       ,u+                 read byte at U, advance U
+                    bne       StrLenLoop          non-NUL — keep counting
+                    tfr       u,d                 D = one past NUL terminator
+                    subd      $04,s               subtract original pointer
+                    addd      #$FFFF              subtract 1 (don't count NUL)
+                    puls      pc,u                restore U and return length
 
-L114C               pshs      u
-                    ldu       $06,s
-                    leas      -$02,s
-                    ldd       $06,s
-                    std       ,s
-L1156               ldb       ,u+
-                    ldx       ,s
-                    leax      $01,x
-                    stx       ,s
-                    stb       -$01,x
-                    bne       L1156
-                    bra       L118B
+StrCopyFunc         pshs      u                   save U (frame pointer)
+                    ldu       $06,s               load source string pointer from arg
+                    leas      -$02,s              allocate 2 bytes (dest write pointer)
+                    ldd       $06,s               load dest pointer from arg
+                    std       ,s                  save dest write pointer as local
+StrCopyBufLoop      ldb       ,u+                 read byte from source, advance U
+                    ldx       ,s                  load current dest write pointer
+                    leax      $01,x               advance dest pointer
+                    stx       ,s                  store updated dest pointer
+                    stb       -$01,x              store byte at previous dest position
+                    bne       StrCopyBufLoop      non-NUL — copy next byte
+                    bra       StrOpReturn         done — return
+                    pshs      u                   (dead — strlen fallback)
+                    ldu       $06,s               (dead)
+                    leas      -$02,s              (dead)
+                    ldd       $06,s               (dead)
+                    std       ,s                  (dead)
+StrLenBufLoop       ldx       ,s                  load current scan pointer
+                    leax      $01,x               advance pointer
+                    stx       ,s                  store updated pointer
+                    ldb       -$01,x              read byte at previous position
+                    bne       StrLenBufLoop       non-NUL — keep scanning
+                    ldd       ,s                  load pointer past NUL
+                    addd      #$FFFF              back up one (exclude NUL)
+                    std       ,s                  store length pointer
 
-                    pshs      u
-                    ldu       $06,s
-                    leas      -$02,s
-                    ldd       $06,s
-                    std       ,s
-L116E               ldx       ,s
-                    leax      $01,x
-                    stx       ,s
-                    ldb       -$01,x
-                    bne       L116E
-                    ldd       ,s
-                    addd      #$FFFF
-                    std       ,s
+StrAppendLoop       ldb       ,u+                 read byte from U (source string)
+                    ldx       ,s                  load dest write pointer
+                    leax      $01,x               advance dest pointer
+                    stx       ,s                  store updated pointer
+                    stb       -$01,x              store byte at previous position
+                    bne       StrAppendLoop       non-NUL — append next byte
 
-L117F               ldb       ,u+
-                    ldx       ,s
-                    leax      $01,x
-                    stx       ,s
-                    stb       -$01,x
-                    bne       L117F
+StrOpReturn         ldd       $06,s               load return value (original dest)
+                    leas      $02,s               deallocate local
+                    puls      pc,u                restore U and return
 
-L118B               ldd       $06,s
-                    leas      $02,s
-                    puls      pc,u                return
+                    pshs      u                   (dead — strcmp entry)
+                    ldu       $04,s               (dead)
+                    bra       CompareStrLoop      (dead)
+CheckStrMatch       ldx       $06,s               load current string scan pointer
+                    leax      $01,x               advance by one
+                    stx       $06,s               store updated pointer
+                    ldb       -$01,x              read byte at previous position
+                    bne       NextStrEntry        non-NUL — chars matched, continue
+                    clra                          match found — return 0 high
+                    clrb                          match found — return 0 low
+                    puls      pc,u                restore U and return
 
-                    pshs      u
-                    ldu       $04,s
-                    bra       L11A7
-L1197               ldx       $06,s
-                    leax      $01,x
-                    stx       $06,s
-                    ldb       -$01,x
-                    bne       L11A5
-                    clra
-                    clrb
-                    puls      pc,u                return
+NextStrEntry        leau      dpsiz,u             advance U to next string entry
+CompareStrLoop      ldb       ,u                  read byte from table entry
+                    sex                           sign-extend to D
+                    pshs      b,a                 push table char
+                    ldb       [<$08,s]            read char from search key (indirect)
+                    sex                           sign-extend to D
+                    cmpd      ,s++                compare key char to table char (pop)
+                    beq       CheckStrMatch       match — continue comparing
+                    ldb       [<$06,s]            load current scan position char
+                    sex                           sign-extend to D
+                    pshs      b,a                 push it
+                    ldb       ,u                  reload table char for subtraction
+                    sex                           sign-extend to D
+                    subd      ,s++                compute difference (key - table), pop
+                    puls      pc,u                restore U and return difference
 
-L11A5               leau      dpsiz,u
-L11A7               ldb       ,u
-                    sex
-                    pshs      b,a
-                    ldb       [<$08,s]
-                    sex
-                    cmpd      ,s++
-                    beq       L1197
-                    ldb       [<$06,s]
-                    sex
-                    pshs      b,a
-                    ldb       ,u
-                    sex
-                    subd      ,s++
-                    puls      pc,u                return
+AtoI                pshs      u                   save U (frame pointer)
+                    ldu       $04,s               load string pointer from arg
+                    leas      -$05,s              allocate 5 bytes local storage
+                    clra                          clear accumulator high byte
+                    clrb                          clear accumulator low byte
+                    std       $01,s               init accumulator to 0
+SkipWhitespace      ldb       ,u+                 read char from string, advance U
+                    stb       ,s                  save char as current
+                    cmpb      #C$SPC              space character?
+                    beq       SkipWhitespace      yes — skip it
+                    ldb       ,s                  reload current char
+                    cmpb      #$09                tab character?
+                    lbeq      SkipWhitespace      yes — skip it
+                    ldb       ,s                  reload for sign check
+                    cmpb      #$2D                '-' (negative sign)?
+                    bne       NotNegativeSign     no — not negative
+                    ldd       #$0001              sign flag = 1 (negative)
+                    bra       StoreSignFlag       store sign
+NotNegativeSign     clra                          sign flag high = 0 (positive)
+                    clrb                          sign flag low = 0
+StoreSignFlag       std       $03,s               store sign flag local
+                    ldb       ,s                  reload current char
+                    cmpb      #$2D                '-' (was the sign char)?
+                    beq       AdvanceInputPtr     yes — skip past the '-'
+                    ldb       ,s                  reload for '+' check
+                    cmpb      #$2B                '+' (explicit positive)?
+                    bne       CheckDigitChar      no — check if digit
+                    bra       AdvanceInputPtr     yes — skip past the '+'
+AccumDecDigit       ldd       $01,s               load current accumulated value
+                    pshs      b,a                 push accumulated value
+                    ldd       #$000A              multiplier = 10
+                    lbsr      UMul16              value = value × 10
+                    pshs      b,a                 push product
+                    ldb       $02,s               load current char (digit)
+                    sex                           sign-extend to D
+                    addd      ,s++                add to product (pop)
+                    addd      #$FFD0              subtract $30 (convert ASCII to digit value)
+                    std       $01,s               store updated accumulator
+AdvanceInputPtr     ldb       ,u+                 fetch next char from string
+                    stb       ,s                  save as current char
+CheckDigitChar      ldb       ,s                  load current char for class check
+                    sex                           sign-extend to D
+                    leax      >$00E3,y            point to character class table
+                    leax      d,x                 index by char value
+                    ldb       ,x                  load character class byte
+                    clra                          clear high byte
+                    andb      #$08                test decimal digit class bit
+                    bne       AccumDecDigit       it's a digit — accumulate
+                    ldd       $03,s               load sign flag
+                    beq       PositiveResult      zero — result is positive
+                    ldd       $01,s               load accumulated absolute value
+                    nega                          negate high byte (2's complement)
+                    negb                          negate low byte
+                    sbca      #$00                propagate borrow
+                    bra       AtoIReturn          return negated value
+PositiveResult      ldd       $01,s               load positive accumulated value
+AtoIReturn          leas      $05,s               deallocate locals
+                    puls      pc,u                restore U and return
 
-L11C2               pshs      u
-                    ldu       $04,s
-                    leas      -$05,s
-                    clra
-                    clrb
-                    std       $01,s
-L11CC               ldb       ,u+
-                    stb       ,s
-                    cmpb      #C$SPC
-                    beq       L11CC
-                    ldb       ,s
-                    cmpb      #$09
-                    lbeq      L11CC
-                    ldb       ,s
-                    cmpb      #$2D                '-
-                    bne       L11E7
-                    ldd       #$0001
-                    bra       L11E9
-L11E7               clra
-                    clrb
-L11E9               std       $03,s
-                    ldb       ,s
-                    cmpb      #$2D                '-
-                    beq       L120F
-                    ldb       ,s
-                    cmpb      #$2B                '+
-                    bne       L1213
-                    bra       L120F
-L11F9               ldd       $01,s
-                    pshs      b,a
-                    ldd       #$000A
-                    lbsr      L1235
-                    pshs      b,a
-                    ldb       $02,s
-                    sex
-                    addd      ,s++
-                    addd      #$FFD0
-                    std       $01,s
-L120F               ldb       ,u+
-                    stb       ,s
-L1213               ldb       ,s
-                    sex
-                    leax      >$00E3,y
-                    leax      d,x
-                    ldb       ,x
-                    clra
-                    andb      #$08
-                    bne       L11F9
-                    ldd       $03,s
-                    beq       L122F
-                    ldd       $01,s
-                    nega
-                    negb
-                    sbca      #$00
-                    bra       L1231
-L122F               ldd       $01,s
-L1231               leas      $05,s
-                    puls      pc,u                return
+UMul16              tsta                          test high byte of multiplier A
+                    bne       UMul32              non-zero — need 32-bit multiply
+                    tst       $02,s               test high byte of multiplicand
+                    bne       UMul32              non-zero — need 32-bit multiply
+                    lda       $03,s               load low byte of multiplicand
+                    mul                           A × B → D (8×8 unsigned)
+                    ldx       ,s                  load return address / old X
+                    stx       $02,s               save for later restore
+                    ldx       #$0000              clear high word result
+                    std       ,s                  store low product
+                    puls      pc,b,a              restore B,A and return result
 
-L1235               tsta
-                    bne       L124A
-                    tst       $02,s
-                    bne       L124A
-                    lda       $03,s
-                    mul
-                    ldx       ,s
-                    stx       $02,s
-                    ldx       #$0000
-                    std       ,s
-                    puls      pc,b,a              return
-
-L124A               pshs      b,a
-                    ldd       #$0000
-                    pshs      b,a
-                    pshs      b,a
-                    lda       $05,s
-                    ldb       $09,s
-                    mul
-                    std       $02,s
-                    lda       $05,s
-                    ldb       $08,s
-                    mul
-                    addd      $01,s
-                    std       $01,s
-                    bcc       L1267
-                    inc       ,s
-L1267               lda       $04,s
-                    ldb       $09,s
-                    mul
-                    addd      $01,s
-                    std       $01,s
-                    bcc       L1274
-                    inc       ,s
-L1274               lda       $04,s
-                    ldb       $08,s
-                    mul
-                    addd      ,s
-                    std       ,s
-                    ldx       $06,s
-                    stx       $08,s
-                    ldx       ,s
-                    ldd       $02,s
-                    leas      $08,s
-                    rts
-
-
-                    tstb
-                    beq       L129E
-
-L128B               asr       $02,s
-                    ror       $03,s
-                    decb
-                    bne       L128B
-                    bra       L129E
-
-L1294               tstb
-                    beq       L129E
-
-L1297               lsr       $02,s
-                    ror       $03,s
-                    decb
-                    bne       L1297
+UMul32              pshs      b,a                 save multiplicand (A,B) on stack
+                    ldd       #$0000              zero for accumulation
+                    pshs      b,a                 push high word of result = 0
+                    pshs      b,a                 push low word of result = 0
+                    lda       $05,s               multiplicand low byte
+                    ldb       $09,s               multiplier low byte
+                    mul                           partial product: lo×lo
+                    std       $02,s               store in result low word
+                    lda       $05,s               multiplicand low byte
+                    ldb       $08,s               multiplier high byte
+                    mul                           partial product: lo×hi
+                    addd      $01,s               add into result mid bytes
+                    std       $01,s               store updated mid bytes
+                    bcc       MulCarry1           no carry — skip increment
+                    inc       ,s                  propagate carry to high word
+MulCarry1           lda       $04,s               multiplicand high byte
+                    ldb       $09,s               multiplier low byte
+                    mul                           partial product: hi×lo
+                    addd      $01,s               add into result mid bytes
+                    std       $01,s               store updated mid bytes
+                    bcc       MulCarry2           no carry — skip increment
+                    inc       ,s                  propagate carry to high word
+MulCarry2           lda       $04,s               multiplicand high byte
+                    ldb       $08,s               multiplier high byte
+                    mul                           partial product: hi×hi
+                    addd      ,s                  add into result high word
+                    std       ,s                  store final high word
+                    ldx       $06,s               load return address / old X
+                    stx       $08,s               restore return address
+                    ldx       ,s                  load high word of result
+                    ldd       $02,s               load low word of result
+                    leas      $08,s               restore stack
+                    rts                           return with 32-bit result in X:D
 
 
-L129E               ldd       $02,s
-                    pshs      b,a
-                    ldd       $02,s
-                    std       $04,s
-                    ldd       ,s
-                    leas      $04,s
-                    rts
+                    tstb                          (dead — arithmetic right shift entry)
+                    beq       ShiftReturn         (dead)
+
+AShiftRightLoop     asr       $02,s               arithmetic shift right high byte
+                    ror       $03,s               rotate right into low byte
+                    decb                          decrement shift count
+                    bne       AShiftRightLoop     more shifts remaining
+                    bra       ShiftReturn         done shifting
+
+LShiftRight         tstb                          test shift count
+                    beq       ShiftReturn         zero — nothing to shift
+
+LShiftRightLoop     lsr       $02,s               logical shift right high byte
+                    ror       $03,s               rotate right into low byte
+                    decb                          decrement shift count
+                    bne       LShiftRightLoop     more shifts remaining
+
+
+ShiftReturn         ldd       $02,s               load shifted result high word
+                    pshs      b,a                 push high word
+                    ldd       $02,s               load shifted result again
+                    std       $04,s               store for return path
+                    ldd       ,s                  load pushed high word
+                    leas      $04,s               restore stack
+                    rts                           return with shifted result
 
 
 
-L12AB               tstb
-                    beq       L129E
-L12AE               lsl       $03,s
-                    rol       $02,s
-                    decb
-                    bne       L12AE
-                    bra       L129E
+LShiftLeft          tstb                          test shift count
+                    beq       ShiftReturn         zero — nothing to shift
+LShiftLeftLoop      lsl       $03,s               logical shift left low byte
+                    rol       $02,s               rotate left into high byte
+                    decb                          decrement shift count
+                    bne       LShiftLeftLoop      more shifts remaining
+                    bra       ShiftReturn         done shifting
 
 
 *************************************************
@@ -2574,7 +2577,7 @@ getstat             lda       $05,s               get the path number
 
 *  can't do other codes
                     ldb       #E$UnkSvc           load error unknow service code
-                    lbra      _os9err:            head for error routine
+                    lbra      _os9err             head for error routine
 
 
 * Code 2
@@ -2608,7 +2611,7 @@ getst10             pshs      u                   stack u since getstt modifies 
                     os9       I$GetStt
                     bcc       getst20             successful ?? go store info
                     puls      u                   otherwise pop our u
-                    lbra      _os9err:            head for error procesing
+                    lbra      _os9err             head for error procesing
 
 getst20             stx       [<$08,s]            store MSW
                     ldx       $08,s               get address of destination
@@ -2693,7 +2696,7 @@ setsat
                     beq       setst20
 *                         No other codes permitted
                     ldb       #E$UnkSvc           unknow service code
-                    lbra      _os9err:
+                    lbra      _os9err
 
 * Code 0
 * entry:
@@ -2786,7 +2789,7 @@ access10            lbra      _sysret             return
 open                ldx       $02,s               get address of the path list
                     lda       $05,s               get access mode permisions
                     os9       I$Open              attempt the opoen
-                    lbcs      _os9err:            didn't open go to error handler
+                    lbcs      _os9err             didn't open go to error handler
                     tfr       a,b                 path is open put a in b
                     clra                          clear a
                     rts                           return
@@ -2846,18 +2849,18 @@ ccret               tfr       a,b                 move path to b
                     rts                           return
 
 creat10             cmpb      #E$CEF              already there ?
-                    lbne      _os9err:            no a different error bail out
+                    lbne      _os9err             no a different error bail out
 
 *  is it a directory although we want a file instead?
                     lda       $05,s               get the mode
                     bita      #$80                trying to create a directrory?
-                    lbne      _os9err:            yes - bail out
+                    lbne      _os9err             yes - bail out
 
 *  if already there attempt to open with proper access rights
                     anda      #$07                access mode bits
                     ldx       $02,s               get the name again
                     os9       I$Open              try and open it
-                    lbcs      _os9err:            still fails - bail out
+                    lbcs      _os9err             still fails - bail out
 
 
 * Set Stat Code 2 (SS.SIZE)
@@ -2885,7 +2888,7 @@ creat10             cmpb      #E$CEF              already there ?
                     pshs      b                   set stat fail ? save error code
                     os9       I$Close             call close on file
                     puls      b                   pop the setstat error code
-                    lbra      _os9err:            head for error handler
+                    lbra      _os9err             head for error handler
 
 
 * unlink(fname)
@@ -2921,7 +2924,7 @@ unlink              ldx       $02,s               get address of the path list
 
 dup                 lda       $03,s               get path number
                     os9       I$Dup               make the call
-                    lbcs      _os9err:            didn't dup go to error handler
+                    lbcs      _os9err             didn't dup go to error handler
                     tfr       a,b                 move the new path num into b
                     clra                          clear a
                     rts                           return
@@ -2952,7 +2955,7 @@ dup                 lda       $03,s               get path number
 
 
 read
-L13A2               pshs      y                   stack current y
+ReadFuncEntry       pshs      y                   stack current y
                     ldx       $06,s               get address to store at
                     lda       $05,s               get path number
                     ldy       $08,s               get number of bytes to read
@@ -2968,7 +2971,7 @@ read1               bcc       rdexit              no problem if carry clear
                     puls      pc,y,x              pop the stacked values (cheap rts)
 
 read10              puls      y,x
-                    lbra      _os9err:
+                    lbra      _os9err
 rdexit              tfr       y,d
                     puls      pc,y,x
 
@@ -2989,7 +2992,7 @@ rdexit              tfr       y,d
 *       b  -> error code (if any)
 
 readln
-L13C3               pshs      y                   save data pointer
+ReadLnFuncEntry     pshs      y                   save data pointer
                     lda       $05,s               get the path number
                     ldx       $06,s               get the buffer address
                     ldy       $08,s               get the number to read
@@ -2998,7 +3001,7 @@ L13C3               pshs      y                   save data pointer
                     bra       read1               always go back test for eof
 
 write
-L13D3               pshs      y                   save data pointer
+WriteFuncEntry      pshs      y                   save data pointer
                     ldy       $08,s               get count
                     beq       write10
                     lda       $05,s               get file number
@@ -3007,13 +3010,13 @@ L13D3               pshs      y                   save data pointer
 
 write1              bcc       write10             good write head out
                     puls      y                   error in writing ? get data pointer
-                    lbra      _os9err:            head for error handler
+                    lbra      _os9err             head for error handler
 
 write10             tfr       y,d                 good write
                     puls      pc,y                return
 
 writeln
-L13EC               pshs      y                   save data pointer
+WriteLnFuncEntry    pshs      y                   save data pointer
                     ldy       $08,s               get the count
                     beq       write10             count zero ??  go to return
                     lda       $05,s               something to write get path number
@@ -3024,11 +3027,10 @@ L13EC               pshs      y                   save data pointer
 *  lseek(fd, offset, type)
 lseek               pshs      u                   save the register variable
                     ldd       10,s                get type
-*        ldd   $0A,s    get type
-                    bne       lseek10
-                    ldu       #$0000
-                    ldx       #$0000
-                    bra       doseek
+                    bne       lseek10             non-zero — not SEEK_SET
+                    ldu       #$0000              SEEK_SET: offset high word = 0
+                    ldx       #$0000              SEEK_SET: offset low word = 0
+                    bra       doseek              seek to absolute position
 
 lseek10             cmpd      #$0001              from here?
                     beq       here
@@ -3060,15 +3062,15 @@ here                lda       $05,s               get path number
                     bcs       lserr               if error go to error code
 
 doseek              tfr       u,d                 work on the LSW first
-                    addd      $08,s
-                    std       _flacc+2,y
-                    tfr       d,u
-                    tfr       x,d
-                    adcb      $07,s
-                    adca      $06,s
+                    addd      $08,s               add low offset word
+                    std       _flacc+2,y          store low word of seek target
+                    tfr       d,u                 save low word in U
+                    tfr       x,d                 work on high word
+                    adcb      $07,s               add carry + high offset low byte
+                    adca      $06,s               add high offset high byte
                     bmi       lserr               seek is before the beginning of the file
-                    tfr       d,x
-                    std       _flacc,y
+                    tfr       d,x                 save high word in X
+                    std       _flacc,y            store high word of seek target
 
                     lda       $05,s               get the path number
                     os9       I$Seek
@@ -3115,11 +3117,11 @@ sbrk20              leas      $02,s               junk scratch    L1497
                     pshs      d                   save it
 *        pshs  b,a
 
-                    clra
-                    ldx       ,s
+                    clra                          clear fill byte (zero)
+                    ldx       ,s                  load start of new memory region
 sbrk30              sta       ,x+                 clear new memory
-                    cmpx      memend,y
-                    bcs       sbrk30
+                    cmpx      memend,y            reached new memend?
+                    bcs       sbrk30              no — clear next byte
 *        puls  pc,b,a
                     puls      pc,d                return
 
@@ -3133,16 +3135,16 @@ ibrk                ldd       $02,s               get the size
                     pshs      d                   no save top
                     ldx       _mtop,y             reset to the bottom
 
-                    clra
-sbloop              cmpx      ,s                  reached the end
-                    bcc       ibrk10              yes - done
+                    clra                          fill byte = 0 (zero-initialize)
+sbloop              cmpx      ,s                  reached the end of new block?
+                    bcc       ibrk10              yes - done clearing
                     sta       ,x+                 nope clear and bump
                     bra       sbloop
 
-ibrk10              ldd       _mtop,y             return value
-                    puls      x                   restore new top
+ibrk10              ldd       _mtop,y             return value (old top = allocated start)
+                    puls      x                   restore new top pointer
                     stx       _mtop,y             save for next time
-                    rts
+                    rts                           return with allocated block pointer
 
 
 ibrk20              ldd       #-1                 return memory full
@@ -3152,25 +3154,21 @@ ibrk20              ldd       #-1                 return memory full
 *   stat.a code
 *
 
-_os9err             clra
+_os9err             clra                          clear high byte
                     std       >errno,y            indicate in system error indicator
-                    ldd       #-1                 error condition
+                    ldd       #-1                 error condition ($FFFF)
+                    rts                           return -1 to caller
 
-*        std   >$01B1,y
-*        ldd   #$FFFF
-                    rts
-
-
-_sysret             bcs       _os9err
-                    clra                          clear "d"
-                    clrb                          to return 0
-                    rts
+_sysret             bcs       _os9err             carry set → system call error
+                    clra                          clear "d" high byte
+                    clrb                          clear "d" low byte
+                    rts                           return 0 (success)
 
 
 * normal exit - buffers flushed if there are any
-exit                lbsr      L1500
+exit                lbsr      ExitPreflushStub    pre-exit flush hook (stub)
 
-                    lbsr      L0DBB               What do I do ???
+                    lbsr      CloseAllStreams     close all open streams before exit
 
 
 
@@ -3181,59 +3179,59 @@ exit                lbsr      L1500
 _exit               ldd       $02,s               get the exit status
                     os9       F$Exit              toodle-loo
 
-L1500               rts
+ExitPreflushStub    rts
 
 ********************************************************************
 * end of executable text
 
 etext               equ       *
-L1501               fcb       $00,$01,$00,$01,$62,$74,$4F ....btO
-L1508               fcb       $43,$00,$27,$10,$03,$E8,$00,$64 C.'..h.d
-L1510               fcb       $00,$0A,$00,$0D,$6C,$78,$00,$00 ....lx..
-L1518               fcb       $00,$00,$00,$00,$00,$00,$01,$00 ........
-L1520               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L1528               fcb       $00,$00,$00,$02,$00,$01,$00,$00 ........
-L1530               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L1538               fcb       $42,$00,$02,$00,$00,$00,$00,$00 B.......
-L1540               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L1548               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L1550               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L1558               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L1560               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L1568               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L1570               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L1578               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L1580               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L1588               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L1590               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L1598               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L15A0               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L15A8               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L15B0               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L15B8               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L15C0               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L15C8               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L15D0               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L15D8               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L15E0               fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
-L15E8               fcb       $01,$01,$01,$01,$01,$01,$01,$01 ........
-L15F0               fcb       $01,$11,$11,$01,$11,$11,$01,$01 ........
-L15F8               fcb       $01,$01,$01,$01,$01,$01,$01,$01 ........
-L1600               fcb       $01,$01,$01,$01,$01,$01,$01,$01 ........
-L1608               fcb       $30,$20,$20,$20,$20,$20,$20,$20 0
-L1610               fcb       $20,$20,$20,$20,$20,$20,$20,$20
-L1618               fcb       $48,$48,$48,$48,$48,$48,$48,$48 HHHHHHHH
-L1620               fcb       $48,$48,$20,$20,$20,$20,$20,$20 HH
-L1628               fcb       $20,$42,$42,$42,$42,$42,$42,$02 BBBBBB.
-L1630               fcb       $02,$02,$02,$02,$02,$02,$02,$02 ........
-L1638               fcb       $02,$02,$02,$02,$02,$02,$02,$02 ........
-L1640               fcb       $02,$02,$02,$20,$20,$20,$20,$20 ...
-L1648               fcb       $20,$44,$44,$44,$44,$44,$44,$04 DDDDDD.
-L1650               fcb       $04,$04,$04,$04,$04,$04,$04,$04 ........
-L1658               fcb       $04,$04,$04,$04,$04,$04,$04,$04 ........
-L1660               fcb       $04,$04,$04,$20,$20,$20,$20,$01 ...    .
-L1668               fcb       $00,$00,$00,$01,$00,$0D,$74,$6F ......to
-L1670               fcb       $63,$67,$65,$6E,$00 cgen.
+InitDataTbl         fcb       $00,$01,$00,$01,$62,$74,$4F ....btO
+InitDataRow08       fcb       $43,$00,$27,$10,$03,$E8,$00,$64 C.'..h.d
+InitDataRow10       fcb       $00,$0A,$00,$0D,$6C,$78,$00,$00 ....lx..
+InitDataRow18       fcb       $00,$00,$00,$00,$00,$00,$01,$00 ........
+InitDataRow20       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRow28       fcb       $00,$00,$00,$02,$00,$01,$00,$00 ........
+InitDataRow30       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRow38       fcb       $42,$00,$02,$00,$00,$00,$00,$00 B.......
+InitDataRow40       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRow48       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRow50       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRow58       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRow60       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRow68       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRow70       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRow78       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRow80       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRow88       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRow90       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRow98       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRowA0       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRowA8       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRowB0       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRowB8       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRowC0       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRowC8       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRowD0       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRowD8       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+InitDataRowE0       fcb       $00,$00,$00,$00,$00,$00,$00,$00 ........
+CharClassTbl        fcb       $01,$01,$01,$01,$01,$01,$01,$01 ........
+CharClassRow0F      fcb       $01,$11,$11,$01,$11,$11,$01,$01 ........
+CharClassRow0F_B    fcb       $01,$01,$01,$01,$01,$01,$01,$01 ........
+CharClassRow10      fcb       $01,$01,$01,$01,$01,$01,$01,$01 ........
+CharClassRow18      fcb       $30,$20,$20,$20,$20,$20,$20,$20 0
+CharClassRow20      fcb       $20,$20,$20,$20,$20,$20,$20,$20
+CharClassRow28      fcb       $48,$48,$48,$48,$48,$48,$48,$48 HHHHHHHH
+CharClassRow30      fcb       $48,$48,$20,$20,$20,$20,$20,$20 HH
+CharClassRow38      fcb       $20,$42,$42,$42,$42,$42,$42,$02 BBBBBB.
+CharClassRow40      fcb       $02,$02,$02,$02,$02,$02,$02,$02 ........
+CharClassRow48      fcb       $02,$02,$02,$02,$02,$02,$02,$02 ........
+CharClassRow50      fcb       $02,$02,$02,$20,$20,$20,$20,$20 ...
+CharClassRow58      fcb       $20,$44,$44,$44,$44,$44,$44,$04 DDDDDD.
+CharClassRow60      fcb       $04,$04,$04,$04,$04,$04,$04,$04 ........
+CharClassRow68      fcb       $04,$04,$04,$04,$04,$04,$04,$04 ........
+CharClassRow70      fcb       $04,$04,$04,$20,$20,$20,$20,$01 ...    .
+ModInfoData         fcb       $00,$00,$00,$01,$00,$0D,$74,$6F ......to
+ModuleNameStr       fcb       $63,$67,$65,$6E,$00 cgen.
 
                     emod
 eom                 equ       *
