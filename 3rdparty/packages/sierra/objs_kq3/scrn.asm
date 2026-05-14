@@ -19,6 +19,9 @@
 * ------------------------------------------------------------------
 *   0      2003/03/06  Paul W. Zibaila
 * Disassembly of original distribution.
+* Annotated by /annotate-asm (Claude Code) 2026-05-12:
+*   - Renamed disassembled labels to meaningful names
+*   - Added inline comments to every instruction
 
                     nam       scrn
                     ttl       Kings Quest III screen module
@@ -37,37 +40,37 @@ rev                 set       $01
 
 *  equates for common data used in this module
 
-u0012               equ       $0012               map block value (word)
-u001C               equ       $001C
-u001E               equ       $001E
+MmuBlkNum           equ       $0012               map block value (word)
+BlkMapLow           equ       $001C
+BlkMapHigh          equ       $001E
 u0024               equ       $0024
-u002C               equ       $002C
+HiResBase           equ       $002C
 u0030               equ       $0030
 u0038               equ       $0038
 u003E               equ       $003E
-u0040               equ       $0040
-u0041               equ       $0041
-u0042               equ       $0042               Sierra process descriptor block
-u0043               equ       $0043               Sierra 2nd 8K data block
-u0045               equ       $0045               flag for palettes in sierra
-u0046               equ       $0046               first byte of hi res screen mem addr
-u0047               equ       $0047               second byte of hi res screen mem addr
+SprCurRow           equ       $0040
+SprCurCol           equ       $0041
+SierraPdBlk         equ       $0042               Sierra process descriptor block
+Sierra2ndBlk        equ       $0043               Sierra 2nd 8K data block
+PaletteFlag         equ       $0045               flag for palettes in sierra
+ScrAddrHi           equ       $0046               first byte of hi res screen mem addr
+ScrAddrLo           equ       $0047               second byte of hi res screen mem addr
 u007E               equ       $007E
 u0080               equ       $0080
 u0081               equ       $0081
-u009E               equ       $009E               busy address here
-u009F               equ       $009F
-u00A0               equ       $00A0
-u00A1               equ       $00A1
-u00A2               equ       $00A2
-u00A3               equ       $00A3
-u00A4               equ       $00A4
-u00A5               equ       $00A5
-u00A6               equ       $00A6
-u00A7               equ       $00A7
-u00A8               equ       $00A8
-u00A9               equ       $00A9
-u00AA               equ       $00AA
+RowCount            equ       $009E               busy address here
+StripWidth          equ       $009F
+RowStride           equ       $00A0
+ViewRightX          equ       $00A1
+DrawY1              equ       $00A2
+ClipLeft            equ       $00A3
+ClipRight           equ       $00A4
+ClipHeight          equ       $00A5
+ClipBottom          equ       $00A6
+ClipWidth           equ       $00A7
+OverlapLeft         equ       $00A8
+OverlapTop          equ       $00A9
+OverlapSize         equ       $00AA
 u00C0               equ       $00C0
 u00C6               equ       $00C6
 u00CC               equ       $00CC
@@ -79,9 +82,9 @@ u00FC               equ       $00FC
 u00FE               equ       $00FE
 u00FF               equ       $00FF
 
-X0100               equ       $0100               pic_visible
-X024E               equ       $024E
-XFFA9               equ       $FFA9
+PicVisible          equ       $0100               pic_visible
+SierraPalette       equ       $024E
+DatTask1Slot1       equ       $FFA9
 
 
 size                equ       .
@@ -98,48 +101,48 @@ name                equ       *
 *   u -> module header absolute address
 
 start               equ       *
-                    lbra      L015A               twiddles with map blocks ??
-                    lbra      L014C               sets up another call to L015A
-                    lbra      L009C               whats in D here ? call screen clear
-                    lbra      L00B3               sets D to 0000 and call clear screen
-                    lbra      L00D2
-                    lbra      L0745
-                    lbra      L0209
-                    lbra      L00C5
-                    lbra      L025D
-                    lbra      L02A0
+                    lbra      DrawStrip           dispatch 0: blit picture strip to screen
+                    lbra      SetupDrawStrip      dispatch 1: forward args and call DrawStrip
+                    lbra      ClearScreen         dispatch 2: fill screen with value in D
+                    lbra      ClearScreenBlack    dispatch 3: clear screen to black
+                    lbra      DrawBorder          dispatch 4: draw 4-sided rectangle border
+                    lbra      DrawSprites         dispatch 5: render 8×8 font glyphs
+                    lbra      CopyStrip           dispatch 6: copy background strip
+                    lbra      ClearWithPalette    dispatch 7: fill screen with palette color
+                    lbra      UpdateViewList      dispatch 8: update all views in linked list
+                    lbra      DrawView            dispatch 9: render one view/cel to screen
 
 * probably was an info directive for an include file
-L0030               fcc       'AGI (c) copyright 1988 SIERRA On-Line'
+CopyrightStr        fcc       'AGI (c) copyright 1988 SIERRA On-Line'
                     fcc       'CoCo3 version by Chris Iden'
                     fcb       $00
-Infosz              equ       *-L0030
+Infosz              equ       *-CopyrightStr
 
 
 
 * map block check and sets
-* u0012 is set in code in L015A sub
+* MmuBlkNum is set in code in DrawStrip sub
 * entry:
 *      a -> value to be tested
 
-L0071               cmpa      <u0012              check MMU block
-                    beq       L008B               if block 0  OK to leave
+SetMapBlock         cmpa      <MmuBlkNum          check MMU block
+                    beq       MapBlockOk          if block 0  OK to leave
                     orcc      #IntMasks           Turn off interrupts
-                    sta       <u0012              store the value passed in by a
-                    lda       <u0042              get sierra process descriptor map block
-                    sta       >XFFA9              map it in to $2000-$3FFF
-                    ldx       <u0043              2nd 8K data block in Sierra
-                    lda       <u0012              get mmu block num
-                    sta       ,x                  store that
-                    stb       $02,x
-                    std       >XFFA9              Map it into task 1 block 2
+                    sta       <MmuBlkNum          store the value passed in by a
+                    lda       <SierraPdBlk        get sierra process descriptor map block
+                    sta       >DatTask1Slot1      map it in to $2000-$3FFF
+                    ldx       <Sierra2ndBlk       2nd 8K data block in Sierra
+                    lda       <MmuBlkNum          get mmu block num
+                    sta       ,x                  store block number at slot 0
+                    stb       $02,x               store block number at slot 2
+                    std       >DatTask1Slot1      Map it into task 1 block 2
                     andcc     #^IntMasks          turn on interrupts $AF
-L008B               rts
+MapBlockOk          rts
 
 
 * 16 marker bytes for some thing
 * coco_view_pal[]     vid_render.c
-L008C               fcb       $00
+CocoViewPal         fcb       $00
                     fcb       $11
                     fcb       $22
                     fcb       $33
@@ -166,57 +169,85 @@ L008C               fcb       $00
 *      x -> restored to initial value
 *      u -> contains starting address of the screen
 
-L009C               pshs      x                   save the x values as this routine uses it
-L009E               ldu       #$D800              end address of high res screen
+ClearScreen         pshs      x                   save the x values as this routine uses it
+ClearScreenInit     ldu       #$D800              end address of high res screen
                     ldx       #$7800              Scrn is from $6000 to $D800
-L00A4               std       ,--u                set it to value passed us in d & dec d
+ClearWordLoop       std       ,--u                set it to value passed us in d & dec d
                     leax      -$02,x              decrement x
-                    bne       L00A4               keep going till all of screen is cleared
+                    bne       ClearWordLoop       keep going till all of screen is cleared
                     puls      x                   restore x`
                     rts                           move on
 
 * Loads D to clear screen
-L00AD               ldd       #$0000              zeros screen bytes
-                    bsr       L009C               go clear it
+ZeroClearScreen     ldd       #$0000              zeros screen bytes
+                    bsr       ClearScreen         go clear it
                     rts
 
-L00B3               bsr       L00AD               clear the screen
-                    ldd       #$A8A0
-                    pshs      d
-                    ldd       #$00A7
-                    pshs      d
-                    lbsr      L015A
-                    leas      $04,s
+ClearScreenBlack    bsr       ZeroClearScreen     clear screen to black
+                    ldd       #$A8A0              Y2=$A8, Y1=$A0 (screen rows)
+                    pshs      d                   push row args onto stack
+                    ldd       #$00A7              X2=$00, X1=$A7 (screen columns)
+                    pshs      d                   push column args onto stack
+                    lbsr      DrawStrip
+                    leas      $04,s               pop 4 bytes of args
                     rts
 
-L00C5               lda       >X024E
-                    tfr       a,b
-                    bsr       L009C
-                    ldd       #$0000              clears value at u0040
-                    std       <u0040
+ClearWithPalette    lda       >SierraPalette      load palette color byte
+                    tfr       a,b                 duplicate into both bytes of D
+                    bsr       ClearScreen         fill screen with that color word
+                    ldd       #$0000              clears value at SprCurRow
+                    std       <SprCurRow          reset sprite row/col position
                     rts
 
-L00D2               ldd       $06,s
+DrawBorder          ldd       $06,s               load top-left row arg
+                    pshs      d                   push row start
+                    ldd       $06,s               reload arg (stack shifted)
+                    pshs      d                   push row end
+                    ldd       $06,s               reload arg (stack shifted)
+                    pshs      d                   push color arg
+                    lbsr      FillSolidRect       draw top edge
+                    leas      $06,s               pop 6 bytes of args
+                    clra                          A=0 for column start
+                    ldb       $06,s               load height arg
+                    pshs      d                   push row params
+                    lda       #$01                col start = 1
+                    ldb       $07,s               load height (stack adjusted)
+                    subb      #$02                subtract 2 to skip top/bottom
+                    pshs      d                   push height-2
+                    ldd       $06,s               load position arg
+                    inca                          advance row by 1
+                    decb                          reduce column by 1
+                    pshs      d                   push adjusted position
+                    lbsr      FillSolidRect       draw left edge
+                    leas      $06,s               pop 6 bytes of args
+                    clra                          A=0 for column start
+                    ldb       $06,s               load next arg
+                    pshs      d                   push row
+                    lda       $06,s               load X position
+                    suba      #$04                subtract 4 for right edge position
+                    ldb       #$01                column width = 1
+                    pshs      d                   push right edge position
+                    ldd       $06,s               load base position
+                    adda      $09,s               add height to get bottom
+                    suba      #$02                adjust for edges
+                    subb      #$02                adjust column
+                    pshs      d                   push bottom position
+                    lbsr      FillSolidRect       draw right edge
+                    leas      $06,s               pop 6 bytes of args
+                    clra                          A=0
+                    ldb       $06,s               load arg
                     pshs      d
-                    ldd       $06,s
-                    pshs      d
-                    ldd       $06,s
-                    pshs      d
-                    lbsr      L01D4
-                    leas      $06,s
-                    clra
-                    ldb       $06,s
-                    pshs      d
-                    lda       #$01
+                    lda       #$01                col start = 1
                     ldb       $07,s
-                    subb      #$02
+                    subb      #$02                height - 2
                     pshs      d
                     ldd       $06,s
-                    inca
-                    decb
+                    inca                          advance row
+                    subb      $08,s               subtract width
+                    addb      #$02                adjust for border
                     pshs      d
-                    lbsr      L01D4
-                    leas      $06,s
+                    lbsr      FillSolidRect       draw bottom-left corner edge
+                    leas      $06,s               pop 6 bytes of args
                     clra
                     ldb       $06,s
                     pshs      d
@@ -225,314 +256,286 @@ L00D2               ldd       $06,s
                     ldb       #$01
                     pshs      d
                     ldd       $06,s
-                    adda      $09,s
-                    suba      #$02
-                    subb      #$02
-                    pshs      d
-                    lbsr      L01D4
-                    leas      $06,s
-                    clra
-                    ldb       $06,s
-                    pshs      d
-                    lda       #$01
-                    ldb       $07,s
-                    subb      #$02
-                    pshs      d
-                    ldd       $06,s
-                    inca
-                    subb      $08,s
-                    addb      #$02
-                    pshs      d
-                    lbsr      L01D4
-                    leas      $06,s
-                    clra
-                    ldb       $06,s
-                    pshs      d
-                    lda       $06,s
-                    suba      #$04
-                    ldb       #$01
-                    pshs      d
-                    ldd       $06,s
                     inca
                     subb      #$02
                     pshs      d
-                    lbsr      L01D4
-                    leas      $06,s
+                    lbsr      FillSolidRect       draw bottom edge
+                    leas      $06,s               pop 6 bytes of args
                     rts
 
-L014C               ldd       $04,s
-                    pshs      d
-                    ldd       $04,s
-                    pshs      d
-                    lbsr      L015A
-                    leas      $04,s
+SetupDrawStrip      ldd       $04,s               load row args from caller's frame
+                    pshs      d                   push first arg
+                    ldd       $04,s               reload same arg (stack shifted)
+                    pshs      d                   push second arg
+                    lbsr      DrawStrip
+                    leas      $04,s               pop 4 bytes of args
                     rts
 
 * first call in module is here
 * who put what on the stack for us ?
-L015A               pshs      y                   save our y  module entry abs addr
+DrawStrip           pshs      y                   save Y (module entry absolute address)
 
-                    ldd       $04,s
-                    sta       <u0047
-                    incb
-                    subb      $06,s
-                    lda       #$A0
-                    mul
-                    addd      <u0046
-                    tfr       d,x
-                    addd      <u002C
-                    tfr       d,y
-                    leax      <$40,x
-                    ldd       $06,s
-                    std       <u009E
+                    ldd       $04,s               load row/column args
+                    sta       <ScrAddrLo          save row as screen address low byte
+                    incb                          B = bottom row + 1
+                    subb      $06,s               B = height of strip in rows
+                    lda       #$A0                A = 160 (bytes per screen row)
+                    mul                           D = height × 160
+                    addd      <ScrAddrHi          add hi-res screen high byte
+                    tfr       d,x                 X = source pixel address
+                    addd      <HiResBase          add screen base offset
+                    tfr       d,y                 Y = destination screen address
+                    leax      <$40,x              advance X by $40 (source offset)
+                    ldd       $06,s               load strip dimension
+                    std       <RowCount           save row count and strip width
 
-                    ldb       #$A0
-                    subb      <u009F
-                    clra
-                    std       <u00A0
-                    sta       <u0012              twiddle with the map block value
+                    ldb       #$A0                B = 160 (full row width)
+                    subb      <StripWidth         B = stride = 160 - strip pixel width
+                    clra                          clear A for full D
+                    std       <RowStride          save row stride
+                    sta       <MmuBlkNum          clear MMU block tracking variable
 
-                    orcc      #IntMasks           turn off interrupts $50
-                    lda       <u0042
-                    sta       >XFFA9              second block in task 1
-                    cmpx      #$A000
-                    bcs       L0192
+                    orcc      #IntMasks           disable interrupts
+                    lda       <SierraPdBlk        load Sierra process descriptor block#
+                    sta       >DatTask1Slot1      second block in task 1
+                    cmpx      #$A000              check if X is in high 8K window
+                    bcs       MapBlockLow         branch if X < $A000 (low window)
 
-                    ldd       <u001E
-                    leax      >-$8000,x
-                    bra       L0198
-L0192               ldd       <u001C
-                    leax      >-$4000,x
-L0198               ldu       <u0043
-                    sta       ,u
-                    stb       $02,u
-                    std       >XFFA9              second block in task 1
-                    andcc     #^IntMasks          turn on ints $AF
+                    ldd       <BlkMapHigh         load high-address block map entry
+                    leax      >-$8000,x           adjust X for high window (-$8000)
+                    bra       MapBlockAndRender
+MapBlockLow         ldd       <BlkMapLow          load low-address block map entry
+                    leax      >-$4000,x           adjust X for low window (-$4000)
+MapBlockAndRender   ldu       <Sierra2ndBlk       load Sierra 2nd 8K data block ptr
+                    sta       ,u                  store block A at slot 0
+                    stb       $02,u               store block B at slot 2
+                    std       >DatTask1Slot1      map block into task 1
+                    andcc     #^IntMasks          re-enable interrupts
 
-                    leau      >L008C,pcr          point u to the  sequential data bytes
-L01A7               ldb       <u009F
-L01A9               lda       ,x+
-                    anda      #$0F
-                    lda       a,u
-                    sta       ,y+
-                    decb
-                    bne       L01A9
-                    dec       <u009E
-                    beq       L01D1               pull our y and exit routine
-                    ldd       <u00A0
-                    leay      d,y
-                    abx
-                    cmpx      #$6000
-                    bcs       L01A7
+                    leau      >CocoViewPal,pcr    point U to CoCo view palette table
+DrawRowOuter        ldb       <StripWidth         load pixel count for this row
+DrawPixelInner      lda       ,x+                 fetch source pixel byte, advance X
+                    anda      #$0F                mask to 4-bit palette index
+                    lda       a,u                 translate through CoCo palette
+                    sta       ,y+                 write translated pixel, advance Y
+                    decb                          one fewer pixel this row
+                    bne       DrawPixelInner      loop until row complete
+                    dec       <RowCount           one fewer row remaining
+                    beq       DrawStripDone       pull our y and exit routine
+                    ldd       <RowStride          load row stride
+                    leay      d,y                 advance Y to next screen row
+                    abx                           advance X by B (stride)
+                    cmpx      #$6000              check if X wrapped below screen base
+                    bcs       DrawRowOuter        branch if still in range
 
-                    orcc      #IntMasks           turn off interrupts $50
-                    lda       <u0042
-                    sta       >XFFA9              second block in task 1
-                    ldd       <u001E
-                    leax      >-$4000,x
-                    bra       L0198
-L01D1               puls      y
+                    orcc      #IntMasks           disable interrupts for block remap
+                    lda       <SierraPdBlk        reload Sierra PD block#
+                    sta       >DatTask1Slot1      second block in task 1
+                    ldd       <BlkMapHigh         load high block map for remap
+                    leax      >-$4000,x           adjust X by -$4000 for new window
+                    bra       MapBlockAndRender   remap and continue rendering
+DrawStripDone       puls      y                   restore Y
                     rts
 
 
-L01D4               ldd       $02,s
-                    sta       <u0047
-                    incb
-                    subb      $04,s
-                    lda       #$A0
-                    mul
-                    addd      <u0046              Hi res screen mem address ($6000)
-                    addd      <u002C
-                    tfr       d,x
-                    ldd       $04,s
-                    std       <u009E
-                    ldb       #$A0
-                    subb      <u009F
-                    stb       <u00A0
-                    leau      >L008C,pcr
-                    lda       $07,s
-                    anda      #$0F
-                    lda       a,u
+FillSolidRect       ldd       $02,s               load row/column args from stack
+                    sta       <ScrAddrLo          save row as screen address low
+                    incb                          B = bottom row + 1
+                    subb      $04,s               B = strip height
+                    lda       #$A0                A = 160
+                    mul                           D = height × 160
+                    addd      <ScrAddrHi          Hi res screen mem address ($6000)
+                    addd      <HiResBase          add base screen offset
+                    tfr       d,x                 X = starting screen address
+                    ldd       $04,s               load dimension arg
+                    std       <RowCount           save row count / strip width
+                    ldb       #$A0                B = 160
+                    subb      <StripWidth         B = stride = 160 - strip width
+                    stb       <RowStride          save row stride
+                    leau      >CocoViewPal,pcr    point U to CoCo palette table
+                    lda       $07,s               load fill color index
+                    anda      #$0F                mask to 4-bit palette index
+                    lda       a,u                 look up translated fill color
 
-L01F8               ldb       <u009F
-L01FA               sta       ,x+
-                    decb
-                    bne       L01FA
+FillRowOuter        ldb       <StripWidth         pixels to fill in this row
+FillPixelInner      sta       ,x+                 write fill color, advance X
+                    decb                          one fewer pixel this row
+                    bne       FillPixelInner      loop until row filled
 
-                    dec       <u009E
-                    beq       L0208
-                    ldb       <u00A0
-                    abx
-                    bra       L01F8
-L0208               rts
+                    dec       <RowCount           one fewer row remaining
+                    beq       FillRectDone        done when all rows filled
+                    ldb       <RowStride          load row stride
+                    abx                           advance X to next row
+                    bra       FillRowOuter        fill next row
+FillRectDone        rts
 
 
-L0209               leas      -$04,s
-                    ldd       $0A,s
-                    std       $02,s
-                    ldd       $08,s
-                    std       ,s
-                    lda       $07,s
+CopyStrip           leas      -$04,s              allocate 4 scratch bytes on stack
+                    ldd       $0A,s               load destination arg (shifted by alloc)
+                    std       $02,s               stash destination in scratch[2]
+                    ldd       $08,s               load source arg
+                    std       ,s                  stash source in scratch[0]
+                    lda       $07,s               load destination row
+                    lsla                          row × 2
+                    lsla                          row × 4
+                    lsla                          row × 8
+                    ldb       #$A0                B = 160
+                    mul                           D = row × 8 × 160 = row × 1280
+                    std       <DrawY1             save Y pixel offset for destination
+                    clra                          clear A
+                    ldb       $01,s               load scratch[1]
+                    lslb                          × 2
+                    lslb                          × 4 (column × 4 bytes per glyph col)
+                    ldu       <DrawY1             load Y pixel offset
+                    leau      >$6000,u            add screen base $6000
+                    ldb       $02,s               load scratch[2]
+                    lslb                          × 2
+                    lslb                          × 4
+                    lslb                          × 8 (source col × 8)
+                    lda       #$A0                A = 160
+                    mul                           D = source col × 8 × 160
+                    leax      d,u                 X = source screen address
+                    lda       $03,s               load source row
                     lsla
                     lsla
-                    lsla
-                    ldb       #$A0
-                    mul
-                    std       <u00A2
-                    clra
-                    ldb       $01,s
-                    lslb
-                    lslb
-                    ldu       <u00A2
-                    leau      >$6000,u
-                    ldb       $02,s
-                    lslb
-                    lslb
-                    lslb
-                    lda       #$A0
-                    mul
-                    leax      d,u
-                    lda       $03,s
-                    lsla
-                    lsla
-                    lsla
-                    ldb       $01,s
-                    subb      ,s
-                    lslb
-                    lslb
-                    addb      #$03
-L023F               pshs      b,a
-L0241               lda       b,u
-                    sta       b,x
-                    decb
-                    bpl       L0241
-                    puls      b,a
-                    leau      >$00A0,u
-                    leax      >$00A0,x
-                    cmpx      #$D800
-                    bcc       L025A
-                    deca
-                    bne       L023F
-L025A               leas      $04,s
+                    lsla                          source row × 8
+                    ldb       $01,s               load scratch[1] (dest col)
+                    subb      ,s                  subtract scratch[0] (src col)
+                    lslb                          × 2
+                    lslb                          × 4
+                    addb      #$03                add 3 for glyph pixel width
+CopyRowOuter        pshs      b,a                 save row index and column count
+CopyPixelInner      lda       b,u                 read source pixel at offset B
+                    sta       b,x                 write to destination at offset B
+                    decb                          step back one pixel
+                    bpl       CopyPixelInner      loop while B >= 0
+                    puls      b,a                 restore row index and count
+                    leau      >$00A0,u            advance U to next source row
+                    leax      >$00A0,x            advance X to next dest row
+                    cmpx      #$D800              check if X reached screen end
+                    bcc       CopyStripDone       done if past end of screen
+                    deca                          one fewer row
+                    bne       CopyRowOuter        loop while rows remain
+CopyStripDone       leas      $04,s               free scratch bytes
                     rts
 
 
 
-L025D               leas      -$04,s
-                    ldx       $06,s
-                    ldu       ,x
-L0263               stu       ,s
-                    beq       L029D
-                    ldu       $04,u
-                    stu       $02,s
-                    pshs      u
-                    lbsr      L02A0
-                    leas      $02,s
-                    ldu       $02,s
-                    lda       $01,u
-                    cmpa      ,u
-                    bne       L0297
-                    ldd       $03,u
-                    cmpd      <$1A,u
-                    bne       L028C
-                    lda       <$25,u
-                    ora       #$40
-                    sta       <$25,u
-                    bra       L0297
-L028C               std       <$1A,u
-                    lda       <$25,u
-                    anda      #$BF
-                    sta       <$25,u
-L0297               ldu       ,s
-                    ldu       ,u
-                    bra       L0263
-L029D               leas      $04,s
+UpdateViewList      leas      -$04,s              allocate 4 scratch bytes
+                    ldx       $06,s               load pointer to view list head
+                    ldu       ,x                  load first node pointer
+ViewListLoop        stu       ,s                  save current node in scratch
+                    beq       ViewListDone        null pointer = end of list
+                    ldu       $04,u               load next node's data pointer
+                    stu       $02,s               save next pointer in scratch[2]
+                    pshs      u                   push view ptr as DrawView arg
+                    lbsr      DrawView            render this view
+                    leas      $02,s               pop DrawView arg
+                    ldu       $02,s               reload next pointer
+                    lda       $01,u               load view attribute byte
+                    cmpa      ,u                  compare with previous attribute
+                    bne       ViewListNext        skip coord update if changed
+                    ldd       $03,u               load current X,Y coords
+                    cmpd      <$1A,u              compare with previous coords
+                    bne       UpdateViewCoords    branch if position changed
+                    lda       <$25,u              load view flags byte
+                    ora       #$40                set bit 6 (stable/unchanged flag)
+                    sta       <$25,u              store updated flags
+                    bra       ViewListNext
+UpdateViewCoords    std       <$1A,u              save new coords as previous
+                    lda       <$25,u              load view flags
+                    anda      #$BF                clear bit 6 (position changed)
+                    sta       <$25,u              store updated flags
+ViewListNext        ldu       ,s                  load current node from scratch
+                    ldu       ,u                  follow next-node link
+                    bra       ViewListLoop        process next node
+ViewListDone        leas      $04,s               free scratch bytes
                     rts
 
 
-L02A0               lda       >X0100              pic_visible
-                    lbeq      L0344
-                    ldu       $02,s
-                    ldd       $08,u
-                    lbsr      L0071
-                    ldx       <$10,u
-                    ldd       ,x
-                    std       <u00A0
-                    ldd       <$14,u
-                    lbsr      L0071
-                    ldx       <$12,u
-                    ldd       ,x
-                    std       <u009E
-                    ldd       <$10,u
-                    std       <$12,u
-                    ldd       $08,u
-                    std       <$14,u
-                    lda       $04,u
-                    ldb       <u00A1
-                    cmpa      <$1B,u
-                    bcs       L02E1
-                    sta       <u00A3
-                    stb       <u00A4
-                    lda       <$1B,u
-                    ldb       <u009F
-                    bra       L02EC
-L02E1               ldb       <$1B,u
-                    stb       <u00A3
-                    ldb       <u009F
-                    stb       <u00A4
-                    ldb       <u00A1
-L02EC               stb       <u00A8
-                    inca
-                    suba      <u00A8
-                    ldb       <u00A3
-                    incb
-                    subb      <u00A4
-                    stb       <u00A7
-                    cmpa      <u00A7
-                    bcs       L02FE
-                    lda       <u00A7
-L02FE               nega
-                    adda      <u00A3
-                    inca
-                    sta       <u00A4
-                    lda       $03,u
-                    ldb       <u00A0
-                    cmpa      <$1A,u
-                    bhi       L0318
-                    sta       <u00A2
-                    stb       <u00A9
-                    lda       <$1A,u
-                    ldb       <u009E
-                    bra       L0323
-L0318               ldb       <$1A,u
-                    stb       <u00A2
-                    ldb       <u009E
-                    stb       <u00A9
-                    ldb       <u00A0
-L0323               stb       <u00AA
-                    adda      <u00AA
-                    sta       <u00A6
-                    lda       <u00A2
-                    adda      <u00A9
-                    cmpa      <u00A6
-                    bhi       L0333
-                    lda       <u00A6
-L0333               suba      <u00A2
-                    sta       <u00A5
-                    ldd       <u00A4
-                    pshs      b,a
-                    ldd       <u00A2
-                    pshs      b,a
-                    lbsr      L015A
-                    leas      $04,s
-L0344               rts
+DrawView            lda       >PicVisible         pic_visible
+                    lbeq      DrawViewDone        skip draw if picture not visible
+                    ldu       $02,s               load view structure pointer
+                    ldd       $08,u               load block number from view struct
+                    lbsr      SetMapBlock         map the block for source data
+                    ldx       <$10,u              load pointer from view struct offset $10
+                    ldd       ,x                  load word at that pointer (view width)
+                    std       <RowStride          save as row stride
+                    ldd       <$14,u              load block number from view+$14
+                    lbsr      SetMapBlock         map the second block
+                    ldx       <$12,u              load pointer from view struct offset $12
+                    ldd       ,x                  load word at that pointer (view height)
+                    std       <RowCount           save as row count
+                    ldd       <$10,u              reload view+$10
+                    std       <$12,u              update view+$12 with it
+                    ldd       $08,u               reload view block number
+                    std       <$14,u              update view+$14 with it
+                    lda       $04,u               load view X position
+                    ldb       <ViewRightX         load right-edge clip X
+                    cmpa      <$1B,u              compare X with view's prev X
+                    bcs       ClipXSmall          branch if cur X < prev X
+                    sta       <ClipLeft           save X as left clip boundary
+                    stb       <ClipRight          save right-edge as clip right
+                    lda       <$1B,u              load previous X
+                    ldb       <StripWidth         load strip pixel width
+                    bra       ComputeClipWidth
+ClipXSmall          ldb       <$1B,u              load previous X as left clip
+                    stb       <ClipLeft           save as left boundary
+                    ldb       <StripWidth         load strip width
+                    stb       <ClipRight          save as right boundary
+                    ldb       <ViewRightX         load right-edge X
+ComputeClipWidth    stb       <OverlapLeft        save overlap left boundary
+                    inca                          A = cur X + 1
+                    suba      <OverlapLeft        A = overlap width candidate
+                    ldb       <ClipLeft           load clip left
+                    incb                          B = ClipLeft + 1
+                    subb      <ClipRight          B = clip width
+                    stb       <ClipWidth          save clip width
+                    cmpa      <ClipWidth          compare overlap vs clip width
+                    bcs       AdjustClipWidth     use clip width if overlap is smaller
+                    lda       <ClipWidth          use clip width as limit
+AdjustClipWidth     nega                          negate to invert
+                    adda      <ClipLeft           A = ClipLeft - overlap width
+                    inca                          adjust for final right clip
+                    sta       <ClipRight          save computed clip right
+                    lda       $03,u               load view Y position
+                    ldb       <RowStride          load row stride
+                    cmpa      <$1A,u              compare Y with view's prev Y
+                    bhi       ClipYGreater        branch if cur Y > prev Y
+                    sta       <DrawY1             save Y as top of draw region
+                    stb       <OverlapTop         save row stride as overlap top
+                    lda       <$1A,u              load previous Y
+                    ldb       <RowCount           load row count
+                    bra       ComputeClipHeight
+ClipYGreater        ldb       <$1A,u              load previous Y as draw start
+                    stb       <DrawY1             save as top of draw region
+                    ldb       <RowCount           load row count
+                    stb       <OverlapTop         save as overlap top
+                    ldb       <RowStride          load row stride
+ComputeClipHeight   stb       <OverlapSize        save overlap size
+                    adda      <OverlapSize        A = Y + overlap = bottom extent
+                    sta       <ClipBottom         save as clip bottom
+                    lda       <DrawY1             load draw start Y
+                    adda      <OverlapTop         add overlap top to get draw bottom
+                    cmpa      <ClipBottom         compare against clip bottom
+                    bhi       SetupDrawCall       use draw bottom if it exceeds clip
+                    lda       <ClipBottom         use clip bottom as limit
+SetupDrawCall       suba      <DrawY1             height = bottom - top
+                    sta       <ClipHeight         save computed clip height
+                    ldd       <ClipRight          load clip right/left pair
+                    pshs      b,a                 push column args for DrawStrip
+                    ldd       <DrawY1             load draw Y start / clip height
+                    pshs      b,a                 push row args for DrawStrip
+                    lbsr      DrawStrip           render clipped view to screen
+                    leas      $04,s               pop 4 bytes of args
+DrawViewDone        rts
 
 * This jumbled mass of bytes disassembles
 * but looks like a data block
 * or probably a bit map ???
-* L0345 - L0745 is 1024 bytes of data
+* BitmapFont - DrawSprites is 1024 bytes of data
 
-L0345               fcb       $00,$00,$00,$00
+BitmapFont          fcb       $00,$00,$00,$00
                     fcb       $00,$00,$00,$00
                     fcb       $7E,$81,$A5,$81
                     fcb       $BD,$99,$81,$7E
@@ -789,71 +792,71 @@ L0345               fcb       $00,$00,$00,$00
                     fcb       $00,$10,$38,$6C
                     fcb       $C6,$C6,$FE,$00
 
-L0745               leas      -$02,s
-                    pshs      y
-                    ldx       $06,s
-                    ldu       #X024E
-                    lda       <u0040
-                    lsla
-                    lsla
-                    lsla
-                    ldb       #$A0
-                    mul
-                    tfr       d,y
-                    clra
-                    ldb       <u0041
-                    lslb
-                    lslb
-                    addd      #$6000
-                    leay      d,y
-L0762               tst       ,x
-                    lbeq      L07B0
-                    ldb       ,x+
-                    stx       $06,s
-                    leax      >L0345,pcr
-                    lslb
-                    abx
-                    abx
-                    abx
-                    abx
-                    lda       #$08
-                    sta       $02,s
-L0779               ldb       ,x+
-                    lda       #$04
-                    sta       $03,s
-L077F               sex
-                    lda       a,u
-                    anda      #$F0
-                    sta       ,y
-                    lslb
-                    sex
-                    lda       a,u
-                    anda      #$0F
-                    ora       ,y
-                    ora       <u0045              flag for palettes set in sierra
-                    sta       ,y+
-                    lslb
-                    dec       $03,s
-                    bne       L077F
-                    lda       <u0045              flag for palettes set in sierra
-                    beq       L079E
-                    coma
-                    sta       <u0045              flag for palettes set in sierra
-L079E               leay      >$009C,y
-                    dec       $02,s
-                    bne       L0779
-                    ldx       $06,s
-                    inc       <u0041
-                    leay      >-$04FC,y
-                    bra       L0762
-L07B0               puls      y
-                    leas      $02,s
+DrawSprites         leas      -$02,s              allocate 2 scratch bytes
+                    pshs      y                   save Y register
+                    ldx       $06,s               load pointer to glyph data
+                    ldu       #SierraPalette      point U to Sierra palette table
+                    lda       <SprCurRow          load current sprite row
+                    lsla                          row × 2
+                    lsla                          row × 4
+                    lsla                          row × 8
+                    ldb       #$A0                B = 160
+                    mul                           D = row × 8 × 160 = pixel row offset
+                    tfr       d,y                 Y = row pixel offset
+                    clra                          clear A for column calculation
+                    ldb       <SprCurCol          load current sprite column
+                    lslb                          col × 2
+                    lslb                          col × 4 (bytes per glyph col)
+                    addd      #$6000              add screen base $6000
+                    leay      d,y                 Y = screen address for this glyph
+DrawSpriteLoop      tst       ,x                  test next glyph byte
+                    lbeq      DrawSpritesDone     zero byte = end of glyph data
+                    ldb       ,x+                 load glyph index, advance X
+                    stx       $06,s               save updated X pointer in scratch
+                    leax      >BitmapFont,pcr     point X to bitmap font table
+                    lslb                          index × 2
+                    abx                           advance X by index×2
+                    abx                           advance X by index×2 again
+                    abx                           advance X by index×2 again
+                    abx                           X now points to glyph (index × 8)
+                    lda       #$08                A = 8 rows per glyph
+                    sta       $02,s               save row counter in scratch
+DrawSpriteRow       ldb       ,x+                 load 8-bit row bitmap, advance X
+                    lda       #$04                A = 4 pixel pairs per row
+                    sta       $03,s               save pixel pair counter
+DrawSpritePixel     sex                           sign-extend B into A (B MSB → A)
+                    lda       a,u                 look up high nibble color in palette
+                    anda      #$F0                keep high nibble only
+                    sta       ,y                  write high-color pixel to screen
+                    lslb                          shift next pixel bit into sign
+                    sex                           sign-extend B for low nibble
+                    lda       a,u                 look up low nibble color in palette
+                    anda      #$0F                keep low nibble only
+                    ora       ,y                  merge with high nibble on screen
+                    ora       <PaletteFlag        flag for palettes set in sierra
+                    sta       ,y+                 write merged pixel byte, advance Y
+                    lslb                          shift next pixel bits
+                    dec       $03,s               one fewer pixel pair this row
+                    bne       DrawSpritePixel     loop for all 4 pairs
+                    lda       <PaletteFlag        flag for palettes set in sierra
+                    beq       FlipPaletteFlag     skip invert if flag already zero
+                    coma                          invert A ($FF → $00)
+                    sta       <PaletteFlag        flag for palettes set in sierra
+FlipPaletteFlag     leay      >$009C,y            advance Y to next glyph row ($9C = 156)
+                    dec       $02,s               one fewer glyph row remaining
+                    bne       DrawSpriteRow       loop for all 8 glyph rows
+                    ldx       $06,s               restore X pointer to glyph list
+                    inc       <SprCurCol          advance to next sprite column slot
+                    leay      >-$04FC,y           rewind Y back to top of this glyph col
+                    bra       DrawSpriteLoop      process next glyph
+DrawSpritesDone     puls      y                   restore Y register
+                    leas      $02,s               free scratch bytes
                     rts
 
-L07B5               fcb       $00,$00,$00,$00
+EndPad              fcb       $00,$00,$00,$00
                     fcb       $00,$00,$00,$00
-L07BD               fcc       /scrn/
-L07C1               fcb       $00
+EndName             fcc       /scrn/
+EndNull             fcb       $00
 
                     emod
 eom                 equ       *
