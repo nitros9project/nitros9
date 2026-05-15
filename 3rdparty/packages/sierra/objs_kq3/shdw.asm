@@ -42,13 +42,13 @@
 
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
-rev                 set       $00
+rev                 set       $01
                     mod       eom,name,tylg,atrv,start,size
 
 size                equ       .
 
 GimeMmuReg          equ       $FFA9               GIME task-1 MMU register (maps $2000–$3FFF)
-StateFlag           equ       $01AF               Sierra state.flag byte (ego signal / water / invis)
+StateFlag           equ       $01AE               Sierra state.flag byte (ego signal / water / invis)
 GivenPicDataPtr     equ       $0551               given_pic_data pointer (set by pic_res.c)
 
 
@@ -65,27 +65,27 @@ PenStatus           equ       $006B               pen_status
 
 * these look like gen purpose scratch vars
 
-PosInitX            equ       $009E
-PosInitY            equ       $009F
-PosFinalX           equ       $00A0
-PosFinalY           equ       $00A1
-ScratchA2           equ       $00A2
-ScratchA3           equ       $00A3
-ScratchA4           equ       $00A4
-ScratchA5           equ       $00A5
-ScratchA6           equ       $00A6
-ScratchA7           equ       $00A7
-ScratchA8           equ       $00A8
-ScratchA9           equ       $00A9
-ScratchAA           equ       $00AA
-ScratchAB           equ       $00AB
-ScratchAC           equ       $00AC
-ScratchAD           equ       $00AD
-FillColorBl         equ       $00AE
-MaskDl              equ       $00AF
-OldBuff             equ       $00B0
-TempBuff            equ       $00B2
-PriHeight           equ       $00B3
+PosInitX            equ       $00A0
+PosInitY            equ       $00A1
+PosFinalX           equ       $00A2
+PosFinalY           equ       $00A3
+ScratchA2           equ       $00A4
+ScratchA3           equ       $00A5
+ScratchA4           equ       $00A6
+ScratchA5           equ       $00A7
+ScratchA6           equ       $00A8
+ScratchA7           equ       $00A9
+ScratchA8           equ       $00AA
+ScratchA9           equ       $00AB
+ScratchAA           equ       $00AC
+ScratchAB           equ       $00AD
+ScratchAC           equ       $00AE
+ScratchAD           equ       $00AF
+FillColorBl         equ       $00B0
+MaskDl              equ       $00B1
+OldBuff             equ       $00B2
+TempBuff            equ       $00B4
+PriHeight           equ       $00B5
 
 
 
@@ -200,9 +200,9 @@ BinaryList          fdb       $8000
 
 * circle_data[] (pic_render.c)
 CircleData          fdb       $8000
+                    fdb       $4000
                     fdb       $e000
-                    fdb       $e000
-                    fdb       $e000
+                    fdb       $4000
                     fdb       $7000
                     fdb       $f800
                     fdb       $f800
@@ -283,17 +283,17 @@ CircleList          fcb       $00,$00             0
 
 * select case dispatch table for pic_cmd_loop()
 
-CmdDispatchTable    fdb       $01bc               enable_pic_draw()
-                    fdb       $01c9               disable_pic_draw()
-                    fdb       $01d4               enable_pri_draw()
-                    fdb       $01e9               disable_pri_draw()
-                    fdb       $02de               draw_y_corner()
-                    fdb       $02d1               draw_x_corner()
-                    fdb       $0309               absolute_line()
-                    fdb       $031d               relative_line()
-                    fdb       $0359               pic_fill()
-                    fdb       $0211               read_pen_status()
-                    fdb       $01f4               plot_with_pen()
+CmdDispatchTable    fdb       EnablePicDraw       enable_pic_draw()
+                    fdb       DisablePicDraw      disable_pic_draw()
+                    fdb       EnablePriDraw       enable_pri_draw()
+                    fdb       DisablePriDraw      disable_pri_draw()
+                    fdb       DrawYCorner         draw_y_corner()
+                    fdb       DrawXCorner         draw_x_corner()
+                    fdb       AbsoluteLine        absolute_line()
+                    fdb       RelativeLine        relative_line()
+                    fdb       PicFill             pic_fill()
+                    fdb       ReadPenStatus       read_pen_status()
+                    fdb       PlotWithPen         plot_with_pen()
 
 
 * ====== AddLoadOffsets: Patch Command Dispatch Table on First Call ======
@@ -480,13 +480,14 @@ PlotWithPen         lda       PenStatus           pen_status
 *                      in the earlier versions of software...
 *                      if it is less than $F0 it's just a picture byte
 *                      fix next rev.
-                    lblo      CmdReturn           branch to a return statement miles away (could be fixed)
+                    lbcc      CmdReturn           branch to a return statement miles away (could be fixed)
                     sta       ScratchA6           save our pic_byte in texture_num
 PlotWithPenCalc     lbsr      ReadXyPos           call read_xy_postion
                     lblo      CmdReturn           far off rts
                     std       ScratchA2           pen x/y position
-                    bsr       PlotWithPen2        call plot_with_pen2()
-                    bra       PlotWithPen         go again ...
+                    fcb       $34,$10,$8D,$0B,$35,$10,$20,$DF
+*      bsr   PlotWithPen2      call plot_with_pen2()
+*      bra   PlotWithPen       go again ...
 *                      yes there is no rts here in the c source either
 
 
@@ -550,7 +551,7 @@ PlotWithPen2        ldb       PenStatus           pen_status
                     bra       PenXFinal           use clamped zero value
 PenXOk              std       ScratchAB           store pen_x at scratch
 
-                    ldd       #$0140              start with 320
+                    ldd       #$013E              start with 320
                     subd      ScratchA9           subtract 2 x pen.size
                     cmpd      ScratchAB           pen_x to calc
                     bls       PenXFinal           if pen_x is greater keep temp calc
@@ -589,8 +590,8 @@ PenYStore           sta       ScratchA3           pen_y
                     lslb                          shift b left (multiply by 2)
 
                     leax      BinaryList,pcr      binary list[]
-                    ldd       b,x                 use 2x pensize + 1 to index into list
-                    std       ScratchAD           pen width ???
+                    abx                           advance x to table entry at offset B
+                    stx       ScratchAD           pen width pointer
 
 *   this looks like it should have been nested for loops
 *   but not coded that way in pic_render.c
@@ -1396,44 +1397,7 @@ BlitListDrawDone    leas      $02,s               clean up stack and leave
 * From obj_picbuff.c the pri_table[172]
 * ours is only 168
 pri_table
-PriTableBase        fcb       $00,$00,$00,$00,$00,$00
-                    fcb       $00,$00,$00,$00,$00,$00
-                    fcb       $00,$00,$00,$00,$00,$00
-                    fcb       $00,$00,$00,$00,$00,$00
-                    fcb       $00,$00,$00,$00,$00,$00
-                    fcb       $00,$00,$00,$00,$00,$00
-                    fcb       $00,$00,$00,$00,$00,$00
-                    fcb       $00,$00,$00,$00,$00,$00
-
-                    fcb       $00,$00,$00,$00,$00,$00
-                    fcb       $00,$00,$00,$00,$00,$00
-
-                    fcb       $00,$00,$00,$00,$00,$00
-                    fcb       $00,$00,$00,$00,$00,$00
-
-                    fcb       $00,$00,$00,$00,$00,$00
-                    fcb       $00,$00,$00,$00,$00,$00
-
-                    fcb       $00,$00,$00,$00,$00,$00
-                    fcb       $00,$00,$00,$00,$00,$00
-
-                    fcb       $00,$00,$00,$00,$00,$00
-                    fcb       $00,$00,$00,$00,$00,$00
-
-                    fcb       $00,$00,$00,$00,$00,$00
-                    fcb       $00,$00,$00,$00,$00,$00
-
-                    fcb       $00,$00,$00,$00,$00,$00
-                    fcb       $00,$00,$00,$00,$00,$00
-
-                    fcb       $00,$00,$00,$00,$00,$00
-                    fcb       $00,$00,$00,$00,$00,$00
-
-                    fcb       $00,$00,$00,$00,$00,$00
-                    fcb       $00,$00,$00,$00,$00,$00
-
-                    fcb       $00,$00,$00,$00,$00,$00
-                    fcb       $00,$00,$00,$00,$00,$00
+PriTableBase
 
 * loops thru 48 bytes with a = 4
 * bumps a by one load b with 12 this
@@ -1441,7 +1405,11 @@ PriTableBase        fcb       $00,$00,$00,$00,$00,$00
 * bumping acca by one as it goes.
 
 * table_init()   obj_pic_buff.c
-TableInit           leax      PriTableBase,pcr    point to data block
+TableInit
+                    fcb       $B6,$05,$EE         lda $05EE (priority table address)
+                    fcb       $81,$FF             cmpa #$FF
+                    fcb       $26,$15             bne +21
+                    fcb       $8E,$05,$EE         ldx #$05EE (set x to table address)
                     ldb       #$30                load index 48
                     lda       #4                  load acca = 4
 TableInitLoop       sta       ,x+                 save a in buffer
@@ -1556,7 +1524,8 @@ ObjChkControl       pshs      y                   save y
                     bita      #O_PRIFIXED         and with $04 but don't change
                     bne       SkipPriCalc         not zero move on
 *                         it is zero then
-                    leau      PriTableBase,pcr    load buffer address
+                    fcb       $ce,$05,$ee         load buffer address
+*      leau  PriTableBase,pcr    load buffer address
                     clra                          clear a since we will use d as an index
                     lda       d,u                 fetch the data from pri_table
                     sta       $24,x               save as priority
@@ -1941,7 +1910,8 @@ ObjAddPicPri        pshs      y                   save the y
 *                      set up d as pointer to pri_table value
                     clra                          zero a
                     ldb       $04,x               load view y value
-                    leau      PriTableBase,pcr    load pri_table address
+                    fcb       $CE,$05,$EE         load pri_table address
+*      leau  PriTableBase,pcr    load pri_table address
                     lda       d,u                 fetch the pri_table y data
                     std       ScratchA3           stow it in a temp
                     ldb       $24,x               load priority
@@ -1958,7 +1928,8 @@ SkipPriAdjust       pshs      x                   push the pointer to the view o
                     cmpa      #$3F                compare to $3F
                     lbhi      ObjAddPicPriDone    if greater then nothing to do head out
 
-                    leau      PriTableBase,pcr    load pri_table address
+                    fcb       $CE,$05,$EE         load pri_table address
+*      leau  PriTableBase,pcr    load pri_table address
                     ldb       ScratchA4           fetch pri_table[y] (cx)
                     clr       PriHeight           clear pri_height
 PriHeightLoop       clra                          zero acca
