@@ -4,16 +4,6 @@
 * Note the header shows a data size of 0 called from the sierra module
 * and accesses data set up in that module.
 *
-*       Header for : scrn
-*       Module size: $7C5  #1989
-*       Module CRC : $F3E370 (Good)
-*       Hdr parity : $EA
-*       Exec. off  : $0012  #18
-*       Data size  : $0000  #0
-*       Edition    : $00  #0
-*       Ty/La At/Rv: $11 $81
-*       Prog mod, 6809 Obj, re-ent, R/O
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

@@ -10,6 +10,7 @@
 *
 *   1      2003/03/10  Boisy G. Pitre
 * Monitor type bug now fixed.
+*
 *   2      2012/01/05  Robert Gault
 * Converted raw reads of $FFA0-$FFAF to a routine that gets images
 * from the system. Now works with 2 or 8Meg systems. Unfortunately
