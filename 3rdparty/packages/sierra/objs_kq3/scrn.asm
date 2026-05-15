@@ -58,19 +58,19 @@ ScrAddrLo           equ       $0047               second byte of hi res screen m
 u007E               equ       $007E
 u0080               equ       $0080
 u0081               equ       $0081
-RowCount            equ       $009E               busy address here
-StripWidth          equ       $009F
-RowStride           equ       $00A0
-ViewRightX          equ       $00A1
-DrawY1              equ       $00A2
-ClipLeft            equ       $00A3
-ClipRight           equ       $00A4
-ClipHeight          equ       $00A5
-ClipBottom          equ       $00A6
-ClipWidth           equ       $00A7
-OverlapLeft         equ       $00A8
-OverlapTop          equ       $00A9
-OverlapSize         equ       $00AA
+RowCount            equ       $00A0               busy address here
+StripWidth          equ       $00A1
+RowStride           equ       $00A2
+ViewRightX          equ       $00A3
+DrawY1              equ       $00A4
+ClipLeft            equ       $00A5
+ClipRight           equ       $00A6
+ClipHeight          equ       $00A7
+ClipBottom          equ       $00A8
+ClipWidth           equ       $00A9
+OverlapLeft         equ       $00AA
+OverlapTop          equ       $00AB
+OverlapSize         equ       $00AC
 u00C0               equ       $00C0
 u00C6               equ       $00C6
 u00CC               equ       $00CC
@@ -83,7 +83,7 @@ u00FE               equ       $00FE
 u00FF               equ       $00FF
 
 PicVisible          equ       $0100               pic_visible
-SierraPalette       equ       $024E
+SierraPalette       equ       $024D
 DatTask1Slot1       equ       $FFA9
 
 
@@ -386,7 +386,8 @@ CopyStrip           leas      -$04,s              allocate 4 scratch bytes on st
                     ldb       $01,s               load scratch[1]
                     lslb                          × 2
                     lslb                          × 4 (column × 4 bytes per glyph col)
-                    ldu       <DrawY1             load Y pixel offset
+                    addd      <DrawY1             add Y offset to screen address
+                    tfr       d,u                 transfer result to U (source pointer)
                     leau      >$6000,u            add screen base $6000
                     ldb       $02,s               load scratch[2]
                     lslb                          × 2
@@ -399,17 +400,21 @@ CopyStrip           leas      -$04,s              allocate 4 scratch bytes on st
                     lsla
                     lsla
                     lsla                          source row × 8
-                    ldb       $01,s               load scratch[1] (dest col)
-                    subb      ,s                  subtract scratch[0] (src col)
+                    ldb       ,s                  load scratch[0] (src col)
+                    subb      $01,s               subtract scratch[1] (dest col)
+                    incb                          +1 for pixel width
                     lslb                          × 2
                     lslb                          × 4
-                    addb      #$03                add 3 for glyph pixel width
-CopyRowOuter        pshs      b,a                 save row index and column count
-CopyPixelInner      lda       b,u                 read source pixel at offset B
-                    sta       b,x                 write to destination at offset B
+                    abx                           advance X by col delta
+                    exg       u,x                 swap src/dst pointers
+                    abx                           advance X (was U) by col delta
+                    exg       u,x                 swap back
+CopyRowOuter        pshs      u,x,b,a             save pointers, col count, row count
+CopyPixelInner      lda       ,-x                 read source pixel (reverse scan)
+                    sta       ,-u                 write to destination (reverse scan)
                     decb                          step back one pixel
-                    bpl       CopyPixelInner      loop while B >= 0
-                    puls      b,a                 restore row index and count
+                    bne       CopyPixelInner      loop until col count zero
+                    puls      u,x,b,a             restore pointers and counts
                     leau      >$00A0,u            advance U to next source row
                     leax      >$00A0,x            advance X to next dest row
                     cmpx      #$D800              check if X reached screen end

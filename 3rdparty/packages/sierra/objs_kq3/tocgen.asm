@@ -84,7 +84,7 @@ EPEXEC.             equ       %00100100           mask for public and owner exec
 
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
-rev                 set       $00
+rev                 set       $01
                     mod       eom,name,tylg,atrv,start,size
 
 
@@ -379,7 +379,7 @@ final               leax      >argv,u             get the address of the arg vec
                     pshs      b,a                 push argc onto stack for main()
 *        pshs  d          push it on the stack
 
-                    leay      0,u                 set Y = data base pointer (C convention)
+                    leay      ,u                  set Y = data base pointer (C convention)
 *                         see note above in restack
 *
 *    end of argv and argc processing
@@ -531,10 +531,10 @@ patch               pshs      x                   save the base
 
 patch10             ldd       ,y++                get the offset
                     leax      d,u                 point to location
-                    ldd       0,x                 get the relative reference
+                    ldd       ,x                  get the relative reference
                     addd      2,s                 add in the base
-                    std       0,x                 store the absolute reference
-                    cmpy      0,s                 reached the top?
+                    std       ,x                  store the absolute reference
+                    cmpy      ,s                  reached the top?
                     bne       patch10             no - round again
 
                     leas      4,s                 reset the stack

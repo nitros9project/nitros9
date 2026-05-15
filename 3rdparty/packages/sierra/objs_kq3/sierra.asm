@@ -40,7 +40,7 @@ StdErr              equ       2
 
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
-rev                 set       $00
+rev                 set       $01
 edition             set       1
 
                     mod       eom,name,tylg,atrv,start,size
@@ -86,7 +86,7 @@ GameState4F         rmb       4                   game state 4-byte field at $00
 InitParam53         rmb       2                   game init word at $53 (init $06CE)
 InitParam55         rmb       10                  game init words at $55–$5E (init $06CE)
 PathTable           rmb       163                 module name/path table
-GamePausedFlag      rmb       113                 game paused flag + game data [$102–$172]
+GamePausedFlag      rmb       112                 game paused flag + game data [$102–$171]
 MultitaskFlagCopy   rmb       1                   multitasking flag copied from startup parms
 HiResScrnNum        rmb       1                   allocated hi-res screen number
 GameStateBuf        rmb       212                 game state buffer [$175–$248]
@@ -100,9 +100,10 @@ VolTablePad         rmb       15                  pad after vol handle table
 GivenPicPtr         rmb       2                   given_pic_data (pointer)
 DisplayType         rmb       1                   display_type
 GameDataBuf         rmb       154                 general game data buffer
-int5EE              rmb       107                 slot for SigIntercept routine copy [$5EE–$658]
-sub659              rmb       116                 slot for MmuSwitch routine copy [$659–$6CC]
-u0xxx               rmb       6450                remaining data area [$6CD–$1FFE]
+                    rmb       169                 padding before SigIntercept/MmuSwitch slots
+int5EE              rmb       107                 slot for SigIntercept routine copy [$696–$700]
+sub659              rmb       117                 slot for MmuSwitch routine copy [$701–$775]
+u0xxx               rmb       6281                remaining data area [$776–$1FFE]
 size                equ       .
 
 * ====== Module Header ======
@@ -310,9 +311,9 @@ ClearLoop           std       ,x++                write zero word and advance po
 
 * initialize some variables
                     lda       >MultitaskFlag,pcr  multitasking flag from startup parms
-                    sta       <MultitaskFlagCopy   store multitask flag in data area
+                    sta       >MultitaskFlagCopy   store multitask flag in data area
 
-                    ldd       #$06CE              why twice
+                    ldd       #$0776              why twice
                     std       <InitParam53        initialize game parameter at $53
                     std       <InitParam55        initialize game parameter at $55
 
@@ -320,10 +321,10 @@ ClearLoop           std       ,x++                write zero word and advance po
                     sta       >$0101              store game state byte at $0101
 
                     lda       #$17                load constant for game state init
-                    sta       >$01D8              store game state byte at $01D8
+                    sta       >$01D7              store game state byte at $01D7
 
                     lda       #$0F                load constant for game state init
-                    sta       >$023F              store game state byte at $023F
+                    sta       >$023E              store game state byte at $023E
 
                     ldd       #$0000              zero value for game state word
                     std       <GameState4F        clear game state field at $004F
@@ -375,21 +376,19 @@ ClearLoop           std       ,x++                write zero word and advance po
 * initialize more variables
 
                     lda       #$32                load game state constant
-                    sta       >$0246              store game state byte at $0246
+                    sta       >$0245              store game state byte at $0245
 
                     ldd       #$6000              This is the start of high res screen memory
                     std       <ScrAddrHi          store hi-res screen start address
 
                     lda       #$15                load game state constant
-                    sta       >$0248              store game state byte at $0248
+                    sta       >$0247              store game state byte at $0247
 
                     lda       #$FF                Init 15 bytes at VolHandleTable to $FF
-                    ldb       #$0F                fill 15 bytes
-                    ldx       #$0532              point to VolHandleTable base
-                    bsr       FillBytes           fill table with $FF (invalid/unused)
-                    rts                           return from InitDataArea
+                    sta       $05EE
+                    ldb       #$10
+                    ldx       #$0531
 
-* ====== Fill Utility Routines ======
 * Fill routine-one byte pattern
 * Entry: A=Byte to fill with
 *        B=# bytes to fill
@@ -398,17 +397,7 @@ ClearLoop           std       ,x++                write zero word and advance po
 FillBytes           sta       ,x+                 store fill byte and advance pointer
                     decb                          decrement byte count
                     bne       FillBytes           loop until count reaches zero
-                    rts                           return from FillBytes
-
-* Fill routine-two byte pattern
-* Entry: U=2-Byte pattern to fill with
-*        B=# bytes to fill
-*        X=Start address of fill
-*                                     NO BODY CALLS HERE ??
-FillWords           stu       ,x++                store 2-byte pattern and advance pointer
-                    decb                          decrement fill count
-                    bne       FillWords           loop until done
-                    rts                           return from FillWords
+                    rts                           return from FillBytes/InitDataArea
 
 * ====== DisableKbdInt: Save and Suppress Keyboard Signals ======
 *  Raw disassembly of followin code
@@ -619,7 +608,7 @@ SetupScreen         leas      -$04,s              mamke room om stack 2 words
                     bcs       ScreenSetupRet      Error, Restore stack & exit
                     tfr       y,d                 Move screen # returned to D
 *         stb   >$0174      Save screen #
-                    stb       <HiResScrnNum        save allocated hi-res screen number
+                    stb       >HiResScrnNum        save allocated hi-res screen number
 
 * call with application address of screen in x
 * returns with values in u
@@ -656,7 +645,7 @@ ClearScreenLoop     std       ,--u                writes 0000 to screen address 
 *       b  -> error code (if any)
 
                     clra                          Get screen # to display
-                    ldb       <HiResScrnNum        load allocated screen number
+                    ldb       >HiResScrnNum        load allocated screen number
                     tfr       d,y                 Y=screen # to display
                     lda       #StdOut             $01  Std out path
                     ldb       #SS.DScrn           Display 320x192x16 screen
@@ -830,7 +819,7 @@ SetOptsDone         leas      <$20,s              Eat temp stack & return
 
 RestoreScreen       leas      -2,s                Make temp buffer to hold write data
 *         tst   >$0174       Any hi-res screen # allocated?
-                    tst       <HiResScrnNum        any hi-res screen number allocated?
+                    tst       >HiResScrnNum        any hi-res screen number allocated?
                     beq       RestoreScreenRet    No, restore stack & return
                     lbsr      DisableKbdInt       go change the echo,eof,int and quit settings
                     bcs       RestoreScreenRet    had an error restore stack and return
@@ -876,7 +865,7 @@ RestoreScreen       leas      -2,s                Make temp buffer to hold write
 *       b  -> error code (if any)
 
                     clra                          clear high byte
-                    ldb       <HiResScrnNum        get hi-res screen number again
+                    ldb       >HiResScrnNum        get hi-res screen number again
                     tfr       d,y                 move it to Y=screen #
                     lda       #StdOut             set the path $01
                     ldb       #SS.FSCrn           Return screen memory to system
@@ -1138,7 +1127,7 @@ SetupVirq           ldu       #$0000              start of Sierra memory area
 * Allocate process+path RAM blocks
 
                     ldb       #SS.ARAM            $CA function code for VIRQ
-                    ldx       #$000C              request 12 RAM blocks
+                    ldx       #$000D              request 13 RAM blocks
                     os9       I$SetStt            make the call
                     bcs       SetupVirqRet        abort if allocation failed
                     pshs      x                   save allocated RAM pointer
