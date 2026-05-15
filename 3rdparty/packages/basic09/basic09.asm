@@ -74,8 +74,8 @@
 * Obtained from Curtis Boyle, marked V1.1.0.
 *
 *  V1.21   1994/06/17  NitrOS-9 Project
-* Changed intercept routine @ INTCPT: Replaced LSL <u0034/COMA/
-*            ROR <u0034/RTI with OIM #$80,<u0034/RTI/NOP/NOP
+* Changed intercept routine @ INTCPT: Replaced LSL <SigFlag/COMA/
+*            ROR <SigFlag/RTI with OIM #$80,<SigFlag/RTI/NOP/NOP
 * Changed routine @ start:
 *               FROM                TO
 *          4   LEAU >$100,u    4   LDW #$100
@@ -88,10 +88,10 @@
 * Changed CLRA/LDB #$01 to LDD #$0001 @ end of start
 *
 *  V1.21   1994/06/22  NitrOS-9 Project
-* Changed L0DBB (reset temp buffer to empty state) to use PSHS D
-* LDA #1 / STA <u007D / LDD <u0080 / STD <u0082 / PULS PC,D
+* Changed ResetTmpBuf (reset temp buffer to empty state) to use PSHS D
+* LDA #1 / STA <TmpBufCount / LDD <TmpBufBase / STD <TmpBufCur / PULS PC,D
 *            (saves 5 cycles) ALSO WORKS AS 6809 MOD
-* Changed BEQ L08E3 to BEQ L08E5 @ RUNCMD (Std in for commands)
+* Changed BEQ L08E3 to BEQ ReadLine @ RUNCMD (Std in for commands)
 * Changed numerous CLRA/CLRB and COMA/COMB to CLRD & COMD respectiv
 *            just to shorten source
 *
@@ -114,217 +114,217 @@
 *
 *  V1.21   1994/12/28  NitrOS-9 Project
 * Worked, changed 16 bit,pc's to 8 bit,pc's @:
-*            L0DFC  leax INTRTS,pc  *
-*            L1436  leax L1434,pc  *
-*            L15B3  leax L15AA,pc  *
-*            L1B97  leax L1B93,pc  *  (Doesn't seem to be referenced)
-*            SYSSUB  leax L39DA,pc  *
-*            L4751  leax L474D,pc  *
-*            L479F  leax L479A,pc  *
-*            CNOR20  leax L4805,pc  *
-*            L4B03  leau L4AF4,pc  *
-*            L4B0A  leau L4AF9,pc  *
-*            NXTFM3  leax L5723,pc  *
+*            PrepInterp  leax INTRTS,pc  *
+*            PrintAltRem  leax AltRemStr,pc  *
+*            EditPrompt  leax EditCmdLoop,pc  *
+*            ScanTokenAlt1  leax ScanTable1,pc  *  (Doesn't seem to be referenced)
+*            SYSSUB  leax ShellName,pc  *
+*            SizeFnc  leax VarSizeTable3,pc  *
+*            Log10Fnc  leax Log10Const,pc  *
+*            CNOR20  leax Ln2Const,pc  *
+*            CopyPiToStack  leau PiConst,pc  *
+*            TrigSetupArg  leau DegConst,pc  *
+*            NXTFM3  leax PuFmtTblInt,pc  *
 *
 *  V1.21   1995/01/03  NitrOS-9 Project
 * Changed a ChgDir @ CHDSTM to do it in READ mode, not UPDATE
 *
 *  V1.21   1995/01/04  NitrOS-9 Project
-* Changed L0C18 - 3 CLR ,Y+ to LEAY 3,Y
+* Changed FinalizePackMod - 3 CLR ,Y+ to LEAY 3,Y
 *            Changed LEAU ,Y / STD ,--U / STA ,-U to LEAU -3,y/STD ,u/
 *              STD 2,u
 * Changed LDA #$02 / LDB #SS.Size to LDD #$02*256+SS.Size @ OPNCH0
 *              (create output file)
-* Replaced BEQ L2D17 @ L2D0B with BEQ POPE30, removed L2D17 altog-
-*            ether, change LBSR ERIET @ L2D0B with LBRA ERIET
+* Replaced BEQ L2D17 @ CompileStrExprB with BEQ POPE30, removed L2D17 altog-
+*            ether, change LBSR ERIET @ CompileStrExprB with LBRA ERIET
 *
 *  V1.21   1995/01/09  NitrOS-9 Project
 * Attempted to change both CLRA/CLRB (CLRD)'s @ DIRLN1 to CLRA for
 *            F$Load/F$Link (since neither require B)
-* Changed DEFILE frm LBSR L12CF to LBSR L1371
-* Changed L12CF from LDA #C$CR/LBRA L1373 to LBRA L1371
+* Changed DEFILE frm LBSR AppendCrReturn to LBSR AppendCR
+* Changed AppendCrReturn from LDA #C$CR/LBRA AppendChar to LBRA AppendCR
 *
 *  V1.21   1995/01/12  NitrOS-9 Project
-* Attempted to remove LDD <U002F / ADDD $F,x @ L1A2E, move TFR
-*            D,Y to earlier in code when [u002F]+($F,x) is calculated
+* Attempted to remove LDD <U002F / ADDD $F,x @ UnbindSetupMod, move TFR
+*            D,Y to earlier in code when [CurModPtr]+($F,x) is calculated
 *
 *  V1.21   1995/01/17  NitrOS-9 Project
-* Removed useless CMPB #$00 @ L1E9B
-* Moved L1FF5 label to an earlier RTS, removed original (saves 1 by
-* Removed useless CMPA #$00 @ L2115
+* Removed useless CMPB #$00 @ DimParamLoop
+* Moved CompileRts label to an earlier RTS, removed original (saves 1 by
+* Removed useless CMPA #$00 @ CheckTokType
 *
 *  V1.21   1995/01/19  NitrOS-9 Project
-* Changed STB <u00A4 / STA <u00A3 to STD <u00A3 @ L236A
-* Changed LDA <u00A3/CMPA <u00A3 to LDA <u00A3/ORCC #Zero @ L218E
+* Changed STB <CmdType / STA <CmdToken to STD <CmdToken @ SaveCmdToken
+* Changed LDA <CmdToken/CMPA <CmdToken to LDA <CmdToken/ORCC #Zero @ GetChanToken
 *             (1 cycle faster)
-* Changed NAMSY1: took out LEAY -1,y, added BRA L2453 (saves 2 cycle
+* Changed NAMSY1: took out LEAY -1,y, added BRA FinishNameStr (saves 2 cycle
 *             from original method)
 *
 *  V1.21   1995/01/20  NitrOS-9 Project
-* Changed L1B09 from to auto-inc Y, skip LEAY 1,Y entirely, & chang
+* Changed ChkEndMarker from to auto-inc Y, skip LEAY 1,Y entirely, & chang
 *            LEAY 5,Y to LEAY 4,Y (+2 cyc if [,y]=$4F, but -3 cyc on any other
 *            value)
-* Changed L1B6D: changed CLRA / LDB D,X to to ABX / LDB ,X (3 cyc
+* Changed LookupByTbl: changed CLRA / LDB D,X to to ABX / LDB ,X (3 cyc
 *            faster on 6809/2 cyc faster on 6309)
-* Mod @ PRSLF: Changed LBSR NAMSYM to LBSR L2432 (just did
-*            L245D call, and 2nd call to it will return same Y anyways)
+* Mod @ PRSLF: Changed LBSR NAMSYM to LBSR CheckIdent (just did
+*            SkipSpaceLF call, and 2nd call to it will return same Y anyways)
 * Changed CLR ,Y+ to STB ,Y+ @ ADDSYM
-* Attempted to move L2368 routine to just before PRSHEX routine to
-*            change LBRA OUTCOD to BRA OUTCOD. Changed L23EC from LBRA L236A to
-*            STD <u00A3 / BRA OUTCOD
-* Changed LBHS PBEXPR / BRA L27CE @ PDECL3 to BLO L27CE / LBRA PBEXPR
-* Attempted Mod @ L2D2C - Changed LEAX B,X to ABX
+* Attempted to move OutcodeHex routine to just before PRSHEX routine to
+*            change LBRA OUTCOD to BRA OUTCOD. Changed SaveTokAndOut from LBRA SaveCmdToken to
+*            STD <CmdToken / BRA OUTCOD
+* Changed LBHS PBEXPR / BRA CheckListBound @ PDECL3 to BLO CheckListBound / LBRA PBEXPR
+* Attempted Mod @ ExprSpecialTok - Changed LEAX B,X to ABX
 *
 *  V1.21   1995/01/23  NitrOS-9 Project
-* Made following mods involving L2E3B routine:
-*            Changed CMPA #0 to TSTA, reversed L2EDC's LDA <u00D1 & LEAY 3,Y
-*            so TSTA not needed, changed BRA L2E3B to BRA L2E41 @: L2E89,
-*            L2E8F, PSLIT, PADDR1. Changed BRA L2E3B to BRA L2E3C @ L2EDC
-* Changed LDA #1 to INCA @ L2E3B (since A=0 at this point)
-* Took out CMPA #0, changed LDD #$0060 to LDB #$60 @ L2EE3
-* Changed TST <u00D0 to LDA <u00D0 (saves 2 cyc) and following 4
-*            lines @ L2F5E to version on right (+1 byte, -5 cycles):
+* Made following mods involving PushTypeOnStack routine:
+*            Changed CMPA #0 to TSTA, reversed VrefSkipToken's LDA <VarTypeCode & LEAY 3,Y
+*            so TSTA not needed, changed BRA PushTypeOnStack to BRA PushType @: PushIntLit,
+*            PushRealLit, PSLIT, PADDR1. Changed BRA PushTypeOnStack to BRA SetMinType @ VrefSkipToken
+* Changed LDA #1 to INCA @ PushTypeOnStack (since A=0 at this point)
+* Took out CMPA #0, changed LDD #$0060 to LDB #$60 @ CheckOrDefVar
+* Changed TST <VarTypeHi to LDA <VarTypeHi (saves 2 cyc) and following 4
+*            lines @ CheckVarSubs to version on right (+1 byte, -5 cycles):
 *            lda #5             ldd #$ffff
-*            sta <u00D1         std <u00D4
+*            sta <VarTypeCode         std <RealTmpWord
 *            ldd #$ffff         lda #5
-*            bra CHKV90          sta <u00D1
-*              (std <u00D4/     rts
-*               lda <u00D1/rts
+*            bra CHKV90          sta <VarTypeCode
+*              (std <RealTmpWord/     rts
+*               lda <VarTypeCode/rts
 *
 *  V1.21   1995/01/31  NitrOS-9 Project
-* Moved L308D to just before ERROR (eliminates LBRA)
+* Moved UnimplRtnErr to just before ERROR (eliminates LBRA)
 *
 *  V1.21   1995/02/03  NitrOS-9 Project
-* Changed LBRA L1EC9 @ ARRNA9 to LBRA PRSLF (saves extra LBRA, saves
+* Changed LBRA CallPRSLF @ ARRNA9 to LBRA PRSLF (saves extra LBRA, saves
 *            5/4 cycles)
 *
 *  V1.21   1995/02/13  NitrOS-9 Project
-* Moved JSR <u001B / FCB 8 from L3C29 to just after SUBFNC to change
+* Moved JSR <JmpVect1 / FCB 8 from Vect1Fn8 to just after SUBFNC to change
 *            LBSR to BSR
 *
 *  V1.21   1995/02/14  NitrOS-9 Project
 * Moved 3 text strings that are only referred to once to their res-
-*            pective routines in the code: L07AA to near L1882, L078B to near
-*            L198A, and L0799 to L1211
-* Moved JSR <u001E / FCB 4 from L010A to after RUNC20 (called twice
+*            pective routines in the code: CantFindStr to near SearchNoMatch, RangeStr to near
+*            RangeErrMsg, and CalledByStr to PrintCallEntry
+* Moved JSR <JmpVect2 / FCB 4 from Vect2Fn4 to after RUNC20 (called twice
 *            from just before here)
-* Attempted to move JSR <u001E / fcb 2 from L010D to just before
-*            L0AC3 (change some LBSR's to BSR's)
-* Moved L0110 (JSR <u001E / fcb 0) to just before INTE30
-* Moved L0113 (JSR <u0021 / fcb 0) to just before INTE30
+* Attempted to move JSR <JmpVect2 / fcb 2 from Vect2Fn2 to just before
+*            OpenAndLoad (change some LBSR's to BSR's)
+* Moved Vect2Fn0 (JSR <JmpVect2 / fcb 0) to just before INTE30
+* Moved Vect3Fn0 (JSR <JmpVect3 / fcb 0) to just before INTE30
 *
 *  V1.21   1995/02/15  NitrOS-9 Project
-* Moved L0116 (JSR <u0024 / fcb 0) to just after START15
-* Moved L0119 (JSR <u0024 / fcb 0) to just after L0DFC
-* Moved L011C (JSR <u0024 / fcb 2) to just after L0DFC
-* Moved L011F (JSR <u002A / fcb 2) to just after L1394
-* Moved L0122 (JSR <u001E / fcb A) to just before L1606
-* Moved L0125 (JSR <u001E / fcb 6) to just after L19D1
-* Moved L0128 (JSR <u001E / fcb 6) to just after DUMP
-* Moved L012B (JSR <u0021 / fcb 6) to just after L110A
-* Moved L012E (JSR <u0021 / fcb 4) to just after L119E
+* Moved CallVect4Fn0 (JSR <JmpVect4 / fcb 0) to just after START15
+* Moved Vect4Fn4 (JSR <JmpVect4 / fcb 0) to just after PrepInterp
+* Moved Vect4Fn2 (JSR <JmpVect4 / fcb 2) to just after PrepInterp
+* Moved Vect6Fn2 (JSR <JmpVect6 / fcb 2) to just after CopyFcsLoop
+* Moved Vect2FnA (JSR <JmpVect2 / fcb A) to just before CompileOneLine
+* Moved Vect2Fn6 (JSR <JmpVect2 / fcb 6) to just after InsertAdjust
+* Moved Vect3Fn2 (JSR <JmpVect2 / fcb 6) to just after DUMP
+* Moved Vect3Fn6 (JSR <JmpVect3 / fcb 6) to just after ListLineDone
+* Moved Vect3Fn4 (JSR <JmpVect3 / fcb 4) to just after PrintFromBuf
 * REMARKED OUT L0131 JSR VECTOR - NOT CALLED IN BASIC09
-* Moved L0134 (JSR <u0024 / fcb C) to just after L104E
-* Moved L0137 (JSR <u0024 / fcb 8) to just after L119E
-* Moved L013A (JSR <u002A / fcb 0) to just after L175A
-* Moved L1CC1 (JSR <u001B / fcb 2) to just after L1E1C
-* Moved L1CC4 (JSR <u001B / fcb 4) to just after PRTLIN
-* Moved L1CC7 (JSR <u001B / fcb 6) to replace LBRA L1CC7 @ L1E1C
-*            & embedded JSR <u001B/fcb 4 @ L2428 since LBRA, not LBSR
-* Moved L1CCA (JSR <u002A / fcb 0) to just after PRSHEX
-* Moved L1CCD (JSR <u001B / fcb $12) to just after ERMRP9
-* Took out 2nd TST <u0035 / BNE L194C @ L191C
-* Eliminated L2572 since duplicate of L1CC1, & not speed crucial
-* Eliminated L2575 since duplicate of L1CC7, changed LBRA L2575 @
-*            PBEXPR to LBRA L1CC7
+* Moved Vect4FnC (JSR <JmpVect4 / fcb C) to just after DebugCmdLoop
+* Moved Vect4Fn8 (JSR <JmpVect4 / fcb 8) to just after PrintFromBuf
+* Moved Vect6Fn0 (JSR <JmpVect6 / fcb 0) to just after EvalNumDone
+* Moved Vect1Fn2 (JSR <JmpVect1 / fcb 2) to just after L1E1C
+* Moved Vect1Fn4 (JSR <JmpVect1 / fcb 4) to just after PRTLIN
+* Moved Vect1Fn6 (JSR <JmpVect1 / fcb 6) to replace LBRA Vect1Fn6 @ L1E1C
+*            & embedded JSR <JmpVect1/fcb 4 @ ICodeOverflow since LBRA, not LBSR
+* Moved Vect6Fn0b (JSR <JmpVect6 / fcb 0) to just after PRSHEX
+* Moved Vect1Fn12 (JSR <JmpVect1 / fcb $12) to just after ERMRP9
+* Took out 2nd TST <LastSignal / BNE MoveCmdCleanup @ CheckCRAtCmd
+* Eliminated L2572 since duplicate of Vect1Fn2, & not speed crucial
+* Eliminated L2575 since duplicate of Vect1Fn6, changed LBRA L2575 @
+*            PBEXPR to LBRA Vect1Fn6
 *
 *  V1.21   1995/02/16  NitrOS-9 Project
-* Moved L2578 (JSR <u001B / fcb $14) to end of L2FDA (replacing
+* Moved Vect1Fn14 (JSR <JmpVect1 / fcb $14) to end of SetLineEndB (replacing
 *            LBRA to it)
-* Moved L257B (JSR <u001E / fcb 8) to end of L3069
-* Moved L257E (JSR <u001E / fcb 6) to end of DONE50
-* Eliminated L3206 since duplicate of L1CC7, changed 3 LBRA calls
-*            to it to go to L1CC7 instead (saves 3 bytes)
-* Moved L3209 to just after table @ L323F, changed table entry from
-*            L35F0 to L3209, eliminated L35F0 LBRA entirely
-* Moved SYSSTM (JSR <u001B / fcb $E) to end of CHNSTM
+* Moved Vect2Fn8 (JSR <JmpVect2 / fcb 8) to end of AlcDescr4Bytes
+* Moved Vect2Fn6b (JSR <JmpVect2 / fcb 6) to end of DONE50
+* Eliminated L3206 since duplicate of Vect1Fn6, changed 3 LBRA calls
+*            to it to go to Vect1Fn6 instead (saves 3 bytes)
+* Moved Vect1FnC to just after table @ StmtJmpBase, changed table entry from
+*            L35F0 to Vect1FnC, eliminated L35F0 LBRA entirely
+* Moved SYSSTM (JSR <JmpVect1 / fcb $E) to end of CHNSTM
 *
 *  V1.21   1995/02/24  NitrOS-9 Project
-* Eliminated L320F since dupe of L1CC1, change appropriate LBSR's @
+* Eliminated L320F since dupe of Vect1Fn2, change appropriate LBSR's @
 *            EXCER4 & DEBUG
-* Moved L3212 (JSR <u001B / fcb 0) to end of L3A89
+* Moved Vect1Fn0 (JSR <JmpVect1 / fcb 0) to end of TogTraceDone
 *
 *  V1.21   1995/02/27  NitrOS-9 Project
-* Moved L3215 (JSR <u001B / fcb $A) to end of L3BF3
-* Moved L3218 (JSR <u001B / fcb $10) to end of BASSTM
-* Took out L321B (JSR <u001E/fcb 6), replaced LBRA to it @ POKSTM
+* Moved Vect1FnA (JSR <JmpVect1 / fcb $A) to end of EvalAndFn0A
+* Moved Vect1Fn10 (JSR <JmpVect1 / fcb $10) to end of BASSTM
+* Took out L321B (JSR <JmpVect2/fcb 6), replaced LBRA to it @ POKSTM
 *            with JSR/fcb
-* Moved L321E (JSR <u0027/fcb 4) to end of NXTRL1
-* Moved L3221 (JSR <u0027/fcb $A) to end of NXTRLA
-* Moved L3224 (JSR <u0027/fcb 2) to before L3A8A, and moved 2 lines
-*            from L35BB to here too)
-* Moved ASGSTM (JSR <u0027/fcb $C) to after L381C
-* Moved L322A (JSR <u0027/fcb $E) to after L381C
-* Moved L322D (JSR <u0027/fcb 0) to after L3BFF
-* Moved L3230 (JSR <u002A/fcb 2), even though dupe of L011F, to
+* Moved L321E (JSR <JmpVect5/fcb 4) to end of NXTRL1
+* Moved L3221 (JSR <JmpVect5/fcb $A) to end of NXTRLA
+* Moved CallJmpVect5Fn2 (JSR <JmpVect5/fcb 2) to before CopyVarEntry, and moved 2 lines
+*            from CallVect5ThenLet to here too)
+* Moved ASGSTM (JSR <JmpVect5/fcb $C) to after RddatIntFx
+* Moved CallJmpVect5FnE (JSR <JmpVect5/fcb $E) to after RddatIntFx
+* Moved CallJmpVect5Fn0 (JSR <JmpVect5/fcb 0) to after InitJmpTables
+* Moved CallJmpVect6Fn2 (JSR <JmpVect6/fcb 2), even though dupe of Vect6Fn2, to
 *            after ASGVAR
 *
 *  V1.21   1995/02/28  NitrOS-9 Project
-* Embedded L3233 (JSR <u001B/fcb $18) @ L35F3 & DEBUG, changed LBSR
-*            @ STMLUP to point to L35F3 version
-* Moved L3236 (JSR <u001B/fcb $16) to after L3391
-* L3239 (JSR <u001B/fcb $1A) is NEVER CALLED IN BASIC09.
+* Embedded Vect1Fn18 (JSR <JmpVect1/fcb $18) @ PrintThenFn18 & DEBUG, changed LBSR
+*            @ STMLUP to point to PrintThenFn18 version
+* Moved Vect1Fn16 (JSR <JmpVect1/fcb $16) to after StmtLoopEntry
+* L3239 (JSR <JmpVect1/fcb $1A) is NEVER CALLED IN BASIC09.
 *            Removed L3239 entirely
-* Embedded L323C (JSR <u001B/fcb $1C) @ FORSTM since LBRA
-* Changed LDB #0 @ L388F to CLRB
-* Embedded L3C2C (JSR <u0024/fcb 6 (error handler)) @ L3DD5,CMPTRU,
-*            L3F2E,L44C2,L458C,FPOVRF,L4FC7) Moved it to just after L40CC.
-* Changed LDB #0 @ L4409 to CLRB (part of Boolean routines)
-* Changed LDB #0 @ L5046 to CLRB
-* Removed L3C2F (dupe of L011F), changed LBSR's @ L471F & STRF10 to
+* Embedded L323C (JSR <JmpVect1/fcb $1C) @ FORSTM since LBRA
+* Changed LDB #0 @ PrintFlushBuf to CLRB
+* Embedded ReportMathErr (JSR <JmpVect4/fcb 6 (error handler)) @ VarrDimCalc,CMPTRU,
+*            IntDivNonZero,StrStkOverflow,FixRangeErr,FPOVRF,IllegalArgErr) Moved it to just after RealMulEntry.
+* Changed LDB #0 @ BoolFalse to CLRB (part of Boolean routines)
+* Changed LDB #0 @ EofFalse to CLRB
+* Removed L3C2F (dupe of Vect6Fn2), changed LBSR's @ ValFnc & STRF10 to
 *            it
-* Moved L3C32 to after INIT1 (shorten LEAX)
+* Moved Vect1Fn1A to after INIT1 (shorten LEAX)
 *
 *  V1.21   1995/03/01  NitrOS-9 Project
 * Modified Integer Multiply to use MULD @ INML25
 *
 *  V1.21   1995/03/10  NitrOS-9 Project
 * Modified Negate of REAL #'s to use EIM @ NEGRL (saves 4 cyc)
-* Changed L3FBB (Real add with dest var=0) to use LDQ/STQ (saves
+* Changed RaCopyTmpOrig (Real add with dest var=0) to use LDQ/STQ (saves
 *            6 cyc)
 *
 *  V1.21   1995/03/13  NitrOS-9 Project
 * Changed NEGA/NEGB/SBCA #0 to NEGD @ FLOAT1 & FIX4A
-* Changed BPL L451E to BPL L451F @ FLOAT1 (eliminates 2nd useless
+* Changed BPL L451E to BPL FloatExpPos @ FLOAT1 (eliminates 2nd useless
 *            TSTA)
 *
 *  V1.21   1995/03/15  NitrOS-9 Project
 * Changed LDB $B,y/ANDB #$FE/STB $B,y & LDB 5,y/ANDB #$FE/STB $B,y
-*            to AIM's @ L3FE5 (Real Add & Subtract)
-* Changed ADCB 3,y/ADCA 2,y to ADCD 2,y @ L4039 (Real Add/Subtact)
-* Changed SBCB 3,y/SBCA 2,y TO SBCD 2,y @ L400B (Real Add/Subtact)
+*            to AIM's @ RaSetSignBits (Real Add & Subtract)
+* Changed ADCB 3,y/ADCA 2,y to ADCD 2,y @ RaAddMant (Real Add/Subtact)
+* Changed SBCB 3,y/SBCA 2,y TO SBCD 2,y @ RaSubMant (Real Add/Subtact)
 * Changed LDA 5,y/ANDA #$FE/STA 5,y to AIM #$FE,5,y @ ABSFNR (ABS
 *            for real #'s
-* Changed NEGA/NEGB/SBCA #0 to NEGD @ L45B5 (ABS for Integers)
+* Changed NEGA/NEGB/SBCA #0 to NEGD @ AbsInt (ABS for Integers)
 * Ditched special checks for 0 or 2 in Integer Multiply (INMUL),
 *            since overhead from checks is as slow or slower as straight MULD
 *            except in dest. var=0's case
 *
 *  V1.21   1995/03/16  NitrOS-9 Project
-* Changed 2 LDD/STD's @ L3F93 to LDQ/STQ
+* Changed 2 LDD/STD's @ CopyRealToTemp to LDQ/STQ
 *
 *  V1.21   1995/03/18  NitrOS-9 Project
 * Changed Integer Divide (and MOD) routines to use DIVQ
 *
 *  V1.21   1995/03/20  NitrOS-9 Project
-* Changed L3F7C (copy Real # to temp var from inc'd X) to use
+* Changed CopyRealConst (copy Real # to temp var from inc'd X) to use
 *            LDQ/STQ/LDB #4/ABX
 * Moved Integer MOD routine (INDV10) to nearer divide (changes LBSR
 *            to BSR)
 *
 *  V1.21   1995/04/23  NitrOS-9 Project
-* Changed Real Add/Subtract mantissa shift (L4082-L40C9) to use
-*            <u0014 (unused in BASIC09) to hold shift count instead of stack
+* Changed Real Add/Subtract mantissa shift (RaShiftMant-RaShiftDone) to use
+*            <RealShiftCnt (unused in BASIC09) to hold shift count instead of stack
 *            (saves 2 cyc for STA vs. PSHS, saves 1 cyc per DEC, & saves 5 cyc
 *            by eliminating LEAS 1,s) (6809)
 *
@@ -335,10 +335,10 @@
 * Modified 6309 REAL add/subtract routine - now 13-15% faster
 *
 *  V1.21   1995/06/20  NitrOS-9 Project
-* Took out useless LDB 2,s @ L412D (Real Multiply)
+* Took out useless LDB 2,s @ RmulProd2 (Real Multiply)
 *
 *  V1.21   1995/07/18  NitrOS-9 Project
-* Changed sign fix in Real Add @ L4071 to use TFR w,d/lsrb/lslb/orb
+* Changed sign fix in Real Add @ RaSaveResult to use TFR w,d/lsrb/lslb/orb
 *            ,y/std $a,y
 * Split real multiply out & made two versions: 6809 & 6309
 *
@@ -347,10 +347,10 @@
 * Split real divide out & made two versions: 6809 & 6309
 *
 *  V1.21   1995/08/15  NitrOS-9 Project
-* Removed useless: STA <u00BD in start, useless CLR <u0035 @ START05,
-*            Changed LDD #1 to LDB #1/STD <u002D to STB <u002E in start, and
+* Removed useless: STA <ActivePath in start, useless CLR <LastSignal @ START05,
+*            Changed LDD #1 to LDB #1/STD <StdinPath to STB <StdoutPath in start, and
 *            START05/START15 routine to use W instead of stack for base address
-* Changed 'bye <CR>' buffer fill @ L08E5 to use LDQ/STQ
+* Changed 'bye <CR>' buffer fill @ ReadLine to use LDQ/STQ
 *
 *  V1.21   1995/11/12  NitrOS-9 Project
 * Changed NXTIN1 to use INCD instead of ADDD #1 (NEXT Integer STEP 1
@@ -359,7 +359,7 @@
 *
 *  V1.21   1995/11/16  NitrOS-9 Project
 * Changed to L345E (REAL NEXT STEP 1) to do direct call to REAL add
-*            routine (changed BSR L321E/BSR FORSTM to LBSR L3FB1)
+*            routine (changed BSR L321E/BSR FORSTM to LBSR RealAdd)
 * As per above, changed same call @ NXTRL (REAL NEXT STEP <>1), and
 *            eliminated L321E completely
 * @ NXTRL1 & NXTRL2, eliminated L3221 calls, replaced BSR L3221's
@@ -373,10 +373,10 @@
 * Changed RUNS30 to use SUBR (saves 1 byte/9 cyc on RUN (mlsub)
 *
 *  V1.21   1995/12/05  NitrOS-9 Project
-* Changed L3A48 (called by REM) to use ABX instead of CLRA/LEAX D,X
+* Changed SkipRemText (called by REM) to use ABX instead of CLRA/LEAX D,X
 *            (used to jump ahead in I-Code to skip remark text)
-* Attempted to just move L33DF (NEXT) & L34E5 (FOR) Tables to just
-*            after L3446 for 8 bit offsets - also removed LSLB @ L33EA
+* Attempted to just move NextJmpTbl (NEXT) & ForJmpTbl (FOR) Tables to just
+*            after ForRlNxStepAlt for 8 bit offsets - also removed LSLB @ NextGetJmpOff
 *
 *  V1.21   1995/02/12  NitrOS-9 Project
 * Changed routines around BADNUM to skip ORCC if not necessary (blo&
@@ -385,6 +385,10 @@
 *
 *  V1.21   2014/06/07  RG (NitrOS-9 Project)
 * Changed Date$ to conform with Y2K changes in F$Time
+*
+* Annotated by /annotate-asm (Claude Code) 2026-05-15:
+*   - Renamed disassembled labels (L/u prefix) to meaningful names
+*   - Applied to basic09.real.add/mul/div.{63,68}.asm include files
 ********************************
 
 * BASIC09 - Copyright (C) 1980 by Microware & Motorola
@@ -423,219 +427,219 @@ B09Minor            equ       0
 
                     mod       eom,name,Prgrm+Objct,ReEnt+0,start,size
 
-u0000               rmb       2                   Start of data memory / DP pointer
-u0002               rmb       2                   Size of Data area (including DP)
-u0004               rmb       2                   Ptr to list of Modules in BASIC09 workspace ($400)
-u0006               rmb       1                   ??? NEVER REFERENCED (possibly leftover from RUNB)
-u0007               rmb       1                   ??? NEVER REFERENCED
-u0008               rmb       2                   Ptr to start of I-code workspace
-u000A               rmb       2                   # bytes used by all programs for code in user workspace
+DpBase              rmb       2                   Start of data memory / DP pointer
+DataAreaSz               rmb       2                   Size of Data area (including DP)
+ModListPtr               rmb       2                   Ptr to list of Modules in BASIC09 workspace ($400)
+Unused06               rmb       1                   ??? NEVER REFERENCED (possibly leftover from RUNB)
+Unused07               rmb       1                   ??? NEVER REFERENCED
+ICodeBase               rmb       2                   Ptr to start of I-code workspace
+ICodeUsed               rmb       2                   # bytes used by all programs for code in user workspace
 * Data area sizes are taken from module headers Permanent storage size ($B-$C)
-u000C               rmb       2                   Bytes free in BASIC09 workspace for user
-u000E               rmb       2                   Ptr to jump table (L323F only) - Only used from L3D4A
-u0010               rmb       2                   Inited to L3CB5 (jump table)
-u0012               rmb       2                   Inited to L3D35 (jump table)
-u0014               rmb       1                   ??? NEVER REFERENCED
-u0015               rmb       1                   ??? NEVER REFERENCED
-u0016               rmb       1                   JMP ($7e) instruction
-u0017               rmb       2                   Address for above (inited to EVAL)
-u0019               rmb       2                   Inited to L3C32 (JSR <u001B / FCB $1A)
+WorkspaceFree               rmb       2                   Bytes free in BASIC09 workspace for user
+JmpTblPtr               rmb       2                   Ptr to jump table (StmtJmpBase only) - Only used from EvalDispatch
+JmpTbl1               rmb       2                   Inited to VarCopyBase (jump table)
+JmpTbl2               rmb       2                   Inited to ExprJmpBase (jump table)
+RealShiftCnt               rmb       1                   ??? NEVER REFERENCED
+Unused15               rmb       1                   ??? NEVER REFERENCED
+JmpOpcode               rmb       1                   JMP ($7e) instruction
+JmpTarget               rmb       2                   Address for above (inited to EVAL)
+EvalSetup               rmb       2                   Inited to Vect1Fn1A (JSR <JmpVect1 / FCB $1A)
 * The following vectors all contain a JMP >$xxxx set up from the module header
-u001B               rmb       3                   Jump vector #1  (Inited to L00DC)
-u001E               rmb       3                   Jump vector #2  (Inited to L1CA5)
-u0021               rmb       3                   Jump vector #3  (Inited to PLREF)
-u0024               rmb       3                   Jump vector #4  (Inited to L31E8)
-u0027               rmb       3                   Jump vector #5  (Inited to L3C09)
-u002A               rmb       3                   Jump vector #6  (Inited to L5084)
-u002D               rmb       1                   Standard Input path # (Inited to 0)
-u002E               rmb       1                   Standard Output path # (inited to 1)
-u002F               rmb       2                   Ptr to start of 'current' module in BASIC09 workspace
-u0031               rmb       2                   Ptr to start of variable storage
-u0033               rmb       1
-u0034               rmb       1                   Flag: if high bit set, signal has been receieved
-u0035               rmb       1                   Last signal received
-u0036               rmb       1                   Error code
-u0037               rmb       2
-u0039               rmb       1
-u003A               rmb       1
-u003B               rmb       1
-u003C               rmb       1
-u003D               rmb       1
-u003E               rmb       1
-u003F               rmb       1
-u0040               rmb       2
-u0042               rmb       1
-u0043               rmb       1
+JmpVect1               rmb       3                   Jump vector #1  (Inited to VectDispatch)
+JmpVect2               rmb       3                   Jump vector #2  (Inited to Vect2Dispatch)
+JmpVect3               rmb       3                   Jump vector #3  (Inited to PLREF)
+JmpVect4               rmb       3                   Jump vector #4  (Inited to Vect4Dispatch)
+JmpVect5               rmb       3                   Jump vector #5  (Inited to Vect5Dispatch)
+JmpVect6               rmb       3                   Jump vector #6  (Inited to Vect6Dispatch)
+StdinPath               rmb       1                   Standard Input path # (Inited to 0)
+StdoutPath               rmb       1                   Standard Output path # (inited to 1)
+CurModPtr               rmb       2                   Ptr to start of 'current' module in BASIC09 workspace
+VarStorePtr               rmb       2                   Ptr to start of variable storage
+UnusedByte33               rmb       1
+SigFlag               rmb       1                   Flag: if high bit set, signal has been receieved
+LastSignal               rmb       1                   Last signal received
+ErrCode               rmb       1                   Error code
+UnusedWord37               rmb       2
+StrWorkPtr               rmb       1
+UnusedByte3A               rmb       1
+FldAddrFlag               rmb       1
+ParmPktOff               rmb       1
+UnusedByte3D               rmb       1
+MaxStrSize               rmb       1
+UnusedByte3F               rmb       1
+ParmEndPtr               rmb       2
+ArrayBase               rmb       1
+ParmPktCnt               rmb       1
 * Next 2 are variable ptrs of some sort, temporary? Permanent?
-u0044               rmb       2                   Inited to $300 (some table that is built backwards)
-u0046               rmb       2                   Inited to $300
-u0048               rmb       1
-u0049               rmb       1
-u004A               rmb       2                   Ptr to end of currently used I-code workspace+1
-u004C               rmb       1
-u004D               rmb       1
-u004E               rmb       2
-u0050               rmb       1                   Inited to $0e
-u0051               rmb       1                   Inited to $12
-u0052               rmb       1                   Inited to $14
-u0053               rmb       1                   Inited to $A2
-u0054               rmb       1                   Inited to $BB
-u0055               rmb       1                   Inited to $40
-u0056               rmb       1                   Inited to $E6
-u0057               rmb       1                   Inited to $2D
-u0058               rmb       1                   Inited to $36
-u0059               rmb       1                   Inited to $19
-u005A               rmb       2                   Inited to $62E9
-u005C               rmb       2
-u005E               rmb       2                   Absolute exec address of basic09 module in memory
-u0060               rmb       2                   Absolute address of $F offset in basic09 mod in mem
-u0062               rmb       2                   Absolute address of $D offset in basic09 mod in mem
-u0064               rmb       2                   ??? Size of module-$D,x in mod hdr + 3
-u0066               rmb       1
-u0067               rmb       1
-u0068               rmb       1
-u0069               rmb       1
-u006A               rmb       1
-u006B               rmb       1
-u006C               rmb       1
-u006D               rmb       1
-u006E               rmb       1
-u006F               rmb       1
-u0070               rmb       2
-u0072               rmb       2
-u0074               rmb       1
-u0075               rmb       1
-u0076               rmb       1
-u0077               rmb       1
-u0078               rmb       1
-u0079               rmb       1
-u007A               rmb       1
-u007B               rmb       1
-u007C               rmb       1
-u007D               rmb       1                   Current # chars active in temp buffer ($100-$1ff)
-u007E               rmb       1
-u007F               rmb       1
-u0080               rmb       2                   Pointer to start of temp buffer ($100)
-u0082               rmb       2                   Pointer to current position in temp buffer ($100-$1ff)
-u0084               rmb       1
-* For u0085, the following applies:
+StrSpaceTop               rmb       2                   Inited to $300 (some table that is built backwards)
+SubrStkPtr               rmb       2                   Inited to $300
+StrStkPtr               rmb       1
+UnusedByte49               rmb       1
+ICodeEndPtr               rmb       2                   Ptr to end of currently used I-code workspace+1
+RndTmpH               rmb       1
+RndTmpL               rmb       1
+RndCalcL               rmb       2
+RndSeedH               rmb       1                   Inited to $0e
+RndSeedH1               rmb       1                   Inited to $12
+RndSeedL               rmb       1                   Inited to $14
+RndSeedL1               rmb       1                   Inited to $A2
+RndMultB0               rmb       1                   Inited to $BB
+RndMultB1               rmb       1                   Inited to $40
+RndMultB2               rmb       1                   Inited to $E6
+RndMultB3               rmb       1                   Inited to $2D
+RndIncrH               rmb       1                   Inited to $36
+RndIncrL               rmb       1                   Inited to $19
+RndAddend               rmb       2                   Inited to $62E9
+ICodeCurPtr               rmb       2
+ModExecAddr               rmb       2                   Absolute exec address of basic09 module in memory
+ModFOff               rmb       2                   Absolute address of $F offset in basic09 mod in mem
+ModSymTbl               rmb       2                   Absolute address of $D offset in basic09 mod in mem
+ModSzData               rmb       2                   ??? Size of module-$D,x in mod hdr + 3
+SymTblSize               rmb       1
+UnusedByte67               rmb       1
+StorageOff               rmb       1
+UnusedByte69               rmb       1
+UnusedByte6A               rmb       1
+UnusedByte6B               rmb       1
+UnusedByte6C               rmb       1
+TrigTemp               rmb       1
+SqrtCycleCount               rmb       1
+UnusedByte6F               rmb       1
+UnusedWord70               rmb       2
+UnusedWord72               rmb       2
+IndentDepth               rmb       1
+TmpReal0               rmb       1
+TmpReal1               rmb       1
+TmpReal2               rmb       1
+TmpReal3               rmb       1
+TmpReal4               rmb       1
+TmpReal5               rmb       1
+TmpReal6               rmb       1
+TmpReal7               rmb       1
+TmpBufCount               rmb       1                   Current # chars active in temp buffer ($100-$1ff)
+UnusedByte7E               rmb       1
+CurrChanPath               rmb       1
+TmpBufBase               rmb       2                   Pointer to start of temp buffer ($100)
+TmpBufCur               rmb       2                   Pointer to current position in temp buffer ($100-$1ff)
+PackedFlag               rmb       1
+* For PrintUsingSpec, the following applies:
 * 0=Integer, 1=Hex, 2=Real, 3=Exponential, 4=String, 5=Boolean, 6=Tab,
 * 7=Spaces, 8=Quoted text
-u0085               rmb       1                   Specifier # for print using
-u0086               rmb       1
-u0087               rmb       1
-u0088               rmb       1
-u0089               rmb       1
-u008A               rmb       1
-u008B               rmb       1
-u008C               rmb       2
-u008E               rmb       2
-u0090               rmb       1
-u0091               rmb       1
-u0092               rmb       2
-u0094               rmb       1
-u0095               rmb       1
-u0096               rmb       1
-u0097               rmb       1
-u0098               rmb       1
-u0099               rmb       1
-u009A               rmb       1
-u009B               rmb       1
-u009C               rmb       1
-u009D               rmb       1
-u009E               rmb       2                   Ptr to current command table (normally L0140)
-u00A0               rmb       1                   ??? Flag of some sort?
-u00A1               rmb       2
-u00A3               rmb       1                   Token # from command table
-u00A4               rmb       1                   Command type (flags?) from command table
-u00A5               rmb       1                   Flag type of name string (2=Non variable)
-u00A6               rmb       1                   Size of current string/variable name (includes '$' on strings)
-u00A7               rmb       2                   Ptr to end of name string+1
-u00A9               rmb       2                   ??? Ptr of some sort
-u00AB               rmb       2                   Ptr to current line I-code end
-u00AD               rmb       2                   ??? Dupe of above
-u00AF               rmb       2                   ??? duped from AB @ L1F90
-u00B1               rmb       2
-u00B3               rmb       2                   # steps to do (debug mode from STEP command)
-u00B5               rmb       2
-u00B7               rmb       2
-u00B9               rmb       1
-u00BA               rmb       1
-u00BB               rmb       1                   ??? (inited to 0 at during load process)
-u00BC               rmb       1
-u00BD               rmb       1                   (inited to 0) - Path # of newly opened path
-u00BE               rmb       1                   I$Dup path # for duplicate of error path
-u00BF               rmb       2
-u00C1               rmb       2
-u00C3               rmb       2
-u00C5               rmb       1
-u00C6               rmb       1
-u00C7               rmb       1
-u00C8               rmb       2
-u00CA               rmb       1
-u00CB               rmb       1
-u00CC               rmb       1
-u00CD               rmb       1
-u00CE               rmb       1
-u00CF               rmb       1
-u00D0               rmb       1
-u00D1               rmb       1                   Some sort of variable type
-u00D2               rmb       2
-u00D4               rmb       2
-u00D6               rmb       2                   Size of var in bytes (from u00D1)
-u00D8               rmb       1
-u00D9               rmb       1                   Inited to 1
-u00DA               rmb       1
-u00DB               rmb       1
-u00DC               rmb       1
-u00DD               rmb       1
-u00DE               rmb       1
-u00DF               rmb       1
-u00E0               rmb       1
-u00E1               rmb       1
-u00E2               rmb       2
-u00E4               rmb       1
-u00E5               rmb       1
-u00E6               rmb       2
-u00E8               rmb       2
-u00EA               rmb       1
-u00EB               rmb       4
-u00EF               rmb       3
-u00F2               rmb       1
-u00F3               rmb       6
-u00F9               rmb       1
-u00FA               rmb       4
-u00FE               rmb       1
-u00FF               rmb       1
-u0100               rmb       $100                256 byte temporary buffer for various things
-u0200               rmb       $100                ??? ($200-$2ff) built backwards 2 bytes/time
-u0300               rmb       $100                BASIC09 stack area ($300-$3ff)
-u0400               rmb       $100                List of module ptrs (modules in BASIC09 workspace)
-u0500               rmb       $100                I-Code buffer (for running)
-u0600               rmb       $2000-.             Default buffer for BASIC09 programs & data
+PrintUsingSpec               rmb       1                   Specifier # for print using
+FieldWidth               rmb       1
+FieldJustify               rmb       1
+FmtTotalFld               rmb       1
+FracFieldSz               rmb       1
+IntFieldSz               rmb       1
+FracDigitCnt               rmb       1
+FmtScanPtr               rmb       2
+FmtEndPtr               rmb       2
+RptBegPtr               rmb       1
+UnusedByte91               rmb       1
+RptCount               rmb       2
+RptFlag               rmb       1
+TrigPtr1               rmb       1
+UnusedByte96               rmb       1
+TrigPtr2               rmb       1
+UnusedByte98               rmb       1
+TrigIter               rmb       1
+TrigNegFlag               rmb       1
+TrigSign               rmb       1
+TrigSign2               rmb       1
+TrigOctant               rmb       1
+CmdTablePtr               rmb       2                   Ptr to current command table (normally CmdTable)
+BreakFlag               rmb       1                   ??? Flag of some sort?
+UnusedWord_A1               rmb       2
+CmdToken               rmb       1                   Token # from command table
+CmdType               rmb       1                   Command type (flags?) from command table
+NameStrType               rmb       1                   Flag type of name string (2=Non variable)
+NameStrSz               rmb       1                   Size of current string/variable name (includes '$' on strings)
+NameStrEnd               rmb       2                   Ptr to end of name string+1
+ScratchPtr               rmb       2                   ??? Ptr of some sort
+ICodeLineEnd               rmb       2                   Ptr to current line I-code end
+ICodeLineSav               rmb       2                   ??? Dupe of above
+ICodeLineSav2               rmb       2                   ??? duped from AB @ SetupCompile
+ICodeScanFlag               rmb       2
+DebugStepCnt               rmb       2                   # steps to do (debug mode from STEP command)
+SavedLinePtr               rmb       2
+ExitStkPtr               rmb       2
+ErrHandlerPtr               rmb       1
+UnusedByte_BA               rmb       1
+LoadInitFlag               rmb       1                   ??? (inited to 0 at during load process)
+CmplxAsgFlag               rmb       1
+ActivePath               rmb       1                   (inited to 0) - Path # of newly opened path
+ErrDupPath               rmb       1                   I$Dup path # for duplicate of error path
+ScanMatchByte               rmb       2
+CurVarSz               rmb       2
+ProcSzAcc               rmb       2
+ProcLinkAcc               rmb       1
+UnusedByte_C6               rmb       1
+CmdExecFlag               rmb       1
+DataStmtBase               rmb       2
+DataStmtCur               rmb       1
+UnusedByte_CB               rmb       1
+CompListPtr               rmb       1
+UnusedByte_CD               rmb       1
+VarTypeFlag               rmb       1
+VarDefByte               rmb       1
+VarTypeHi               rmb       1
+VarTypeCode               rmb       1                   Some sort of variable type
+SymbolPtr               rmb       2
+RealTmpWord               rmb       2
+VarByteSize               rmb       2                   Size of var in bytes (from VarTypeCode)
+UnusedByte_D8               rmb       1
+BinderMode               rmb       1                   Inited to 1
+DescrAreaOff               rmb       1
+UnusedByte_DB               rmb       1
+RescanFlag               rmb       1
+ItemSepChar               rmb       1
+SavedChar               rmb       1
+UnusedByte_DF               rmb       1
+UnusedByte_E0               rmb       1
+UnusedByte_E1               rmb       1
+UnusedByte_E2               rmb       2
+UnusedByte_E4               rmb       1
+UnusedByte_E5               rmb       1
+UnusedByte_E6               rmb       2
+UnusedByte_E8               rmb       2
+UnusedByte_EA               rmb       1
+UnusedByte_EB               rmb       4
+UnusedByte_EF               rmb       3
+UnusedByte_F2               rmb       1
+UnusedByte_F3               rmb       6
+UnusedByte_F9               rmb       1
+UnusedByte_FA               rmb       4
+UnusedByte_FE               rmb       1
+UnusedByte_FF               rmb       1
+TmpBuf               rmb       $100                256 byte temporary buffer for various things
+RevStackBuf               rmb       $100                ??? ($200-$2ff) built backwards 2 bytes/time
+Stk300               rmb       $100                BASIC09 stack area ($300-$3ff)
+ModPtrList               rmb       $100                List of module ptrs (modules in BASIC09 workspace)
+ICodeRunBuf               rmb       $100                I-Code buffer (for running)
+ProgramBuf               rmb       $2000-.             Default buffer for BASIC09 programs & data
 size                equ       .
 
 * Jump tables installed at $1b in DP: in form of JMP to (address of BASIC09's
 * header in memory + 2 byte in table). In other words, jump to LXXXX
-L000D               fdb       L00DC               $1b jump vector
-                    fdb       L1CA5               $1e jump vector
+JmpVectTbl               fdb       VectDispatch               $1b jump vector
+                    fdb       Vect2Dispatch               $1e jump vector
                     fdb       PLREF               $21 jump vector
-                    fdb       L31E8               $24 jump vector
-                    fdb       L3C09               $27 jump vector
-                    fdb       L5084               $2A jump vector
+                    fdb       Vect4Dispatch               $24 jump vector
+                    fdb       Vect5Dispatch               $27 jump vector
+                    fdb       Vect6Dispatch               $2A jump vector
                     fdb       $0000               End of jump vector table marker
 
 name                fcs       /Basic09/
 
-L0022               fdb       $1607               Edition #22 ($16)
+ModEdition               fdb       $1607               Edition #22 ($16)
 
 * Intro screen
 
                     ifne      wildbits
-L0024               fcb       $0A
+IntroScreen               fcb       $0A
 				else
-L0024               fcb       $0C
-L0025               fcc       '            BASIC09'
+IntroScreen               fcb       $0C
+IntroText1               fcc       '            BASIC09'
                     fcb       $0A
                     ifne      H6309
                     fcc       '     6309 VERSION 0'
@@ -661,9 +665,9 @@ L0025               fcc       '            BASIC09'
                     fcb       $8A
 
 * Jump vector @ $1B goes here
-L00DC               pshs      x,d                 Preserve regs
+VectDispatch               pshs      x,d                 Preserve regs
                     ldb       [<$04,s]            Get function offset
-                    leax      <L00EC,pc           Point to vector table
+                    leax      <VectOffTbl,pc           Point to vector table
                     ldd       b,x                 Get return offset
                     leax      d,x                 Point to return address
                     stx       $4,s                Change RTS address to it
@@ -671,492 +675,492 @@ L00DC               pshs      x,d                 Preserve regs
 
 * Vector offsets for above routine ($1B vector)
 
-L00EC               fdb       DIRLNK-L00EC         Function 0
-                    fdb       L1287-L00EC         Function 2   Print error message (B=Error code)
-                    fdb       SETEXT-L00EC         Function 4
-                    fdb       EXIT-L00EC         Function 6
-                    fdb       L18BE-L00EC         Function 8
-                    fdb       KILLEX-L00EC         Function A
-                    fdb       BYEBYE-L00EC         Function C
-                    fdb       KILALL-L00EC         Function E
-                    fdb       L1BA2-L00EC         Function 10
-                    fdb       L12F9-L00EC         Function 12
-                    fdb       L19B1-L00EC         Function 14
-                    fdb       L110C-L00EC         Function 16
-                    fdb       L1026-L00EC         Function 18
-                    fdb       L10AC-L00EC         Function 1A (Pointed to by <u0019 & <u0017)
-                    fdb       L10B1-L00EC         Function 1C
+VectOffTbl               fdb       DIRLNK-VectOffTbl         Function 0
+                    fdb       PrintSysErr-VectOffTbl         Function 2   Print error message (B=Error code)
+                    fdb       SETEXT-VectOffTbl         Function 4
+                    fdb       EXIT-VectOffTbl         Function 6
+                    fdb       CompareSearch-VectOffTbl         Function 8
+                    fdb       KILLEX-VectOffTbl         Function A
+                    fdb       BYEBYE-VectOffTbl         Function C
+                    fdb       KILALL-VectOffTbl         Function E
+                    fdb       ScanTokenT2-VectOffTbl         Function 10
+                    fdb       GetPktByte-VectOffTbl         Function 12
+                    fdb       InsertICode-VectOffTbl         Function 14
+                    fdb       PrintICodeLine-VectOffTbl         Function 16
+                    fdb       EnterDebug-VectOffTbl         Function 18
+                    fdb       CallEvalSetup-VectOffTbl         Function 1A (Pointed to by <EvalSetup & <JmpTarget)
+                    fdb       PrintTraceInfo-VectOffTbl         Function 1C
 
 * UNUSED IN BASIC09
-*L0131    jsr   <u0024
+*L0131    jsr   <JmpVect4
 *         fcb   $0A
 
 * token/command type & command list?
                     fdb       116                 # entries in table
                     fcb       2                   # bytes to start text
 
-L0140               fdb       $0101
-L0142               fcs       'PARAM'
+CmdTable               fdb       $0101
+KwParam               fcs       'PARAM'
                     fdb       $0201
-L0149               fcs       'TYPE'
+KwType               fcs       'TYPE'
                     fdb       $0301
-L014F               fcs       'DIM'
+KwDim               fcs       'DIM'
                     fdb       $0401
-L0154               fcs       'DATA'
+KwData               fcs       'DATA'
                     fdb       $0501
-L015A               fcs       'STOP'
+KwStop               fcs       'STOP'
                     fdb       $0601
-L0160               fcs       'BYE'
+KwBye               fcs       'BYE'
                     fdb       $0701
-L0165               fcs       'TRON'
+KwTron               fcs       'TRON'
                     fdb       $0801
-L016B               fcs       'TROFF'
+KwTroff               fcs       'TROFF'
                     fdb       $0901
-L0172               fcs       'PAUSE'
+KwPause               fcs       'PAUSE'
                     fdb       $0A01
-L0179               fcs       'DEG'
+KwDeg               fcs       'DEG'
                     fdb       $0B01
-L017E               fcs       'RAD'
+KwRad               fcs       'RAD'
                     fdb       $0C01
-L0183               fcs       'RETURN'
+KwReturn               fcs       'RETURN'
                     fdb       $0D01
-L018B               fcs       'LET'
+KwLet               fcs       'LET'
                     fdb       $0F01
-L0190               fcs       'POKE'
+KwPoke               fcs       'POKE'
                     fdb       $1001
-L0196               fcs       'IF'
+KwIf               fcs       'IF'
                     fdb       $1101
-L019A               fcs       'ELSE'
+KwElse               fcs       'ELSE'
                     fdb       $1201
-L01A0               fcs       'ENDIF'
+KwEndif               fcs       'ENDIF'
                     fdb       $1301
-L01A7               fcs       'FOR'
+KwFor               fcs       'FOR'
                     fdb       $1401
-L01AC               fcs       'NEXT'
+KwNext               fcs       'NEXT'
                     fdb       $1501
-L01B2               fcs       'WHILE'
+KwWhile               fcs       'WHILE'
                     fdb       $1601
-L01B9               fcs       'ENDWHILE'
+KwEndwhile               fcs       'ENDWHILE'
                     fdb       $1701
-L01C3               fcs       'REPEAT'
+KwRepeat               fcs       'REPEAT'
                     fdb       $1801
-L01CB               fcs       'UNTIL'
+KwUntil               fcs       'UNTIL'
                     fdb       $1901
-L01D2               fcs       'LOOP'
+KwLoop               fcs       'LOOP'
                     fdb       $1A01
-L01D8               fcs       'ENDLOOP'
+KwEndloop               fcs       'ENDLOOP'
                     fdb       $1B01
-L01E1               fcs       'EXITIF'
+KwExitif               fcs       'EXITIF'
                     fdb       $1C01
-L01E9               fcs       'ENDEXIT'
+KwEndexit               fcs       'ENDEXIT'
                     fdb       $1D01
-L01F2               fcs       'ON'
+KwOn               fcs       'ON'
                     fdb       $1E01
-L01F6               fcs       'ERROR'
+KwErrKwd               fcs       'ERROR'
                     fdb       $1F01
-L01FD               fcs       'GOTO'
+KwGoto               fcs       'GOTO'
                     fdb       $2101
-L0203               fcs       'GOSUB'
+KwGosub               fcs       'GOSUB'
                     fdb       $2301
-L020A               fcs       'RUN'
+KwRun               fcs       'RUN'
                     fdb       $2401
-L020F               fcs       'KILL'
+KwKill               fcs       'KILL'
                     fdb       $2501
-L0215               fcs       'INPUT'
+KwInput               fcs       'INPUT'
                     fdb       $2601
-L021C               fcs       'PRINT'
+KwPrint               fcs       'PRINT'
                     fdb       $2701
-L0223               fcs       'CHD'
+KwChd               fcs       'CHD'
                     fdb       $2801
-L0228               fcs       'CHX'
+KwChx               fcs       'CHX'
                     fdb       $2901
 * Aliases for CHD and CHX
                     fcs       'CD'
                     fdb       $2801
                     fcs       'CX'
                     fdb       $2901
-L022D               fcs       'CREATE'
+KwCreate               fcs       'CREATE'
                     fdb       $2A01
-L0235               fcs       'OPEN'
+KwOpen               fcs       'OPEN'
                     fdb       $2B01
-L023B               fcs       'SEEK'
+KwSeek               fcs       'SEEK'
                     fdb       $2C01
-L0241               fcs       'READ'
+KwRead               fcs       'READ'
                     fdb       $2D01
-L0247               fcs       'WRITE'
+KwWrite               fcs       'WRITE'
                     fdb       $2E01
-L024E               fcs       'GET'
+KwGet               fcs       'GET'
                     fdb       $2F01
-L0253               fcs       'PUT'
+KwPut               fcs       'PUT'
                     fdb       $3001
-L0258               fcs       'CLOSE'
+KwClose               fcs       'CLOSE'
                     fdb       $3101
-L025F               fcs       'RESTORE'
+KwRestore               fcs       'RESTORE'
                     fdb       $3201
-L0268               fcs       'DELETE'
+KwDelete               fcs       'DELETE'
                     fdb       $3301
-L0270               fcs       'CHAIN'
+KwChain               fcs       'CHAIN'
                     fdb       $3401
-L0277               fcs       'SHELL'
+KwShell               fcs       'SHELL'
                     fdb       $3501
-L027E               fcs       'BASE'
+KwBase               fcs       'BASE'
                     fdb       $3701
-L0284               fcs       'REM'
+KwRem               fcs       'REM'
                     fdb       $3901
-L0289               fcs       'END'
+KwEnd               fcs       'END'
                     fdb       $4003
-L028E               fcs       'BYTE'
+KwByte               fcs       'BYTE'
                     fdb       $4103
-L0294               fcs       'INTEGER'
+KwInteger               fcs       'INTEGER'
                     fdb       $4203
-L029D               fcs       'REAL'
+KwReal               fcs       'REAL'
                     fdb       $4303
-L02A3               fcs       'BOOLEAN'
+KwBoolean               fcs       'BOOLEAN'
                     fdb       $4403
-L02AC               fcs       'STRING'
+KwString               fcs       'STRING'
                     fdb       $4503
-L02B4               fcs       'THEN'
+KwThen               fcs       'THEN'
                     fdb       $4603
-L02BA               fcs       'TO'
+KwTo               fcs       'TO'
                     fdb       $4703
-L02BE               fcs       'STEP'
+KwStep               fcs       'STEP'
                     fdb       $4803
-L02C4               fcs       'DO'
+KwDo               fcs       'DO'
                     fdb       $4903
-L02C8               fcs       'USING'
+KwUsing               fcs       'USING'
                     fdb       $3D03
-L02CF               fcs       'PROCEDURE'
+KwProcedure               fcs       'PROCEDURE'
                     fdb       $9204
-L02DA               fcs       'ADDR'
+KwAddr               fcs       'ADDR'
                     fdb       $9404
-L02E0               fcs       'SIZE'
+KwSize               fcs       'SIZE'
                     fdb       $9604
-L02E6               fcs       'POS'
+KwPos               fcs       'POS'
                     fdb       $9704
-L02EB               fcs       'ERR'
+KwErr               fcs       'ERR'
                     fdb       $9804
-L02F0               fcs       'MOD'
+KwMod               fcs       'MOD'
                     fdb       $9A04
-L02F5               fcs       'RND'
+KwRnd               fcs       'RND'
                     fdb       $9C04
-L02FA               fcs       'SUBSTR'
+KwSubstr               fcs       'SUBSTR'
                     fdb       $9B04
-L0302               fcs       'PI'
+KwPi               fcs       'PI'
                     fdb       $9F04
-L0306               fcs       'SIN'
+KwSin               fcs       'SIN'
                     fdb       $A004
-L030B               fcs       'COS'
+KwCos               fcs       'COS'
                     fdb       $A104
-L0310               fcs       'TAN'
+KwTan               fcs       'TAN'
                     fdb       $A204
-L0315               fcs       'ASN'
+KwAsn               fcs       'ASN'
                     fdb       $A304
-L031A               fcs       'ACS'
+KwAcs               fcs       'ACS'
                     fdb       $A404
-L031F               fcs       'ATN'
+KwAtn               fcs       'ATN'
                     fdb       $A504
-L0324               fcs       'EXP'
+KwExp               fcs       'EXP'
                     fdb       $A804
-L0329               fcs       'LOG'
+KwLog               fcs       'LOG'
                     fdb       $A904
-L032E               fcs       'LOG10'
+KwLog10               fcs       'LOG10'
                     fdb       $9D04
-L0335               fcs       'SGN'
+KwSgn               fcs       'SGN'
                     fdb       $A604
-L033A               fcs       'ABS'
+KwAbs               fcs       'ABS'
                     fdb       $AA04
-L033F               fcs       'SQRT'
+KwSqrt               fcs       'SQRT'
                     fdb       $AA04
-L0345               fcs       'SQR'
+KwSqr               fcs       'SQR'
                     fdb       $AC04
-L034A               fcs       'INT'
+KwInt               fcs       'INT'
                     fdb       $AE04
-L034F               fcs       'FIX'
+KwFix               fcs       'FIX'
                     fdb       $B004
-L0354               fcs       'FLOAT'
+KwFloat               fcs       'FLOAT'
                     fdb       $B204
-L035B               fcs       'SQ'
+KwSq               fcs       'SQ'
                     fdb       $B404
-L035F               fcs       'PEEK'
+KwPeek               fcs       'PEEK'
                     fdb       $B504
-L0365               fcs       'LNOT'
+KwLnot               fcs       'LNOT'
                     fdb       $B604
-L036B               fcs       'VAL'
+KwVal               fcs       'VAL'
                     fdb       $B704
-L0370               fcs       'LEN'
+KwLen               fcs       'LEN'
                     fdb       $B804
-L0375               fcs       'ASC'
+KwAsc               fcs       'ASC'
                     fdb       $B904
-L037A               fcs       'LAND'
+KwLand               fcs       'LAND'
                     fdb       $BA04
-L0380               fcs       'LOR'
+KwLor               fcs       'LOR'
                     fdb       $BB04
-L0385               fcs       'LXOR'
+KwLxor               fcs       'LXOR'
                     fdb       $BC04
-L038B               fcs       'TRUE'
+KwTrue               fcs       'TRUE'
                     fdb       $BD04
-L0391               fcs       'FALSE'
+KwFalse               fcs       'FALSE'
                     fdb       $BE04
-L0398               fcs       'EOF'
+KwEof               fcs       'EOF'
                     fdb       $BF04
-L039D               fcs       'TRIM$'
+KwTrimS               fcs       'TRIM$'
                     fdb       $C004
-L03A4               fcs       'MID$'
+KwMidS               fcs       'MID$'
                     fdb       $C104
-L03AA               fcs       'LEFT$'
+KwLeftS               fcs       'LEFT$'
                     fdb       $C204
-L03B1               fcs       'RIGHT$'
+KwRightS               fcs       'RIGHT$'
                     fdb       $C304
-L03B9               fcs       'CHR$'
+KwChrS               fcs       'CHR$'
                     fdb       $C404
-L03BF               fcs       'STR$'
+KwStrS               fcs       'STR$'
                     fdb       $C604
-L03C5               fcs       'DATE$'
+KwDateS               fcs       'DATE$'
                     fdb       $C704
-L03CC               fcs       'TAB'
+KwTab               fcs       'TAB'
                     fdb       $CD05
-L03D1               fcs       'NOT'
+KwNot               fcs       'NOT'
                     fdb       $D005
-L03D6               fcs       'AND'
+KwAnd               fcs       'AND'
                     fdb       $D105
-L03DB               fcs       'OR'
+KwOr               fcs       'OR'
                     fdb       $D205
-L03DF               fcs       'XOR'
+KwXor               fcs       'XOR'
                     fdb       $F703
-L03E4               fcs       'UPDATE'
+KwUpdate               fcs       'UPDATE'
                     fdb       $f803
-L03EC               fcs       'EXEC'
+KwExec               fcs       'EXEC'
                     fdb       $f903
-L03F2               fcs       'DIR'
+KwDir               fcs       'DIR'
 
-* 3 byte packets used by <u001B calls - Function $12
+* 3 byte packets used by <JmpVect1 calls - Function $12
 * 1st byte is used for bit tests, bytes 2-3 are offset from 2nd byte (can be
 *   jump address, others seem to be ptrs to text)
-L03F5               fcb       $40                 ???
+PktTable               fcb       $40                 ???
                     fdb       $0000
 * label for reference only - remove after all are verified as correct
 
                     fcb       $00                 ???
-                    fdb       L0142-*             PARAM ($fd49)
+                    fdb       KwParam-*             PARAM ($fd49)
 
                     fcb       $00
-                    fdb       L0149-*             TYPE  ($fd4d)
+                    fdb       KwType-*             TYPE  ($fd4d)
 
                     fcb       $00
-                    fdb       L014F-*             DIM   ($fd50)
+                    fdb       KwDim-*             DIM   ($fd50)
 
                     fcb       $00
-                    fdb       L0154-*             DATA  ($fd52)
+                    fdb       KwData-*             DATA  ($fd52)
 
                     fcb       $00
-                    fdb       L015A-*             STOP  ($fd55)
+                    fdb       KwStop-*             STOP  ($fd55)
 
                     fcb       $00
-                    fdb       L0160-*             BYE   ($fd58)
+                    fdb       KwBye-*             BYE   ($fd58)
 
                     fcb       $00
-                    fdb       L0165-*             TRON  ($fd5a)
+                    fdb       KwTron-*             TRON  ($fd5a)
 
                     fcb       $00
-                    fdb       L016B-*             TROFF ($fd5d)
+                    fdb       KwTroff-*             TROFF ($fd5d)
 
                     fcb       $00
-                    fdb       L0172-*             PAUSE ($fd61)
+                    fdb       KwPause-*             PAUSE ($fd61)
 
                     fcb       $00
-                    fdb       L0179-*             DEG   ($fd65)
+                    fdb       KwDeg-*             DEG   ($fd65)
 
                     fcb       $00
-                    fdb       L017E-*             RAD   ($fd67)
+                    fdb       KwRad-*             RAD   ($fd67)
 
                     fcb       $00
-                    fdb       L0183-*             RETURN ($fd69)
+                    fdb       KwReturn-*             RETURN ($fd69)
 
                     fcb       $00
-                    fdb       L018B-*             LET    ($fd6e)
+                    fdb       KwLet-*             LET    ($fd6e)
 
                     fcb       $40                 ???
                     fdb       $0000
 
                     fcb       $00
-                    fdb       L0190-*             POKE   ($fd6d)
+                    fdb       KwPoke-*             POKE   ($fd6d)
 
                     fcb       $00
-                    fdb       L0196-*             IF     ($fd70)
+                    fdb       KwIf-*             IF     ($fd70)
 
                     fcb       $63
-                    fdb       L019A-*             ELSE   ($fd71)
+                    fdb       KwElse-*             ELSE   ($fd71)
 
                     fcb       $02
-                    fdb       L01A0-*             ENDIF  ($fd74)
+                    fdb       KwEndif-*             ENDIF  ($fd74)
 
                     fcb       $01
-                    fdb       L01A7-*             FOR    ($fd78)
+                    fdb       KwFor-*             FOR    ($fd78)
 
                     fcb       $22
-                    fdb       L1419-*             (something with NEXT in it) ($0fe7)
+                    fdb       PrintNextKwd-*             (something with NEXT in it) ($0fe7)
 
                     fcb       $01
-                    fdb       L01B2-*             WHILE ($fd7d)
+                    fdb       KwWhile-*             WHILE ($fd7d)
 
                     fcb       $62
-                    fdb       L01B9-*             ENDWHILE ($fd81)
+                    fdb       KwEndwhile-*             ENDWHILE ($fd81)
 
                     fcb       $01
-                    fdb       L01C3-*             REPEAT ($fd88)
+                    fdb       KwRepeat-*             REPEAT ($fd88)
 
                     fcb       $02
-                    fdb       L01CB-*             UNTIL ($fd8d)
+                    fdb       KwUntil-*             UNTIL ($fd8d)
 
                     fcb       $01
-                    fdb       L01D2-*             LOOP ($fd91)
+                    fdb       KwLoop-*             LOOP ($fd91)
 
                     fcb       $62
-                    fdb       L01D8-*             ENDLOOP ($fd94)
+                    fdb       KwEndloop-*             ENDLOOP ($fd94)
 
                     fcb       $02
-                    fdb       L01E1-*             EXITIF ($fd9a)
+                    fdb       KwExitif-*             EXITIF ($fd9a)
 
                     fcb       $63
-                    fdb       L01E9-*             ENDEXIT ($fd9f)
+                    fdb       KwEndexit-*             ENDEXIT ($fd9f)
 
                     fcb       $00
-                    fdb       L01F2-*             ON ($fda5)
+                    fdb       KwOn-*             ON ($fda5)
 
                     fcb       $00
-                    fdb       L01F6-*             ERROR ($fda6)
+                    fdb       KwErrKwd-*             ERROR ($fda6)
 
                     fcb       $20
-                    fdb       L13C9-*             Point to something with GOTO ($0f76)
+                    fdb       PrintGotoKwd-*             Point to something with GOTO ($0f76)
 
                     fcb       $20
-                    fdb       L13C9-*             Point to something with GOTO ($0f73)
+                    fdb       PrintGotoKwd-*             Point to something with GOTO ($0f73)
 
                     fcb       $20
-                    fdb       L13C3-*             Point to something with GOSUB ($0f6a)
+                    fdb       PrintGosubKwd-*             Point to something with GOSUB ($0f6a)
 
                     fcb       $20
-                    fdb       L13C3-*             Point to something with GOSUB ($0f67)
+                    fdb       PrintGosubKwd-*             Point to something with GOSUB ($0f67)
 
                     fcb       $20
-                    fdb       L140F-*             Point to something with RUN ($0fb0)
+                    fdb       PrintRunKwd-*             Point to something with RUN ($0fb0)
 
                     fcb       $00
-                    fdb       L020F-*             KILL ($fdad)
+                    fdb       KwKill-*             KILL ($fdad)
 
                     fcb       $00
-                    fdb       L0215-*             INPUT ($fdb0)
+                    fdb       KwInput-*             INPUT ($fdb0)
 
                     fcb       $00
-                    fdb       L021C-*             PRINT ($fdb4)
+                    fdb       KwPrint-*             PRINT ($fdb4)
 
                     fcb       $00
-                    fdb       L0223-*             CHD ($fdb8)
+                    fdb       KwChd-*             CHD ($fdb8)
 
                     fcb       $00
-                    fdb       L0228-*             CHX ($fdba)
+                    fdb       KwChx-*             CHX ($fdba)
 
                     fcb       $00
-                    fdb       L022D-*             CREATE ($fdbc)
+                    fdb       KwCreate-*             CREATE ($fdbc)
 
                     fcb       $00
-                    fdb       L0235-*             OPEN ($fdc1)
+                    fdb       KwOpen-*             OPEN ($fdc1)
 
                     fcb       $00
-                    fdb       L023B-*             SEEK ($fdc4)
+                    fdb       KwSeek-*             SEEK ($fdc4)
 
                     fcb       $00
-                    fdb       L0241-*             READ ($fdc7)
+                    fdb       KwRead-*             READ ($fdc7)
 
                     fcb       $00
-                    fdb       L0247-*             WRITE ($fdca)
+                    fdb       KwWrite-*             WRITE ($fdca)
 
                     fcb       $00
-                    fdb       L024E-*             GET ($fdce)
+                    fdb       KwGet-*             GET ($fdce)
 
                     fcb       $00
-                    fdb       L0253-*             PUT ($fdd0)
+                    fdb       KwPut-*             PUT ($fdd0)
 
                     fcb       $00
-                    fdb       L0258-*             CLOSE ($fdd2)
+                    fdb       KwClose-*             CLOSE ($fdd2)
 
                     fcb       $00
-                    fdb       L025F-*             RESTORE ($fdd6)
+                    fdb       KwRestore-*             RESTORE ($fdd6)
 
                     fcb       $00
-                    fdb       L0268-*             DELETE ($fddc)
+                    fdb       KwDelete-*             DELETE ($fddc)
 
                     fcb       $00
-                    fdb       L0270-*             CHAIN ($fde1)
+                    fdb       KwChain-*             CHAIN ($fde1)
 
                     fcb       $00
-                    fdb       L0277-*             SHELL ($fde5)
+                    fdb       KwShell-*             SHELL ($fde5)
 
                     fcb       $20
-                    fdb       L1402-*             Points to something with BASE ($0f6d)
+                    fdb       PrintBaseKwd-*             Points to something with BASE ($0f6d)
 
                     fcb       $20
-                    fdb       L1402-*             Points to something with BASE ($0f6a)
+                    fdb       PrintBaseKwd-*             Points to something with BASE ($0f6a)
 
                     fcb       $20
-                    fdb       L143C-*             Points to something with REM ($0fa1)
+                    fdb       PrintRemKwd-*             Points to something with REM ($0fa1)
 
                     fcb       $20
-                    fdb       L1436-*             Points to something with (* ($0f98)
+                    fdb       PrintAltRem-*             Points to something with (* ($0f98)
 
                     fcb       $00
-                    fdb       L0289-*             END ($fde8)
+                    fdb       KwEnd-*             END ($fde8)
 
                     fcb       $20
-                    fdb       L13CF-*             ??? end of goto/gosub routine ($0f2b)
+                    fdb       PrintLineOffset-*             ??? end of goto/gosub routine ($0f2b)
 
                     fcb       $20
-                    fdb       L13CF-*             ??? end of goto/gosub routine ($0f28)
+                    fdb       PrintLineOffset-*             ??? end of goto/gosub routine ($0f28)
 
                     fcb       $40                 ???
                     fdb       $0000
 
                     fcb       $20
-                    fdb       L1443-*             ??? end of REM routine ($0f96)
+                    fdb       RemBodyLoop-*             ??? end of REM routine ($0f96)
 
                     fcb       $40
                     fcc       ' \'                Command statement separator literal
 
                     fcb       $20
-                    fdb       L12D4-*             ??? ($0e21)
+                    fdb       SkipAndSavePos-*             ??? ($0e21)
 
                     fcb       $10
-                    fdb       L028E-*             BYTE ($fdd8)
+                    fdb       KwByte-*             BYTE ($fdd8)
 
                     fcb       $10
-                    fdb       L0294-*             INTEGER ($fddb)
+                    fdb       KwInteger-*             INTEGER ($fddb)
 
                     fcb       $10
-                    fdb       L029D-*             REAL ($fde1)
+                    fdb       KwReal-*             REAL ($fde1)
 
                     fcb       $10
-                    fdb       L02A3-*             BOOLEAN ($fde4)
+                    fdb       KwBoolean-*             BOOLEAN ($fde4)
 
                     fcb       $10
-                    fdb       L02AC-*             STRING ($fdea)
+                    fdb       KwString-*             STRING ($fdea)
 
                     fcb       $20
-                    fdb       L1424-*             ??? Something that points to 'THEN' ($0f5f)
+                    fdb       PrintThenKwd-*             ??? Something that points to 'THEN' ($0f5f)
 
                     fcb       $60
-                    fdb       L02BA-*             TO ($fdf2)
+                    fdb       KwTo-*             TO ($fdf2)
 
                     fcb       $60
-                    fdb       L02BE-*             STEP ($fdf3)
+                    fdb       KwStep-*             STEP ($fdf3)
 
                     fcb       $00
-                    fdb       L02C4-*             DO ($fdf6)
+                    fdb       KwDo-*             DO ($fdf6)
 
                     fcb       $00
-                    fdb       L02C8-*             USING ($fdf7)
+                    fdb       KwUsing-*             USING ($fdf7)
 
                     fcb       $20
-                    fdb       L145E-*             ??? Something with file access modes ($0f8a)
+                    fdb       DecodeFMode-*             ??? Something with file access modes ($0f8a)
 
                     fcb       $40
                     fcc       ','                 comma
@@ -1197,224 +1201,224 @@ L03F5               fcb       $40                 ???
                     fcb       $00
 
                     fcb       $20
-                    fdb       L1AE1-*             ??? Bump Y up by 2 & return ($15ec)
+                    fdb       BumpYPlus1-*             ??? Bump Y up by 2 & return ($15ec)
 
 * Guess: These following have to do with printing numeric values???
                     fcb       $20
-                    fdb       L138A-*             ??? ($0E92)
+                    fdb       PrintSymbol-*             ??? ($0E92)
 
                     fcb       $20
-                    fdb       L138A-*             ??? ($0E8F)
+                    fdb       PrintSymbol-*             ??? ($0E8F)
 
                     fcb       $20
-                    fdb       L138A-*             ??? ($0E8c)
+                    fdb       PrintSymbol-*             ??? ($0E8c)
 
                     fcb       $20
-                    fdb       L138A-*             ??? ($0E89)
+                    fdb       PrintSymbol-*             ??? ($0E89)
 
                     fcb       $20
-                    fdb       L138A-*             ??? ($0E86)
+                    fdb       PrintSymbol-*             ??? ($0E86)
 
                     fcb       $20
-                    fdb       L138A-*             ??? ($0E83)
+                    fdb       PrintSymbol-*             ??? ($0E83)
 
                     fcb       $21
-                    fdb       L138A-*             ??? ($0E80)
+                    fdb       PrintSymbol-*             ??? ($0E80)
 
                     fcb       $22
-                    fdb       L138A-*             ??? ($0E7D)
+                    fdb       PrintSymbol-*             ??? ($0E7D)
 
                     fcb       $23
-                    fdb       L138A-*             ??? ($0E7A)
+                    fdb       PrintSymbol-*             ??? ($0E7A)
 
                     fcb       $20
-                    fdb       L1386-*             ??? (Appends period, does 138A routine) ($0E73)
+                    fdb       AppendDotAndNum-*             ??? (Appends period, does 138A routine) ($0E73)
 
                     fcb       $21
-                    fdb       L1386-*             ??? (Appends period, does 138A routine) ($0E70)
+                    fdb       AppendDotAndNum-*             ??? (Appends period, does 138A routine) ($0E70)
 
                     fcb       $22
-                    fdb       L1386-*             ??? (Appends period, does 138A routine) ($0E6d)
+                    fdb       AppendDotAndNum-*             ??? (Appends period, does 138A routine) ($0E6d)
 
                     fcb       $23
-                    fdb       L1386-*             ??? (Appends period, does 138A routine) ($0E6a)
+                    fdb       AppendDotAndNum-*             ??? (Appends period, does 138A routine) ($0E6a)
 
                     fcb       $26
-                    fdb       L13BE-*             ??? (print single byte numeric?) ($0E9f)
+                    fdb       PrintByteLit-*             ??? (print single byte numeric?) ($0E9f)
 
                     fcb       $27
-                    fdb       L13CF-*             ??? (print 2 byte integer numeric?) ($0Ead)
+                    fdb       PrintLineOffset-*             ??? (print 2 byte integer numeric?) ($0Ead)
 
                     fcb       $24
-                    fdb       L13A0-*             ??? (possibly something with reals?) ($0E7b)
+                    fdb       PrintRealToStr-*             ??? (possibly something with reals?) ($0E7b)
 
                     fcb       $24
-                    fdb       L13E1-*             ??? (string, puts " in) ($0Eb9)
+                    fdb       PrintStrLit-*             ??? (string, puts " in) ($0Eb9)
 
                     fcb       $27
-                    fdb       L13F6-*             ??? (string, puts $ in) ($0Ecb)
+                    fdb       PrintHexStr-*             ??? (string, puts $ in) ($0Ecb)
 
                     fcb       $11
-                    fdb       L02DA-*             ADDR ($FDac)
+                    fdb       KwAddr-*             ADDR ($FDac)
 
                     fcb       $80                 ???
                     fdb       $0000
 
                     fcb       $11
-                    fdb       L02E0-*             SIZE ($FDAC)
+                    fdb       KwSize-*             SIZE ($FDAC)
 
                     fcb       $80
                     fdb       $0000               ???
 
                     fcb       $10
-                    fdb       L02E6-*             POS ($FDAC)
+                    fdb       KwPos-*             POS ($FDAC)
 
                     fcb       $10
-                    fdb       L02EB-*             ERR ($FDAE)
+                    fdb       KwErr-*             ERR ($FDAE)
 
                     fcb       $12
-                    fdb       L02F0-*             MOD ($FDB0)
+                    fdb       KwMod-*             MOD ($FDB0)
 
                     fcb       $12
-                    fdb       L02F0-*             MOD ($FDAD)
+                    fdb       KwMod-*             MOD ($FDAD)
 
                     fcb       $11
-                    fdb       L02F5-*             RND ($FDAF)
+                    fdb       KwRnd-*             RND ($FDAF)
 
                     fcb       $10
-                    fdb       L0302-*             PI ($FDB9)
+                    fdb       KwPi-*             PI ($FDB9)
 
                     fcb       $12
-                    fdb       L02FA-*             SUBSTR ($FDAE)
+                    fdb       KwSubstr-*             SUBSTR ($FDAE)
 
                     fcb       $11
-                    fdb       L0335-*             SGN ($FDE6)
+                    fdb       KwSgn-*             SGN ($FDE6)
 
                     fcb       $11
-                    fdb       L0335-*             SGN ($FDE3)
+                    fdb       KwSgn-*             SGN ($FDE3)
 
                     fcb       $11
-                    fdb       L0306-*             SIN ($FDB1)
+                    fdb       KwSin-*             SIN ($FDB1)
 
                     fcb       $11
-                    fdb       L030B-*             COS ($FDB3)
+                    fdb       KwCos-*             COS ($FDB3)
 
                     fcb       $11
-                    fdb       L0310-*             TAN ($FDB5)
+                    fdb       KwTan-*             TAN ($FDB5)
 
                     fcb       $11
-                    fdb       L0315-*             ASN ($FDB7)
+                    fdb       KwAsn-*             ASN ($FDB7)
 
                     fcb       $11
-                    fdb       L031A-*             ACS ($FDB9)
+                    fdb       KwAcs-*             ACS ($FDB9)
 
                     fcb       $11
-                    fdb       L031F-*             ATN ($FDbb)
+                    fdb       KwAtn-*             ATN ($FDbb)
 
                     fcb       $11
-                    fdb       L0324-*             EXP ($FDBD)
+                    fdb       KwExp-*             EXP ($FDBD)
 
                     fcb       $11
-                    fdb       L033A-*             ABS ($FDD0)
+                    fdb       KwAbs-*             ABS ($FDD0)
 
                     fcb       $11
-                    fdb       L033A-*             ABS ($FDCD)
+                    fdb       KwAbs-*             ABS ($FDCD)
 
                     fcb       $11
-                    fdb       L0329-*             LOG ($FDB9)
+                    fdb       KwLog-*             LOG ($FDB9)
 
                     fcb       $11
-                    fdb       L032E-*             LOG10 ($FDBB)
+                    fdb       KwLog10-*             LOG10 ($FDBB)
 
                     fcb       $11
-                    fdb       L033F-*             SQRT ($FDC9)
+                    fdb       KwSqrt-*             SQRT ($FDC9)
 
                     fcb       $11
-                    fdb       L033F-*             SQRT ($FDC6)
+                    fdb       KwSqrt-*             SQRT ($FDC6)
 
                     fcb       $11
-                    fdb       L034A-*             INT ($FDCE)
+                    fdb       KwInt-*             INT ($FDCE)
 
                     fcb       $11
-                    fdb       L034A-*             INT ($FDCB)
+                    fdb       KwInt-*             INT ($FDCB)
 
                     fcb       $11
-                    fdb       L034F-*             FIX ($FDCD)
+                    fdb       KwFix-*             FIX ($FDCD)
 
                     fcb       $11
-                    fdb       L034F-*             FIX ($FDCA)
+                    fdb       KwFix-*             FIX ($FDCA)
 
                     fcb       $11
-                    fdb       L0354-*             FLOAT ($FDCC)
+                    fdb       KwFloat-*             FLOAT ($FDCC)
 
                     fcb       $11
-                    fdb       L0354-*             FLOAT ($FDC9)
+                    fdb       KwFloat-*             FLOAT ($FDC9)
 
                     fcb       $11
-                    fdb       L035B-*             SQ ($FDCD)
+                    fdb       KwSq-*             SQ ($FDCD)
 
                     fcb       $11
-                    fdb       L035B-*             SQ ($FDCA)
+                    fdb       KwSq-*             SQ ($FDCA)
 
                     fcb       $11
-                    fdb       L035F-*             PEEK ($FDCB)
+                    fdb       KwPeek-*             PEEK ($FDCB)
 
                     fcb       $11
-                    fdb       L0365-*             LNOT ($FDCE)
+                    fdb       KwLnot-*             LNOT ($FDCE)
 
                     fcb       $11
-                    fdb       L036B-*             VAL ($FDD1)
+                    fdb       KwVal-*             VAL ($FDD1)
 
                     fcb       $11
-                    fdb       L0370-*             LEN ($FDD3)
+                    fdb       KwLen-*             LEN ($FDD3)
 
                     fcb       $11
-                    fdb       L0375-*             ASC ($FDD5)
+                    fdb       KwAsc-*             ASC ($FDD5)
 
                     fcb       $12
-                    fdb       L037A-*             LAND ($FDD7)
+                    fdb       KwLand-*             LAND ($FDD7)
 
                     fcb       $12
-                    fdb       L0380-*             LOR ($FDDA)
+                    fdb       KwLor-*             LOR ($FDDA)
 
                     fcb       $12
-                    fdb       L0385-*             LXOR ($FDDC)
+                    fdb       KwLxor-*             LXOR ($FDDC)
 
                     fcb       $10
-                    fdb       L038B-*             TRUE ($FDDF)
+                    fdb       KwTrue-*             TRUE ($FDDF)
 
                     fcb       $10
-                    fdb       L0391-*             FALSE ($FDE2)
+                    fdb       KwFalse-*             FALSE ($FDE2)
 
                     fcb       $11
-                    fdb       L0398-*             EOF ($FDE6)
+                    fdb       KwEof-*             EOF ($FDE6)
 
                     fcb       $11
-                    fdb       L039D-*             TRIM$ ($FDE8)
+                    fdb       KwTrimS-*             TRIM$ ($FDE8)
 
                     fcb       $13
-                    fdb       L03A4-*             MID$ ($FDEC)
+                    fdb       KwMidS-*             MID$ ($FDEC)
 
                     fcb       $12
-                    fdb       L03AA-*             LEFT$ ($FDEF)
+                    fdb       KwLeftS-*             LEFT$ ($FDEF)
 
                     fcb       $12
-                    fdb       L03B1-*             RIGHT$ ($FDF3)
+                    fdb       KwRightS-*             RIGHT$ ($FDF3)
 
                     fcb       $11
-                    fdb       L03B9-*             CHR$ ($FDF8)
+                    fdb       KwChrS-*             CHR$ ($FDF8)
 
                     fcb       $11
-                    fdb       L03BF-*             STR$ ($FDFB)
+                    fdb       KwStrS-*             STR$ ($FDFB)
 
                     fcb       $11
-                    fdb       L03BF-*             STR$ ($FDF8)
+                    fdb       KwStrS-*             STR$ ($FDF8)
 
                     fcb       $10
-                    fdb       L03C5-*             DATE$ ($FDFB)
+                    fdb       KwDateS-*             DATE$ ($FDFB)
 
                     fcb       $11
-                    fdb       L03CC-*             TAB ($FDFF)
+                    fdb       KwTab-*             TAB ($FDFF)
 
                     fcb       $80
                     fdb       $0000
@@ -1432,7 +1436,7 @@ L03F5               fcb       $40                 ???
                     fdb       $0000
 
                     fcb       $11
-                    fdb       L03D1-*             NOT ($FDF2)
+                    fdb       KwNot-*             NOT ($FDF2)
 
                     fcb       $51
                     fcc       '-'                 ??? (Sign as opposed to subtract?) negate (REAL)
@@ -1443,13 +1447,13 @@ L03F5               fcb       $40                 ???
                     fcb       $00
 
                     fcb       $0A
-                    fdb       L03D6-*             AND ($FDEE)
+                    fdb       KwAnd-*             AND ($FDEE)
 
                     fcb       $09
-                    fdb       L03DB-*             OR ($FDF0)
+                    fdb       KwOr-*             OR ($FDF0)
 
                     fcb       $09
-                    fdb       L03DF-*             XOR ($FDF1)
+                    fdb       KwXor-*             XOR ($FDF1)
 
 * Would presume that the different duplicates are for different data types
 * It appears that BYTE & INTEGER use the same routines, REAL is different,
@@ -1582,169 +1586,169 @@ L03F5               fcb       $40                 ???
                     fcc       '**'                exponent (2nd version)
 
                     fcb       $20
-                    fdb       L138A-*             ??? ($0D3c)
+                    fdb       PrintSymbol-*             ??? ($0D3c)
 
                     fcb       $21
-                    fdb       L138A-*             ??? ($0D39)
+                    fdb       PrintSymbol-*             ??? ($0D39)
 
                     fcb       $22
-                    fdb       L138A-*             ??? ($0D36)
+                    fdb       PrintSymbol-*             ??? ($0D36)
 
                     fcb       $23
-                    fdb       L138A-*             ??? ($0D33)
+                    fdb       PrintSymbol-*             ??? ($0D33)
 
                     fcb       $20
-                    fdb       L1386-*             ??? (Adds period, does 138A) ($0D2C)
+                    fdb       AppendDotAndNum-*             ??? (Adds period, does 138A) ($0D2C)
 
                     fcb       $21
-                    fdb       L1386-*             ??? (Adds period, does 138A) ($0D29)
+                    fdb       AppendDotAndNum-*             ??? (Adds period, does 138A) ($0D29)
 
                     fcb       $22
-                    fdb       L1386-*             ??? (Add period, does 138A) ($0D26)
+                    fdb       AppendDotAndNum-*             ??? (Add period, does 138A) ($0D26)
 
                     fcb       $23
-                    fdb       L1386-*             ??? (Add period, does 138A) ($0D23)
+                    fdb       AppendDotAndNum-*             ??? (Add period, does 138A) ($0D23)
 
 * System Mode commands
                     fdb       2                   # commands this table
                     fcb       2                   # bytes to first command string
-L0668               fdb       L09F9-L0668
+SysCmdDollar               fdb       DollarCmd-SysCmdDollar
                     fcs       '$'
-L066B               fdb       L094F-L066B
+SysCmdCR               fdb       DirHdrPrint-SysCmdCR
                     fcb       C$CR+$80            (Carriage return)
 
                     fdb       16                  # commands this table
                     fcb       2                   # bytes to first command string
-L0671               fdb       BYEBYE-L0671
+SysCmdBye               fdb       BYEBYE-SysCmdBye
                     fcs       'BYE'
-L0676               fdb       DIR-L0676
+SysCmdDir               fdb       DIR-SysCmdDir
                     fcs       'DIR'
-L067B               fdb       L1590-L067B
+SysCmdEdit               fdb       EditCmd-SysCmdEdit
                     fcs       'EDIT'
-L0681               fdb       L1590-L0681
+SysCmdEditE               fdb       EditCmd-SysCmdEditE
                     fcs       'E'
-L0684               fdb       L0D02-L0684
+SysCmdList               fdb       PrepSavePath-SysCmdList
                     fcs       'LIST'
-L068A               fdb       INTERP-L068A
+SysCmdRun               fdb       INTERP-SysCmdRun
                     fcs       'RUN'
-L068F               fdb       KILLER-L068F
+SysCmdKill               fdb       KILLER-SysCmdKill
                     fcs       'KILL'
-L0695               fdb       SAVE-L0695
+SysCmdSave               fdb       SAVE-SysCmdSave
                     fcs       'SAVE'
-L069B               fdb       L0AC3-L069B
+SysCmdLoad               fdb       OpenAndLoad-SysCmdLoad
                     fcs       'LOAD'
-L06A1               fdb       RENAME-L06A1
+SysCmdRename               fdb       RENAME-SysCmdRename
                     fcs       'RENAME'
-L06A9               fdb       DUMP-L06A9
+SysCmdPack               fdb       DUMP-SysCmdPack
                     fcs       'PACK'
-L06AF               fdb       CHGMEM-L06AF
+SysCmdMem               fdb       CHGMEM-SysCmdMem
                     fcs       'MEM'
-L06B4               fdb       CHDDIR-L06B4
+SysCmdChd               fdb       CHDDIR-SysCmdChd
                     fcs       'CHD'
-L06B9               fdb       L0A28-L06B9
+SysCmdChx               fdb       ChxDir-SysCmdChx
                     fcs       'CHX'
 * Aliases for CHD and CHX
-L06BE               fdb       CHDDIR-L06BE
+SysCmdCd               fdb       CHDDIR-SysCmdCd
                     fcs       'CD'
-L06C2               fdb       L0A28-L06C2
+SysCmdCx               fdb       ChxDir-SysCmdCx
                     fcs       'CX'
 
 * Debug mode commands (offsets done by current base + offset)
                     fdb       2                   # of entries this table (-3,x)
                     fcb       2                   # of bytes to start of next entry (-1,x)
-L06C1               fdb       L09F9-L06C1         base ptr goes here (0,x)
+DbgCmdDollar               fdb       DollarCmd-DbgCmdDollar         base ptr goes here (0,x)
                     fcs       '$'                 base ptr+(-1,x) above points here
-L06C4               fdb       L108B-L06C4
+DbgCmdCR               fdb       DebugSingleStep-DbgCmdCR
                     fcb       C$CR+$80            (Carriage return)
 
-L06C7               fdb       14                  # of entries this table (but 13?)
+DbgCmdTable               fdb       14                  # of entries this table (but 13?)
                     fcb       2                   # bytes to next entry
 * Debug set #2?
-L06CA               fdb       L109A-L06CA
+DbgCmdCont               fdb       ContCmd-DbgCmdCont
                     fcs       'CONT'
-L06D0               fdb       DIR-L06D0
+DbgCmdDir               fdb       DIR-DbgCmdDir
                     fcs       'DIR'
-L06D5               fdb       L1068-L06D5
+DbgCmdQ               fdb       QuitDebug-DbgCmdQ
                     fcs       'Q'
-L06D8               fdb       L10E4-L06D8
+DbgCmdList               fdb       ListCmd-DbgCmdList
                     fcs       'LIST'
-L06DE               fdb       L1195-L06DE
+DbgCmdPrint               fdb       CheckPackedPt-DbgCmdPrint
                     fcs       'PRINT'
-L06E5               fdb       L120A-L06E5
+DbgCmdState               fdb       StateCmd-DbgCmdState
                     fcs       'STATE'
-L06EC               fdb       L1195-L06EC
+DbgCmdTron               fdb       CheckPackedPt-DbgCmdTron
                     fcs       'TRON'
-L06F2               fdb       L1195-L06F2
+DbgCmdTroff               fdb       CheckPackedPt-DbgCmdTroff
                     fcs       'TROFF'
-L06F9               fdb       L1195-L06F9
+DbgCmdDeg               fdb       CheckPackedPt-DbgCmdDeg
                     fcs       'DEG'
-L06FE               fdb       L1195-L06FE
+DbgCmdRad               fdb       CheckPackedPt-DbgCmdRad
                     fcs       'RAD'
-L0703               fdb       L1195-L0703
+DbgCmdLet               fdb       CheckPackedPt-DbgCmdLet
                     fcs       'LET'
-L0708               fdb       L107C-L0708
+DbgCmdStep               fdb       StepCmd-DbgCmdStep
                     fcs       'STEP'
-L070E               fdb       L1226-L070E
+DbgCmdBreak               fdb       BreakCmd-DbgCmdBreak
                     fcs       'BREAK'
 * Some edit mode stuff?
                     fdb       8                   # entries this table
                     fcb       2                   # bytes to start entry
-L0718               fdb       L169E-L0718
+EditCmdL               fdb       EditSetupLine-EditCmdL
                     fcs       'L'
-L071B               fdb       L169E-L071B
+EditCmdLl               fdb       EditSetupLine-EditCmdLl
                     fcs       'l'
-L071E               fdb       L199A-L071E
+EditCmdD               fdb       SubstCmd-EditCmdD
                     fcs       'D'
-L0721               fdb       L199A-L0721
+EditCmdDl               fdb       SubstCmd-EditCmdDl
                     fcs       'd'
-L0724               fdb       L15E7-L0724
+EditCmdPlus               fdb       EditModICode-EditCmdPlus
                     fcs       '+'
-L0727               fdb       L15E7-L0727
+EditCmdMinus               fdb       EditModICode-EditCmdMinus
                     fcs       '-'
-L072A               fdb       L15E7-L072A
+EditCmdCR               fdb       EditModICode-EditCmdCR
                     fcb       C$CR+$80
-L072D               fdb       L1601-L072D
+EditCmdSpace               fdb       InsertAndEdit-EditCmdSpace
                     fcb       C$SPAC+$80
 
                     fdb       4                   # entries
                     fcb       2                   # bytes to first entry
-L0733               fdb       L175B-L0733
+EditCmdS               fdb       EditWithWild-EditCmdS
                     fcs       'S'
-L0736               fdb       L175E-L0736
+EditCmdC               fdb       EditExact-EditCmdC
                     fcs       'C'
-L0739               fdb       L18DF-L0739
+EditCmdR               fdb       MoveLinesCmd-EditCmdR
                     fcs       'R'
-L073C               fdb       L1993-L073C
+EditCmdQuit               fdb       EatStkRebind-EditCmdQuit
                     fcs       'Q'
 
-L073F               fcb       $0E
+ReadyPrefix               fcb       $0E
                     fcs       'Ready'
-L0745               fcs       'What?'
-L074A               fcs       ' free'
-L074F               fcs       'Program'
-L0756               fcs       'PROCEDURE'
+WhatStr               fcs       'What?'
+FreeStr               fcs       ' free'
+ProgramStr               fcs       'Program'
+ProcedureStr               fcs       'PROCEDURE'
                     fcb       C$CR
-L0760               fcb       C$LF
+DirHdrStr               fcb       C$LF
                     fcs       '  Name      Proc-Size  Data-Size'
-L0781               fcc       'Rewrite?: '
-L0791               fcb       $0E
+RewriteStr               fcc       'Rewrite?: '
+AlphaModeCode               fcb       $0E
                     fcs       'BREAK: '
-L07A2               fcs       'ok'
-L07A4               fcs       'D:'
-L07A6               fcs       'E:'
-L07A8               fcs       'B:'
+OkStr               fcs       'ok'
+DebugPrompt               fcs       'D:'
+EditPromptStr               fcs       'E:'
+ReadyPrompt               fcs       'B:'
 
 * F$Icpt routine
 INTCPT               lda       R$DP,s              Get DP register from stack
                     tfr       a,dp                Put into real DP
-                    stb       <u0035              Save signal code
+                    stb       <LastSignal              Save signal code
 
                     ifne      H6309
-                    oim       #$80,<u0034         Set high bit (flag signal was received)
+                    oim       #$80,<SigFlag         Set high bit (flag signal was received)
                     else
-                    lsl       <u0034              Set high bit (flag signal was received)
+                    lsl       <SigFlag              Set high bit (flag signal was received)
                     coma                    Break flag
-                    ror       <u0034
+                    ror       <SigFlag
                     endc
 
                     rti                           Return to normal BASIC09
@@ -1769,17 +1773,17 @@ START0               std       ,--u
                     endc
 
                     leau      ,x                  Point U to Start of parameter area
-                    std       <u0000              Preserve Start of Data memory ptr
+                    std       <DpBase              Preserve Start of Data memory ptr
                     inca                          Point to $100 in data area
-                    sta       <u00D9              Preserve the 1
-                    std       <u0080              Initialize ptr to start of temp buffer
-                    std       <u0082              Initialize current pos. in temp buffer
+                    sta       <BinderMode              Preserve the 1
+                    std       <TmpBufBase              Initialize ptr to start of temp buffer
+                    std       <TmpBufCur              Initialize current pos. in temp buffer
                     adda      #$02                D=$300
-                    std       <u0046              Save subroutine stack ptr
-                    std       <u0044              Save top of string space ptr
+                    std       <SubrStkPtr              Save subroutine stack ptr
+                    std       <StrSpaceTop              Save top of string space ptr
                     inca                          D=$400
                     tfr       d,s                 Point stack to $400 ($300-$3ff)
-                    std       <u0004              Save ptr to ptr list of modules in workspace
+                    std       <ModListPtr              Save ptr to ptr list of modules in workspace
                     pshs      x                   Preserve start of param area
 
                     ifne      H6309
@@ -1796,13 +1800,13 @@ ClrLp               sta       ,x+                 Clear byte
                     tfr       x,d                 Move $500 to D
                     endc
 
-                    std       <u0008              Save ptr to start of I-Code workspace
-                    std       <u004A              Save ptr to end of used I-Code workspace
+                    std       <ICodeBase              Save ptr to start of I-Code workspace
+                    std       <ICodeEndPtr              Save ptr to end of used I-Code workspace
                     tfr       u,d                 Move start of param area ptr to D
-                    subd      <u0000              Calculate size for entire data area
-                    std       <u0002              Preserve size of Data area
+                    subd      <DpBase              Calculate size for entire data area
+                    std       <DataAreaSz              Preserve size of Data area
                     ldb       #01                 Std Out path
-                    stb       <u002E              Save as std output path
+                    stb       <StdoutPath              Save as std output path
                     lda       #$03                Close all paths past the standard 3
 START05               os9       I$Close
                     inca
@@ -1810,19 +1814,19 @@ START05               os9       I$Close
                     blo       START05
                     lda       #$02                Create duplicate path for error path
                     os9       I$Dup
-                    sta       <u00BE              Preserve duplicate's path #
+                    sta       <ErrDupPath              Preserve duplicate's path #
                     leax      <INTCPT,pc           Point to intercept routine and set it up with
                     os9       F$Icpt              it's memory area @ start of param area
-                    leax      >L000D-$d,pc        Point to beginning of module header
+                    leax      >JmpVectTbl-$d,pc        Point to beginning of module header
                     ifne      H6309
                     tfr       x,w                 Move it to W
                     else
                     pshs      x             save BASE 0
                     endc
-                    ldx       <u0000              Point X to start of data mem
+                    ldx       <DpBase              Point X to start of data mem
 * Set up some JMP tables from the module header
                     leax      <$1B,x              Point $1b bytes into it
-                    leay      >L000D,pc           Point to module header extensions
+                    leay      >JmpVectTbl,pc           Point to module header extensions
 START15               lda       #$7E                Opcode for JMP Extended instruction
                     sta       ,x+                 Store in table
                     ldd       ,y++                Get jump offset from module header extension
@@ -1837,10 +1841,10 @@ START15               lda       #$7E                Opcode for JMP Extended inst
                     ifeq      H6309
                     leas      2,s                 eat X on stack
                     endc
-                    bsr       L0116               Go init <$50 vars, & some table ptrs
+                    bsr       CallVect4Fn0               Go init <$50 vars, & some table ptrs
                     puls      y                   Get parameter ptr
-                    leax      >L0140,pc           Point to main command token list
-                    stx       <u009E              Save it
+                    leax      >CmdTable,pc           Point to main command token list
+                    stx       <CmdTablePtr              Save it
                     ldb       ,y                  Get char from params
                     cmpb      #C$CR               Carriage return?
                     ifne      wildbits
@@ -1854,79 +1858,79 @@ START15               lda       #$7E                Opcode for JMP Extended inst
                     bsr       SETUP1
                     lbsr      DIRLNK         try to find packed module
                     bcc       EXIT         ..If found; don't do auto-load
-                    lbsr      L0AC3               Go open path to name (Y=ptr to it)
+                    lbsr      OpenAndLoad               Go open path to name (Y=ptr to it)
                     bra       EXIT         cleanup stack
 
-L0116               jsr       <u0024              JMP to L31E8 (default from module header)
+CallVect4Fn0               jsr       <JmpVect4              JMP to Vect4Dispatch (default from module header)
                     fcb       $00                 Function code 0
 
-START2               puls      y                   Get original contents of <u00B7
+START2               puls      y                   Get original contents of <ExitStkPtr
                     bsr       SETUP
-                    ldx       <u0004              Get ptr to module list
+                    ldx       <ModListPtr              Get ptr to module list
                     ldd       ,x                  Get ptr to 1st module (initially 0 (none))
-                    std       <u002F              Save it
+                    std       <CurModPtr              Save it
                     lbsr      INTERP         (will exit to COMAN0)
-SETUP               leax      <L08B2,pc           Get ptr >1st entry into routine
+SETUP               leax      <ReadyCmdLoop,pc           Get ptr >1st entry into routine
 SETUP1               puls      u                   Get RTS address
                     bsr       SETEXT               Push 2 bytes from <B7 onto stack, RTS=START2
                     pshs      u                   Save RTS address from BSR SETUP1
-                    clr       <u0034              Clear out signal recieved flag
-                    ldd       <u0000              Get start of data mem
-                    addd      <u0002              Add size of data mem
-                    subd      <u0008              Subtract all BASIC09 reserved stuff ($500 bytes)
-                    subd      <u000A              Subtract # bytes used by user's programs (not Data)
-                    std       <u000C              Save # bytes free in workspace for user's programs
+                    clr       <SigFlag              Clear out signal recieved flag
+                    ldd       <DpBase              Get start of data mem
+                    addd      <DataAreaSz              Add size of data mem
+                    subd      <ICodeBase              Subtract all BASIC09 reserved stuff ($500 bytes)
+                    subd      <ICodeUsed              Subtract # bytes used by user's programs (not Data)
+                    std       <WorkspaceFree              Save # bytes free in workspace for user's programs
                     leau      2,s                 Point U to START2 ptr on stack
-                    stu       <u0046              Save ptr to it
-                    stu       <u0044              And again
+                    stu       <SubrStkPtr              Save ptr to it
+                    stu       <StrSpaceTop              And again
                     leas      -$FE,s              Bump stack ptr back 254 bytes
                     jmp       [<-2,u]             Jump to START2 address on stack
 
-EXIT               lds       <u00B7
+EXIT               lds       <ExitStkPtr
                     puls      d             pop previous exit trap
-                    std       <u00B7        reset it
-EXNLIN               lbra      L0DBB               Reset temp buffer size & ptrs to defaults
+                    std       <ExitStkPtr        reset it
+EXNLIN               lbra      ResetTmpBuf               Reset temp buffer size & ptrs to defaults
 
-SETEXT               ldd       <u00B7              Get some other stack ptr?
+SETEXT               ldd       <ExitStkPtr              Get some other stack ptr?
                     pshs      d                   Preserve it
-                    sts       <u00B7              Save stack ptr
+                    sts       <ExitStkPtr              Save stack ptr
                     ldd       2,s                 Get RTS address to SETUP1 or START2
                     stx       2,s                 Save ptr to START2 or SETUP on stack
                     tfr       d,pc                Return to SETUP1 (just after BSR SETEXT)
 
-COMAND               leax      >L0024,pc           Point to intro screen credits
-                    bsr       L08D0               Copy to temp buffer/print to Std error
+COMAND               leax      >IntroScreen,pc           Point to intro screen credits
+                    bsr       PrintMsg               Copy to temp buffer/print to Std error
                     leax      name,pc             Point to 'Basic09'
-                    bsr       L08D0               Copy to temp buffer/print to Std error
+                    bsr       PrintMsg               Copy to temp buffer/print to Std error
 
-L08B2               bsr       SETUP
-                    leax      >L073F+1,pc         Point to 'Ready'
-                    bsr       L08D0               Copy to temp buffer/print to Std error
-                    leax      >L07A8,pc           Point to 'B:' prompt
-                    leay      >L0668,pc           Point to system mode command table
-                    clr       <u0084
+ReadyCmdLoop               bsr       SETUP
+                    leax      >ReadyPrefix+1,pc         Point to 'Ready'
+                    bsr       PrintMsg               Copy to temp buffer/print to Std error
+                    leax      >ReadyPrompt,pc           Point to 'B:' prompt
+                    leay      >SysCmdDollar,pc           Point to system mode command table
+                    clr       <PackedFlag
 * (orig: COMAN0)
                     bsr       RUNCMD               Get command & execute it
                     bcc       EXIT               Did it, no problem
                     bsr       CMDERR               Unknown command, print 'What?'
                     bra       EXIT               Resume normal operation
 
-CMDERR               leax      >L0745,pc           Point to 'What?'
-L08D0               lbra      L125F               Copy to temp buffer/print to Std error
+CMDERR               leax      >WhatStr,pc           Point to 'What?'
+PrintMsg               lbra      PrintXToStderr               Copy to temp buffer/print to Std error
 
 * Get next command from keyboard & execute it
 * Entry: Y=Ptr to command table
 * Exit: Carry set if command doesn't exist
 RUNCMD               pshs      y,x                 Preserve command tbl ptr & ptr to prompt (ex B:)
-                    clr       <u0035              Clear out last signal received
-                    lbsr      L126B               Go print a message if we have to to std err
-                    bsr       EXNLIN               S/B LBSR L0DBB (saves 3 cycles)
-                    lda       <u00BD              Get current input path #
-                    beq       L08E5               If Std In, skip ahead
+                    clr       <LastSignal              Clear out last signal received
+                    lbsr      PrintXThenBuf               Go print a message if we have to to std err
+                    bsr       EXNLIN               S/B LBSR ResetTmpBuf (saves 3 cycles)
+                    lda       <ActivePath              Get current input path #
+                    beq       ReadLine               If Std In, skip ahead
                     os9       I$Close             Otherwise, close it
 * (orig: RUNCMD05)
-                    clr       <u00BD              Force input path # to 0 (Std In)
-L08E5               lbsr      INLINE               ReadLn up to 256 bytes from std in
+                    clr       <ActivePath              Force input path # to 0 (Std In)
+ReadLine               lbsr      INLINE               ReadLn up to 256 bytes from std in
                     bcc       RUNC10               No error on read, continue
                     cmpb      #E$EOF              <ESC> key?
                     bne       RUNC90               No, exit routine with error
@@ -1942,21 +1946,21 @@ L08E5               lbsr      INLINE               ReadLn up to 256 bytes from s
 * Keyboard line read, no errors from ReadLn
 RUNC10               ldx       2,s                 Get command tbl ptr back
                     lda       #$80                Mask to check for end of entry (high bit set)
-                    bsr       L010A               Go parse line, y=ptr to offset in command found
+                    bsr       Vect2Fn4               Go parse line, y=ptr to offset in command found
                     bne       RUNC20               '$' or <CR> command found, skip ahead
 * (orig: PRCLIT)
-                    lbsr      L010D               ???Go check for a procedure name, B=size
+                    lbsr      Vect2Fn2               ???Go check for a procedure name, B=size
                     beq       RUNC90               None, exit with carry set
                     leax      $03,x               Point to system mode table 2
                     lda       #C$SPAC             ???
-                    bsr       L010A               Go parse line, y=ptr to offset in command found
+                    bsr       Vect2Fn4               Go parse line, y=ptr to offset in command found
                     beq       RUNC90               No command found, exit with carry set
 * Command found in table
 RUNC20               ldd       ,x                  Get offset
                     leas      4,s                 Eat stack
                     jmp       d,x                 Call routine
 
-L010A               jsr       <u001E
+Vect2Fn4               jsr       <JmpVect2
                     fcb       $04
 
 * Command not found
@@ -1964,26 +1968,26 @@ RUNC90               coma                          Set carry & exit
                     puls      pc,y,x
 
 * Entry: Y=Ptr to string of chars
-CHGMEM               lbsr      L0A90               Go find 1st non-space/comma char
+CHGMEM               lbsr      SkipSepChar               Go find 1st non-space/comma char
                     bne       CHGME1               Found one, skip ahead
                     leax      ,y                  Point X to char
-                    ldd       <u0008              Get ptr to start of I-Code workspace
-                    addd      <u000A              Add to size of all programs in workspace
+                    ldd       <ICodeBase              Get ptr to start of I-Code workspace
+                    addd      <ICodeUsed              Add to size of all programs in workspace
                     inca                          Bump up by 256 bytes
-                    subd      <u0000              Subtract start of data mem ptr
+                    subd      <DpBase              Subtract start of data mem ptr
                     pshs      d                   Preserve size
-                    lbsr      L1748               ??? Check something
+                    lbsr      EvalNumExpr               ??? Check something
                     bcs       CHGERR               Error, exit with carry set
                     cmpd      ,s++                Check with previously calculated size
                     blo       CHGER1               Will fit, continue
                     os9       F$Mem               Won't fit, request the required data mem size
                     bcs       CHGME1               Can't get it, skip ahead
                     subd      #$0001              Bump gotten size down by 1 byte
-                    std       <u0002              Save new data mem size
-CHGME1               lbsr      L0DBB               Reset temp buffer size & ptrs
-                    ldd       <u0002              Get data mem size
+                    std       <DataAreaSz              Save new data mem size
+CHGME1               lbsr      ResetTmpBuf               Reset temp buffer size & ptrs
+                    ldd       <DataAreaSz              Get data mem size
                     bsr       ItoA               ???
-CHGME9               lbra      L1264               Print temp buff contents to std error
+CHGME9               lbra      AddCrPrint               Print temp buff contents to std error
 
 CHGERR               leas      2,s                 Eat something off stack
 CHGER1               coma                          Exit with carry set
@@ -1993,9 +1997,9 @@ CHGER1               coma                          Exit with carry set
 DIR               leax      ,y
                     lbsr      OPNCHL
 * System mode - <CR>
-L094F               leax      >L0760,pc           Point to basic09 DIR header
-                    lbsr      L125F               Print it out to Std err
-                    ldy       <u0004              Get Ptr to list of modules in BASIC09 workspace
+DirHdrPrint               leax      >DirHdrStr,pc           Point to basic09 DIR header
+                    lbsr      PrintXToStderr               Print it out to Std err
+                    ldy       <ModListPtr              Get Ptr to list of modules in BASIC09 workspace
                     bra       DIR2               Go print directory
 
 * Entry: X=Ptr to module in memory
@@ -2007,41 +2011,41 @@ DIR1               pshs      y,x                 Preserve ? & module ptr
                     tst       M$Type,x            Check type/language
                     beq       DIR10               If source code in workspace, skip ahead
                     lda       #'-                 '- char indicates packed or other language code
-DIR10               lbsr      L1373               Add char in A to temp text buffer
+DIR10               lbsr      AppendChar               Add char in A to temp text buffer
                     lda       #C$SPAC             Default to space again
-                    cmpx      <u002F              Is this the 'current' module?
+                    cmpx      <CurModPtr              Is this the 'current' module?
                     bne       DIR15               No, skip ahead
                     lda       #'*                 '*' to indicate current module
-DIR15               lbsr      L1373               Append that char to temp text buffer
+DIR15               lbsr      AppendChar               Append that char to temp text buffer
                     ldd       M$Name,x            Get offset to name of module
                     leax      d,x                 Point to name
-                    lbsr      L135A               ??? Print it out
+                    lbsr      CopyNameToBuf               ??? Print it out
                     ldd       #$11*256+M$Size     A=??, B=offset from module ptr to get data
                     bsr       DIRNUM               Go print program size
                     ldd       #$1C*256+M$Mem      A=??, B=offset from module ptr to get data
                     bsr       DIRNUM               Go print data area size
                     ldd       M$Mem,x             Get data area size required by module
                     addd      #$0040              Add 64 to it
-                    cmpd      <u000C              Bigger than bytes free in workspace for user?
+                    cmpd      <WorkspaceFree              Bigger than bytes free in workspace for user?
                     blo       DIR18               Legal data area size, continue
                     lda       #'?                 Data area too big for current buffer space, print
-                    lbsr      L1373               a '?' beside data area size
+                    lbsr      AppendChar               a '?' beside data area size
 DIR18               bsr       CHGME9               Print line out to std error path
                     puls      y,x                 Get ??? & module ptr back
-                    tst       <u0035              Any signals pending?
+                    tst       <LastSignal              Any signals pending?
                     bne       DIR3               Yes, skip ahead
 DIR2               ldx       ,y++                Get ptr to module
                     bne       DIR1               There is one, go print it's entry out
-DIR3               ldd       <u000C              None left, get # bytes free in BASIC09 workspace
+DIR3               ldd       <WorkspaceFree              None left, get # bytes free in BASIC09 workspace
                     bsr       ItoA               Go convert to ASCII
-                    leax      >L074A,pc           Point to 'free'
-                    lbsr      L1261               Print it out to Std err
+                    leax      >FreeStr,pc           Point to 'free'
+                    lbsr      CopyAndPrint               Print it out to Std err
                     lbra      CLSCHL               Close std err; Dup path @ <BE & return from there
 
 * Entry: A=???, b=offset from module header to get 2 byte # from
 DIRNUM               pshs      b                   Preserve B
-                    ldb       #$10                Sub function (uses table @ L50B2)
-                    lbsr      L011F               Call <2A (inited to L5084), function 2
+                    ldb       #$10                Sub function (uses table @ IoJmpBase)
+                    lbsr      Vect6Fn2               Call <2A (inited to Vect6Dispatch), function 2
                     puls      b                   Restore B
                     ldx       2,s                 Get module ptr back
                     ldd       b,x                 Get size to print
@@ -2049,7 +2053,7 @@ DIRNUM               pshs      b                   Preserve B
 * Convert # in D to ASCII version (decimal)
 ItoA               pshs      y,x,d               Preserve End of data mem ptr,?,Data mem size
                     pshs      d                   Preserve data mem size again
-                    leay      <L09ED,pc           Point to decimal table (for integers)
+                    leay      <DecTable,pc           Point to decimal table (for integers)
 ItoA.A               ldx       #$2F00
 ItoA.B               puls      d                   Get data mem size
 ItoA.C               leax      >$0100,x            Bump X up to $3000
@@ -2063,16 +2067,16 @@ ItoA.C               leax      >$0100,x            Bump X up to $3000
                     cmpd      #$3000              Just went through once?
                     beq       ItoA.A               Yes, reset X & do again
 * (orig: ItoA.Z)
-                    lbsr      L1373               Go save A @ [<u0082]
+                    lbsr      AppendChar               Go save A @ [<TmpBufCur]
                     ldx       #$2F01              Reset X differently
                     bra       ItoA.B               Go do again
 
-INVOKE               lbsr      L1373               Go save A @ [<u0082]
+INVOKE               lbsr      AppendChar               Go save A @ [<TmpBufCur]
                     leas      2,s                 Eat stack
                     puls      pc,y,x,d            Restore regs & return
 
 * Table of decimal values
-L09ED               fdb       $2710               10000
+DecTable               fdb       $2710               10000
                     fdb       $03E8               1000
                     fdb       $0064               100
                     fdb       $000A               10
@@ -2081,7 +2085,7 @@ L09ED               fdb       $2710               10000
 
 * Debug/System '$' goes here
 * Entry: Y=Ptr to line typed in by user?
-L09F9               lbsr      L0A90               Go check char @ Y for space or comma
+DollarCmd               lbsr      SkipSepChar               Go check char @ Y for space or comma
                     leau      ,y                  Point to start of parameter area
                     clrb                          Current size of parameter area=0
 INVK10               incb                          Bump size up by 1
@@ -2090,44 +2094,44 @@ INVK10               incb                          Bump size up by 1
                     bne       INVK10               No, keep looking
                     clra                          parameter line never >255 chars
                     tfr       d,y                 Move size of parameter area to Y for Fork
-                    leax      >L0277,pc           Point to 'SHELL'
+                    leax      >KwShell,pc           Point to 'SHELL'
                     lda       #Objct              ML program
                     clrb                          Size of data area=0 pages
 * (orig: INVK20)
                     os9       F$Fork              Fork shell out
-                    bcs       L0A86               Error, deal with it
+                    bcs       PrintErrExit               Error, deal with it
                     pshs      a                   Save process # of shell
-L0A17               os9       F$Wait              Wait for death signal
+WaitChild               os9       F$Wait              Wait for death signal
                     cmpa      ,s                  Was it our shell process?
-                    bne       L0A17               No, wait for ours
+                    bne       WaitChild               No, wait for ours
                     leas      1,s                 Yes, eat process #
                     tstb                          Error status from child?
-                    bne       L0A86               Yes, deal with it
+                    bne       PrintErrExit               Yes, deal with it
                     rts                           No, return
 * System Mode - CHD (MOD 93/09/20 - CHANGED FROM UPDAT. TO READ.)
 CHDDIR               lda       #DIR.+READ.         Open Data directory in Update mode
                     bra       CHXD10
 
 * System Mode - CHX
-L0A28               lda       #DIR.+EXEC.         Open Execution Directory
+ChxDir               lda       #DIR.+EXEC.         Open Execution Directory
 CHXD10               leax      ,y                  Point to directory we are changing to
                     os9       I$ChgDir            Change dir
-                    bcs       L0A86               Error, exit with it
+                    bcs       PrintErrExit               Error, exit with it
                     rts                           No error, return
 
-RENAME               bsr       L0A9D
+RENAME               bsr       GetProcName
                     lbsr      DIRSCH         Is it in directory?
                     bcs       CMDSEP         No; error - not in workspace
                     pshs      x
                     ldx       ,x            get procedure address
                     tst       6,x           internal (un-typed) procedure?
                     bne       CMDSEP         ..no; sorry
-                    bsr       L0A90               Go check char @ Y for space or comma
+                    bsr       SkipSepChar               Go check char @ Y for space or comma
                     beq       INTE05               It is a space or comma, skip ahead
 RENAMErr               comb                          Set carry, restore X & return
                     puls      pc,x          Return error
 
-INTE05               bsr       L010D               Call <u001E, function 2
+INTE05               bsr       Vect2Fn2               Call <JmpVect2, function 2
                     beq       RENAMErr
                     pshs      y
                     lbsr      DIRSCH         Is it in directory?
@@ -2135,141 +2139,141 @@ INTE05               bsr       L010D               Call <u001E, function 2
                     cmpx      $02,s         renaming same procedure?
                     bne       ERUPRC
 RENA05               ldx       $02,s
-                    lbsr      L1A2E         Unbind the procedure
+                    lbsr      UnbindSetupMod         Unbind the procedure
                     puls      x             get ptr to new name
-                    ldy       <u004A
+                    ldy       <ICodeEndPtr
 RENAM1               lda       ,x+
                     sta       ,y+
                     bpl       RENAM1
-                    sty       <u00AB        Set end of name ptr
+                    sty       <ICodeLineEnd        Set end of name ptr
                     ldx       [,s++]        get address of procedure
                     ldd       $04,x
                     leay      d,x           get address of old name
 * (orig: ERPRCX)
                     ldb       <$18,x        get size of old name
-                    lda       <u00A6        Replace it with size of new name
+                    lda       <NameStrSz        Replace it with size of new name
                     sta       <$18,x
                     clra
 * (orig: ERREXT)
-                    lbsr      L19B1         Replace old name with new name
-                    addd      <u005E
-                    std       <u005E
-RBIND1               lbra      L1995
+                    lbsr      InsertICode         Replace old name with new name
+                    addd      <ModExecAddr
+                    std       <ModExecAddr
+RBIND1               lbra      RebindProc
 
 ERUPRC               ldb       #$2C                Multiply-defined procedure error
 * Error
-L0A86               lbsr      L1287
-L0A89               lbra      EXIT
+PrintErrExit               lbsr      PrintSysErr
+ErrorExit               lbra      EXIT
 
 CMDSEP               ldb       #$2B                Unknown procedure error
-                    bra       L0A86
+                    bra       PrintErrExit
 
 * Entry: Y=Ptr to string of chars?
 * Exit:  Y=Ptr to char (or up 1 char if space/comma found)
 *        B=Char found
-L0A90               ldb       ,y+                 Get char
+SkipSepChar               ldb       ,y+                 Get char
                     cmpb      #',                 Is it a ','?
-                    beq       L0A9C               Yes, return
+                    beq       SkipSep9               Yes, return
                     cmpb      #C$SPAC             Is it a space?
-                    beq       L0A9C               Yes, return
+                    beq       SkipSep9               Yes, return
                     leay      -1,y                No, normal char, point Y to it
-L0A9C               rts                           Exit with B=char
+SkipSep9               rts                           Exit with B=char
 
 * Entry: Y=Ptr to 1st char in possible string name
 * Exit:  Y=Ptr to module name (or string name)
-L0A9D               bsr       L010D               Call <u001E function 2 (string name search again)
-                    bne       L0AB0               Size possible name>0, exit
-DEFPRC               ldy       <u002F              Get ptr to 'current' module
-                    beq       L0AAC               None, use 'Program' as default
+GetProcName               bsr       Vect2Fn2               Call <JmpVect2 function 2 (string name search again)
+                    bne       GetProcName9               Size possible name>0, exit
+DEFPRC               ldy       <CurModPtr              Get ptr to 'current' module
+                    beq       UseProgName               None, use 'Program' as default
                     ldd       M$Name,y            Get offset to module name
                     leay      d,y                 Point Y to module name & return
 * (orig: PRCRE9)
                     rts
 
-L0AAC               leay      >L074F,pc           Point Y to 'Program'
-L0AB0               rts
+UseProgName               leay      >ProgramStr,pc           Point Y to 'Program'
+GetProcName9               rts
 
-L0AB1               ldb       #$2B                Unknown procedure error
-                    bra       L0ABD
+UnkProcErr               ldb       #$2B                Unknown procedure error
+                    bra       CheckEofErr
 
-L0AB5               ldb       #$20                Memory full error
-L0AB7               pshs      b
+MemFullErr               ldb       #$20                Memory full error
+SaveBndErr               pshs      b
                     bsr       RBIND1         Bind erroneous procedure
                     puls      b             Restore error code
-L0ABD               cmpb      #E$EOF              End of file error?
-                    beq       L0A89               Yes, special case
-                    bra       L0A86               Exit with it
+CheckEofErr               cmpb      #E$EOF              End of file error?
+                    beq       ErrorExit               Yes, special case
+                    bra       PrintErrExit               Exit with it
 
-L010D               jsr       <u001E
+Vect2Fn2               jsr       <JmpVect2
                     fcb       $02
 
 * Entry: Y=Ptr to string (path name)
-* Exit: Path opened to file, path # @ <u00BD
-L0AC3               leax      ,y                  Point to path name
+* Exit: Path opened to file, path # @ <ActivePath
+OpenAndLoad               leax      ,y                  Point to path name
                     lda       #1                  Std out path
                     os9       I$Open              Open path
-                    bcs       L0ABD               Error, check if it is EOF
-                    sta       <u00BD              Save path #
+                    bcs       CheckEofErr               Error, check if it is EOF
+                    sta       <ActivePath              Save path #
                     bsr       INLINE               Go read a line into temp input buffer
-                    bsr       L0B3C               Go check if it starts with 'PROCEDURE'
-                    bne       L0AB1               No, exit with Unknown Procedure Error
-L0AD4               bsr       L010D               Yes, call function
-                    beq       L0AB1
+                    bsr       CheckProcKwd               Go check if it starts with 'PROCEDURE'
+                    bne       UnkProcErr               No, exit with Unknown Procedure Error
+BindProcLoop               bsr       Vect2Fn2               Yes, call function
+                    beq       UnkProcErr
                     pshs      y
                     lbsr      DIRSCH         Is name in directory?
-                    bcs       L0AE8         ..no; don't try kill
+                    bcs       AddToDir         ..no; don't try kill
                     ldy       ,s
                     leay      -$01,y        Must have a preceeding space
 * (orig: INTE40)
                     lbsr      KILLER         Destroy any old version that may have existed
-L0AE8               ldy       ,s
+AddToDir               ldy       ,s
                     lbsr      DIRADD
-                    lbsr      L1A2E
+                    lbsr      UnbindSetupMod
                     puls      x             Restore proc name ptr
-                    lbsr      L125F         Print it
-L0AF6               ldb       <u0035              Get last received signal code
-                    bne       L0AB7               Got a signal, use it as error code & abort load
+                    lbsr      PrintXToStderr         Print it
+LoadLineLoop               ldb       <LastSignal              Get last received signal code
+                    bne       SaveBndErr               Got a signal, use it as error code & abort load
                     bsr       INLINE               Go get line of source from file
-                    bcs       L0AB7               Error on read, exit with it
-                    lda       <u000C              Get MSB of bytes free in workspace
+                    bcs       SaveBndErr               Error on read, exit with it
+                    lda       <WorkspaceFree              Get MSB of bytes free in workspace
                     cmpa      #$02                At least $2ff (767) bytes free?
-                    blo       L0AB5               No, exit with memory full error
-                    bsr       L0B3C               Check for word PROCEDURE
-                    beq       L0B14               Found it, skip ahead
-                    ldy       <u0080              Get temp buff ptr
-                    ldd       <u0060
-                    std       <u005C        At end of icode-
-                    lbsr      L1606         -insert this line
-                    bra       L0AF6         Endloop
+                    blo       MemFullErr               No, exit with memory full error
+                    bsr       CheckProcKwd               Check for word PROCEDURE
+                    beq       FoundProcHdr               Found it, skip ahead
+                    ldy       <TmpBufBase              Get temp buff ptr
+                    ldd       <ModFOff
+                    std       <ICodeCurPtr        At end of icode-
+                    lbsr      CompileOneLine         -insert this line
+                    bra       LoadLineLoop         Endloop
 
-L0B14               ldx       <u0080              Get ptr to start of temp buffer
+FoundProcHdr               ldx       <TmpBufBase              Get ptr to start of temp buffer
                     pshs      y,x                 Save ??? & temp buffer start ptr
-L0B18               lda       ,x+                 Get char
+SkipToCR               lda       ,x+                 Get char
                     cmpa      #C$CR               Carriage return?
-                    bne       L0B18               No, keep looking for CR
-                    stx       <u0080              Save CR+1 position as start of temp buffer
-                    stx       <u0082              And as current position in temp buffer
+                    bne       SkipToCR               No, keep looking for CR
+                    stx       <TmpBufBase              Save CR+1 position as start of temp buffer
+                    stx       <TmpBufCur              And as current position in temp buffer
 * Is this function to read in a source listing (single procedure) not including
 *   PROCEDURE line itself?
-                    bsr       L0128               JSR <$21, function 2
+                    bsr       Vect3Fn2               JSR <$21, function 2
                     puls      y,x                 Restore ??? & temp buffer start ptr
-                    stx       <u0080              Save temp buffer start ptr again
-                    stx       <u0082              And save current position in temp buffer
-                    bra       L0AD4               Loop back
+                    stx       <TmpBufBase              Save temp buffer start ptr again
+                    stx       <TmpBufCur              And save current position in temp buffer
+                    bra       BindProcLoop               Loop back
 
 * Read line from source code file
-INLINE               lda       <u00BD              Get path # to file
-                    ldx       <u0080              Get address to get data into
+INLINE               lda       <ActivePath              Get path # to file
+                    ldx       <TmpBufBase              Get address to get data into
                     ldy       #$0100              Up to 256 bytes to be read
                     os9       I$ReadLn            Go read a line
-                    ldy       <u0080              Get ptr to line read & return
+                    ldy       <TmpBufBase              Get ptr to line read & return
                     rts
 
 * Entry: Y=ptr to input buffer
 * Exit: Carry clear if word 'PROCEDURE' was found
 *       Y=Ptr to 1 byte past 'procedure' in buffer
-L0B3C               bsr       L010D               Call function
-                    leax      >L0756,pc           Point to 'PROCEDURE'
+CheckProcKwd               bsr       Vect2Fn2               Call function
+                    leax      >ProcedureStr,pc           Point to 'PROCEDURE'
 PRCLI1               lda       ,x+                 Get byte from 'procedure'
                     eora      ,y+                 Check (with case conversion) if it matches buffer
                     anda      #$DF
@@ -2281,10 +2285,10 @@ PRCLI1               lda       ,x+                 Get byte from 'procedure'
 PRCLI9               rts                     to user
 
 DUMP               lbsr      DEFILE
-                    ldu       <u0046
+                    ldu       <SubrStkPtr
                     bra       DUMP02         Repeat
 
-L0128               jsr       <u0021
+Vect3Fn2               jsr       <JmpVect3
                     fcb       $02
 
 * Entry: X=Ptr to possible filename
@@ -2300,32 +2304,32 @@ DUMP01               ldy       ,y                  Get module header ptr from so
                     lslb                          Multiply by 2
                     rola                    2)
                     inca                          Add $100
-                    cmpd      <u000C              Compare with bytes free in workspace
+                    cmpd      <WorkspaceFree              Compare with bytes free in workspace
                     lbhi      ERMFUL               If higher, exit with memory full error
 DUMP02               ldy       ,--u
                     bne       DUMP01         Until end of list
                     ldd       #(EXEC.+WRITE.)*256+UPDAT.+EXEC. Exec. dir & rd/wt/ex attribs
                     lbsr      OPNCH0               Go create file (0 byte length)
-                    ldy       <u0046
-                    stu       <u0046        chop out used portion of opstack
+                    ldy       <SubrStkPtr
+                    stu       <SubrStkPtr        chop out used portion of opstack
                     lbra      DUMP04         Repeat
 
-L0B8C               pshs      y
-                    lbsr      L1A2E         Unbind procedure
-                    clr       <u00D9        Tell binder to smash rems, dims, types, etc.
-                    bsr       L0128               JSR <u0021, function 2 (PLREF)
-                    inc       <u00D9        Reset
-                    ldx       <u0062        get symbol tbl ptr
+DumpProcLoop               pshs      y
+                    lbsr      UnbindSetupMod         Unbind procedure
+                    clr       <BinderMode        Tell binder to smash rems, dims, types, etc.
+                    bsr       Vect3Fn2               JSR <JmpVect3, function 2 (PLREF)
+                    inc       <BinderMode        Reset
+                    ldx       <ModSymTbl        get symbol tbl ptr
                     leay      ,x            (in case of no symbols)
-* NOTE: <u0000 UNECESSARY FOR LEVEL II
-                    ldd       <u0000              Get start of data area ptr
-                    addd      <u0002              Get ptr to end of data area
+* NOTE: <DpBase UNECESSARY FOR LEVEL II
+                    ldd       <DpBase              Get start of data area ptr
+                    addd      <DataAreaSz              Get ptr to end of data area
                     tfr       d,u                 Move to U
                     ldd       -3,x
-                    beq       L0C18         No symbols; exit squish phase
+                    beq       FinalizePackMod         No symbols; exit squish phase
 * (orig: DUMP1)
                     pshs      u                   Save size of data area
-L0BA8               pshs      d
+DumpSymEntry               pshs      d
                     leax      1,x
                     ldd       ,x
                     pshu      d             Build stack of save info from symbol table
@@ -2335,20 +2339,20 @@ DUMP2               lda       ,x+                 Find hi-bit set char
                     bpl       DUMP2         Skip over name to next entry
                     puls      d             Restore symbol table count
                     subd      #1
-                    bne       L0BA8         Repeat until whole table copied
-                    ldy       <u005E
+                    bne       DumpSymEntry         Repeat until whole table copied
+                    ldy       <ModExecAddr
                     bra       DUMP4         While not end of icode
 
 DUMP3               ldd       ,y
-                    ldx       <u0062
+                    ldx       <ModSymTbl
                     leax      d,x           Actual addr of symbol tbl entry
                     ldd       1,x           get linked list
                     sty       1,x           Make new head
                     std       ,y++          Build link
-DUMP4               lbsr      L1BC2
+DUMP4               lbsr      ScanTokenT3
                     bcc       DUMP3         Endwhile
                     puls      u
-                    ldx       <u0062        get old symbol table ptr
+                    ldx       <ModSymTbl        get old symbol table ptr
                     ldd       -3,x          Number of entries in symbol table
                     leay      ,x            Set beginning of new symbol table
 DUMP5               leau      -2,u
@@ -2358,7 +2362,7 @@ DUMP5               leau      -2,u
                     beq       DUMP8         Branch unreferenced entry
                     pshs      x             Save old symbol ptr
                     tfr       y,d           Copy new symbol ptr
-                    subd      <u0062        Make ptr into offset
+                    subd      <ModSymTbl        Make ptr into offset
                     bra       DUMP7
 
 DUMP6               std       ,u
@@ -2381,23 +2385,23 @@ DUMP10               tstb
                     puls      u,d
                     subd      #1
                     bne       DUMP5
-L0C18               ldx       <u002F              Get ptr to start of current module
+FinalizePackMod               ldx       <CurModPtr              Get ptr to start of current module
                     ldd       M$Size,x            Get size of module
                     pshs      d                   Save it
                     leay      3,y                 Add size of 24 bit CRC
                     tfr       y,d                 Move ptr to end of module (including CRC bytes)
-                    subd      <u002F              Calculate size of module including CRC
+                    subd      <CurModPtr              Calculate size of module including CRC
                     std       M$Size,x            Save it
                     ldd       ,s                  Get original size of module
                     subd      M$Size,x            Subtract new size
                     std       ,s                  Save size difference
-                    addd      <u000C              Add to bytes free in workspace
-                    std       <u000C              Save new # bytes free
-                    ldd       <u000A              Get # bytes used by all programs in workspace
+                    addd      <WorkspaceFree              Add to bytes free in workspace
+                    std       <WorkspaceFree              Save new # bytes free
+                    ldd       <ICodeUsed              Get # bytes used by all programs in workspace
                     subd      ,s++                Subtract size difference
-                    std       <u000A              Save new # bytes used by all programs in workspace
-                    addd      <u0008              Add to start ptr of I-code workspace (calculate end)
-                    std       <u004A              Save ptr to 1st free byte in I-code workspace
+                    std       <ICodeUsed              Save new # bytes used by all programs in workspace
+                    addd      <ICodeBase              Add to start ptr of I-code workspace (calculate end)
+                    std       <ICodeEndPtr              Save ptr to 1st free byte in I-code workspace
                     ldb       #Sbrtn+ICode        Subroutine module/I-Code type byte
                     stb       M$Type,x            Save in module header
                     ldb       #%10000000          Packed flag
@@ -2423,124 +2427,124 @@ DUMP25               eora      b,x                 Calculate header parity
                     os9       I$Write             Write out entire module
                     lda       #%11000000          Packed & CRC just made flags
                     sta       <$17,x              Save them
-                    lbcs      L0DB6               If error on write, go deal with it
+                    lbcs      CloseAndErr               If error on write, go deal with it
                     puls      y             Retrieve procedure list ptr
 DUMP04               ldx       ,--y
-                    lbne      L0B8C         Repeat until there are no more
+                    lbne      DumpProcLoop         Repeat until there are no more
                     lbra      CLSCHL               Go close file, reopen path from <BE, rts from there
 
 DEFILE               bsr       PCDLST
                     lda       ,y                  Get char
                     cmpa      #C$CR               Is it CR?
-                    bne       L0C9A               No, point X to it & return
-                    ldx       <u0046              Get ???
+                    bne       SetXToLine               No, point X to it & return
+                    ldx       <SubrStkPtr              Get ???
                     ldx       [<-2,x]       get 1st procedure in list
                     ldd       M$Name,x            Get offset to module name
 * (orig: DEFIL1)
                     leax      d,x                 Point X to module name
-                    lbsr      L135A               Go set up temp buffer with name
-                    lbsr      L1371               Append CR to end of temp buffer
-L0C9A               leax      ,y
+                    lbsr      CopyNameToBuf               Go set up temp buffer with name
+                    lbsr      AppendCR               Append CR to end of temp buffer
+SetXToLine               leax      ,y
                     rts
 
-PCDLST               ldu       <u0046              Get table end ptr
-                    stu       <u0044              Save as current table ptr
-                    lbsr      L0A90               Go get char (bump y past it if , or space)
+PCDLST               ldu       <SubrStkPtr              Get table end ptr
+                    stu       <StrSpaceTop              Save as current table ptr
+                    lbsr      SkipSepChar               Go get char (bump y past it if , or space)
                     beq       PCDLS3               If comma or space, skip ahead
                     cmpb      #'*                 Is it a '*'?
                     bne       PCDLS4               No, skip ahead
-                    ldx       <u0004              Get ptr to workspace module ptr list
+                    ldx       <ModListPtr              Get ptr to workspace module ptr list
 PCDLS1               ldd       ,x                  Get 1st possible entry
                     beq       PCDLS2               Empty, skip ahead
                     tfr       x,d                 Move ptr to D
                     leax      2,x                 Bump ptr up to next entry
 PCDLS2               std       ,--u                Save entry
                     bne       PCDLS1         Repeat if not end marker
-                    stu       <u0044              Save new ptr
+                    stu       <StrSpaceTop              Save new ptr
                     lda       ,y                  Get char from temp buffer
                     cmpa      #C$CR               CR?
                     beq       PCDL25               Yes, save ptr & return
                     leay      1,y                 No, bump ptr up by 1
-PCDL25               sty       <u0082              Save current pos in temp buffer & return
+PCDL25               sty       <TmpBufCur              Save current pos in temp buffer & return
                     rts
 
-PCDLS3               lbsr      L010D               JSR <u001E, function 2
-                    bne       L0CD9         ..yes; go get em
-PCDLS4               sty       <u0082              Save current pos in temp buffer
+PCDLS3               lbsr      Vect2Fn2               JSR <JmpVect2, function 2
+                    bne       FindNameInDir         ..yes; go get em
+PCDLS4               sty       <TmpBufCur              Save current pos in temp buffer
                     lbsr      DEFPRC               Point Y to Name of current module (or 'Program')
                     lbsr      DIRSCH               Go check if module exists in BASIC09 workspace
                     bcc       PCDLS5               Yes, skip ahead
 PCDLSR               lbra      CMDSEP               No, return with Unknown Procedure error
 
-L0CD9               lbsr      DIRSCH               Check if module exists in BASIC09 workspace
+FindNameInDir               lbsr      DIRSCH               Check if module exists in BASIC09 workspace
                     bcs       PCDLSR               No, return Unknown Procedure error
-                    sty       <u0082              Save Ptr to end of fname as current pos in tmp buf
+                    sty       <TmpBufCur              Save Ptr to end of fname as current pos in tmp buf
 PCDLS5               stx       ,--u                Save ptr to start of module name
-                    ldy       <u0082              Get Ptr to end of filename
-                    lbsr      L0A90               Point Y to next char (or past ',' or space)
+                    ldy       <TmpBufCur              Get Ptr to end of filename
+                    lbsr      SkipSepChar               Point Y to next char (or past ',' or space)
                     bne       PCDLS6               Not comma or space, skip ahead
-                    lbsr      L010D               JSR <u001E, function 2
-                    bne       L0CD9         ..yes; repeat
+                    lbsr      Vect2Fn2               JSR <JmpVect2, function 2
+                    bne       FindNameInDir         ..yes; repeat
 PCDLS6               clra
                     clrb                    End mark on opstack
                     bra       PCDLS2         Push it and return
 
-SAVE               tst       <u000C              >256 bytes free for user?
+SAVE               tst       <WorkspaceFree              >256 bytes free for user?
                     lbeq      ERMFUL               No, exit with Memory Full error
                     lda       #$80                Set hi-bit flag
-                    sta       <u0084
+                    sta       <PackedFlag
                     bsr       DEFILE         get procedure list, pathname
-                    bra       L0D06
+                    bra       SaveToPath
 
-L0D02               bsr       PCDLST
+PrepSavePath               bsr       PCDLST
                     leax      ,y            get I/O ptr (pathname)
-L0D06               stx       <u005C
+SaveToPath               stx       <ICodeCurPtr
                     bsr       OPNCHL         Open output path
-                    ldy       <u0046        get top of list
-                    stu       <u0046        Carve out opstack space used
-                    bra       L0D49
+                    ldy       <SubrStkPtr        get top of list
+                    stu       <SubrStkPtr        Carve out opstack space used
+                    bra       NextProcEntry
 
-L0D11               pshs      y
+ListProcEntry               pshs      y
                     ldy       [,y]          get procedure addr
-                    sty       <u002F              Save as current module ptr
+                    sty       <CurModPtr              Save as current module ptr
                     ldd       M$Exec,y            Get exec offset
-                    addd      <u002F              Add to start of current module
-                    std       <u005E              Save absolute exec address of current module
+                    addd      <CurModPtr              Add to start of current module
+                    std       <ModExecAddr              Save absolute exec address of current module
                     ldd       $0F,y               Get ???
-                    addd      <u002F              Add to start of current module
-                    std       <u0060              Save this absolute address
+                    addd      <CurModPtr              Add to start of current module
+                    std       <ModFOff              Save this absolute address
                     ldd       $0D,y               Get ???
-                    addd      <u002F              Add to start of module
-                    std       <u0062              Save this absolute address
+                    addd      <CurModPtr              Add to start of module
+                    std       <ModSymTbl              Save this absolute address
                     tst       M$Type,y            Check type of module
-                    bne       L0D47               If anything but unpacked BASIC09, skip ahead
-                    leax      <L0D3B,pc           Point to routine
-                    lbsr      SETEXT               ??? The <u00B7 stack swap
-                    lbsr      L10E4               ??? DEBUG list command
-L0D38               lbra      EXIT               Restore <u00B7, reset temp buff
+                    bne       RestoreYCont               If anything but unpacked BASIC09, skip ahead
+                    leax      <CheckPackErrors,pc           Point to routine
+                    lbsr      SETEXT               ??? The <ExitStkPtr stack swap
+                    lbsr      ListCmd               ??? DEBUG list command
+ExitViaExit               lbra      EXIT               Restore <ExitStkPtr, reset temp buff
 
-L0D3B               tst       <u0084              Test flags
-                    bmi       L0D47         ..yes; don't produce error list
+CheckPackErrors               tst       <PackedFlag              Test flags
+                    bmi       RestoreYCont         ..yes; don't produce error list
                     ldx       [,s]          restore directory ptr
-                    lbsr      L1A2E         Unbind procedure
-                    lbsr      L0128         Rebind it (show errors)
-L0D47               puls      y
-L0D49               ldx       ,--y
-                    bne       L0D11
+                    lbsr      UnbindSetupMod         Unbind procedure
+                    lbsr      Vect3Fn2         Rebind it (show errors)
+RestoreYCont               puls      y
+NextProcEntry               ldx       ,--y
+                    bne       ListProcEntry
 OPEXIT               bsr       CLSCHL
-                    bra       L0D38         then exit (no error)
+                    bra       ExitViaExit         then exit (no error)
 
 CLSCHL               pshs      b                   Preserve B
                     lda       #2            close current command path
                     os9       I$Close             Close path #2 (error)
-                    lda       <u00BE              Get Duplicate error path #
+                    lda       <ErrDupPath              Get Duplicate error path #
                     os9       I$Dup               Dupe the path
                     puls      pc,b                Restore B & return
 
-OPNCHL               lbsr      L0A90               Point Y to next char (or past ',' or space)
+OPNCHL               lbsr      SkipSepChar               Point Y to next char (or past ',' or space)
                     cmpb      #C$CR               Was it a CR?
                     beq       OPNC99               Yes, skip ahead
-                    stx       <u0082              Save current pos in temp buffer
+                    stx       <TmpBufCur              Save current pos in temp buffer
 * (orig: OPNCH1)
                     ldd       #$020B              Write access mode & pr r w attributes
 * Create output file
@@ -2554,14 +2558,14 @@ OPNCH0               pshs      u,x,d               Preserve regs
                     os9       I$Create            Attempt to create the file
                     bcc       OPNC90               Did it, skip ahead
                     cmpb      #E$CEF              File already exists error?
-                    bne       L0DB6               No, skip ahead
+                    bne       CloseAndErr               No, skip ahead
                     ldd       ,s                  Get access modoe & file attributes again
                     ldx       2,s                 Get ptr to filename again
                     os9       I$Open              Attempt to open the file
-                    bcs       L0DB6               User not allowed to access, skip ahaead
-                    leax      >L0781,pc           Point to 'Rewrite?:'
+                    bcs       CloseAndErr               User not allowed to access, skip ahaead
+                    leax      >RewriteStr,pc           Point to 'Rewrite?:'
                     ldy       #10                 Size of rewrite string
-                    lda       <u00BE              Get error path #
+                    lda       <ErrDupPath              Get error path #
                     os9       I$WritLn            Prompt user
                     clra                    Std input path
                     leax      ,--s                Make 2 byte buffer on stack
@@ -2575,20 +2579,20 @@ OPNCH0               pshs      u,x,d               Preserve regs
                     ldx       #0                  Set size to 0 bytes
                     leau      ,x
                     os9       I$SetStt            Truncate file size to 0 bytes
-                    bcs       L0DB6               If error, skip ahead
+                    bcs       CloseAndErr               If error, skip ahead
 OPNC90               puls      pc,u,y,d            Restore regs & return
 
 OPNC99               rts
 
-L0DB6               bsr       CLSCHL               Close & dupe error path
-                    lbra      L0A86               Print error
+CloseAndErr               bsr       CLSCHL               Close & dupe error path
+                    lbra      PrintErrExit               Print error
 
 * Reset temp buffer to empty state
-L0DBB               pshs      d                   Preserve D
+ResetTmpBuf               pshs      d                   Preserve D
                     lda       #1                  # chars in buffer to 1
-                    sta       <u007D              Save it
-                    ldd       <u0080              Get ptr to temp buffer
-                    std       <u0082              Save it as current pos in temp buffer
+                    sta       <TmpBufCount              Save it
+                    ldd       <TmpBufBase              Get ptr to temp buffer
+                    std       <TmpBufCur              Save it as current pos in temp buffer
                     puls      pc,d                Restore D & return
 
 * Get program name (with hi-bit on last char set + CR), pointed to by Y
@@ -2596,11 +2600,11 @@ L0DBB               pshs      d                   Preserve D
 *     1) Name pointed to by Y on entry
 *     2) Name of 'current' module in BASIC09 workspace
 *     3) 'Program' if neither of the above
-INTERP               lbsr      L010D               <1E,func. 2 (Get string size/make FCS type if var name)
+INTERP               lbsr      Vect2Fn2               <1E,func. 2 (Get string size/make FCS type if var name)
                     bne       INTER1               There is >0 chars that qualify as name, skip ahead
                     pshs      y                   Save ptr to string name in question
-* NOTE: MAY WANT TO CHANGE ENTRY POINT, SINCE L0A9D CALLS L010D AGAIN
-                    lbsr      L0A9D               Get ptr & size of name, or use current (or 'Program')
+* NOTE: MAY WANT TO CHANGE ENTRY POINT, SINCE GetProcName CALLS Vect2Fn2 AGAIN
+                    lbsr      GetProcName               Get ptr & size of name, or use current (or 'Program')
                     ldx       ,s                  Get ptr to string name in question again
 INTER0               lda       ,y+                 Get char from name we _will_ use
                     sta       ,x+                 Save over top of string name in question
@@ -2611,18 +2615,18 @@ INTER0               lda       ,y+                 Get char from name we _will_ 
 INTER1               lbsr      DIRLNK               Y=Ptr to end of string+1, X=Ptr to module ptr entry
                     lbcs      CMDSEP               Module not in workspace, exit with Unknown Procedure
                     ldx       ,x                  Get ptr to module
-                    stx       <u002F              Save as 'current module'
+                    stx       <CurModPtr              Save as 'current module'
                     lda       M$Type,x            Get type/language byte
                     beq       INTE30               If type & language are 0, skip ahead
                     anda      #LangMask           Just want language type
                     cmpa      #ICode              BASIC09 I-Code?
                     bne       ERABRT               No, Line With Compiler Error
-                    bra       L0DFC               Yes, skip ahead
+                    bra       PrepInterp               Yes, skip ahead
 
-L0110               jsr       <u001E
+Vect2Fn0               jsr       <JmpVect2
                     fcb       $00
 
-L0113               jsr       <u0021
+Vect3Fn0               jsr       <JmpVect3
                     fcb       $00
 
 * Type/Language byte of 0
@@ -2630,73 +2634,73 @@ INTE30               lda       <$17,x              Get flags from module
                     rora                          Shift out Line with Compiler error flag
                     bcs       ERABRT               There is an error, report it
 * Current module has no obvious errors
-L0DFC               bsr       L0110               <1E, fnc. 0 (1F9E normally) (do token?)
-                    ldy       <u004A              Get ptr to end of currently used I-code workspace
+PrepInterp               bsr       Vect2Fn0               <1E, fnc. 0 (1F9E normally) (do token?)
+                    ldy       <ICodeEndPtr              Get ptr to end of currently used I-code workspace
                     ldb       ,y                  Get last char/token in workspace
                     cmpb      #'=                 Is it an = sign?
                     beq       ERABRT
-                    sty       <u005E
-                    sty       <u005C
-                    ldx       <u00AB              Get ptr to current I-code line end
-                    stx       <u0060
-                    stx       <u004A              Make it ptr to end of in use I-code workspace
-                    ldd       <u000C              Get # bytes free in workspace for user
+                    sty       <ModExecAddr
+                    sty       <ICodeCurPtr
+                    ldx       <ICodeLineEnd              Get ptr to current I-code line end
+                    stx       <ModFOff
+                    stx       <ICodeEndPtr              Make it ptr to end of in use I-code workspace
+                    ldd       <WorkspaceFree              Get # bytes free in workspace for user
                     pshs      y,d
-                    bsr       L0113
+                    bsr       Vect3Fn0
                     puls      y,d
-                    std       <u000C              Save # bytes now free in workspace for user
-                    sty       <u004A              Save updated end of I-code workspace ptr
-                    ldx       <u002F              Get ptr to current module
+                    std       <WorkspaceFree              Save # bytes now free in workspace for user
+                    sty       <ICodeEndPtr              Save updated end of I-code workspace ptr
+                    ldx       <CurModPtr              Get ptr to current module
                     lda       <$17,x              Get flag byte
                     rora                          Shift out Line with Compiler error flag bit
                     bcs       ERABRT               Compiled line has error, report it
                     leas      >$0102,s            Eat 258 bytes from stack ???
-                    ldd       <u0000              Get start of data mem ptr
-                    addd      <u0002              Add to Size of data area
+                    ldd       <DpBase              Get start of data mem ptr
+                    addd      <DataAreaSz              Add to Size of data area
                     tfr       d,y                 Move end of data area ptr to Y
-                    std       <u0046              Save it
-                    std       <u0044
+                    std       <SubrStkPtr              Save it
+                    std       <StrSpaceTop
                     ldu       #$0000
-                    stu       <u0031
-                    stu       <u00B3              # steps per run through program (0=continuous)
-                    inc       <u00B3+1            Set # steps to 1
-                    clr       <u0036              Clear out last error code
-                    ldd       <u004A              Get ptr to next free byte in I-code workspace
-                    ldx       <u000C              Get # bytes free in workspace for user
+                    stu       <VarStorePtr
+                    stu       <DebugStepCnt              # steps per run through program (0=continuous)
+                    inc       <DebugStepCnt+1            Set # steps to 1
+                    clr       <ErrCode              Clear out last error code
+                    ldd       <ICodeEndPtr              Get ptr to next free byte in I-code workspace
+                    ldx       <WorkspaceFree              Get # bytes free in workspace for user
                     pshs      x,d                 Save them
                     leax      <INTRTS,pc           Point to routine
                     lbsr      SETEXT
-                    ldx       <u004A              Get ptr to next free byte in I-code workspace
-                    bsr       L0119
-                    lbsr      L0DBB
-                    ldx       <u002F              Get ptr to start of current module
-                    bsr       L011C
+                    ldx       <ICodeEndPtr              Get ptr to next free byte in I-code workspace
+                    bsr       Vect4Fn4
+                    lbsr      ResetTmpBuf
+                    ldx       <CurModPtr              Get ptr to start of current module
+                    bsr       Vect4Fn2
                     bra       INTER9         Return
 
-L0119               jsr       <u0024
+Vect4Fn4               jsr       <JmpVect4
                     fcb       $04
 
-L011C               jsr       <u0024
+Vect4Fn2               jsr       <JmpVect4
                     fcb       $02
 
 INTRTS               puls      x,d                 Restore bytes free in workspace & ptr to next free
-                    std       <u004A              Save old next free byte in I-code workspace
-                    stx       <u000C              Save old # bytes free in workspace for user
+                    std       <ICodeEndPtr              Save old next free byte in I-code workspace
+                    stx       <WorkspaceFree              Save old # bytes free in workspace for user
 INTER9               lbra      EXIT
 
 ERABRT               ldb       #$33                Line with compiler error
-                    lbra      L0A86               Go report it
+                    lbra      PrintErrExit               Go report it
 
 * System mode - BYE
 BYEBYE               bsr       KILALL
                     clrb                          Exit without error
                     os9       F$Exit
 
-KILLEX               lbsr      L010D
+KILLEX               lbsr      Vect2Fn2
                     beq       KILERR         ..no; error
                     lbsr      DIRSCH
                     bcs       KILERR         ..error; return it
-                    ldu       <u0046
+                    ldu       <SubrStkPtr
 
                     ifne      H6309
                     clrd
@@ -2707,24 +2711,24 @@ KILLEX               lbsr      L010D
 
                     pshu      x,d           build procedure list stack
                     inca
-                    sta       <u0035        signal killer: external only
+                    sta       <LastSignal        signal killer: external only
                     bsr       KILL0
-                    clr       <u0035
+                    clr       <LastSignal
                     rts
 
 KILERR               comb                          Set carry for error
                     ldb       #$2B                Divide by 0 error
                     rts
 
-KILALL               ldy       <u0082              Get ptr to current pos in temp buffer
+KILALL               ldy       <TmpBufCur              Get ptr to current pos in temp buffer
                     lda       #$2A                '*'
                     sta       ,y                  Save in temp buffer
-                    sta       <u0035              Save as last signal received
+                    sta       <LastSignal              Save as last signal received
 KILLER               lbsr      PCDLST
-                    clr       <u002F              Clear out ptr to start of 'current' module
-                    clr       <u002F+1
-KILL0               ldu       <u0046              Get default ??? tbl ptr
-                    stu       <u0044              Save as current ??? tbl ptr
+                    clr       <CurModPtr              Clear out ptr to start of 'current' module
+                    clr       <CurModPtr+1
+KILL0               ldu       <SubrStkPtr              Get default ??? tbl ptr
+                    stu       <StrSpaceTop              Save as current ??? tbl ptr
                     bra       KILL2         For each member of list, do
 
 KILL1               ldx       ,x                  Get ptr to module
@@ -2739,38 +2743,38 @@ KILL12               pshs      u                   Preserved U
                     leau      ,x                  Point U to module start
                     os9       F$UnLink            Unlink the I-Code module
                     puls      u                   Restore U
-                    bra       L0EDE         Zap directory entry
+                    bra       ZapDirEntry         Zap directory entry
 
-KILL15               tst       <u0035              Any signal code?
+KILL15               tst       <LastSignal              Any signal code?
                     bne       KILL2               Yes, skip ahead
                     ldx       ,u                  No, get ptr to module
                     lbsr      SHUFLE               Go remove it from workspace pointers (?)
                     ldy       ,x                  Get ptr to module again
-                    ldd       <u000A              Get current total size of used I-Code space
+                    ldd       <ICodeUsed              Get current total size of used I-Code space
                     subd      M$Size,y            Subtract deleted module's size
-                    std       <u000A              Save new size of used I-Code space
+                    std       <ICodeUsed              Save new size of used I-Code space
                     ldd       M$Size,y            Get size of module being removed
-                    addd      <u000C              Add to bytes free in I-Code space
-                    std       <u000C              Save new # bytes free in I-Code space
+                    addd      <WorkspaceFree              Add to bytes free in I-Code space
+                    std       <WorkspaceFree              Save new # bytes free in I-Code space
 * (orig: KILL18)
-                    ldd       <u004A              Get ptr to end of used I-Code space+1
+                    ldd       <ICodeEndPtr              Get ptr to end of used I-Code space+1
                     subd      M$Size,y            Bump it back to not include the deleted module
 * (orig: KILL4)
-                    std       <u004A              Save new ptr to where next added I-Code goes
-L0EDE               ldd       #$FFFF              Module ptr unused marker
+                    std       <ICodeEndPtr              Save new ptr to where next added I-Code goes
+ZapDirEntry               ldd       #$FFFF              Module ptr unused marker
                     std       [,u]                Mark it
 * Compress list of modules in I-Code workspace (get rid of all deleted ones)
 KILL2               ldx       ,--u                Get previous module ptr
                     bne       KILL1               There is one, go remove it too
-                    ldx       <u0004              Get ptr to list of modules is I-Code workspace
+                    ldx       <ModListPtr              Get ptr to list of modules is I-Code workspace
                     tfr       x,y                 Move it to Y
 KILL3               ldd       ,x++                Get module ptr
                     cmpd      #$FFFF              Unused one?
                     beq       KILL3               Yes, try next
-L0EF3               std       ,y++                Save it
+CompressModList               std       ,y++                Save it
                     bne       KILL3               Until a $0000 is hit
                     cmpd      ,y                  Is the next entry a 0 too?
-                    bne       L0EF3               No, keep Storing until we hit a 0
+                    bne       CompressModList               No, keep Storing until we hit a 0
                     rts                           Otherwise, return
 
 DIRADD               bsr       DIRSCH
@@ -2783,11 +2787,11 @@ DIRA00               pshs      u,x
                     cmpb      #$FE          Is it the last
                     beq       ERMFUL         ..yes; error - memory full
 * (orig: DIRAD0)
-                    ldx       <u000C              Get # bytes free in I-Code workspace for user
+                    ldx       <WorkspaceFree              Get # bytes free in I-Code workspace for user
                     cmpx      #$00FF              <255 bytes left free?
                     blo       ERMFUL               Yes, skip ahead
                     leax      <-$1C,x             Bump # bytes free down by 28 bytes
-                    ldu       <u004A              Get ptr to current I-code line start
+                    ldu       <ICodeEndPtr              Get ptr to current I-code line start
 * Clear out entire header of packed RUNB module
 * 6809/6309 mod: should use sta (after clra) instead of clr b,u
 * Wait until ERMFUL is checked-does it need A?
@@ -2797,15 +2801,15 @@ DIRAD1               incb                          Next position
                     cmpb      #$18                Done all $18 bytes?
                     bne       DIRAD1               No, keep going
 * Copy module name to $19
-L0F1F               incb                          Bump B to $19
+CopyNameLoop               incb                          Bump B to $19
                     leax      -1,x                Bump X back
                     beq       ERMFUL               If hit 0, exit with memory full error
                     inc       $18,u               Bump up module name size to 1
                     lda       ,y+                 Get char from source (module name)
                     sta       b,u                 Save it
-                    bpl       L0F1F               Do until hi-bit terminated
+                    bpl       CopyNameLoop               Do until hi-bit terminated
                     incb                          Bump B to 1 byte past module name (start of I-code)
-                    stx       <u000C              Save # bytes left free in I-Code workspace
+                    stx       <WorkspaceFree              Save # bytes left free in I-Code workspace
                     clra                          MSB of D=0
                     std       $15,u               ???
                     std       M$Exec,u            Save ptr to execution offset
@@ -2815,8 +2819,8 @@ L0F1F               incb                          Bump B to $19
                     addd      #$0003              Add 3 to size of module so far (for CRC)
                     std       M$Size,u            Save as current size of module
                     std       $D,u                ??? (Size of I-code ???)
-                    addd      <u000A              Add size to total # bytes used by I-Code
-                    std       <u000A              Save new # bytes used by I-Code
+                    addd      <ICodeUsed              Add size to total # bytes used by I-Code
+                    std       <ICodeUsed              Save new # bytes used by I-Code
                     ldd       #M$ID12             Module header code
                     std       M$ID,u              Save as module header
                     ldd       #$0019              Ptr to where module name will be
@@ -2830,11 +2834,11 @@ L0F1F               incb                          Bump B to $19
                     ldb       #$03                Add $000003 to end
                     sta       ,x+
                     std       ,x++          Initialize procedure's symbol table
-                    stx       <u004A              ??? Save end of module ptr?
+                    stx       <ICodeEndPtr              ??? Save end of module ptr?
                     puls      pc,u,x              Restore regs & return
 
 ERMFUL               ldb       #$20                BASIC09 memory full error (or too many modules)
-                    lbra      L0A86
+                    lbra      PrintErrExit
 
 * Entry: Y=Ptr to module name
 * Exit:  D=Ptr to string/file name
@@ -2843,7 +2847,7 @@ ERMFUL               ldb       #$20                BASIC09 memory full error (or
 *        X=Ptr to module directory entry we are adding/changing
 *        Y=Ptr to end of filename+1
 DIRSCH               pshs      u,y                 Preserve regs
-                    ldx       <u0004              Get ptr to list of modules in BASIC09 workspace
+                    ldx       <ModListPtr              Get ptr to list of modules in BASIC09 workspace
 DIRSC0               ldy       ,s                  Get ptr to string we are checking for
                     ldu       ,x++                Get ptr to module in workspace
                     beq       DIRSC9               None left to check, exit with carry set
@@ -2902,15 +2906,15 @@ DIRLN9               puls      pc,u,y,x            Restore regs & return
 *        Y=???
 * Exit:  X=Ptr to where module was moved to
 SHUFLE               pshs      y,x                 Preserve regs
-                    ldd       <u0008              Get ptr to start of I-Code workspace
-                    addd      <u000A              Add to total size of used I-Code workspace
+                    ldd       <ICodeBase              Get ptr to start of I-Code workspace
+                    addd      <ICodeUsed              Add to total size of used I-Code workspace
                     tfr       d,y                 Move ptr to end of I-Code workspace to Y
                     ldx       ,x                  Get ptr to module we are adding to I-Code workspace
                     sty       [,s]                Save ptr to where it is going over old one on stck
                     ldd       M$Size,x            Get size of module we are adding
                     bsr       FLOTUP         "FLOAT" it up to bottom of free space
                     pshs      y,x,d
-                    ldx       <u0004              Get ptr to list of modules in BASIC09 workspace
+                    ldx       <ModListPtr              Get ptr to list of modules in BASIC09 workspace
                     bra       SHUFL2
 
 SHUFL1               cmpd      2,s
@@ -2947,7 +2951,7 @@ FLOTUP               pshs      u,y,x,d             Preserve regs
 * 10,s = Old U ???
 * 12,s = RTS address
                     addd      4,s                 D=distance between src & dest + size of module
-                    beq       L1022               If result=0 then restore regs & return
+                    beq       FloatUpDone               If result=0 then restore regs & return
 FLOTU1               lda       ,x                  Get 1st byte of source copy
                     pshs      a                   Save on stack
 *  0,s = 1st byte from source copy
@@ -2958,18 +2962,18 @@ FLOTU1               lda       ,x                  Get 1st byte of source copy
 *  9,s = Ptr to destination of I-Code
 * 11,s = Old U ???
 * 13,s = RTS address
-                    bra       L1000
+                    bra       FloatUpCalc
 
 FLOTU3               lda       ,y                  Get byte from source location
                     sta       ,x                  Save in destination location
                     leau      1,u                 Bump counter up
                     tfr       y,x                 Move source location to dest location
-L1000               tfr       x,d                 ??? Move src ptr to D
+FloatUpCalc               tfr       x,d                 ??? Move src ptr to D
                     addd      5,s                 Add to size of module
                     cmpd      9,s                 Compare with dest. address
-                    blo       L100B               Fits, skip ahead
+                    blo       FloatUpCont               Fits, skip ahead
                     addd      1,s                 Won't, add to distance between src/dest
-L100B               tfr       d,y                 Move end address (?) to Y
+FloatUpCont               tfr       d,y                 Move end address (?) to Y
                     cmpd      3,s                 Same as current location?
                     bne       FLOTU3               No, go bck
                     puls      a
@@ -2980,496 +2984,496 @@ L100B               tfr       d,y                 Move end address (?) to Y
                     tfr       u,d
                     addd      ,s            Total number of bytes moved?
                     bne       FLOTU1         ..no; keep moving
-L1022               leas      4,s                 Eat temp vars
+FloatUpDone               leas      4,s                 Eat temp vars
                     puls      pc,u,y,x,d          Restore regs & return
 
 * Enter Debug mode?
-L1026               pshs      u,y,x,d
-                    lda       <u0036              Get last error code
+EnterDebug               pshs      u,y,x,d
+                    lda       <ErrCode              Get last error code
                     cmpa      #$39                System stack overflow error?
-                    beq       L1068               Yes, skip ahead
-                    tst       <u00A0              ??? Some flag set?
-                    bne       L10AA               Yes, skip ahead
-                    inc       <u00A0              Set flag
-                    lda       <u0035              Get last signal received
-                    bne       L1064               Was a signal, skip ahead
-                    ldd       <u00B3              Get # steps to do @ a time for trace
+                    beq       QuitDebug               Yes, skip ahead
+                    tst       <BreakFlag              ??? Some flag set?
+                    bne       ExitDebugMode               Yes, skip ahead
+                    inc       <BreakFlag              Set flag
+                    lda       <LastSignal              Get last signal received
+                    bne       CheckAbortSig               Was a signal, skip ahead
+                    ldd       <DebugStepCnt              Get # steps to do @ a time for trace
                     subd      #1                  Bump down by 1
-                    bhi       L1089               Was >1, skip ahead
-                    bmi       L104E               Was 0 or lower, skip ahead
-L1041               lbsr      L0DBB
-                    leax      >L0791,pc           Force to Alpha mode (if VDG window) & print BREAK
-                    lbsr      L135A
-                    lbsr      L124D
+                    bhi       StepAndCont               Was >1, skip ahead
+                    bmi       DebugCmdLoop               Was 0 or lower, skip ahead
+PrintBreak               lbsr      ResetTmpBuf
+                    leax      >AlphaModeCode,pc           Force to Alpha mode (if VDG window) & print BREAK
+                    lbsr      CopyNameToBuf
+                    lbsr      PrintProcKwd
 * Debug mode command loop
-L104E               leax      >L07A4,pc           Point to 'D:'
-                    leay      >L06C1,pc           Point to start of debug command table
+DebugCmdLoop               leax      >DebugPrompt,pc           Point to 'D:'
+                    leay      >DbgCmdDollar,pc           Point to start of debug command table
                     lbsr      RUNCMD               Go process debug mode command
-                    bcc       L104E               Legit cmd executed, get next debug mode cmd
-                    lda       <u0035              Get last signal received
-                    bne       L1064               There was one, go check for abort
+                    bcc       DebugCmdLoop               Legit cmd executed, get next debug mode cmd
+                    lda       <LastSignal              Get last signal received
+                    bne       CheckAbortSig               There was one, go check for abort
                     lbsr      CMDERR               None, print 'What?'
-                    bra       L104E               Go process next debug mode command
+                    bra       DebugCmdLoop               Go process next debug mode command
 
-L0134               jsr       <u0024
+Vect4FnC               jsr       <JmpVect4
                     fcb       $0C
 
-L1064               cmpa      #S$Abort            <CTRL>-<E> signal?
-                    bne       L1041               No, enter debug mode
+CheckAbortSig               cmpa      #S$Abort            <CTRL>-<E> signal?
+                    bne       PrintBreak               No, enter debug mode
 * Debug 'Q' command (quite debug)
-L1068               bsr       L0134
+QuitDebug               bsr       Vect4FnC
                     lda       #$03                Error path #3 we will check for
-L106D               cmpa      <u00BE              Compare with I$Dup error path #
-                    beq       L1074               If not path we are looking for, skip ahead
+ClosePathLoop               cmpa      <ErrDupPath              Compare with I$Dup error path #
+                    beq       NextClsPath               If not path we are looking for, skip ahead
                     os9       I$Close             Same path, close it
-L1074               inca                          Next path
+NextClsPath               inca                          Next path
                     cmpa      #16                 Done all 16 possible?
-                    blo       L106D               No, keep going
+                    blo       ClosePathLoop               No, keep going
                     lbra      EXIT               Done, reset temp buffers & ptrs to defaults
 
 * Debug STEP command
 * Entry: Y=Ptr to next char on line entered by user
-L107C               lbsr      L0A90               Go check next char in STEP command
-                    bne       L108E               If anything but space or comma, STEP 1
+StepCmd               lbsr      SkipSepChar               Go check next char in STEP command
+                    bne       StepRateOne               If anything but space or comma, STEP 1
                     leax      ,y                  Otherwise, point X to ASCII of steps specified
-                    lbsr      L1748               Go get # steps to do into D
-                    bcc       L1091               No error, continue
+                    lbsr      EvalNumExpr               Go get # steps to do into D
+                    bcc       SaveStepCnt               No error, continue
                     rts                           Else exit
 
-L1089               bsr       L1091
+StepAndCont               bsr       SaveStepCnt
 * Debug mode <CR> goes here (single step)
-L108B               clrb
-                    bra       L1090
+DebugSingleStep               clrb
+                    bra       SetStepRate
 
-L108E               ldb       #1                  Step rate of 1
-L1090               clra
-L1091               std       <u00B3              Save # steps to do
-                    lsl       <u0034              Set high bit of signal flag
+StepRateOne               ldb       #1                  Step rate of 1
+SetStepRate               clra
+SaveStepCnt               std       <DebugStepCnt              Save # steps to do
+                    lsl       <SigFlag              Set high bit of signal flag
                     coma
-                    ror       <u0034
-                    bra       L10A6               Continue
+                    ror       <SigFlag
+                    bra       ClearBreakCont               Continue
 
 * Debug mode CONT command (continuous run)
-L109A               lbsr      L0DBB               Reset temp buffer stuff
-                    lsl       <u0034              Clear high bit of signal flag
-                    lsr       <u0034
+ContCmd               lbsr      ResetTmpBuf               Reset temp buffer stuff
+                    lsl       <SigFlag              Clear high bit of signal flag
+                    lsr       <SigFlag
                     ldd       #$0001              1 step till we print out
-                    std       <u00B3              Save it
-L10A6               leas      2,s
-                    clr       <u00A0
-L10AA               puls      pc,u,y,x,d
+                    std       <DebugStepCnt              Save it
+ClearBreakCont               leas      2,s
+                    clr       <BreakFlag
+ExitDebugMode               puls      pc,u,y,x,d
 
-L10AC               ldy       <u0019
+CallEvalSetup               ldy       <EvalSetup
                     jsr       ,y
-L10B1               pshs      u,y,x,d
-                    cmpy      <u0046              ?? Get current pos in some table
-                    beq       L10E2               If no entries, exit
-                    ldb       <u007D              Get size of temp buff
-                    ldx       <u0080              Get ptr to start of temp buff
-                    ldu       <u0082              Get ptr to end of temp buff+1
+PrintTraceInfo               pshs      u,y,x,d
+                    cmpy      <SubrStkPtr              ?? Get current pos in some table
+                    beq       TraceInfoDone               If no entries, exit
+                    ldb       <TmpBufCount              Get size of temp buff
+                    ldx       <TmpBufBase              Get ptr to start of temp buff
+                    ldu       <TmpBufCur              Get ptr to end of temp buff+1
                     pshs      u,x,b               Preserve
-                    stu       <u0080              Temporarily set up temp buff to append to current
-                    lbsr      L0DBB
+                    stu       <TmpBufBase              Temporarily set up temp buff to append to current
+                    lbsr      ResetTmpBuf
                     lda       #'=                 Append '=' to temp buff
-                    lbsr      L1373
+                    lbsr      AppendChar
                     ldb       ,y
                     addb      #$01
                     cmpb      #$06
-                    bhs       L10D7
+                    bhs       PrintTraceLine
                     leax      ,y
-                    lbsr      L13AA
-L10D7               lbsr      L1264
+                    lbsr      PrintReal
+PrintTraceLine               lbsr      AddCrPrint
                     puls      u,x,b               Get back temp buff stats
-                    stb       <u007D              Restore temp buff to normal
-                    stx       <u0080
-                    stu       <u0082
-L10E2               puls      pc,u,y,x,d          Restore regs & return
+                    stb       <TmpBufCount              Restore temp buff to normal
+                    stx       <TmpBufBase
+                    stu       <TmpBufCur
+TraceInfoDone               puls      pc,u,y,x,d          Restore regs & return
 
 * Debug LIST command
-L10E4               lbsr      L124B               Go print PROCEDURE & name
+ListCmd               lbsr      PrintProcHdr               Go print PROCEDURE & name
                     tst       <$17,x              Is procedure packed?
-                    bmi       L110A               Yes, exit without error
-                    ldx       <u005E
-L10EE               clr       <u0074
+                    bmi       ListLineDone               Yes, exit without error
+                    ldx       <ModExecAddr
+ClearIndent               clr       <IndentDepth
 * List out each line loop
-L10F0               tst       <u0035              Any signals?
-                    bne       L110A               Yes, exit without error (Can't list packed modules)
+ListLineLoop               tst       <LastSignal              Any signals?
+                    bne       ListLineDone               Yes, exit without error (Can't list packed modules)
                     leay      ,x                  Point Y to beginning of I-Code module
-                    lbsr      L1BC9
-                    bsr       L110C
+                    lbsr      ScanNextToken
+                    bsr       PrintICodeLine
                     exg       x,y
-                    cmpx      <u0060
-                    blo       L10F0
-                    cmpx      <u005C
-                    bne       L110A
-                    cmpy      <u0060
-                    blo       L10F0
-L110A               clra                          No error & return
+                    cmpx      <ModFOff
+                    blo       ListLineLoop
+                    cmpx      <ICodeCurPtr
+                    bne       ListLineDone
+                    cmpy      <ModFOff
+                    blo       ListLineLoop
+ListLineDone               clra                          No error & return
                     rts
 
-L012B               jsr       <u0021
+Vect3Fn6               jsr       <JmpVect3
                     fcb       $06
 
-L110C               pshs      u,y,x               Preserve regs
-                    lbsr      L0DBB               Reset temp buffer to empty
-                    ldx       <u002F              Get current module ptr
+PrintICodeLine               pshs      u,y,x               Preserve regs
+                    lbsr      ResetTmpBuf               Reset temp buffer to empty
+                    ldx       <CurModPtr              Get current module ptr
                     tst       <$17,x              Is it packed?
-                    bmi       L1193               Yes,  restore regs & exit
+                    bmi       PrintLineRet               Yes,  restore regs & exit
                     ldx       ,s                  Get original X back
                     tfr       y,d
                     subd      ,s
-                    bmi       L1190               Wrap to negative?
+                    bmi       PrintLineDone               Wrap to negative?
                     pshs      x,d
                     addd      #40                 If we needed 64 bytes...
-                    cmpd      <u000C              would it fit in BASIC09 workspace?
+                    cmpd      <WorkspaceFree              would it fit in BASIC09 workspace?
                     lbhs      ERMFUL               No, return with BASIC09 memory full error
-                    tst       <u0084
-                    bmi       L1158
+                    tst       <PackedFlag
+                    bmi       PrintLineElse
                     lda       #C$SPAC
-                    cmpx      <u005C
-                    bhi       L113F
-                    beq       L113D
-                    cmpy      <u005C
-                    bls       L113F
-L113D               lda       #'*                 Append '*' to temp buffer
-L113F               lbsr      L1373               Go append it
-                    cmpx      <u0060
-                    bhs       L1158
+                    cmpx      <ICodeCurPtr
+                    bhi       AppendStarCharX
+                    beq       AppendStarChar
+                    cmpy      <ICodeCurPtr
+                    bls       AppendStarCharX
+AppendStarChar               lda       #'*                 Append '*' to temp buffer
+AppendStarCharX               lbsr      AppendChar               Go append it
+                    cmpx      <ModFOff
+                    bhs       PrintLineElse
                     tfr       x,d
-                    subd      <u005E
-                    ldx       <u0082              Get current pos. in temp buffer
-                    bsr       L012B               JSR <u0021 / function 6
+                    subd      <ModExecAddr
+                    ldx       <TmpBufCur              Get current pos. in temp buffer
+                    bsr       Vect3Fn6               JSR <JmpVect3 / function 6
                     lda       #C$SPAC             Append space to temp buffer
                     sta       ,x+
-                    stx       <u0082              Save update temp buff ptr
-                    lbsr      L1270               Print message out
-L1158               puls      y,d
-                    cmpy      <u0060
-                    bhs       L1190
-                    ldu       <u004A
-                    lbsr      L19EF
-                    lbsr      L11F2
-                    stu       <u005C
+                    stx       <TmpBufCur              Save update temp buff ptr
+                    lbsr      PrintTmpBuf               Print message out
+PrintLineElse               puls      y,d
+                    cmpy      <ModFOff
+                    bhs       PrintLineDone
+                    ldu       <ICodeEndPtr
+                    lbsr      CopyVarBlock
+                    lbsr      SaveWorkSpc
+                    stu       <ICodeCurPtr
                     leax      d,u
-                    stx       <u0060
-                    stx       <u004A
+                    stx       <ModFOff
+                    stx       <ICodeEndPtr
                     leay      ,u
-                    tst       <u0084
-                    bmi       L1183
+                    tst       <PackedFlag
+                    bmi       PrintLineErr
                     leax      ,y
-                    lbsr      L1677
-                    bne       L1183
-                    leax      >L02EB,pc           Point to 'ERR' in basic09 commands
-                    lbsr      L126B               Print it out??
-L1183               lbsr      L0DBB
-                    lbsr      L1AC6
-                    lbsr      L128B
-                    bsr       L11D5
-                    dec       <u0082+1
-L1190               lbsr      L1264
-L1193               puls      pc,u,y,x
+                    lbsr      CheckLineEnd
+                    bne       PrintLineErr
+                    leax      >KwErr,pc           Point to 'ERR' in basic09 commands
+                    lbsr      PrintXThenBuf               Print it out??
+PrintLineErr               lbsr      ResetTmpBuf
+                    lbsr      ScanICodeLoop
+                    lbsr      DecodeICode
+                    bsr       RestoreWorkSpc
+                    dec       <TmpBufCur+1
+PrintLineDone               lbsr      AddCrPrint
+PrintLineRet               puls      pc,u,y,x
 
 * Debug mode - PRINT/TRON/TROFF/DEG/RAD/LET commands
-L1195               ldx       <u002F              Get ptr to start of 'current' module
+CheckPackedPt               ldx       <CurModPtr              Get ptr to start of 'current' module
                     tst       <$17,x              Is it packed?
-                    bpl       L119E               No, skip ahead
+                    bpl       PrintFromBuf               No, skip ahead
                     coma                          Yes, set carry & return
                     rts
 
-L119E               ldy       <u0080              Get ptr to start of temporary buffer
-                    lbsr      L0122               JSR <1E, function $A
-                    bsr       L11F2
-                    ldx       <u004A
-                    lbsr      L1677
-                    beq       L11D5
-                    stx       <u005E
-                    stx       <u005C
+PrintFromBuf               ldy       <TmpBufBase              Get ptr to start of temporary buffer
+                    lbsr      Vect2FnA               JSR <1E, function $A
+                    bsr       SaveWorkSpc
+                    ldx       <ICodeEndPtr
+                    lbsr      CheckLineEnd
+                    beq       RestoreWorkSpc
+                    stx       <ModExecAddr
+                    stx       <ICodeCurPtr
                     leay      ,x
-                    ldx       <u00AB
-                    stx       <u0060
-                    stx       <u004A
-                    bsr       L012E
-                    ldx       <u002F              Get ptr to current module
+                    ldx       <ICodeLineEnd
+                    stx       <ModFOff
+                    stx       <ICodeEndPtr
+                    bsr       Vect3Fn4
+                    ldx       <CurModPtr              Get ptr to current module
                     lda       <$17,x              Get original flags
                     clr       <$17,x              Clear flags out
                     tsta                          Were the flags special in any way?
-                    bne       L11D5               Yes, skip ahead
-                    leax      <L11D5,pc           No, point to the routine instead
+                    bne       RestoreWorkSpc               Yes, skip ahead
+                    leax      <RestoreWorkSpc,pc           No, point to the routine instead
                     lbsr      SETEXT
-                    ldx       <u005E
-                    bsr       L0137               JSR <$24, function 8
+                    ldx       <ModExecAddr
+                    bsr       Vect4Fn8               JSR <$24, function 8
                     lbra      EXIT               Swap stacks, reset temp buffer, return from there
 
-L012E               jsr       <u0021
+Vect3Fn4               jsr       <JmpVect3
                     fcb       $04
 
-L0137               jsr       <u0024
+Vect4Fn8               jsr       <JmpVect4
                     fcb       $08
 
-L11D5               pshs      u,y,x,d             Preserve regs
-                    ldu       <u0046              Get reset value ($300) table ptr
+RestoreWorkSpc               pshs      u,y,x,d             Preserve regs
+                    ldu       <SubrStkPtr              Get reset value ($300) table ptr
                     pulu      y,x,d               Get regs from there
-                    sty       <u000A              Save # bytes used by all code in workspace
-                    stx       <u000C              Save # bytes free in workspace
-                    std       <u004A              Save ptr to next free byte in workspace
+                    sty       <ICodeUsed              Save # bytes used by all code in workspace
+                    stx       <WorkspaceFree              Save # bytes free in workspace
+                    std       <ICodeEndPtr              Save ptr to next free byte in workspace
                     pulu      y,x,d               Get 6 more bytes
-                    sty       <u0060
-                    stx       <u005E
-                    std       <u005C
-L11EB               stu       <u0046
-                    stu       <u0044
+                    sty       <ModFOff
+                    stx       <ModExecAddr
+                    std       <ICodeCurPtr
+SaveSubrStkPt               stu       <SubrStkPtr
+                    stu       <StrSpaceTop
                     clra                          No error,restore regs & return
                     puls      pc,u,y,x,d
 
-L11F2               pshs      u,y,x,d
-                    ldu       <u0046
-                    ldd       <u005C
-                    ldx       <u005E
-                    ldy       <u0060
+SaveWorkSpc               pshs      u,y,x,d
+                    ldu       <SubrStkPtr
+                    ldd       <ICodeCurPtr
+                    ldx       <ModExecAddr
+                    ldy       <ModFOff
                     pshu      y,x,d
-                    ldd       <u004A
-                    ldx       <u000C
-                    ldy       <u000A
+                    ldd       <ICodeEndPtr
+                    ldx       <WorkspaceFree
+                    ldy       <ICodeUsed
                     pshu      y,x,d
-                    bra       L11EB
+                    bra       SaveSubrStkPt
 
 * Debug mode - STATE command
-L120A               ldy       <u0031
-                    leax      >L0756,pc           Point to 'PROCEDURE'
-L1211               bsr       L1223
-                    lbsr      L135A
+StateCmd               ldy       <VarStorePtr
+                    leax      >ProcedureStr,pc           Point to 'PROCEDURE'
+PrintCallEntry               bsr       ResetOutBuf
+                    lbsr      CopyNameToBuf
                     ldx       3,y
-                    bsr       L1256
-                    leax      <L0799,pc           Point to 'called by'
+                    bsr       PrintModName
+                    leax      <CalledByStr,pc           Point to 'called by'
                     ldy       7,y
-                    bne       L1211
-L1223               lbra      L0DBB
+                    bne       PrintCallEntry
+ResetOutBuf               lbra      ResetTmpBuf
 
-L0799               fcs       'called by'
+CalledByStr               fcs       'called by'
 
 * Debug mode - BREAK command
-L1226               lbsr      L010D               JSR <1E, function 2
-                    beq       L1249
+BreakCmd               lbsr      Vect2Fn2               JSR <1E, function 2
+                    beq       BreakCmdErr
                     lbsr      DIRSCH
-                    bcs       L1249
+                    bcs       BreakCmdErr
                     ldx       ,x
-                    ldy       <u0031
-L1235               ldy       7,y
-                    beq       L1249
+                    ldy       <VarStorePtr
+SearchCallStk               ldy       7,y
+                    beq       BreakCmdErr
                     cmpx      3,y
-                    bne       L1235
+                    bne       SearchCallStk
 * 6309, change to OIM #1,,y
                     lsl       ,y                  Set hi bit @ Y
                     coma
                     ror       ,y
-                    leax      >L07A2,pc           Point to 'ok'
-                    bra       L125F
+                    leax      >OkStr,pc           Point to 'ok'
+                    bra       PrintXToStderr
 
-L1249               coma
+BreakCmdErr               coma
                     rts
 
-L124B               bsr       L1223
-L124D               leax      >L0756,pc           Point to 'PROCEDURE'
-                    lbsr      L135A
-                    ldx       <u002F              Get ptr to current module
-L1256               pshs      x                   Save it
+PrintProcHdr               bsr       ResetOutBuf
+PrintProcKwd               leax      >ProcedureStr,pc           Point to 'PROCEDURE'
+                    lbsr      CopyNameToBuf
+                    ldx       <CurModPtr              Get ptr to current module
+PrintModName               pshs      x                   Save it
                     leax      <$19,x              Point to main code area
-                    bsr       L1261
+                    bsr       CopyAndPrint
                     puls      pc,x
 
 * Copy string pointed to by X to temp buffer & print it to std error
-L125F               bsr       L1223               Set output txt size to 1, curr. temp buff pos=start
-L1261               lbsr      L1392               Copy text string to temp buffer @ [u0080]
-L1264               lbsr      L1371               Append a CR on the end of output buffer
-                    bsr       L1270               Print out the buffer to std error
-                    bra       L1223               Reset temp buffer size & ptrs to defaults & return
+PrintXToStderr               bsr       ResetOutBuf               Set output txt size to 1, curr. temp buff pos=start
+CopyAndPrint               lbsr      CopyFcsToBuf               Copy text string to temp buffer @ [TmpBufBase]
+AddCrPrint               lbsr      AppendCR               Append a CR on the end of output buffer
+                    bsr       PrintTmpBuf               Print out the buffer to std error
+                    bra       ResetOutBuf               Reset temp buffer size & ptrs to defaults & return
 
-L126B               bsr       L1223
-                    lbsr      L1392
+PrintXThenBuf               bsr       ResetOutBuf
+                    lbsr      CopyFcsToBuf
 * Print message in temp buffer to std error path
 * NOTE: MAY WANT TO CHECK INTO USING <7D FOR SIZE
-L1270               pshs      y,x,d               Preserve regs
-                    ldd       <u0082              Get ptr to end of temp buffer+1
-                    subd      <u0080              Calculate size of temp buffer
-                    bls       L1285               If 0 or >32k, restore regs & exit
+PrintTmpBuf               pshs      y,x,d               Preserve regs
+                    ldd       <TmpBufCur              Get ptr to end of temp buffer+1
+                    subd      <TmpBufBase              Calculate size of temp buffer
+                    bls       WritlnDone               If 0 or >32k, restore regs & exit
                     tfr       d,y                 Move size to proper reg for WritLn
-                    ldx       <u0080              Point to start of text
+                    ldx       <TmpBufBase              Point to start of text
                     lda       #$02                Std error path
                     os9       I$WritLn            Write out the temporary buffer
-                    bcc       L1285               No error, restore regs & exit
-                    bsr       L1287               Print the error message out
-L1285               puls      pc,y,x,d            Restore regs & exit
+                    bcc       WritlnDone               No error, restore regs & exit
+                    bsr       PrintSysErr               Print the error message out
+WritlnDone               puls      pc,y,x,d            Restore regs & exit
 
-L1287               os9       F$PErr              Print error message
+PrintSysErr               os9       F$PErr              Print error message
                     rts
 
-L128B               ldy       <u005C
-                    cmpy      <u0060
-                    bhs       L12CF
+DecodeICode               ldy       <ICodeCurPtr
+                    cmpy      <ModFOff
+                    bhs       AppendCrReturn
                     ldb       ,y
                     cmpb      #$3A
-                    bne       L12A3
+                    bne       CheckPackedLst
                     leay      1,y
-                    lbsr      L13CF
-                    lbsr      L135C
+                    lbsr      PrintLineOffset
+                    lbsr      PrintSep
                     ldb       ,y
-L12A3               tst       <u0084
-                    bmi       L12B8
-                    bsr       L12F9
-                    ldb       <u0074
+CheckPackedLst               tst       <PackedFlag
+                    bmi       NextToken
+                    bsr       GetPktByte
+                    ldb       <IndentDepth
                     pshs      b
-                    bsr       L12D8
+                    bsr       UpdateIndent
                     puls      a
-                    sta       <u0074
+                    sta       <IndentDepth
                     tfr       b,a
-                    lbsr      L134E
-L12B8               ldb       ,y+
-                    bmi       L12C4
-                    bsr       L12F9
-                    bsr       L12D8
-                    bsr       L130C
-                    bra       L12C7
+                    lbsr      PrintIndentPad
+NextToken               ldb       ,y+
+                    bmi       ProcessEndTok
+                    bsr       GetPktByte
+                    bsr       UpdateIndent
+                    bsr       PktProcess
+                    bra       ContScanLine
 
-L12C4               lbsr      L1489
-L12C7               cmpy      <u0060
-                    blo       L12B8
-L12CC               sty       <u005C
-L12CF               lbra      L1371
+ProcessEndTok               lbsr      DecodeStructRef
+ContScanLine               cmpy      <ModFOff
+                    blo       NextToken
+SaveLinePos               sty       <ICodeCurPtr
+AppendCrReturn               lbra      AppendCR
 
-L12D4               leas      2,s
-                    bra       L12CC
+SkipAndSavePos               leas      2,s
+                    bra       SaveLinePos
 
-L12D8               sta       ,-s
-                    bmi       L12F6
+UpdateIndent               sta       ,-s
+                    bmi       IndentUpdDone
                     anda      #3
-                    beq       L12F6
+                    beq       IndentUpdDone
                     cmpa      #1
-                    bne       L12E8
-                    inc       <u0074
-                    bra       L12F6
+                    bne       DecIndent
+                    inc       <IndentDepth
+                    bra       IndentUpdDone
 
-L12E8               decb
-                    bpl       L12EC
+DecIndent               decb
+                    bpl       CheckIndentPl
                     clrb
-L12EC               cmpa      #3
-                    beq       L12F6
-                    dec       <u0074
-                    bpl       L12F6
-                    clr       <u0074
-L12F6               lda       ,s+
+CheckIndentPl               cmpa      #3
+                    beq       IndentUpdDone
+                    dec       <IndentDepth
+                    bpl       IndentUpdDone
+                    clr       <IndentDepth
+IndentUpdDone               lda       ,s+
                     rts
 
-L12F9               leax      >L03F5,pc           Point to 3 byte packets for <u001B calls - $12
+GetPktByte               leax      >PktTable,pc           Point to 3 byte packets for <JmpVect1 calls - $12
                     tstb                          If positive, skip ahead
-                    bpl       L1302
+                    bpl       PktLookup
                     subb      #$2A                Otherwise, bump down by 42
-L1302               lda       #$03                Multiply by size of each entry
+PktLookup               lda       #$03                Multiply by size of each entry
                     mul
                     leax      d,x                 Point to entry
                     lda       ,x                  Get 1st byte & return
                     rts
 
-L130A               bsr       L12F9
-L130C               leax      1,x
+PktAndProcess               bsr       GetPktByte
+PktProcess               leax      1,x
                     anda      #$60
-                    beq       L1318
+                    beq       PktGetOffset
                     cmpa      #$60
-                    bne       L132A
+                    bne       PktJumpAbs
                     leay      2,y
-L1318               lda       -1,x
+PktGetOffset               lda       -1,x
                     pshs      a
                     ldd       ,x
                     leax      d,x
                     puls      a
                     anda      #$18
                     cmpa      #$10
-                    beq       L1392
-                    bra       L1358
+                    beq       CopyFcsToBuf
+                    bra       PktNameAndSep
 
-L132A               cmpa      #$20
-                    bne       L1332
+PktJumpAbs               cmpa      #$20
+                    bne       PktPrintTokens
                     ldd       ,x
                     jmp       d,x
 
-L1332               bsr       L133A
-                    bsr       L1336
-L1336               lda       ,x+
-                    bne       L1373
-L133A               lda       <u007D
+PktPrintTokens               bsr       PktAutoWrap
+                    bsr       PktAppendChar
+PktAppendChar               lda       ,x+
+                    bne       AppendChar
+PktAutoWrap               lda       <TmpBufCount
                     cmpa      #$41
-                    bcs       L1357
+                    bcs       PktPadDone
                     lda       #$0A
-                    bsr       L1373
-                    clr       <u007D
-                    tst       <u0084
-                    bmi       L1357
-                    lda       <u0074
+                    bsr       AppendChar
+                    clr       <TmpBufCount
+                    tst       <PackedFlag
+                    bmi       PktPadDone
+                    lda       <IndentDepth
                     adda      #3
-L134E               lsla
+PrintIndentPad               lsla
                     adda      #6
                     ldb       #$10
-                    bsr       L011F
+                    bsr       Vect6Fn2
                     clra
-L1357               rts
+PktPadDone               rts
 
-L1358               bsr       L135C
-L135A               bsr       L1392
-L135C               pshs      u,d
-                    bsr       L133A
-                    bcc       L136F
-                    ldu       <u0082
+PktNameAndSep               bsr       PrintSep
+CopyNameToBuf               bsr       CopyFcsToBuf
+PrintSep               pshs      u,d
+                    bsr       PktAutoWrap
+                    bcc       PrintSepDone
+                    ldu       <TmpBufCur
                     lda       #C$SPAC
                     cmpa      -1,u
-                    beq       L136F
-                    cmpu      <u0080
-                    bne       L1377
-L136F               puls      pc,u,d
+                    beq       PrintSepDone
+                    cmpu      <TmpBufBase
+                    bne       StoreChar
+PrintSepDone               puls      pc,u,d
 
 * Append byte in A to temp buffer, check for overflow
-L1371               lda       #C$CR
+AppendCR               lda       #C$CR
 * Entry: A=Char (hi-bit stripped)
-L1373               pshs      u,d                 Preserve regs
-                    ldu       <u0082              ??? Get ptr to temp buffer
-L1377               sta       ,u+                 Save char in buffer
-                    ldd       <u0082              Get current pos in temp buffer
-                    subd      <u0080              Calc. current size of temp buffer
+AppendChar               pshs      u,d                 Preserve regs
+                    ldu       <TmpBufCur              ??? Get ptr to temp buffer
+StoreChar               sta       ,u+                 Save char in buffer
+                    ldd       <TmpBufCur              Get current pos in temp buffer
+                    subd      <TmpBufBase              Calc. current size of temp buffer
                     tsta                          Past our max (255 bytes)?
-                    bne       L1384               Yes, exit
-                    inc       <u007D              No, bump up char count
-                    stu       <u0082              Save current pos. in temp buffer+1
-L1384               puls      pc,u,d              Restore & return
+                    bne       AppendCharDone               Yes, exit
+                    inc       <TmpBufCount              No, bump up char count
+                    stu       <TmpBufCur              Save current pos. in temp buffer+1
+AppendCharDone               puls      pc,u,d              Restore & return
 
-L1386               lda       #$2E
-                    bsr       L1373
-L138A               ldx       ,y++
-                    ldd       <u0062
+AppendDotAndNum               lda       #$2E
+                    bsr       AppendChar
+PrintSymbol               ldx       ,y++
+                    ldd       <ModSymTbl
                     leax      d,x
                     leax      3,x
 
 * Entry: X=ptr to text to output
-* Exit: text output is in temp buffer from [u0080] to [u0082]-1
-*       size of output string is in u007D
-L1392               pshs      x                   Preserve ptr to text to output
-L1394               lda       ,x                  Get 1st char from X
+* Exit: text output is in temp buffer from [TmpBufBase] to [TmpBufCur]-1
+*       size of output string is in TmpBufCount
+CopyFcsToBuf               pshs      x                   Preserve ptr to text to output
+CopyFcsLoop               lda       ,x                  Get 1st char from X
                     anda      #$7F                Strip hi bit
-                    bsr       L1373               Add byte to temp buffer; check if full
+                    bsr       AppendChar               Add byte to temp buffer; check if full
                     tst       ,x+                 Was the high bit set? (last char flag)
-                    bpl       L1394               No, keep building output buffer
+                    bpl       CopyFcsLoop               No, keep building output buffer
                     puls      pc,x                Done, restore original text ptr & return
 
-L011F               jsr       <u002A
+Vect6Fn2               jsr       <JmpVect6
                     fcb       $02
 
 * Called from Debug mode (?) -something with REAL #'s?
-L13A0               ldb       #3
-                    ldx       <u0044
+PrintRealToStr               ldb       #3
+                    ldx       <StrSpaceTop
                     pshs      y,b
                     leay      -1,y
-                    bra       L13AC
+                    bra       CopyRealToBuf
 
-L13AA               pshs      y,b
+PrintReal               pshs      y,b
 * on 6309, use LDQ/STQ, on 6809, uses std -2/-4/-6,x leay -6,x (saves 5 cycles)
-L13AC               ldd       4,y
+CopyRealToBuf               ldd       4,y
                     std       ,--x
                     ldd       2,y
                     std       ,--x
@@ -3477,254 +3481,254 @@ L13AC               ldd       4,y
                     std       ,--x
                     leay      ,x
                     puls      b
-                    bra       L13DC
+                    bra       PrintOffsetStr
 
-L13BE               ldb       ,y
+PrintByteLit               ldb       ,y
                     clra
-                    bra       L13D1
+                    bra       PrintOffsetHlp
 
-L13C3               leax      >L0203,pc           Point to 'GOSUB'
-                    bra       L13CD
+PrintGosubKwd               leax      >KwGosub,pc           Point to 'GOSUB'
+                    bra       PrintKwdSep
 
-L13C9               leax      >L01FD,pc           Point to 'GOTO'
-L13CD               bsr       L1358
-L13CF               ldd       ,y++
-L13D1               pshs      y
-                    ldy       <u0044
+PrintGotoKwd               leax      >KwGoto,pc           Point to 'GOTO'
+PrintKwdSep               bsr       PktNameAndSep
+PrintLineOffset               ldd       ,y++
+PrintOffsetHlp               pshs      y
+                    ldy       <StrSpaceTop
                     leay      -6,y
                     std       1,y
                     ldb       #2
-L13DC               bsr       L011F               JSR <$2A, function 2, sub-function 2
+PrintOffsetStr               bsr       Vect6Fn2               JSR <$2A, function 2, sub-function 2
                     puls      pc,y
 
-L13E1               bsr       L13F1
-L13E3               lda       ,y+                 Get char
+PrintStrLit               bsr       AppendQuote
+PrintStrLoop               lda       ,y+                 Get char
                     cmpa      #$FF                EOS?
-                    beq       L13F1               Yes, add " to temp buffer
-                    bsr       L1373               No, add char to buffer
+                    beq       AppendQuote               Yes, add " to temp buffer
+                    bsr       AppendChar               No, add char to buffer
                     cmpa      #'"                 Was it a ?
-                    bne       L13E3               No, keep printing chars
-                    bra       L13E1               Yes, add " & continue
+                    bne       PrintStrLoop               No, keep printing chars
+                    bra       PrintStrLit               Yes, add " & continue
 
-L13F1               lda       #'"                 Add " to temp buffer
-L13F3               lbra      L1373
+AppendQuote               lda       #'"                 Add " to temp buffer
+AppendCharJmp               lbra      AppendChar
 
-L13F6               lda       #'$                 Add $ to temp buffer
-                    bsr       L13F3
+PrintHexStr               lda       #'$                 Add $ to temp buffer
+                    bsr       AppendCharJmp
                     ldb       #$14
-                    bsr       L011F               JSR <$2A, function 2, sub-function $14
+                    bsr       Vect6Fn2               JSR <$2A, function 2, sub-function $14
                     leay      2,y
                     rts
 
-L1402               leax      >L027E,pc           Point to 'BASE'
-                    lbsr      L135A
+PrintBaseKwd               leax      >KwBase,pc           Point to 'BASE'
+                    lbsr      CopyNameToBuf
                     lda       -1,y
                     adda      #$FB
-                    bra       L13F3
+                    bra       AppendCharJmp
 
-L140F               leax      >L020A,pc           Point to 'RUN'
-L1413               lbsr      L135A
-                    lbra      L138A
+PrintRunKwd               leax      >KwRun,pc           Point to 'RUN'
+PrintKwdSymbol               lbsr      CopyNameToBuf
+                    lbra      PrintSymbol
 
-L1419               leax      >L01AC,pc           Point to 'NEXT'
+PrintNextKwd               leax      >KwNext,pc           Point to 'NEXT'
                     leay      1,y
-                    bsr       L1413
+                    bsr       PrintKwdSymbol
                     leay      6,y
                     rts
 
-L1424               leax      >L02B4,pc           Point to 'THEN'
-                    lbsr      L1358
+PrintThenKwd               leax      >KwThen,pc           Point to 'THEN'
+                    lbsr      PktNameAndSep
                     lda       ,y
                     cmpa      #$3A
-                    beq       L1433
-                    inc       <u0074
-L1433               rts
+                    beq       PrintThenDone
+                    inc       <IndentDepth
+PrintThenDone               rts
 
-L1434               fcs       '(*'
+AltRemStr               fcs       '(*'
 
-L1436               leax      <L1434,pc           Point to alternative REM statement
-                    bra       L1440
+PrintAltRem               leax      <AltRemStr,pc           Point to alternative REM statement
+                    bra       PrintRemBody
 
-L143C               leax      >L0284,pc           Point to 'REM'
-L1440               lbsr      L135A
-L1443               ldb       ,y+
-L1445               decb
-                    beq       L1433
+PrintRemKwd               leax      >KwRem,pc           Point to 'REM'
+PrintRemBody               lbsr      CopyNameToBuf
+RemBodyLoop               ldb       ,y+
+PrintRemChar               decb
+                    beq       PrintThenDone
                     lda       ,y+
-                    bsr       L13F3
-                    bra       L1445
+                    bsr       AppendCharJmp
+                    bra       PrintRemChar
 
 * File opening mode table: 3 bytes per entry
 * Byte 1   : Actual mode bit pattern
 * Bytes 2&3: Offset (from itself) to keyword describing mode
 *   NOTE: keywords are high bit terminated
-L144E               fcb       UPDAT.
-L144F               fdb       L03E4-*             Points to 'Update' string
-L1451               fcb       READ.
-L1452               fdb       L0241-*             Points to 'Read' string
-L1454               fcb       WRITE.
-L1455               fdb       L0247-*             Points to 'Write' string
-L1457               fcb       EXEC.
-L1458               fdb       L03EC-*             Points to 'Exec' string
-L145A               fcb       DIR.
-L145B               fdb       L03F2-*             Points to 'Dir' string
-L145D               fcb       $00                 End of table marker
+FileModeTable               fcb       UPDAT.
+FileModeUpdat               fdb       KwUpdate-*             Points to 'Update' string
+FileModeRead               fcb       READ.
+FileModeReadFd               fdb       KwRead-*             Points to 'Read' string
+FileModeWrite               fcb       WRITE.
+FileModeWrtFd               fdb       KwWrite-*             Points to 'Write' string
+FileModeExec               fcb       EXEC.
+FileModeExcFd               fdb       KwExec-*             Points to 'Exec' string
+FileModeDir               fcb       DIR.
+FileModeDirFd               fdb       KwDir-*             Points to 'Dir' string
+FileModeEnd               fcb       $00                 End of table marker
 
-L145E               lda       ,y+                 Get requested file access mode
+DecodeFMode               lda       ,y+                 Get requested file access mode
                     pshs      a                   Preserve on stack
                     lda       #':                 Separator that starts modes
-L1464               bsr       L13F3               Parse for char?
-                    leax      <L144E-2,pc         Point early for reentry point of loop
-L1469               leax      2,x                 Bump to next entry
+DecodeModeChar               bsr       AppendCharJmp               Parse for char?
+                    leax      <FileModeTable-2,pc         Point early for reentry point of loop
+ScanModeTable               leax      2,x                 Bump to next entry
                     lda       ,s                  Get requested mode
                     anda      ,x                  AND with mode in table
                     cmpa      ,x+                 Match so far?
-                    bne       L1469               No, check next entry
+                    bne       ScanModeTable               No, check next entry
                     tsta                          Matched cuz we are at end of table?
-                    beq       L1487               Yes, exit routine
+                    beq       DecodeFModeDone               Yes, exit routine
                     eora      ,s                  Mask out bits that are part of token, not mode
                     sta       ,s                  Preserve raw mode
                     ldd       ,x                  Get offset to text equivalent of mode
                     leax      d,x                 Point to it
-                    lbsr      L1392
+                    lbsr      CopyFcsToBuf
                     lda       #'+                 Now check for additional modes
                     tst       ,s
-                    bne       L1464               Go check them  & update accordingly
-L1487               puls      pc,a                Restore A and exit
+                    bne       DecodeModeChar               Go check them  & update accordingly
+DecodeFModeDone               puls      pc,a                Restore A and exit
 
-L1489               pshs      u
-                    ldu       <u0044
+DecodeStructRef               pshs      u
+                    ldu       <StrSpaceTop
                     clr       ,-u                 Clear two bytes on stack
                     clr       ,-u
                     leay      -1,y
-L1493               ldb       ,y
-                    bpl       L14C4
-                    lbsr      L12F9
+StructRefLoop               ldb       ,y
+                    bpl       SaveStructPos
+                    lbsr      GetPktByte
                     tfr       a,b
                     lda       ,y+
                     bitb      #$80
-                    bne       L1493
+                    bne       StructRefLoop
                     orb       #$80
                     pshu      d
                     bitb      #$18
-                    bne       L1493
+                    bne       StructRefLoop
                     andb      #$7F
                     pshu      d
                     bitb      #$04
-                    bne       L14B8
+                    bne       StructAddrRef
                     ldd       ,y++
                     std       2,u
-                    bra       L1493
+                    bra       StructRefLoop
 
-L14B8               leay      -1,y
+StructAddrRef               leay      -1,y
                     sty       2,u
                     ldb       ,y+
-                    lbsr      L1B68
-                    bra       L1493
+                    lbsr      LookupOpcode
+                    bra       StructRefLoop
 
-L14C4               sty       <u005C
+SaveStructPos               sty       <ICodeCurPtr
                     leay      ,u
                     clra
                     clrb
                     std       ,--y
                     pshs      d
-                    sta       <u00BF
-                    sta       <u00B1
-L14D3               ldd       ,u++
+                    sta       <ScanMatchByte
+                    sta       <ICodeScanFlag
+ScanStructLoop               ldd       ,u++
                     bitb      #$08
-                    beq       L14FE
+                    beq       ScanFlagClr
                     andb      #$07
-                    cmpb      <u00BF
-                    bhi       L14F2
-                    bne       L14EF
+                    cmpb      <ScanMatchByte
+                    bhi       UpdateScanByte
+                    bne       CallPrintDim
                     cmpb      #$06
-                    bne       L14EB
-                    tst       <u00B1
-                    beq       L14EF
-                    bra       L14F2
+                    bne       TestScanFlag2
+                    tst       <ICodeScanFlag
+                    beq       CallPrintDim
+                    bra       UpdateScanByte
 
-L14EB               tst       <u00B1
-                    beq       L14F2
-L14EF               lbsr      L1581
-L14F2               stb       <u00BF
+TestScanFlag2               tst       <ICodeScanFlag
+                    beq       UpdateScanByte
+CallPrintDim               lbsr      BuildKwdRef
+UpdateScanByte               stb       <ScanMatchByte
                     orb       #$80
                     std       ,--y
                     lda       #$01
-                    sta       <u00B1
-                    bra       L14D3
+                    sta       <ICodeScanFlag
+                    bra       ScanStructLoop
 
-L14FE               clr       <u00B1
+ScanFlagClr               clr       <ICodeScanFlag
                     bitb      #$03
-                    beq       L152D
+                    beq       CheckScanBits
                     bitb      #$04
-                    bne       L152D
+                    bne       CheckScanBits
                     bitb      #$10
-                    bne       L1510
+                    bne       ScanStoreAddr
                     pulu      x
                     stx       ,--y
-L1510               std       ,--y
+ScanStoreAddr               std       ,--y
                     andb      #$03
-                    bsr       L1581
+                    bsr       BuildKwdRef
                     cmpa      #$BE
-                    bne       L151F
+                    bne       InitTokenKwd
                     ldx       #$54FF
                     stx       ,--y
-L151F               ldx       #$4B80
-                    bra       L1526
+InitTokenKwd               ldx       #$4B80
+                    bra       DecBRepeat
 
-L1524               stx       ,--y
-L1526               decb
-                    bne       L1524
-                    stb       <u00BF
-L152B               bra       L14D3
+PushRepeatKwd               stx       ,--y
+DecBRepeat               decb
+                    bne       PushRepeatKwd
+                    stb       <ScanMatchByte
+ScanLoopCont               bra       ScanStructLoop
 
-L152D               bitb      #$10
-                    bne       L1535
+CheckScanBits               bitb      #$10
+                    bne       PushDScan
                     pulu      x
-L1533               pshs      x
-L1535               pshs      d
+PushXScan               pshs      x
+PushDScan               pshs      d
                     cmpa      #$89
-                    blo       L153F
+                    blo       LoadStructPair
                     cmpa      #$8C
-                    bls       L14D3
-L153F               ldd       ,y++
+                    bls       ScanStructLoop
+LoadStructPair               ldd       ,y++
                     tstb
-                    bmi       L154A
-                    beq       L1558
+                    bmi       StructNegRef
+                    beq       StructNullRef
                     ldx       ,y++
-                    bra       L1533
+                    bra       PushXScan
 
-L154A               pshs      d
+StructNegRef               pshs      d
                     clr       $01,s
                     bitb      #$10
-                    bne       L153F
+                    bne       LoadStructPair
                     andb      #$07
-                    stb       <u00BF
-                    bra       L152B
+                    stb       <ScanMatchByte
+                    bra       ScanLoopCont
 
-L1558               ldx       ,u++
-                    beq       L1569
+StructNullRef               ldx       ,u++
+                    beq       StructGetPair
                     pshu      x
                     std       ,--y
-                    bra       L152B
+                    bra       ScanLoopCont
 
-L1562               puls      y
+StructPopToken               puls      y
                     ldb       ,y+
-                    lbsr      L130A
-L1569               ldd       ,s++
-                    beq       L157C
+                    lbsr      PktAndProcess
+StructGetPair               ldd       ,s++
+                    beq       StructScanDone
                     bitb      #$04
-                    bne       L1562
+                    bne       StructPopToken
                     leay      ,s
                     exg       a,b
-                    lbsr      L130A
+                    lbsr      PktAndProcess
                     leas      ,y
-                    bra       L1569
+                    bra       StructGetPair
 
-L157C               ldy       <u005C
+StructScanDone               ldy       <ICodeCurPtr
                     puls      pc,u
 
-L1581               ldx       ,s
+BuildKwdRef               ldx       ,s
                     pshs      x
                     ldx       #$4E00
                     stx       $02,s
@@ -3733,317 +3737,317 @@ L1581               ldx       ,s
 * (orig: CMDSE9)
                     rts
 
-L1590               lbsr      L0A9D
+EditCmd               lbsr      GetProcName
                     lbsr      DIRADD
                     ldy       ,x
                     tst       $06,y
-                    bne       L15E5
+                    bne       EditPackedErr
                     pshs      x
-                    lbsr      L1A2E
-                    lbsr      L124B
-                    ldy       <u005E
-                    bsr       L15F3
-L15AA               lda       <u0035              Get last signal code received
+                    lbsr      UnbindSetupMod
+                    lbsr      PrintProcHdr
+                    ldy       <ModExecAddr
+                    bsr       EditUpdatePos
+EditCmdLoop               lda       <LastSignal              Get last signal code received
                     cmpa      #S$Abort            <CTRL>-<E>?
-                    bne       L15B3               No, skip ahead
-                    lbsr      L1993               Yes, ???
-L15B3               leax      >L07A6,pc           Point to 'E:'
-                    leay      >L0718,pc           Point to EDIT mode command table
+                    bne       EditPrompt               No, skip ahead
+                    lbsr      EatStkRebind               Yes, ???
+EditPrompt               leax      >EditPromptStr,pc           Point to 'E:'
+                    leay      >EditCmdL,pc           Point to EDIT mode command table
                     lbsr      RUNCMD               Get next command from keyboard & execute it
-                    bcc       L15AA               Legit command done, get next one
-                    tst       <u0035              Signal received?
-                    bne       L15AA               Yes, go process it
-                    leax      <L15AA,pc           Point to routine (loop)
+                    bcc       EditCmdLoop               Legit command done, get next one
+                    tst       <LastSignal              Signal received?
+                    bne       EditCmdLoop               Yes, go process it
+                    leax      <EditCmdLoop,pc           Point to routine (loop)
                     pshs      x                   Save it (for possible rts address?)
-                    ldx       <u0080              Get ptr to start of temp buffer
+                    ldx       <TmpBufBase              Get ptr to start of temp buffer
                     lsl       ,x                  Clear out hi bit in 1st char in temp buffer
                     lsr       ,x
-                    lbsr      L1748               ???
+                    lbsr      EvalNumExpr               ???
                     lbcs      CMDERR               If carry set, print 'What?'
-                    lbsr      L1A0D
+                    lbsr      FindLineAtStart
                     lda       ,x
                     cmpa      #C$CR
-                    beq       L15F3
-                    ldy       <u0080              Get temp buffer ptr
-                    bra       L1601               Skip ahead
+                    beq       EditUpdatePos
+                    ldy       <TmpBufBase              Get temp buffer ptr
+                    bra       InsertAndEdit               Skip ahead
 
-L15E5               coma
+EditPackedErr               coma
                     rts
 
-L15E7               leax      -1,y
+EditModICode               leax      -1,y
                     lsl       ,x
                     asr       ,x
-                    lbsr      L16F2
-                    lbsr      L16BD
-L15F3               sty       <u005C
-                    lbsr      L1682
+                    lbsr      ParseLineRef
+                    lbsr      AppendIfNoCR
+EditUpdatePos               sty       <ICodeCurPtr
+                    lbsr      CountLines
                     leax      ,y
-                    lbsr      L1BC9
-                    lbra      L16AD
+                    lbsr      ScanNextToken
+                    lbra      EditIndentLine
 
-L1601               bsr       L1606
-                    bcc       L15F3
+InsertAndEdit               bsr       CompileOneLine
+                    bcc       EditUpdatePos
                     rts
 
-L0122               jsr       <u001E
+Vect2FnA               jsr       <JmpVect2
                     fcb       $0A
 
-L1606               tst       <u000C
-                    beq       L1670
-                    clr       <u00A0
-                    bsr       L0122
-                    ldx       <u004A
+CompileOneLine               tst       <WorkspaceFree
+                    beq       MemFullErr2
+                    clr       <BreakFlag
+                    bsr       Vect2FnA
+                    ldx       <ICodeEndPtr
                     lda       ,x
                     cmpa      #$3A
-                    bne       L165E
+                    bne       EditClearD
                     clra
                     clrb
                     sta       ,-s
-                    ldy       <u005C
-                    lbsr      L1A10
-                    cmpy      <u0060
-                    bcc       L162F
+                    ldy       <ICodeCurPtr
+                    lbsr      FindLine
+                    cmpy      <ModFOff
+                    bcc       EditFindLine
                     ldd       $01,x
                     cmpd      $01,y
-                    bls       L162F
+                    bls       EditFindLine
                     inc       ,s
-L162F               ldy       <u005E
+EditFindLine               ldy       <ModExecAddr
                     ldd       1,x
-                    lbsr      L1A0D
+                    lbsr      FindLineAtStart
                     tst       ,s+
-                    bne       L1642
-                    bhs       L1642
-                    cmpy      <u005C
-                    bhs       L165E
-L1642               sty       <u005C
-                    cmpy      <u0060
-                    bhs       L165E
-                    ldx       <u004A
+                    bne       EditSetCurPos
+                    bhs       EditSetCurPos
+                    cmpy      <ICodeCurPtr
+                    bhs       EditClearD
+EditSetCurPos               sty       <ICodeCurPtr
+                    cmpy      <ModFOff
+                    bhs       EditClearD
+                    ldx       <ICodeEndPtr
                     ldd       1,x
                     cmpd      1,y
-                    bne       L165E
+                    bne       EditClearD
                     pshs      y
-                    lbsr      L1BC9
+                    lbsr      ScanNextToken
                     tfr       y,d
                     subd      ,s++
-                    bra       L1660
+                    bra       EditAdjustLine
 
-L165E               clra
+EditClearD               clra
                     clrb
-L1660               ldy       <u005C
-                    lbsr      L19B1
-                    ldx       <u005C
-                    bsr       L1677
-                    bne       L166E
+EditAdjustLine               ldy       <ICodeCurPtr
+                    lbsr      InsertICode
+                    ldx       <ICodeCurPtr
+                    bsr       CheckLineEnd
+                    bne       EditLineOk
                     leay      ,x
-L166E               clra
+EditLineOk               clra
                     rts
 
-L1670               ldb       #$20                Memory full error
-                    lbsr      L1287               Print error message
+MemFullErr2               ldb       #$20                Memory full error
+                    lbsr      PrintSysErr               Print error message
                     coma                          Return with carry set
                     rts
 
-L1677               lda       ,x
+CheckLineEnd               lda       ,x
                     cmpa      #$3A
-                    bne       L167F
+                    bne       CheckEqSign
                     lda       3,x
-L167F               cmpa      #$3D
+CheckEqSign               cmpa      #$3D
                     rts
 
-L1682               ldx       #$0000
-                    ldy       <u005E
-L1688               cmpy      <u005C
-                    bhs       L1697
+CountLines               ldx       #$0000
+                    ldy       <ModExecAddr
+CountLinesLoop               cmpy      <ICodeCurPtr
+                    bhs       SaveLineCount
                     leax      1,x
-                    lbsr      L1BC9
-                    cmpy      <u0060
-                    blo       L1688
-L1697               sty       <u005C
-                    stx       <u00B5
+                    lbsr      ScanNextToken
+                    cmpy      <ModFOff
+                    blo       CountLinesLoop
+SaveLineCount               sty       <ICodeCurPtr
+                    stx       <SavedLinePtr
                     clra
                     rts
 
-L169E               bsr       L16CE
-                    bsr       L16BD
-                    cmpx      <u005E
-                    bhi       L16AD
+EditSetupLine               bsr       SkipToStar
+                    bsr       AppendIfNoCR
+                    cmpx      <ModExecAddr
+                    bhi       EditIndentLine
                     pshs      y,x
-                    lbsr      L124B
+                    lbsr      PrintProcHdr
                     puls      y,x
-L16AD               ldd       <u0060
+EditIndentLine               ldd       <ModFOff
                     pshs      d
-                    sty       <u0060
-                    lbsr      L10EE         Bind parameters
+                    sty       <ModFOff
+                    lbsr      ClearIndent         Bind parameters
                     puls      d
-                    std       <u0060
+                    std       <ModFOff
                     clra
                     rts
 
-L16BD               pshs      x,b                 Preserve regs
-                    ldx       <u0082              Get ptr to current pos in temp buffer
+AppendIfNoCR               pshs      x,b                 Preserve regs
+                    ldx       <TmpBufCur              Get ptr to current pos in temp buffer
                     ldb       ,x                  Get char
                     cmpb      #C$CR               Carriage return?
-                    bne       L16C9               No, skip ahead
+                    bne       CmdSyntaxErr               No, skip ahead
                     puls      pc,x,b              Yes, restore regs & return
 
-L16C9               leas      5,s                 Eat stack
+CmdSyntaxErr               leas      5,s                 Eat stack
                     lbra      CMDERR               Print 'What?' & return from there
 
-L16CE               lda       ,y+                 Get char
+SkipToStar               lda       ,y+                 Get char
                     cmpa      #C$SPAC             Space?
-                    beq       L16CE               Yes, keep looking
+                    beq       SkipToStar               Yes, keep looking
                     cmpa      #'*                 '*'?
-                    bne       L16E1               No, skip ahead
-                    sty       <u0082              Found star, save ptr as current pos in temp bffr
-                    ldx       <u005E              Get absolute exec address of basic module
-                    ldy       <u0060              Get absolute address of $F offest in basic module
+                    bne       FindEditLine               No, skip ahead
+                    sty       <TmpBufCur              Found star, save ptr as current pos in temp bffr
+                    ldx       <ModExecAddr              Get absolute exec address of basic module
+                    ldy       <ModFOff              Get absolute address of $F offest in basic module
                     rts
 
-L16E1               leax      -1,y
-                    bsr       L16F2
-                    bcs       L16F1
-                    ldx       <u005C
-                    cmpy      <u005C
-                    bhs       L16F1
+FindEditLine               leax      -1,y
+                    bsr       ParseLineRef
+                    bcs       FindLineDone
+                    ldx       <ICodeCurPtr
+                    cmpy      <ICodeCurPtr
+                    bhs       FindLineDone
                     exg       x,y
                     clra
-L16F1               rts
+FindLineDone               rts
 
-L16F2               clr       ,-s                 Clear flag?
+ParseLineRef               clr       ,-s                 Clear flag?
                     ldd       ,x                  Get 2 chars
                     cmpa      #'+                 1st char a plus?
-                    bne       L1707               No, skip ahead
-                    ldy       <u0060              Get address of $F offset for basic module
-L16FD               cmpb      #'*                 2nd char='*'?
-                    bne       L1712               No, skip ahead
+                    bne       CheckMinusRef               No, skip ahead
+                    ldy       <ModFOff              Get address of $F offset for basic module
+CheckStarEnd               cmpb      #'*                 2nd char='*'?
+                    bne       BumpOneChar               No, skip ahead
                     leax      2,x                 Yes, bump ptr up 2 chars
-                    stx       <u0082              Save as new current pos in temp buffer
+                    stx       <TmpBufCur              Save as new current pos in temp buffer
                     puls      pc,a
 
-L1707               cmpa      #'-                 1st char dash?
-                    bne       L1714               No, skip ahead
+CheckMinusRef               cmpa      #'-                 1st char dash?
+                    bne       GetNumericRef               No, skip ahead
                     inc       ,s                  Yes, set flag
-                    ldy       <u005E              Get address of $F offset for basic module
-                    bra       L16FD               Go check for '*'
+                    ldy       <ModExecAddr              Get address of $F offset for basic module
+                    bra       CheckStarEnd               Go check for '*'
 
-L1712               leax      1,x                 Bump ptr up
-L1714               lda       ,x                  Get char from there
+BumpOneChar               leax      1,x                 Bump ptr up
+GetNumericRef               lda       ,x                  Get char from there
                     cmpa      #'0                 Is it numeric?
-                    blo       L171E               No, skip ahead
+                    blo       UseOneOffset               No, skip ahead
                     cmpa      #'9                 Totally numeric?
-                    bls       L1723               Yes, skip ahead
-L171E               ldd       #$0001
-                    bra       L1727
+                    bls       ParseLineNum               Yes, skip ahead
+UseOneOffset               ldd       #$0001
+                    bra       SaveRefPtr
 
-L1723               bsr       L1748
-                    bcs       L1742
-L1727               stx       <u0082              Save current ptr into temp buff
-                    ldy       <u005C
+ParseLineNum               bsr       EvalNumExpr
+                    bcs       LineRefErr
+SaveRefPtr               stx       <TmpBufCur              Save current ptr into temp buff
+                    ldy       <ICodeCurPtr
                     tst       ,s+                 Check flag
-                    beq       L173D
-                    ldy       <u005E
+                    beq       MoveToLine
+                    ldy       <ModExecAddr
                     pshs      d
-                    ldd       <u00B5
+                    ldd       <SavedLinePtr
                     subd      ,s++
-                    bhs       L173D
+                    bhs       MoveToLine
                     clra
                     clrb
-L173D               lbsr      L1BCF
+MoveToLine               lbsr      CountDownTok
                     clra
                     rts
 
-L1742               ldy       <u005C
+LineRefErr               ldy       <ICodeCurPtr
                     com       ,s+                 Eat stack & set carry
                     rts
 
-L1748               ldy       <u0046              ??? Get some sort of variable ptr
-                    bsr       L013A               JSR <2A, function 0 (Some temp var thing)
+EvalNumExpr               ldy       <SubrStkPtr              ??? Get some sort of variable ptr
+                    bsr       Vect6Fn0               JSR <2A, function 0 (Some temp var thing)
                     lda       ,y+                 ??? Get var type?
                     cmpa      #2                  Real?
-                    beq       L1759               Yes, set carry & exit
+                    beq       EvalIsReal               Yes, set carry & exit
                     clra                          Clear carry
                     ldd       ,y                  Get integer
-                    bne       L175A               <>0, return with carry clear
-L1759               coma                          Set carry & return
-L175A               rts
+                    bne       EvalNumDone               <>0, return with carry clear
+EvalIsReal               coma                          Set carry & return
+EvalNumDone               rts
 
-L013A               jsr       <u002A
+Vect6Fn0               jsr       <JmpVect6
                     fcb       $00
 
-L175B               clrb
-                    bra       L1760
+EditWithWild               clrb
+                    bra       SearchSetup
 
-L175E               ldb       #1
-L1760               leas      -$F,s
+EditExact               ldb       #1
+SearchSetup               leas      -$F,s
                     stb       ,s
                     lda       ,y
                     clr       1,s
                     cmpa      #'*
-                    bne       L1770
+                    bne       SkipSpacesYP
                     sta       1,s
                     leay      1,y
-L1770               ldb       ,y+                 Find first non-space char
+SkipSpacesYP               ldb       ,y+                 Find first non-space char
                     cmpb      #C$SPAC
-                    beq       L1770
+                    beq       SkipSpacesYP
                     tfr       b,a                 Move char to A
-                    sty       <u0082              Save as next free pos in temp buffer
-                    lbsr      L18AA
+                    sty       <TmpBufCur              Save as next free pos in temp buffer
+                    lbsr      CountMatchChrs
                     stu       2,s
-                    lbmi      L1985
+                    lbmi      SearchErrClean
                     tst       ,s
-                    beq       L1791
-                    lbsr      L18AA
+                    beq       CheckCRAtEnd
+                    lbsr      CountMatchChrs
                     stu       4,s
-                    lbmi      L1985
-L1791               cmpa      #C$CR
-                    beq       L179D
+                    lbmi      SearchErrClean
+CheckCRAtEnd               cmpa      #C$CR
+                    beq       SetupReplace
                     lda       ,y+
                     cmpa      #C$CR
-                    lbne      L1985
-L179D               ldu       <u0046
+                    lbne      SearchErrClean
+SetupReplace               ldu       <SubrStkPtr
                     stu       $D,s
-* TFM (W=entry (Y-1)-<u0082)
-L17A1               lda       ,-y
+* TFM (W=entry (Y-1)-<TmpBufCur)
+CopyToStkBuf               lda       ,-y
                     sta       ,-u
-                    cmpy      <u0082              ??? Back to beginning of temp buffer yet?
-                    bhi       L17A1               No, keep copying
-                    stu       <u0046
-                    stu       <u0044
+                    cmpy      <TmpBufCur              ??? Back to beginning of temp buffer yet?
+                    bhi       CopyToStkBuf               No, keep copying
+                    stu       <SubrStkPtr
+                    stu       <StrSpaceTop
                     ldd       2,s
                     leau      d,u
                     leau      1,u
                     stu       6,s
-                    ldy       <u005C
+                    ldy       <ICodeCurPtr
                     sty       $B,s
                     clr       $A,s
-                    lbra      L1878
+                    lbra      SearchNextLine
 
-L17C1               lbsr      L0DBB
-                    sty       <u005C
-                    lbsr      L128B
-                    ldy       <u0080              Get ptr to start of temp buffer
+SearchLoopInit               lbsr      ResetTmpBuf
+                    sty       <ICodeCurPtr
+                    lbsr      DecodeICode
+                    ldy       <TmpBufBase              Get ptr to start of temp buffer
                     leay      5,y
                     lsl       $A,s                Dupe most sig bit into 2nd most sig bit???
                     asr       $A,s
-L17D3               tst       <u0035              Any signals received?
-                    bne       L183A               Yes, skip ahead
-                    ldd       <u0082
+SearchReplLoop               tst       <LastSignal              Any signals received?
+                    bne       SearchAbort               Yes, skip ahead
+                    ldd       <TmpBufCur
                     subd      $02,s
-                    ldx       <u0046
-                    lbsr      L18BE
-                    bcs       L182F
+                    ldx       <SubrStkPtr
+                    lbsr      CompareSearch
+                    bcs       CheckMoreRepl
                     lda       #$81
                     sta       $A,s
                     tst       ,s
-                    beq       L182F
-                    ldd       <u0082
+                    beq       CheckMoreRepl
+                    ldd       <TmpBufCur
                     addd      4,s
                     subd      2,s
-                    subd      <u0080
+                    subd      <TmpBufBase
                     cmpd      #230
-                    bhi       L182F
-                    ldx       <u0082
+                    bhi       CheckMoreRepl
+                    ldx       <TmpBufCur
                     exg       x,y
                     ldd       2,s
                     lbsr      FLOTUP
@@ -4052,536 +4056,536 @@ L17D3               tst       <u0035              Any signals received?
                     tfr       d,y
                     ldu       6,s
                     pshs      x,d
-L180B               lda       ,u+                 Get byte
+CopyStrToY               lda       ,u+                 Get byte
                     sta       ,y+                 Copy it
                     cmpa      #$FF                Hit EOS marker?
-                    bne       L180B               No, keep copying until we do
+                    bne       CopyStrToY               No, keep copying until we do
                     leay      -1,y
                     ldd       ,s++
                     subd      ,s
                     puls      x
                     lbsr      FLOTUP
-                    sty       <u0082
+                    sty       <TmpBufCur
                     ldd       4,s
                     leay      d,x
                     ldd       2,s
-                    bne       L182B
+                    bne       SearchCont
                     leay      1,y
-L182B               tst       1,s
-                    bne       L17D3
-L182F               tst       $A,s
-                    bpl       L1872
+SearchCont               tst       1,s
+                    bne       SearchReplLoop
+CheckMoreRepl               tst       $A,s
+                    bpl       SearchEndLine
                     ldy       8,s
                     ldd       ,s
-                    bne       L1845
-L183A               ldx       $D,s
-                    stx       <u0046
-                    stx       <u0044
+                    bne       PrintNotFound
+SearchAbort               ldx       $D,s
+                    stx       <SubrStkPtr
+                    stx       <StrSpaceTop
                     leas      $F,s
-                    lbra      L15F3
+                    lbra      EditUpdatePos
 
-L1845               lbsr      L1270
+PrintNotFound               lbsr      PrintTmpBuf
                     sty       $B,s
                     tst       ,s
-                    beq       L1872
+                    beq       SearchEndLine
                     leax      ,y
-                    lbsr      L1BC9
-                    lbsr      L19A5
-                    sty       <u005C
-                    ldy       <u0080
-                    lbsr      L1606
-                    sty       <u005C
+                    lbsr      ScanNextToken
+                    lbsr      SaveICodeEndPt
+                    sty       <ICodeCurPtr
+                    ldy       <TmpBufBase
+                    lbsr      CompileOneLine
+                    sty       <ICodeCurPtr
                     ldy       8,s
-                    lbsr      L1BC9
-                    cmpy      <u005C
-                    bne       L1882
+                    lbsr      ScanNextToken
+                    cmpy      <ICodeCurPtr
+                    bne       SearchNoMatch
                     tst       1,s
-                    beq       L1882
-L1872               ldy       8,s
-                    lbsr      L1BC9
-L1878               sty       8,s
-                    cmpy      <u0060
-                    lbcs      L17C1
-L1882               lbsr      L0DBB
+                    beq       SearchNoMatch
+SearchEndLine               ldy       8,s
+                    lbsr      ScanNextToken
+SearchNextLine               sty       8,s
+                    cmpy      <ModFOff
+                    lbcs      SearchLoopInit
+SearchNoMatch               lbsr      ResetTmpBuf
                     tst       $A,s
-                    bne       L1899
-                    leax      <L07AA,pc           Point to "can't find"
-                    lbsr      L135A
-                    ldy       <u0046
-                    lbsr      L13E1
-                    lbsr      L1264
-L1899               ldy       $B,s
-                    sty       <u005C
+                    bne       SearchRestoreState
+                    leax      <CantFindStr,pc           Point to "can't find"
+                    lbsr      CopyNameToBuf
+                    ldy       <SubrStkPtr
+                    lbsr      PrintStrLit
+                    lbsr      AddCrPrint
+SearchRestoreState               ldy       $B,s
+                    sty       <ICodeCurPtr
                     ldx       $D,s
-                    stx       <u0046
-                    stx       <u0044
+                    stx       <SubrStkPtr
+                    stx       <StrSpaceTop
                     leas      $F,s                Eat temp stack
-                    lbra      L1682
+                    lbra      CountLines
 
-L07AA               fcs       /can't find:/
+CantFindStr               fcs       /can't find:/
 
-L18AA               ldu       #-1                 Pre-init counter to -1
-L18AD               cmpa      #C$CR               Char a CR?
-                    beq       L18B9               Yes, set -1,y to a $FF, set carry & return
+CountMatchChrs               ldu       #-1                 Pre-init counter to -1
+MatchCharLoop               cmpa      #C$CR               Char a CR?
+                    beq       MatchCharDone               Yes, set -1,y to a $FF, set carry & return
                     leau      1,u                 Bump counter up
                     lda       ,y+                 Get next char
                     cmpb      -1,y                Match char in B?
-                    bne       L18AD               No, continue double checking
-L18B9               clr       -1,y                Set -1,y to $FF
+                    bne       MatchCharLoop               No, continue double checking
+MatchCharDone               clr       -1,y                Set -1,y to $FF
                     com       -1,y                & set carry & return
                     rts
 
 * CMPR Y,D for this with 18D2
-L18BE               pshs      d
-                    bra       L18D2
+CompareSearch               pshs      d
+                    bra       CompareLimitCk
 
-L18C2               pshs      y,x
-L18C4               lda       ,x+
+CompareStrAt               pshs      y,x
+CompareLoop               lda       ,x+
                     cmpa      #$FF
-                    beq       L18DA
+                    beq       CompareFound
                     cmpa      ,y+
-                    beq       L18C4
+                    beq       CompareLoop
                     puls      y,x
                     leay      1,y
-L18D2               cmpy      ,s
-                    bls       L18C2
+CompareLimitCk               cmpy      ,s
+                    bls       CompareStrAt
                     coma
                     puls      pc,d
 
-L18DA               puls      y,x
+CompareFound               puls      y,x
                     clra
                     puls      pc,d
 
-L18DF               ldd       #100
+MoveLinesCmd               ldd       #100
                     ldx       #10
                     pshs      x,d
                     leax      ,y
-                    ldy       <u00B5
+                    ldy       <SavedLinePtr
                     lda       ,x
                     cmpa      #'*
-                    bne       L18FA
+                    bne       SkipSpaceNum
 * 6309 MOD - use TFR 0,Y - same speed, 2 bytes shorter
                     ldy       #$0000
-L18F6               leax      1,x
+SkipToNum               leax      1,x
                     lda       ,x
-L18FA               cmpa      #C$SPAC
-                    beq       L18F6
+SkipSpaceNum               cmpa      #C$SPAC
+                    beq       SkipToNum
                     pshs      y
                     cmpa      #C$CR
-                    beq       L191C
-                    lbsr      L1748
-                    bcs       L1981
+                    beq       CheckCRAtCmd
+                    lbsr      EvalNumExpr
+                    bcs       MoveCmdErr
                     std       2,s
                     lda       ,x+
                     cmpa      #C$CR
-                    beq       L191C
-                    lbsr      L1748
-                    bcs       L1981
+                    beq       CheckCRAtCmd
+                    lbsr      EvalNumExpr
+                    bcs       MoveCmdErr
                     std       4,s
-                    bmi       L1981
+                    bmi       MoveCmdErr
                     lda       ,x
-L191C               cmpa      #C$CR
-                    bne       L1981
-                    bsr       L1995
+CheckCRAtCmd               cmpa      #C$CR
+                    bne       MoveCmdErr
+                    bsr       RebindProc
                     ldd       ,s++
-                    ldy       <u005E
-                    lbsr      L1BCF
-                    sty       <u005C
+                    ldy       <ModExecAddr
+                    lbsr      CountDownTok
+                    sty       <ICodeCurPtr
                     ldd       ,s
-                    lbsr      L1A0D
+                    lbsr      FindLineAtStart
                     clr       ,-s
-                    cmpy      <u005C
-                    bcs       L198A
-                    bsr       L1960
+                    cmpy      <ICodeCurPtr
+                    bcs       RangeErrMsg
+                    bsr       CopyLinesHelper
                     cmpx      #$0000
-                    ble       L198A
-                    tst       <u0035
-                    bne       L194C
+                    ble       RangeErrMsg
+                    tst       <LastSignal
+                    bne       MoveCmdCleanup
                     inc       ,s
-                    bsr       L1960
-L194C               leas      5,s
+                    bsr       CopyLinesHelper
+MoveCmdCleanup               leas      5,s
                     ldx       2,s
-                    lbsr      L1A2E
-                    ldy       <u005E
-                    ldd       <u00B5
-                    lbsr      L1BCF
-                    sty       <u005C
+                    lbsr      UnbindSetupMod
+                    ldy       <ModExecAddr
+                    ldd       <SavedLinePtr
+                    lbsr      CountDownTok
+                    sty       <ICodeCurPtr
                     clra
                     rts
 
-L1960               ldy       <u005C
+CopyLinesHelper               ldy       <ICodeCurPtr
                     ldx       3,s
-L1965               clra
+CopyLinesLoop               clra
                     clrb
-                    lbsr      L1A10
-                    cmpy      <u0060
-                    bhs       L1980
+                    lbsr      FindLine
+                    cmpy      <ModFOff
+                    bhs       CopyLinesDone
                     tst       2,s
-                    beq       L1975
+                    beq       CopyNextLine
                     stx       1,y
-L1975               lbsr      L1BC9
+CopyNextLine               lbsr      ScanNextToken
                     tfr       x,d
                     addd      5,s
                     tfr       d,x
-                    bpl       L1965
-L1980               rts
+                    bpl       CopyLinesLoop
+CopyLinesDone               rts
 
-L1981               leas      6,s
-                    bra       L1987
+MoveCmdErr               leas      6,s
+                    bra       GotoCmdErr
 
-L1985               leas      $F,s
-L1987               lbra      CMDERR
+SearchErrClean               leas      $F,s
+GotoCmdErr               lbra      CMDERR
 
-L198A               leax      <L078B,pc           Point to 'RANGE'
-                    lbsr      L125F               Print it out to std error (From temp buffer)
-                    bra       L194C
+RangeErrMsg               leax      <RangeStr,pc           Point to 'RANGE'
+                    lbsr      PrintXToStderr               Print it out to std error (From temp buffer)
+                    bra       MoveCmdCleanup
 
-L078B               fcc       'RANGE'
+RangeStr               fcc       'RANGE'
                     fcb       $87                 Hit bit set- Bell
 
-L1993               leas      4,s
-L1995               lbsr      L0128               JSR <21, function 2 (dick around with module stuff?)
+EatStkRebind               leas      4,s
+RebindProc               lbsr      Vect3Fn2               JSR <21, function 2 (dick around with module stuff?)
                     clra
                     rts
 
-L199A               lbsr      L16CE
-                    lbsr      L16BD
-                    bsr       L19A5
-                    lbra      L15F3
+SubstCmd               lbsr      SkipToStar
+                    lbsr      AppendIfNoCR
+                    bsr       SaveICodeEndPt
+                    lbra      EditUpdatePos
 
-L19A5               ldd       <u004A
-                    std       <u00AB
+SaveICodeEndPt               ldd       <ICodeEndPtr
+                    std       <ICodeLineEnd
                     tfr       y,d
                     pshs      x
                     subd      ,s++
                     leay      ,x
-L19B1               pshs      u,y,x,d
+InsertICode               pshs      u,y,x,d
                     leax      d,y
                     pshs      x
-                    ldy       <u00AB
-                    ldd       <u004A
+                    ldy       <ICodeLineEnd
+                    ldd       <ICodeEndPtr
                     subd      ,s
-                    beq       L19C3
+                    beq       MoveICodeBlk
                     lbsr      FLOTUP
-L19C3               ldd       <u00AB
+MoveICodeBlk               ldd       <ICodeLineEnd
                     ldu       ,s
                     subd      ,s++
-                    bls       L19D1
+                    bls       InsertAdjust
                     ldy       4,s
-                    bsr       L0125
-L19D1               ldd       <u00AB
-                    subd      <u004A
+                    bsr       Vect2Fn6
+InsertAdjust               ldd       <ICodeLineEnd
+                    subd      <ICodeEndPtr
                     ldy       4,s
                     leay      d,y
                     sty       4,s
                     subd      ,s++
                     pshs      d
-                    addd      <u0060
-                    std       <u0060
-                    std       <u004A
-                    ldd       <u000C              Get # bytes free in workspace for user
+                    addd      <ModFOff
+                    std       <ModFOff
+                    std       <ICodeEndPtr
+                    ldd       <WorkspaceFree              Get # bytes free in workspace for user
                     subd      ,s                  Subtract ?
-                    std       <u000C              Save new # bytes free for user
+                    std       <WorkspaceFree              Save new # bytes free for user
                     puls      pc,u,y,x,d          Restore regs & return
 
-L0125               jsr       <u001E
+Vect2Fn6               jsr       <JmpVect2
                     fcb       $06
 
-L19EF               pshs      y,x,d
+CopyVarBlock               pshs      y,x,d
                     leay      d,y
                     leau      d,u
                     andb      #$03
-L19F7               beq       L1A06
+CopyBytesLoop               beq       CopyBlockDone
                     lda       ,-y
                     sta       ,-u
                     decb
-                    bra       L19F7
+                    bra       CopyBytesLoop
 
-L1A00               ldx       ,--y
+CopyWordLoop               ldx       ,--y
                     ldd       ,--y
                     pshu      x,d
-L1A06               cmpy      4,s
-                    bne       L1A00
+CopyBlockDone               cmpy      4,s
+                    bne       CopyWordLoop
                     puls      pc,y,x,d
 
-L1A0D               ldy       <u005E
-L1A10               pshs      d
-                    bra       L1A17
+FindLineAtStart               ldy       <ModExecAddr
+FindLine               pshs      d
+                    bra       FindLineLoop
 
-L1A14               lbsr      L1BC9
-L1A17               cmpy      <u0060
-                    bhs       L1A2B
+FindLineNext               lbsr      ScanNextToken
+FindLineLoop               cmpy      <ModFOff
+                    bhs       FindLineNoFnd
                     lda       ,y
                     cmpa      #':
-                    bne       L1A14
+                    bne       FindLineNext
                     ldd       ,s
                     cmpd      1,y
-                    bhi       L1A14
+                    bhi       FindLineNext
                     puls      pc,d
 
-L1A2B               coma
+FindLineNoFnd               coma
                     puls      pc,d
 
 * Part of RENAME (?)
-L1A2E               pshs      u,y,x,d             Preserve regs
+UnbindSetupMod               pshs      u,y,x,d             Preserve regs
                     lbsr      SHUFLE               ??? Go move module in workspace?
                     ldx       ,x                  Get some sort of module ptr
-                    stx       <u002F              Save as ptr to current procedure
+                    stx       <CurModPtr              Save as ptr to current procedure
                     ldd       M$Exec,x            Get exec offset
-                    addd      <u002F              Calculate exec address in memory
-                    std       <u005E              Save it
+                    addd      <CurModPtr              Calculate exec address in memory
+                    std       <ModExecAddr              Save it
                     ldd       $F,x                Get ???
-                    addd      <u002F              Add to current mod start
+                    addd      <CurModPtr              Add to current mod start
                     tfr       d,y                 Move to Y
-                    std       <u0060              Save ???
-                    std       <u004A
+                    std       <ModFOff              Save ???
+                    std       <ICodeEndPtr
                     ldd       M$Size,x            Get size of module
                     subd      $F,x                Subtract ???
                     pshs      d                   Save on stack
 * 6809/6309 NOTE: LDD <U0000 IS UNECESSARY ON LEVEL II OS9
-                    ldd       <u0000              Get start of BASIC09 data mem ptr
-                    addd      <u0002              Add size of data area
+                    ldd       <DpBase              Get start of BASIC09 data mem ptr
+                    addd      <DataAreaSz              Add size of data area
                     subd      ,s                  Subtract calculated size
                     tfr       d,u                 Copy ??? size to U
-                    std       <u0066
+                    std       <SymTblSize
                     puls      d                   Get ??? calculated size
-                    bsr       L19EF
+                    bsr       CopyVarBlock
                     ldd       $D,x
                     subd      $F,x
                     subd      #3
-                    std       <u0068
-                    addd      <u0066
+                    std       <StorageOff
+                    addd      <SymTblSize
                     addd      #3
-                    std       <u0062
+                    std       <ModSymTbl
                     ldd       M$Size,x            Get module size
                     subd      $D,x                Subtract ???
                     addd      #3                  ??? Add CRC bytes?
-                    std       <u0064
-                    ldy       <u005E
-                    bsr       L1AC6
-                    ldx       <u0062
+                    std       <ModSzData
+                    ldy       <ModExecAddr
+                    bsr       ScanICodeLoop
+                    ldx       <ModSymTbl
                     ldd       -3,x
-                    beq       L1A9E
-L1A83               pshs      d
+                    beq       CalcFreeSpace
+BuildSymFlags               pshs      d
                     leau      ,x
                     leax      3,x
-L1A89               ldb       ,x+
-                    bpl       L1A89
+FindSymNameEnd               ldb       ,x+
+                    bpl       FindSymNameEnd
                     lda       #2
                     cmpb      #$A4
-                    bne       L1A95
+                    bne       SaveSymFlag
                     lda       #4
-L1A95               sta       ,u
+SaveSymFlag               sta       ,u
                     puls      d
                     subd      #1
-                    bgt       L1A83
-L1A9E               ldx       <u0066
-                    ldd       <u0068
+                    bgt       BuildSymFlags
+CalcFreeSpace               ldx       <SymTblSize
+                    ldd       <StorageOff
                     leax      d,x
-                    stx       <u00DA
-                    stx       <u0066
-                    addd      <u000C              Add to bytes free in workspace for user
-                    std       <u000C              Save new # bytes free in workspace for user
-                    clr       <u0068
-                    clr       <u0069
+                    stx       <DescrAreaOff
+                    stx       <SymTblSize
+                    addd      <WorkspaceFree              Add to bytes free in workspace for user
+                    std       <WorkspaceFree              Save new # bytes free in workspace for user
+                    clr       <StorageOff
+                    clr       <UnusedByte69
                     puls      pc,u,y,x,d
 
 * NOTE: CHECK IF ROUTINE CAN BE MOVED TO NEARER TABLE/SUBROUTINE
-* L1AB2 & L1AB8 are only called within routine itself
-* L1AC6 is called from way early in the code, and just before L1A83
-L1AB2               ldb       ,y+
-                    bpl       L1AB8
+* ScanICodeByte & ScanICodeAdj are only called within routine itself
+* ScanICodeLoop is called from way early in the code, and just before BuildSymFlags
+ScanICodeByte               ldb       ,y+
+                    bpl       ScanICodeAdj
                     subb      #$2A
-L1AB8               clra
-                    leax      >L1BD5,pc           Point to some sort of table
+ScanICodeAdj               clra
+                    leax      >ICodeByteTable,pc           Point to some sort of table
                     ldb       d,x                 Get entry
                     lsrb                          Divide by 16
                     lsrb
                     lsrb
                     lsrb
-                    lbsr      L1B75
-L1AC6               cmpy      <u0060
-                    blo       L1AB2
+                    lbsr      DispatchByTbl
+ScanICodeLoop               cmpy      <ModFOff
+                    blo       ScanICodeByte
                     rts
 
-* 8 bit offset jump table (base of JMP is L1ACC)
-L1ACC               fcb       L1AE5-L1ACC
-                    fcb       L1AE3-L1ACC
-                    fcb       L1AE1-L1ACC
-                    fcb       L1B0F-L1ACC
-                    fcb       L1B00-L1ACC
-                    fcb       L1B12-L1ACC
-                    fcb       L1AFA-L1ACC
-                    fcb       L1B19-L1ACC
-                    fcb       L1B09-L1ACC
-                    fcb       L1AED-L1ACC
-                    fcb       L1B1F-L1ACC
-                    fcb       L1AEA-L1ACC
-                    fcb       L1AE8-L1ACC
-                    fcb       L1AE6-L1ACC
-                    fcb       L1ADB-L1ACC
+* 8 bit offset jump table (base of JMP is ICodeScanJmpTbl)
+ICodeScanJmpTbl               fcb       ICodeScanRts-ICodeScanJmpTbl
+                    fcb       BumpYPlus1b-ICodeScanJmpTbl
+                    fcb       BumpYPlus1-ICodeScanJmpTbl
+                    fcb       SkipFiveBytes-ICodeScanJmpTbl
+                    fcb       SkipRecordFld-ICodeScanJmpTbl
+                    fcb       SkipToEOS-ICodeScanJmpTbl
+                    fcb       ChkType85-ICodeScanJmpTbl
+                    fcb       SkipByBBytes-ICodeScanJmpTbl
+                    fcb       ChkEndMarker-ICodeScanJmpTbl
+                    fcb       FixupRelOff-ICodeScanJmpTbl
+                    fcb       GetFlagBits-ICodeScanJmpTbl
+                    fcb       DecPrevByte3-ICodeScanJmpTbl
+                    fcb       DecPrevByte2-ICodeScanJmpTbl
+                    fcb       DecPrevByte-ICodeScanJmpTbl
+                    fcb       FixupNegByte-ICodeScanJmpTbl
 
 * Routines called by above table follow here
-L1ADB               lda       -1,y
+FixupNegByte               lda       -1,y
                     adda      #$93
                     sta       -1,y
-L1AE1               leay      1,y
-L1AE3               leay      1,y
-L1AE5               rts
+BumpYPlus1               leay      1,y
+BumpYPlus1b               leay      1,y
+ICodeScanRts               rts
 
-L1AE6               dec       -1,y
-L1AE8               dec       -1,y
-L1AEA               dec       -1,y
+DecPrevByte               dec       -1,y
+DecPrevByte2               dec       -1,y
+DecPrevByte3               dec       -1,y
                     rts
 
-L1AED               ldd       ,y
-                    addd      <u005E
+FixupRelOff               ldd       ,y
+                    addd      <ModExecAddr
                     tfr       d,x
                     ldd       -2,x
                     std       ,y++
                     dec       -3,y
                     rts
 
-L1AFA               lda       ,y+
+ChkType85               lda       ,y+
                     cmpa      #$85
-                    bne       L1B03
-L1B00               leay      9,y
+                    bne       SkipVarRef
+SkipRecordFld               leay      9,y
                     rts
 
-L1B03               clrb
-                    bsr       L1B23
+SkipVarRef               clrb
+                    bsr       MarkDelimSym
                     leay      7,y
                     rts
 
-L1B09               lda       ,y+
+ChkEndMarker               lda       ,y+
                     cmpa      #$4F
-                    bne       L1B11
+                    bne       ScanRts1
                     leay      4,y
-L1B11               rts
+ScanRts1               rts
 
-L1B0F               leay      5,y
+SkipFiveBytes               leay      5,y
                     rts
 
-L1B12               lda       ,y+
+SkipToEOS               lda       ,y+
                     cmpa      #$FF
-                    bne       L1B12         ..No; continue
+                    bne       SkipToEOS         ..No; continue
                     rts
 
-L1B19               ldb       ,y
+SkipByBBytes               ldb       ,y
                     clra
                     leay      d,y
                     rts
 
-L1B1F               ldb       -1,y
-L1B21               andb      #$04
-L1B23               lda       #$60
+GetFlagBits               ldb       -1,y
+AndWith04               andb      #$04
+MarkDelimSym               lda       #$60
                     pshs      d             save regs
                     lda       #$85
                     sta       -1,y          of the name as a delimiter
-                    ldx       <u0062
+                    ldx       <ModSymTbl
                     ldd       -3,x          get count of free memory
                     ldu       ,y
-                    bra       L1B40
+                    bra       FindSymMatch
 
-L1B33               puls      d
-L1B35               subd      #$0001
-                    beq       L1B65
+SymNextEntry               puls      d
+SymDecCount               subd      #$0001
+                    beq       SymMatchDone
                     leax      3,x
-L1B3C               tst       ,x+
-                    bpl       L1B3C
-L1B40               cmpu      1,x
-                    bne       L1B35
+SkipSymName               tst       ,x+
+                    bpl       SkipSymName
+FindSymMatch               cmpu      1,x
+                    bne       SymDecCount
                     pshs      d
                     lda       ,x
                     anda      #$E0
                     cmpa      2,s
-                    bne       L1B33
+                    bne       SymNextEntry
                     lda       ,x
                     anda      #$18
-                    bne       L1B33
+                    bne       SymNextEntry
                     lda       ,x
                     anda      #$04
                     eora      3,s
-                    bne       L1B33
+                    bne       SymNextEntry
                     tfr       x,d           get symbol table ptr
-                    subd      <u0062        Subtract beginning of symtbl for fun
+                    subd      <ModSymTbl        Subtract beginning of symtbl for fun
                     std       ,y++
                     leas      2,s
-L1B65               leas      2,s
+SymMatchDone               leas      2,s
                     rts
 
-L1B68               tstb                          High bit set?
-                    bpl       L1B6D               No, skip ahead
+LookupOpcode               tstb                          High bit set?
+                    bpl       LookupByTbl               No, skip ahead
                     subb      #$2A                Adjust it down if it was
-L1B6D               leax      <L1BD5,pc           Point to table
+LookupByTbl               leax      <ICodeByteTable,pc           Point to table
                     abx                           Point X to offset
                     ldb       ,x                  Get single byte
                     andb      #$0F                Mask off high nibble
-L1B75               leax      >L1ACC,pc           Point to vector offset table
+DispatchByTbl               leax      >ICodeScanJmpTbl,pc           Point to vector offset table
                     ldb       b,x                 Point to routine that is close
                     jmp       b,x                 Go do it
 
-L1B7D               pshs      u                   Preserve U
+ScanToken               pshs      u                   Preserve U
                     ldb       ,y+                 Get byte
-L1B81               cmpb      ,u+                 If higher than byte in table, keep going
-                    bhi       L1B81
+ScanTokenLoop               cmpb      ,u+                 If higher than byte in table, keep going
+                    bhi       ScanTokenLoop
                     puls      u                   Get U back
-                    beq       L1B91               If byte matches table entry, return
-                    bsr       L1B68               If not, go somewhere else
+                    beq       ScanTokenRts               If byte matches table entry, return
+                    bsr       LookupOpcode               If not, go somewhere else
 
-L1B8B               cmpy      <u0060
-                    blo       L1B7D
+CheckScanEnd               cmpy      <ModFOff
+                    blo       ScanToken
                     coma
-L1B91               puls      pc,u,x,d            Restore regs & return
+ScanTokenRts               puls      pc,u,x,d            Restore regs & return
 
 * 1 byte/entry table
-L1B93               fcb       $1f
+ScanTable1               fcb       $1f
                     fcb       $21
                     fcb       $3a
                     fcb       $ff                 End of table marker
 
-L1B97               pshs      u,x,d
-                    leau      <L1B93,pc           Point to table
-                    bra       L1B8B
+ScanTokenAlt1               pshs      u,x,d
+                    leau      <ScanTable1,pc           Point to table
+                    bra       CheckScanEnd
 
 * 1 byte/entry table
-L1B9F               fcb       $3E
-L1BA0               fcb       $3f
-L1BA1               fcb       $FF                 End of table marker
+ScanTable2               fcb       $3E
+ScanTable2b               fcb       $3f
+ScanTable2End               fcb       $FF                 End of table marker
 
-L1BA2               pshs      u,x,d
-                    leau      <L1B9F,pc           Point to table
-                    bra       L1B8B
+ScanTokenT2               pshs      u,x,d
+                    leau      <ScanTable2,pc           Point to table
+                    bra       CheckScanEnd
 
-L1BA9               pshs      u,x,d
-                    leau      <L1BA0,pc           Point to 2nd entry in table
-                    bra       L1B8B
+ScanTokenT2b               pshs      u,x,d
+                    leau      <ScanTable2b,pc           Point to 2nd entry in table
+                    bra       CheckScanEnd
 
 * Table: 1 byte entries
-L1BB0               fcb       $23,$85,$86,$87,$88,$89,$8A,$8B,$8C
+ScanTable3               fcb       $23,$85,$86,$87,$88,$89,$8A,$8B,$8C
                     fcb       $f2,$f3,$f4,$f5,$f6,$f7,$f8,$f9,$ff
 
-L1BC2               pshs      u,x,d
-                    leau      <L1BB0,pc           Point to table
-                    bra       L1B8B
+ScanTokenT3               pshs      u,x,d
+                    leau      <ScanTable3,pc           Point to table
+                    bra       CheckScanEnd
 
                     ifne      H6309
-L1BC9               clrd
+ScanNextToken               clrd
                     else
-L1BC9               clra
+ScanNextToken               clra
                     clrb
                     endc
 
-L1BCB               bsr       L1BA9
-                    bcs       L1BD4         ..No; not a name, so return
-L1BCF               subd      #$0001
-                    bhs       L1BCB
-L1BD4               rts
+ScanCountLoop               bsr       ScanTokenT2b
+                    bcs       ScanCountDone         ..No; not a name, so return
+CountDownTok               subd      #$0001
+                    bhs       ScanCountLoop
+ScanCountDone               rts
 
 * Table - single byte entries - one routine uses it to reference another
 * table (1ACC), but divides it by 16 to determine which of that table to use
 * Table goes from 1BD5 to 1CA4
-L1BD5               fcb       $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+ICodeByteTable               fcb       $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
                     fcb       $00,$22,$00,$00,$64,$00,$22,$00,$00,$00,$22,$00,$22,$00,$00,$22
                     fcb       $92,$22,$92,$22,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
                     fcb       $00,$00,$00,$00,$00,$00,$00,$77,$77,$00,$22,$92,$77,$77,$00,$00
@@ -4595,9 +4599,9 @@ L1BD5               fcb       $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$0
                     fcb       $b0,$c0,$d0,$00,$b0,$c0,$d0,$00,$b0,$c0,$00,$b0,$c0,$00,$b0,$c0
                     fcb       $00,$b0,$00,$b0,$00,$b0,$00,$00,$e2,$e2,$e2,$e2,$e2,$e2,$e2,$e2
 
-L1CA5               pshs      x,d                 Preserve regs
+Vect2Dispatch               pshs      x,d                 Preserve regs
                     ldb       [<4,s]              Get function code
-L1CAA               leax      <L1CB5,pc           Point to table
+Vect2OffsetTbl               leax      <Vect2JmpTbl,pc           Point to table
                     ldd       b,x                 Make offset vector
                     leax      d,x           Save dsctbl end for caller
                     stx       4,s                 Modify RTS address
@@ -4605,114 +4609,114 @@ L1CAA               leax      <L1CB5,pc           Point to table
 
 * 2 byte/entry vector table (JMP >$1E calls have there function byte after
 *  the JMP containing the offset to which of these entries to uses)
-L1CB5               fdb       CMPRAM-L1CB5         $00 function
-                    fdb       NAMSYM-L1CB5         $02 function
-                    fdb       SEARC0-L1CB5         $04 function
-                    fdb       MOVDWN-L1CB5         $06 function
-                    fdb       L24BD-L1CB5         $08 function
-                    fdb       DIM1-L1CB5         $0A function
+Vect2JmpTbl               fdb       CMPRAM-Vect2JmpTbl         $00 function
+                    fdb       NAMSYM-Vect2JmpTbl         $02 function
+                    fdb       SEARC0-Vect2JmpTbl         $04 function
+                    fdb       MOVDWN-Vect2JmpTbl         $06 function
+                    fdb       CheckWkspFit-Vect2JmpTbl         $08 function
+                    fdb       DIM1-Vect2JmpTbl         $0A function
 
 * Data of some sort: Appears to be special symbols
-L1CD0               fdb       33                  (# of entries-33)
+SpecSymsHdr               fdb       33                  (# of entries-33)
                     fcb       $03                 (# bytes to skip to start of next?)
 
-L1CD3               fcb       L2368-PRSHEX
+SpecSymsTbl               fcb       OutcodeHex-PRSHEX
                     fcb       $d9,$0a             (token & type of operator???)
                     fcs       '<>'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $d9,$0a
                     fcs       '><'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $e4,$0a
                     fcs       '<='
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $e4,$0a
                     fcs       '=<'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $e1,$0a
                     fcs       '>='
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $e1,$0a
                     fcs       '=>'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $52,$08
                     fcs       ':='
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $f1,$05
                     fcs       '**'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $38,$01
                     fcs       '(*'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $3e,$02
                     fcs       '\'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $d3,$0a
                     fcs       '>'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $d6,$0a
                     fcs       '<'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $dd,$09
                     fcs       '='
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $e7,$05
                     fcs       '+'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $ea,$05
                     fcs       '-'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $ec,$05
                     fcs       '*'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $ee,$05
                     fcs       '/'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $f0,$05
                     fcs       '^'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $4c,$0c
                     fcs       ':'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $4f,$0c
                     fcs       '['
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $50,$0c
                     fcs       ']'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $51,$0c
                     fcs       ';'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $54,$0b
                     fcs       '#'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $26,$01
                     fcs       '?'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $37,$01
                     fcs       '!'
 
@@ -4720,15 +4724,15 @@ L1CD3               fcb       L2368-PRSHEX
                     fcb       $00,$0c
                     fcb       $80+C$LF            Line feed
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $4b,$0c
                     fcs       ','
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $4d,$0c
                     fcs       '('
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $4e,$0c
                     fcs       ')'
 
@@ -4736,7 +4740,7 @@ L1CD3               fcb       L2368-PRSHEX
                     fcb       $89,$0c
                     fcs       '.'
 
-                    fcb       L23BE-PRSHEX
+                    fcb       StartStrLit-PRSHEX
                     fcb       $90,$06
                     fcs       '"'
 
@@ -4744,140 +4748,140 @@ L1CD3               fcb       L2368-PRSHEX
                     fcb       $91,$06
                     fcs       '$'
 
-                    fcb       L2368-PRSHEX
+                    fcb       OutcodeHex-PRSHEX
                     fcb       $3f,$02
                     fcb       $80+C$CR            Carriage return
 
-* Jump table for type 1 commands (see L0140)
+* Jump table for type 1 commands (see CmdTable)
 *                           Command  Token
-L1D60               fdb       ERMAS9-L1D60         ???      0   Illegal statement construction error
-                    fdb       L1E82-L1D60         PARAM    1
-                    fdb       TYPES-L1D60         TYPE     2
-                    fdb       L1E82-L1D60         DIM      3
-                    fdb       PDATA-L1D60         DATA     4
-                    fdb       PRINT-L1D60         STOP     5
-                    fdb       STOP-L1D60         BYE      6
-                    fdb       STOP-L1D60         TRON     7
-                    fdb       STOP-L1D60         TROFF    8
-                    fdb       PRINT-L1D60         PAUSE    9
-                    fdb       STOP-L1D60         DEG      A
-                    fdb       STOP-L1D60         RAD      B
-                    fdb       STOP-L1D60         RETURN   C
-                    fdb       L2123-L1D60         LET      D
-                    fdb       ERMAS9-L1D60         ???      E   Illegal Statement Construction err
-                    fdb       L1EE1-L1D60         POKE     F
-                    fdb       L1EEA-L1D60         IF       10
-                    fdb       CHLREF-L1D60         ELSE     11
-                    fdb       STOP-L1D60         ENDIF    12
-                    fdb       FOR-L1D60         FOR      13
-                    fdb       WHILE-L1D60         NEXT     14
-                    fdb       ERMDO-L1D60         WHILE    15
-                    fdb       L1F3D-L1D60         ENDWHILE 16
-                    fdb       STOP-L1D60         REPEAT   17
-                    fdb       ENDLUP-L1D60         UNTIL    18
-                    fdb       STOP-L1D60         LOOP     19
-                    fdb       L1F3D-L1D60         ENDLOOP  1A
-                    fdb       EXITI8-L1D60         EXITIF   1B
-                    fdb       L1F3D-L1D60         ENDEXIT  1C
-                    fdb       L1F4C-L1D60         ON       1D
-                    fdb       L213C-L1D60         ERROR    1E
-                    fdb       L1F87-L1D60         GOTO     1F
-                    fdb       ERMAS9-L1D60         ???      20  Illegal Statement Construction err
-                    fdb       L1F87-L1D60         GOSUB    21
-                    fdb       ERMAS9-L1D60         ???      22  Illegal Statement Construction err
-                    fdb       RUN-L1D60         RUN      23
-                    fdb       L213C-L1D60         KILL     24
-                    fdb       INPUT-L1D60         INPUT    25
-                    fdb       PRINT-L1D60         PRINT    26 (Also '?')
-                    fdb       L213C-L1D60         CHD      27
-                    fdb       L213C-L1D60         CHX      28
-                    fdb       L2093-L1D60         CREATE   29
-                    fdb       L2093-L1D60         OPEN     2A
-                    fdb       L2083-L1D60         SEEK     2B
-                    fdb       READ-L1D60         READ     2C
-                    fdb       PUT8-L1D60         WRITE    2D
-                    fdb       GET-L1D60         GET      2E
-                    fdb       GET-L1D60         PUT      2F
-                    fdb       L20D2-L1D60         CLOSE    30
-                    fdb       RESTOR-L1D60         RESTORE  31
-                    fdb       L213C-L1D60         DELETE   32
-                    fdb       L213C-L1D60         CHAIN    33
-                    fdb       L213C-L1D60         SHELL    34
-                    fdb       BASE-L1D60         BASE     35
-                    fdb       BASE-L1D60         ???      36
-                    fdb       REM-L1D60         REM      37 (Also '!')
-                    fdb       REM-L1D60         (*       38
-                    fdb       PRINT-L1D60         END      39
+CmdJmpBase               fdb       ERMAS9-CmdJmpBase         ???      0   Illegal statement construction error
+                    fdb       CompileVarDecl-CmdJmpBase         PARAM    1
+                    fdb       TYPES-CmdJmpBase         TYPE     2
+                    fdb       CompileVarDecl-CmdJmpBase         DIM      3
+                    fdb       PDATA-CmdJmpBase         DATA     4
+                    fdb       PRINT-CmdJmpBase         STOP     5
+                    fdb       STOP-CmdJmpBase         BYE      6
+                    fdb       STOP-CmdJmpBase         TRON     7
+                    fdb       STOP-CmdJmpBase         TROFF    8
+                    fdb       PRINT-CmdJmpBase         PAUSE    9
+                    fdb       STOP-CmdJmpBase         DEG      A
+                    fdb       STOP-CmdJmpBase         RAD      B
+                    fdb       STOP-CmdJmpBase         RETURN   C
+                    fdb       ParseLet-CmdJmpBase         LET      D
+                    fdb       ERMAS9-CmdJmpBase         ???      E   Illegal Statement Construction err
+                    fdb       CompilePoke-CmdJmpBase         POKE     F
+                    fdb       CompileIf-CmdJmpBase         IF       10
+                    fdb       CHLREF-CmdJmpBase         ELSE     11
+                    fdb       STOP-CmdJmpBase         ENDIF    12
+                    fdb       FOR-CmdJmpBase         FOR      13
+                    fdb       WHILE-CmdJmpBase         NEXT     14
+                    fdb       ERMDO-CmdJmpBase         WHILE    15
+                    fdb       CompileEndBlk-CmdJmpBase         ENDWHILE 16
+                    fdb       STOP-CmdJmpBase         REPEAT   17
+                    fdb       ENDLUP-CmdJmpBase         UNTIL    18
+                    fdb       STOP-CmdJmpBase         LOOP     19
+                    fdb       CompileEndBlk-CmdJmpBase         ENDLOOP  1A
+                    fdb       EXITI8-CmdJmpBase         EXITIF   1B
+                    fdb       CompileEndBlk-CmdJmpBase         ENDEXIT  1C
+                    fdb       CompileOn-CmdJmpBase         ON       1D
+                    fdb       CompileExpr-CmdJmpBase         ERROR    1E
+                    fdb       CompileGotoSub-CmdJmpBase         GOTO     1F
+                    fdb       ERMAS9-CmdJmpBase         ???      20  Illegal Statement Construction err
+                    fdb       CompileGotoSub-CmdJmpBase         GOSUB    21
+                    fdb       ERMAS9-CmdJmpBase         ???      22  Illegal Statement Construction err
+                    fdb       RUN-CmdJmpBase         RUN      23
+                    fdb       CompileExpr-CmdJmpBase         KILL     24
+                    fdb       INPUT-CmdJmpBase         INPUT    25
+                    fdb       PRINT-CmdJmpBase         PRINT    26 (Also '?')
+                    fdb       CompileExpr-CmdJmpBase         CHD      27
+                    fdb       CompileExpr-CmdJmpBase         CHX      28
+                    fdb       CompileOpenCrt-CmdJmpBase         CREATE   29
+                    fdb       CompileOpenCrt-CmdJmpBase         OPEN     2A
+                    fdb       CompileSeek-CmdJmpBase         SEEK     2B
+                    fdb       READ-CmdJmpBase         READ     2C
+                    fdb       PUT8-CmdJmpBase         WRITE    2D
+                    fdb       GET-CmdJmpBase         GET      2E
+                    fdb       GET-CmdJmpBase         PUT      2F
+                    fdb       CompileClose-CmdJmpBase         CLOSE    30
+                    fdb       RESTOR-CmdJmpBase         RESTORE  31
+                    fdb       CompileExpr-CmdJmpBase         DELETE   32
+                    fdb       CompileExpr-CmdJmpBase         CHAIN    33
+                    fdb       CompileExpr-CmdJmpBase         SHELL    34
+                    fdb       BASE-CmdJmpBase         BASE     35
+                    fdb       BASE-CmdJmpBase         ???      36
+                    fdb       REM-CmdJmpBase         REM      37 (Also '!')
+                    fdb       REM-CmdJmpBase         (*       38
+                    fdb       PRINT-CmdJmpBase         END      39
 
-EREVRB               lda       <u000A+1            Get LSB of # bytes used by all programs (not data)
+EREVRB               lda       <ICodeUsed+1            Get LSB of # bytes used by all programs (not data)
 ERRDIE               pshs      a                   Save it
-                    ldx       <u00A7
+                    ldx       <NameStrEnd
                     lda       #C$CR               Byte to look for
 RUN1               lsl       ,x                  Clear out high bit? (if so, use AIM instead)
                     lsr       ,x            strip any high order bits set
                     cmpa      ,x+                 Find byte we want?
                     bne       RUN1               No, keep looking
-                    ldx       <u00A7              Get ptr to end of string name+1
+                    ldx       <NameStrEnd              Get ptr to end of string name+1
                     bsr       PRTLIN               Print string out
-                    ldd       <u00B9        ERROR addr
-                    subd      <u00A7        is there more than (size)?
+                    ldd       <ErrHandlerPtr        ERROR addr
+                    subd      <NameStrEnd        is there more than (size)?
                     pshs      b             save number of spaces to ERROR
-                    ldx       <u00AF
-                    stx       <u00AB
-                    ldy       <u00A7
+                    ldx       <ICodeLineSav2
+                    stx       <ICodeLineEnd
+                    ldy       <NameStrEnd
                     lda       #$3D
                     lbsr      OUTCOD
                     lbsr      REM
                     lbsr      OUTCOD
                     lda       #C$SPAC             Block copy Spaces (TFM)
-                    ldx       <u0080              Get start address
+                    ldx       <TmpBufBase              Get start address
 ERRO07               sta       ,x+                 Fill with spaces
                     dec       ,s
                     bpl       ERRO07         until ERROR addr is reached
                     ldd       #$5E0D              Add ^ (CR) (part of debug?)
                     std       -$01,x
-                    ldx       <u0080              Get start ptr again
+                    ldx       <TmpBufBase              Get start ptr again
                     bsr       PRTLIN               Go print the debug line
                     puls      d
-                    bsr       L1CC1
-                    ldx       <u0046
-                    stx       <u0044
-L1CC7               jsr       <u001B              ??? Reset temp buff to defaults, SP restore from B7
+                    bsr       Vect1Fn2
+                    ldx       <SubrStkPtr
+                    stx       <StrSpaceTop
+Vect1Fn6               jsr       <JmpVect1              ??? Reset temp buff to defaults, SP restore from B7
                     fcb       $06
 
-L1CC1               jsr       <u001B              Print error code to screen
+Vect1Fn2               jsr       <JmpVect1              Print error code to screen
                     fcb       $02
 
 PRTLIN               ldy       #$0100              Size=256 bytes
-                    lda       <u002E              Get path
+                    lda       <StdoutPath              Get path
                     os9       I$WritLn            Write it & return
                     rts                     Any errors)
 
-L1CC4               jsr       <u001B              ??? Save SP @ <u00B7, muck around
+Vect1Fn4               jsr       <JmpVect1              ??? Save SP @ <ExitStkPtr, muck around
                     fcb       $04
 
 DIM1               puls      x
-                    bsr       L1CC4
-                    lbsr      L1F90
-                    lbsr      L214C
-                    sty       <u00A7
-                    ldx       <u00AB
-                    stx       <u00AF        Also I-Code buffer ditto
+                    bsr       Vect1Fn4
+                    lbsr      SetupCompile
+                    lbsr      CompileOptLineRef
+                    sty       <NameStrEnd
+                    ldx       <ICodeLineEnd
+                    stx       <ICodeLineSav2        Also I-Code buffer ditto
 COMPI1               bsr       STATEM               Go process command/variable/constant
-                    lda       <u00A3              Get token
+                    lda       <CmdToken              Get token
                     lbsr      OUTCOD               Add to I-code line bffr & make sure no overflow
                     cmpa      #$3E                Was it a $3E?
                     beq       COMPI1               Yes, go get next one
                     cmpa      #$3F                Was it a $3F?
                     bne       EREVRB               No, do something
-                    bra       L1CC7               Yes, Call <u001B, function 6
+                    bra       Vect1Fn6               Yes, Call <JmpVect1, function 6
 
 STATEM               lbsr      PRSLF               Go find command (or variable/constant name)
-                    lda       <u00A4              Get command type
+                    lda       <CmdType              Get command type
                     cmpa      #$01                (Is it a normal command?)
                     bne       STATE1               No, check next
 * Command type 1 goes here
-                    ldb       <u00A3              Get entry # (token) into JMP offset table
+                    ldb       <CmdToken              Get entry # (token) into JMP offset table
                     clra                          Make 16 bit for signed jump
                     ifne      H6309
                     lsld                          Multiply by 2 (2 bytes/entry)
@@ -4885,63 +4889,63 @@ STATEM               lbsr      PRSLF               Go find command (or variable/
                     lslb
                     rola                    2
                     endc
-                    leax      >L1D60,pc           Point to Basic09 COMMANDS vector table
+                    leax      >CmdJmpBase,pc           Point to Basic09 COMMANDS vector table
                     ldd       d,x                 Get offset
                     jmp       d,x                 Execute command's routine
 
 STATE1               cmpa      #$02                Command type 2?
-                    lbne      L2126               No, go process functions, etc.
+                    lbne      ParseExprType               No, go process functions, etc.
 * Command type 2 goes here
 STATE8               pshs      x
-                    ldx       <u00AB
+                    ldx       <ICodeLineEnd
                     leax      -$01,x        remove last byte from I-Code
-                    stx       <u00AB
+                    stx       <ICodeLineEnd
                     puls      pc,x          return
 
-TYPES               lbsr      L2167
+TYPES               lbsr      ParseSymAndChk
                     cmpa      #$DD          is it followed by a "="?
-                    lbne      L211F
+                    lbne      ErrMissAssign
                     bsr       STATE8
                     lda       #$53
 * (orig: DIM)
                     lbsr      OUTCOD
 
-L1E82               lbsr      L2167
+CompileVarDecl               lbsr      ParseSymAndChk
                     cmpa      #$4D
-                    bne       L1E9B
-                    lbsr      L216E
+                    bne       DimParamLoop
+                    lbsr      CompileRecRef
                     bne       PRSP30         ..No commma - go handle left paren
-                    lbsr      L216E
+                    lbsr      CompileRecRef
                     bne       PRSP30
 * (orig: DIM2)
-                    lbsr      L216E
+                    lbsr      CompileRecRef
 PRSP30               lbsr      ERMRPR
-                    bsr       L1EC9
-L1E9B               lbsr      CHKVAR
-                    beq       L1E82
+                    bsr       CallPRSLF
+DimParamLoop               lbsr      CHKVAR
+                    beq       CompileVarDecl
                     cmpa      #$4C
-                    bne       L1EC3         ..No; go look for a semi-colon
-                    bsr       L1EC9         get type token
-                    ldb       <u00A4              Get token
+                    bne       CheckSemicolon         ..No; go look for a semi-colon
+                    bsr       CallPRSLF         get type token
+                    ldb       <CmdType              Get token
                     beq       DIM25               If 0, skip ahead
 * (orig: DIM21)
                     cmpb      #$03
                     bne       ERITYP
                     cmpa      #$44
                     bne       DIM25         ..No; return
-                    bsr       L1EC9
+                    bsr       CallPRSLF
                     cmpa      #$4F          is it a '['?
-                    bne       L1EC3         ..No; end of this entry
-                    lbsr      L216E
+                    bne       CheckSemicolon         ..No; end of this entry
+                    lbsr      CompileRecRef
 * (orig: DIM3)
                     cmpa      #$50          is it followed by a "]"?
                     bne       ERITYP
-DIM25               bsr       L1EC9
-L1EC3               cmpa      #$51
-                    beq       L1E82
+DIM25               bsr       CallPRSLF
+CheckSemicolon               cmpa      #$51
+                    beq       CompileVarDecl
                     bra       STATE8         Remove trailing (eol) token and return
 
-L1EC9               lbra      PRSLF
+CallPRSLF               lbra      PRSLF
 
 ERITYP               lda       #$18
                     bra       ERMDO9
@@ -4951,19 +4955,19 @@ PDATA               bsr       NEXT9
                     lbsr      CHKVAR
                     beq       DATA0
 TLBNE               lda       #$55
-L1EDC               lbsr      OUTCOD
+CompileToken               lbsr      OUTCOD
                     bra       IFFAL1
 
-L1EE1               lbsr      L213C
+CompilePoke               lbsr      CompileExpr
                     lbsr      CKCOMA         Insure comma follows
                     lbra      ASSIG1
 
-L1EEA               bsr       ENDLUP
+CompileIf               bsr       ENDLUP
                     cmpa      #$45          is it a then token?
                     bne       ERMTHN
                     lbsr      OUTCOD         put then token in I-Code
-                    lbsr      L214C         compile (optional GOTO) line ref
-                    bcc       L1F3F         (STOP)
+                    lbsr      CompileOptLineRef         compile (optional GOTO) line ref
+                    bcc       EndBlkStop         (STOP)
 * (orig: FOR9)
                     lbra      STATEM         No line ref found - process new stmt beginning
 
@@ -4973,50 +4977,50 @@ ERMTHN               lda       #$26
 CHLREF               bsr       IFFAL1
                     bra       EXITI9
 
-FOR               lbsr      L2193
+FOR               lbsr      ParseProcName
                     lbsr      PREFIX
-                    lda       <u00A3
+                    lda       <CmdToken
                     cmpa      #$46          is it followed by TO?
-                    bne       L1F20
+                    bne       ErrFORnoTO
 * (orig: ARRNAM)
                     bsr       FARGCN
 * (orig: ERINUM)
-                    lda       <u00A3
+                    lda       <CmdToken
                     cmpa      #$47
                     bne       TLBNE
                     bsr       FARGCN
                     bra       TLBNE
 
-FARGCN               bsr       L1EDC
-NEXT9               lbra      L213C
+FARGCN               bsr       CompileToken
+NEXT9               lbra      CompileExpr
 
-L1F20               lda       #$27
+ErrFORnoTO               lda       #$27
                     bra       ERMDO9
 
-WHILE               lbsr      L2193
+WHILE               lbsr      ParseProcName
                     bsr       IFFAL1
                     bsr       IFFAL1
 IFFAL1               lbra      IFFALS
 
 ERMDO               bsr       ENDLUP
                     cmpa      #$48
-                    beq       L1F47
+                    beq       DoExitIf
                     lda       #$1F
 ERMDO9               lbra      ERRDIE
 
 ENDLUP               bsr       NEXT9
                     bra       TLBNE
 
-L1F3D               bsr       IFFAL1
-L1F3F               bra       GOTO9
+CompileEndBlk               bsr       IFFAL1
+EndBlkStop               bra       GOTO9
 
 EXITI8               bsr       ENDLUP
                     cmpa      #$45
                     bne       ERMTHN
-L1F47               bsr       CMPRA9
+DoExitIf               bsr       CMPRA9
 EXITI9               lbra      STATEM
 
-L1F4C               ldd       <u00AB
+CompileOn               ldd       <ICodeLineEnd
                     pshs      y,d           save I-Code ptr & source ptr
                     lbsr      PRSLF         get next symbol
                     cmpa      #$1E          is it ERROR?
@@ -5024,14 +5028,14 @@ L1F4C               ldd       <u00AB
                     leas      $04,s         Discard saved ICDPTR & SRCPTR
                     bsr       GOTO9         (STOP) get next symbol
                     cmpa      #$1F          is the next symbol a GOTO?
-                    beq       L1F8A         ..Yes; go parse it
+                    beq       CompileLineRef         ..Yes; go parse it
 * (orig: ON9)
                     rts
 
 ON1               puls      y,d
-                    std       <u00AB        Save it
+                    std       <ICodeLineEnd        Save it
                     bsr       ENDLUP         parse <EXPR> followed by T.LBNE & 2 zero bytes
-                    ldx       <u00AB
+                    ldx       <ICodeLineEnd
                     leax      -1,x
                     pshs      x             save ptr to LSB of 'count of how many gotos are here'
                     cmpa      #$1F          is it followed by a goto?
@@ -5045,186 +5049,186 @@ ON1               puls      y,d
 ON2               bsr       CMPRA9
                     lda       #$3A
 ON3               inc       [,s]
-                    bsr       L1F8A         get line reference
+                    bsr       CompileLineRef         get line reference
                     lbsr      CHKVAR         is it followed by a comma?
                     beq       ON2         ..Yes; loop until it isn't
                     puls      pc,x
 
-L1F87               lbsr      ERMASS
-L1F8A               lbsr      L2156
+CompileGotoSub               lbsr      ERMASS
+CompileLineRef               lbsr      AppendLineRef
 GOTO9               lbra      STOP
 
-L1F90               sty       <u00A7              Save ptr to end of string name
-                    ldx       <u004A              ??? Get ptr to start of I-code
-                    stx       <u00AF              Save it
-                    stx       <u00AB              And again as current I-code line end ptr
-                    clr       <u00BB              Clear <u00BB & <u00BC
-                    clr       <u00BC
-L1FF5               rts
+SetupCompile               sty       <NameStrEnd              Save ptr to end of string name
+                    ldx       <ICodeEndPtr              ??? Get ptr to start of I-code
+                    stx       <ICodeLineSav2              Save it
+                    stx       <ICodeLineEnd              And again as current I-code line end ptr
+                    clr       <LoadInitFlag              Clear <LoadInitFlag & <CmplxAsgFlag
+                    clr       <CmplxAsgFlag
+CompileRts               rts
 
 * Entry: Y=Ptr to end of string name+1
-CMPRAM               bsr       L1F90               Set up some ptrs
-                    inc       <u00A0              ??? Set flag? (think it is 3-way flag)
+CMPRAM               bsr       SetupCompile               Set up some ptrs
+                    inc       <BreakFlag              ??? Set flag? (think it is 3-way flag)
                     lbsr      STOP               ??? Go process source line? (A returns token)
-                    bsr       L1FC0               Go check for "(" command grouping start
-                    clr       <u00A0              ??? Clear flag?
-                    lda       <u00A3              Get 1st byte from command table (token)?
+                    bsr       CheckGroupTok               Go check for "(" command grouping start
+                    clr       <BreakFlag              ??? Clear flag?
+                    lda       <CmdToken              Get 1st byte from command table (token)?
                     cmpa      #$3F                Was it a carriage return token?
                     lbne      EREVRB               No, go process token
 CMPRA9               lbra      OUTCOD               Add token to I-code buffer, check for overflow
 
 RUN               lbsr      ERMASS
                     pshs      x             save it for return
-                    lbsr      L2193         get procedure name
+                    lbsr      ParseProcName         get procedure name
                     ldb       #$23
                     stb       [,s++]        Reset T.RUN token
 * Check for "(" token (start of group of operations)
-L1FC0               cmpa      #$4D                Token $4D  - "(" group start token?
-                    bne       L1FF5               No, return
+CheckGroupTok               cmpa      #$4D                Token $4D  - "(" group start token?
+                    bne       CompileRts               No, return
 * Process "( )" command grouping
 RUN3               bsr       CMPRA9               No, go call OUTCOD (X=Tble ptr, D=Token/type bytes?)
-                    ldd       <u00AB              Get ptr to current I-code line end
+                    ldd       <ICodeLineEnd              Get ptr to current I-code line end
                     pshs      y,d                 Save with source ptr(?)
                     lbsr      PRSLF               Process next command/line #/variable name
                     ldd       #$0005              Token types 0 & 5
-                    cmpa      <u00A4              Just processed command token type 0?
+                    cmpa      <CmdType              Just processed command token type 0?
                     beq       PRSP10               Yes, skip ahead
-                    stb       <u00A4              No, replace with type 5 (AND,OR,XOR,NOT)
+                    stb       <CmdType              No, replace with type 5 (AND,OR,XOR,NOT)
                     bra       PRSP20               Skip ahead
 
-PRSP10               lbsr      L2182               Go check for Illegal Statement Construction
+PRSP10               lbsr      ChkTypeAndVar               Go check for Illegal Statement Construction
 PRSP20               puls      y,d                 Get ptr to last char+1 & current I-code line end
-                    std       <u00AB              Save original I-code line end ptr
-                    ldb       <u00A4              Get token type
+                    std       <ICodeLineEnd              Save original I-code line end ptr
+                    ldb       <CmdType              Get token type
                     cmpb      #$05                Type 5 (AND,OR,XOR,NOT)?
-                    beq       L1FE8               Yes, skip ahead
+                    beq       CmpGroupArg               Yes, skip ahead
                     lbsr      OUTCXS               No, go force token $E & check for I-code overflow
-L1FE8               lbsr      FARG11
+CmpGroupArg               lbsr      FARG11
                     lbsr      CHKVAR
                     beq       RUN3         ..Yes; go get another parameter
                     pshs      a
                     lbra      FUNRE1         Check for ')' and put it in I-Code
 
-INPUT               sty       <u00A9
+INPUT               sty       <ScratchPtr
                     lbsr      FORVAR
                     bne       INPUT1
-                    sty       <u00A9
-                    bsr       L2022         insure i/o separator follows
+                    sty       <ScratchPtr
+                    bsr       CheckIOSep         insure i/o separator follows
                     bsr       CMPRA9         (OUTCOD)
                     bsr       GOTO9         (STOP)
-INPUT1               ldy       <u00A9
+INPUT1               ldy       <ScratchPtr
                     cmpa      #$90          String literal found?
                     bne       INPUT4
                     lbsr      PRSLF
                     lbsr      GOTO9
-INPU15               bsr       L2022
+INPU15               bsr       CheckIOSep
 INPUT2               lda       #$4B
-                    bsr       L2080         (OUTCOD) put COMMA in I-Code
+                    bsr       JmpOutcod         (OUTCOD) put COMMA in I-Code
 INPUT4               bsr       GET10
                     lbsr      PRTSEP         (another) comma?
                     beq       INPUT2
 INPUT9               rts
 
-L2022               lbsr      PRTSEP
+CheckIOSep               lbsr      PRTSEP
                     beq       INPUT9
-                    bra       L207D
+                    bra       JmpCkcoma
 
-PRINT               sty       <u00A9
+PRINT               sty       <ScratchPtr
                     lbsr      FORVAR         Channel ref?
-                    beq       L203A
+                    beq       PrintChanUsing
                     cmpa      #$49          Using?
                     beq       PRINT4
-PRIN05               ldy       <u00A9
-                    bra       L2045         No chl or using; go look for PRINT list
+PRIN05               ldy       <ScratchPtr
+                    bra       PrintListStart         No chl or using; go look for PRINT list
 
-L203A               cmpa      #$49
-                    bne       L2054
+PrintChanUsing               cmpa      #$49
+                    bne       CheckPrintSep
 PRINT4               lbsr      ASSIG1
-                    bra       L2054
+                    bra       CheckPrintSep
 
-PRINT3               bsr       L2080
-L2045               lbsr      L245D
+PRINT3               bsr       JmpOutcod
+PrintListStart               lbsr      SkipSpaceLF
                     cmpa      #C$CR         end of line?
 PRINT5               lbeq      STOP
                     cmpa      #'\           Other end of line?
                     beq       PRINT5
-                    bsr       L2085
-L2054               lbsr      PRTSEP
+                    bsr       JmpSimpleStmt
+CheckPrintSep               lbsr      PRTSEP
                     beq       PRINT3
                     rts
 
-READ               sty       <u00A9
+READ               sty       <ScratchPtr
                     lbsr      FORVAR
                     beq       INPU15
-                    ldy       <u00A9
+                    ldy       <ScratchPtr
                     bra       INPUT4
 
-PUT8               sty       <u00A9
+PUT8               sty       <ScratchPtr
                     lbsr      FORVAR
-                    beq       L2054
+                    beq       CheckPrintSep
                     bra       PRIN05         get PRINT list
 GET               bsr       PUT0
-GET10               inc       <u00BC
-                    lbra      L2180         get variable id
+GET10               inc       <CmplxAsgFlag
+                    lbra      ParseVarId         get variable id
 
 PUT0               lbsr      FORVAR
                     bne       ERMCHL
-L207D               lbsr      CKCOMA
-L2080               lbra      OUTCOD
+JmpCkcoma               lbsr      CKCOMA
+JmpOutcod               lbra      OUTCOD
 
-L2083               bsr       PUT0
-L2085               lbra      L213C
+CompileSeek               bsr       PUT0
+JmpSimpleStmt               lbra      CompileExpr
 
 * Data table for file access modes?
-L2088               fcb       $2c,%00000001       Read mode?
+FileModeTab2               fcb       $2c,%00000001       Read mode?
                     fcb       $2d,%00000010       Write mode?
                     fcb       $f7,%00000011       Update mode?
                     fcb       $f8,%00000100       Execution dir mode?
                     fcb       $f9,%10000000       Directory mode?
                     fcb       $00                 End of table marker
 
-L2093               lbsr      PRSLF
+CompileOpenCrt               lbsr      PRSLF
                     cmpa      #$54
                     bne       ERMCHL
                     bsr       GET10
-                    bsr       L207D
-                    bsr       L2085
-                    lda       <u00A3              Get token
+                    bsr       JmpCkcoma
+                    bsr       JmpSimpleStmt
+                    lda       <CmdToken              Get token
                     cmpa      #$4C
-                    bne       L2114
+                    bne       CompileRts2
                     lda       #$4A
 * (orig: OPEN10)
-                    bsr       L2080         (OUTCOD)
+                    bsr       JmpOutcod         (OUTCOD)
                     clr       ,-s
-L20AC               bsr       STOP
-                    leax      <L2088,pc           Point to table (modes?)
+OpenModeLoop               bsr       STOP
+                    leax      <FileModeTab2,pc           Point to table (modes?)
 OPEN20               cmpa      ,x++
                     bhi       OPEN20               We need higher entry #, keep looking
-                    bne       L20C7               Illegal, return error
+                    bne       IllegalModeErr               Illegal, return error
                     ldb       -1,x                Get mode (read/write/update)???
                     orb       ,s                  Merge with mode on stack???
                     stb       ,s                  Save new mode???
                     bsr       STOP         get next token
                     cmpa      #$E7          more modes?
-                    beq       L20AC
+                    beq       OpenModeLoop
 * (orig: ERIMOD)
                     lda       ,s+           get composit mode byte
-                    bne       L2080         (OUTCOD) ..done if non-zero
-L20C7               lda       #$0F                Illegal mode error?
+                    bne       JmpOutcod         (OUTCOD) ..done if non-zero
+IllegalModeErr               lda       #$0F                Illegal mode error?
                     bra       ERMCH9         (ERRDIE)
 
 CLOSE0               lbsr      CHKVAR
-                    bne       L2114
-                    bsr       L2080
-L20D2               lbsr      FORVAR
+                    bne       CompileRts2
+                    bsr       JmpOutcod
+CompileClose               lbsr      FORVAR
                     beq       CLOSE0
 ERMCHL               lda       #$1C                Missing Path Number error
 ERMCH9               lbra      ERRDIE
 
-RESTOR               bsr       L214C
+RESTOR               bsr       CompileOptLineRef
                     bra       STOP         get next (eol) token, exit
 
-BASE               lbsr      L245D
+BASE               lbsr      SkipSpaceLF
                     leay      1,y
                     suba      #$30                Convert ASCII digit to binary
                     beq       STOP               If 0, skip ahead
@@ -5235,83 +5239,83 @@ BASE               lbsr      L245D
                     lbsr      OUTCOD         replace with BASE1 token
                     bra       STOP
 
-REM               ldx       <u00AB              Get ptr to current I-Code end
-                    lbsr      L245D         Skip spaces
+REM               ldx       <ICodeLineEnd              Get ptr to current I-Code end
+                    lbsr      SkipSpaceLF         Skip spaces
                     clra
-L20FE               lbsr      OUTCOD
+JmpOutcod3               lbsr      OUTCOD
                     inc       ,x            Update I-Code byte count
                     lda       ,y+                 Get char
                     cmpa      #C$CR               CR?
-                    bne       L20FE               Nope, keep going
+                    bne       JmpOutcod3               Nope, keep going
                     leay      -1,y                Bump ptr back to CR
 
 STOP               lbsr      PRSLF               Check for command/constant/variable names
-ERMASS               ldx       <u00AD              Get ptr to end of I-code line
-                    stx       <u00AB              Make it the current end ptr
-                    lda       <u00A3              Get token & return
-L2114               rts
+ERMASS               ldx       <ICodeLineSav              Get ptr to end of I-code line
+                    stx       <ICodeLineEnd              Make it the current end ptr
+                    lda       <CmdToken              Get token & return
+CompileRts2               rts
 
-L2115               lda       <u00A4              Get token type
-                    beq       L2114               If 0, return
+CheckTokType               lda       <CmdType              Get token type
+                    beq       CompileRts2               If 0, return
 ERMAS9               lda       #12                 Exit with Illegal Statement Construction error
                     bra       ERMCH9         (ERRDIE)
 
-L211F               lda       #$1B                Missing Assignment Statement error
-L2121               bra       ERMCH9
+ErrMissAssign               lda       #$1B                Missing Assignment Statement error
+GotoErmCh9               bra       ERMCH9
 
-L2123               lbsr      PRSLF
+ParseLet               lbsr      PRSLF
 
 * Token types >2 go here
-L2126               bsr       L2115
-                    inc       <u00BC        Set complex assignment switch
+ParseExprType               bsr       CheckTokType
+                    inc       <CmplxAsgFlag        Set complex assignment switch
                     lbsr      VARREF
-PREFIX               lda       <u00A3              Get token
+PREFIX               lda       <CmdToken              Get token
                     cmpa      #$52                ??? Is it ':='?
                     beq       ASSIG1               Yes, skip ahead
                     cmpa      #$DD                ??? Is it '='?
-                    bne       L211F               No, exit with Missing Assignment statement error
+                    bne       ErrMissAssign               No, exit with Missing Assignment statement error
 * (orig: ASSIG9)
                     lda       #$53                Token=$53
 ASSIG1               lbsr      OUTCOD               Go append to I-Code buffer
-L213C               lda       #$39
-EXPRSN               ldx       <u0044
+CompileExpr               lda       #$39
+EXPRSN               ldx       <StrSpaceTop
                     clrb                    end marker (user supplied token) precedence=0
                     lbsr      OPRA85         set end mark in opstack
-EXPR10               bsr       L21B4
+EXPR10               bsr       ParseAtom
                     lbsr      OPRATR         get operator
                     bcc       EXPR10         Repeat until none is present
 EXPR90               rts
 
-L214C               lbsr      L245D
-                    lbsr      L246E         is the next char a number
+CompileOptLineRef               lbsr      SkipSpaceLF
+                    lbsr      IsDigit         is the next char a number
                     bcs       EXPR90         ..No; return (carry set)
                     lda       #$3A                Go append $3A token to I-Code buffer
-L2156               bsr       L217D
+AppendLineRef               bsr       JmpOutcod2
                     lbsr      GETNUM
                     beq       REPFCT         Illegal number (real literal)
                     ldd       ,x
-                    lbgt      L240C         Go put line number in I-Code; return
+                    lbgt      PutSymInCode         Go put line number in I-Code; return
 REPFCT               lda       #$10                Illegal Number error
-                    bra       L2121         (ERRDIE) exit via ERROR trap
+                    bra       GotoErmCh9         (ERRDIE) exit via ERROR trap
 
-L2167               bsr       ARRNA9
-                    bsr       L2115
+ParseSymAndChk               bsr       ARRNA9
+                    bsr       CheckTokType
 ARRNA9               lbra      PRSLF
 
-L216E               lda       #$8E
-                    bsr       L2156
+CompileRecRef               lda       #$8E
+                    bsr       AppendLineRef
                     bsr       ARRNA9         (INSYM)
                     bra       CHKVAR         Test what you've gotten
 
 IFFALS               clra
-                    bsr       L217D
-                    bsr       L217D
-                    bra       L218E
+                    bsr       JmpOutcod2
+                    bsr       JmpOutcod2
+                    bra       GetChanToken
 
-L217D               lbra      OUTCOD
+JmpOutcod2               lbra      OUTCOD
 
-L2180               bsr       ARRNA9
-L2182               bsr       L2115
+ParseVarId               bsr       ARRNA9
+ChkTypeAndVar               bsr       CheckTokType
                     bra       VARREF
 
 FORVAR               bsr       STOP
@@ -5319,51 +5323,51 @@ FORVAR               bsr       STOP
                     bne       CHLRE9
                     bsr       ASSIG1
 * 6809/6309 MOD: If A not required, CLRA
-L218E               lda       <u00A3
+GetChanToken               lda       <CmdToken
                     orcc      #Zero         not ALPHA
 CHLRE9               rts
 
-L2193               bsr       ARRNA9
-                    lbsr      L2115         Insure its a variable
+ParseProcName               bsr       ARRNA9
+                    lbsr      CheckTokType         Insure its a variable
 FORVA9               lbra      STOP
 
-PRTSEP               lda       <u00A3
+PRTSEP               lda       <CmdToken
                     cmpa      #$51          Set found (eq)
                     beq       COMMA9         ..Yes; return
-CHKVAR               lda       <u00A3
+CHKVAR               lda       <CmdToken
                     cmpa      #$4B          is it a ',' token?
 COMMA9               rts
 
 CKCOMA               bsr       CHKVAR
                     beq       COMMA9
                     lda       #$1D          Error: illegal literal
-                    bra       L21CB         (ERRDIE)
+                    bra       GotoErrdie2         (ERRDIE)
 
 NODE1               clrb                    Precedence = 0
                     bsr       PUSHOP         push left paren token ON opstack
                     lbsr      ERMASS         remove it from I-Code
-L21B4               bsr       PREF20
-                    bsr       L21CE
+ParseAtom               bsr       PREF20
+                    bsr       CheckPrefixOp
                     cmpa      #$4D
                     beq       NODE1         ..Yes; go handle a parenthetical expr
-                    ldb       <u00A4
+                    ldb       <CmdType
                     cmpb      #$06          is it a var ref token?
                     beq       FORVA9         ..Yes; ok-user type
                     cmpb      #$04          is it a reserved word?
-                    bne       L2182         ..No; go process variable reference
+                    bne       ChkTypeAndVar         ..No; go process variable reference
 * (orig: ERIOP9)
                     lbra      FUNREF         ..Yes; handle it & return
 
 ERIOPD               lda       #$12                Illegal operand error
-L21CB               lbra      ERRDIE
+GotoErrdie2               lbra      ERRDIE
 
-L21CE               cmpa      #$CD
+CheckPrefixOp               cmpa      #$CD
                     beq       PREFX2         ..Yes; process as a polish operator
                     cmpa      #$EA
                     bne       COMMA9
 * (orig: CHKRPR)
                     lda       ,y            get next source char
-                    lbsr      L246E         is it a digit?
+                    lbsr      IsDigit         is it a digit?
                     bcc       PREFX3         ..Yes; good - go get number
                     cmpa      #$2E          is it a period (fractional number)?
                     beq       PREFX3         ..Yes; good - go get number
@@ -5377,14 +5381,14 @@ PREFX3               leay      -1,y
                     lbsr      STATE8         Take '+/-' token out of I-Code buffer
                     lbra      PRSNUM         Parse numeric literal & return
 
-PUSHOP               ldx       <u0044
+PUSHOP               ldx       <StrSpaceTop
                     std       ,--x          push onto opstack
-                    stx       <u0044        update opstack ptr
+                    stx       <StrSpaceTop        update opstack ptr
                     rts
 
 VARREF               ldd       #$8500
 VARRE0               pshs      d
-                    ldd       <u00A1        get symbol ptr
+                    ldd       <UnusedWord_A1        get symbol ptr
                     bsr       PUSHOP         Push SYMPT onto opstack
                     puls      d
                     bsr       PUSHOP         Push smtyp ON opstack
@@ -5393,13 +5397,13 @@ VARRE0               pshs      d
                     clrb                    Number of subsrcripts = 0
                     cmpa      #$4D          is it a '(' (array reference)?
                     beq       VARR25         ..Yes; go get subscript(s)
-L2214               cmpa      #$89
+CheckRecordFld               cmpa      #$89
                     bne       VARRE9
                     bsr       CKCASS
                     bsr       VARRE9
 * (orig: VARRE2)
                     bsr       PREF20
-                    lbsr      L2115         Add undefined name to symbol table
+                    lbsr      CheckTokType         Add undefined name to symbol table
                     ldd       #$8900        token & SYMTYP = variable ref
                     bra       VARRE0         Process record
 
@@ -5418,48 +5422,48 @@ VARR25               bsr       CKCASS
 VARRE3               bsr       ERMRPR
                     lbsr      STOP         get next symbol
                     puls      b             Restore number of subscripts
-                    bra       L2214         Go see if its a record or not
+                    bra       CheckRecordFld         Go see if its a record or not
 
-VARRE9               clr       <u00BC
-                    ldx       <u0044        get operator stack ptr
+VARRE9               clr       <CmplxAsgFlag
+                    ldx       <StrSpaceTop        get operator stack ptr
                     addb      ,x++          Pop variable ref token
                     lbsr      OUTCDB         (OUTCOD b)
                     ldd       ,x++          get SYMPT to variable
-                    stx       <u0044        save opstack ptr
-                    lbra      L240C         Exit
+                    stx       <StrSpaceTop        save opstack ptr
+                    lbra      PutSymInCode         Exit
 
-CKCASS               tst       <u00BC
+CKCASS               tst       <CmplxAsgFlag
                     beq       NOTFN9         (rts) ..No; don't put in T.CXAS
-                    clr       <u00BC        Clear content of assignment flag
+                    clr       <CmplxAsgFlag        Clear content of assignment flag
 OUTCXS               lda       #$0E
 CKCAS9               lbra      OUTCOD
 
-OPRATR               ldb       <u00A3              Get token
+OPRATR               ldb       <CmdToken              Get token
                     clra
                     cmpb      #$4E          is it a right paren (pseudo operator)?
                     beq       OPRAT3         ..Yes; go do it with 0 precedence
                     tstb                    Component?
                     bpl       OPRAT1         ..No; not an operator
-                    bsr       L1CCD
+                    bsr       Vect1Fn12
                     bita      #$08          is it an operator?
                     bne       OPRAT3         ..Yes; good - go process it
-OPRAT1               ldx       <u0044
+OPRAT1               ldx       <StrSpaceTop
 OPRAT2               ldd       ,x++
                     cmpa      #$4D          is it an OPEN parenthesis (for precedence)?
-                    beq       L22C5         ..Yes; error: missinng right parenthesis
+                    beq       ErrMissingRParen         ..Yes; error: missinng right parenthesis
                     bsr       CKCAS9         (OUTCOD) put token into I-Code
                     tstb                    This the end of the expression?
                     bne       OPRAT2         ..No; pop some more
                     cmpa      #$39
                     bne       NOTFN1
                     lbsr      STATE8         Remove (T.END) token from I-Code
-NOTFN1               stx       <u0044
+NOTFN1               stx       <StrSpaceTop
                     coma                    EXPRSN that there wasn't an operator
 NOTFN9               rts
 
 OPRAT3               anda      #$07
                     tfr       a,b
-                    ldx       <u0044        get opstack ptr
+                    ldx       <StrSpaceTop        get opstack ptr
                     bra       OPRAT5
 
 OPRAT4               lda       ,x++
@@ -5474,48 +5478,48 @@ OPRAT5               cmpb      1,x
                     lda       ,x++          Pop operator from stack
                     cmpa      #$4D          Was it a matching '('?
                     bne       OPRAT6         ..No; go check for an end token
-                    stx       <u0044        save opstack ptr
+                    stx       <StrSpaceTop        save opstack ptr
 * (orig: PRSSTR)
                     bsr       FUNRE9         (STOP) get next symbol
                     bra       OPRATR         Go see if it's another operator
 
 OPRAT6               cmpa      #$39
-                    beq       L2307         ..Yes; error: missing left paren
+                    beq       ErrMissingLParen         ..Yes; error: missing left paren
                     bsr       FARG09
                     bra       NOTFN1         return not found
 
-OPRAT8               lda       <u00A3              Get token
+OPRAT8               lda       <CmdToken              Get token
 OPRA85               std       ,--x
-                    stx       <u0044        save the opstack ptr
+                    stx       <StrSpaceTop        save the opstack ptr
 OPRAT9               rts
 
-ERMRPR               lda       <u00A3              Get token
+ERMRPR               lda       <CmdToken              Get token
                     cmpa      #$4E                ??? ^ or ** (power)?
                     beq       OPRAT9               Yes, return
-L22C5               lda       #$25
+ErrMissingRParen               lda       #$25
 ERMRP9               lbra      ERRDIE
 
-L1CCD               jsr       <u001B
+Vect1Fn12               jsr       <JmpVect1
                     fcb       $12
 
 FUNREF               lbsr      STATE8
-                    lda       <u00A3              Get token
+                    lda       <CmdToken              Get token
                     pshs      a                   Save it
                     bsr       FUNRE9         (STOP) get next token
                     ldb       ,s
-                    bsr       L1CCD
+                    bsr       Vect1Fn12
                     leax      <FUNRE1,pc           Point to routine
                     pshs      x             push Return addr
                     anda      #$03          get number of args of function
                     beq       FARG0         Process 0 argument functions
                     cmpa      #2
-                    beq       L231B         Process 2 argument functions
-                    bhi       L2322         Process 3 argument functions
+                    beq       ParseFarg2         Process 2 argument functions
+                    bhi       ParseFarg3         Process 3 argument functions
                     ldb       2,s
                     cmpb      #$92
-                    beq       L2331
+                    beq       ParseFargVarType
                     cmpb      #$94
-                    beq       L2331
+                    beq       ParseFargVarType
                     cmpb      #$BE
                     beq       FARGVR
                     bra       FARG1         Process 1 argument functions
@@ -5525,10 +5529,10 @@ FUNRE1               bsr       ERMRPR
                     lbsr      OUTCOD
 FUNRE9               lbra      STOP
 
-CHKLPR               lda       <u00A3
+CHKLPR               lda       <CmdToken
                     cmpa      #$4D
                     beq       OPRAT9
-L2307               lda       #$22
+ErrMissingLParen               lda       #$22
                     bra       ERMRP9         (ERRDIE) exit via ERROR trap
 
 FARG0               leas      2,s
@@ -5540,12 +5544,12 @@ FARG11               clra
                     lbsr      EXPRSN         Go get one expression
                     lbra      STATE8         Remove junk token from I-Code & return
 
-L231B               bsr       FARG1
-L231D               lbsr      CKCOMA
+ParseFarg2               bsr       FARG1
+GetFarg2nd               lbsr      CKCOMA
                     bra       FARG11         get 2nd arg & return
 
-L2322               bsr       L231B
-                    bra       L231D
+ParseFarg3               bsr       ParseFarg2
+                    bra       GetFarg2nd
 
 FARGVR               bsr       CHKLPR
                     bsr       FUNRE9
@@ -5553,25 +5557,25 @@ FARGVR               bsr       CHKLPR
                     beq       FARG11
                     lbra      ERMCHL         Error: missing channel ref
 
-L2331               bsr       CHKLPR
+ParseFargVarType               bsr       CHKLPR
                     incb                    Pre-token
                     lbsr      OUTCDB         out to I-Code
-                    lbra      L2180
+                    lbra      ParseVarId
 
 ERBSYM               lda       #$0A                Unrecognized symbol error
                     bra       ERMRP9         (ERRDIE) exit via ERROR trap
 
 * Search for operator's loop? (An LF is eaten and it returns here)
-PRSLF               ldd       <u00AB              Get current I-code line's end ptr
-                    std       <u00AD              Dupe it here
-                    lbsr      L245D               Find first non-space/LF char
-                    sty       <u00B9              Save ptr to it
-                    lbsr      L2432               Check for variable name
+PRSLF               ldd       <ICodeLineEnd              Get current I-code line's end ptr
+                    std       <ICodeLineSav              Dupe it here
+                    lbsr      SkipSpaceLF               Find first non-space/LF char
+                    sty       <ErrHandlerPtr              Save ptr to it
+                    lbsr      CheckIdent               Check for variable name
                     lbne      PRSNAM               None, check for command names
                     lda       ,y                  Get first char of possible variable name
-                    lbsr      L246E               Does it start with a number (0-9)?
+                    lbsr      IsDigit               Does it start with a number (0-9)?
                     bcc       PRSNUM               Yes, skip ahead
-                    leax      >L1CD0+3,pc         No, point to Operator's table
+                    leax      >SpecSymsHdr+3,pc         No, point to Operator's table
                     lda       #$80                Get high bit mask to check for end of entry
                     lbsr      SEARC0               Go find entry
                     beq       ERBSYM               None, exit with Unrecognized symbol error
@@ -5581,20 +5585,20 @@ PRSLF               ldd       <u00AB              Get current I-code line's end 
 
 * '.' goes here
 PRSPER               lda       ,y                  Get char from source
-                    lbsr      L246E         is it a decimal digit?
-                    bcs       L2368         ..No; go put record separater in I-Code
+                    lbsr      IsDigit         is it a decimal digit?
+                    bcs       OutcodeHex         ..No; go put record separater in I-Code
                     leay      -1,y          Point to decimal point
 * Starts with numeric (0-9) value
 PRSNUM               bsr       GETNUM
                     bne       NUMVA3         Real?
                     ldd       #$8F05              Token=$85, count=5
-NUMVA0               sta       <u00A3
-L2383               bsr       PRSST9
+NUMVA0               sta       <CmdToken
+StoreNumBytes               bsr       PRSST9
                     lda       ,x+           get next byte of number
                     decb
-                    bpl       L2383         Loop until end of this entry
+                    bpl       StoreNumBytes         Loop until end of this entry
                     lda       #6            get 'literal' symbol type
-                    sta       <u00A4              Save type (?) as 6
+                    sta       <CmdType              Save type (?) as 6
                     rts                     return
 
 NUMVA3               ldd       #$8E02
@@ -5605,9 +5609,9 @@ NUMVA3               ldd       #$8E02
                     bra       NUMVA0
 
 * Almost all operators come here
-L2368               ldd       1,x                 Get the 2 mystery bytes
+OutcodeHex               ldd       1,x                 Get the 2 mystery bytes
 * Command found comes here with D=2 byte # in command table
-L236A               std       <u00A3              Save token & type byte
+SaveCmdToken               std       <CmdToken              Save token & type byte
                     bra       OUTCOD         Finish variable allocation
 
 * '$' goes here
@@ -5616,130 +5620,130 @@ PRSHEX               leay      -1,y                Bump source ptr back by 1
                     ldd       #$9102
                     bra       NUMVA0
 
-GETNUM               lbsr      L245D               Find 1st non-space/lf char
+GETNUM               lbsr      SkipSpaceLF               Find 1st non-space/lf char
                     leax      ,y                  Point x to the char
-                    ldy       <u0044        get error addr
-                    bsr       L1CCA               Call vector <2A, function 00
+                    ldy       <StrSpaceTop        get error addr
+                    bsr       Vect6Fn0b               Call vector <2A, function 00
                     exg       x,y
-                    bcs       L23BA               If error from vector, illegal literal error
+                    bcs       IllegalLitErr               If error from vector, illegal literal error
 * (orig: ERILIT)
                     lda       ,x+
                     cmpa      #2
                     rts
 
-L1CCA               jsr       <u002A
+Vect6Fn0b               jsr       <JmpVect6
                     fcb       $00
 
-L23BA               lda       #$16                Illegal literal error
+IllegalLitErr               lda       #$16                Illegal literal error
                     bra       ERNOQ9
 
 * '"' goes here
-L23BE               bsr       L2368
+StartStrLit               bsr       OutcodeHex
                     bra       SKIPSP
 
-L23C2               bsr       OUTCOD
+StrLitLoop               bsr       OUTCOD
 SKIPSP               lda       ,y+                 Get char from source
                     cmpa      #C$CR               End of line already?
-                    beq       L23D8               Yes, no ending quote error
+                    beq       ErrNoEndQuote               Yes, no ending quote error
                     cmpa      #'"                 Is it the quote?
-                    bne       L23C2               No, keep looking
+                    bne       StrLitLoop               No, keep looking
                     cmpa      ,y+                 Double quote?
-                    beq       L23C2               Yes, do something
+                    beq       StrLitLoop               Yes, do something
                     leay      -1,y                No, set src ptr back to next char
 * (orig: ERNOQU)
                     lda       #$FF                Go save $FF at this point in I-code line
 PRSST9               bra       OUTCOD
 
-L23D8               lda       #$29                No Ending Quote error
+ErrNoEndQuote               lda       #$29                No Ending Quote error
 ERNOQ9               lbra      ERRDIE               Deal with error
 
-L23DD               lda       #$31                Undefined Variable error
+UndefVarErr               lda       #$31                Undefined Variable error
                     bra       ERNOQ9
 
 * Check for command names
-PRSNAM               ldx       <u009E              Get ptr to commmands token list
+PRSNAM               ldx       <CmdTablePtr              Get ptr to commmands token list
                     lbsr      SCHALL               Go find command
                     beq       PRSNA2               No command found, skip ahead
-                    stx       <u00A1              Save ptr to command's 2 byte # in table
+                    stx       <UnusedWord_A1              Save ptr to command's 2 byte # in table
                     ldd       ,x                  Get 2 byte # from command's entry in table
-L23EC               std       <u00A3              Save token & type bytes
+SaveTokAndOut               std       <CmdToken              Save token & type bytes
                     bra       OUTCOD               Go check size of I-code line
 
-PRSNA2               tst       <u00A0
-                    bmi       L23DD
-                    ldx       <u0062
+PRSNA2               tst       <BreakFlag
+                    bmi       UndefVarErr
+                    ldx       <ModSymTbl
                     lbsr      SCHALL
                     bne       PRSNA3
-                    tst       <u00A0
-                    bne       L23DD
+                    tst       <BreakFlag
+                    bne       UndefVarErr
                     lbsr      ADDSYM
 PRSNA3               ldd       #$8500
-                    bsr       L23EC               Go append token $85, type 0 & check for overflow
+                    bsr       SaveTokAndOut               Go append token $85, type 0 & check for overflow
                     tfr       x,d
-                    subd      <u0062
-                    std       <u00A1
-L240C               bsr       OUTCOD
+                    subd      <ModSymTbl
+                    std       <UnusedWord_A1
+PutSymInCode               bsr       OUTCOD
                     bsr       OUTCDB
-                    lda       <u00A3              Get token & return
+                    lda       <CmdToken              Get token & return
                     rts
 
 OUTCDB               tfr       b,a
 OUTCOD               pshs      x,d                 Preserve Table ptr & 2 mystery bytes
-                    ldx       <u00AB              Get ptr to end of current I-code line
+                    ldx       <ICodeLineEnd              Get ptr to end of current I-code line
                     sta       ,x+                 Save token for operator
-                    stx       <u00AB              Save new end of current I-code line ptr
-                    ldd       <u00AB              Get it again
-                    subd      <u004A              Calculate current I-code line size
+                    stx       <ICodeLineEnd              Save new end of current I-code line ptr
+                    ldd       <ICodeLineEnd              Get it again
+                    subd      <ICodeEndPtr              Calculate current I-code line size
                     cmpb      #255                Past maximum size?
-                    bhs       L2428               Yes, generate error
+                    bhs       ICodeOverflow               Yes, generate error
                     clra                          No, no error
                     puls      pc,x,d              Restore regs & return
 
-L2428               lda       #$0d                I-Code Overflow error
-                    lbsr      L1CC1               Print error message
-                    jsr       <u001B              ??? Reset temp buff to defaults, SP restore from B7
+ICodeOverflow               lda       #$0d                I-Code Overflow error
+                    lbsr      Vect1Fn2               Print error message
+                    jsr       <JmpVect1              ??? Reset temp buff to defaults, SP restore from B7
                     fcb       $06
 
-NAMSYM               bsr       L245D               Search for 1st non-space/LF char
-L2432               pshs      y                   Save ptr to it on stack
+NAMSYM               bsr       SkipSpaceLF               Search for 1st non-space/LF char
+CheckIdent               pshs      y                   Save ptr to it on stack
                     ldb       #2                  ??? Flag to indicate non-variable name
-                    stb       <u00A5
+                    stb       <NameStrType
                     clrb                          Set variable name size to 0
-                    bsr       L2478               Check if it is an alphabetic char or underscore
+                    bsr       IsAlphaUnder               Check if it is an alphabetic char or underscore
                     bcs       NAMSY9               Nope, skip ahead
                     leay      1,y                 Yes, point to next char
 NAMSY1               incb                          Bump up variable name size
                     lda       ,y+                 Get next char
-                    bsr       L246A               Check if it is a letter, number or _
+                    bsr       IsAlphaNumUnd               Check if it is a letter, number or _
                     bcc       NAMSY1               Yes, check next one
                     cmpa      #'$                 Is it a string indicator?
                     bne       NAMSY2               No, skip ahead
                     incb                          Bump up variable name size to include '$'
                     lda       #4                  ??? Flag to indicate variable name?
-                    sta       <u00A5
-                    bra       L2453               Skip ahead
+                    sta       <NameStrType
+                    bra       FinishNameStr               Skip ahead
 
 NAMSY2               leay      -1,y                Bump source ptr back by 1
-L2453               lda       #$80                Get high bit (OIM on 6309)
+FinishNameStr               lda       #$80                Get high bit (OIM on 6309)
                     ora       -1,y                Set high bit on last char of variable name
                     sta       -1,y                Save it back
-NAMSY9               stb       <u00A6              Save size of variable name
+NAMSY9               stb       <NameStrSz              Save size of variable name
                     puls      pc,y                Restore source ptr & return
 
 * Find first non-space / non-LF char, and point Y to it
-L245D               lda       ,y+                 Get char from source
+SkipSpaceLF               lda       ,y+                 Get char from source
                     cmpa      #C$SPAC             Is it a space?
-                    beq       L245D               Yes, get next char
+                    beq       SkipSpaceLF               Yes, get next char
                     cmpa      #C$LF               Is it a line feed?
-                    beq       L245D               Yes, get next char
+                    beq       SkipSpaceLF               Yes, get next char
                     leay      -1,y                Found legitimate char, point Y to it
                     rts
 
 * Check if char is letter, number or _
-L246A               bsr       L2478               Check if next char is letter or _
-                    bcc       L2493               Yes, exit with carry clear
-L246E               cmpa      #'0                 Is it a number?
-                    blo       L2493               No, return with carry set
+IsAlphaNumUnd               bsr       IsAlphaUnder               Check if next char is letter or _
+                    bcc       IsAlphaDone               Yes, exit with carry clear
+IsDigit               cmpa      #'0                 Is it a number?
+                    blo       IsAlphaDone               No, return with carry set
                     cmpa      #'9                 Is it a number?
                     bls       ALPHA8               Yes, exit with carry clear
                     bra       ALPHA7               No, exit with carry set
@@ -5748,81 +5752,81 @@ L246E               cmpa      #'0                 Is it a number?
 * Entry: A=last char gotten (non-space/Lf)
 * Exit: Carry clear if A-Z, a-z or '_'
 *       Carry set if anything else
-L2478               anda      #$7F                Take out any high bit that might exist
+IsAlphaUnder               anda      #$7F                Take out any high bit that might exist
                     cmpa      #'A                 Is it lower than a 'A'
-                    blo       L2493               Yes, skip ahead (carry set)
+                    blo       IsAlphaDone               Yes, skip ahead (carry set)
                     cmpa      #'Z                 Is it an uppercase letter?
                     bls       ALPHA8               Yes, clear carry & exit
                     cmpa      #'_                 Is it an underscore?
-                    beq       L2493               Yes, exit (carry is clear)
+                    beq       IsAlphaDone               Yes, exit (carry is clear)
                     cmpa      #'a                 Is it a [,\,],^ or inverted quote ($60)?
-                    blo       L2493               Yes, skip ahead (carry set)
+                    blo       IsAlphaDone               Yes, skip ahead (carry set)
                     cmpa      #'z                 Is it a lowercase letter?
                     bls       ALPHA8               Yes, exit
 ALPHA7               orcc      #$01                Error, non-alpha char
                     rts
 
 ALPHA8               andcc     #$FE                No error, alphabetic char
-L2493               rts
+IsAlphaDone               rts
 
-ADDSYM               ldx       <u0062
+ADDSYM               ldx       <ModSymTbl
                     ldd       -3,x
                     addd      #1                  INCD
                     std       -3,x
-                    ldb       <u00A6              Get size of var name/ (or string?)
+                    ldb       <NameStrSz              Get size of var name/ (or string?)
                     clra                          D=Size
                     addd      #3                  Add 3 to size
-                    sty       <u00A9
+                    sty       <ScratchPtr
                     bsr       EXPSYM
                     pshs      y
-                    lda       <u00A5
+                    lda       <NameStrType
                     clrb
                     std       ,y++
                     stb       ,y+
-                    ldx       <u00A9
+                    ldx       <ScratchPtr
 ADDSY1               lda       ,x+
                     sta       ,y+
                     bpl       ADDSY1
                     leay      ,x            get ptr/size ptr
                     puls      pc,x
 
-L24BD               pshs      u,d
-                    ldd       <u000C
+CheckWkspFit               pshs      u,d
+                    ldd       <WorkspaceFree
                     subd      ,s
                     bcc       EXPDS1         ..No
                     lda       #$20          Err: unimplemented routine
                     lbra      ERRDIE
 
-EXPDS1               std       <u000C
-                    ldd       <u0066
+EXPDS1               std       <WorkspaceFree
+                    ldd       <SymTblSize
                     subd      ,s
-                    std       <u0066
-                    ldu       <u00DA
-                    ldd       <u00DA
+                    std       <SymTblSize
+                    ldu       <DescrAreaOff
+                    ldd       <DescrAreaOff
                     subd      ,s
-                    std       <u00DA        set descr area offset
+                    std       <DescrAreaOff        set descr area offset
                     tfr       d,y
-                    ldd       <u0066        get symbol tbl size
-                    subd      <u00DA        Re-adjust
-                    addd      <u0068        add link size
+                    ldd       <SymTblSize        get symbol tbl size
+                    subd      <DescrAreaOff        Re-adjust
+                    addd      <StorageOff        add link size
                     bsr       MOVDWN
-                    ldd       <u0068        get storage offset
+                    ldd       <StorageOff        get storage offset
                     addd      ,s++
-                    std       <u0068
+                    std       <StorageOff
                     leax      ,u
                     puls      pc,u
 
 EXPSYM               pshs      u,d
-                    bsr       L24BD
+                    bsr       CheckWkspFit
                     subd      ,s
-                    std       <u0068
+                    std       <StorageOff
                     leau      ,x
                     leax      $03,y
-                    stx       <u0062
-                    ldd       <u0064        get procedure ptr
+                    stx       <ModSymTbl
+                    ldd       <ModSzData        get procedure ptr
                     bsr       MOVDWN
                     addd      ,s++
-                    std       <u0064
+                    std       <ModSzData
                     leax      ,u
                     puls      pc,u
 
@@ -5859,7 +5863,7 @@ SEARC0               pshs      u,y,x,a             Save everything on stack
 * Loop to find entry (or until table runs out)
 SEARC1               stx       1,s                 Save new table ptr
                     cmpu      #$0000              Done all entries?
-                    beq       L2558               Yes, exit
+                    beq       SearchTableDone               Yes, exit
                     leau      -1,u                Bump # entries left down
                     ldy       3,s                 Get source ptr
                     leax      b,x                 Point to next entry
@@ -5877,152 +5881,152 @@ SEARC5               lda       ,x+                 Get byte
 SEARC6               tst       -1,x                Check the byte
                     bpl       SEARC3               If not at end of entry, keep looking
                     sty       3,s                 Entry matched, save new source ptr
-L2558               puls      pc,u,y,x,a          Restore regs & return
+SearchTableDone               puls      pc,u,y,x,a          Restore regs & return
 
 PLREF               pshs      x,d                 Preserve regs
                     ldb       [<$04,s]            Get table entry #
-                    leax      <L256A,pc           Point to vector table
+                    leax      <CmpJmpTbl,pc           Point to vector table
                     ldd       b,x                 Get vector offset
                     leax      d,x                 Calculate vector
                     stx       4,s                 Replace original RTS address with vector
                     puls      pc,x,d              Restore regs and go to new routine
 
 * Jump table
-L256A               fdb       L2C50-L256A         $06e6
-                    fdb       BIND-L256A         $0b36
-                    fdb       PSTMT-L256A         $0128
-                    fdb       PRT4HX-L256A         $0193
+CmpJmpTbl               fdb       PrunStmtBody-CmpJmpTbl         $06e6
+                    fdb       BIND-CmpJmpTbl         $0b36
+                    fdb       PSTMT-CmpJmpTbl         $0128
+                    fdb       PRT4HX-CmpJmpTbl         $0193
 
 * Jump table
-L2581               fdb       L2D07-L2581         $0786
-                    fdb       PPARAM-L2581         $01fe
-                    fdb       PTYPE-L2581         $01a7
-                    fdb       L2783-L2581         $0202
-                    fdb       L292A-L2581         $03a9
-                    fdb       PPRINT-L2581         $0707
-                    fdb       L2D20-L2581         $079f
-                    fdb       L2D20-L2581         $079f
-                    fdb       L2D20-L2581         $079f
-                    fdb       PPRINT-L2581         $0707
-                    fdb       L2D20-L2581         $079f
-                    fdb       L2D20-L2581         $079f
-                    fdb       L2D20-L2581         $079f
-                    fdb       PLET-L2581         $03D3
-                    fdb       PASSGN-L2581         $03D1
-                    fdb       PPOKE-L2581         $0423
-                    fdb       PIF-L2581         $04AF
-                    fdb       PELSE-L2581         $04CA
-                    fdb       PRUN-L2581         $04E1
-                    fdb       PFOR-L2581         $04F3
-                    fdb       PNEXT-L2581         $058B
-                    fdb       PWHILE-L2581         $05DA
-                    fdb       PEWHL-L2581         $05E8
-                    fdb       PREPT-L2581         $0600
-                    fdb       PUNTIL-L2581         $0607
-                    fdb       PLOOP-L2581         $061b
-                    fdb       L2BA0-L2581         $061f
-                    fdb       PEXIF1-L2581         $0623
-                    fdb       PEEXT-L2581         $0640
-                    fdb       PON-L2581         $042a
-                    fdb       L2A1A-L2581         $0499
-                    fdb       PGOTO-L2581         $044b
-                    fdb       L308D-L2581         $0b0c
-                    fdb       PGOTO-L2581         $044b
-                    fdb       L308D-L2581         $0b0c
-                    fdb       L2C1F-L2581         $069e
-                    fdb       L2D07-L2581         $0786
-                    fdb       L2C65-L2581         $06e4
-                    fdb       PPRINT-L2581         $0707
-                    fdb       L2D07-L2581         $0786
-                    fdb       L2D07-L2581         $0786
-                    fdb       L2CC6-L2581         $0745
-                    fdb       L2CC6-L2581         $0745
-                    fdb       PSEEK-L2581         $0761
-                    fdb       L2C65-L2581         $06e4
-                    fdb       PPRINT-L2581         $0707
-                    fdb       PCLOSE-L2581         $076f
-                    fdb       PCLOSE-L2581         $076f
-                    fdb       L2CFA-L2581         $0779
-                    fdb       PREST-L2581         $0797
-                    fdb       L2D07-L2581         $0786
-                    fdb       L2D07-L2581         $0786
-                    fdb       L2D07-L2581         $0786
-                    fdb       L2D20-L2581         $079f
-                    fdb       L2D20-L2581         $079f
-                    fdb       PREMRK-L2581         $0147
-                    fdb       PREMRK-L2581         $0147
-                    fdb       PPRINT-L2581         $0707
-                    fdb       L265D-L2581         $00dc
-                    fdb       L308D-L2581         $0b0c
-                    fdb       L308D-L2581         $0b0c
-                    fdb       PERRLN-L2581         $0140
-                    fdb       SKPEOL-L2581         $0197
-                    fdb       SKPEOL-L2581         $0197
+CompilerBase               fdb       CompileStrExpr-CompilerBase         $0786
+                    fdb       PPARAM-CompilerBase         $01fe
+                    fdb       PTYPE-CompilerBase         $01a7
+                    fdb       SetDimTypeFlag-CompilerBase         $0202
+                    fdb       PDataFirst-CompilerBase         $03a9
+                    fdb       PPRINT-CompilerBase         $0707
+                    fdb       JmpSkpeol-CompilerBase         $079f
+                    fdb       JmpSkpeol-CompilerBase         $079f
+                    fdb       JmpSkpeol-CompilerBase         $079f
+                    fdb       PPRINT-CompilerBase         $0707
+                    fdb       JmpSkpeol-CompilerBase         $079f
+                    fdb       JmpSkpeol-CompilerBase         $079f
+                    fdb       JmpSkpeol-CompilerBase         $079f
+                    fdb       PLET-CompilerBase         $03D3
+                    fdb       PASSGN-CompilerBase         $03D1
+                    fdb       PPOKE-CompilerBase         $0423
+                    fdb       PIF-CompilerBase         $04AF
+                    fdb       PELSE-CompilerBase         $04CA
+                    fdb       PRUN-CompilerBase         $04E1
+                    fdb       PFOR-CompilerBase         $04F3
+                    fdb       PNEXT-CompilerBase         $058B
+                    fdb       PWHILE-CompilerBase         $05DA
+                    fdb       PEWHL-CompilerBase         $05E8
+                    fdb       PREPT-CompilerBase         $0600
+                    fdb       PUNTIL-CompilerBase         $0607
+                    fdb       PLOOP-CompilerBase         $061b
+                    fdb       PEndloop-CompilerBase         $061f
+                    fdb       PEXIF1-CompilerBase         $0623
+                    fdb       PEEXT-CompilerBase         $0640
+                    fdb       PON-CompilerBase         $042a
+                    fdb       CompileNumExpr-CompilerBase         $0499
+                    fdb       PGOTO-CompilerBase         $044b
+                    fdb       UnimplRtnErr-CompilerBase         $0b0c
+                    fdb       PGOTO-CompilerBase         $044b
+                    fdb       UnimplRtnErr-CompilerBase         $0b0c
+                    fdb       CompileRunStmt-CompilerBase         $069e
+                    fdb       CompileStrExpr-CompilerBase         $0786
+                    fdb       CompileIOStmt-CompilerBase         $06e4
+                    fdb       PPRINT-CompilerBase         $0707
+                    fdb       CompileStrExpr-CompilerBase         $0786
+                    fdb       CompileStrExpr-CompilerBase         $0786
+                    fdb       CompileSeekVar-CompilerBase         $0745
+                    fdb       CompileSeekVar-CompilerBase         $0745
+                    fdb       PSEEK-CompilerBase         $0761
+                    fdb       CompileIOStmt-CompilerBase         $06e4
+                    fdb       PPRINT-CompilerBase         $0707
+                    fdb       PCLOSE-CompilerBase         $076f
+                    fdb       PCLOSE-CompilerBase         $076f
+                    fdb       CompileRestore-CompilerBase         $0779
+                    fdb       PREST-CompilerBase         $0797
+                    fdb       CompileStrExpr-CompilerBase         $0786
+                    fdb       CompileStrExpr-CompilerBase         $0786
+                    fdb       CompileStrExpr-CompilerBase         $0786
+                    fdb       JmpSkpeol-CompilerBase         $079f
+                    fdb       JmpSkpeol-CompilerBase         $079f
+                    fdb       PREMRK-CompilerBase         $0147
+                    fdb       PREMRK-CompilerBase         $0147
+                    fdb       PPRINT-CompilerBase         $0707
+                    fdb       CompileLineNum-CompilerBase         $00dc
+                    fdb       UnimplRtnErr-CompilerBase         $0b0c
+                    fdb       UnimplRtnErr-CompilerBase         $0b0c
+                    fdb       PERRLN-CompilerBase         $0140
+                    fdb       SKPEOL-CompilerBase         $0197
+                    fdb       SKPEOL-CompilerBase         $0197
 
-* Table (called from L2D2C) - If 0, does something @ L308D, otherwise, AND's
+* Table (called from ExprSpecialTok) - If 0, does something @ UnimplRtnErr, otherwise, AND's
 *   with $1F, multiplies by 2, and uses result as offset to branch table @
-*   L2DA2
-L2601               fcb       $20,$20,$06,$00,$43,$40,$28,$25,$00,$43,$43,$43,$43,$43,$43,$43
+*   ExprArgJmpTbl
+BindOpCodeTbl               fcb       $20,$20,$06,$00,$43,$40,$28,$25,$00,$43,$43,$43,$43,$43,$43,$43
                     fcb       $05,$00,$43,$43,$43,$00,$45,$00,$25,$00,$45,$00,$05,$00,$21,$21
                     fcb       $47,$27,$27,$22,$22,$22,$60,$60,$61,$87,$8a,$89,$89,$81,$85,$00
                     fcb       $80,$81,$e0,$e0,$e0,$e0,$e0,$6b,$05,$00,$6c,$6c,$6c,$6d,$00,$00
                     fcb       $6d,$00,$00,$6e,$00,$00,$00,$6e,$00,$00,$00,$6d,$00,$00,$6d,$00
                     fcb       $00,$0d,$00,$00,$06,00,$06,$00,$06,$00,$44,$44
 
-L265D               ldd       ,y
-                    tst       <u00D9
-                    bne       L2675         ..No
+CompileLineNum               ldd       ,y
+                    tst       <BinderMode
+                    bne       LineNumSkipSmash         ..No
                     pshs      d             save line number
 * (orig: PLRE10)
                     leay      -1,y          Backup to token
 * (orig: PEIF)
-                    ldd       <u0060        copy I-Code limit
-PLRE20               std       <u00AB
+                    ldd       <ModFOff        copy I-Code limit
+PLRE20               std       <ICodeLineEnd
                     ldd       #3            Delete three bytes
-                    lbsr      L2578         Call replacer
+                    lbsr      Vect1Fn14         Call replacer
                     puls      d             Retrieve line number
-                    bra       L2677
+                    bra       SearchLineNum
 
-L2675               leay      2,y
-L2677               lbsr      SRHLIN
+LineNumSkipSmash               leay      2,y
+SearchLineNum               lbsr      SRHLIN
                     bcc       PLRE50         bra if already defined
                     std       ,x            Define line number (clear sign)
                     tfr       y,d           copy I-Code ptr
-                    subd      <u005E        Make ptr into offset
+                    subd      <ModExecAddr        Make ptr into offset
 * (orig: PLRE40)
                     leax      2,x           get ptr to header link
 PLRE30               ldu       ,x
                     std       ,x            set offset in goto
-L2688               leax      ,u
+FixupGotoChain               leax      ,u
                     bne       PLRE30         bra if not end
                     bra       PSTMT         Go do stmt
 
 PLRE50               lda       #$4B                Multiply-defined Line Number error
-                    bsr       ERROR               Go print (Y-<u005E) to std err in hex
-PSTMT               leax      >L2581,pc           Point to table
+                    bsr       ERROR               Go print (Y-<ModExecAddr) to std err in hex
+PSTMT               leax      >CompilerBase,pc           Point to table
                     ldb       ,y+                 Get byte
-                    bpl       L269F               If high bit off, go get offset from table
-                    ldd       #PASSGN-L2581        Otherwise force to use PASSGN offset
+                    bpl       GetStmtOffset               If high bit off, go get offset from table
+                    ldd       #PASSGN-CompilerBase        Otherwise force to use PASSGN offset
                     bra       PSTMT2               Skip ahead
 
-L269F               lslb                          Multiply by 2
+GetStmtOffset               lslb                          Multiply by 2
                     clra                          16 bit offset required
                     ldd       d,x                 Get offset
-                    cmpd      #PASSGN-L2581        Is it the special case one?
+                    cmpd      #PASSGN-CompilerBase        Is it the special case one?
                     blo       PSTMT3               If it or any lower offset, go execute it
-PSTMT2               tst       <u00C7              ??? If ?? set, go execute routine
+PSTMT2               tst       <CmdExecFlag              ??? If ?? set, go execute routine
                     bne       PSTMT3         Yes; go do it
-                    inc       <u00C7              Set flag
+                    inc       <CmdExecFlag              Set flag
                     pshs      d                   Preserve offset
                     tfr       y,d                 ??? Move current location to D
-                    subd      <u005E              Subtract something
+                    subd      <ModExecAddr              Subtract something
                     subd      #$0001              Subtract 1 more
-                    ldu       <u002F              Get 'current' module ptr
+                    ldu       <CurModPtr              Get 'current' module ptr
                     std       $15,u               ??? Save some sort of size into module header?
                     puls      d                   Get offset back
 PSTMT3               jmp       d,x                 Jump to routine
 
-PERRLN               ldx       <u002F              Get ptr to current module
+PERRLN               ldx       <CurModPtr              Get ptr to current module
                     lda       #$01                Flag for Line with Compiler error
                     sta       <$17,x              Save in flag header byte
 PREMRK               ldb       ,y+                 Get offset byte
@@ -6030,20 +6034,20 @@ PREMRK               ldb       ,y+                 Get offset byte
                     leay      d,y                 Point Y to it & return
                     rts
 
-L308D               ldy       <u0060
+UnimplRtnErr               ldy       <ModFOff
                     lda       #$30                Unimplemented Routine error
 * ERROR MESSAGE REPORT:
 * Prints Hex # address of where error occurs, & error message on screen
-* Entry: Y=# to convert to hex after subtracting <u005E
+* Entry: Y=# to convert to hex after subtracting <ModExecAddr
 * Exit: Writes out 4 digit hex # & space
 ERROR               pshs      y,x,d               Preserve regs
-                    ldx       <u002F              Get Ptr to current module
+                    ldx       <CurModPtr              Get Ptr to current module
                     lda       #$01                Set Line with compiler error flag in mod. header
                     sta       <$17,x
-                    lda       <u0084              Get flag???
+                    lda       <PackedFlag              Get flag???
                     bmi       ERRO10               If high bit set, don't print address
                     ldd       4,s                 Get # to convert (current addr?)
-                    subd      <u005E              ??? Subtract start?
+                    subd      <ModExecAddr              ??? Subtract start?
                     leas      -5,s                Make 5 byte buffer
                     leax      ,s                  Point X to it
                     bsr       PRT4HX               Convert D to 4 digit HEX characters
@@ -6055,7 +6059,7 @@ ERROR               pshs      y,x,d               Preserve regs
                     os9       I$Write       Print it
                     leas      5,s                 Eat temporary buffer
                     ldb       ,s                  Get error code
-                    lbsr      L1CC1               Print error message
+                    lbsr      Vect1Fn2               Print error message
 ERRO10               puls      pc,y,x,d            Restore regs & return
 
 * Convert 16 bit number to ASCII Hex equivalent (Addresses in LIST?)
@@ -6084,62 +6088,62 @@ SKPONE               leay      1,y                 Yes, bump Y up & return
 PEOL10               rts
 
 EOLTST               cmpb      #$3F
-                    beq       L2727         ..Yes
+                    beq       EolTestRts         ..Yes
                     cmpb      #$3E
-L2727               rts
+EolTestRts               rts
 
 PTYPE               lbsr      GETTYP
-                    ldb       <u00CF        defined?
+                    ldb       <VarDefByte        defined?
                     beq       PTYPE1         No; good
                     lda       #$4C                Multiply-defined Variable error
-                    bsr       ERROR               Go print hex version of (Y-<u005E)
+                    bsr       ERROR               Go print hex version of (Y-<ModExecAddr)
 PTYPE1               leay      4,y                 Bump ptr up by 4
                     lda       #$40
-                    sta       <u00CE
-                    ldd       <u00C1        get current variable alocation
+                    sta       <VarTypeFlag
+                    ldd       <CurVarSz        get current variable alocation
                     pshs      d             save it
                     clra
                     clrb                    Allocation for record
-                    std       <u00C1
+                    std       <CurVarSz
                     bsr       PDECLR         Process component declarations
-                    ldd       <u00CC        get ptr to end of list
-                    subd      <u0060        get size of declr
-                    beq       L277A         bra if all errors
+                    ldd       <CompListPtr        get ptr to end of list
+                    subd      <ModFOff        get size of declr
+                    beq       RestoreVarAlloc         bra if all errors
                     addd      #3            get description area base
-                    cmpd      <u000C
+                    cmpd      <WorkspaceFree
                     lbcc      PBEXPR
                     pshs      y,x           save symbol ptr & I-Code ptr
-                    lbsr      L257B         get descr area
-                    ldd       <u00C1        set rcd size
+                    lbsr      Vect2Fn8         get descr area
+                    ldd       <CurVarSz        set rcd size
                     leau      ,y            copy descr ptr
                     std       ,y++
                     clr       ,y+           Clear component count
-                    ldx       <u0060              Get address of $F offset in header
+                    ldx       <ModFOff              Get address of $F offset in header
 PTYPE2               ldd       ,x++                Get value there
-                    subd      <u0062        Make ptr into offset
+                    subd      <ModSymTbl        Make ptr into offset
                     std       ,y++          put in descr area
                     inc       2,u           Count component
-                    cmpx      <u00CC        are there more components?
+                    cmpx      <CompListPtr        are there more components?
                     blo       PTYPE2
                     tfr       u,d
 * (orig: PTYPE3)
                     puls      y,x
-                    subd      <u0066
+                    subd      <SymTblSize
                     std       1,x           put in symbol tbl
                     lda       #$25
                     sta       ,x            set type byte
-L277A               puls      d
-                    std       <u00C1        Restore variable allocation
+RestoreVarAlloc               puls      d
+                    std       <CurVarSz        Restore variable allocation
                     rts
 
 PPARAM               lda       #$80
                     bra       PDIM1
 
-L2783               lda       #$60
-PDIM1               sta       <u00CE
-PDECLR               ldd       <u0060
+SetDimTypeFlag               lda       #$60
+PDIM1               sta       <VarTypeFlag
+PDECLR               ldd       <ModFOff
                     pshs      x,d
-                    std       <u00CC        set beginning of component list
+                    std       <CompListPtr        set beginning of component list
 PDECL1               bsr       PID
                     ldb       ,y+           get type byte
                     cmpb      #$4B
@@ -6150,32 +6154,32 @@ PDECL1               bsr       PID
                     ldb       #$01          set flag for implicit typing
                     bra       PDECL3
 
-PDECL2               lbsr      L283A
+PDECL2               lbsr      GetVarType
                     clrb                    Flag for explicit typing
 PDECL3               pshs      y,b
                     ldx       3,s           get beginning of component list
-                    ldd       <u00CC        get end of list
+                    ldd       <CompListPtr        get end of list
                     std       3,s           save end for looping
-                    stx       <u00CC
-                    subd      <u00CC
+                    stx       <CompListPtr
+                    subd      <CompListPtr
                     lslb                          D=D*2
                     rola
                     addd      3,s
-                    cmpd      <u00DA
-                    blo       L27CE
+                    cmpd      <DescrAreaOff
+                    blo       CheckListBound
                     lbra      PBEXPR
 
 PDECL4               ldu       ,x++                Get some sort of var ptr
                     tst       ,s            Test flag
-                    beq       L27CB         bra if explicit
+                    beq       DefVarCall         bra if explicit
                     lda       ,u                  Get var type
-                    sta       <u00D1              Save it
+                    sta       <VarTypeCode              Save it
                     lbsr      GETVSZ               D=size of var in bytes
-                    std       <u00D6              Save size
-L27CB               lbsr      DEFVAR
-L27CE               cmpx      3,s
+                    std       <VarByteSize              Save size
+DefVarCall               lbsr      DEFVAR
+CheckListBound               cmpx      3,s
                     blo       PDECL4
-                    ldd       <u00CC        Mark current position in stack
+                    ldd       <CompListPtr        Mark current position in stack
                     std       3,s
                     puls      y,b           Clean stack, restore I-Code ptr
                     ldb       ,y+           get next token
@@ -6184,7 +6188,7 @@ L27CE               cmpx      3,s
                     puls      pc,x,d
 
 PID               lbsr      GETTYP
-                    ldb       <u00CF        already defined?
+                    ldb       <VarDefByte        already defined?
                     beq       PID1         No; good
                     lda       #$4C                Multiply-defined Variable error
                     lbsr      ERROR
@@ -6199,12 +6203,12 @@ PID10               bsr       GETSIZ
                     beq       PID10         ..Yes
 PID20               rts
 
-PID1               ldd       <u00CC
+PID1               ldd       <CompListPtr
                     addd      #$000A
-                    cmpd      <u00DA        Memory full?
+                    cmpd      <DescrAreaOff        Memory full?
                     lbhs      PBEXPR         ..No; abort
-                    ldx       <u00CC        get component list ptr
-                    ldd       <u00D2        get symbol ptr
+                    ldx       <CompListPtr        get component list ptr
+                    ldd       <SymbolPtr        get symbol ptr
                     std       ,x++          put in component list
                     leau      ,x            copy ptr to subscript count
                     clr       ,x+           Clear subscript count
@@ -6219,23 +6223,23 @@ PID2               bsr       GETSIZ
                     ldb       ,y+           get next token
                     cmpb      #$4B          Another subscript?
                     beq       PID2         Yes; get it
-PID3               stx       <u00CC
+PID3               stx       <CompListPtr
                     rts
 
 GETSIZ               ldb       ,y+
                     clra                    Msb
                     cmpb      #$8D          byte?
-                    beq       L2837         Yes
+                    beq       GetsizByte         Yes
 * (orig: PVTYPE)
                     lda       ,y+           get msb value
-L2837               ldb       ,y+
+GetsizByte               ldb       ,y+
                     rts
 
-L283A               lda       ,y+
+GetVarType               lda       ,y+
                     cmpa      #$85          user type?
-                    beq       L285B         Yes; handle it
+                    beq       GetUserType         Yes; handle it
                     suba      #$40          Convert token to type
-                    sta       <u00D1              Save var type
+                    sta       <VarTypeCode              Save var type
                     cmpa      #4                  String type?
                     bne       PVTYP1               No, skip ahead
 * (orig: PRPRAM)
@@ -6246,25 +6250,25 @@ L283A               lda       ,y+
                     leay      1,y           Skip '['
                     bsr       GETSIZ         get size
                     leay      1,y           Skip ']'
-                    bra       L2875
+                    bra       SaveVarByteSize
 
 PVTYP1               lbsr      GETVSZ               Go get size of var
-                    bra       L2875               Go save size @ u00D6
+                    bra       SaveVarByteSize               Go save size @ VarByteSize
 
-L285B               leay      -1,y
+GetUserType               leay      -1,y
                     lbsr      GETTYP         get symbol ptr; decode type byte
                     leay      3,y           Move I-Code ptr
-                    ldb       <u00CF        get definition
+                    ldb       <VarDefByte        get definition
                     cmpb      #$20          type definition?
                     beq       PVTYP3         Yes; good
                     lda       #$18                Illegal Type suffix error
                     lbra      ERROR
 
 PVTYP3               ldd       1,x
-                    std       <u00D2        save it
-                    ldx       <u0066
+                    std       <SymbolPtr        save it
+                    ldx       <SymTblSize
                     ldd       d,x                 Get size of var
-L2875               std       <u00D6              Save size of var & return
+SaveVarByteSize               std       <VarByteSize              Save size of var & return
                     rts
 
 DEFVAR               ldb       ,x+
@@ -6273,71 +6277,71 @@ DEFVAR               ldb       ,x+
                     lslb
                     lslb
                     lslb
-                    stb       <u00D0        save it
+                    stb       <VarTypeHi        save it
                     lsrb                    Back
                     lsrb
                     leax      b,x           get ptr to next variable
                     addb      #4            add for offset & totalsize
                     pshs      u,x           save variable stack ptr & symbol ptr
-                    lda       <u00D1              Get var type
+                    lda       <VarTypeCode              Get var type
                     cmpa      #4                  Numeric type?
                     blo       DEFV02               Yes, skip ahead
                     addb      #2                  If string or complex, add 2 to type
 DEFV02               clra                    Msb
-                    cmpd      <u000C        enough room?
+                    cmpd      <WorkspaceFree        enough room?
                     lbhi      PBEXPR         ..No; abort
-                    lbsr      L257B         get description area
+                    lbsr      Vect2Fn8         get description area
                     ldx       ,s            get variable stack ptr
                     leau      2,y           get ptr to total size
 * (orig: DEFV03)
                     ldd       #$0001        set totalsize
                     std       ,u++          put in descr area
-L28A7               ldd       ,--x
+DefVarDimLoop               ldd       ,--x
                     std       ,u++          put in descr area
                     bsr       DIMMUL         Multiply subscript by size
                     dec       4,s           Count down
-                    bne       L28A7         bra if more
-                    lda       <u00D1              Get var type
+                    bne       DefVarDimLoop         bra if more
+                    lda       <VarTypeCode              Get var type
                     cmpa      #4                  Numeric or string?
-                    bls       L28BC               Yes, skip ahead
+                    bls       SaveVarSize               Yes, skip ahead
 * (orig: DEFV05)
-                    ldd       <u00D2              No, (complex?)
+                    ldd       <SymbolPtr              No, (complex?)
 * NOTE: Since 28BC only referred to here, should be able to change std ,u/coma
 *   to bra L28C0 (std ,u)
                     std       ,u                  Save ???
                     coma                          Set carry to indicate complex?
-L28BC               ldd       <u00D6              Get size of var in bytes
+SaveVarSize               ldd       <VarByteSize              Get size of var in bytes
                     bcs       DEFV06               If complex, don't save sign again
                     std       ,u                  Save size
 DEFV06               bsr       DIMMUL               ??? Do some multiply testing based on size?
                     tfr       y,d           copy descr ptr
                     puls      u,x           get symbol ptr, I-Code ptr
-                    subd      <u0066        Make ptr into offset
+                    subd      <SymTblSize        Make ptr into offset
                     std       1,u           put in symbol tbl
                     leas      1,s           Return scratch
                     bra       DEFV10
 
-DEFV07               stb       <u00D0
-                    lda       <u00D1              Get var type
+DEFV07               stb       <VarTypeHi
+                    lda       <VarTypeCode              Get var type
                     cmpa      #4                  Normal type (numeric/string)?
-                    bhi       L28DC               No, skip ahead
+                    bhi       GetComplexPtr               No, skip ahead
 * (orig: DEFV08)
-                    ldd       <u00D6              Get size of var
+                    ldd       <VarByteSize              Get size of var
                     bra       DEFV09               Skip ahead
 
-L28DC               ldd       <u00D2              Get ??? (something with complex type?)
+GetComplexPtr               ldd       <SymbolPtr              Get ??? (something with complex type?)
 DEFV09               std       1,u                 Save size
-DEFV10               lda       <u00D1              Get var type
-                    ora       <u00D0              Keep common bits with ???
-                    ora       <u00CE              Keep common bits with ???
+DEFV10               lda       <VarTypeCode              Get var type
+                    ora       <VarTypeHi              Keep common bits with ???
+                    ora       <VarTypeFlag              Keep common bits with ???
                     sta       ,u                  Save ???
 * (orig: START)
                     pshs      x             save variable stack ptr
                     leax      ,u            copy symbol ptr
                     lbsr      ALCSTO         Go allocate storage
-                    ldx       <u00CC        get component list
+                    ldx       <CompListPtr        get component list
                     stu       ,x++          put symbol ptr in list
-                    stx       <u00CC        save component ptr
+                    stx       <CompListPtr        save component ptr
                     puls      pc,x
 
 * Check if size of array will be too big
@@ -6371,15 +6375,15 @@ DIMERR               lda       #$49                Array Size Overflow error
                     lbsr      ERROR
                     puls      pc,d          Restore size & return
 
-L292A               ldu       <u00CA
-                    bne       L2936         bra if there was one
+PDataFirst               ldu       <DataStmtCur
+                    bne       PDataUpdate         bra if there was one
                     tfr       y,d           copy I-Code ptr
-                    subd      <u005E
-                    std       <u00C8        set first data stmt
+                    subd      <ModExecAddr
+                    std       <DataStmtBase        set first data stmt
                     bra       PDATA2
 
-L2936               tfr       y,d
-                    subd      <u005E        Make ptr into offset
+PDataUpdate               tfr       y,d
+                    subd      <ModExecAddr        Make ptr into offset
                     std       ,u
 ***************
 * Process Expressions
@@ -6388,8 +6392,8 @@ PDATA2               lbsr      PEXPRN
                     ldb       ,y+
                     cmpb      #$4B          is there another expression
                     beq       PDATA2         Yes; go do it
-                    sty       <u00CA        save ptr to this data stmt
-                    ldd       <u00C8        get offset of first stmt
+                    sty       <DataStmtCur        save ptr to this data stmt
+                    ldd       <DataStmtBase        get offset of first stmt
                     std       ,y++          put in this one
                     lbra      SKPONE         Skip end of line
 
@@ -6398,25 +6402,25 @@ PLET               bsr       PASGVR
                     leay      1,y
                     lbsr      PEXPRN         Process expression
                     lbsr      POPOP         get result type
-                    sta       <u00D1              Save var type
+                    sta       <VarTypeCode              Save var type
                     lbsr      POPOP
-                    cmpa      <u00D1              Same as var type?
+                    cmpa      <VarTypeCode              Same as var type?
                     beq       PASSG4               Yes, skip ahead
                     cmpa      #2                  Var type from 2E52=Boolean/string/complex?
-                    bhi       L297E               Yes, skip ahead (print some hex # out)
-                    beq       L2971               Real #, skip ahead
+                    bhi       PAssgComplex               Yes, skip ahead (print some hex # out)
+                    beq       PAssgReal               Real #, skip ahead
 * (orig: PASSG1)
                     lda       #$C8          Fix real for integer destination
                     bra       PASSG2
 
-L2971               lda       #$CB
-PASSG2               ldb       <u00D1              Get var type
+PAssgReal               lda       #$CB
+PASSG2               ldb       <VarTypeCode              Get var type
                     cmpb      #2                  Boolean/string/complex?
-                    bhi       L297E               Yes, skip ahead
+                    bhi       PAssgComplex               Yes, skip ahead
                     lbsr      INSTOK               Byte/Integer/Real, go do something
                     bra       PASSG4
 
-L297E               lbsr      ERIET
+PAssgComplex               lbsr      ERIET
 PASSG4               lbra      SKPEOL               ??? Do some checking ,y, return from there
 
 PASGVR               lda       ,y
@@ -6424,11 +6428,11 @@ PASGVR               lda       ,y
                     lbne      PEXPRN         Process variable reference
                     leay      1,y           Skip token
                     lbsr      PEXPRN         Process variable reference
-L2991               lda       -3,y
+CheckSimpleSym               lda       -3,y
                     cmpa      #$85          simple?
                     bhs       PASGV1
-                    ldd       <u00D2
-                    subd      <u0062
+                    ldd       <SymbolPtr
+                    subd      <ModSymTbl
                     std       -2,y          put in I-Code
                     lda       #$85
 PASGV1               adda      #$6D
@@ -6436,7 +6440,7 @@ PASGV1               adda      #$6D
                     rts
 
 PPOKE               bsr       PPOK30
-PPOK30               bsr       L2A1A
+PPOK30               bsr       CompileNumExpr
                     leay      1,y           Move past next token
                     rts
 
@@ -6467,61 +6471,61 @@ PGOT10               std       ,y
                     leay      3,y           Move past goto & terminator
 PGOTXX               rts
 
-SRHLIN               ldx       <u0066
+SRHLIN               ldx       <SymTblSize
                     pshs      d             save line number
-                    bra       L29ED
+                    bra       SrhlSearchLoop
 
 SRHL10               ldd       ,x
                     anda      #$7F          Clear sign
                     cmpd      ,s            Line number in question?
                     beq       SRHL30
-L29ED               leax      -4,x
-                    cmpx      <u00DA        Out of tbl?
+SrhlSearchLoop               leax      -4,x
+                    cmpx      <DescrAreaOff        Out of tbl?
                     bhs       SRHL10
-                    ldd       <u000C              Get # bytes free in workspace for user
+                    ldd       <WorkspaceFree              Get # bytes free in workspace for user
                     subd      #4                  Subtract 4
                     blo       PBEXPR               Not enough mem, exit with Memory full error
-                    std       <u000C              Save new free space
+                    std       <WorkspaceFree              Save new free space
                     ldd       ,s            get line number
                     ora       #$80          set undefined flag
                     std       ,x            put in tbl
                     clra                    End of list link
                     clrb
                     std       2,x
-                    stx       <u00DA        Increase tbl
+                    stx       <DescrAreaOff        Increase tbl
 SRHL30               lda       ,x
                     rola                    Flag to carry
                     puls      pc,d
 
 PBEXPR               lda       #32                 Memory full error
-                    sta       <u0036              Save error code
+                    sta       <ErrCode              Save error code
                     lbsr      ERROR         Print error message
-                    lbsr      L30EB         collapse I-code to reasonable state
-                    lbra      L1CC7
+                    lbsr      CollapseICode         collapse I-code to reasonable state
+                    lbra      Vect1Fn6
 
-L2A1A               lbsr      PEXPRN
+CompileNumExpr               lbsr      PEXPRN
                     lbsr      POPOP
                     cmpa      #2                  Real?
-                    beq       L2A2B               Yes, skip ahead
+                    beq       FixRealForInt               Yes, skip ahead
                     blo       PGOTXX               Byte/Integer, return
 ERIET               lda       #$47                Illegal Expression Type error
                     lbra      ERROR
 
-L2A2B               lda       #$C8
+FixRealForInt               lda       #$C8
                     lbra      INSTOK
 
-PIF               lbsr      L2BAF
+PIF               lbsr      CompileBoolExpr
                     lda       3,y
                     cmpa      #$3A
                     beq       PIF1
                     lda       #$10          get token
-                    lbra      L2BA8
+                    lbra      PushCtlStruct
 
 PIF1               pshs      y
                     leay      4,y           Move I-Code ptr
                     bsr       PGOTO         Process transfer
                     tfr       y,d           copy I-Code ptr
-                    subd      <u005E
+                    subd      <ModExecAddr
                     std       [,s++]
                     rts
 
@@ -6532,7 +6536,7 @@ PELSE               ldd       #$1002
                     leay      2,y           Move I-Code ptr
                     lbsr      SKPEOL         Skip backslashes & eol
                     tfr       y,d
-                    subd      <u005E
+                    subd      <ModExecAddr
                     std       ,u
 * (orig: PCHLXX)
                     rts
@@ -6541,15 +6545,15 @@ PRUN               ldd       #$1001
                     lbsr      CONCHK
                     leay      1,y
 PEIF1               tfr       y,d
-                    subd      <u005E
+                    subd      <ModExecAddr
                     std       [<1,x]
                     lbra      POPCN
 
 PFOR               lbsr      GETTYP
-                    lbsr      L2EE3         Check if defined, define if not
+                    lbsr      CheckOrDefVar         Check if defined, define if not
                     cmpa      #$60          Check if variable
                     bne       PFOR1         Not variable; abort
-                    lda       <u00D1              Get var type
+                    lda       <VarTypeCode              Get var type
                     cmpa      #1                  Integer?
                     beq       PFOR2               Yes, skip ahead
                     cmpa      #2                  Real?
@@ -6557,23 +6561,23 @@ PFOR               lbsr      GETTYP
 PFOR1               lda       #$46                Illegal FOR variable
                     lbsr      ERROR
                     ldd       #$FFFF        Make SYMPTR illegal
-                    std       <u00D2
+                    std       <SymbolPtr
                     bra       PFOR3
 
 * FOR variable is numeric but NOT byte, continue
-PFOR2               ldb       <u00D0
+PFOR2               ldb       <VarTypeHi
                     bne       PFOR1         No; abort
                     adda      #$80                Set hi bit on var type
                     sta       ,y                  Save it
                     ldd       1,x           get runtime storage offset
                     std       1,y           put in I-Code
-PFOR3               ldx       <u0044              Get some sort of var ptr
+PFOR3               ldx       <StrSpaceTop              Get some sort of var ptr
                     leax      -7,x                Make room for 7 more bytes
-                    stx       <u0044              Save new ptr
-                    lda       <u00D1              Get var type
+                    stx       <StrSpaceTop              Save new ptr
+                    lda       <VarTypeCode              Get var type
                     sta       ,x                  Save it
-                    ldd       <u00D2        get symbol tbl ptr
-                    subd      <u0062        Make ptr into offset
+                    ldd       <SymbolPtr        get symbol tbl ptr
+                    subd      <ModSymTbl        Make ptr into offset
                     std       1,x
                     clra                    D
                     clrb
@@ -6592,23 +6596,23 @@ PFOR4               leay      1,y
                     sty       ,--x          Push I-Code ptr
                     lda       #$13          get structure token
                     sta       ,-x           Push it
-                    stx       <u0044        save control stack ptr
+                    stx       <StrSpaceTop        save control stack ptr
                     leay      3,y           Move to next stmt
 PFOR9               rts
 
-FORSUB               ldd       <u00C1
+FORSUB               ldd       <CurVarSz
                     pshs      d             save it for return
                     std       1,y           put in I-Code
-                    ldx       <u0044        get control stack ptr
+                    ldx       <StrSpaceTop        get control stack ptr
                     lda       ,x            get type
-                    leax      >L307E,pc           Point to 5 single bytes table
+                    leax      >BytesPerTypeTbl,pc           Point to 5 single bytes table
                     ldb       a,x                 Get value
                     clra                          D=value  Msb
-                    addd      <u00C1              Add to value & save result
-                    std       <u00C1        save it
+                    addd      <CurVarSz              Add to value & save result
+                    std       <CurVarSz        save it
                     leay      3,y           Move to expression
                     bsr       PIEXPR         Process it
-                    ldx       <u0044        get control stack ptr
+                    ldx       <StrSpaceTop        get control stack ptr
                     puls      pc,d          get offset & return
 
 PIEXPR               lbsr      PEXPRN
@@ -6616,13 +6620,13 @@ PIEXPR               lbsr      PEXPRN
                     cmpa      ,u
                     beq       PFOR9
                     cmpa      #$02          numeric?
-                    bcs       L2B07         Yes; good (rts)
+                    bcs       FixIntForFloat         Yes; good (rts)
                     lbne      ERIET         Err - illegal expression type
 * (orig: FORTY1)
                     lda       #$C8          Err - illegal expression type
                     bra       FORTY3
 
-L2B07               lda       #$CB                ??? Illegal mode error?
+FixIntForFloat               lda       #$CB                ??? Illegal mode error?
 FORTY3               lbra      INSTOK
 
 PNEXT               leay      -1,y
@@ -6635,7 +6639,7 @@ PNEXT               leay      -1,y
                     lbsr      ERROR
                     bra       PNEXT6
 
-PNEXT4               addd      <u0062
+PNEXT4               addd      <ModSymTbl
                     exg       d,x           Move symbol ptr to ptr register
                     ldx       1,x           get runtime storage offset
                     exg       d,x           Switch back
@@ -6651,36 +6655,36 @@ PNEXT4               addd      <u0062
                     inc       1,y           set code for step n
 PNEXT5               ldu       1,x
                     tfr       y,d           copy I-Code ptr
-                    subd      <u005E        Make ptr into offset
+                    subd      <ModExecAddr        Make ptr into offset
                     addd      #$0001        Make offset of next type byte
                     std       ,u            put in FOR stmt
                     leau      3,u           Move ptr to stmt following FOR
                     tfr       u,d
-                    subd      <u005E        Make it offset
+                    subd      <ModExecAddr        Make it offset
                     std       8,y
 PNEXT6               leay      $B,y
                     lbsr      POPCN         Pop endexits and this control structure
                     leax      7,x           Pop extra room for used
-                    stx       <u0044        get control stack ptr
+                    stx       <StrSpaceTop        get control stack ptr
                     rts
 
 PWHILE               leau      -1,y
                     pshs      u             save it
-                    bsr       L2BAF         get boolean expression
+                    bsr       CompileBoolExpr         get boolean expression
                     puls      d             get ptr to stmt beginning
                     std       ,y
                     lda       #$15
-                    bra       L2BA8         Push on ctl stack, skip 'do' token
+                    bra       PushCtlStruct         Push on ctl stack, skip 'do' token
 
 PEWHL               ldd       #$1503
                     bsr       CONCHK         Call control structure check
                     ldx       1,x           get ptr to while jump ptr
                     ldd       ,x            get ptr to stmt beginning
-                    subd      <u005E        get I-Code offset
+                    subd      <ModExecAddr        get I-Code offset
                     std       ,y            put in endwhile jump ptr
                     leay      3,y
                     tfr       y,d
-                    subd      <u005E
+                    subd      <ModExecAddr
                     std       ,x            put in while jump ptr
                     lbra      POPCN
 
@@ -6688,13 +6692,13 @@ PREPT               lda       #$17
 PREP10               lbsr      SKPONE
                     bra       PUSHCN
 
-PUNTIL               bsr       L2BAF
+PUNTIL               bsr       CompileBoolExpr
                     lda       #$17          set structure type
 PUNT10               leay      -1,y
                     ldb       #$03          Number of bytes to skip if error
                     bsr       CONCHK         Call control structure check
                     ldd       1,x           get ptr to after REPEAT
-                    subd      <u005E
+                    subd      <ModExecAddr
                     std       $01,y         put in I-Code
                     leay      $04,y         Move I-Code ptr to next stmt
                     bra       POPCN
@@ -6702,16 +6706,16 @@ PUNT10               leay      -1,y
 PLOOP               lda       #$19
                     bra       PREP10
 
-L2BA0               lda       #$19
+PEndloop               lda       #$19
                     bra       PUNT10         Push on operand stack
 
-PEXIF1               bsr       L2BAF
+PEXIF1               bsr       CompileBoolExpr
                     lda       #$1B          get structure token
-L2BA8               bsr       PUSHCN
+PushCtlStruct               bsr       PUSHCN
                     leay      3,y           Move I-Code ptr past THEN
                     lbra      SKPEOL
 
-L2BAF               lbsr      PEXPRN
+CompileBoolExpr               lbsr      PEXPRN
                     lbsr      POPOP
                     cmpa      #3                  ??? Boolean variable?
                     beq       PBEXP1               Yes, skip ahead
@@ -6729,22 +6733,22 @@ PEEXT               ldd       #$1B03
                     lda       #$1C          get structure token
                     bra       PUSHC1
 
-PUSHCN               ldx       <u0044
+PUSHCN               ldx       <StrSpaceTop
                     sty       ,--x          Push I-Code ptr
 PUSHC1               sta       ,-x
-                    stx       <u0044
+                    stx       <StrSpaceTop
                     rts
 
 CONCHK               pshs      a
-                    ldx       <u0044        get control stack ptr
-                    bra       L2BE5
+                    ldx       <StrSpaceTop        get control stack ptr
+                    bra       ConchkBoundsCk
 
-L2BE3               leax      3,x
-L2BE5               cmpx      <u0046
+ConchkNextEntry               leax      3,x
+ConchkBoundsCk               cmpx      <SubrStkPtr
                     bhs       CONCH3
                     lda       ,x            get token
                     cmpa      #$1C
-                    beq       L2BE3
+                    beq       ConchkNextEntry
                     cmpa      ,s            correct type?
                     beq       CONCH4
 CONCH3               leas      3,s
@@ -6755,120 +6759,120 @@ CONCH3               leas      3,s
 
 CONCH4               puls      pc,a
 
-POPCN               ldx       <u0044
-                    bra       L2C14
+POPCN               ldx       <StrSpaceTop
+                    bra       PopcnBoundsCk
 
 POPCN1               lda       ,x
                     cmpa      #$1C          endexit?
                     bne       DONE25         No; go pop it
                     tfr       y,d           copy I-Code ptr
-                    subd      <u005E        get I-Code offset
+                    subd      <ModExecAddr        get I-Code offset
                     std       [<1,x]        put in I-Code
 * (orig: POPCN3)
                     leax      3,x           Pop endexit
-L2C14               cmpx      <u0046
+PopcnBoundsCk               cmpx      <SubrStkPtr
                     blo       POPCN1
                     bra       POPCN9         Return
 
 DONE25               leax      3,x
-POPCN9               stx       <u0044
+POPCN9               stx       <StrSpaceTop
                     rts
 
-L2C1F               leay      -1,y
+CompileRunStmt               leay      -1,y
                     lbsr      GETTYP         get & decode type byte
-                    lda       <u00CF        get definition
-                    beq       L2C41
+                    lda       <VarDefByte        get definition
+                    beq       RunNewProc
                     cmpa      #$A0
                     beq       PRUN20         ..Yes
                     cmpa      #$60
                     bcs       PRUN10         is simple
-                    lda       <u00D0        simple?
+                    lda       <VarTypeHi        simple?
                     bne       PRUN10         ..No
 * (orig: PRUNER)
-                    lda       <u00D1        get type
+                    lda       <VarTypeCode        get type
                     cmpa      #$04
                     beq       PRUN20
 PRUN10               lda       #$4C                Multiply-defined Variable error
                     lbsr      ERROR
                     bra       PRUN20
 
-L2C41               lda       #$A0
+RunNewProc               lda       #$A0
                     sta       ,x
-                    ldd       <u00C5        get next procedure link addr
+                    ldd       <ProcLinkAcc        get next procedure link addr
                     std       1,x           put in symbol tbl
                     addd      #$0002        get next procedure link
-                    std       <u00C5        save total size
+                    std       <ProcLinkAcc        save total size
 PRUN20               leay      3,y
-L2C50               ldb       ,y+
+PrunStmtBody               ldb       ,y+
                     cmpb      #$4D          are there parameters?
                     bne       PRUN40         ..No
-L2C56               lbsr      PASGVR
+PrunParamLoop               lbsr      PASGVR
                     lbsr      POPOP         Keep opstack clean
                     ldb       ,y+
                     cmpb      #$4B
-                    beq       L2C56
+                    beq       PrunParamLoop
                     leay      1,y           Skip stmt terminator
 PRUN40               rts
 
-L2C65               bsr       L2CB2
+CompileIOStmt               bsr       GetChanRef
                     leay      -1,y          Backup to exprsn
                     cmpb      #$90          prompt string?
-                    bne       L2C72         No; go do variable reference
+                    bne       IOVarLoop         No; go do variable reference
 * (orig: PINPU1)
-                    lbsr      L2D0B         Process it
+                    lbsr      CompileStrExprB         Process it
                     leay      1,y           Skip comma
-L2C72               lbsr      PASGVR
+IOVarLoop               lbsr      PASGVR
                     lbsr      POPOP
                     cmpa      #$05
-                    bcs       L2C81         No; good
+                    bcs       IOCheckComma         No; good
 * (orig: PINPU2)
                     lda       #$4D                Illegal Input Variable error
                     lbsr      ERROR
-L2C81               lda       ,y+
+IOCheckComma               lda       ,y+
                     cmpa      #$4B          a comma?
-                    beq       L2C72
+                    beq       IOVarLoop
                     rts
 
-PPRINT               bsr       L2CB2
+PPRINT               bsr       GetChanRef
                     cmpb      #$49          USING?
-                    bne       L2C92         No; go look for expression
-                    bsr       L2D0B
-L2C90               ldb       ,y+
-L2C92               cmpb      #$4B
-                    beq       L2C90
+                    bne       PprintLoop         No; go look for expression
+                    bsr       CompileStrExprB
+PprintCheckMore               ldb       ,y+
+PprintLoop               cmpb      #$4B
+                    beq       PprintCheckMore
                     cmpb      #$51
-                    beq       L2C90         ..Yes
+                    beq       PprintCheckMore         ..Yes
                     lbsr      EOLTST
-                    beq       L2CC5
+                    beq       PrintSetupDone
 * (orig: PRLIT)
                     leay      -1,y          Back up to expression
                     lbsr      PEXPRN
                     lbsr      POPOP
                     cmpa      #$05
-                    blo       L2C90
+                    blo       PprintCheckMore
                     lda       #$47                Illegal Expression Type error
                     lbsr      ERROR
-                    bra       L2C90
+                    bra       PprintCheckMore
 
-L2CB2               ldb       ,y+
+GetChanRef               ldb       ,y+
                     cmpb      #$54          is there channel number?
-                    bne       L2CC5
-                    lbsr      L2A1A         Check variable type & subscripts
-L2CBB               ldb       ,y+
+                    bne       PrintSetupDone
+                    lbsr      CompileNumExpr         Check variable type & subscripts
+SkipPrintSeps               ldb       ,y+
                     cmpb      #$4B          comma?
-                    beq       L2CBB
+                    beq       SkipPrintSeps
                     cmpb      #$51          semi-colon?
-                    beq       L2CBB         ..No
-L2CC5               rts
+                    beq       SkipPrintSeps         ..No
+PrintSetupDone               rts
 
-L2CC6               leay      1,y
+CompileSeekVar               leay      1,y
                     lbsr      PASGVR
                     lbsr      POPOP
                     cmpa      #$01
                     beq       POPE20
                     lbsr      ERIET
 POPE20               leay      1,y
-                    bsr       L2D0B         Process name expression
+                    bsr       CompileStrExprB         Process name expression
                     lda       ,y+
                     cmpa      #$4A
                     bne       POPE30         ..No
@@ -6879,26 +6883,26 @@ PSEEK               bsr       PIOBGN
                     bsr       PEXPRN
                     lbsr      POPOP
                     cmpa      #$42
-                    bls       L2D20
+                    bls       JmpSkpeol
                     lbra      ERIET         Err - illegal expression type
 
 PCLOSE               bsr       PIOBGN
                     lbsr      PASGVR         Process variable/expression
                     lbsr      POPOP
-L2CF8               bra       L2D20
+PcloseSkipEol               bra       JmpSkpeol
 
-L2CFA               bsr       PIOBGN
+CompileRestore               bsr       PIOBGN
                     cmpb      #$4B          Another path?
-                    beq       L2CFA         ..Yes
-                    bra       L2D20
+                    beq       CompileRestore         ..Yes
+                    bra       JmpSkpeol
 
 PIOBGN               leay      1,y
                     lbra      PPOK30
 
-L2D07               bsr       L2D0B
-                    bra       L2D20
+CompileStrExpr               bsr       CompileStrExprB
+                    bra       JmpSkpeol
 
-L2D0B               bsr       PEXPRN
+CompileStrExprB               bsr       PEXPRN
                     lbsr      POPOP
                     cmpa      #4
                     beq       POPE30               Return
@@ -6907,29 +6911,29 @@ L2D0B               bsr       PEXPRN
 PREST               ldb       ,y+
                     cmpb      #$3A          line reference?
                     lbeq      PGOTO
-L2D20               lbra      SKPEOL
+JmpSkpeol               lbra      SKPEOL
 
-L2D23               cmpb      #$96
-                    bhs       L2D2C
-                    lbsr      L2E5F         Call specials processor
+ExprHighToken               cmpb      #$96
+                    bhs       ExprSpecialTok
+                    lbsr      ExprSpecialVar         Call specials processor
                     bra       PEXPRN
 
 * B>=$96 goes here
-L2D2C               cmpb      #$F2                If >=$F2, skip ahead
-                    lbhs      L308D
+ExprSpecialTok               cmpb      #$F2                If >=$F2, skip ahead
+                    lbhs      UnimplRtnErr
                     subb      #$96                Drop B to $00 - $5B
-                    leax      >L2601,pc           Point to data table
+                    leax      >BindOpCodeTbl,pc           Point to data table
                     abx                           Point to entry we want
                     ldb       ,x                  Get it
-                    lbeq      L308D               If nothing, skip ahead
+                    lbeq      UnimplRtnErr               If nothing, skip ahead
                     andb      #$1F          get argument processor code
                     beq       PEXP30         bra if no arguments/operands
-                    leau      <L2DA2,pc           point to routine
+                    leau      <ExprArgJmpTbl,pc           point to routine
                     lslb
                     jsr       b,u           Process arguments/operands
 PEXP30               ldb       ,x                  Get byte
                     andb      #$E0                Mask out all but hi 3 bits
-                    beq       L2D60               If hi 3 bits all 0's, skip ahead
+                    beq       ExprDoToken               If hi 3 bits all 0's, skip ahead
                     clra                          Move hi 3 bits to lo 3 bits in A
                     rolb                          ROLD
                     rola
@@ -6938,25 +6942,25 @@ PEXP30               ldb       ,x                  Get byte
                     rolb                          ROLD
                     rola
                     cmpa      #$07                All 3 bits set?
-                    bne       L2D60               No, skip ahead
+                    bne       ExprDoToken               No, skip ahead
 * (orig: PEXP40)
-                    lbsr      L2FD4         Delete token
+                    lbsr      SetICodeLineEnd         Delete token
                     bra       PEXPRN
 
-L2D60               lbsr      L2E3B
+ExprDoToken               lbsr      PushTypeOnStack
                     leay      1,y           Move I-Code ptr
 PEXPRN               ldb       ,y
-                    bmi       L2D23
+                    bmi       ExprHighToken
                     rts
 
 P2INT               bsr       P1REAL
                     incb
-                    bra       L2D71
+                    bra       CheckExprType
 
 P1REAL               ldb       #$C8                (200)
-L2D71               lbsr      POPOP
+CheckExprType               lbsr      POPOP
                     cmpa      #$02          numeric?
-                    blo       L2D85
+                    blo       ExprTypeRts
                     beq       PINT10         bra if real
                     bsr       ERRIAR
                     bra       PINT20
@@ -6964,14 +6968,14 @@ L2D71               lbsr      POPOP
 PINT10               tfr       b,a
                     lbsr      INSTOK
 PINT20               lda       #$01
-L2D85               rts
+ExprTypeRts               rts
 
-L2D86               bsr       L2D8B
+P2RealAlt               bsr       P1RealAlt
                     incb
-                    bra       L2D8D
+                    bra       CheckRealExpr
 
-L2D8B               ldb       #$CB
-L2D8D               lbsr      POPOP
+P1RealAlt               ldb       #$CB
+CheckRealExpr               lbsr      POPOP
                     cmpa      #$02
                     beq       PREAXX
                     blo       PREA10
@@ -6984,22 +6988,22 @@ PREA10               tfr       b,a
 PREA20               lda       #$02
 PREAXX               rts
 
-L2DA2               bra       L2DC0               (offset 0)
-L2DA4               bra       P1REAL               (2)
-L2DA6               bra       P2INT               (4)
-L2DA8               bra       L2D8B               (6)
-L2DAA               bra       L2D86               (8)
-L2DAC               bra       P1NUM               ($a)
-L2DAE               bra       P2NUM               ($c)
-L2DB0               bra       L2DF4               ($e)
-L2DB2               bra       L2DF2               ($10)
-L2DB4               bra       P1S1I               ($12)
-L2DB6               bra       L2E04               ($14)
-L2DB8               bra       L2E30               ($16)
-L2DBA               bra       L2E2E               ($18)
-L2DBC               bra       P2SN               ($1A)
-L2DBE               bra       P2BSN               ($1C)
-L2DC0               lbra      L308D               ($1F)
+ExprArgJmpTbl               bra       ExprArgUnimpl               (offset 0)
+ExprArg1Real               bra       P1REAL               (2)
+ExprArg2Int               bra       P2INT               (4)
+ExprArg1RealB               bra       P1RealAlt               (6)
+ExprArg2RealB               bra       P2RealAlt               (8)
+ExprArg1Num               bra       P1NUM               ($a)
+ExprArg2Num               bra       P2NUM               ($c)
+ExprArg2Str               bra       P1Str               ($e)
+ExprArg1Str               bra       P2StrXX               ($10)
+ExprArg1R1I               bra       P1S1I               ($12)
+ExprArg2I1S               bra       P2Int1Str               ($14)
+ExprArg2Bool               bra       P1Bool               ($16)
+ExprArg1Bool               bra       P2BoolAlt               ($18)
+ExprArg2StrNum               bra       P2SN               ($1A)
+ExprArg2BoolStrNum               bra       P2BSN               ($1C)
+ExprArgUnimpl               lbra      UnimplRtnErr               ($1F)
 
 ERRIAR               lda       #$43                Illegal Argument error
                     lbra      ERROR
@@ -7024,13 +7028,13 @@ P1NUXX               rts
 
 PNUM               bsr       POPOP
                     cmpa      #$02
-                    bls       L2DF1         ..Yes
+                    bls       PnumRts         ..Yes
                     bsr       ERRIAR         Report error
                     lda       #$02          Return real
-L2DF1               rts
+PnumRts               rts
 
-L2DF2               bsr       L2DF4
-L2DF4               bsr       POPOP
+P2StrXX               bsr       P1Str
+P1Str               bsr       POPOP
                     cmpa      #4
                     beq       P1STXX
                     bsr       ERRIAR
@@ -7038,10 +7042,10 @@ L2DF4               bsr       POPOP
 P1STXX               rts
 
 P1S1I               lbsr      P1REAL
-                    bra       L2DF4         Process string
+                    bra       P1Str         Process string
 
-L2E04               lbsr      P2INT
-                    bra       L2DF4         Process string
+P2Int1Str               lbsr      P2INT
+                    bra       P1Str         Process string
 
 P2BSN               lda       #3
                     bsr       P2ARG         Throw away variable type
@@ -7057,17 +7061,17 @@ P2SN10               addb      ,y
                     stb       ,y
                     rts
 
-P2ARG               ldu       <u0044
+P2ARG               ldu       <StrSpaceTop
                     cmpa      ,u+           is first correct type?
-                    bne       L2E2D         ..No
+                    bne       P2ArgRts         ..No
                     cmpa      ,u+           is second correct?
-                    bne       L2E2D         ..No
-                    stu       <u0044        Pop arguments/operands
+                    bne       P2ArgRts         ..No
+                    stu       <StrSpaceTop        Pop arguments/operands
                     clrb                    Z bit
-L2E2D               rts
+P2ArgRts               rts
 
-L2E2E               bsr       L2E30
-L2E30               bsr       POPOP
+P2BoolAlt               bsr       P1Bool
+P1Bool               bsr       POPOP
                     cmpa      #3
                     beq       P1BOXX
                     bsr       ERRIAR
@@ -7075,209 +7079,209 @@ L2E30               bsr       POPOP
 P1BOXX               rts
 
 * Modified since all routines coming here freshly LDA
-L2E3B               tsta                          A=0?
-L2E3C               bne       L2E41               No, skip ahead
+PushTypeOnStack               tsta                          A=0?
+SetMinType               bne       PushType               No, skip ahead
                     inca                          A=1
-L2E41               ldu       <u0044
+PushType               ldu       <StrSpaceTop
                     cmpa      #5            rcd type?
                     bne       PUSHO2         No; do simple
-                    ldd       <u00D4        get descr ptr
+                    ldd       <RealTmpWord        get descr ptr
                     std       ,--u
                     lda       #5
 PUSHO2               sta       ,-u
-                    stu       <u0044        save stack ptr
+                    stu       <StrSpaceTop        save stack ptr
                     rts
 
-POPOP               ldu       <u0044
+POPOP               ldu       <StrSpaceTop
                     lda       ,u+           get type
                     cmpa      #5            record?
                     bne       POPOP1         ..No
                     leau      2,u           Return descr space
-POPOP1               stu       <u0044
+POPOP1               stu       <StrSpaceTop
                     rts
 
-L2E5F               cmpb      #$85
-                    lblo      L308D
+ExprSpecialVar               cmpb      #$85
+                    lblo      UnimplRtnErr
                     cmpb      #$89
                     blo       PVREF
                     subb      #$8D          field reference?
                     lblo      PFREF               $8a to $8c go here
-                    leau      <L2E75,pc           Point to list of branches
+                    leau      <ExprSpecialJmp,pc           Point to list of branches
                     lslb                          2 bytes/per branch
                     jmp       b,u                 Call branch
 
-L2E75               bra       PBLIT
-L2E77               bra       L2E89
-L2E79               bra       L2E8F
-L2E7B               bra       PSLIT
-L2E7D               bra       L2E89
-L2E7F               bra       PADDR1
-L2E81               bra       PADDR2
-L2E83               bra       PADDR1
-L2E85               bra       PADDR2
+ExprSpecialJmp               bra       PBLIT
+ExprSpecInt3               bra       PushIntLit
+ExprSpecInt6               bra       PushRealLit
+ExprSpecStr               bra       PSLIT
+ExprSpecInt3b               bra       PushIntLit
+ExprSpecAddr1               bra       PADDR1
+ExprSpecAddr2               bra       PADDR2
+ExprSpecAddr3               bra       PADDR1
+ExprSpecAddr4               bra       PADDR2
 
 PBLIT               leay      -1,y
-L2E89               leay      3,y
+PushIntLit               leay      3,y
                     lda       #1
-                    bra       L2E41
+                    bra       PushType
 
-L2E8F               leay      6,y
+PushRealLit               leay      6,y
                     lda       #2
-                    bra       L2E41
+                    bra       PushType
 
 PSLIT               ldb       ,y+
                     cmpb      #$FF
                     bne       PSLIT
                     lda       #4
-                    bra       L2E41
+                    bra       PushType
 
-PADDR1               lbsr      L2991
+PADDR1               lbsr      CheckSimpleSym
                     bsr       POPOP
                     lda       #1
-                    bsr       L2E41
+                    bsr       PushType
 PADDR2               leay      1,y
                     rts
 
 PVREF               lbsr      GETTYP
-                    bsr       L2EE3
+                    bsr       CheckOrDefVar
                     cmpa      #$60
-                    beq       L2EBF         bra if so
+                    beq       VrefSimpleOrObj         bra if so
                     cmpa      #$80          Object procedure?
-                    beq       L2EBF         Real; check for integer result
+                    beq       VrefSimpleOrObj         Real; check for integer result
                     lda       #$12                Illegal Operand error
                     lbsr      ERROR
-                    bra       L2EDC
+                    bra       VrefSkipToken
 
-L2EBF               ldb       #$85
-                    lbsr      L2F5E         Print line
+VrefSimpleOrObj               ldb       #$85
+                    lbsr      CheckVarSubs         Print line
                     ldb       ,y
                     cmpb      #$85
-                    bne       L2EDC
-                    ldb       <u00CF
+                    bne       VrefSkipToken
+                    ldb       <VarDefByte
                     cmpb      #$60
-                    bne       L2EDC
+                    bne       VrefSkipToken
                     cmpa      #5
-                    bhs       L2EDC
+                    bhs       VrefSkipToken
                     adda      #$80
                     sta       ,y
                     ldd       1,x
                     std       1,y
-L2EDC               leay      3,y
-                    lda       <u00D1
-                    lbra      L2E3C
+VrefSkipToken               leay      3,y
+                    lda       <VarTypeCode
+                    lbra      SetMinType
 
-L2EE3               lda       <u00CF
+CheckOrDefVar               lda       <VarDefByte
                     bne       CHKD20
                     ldb       #$60
-                    sta       <u00D0
-                    stb       <u00CF
+                    sta       <VarTypeHi
+                    stb       <VarDefByte
 * (orig: CHKDEF)
                     lda       #$60                Take out, and change following to B's ?
-                    ora       <u00D1        set high order bit
+                    ora       <VarTypeCode        set high order bit
                     sta       ,x
                     anda      #$07
                     cmpa      #4
-                    bne       L2F01         No; error
+                    bne       CheckNonString         No; error
                     ldd       #$0020
                     std       1,x
-L2F01               lbsr      ALCSTO
-                    lda       <u00CF
+CheckNonString               lbsr      ALCSTO
+                    lda       <VarDefByte
 CHKD20               rts
 
 PFREF               bsr       GETTYP
                     ldb       #$89
-                    bsr       L2F5E         End of statement?
+                    bsr       CheckVarSubs         End of statement?
                     lbsr      POPOP
                     cmpa      #5
-                    beq       L2F19
+                    beq       GetUserTypePtr
 * (orig: PFREF1)
                     ldu       #$FFFF
                     bra       PFREF2
 
-L2F19               ldu       -2,u
+GetUserTypePtr               ldu       -2,u
 PFREF2               pshs      u
-                    bsr       L2EDC
+                    bsr       VrefSkipToken
                     puls      u
                     cmpu      #$FFFF
-                    beq       L2F3E
+                    beq       ErrNonRecord
                     ldb       2,u
-                    stb       <u00D6
-                    ldd       <u00D2
-                    subd      <u0062
+                    stb       <VarByteSize
+                    ldd       <SymbolPtr
+                    subd      <ModSymTbl
                     leau      3,u
 PFREF3               cmpd      ,u++
                     beq       GETTY9
-                    dec       <u00D6
+                    dec       <VarByteSize
                     bne       PFREF3
 * (orig: PFREF5)
                     lda       #$14
                     bra       PFREF9
 
-L2F3E               lda       #$42                Non-Record Type Operand error
+ErrNonRecord               lda       #$42                Non-Record Type Operand error
 PFREF9               lbra      ERROR
 
 GETTYP               ldd       1,y
-                    addd      <u0062
-                    std       <u00D2
-                    ldx       <u00D2
+                    addd      <ModSymTbl
+                    std       <SymbolPtr
+                    ldx       <SymbolPtr
 GETTY1               lda       ,x
                     anda      #$E0
-                    sta       <u00CF
+                    sta       <VarDefByte
                     lda       ,x
                     anda      #$18
-                    sta       <u00D0
+                    sta       <VarTypeHi
                     lda       ,x
                     anda      #$07
-                    sta       <u00D1
+                    sta       <VarTypeCode
 GETTY9               rts
 
-L2F5E               pshs      b
+CheckVarSubs               pshs      b
                     ldb       ,y            Get array base lsb
                     subb      ,s+
-                    bne       L2F73
-                    lda       <u00D0
+                    bne       CalcSubsShift
+                    lda       <VarTypeHi
                     beq       CHKV60
                     ldd       #$FFFF
-                    std       <u00D4
+                    std       <RealTmpWord
                     lda       #5
-                    sta       <u00D1
+                    sta       <VarTypeCode
                     rts
 
-L2F73               lslb                          B=B*8
+CalcSubsShift               lslb                          B=B*8
                     lslb
                     lslb
-                    cmpb      <u00D0
-                    beq       L2F7F
+                    cmpb      <VarTypeHi
+                    beq       InitSubsCheck
 * (orig: CHKV20)
                     lda       #$41                Wrong Number of Subscripts error
 * (orig: CHKV30)
                     lbsr      ERROR         Turn on trace
-L2F7F               lda       #$C8
-                    sta       <u00D8
-L2F83               lbsr      POPOP
+InitSubsCheck               lda       #$C8
+                    sta       <UnusedByte_D8
+ChkSubsTypeLoop               lbsr      POPOP
                     cmpa      #2                  Byte or Integer?
                     blo       CHKV50               Yes, skip ahead
-                    beq       L2F93               If real, skip ahead
+                    beq       FixRealSubs               If real, skip ahead
 * (orig: CHKV40)
                     lda       #$47                Illegal Expression Type error
                     lbsr      ERROR         Get variable address
                     bra       CHKV50
 
 * Real comes here
-L2F93               lda       <u00D8
+FixRealSubs               lda       <UnusedByte_D8
                     bsr       INSTOK         Evaluate data value
 * Byte/Integer come here
-CHKV50               inc       <u00D8
+CHKV50               inc       <UnusedByte_D8
                     subb      #$08
-                    bne       L2F83         bra if not byte
-CHKV60               lda       <u00D1
+                    bne       ChkSubsTypeLoop         bra if not byte
+CHKV60               lda       <VarTypeCode
                     cmpa      #$05
                     bne       CHKV99
                     ldd       1,x
-                    addd      <u0066
+                    addd      <SymTblSize
                     tfr       d,u
-                    ldb       <u00D0
-                    beq       L2FB5
+                    ldb       <VarTypeHi
+                    beq       GetSimpleDescr
                     lsrb                          Divide by 4
                     lsrb
                     addb      #4
@@ -7285,43 +7289,43 @@ CHKV60               lda       <u00D1
                     ldd       b,u
                     bra       CHKV80
 
-L2FB5               ldd       2,u
-CHKV80               addd      <u0066
-CHKV90               std       <u00D4
-                    lda       <u00D1
+GetSimpleDescr               ldd       2,u
+CHKV80               addd      <SymTblSize
+CHKV90               std       <RealTmpWord
+                    lda       <VarTypeCode
 CHKV99               rts
 
 INSTOK               pshs      x,b
-                    ldx       <u000C        Get procedure ptr
+                    ldx       <WorkspaceFree        Get procedure ptr
                     cmpx      #$0010
                     lbls      PBEXPR
-                    ldx       <u0060
+                    ldx       <ModFOff
                     sta       ,x+
-                    stx       <u00AB
+                    stx       <ICodeLineEnd
                     clrb
-                    bsr       L2FDA
+                    bsr       SetLineEndB
                     puls      pc,x,b
 
-L2FD4               ldd       <u0060
-                    std       <u00AB
+SetICodeLineEnd               ldd       <ModFOff
+                    std       <ICodeLineEnd
                     ldb       #$01
-L2FDA               clra
-L2578               jsr       <u001B
+SetLineEndB               clra
+Vect1Fn14               jsr       <JmpVect1
                     fcb       $14
 
 * Jump tables (NOTE:SINCE ALL ARE <$80, USE 8 BIT INSTEAD OF 16 BIT OFFSET)
-L2FDE               fdb       ALCSMV-L2FDE         $0049
-                    fdb       ALCSTV-L2FDE         $005c
-                    fdb       ALCARV-L2FDE         $0060
-                    fdb       L3048-L2FDE         $006a
+AlcStorJmpTbl1               fdb       ALCSMV-AlcStorJmpTbl1         $0049
+                    fdb       ALCSTV-AlcStorJmpTbl1         $005c
+                    fdb       ALCARV-AlcStorJmpTbl1         $0060
+                    fdb       AlcArrayRv-AlcStorJmpTbl1         $006a
 
-L2FE6               fdb       L304C-L2FE6         $0066
-                    fdb       ALCARP-L2FE6         $0072
-                    fdb       ALCARP-L2FE6         $0072
-                    fdb       L305C-L2FE6         $0076
+AlcStorJmpTbl2               fdb       AlcParamEntry-AlcStorJmpTbl2         $0066
+                    fdb       ALCARP-AlcStorJmpTbl2         $0072
+                    fdb       ALCARP-AlcStorJmpTbl2         $0072
+                    fdb       AlcParamArr-AlcStorJmpTbl2         $0076
 
 ALCSTO               pshs      u,y,x
-                    leay      <L2FDE,pc           Point to 1st jump table
+                    leay      <AlcStorJmpTbl1,pc           Point to 1st jump table
                     ldb       ,x
                     andb      #$E0                Get rid of lowest 5 bits (b1-b5)
                     cmpb      #%01100000          bits 6 & 7 set?
@@ -7334,22 +7338,22 @@ ALCSTO               pshs      u,y,x
                     leay      8,y                 If just bit 8 set, use 2nd jump table
 ALCST1               ldb       ,x                  Reload the value
                     andb      #%00011000          Just keep bits 4-5
-                    beq       L300F               Neither set, skip ahead
+                    beq       AlcSimpleVar               Neither set, skip ahead
                     ldd       6,y                 If either set, use 4th entry
                     bra       ALCST5               Go to subroutine
 
-L300F               ldb       ,x                  Reload the value
+AlcSimpleVar               ldb       ,x                  Reload the value
                     andb      #%00000111          Just keep bits 1-3
 ALCST3               cmpb      #%00000100          Just bits 1-2?
-                    blo       L3021               Yes, skip ahead
-                    bhi       L301D               Bit 3 + at least 1 more bit, skip ahead
+                    blo       AlcUse1stEntry               Yes, skip ahead
+                    bhi       AlcUse3rdEntry               Bit 3 + at least 1 more bit, skip ahead
                     ldd       2,y                 If just bit 3, use 2nd entry
                     bra       ALCST5               Go to subroutine
 
-L301D               ldd       4,y                 Bit 3 + (1 or 2), use 3rd entry
+AlcUse3rdEntry               ldd       4,y                 Bit 3 + (1 or 2), use 3rd entry
                     bra       ALCST5               Go to subroutine
 
-L3021               ldd       ,y                  Use 1st entry
+AlcUse1stEntry               ldd       ,y                  Use 1st entry
 ALCST5               jsr       d,y                 Call subroutine
 ALCST6               puls      pc,u,y,x            Restore regs & return
 
@@ -7358,59 +7362,59 @@ ALCSMV               lda       ,x
                     leay      1,x
                     bsr       GETVSZ
 ALCSV1               pshs      d                   USE W
-                    ldd       <u00C1
+                    ldd       <CurVarSz
                     std       ,y
                     addd      ,s++
-                    std       <u00C1
+                    std       <CurVarSz
                     rts
 
-ALCSTV               bsr       L3069
+ALCSTV               bsr       AlcDescr4Bytes
                     bra       ALCSV1
 
-ALCARV               bsr       L3069
-                    addd      <u0066
+ALCARV               bsr       AlcDescr4Bytes
+                    addd      <SymTblSize
                     tfr       d,x
                     ldd       ,x
                     bra       ALCSV1
 
-L3048               bsr       ALCARR
+AlcArrayRv               bsr       ALCARR
                     bra       ALCSV1
 
-L304C               leay      1,x
-L304E               ldd       <u00C3
+AlcParamEntry               leay      1,x
+ProcLinkAccum               ldd       <ProcSzAcc
                     std       ,y
                     addd      #$0004
-                    std       <u00C3
+                    std       <ProcSzAcc
                     rts
 
-ALCARP               bsr       L3069
-                    bra       L304E
+ALCARP               bsr       AlcDescr4Bytes
+                    bra       ProcLinkAccum
 
-L305C               bsr       ALCARR
-                    bra       L304E
+AlcParamArr               bsr       ALCARR
+                    bra       ProcLinkAccum
 
 ALCARR               ldd       1,x
-                    addd      <u0066
+                    addd      <SymTblSize
                     tfr       d,y
                     ldd       2,y
                     rts
 
-L3069               ldd       #$0004              Requesting 4 bytes of memory from workspace
-                    bsr       L257B               Go see if we can get it & allocate it
+AlcDescr4Bytes               ldd       #$0004              Requesting 4 bytes of memory from workspace
+                    bsr       Vect2Fn8               Go see if we can get it & allocate it
                     ldx       4,s           Restore I-Code ptr
                     ldd       1,x           Reset free space
                     std       2,y
                     tfr       y,d
-                    subd      <u0066        Get string length
+                    subd      <SymTblSize        Get string length
                     std       1,x
                     ldd       2,y
                     rts
 
-L257B               jsr       <u001E
+Vect2Fn8               jsr       <JmpVect2
                     fcb       $08
 
 * Table of # bytes/var type
-L307E               fcb       1                   1 byte =Byte
+BytesPerTypeTbl               fcb       1                   1 byte =Byte
                     fcb       2                   2 bytes=Integer
                     fcb       5                   5 bytes=Real
                     fcb       1                   1 byte =Boolean
@@ -7419,35 +7423,35 @@ L307E               fcb       1                   1 byte =Byte
 * Entry: A=Variable type (0-4)
 * Exit : B=# bytes to represent variable
 GETVSZ               pshs      x                   Preserve X
-                    leax      <L307E,pc           Point to 5 1-byte entry table
+                    leax      <BytesPerTypeTbl,pc           Point to 5 1-byte entry table
                     ldb       a,x                 D=#
                     clra                    Msb
                     puls      pc,x
 
 * Single byte entry table
-L3095               fcb       $01,$02,$03,$07,$08,$09,$37,$38,$3e,$3f,$ff
+SpecTermTbl               fcb       $01,$02,$03,$07,$08,$09,$37,$38,$3e,$3f,$ff
 
 BIND               ldd       #$0016
-                    std       <u00C1
+                    std       <CurVarSz
                     clrb
-                    std       <u00C3
-                    std       <u00C5        Save for future use
-                    sta       <u00C7
-                    std       <u00C8
-                    std       <u00CA
-                    ldx       <u002F              Get ptr to current module
+                    std       <ProcSzAcc
+                    std       <ProcLinkAcc        Save for future use
+                    sta       <CmdExecFlag
+                    std       <DataStmtBase
+                    std       <DataStmtCur
+                    ldx       <CurModPtr              Get ptr to current module
                     sta       <$17,x              Set flags to unpacked, no errors
                     std       <$15,x
-L30B8               ldy       <u005E
+BindCmdLoop               ldy       <ModExecAddr
                     bra       DONE
 
-L30BD               pshs      y
+BindNextStmt               pshs      y
                     lbsr      PSTMT         Go input
                     puls      x
-                    ldb       <u00D9
+                    ldb       <BinderMode
                     bne       DONE
                     lda       ,x
-                    leau      <L3095,pc           Point to 11 entry 1 byte table
+                    leau      <SpecTermTbl,pc           Point to 11 entry 1 byte table
 STAR10               cmpa      ,u+                 Hunt through for range our byte is in
                     blo       DONE               If lower then table entry, skip ahead
                     bne       STAR10               If not equal, keep looking
@@ -7455,14 +7459,14 @@ STAR10               cmpa      ,u+                 Hunt through for range our by
                     tfr       y,d                 Move ??? to d
                     subd      ,s++
                     leay      ,x            Get name ptr
-                    ldu       <u004A              Get ptr to next free byte in I-code workspace
-                    stu       <u00AB              Save as ptr to current line I-code end
-                    lbsr      L2578
-DONE               ldx       <u0060
+                    ldu       <ICodeEndPtr              Get ptr to next free byte in I-code workspace
+                    stu       <ICodeLineEnd              Save as ptr to current line I-code end
+                    lbsr      Vect1Fn14
+DONE               ldx       <ModFOff
                     clr       ,x
-                    cmpy      <u0060
-                    blo       L30BD
-L30EB               ldx       <u0066
+                    cmpy      <ModFOff
+                    blo       BindNextStmt
+CollapseICode               ldx       <SymTblSize
                     bra       DONE50
 
 DONE05               lda       ,x
@@ -7479,16 +7483,16 @@ DONE03               ldu       ,y
                     leay      ,u
                     bne       DONE03
 DONE50               leax      -4,x
-                    cmpx      <u00DA
+                    cmpx      <DescrAreaOff
                     bhs       DONE05
-                    ldd       <u0066
-                    subd      <u00DA
-                    addd      <u000C              Add to bytes free to user
-                    std       <u000C              Save as new # bytes free to user
-                    ldx       <u0044
+                    ldd       <SymTblSize
+                    subd      <DescrAreaOff
+                    addd      <WorkspaceFree              Add to bytes free to user
+                    std       <WorkspaceFree              Save as new # bytes free to user
+                    ldx       <StrSpaceTop
                     bra       DONE20
 
-L257E               jsr       <u001E
+Vect2Fn6b               jsr       <JmpVect2
                     fcb       $06
 
 DONE10               ldy       1,x
@@ -7496,85 +7500,85 @@ DONE10               ldy       1,x
                     lbsr      ERROR
                     lda       ,x
                     cmpa      #$13
-                    bne       L312D
+                    bne       DoneForSkip
 * (orig: DONE15)
                     leax      7,x
-L312D               leax      3,x
-                    stx       <u0044        Save I-Code ptr
-DONE20               cmpx      <u0046
+DoneForSkip               leax      3,x
+                    stx       <StrSpaceTop        Save I-Code ptr
+DONE20               cmpx      <SubrStkPtr
                     blo       DONE10
-                    ldu       <u0066
-                    ldy       <u0060
-                    ldd       <u0064
-                    addd      <u0068
-                    bsr       L257E
-                    ldx       <u002F              Get current module ptr
-                    ldd       <u00C8
+                    ldu       <SymTblSize
+                    ldy       <ModFOff
+                    ldd       <ModSzData
+                    addd      <StorageOff
+                    bsr       Vect2Fn6b
+                    ldx       <CurModPtr              Get current module ptr
+                    ldd       <DataStmtBase
                     std       <$13,x
-                    ldd       <u00C1
+                    ldd       <CurVarSz
                     std       <$11,x
-                    addd      <u00C5
-                    std       <u00C5
+                    addd      <ProcLinkAcc
+                    std       <ProcLinkAcc
                     std       $0B,x               Save in data area size require in module header
                     ldb       <$18,x              Get size of module name
                     clra
                     addd      #$0019              Add 25 to it (size of BASIC09 header?)
                     std       M$Exec,x            Save as execution address
-                    addd      <u0060
-                    subd      <u005E
+                    addd      <ModFOff
+                    subd      <ModExecAddr
                     std       $0F,x
-                    addd      <u0068
+                    addd      <StorageOff
                     addd      #$0003
                     std       $0D,x
                     subd      #$0003
-                    addd      <u0064
+                    addd      <ModSzData
                     std       M$Size,x            Save as new module size
-                    addd      <u002F              Add to current module ptr
-                    std       <u004A
-                    subd      <u0008
-                    std       <u000A
-                    ldd       <u002F              Get current module ptr
+                    addd      <CurModPtr              Add to current module ptr
+                    std       <ICodeEndPtr
+                    subd      <ICodeBase
+                    std       <ICodeUsed
+                    ldd       <CurModPtr              Get current module ptr
                     addd      $D,x
-                    std       <u0062        Save it
-                    ldd       <u002F              Get current module ptr
+                    std       <ModSymTbl        Save it
+                    ldd       <CurModPtr              Get current module ptr
                     addd      $0F,x
-                    std       <u0066        Save procedure ptr
-                    ldu       <u0062        Get opstack beginning
-                    bra       L31E2
+                    std       <SymTblSize        Save procedure ptr
+                    ldu       <ModSymTbl        Get opstack beginning
+                    bra       BindSymDone
 
-L3188               leax      ,u
+BindSymLoop               leax      ,u
                     lbsr      GETTY1
-                    lda       <u00CF
+                    lda       <VarDefByte
                     cmpa      #$60
-                    bcs       L31BD         bra if not found
+                    bcs       BindChkRecord         bra if not found
                     cmpa      #$A0
                     bne       DONE30
                     ldd       1,x
-                    addd      <u00C1
+                    addd      <CurVarSz
                     std       1,x
                     bra       DONE70
 
 DONE30               cmpa      #$80
-                    bne       L31BD
-                    ldb       <u00D0
+                    bne       BindChkRecord
+                    ldb       <VarTypeHi
                     bne       DONE45
 * (orig: PASG00)
-                    lda       <u00D1
+                    lda       <VarTypeCode
                     cmpa      #$04
                     bcc       DONE45
                     leax      1,u
-                    bra       L31B7
+                    bra       BindGetPtr
 
 DONE45               ldd       1,u
-                    addd      <u0066
+                    addd      <SymTblSize
                     tfr       d,x
-L31B7               ldd       ,x
-                    addd      <u00C5
+BindGetPtr               ldd       ,x
+                    addd      <ProcLinkAcc
                     std       ,x
-L31BD               lda       <u00D1
+BindChkRecord               lda       <VarTypeCode
                     cmpa      #$05
                     bne       DONE70
-                    ldb       <u00D0
+                    ldb       <VarTypeHi
                     beq       DONE60               If 0, force to 2
                     lsrb                          Divide by by 4
                     lsrb
@@ -7584,7 +7588,7 @@ L31BD               lda       <u00D1
 DONE60               ldb       #$02
 DONE65               clra
                     addd      1,u
-                    ldx       <u0066
+                    ldx       <SymTblSize
                     leay      d,x
                     ldd       ,y
                     ldd       d,x
@@ -7592,8 +7596,8 @@ DONE65               clra
 DONE70               leau      3,u
 DONE75               lda       ,u+
                     bpl       DONE75
-L31E2               cmpu      <u004A
-                    blo       L3188
+BindSymDone               cmpu      <ICodeEndPtr
+                    blo       BindSymLoop
                     rts
 
 * Called by <$24 JMP vector
@@ -7601,125 +7605,125 @@ L31E2               cmpu      <u004A
 *        D=Last vector offset from start of BASIC09's module header
 * Based on function code following the JMP that came here, this routine
 *  modifies the return address to 1 of 7 routines
-L31E8               pshs      x,d                 Preserve ptr & offset
+Vect4Dispatch               pshs      x,d                 Preserve ptr & offset
                     ldb       [<4,s]              Get function code-style byte
-                    leax      <L31F8,pc           Point to vector table
+                    leax      <Vect4JmpBase,pc           Point to vector table
                     ldd       b,x                 Get vector offset
                     leax      d,x                 Calculate address
                     stx       4,s                 Modify RTS address
                     puls      pc,x,d              Restore X & D and return to new routine
 
 * Vector table for <$24 calls
-L31F8               fdb       L3BFF-L31F8         Function 0 call
-                    fdb       EXECUT-L31F8         Function 1 call
-                    fdb       RPARAM-L31F8         Function 2 call
-                    fdb       EXCERR-L31F8         Function 3 call  (error message)
-                    fdb       L33AE-L31F8         Function 4 call
-                    fdb       TONSTM-L31F8         Function 5 call
-                    fdb       TOFSTM-L31F8         Function 6 call
+Vect4JmpBase               fdb       InitJmpTables-Vect4JmpBase         Function 0 call
+                    fdb       EXECUT-Vect4JmpBase         Function 1 call
+                    fdb       RPARAM-Vect4JmpBase         Function 2 call
+                    fdb       EXCERR-Vect4JmpBase         Function 3 call  (error message)
+                    fdb       DispatchStmt-Vect4JmpBase         Function 4 call
+                    fdb       TONSTM-Vect4JmpBase         Function 5 call
+                    fdb       TOFSTM-Vect4JmpBase         Function 6 call
 
-* Jump table (from L323F+offset)
-L323F               fdb       L3A51-L323F
-                    fdb       L3A51-L323F
-                    fdb       L3A51-L323F
-                    fdb       L3A51-L323F
-                    fdb       L3A51-L323F
-                    fdb       STPSTM-L323F
-                    fdb       L3209-L323F         Go direct to JSR <1B / fcb $C
-                    fdb       TONSTM-L323F
-                    fdb       TOFSTM-L323F
-                    fdb       L35F3-L323F
-                    fdb       DEGSTM-L323F
-                    fdb       RADSTM-L323F
-                    fdb       RETSTM-L323F
-                    fdb       L33AE-L323F
-                    fdb       L352D-L323F
-                    fdb       L35D2-L323F
-                    fdb       IFSTM-L323F
-                    fdb       GTOSTM-L323F
-                    fdb       L33D3-L323F
-                    fdb       FORS20-L323F
-                    fdb       L33E7-L323F         NEXT routine
-                    fdb       WHLSTM-L323F
-                    fdb       GTOSTM-L323F
-                    fdb       L33AE-L323F
-                    fdb       WHLSTM-L323F
-                    fdb       L33AE-L323F
-                    fdb       GTOSTM-L323F
-                    fdb       WHLSTM-L323F
-                    fdb       GTOSTM-L323F
-                    fdb       ONSTM-L323F
-                    fdb       ERRSTM-L323F
-                    fdb       ELNSTM-L323F
-                    fdb       GTOSTM-L323F
-                    fdb       ELNSTM-L323F
-                    fdb       GSBSTM-L323F
-                    fdb       L3A8A-L323F
-                    fdb       L3BF3-L323F
-                    fdb       INPSTM-L323F
-                    fdb       PRTSTM-L323F
-                    fdb       CHDSTM-L323F
-                    fdb       L398A-L323F
-                    fdb       CRTSTM-L323F
-                    fdb       L3691-L323F
-                    fdb       SEKSTM-L323F
-                    fdb       RDSTM-L323F
-                    fdb       WRTSTM-L323F
-                    fdb       GETSTM-L323F
-                    fdb       L391E-L323F
-                    fdb       CLSSTM-L323F
-                    fdb       L3957-L323F
-                    fdb       DLTSTM-L323F
-                    fdb       CHNSTM-L323F
-                    fdb       L39BC-L323F
-                    fdb       B0STM-L323F
-                    fdb       B1STM-L323F
-                    fdb       L3A48-L323F
-                    fdb       L3A48-L323F
-                    fdb       ENDSTM-L323F
-                    fdb       L33AC-L323F
-                    fdb       L33AC-L323F
-                    fdb       DIREXC-L323F
-                    fdb       ELNSTM-L323F
-                    fdb       NULSTM-L323F
-                    fdb       NULSTM-L323F
-                    fdb       SBYTAS-L323F
-                    fdb       RSTS10-L323F
-                    fdb       L356F-L323F
-                    fdb       SBYTAS-L323F
-                    fdb       SSTRAS-L323F
-                    fdb       L35BB-L323F
+* Jump table (from StmtJmpBase+offset)
+StmtJmpBase               fdb       TraceListLine-StmtJmpBase
+                    fdb       TraceListLine-StmtJmpBase
+                    fdb       TraceListLine-StmtJmpBase
+                    fdb       TraceListLine-StmtJmpBase
+                    fdb       TraceListLine-StmtJmpBase
+                    fdb       STPSTM-StmtJmpBase
+                    fdb       Vect1FnC-StmtJmpBase         Go direct to JSR <1B / fcb $C
+                    fdb       TONSTM-StmtJmpBase
+                    fdb       TOFSTM-StmtJmpBase
+                    fdb       PrintThenFn18-StmtJmpBase
+                    fdb       DEGSTM-StmtJmpBase
+                    fdb       RADSTM-StmtJmpBase
+                    fdb       RETSTM-StmtJmpBase
+                    fdb       DispatchStmt-StmtJmpBase
+                    fdb       LetStmt-StmtJmpBase
+                    fdb       PokeStmt-StmtJmpBase
+                    fdb       IFSTM-StmtJmpBase
+                    fdb       GTOSTM-StmtJmpBase
+                    fdb       SkipOneByte-StmtJmpBase
+                    fdb       FORS20-StmtJmpBase
+                    fdb       NextDispatch-StmtJmpBase         NEXT routine
+                    fdb       WHLSTM-StmtJmpBase
+                    fdb       GTOSTM-StmtJmpBase
+                    fdb       DispatchStmt-StmtJmpBase
+                    fdb       WHLSTM-StmtJmpBase
+                    fdb       DispatchStmt-StmtJmpBase
+                    fdb       GTOSTM-StmtJmpBase
+                    fdb       WHLSTM-StmtJmpBase
+                    fdb       GTOSTM-StmtJmpBase
+                    fdb       ONSTM-StmtJmpBase
+                    fdb       ERRSTM-StmtJmpBase
+                    fdb       ELNSTM-StmtJmpBase
+                    fdb       GTOSTM-StmtJmpBase
+                    fdb       ELNSTM-StmtJmpBase
+                    fdb       GSBSTM-StmtJmpBase
+                    fdb       CopyVarEntry-StmtJmpBase
+                    fdb       EvalAndFn0A-StmtJmpBase
+                    fdb       INPSTM-StmtJmpBase
+                    fdb       PRTSTM-StmtJmpBase
+                    fdb       CHDSTM-StmtJmpBase
+                    fdb       ChxdStmt-StmtJmpBase
+                    fdb       CRTSTM-StmtJmpBase
+                    fdb       OpenFileStmt-StmtJmpBase
+                    fdb       SEKSTM-StmtJmpBase
+                    fdb       RDSTM-StmtJmpBase
+                    fdb       WRTSTM-StmtJmpBase
+                    fdb       GETSTM-StmtJmpBase
+                    fdb       PutStmt-StmtJmpBase
+                    fdb       CLSSTM-StmtJmpBase
+                    fdb       RestoreSetPtr-StmtJmpBase
+                    fdb       DLTSTM-StmtJmpBase
+                    fdb       CHNSTM-StmtJmpBase
+                    fdb       ShellStmt-StmtJmpBase
+                    fdb       B0STM-StmtJmpBase
+                    fdb       B1STM-StmtJmpBase
+                    fdb       SkipRemText-StmtJmpBase
+                    fdb       SkipRemText-StmtJmpBase
+                    fdb       ENDSTM-StmtJmpBase
+                    fdb       SkipTwoBytes-StmtJmpBase
+                    fdb       SkipTwoBytes-StmtJmpBase
+                    fdb       DIREXC-StmtJmpBase
+                    fdb       ELNSTM-StmtJmpBase
+                    fdb       NULSTM-StmtJmpBase
+                    fdb       NULSTM-StmtJmpBase
+                    fdb       SBYTAS-StmtJmpBase
+                    fdb       RSTS10-StmtJmpBase
+                    fdb       ForRealSetup-StmtJmpBase
+                    fdb       SBYTAS-StmtJmpBase
+                    fdb       SSTRAS-StmtJmpBase
+                    fdb       CallVect5ThenLet-StmtJmpBase
 
-L3209               jsr       <u001B
+Vect1FnC               jsr       <JmpVect1
                     fcb       $0c
 
-L32CB               fcc       'STOP Encountered'
+StopMsg               fcc       'STOP Encountered'
                     fcb       C$LF,$FF
 
-* Vector #2 from table at L31F8 comes here
+* Vector #2 from table at Vect4JmpBase comes here
 
 EXECUT               lda       $17,x               Get something
                     bita      #$01                check if 1st bit is set
                     beq       EXEC10               no, skip ahead
                     ldb       #$33          Err: run aborted
-                    bra       L3304
+                    bra       ExecErr
 
 EXEC10               tfr       s,d
                     subd      #$0100        Need at least 256 bytes
-                    cmpd      <u0080        is there that much?
-                    bhs       L32F6
+                    cmpd      <TmpBufBase        is there that much?
+                    bhs       ExecCheckStack
                     ldb       #$39          Err: system stack overflow
-                    bra       L3304
+                    bra       ExecErr
 
-L32F6               ldd       <u000C
+ExecCheckStack               ldd       <WorkspaceFree
                     subd      $0B,x         Remove needed variable storage
                     blo       MEMFUL
                     cmpd      #$0100        minimum opstack?
                     bhs       EXEC20
 MEMFUL               ldb       #$20                Memory full error
-L3304               lbra      EXCERR
+ExecErr               lbra      EXCERR
 
-EXEC20               std       <u000C
+EXEC20               std       <WorkspaceFree
                     tfr       y,d
                     subd      $0B,x         Make room for vars on u
                     exg       d,u
@@ -7728,15 +7732,15 @@ EXEC20               std       <u000C
 * (orig: SETGLB)
                     stx       3,u           Set procedure address
 EXEC30               ldd       #$0001
-                    std       <u0042        Default array base to one
+                    std       <ArrayBase        Default array base to one
                     sta       1,u           Default trig mode to radians
                     sta       <$13,u        Clear error flag
                     stu       <$14,u        Init subroutine stack
                     bsr       RUNS50         Set I.xxxx globals
                     ldd       <$13,x        Get offset of first data statement
-                    beq       L332C         bra if none
-                    addd      <u005E        Add ptr to I-Code beginning
-L332C               std       <u0039
+                    beq       StoreDataPtr         bra if none
+                    addd      <ModExecAddr        Add ptr to I-Code beginning
+StoreDataPtr               std       <StrWorkPtr
                     ldd       $0B,x         Get variable storage size
                     leay      d,u           Get ptr to storage end
                     pshs      y             Save it
@@ -7748,80 +7752,80 @@ L332C               std       <u0039
                     clra
                     clrb
                     endc
-                    bra       L333F
+                    bra       InitVarCheck
 
-L333D               std       ,y++
-L333F               cmpy      ,s
-                    blo       L333D
+InitVarLoop               std       ,y++
+InitVarCheck               cmpy      ,s
+                    blo       InitVarLoop
                     leas      2,s           Return scratch
-                    ldx       <u002F
+                    ldx       <CurModPtr
 * (orig: ASGV20)
-                    ldd       <u005E        Get ptr to I-Code beginning
+                    ldd       <ModExecAddr        Get ptr to I-Code beginning
                     addd      <$15,x        Add offset of first executable statement
                     tfr       d,x
-                    bra       L3391         Jump into statment loop
+                    bra       StmtLoopEntry         Jump into statment loop
 
-RUNS50               stx       <u002F              Save current module ptr
-                    stu       <u0031        Set storage base address
+RUNS50               stx       <CurModPtr              Save current module ptr
+                    stu       <VarStorePtr        Set storage base address
                     ldd       $0D,x
-                    addd      <u002F              Add to start address of module
-                    std       <u0062
+                    addd      <CurModPtr              Add to start address of module
+                    std       <ModSymTbl
                     ldd       $0F,x
-                    addd      <u002F              Add to start address of module
-                    std       <u0066
-                    std       <u0060
+                    addd      <CurModPtr              Add to start address of module
+                    std       <SymTblSize
+                    std       <ModFOff
 * (orig: ASGRL1)
                     ldd       M$Exec,x            Get exec offset
-                    addd      <u002F              Add to start of module address
-                    std       <u005E              Save exec offset
+                    addd      <CurModPtr              Add to start of module address
+                    std       <ModExecAddr              Save exec offset
                     ldd       <$14,u
-                    std       <u0046
-                    std       <u0044
+                    std       <SubrStkPtr
+                    std       <StrSpaceTop
                     rts
 
-STMLUP               stx       <u005C
-                    lda       <u0034              Get signal received flag
-                    beq       L338F               Nothing happened, skip ahead
+STMLUP               stx       <ICodeCurPtr
+                    lda       <SigFlag              Get signal received flag
+                    beq       StmtDispatch               Nothing happened, skip ahead
                     bpl       STML10               No signal flagged, skip ahead
                     anda      #$7F                Mask off signal received bit flag
-                    sta       <u0034              Save masked version
-                    lbsr      L3233               JSR <1B, fcb $18
-                    lda       <u0034              Shift out least sig bit
+                    sta       <SigFlag              Save masked version
+                    lbsr      Vect1Fn18               JSR <1B, fcb $18
+                    lda       <SigFlag              Shift out least sig bit
 STML10               rora                    Trace bit set?
-                    bcc       L338F               Not set, skip ahead
+                    bcc       StmtDispatch               Not set, skip ahead
                     leay      ,x            Copy I-Code ptr
-                    lbsr      L3218         Move copy to next statement
-                    clr       <u0074
-                    bsr       L3236
-L338F               bsr       L33AE
-L3391               cmpx      <u0060
+                    lbsr      Vect1Fn10         Move copy to next statement
+                    clr       <IndentDepth
+                    bsr       Vect1Fn16
+StmtDispatch               bsr       DispatchStmt
+StmtLoopEntry               cmpx      <ModFOff
                     blo       STMLUP
                     bra       INIT         ..exit
 
-L3236               jsr       <u001B
+Vect1Fn16               jsr       <JmpVect1
                     fcb       $16
 
 ENDSTM               ldb       ,x
-                    lbsr      L384F         End of line?
+                    lbsr      CheckEolToken         End of line?
                     beq       INIT         ..yes; don't print anything
                     lbsr      PRTSTM         Print message if there is one
 INIT               lbsr      TOFSTM
-                    ldu       <u0031        Get storage base address
+                    ldu       <VarStorePtr        Get storage base address
                     lds       5,u           Reset stack
                     ldu       7,u           Get caller's storage address
 NULSTM               rts                     Statements use this return
 
-L33AC               leax      2,x
-L33AE               ldb       ,x+
-                    bpl       L33B4               Hi bit clear, skip ahead
+SkipTwoBytes               leax      2,x
+DispatchStmt               ldb       ,x+
+                    bpl       LookupStmtIdx               Hi bit clear, skip ahead
                     addb      #$40                ??? Wrap it around
-L33B4               lslb                          Multiply by 2
+LookupStmtIdx               lslb                          Multiply by 2
                     clra                          Unsigned D
-                    ldu       <u000E              Get ptr to L323F
+                    ldu       <JmpTblPtr              Get ptr to StmtJmpBase
                     ldd       d,u                 Get offset
                     jmp       d,u                 Jump to that routine
 
-IFSTM               jsr       <u0016
+IFSTM               jsr       <JmpOpcode
                     tst       2,y           Test result
                     beq       GTOSTM
                     leax      3,x           Move I-Code ptr
@@ -7831,36 +7835,36 @@ IFSTM               jsr       <u0016
 * (orig: EIFSTM)
                     leax      1,x           Skip line refernce TOKEN
 GTOSTM               ldd       ,x
-                    addd      <u005E        Make offset a ptr
+                    addd      <ModExecAddr        Make offset a ptr
                     tfr       d,x           Move to I-Code ptr
                     rts
 
-L33D3               leax      1,x
+SkipOneByte               leax      1,x
                     rts
 
 * UNTIL
-WHLSTM               jsr       <u0016
+WHLSTM               jsr       <JmpOpcode
                     tst       2,y           Check result
                     beq       GTOSTM               False, go back
                     leax      3,x           Skip goto & following (do, then)
                     rts
 
 * NEXT routine
-L33E7               leay      <L33DF,pc           Point to table
-L33EA               ldb       ,x+                 Get byte
+NextDispatch               leay      <NextJmpTbl,pc           Point to table
+NextGetJmpOff               ldb       ,x+                 Get byte
                     ldb       b,y                 Get jump offset
-                    ldu       <u0031              Get Base address for variable storage
+                    ldu       <VarStorePtr              Get Base address for variable storage
                     jmp       b,y                 Jump to appropriate routine
 
 FOR1IN               ldd       ,x
                     leay      d,u
-                    bra       L3410
+                    bra       NxtIntCheckTo
 
 NXT1IN               ldd       ,x
                     leay      d,u           Make offset into ptr
                     ldd       4,x
                     lda       d,u           Test increment sign
-                    bpl       L3410
+                    bpl       NxtIntCheckTo
                     bra       NXTIN2
 
 * Integer STEP 1
@@ -7873,11 +7877,11 @@ NXTIN1               ldd       ,x                  Get offset to current FOR/NEX
                     addd      #$0001
                     endc
                     std       ,y                  Save it back
-L3410               ldd       2,x                 Get offset to TO variable
+NxtIntCheckTo               ldd       2,x                 Get offset to TO variable
                     leax      6,x                 Eat temp var
                     ldd       d,u                 Get TO variable
                     cmpd      ,y                  We hit it yet?
-                    bge       GTOSTM               Yes, do X=[,x]+[u005E] & return
+                    bge       GTOSTM               Yes, do X=[,x]+[ModExecAddr] & return
                     leax      3,x                 Eat 3 bytes from X & return
                     rts
 
@@ -7898,26 +7902,26 @@ NXTINT               ldd       ,x                  Y=ptr to current FOR/NEXT INT
                     else
                     tst       ,s+           Going up or down?
                     endc
-                    bpl       L3410               No, go use normal compare routine
+                    bpl       NxtIntCheckTo               No, go use normal compare routine
 NXTIN2               ldd       2,x                 Get offset to TO value
                     leax      6,x                 Eat temp var
                     ldd       d,u                 Get TO value
                     cmpd      ,y                  Hit TO value yet?
-                    ble       GTOSTM               Yes, do X=[,x]+[u005E] & return
+                    ble       GTOSTM               Yes, do X=[,x]+[ModExecAddr] & return
                     leax      3,x                 Eat 3 bytes from X & return
                     rts
 
-FOR1RL               ldy       <u0046
+FOR1RL               ldy       <SubrStkPtr
                     clrb
                     bsr       NXTRLA
                     bra       NXTRL1
 
-L3446               ldy       <u0046
+ForRlNxStepAlt               ldy       <SubrStkPtr
                     clrb
                     bsr       NXTRLA
                     ldd       4,x           Get increment offset
                     addd      #4            Get offset of increment end
-                    ldu       <u0031        Get storage base
+                    ldu       <VarStorePtr        Get storage base
                     lda       d,u           Get sign byte
                     lsra                    Sign
                     bcc       NXTRL1
@@ -7926,21 +7930,21 @@ L3446               ldy       <u0046
 * NEXT table
 * IF some of these entry points are moved before this table, 8 bit addressing
 * may be used instead of 16
-L33DF               equ       *
-                    fcb       NXTIN1-L33DF         Integer STEP 1
-                    fcb       NXTINT-L33DF         Integer STEP <>1
-                    fcb       NXT1RL-L33DF         Real STEP 1
-                    fcb       NXTRL-L33DF         Real STEP <>1
+NextJmpTbl               equ       *
+                    fcb       NXTIN1-NextJmpTbl         Integer STEP 1
+                    fcb       NXTINT-NextJmpTbl         Integer STEP <>1
+                    fcb       NXT1RL-NextJmpTbl         Real STEP 1
+                    fcb       NXTRL-NextJmpTbl         Real STEP <>1
 
-* Jump table for FOR (relative to L34E5) (change to 8 bit if possible)
-L34E5               equ       *
-                    fcb       FOR1IN-L34E5         $ff0e   INT step 1
-                    fcb       NXT1IN-L34E5         $ff14   INT step <>1
-                    fcb       FOR1RL-L34E5         $ff59   REAL step 1
-                    fcb       L3446-L34E5         $ff61   REAL step <>1
+* Jump table for FOR (relative to ForJmpTbl) (change to 8 bit if possible)
+ForJmpTbl               equ       *
+                    fcb       FOR1IN-ForJmpTbl         $ff0e   INT step 1
+                    fcb       NXT1IN-ForJmpTbl         $ff14   INT step <>1
+                    fcb       FOR1RL-ForJmpTbl         $ff59   REAL step 1
+                    fcb       ForRlNxStepAlt-ForJmpTbl         $ff61   REAL step <>1
 
 * REAL NEXT STEP 1
-NXT1RL               ldy       <u0046              ??? Get subroutine stack ptr
+NXT1RL               ldy       <SubrStkPtr              ??? Get subroutine stack ptr
                     clrb
                     bsr       NXTRLA         Move counter to opstack
                     leay      -6,y                Make room for REAL variable
@@ -7950,7 +7954,7 @@ NXT1RL               ldy       <u0046              ??? Get subroutine stack ptr
                     clrb
                     std       3,y
                     sta       5,y
-                    lbsr      L3FB1               Increment counter (Do REAL add)
+                    lbsr      RealAdd               Increment counter (Do REAL add)
                     ifne      H6309
                     ldq       1,y                 Copy REAL # from 1,y to ,u
                     stq       ,u
@@ -7972,7 +7976,7 @@ NXTRL1               ldb       #2
                     rts
 
 NXTRLA               ldd       b,x
-                    addd      <u0031              Add to ptr to start of variable storage
+                    addd      <VarStorePtr              Add to ptr to start of variable storage
                     tfr       d,u
                     leay      -6,y                Make room for variable
                     lda       #$02                Force it to REAL type
@@ -7989,16 +7993,16 @@ NXTRLA               ldd       b,x
                     endc
                     rts
 
-NXTRL               ldy       <u0046
+NXTRL               ldy       <SubrStkPtr
                     clrb
                     bsr       NXTRLA         Move counter to opstack
-                    stu       <u00D2        Save counter addr
+                    stu       <SymbolPtr        Save counter addr
                     ldb       #$04
                     bsr       NXTRLA         Move increment to opstack
                     lda       4,u           Get sign byte
-                    sta       <u00D1
-                    lbsr      L3FB1               Inc current FOR/NEXT value by STEP (Do REAL Add)
-                    ldu       <u00D2        Get counter address
+                    sta       <VarTypeCode
+                    lbsr      RealAdd               Inc current FOR/NEXT value by STEP (Do REAL Add)
+                    ldu       <SymbolPtr        Get counter address
                     ifne      H6309
                     ldq       1,y
                     stq       ,u
@@ -8010,7 +8014,7 @@ NXTRL               ldy       <u0046
                     endc
                     lda       5,y
                     sta       4,u
-                    lsr       <u00D1              Check sign
+                    lsr       <VarTypeCode              Check sign
                     bcc       NXTRL1               Positive, use that direction check
 * Decrementing REAL STEP value
 NXTRL2               ldb       #$02
@@ -8021,15 +8025,15 @@ NXTRL2               ldb       #$02
                     leax      3,x           Skip loop addr. & stmt term.
 NXTR30               rts
 
-FORSTM               ldb       <u0034              Get flag byte
+FORSTM               ldb       <SigFlag              Get flag byte
                     bitb      #$01                Least sig bit set?
                     beq       NXTR30               No, return
-                    jsr       <u001B
+                    jsr       <JmpVect1
                     fcb       $1c
 
 FORS20               ldb       ,x+
                     cmpb      #$82
-                    beq       L3515
+                    beq       ForRealInit
                     bsr       RSTS10         Init counter
                     bsr       FORINT         Init terminal
                     ldb       -1,x          Get next TOKEN
@@ -8037,18 +8041,18 @@ FORS20               ldb       ,x+
                     bne       FORS10
                     bsr       FORINT         Init increment
 FORS10               lbsr      GTOSTM
-                    leay      >L34E5,pc           Point to table
-                    lbra      L33EA         Dispatch to assignment
+                    leay      >ForJmpTbl,pc           Point to table
+                    lbra      NextGetJmpOff         Dispatch to assignment
 
 FORINT               ldd       ,x++
-                    addd      <u0031        Make offset into ptr
+                    addd      <VarStorePtr        Make offset into ptr
                     pshs      d             Save it
-                    jsr       <u0016        Process format string
+                    jsr       <JmpOpcode        Process format string
                     ldd       1,y
                     std       [,s++]        Store it
                     rts
 
-L3515               bsr       L356F
+ForRealInit               bsr       ForRealSetup
                     bsr       FORRL         Init terminal
                     ldb       -$01,x
                     cmpb      #$47
@@ -8057,21 +8061,21 @@ L3515               bsr       L356F
                     bra       FORS10
 
 FORRL               ldd       ,x++
-                    addd      <u0031
+                    addd      <VarStorePtr
                     pshs      d             Save it
-                    jsr       <u0016        Evaluate expression
+                    jsr       <JmpOpcode        Evaluate expression
                     bra       ASGRL         Store result
 
 * LET
-L352D               jsr       <u0016              Get var type
-L352F               cmpa      #4                  Numeric or Boolean?
-                    blo       L3537               Yes, skip ahead
+LetStmt               jsr       <JmpOpcode              Get var type
+LetCheckType               cmpa      #4                  Numeric or Boolean?
+                    blo       LetSaveType               Yes, skip ahead
                     pshs      u                   Preserve U
-                    ldu       <u003E              ??? Get max var size for string or array
-L3537               pshs      u,a                 Save Size or Ptr & var type
+                    ldu       <MaxStrSize              ??? Get max var size for string or array
+LetSaveType               pshs      u,a                 Save Size or Ptr & var type
                     leax      1,x           Skip assignment TOKEN
-                    jsr       <u0016
-L353D               puls      a
+                    jsr       <JmpOpcode
+LetEvalResult               puls      a
                     lsla                          x2 for offset into branch table
                     leau      <ASGBRA,pc           Point to branch table
                     jmp       a,u                 Jump to routine
@@ -8084,30 +8088,30 @@ ASGBRA               bra       ASGBYT               LET - Byte
                     bra       ASGRCD               Let - Array
 
 SBYTAS               ldd       ,x
-                    addd      <u0031        make offset into ptr
+                    addd      <VarStorePtr        make offset into ptr
                     pshs      d
                     leax      3,x           move I-Code ptr
-                    jsr       <u0016        Evaluate expression
+                    jsr       <JmpOpcode        Evaluate expression
 * LET - Byte/Boolean
 ASGBYT               ldb       2,y                 Get byte/boolean value
                     stb       [,s++]              Save at address on stack, eat stack & return
                     rts
 
 RSTS10               ldd       ,x
-                    addd      <u0031
+                    addd      <VarStorePtr
                     pshs      d
                     leax      3,x
-                    jsr       <u0016
+                    jsr       <JmpOpcode
 * LET - Integer
 ASGINT               ldd       1,y                 Get integer value
                     std       [,s++]              Save at address on stack, eat stack & return
                     rts
 
-L356F               ldd       ,x
-                    addd      <u0031
+ForRealSetup               ldd       ,x
+                    addd      <VarStorePtr
                     pshs      d
                     leax      3,x
-                    jsr       <u0016        Evaluate expression
+                    jsr       <JmpOpcode        Evaluate expression
 * LET - Real
 ASGRL               puls      u
                     ldd       1,y                 Copy 5 bytes from Y+1 to U
@@ -8119,33 +8123,33 @@ ASGRL               puls      u
                     rts
 
 SSTRAS               ldd       ,x
-                    addd      <u0066        Make offset into ptr
+                    addd      <SymTblSize        Make offset into ptr
                     tfr       d,u
                     ldd       ,u            Get storage offset
-                    addd      <u0031        Make offset into ptr
+                    addd      <VarStorePtr        Make offset into ptr
                     pshs      d             Save it
                     ldd       2,u           Get string max length
                     pshs      d             Save it
                     leax      3,x
-                    jsr       <u0016        Evaluate expression
+                    jsr       <JmpOpcode        Evaluate expression
 * LET - String
 ASGSTR               puls      u,d
                     tstb
                     bne       ASGSR0
                     deca
-ASGSR0               sta       <u003E
+ASGSR0               sta       <MaxStrSize
                     ldy       1,y           Get result addr
-                    sty       <u0048        Clean string stack
+                    sty       <StrStkPtr        Clean string stack
 * Block copy up to $FF (string terminator)
 ASGSR1               lda       ,y+
                     sta       ,u+           Store it
                     cmpa      #$FF                End of string?
-                    beq       L35B9               Yes, skip ahead
+                    beq       AsgStrDone               Yes, skip ahead
                     decb                          Dec string size counter
                     bne       ASGSR1               More left, continue copying
-                    dec       <u003E
+                    dec       <MaxStrSize
                     bpl       ASGSR1
-L35B9               clra                    Carry
+AsgStrDone               clra                    Carry
                     rts
 
 * LET - Array
@@ -8155,45 +8159,45 @@ ASGRCD               puls      u,d
                     ldd       3,y           Get result size
 POKSTM               ldy       1,y
                     exg       y,u
-                    jsr       <u001E              Return from routine
+                    jsr       <JmpVect2              Return from routine
                     fcb       $06
 
-L35D2               jsr       <u0016
+PokeStmt               jsr       <JmpOpcode
                     ldd       1,y
                     pshs      d             Save it
-                    jsr       <u0016
+                    jsr       <JmpOpcode
                     ldb       2,y
                     stb       [,s++]
                     rts
 
 STPSTM               lbsr      PRTSTM
-                    lda       <u002E
-                    sta       <u007F
-                    leax      >L32CB,pc           Point to 'STOP encountered'
+                    lda       <StdoutPath
+                    sta       <CurrChanPath
+                    leax      >StopMsg,pc           Point to 'STOP encountered'
                     lbsr      STROUT         Float it
-                    lbra      L1CC7         Call command to exit
+                    lbra      Vect1Fn6         Call command to exit
 
-L35F3               lbsr      PRTSTM
-L3233               jsr       <u001B              Use module header jump vector #1
+PrintThenFn18               lbsr      PRTSTM
+Vect1Fn18               jsr       <JmpVect1              Use module header jump vector #1
                     fcb       $18
 
 GSBSTM               ldd       ,x
                     leax      3,x           Skip offset & statement end
-GSBST1               ldy       <u0031
+GSBST1               ldy       <VarStorePtr
                     ldu       <$14,y        Get subroutine stack ptr
-                    cmpu      <u004A        Check for overflow
+                    cmpu      <ICodeEndPtr        Check for overflow
                     bhi       GSBST2         bra if ok
                     ldb       #$35                Subroutine stack overflow error
                     lbra      EXCERR
 
 GSBST2               stx       ,--u
                     stu       <$14,y        Save sub stack ptr
-                    stu       <u0046        Reset opstack
-                    addd      <u005E        Make offset a ptr
+                    stu       <SubrStkPtr        Reset opstack
+                    addd      <ModExecAddr        Make offset a ptr
                     tfr       d,x           Move to I-Code ptr
                     rts
 
-RETSTM               ldy       <u0031
+RETSTM               ldy       <VarStorePtr
                     cmpy      <$14,y        Are there any return addrs?
                     bhi       RETST1         bra if so
                     ldb       #$36                Subroutine stack underflow error
@@ -8202,13 +8206,13 @@ RETSTM               ldy       <u0031
 RETST1               ldu       <$14,y
                     ldx       ,u++          Pop return addr
                     stu       <$14,y        Save sub stack ptr
-                    stu       <u0046        Reset opstack
+                    stu       <SubrStkPtr        Reset opstack
                     rts
 
 ONSTM               ldd       ,x
                     cmpa      #$1E          is this ON ERROR?
                     beq       ONSTM2         Yes; go init error address
-                    jsr       <u0016        Get dispatch value
+                    jsr       <JmpOpcode        Get dispatch value
                     ldd       ,x            Get count (of line nums)
                     ifne      H6309
                     lsld
@@ -8245,17 +8249,17 @@ ONSTM               ldd       ,x
                     cmpb      #$22          is this ON .. GOSUB?
                     puls      x,d           Get registers ready
                     beq       GSBST1         bra if ON .. GOSUB
-                    addd      <u005E        Make offset into ptr
+                    addd      <ModExecAddr        Make offset into ptr
                     tfr       d,x           Use as I-Code ptr
-L366A               rts
+OnStmtDone               rts
 
 ONSTM1               puls      pc,x
 
-ONSTM2               ldu       <u0031
+ONSTM2               ldu       <VarStorePtr
                     cmpb      #$20          is it ON ERROR GOTO?
                     bne       ONSTM3         bra if not
                     ldd       2,x           Get I-Code offset
-                    addd      <u005E        Make offset into ptr
+                    addd      <ModExecAddr        Make offset into ptr
                     std       <$11,u
                     lda       #$01          Mark error trap armed
                     sta       <$13,u
@@ -8271,7 +8275,7 @@ CRTSTM               bsr       OPNSUB
                     os9       I$Create            Create the file
                     bra       OPNS10
 
-L3691               bsr       OPNSUB
+OpenFileStmt               bsr       OPNSUB
                     os9       I$Open        Put record
 OPNS10               lbcs      EXCERR
                     puls      u,b           Get TYPE & address
@@ -8284,7 +8288,7 @@ OPNS20               sta       ,u
 OPNSUB               leax      1,x
                     lbsr      ASGVAR         Get variable address
                     leax      1,x           Skip comma
-                    jsr       <u0016        Get path name
+                    jsr       <JmpOpcode        Get path name
                     lda       #$03
                     cmpb      #$4A          is there declared mode?
                     bne       OPNS30         bra if not
@@ -8295,57 +8299,57 @@ OPNS30               ldu       3,s
                     jmp       ,u
 
 SEKSTM               lbsr      SETCHL
-                    jsr       <u0016        Get position
+                    jsr       <JmpOpcode        Get position
                     ldb       #$0E          Set code
-                    lbsr      L3230
+                    lbsr      CallJmpVect6Fn2
                     lbcs      EXCER1         bra if error
 * (orig: NOCHG)
                     rts
 
 * Input prompt?
-L36CE               fcc       '? '
+InputPromptStr               fcc       '? '
                     fcb       $ff
 
 * Illegal input error message
-L36D1               fcc       '** Input error - reenter **'
+InputErrStr               fcc       '** Input error - reenter **'
                     fcb       $0d,$ff
 
-INPSTM               lda       <u002E
+INPSTM               lda       <StdoutPath
                     lbsr      SETCHL         Set path number
                     lda       #$2C          use comma as item separator
-                    sta       <u00DD        set item separator
+                    sta       <ItemSepChar        set item separator
                     pshs      x             Save x
 INPS10               ldx       ,s
                     ldb       ,x            Get next TOKEN
                     cmpb      #$90          is there prompt?
-                    bne       L3709         No; use default
-                    jsr       <u0016        Evaluate it
+                    bne       UseDefaultPrompt         No; use default
+                    jsr       <JmpOpcode        Evaluate it
 * (orig: INPS20)
                     pshs      x             Save I-Code ptr
                     ldx       1,y           Get ptr to string
                     bra       INPS30
 
-L3709               pshs      x
-                    leax      <L36CE,pc           Point to '? '
+UseDefaultPrompt               pshs      x
+                    leax      <InputPromptStr,pc           Point to '? '
 INPS30               bsr       STROUT
                     puls      x             Restore I-Code ptr
-                    lda       <u007F
-                    cmpa      <u002E        proper child dead?
+                    lda       <CurrChanPath
+                    cmpa      <StdoutPath        proper child dead?
                     bne       RDST05
-                    lda       <u002D
-                    sta       <u007F
+                    lda       <StdinPath
+                    sta       <CurrChanPath
 RDST05               ldb       #$06
-L371E               bsr       L3230
+DoReadLn               bsr       CallJmpVect6Fn2
                     bcc       INPS40         ..continue if no error
                     cmpb      #$03          Keyboard interrupt?
                     lbne      EXCER1
                     lbsr      DEBUG         print line, call debugger
-                    clr       <u0036              Clear out error code
+                    clr       <ErrCode              Clear out error code
                     bra       INPS10         Re-issue input request
 
 INPS40               bsr       INPVAR
                     bcc       INPS50         bra if so
-                    leax      <L36D1,pc           Print 'Input error re-enter'
+                    leax      <InputErrStr,pc           Print 'Input error re-enter'
                     bsr       STROUT         Print error msg
                     bra       INPS10         Check it out
 
@@ -8357,17 +8361,17 @@ INPS50               ldb       ,x+
 INPVAR               bsr       ASGVAR
                     ldb       ,s            Get TYPE
                     addb      #$07          Get code for input of TYPE
-                    ldy       <u0046        Init opstack ptr
-                    bsr       L3230         Set up for system call
-                    lbcc      L353D         Go dispatch for assignment
+                    ldy       <SubrStkPtr        Init opstack ptr
+                    bsr       CallJmpVect6Fn2         Set up for system call
+                    lbcc      LetEvalResult         Go dispatch for assignment
 ***************
 * Bad Input Handler
 * (orig: BADLIN)
                     lda       ,s            Get TYPE
 BADLI1               cmpa      #$04
-                    bcs       L375B         is simple; do normal clean up
+                    bcs       BadInputClean         is simple; do normal clean up
                     leas      2,s           Remove extra bytes
-L375B               leas      3,s
+BadInputClean               leas      3,s
                     coma                    Carry
                     rts
 
@@ -8377,76 +8381,76 @@ STROUT               pshs      y
                     leas      -6,s
                     leay      ,s
                     stx       1,y
-                    ldd       <u0080        Reset I/O buffer ptr
-                    std       <u0082
+                    ldd       <TmpBufBase        Reset I/O buffer ptr
+                    std       <TmpBufCur
                     ldb       #$05
-                    bsr       L3230
+                    bsr       CallJmpVect6Fn2
                     clrb
-                    bsr       L3230               call L5084, function 2, sub-function 0 (B)
+                    bsr       CallJmpVect6Fn2               call Vect6Dispatch, function 2, sub-function 0 (B)
                     leas      6,s           Clean up stack
                     puls      pc,y
 
-L3230               jsr       <u002A              Use module header jump vector #6
+CallJmpVect6Fn2               jsr       <JmpVect6              Use module header jump vector #6
                     fcb       $02                 Function code
 
 ASGVAR               lda       ,x+
                     cmpa      #$0E          is it complex assignment?
-                    bne       L3783         No; do simple
-                    jsr       <u0016        Evaluate it
-                    bra       L37A8
+                    bne       AsgvSimple         No; do simple
+                    jsr       <JmpOpcode        Evaluate it
+                    bra       AsgvReturn
 
-L3783               suba      #$80
+AsgvSimple               suba      #$80
                     cmpa      #$04          What type?
-                    blo       L379E
+                    blo       AsgvLoadOff
                     beq       ASGV30         Yes; done
-                    lbsr      L3224         Must be parameter or unbound variable
-                    bra       L37A8
+                    lbsr      CallJmpVect5Fn2         Must be parameter or unbound variable
+                    bra       AsgvReturn
 
 ASGV30               ldd       ,x++
-                    addd      <u0066
+                    addd      <SymTblSize
                     tfr       d,u
                     ldd       2,u
-                    std       <u003E        Save it
+                    std       <MaxStrSize        Save it
                     ldd       ,u            Get storage offset
                     bra       ASGV40
 
-L379E               ldd       ,x++
-ASGV40               addd      <u0031
+AsgvLoadOff               ldd       ,x++
+ASGV40               addd      <VarStorePtr
                     tfr       d,u
                     lda       -3,x          Get TOKEN
                     suba      #$80          Change TOKEN to TYPE
-L37A8               puls      y
+AsgvReturn               puls      y
                     cmpa      #$04          need to save size?
-                    blo       L37B2
+                    blo       AsgvSaveAddr
                     pshs      u
-                    ldu       <u003E        get size
-L37B2               pshs      u,a
+                    ldu       <MaxStrSize        get size
+AsgvSaveAddr               pshs      u,a
                     jmp       ,y            Return
 
 SETCHL               ldb       ,x
                     cmpb      #$54          is it path token?
                     bne       SETC10         bra if not
                     leax      1,x
-                    jsr       <u0016        Process path number expression
+                    jsr       <JmpOpcode        Process path number expression
                     cmpb      #$4B          Skip comas if present
                     beq       SETC05         bra if coma last
                     leax      -1,x          Compensate for eval
 SETC05               lda       2,y
-SETC10               sta       <u007F
+SETC10               sta       <CurrChanPath
                     rts
 
 RDSTM               ldb       ,x
                     cmpb      #$54
                     bne       RDST30
                     bsr       SETCHL         Set path number
-                    clr       <u00DD        use zero as item separator
+                    clr       <ItemSepChar        use zero as item separator
                     cmpb      #$4B          is it coma?
                     bne       PUSNG2         bra if not
                     leax      -1,x          Back up to it
 ***************
 * List Process Loop
-PUSNG2               ldb       #$06                Call L5084, function 2, sub-function 6 (B)
-                    bsr       L3230               (Do ReadLn into temp buff, max of 256 bytes)
+PUSNG2               ldb       #$06                Call Vect6Dispatch, function 2, sub-function 6 (B)
+                    bsr       CallJmpVect6Fn2               (Do ReadLn into temp buff, max of 256 bytes)
                     bcc       RDST20               No error in ReadLn, skip ahead
                     cmpb      #E$PrcAbt           ??? Process aborted error?
                     beq       PUSNG2               Yes, try to do ReadLn again
@@ -8459,12 +8463,12 @@ RDST20               ldb       ,x+
                     beq       RDST10
                     rts
 
-RDST30               bsr       L384F
+RDST30               bsr       CheckEolToken
                     beq       SKPDAT
-L37F9               bsr       RDDATA
+ReadDataLoop               bsr       RDDATA
                     ldb       ,x+
                     cmpb      #$4B
-                    beq       L37F9
+                    beq       ReadDataLoop
                     rts
 
 RDDATA               lbsr      ASGVAR
@@ -8473,66 +8477,66 @@ RDDATA               lbsr      ASGVAR
                     bne       RDDAT1
                     inca
 RDDAT1               cmpa      ,y
-                    lbeq      L353D
+                    lbeq      LetEvalResult
                     cmpa      #$02
-                    blo       L381C
-                    beq       L3828
+                    blo       RddatIntFx
+                    beq       RddatRealExpr
 RDDAT2               ldb       #$47                Illegal Expression Type
                     bra       RDDATErr
 
-L381C               lda       ,y                  Get var type
+RddatIntFx               lda       ,y                  Get var type
                     cmpa      #$02                Real #?
                     bne       RDDAT2               No, exit with Illegal Expression Type erro
                     bsr       ASGSTM               Call FIX (REAL to INT) routine
-                    lbra      L353D
+                    lbra      LetEvalResult
 
-ASGSTM               jsr       <u0027
+ASGSTM               jsr       <JmpVect5
                     fcb       $0c
-L322A               jsr       <u0027
+CallJmpVect5FnE               jsr       <JmpVect5
                     fcb       $0e
 
-L3828               cmpa      ,y
+RddatRealExpr               cmpa      ,y
                     bcs       RDDAT2         ..No
-                    bsr       L322A
-                    lbra      L353D
+                    bsr       CallJmpVect5FnE
+                    lbra      LetEvalResult
 
 SKPDAT               leax      1,x
 EVLDAT               pshs      x
-                    ldx       <u0039
+                    ldx       <StrWorkPtr
                     bne       EVLD10
                     ldb       #$4F                Missing Data Statement error
 RDDATErr               lbra      EXCERR
 
-EVLD10               jsr       <u0016
+EVLD10               jsr       <JmpOpcode
                     cmpb      #$4B
                     beq       EVLD20
                     ldd       ,x            Get descr area offset
-                    addd      <u005E
+                    addd      <ModExecAddr
                     tfr       d,x
-EVLD20               stx       <u0039
+EVLD20               stx       <StrWorkPtr
                     puls      pc,x
 
-L384F               cmpb      #$3F
+CheckEolToken               cmpb      #$3F
                     beq       EOLT99
                     cmpb      #$3E
 EOLT99               rts
 
-PRTSTM               lda       <u002E
+PRTSTM               lda       <StdoutPath
                     lbsr      SETCHL         Set sign
-                    ldd       <u0080
-                    std       <u0082
+                    ldd       <TmpBufBase
+                    std       <TmpBufCur
                     ldb       ,x+           Get status code
 * (orig: PRTST3)
                     cmpb      #$49
                     beq       PUSING
-PRTST2               bsr       L384F
+PRTST2               bsr       CheckEolToken
                     beq       PRTST7
-L3869               cmpb      #$4B
-                    beq       L387F
+PrintListCheck               cmpb      #$4B
+                    beq       PrintSepCR
                     cmpb      #$51
                     beq       PRTST6
                     leax      -1,x
-                    jsr       <u0016
+                    jsr       <JmpOpcode
 * (orig: PRTST4)
                     ldb       ,y
                     addb      #$01
@@ -8541,67 +8545,67 @@ L3869               cmpb      #$4B
                     ldb       -1,x
                     bra       PRTST2
 
-L387F               ldb       #$0D
+PrintSepCR               ldb       #$0D
                     bsr       IODISP
 PRTST6               ldb       ,x+
-                    bsr       L384F
-                    bne       L3869
-                    bra       L388F
+                    bsr       CheckEolToken
+                    bne       PrintListCheck
+                    bra       PrintFlushBuf
 
-PRTST7               ldb       #$0C                L5084, function 2, sub-function C
+PRTST7               ldb       #$0C                Vect6Dispatch, function 2, sub-function C
                     bsr       IODISP               (WritLn a Carriage return)
 
-L388F               clrb                          L5084, function 2, sub-function 0
+PrintFlushBuf               clrb                          Vect6Dispatch, function 2, sub-function 0
                     bsr       IODISP               (WritLn the temp buffer)
-                    lda       <u00DE
-                    clr       <u00DE
+                    lda       <SavedChar
+                    clr       <SavedChar
                     tsta
                     bne       IOError
 PRTST9               rts
 
-IODISP               lbsr      L3230               Call <u002A, function 2
+IODISP               lbsr      CallJmpVect6Fn2               Call <JmpVect6, function 2
                     bcc       PRTST9               If no error, return
 IOError               lbra      EXCER1               Error from WritLn, report it
 
-PUSING               jsr       <u0016
-                    ldd       <u004A
-                    std       <u008E
-                    std       <u008C
-                    ldu       <u0046
+PUSING               jsr       <JmpOpcode
+                    ldd       <ICodeEndPtr
+                    std       <FmtEndPtr
+                    std       <FmtScanPtr
+                    ldu       <SubrStkPtr
                     pshs      u,d
-                    clr       <u0094
-                    ldd       <u0048
-                    std       <u004A
-L38B5               ldb       -1,x
-                    bsr       L384F
-                    beq       L38D7
+                    clr       <RptFlag
+                    ldd       <StrStkPtr
+                    std       <ICodeEndPtr
+PrintUsingLoop               ldb       -1,x
+                    bsr       CheckEolToken
+                    beq       PrintUsingNoCR
                     ldb       ,x+
-                    bsr       L384F
+                    bsr       CheckEolToken
                     beq       PUSN25
                     leax      -1,x
                     ldb       #$11
-                    lbsr      L3230
-                    bcc       L38B5
+                    lbsr      CallJmpVect6Fn2
+                    bcc       PrintUsingLoop
                     puls      u,d
-                    std       <u004A
-                    stu       <u0046
+                    std       <ICodeEndPtr
+                    stu       <SubrStkPtr
                     bra       IOError
 
-PUSN25               leay      <L388F,pc           Point to routine
+PUSN25               leay      <PrintFlushBuf,pc           Point to routine
                     bra       PUSN35
 
-L38D7               leay      <PRTST7,pc           Point to routine
+PrintUsingNoCR               leay      <PRTST7,pc           Point to routine
 PUSN35               puls      u,d
-                    std       <u004A
-                    stu       <u0046
+                    std       <ICodeEndPtr
+                    stu       <SubrStkPtr
                     jmp       ,y
 
-WRTSTM               lda       <u002E
+WRTSTM               lda       <StdoutPath
                     lbsr      SETCHL
-                    ldu       <u0080
-                    stu       <u0082        Put str addr on opstack
+                    ldu       <TmpBufBase
+                    stu       <TmpBufCur        Put str addr on opstack
                     ldb       ,x+
-                    lbsr      L384F
+                    lbsr      CheckEolToken
                     beq       WRTS30
                     cmpb      #$4B
                     beq       WRTS20
@@ -8610,15 +8614,15 @@ WRTSTM               lda       <u002E
 
 WRTS10               clra
                     ldb       #$12
-                    lbsr      L3230         Move to opstack
+                    lbsr      CallJmpVect6Fn2         Move to opstack
                     bcs       IOError
-WRTS20               jsr       <u0016
+WRTS20               jsr       <JmpOpcode
                     ldb       ,y
                     addb      #$01
-                    lbsr      L3230
+                    lbsr      CallJmpVect6Fn2
                     bcs       IOError         bra if so
                     ldb       -$01,x
-                    lbsr      L384F         Get mod(arg,2pi)
+                    lbsr      CheckEolToken         Get mod(arg,2pi)
                     bne       WRTS10
 WRTS30               lbra      PRTST7
 
@@ -8626,7 +8630,7 @@ GETSTM               bsr       GPSET
                     os9       I$Read
                     bra       PUTSTM90
 
-L391E               bsr       GPSET
+PutStmt               bsr       GPSET
                     os9       I$Write
 PUTSTM90               leax      ,u
                     bcc       GPSE99
@@ -8638,15 +8642,15 @@ GPSET               lbsr      SETCHL
                     puls      a
                     cmpa      #$04
                     bhs       GPSE10
-                    leax      >L3B5B,pc           Point to 4 entry, 1 byte table
+                    leax      >VarSizeTable2,pc           Point to 4 entry, 1 byte table
                     ldb       a,x
                     clra
                     tfr       d,y                 Y=table entry
-                    bra       L3945
+                    bra       GpseSetupPath
 
 GPSE10               puls      y
-L3945               puls      x
-                    lda       <u007F
+GpseSetupPath               puls      x
+                    lda       <CurrChanPath
 GPSE99               rts
 
 CLSSTM               lbsr      SETCHL
@@ -8656,63 +8660,63 @@ CLSSTM               lbsr      SETCHL
                     beq       CLSSTM
                     rts
 
-L3957               ldb       ,x+
+RestoreSetPtr               ldb       ,x+
                     cmpb      #';
-                    beq       L3967
-                    ldu       <u002F              Get ptr to current procedure
+                    beq       RestoreAbsPtr
+                    ldu       <CurModPtr              Get ptr to current procedure
 * (orig: RSTS20)
                     ldd       $13,u
-L3962               addd      <u005E
-                    std       <u0039
+SetRestorePtr               addd      <ModExecAddr
+                    std       <StrWorkPtr
                     rts
 
-L3967               ldd       ,x
+RestoreAbsPtr               ldd       ,x
                     addd      #$0001        Make ptr to end of string - length pattern
                     leax      3,x
-                    bra       L3962
+                    bra       SetRestorePtr
 
-DLTSTM               jsr       <u0016
+DLTSTM               jsr       <JmpOpcode
                     pshs      x
                     ldx       1,y                 Get ptr to full pathlist
                     os9       I$Delete            Delete file
 DLTS10               bcs       PUTErr               Error, deal with it
                     puls      pc,x                Restore X & return
 
-CHDSTM               jsr       <u0016
+CHDSTM               jsr       <JmpOpcode
                     lda       #READ.              Open directory in Read mode
 CHDS10               pshs      x                   Preserve X
                     ldx       1,y                 Get ptr to full path list
                     os9       I$ChgDir            Change directory
                     bra       DLTS10
 
-L398A               jsr       <u0016
+ChxdStmt               jsr       <JmpOpcode
                     lda       #EXEC.              Execution directory
                     bra       CHDS10               Go change execution directory
 
 SPATH               lbsr      ASGVAR
-                    ldy       <u0046        Get opstack ptr
+                    ldy       <SubrStkPtr        Get opstack ptr
                     leay      -6,y
-                    ldb       <u007F
+                    ldb       <CurrChanPath
                     clra
                     std       1,y
-                    lbra      L353D
+                    lbra      LetEvalResult
 
-CHNSTM               jsr       <u0016
+CHNSTM               jsr       <JmpOpcode
                     ldy       1,y                 Get what will be param area ptr
                     pshs      u,y,x
                     bsr       SYSSTM
                     puls      u,y,x
                     bsr       SYSSUB               Set regs for chain to SHELL
-                    sts       <u00B1              Save stack ptr
-                    lds       <u0080              Get other stack ptr
+                    sts       <ICodeScanFlag              Save stack ptr
+                    lds       <TmpBufBase              Get other stack ptr
                     os9       F$Chain             Chain to other program
-                    lds       <u00B1              Chain obviously didn't work, get old SP back
+                    lds       <ICodeScanFlag              Chain obviously didn't work, get old SP back
                     bra       EXCERR               Process error code
 
-SYSSTM               jsr       <u001B
+SYSSTM               jsr       <JmpVect1
                     fcb       $0e
 
-L39BC               jsr       <u0016
+ShellStmt               jsr       <JmpOpcode
                     pshs      u,x
                     ldy       1,y
                     bsr       SYSSUB               Do stuff & point X to 'shell'
@@ -8720,24 +8724,24 @@ L39BC               jsr       <u0016
                     os9       F$Fork              Fork a shell
                     bcs       EXCERR               If error, go to error routine
                     pshs      a                   Save process #
-L39CC               os9       F$Wait              Wait until child process is done
+ShellWaitLoop               os9       F$Wait              Wait until child process is done
                     cmpa      ,s                  Got wakeup signal, was it our child?
-                    bne       L39CC               No, keep waiting
+                    bne       ShellWaitLoop               No, keep waiting
                     leas      1,s                 Yes, eat process # off of stack
                     tstb                          Error?
                     bne       EXCERR               Yes, go to error routine
                     puls      pc,u,x              No, restore regs & return
 
-L39DA               fcc       'SHELL'
+ShellName               fcc       'SHELL'
                     fcb       C$CR
 
 * Entry: Y=Ptr to parameter area
-SYSSUB               ldx       <u0048
+SYSSUB               ldx       <StrStkPtr
                     lda       #C$CR
                     sta       -1,x
-* Should be SUBR y,x / TFR y,u / TFR x,y / LEAX <L39DA,pc / clrd / RTS
+* Should be SUBR y,x / TFR y,u / TFR x,y / LEAX <ShellName,pc / clrd / RTS
                     tfr       x,d
-                    leax      <L39DA,pc           Point to 'Shell'
+                    leax      <ShellName,pc           Point to 'Shell'
                     leau      ,y                  Point U to parameter area
                     pshs      y
                     subd      ,s++
@@ -8746,42 +8750,42 @@ SYSSUB               ldx       <u0048
                     clrb                          Data area size to 0 pages
                     rts
 
-ERRSTM               jsr       <u0016
+ERRSTM               jsr       <JmpOpcode
                     ldb       2,y           Zero divisor error
 * Error routine from forking a shell?
-EXCERR               stb       <u0036              Save error code
-EXCER1               ldu       <u0031
+EXCERR               stb       <ErrCode              Save error code
+EXCER1               ldu       <VarStorePtr
                     beq       EXCER4
                     tst       <$13,u        Test divisor
                     beq       EXCER2         ..No
                     lds       5,u
                     ldx       <$11,u
                     ldd       <$14,u
-                    std       <u0046
+                    std       <SubrStkPtr
 * (orig: BYESTM)
                     lbra      STMLUP
 
 EXCER2               bsr       DEBUG
                     bsr       TOFSTM
-                    lbra      L1CC7
+                    lbra      Vect1Fn6
 
 * Entry: B=Error code
-EXCER4               lbsr      L1CC1               Print error message
-                    lbra      L1CC7
+EXCER4               lbsr      Vect1Fn2               Print error message
+                    lbra      Vect1Fn6
 
-L3A21               fcb       $0E                 Display Alpha code (for VDGInt screen)
+AlphaScreenCode               fcb       $0E                 Display Alpha code (for VDGInt screen)
                     fcb       $ff                 String terminator
 
-DEBUG               leax      <L3A21,pc           Point to force alpha string code
+DEBUG               leax      <AlphaScreenCode,pc           Point to force alpha string code
                     lbsr      STROUT               Go print it out to shut off any VDGInt gfx screen
-                    ldx       <u005C
+                    ldx       <ICodeCurPtr
                     leay      ,x
-                    bsr       L3218
-                    clr       <u0074        Clear x coordinate sign
-                    lbsr      L3236         Return pi/2
-                    ldb       <u0036              Get error code
-                    lbsr      L1CC1               Print error message
-                    jsr       <u001B              Call function & return from there
+                    bsr       Vect1Fn10
+                    clr       <IndentDepth        Clear x coordinate sign
+                    lbsr      Vect1Fn16         Return pi/2
+                    ldb       <ErrCode              Get error code
+                    lbsr      Vect1Fn2               Print error message
+                    jsr       <JmpVect1              Call function & return from there
                     fcb       $18
 
 * BASE 0
@@ -8791,24 +8795,24 @@ B0STM               clrb                          Save 0 in <42, incx, return
 * BASE 1
 B1STM               ldb       #1                  Save 1 in <42, incx, return
 BASSTM               clra
-                    std       <u0042
+                    std       <ArrayBase
                     leax      1,x
                     rts
 
-L3218               jsr       <u001B
+Vect1Fn10               jsr       <JmpVect1
                     fcb       $10
 
 * REM/TRON/TROFF/PAUSE/RTS
 * Skip # bytes used up by REM text
-L3A48               ldb       ,x+                 Get # bytes to skip ahead
+SkipRemText               ldb       ,x+                 Get # bytes to skip ahead
                     abx                           Point X to next instruction
                     rts
 
 DIREXC               exg       x,pc                Jump to routine pointed to by X
                     rts                           If EXG X,PC done again, return from here
 
-L3A51               leay      ,x
-                    bsr       L3218
+TraceListLine               leay      ,x
+                    bsr       Vect1Fn10
                     leax      ,y
                     rts
 
@@ -8819,50 +8823,50 @@ DEGSTM               lda       #$01
                     bra       RAD2
 
 RADSTM               clra
-RAD2               ldu       <u0031
+RAD2               ldu       <VarStorePtr
                     sta       1,u
                     leax      1,x
                     rts
 
 ***************
 * Set/Clear Trace Flag
-TONSTM               lda       <u0034              Get signal flags
+TONSTM               lda       <SigFlag              Get signal flags
                     bita      #$01                LSb set?
-                    bne       L3A89               Yes, exit
+                    bne       TogTraceDone               Yes, exit
                     ora       #$01                force it on
                     bra       CHGTRC
 
-TOFSTM               lda       <u0034              Get signal flags
+TOFSTM               lda       <SigFlag              Get signal flags
                     bita      #$01                Least sig set?
-                    beq       L3A89               Yes, return
+                    beq       TogTraceDone               Yes, return
                     anda      #$FE                Clear least sig
-CHGTRC               sta       <u0034              Save modified copy
-                    ldd       <u0017              Swap JMP ptrs between L3C32 & EVAL
+CHGTRC               sta       <SigFlag              Save modified copy
+                    ldd       <JmpTarget              Swap JMP ptrs between Vect1Fn1A & EVAL
                     pshs      d
-                    ldd       <u0019
-                    std       <u0017
+                    ldd       <EvalSetup
+                    std       <JmpTarget
                     puls      d
-                    std       <u0019
-L3A89               rts
+                    std       <EvalSetup
+TogTraceDone               rts
 
-L3212               jsr       <u001B              Verify/Insert module into workspace
+Vect1Fn0               jsr       <JmpVect1              Verify/Insert module into workspace
                     fcb       $00
 
 * Copy DIM'd array
-L3224               jsr       <u0027
+CallJmpVect5Fn2               jsr       <JmpVect5
                     fcb       $02
 
-L35BB               bsr       L3224
-                    lbra      L352F
+CallVect5ThenLet               bsr       CallJmpVect5Fn2
+                    lbra      LetCheckType
 
-* Entry: U=source ptr of copy (or L3224 generates U - Look up in string pool)
-L3A8A               bsr       L3224
+* Entry: U=source ptr of copy (or CallJmpVect5Fn2 generates U - Look up in string pool)
+CopyVarEntry               bsr       CallJmpVect5Fn2
                     pshs      x
-                    ldb       <u00CF
+                    ldb       <VarDefByte
                     cmpb      #$A0
                     beq       RUNS10
-                    ldy       <u0048              Get destination ptr for copy
-                    ldx       <u003E              Get max size of copy
+                    ldy       <StrStkPtr              Get destination ptr for copy
+                    ldx       <MaxStrSize              Get max size of copy
 RUNS05               lda       ,u+                 Get byte
                     leax      -1,x                Bump counter down
                     beq       RUNS07               Finished, skip ahead
@@ -8872,30 +8876,30 @@ RUNS05               lda       ,u+                 Get byte
                     lda       ,--y                Yes, get last char before terminator
 RUNS07               ora       #$80                Set hi bit on last char
                     sta       ,y                  Save it out
-                    ldy       <u0048
-                    bsr       L3212
+                    ldy       <StrStkPtr
+                    bsr       Vect1Fn0
                     bcs       BADPRC
                     leau      ,x
 RUNS10               ldd       ,u
                     bne       RUNS20
-                    ldy       <u00D2
+                    ldy       <SymbolPtr
                     leay      3,y
-                    bsr       L3212
+                    bsr       Vect1Fn0
                     bcs       BADPRC         bra if so
                     ldd       ,x            Return large number
                     std       ,u
 RUNS20               ldx       ,s
                     std       ,s
-                    ldu       <u0031
-                    lda       <u0034              Get flags
+                    ldu       <VarStorePtr
+                    lda       <SigFlag              Get flags
                     sta       ,u                  Save them
-                    ldb       <u0043
+                    ldb       <ParmPktCnt
                     stb       2,u
-                    ldd       <u004A              Get ptr to 1st free byte in I-code workspace
+                    ldd       <ICodeEndPtr              Get ptr to 1st free byte in I-code workspace
                     std       $D,u                Save it
-                    ldd       <u0040              Get ptr to end of parm packets being passed
+                    ldd       <ParmEndPtr              Get ptr to end of parm packets being passed
                     std       $F,u
-                    ldd       <u0039
+                    ldd       <StrWorkPtr
                     std       9,u
                     bsr       RPARAM
                     stx       $B,u
@@ -8915,7 +8919,7 @@ RUNS30               ldd       5,u
                     pshs      d             Save I-Code ptr
                     sts       5,u                 Save old stack ptr
                     leas      ,y                  Point stack to all the ptr/size packets for parms
-                    ldd       <u0040              Get ptr to end of parm packets @ Y
+                    ldd       <ParmEndPtr              Get ptr to end of parm packets @ Y
 * 6309: Change PSHS/SUBD to SUBR Y,D
                     ifne      H6309
                     subr      y,d                 Calc size of all parm packets being sent
@@ -8936,44 +8940,44 @@ RUNS30               ldd       5,u
 * MAYBE IT SHOULD CALL ROUTINE, MAY BE PROBLEM WITH SOME CRASHES (LIKE EMULATE)
                     leay      >EXECUT,pc           Point to routine
                     jsr       d,x                 Call ML subroutine module
-                    ldu       <u0031              Get ptr to U block of data from above
+                    ldu       <VarStorePtr              Get ptr to U block of data from above
                     lds       5,u                 Get old stack ptr back
                     puls      x                   Get original 5,u value
                     stx       5,u                 Save it back
-                    bcc       L3B3C               If no error, resume program
+                    bcc       SubrCallReturn               If no error, resume program
                     bra       RUNERR               Notify user of error from ML subroutine
 
 * BASIC09 or RUNB module subroutine call goes here
 RUNS40               lbsr      TOFSTM               If line with compiler err flg set, swap 17/19 vectors
-                    lda       <u0034              Get flags
+                    lda       <SigFlag              Get flags
                     anda      #$7F                Mask out pending signal flag
-                    sta       <u0034              Save flags back
+                    sta       <SigFlag              Save flags back
                     lbsr      EXECUT               Go check for line with compiler error/stack ovrflw
                     lda       ,u
                     bita      #$01
-                    beq       L3B3C
+                    beq       SubrCallReturn
                     lbsr      TONSTM         Get sqr(1-arg*arg)
                     lda       ,u
-                    sta       <u0034
-L3B3C               ldd       $D,u
-                    std       <u004A
+                    sta       <SigFlag
+SubrCallReturn               ldd       $D,u
+                    std       <ICodeEndPtr
                     ldd       $F,u
-                    std       <u0040              Save end of parm packets ptr
+                    std       <ParmEndPtr              Save end of parm packets ptr
                     ldd       9,u
-                    std       <u0039
+                    std       <StrWorkPtr
                     ldb       2,u
                     sex
-                    std       <u0042
+                    std       <ArrayBase
                     ldx       $3,u
                     lbsr      RUNS50
                     ldx       $B,u
-                    ldd       <u0044
-                    subd      <u004A              Subtract ptr to next free byte in workspace
-                    std       <u000C              Save # bytes free for user
+                    ldd       <StrSpaceTop
+                    subd      <ICodeEndPtr              Subtract ptr to next free byte in workspace
+                    std       <WorkspaceFree              Save # bytes free for user
                     rts
 
 * Table of size of variables
-L3B5B               fcb       1                   Byte    (type 0)
+VarSizeTable2               fcb       1                   Byte    (type 0)
                     fcb       2                   Integer (type 1)
                     fcb       5                   Real    (type 2)
                     fcb       1                   Boolean (type 3)
@@ -8988,11 +8992,11 @@ RPARAM               pshs      u
                     cmpb      #$4D
                     bne       RPAR50
                     leay      ,s                  Point Y to flag byte on stack
-L3B6C               pshs      y                   Save ptr to flag byte
+RparParamLoop               pshs      y                   Save ptr to flag byte
                     ldb       ,x
                     cmpb      #$0E
                     beq       RPAR25
-                    jsr       <u0016
+                    jsr       <JmpOpcode
                     leax      -1,x
                     cmpa      #2                  Real variable?
                     beq       RPAR15               Yes, skip ahead
@@ -9002,40 +9006,40 @@ L3B6C               pshs      y                   Save ptr to flag byte
                     std       4,y                 Duplicate it later in var packet
                     lda       ,y                  Get variable type again
 RPAR15               ldb       #6                  Get size of var packet
-                    leau      <L3B5B,pc           Point to var size table
+                    leau      <VarSizeTable2,pc           Point to var size table
                     subb      a,u                 Calculate ptr to beginning of actual var value
                     leau      b,y                 Bump U to point to first byte of actual var value
-                    stu       <u0046              ??? Save some sort of variable ptr?
+                    stu       <SubrStkPtr              ??? Save some sort of variable ptr?
                     bra       RPAR30
 
 * String being passed?
 RPAR20               ldu       1,y                 Get ptr to actual string data
-                    ldd       <u0048
-                    subd      <u004A              Subtract ptr to next free byte in workspace
-                    std       <u003E              Save result as ptr to string/complex
-                    ldd       <u0048
-                    std       <u004A              Save new ptr to next free byte in workspace
+                    ldd       <StrStkPtr
+                    subd      <ICodeEndPtr              Subtract ptr to next free byte in workspace
+                    std       <MaxStrSize              Save result as ptr to string/complex
+                    ldd       <StrStkPtr
+                    std       <ICodeEndPtr              Save new ptr to next free byte in workspace
                     lda       #4                  Variable type=String/complex
                     bra       RPAR30
 
 RPAR25               leax      1,x
-                    jsr       <u0016
+                    jsr       <JmpOpcode
 RPAR30               puls      y                   Get ptr to flag byte
                     inc       ,y                  Bump up flag
                     cmpa      #4                  Variable type numeric?
-                    blo       L3BB3               Yes, skip ahead
+                    blo       RparSaveType               Yes, skip ahead
                     pshs      u                   String/complex, save var data ptr
-                    ldu       <u003E              Get some ptr
-L3BB3               pshs      u,a                 Save variable ptr, variable type
+                    ldu       <MaxStrSize              Get some ptr
+RparSaveType               pshs      u,a                 Save variable ptr, variable type
                     ldb       ,x+
                     cmpb      #$4B
-                    beq       L3B6C
+                    beq       RparParamLoop
                     leax      1,x           Get scratch for time
                     stx       1,y
-                    leax      <L3B5B,pc           Point to 4 entry, 1 byte table
-                    ldu       <u0046        Get string stack ptr
-                    stu       <u0040              Save ptr to end of parm packets
-L3BC6               puls      b                   Get variable type
+                    leax      <VarSizeTable2,pc           Point to 4 entry, 1 byte table
+                    ldu       <SubrStkPtr        Get string stack ptr
+                    stu       <ParmEndPtr              Save ptr to end of parm packets
+RparBuildLoop               puls      b                   Get variable type
                     cmpb      #4                  Is it a numeric type?
                     blo       RPAR40               Yes, go process
                     puls      d                   No, get variable ptr again
@@ -9047,112 +9051,112 @@ RPAR45               std       ,--u                Save size of variable into pa
                     puls      d                   Get ptr to variable
                     std       ,--u                Save ptr to variable
                     dec       ,y                  Any vars left to pass?
-                    bne       L3BC6               ??? Yes, continue building parm area
+                    bne       RparBuildLoop               ??? Yes, continue building parm area
                     leay      ,u                  ??? No, point Y to parm area
-                    bra       L3BE7
+                    bra       RparSaveSize
 
-RPAR50               ldy       <u0046
-                    sty       <u0040
-L3BE7               tfr       y,d
-                    subd      <u004A
+RPAR50               ldy       <SubrStkPtr
+                    sty       <ParmEndPtr
+RparSaveSize               tfr       y,d
+                    subd      <ICodeEndPtr
                     lblo      MEMFUL
-                    std       <u000C
+                    std       <WorkspaceFree
                     puls      pc,u,x,a
 
-L3BF3               jsr       <u0016
+EvalAndFn0A               jsr       <JmpOpcode
                     ldy       1,y
                     pshs      x
-                    bsr       L3215
+                    bsr       Vect1FnA
                     puls      pc,x
 
-L3215               jsr       <u001B
+Vect1FnA               jsr       <JmpVect1
                     fcb       $0a
 
-L3BFF               bsr       L322D
-                    leax      >L323F,pc           Point to huge jump table
-                    stx       <u000E              Save as address somewhere
+InitJmpTables               bsr       CallJmpVect5Fn0
+                    leax      >StmtJmpBase,pc           Point to huge jump table
+                    stx       <JmpTblPtr              Save as address somewhere
                     rts
 
-L322D               jsr       <u0027              Use module header jump vector #5
+CallJmpVect5Fn0               jsr       <JmpVect5              Use module header jump vector #5
                     fcb       $00                 Function code
 
-L3C09               pshs      x,d                 Preserve regs
+Vect5Dispatch               pshs      x,d                 Preserve regs
                     ldb       [<4,s]              Get function code
-                    leax      <L3C19,pc           Point to function code jump table
+                    leax      <Vect5JmpBase,pc           Point to function code jump table
                     ldd       b,x                 Get offset
                     leax      d,x                 Point X to subroutine
                     stx       4,s                 Save overtop original PC
                     puls      pc,x,d              Restore regs & jump to function code routine
 
-L3C19               fdb       L5050-L3C19         0
-                    fdb       L3D80-L3C19         2 Copy DIM'd arrary to temp var pool
-                    fdb       L3FB1-L3C19         4 Real # add
-                    fdb       L40D3-L3C19         6 Real # multiply
-                    fdb       L4234-L3C19         8 Real # divide
-                    fdb       RLCMP-L3C19         A Set flags for Real comparison
-                    fdb       FIX-L3C19         C FIX (Round & convert REAL to INTEGER)
-                    fdb       FLOAT-L3C19         E FLOAT (Convert INTEGER/BYTE to REAL)
+Vect5JmpBase               fdb       InterpreterInit-Vect5JmpBase         0
+                    fdb       VarRefSetup-Vect5JmpBase         2 Copy DIM'd arrary to temp var pool
+                    fdb       RealAdd-Vect5JmpBase         4 Real # add
+                    fdb       RealMul-Vect5JmpBase         6 Real # multiply
+                    fdb       RealDiv-Vect5JmpBase         8 Real # divide
+                    fdb       RLCMP-Vect5JmpBase         A Set flags for Real comparison
+                    fdb       FIX-Vect5JmpBase         C FIX (Round & convert REAL to INTEGER)
+                    fdb       FLOAT-Vect5JmpBase         E FLOAT (Convert INTEGER/BYTE to REAL)
 
 * Function routines
-* Negative offsets from base of table @ L3CB5
-                    fdb       MIDFNC-L3CB5         MID$
-                    fdb       L4EE2-L3CB5         LEFT$
-                    fdb       RGTFNC-L3CB5         RIGHT$
-                    fdb       CHRFNC-L3CB5         CHR$
-                    fdb       STRFNI-L3CB5         STR$ (for INTEGER)
-                    fdb       L4FA8-L3CB5         STR$ (for REAL)
-                    fdb       DATFNC-L3CB5         DATE$
-                    fdb       TABFNC-L3CB5         TAB
-                    fdb       FIX-L3CB5         FIX (round & convert REAL to INTEGER)
-                    fdb       FIXNEX-L3CB5         ??? (calls fix but eats 1 var 1st)
-                    fdb       L45A7-L3CB5         ??? (calls fix but eats 2 vars 1st)
-                    fdb       FLOAT-L3CB5         FLOAT (convert INTEGER to REAL)
-                    fdb       FLTNEX-L3CB5         ??? (calls float though)
-                    fdb       BLNOT-L3CB5         Byte - LNOT
-                    fdb       NEGINT-L3CB5         Integer - Negate a number
-                    fdb       NEGRL-L3CB5         Real - Negate a number
-                    fdb       BLAND-L3CB5         Byte - LAND
-                    fdb       BLXOR-L3CB5         Byte - LOR
-                    fdb       L438C-L3CB5         Byte - LXOR
-                    fdb       L43FF-L3CB5         > : Integer/Byte relational
-                    fdb       L4443-L3CB5         > : Real relational
-                    fdb       L43D1-L3CB5         > : String relational
-                    fdb       INCMLT-L3CB5         < : Integer/Byte relational
-                    fdb       RLCMLT-L3CB5         < : Real relational
-                    fdb       STCMLE-L3CB5         < : String relational
-                    fdb       INCMEQ-L3CB5         <> or >< : Integer/Byte relational
-                    fdb       RLCMEQ-L3CB5         <> or >< : Real relational
-                    fdb       L43C5-L3CB5         <> or >< : String relational
-                    fdb       L441D-L3CB5         <> or >< : Boolean relational
-                    fdb       INCMGE-L3CB5         = : Integer/Byte relational
-                    fdb       RLCMGE-L3CB5         = : Real relational
-                    fdb       STCMNE-L3CB5         = : String relational
-                    fdb       BLCMEQ-L3CB5         = : Boolean relational
-                    fdb       INCMGT-L3CB5         >= or => : Integer/Byte relational
-                    fdb       RLCMGT-L3CB5         >= or => : Real relational
-                    fdb       STCMGT-L3CB5         >= or => : String Relational
-                    fdb       INCMNE-L3CB5         <= or =< : Integer/Byte relational
-                    fdb       RLCMNE-L3CB5         <= or =< : Real relational
-                    fdb       STCMEQ-L3CB5         <= or =< : String Relational
-                    fdb       L3EAF-L3CB5         Integer - Add
-                    fdb       L3FB1-L3CB5         Real - Add
-                    fdb       L44E5-L3CB5         String add
-                    fdb       INSUB-L3CB5         Integer - Subtract
-                    fdb       L3FAB-L3CB5         Real - Subtract
-                    fdb       INMUL-L3CB5         Integer - Multiply
-                    fdb       L40CC-L3CB5         Real Multiply
-                    fdb       INDIV-L3CB5         Integer - Divide
-                    fdb       L422D-L3CB5         Real Divide
-                    fdb       RLEXP-L3CB5         Real Exponent\ Probably for both ^ & **
-                    fdb       RLEXP-L3CB5         Real Exponent/ Hard coding for 0^x & x^1
-                    fdb       VARADD-L3CB5         DIM
-                    fdb       VARADD-L3CB5         DIM
-                    fdb       VARADD-L3CB5         DIM
-                    fdb       VARADD-L3CB5         DIM
-                    fdb       FLDREF-L3CB5         PARAM
-                    fdb       FLDREF-L3CB5         PARAM
-                    fdb       FLDREF-L3CB5         PARAM
-                    fdb       FLDREF-L3CB5         PARAM
+* Negative offsets from base of table @ VarCopyBase
+                    fdb       MIDFNC-VarCopyBase         MID$
+                    fdb       LeftFnc-VarCopyBase         LEFT$
+                    fdb       RGTFNC-VarCopyBase         RIGHT$
+                    fdb       CHRFNC-VarCopyBase         CHR$
+                    fdb       STRFNI-VarCopyBase         STR$ (for INTEGER)
+                    fdb       StrFnReal-VarCopyBase         STR$ (for REAL)
+                    fdb       DATFNC-VarCopyBase         DATE$
+                    fdb       TABFNC-VarCopyBase         TAB
+                    fdb       FIX-VarCopyBase         FIX (round & convert REAL to INTEGER)
+                    fdb       FIXNEX-VarCopyBase         ??? (calls fix but eats 1 var 1st)
+                    fdb       FixEat2Vars-VarCopyBase         ??? (calls fix but eats 2 vars 1st)
+                    fdb       FLOAT-VarCopyBase         FLOAT (convert INTEGER to REAL)
+                    fdb       FLTNEX-VarCopyBase         ??? (calls float though)
+                    fdb       BLNOT-VarCopyBase         Byte - LNOT
+                    fdb       NEGINT-VarCopyBase         Integer - Negate a number
+                    fdb       NEGRL-VarCopyBase         Real - Negate a number
+                    fdb       BLAND-VarCopyBase         Byte - LAND
+                    fdb       BLXOR-VarCopyBase         Byte - LOR
+                    fdb       BlxorOp-VarCopyBase         Byte - LXOR
+                    fdb       IntGT-VarCopyBase         > : Integer/Byte relational
+                    fdb       RlcmpGT-VarCopyBase         > : Real relational
+                    fdb       StrcmpGT-VarCopyBase         > : String relational
+                    fdb       INCMLT-VarCopyBase         < : Integer/Byte relational
+                    fdb       RLCMLT-VarCopyBase         < : Real relational
+                    fdb       STCMLE-VarCopyBase         < : String relational
+                    fdb       INCMEQ-VarCopyBase         <> or >< : Integer/Byte relational
+                    fdb       RLCMEQ-VarCopyBase         <> or >< : Real relational
+                    fdb       StrcmpNE-VarCopyBase         <> or >< : String relational
+                    fdb       BlcmpNE-VarCopyBase         <> or >< : Boolean relational
+                    fdb       INCMGE-VarCopyBase         = : Integer/Byte relational
+                    fdb       RLCMGE-VarCopyBase         = : Real relational
+                    fdb       STCMNE-VarCopyBase         = : String relational
+                    fdb       BLCMEQ-VarCopyBase         = : Boolean relational
+                    fdb       INCMGT-VarCopyBase         >= or => : Integer/Byte relational
+                    fdb       RLCMGT-VarCopyBase         >= or => : Real relational
+                    fdb       STCMGT-VarCopyBase         >= or => : String Relational
+                    fdb       INCMNE-VarCopyBase         <= or =< : Integer/Byte relational
+                    fdb       RLCMNE-VarCopyBase         <= or =< : Real relational
+                    fdb       STCMEQ-VarCopyBase         <= or =< : String Relational
+                    fdb       IntAdd-VarCopyBase         Integer - Add
+                    fdb       RealAdd-VarCopyBase         Real - Add
+                    fdb       StrConcatBody-VarCopyBase         String add
+                    fdb       INSUB-VarCopyBase         Integer - Subtract
+                    fdb       RealSubtract-VarCopyBase         Real - Subtract
+                    fdb       INMUL-VarCopyBase         Integer - Multiply
+                    fdb       RealMulEntry-VarCopyBase         Real Multiply
+                    fdb       INDIV-VarCopyBase         Integer - Divide
+                    fdb       RealDivEntry-VarCopyBase         Real Divide
+                    fdb       RLEXP-VarCopyBase         Real Exponent\ Probably for both ^ & **
+                    fdb       RLEXP-VarCopyBase         Real Exponent/ Hard coding for 0^x & x^1
+                    fdb       VARADD-VarCopyBase         DIM
+                    fdb       VARADD-VarCopyBase         DIM
+                    fdb       VARADD-VarCopyBase         DIM
+                    fdb       VARADD-VarCopyBase         DIM
+                    fdb       FLDREF-VarCopyBase         PARAM
+                    fdb       FLDREF-VarCopyBase         PARAM
+                    fdb       FLDREF-VarCopyBase         PARAM
+                    fdb       FLDREF-VarCopyBase         PARAM
                     fdb       $0000               Unused function entries (maybe use for LONGINT?)
                     fdb       $0000
                     fdb       $0000
@@ -9160,101 +9164,101 @@ L3C19               fdb       L5050-L3C19         0
                     fdb       $0000
                     fdb       $0000
 
-* Jump table (base is L3CB5)
-L3CB5               fdb       SVBYTE-L3CB5         Copy BYTE var to temp pool
-                    fdb       SVINT-L3CB5         Copy INTEGER var to temp pool
-                    fdb       L3F8D-L3CB5         Copy REAL var to temp pool
-                    fdb       L436E-L3CB5         Copy BOOLEAN var to temp pool
-                    fdb       SVSTR-L3CB5         Copy STRING var to temp pool (max 256 chars)
-                    fdb       GETVAR-L3CB5         Copy DIM array
-                    fdb       GETVAR-L3CB5         Copy DIM array
-                    fdb       GETVAR-L3CB5         Copy DIM array
-                    fdb       GETVAR-L3CB5         Copy DIM array
-                    fdb       GETFLD-L3CB5         Copy PARAM array
-                    fdb       GETFLD-L3CB5         Copy PARAM array
-                    fdb       GETFLD-L3CB5         Copy PARAM array
-                    fdb       GETFLD-L3CB5         Copy PARAM array
-                    fdb       BYTLIT-L3CB5         Copy BYTE constant to temp pool - CHECK IF USED
-                    fdb       INTLIT-L3CB5         Copy INTEGER constant to temp pool
-                    fdb       L3F7C-L3CB5         Copy REAL constant to temp pool
-                    fdb       STRLIT-L3CB5         Copy STRING constant to temp pool
-                    fdb       INTLIT-L3CB5         Copy INTEGER constant to temp pool
-                    fdb       ADRFNC-L3CB5         ADDR
-                    fdb       ADRFNC-L3CB5         ADDR
-                    fdb       L4751-L3CB5         SIZE
-                    fdb       L4751-L3CB5         SIZE
-                    fdb       POSFNC-L3CB5         POS
-                    fdb       L45E3-L3CB5         ERR
-                    fdb       INDV10-L3CB5         MOD for Integer #'s
-                    fdb       MODFNR-L3CB5         MOD for Real #'s
-                    fdb       RNDFNC-L3CB5         RND
-                    fdb       L4B03-L3CB5         PI
-                    fdb       SUBFNC-L3CB5         SUBSTR
-                    fdb       SGNFNI-L3CB5         SGN for Integer
-                    fdb       SGNFNR-L3CB5         SGN for Real
-                    fdb       SINFNC-L3CB5         Transcendental ???
-                    fdb       COSFNC-L3CB5         Transcendental ???
-                    fdb       TANFNC-L3CB5         Transcendental ???
-                    fdb       ASNFNC-L3CB5         Transcendental ???
-                    fdb       ACSFNC-L3CB5         Transcendental ???
-                    fdb       ATNFNC-L3CB5         Transcendental ???
-                    fdb       EXPFNC-L3CB5         EXP
-                    fdb       L45B5-L3CB5         ABS for Integer #'s
-                    fdb       ABSFNR-L3CB5         ABS for Real #'s
-                    fdb       L47AB-L3CB5         LOG
-                    fdb       L479F-L3CB5         LOG10
-                    fdb       SQRR05-L3CB5         SQR \ Square root
-                    fdb       SQRR05-L3CB5         SQRT/
-                    fdb       FLOAT-L3CB5         FLOAT
-                    fdb       INTFNR-L3CB5         INT (of real #)
-                    fdb       RETBYT99-L3CB5         ??? RTS
-                    fdb       FIX-L3CB5         FIX
-                    fdb       FLOAT-L3CB5         FLOAT
-                    fdb       RETBYT99-L3CB5         ??? RTS
-                    fdb       SQFNCI-L3CB5         SQuare of integer
-                    fdb       L470E-L3CB5         SQuare of real
-                    fdb       PEKFNC-L3CB5         PEEK
-                    fdb       NOTFNC-L3CB5         LNOT of Integer
-                    fdb       L471F-L3CB5         VAL
-                    fdb       L4EAB-L3CB5         LEN
-                    fdb       ASCFNC-L3CB5         ASC
-                    fdb       ANDFNC-L3CB5         LAND of Integer
-                    fdb       L478F-L3CB5         LOR of Integer
-                    fdb       ORFNC-L3CB5         LXOR of Integer
-                    fdb       L4769-L3CB5         Force Boolean to TRUE
-                    fdb       L476E-L3CB5         Force Boolean to FALSE
-                    fdb       EOFFNC-L3CB5         EOF
-                    fdb       TRMFNC-L3CB5         TRIM$
+* Jump table (base is VarCopyBase)
+VarCopyBase               fdb       SVBYTE-VarCopyBase         Copy BYTE var to temp pool
+                    fdb       SVINT-VarCopyBase         Copy INTEGER var to temp pool
+                    fdb       CopyRealVar-VarCopyBase         Copy REAL var to temp pool
+                    fdb       BoolCopy-VarCopyBase         Copy BOOLEAN var to temp pool
+                    fdb       SVSTR-VarCopyBase         Copy STRING var to temp pool (max 256 chars)
+                    fdb       GETVAR-VarCopyBase         Copy DIM array
+                    fdb       GETVAR-VarCopyBase         Copy DIM array
+                    fdb       GETVAR-VarCopyBase         Copy DIM array
+                    fdb       GETVAR-VarCopyBase         Copy DIM array
+                    fdb       GETFLD-VarCopyBase         Copy PARAM array
+                    fdb       GETFLD-VarCopyBase         Copy PARAM array
+                    fdb       GETFLD-VarCopyBase         Copy PARAM array
+                    fdb       GETFLD-VarCopyBase         Copy PARAM array
+                    fdb       BYTLIT-VarCopyBase         Copy BYTE constant to temp pool - CHECK IF USED
+                    fdb       INTLIT-VarCopyBase         Copy INTEGER constant to temp pool
+                    fdb       CopyRealConst-VarCopyBase         Copy REAL constant to temp pool
+                    fdb       STRLIT-VarCopyBase         Copy STRING constant to temp pool
+                    fdb       INTLIT-VarCopyBase         Copy INTEGER constant to temp pool
+                    fdb       ADRFNC-VarCopyBase         ADDR
+                    fdb       ADRFNC-VarCopyBase         ADDR
+                    fdb       SizeFnc-VarCopyBase         SIZE
+                    fdb       SizeFnc-VarCopyBase         SIZE
+                    fdb       POSFNC-VarCopyBase         POS
+                    fdb       ErrFuncImpl-VarCopyBase         ERR
+                    fdb       INDV10-VarCopyBase         MOD for Integer #'s
+                    fdb       MODFNR-VarCopyBase         MOD for Real #'s
+                    fdb       RNDFNC-VarCopyBase         RND
+                    fdb       CopyPiToStack-VarCopyBase         PI
+                    fdb       SUBFNC-VarCopyBase         SUBSTR
+                    fdb       SGNFNI-VarCopyBase         SGN for Integer
+                    fdb       SGNFNR-VarCopyBase         SGN for Real
+                    fdb       SINFNC-VarCopyBase         Transcendental ???
+                    fdb       COSFNC-VarCopyBase         Transcendental ???
+                    fdb       TANFNC-VarCopyBase         Transcendental ???
+                    fdb       ASNFNC-VarCopyBase         Transcendental ???
+                    fdb       ACSFNC-VarCopyBase         Transcendental ???
+                    fdb       ATNFNC-VarCopyBase         Transcendental ???
+                    fdb       EXPFNC-VarCopyBase         EXP
+                    fdb       AbsInt-VarCopyBase         ABS for Integer #'s
+                    fdb       ABSFNR-VarCopyBase         ABS for Real #'s
+                    fdb       LnFnc-VarCopyBase         LOG
+                    fdb       Log10Fnc-VarCopyBase         LOG10
+                    fdb       SQRR05-VarCopyBase         SQR \ Square root
+                    fdb       SQRR05-VarCopyBase         SQRT/
+                    fdb       FLOAT-VarCopyBase         FLOAT
+                    fdb       INTFNR-VarCopyBase         INT (of real #)
+                    fdb       RETBYT99-VarCopyBase         ??? RTS
+                    fdb       FIX-VarCopyBase         FIX
+                    fdb       FLOAT-VarCopyBase         FLOAT
+                    fdb       RETBYT99-VarCopyBase         ??? RTS
+                    fdb       SQFNCI-VarCopyBase         SQuare of integer
+                    fdb       SqRealImpl-VarCopyBase         SQuare of real
+                    fdb       PEKFNC-VarCopyBase         PEEK
+                    fdb       NOTFNC-VarCopyBase         LNOT of Integer
+                    fdb       ValFnc-VarCopyBase         VAL
+                    fdb       LenFnc-VarCopyBase         LEN
+                    fdb       ASCFNC-VarCopyBase         ASC
+                    fdb       ANDFNC-VarCopyBase         LAND of Integer
+                    fdb       LorFnc-VarCopyBase         LOR of Integer
+                    fdb       ORFNC-VarCopyBase         LXOR of Integer
+                    fdb       BoolTrueImpl-VarCopyBase         Force Boolean to TRUE
+                    fdb       BoolFalseImpl-VarCopyBase         Force Boolean to FALSE
+                    fdb       EOFFNC-VarCopyBase         EOF
+                    fdb       TRMFNC-VarCopyBase         TRIM$
 
-* Jump table, base is L3D35
-L3D35               fdb       BYTVAR-L3D35         Convert Byte to Int (into temp var)
-                    fdb       SQRR20-L3D35         Copy Int var into temp var
-                    fdb       L3F93-L3D35         Copy Real var into temp var
-                    fdb       RETBYT10-L3D35         ??? Copy Boolean into temp var
-                    fdb       STRVAR-L3D35         ??? Copy string to expression stack
-                    fdb       RCDVAR-L3D35         ??? Copy D&U regs into temp var type 5
+* Jump table, base is ExprJmpBase
+ExprJmpBase               fdb       BYTVAR-ExprJmpBase         Convert Byte to Int (into temp var)
+                    fdb       SQRR20-ExprJmpBase         Copy Int var into temp var
+                    fdb       CopyRealToTemp-ExprJmpBase         Copy Real var into temp var
+                    fdb       RETBYT10-ExprJmpBase         ??? Copy Boolean into temp var
+                    fdb       STRVAR-ExprJmpBase         ??? Copy string to expression stack
+                    fdb       RCDVAR-ExprJmpBase         ??? Copy D&U regs into temp var type 5
 
-EVAL               ldy       <u0046
-                    ldd       <u004A        Init string stack ptr
-                    std       <u0048
+EVAL               ldy       <SubrStkPtr
+                    ldd       <ICodeEndPtr        Init string stack ptr
+                    std       <StrStkPtr
                     bra       EVAL20
 
-L3D4A               lslb                          2 bytes per entry
-                    ldu       <u0010              Get ptr to jump table (could be L3CB5)
+EvalDispatch               lslb                          2 bytes per entry
+                    ldu       <JmpTbl1              Get ptr to jump table (could be VarCopyBase)
                     ldd       b,u                 Get offset
                     jsr       d,u                 Call subroutine
 EVAL20               ldb       ,x+                 Get next byte
-                    bmi       L3D4A               If high bit set, need to call another subroutine
+                    bmi       EvalDispatch               If high bit set, need to call another subroutine
                     clra                          Otherwise, clear carry
                     lda       ,y            Get tos TYPE
                     rts
 
 * Copy DIM array to temp var pool
-GETVAR               bsr       L3D80
+GETVAR               bsr       VarRefSetup
 
 * POSSIBLE MAIN ENTRY POINT FOR MATH & STRING ROUTINES
-L3D5B               pshs      pc,u                Save U & PC on stack
-                    ldu       <u0012              Get ptr to jump table (L3D35)
+ExprDispatch               pshs      pc,u                Save U & PC on stack
+                    ldu       <JmpTbl2              Get ptr to jump table (ExprJmpBase)
                     lsla                          A=A*2 for 2 byte entries (note: 8 bit SIGNED)
                     ldd       a,u                 Get offset
                     leau      d,u                 Point to routine
@@ -9262,54 +9266,54 @@ L3D5B               pshs      pc,u                Save U & PC on stack
                     puls      pc,u                Restore U & jump to routine
 
 * Copy PARAM array to temp var pool
-GETFLD               bsr       L3D78
-                    bra       L3D5B
+GETFLD               bsr       FldRefSetup
+                    bra       ExprDispatch
 
 VARADD               leas      2,s
                     lda       #$F2          Set TOKEN for variable
-                    bra       L3D82
+                    bra       VarRefCommon
 
 FLDREF               leas      $02,s
                     lda       #$F6
                     bra       FLDR01
 
-L3D78               lda       #$89
-FLDR01               sta       <u00A3
-                    clr       <u003B        Set flag for field addr
+FldRefSetup               lda       #$89
+FLDR01               sta       <CmdToken
+                    clr       <FldAddrFlag        Set flag for field addr
                     bra       VARR02         Call varref
 
-L3D80               lda       #$85
-L3D82               sta       <u00A3
-                    sta       <u003B
+VarRefSetup               lda       #$85
+VarRefCommon               sta       <CmdToken
+                    sta       <FldAddrFlag
 VARR02               ldd       ,x++
-                    addd      <u0062        Add base to offset
-                    std       <u00D2        Set symbol table ptr
-                    ldu       <u00D2        Get symbol table ptr
+                    addd      <ModSymTbl        Add base to offset
+                    std       <SymbolPtr        Set symbol table ptr
+                    ldu       <SymbolPtr        Get symbol table ptr
                     lda       ,u            Get TYPE byte
                     anda      #$E0          Get definition
-                    sta       <u00CF        Set definition
+                    sta       <VarDefByte        Set definition
                     eora      #$80          Get flag (0=param; non 0=var)
-                    sta       <u00CE        Set flag
+                    sta       <VarTypeFlag        Set flag
                     lda       ,u            Get TYPE byte
                     anda      #$07          Get TYPE
                     ldb       -$03,x        Get TOKEN
-                    subb      <u00A3        Less base gives subscript count
+                    subb      <CmdToken        Less base gives subscript count
                     pshs      d             Save TYPE & subscript count
                     lda       ,u            Get TYPE byte
                     anda      #$18          Get SHAPE
-                    lbeq      L3E3F         bra if simple
+                    lbeq      VarrSimpleVar         bra if simple
                     ldd       1,u           Get array description offset
-                    addd      <u0066        Add base to offset
+                    addd      <SymTblSize        Add base to offset
                     tfr       d,u
                     ldd       ,u
 * (orig: SQRR10)
-                    std       <u003C        Save it
+                    std       <ParmPktOff        Save it
                     lda       1,s           Get subscript count
                     bne       VARR03         bra if count > 0
                     lda       #$05
                     sta       ,s            return TYPE
                     ldd       2,u           Get array total size
-                    std       <u003E        Save it
+                    std       <MaxStrSize        Save it
                     clra
                     clrb                    zero indexing offset
                     bra       VARR11
@@ -9319,17 +9323,17 @@ VARR03               leay      -6,y                Make room for temp var
                     clrb                    partial result
                     std       1,y                 Save it
                     leau      4,u                 Bump U up
-                    bra       L3DD5
+                    bra       VarrDimCalc
 
 VARR04               ldd       ,u                  Get value from U
                     std       1,y                 Save in var space
                     lbsr      INMUL               Call Integer Multiply routine
-L3DD5               ldd       7,y
-                    subd      <u0042        Get subscript-base
+VarrDimCalc               ldd       7,y
+                    subd      <ArrayBase        Get subscript-base
                     cmpd      ,u++          in range?
                     blo       VARR5A
                     ldb       #$37                Subscript out of range error
-                    jsr       <u0024              Report it
+                    jsr       <JmpVect4              Report it
                     fcb       $06
 
 * Array subscript in range, process
@@ -9340,25 +9344,25 @@ VARR5A               addd      1,y
 * NOTE: IF FOLLOWING COMMENTS ARE ACCURATE, SHOULD USE LDA, DECA TRICK
 * (orig: VARR14)
                     lda       ,s                  ??? Get variable type?
-                    beq       L3DFF               If Byte, skip ahead
+                    beq       VarrByteOff               If Byte, skip ahead
                     cmpa      #$02                Real?
-                    blo       L3E03               No, integer, skip ahead
+                    blo       VarrIntOff               No, integer, skip ahead
                     beq       VARR09               Real, skip ahead
                     cmpa      #$04                String?
-                    blo       L3DFF               No, boolean - treat same as Byte
+                    blo       VarrByteOff               No, boolean - treat same as Byte
                     ldd       ,u                  String - do this
-                    std       <u003E
+                    std       <MaxStrSize
                     bra       VARR10
 
 * BYTE or BOOLEAN
-L3DFF               ldd       7,y                 Get offset to entry in array we want
-                    bra       L3E07
+VarrByteOff               ldd       7,y                 Get offset to entry in array we want
+                    bra       VarrFinalOff
 
 * INTEGER
-L3E03               ldd       7,y                 Get offset to entry in array we want
+VarrIntOff               ldd       7,y                 Get offset to entry in array we want
                     lslb                          x2 since Integers are 2 bytes/entry
                     rola
-L3E07               leay      $C,y
+VarrFinalOff               leay      $C,y
                     bra       VARR11
 
 * REAL
@@ -9367,12 +9371,12 @@ VARR10               std       1,y                 Save for Integer multiply rou
                     lbsr      INMUL               Go do Integer multiply
                     ldd       1,y                 Get offset to entry we want
                     leay      6,y                 Eat temp var.
-VARR11               tst       <u00CE
+VARR11               tst       <VarTypeFlag
                     bne       VARR13         ..No
                     pshs      d             Save element offset
-                    ldd       <u003C        Get parameter packet offset
-                    addd      <u0031        Add base to offset
-                    cmpd      <u0040        is it there?
+                    ldd       <ParmPktOff        Get parameter packet offset
+                    addd      <VarStorePtr        Add base to offset
+                    cmpd      <ParmEndPtr        is it there?
                     bhs       CMPTRU
                     tfr       d,u           Copy parameter packet ptr
                     puls      d             Retrieve element offset
@@ -9382,46 +9386,46 @@ VARR11               tst       <u00CE
                     addd      ,u            Add array base ptr to element offset
                     bra       VARR17
 
-VARR13               addd      <u003C
-                    tst       <u003B        field ref?
+VARR13               addd      <ParmPktOff
+                    tst       <FldAddrFlag        field ref?
                     bne       VARR16         ..No
-L3E39               addd      1,y
+VarrAddOffset               addd      1,y
                     leay      6,y                 Eat temp var.
                     bra       VARR17
 
-L3E3F               lda       ,s                  ??? Get var type
+VarrSimpleVar               lda       ,s                  ??? Get var type
                     cmpa      #$04                Set CC - Is it string type?
                     ldd       1,u           Get symbol table entry
                     blo       VARR15               No, either numeric or boolean, skip ahead
 * String or complex
-                    addd      <u0066        Add base to offset
+                    addd      <SymTblSize        Add base to offset
                     tfr       d,u
                     ldd       2,u           Get record size
-                    std       <u003E        Save it
+                    std       <MaxStrSize        Save it
                     ldd       ,u            Get record offset
-VARR15               tst       <u003B
-                    beq       L3E39         bra if so
-                    addd      <u0031        Add storage base to offset
+VARR15               tst       <FldAddrFlag
+                    beq       VarrAddOffset         bra if so
+                    addd      <VarStorePtr        Add storage base to offset
                     tfr       d,u           Copy storage ptr
-                    tst       <u00CE        parameter?
+                    tst       <VarTypeFlag        parameter?
                     bne       VARR18         ..No
-                    cmpd      <u0040        Will it be longer than original?
+                    cmpd      <ParmEndPtr        Will it be longer than original?
                     bhs       CMPTRU         If so old str will do
-                    ldd       <u003E        return addend
+                    ldd       <MaxStrSize        return addend
                     cmpd      2,u
                     blo       VAR15A
                     ldd       2,u
-                    std       <u003E
+                    std       <MaxStrSize
 VAR15A               ldu       ,u
                     bra       VARR18
 
-VARR16               addd      <u0031
+VARR16               addd      <VarStorePtr
 VARR17               tfr       d,u
 VARR18               clra                    Carry
                     puls      pc,d
 
 CMPTRU               ldb       #$38                Parameter error
-                    jsr       <u0024
+                    jsr       <JmpVect4
                     fcb       $06
 
 * Copy Byte constant to temp pool
@@ -9430,7 +9434,7 @@ BYTLIT               leau      ,x+
 
 * Copy Byte variable to temp pool
 SVBYTE               ldd       ,x++                Get offset to variable we want
-                    addd      <u0031              Add to start of string pool address
+                    addd      <VarStorePtr              Add to start of string pool address
                     tfr       d,u                 Move to indexable register
 BYTVAR               ldb       ,u                  Get BYTE value
                     clra                          Force to integer type
@@ -9446,7 +9450,7 @@ INTLIT               leau      ,x++
 
 * Copy integer var into temp var
 SVINT               ldd       ,x++                Get offset to var we want
-                    addd      <u0031              Add to start of variable pool
+                    addd      <VarStorePtr              Add to start of variable pool
                     tfr       d,u                 Point U to entry
 SQRR20               ldd       ,u                  Get Integer
                     leay      -6,y                Make room for variable
@@ -9469,7 +9473,7 @@ NEGINT               clra
                     rts
 
 * INTEGER ADD
-L3EAF               ldd       7,y                 Get integer
+IntAdd               ldd       7,y                 Get integer
                     addd      1,y                 Add to temp copy of 2nd #
                     leay      6,y                 Eat temp
                     std       1,y                 Save added result & return
@@ -9491,21 +9495,21 @@ INMUL               ldd       1,y                 Get temp var integer
                     rts
                     else
 INMUL               ldd       7,y                 Get value that result will go into
-                    beq       L3EFA               *0, leave result as 0
+                    beq       InmlEatTmpVar               *0, leave result as 0
                     cmpd      #2                  Special case: times 2?
-                    bne       L3ECF               No, check other number
+                    bne       InmlCheckB               No, check other number
                     ldd       1,y                 Get 2nd number
-                    bra       L3EDB               Do quick x2
+                    bra       InmlDoubleB               Do quick x2
 
-L3ECF               ldd       1,y                 Get 2nd number
+InmlCheckB               ldd       1,y                 Get 2nd number
                     beq       INML20               *0, go save result as 0
                     cmpd      #2                  Special case: times 2?
                     bne       INML25               No, go do regular multiply
                     ldd       7,y                 Get 1st number
-L3EDB               lslb
+InmlDoubleB               lslb
                     rola
 INML20               std       7,y                 Save answer
-                    bra       L3EFA               Eat temp var & return
+                    bra       InmlEatTmpVar               Eat temp var & return
 
 INML25               lda       8,y                 Do 16x16 bit signed multiply, MOD 65536
                     mul                     Lsb * nos lsb
@@ -9524,7 +9528,7 @@ INML25               lda       8,y                 Do 16x16 bit signed multiply,
 * (orig: FPDV47)
                     addb      7,y           Add result msb
                     stb       7,y           Save result msb
-L3EFA               leay      6,y                 Eat temp var & return
+InmlEatTmpVar               leay      6,y                 Eat temp var & return
                     rts
                     endc
 * Integer MOD routine
@@ -9537,7 +9541,7 @@ INDV10               bsr       INDIV               Go do integer divide
 INDIV               ldd       1,y                 Get # to divide by
                     bne       GoodDiv             <>0, go do divide
                     ldb       #$2D                =0, Divide by 0 error
-                    jsr       <u0024              Report error
+                    jsr       <JmpVect4              Report error
                     fcb       $06
 
 GoodDiv             ldw       7,y                 Get 16 bit signed dividend
@@ -9578,13 +9582,13 @@ CheckZ3             clrw                          Clear out answer to 0 again
 * Calculate sign of result of Integer Divide (,y - 0=positive, FF=negative)
 SETSGN               clr       ,y                  Clear flag (positive result)
                     ldd       7,y                 Get #
-                    bpl       L3F0B               If positive or 0, go check other #
+                    bpl       SetSgnCheck2               If positive or 0, go check other #
                     nega                          Force it to positive (NEGD)
                     negb
                     sbca      #$00
                     std       7,y                 Save positive version
                     com       ,y                  Set flag for negative result
-L3F0B               ldd       1,y                 Get other #
+SetSgnCheck2               ldd       1,y                 Get other #
                     bpl       SETSG2               If positive or 0, go check if it is a 2
                     nega                          Force it to positive (NEGD)
                     negb
@@ -9596,7 +9600,7 @@ SETSG2               cmpd      #2                  Check if dividing by 2
 
 * INTEGER DIVIDE
 INDIV               bsr       SETSGN               Go force both numbers to positive, check for /2
-                    bne       L3F2E               Normal divide, skip ahead
+                    bne       IntDivNonZero               Normal divide, skip ahead
                     ldd       7,y                 Get # to divide by 2
                     beq       INDV20               If 0, result is 0, so skip divide
                     asra                    by shift
@@ -9607,13 +9611,13 @@ INDIV               bsr       SETSGN               Go force both numbers to posi
                     rolb                          Rotate possible remainder bit into D
                     bra       INDV55               Go save remainder, fix sign & return
 
-L3F2E               ldd       1,y                 Get divisor (integer)
-                    bne       L3F37               <>0, skip ahead
+IntDivNonZero               ldd       1,y                 Get divisor (integer)
+                    bne       IntDivCheckDiv               <>0, skip ahead
                     ldb       #$2D                =0, Divide by 0 error
-                    jsr       <u0024              Report error
+                    jsr       <JmpVect4              Report error
                     fcb       $06
 
-L3F37               ldd       7,y                 Get dividend (integer)
+IntDivCheckDiv               ldd       7,y                 Get dividend (integer)
                     bne       INDV25               Have to do divide, skip ahead
 INDV20               leay      6,y                 ??? Eat temp var? (divisor)
                     std       3,y                 Save result
@@ -9624,19 +9628,19 @@ INDV20               leay      6,y                 ??? Eat temp var? (divisor)
 * 1-2,y = Divisor (already checked for 0)
 * 3,y   = # of powers of 2 shifts to do
 INDV25               tsta                          Dividend>256?
-                    bne       L3F4B               Yes, skip ahead
+                    bne       IntDiv16Bit               Yes, skip ahead
                     exg       a,b                 Swap LSB/MSB of dividend
                     std       7,y                 Save it
 * (orig: INDV30)
                     ldb       #8                  # of powers of 2 shifts for 8 bit dividend
                     bra       INDV35
 
-L3F4B               ldb       #16                 # of powers of 2 shifts for 16 bit dividend
+IntDiv16Bit               ldb       #16                 # of powers of 2 shifts for 16 bit dividend
 INDV35               stb       3,y                 Save # shifts required
                     clra
                     clrb                    D
 * Main powers of 2 subtract loop for divide
-L3F51               lsl       8,y                 Multiply dividend by 2
+IntDivMainLoop               lsl       8,y                 Multiply dividend by 2
                     rol       7,y           Into D
                     rolb                          Rotate into D
                     rola
@@ -9647,7 +9651,7 @@ L3F51               lsl       8,y                 Multiply dividend by 2
 
 INDV45               addd      1,y
 INDV50               dec       3,y                 Dec # shift/subtracts left to do
-                    bne       L3F51               Still more, continue
+                    bne       IntDivMainLoop               Still more, continue
 INDV55               std       9,y                 Save remainder
                     tst       ,y                  Positive result?
                     bpl       INDV60               Yes, eat temp var & return
@@ -9665,7 +9669,7 @@ INDV60               leay      6,y                 Eat temp var & return
                     endc
 
 * Copy REAL # from X (moving X to after real number) to temp var
-L3F7C               leay      -6,y                Make room for temp var
+CopyRealConst               leay      -6,y                Make room for temp var
                     ldb       ,x+                 Get hi-byte of real value
                     lda       #2                  Force var type to REAL
                     std       ,y                  Save in temp var
@@ -9684,11 +9688,11 @@ L3F7C               leay      -6,y                Make room for temp var
                     rts
 
 * Copy REAL # from variable pool (pointed to by X) into temp var
-L3F8D               ldd       ,x++                Get offset into var space for REAL var
-                    addd      <u0031              ??? Add to base address for variable storage?
+CopyRealVar               ldd       ,x++                Get offset into var space for REAL var
+                    addd      <VarStorePtr              ??? Add to base address for variable storage?
                     tfr       d,u                 Move ptr to U
 * Copy REAL # constant from within BASIC09 (pointed to by U) into temp var
-L3F93               leay      -6,y                Make room for temp var
+CopyRealToTemp               leay      -6,y                Make room for temp var
                     lda       #2                  Set 1st byte to be 2
                     ldb       ,u                  Get 1st byte of real #
                     std       ,y
@@ -9716,9 +9720,9 @@ NEGRL               lda       5,y                 Get LSB of mantissa & sign bit
 
 * Subtract for REAL #'s
                     ifne      H6309
-L3FAB               eim       #1,5,y              Negate sign bit of real #
+RealSubtract               eim       #1,5,y              Negate sign bit of real #
                     else
-L3FAB               ldb       5,y                 Reverse sign bit on REAL #
+RealSubtract               ldb       5,y                 Reverse sign bit on REAL #
                     eorb      #1            Get difference with multiplier
                     stb       5,y
                     endc
@@ -9730,11 +9734,11 @@ L3FAB               ldb       5,y                 Reverse sign bit on REAL #
                     endc
 
 * REAL Multiply?
-L40CC               bsr       L40D3               Go do REAL multiply
-                    bcs       L3C2C               If error, report it
+RealMulEntry               bsr       RealMul               Go do REAL multiply
+                    bcs       ReportMathErr               If error, report it
                     rts                           Return without error
 
-L3C2C               jsr       <u0024              Report error
+ReportMathErr               jsr       <JmpVect4              Report error
                     fcb       $06
 
                     ifne      H6309
@@ -9744,11 +9748,11 @@ L3C2C               jsr       <u0024              Report error
                     endc
 
 * Real divide entry point?
-L422D               bsr       L4234
+RealDivEntry               bsr       RealDiv
                     bcs       LErr
-L4233               rts
+RealDivRts               rts
 
-LErr                jsr       <u0024
+LErr                jsr       <JmpVect4
                     fcb       $06
 
                     ifne      H6309
@@ -9760,7 +9764,7 @@ LErr                jsr       <u0024
 * Real exponent
 RLEXP               pshs      x                   Preserve X
                     ldd       7,y                 Is the number to be raised 0?
-                    beq       L4331               Yes, eat temp & return with 0 as result
+                    beq       RdivShiftDone               Yes, eat temp & return with 0 as result
                     ldx       1,y                 Is the exponent 0?
                     bne       REXP20               No, go do normal exponent calculation
                     leay      6,y                 Eat temp var
@@ -9784,13 +9788,13 @@ REXP20               std       1,y
                     sta       5,y           insert string terminator
                     stb       $B,y
                     puls      x             Restore x
-                    lbsr      L47AB         Get log(x)
-                    lbsr      L40CC               Go do real multiply
+                    lbsr      LnFnc         Get log(x)
+                    lbsr      RealMulEntry               Go do real multiply
                     lbra      EXPFNC         Get exp(log(x)*y)
 
 * Copy Boolean value into temp var
-L436E               ldd       ,x++                Get offset to var from beginning of var pool
-                    addd      <u0031              Add to base address for vars
+BoolCopy               ldd       ,x++                Get offset to var from beginning of var pool
+                    addd      <VarStorePtr              Add to base address for vars
                     tfr       d,u                 Move to index reg
 RETBYT10               ldb       ,u                  Get boolean value
                     clra                          Make into Integer type
@@ -9808,7 +9812,7 @@ BLXOR               ldb       8,y                 Single byte LOR
                     orb       2,y           or first
                     bra       BLXOR10
 
-L438C               ldb       8,y                 Single byte LXOR
+BlxorOp               ldb       8,y                 Single byte LXOR
                     eorb      2,y           Get difference with dividend
 BLXOR10               leay      6,y                 Eat temp var
                     std       1,y                 Save result in original var & return
@@ -9821,13 +9825,13 @@ BLNOT               com       2,y                 Single byte LNOT
 STRCMP               pshs      y,x
                     ldx       1,y                 Get ptr to temp string?
                     ldy       7,y                 Get ptr to var string?
-                    sty       <u0048        Update str stack ptr
+                    sty       <StrStkPtr        Update str stack ptr
 STRCM1               lda       ,y+                 Get char from temp string
                     cmpa      ,x+                 Same as char from var string?
-                    bne       L43AC               No, skip ahead
+                    bne       StrcmpNext               No, skip ahead
                     cmpa      #$FF                EOS marker?
                     bne       STRCM1               No, keep comparing
-L43AC               inca                          Inc last char checked
+StrcmpNext               inca                          Inc last char checked
                     inc       -1,x                Inc last char in compare string
                     cmpa      -1,x                Same as last char checked with inc????
                     puls      pc,y,x        return CC=result
@@ -9836,81 +9840,81 @@ L43AC               inca                          Inc last char checked
 ***************
 * String Compare =<
 STCMLE               bsr       STRCMP               Go do string compare
-                    blo       L4405               If less than, result=TRUE
-                    bra       L4409               Else, result=False
+                    blo       BoolTrue               If less than, result=TRUE
+                    bra       BoolFalse               Else, result=False
 
 * String compare: <= or =< (?)
 ***************
 * String Compare =
 STCMEQ               bsr       STRCMP
-                    bls       L4405
-                    bra       L4409
+                    bls       BoolTrue
+                    bra       BoolFalse
 
 * String compare: =
 ***************
 * String Compare <>
 STCMNE               bsr       STRCMP
-                    beq       L4405
-                    bra       L4409
+                    beq       BoolTrue
+                    bra       BoolFalse
 
 * String compare: <> or ><
-L43C5               bsr       STRCMP
-                    bne       L4405
-                    bra       L4409
+StrcmpNE               bsr       STRCMP
+                    bne       BoolTrue
+                    bra       BoolFalse
 
 * String compare: >= or => (?)
 ***************
 * String Compare >
 STCMGT               bsr       STRCMP
-                    bhs       L4405
-                    bra       L4409
+                    bhs       BoolTrue
+                    bra       BoolFalse
 
 * String compare: > (?)
-L43D1               bsr       STRCMP
-                    bhi       L4405
-                    bra       L4409
+StrcmpGT               bsr       STRCMP
+                    bhi       BoolTrue
+                    bra       BoolFalse
 
 * For Integer/Byte compares below: Works for signed Integer as well
 *  as unsigned Byte
 * Integer/Byte compare: <
 INCMLT               ldd       7,y
                     subd      1,y                 NOTE: SUBD is faster than CMPD
-                    blt       L4405         if less than go push true
-                    bra       L4409         Go push false
+                    blt       BoolTrue         if less than go push true
+                    bra       BoolFalse         Go push false
 
 * Integer/Byte compare: <= or =<
 INCMNE               ldd       7,y
                     subd      1,y
-                    ble       L4405         if less or equal go push true
-                    bra       L4409         Go push false
+                    ble       BoolTrue         if less or equal go push true
+                    bra       BoolFalse         Go push false
 
 * Integer/Byte compare: <> or ><
 INCMEQ               ldd       7,y
                     subd      1,y           Take borrow
-                    bne       L4405         if not equal go push true
-                    bra       L4409         Go push false
+                    bne       BoolTrue         if not equal go push true
+                    bra       BoolFalse         Go push false
 
 * Integer/Byte compare: =
 INCMGE               ldd       7,y
                     subd      1,y           Subtract divisor msdb
-                    beq       L4405         bra if possibly done
-                    bra       L4409         Go push false
+                    beq       BoolTrue         bra if possibly done
+                    bra       BoolFalse         Go push false
 
 * Integer/Byte compare: >= or =>
 INCMGT               ldd       7,y
                     subd      1,y           Subtract right operand
-                    bge       L4405         if greater or equal go push true
-                    bra       L4409         Go push false
+                    bge       BoolTrue         if greater or equal go push true
+                    bra       BoolFalse         Go push false
 
 * Integer/Byte compare: >
-L43FF               ldd       7,y                 Get original var
+IntGT               ldd       7,y                 Get original var
                     subd      1,y                 > than compare var?
-                    ble       L4409               No, boolean result=FALSE
-L4405               ldb       #$FF                Boolean result=TRUE
-                    bra       L440B
+                    ble       BoolFalse               No, boolean result=FALSE
+BoolTrue               ldb       #$FF                Boolean result=TRUE
+                    bra       BoolSaveResult
 
-L4409               clrb                          Boolean result=FALSE
-L440B               clra                          Clear hi byte (since result is 1 byte boolean)
+BoolFalse               clrb                          Boolean result=FALSE
+BoolSaveResult               clra                          Clear hi byte (since result is 1 byte boolean)
                     leay      6,y                 Eat temp var packet
                     std       1,y                 Save result in original var packet
                     lda       #3                  Save var type as Boolean
@@ -9920,44 +9924,44 @@ L440B               clra                          Clear hi byte (since result is
 * BOOLEAN = compare
 BLCMEQ               ldb       8,y                 Get original BOOLEAN value
                     cmpb      2,y                 Same as comparitive BOOLEAN value?
-                    beq       L4405               Yes, result=TRUE
-                    bra       L4409               No, result=FALSE
+                    beq       BoolTrue               Yes, result=TRUE
+                    bra       BoolFalse               No, result=FALSE
 
 * BOOLEAN <> or >< compare
-L441D               ldb       8,y                 Get original BOOLEAN value
+BlcmpNE               ldb       8,y                 Get original BOOLEAN value
                     cmpb      2,y                 Same as comparitive BOOLEAN value?
-                    bne       L4405               No, result=TRUE
-                    bra       L4409               Yes, result=FALSE
+                    bne       BoolTrue               No, result=TRUE
+                    bra       BoolFalse               Yes, result=FALSE
 
 * Real < compare
 RLCMLT               bsr       RLCMP               Go compute flags between real #'s
-                    blt       L4405               If < then, result=TRUE
-                    bra       L4409               Otherwise, result=FALSE
+                    blt       BoolTrue               If < then, result=TRUE
+                    bra       BoolFalse               Otherwise, result=FALSE
 
 * Real <= or =< compare
 RLCMNE               bsr       RLCMP
-                    ble       L4405
-                    bra       L4409
+                    ble       BoolTrue
+                    bra       BoolFalse
 
 * Real <> or >< compare
 RLCMEQ               bsr       RLCMP
-                    bne       L4405
-                    bra       L4409
+                    bne       BoolTrue
+                    bra       BoolFalse
 
 * Real = compare
 RLCMGE               bsr       RLCMP
-                    beq       L4405
-                    bra       L4409
+                    beq       BoolTrue
+                    bra       BoolFalse
 
 * Real >= or => compare
 RLCMGT               bsr       RLCMP
-                    bge       L4405
-                    bra       L4409
+                    bge       BoolTrue
+                    bra       BoolFalse
 
 * Real > compare
-L4443               bsr       RLCMP
-                    bgt       L4405
-                    bra       L4409
+RlcmpGT               bsr       RLCMP
+                    bgt       BoolTrue
+                    bra       BoolFalse
 
 * Set flags for Real comparison
 RLCMP               pshs      y                   Preserve Y
@@ -9967,7 +9971,7 @@ RLCMP               pshs      y                   Preserve Y
 * (orig: RLCM40)
                     lda       2,y                 Is comparitive REAL var=0?
                     beq       RLCM30               Yes, they are equal so return
-L4455               lda       5,y                 Get last byte of Mantissa with sign bit
+RlcmpGetSign               lda       5,y                 Get last byte of Mantissa with sign bit
 RLCM15               anda      #$01                Ditch everything but sign bit
                     bne       RLCM30               Sign bit set, negative value, return
 RLCM20               andcc     #$F0                Clear out Negative, Zero, Overflow & carry bits
@@ -9975,24 +9979,24 @@ RLCM20               andcc     #$F0                Clear out Negative, Zero, Ove
 RLCM30               puls      pc,y
 
 RLCM50               lda       2,y                 Is comparitive REAL var=0?
-                    bne       L446B               No, go deal with whole exponent/mantissa mess
+                    bne       RlcmpBothNonZero               No, go deal with whole exponent/mantissa mess
                     lda       $B,y                Get sign bit of original var
                     eora      #$01                Invert sign flag
                     bra       RLCM15               Go set Negative bit appropriately
 
 * No zero values in REAL compare-deal with exponent & mantissa
-L446B               lda       $B,y                Get sign bit byte from original var
+RlcmpBothNonZero               lda       $B,y                Get sign bit byte from original var
                     eora      5,y                 Calculate resulting sign from it with temp var
                     anda      #$01                Only keep sign bit
-                    bne       L4455               One of the #'s is neg, other pos, go deal with it
+                    bne       RlcmpGetSign               One of the #'s is neg, other pos, go deal with it
                     leau      6,y                 Both same sign, point U to original var
                     lda       5,y                 Get sign byte from temp var
                     anda      #$01                Just keep sign bit
-                    beq       L447D               If positive, skip ahead
+                    beq       RlcmpCompareMag               If positive, skip ahead
                     exg       u,y                 If negative, swap ptrs to the 2 vars
 * POSSIBLE 6309 MOD: DO LDA 1,U / CMPA 1,Y FOR EXPONENT, THEN LDQ / CMPD /
 * CMPW FOR MANTISSA
-L447D               ldd       1,u                 Get exponent & 1st mantissa bytes
+RlcmpCompareMag               ldd       1,u                 Get exponent & 1st mantissa bytes
                     cmpd      1,y                 Compare
                     bne       RLCM30               Not equal, exit with appropriate flags set
                     ldd       3,u                 Match so far, compare 2nd & 3rd mantissa bytes
@@ -10007,59 +10011,59 @@ RLCM70               blo       RLCM20               If below, set negative flag 
 
 *??? Copy string var of some sort <=256 chars max
 STRLIT               clrb                          Max size of string copy=256
-                    stb       <u003E              Save it
-STRCAT               ldu       <u0048              Get ptr to string of some sort
+                    stb       <MaxStrSize              Save it
+STRCAT               ldu       <StrStkPtr              Get ptr to string of some sort
                     leay      -6,y                Make room for temp var
                     stu       1,y                 Save ptr to it
-                    sty       <u0044              Save temp var ptr
-MIDFN4               cmpu      <u0044              At end of string stack yet?
-                    bhs       L44C2               Yes, exit with String stack overflow error
+                    sty       <StrSpaceTop              Save temp var ptr
+MIDFN4               cmpu      <StrSpaceTop              At end of string stack yet?
+                    bhs       StrStkOverflow               Yes, exit with String stack overflow error
                     lda       ,x+                 Get char from string
                     sta       ,u+                 Save it
                     cmpa      #$FF                EOS?
                     beq       STLIT3               Yes, finished copying
                     decb                          Dec size left
                     bne       MIDFN4               Still room, keep copying
-                    dec       <u003E              ???
+                    dec       <MaxStrSize              ???
                     bpl       MIDFN4               Still good, keep copying
                     lda       #$FF                Append string terminator
                     sta       ,u+           Put in string stack
-STLIT3               stu       <u0048              Save end of string stack ptr
+STLIT3               stu       <StrStkPtr              Save end of string stack ptr
                     lda       #4                  Force var type to string
                     sta       ,y
                     rts
 
-L44C2               ldb       #$2F                String stack overflow
-                    jsr       <u0024
+StrStkOverflow               ldb       #$2F                String stack overflow
+                    jsr       <JmpVect4
                     fcb       $06
 
 SVSTR               ldd       ,x++
-                    addd      <u0066
+                    addd      <SymTblSize
                     tfr       d,u           Make direct page ptr
-L44CD               ldd       ,u
-                    addd      <u0031        Add procedure storage addr
+SvstrGetOff               ldd       ,u
+                    addd      <VarStorePtr        Add procedure storage addr
                     ldu       2,u           Get size
-                    stu       <u003E
+                    stu       <MaxStrSize
                     tfr       d,u
 STRVAR               pshs      x
-                    ldb       <u003F
+                    ldb       <UnusedByte3F
                     bne       STRVAR10
-                    dec       <u003E
+                    dec       <MaxStrSize
 STRVAR10               leax      ,u
                     bsr       STRCAT         push string
                     puls      pc,x
 
-L44E5               ldu       1,y                 Get ptr to string contents
+StrConcatBody               ldu       1,y                 Get ptr to string contents
                     leay      6,y                 Eat temp var
 STCAT2               lda       ,u+                 Get char from temp var
                     sta       -2,u                Save 1 byte back from original spot
                     cmpa      #$FF                EOS?
                     bne       STCAT2               No, keep copying until EOS is hit
                     leau      -1,u                Point U back to EOS
-                    stu       <u0048              Save string stack ptr & return
+                    stu       <StrStkPtr              Save string stack ptr & return
                     rts
 
-RCDVAR               ldd       <u003E
+RCDVAR               ldd       <MaxStrSize
                     leay      -6,y                Make room for temp var
                     std       3,y                 ???
                     stu       1,y                 ???
@@ -10079,7 +10083,7 @@ FLOAT               clra                          Force least 2 sig bytes to 0 (
 
 FLOAT1               ldu       #$0210              ??? (528)
                     tsta                          Exponent negative?
-                    bpl       L451F               No, positive (big number), skip ahead
+                    bpl       FloatExpPos               No, positive (big number), skip ahead
                     ifne      H6309
                     negd
                     else
@@ -10090,15 +10094,15 @@ FLOAT1               ldu       #$0210              ??? (528)
                     inc       5,y           Adjust exponent
 * (orig: FLOAT2)
                     tsta                          Check exponent again
-L451F               bne       L4526               Exponent <>0, skip ahead
+FloatExpPos               bne       FloatCheckNorm               Exponent <>0, skip ahead
                     ldu       #$0208              ??? If exponent=0, 522
                     exg       a,b           Msb to D
-L4526               tsta                    Result normalized?
+FloatCheckNorm               tsta                    Result normalized?
                     bmi       FLOAT5         bra if no
-L4529               leau      -1,u                Drop down U counter
+FloatNormLoop               leau      -1,u                Drop down U counter
                     lslb                          LSLD
                     rola
-                    bpl       L4529               Do until hi bit is set
+                    bpl       FloatNormLoop               Do until hi bit is set
 FLOAT5               std       2,y
                     stu       ,y            Save TYPE & exponent
                     rts
@@ -10121,16 +10125,16 @@ FIXZER               clra                          Integer result=0
                     bra       FIX5               Save integer & return
 
 FIX1               subb      #$10                Subtract 16 from exponent
-                    bhi       L458C         bra if too large
+                    bhi       FixRangeErr         bra if too large
                     bne       FIX2         bra if in range
                     ldd       2,y           get value
                     ror       5,y           check sign
                     bcc       FIX5         bra if positive
                     cmpd      #$8000        -32768?
-                    bne       L458C         ..No
+                    bne       FixRangeErr         ..No
                     tst       4,y           would it round out?
                     bpl       FIX5         ..No
-                    bra       L458C
+                    bra       FixRangeErr
 
 FIX2               cmpb      #$F8
                     bhi       FIX3         ..No
@@ -10151,8 +10155,8 @@ FIX4               ldd       2,y
                     bpl       FIX4A         if <.5 dont round
                     addd      #$0001        Round up
                     bvc       FIX4A         bra if no overfl
-L458C               ldb       #$34                Value out of Range for Destination error
-                    jsr       <u0024
+FixRangeErr               ldb       #$34                Value out of Range for Destination error
+                    jsr       <JmpVect4
                     fcb       $06
 
 FIX4A               ror       5,y                 Get sign bit of converted real #
@@ -10174,7 +10178,7 @@ FIXNEX               leay      6,y
                     leay      -6,y
                     rts
 
-L45A7               leay      $C,y                Eat 2 temp vars
+FixEat2Vars               leay      $C,y                Eat 2 temp vars
                     bsr       FIX
                     leay      -$C,y               Make room for 2 temp vars & return
                     rts
@@ -10192,7 +10196,7 @@ ABSFNR               lda       5,y                 Get sign bit for Real #
                     endc
 
 * ABS for Integer's
-L45B5               ldd       1,y                 Get integer
+AbsInt               ldd       1,y                 Get integer
                     bpl       ABSIN2               If positive already, exit
                     ifne      H6309
                     negd                          Force to positive
@@ -10229,43 +10233,43 @@ SGNZER               clrb
 
 SGNMIN               ldb       #$FF
 RETINT               sex                     Prime msb
-                    bra       L45EA
+                    bra       SaveIntResult
 
-L45E3               ldb       <u0036
-                    clr       <u0036
-L45E7               clra                    Byte Result
+ErrFuncImpl               ldb       <ErrCode
+                    clr       <ErrCode
+ByteIntResult               clra                    Byte Result
                     leay      -6,y                Make room for temp var
-L45EA               std       1,y                 Save value
+SaveIntResult               std       1,y                 Save value
                     lda       #1                  Force type to integer & return
                     sta       ,y
 RETBYT99               rts
 
-POSFNC               ldb       <u007D
-                    bra       L45E7
+POSFNC               ldb       <TmpBufCount
+                    bra       ByteIntResult
 
 SQRR05               ldb       $05,y
                     asrb                    Sign to carry
-                    lbcs      L4FC7
+                    lbcs      IllegalArgErr
                     ldb       #$1F          Set cycle count
-                    stb       <u006E
+                    stb       <SqrtCycleCount
                     ldd       $01,y         Get exponent & msb
                     beq       RETBYT99         return zero
                     inca                    Exponent for even/odd test
                     asra
                     sta       $01,y         Save it
                     ldd       $02,y         Get msb
-                    bcs       L4616         bra if boolean
+                    bcs       SqrtBoolExponent         bra if boolean
                     lsra                    Mantissa for odd exponent
                     rorb
                     std       -$04,y
                     ldd       $04,y
                     rora                    Lsdb
                     rorb
-                    bra       L461A
+                    bra       SqrtMainCalc
 
-L4616               std       -$04,y
+SqrtBoolExponent               std       -$04,y
                     ldd       $04,y         Set x coordinate to 1
-L461A               std       -$02,y
+SqrtMainCalc               std       -$02,y
                     clra                    Result
                     clrb
                     std       $02,y
@@ -10279,9 +10283,9 @@ SQRR25               orcc      #$01
                     rol       $04,y
                     rol       $03,y
                     rol       $02,y
-                    dec       <u006E
-                    beq       L467A
-                    bsr       L468F         Call double shifter
+                    dec       <SqrtCycleCount
+                    beq       SqrtFinalShift
+                    bsr       SqrtDoubleShift         Call double shifter
 SQRR30               ldb       -$04,y
                     subb      #$40
                     stb       -$04,y
@@ -10299,9 +10303,9 @@ SQRR35               andcc     #$FE
                     rol       $04,y
                     rol       $03,y
                     rol       $02,y
-                    dec       <u006E
-                    beq       L467A
-                    bsr       L468F         Call double shifter
+                    dec       <SqrtCycleCount
+                    beq       SqrtFinalShift
+                    bsr       SqrtDoubleShift         Call double shifter
                     ldb       -$04,y        Get lsb effected
                     addb      #$C0
                     stb       -$04,y
@@ -10317,21 +10321,21 @@ SQRR35               andcc     #$FE
                     bmi       SQRR35         if normalized, exit
                     bra       SQRR25
 
-L467A               ldd       $02,y
-                    bra       L4684         Do last shift
+SqrtFinalShift               ldd       $02,y
+                    bra       SqrtShiftMain         Do last shift
 
-L467E               dec       $01,y
-                    lbvs      L40DD
-L4684               lsl       $05,y
+SqrtShiftNorm               dec       $01,y
+                    lbvs      RmulZeroResult
+SqrtShiftMain               lsl       $05,y
                     rol       $04,y
                     rolb
                     rola
-                    bpl       L467E         bra if another shift
+                    bpl       SqrtShiftNorm         bra if another shift
                     std       $02,y
                     rts
 
-L468F               bsr       L4691
-L4691               lsl       -$01,y
+SqrtDoubleShift               bsr       SqrtSingleShift
+SqrtSingleShift               lsl       -$01,y
                     rol       -$02,y
                     rol       -$03,y
                     rol       -$04,y
@@ -10350,10 +10354,10 @@ MODF10               ldd       ,y++
                     bne       MODF10         ..No
                     leas      2,s           Dump count
                     leay      -12,u         Move opstack ptr to top of stack
-                    lbsr      L422D         Get a/b
+                    lbsr      RealDivEntry         Get a/b
                     bsr       INTFNR         Get INT(a/b)
-                    lbsr      L40CC         Get b*INT(a/b)
-                    lbra      L3FAB         Get a-b*INT(a/b)
+                    lbsr      RealMulEntry         Get b*INT(a/b)
+                    lbra      RealSubtract         Get a-b*INT(a/b)
 
 INTFNR               lda       1,y
                     bgt       INTF20         bra if arg>=1
@@ -10372,14 +10376,14 @@ INTF20               cmpa      #$1F
                     pshs      u,b           Save sign & end ptr
 * (orig: INTF30)
                     leau      $01,y
-L46E1               leau      1,u
+IntfShiftLeft               leau      1,u
                     suba      #$08          Down count
-                    bcc       L46E1         bra if more to left of binary point
+                    bcc       IntfShiftLeft         bra if more to left of binary point
                     beq       INTF50         bra if exact
                     ldb       #$FF          Make mask for byte
-L46EB               lslb
+IntfMakeMask               lslb
                     inca
-                    bne       L46EB
+                    bne       IntfMakeMask
                     andb      ,u            Get sign difference only
                     stb       ,u+
                     bra       INTF70
@@ -10398,7 +10402,7 @@ SQFNCI               leay      -6,y
                     std       1,y           Copy it
                     lbra      INMUL         Go do multiply
 
-L470E               leay      -6,y
+SqRealImpl               leay      -6,y
                     ldd       $A,y
                     std       4,y
                     ldd       8,y
@@ -10406,23 +10410,23 @@ L470E               leay      -6,y
 * (orig: VALFNC)
                     ldd       6,y
                     std       ,y
-                    lbra      L40CC         Go do multiply
+                    lbra      RealMulEntry         Go do multiply
 
-L471F               ldd       <u0080
-                    ldu       <u0082
+ValFnc               ldd       <TmpBufBase
+                    ldu       <TmpBufCur
                     pshs      u,d
                     ldd       1,y           Get ptr to string
 * (orig: RADD90)
-                    std       <u0080
-                    std       <u0082
-                    std       <u0048        Pop string off string stack
+                    std       <TmpBufBase
+                    std       <TmpBufCur
+                    std       <StrStkPtr        Pop string off string stack
                     leay      6,y           Adjust opstack
                     ldb       #9            Set code for convert to real
-                    lbsr      L011F         Call conversion
+                    lbsr      Vect6Fn2         Call conversion
                     puls      u,d
-                    std       <u0080        Restore them
-                    stu       <u0082
-                    lbcs      L4FC7         abort if error
+                    std       <TmpBufBase        Restore them
+                    stu       <TmpBufCur
+                    lbcs      IllegalArgErr         abort if error
                     rts
 
 ADRFNC               lbsr      EVAL20
@@ -10434,33 +10438,33 @@ ADRF10               lda       #$01                ??? Integer type
                     rts
 
 * Table to numeric variable type sizes in bytes? (duplicates earlier table @
-*  L3B5B)
+*  VarSizeTable2)
 * Can either leave table here, change leau below to 8 bit pc (faster/1 byte
 *   shorter), or eliminate table and point to 3B5B table (4 bytes shorter/same
 *   speed)
-L474D               fcb       $01                 Byte             (type=0)
+VarSizeTable3               fcb       $01                 Byte             (type=0)
                     fcb       $02                 Integer size     (type=1)
                     fcb       $05                 Real size        (type=2)
                     fcb       $01                 Boolean          (type=3)
 
-L4751               lbsr      EVAL20
+SizeFnc               lbsr      EVAL20
                     leay      -6,y                ??? Size of variable packets?
                     cmpa      #4                  String/complex variable?
                     bhs       TRUFNC               Yes, skip ahead
-                    leau      <L474D,pc           Point to numeric type size table
+                    leau      <VarSizeTable3,pc           Point to numeric type size table
                     ldb       a,u                 Get size of var in bytes
                     clra                          D=size  Msb
-                    bra       L4765               Go save it
+                    bra       SizeSaveResult               Go save it
 
-TRUFNC               ldd       <u003E              ??? Get integer value
-L4765               std       1,y                 ??? Save integer value
+TRUFNC               ldd       <MaxStrSize              ??? Get integer value
+SizeSaveResult               std       1,y                 ??? Save integer value
                     bra       ADRF10
 
 * BOOLEAN - TRUE
-L4769               ldd       #$00FF              $FF in boolean is True flag
+BoolTrueImpl               ldd       #$00FF              $FF in boolean is True flag
                     bra       FALFN2
 
-L476E               ldd       #$0000              CLRD ($00 in boolean is False)
+BoolFalseImpl               ldd       #$0000              CLRD ($00 in boolean is False)
 FALFN2               leay      -6,y                Make room for variable packet
                     std       1,y                 Save boolean flag value
                     lda       #3                  Save type as boolean (3)
@@ -10474,35 +10478,35 @@ NOTFNC               com       1,y                 Leave as LDD 1,y/COMD/STD 1,y
 ANDFNC               ldd       1,y                 Get value to AND with out of integer var.
                     anda      7,y                 ANDD (with value in variable)
                     andb      8,y           clear sign
-                    bra       L4795
+                    bra       LogicSaveResult
 
 ORFNC               ldd       1,y
                     eora      7,y                 EORD
                     eorb      8,y
-                    bra       L4795         Save result + cleanup
+                    bra       LogicSaveResult         Save result + cleanup
 
-L478F               ldd       1,y
+LorFnc               ldd       1,y
                     ora       7,y                 ORD
                     orb       8,y
 ***************
 * Save Result of Locical Function
-L4795               std       7,y                 Save result after logic applied
+LogicSaveResult               std       7,y                 Save result after logic applied
                     leay      6,y                 Eat temporary variable packet?
                     rts
 
-L479A               fcb       $ff,$de,$5b,$d8,$aa ??? (.434294482)
+Log10Const               fcb       $ff,$de,$5b,$d8,$aa ??? (.434294482)
 
-L479F               bsr       L47AB
-                    leau      <L479A,pc           Point to ???
-                    lbsr      L3F93         push on opstack
-                    lbra      L40CC         Convert to base 10 log
+Log10Fnc               bsr       LnFnc
+                    leau      <Log10Const,pc           Point to ???
+                    lbsr      CopyRealToTemp         push on opstack
+                    lbra      RealMulEntry         Convert to base 10 log
 
-L47AB               pshs      x
+LnFnc               pshs      x
                     ldb       5,y           Get sign byte
                     asrb                    Sign
-                    lbcs      L4FC7         bra if illegal
+                    lbcs      IllegalArgErr         bra if illegal
                     ldd       1,y           Ln(0)?
-                    lbeq      L4FC7         bra if so
+                    lbeq      IllegalArgErr         bra if so
                     pshs      a             Save exponent
                     ldb       #1            Set exponent to one
                     stb       1,y           Save it
@@ -10518,9 +10522,9 @@ L47AB               pshs      x
                     std       <$14,y        Set nos to zero
                     std       <$16,y
                     sta       <$18,y
-                    leax      >L4C7F,pc           Point to routine
+                    leax      >CordExpFuncPtr,pc           Point to routine
                     stx       <$19,y
-                    lbsr      L4909
+                    lbsr      CordSetup
                     leax      <$14,y        Get ptr to result
                     leau      <$1B,y
                     lbsr      CMOVE
@@ -10534,17 +10538,17 @@ L47AB               pshs      x
                     puls      b             Get argument exponent
                     bsr       CBLN2         Multiply by ln(2)
                     puls      x
-                    lbra      L3FB1         Add product to cordic result
+                    lbra      RealAdd         Add product to cordic result
 
-L4805               fcb       $00,$b1,$72,$17,$f8 (.693147181) LOG(2) in REAL format
+Ln2Const               fcb       $00,$b1,$72,$17,$f8 (.693147181) LOG(2) in REAL format
 
 CBLN2               sex                           Convert to 16 bit number
                     bpl       CBLN10               If positive, skip ahead
                     negb                          Invert sign on LSB
 CBLN10               anda      #$01
                     pshs      d             Save sign, ABS(exponent)
-CNOR20               leau      <L4805,pc           Point to Log(2) in REAL format
-                    lbsr      L3F93         Move to stack
+CNOR20               leau      <Ln2Const,pc           Point to Log(2) in REAL format
+                    lbsr      CopyRealToTemp         Move to stack
                     ldb       5,y           Get lsb
                     lda       1,s           Get ABS(exponent)
                     cmpa      #1            one?
@@ -10618,7 +10622,7 @@ EXPF25               lda       #$71
                     stb       $05,y         Replace it
                     ldb       ,s
 EXPF30               lbsr      CBLN2
-                    lbsr      L3FAB         Subtract adjustment from argument
+                    lbsr      RealSubtract         Subtract adjustment from argument
                     ldb       $01,y         Get result exponent
                     ble       EXPF40
                     addb      ,s
@@ -10634,9 +10638,9 @@ EXPF40               puls      d
                     sta       ,s
                     orb       5,y           Replace sign
                     stb       5,y
-EXPF45               leau      >L4805,pc           Point to LOG(2) in REAL format
-                    lbsr      L3F93
-                    lbsr      L3FB1         Add constant
+EXPF45               leau      >Ln2Const,pc           Point to LOG(2) in REAL format
+                    lbsr      CopyRealToTemp
+                    lbsr      RealAdd         Add constant
                     dec       ,s
                     ldb       5,y           Get result sign byte
                     andb      #$01          Get sign
@@ -10653,7 +10657,7 @@ EXPF50               leay      <-$1A,y
                     sta       $04,y
                     leax      >FPDV45,pc     Get routine addr
                     stx       <$19,y        Save it
-                    bsr       L4909         Add (u) > (x)
+                    bsr       CordSetup         Add (u) > (x)
                     leax      ,y
                     leau      <$1B,y        Get address of result
                     lbsr      CMOVE
@@ -10668,45 +10672,45 @@ EXPF50               leay      <-$1A,y
                     std       ,y
                     puls      pc,x
 
-L4909               lda       #$01
-                    sta       <u009A
-                    leax      >L4D6F,pc     Get entry address
-                    stx       <u0095        Set it
+CordSetup               lda       #$01
+                    sta       <TrigNegFlag
+                    leax      >CordAngleTab2,pc     Get entry address
+                    stx       <TrigPtr1        Set it
                     leax      >$005F,x      Get end of table address
-                    stx       <u0097
+                    stx       <TrigPtr2
                     lbra      CORDIC
 
 FPOVRF               leay      -6,y
-                    lbpl      L40DD         return zero if too small
+                    lbpl      RmulZeroResult         return zero if too small
                     ldb       #$32                Floating Overflow error
-                    jsr       <u0024
+                    jsr       <JmpVect4
                     fcb       $06
 
 ASNFNC               pshs      x
                     bsr       CSIGN
                     ldd       $01,y
-                    lbeq      L4A91
+                    lbeq      TrigReturnReal
                     cmpd      #$0180
                     bgt       ASNERR
-                    bne       L4946
+                    bne       AsnFncMain
                     ldd       $03,y
                     bne       ASNERR
                     lda       $05,y
                     lbeq      RETPI2         return pi/2 if arg is one
-ASNERR               lbra      L4FC7
+ASNERR               lbra      IllegalArgErr
 
-L4946               lbsr      ARCSUB
+AsnFncMain               lbsr      ARCSUB
                     leay      <-$14,y       Make room for cordic
                     leax      <$15,y        Get x-coord ptr
                     leau      ,y            Get stack location
                     lbsr      CMOVE         Move x-coord
                     lbsr      CDENOR         Denormalize it
                     leax      <$1B,y        Get y-coord ptr
-                    lbra      L4A3E         Get arctangent
+                    lbra      AtnFncCordic         Get arctangent
 
 CSIGN               ldb       $05,y
                     andb      #$01          Get sign bit
-                    stb       <u006D        Save it
+                    stb       <TrigTemp        Save it
                     eorb      $05,y         Get operand sign difference
                     stb       $05,y         Save it and fall to rladd
                     rts
@@ -10723,7 +10727,7 @@ ACSFNC               leau      <ACSRET,pc
                     bne       ASNERR
                     lda       $05,y         Test last byte
                     bne       ASNERR
-                    lda       <u006D
+                    lda       <TrigTemp
                     bne       ACSF05
                     clrb
                     std       $01,y
@@ -10731,7 +10735,7 @@ ACSFNC               leau      <ACSRET,pc
 
 ACSF05               leay      6,y                 Eat temp var
                     puls      u,x
-                    lbra      L4B03
+                    lbra      CopyPiToStack
 
 ACSF10               bsr       ARCSUB
                     leay      <-$14,y       Make room for cordic
@@ -10740,28 +10744,28 @@ ACSF10               bsr       ARCSUB
                     lbsr      CMOVE
                     lbsr      CDENOR
                     leax      <$15,y
-                    lbra      L4A3E
+                    lbra      AtnFncCordic
 
 ACSRET               lda       5,y
                     bita      #$01
                     beq       ACSF25
-                    ldu       <u0031
+                    ldu       <VarStorePtr
                     tst       1,u
-                    beq       L49BF
-                    leau      <L49C6,pc           Point to 180 in FP format
+                    beq       AcsFncPiDiv2
+                    leau      <Const180,pc           Point to 180 in FP format
 * (orig: ACSF15)
-                    lbsr      L3F93
+                    lbsr      CopyRealToTemp
                     bra       ACSF20
 
-L49BF               lbsr      L4B03
-ACSF20               lbra      L3FB1
+AcsFncPiDiv2               lbsr      CopyPiToStack
+ACSF20               lbra      RealAdd
 
 * See if we can move label to RTS above @ CSIGN, or below @ end of ARCSUB
 ACSF25               rts
 
-L49C6               fcb       $08,$b4,$00,$00,$00 180
+Const180               fcb       $08,$b4,$00,$00,$00 180
 
-ARCSUB               lda       <u006D
+ARCSUB               lda       <TrigTemp
                     pshs      a
                     leay      <-$12,y
                     ldd       #$0201
@@ -10780,24 +10784,24 @@ ARCSUB               lda       <u006D
                     ldd       <$16,y
                     std       $04,y
                     std       $0A,y
-                    lbsr      L40CC
-                    lbsr      L3FAB
+                    lbsr      RealMulEntry
+                    lbsr      RealSubtract
                     lbsr      SQRR05
                     puls      a
-                    sta       <u006D
+                    sta       <TrigTemp
                     rts
 
 ATNFNC               pshs      x
                     lbsr      CSIGN
                     ldb       $01,y
                     cmpb      #$18
-                    blt       L4A17
+                    blt       AtnFncCalc
 RETPI2               leay      6,y
-                    lbsr      L4B03
+                    lbsr      CopyPiToStack
                     dec       1,y
                     bra       ATNF35
 
-L4A17               leay      <-$1A,y
+AtnFncCalc               leay      <-$1A,y
                     ldd       #$1000
                     std       ,y
                     clra
@@ -10816,7 +10820,7 @@ ATNF30               cmpb      #$02
                     bgt       ATNF20
                     stb       <$1B,y
                     leax      <$1B,y
-L4A3E               leau      $0A,y
+AtnFncCordic               leau      $0A,y
                     lbsr      CMOVE
                     lbsr      CDENOR
                     clra
@@ -10833,47 +10837,47 @@ L4A3E               leau      $0A,y
                     lbsr      CNORM
                     leay      <$1A,y
 ATNF35               lda       $05,y
-                    ora       <u006D
+                    ora       <TrigTemp
                     sta       $05,y
-                    ldu       <u0031
+                    ldu       <VarStorePtr
                     tst       1,u
-                    beq       L4A91
-                    leau      >L4AFE,pc
-                    lbsr      L3F93
-                    lbsr      L40CC
-                    bra       L4A91
+                    beq       TrigReturnReal
+                    leau      >RadConst,pc
+                    lbsr      CopyRealToTemp
+                    lbsr      RealMulEntry
+                    bra       TrigReturnReal
 
 SINFNC               pshs      x
-                    lbsr      L4B0A
+                    lbsr      TrigSetupArg
                     leax      $0A,y
-                    bsr       L4A97
+                    bsr       TrigCopyNorm
 * (orig: SINFN4)
                     lda       $05,y
-SINFN2               eora      <u009C
+SINFN2               eora      <TrigSign2
 SINFN3               sta       $05,y
-L4A91               lda       #$02
+TrigReturnReal               lda       #$02
                     sta       ,y
                     puls      pc,x
 
-L4A97               leau      <$1B,y
+TrigCopyNorm               leau      <$1B,y
                     lbsr      CMOVE
                     lbsr      CNORM
                     leay      <$14,y
-                    leax      >L4D6A,pc           Point to a table of Real #'s
+                    leax      >CordK0Const,pc           Point to a table of Real #'s
                     leau      1,y
                     lbsr      CMOVE
-                    lbra      L40CC
+                    lbra      RealMulEntry
 
 COSFNC               pshs      x
-                    bsr       L4B0A
+                    bsr       TrigSetupArg
                     leax      ,y
-                    bsr       L4A97
+                    bsr       TrigCopyNorm
                     lda       $05,y
-                    eora      <u009B
+                    eora      <TrigSign
                     bra       SINFN3
 
 TANFNC               pshs      x
-                    bsr       L4B0A
+                    bsr       TrigSetupArg
                     leax      $0A,y
                     leau      <$1B,y
                     lbsr      CMOVE
@@ -10887,71 +10891,71 @@ TANFNC               pshs      x
                     bne       TANF10
                     leay      $06,y
                     ldd       #$7FFF
-L4AE2               std       $01,y
+TanfZeroDiv               std       $01,y
                     lda       #$FF
                     std       $03,y
                     deca
                     bra       TANF20
 
-TANF10               lbsr      L422D
+TANF10               lbsr      RealDivEntry
                     lda       $05,y
-TANF20               eora      <u009B
+TANF20               eora      <TrigSign
                     bra       SINFN2
 
-L4AF4               fcb       $02,$c9,$0f,$da,$a2 PI (3.14159265)
+PiConst               fcb       $02,$c9,$0f,$da,$a2 PI (3.14159265)
 
-L4AF9               fcb       $fb,$8e,$fa,$35,$12 -1.74532925 E-02  (Degrees)
+DegConst               fcb       $fb,$8e,$fa,$35,$12 -1.74532925 E-02  (Degrees)
 
-L4AFE               fcb       $06,$e5,$2e,$e0,$d4 57.2957795 (radians)
+RadConst               fcb       $06,$e5,$2e,$e0,$d4 57.2957795 (radians)
 
-L4B03               leau      <L4AF4,pc           Point to PI in FP format
-                    lbra      L3F93
+CopyPiToStack               leau      <PiConst,pc           Point to PI in FP format
+                    lbra      CopyRealToTemp
 
-L4B0A               ldu       <u0031
+TrigSetupArg               ldu       <VarStorePtr
                     tst       1,u
                     beq       TRIG05
-                    leau      <L4AF9,pc
-                    lbsr      L3F93               Copy 5 bytes from u to 1,y (0,y=2)
-                    lbsr      L40CC
-TRIG05               clr       <u009B
+                    leau      <DegConst,pc
+                    lbsr      CopyRealToTemp               Copy 5 bytes from u to 1,y (0,y=2)
+                    lbsr      RealMulEntry
+TRIG05               clr       <TrigSign
                     ldb       $05,y
                     andb      #$01
-                    stb       <u009C
+                    stb       <TrigSign2
                     eorb      $05,y
                     stb       $05,y
-                    bsr       L4B03
+                    bsr       CopyPiToStack
                     inc       $01,y
                     lbsr      RLCMP
                     blt       TRIG10
 * (orig: TRIG20)
                     lbsr      MODFNR
-                    bsr       L4B03
-                    bra       L4B38
+                    bsr       CopyPiToStack
+                    bra       TrigHalfPi
 
 TRIG10               dec       $01,y
-L4B38               lbsr      RLCMP
+TrigHalfPi               lbsr      RLCMP
                     blt       TRIG30
-                    inc       <u009B
-                    lda       <u009C
+                    inc       <TrigSign
+                    lda       <TrigSign2
                     eora      #$01
-                    sta       <u009C
-                    lbsr      L3FAB
-                    bsr       L4B03
+                    sta       <TrigSign2
+                    lbsr      RealSubtract
+                    bsr       CopyPiToStack
 TRIG30               dec       $01,y
                     lbsr      RLCMP
-                    ble       L4B64
-                    lda       <u009B
+                    ble       TrigCordicSetup
+                    lda       <TrigSign
                     eora      #$01
-                    sta       <u009B
+                    sta       <TrigSign
                     inc       $01,y
                     lda       $0B,y
                     ora       #$01
                     sta       $0B,y
-                    lbsr      L3FB1
+                    lbsr      RealAdd
 * (orig: TRIG40)
                     leay      -$06,y
-L4B64               leay      <-$14,y
-                    leax      >L4C33,pc
+TrigCordicSetup               leay      <-$14,y
+                    leax      >CordTestResult,pc
                     stx       <$19,y
                     leax      <$1B,y
                     leau      <$14,y
@@ -10965,36 +10969,36 @@ L4B64               leay      <-$14,y
                     std       $0A,y
                     std       $0C,y
                     sta       $0E,y
-CIRCOR               leax      >L4D29,pc           Point to some real # table
-                    stx       <u0095
-                    leax      <L4D6A-L4D29,x      Point to further in table
-                    stx       <u0097
-                    clr       <u009A
+CIRCOR               leax      >CordAngTable,pc           Point to some real # table
+                    stx       <TrigPtr1
+                    leax      <CordK0Const-CordAngTable,x      Point to further in table
+                    stx       <TrigPtr2
+                    clr       <TrigNegFlag
 CORDIC               ldb       #$25
-                    stb       <u0099
-                    clr       <u009D
+                    stb       <TrigIter
+                    clr       <TrigOctant
 CORD10               leau      <$1B,y
-                    ldx       <u0095
-                    cmpx      <u0097
+                    ldx       <TrigPtr1
+                    cmpx      <TrigPtr2
                     bhs       CORD20
                     bsr       CMOVE
                     leax      5,x                 Point to next entry in 5-byte entry table
-                    stx       <u0095              Save new ptr
+                    stx       <TrigPtr1              Save new ptr
                     bra       CORD30
 
 CORD20               ldb       #$01
-                    bsr       L4C1E
+                    bsr       CordShiftRight
 CORD30               leax      ,y
                     leau      5,y
                     bsr       CSR
-                    tst       <u009A
+                    tst       <TrigNegFlag
                     bne       CORD40
                     leax      $0A,y
                     leau      $0F,y
                     bsr       CSR
 CORD40               jsr       [<$19,y]
-                    inc       <u009D
-                    dec       <u0099
+                    inc       <TrigOctant
+                    dec       <TrigIter
                     bne       CORD10
                     rts
 
@@ -11009,7 +11013,7 @@ CMOVE               pshs      y,x
 
 CSR               ldb       ,x
                     sex
-                    ldb       <u009D
+                    ldb       <TrigOctant
                     lsrb
                     lsrb
                     lsrb
@@ -11028,30 +11032,30 @@ CSR3               lda       ,x+
                     decb
                     bne       CSR3
 CSR35               leau      -5,u
-                    ldb       <u009D
+                    ldb       <TrigOctant
                     andb      #$07
                     beq       CSR5
                     cmpb      #$04
-                    bcs       L4C1E
+                    bcs       CordShiftRight
                     subb      #$08
                     lda       ,x
-L4C0F               lsla
+CordShiftLeft               lsla
                     rol       4,u
                     rol       3,u
                     rol       2,u
                     rol       1,u
                     rol       ,u
                     incb
-                    bne       L4C0F
+                    bne       CordShiftLeft
                     rts
 
-L4C1E               asr       ,u
+CordShiftRight               asr       ,u
                     ror       1,u
                     ror       2,u
                     ror       3,u
                     ror       4,u
                     decb
-                    bne       L4C1E
+                    bne       CordShiftRight
 CSR5               rts
 
 CCIRY0               lda       $0A,y
@@ -11059,9 +11063,9 @@ CCIRY0               lda       $0A,y
                     coma
                     bra       CTEST
 
-L4C33               lda       <$14,y
+CordTestResult               lda       <$14,y
 CTEST               tsta
-                    bpl       L4C4D
+                    bpl       CordRotatePos
                     leax      ,y
                     leau      $0F,y
                     bsr       CADD
@@ -11073,7 +11077,7 @@ CTEST               tsta
                     leau      <$1B,y
                     bra       CADD
 
-L4C4D               leax      ,y
+CordRotatePos               leax      ,y
                     leau      $0F,y
                     bsr       CSUB
                     leax      $0A,y
@@ -11096,12 +11100,12 @@ FPDV45               leax      <$14,y
                     ldd       $03,x
                     bne       CLN
                     ldb       #$01
-                    stb       <u0099
+                    stb       <TrigIter
 CLN               leax      ,y
                     leau      5,y
                     bra       CADD
 
-L4C7F               leax      ,y
+CordExpFuncPtr               leax      ,y
                     leau      $05,y
                     bsr       CADD
                     cmpa      #$20
@@ -11112,12 +11116,12 @@ CADD               ldd       3,x
                     addd      3,u
                     std       3,x
                     ldd       1,x
-                    bcc       L4CA0
+                    bcc       CaddCarry
 * (orig: CADD10)
                     addd      #$0001
-                    bcc       L4CA0
+                    bcc       CaddCarry
                     inc       ,x
-L4CA0               addd      1,u
+CaddCarry               addd      1,u
                     std       1,x
                     lda       ,x
                     adca      ,u
@@ -11128,12 +11132,12 @@ CSUB               ldd       3,x
                     subd      3,u
                     std       3,x
                     ldd       1,x
-                    bcc       L4CBC
+                    bcc       CsubBorrow
 * (orig: CSUB10)
                     subd      #$0001
-                    bcc       L4CBC
+                    bcc       CsubBorrow
                     dec       ,x
-L4CBC               subd      1,u
+CsubBorrow               subd      1,u
                     std       1,x
                     lda       ,x
                     sbca      ,u
@@ -11146,21 +11150,21 @@ CDENOR               ldb       ,u
                     addb      #$04
                     bge       CDEN20
                     negb
-                    lbra      L4C1E
+                    lbra      CordShiftRight
 
 * Multiply 5 byte number @ ,u  by 2
 * Entry: B=# times to multiply
-L4CD3               lsl       4,u
+CordMul2Loop               lsl       4,u
                     rol       3,u
                     rol       2,u
                     rol       1,u
                     rol       ,u
                     decb
-CDEN20               bne       L4CD3
+CDEN20               bne       CordMul2Loop
                     rts
 
 CNORM               lda       ,u                  Get sign of 5 byte #
-                    bpl       L4CEE               If positive, skip ahead
+                    bpl       CnormNegInit               If positive, skip ahead
                     ifne      H6309
                     clrd                          Clr 5 bytes @ u
                     else
@@ -11172,22 +11176,22 @@ CNORM               lda       ,u                  Get sign of 5 byte #
                     sta       4,u
                     rts
 
-L4CEE               ldd       #$2004
-L4CF1               decb
+CnormNegInit               ldd       #$2004
+CnormShiftLoop               decb
                     lsl       4,u
                     rol       3,u
                     rol       2,u
                     rol       1,u
                     rol       ,u
-                    bmi       L4D05
+                    bmi       CnormSaveResult
                     deca
-                    bne       L4CF1
+                    bne       CnormShiftLoop
                     clrb
 * (orig: FPMUL6)
                     std       ,u
                     rts
 
-L4D05               lda       ,u
+CnormSaveResult               lda       ,u
                     stb       ,u
                     ldb       1,u
                     sta       1,u
@@ -11197,17 +11201,17 @@ L4D05               lda       ,u
                     addd      #$0001
                     andb      #$FE
                     std       3,u
-                    bcc       L4D28
+                    bcc       CnormDone
                     inc       2,u
-                    bne       L4D28
+                    bne       CnormDone
                     inc       1,u
-                    bne       L4D28
+                    bne       CnormDone
                     ror       1,u
                     inc       ,u
-L4D28               rts
+CnormDone               rts
 
 * Data (all 5 byte entries for real #'s???)
-L4D29               fcb       $0c,$90,$fd,$aa,$22 2319.85404
+CordAngTable               fcb       $0c,$90,$fd,$aa,$22 2319.85404
                     fcb       $07,$6b,$19,$c1,$58 53.5503032
                     fcb       $03,$eb,$6e,$bf,$26 7.35726888
                     fcb       $01,$fd,$5b,$a9,$ab -1.97935983
@@ -11221,8 +11225,8 @@ L4D29               fcb       $0c,$90,$fd,$aa,$22 2319.85404
                     fcb       $00,$01,$ff,$ff,$fd
                     fcb       $00,$01,$00,$00,$00
 
-L4D6A               fcb       $00,$9b,$74,$ed,$a8 .607252935
-L4D6F               fcb       $0b,$17,$21,$7f,$7e 0185.04681
+CordK0Const               fcb       $00,$9b,$74,$ed,$a8 .607252935
+CordAngleTab2               fcb       $0b,$17,$21,$7f,$7e 0185.04681
                     fcb       $06,$7c,$c8,$fb,$30
                     fcb       $03,$91,$fe,$f8,$f3
                     fcb       $01,$e2,$70,$76,$e3
@@ -11242,7 +11246,7 @@ L4D6F               fcb       $0b,$17,$21,$7f,$7e 0185.04681
                     fcb       $00,$00,$07,$ff,$fe
                     fcb       $00,$00,$04,$00,$00
 
-L4DCE               fdb       $0E12,$14A2,$BB40,$E62D,$3619,$62E9
+RndInitData               fdb       $0E12,$14A2,$BB40,$E62D,$3619,$62E9
 
                     ifne      H6309
 RNDFNC               clrd
@@ -11250,90 +11254,90 @@ RNDFNC               clrd
 RNDFNC               clra
                     clrb
                     endc
-                    std       <u004C
-                    std       <u004E
+                    std       <RndTmpH
+                    std       <RndCalcL
                     pshs      a                   ??? Save flag (0)
                     lda       2,y
-                    beq       L4DFC
+                    beq       RndCalcStart
                     ldb       5,y                 ??? Get sign/exponent byte
                     bitb      #1                  ??? Negative number?
                     bne       RMOVE               ??? Yes, skip ahead
                     com       ,s                  ??? No, set flag
-                    bra       L4DFC
+                    bra       RndCalcStart
 
 RMOVE               addb      #$FE
                     addb      1,y
                     lda       4,y
-                    std       <u0052
+                    std       <RndSeedL
                     ldd       2,y
-                    std       <u0050
-L4DFC               lda       <u0053
-                    ldb       <u0057
+                    std       <RndSeedH
+RndCalcStart               lda       <RndSeedL1
+                    ldb       <RndMultB3
                     mul
-                    std       <u004E
-                    lda       <u0052
-                    ldb       <u0057
+                    std       <RndCalcL
+                    lda       <RndSeedL
+                    ldb       <RndMultB3
                     mul
-                    addd      <u004D
-                    bcc       L4E0E
-                    inc       <u004C
-L4E0E               std       <u004D
-                    lda       <u0053
-                    ldb       <u0056
+                    addd      <RndTmpL
+                    bcc       RndCalcLoop1
+                    inc       <RndTmpH
+RndCalcLoop1               std       <RndTmpL
+                    lda       <RndSeedL1
+                    ldb       <RndMultB2
                     mul
-                    addd      <u004D
-                    bcc       L4E1B
-                    inc       <u004C
-L4E1B               std       <u004D
-                    lda       <u0051
-                    ldb       <u0057
+                    addd      <RndTmpL
+                    bcc       RndCalcLoop2
+                    inc       <RndTmpH
+RndCalcLoop2               std       <RndTmpL
+                    lda       <RndSeedH1
+                    ldb       <RndMultB3
                     mul
-                    addd      <u004C
-                    std       <u004C
-                    lda       <u0052
-                    ldb       <u0056
+                    addd      <RndTmpH
+                    std       <RndTmpH
+                    lda       <RndSeedL
+                    ldb       <RndMultB2
                     mul
-                    addd      <u004C
-                    std       <u004C
-                    lda       <u0053
-                    ldb       <u0055
+                    addd      <RndTmpH
+                    std       <RndTmpH
+                    lda       <RndSeedL1
+                    ldb       <RndMultB1
                     mul
-                    addd      <u004C
-                    std       <u004C
-                    lda       <u0050
-                    ldb       <u0057
+                    addd      <RndTmpH
+                    std       <RndTmpH
+                    lda       <RndSeedH
+                    ldb       <RndMultB3
                     mul
-                    addb      <u004C
-                    stb       <u004C
-                    lda       <u0051
-                    ldb       <u0056
+                    addb      <RndTmpH
+                    stb       <RndTmpH
+                    lda       <RndSeedH1
+                    ldb       <RndMultB2
                     mul
-                    addb      <u004C
-                    stb       <u004C
-                    lda       <u0052
-                    ldb       <u0055
+                    addb      <RndTmpH
+                    stb       <RndTmpH
+                    lda       <RndSeedL
+                    ldb       <RndMultB1
                     mul
-                    addb      <u004C
-                    stb       <u004C
-* NOTE: ON 6809, CHANGE TO LDD <u0053
-                    lda       <u0053
-                    ldb       <u0054
+                    addb      <RndTmpH
+                    stb       <RndTmpH
+* NOTE: ON 6809, CHANGE TO LDD <RndSeedL1
+                    lda       <RndSeedL1
+                    ldb       <RndMultB0
                     mul
-                    addb      <u004C
-                    stb       <u004C
-                    ldd       <u004E
-                    addd      <u005A
-                    std       <u0052
-                    ldd       <u004C
-* NOTE: 6309 ADCD <u0058
-                    adcb      <u0059
-                    adca      <u0058
-                    std       <u0050
+                    addb      <RndTmpH
+                    stb       <RndTmpH
+                    ldd       <RndCalcL
+                    addd      <RndAddend
+                    std       <RndSeedL
+                    ldd       <RndTmpH
+* NOTE: 6309 ADCD <RndIncrH
+                    adcb      <RndIncrL
+                    adca      <RndIncrH
+                    std       <RndSeedH
                     tst       ,s+
                     bne       RND2
-                    ldd       <u0050
+                    ldd       <RndSeedH
                     std       2,y
-                    ldd       <u0052
+                    ldd       <RndSeedL
                     std       4,y
                     clr       1,y
 ***************
@@ -11356,10 +11360,10 @@ RNDNR2               std       $02,y
                     stb       $05,y
                     puls      pc,b
 
-RND2               ldd       <u0052
+RND2               ldd       <RndSeedL
                     andb      #$FE                ??? Kill sign bit on real #?
                     std       ,--y
-                    ldd       <u0050
+                    ldd       <RndSeedH
                     std       ,--y
                     ifne      H6309
                     clrd
@@ -11369,65 +11373,65 @@ RND2               ldd       <u0052
                     endc
                     std       ,--y
                     bsr       RNDNOR
-                    lbra      L40CC
+                    lbra      RealMulEntry
 
-L4EAB               ldd       <u0048
+LenFnc               ldd       <StrStkPtr
                     ldu       1,y
                     subd      1,y
                     subd      #1
-                    stu       <u0048
-L4EB6               std       1,y
+                    stu       <StrStkPtr
+SaveStrLen               std       1,y
                     lda       #1
                     sta       ,y
                     rts
 
 ASCFNC               ldd       1,y
-                    std       <u0048
+                    std       <StrStkPtr
                     ldb       [<$01,y]
                     clra
-                    bra       L4EB6
+                    bra       SaveStrLen
 
 CHRFNC               ldd       1,y
                     tsta
-                    lbne      L4FC7
-                    ldu       <u0048
+                    lbne      IllegalArgErr
+                    ldu       <StrStkPtr
                     stu       1,y
                     stb       ,u+
                     lbsr      ENDS00
-                    sty       <u0044
-                    cmpu      <u0044
-                    lbhs      L44C2
+                    sty       <StrSpaceTop
+                    cmpu      <StrSpaceTop
+                    lbhs      StrStkOverflow
                     rts
 
-L4EE2               ldd       1,y
-                    ble       L4EF4
+LeftFnc               ldd       1,y
+                    ble       LeftFncTrunc
                     addd      7,y
                     tfr       d,u
-                    cmpd      <u0048
-                    bcc       L4EF1
-                    bsr       L4F70
-L4EF1               leay      6,y
+                    cmpd      <StrStkPtr
+                    bcc       LeftFncDone
+                    bsr       AppendEOS
+LeftFncDone               leay      6,y
                     rts
 
-L4EF4               leay      6,y
+LeftFncTrunc               leay      6,y
                     ldu       1,y
-                    bra       L4F70
+                    bra       AppendEOS
 
 RGTFNC               ldd       1,y
-                    ble       L4EF4
+                    ble       LeftFncTrunc
                     pshs      x
-                    ldd       <u0048
+                    ldd       <StrStkPtr
                     subd      1,y
                     subd      #1
                     cmpd      7,y
                     bls       RGTFN2
                     tfr       d,x
                     ldu       7,y
-L4F10               lda       ,x+
+RgtCopyLoop               lda       ,x+
                     sta       ,u+
                     cmpa      #$FF
-                    bne       L4F10
-                    stu       <u0048
+                    bne       RgtCopyLoop
+                    stu       <StrStkPtr
 RGTFN2               leay      6,y
                     puls      pc,x
 
@@ -11438,49 +11442,49 @@ MIDFNC               ldd       $01,y
 VARR05               ldd       $01,y
                     leay      $06,y
                     std       $01,y
-                    bra       L4EE2
+                    bra       LeftFnc
 
 MIDFN2               subd      #$0001
                     beq       VARR05
                     addd      $0D,y
-                    cmpd      <u0048
+                    cmpd      <StrStkPtr
                     bcs       MIDFN3
                     leay      $06,y
-                    bra       L4EF4
+                    bra       LeftFncTrunc
 
 MIDFN3               pshs      x
                     tfr       d,x
                     ldb       $02,y
                     ldu       $0D,y
-L4F46               lda       ,x+
+MidCopyLoop               lda       ,x+
                     sta       ,u+
                     cmpa      #$FF
                     beq       MIDFN5
                     decb
-                    bne       L4F46
+                    bne       MidCopyLoop
                     dec       1,y
-                    bpl       L4F46
+                    bpl       MidCopyLoop
                     lda       #$FF
                     sta       ,u+
-MIDFN5               stu       <u0048
+MIDFN5               stu       <StrStkPtr
                     leay      $0C,y
                     puls      pc,x
 
-TRMFNC               ldu       <u0048
+TRMFNC               ldu       <StrStkPtr
                     leau      -1,u
 TRMFN2               cmpu      $01,y
-                    beq       L4F70
+                    beq       AppendEOS
                     lda       ,-u
                     cmpa      #$20
                     beq       TRMFN2
                     leau      1,u
-L4F70               lda       #$FF
+AppendEOS               lda       #$FF
                     sta       ,u+
-                    stu       <u0048
+                    stu       <StrStkPtr
                     rts
 
 SUBFNC               pshs      y,x
-                    ldd       <u0048              ??? Get size of string
+                    ldd       <StrStkPtr              ??? Get size of string
                     subd      1,y                 Subtract ptr to string to search in
                     addd      7,y                 Add to ptr to string to search for
                     addd      #1                  +1
@@ -11489,7 +11493,7 @@ SUBFNC               pshs      y,x
 ***************
 * String Compare =>
 * (orig: STCMGE)
-                    bsr       L3C29               Call Substr function (should change to direct LBSR
+                    bsr       Vect1Fn8               Call Substr function (should change to direct LBSR
                     bcc       SUBF10               If sub-string match found, skip ahead
                     ifne      H6309
                     clrd
@@ -11499,7 +11503,7 @@ SUBFNC               pshs      y,x
                     endc
                     bra       SUBF20
 
-L3C29               jsr       <u001B              Substr string search
+Vect1Fn8               jsr       <JmpVect1              Substr string search
                     fcb       $08
 
 SUBF10               tfr       y,d
@@ -11516,45 +11520,45 @@ SUBF20               puls      y,x
 STRFNI               ldb       #$02
                     bra       STRF10         exit
 
-L4FA8               ldb       #$03
-STRF10               lda       <u007D
-                    ldu       <u0082
+StrFnReal               ldb       #$03
+STRF10               lda       <TmpBufCount
+                    ldu       <TmpBufCur
                     pshs      u,x,a
-                    lbsr      L011F
-                    bcs       L4FC7
-                    ldx       <u0082
+                    lbsr      Vect6Fn2
+                    bcs       IllegalArgErr
+                    ldx       <TmpBufCur
                     lda       #$FF
                     sta       ,x
                     ldx       $03,s
                     lbsr      STRLIT
                     puls      u,x,a
-                    sta       <u007D
-                    stu       <u0082
+                    sta       <TmpBufCount
+                    stu       <TmpBufCur
                     rts
 
-L4FC7               ldb       #$43                Illegal Arguement error
-                    jsr       <u0024
+IllegalArgErr               ldb       #$43                Illegal Arguement error
+                    jsr       <JmpVect4
                     fcb       $06
 
 TABFNC               pshs      x
                     ldd       1,y
-                    blt       L4FC7
-                    sty       <u0044
-                    ldu       <u0048
+                    blt       IllegalArgErr
+                    sty       <StrSpaceTop
+                    ldu       <StrStkPtr
                     stu       $01,y
                     lda       #$20
-TABF10               cmpb      <u007D
+TABF10               cmpb      <TmpBufCount
                     bls       ENDSTR
                     sta       ,u+
                     decb
-                    cmpu      <u0044
+                    cmpu      <StrSpaceTop
                     blo       TABF10
-                    lbra      L44C2
+                    lbra      StrStkOverflow
 
 ENDS00               pshs      x
 ENDSTR               lda       #$FF
                     sta       ,u+
-                    stu       <u0048
+                    stu       <StrStkPtr
                     lda       #$04
                     sta       ,y
                     puls      pc,x
@@ -11564,11 +11568,11 @@ ENDSTR               lda       #$FF
 DATFNC               pshs      x
                     leay      -6,y
                     leax      -6,y
-                    ldu       <u0048
+                    ldu       <StrStkPtr
                     stu       1,y
                     os9       F$Time              Get time packet
                     bcs       ENDSTR               Error, exit
-*         bsr   L5021      Start converting
+*         bsr   DateConvert      Start converting
                     lda       ,x+
                     ldb       #'/
                     cmpa      #100
@@ -11591,7 +11595,7 @@ Y19                 bsr       DATC10
                     bra       ENDSTR
 
 DATCNV               sta       ,u+
-L5021               lda       ,x+                 Get byte from time packet
+DateConvert               lda       ,x+                 Get byte from time packet
                     ldb       #'/
 DATC10               incb
                     suba      #10
@@ -11607,14 +11611,14 @@ DATC20               decb
 EOFFNC               lda       2,y                 Get path #
                     ldb       #SS.EOF             Check if we are at end of file
                     os9       I$GetStt
-                    bcc       L5046               No, skip ahead
+                    bcc       EofFalse               No, skip ahead
                     cmpb      #E$EOF              Was the error an EOF error?
-                    bne       L5046               No, skip ahead
+                    bne       EofFalse               No, skip ahead
                     ldb       #$FF
-                    bra       L5048
+                    bra       EofReturn
 
-L5046               clrb
-L5048               clra
+EofFalse               clrb
+EofReturn               clra
                     std       1,y
                     lda       #$03
                     sta       ,y
@@ -11623,89 +11627,89 @@ L5048               clra
 ***************
 * Subroutine INIT
 *   Initialize interpreter
-L5050               ldb       #$06                6 2-byte entries to copy
+InterpreterInit               ldb       #$06                6 2-byte entries to copy
                     pshs      y,x,b               Preserve regs
                     tfr       dp,a                Move DP to MSB of D
-                    ldb       #$50                Point to [dp]50 (always u0050 in Lvl II)
+                    ldb       #$50                Point to [dp]50 (always RndSeedH in Lvl II)
                     tfr       d,y                 Move to Y
-                    leax      >L4DCE,pc           Point to table
+                    leax      >RndInitData,pc           Point to table
 INIT1               ldd       ,x++                Get 2 bytes
                     std       ,y++                Move into DP
                     dec       ,s                  Do all 6
                     bne       INIT1               Until done
-                    leax      >L3CB5,pc           Point to jump table
-                    stx       <u0010              Save ptr
-                    leax      >L3D35,pc           Point to another jump table
-                    stx       <u0012              Save ptr
+                    leax      >VarCopyBase,pc           Point to jump table
+                    stx       <JmpTbl1              Save ptr
+                    leax      >ExprJmpBase,pc           Point to another jump table
+                    stx       <JmpTbl2              Save ptr
                     lda       #$7E                Get opcode for JMP >xxxx
-                    sta       <u0016              Save it
+                    sta       <JmpOpcode              Save it
                     leax      >EVAL,pc           Point to routine
-                    stx       <u0017              Save as destination for above JMP
-                    leax      <L3C32,pc           Point to JSR <u001B / FCB $1A
-                    stx       <u0019              Save it
+                    stx       <JmpTarget              Save as destination for above JMP
+                    leax      <Vect1Fn1A,pc           Point to JSR <JmpVect1 / FCB $1A
+                    stx       <EvalSetup              Save it
                     puls      pc,y,x,b            Restore regs & return
 
-L3C32               jsr       <u001B
+Vect1Fn1A               jsr       <JmpVect1
                     fcb       $1a
 
-* <u002A goes here
-L5084               pshs      x,d                 Preserve regs
+* <JmpVect6 goes here
+Vect6Dispatch               pshs      x,d                 Preserve regs
                     ldb       [<$04,s]            Get function code
-                    leax      <L5094,pc           Point to table (only functions 0 & 2)
+                    leax      <Vect6JmpTbl,pc           Point to table (only functions 0 & 2)
                     ldd       b,x                 Get offset
                     leax      d,x                 Point to routine
                     stx       4,s                 Save over PC on stack
                     puls      pc,x,d              Restore X&D & go to routine
 
-L5094               fdb       ASCNUM-L5094         Function 0
-                    fdb       L50A4-L5094         Function 2
+Vect6JmpTbl               fdb       ASCNUM-Vect6JmpTbl         Function 0
+                    fdb       Vect6Fn2Disp-Vect6JmpTbl         Function 2
 
-L5098               jsr       <u0027
+CallVect5FnC               jsr       <JmpVect5
                     fcb       $0c
-L509B               jsr       <u0027
+CallVect5FnE2               jsr       <JmpVect5
                     fcb       $0e
 
-* <u002A function 2
+* <JmpVect6 function 2
 * Entry: B=Sub-function #
-L50A4               pshs      pc,x,d              Make room for new PC, preserve X & Y
+Vect6Fn2Disp               pshs      pc,x,d              Make room for new PC, preserve X & Y
                     lslb                          2 bytes / entry
-                    leax      <L50B2,pc           Point to jump offset table
-L50AA               ldd       b,x                 Get offset
-L50AC               leax      d,x                 Add to base of table
+                    leax      <IoJmpBase,pc           Point to jump offset table
+IoSubDisp               ldd       b,x                 Get offset
+IoSubJmp               leax      d,x                 Add to base of table
                     stx       4,s                 Save over PC on stack
                     puls      pc,x,d              Restore X&D & JMP to subroutine
 
-* Sub-function jump table (L50B2 is the base)
-L50B2               fdb       OUTLIN-L50B2         $045f  0
-                    fdb       OUTINT-L50B2         $05c3  1
-                    fdb       OUTINT-L50B2         $05c3  2
-                    fdb       OUTRL-L50B2         $04b7  3
-                    fdb       OUTBL-L50B2         $05b3  4
-                    fdb       L565C-L50B2         $05aa  5
-                    fdb       INPLIN-L50B2         $044a  6
-                    fdb       INPBYT-L50B2         $0258  7
-                    fdb       L531D-L50B2         $026b  8
-                    fdb       INPRL-L50B2         $0235  9
-                    fdb       INPBL-L50B2         $02a2  A
-                    fdb       STRINP-L50B2         $027f  B
-                    fdb       OUTCR-L50B2         $05f9  C
-                    fdb       SKPZON-L50B2         $05e9  D
-                    fdb       SEEK-L50B2         $0478  E
-                    fdb       UNIMPL-L50B2         $0a11  F    Exit with Unimplemented routine err
-                    fdb       OUTTAB-L50B2         $05da  10
-                    fdb       NXTFMT-L50B2         $06ba  11
-                    fdb       OUTCHR-L50B2         $0562  12
-                    fdb       EXCFMT-L50B2         $0759  13
-L50DA               fdb       OUTHEX-L50B2         $0602  14
+* Sub-function jump table (IoJmpBase is the base)
+IoJmpBase               fdb       OUTLIN-IoJmpBase         $045f  0
+                    fdb       OUTINT-IoJmpBase         $05c3  1
+                    fdb       OUTINT-IoJmpBase         $05c3  2
+                    fdb       OUTRL-IoJmpBase         $04b7  3
+                    fdb       OUTBL-IoJmpBase         $05b3  4
+                    fdb       OutStrImpl-IoJmpBase         $05aa  5
+                    fdb       INPLIN-IoJmpBase         $044a  6
+                    fdb       INPBYT-IoJmpBase         $0258  7
+                    fdb       InpIntImpl-IoJmpBase         $026b  8
+                    fdb       INPRL-IoJmpBase         $0235  9
+                    fdb       INPBL-IoJmpBase         $02a2  A
+                    fdb       STRINP-IoJmpBase         $027f  B
+                    fdb       OUTCR-IoJmpBase         $05f9  C
+                    fdb       SKPZON-IoJmpBase         $05e9  D
+                    fdb       SEEK-IoJmpBase         $0478  E
+                    fdb       UNIMPL-IoJmpBase         $0a11  F    Exit with Unimplemented routine err
+                    fdb       OUTTAB-IoJmpBase         $05da  10
+                    fdb       NXTFMT-IoJmpBase         $06ba  11
+                    fdb       OUTCHR-IoJmpBase         $0562  12
+                    fdb       EXCFMT-IoJmpBase         $0759  13
+HexOutEntry               fdb       OUTHEX-IoJmpBase         $0602  14
 
 * Table for Integer conversion
-L50DC               fdb       10000
+IntConvTable               fdb       10000
                     fdb       1000
                     fdb       100
                     fdb       10
 
 * Table for REAL conversion
-L50E4               fcb       $04,$a0,$00,$00,$00 10
+RealConvTable               fcb       $04,$a0,$00,$00,$00 10
                     fcb       $07,$c8,$00,$00,$00 100
                     fcb       $0a,$fa,$00,$00,$00 1000
                     fcb       $0e,$9c,$40,$00,$00 10 thousand
@@ -11723,27 +11727,27 @@ L50E4               fcb       $04,$a0,$00,$00,$00 10
                     fcb       $36,$8e,$1b,$c9,$c0 10 quadrillion
                     fcb       $39,$b1,$a2,$bc,$2e 100 quadrillion
                     fcb       $3c,$de,$0b,$6b,$3a 1 quintillion
-L513E               fcb       $40,$8a,$c7,$23,$04 10 quintillion
+RealConvLast               fcb       $40,$8a,$c7,$23,$04 10 quintillion
 
-L5143               fcc       'True'
+TrueStr               fcc       'True'
                     fcb       $ff
 
-L5148               fcc       'False'
+FalseStr               fcc       'False'
                     fcb       $ff
 
-* <u0024 function 2
+* <JmpVect4 function 2
 ***************
 * Initialize
 ASCNUM               pshs      u
                     leay      -6,y                Make room for temp var
                     clra
                     clrb
-* 6809/6309 MOD: Change following 4 lines to STD <u0075, STD <u0077
-                    sta       <u0075              ??? Zero out real # in DP?
-                    sta       <u0076
-                    sta       <u0077
-                    sta       <u0078
-                    sta       <u0079
+* 6809/6309 MOD: Change following 4 lines to STD <TmpReal0, STD <TmpReal2
+                    sta       <TmpReal0              ??? Zero out real # in DP?
+                    sta       <TmpReal1
+                    sta       <TmpReal2
+                    sta       <TmpReal3
+                    sta       <TmpReal4
                     std       4,y                 ??? Zero out temp real #
                     std       2,y
                     sta       1,y
@@ -11752,24 +11756,24 @@ ASCNUM               pshs      u
                     leax      -1,x          Back up to delimiter
 * (orig: ASCNM1)
                     cmpa      #$2C          Comma delimiter?
-                    bne       L51DE         Numeric format error if not
-                    lbra      L51FB         Finish as integer if so
+                    bne       NumFmtErr         Numeric format error if not
+                    lbra      AscnmIntResult         Finish as integer if so
 
 ASCNM3               cmpa      #$24
                     lbeq      INPHEX         Goto hex routine if so
                     cmpa      #$2B          Plus?
                     beq       ASCNM2
                     cmpa      #$2D
-                    bne       L5184
-                    inc       <u0078        Set mant sgn neg
+                    bne       AscnmDecimal
+                    inc       <TmpReal3        Set mant sgn neg
 ***************
 * Process Mantissa or Integer
 ASCNM2               lda       ,x+
-L5184               cmpa      #$2E
+AscnmDecimal               cmpa      #$2E
                     bne       ASCNM4
-                    tst       <u0077        First one found?
-                    bne       L51DE         Format error if not
-                    inc       <u0077        Set dp flag
+                    tst       <TmpReal2        First one found?
+                    bne       NumFmtErr         Format error if not
+                    inc       <TmpReal2        Set dp flag
                     bra       ASCNM2
 
 ***************
@@ -11777,20 +11781,20 @@ L5184               cmpa      #$2E
 ASCNM4               lbsr      CHKDIG
                     bcs       ASCNM7         bra if not
                     pshs      a             save digit val
-                    inc       <u0076        Incr digit count
+                    inc       <TmpReal1        Incr digit count
                     ldd       4,y           Get mant ls bytes
                     ldu       2,y
-                    bsr       L51CB
+                    bsr       MantMul2
                     std       4,y
                     stu       2,y           save t*2
-                    bsr       L51CB         T*2*2
-                    bsr       L51CB         T*2*2*2 = t*8
+                    bsr       MantMul2         T*2*2
+                    bsr       MantMul2         T*2*2*2 = t*8
                     addd      4,y
                     exg       d,u
 * 6309 mod: ADCD 2,y
                     adcb      3,y           T=t*8+t*2 = t*10
                     adca      2,y
-                    bcs       L51D8
+                    bcs       MantOvflSave
                     exg       d,u           Swap ms:ls
                     addb      ,s+           Add in new digit val
                     adca      #$00          T*10+d
@@ -11800,12 +11804,12 @@ ASCNM4               lbsr      CHKDIG
                     beq       NRERR         Bra if overfl
 ASCNM6               std       4,y
                     stu       2,y           save TEMP MS bytes
-                    tst       <u0077        in frac part?
+                    tst       <TmpReal2        in frac part?
                     beq       ASCNM2         Get another char if not
-                    inc       <u0079        Bump exponent
+                    inc       <TmpReal4        Bump exponent
                     bra       ASCNM2
 
-L51CB               lslb
+MantMul2               lslb
                     rola
                     exg       d,u
                     rolb
@@ -11815,14 +11819,14 @@ L51CB               lslb
                     rts
 
 ROT32E               leas      2,s
-L51D8               leas      1,s
+MantOvflSave               leas      1,s
 ***************
 * Range Error
 NRERR               ldb       #$3C                I/O conversion: Number out of range error
                     bra       NEXIT
 
-L51DE               ldb       #$3B
-NEXIT               stb       <u0036
+NumFmtErr               ldb       #$3B
+NEXIT               stb       <ErrCode
                     coma
                     puls      pc,u
 
@@ -11830,41 +11834,41 @@ NEXIT               stb       <u0036
 * Process Non-digit char
 ASCNM7               eora      #$45
                     anda      #$DF          (upper or lower case e?)
-                    beq       L520E
+                    beq       AscnmExpPart
                     leax      -1,x          Back up buffer ptr
 * (orig: ASCN75)
-                    tst       <u0076        Did we get digits?
+                    tst       <TmpReal1        Did we get digits?
                     bne       ASNIN1
-                    bra       L51DE         Too bad
+                    bra       NumFmtErr         Too bad
 
 ***************
 * Final Processing for TYPE Integer
-ASNIN1               tst       <u0077
+ASNIN1               tst       <TmpReal2
                     bne       ASNRL1         Has to be TYPE real
                     ldd       2,y           Get mant hi bytes
                     bne       ASNRL1         if not 0 must be real
-L51FB               ldd       4,y
+AscnmIntResult               ldd       4,y
                     bmi       ASNRL1         bra if out of integer range
-                    tst       <u0078        Check sign flag
+                    tst       <TmpReal3        Check sign flag
                     beq       ASNIN2         Bra if result positive
                     nega                          NEGD  Result
                     negb
                     sbca      #$00
 ASNIN2               std       1,y
 ASNIN3               lda       #$01
-                    lbra      L5295
+                    lbra      AscnmSaveType
 
-L520E               lda       ,x
+AscnmExpPart               lda       ,x
                     cmpa      #$2B          Plus sign?
                     beq       ASNEX2
                     cmpa      #$2D
                     bne       ASNEX3
-                    inc       <u0075        Set neg exp flag
+                    inc       <TmpReal0        Set neg exp flag
 ASNEX2               leax      1,x
-ASNEX3               lbsr      L57DC
-                    bcs       L51DE
+ASNEX3               lbsr      GetAsciiDigit
+                    bcs       NumFmtErr
                     tfr       a,b
-                    lbsr      L57DC
+                    lbsr      GetAsciiDigit
                     bcc       ASNEX5
                     leax      -1,x
                     bra       ASNEX6
@@ -11873,11 +11877,11 @@ ASNEX5               pshs      a                   Save 1's digit
                     lda       #10                 Multiply by 10 (for 10's digit)
                     mul
                     addb      ,s+
-ASNEX6               tst       <u0075
-                    bne       L5238
+ASNEX6               tst       <TmpReal0
+                    bne       AscnmAddExp
                     negb                    exp
-L5238               addb      <u0079
-                    stb       <u0079        ..and save for later use
+AscnmAddExp               addb      <TmpReal4
+                    stb       <TmpReal4        ..and save for later use
 ASNRL1               ldb       #$20
                     stb       1,y
                     ldd       2,y           Get MS bytes exponent
@@ -11885,46 +11889,46 @@ ASNRL1               ldb       #$20
                     cmpd      4,y           Check ls bytes
                     bne       ASNRL3         Test MS bytes
                     clr       1,y           number is zero
-                    bra       L5293
+                    bra       AscnmRealType
 
 ***************
 * Normalize Mantissa
 ASNRL3               tsta
                     bmi       ASNRL5         Bra when normalized
-L5250               dec       1,y
+AscnmNormLoop               dec       1,y
                     lsl       5,y
                     rol       4,y
                     rolb
                     rola
-                    bpl       L5250         Loop til normallized
+                    bpl       AscnmNormLoop         Loop til normallized
 ASNRL5               std       2,y
-                    clr       <u0075        Clear exp sign flag
-                    ldb       <u0079        Get dec exponent
+                    clr       <TmpReal0        Clear exp sign flag
+                    ldb       <TmpReal4        Get dec exponent
                     beq       ASNRL8         if zero no adj needed
                     bpl       ASNRL6         exp must be pos ..
                     negb                    exp postive
-                    inc       <u0075        Set neg exp flag
+                    inc       <TmpReal0        Set neg exp flag
 ASNRL6               cmpb      #$13
                     bls       ASNRL7         Bra if ok
                     subb      #$13          Reduce range otherwise
                     pshs      b             save current exp
-                    leau      >L513E,pc     Get add of const 1e+19
+                    leau      >RealConvLast,pc     Get add of const 1e+19
                     bsr       CNVOPR         ..and reduce range ..
                     puls      b             Restore exp and proceed
                     lbcs      NRERR         ..exit if oper overflowed
 ASNRL7               decb                    Bias from exp
                     lda       #5            Num bytes/entry in table
                     mul                     Tble entry addr
-                    leau      >L50E4,pc     Get constant tbl addr
+                    leau      >RealConvTable,pc     Get constant tbl addr
                     leau      b,u           Add in entry offset
                     bsr       CNVOPR         and reduce range (mult/div)
                     lbcs      NRERR         Range error ..
 ASNRL8               lda       5,y
                     anda      #$FE
-                    ora       <u0078        Put in sign bit
+                    ora       <TmpReal3        Put in sign bit
                     sta       5,y
-L5293               lda       #2                  Real # type
-L5295               sta       ,y                  Save it in var packet
+AscnmRealType               lda       #2                  Real # type
+AscnmSaveType               sta       ,y                  Save it in var packet
                     andcc     #$FE                Clear carry (no error)
                     puls      pc,u
 
@@ -11947,27 +11951,27 @@ CNVOPR               leay      -6,y                Make room for temp var
 ***************
 * Get next char, Test if Decimal+Convert
 * (orig: TSTDIG)
-                    lda       <u0075              Get sign of exponent?
-                    lbeq      L4234               Real Divide
-                    lbra      L40D3               Real Multiply
+                    lda       <TmpReal0              Get sign of exponent?
+                    lbeq      RealDiv               Real Divide
+                    lbra      RealMul               Real Multiply
 
-INPHEX               lbsr      L57DC
-                    bcc       L52C7         Bra if good
+INPHEX               lbsr      GetAsciiDigit
+                    bcc       InhexDigit         Bra if good
                     cmpa      #$61
-                    blo       L52BD         ..no; continue
+                    blo       InhexCheckHex         ..no; continue
                     suba      #$20          Shift to upper case
-L52BD               cmpa      #$41
+InhexCheckHex               cmpa      #$41
                     blo       INHEX5         Check for a-f
                     cmpa      #$46
                     bhi       INHEX5
                     suba      #$37          Make binary
-L52C7               inc       <u0076
+InhexDigit               inc       <TmpReal1
                     ldb       #4                  Loop counter for shift
-L52CB               lsl       2,y
+InhexShiftLoop               lsl       2,y
                     rol       1,y
                     lbcs      NRERR               If carried right out of byte, error
                     decb
-                    bne       L52CB               Do all 4 shifts
+                    bne       InhexShiftLoop               Do all 4 shifts
                     adda      2,y           Add new digit
                     sta       2,y
                     bra       INPHEX
@@ -11975,8 +11979,8 @@ L52CB               lsl       2,y
 ***************
 * Clean Up
 INHEX5               leax      -1,x
-                    tst       <u0076        Any digits?
-                    lbeq      L51DE         Error if not
+                    tst       <TmpReal1        Any digits?
+                    lbeq      NumFmtErr         Error if not
                     lbra      ASNIN3         Return integer
 
 ***************
@@ -11991,22 +11995,22 @@ INHEX5               leax      -1,x
 *               carry and I.ERR Set if Error
 * Global: I.IOPT = Moved to 1St byte Past Input Str
 INPRL               pshs      x                   Preserve X
-                    ldx       <u0082              Get current pos in temp buffer
+                    ldx       <TmpBufCur              Get current pos in temp buffer
                     lbsr      ASCNUM         Call conv subr
                     bcc       INPRL2         Bra if no error
 ITYPER               puls      pc,x
 
 INPRL2               cmpa      #2                  Real #?
-                    beq       L52F9               Yes, continue ahead
-                    lbsr      L509B               ??? convert to real?
-L52F9               lbsr      SKPDEL
+                    beq       InprlContinue               Yes, continue ahead
+                    lbsr      CallVect5FnE2               ??? convert to real?
+InprlContinue               lbsr      SKPDEL
                     bcs       INPRL4         Bra if delim found
                     ldb       #$3D                Illegal input format error
-                    stb       <u0036              Save error code
+                    stb       <ErrCode              Save error code
                     coma                          Set carry
                     puls      pc,x                Restore X & return
 
-INPRL4               stx       <u0082              Save new current pos in temp buffer
+INPRL4               stx       <TmpBufCur              Save new current pos in temp buffer
                     clra                          No error
                     puls      pc,x                Restore X & return
 
@@ -12015,46 +12019,46 @@ INPRL4               stx       <u0082              Save new current pos in temp 
 * Look for and Convert Integer in 0-255 Range
 * Parameters Identical to INPRL
 INPBYT               pshs      x                   Preserve X
-                    ldx       <u0082              Get current pos in temp buffer
+                    ldx       <TmpBufCur              Get current pos in temp buffer
                     lbsr      ASCNUM               ??? (returns A=var type)
                     bcs       ITYPER
                     cmpa      #1                  Integer?
                     bne       INPIN1         ERR if not
                     tst       1,y           Check msb
-                    beq       L52F9         in range if zero
+                    beq       InprlContinue         in range if zero
                     bra       INPIN1
 
-L531D               pshs      x
-                    ldx       <u0082              Get current pos in temp buffer
+InpIntImpl               pshs      x
+                    ldx       <TmpBufCur              Get current pos in temp buffer
                     lbsr      ASCNUM
                     bcs       ITYPER
                     cmpa      #1                  Integer?
-                    beq       L52F9               Yes, go back
+                    beq       InprlContinue               Yes, go back
 INPIN1               ldb       #$3A                I/O Type mismatch error
 * TO SAVE ROOM, SINCE ERRORS AREN'T CRUCIAL TO SPEED, MAY WANT THIS TO
-* BRANCH TO SAME CODE @ L52F9
-                    stb       <u0036
+* BRANCH TO SAME CODE @ InprlContinue
+                    stb       <ErrCode
                     coma
                     puls      pc,x
 
 STRINP               pshs      u,x
                     leay      -6,y                Make room for temp var
-                    ldu       <u004A
+                    ldu       <ICodeEndPtr
                     stu       1,y                 ??? Save some string ptr
 * (orig: INPST2)
                     lda       #4                  Type=String/complex
                     sta       ,y
-                    ldx       <u0082        Get I/O buf ptr
+                    ldx       <TmpBufCur        Get I/O buf ptr
 INPST3               lda       ,x+
-                    bsr       L5396         Call delim test
+                    bsr       CheckItemSep         Call delim test
                     bcs       INPST4         Exit move loop if delim
                     sta       ,u+           Move char to str stack
                     bra       INPST3
 
-INPST4               stx       <u0082
+INPST4               stx       <TmpBufCur
                     lda       #$FF                Flag end of string?
                     sta       ,u+           Store it
-                    stu       <u0048        Update the ptr
+                    stu       <StrStkPtr        Update the ptr
                     clra
                     puls      pc,u,x
 
@@ -12063,7 +12067,7 @@ INPBL               pshs      x
                     lda       #3
                     sta       ,y            Set TYPE byte
                     clr       2,y           Set res to false
-                    ldx       <u0082
+                    ldx       <TmpBufCur
                     bsr       SKPDL1
                     bcs       INPBL4
                     cmpa      #'T
@@ -12074,20 +12078,20 @@ INPBL               pshs      x
                     anda      #$DF          (or lower case false)
                     beq       INPBL3         Bra if so
                     ldb       #$3A
-                    stb       <u0036
+                    stb       <ErrCode
                     coma
                     puls      pc,x
 
 INPB25               com       2,y
 INPBL3               bsr       SKPDEL
                     bcc       INPBL3         Skip until delimiter encountered
-INPBL4               stx       <u0082
+INPBL4               stx       <TmpBufCur
                     clra
                     puls      pc,x
 
 SKPDEL               lda       ,x+
                     cmpa      #C$SPAC       is it a space
-                    bne       L5396         Cont check if not
+                    bne       CheckItemSep         Cont check if not
                     bsr       SKPDL1         Process more
                     bcc       SKPDL3         Back up if only spaces found
                     bra       SKPDL4
@@ -12095,7 +12099,7 @@ SKPDEL               lda       ,x+
 SKPDL1               lda       ,x+                 Get char
                     cmpa      #C$SPAC             Space?
                     beq       SKPDL1               Yes, ignore & get next char
-L5396               cmpa      <u00DD              Char we are looking for?
+CheckItemSep               cmpa      <ItemSepChar              Char we are looking for?
                     beq       SKPDL4               Yes, set carry & exit
                     cmpa      #C$CR               Carriage return?
                     beq       SKPDL3               Yes, point X to it, set carry & exit
@@ -12112,30 +12116,30 @@ SKPDL4               orcc      #$01
 INTSTR               pshs      u,x
                     clra
                     sta       3,y
-                    sta       <u0076        Clr digit count
-                    sta       <u0078        Clr sign flag
+                    sta       <TmpReal1        Clr digit count
+                    sta       <TmpReal3        Clr sign flag
                     lda       #$04
-                    sta       <u007E        Inz loop count
+                    sta       <UnusedByte7E        Inz loop count
                     ldd       1,y           Get input num
                     bpl       INST2               If positive, skip ahead
                     nega                          NEGD
                     negb
                     sbca      #$00
-                    inc       <u0078              Set flag?
+                    inc       <TmpReal3              Set flag?
 ***************
 * Set Up for Conversion
-INST2               leau      >L50DA,pc
+INST2               leau      >HexOutEntry,pc
 ***************
 * Conversion Loop
-INST3               clr       <u007A
+INST3               clr       <TmpReal5
                     leau      2,u           Move to new tble entry
 INST4               subd      ,u
                     bcs       INST5         Bra if underflow
-                    inc       <u007A        Else bump digit
+                    inc       <TmpReal5        Else bump digit
                     bra       INST4         and loop again
 
 INST5               addd      ,u
-                    tst       <u007A        Current dig zero?
+                    tst       <TmpReal5        Current dig zero?
                     bne       INST6         if not 0 go output
                     tst       $03,y         All 0's so far?
                     beq       INST7         if so suppress this zero
@@ -12143,12 +12147,12 @@ INST5               addd      ,u
 * Output the Current digit
 INST6               inc       $03,y
                     pshs      a
-                    lda       <u007A        Get the digit
+                    lda       <TmpReal5        Get the digit
                     lbsr      PUTDIG         Output it
                     puls      a
 ***************
 * Bottom of Conv Loop
-INST7               dec       <u007E
+INST7               dec       <UnusedByte7E
                     bne       INST3         Loop if more to conv
                     tfr       b,a           Move units to a
                     lbsr      PUTDIG         ..and output it
@@ -12171,12 +12175,12 @@ INST7               dec       <u007E
 *         Y = Opstack ptr, Top Item Popped
 * Local:  D,CC Destroyed
 RLASC               pshs      u,x
-                    clr       <u0075              Replace with CLRA/CLRB/STD <u0075/STD <u0078/
-                    clr       <u0078              STD <u007B (smaller & faster)
-                    clr       <u007C
-                    clr       <u007B
-                    clr       <u0079
-                    clr       <u0076
+                    clr       <TmpReal0              Replace with CLRA/CLRB/STD <TmpReal0/STD <TmpReal3/
+                    clr       <TmpReal3              STD <TmpReal6 (smaller & faster)
+                    clr       <TmpReal7
+                    clr       <TmpReal6
+                    clr       <TmpReal4
+                    clr       <TmpReal1
                     leau      ,x            Copy ptr
                     ldd       #$0A30              Store 10 ASCI 0's at U
 CLRBUF               stb       ,u+
@@ -12192,14 +12196,14 @@ CLRBUF               stb       ,u+
 NMASC0               ldb       5,y
                     bitb      #$01          Mask sign bit
                     beq       NMASC1         Bra if pos
-                    stb       <u0078        Set sign flag
+                    stb       <TmpReal3        Set sign flag
                     andb      #$FE          Strip sign bit
                     stb       5,y           Replace
 ***************
 * Process exponent Sign
 NMASC1               ldd       1,y                 If this code is legit, why load D? just A?
                     bpl       NMASC2         Bra if exp positive
-                    inc       <u0075        Set neg exp flag
+                    inc       <TmpReal0        Set neg exp flag
                     nega                    Abs val exponent
 NMASC2               cmpa      #3
                     bls       NMASC5         if so no scaling needed
@@ -12209,19 +12213,19 @@ NMASC2               cmpa      #3
                     nop       WHY                 ARE THESE HERE?
                     nop
                     tfr       a,b           Copy decimal exp to b
-                    tst       <u0075        Was exp pos?
+                    tst       <TmpReal0        Was exp pos?
                     beq       NMAS35         Bra if so
                     negb                    Compl
-NMAS35               stb       <u0079
+NMAS35               stb       <TmpReal4
                     cmpa      #$13          in table range?
-                    bls       L544A         Bra if in range
+                    bls       NmascScaleIn         Bra if in range
                     pshs      a             save exp
 * (orig: NMASC4)
-                    leau      >L513E,pc     Get addr of 10e+19
+                    leau      >RealConvLast,pc     Get addr of 10e+19
                     lbsr      CNVOPR         and mult/div to scale
                     puls      a             Restore exp
                     suba      #$13
-L544A               leau      >L50E4,pc
+NmascScaleIn               leau      >RealConvTable,pc
                     deca                    exp bias
                     ldb       #$05          5 bytes/entry in table
                     mul                     Entry offset
@@ -12242,7 +12246,7 @@ NMASC6               lsra
                     rorb
                     ror       $04,y
                     ror       $05,y
-                    ror       <u007C        Shift LS bits to extension
+                    ror       <TmpReal7        Shift LS bits to extension
                     inc       $01,y
                     bne       NMASC6         Loop til exp=0
                     std       $02,y         Restore msdb on stack
@@ -12254,12 +12258,12 @@ NMASC7               lsl       $05,y
                     rol       $04,y
                     rolb
                     rola
-                    rol       <u007B        Shift MS bits into extension
+                    rol       <TmpReal6        Shift MS bits into extension
                     dec       $01,y
                     bne       NMASC7         Loop til exp=0
                     std       $02,y         Replace msdb on stack
-                    inc       <u0079        Dec exp (decimal)
-                    lda       <u007B        Get ext byte
+                    inc       <TmpReal4        Dec exp (decimal)
+                    lda       <TmpReal6        Get ext byte
                     bsr       PUTDIG         MS decimal digit out
 ***************
 * Convert Binary Fraction to Decimal by
@@ -12268,26 +12272,26 @@ NMASC7               lsl       $05,y
 * next Decimal Place Value.
 NMASC8               ldd       $02,y
                     ldu       $04,y
-NMASC9               clr       <u007B
-                    bsr       L54F1         F*2
+NMASC9               clr       <TmpReal6
+                    bsr       MantMul2Long         F*2
                     std       $02,y
                     stu       $04,y         T=f*2
                     pshs      a
-                    lda       <u007B
-                    sta       <u007C
+                    lda       <TmpReal6
+                    sta       <TmpReal7
                     puls      a
-                    bsr       L54F1         F*4
-                    bsr       L54F1         F*8
+                    bsr       MantMul2Long         F*4
+                    bsr       MantMul2Long         F*8
                     exg       d,u
                     addd      $04,y
                     exg       d,u
                     adcb      $03,y
                     adca      $02,y         F*2+f*8=f*10
                     pshs      a
-                    lda       <u007B        Add carry to ext byte
-                    adca      <u007C
+                    lda       <TmpReal6        Add carry to ext byte
+                    adca      <TmpReal7
                     bsr       PUTDIG         Output decimal digit
-                    lda       <u0076
+                    lda       <TmpReal1
                     cmpa      #$09
                     puls      a
                     beq       NARND0
@@ -12298,7 +12302,7 @@ NMASC9               clr       <u007B
 ***************
 * Round to 9 digits based on remainder of conversion divide
 NARND0               sta       ,y
-                    lda       <u0076
+                    lda       <TmpReal1
                     cmpa      #$09
                     bcs       NASC10
                     ldb       ,y            remainder >=.5?
@@ -12313,9 +12317,9 @@ NARND1               lda       ,-x
                     cmpx      ,s            Was it first digit
                     bne       NARND1         if not keep rounding
                     inc       ,x            Make the zero a one
-                    inc       <u0079        Adjust dec exp
+                    inc       <TmpReal4        Adjust dec exp
 NASC10               lda       #$09
-NMAS11               sta       <u0076
+NMAS11               sta       <TmpReal1
                     leay      6,y           Clean up opstack
                     puls      pc,u,x        - we're finished.
 
@@ -12323,25 +12327,25 @@ NMAS11               sta       <u0076
 * Subroutine to Conv+ Output Decimal digit
 PUTDIG               ora       #$30
                     sta       ,x+           Out in buffer
-                    inc       <u0076        Incr digit count
+                    inc       <TmpReal1        Incr digit count
                     rts
 
-L54F1               exg       d,u
+MantMul2Long               exg       d,u
                     lslb
                     rola
                     exg       d,u
                     rolb
                     rola
-                    rol       <u007B
+                    rol       <TmpReal6
                     rts
 
 INPLIN               pshs      y,x
-                    ldx       <u0080
-                    stx       <u0082        Reset I/O ptr
+                    ldx       <TmpBufBase
+                    stx       <TmpBufCur        Reset I/O ptr
                     lda       #$01
-                    sta       <u007D
+                    sta       <TmpBufCount
                     ldy       #$0100        Size of input buffer
-                    lda       <u007F        Input path
+                    lda       <CurrChanPath        Input path
                     os9       I$ReadLn
                     bra       OUTLN1         ..return error status
 
@@ -12349,17 +12353,17 @@ INPLIN               pshs      y,x
 * Subroutine OUTLIN
 * Call OS-9 to Write I/O buffer to Console
 OUTLIN               pshs      y,x
-                    ldd       <u0082
-                    subd      <u0080
+                    ldd       <TmpBufCur
+                    subd      <TmpBufBase
                     beq       OUTLN2
                     tfr       d,y
-                    ldx       <u0080
-                    stx       <u0082        Reset ptr
+                    ldx       <TmpBufBase
+                    stx       <TmpBufCur        Reset ptr
 * (orig: SEEK60)
-                    lda       <u007F        Output path
+                    lda       <CurrChanPath        Output path
                     os9       I$WritLn      Write line
 OUTLN1               bcc       OUTLN2
-                    stb       <u0036              Save error code
+                    stb       <ErrCode              Save error code
 OUTLN2               puls      pc,y,x
 
 SEEK               pshs      u,x
@@ -12370,12 +12374,12 @@ SEEK               pshs      u,x
                     bra       SEEK20
 
 SEEK10               lda       $01,y
-                    bgt       L5542         bra if positive
+                    bgt       SeekPosRange         bra if positive
                     ldu       #$0000        Seek zero
 SEEK20               ldx       #$0000
-                    bra       L555E
+                    bra       SeekIssue
 
-L5542               ldx       $02,y
+SeekPosRange               ldx       $02,y
                     ldu       $04,y
                     suba      #$20          Seek in range?
                     bcs       SEEK40         bra if so
@@ -12394,10 +12398,10 @@ SEEK40               exg       x,d
                     inca                    Up
 * (orig: SEEK50)
                     bne       SEEK40
-L555E               lda       <u007F
+SeekIssue               lda       <CurrChanPath
                     os9       I$Seek
                     bcc       SEEK80
-SEEK70               stb       <u0036              Save error code
+SEEK70               stb       <ErrCode              Save error code
 SEEK80               puls      pc,u,x
 
 OUTRL               pshs      u,x
@@ -12413,75 +12417,75 @@ TRLZER               ldb       ,-x
                     deca                    digit count
                     cmpa      #$01          Leave one digit min.
                     bne       TRLZER
-TRLZ2               sta       <u0076
+TRLZ2               sta       <TmpReal1
                     puls      x             Restore digits addr
-                    ldb       <u0079        Get decimal exp
+                    ldb       <TmpReal4        Get decimal exp
                     bgt       RFMTF2         if =>0 number has int part
                     negb                    exp positve
                     tfr       b,a
                     cmpb      #$09
                     bhi       RFMTE2         Cant format in this mode
-                    addb      <u0076        Add # signif. digits
+                    addb      <TmpReal1        Add # signif. digits
                     cmpb      #$09
                     bhi       RFMTE2         Still cant format
                     pshs      a             save exp
-                    lbsr      L5643         Output sign
+                    lbsr      OutSignOrNone         Output sign
                     clra
-                    bsr       L5612         Output dec. pt.
+                    bsr       OutDecimalPt         Output dec. pt.
                     puls      b             Restore exp
                     tstb
                     beq       RFMTF1
                     lbsr      OUTZER         Output string of zeros
-RFMTF1               lda       <u0076
-                    bra       L55BF
+RFMTF1               lda       <TmpReal1
+                    bra       OutrlMoreFrac
 
 ***************
 * Convert for Positive exp
 RFMTF2               cmpb      #$09
                     bhi       RFMTE2         if not goto e format
-                    lbsr      L5643         Output sign
+                    lbsr      OutSignOrNone         Output sign
                     tfr       b,a
 ***************
 * Free Format real in "E" Format
 * (orig: RLFMTE)
                     bsr       OUTZE1         Move frac digits
 * (orig: RFMTF3)
-                    bsr       L5612         Put out d.p
-                    lda       <u0076
-                    suba      <u0079        Calc # of frac digits
+                    bsr       OutDecimalPt         Put out d.p
+                    lda       <TmpReal1
+                    suba      <TmpReal4        Calc # of frac digits
                     bls       RFMTF4         Done if no frac digits
-L55BF               bsr       OUTZE1
+OutrlMoreFrac               bsr       OUTZE1
 ***************
 * Cleanup and Return
 RFMTF4               leas      $0A,s
                     clra
                     puls      pc,u,x
 
-RFMTE2               bsr       L5643
+RFMTE2               bsr       OutSignOrNone
                     lda       #$01
                     bsr       OUTZE1
-                    bsr       L5612
+                    bsr       OutDecimalPt
 * (orig: OUTEXP)
-                    lda       <u0076
+                    lda       <TmpReal1
                     deca                    for first digit
-                    bne       L55D4
+                    bne       OutrlZeroFrc
                     inca                    At least one zero ..
-L55D4               bsr       OUTZE1
-                    bsr       L55DA         Cnv+output exp part
+OutrlZeroFrc               bsr       OUTZE1
+                    bsr       OutrlExpStr         Cnv+output exp part
                     bra       RFMTF4
 
-L55DA               lda       #$45
+OutrlExpStr               lda       #$45
                     bsr       OUTCHR         Output 'e'
-                    lda       <u0079        Get exponent
+                    lda       <TmpReal4        Get exponent
                     deca                    for scaling
                     pshs      a             save exp val
-                    bpl       L55EB
+                    bpl       OutrlExpPos
                     neg       ,s            Make it positive for output
 * (orig: OUTEX2)
                     bsr       OUTMIN         Output minus sign
                     bra       OUTEX3
 
-L55EB               bsr       L564B
+OutrlExpPos               bsr       OutPlusSign
 OUTEX3               puls      b
                     clra                    is tens val
 OUTEX4               subb      #$0A
@@ -12509,30 +12513,30 @@ MOVDG2               rts
 OUTSP               lda       #$20
                     bra       OUTCHR
 
-L5612               lda       #$2E
+OutDecimalPt               lda       #$2E
 ***************
 * Put char in (A) in Outbuf
 OUTCHR               pshs      u,a                 Preserve regs
                     leau      <-$40,s             Is stack within 64 bytes of curr. pos in temp buff
-                    cmpu      <u0082        output buffer overflow?
+                    cmpu      <TmpBufCur        output buffer overflow?
                     bhi       OUTCHR10               No, skip ahead
                     cmpa      #C$CR               Is char we want added a CR?
                     beq       OUTCHR10               Yes, skip ahead
                     lda       #$50                ??? Error code 80? (internal flag byte?)
-                    sta       <u0036              ??? Save error code 80?
-                    sta       <u00DE              Save here too
+                    sta       <ErrCode              ??? Save error code 80?
+                    sta       <SavedChar              Save here too
                     puls      pc,u,a              Restore regs & return
 
-OUTCHR10               ldu       <u0082              Get current pos in temp buffer
+OUTCHR10               ldu       <TmpBufCur              Get current pos in temp buffer
                     sta       ,u+                 Save char there
-                    stu       <u0082              Save new current pos in temp buffer
-                    inc       <u007D              Inc # active chars in temp buffer
+                    stu       <TmpBufCur              Save new current pos in temp buffer
+                    inc       <TmpBufCount              Inc # active chars in temp buffer
 OUTCHR99               puls      pc,u,a              Restore regs & return
 
 ***************
 * Output Series of Zeros Specified by B
 OUTZER               lda       #$30
-L5636               tstb                          Any chars left to do?
+OutZeroLoop               tstb                          Any chars left to do?
                     beq       OUTZ3               No, exit
 OUTZ2               bsr       OUTCHR               Save char (check for size within 64 of stack?)
                     decb                          Done all chars?
@@ -12541,53 +12545,53 @@ OUTZ3               rts
 
 ***************
 * Output Sign or Space
-SGNSPC               tst       <u0078
+SGNSPC               tst       <TmpReal3
                     beq       OUTSP
-L5643               tst       <u0078
+OutSignOrNone               tst       <TmpReal3
                     beq       OUTZ3
 ***************
 * Output Minus char
 OUTMIN               lda       #$2D
                     bra       OUTCHR
 
-L564B               lda       #$2B
+OutPlusSign               lda       #$2B
                     bra       OUTCHR
 
 MOVSTR               lda       #C$SPAC             Space is fill char
-                    bra       L5636               Go add B # of spaces to temp buffer
+                    bra       OutZeroLoop               Go add B # of spaces to temp buffer
 
 MOVST0               bsr       OUTCHR
-L5655               lda       ,x+
+OutStrCharLoop               lda       ,x+
                     cmpa      #$FF          End str?
                     bne       MOVST0         ..No; print it
                     rts
 
-L565C               pshs      x
+OutStrImpl               pshs      x
                     ldx       1,y           Get str addr
-OUTST2               bsr       L5655
+OUTST2               bsr       OutStrCharLoop
                     clra
                     puls      pc,x
 
 OUTBL               pshs      x
-                    leax      >L5143,pc
+                    leax      >TrueStr,pc
                     lda       2,y
                     bne       OUTST2
-                    leax      >L5148,pc     ..otherwise get addr of false
+                    leax      >FalseStr,pc     ..otherwise get addr of false
                     bra       OUTST2         and output..
 
 OUTINT               pshs      u,x
                     leas      -5,s          Make TEMP buffer on stack
                     leax      ,s            Get addr of TEMP buffer
                     lbsr      INTSTR         Convert n to ASCII
-                    bsr       L5643         Output sign if neg
-                    lda       <u0076        Get digit count
+                    bsr       OutSignOrNone         Output sign if neg
+                    lda       <TmpReal1        Get digit count
                     leax      ,s            Restore TEMP buf ptr
                     lbsr      OUTZE1         Copy digits
                     leas      5,s           Clean stack
                     clra
                     puls      pc,u,x
 
-* <u002A Function 2, sub-function $10 - Add B spaces to temp buffer
+* <JmpVect6 Function 2, sub-function $10 - Add B spaces to temp buffer
 * Entry: A=# spaces to append to temp buffer
 ***************
 * Subroutine OUTTAB
@@ -12595,8 +12599,8 @@ OUTINT               pshs      u,x
 * Position Specified by (A)
 OUTTAB               tfr       a,b                 Move byte we are working with to B
 TAB               pshs      u                   Preserve U
-                    ldu       <u0082              Get ptr to current pos in temp buffer
-                    subb      <u007D              Callers # - # chars active in temp buffer
+                    ldu       <TmpBufCur              Get ptr to current pos in temp buffer
+                    subb      <TmpBufCount              Callers # - # chars active in temp buffer
                     bls       TAB2               If 0 or wraps negative, skip ahead
                     bsr       MOVSTR               Go add chars
 TAB2               clra                          No error?
@@ -12606,7 +12610,7 @@ TAB2               clra                          No error?
 * Subroutine SKPZON
 * Skip to Beginning of next Tab Zone
 SKPZON               lbsr      OUTSP
-SKPZ2               lda       <u007D
+SKPZ2               lda       <TmpBufCount
                     anda      #$0F          Get 4 ls bits
                     cmpa      #$01          First digit of group?
                     beq       SKIPZ3         if so done ..
@@ -12617,7 +12621,7 @@ SKPZ2               lda       <u007D
 * Subroutine OUTCR
 * Put Eol in I/O Buf
 OUTCR               lda       #C$CR
-                    clr       <u007D        Reset character count
+                    clr       <TmpBufCount        Reset character count
                     lbsr      OUTCHR
 SKIPZ3               clra
                     rts
@@ -12629,39 +12633,39 @@ OUTHEX               pshs      u
                     bne       OUTHX2         Go output if not
                     asra                    Reduce field
                     leau      1,u
-OUTHX2               sta       <u0086
+OUTHX2               sta       <FieldWidth
                     tfr       a,b
                     asrb                    digit count
                     lbsr      HEXOUT         Call conv subr
                     puls      pc,u
 
 PRSJST               clrb
-                    stb       <u0087        Left is default
+                    stb       <FieldJustify        Left is default
                     cmpa      #$3C          Left?
                     beq       PRJST3
                     cmpa      #$3E          Right?
-                    bne       L56D9
+                    bne       PrjstCaret
                     incb
                     bra       PRJST3
 
-L56D9               cmpa      #$5E
+PrjstCaret               cmpa      #$5E
                     bne       FDELIM
                     decb
-PRJST3               stb       <u0087
+PRJST3               stb       <FieldJustify
                     lda       ,x+           Get next char
 FDELIM               cmpa      #$2C
                     beq       FDEL40
                     cmpa      #$FF
                     bne       FDEL15
-                    lda       <u0094        in a repeat block?
+                    lda       <RptFlag        in a repeat block?
                     beq       FDEL10         bra if not
                     leax      -$01,x        Back up to end string
                     bra       FDEL30
 
-FDEL10               ldx       <u008E
-                    tst       <u00DC        Legal to RESCAN format?
+FDEL10               ldx       <FmtEndPtr
+                    tst       <RescanFlag        Legal to RESCAN format?
                     beq       FDEL20         ..no; return error
-                    clr       <u00DC        Set to no RESCAN legal
+                    clr       <RescanFlag        Set to no RESCAN legal
                     bra       FDEL40
 
 FDEL15               cmpa      #$29
@@ -12669,58 +12673,58 @@ FDEL15               cmpa      #$29
 FDEL20               orcc      #$01
                     rts
 
-FDEL25               lda       <u0094
+FDEL25               lda       <RptFlag
                     beq       FDEL20         Error if not
-FDEL30               dec       <u0092
+FDEL30               dec       <RptCount
                     bne       FDEL35         Bra if more to repeat
-                    ldu       <u0046        Get repeat stack ptr
+                    ldu       <SubrStkPtr        Get repeat stack ptr
                     pulu      y,a           Get previous count & beginning ptr
-                    sta       <u0092        Reset previous count
-                    sty       <u0090        Reset repeat beginning
-                    stu       <u0046        Update repeat stack ptr
+                    sta       <RptCount        Reset previous count
+                    sty       <RptBegPtr        Reset repeat beginning
+                    stu       <SubrStkPtr        Update repeat stack ptr
                     lda       ,x+           Get next char
-                    dec       <u0094        Decrement rpt flag
+                    dec       <RptFlag        Decrement rpt flag
                     bra       FDELIM         Look for another delim
 
-FDEL35               ldx       <u0090
-FDEL40               stx       <u008C
+FDEL35               ldx       <RptBegPtr
+FDEL40               stx       <FmtScanPtr
                     andcc     #$FE
                     rts
 
 * Print USING format specifiers
-L5723               fcc       'I'                 Integer
-                    fdb       L5802-L5723
-L5726               fcc       'H'                 Hexidecimal
-                    fdb       L5802-L5726
-L5729               fcc       'R'                 Real
-                    fdb       RFMTP-L5729
-L572C               fcc       'E'                 Exponential
-                    fdb       RFMTP-L572C
-L572F               fcc       'S'                 String
-                    fdb       L5802-L572F
-L5732               fcc       'B'                 Boolean
-                    fdb       L5802-L5732
-L5735               fcc       'T'                 Tab
-                    fdb       TFMTP-L5735
-L5738               fcc       'X'                 Spaces
-                    fdb       XFMTP-L5738
-L573B               fcc       "'"                 Quoted text
-                    fdb       QFMTP-L573B
-L573E               fcb       $00                 End of table marker
+PuFmtTblInt               fcc       'I'                 Integer
+                    fdb       PrintUsngCheck-PuFmtTblInt
+PuFmtTblHex               fcc       'H'                 Hexidecimal
+                    fdb       PrintUsngCheck-PuFmtTblHex
+PuFmtTblReal               fcc       'R'                 Real
+                    fdb       RFMTP-PuFmtTblReal
+PuFmtTblExp               fcc       'E'                 Exponential
+                    fdb       RFMTP-PuFmtTblExp
+PuFmtTblStr               fcc       'S'                 String
+                    fdb       PrintUsngCheck-PuFmtTblStr
+PuFmtTblBool               fcc       'B'                 Boolean
+                    fdb       PrintUsngCheck-PuFmtTblBool
+PuFmtTblTab               fcc       'T'                 Tab
+                    fdb       TFMTP-PuFmtTblTab
+PuFmtTblSpc               fcc       'X'                 Spaces
+                    fdb       XFMTP-PuFmtTblSpc
+PuFmtTblQuote               fcc       "'"                 Quoted text
+                    fdb       QFMTP-PuFmtTblQuote
+PuFmtTblEnd               fcb       $00                 End of table marker
 
 * 'T' (tab)
 ***************
 * Tab Format
 TFMTP               bsr       FDELIM
                     bcs       RPTERR
-                    ldb       <u0086
+                    ldb       <FieldWidth
                     lbsr      TAB
                     bra       NXTFM1
 
 * 'X' (spaces)
 XFMTP               bsr       FDELIM
                     bcs       RPTERR
-                    ldb       <u0086
+                    ldb       <FieldWidth
                     lbsr      MOVSTR
                     bra       NXTFM1
 
@@ -12739,25 +12743,25 @@ QFMTP2               lbsr      OUTCHR
                     bra       QFMTP
 
 NXTFMT               pshs      y,x
-                    clr       <u00DC
-                    inc       <u00DC        initialize fmt RESCAN flag
-NXTFM1               ldx       <u008C
+                    clr       <RescanFlag
+                    inc       <RescanFlag        initialize fmt RESCAN flag
+NXTFM1               ldx       <FmtScanPtr
                     bsr       FMTNUM         Look for repeat count
                     bcs       NXTFM3         Bra if not found
                     cmpa      #'(                 Repeat char?
-                    bne       L57AB         Error if not
-                    lda       <u0092        Get current repeat count
-                    stb       <u0092        save count
-                    beq       L57AB         Dont permit zero count
-                    inc       <u0094        Set flag
-                    ldu       <u0046        Get repeat stack ptr
-                    ldy       <u0090        Get repeat beginning ptr
+                    bne       FmtErr3E         Error if not
+                    lda       <RptCount        Get current repeat count
+                    stb       <RptCount        save count
+                    beq       FmtErr3E         Dont permit zero count
+                    inc       <RptFlag        Set flag
+                    ldu       <SubrStkPtr        Get repeat stack ptr
+                    ldy       <RptBegPtr        Get repeat beginning ptr
                     pshu      y,a           Push count & ptr
-                    stu       <u0046        Update repeat stack ptr
-                    stx       <u0090        save repeat beginning ptr
+                    stu       <SubrStkPtr        Update repeat stack ptr
+                    stx       <RptBegPtr        save repeat beginning ptr
 * (orig: NXTFM2)
                     lda       ,x+           Get next chr
-NXTFM3               leay      <L5723,pc           Point to start of specifiers table
+NXTFM3               leay      <PuFmtTblInt,pc           Point to start of specifiers table
                     clrb                          Init Specifier # to 0
 ***************
 * Decode Table Lookup Loop
@@ -12765,7 +12769,7 @@ NXTFM4               pshs      a                   Preserve original char
                     eora      ,y                  Flip any differing bits
                     anda      #$DF                Mask out uppercase bit
                     puls      a                   Restore original char
-                    beq       L57B2               If char matches, skip ahead
+                    beq       FmtSpecFound               If char matches, skip ahead
                     leay      3,y                 Point to next table entry
                     incb                          Bump up specifier #
                     tst       ,y                  Are we at the end?
@@ -12773,51 +12777,51 @@ NXTFM4               pshs      a                   Preserve original char
 RPTERR               ldb       #$3F                I/O Format Syntax Error
                     bra       FMEXIT               Exit with error
 
-L57AB               ldb       #$3E
+FmtErr3E               ldb       #$3E
 
-FMEXIT               stb       <u0036              Save error code
+FMEXIT               stb       <ErrCode              Save error code
                     coma                          Set carry
                     puls      pc,y,x              Restore regs & return
 
 * Found specifier match
-L57B2               stb       <u0085              Save specifier #
+FmtSpecFound               stb       <PrintUsingSpec              Save specifier #
                     ldd       1,y                 Get offset
                     leay      d,y                 Add to base address
                     bsr       FMTNUM               Get up to 3 digit ASCII #'s, convert to binary
                     bcc       NXTFM51               Got it, skip ahead
                     ldb       #$01                None found, force to 1
-NXTFM51               stb       <u0086              Save binary version of number
+NXTFM51               stb       <FieldWidth              Save binary version of number
                     jmp       ,y                  Execute PRINT USING specifier routine
 
 * Convert 3 digit ASCII decimal # @ ,X to binary equivalent. Carry clear if
 * done, carry set if not ASCII decimal digits present
-FMTNUM               bsr       L57DC               Go try & get ASCII number 0-9
+FMTNUM               bsr       GetAsciiDigit               Go try & get ASCII number 0-9
 * NOTE: 6809/6309 MOD, CHANGE TO BCS TO RTS, NOT ORCC/RTS
-                    bcs       L57ED               None found, Set carry & exit
+                    bcs       SetCarryRts               None found, Set carry & exit
                     tfr       a,b                 Move binary digit 0-9 to B
-                    bsr       L57DC               Try & get another ASCII number 0-9
-                    bcs       L57E8               Couldn't, exit with carry clear anyways
+                    bsr       GetAsciiDigit               Try & get another ASCII number 0-9
+                    bcs       ClearCarryRts               Couldn't, exit with carry clear anyways
                     bsr       BLDNUM               Convert 2 digit # into binary version (D)
-                    bsr       L57DC               Try & get another ASCII number 0-9
-                    bcs       L57E8               Couldn't, exit with carry clear anyways
+                    bsr       GetAsciiDigit               Try & get another ASCII number 0-9
+                    bcs       ClearCarryRts               Couldn't, exit with carry clear anyways
                     bsr       BLDNUM               Convert this digit & add to previous total
                     tsta                          result <255? (useless, ADCA should set flags)
                     beq       FMTNM2               Yes, get next char & exit with carry clear
                     clrb                          Force result to 256
 FMTNM2               lda       ,x+                 Get next char
-                    bra       L57E8               Exit with carry clear
+                    bra       ClearCarryRts               Exit with carry clear
 
-L57DC               lda       ,x+                 Get char
+GetAsciiDigit               lda       ,x+                 Get char
 CHKDIG               cmpa      #'0                 If not ASCII 0-9, exit with carry set
-                    blo       L57ED               (Same as BCS)
+                    blo       SetCarryRts               (Same as BCS)
                     cmpa      #'9
                     bhi       BADNUM
                     suba      #$30                If it is 0-9, convert to binary & exit with
-L57E8               andcc     #$FE                carry clear
+ClearCarryRts               andcc     #$FE                carry clear
                     rts
 
 BADNUM               orcc      #$01
-L57ED               rts
+SetCarryRts               rts
 
 * Entry: A=LSB of ASCII 0-9 converted to binary, B=MSB
 * IF NOT CALLED BY OTHER ROUTINES USING IT, MAY WANT TO USE DP LOCATION 14
@@ -12833,25 +12837,25 @@ RFMTP               cmpa      #'.
                     bne       RPTERR
                     bsr       FMTNUM         Find frac field size
                     bcs       RPTERR
-                    stb       <u0089        save frac size
+                    stb       <FracFieldSz        save frac size
 
-L5802               lbsr      PRSJST
+PrintUsngCheck               lbsr      PRSJST
                     bcs       RPTERR         bra if error
                     puls      y,x           Restore registers
-                    inc       <u00DC        Fmt rescanning legal now
-EXCFMT               ldb       <u0085
+                    inc       <RescanFlag        Fmt rescanning legal now
+EXCFMT               ldb       <PrintUsingSpec
                     lbeq      I.FMT         0=integer fmt
                     decb
-                    beq       L5826         1=hex fmt
+                    beq       HexFmtImpl         1=hex fmt
                     decb
                     lbeq      R.FMT
                     decb
-                    lbeq      L5A10
+                    lbeq      ExpFmtImpl
                     decb
                     lbeq      S.FMT
-                    lbra      L5904         5=bool fmt
+                    lbra      BoolFmtImpl         5=bool fmt
 
-L5826               jsr       <u0016
+HexFmtImpl               jsr       <JmpOpcode
                     cmpa      #4                  Numeric?
                     blo       H.FMT4               Yes, skip ahead
                     ldu       1,y                 Get ptr to string data
@@ -12874,38 +12878,38 @@ H.FMT4               leau      1,y
                     bra       HEXOUT
 
 H.FMT6               cmpa      #1                  Integer?
-                    bne       L5852               No, skip ahead
+                    bne       HexFmt1Byte               No, skip ahead
                     ldb       #2                  Yes, size=2 bytes
-                    cmpb      <u0086              Same or less than ???
-                    blo       L5856               Yes, leave as 2
-L5852               ldb       #1                  Anything else (BYTE/BOOLEAN) is 1 byte
+                    cmpb      <FieldWidth              Same or less than ???
+                    blo       HexFmtStart               Yes, leave as 2
+HexFmt1Byte               ldb       #1                  Anything else (BYTE/BOOLEAN) is 1 byte
                     leau      1,u           Set ptr to result
-L5856               tfr       b,a
+HexFmtStart               tfr       b,a
                     lsla
-                    cmpa      <u0086        Too many for field?
-                    bhi       L5893         ..yes; skip 1st half of first byte
-HEXOUT               tst       <u0087
+                    cmpa      <FieldWidth        Too many for field?
+                    bhi       HexStartByte         ..yes; skip 1st half of first byte
+HEXOUT               tst       <FieldJustify
                     beq       HEXO10         ..left justify
-                    bmi       L5870
+                    bmi       HexCenterJust
                     pshs      b
                     lslb
                     pshs      b                   SUBR
-                    ldb       <u0086
+                    ldb       <FieldWidth
                     subb      ,s+
                     blo       HEXO05
                     bra       HEXO03
 
-L5870               pshs      b
+HexCenterJust               pshs      b
                     lslb
                     pshs      b
-                    ldb       <u0086
+                    ldb       <FieldWidth
                     subb      ,s+
                     bcs       HEXO05
                     asrb
 HEXO03               pshs      b
-                    lda       <u0086        Decrement field width
+                    lda       <FieldWidth        Decrement field width
                     suba      ,s+           by number of leading spaces
-                    sta       <u0086
+                    sta       <FieldWidth
                     lbsr      MOVSTR
 HEXO05               puls      b
 HEXO10               lda       ,u
@@ -12915,12 +12919,12 @@ HEXO10               lda       ,u
                     lsra
                     bsr       HEXCHR         Output it
                     beq       HEXO90         Exit if fld full
-L5893               lda       ,u+
+HexStartByte               lda       ,u+
                     bsr       HEXCHR
                     beq       HEXO90         Also exit if full
                     decb                    bytecnt
                     bne       HEXO10
-                    ldb       <u0086
+                    ldb       <FieldWidth
                     lbsr      MOVSTR
 HEXO90               clra
                     rts
@@ -12932,7 +12936,7 @@ HEXCHR               anda      #$0F
                     bls       HXCHR2
                     adda      #$07          Adj for A-F
 HXCHR2               lbsr      OUTDIG
-                    dec       <u0086        Decr fld width
+                    dec       <FieldWidth        Decr fld width
                     rts
 
 ***************
@@ -12940,80 +12944,80 @@ HXCHR2               lbsr      OUTDIG
 FMSMAT               coma
                     rts
 
-I.FMT               jsr       <u0016
+I.FMT               jsr       <JmpOpcode
                     cmpa      #$02          What TYPE result?
                     bcs       I.FMT1         Not str if error
                     bne       FMSMAT         bra if not real
-                    lbsr      L5098         Convert to integer
+                    lbsr      CallVect5FnC         Convert to integer
 I.FMT1               pshs      u,x
                     leas      -5,s
                     leax      ,s
                     lbsr      INTSTR         Call the master conv subr
-                    ldb       <u0086        Get fld width
+                    ldb       <FieldWidth        Get fld width
                     decb                    One for sign
-                    subb      <u0076        then # digits in result
-                    bpl       L58D5         Keep going if fld big enough
+                    subb      <TmpReal1        then # digits in result
+                    bpl       IntFmtJustify         Keep going if fld big enough
                     leas      5,s           Pop old buffer
                     puls      u,x           then regs
-                    lbra      L5A07         Go fill it with *** + rts
+                    lbra      FillAsterisks         Go fill it with *** + rts
 
 ***************
 * Decode Justification
-L58D5               tst       <u0087
-                    beq       L58E3         0=left
-                    bmi       L58F4
+IntFmtJustify               tst       <FieldJustify
+                    beq       IntFmtLeft         0=left
+                    bmi       IntFmtCenter
                     lbsr      MOVSTR
                     lbsr      SGNSPC         Sign or space
-                    bra       L58FA
+                    bra       IntFmtSignDone
 
 ***************
 * Right Justify, Zero Fill
-L58E3               lbsr      SGNSPC
+IntFmtLeft               lbsr      SGNSPC
                     pshs      b             save fill count
-                    lda       <u0076
+                    lda       <TmpReal1
                     lbsr      OUTZE1
                     puls      b
                     lbsr      MOVSTR         Now the fill
-                    bra       L58FF
+                    bra       IntFmtClean
 
-L58F4               lbsr      SGNSPC
+IntFmtCenter               lbsr      SGNSPC
                     lbsr      OUTZER
-L58FA               lda       <u0076
+IntFmtSignDone               lda       <TmpReal1
                     lbsr      OUTZE1
-L58FF               leas      5,s
+IntFmtClean               leas      5,s
                     clra
                     puls      pc,u,x
 
-L5904               jsr       <u0016              Go get var type
+BoolFmtImpl               jsr       <JmpOpcode              Go get var type
                     cmpa      #3                  Boolean?
                     bne       FMSMAT               No, set carry & exit
                     pshs      u,x                 Preserve regs
-                    leax      >L5143,pc           Point to 'True'
+                    leax      >TrueStr,pc           Point to 'True'
                     ldb       #4                  Size of 'True'
                     lda       2,y                 Get boolean value
                     bne       S.FMT1               $FF is true, so skip ahead
-                    leax      >L5148,pc           Point to 'False'
+                    leax      >FalseStr,pc           Point to 'False'
                     ldb       #5                  Size of 'False'
                     bra       S.FMT1               Go deal with it
 
-S.FMT               jsr       <u0016              Go get var type
+S.FMT               jsr       <JmpOpcode              Go get var type
                     cmpa      #4                  String?
                     bne       FMSMAT               No, exit with carry set
                     pshs      u,x                 Preserve regs
                     ldx       1,y                 Get ptr to string
-                    ldd       <u0048        String Stack ptr
+                    ldd       <StrStkPtr        String Stack ptr
                     subd      1,y           (D)=length of string
                     subd      #1            Don't count eos byte
                     tsta                    than 255 bytes?
                     bne       S.FMT2         ..Yes; too large
-S.FMT1               cmpb      <u0086
+S.FMT1               cmpb      <FieldWidth
                     bls       S.FMT3         ..No; continue
-S.FMT2               ldb       <u0086
+S.FMT2               ldb       <FieldWidth
 S.FMT3               tfr       b,a
                     negb
-                    addb      <u0086        ..Length from field size
-                    tst       <u0087        check justify TYPE
-                    beq       L594F         0=left
+                    addb      <FieldWidth        ..Length from field size
+                    tst       <FieldJustify        check justify TYPE
+                    beq       StrFmtLeft         0=left
                     bmi       S.FMTC         -1=centered
 ***************
 * Left Justify
@@ -13024,8 +13028,8 @@ S.FMT3               tfr       b,a
                     lbsr      OUTZE1         Move it out
                     bra       S.FMTX
 
-L594F               pshs      b
-                    bra       L595E
+StrFmtLeft               pshs      b
+                    bra       StrFmtOutput
 
 ***************
 * Center Justify
@@ -13035,45 +13039,45 @@ S.FMTC               lsrb
 S.FMT4               pshs      d
                     lbsr      MOVSTR
                     puls      a
-L595E               lbsr      OUTZE1
+StrFmtOutput               lbsr      OUTZE1
                     puls      b             Pop the trailing fill count
                     lbsr      MOVSTR
 S.FMTX               clra
                     puls      pc,u,x
 
-R.FMT               jsr       <u0016              Go get var type
+R.FMT               jsr       <JmpOpcode              Go get var type
                     cmpa      #2                  Real?
                     beq       R.FMT1               Yes, skip ahead
                     lbcc      FMSMAT               If carry clear, set carry & exit
-                    lbsr      L509B               ??? possible convert?
+                    lbsr      CallVect5FnE2               ??? possible convert?
 R.FMT1               pshs      u,x
                     leas      -$0A,s
                     leax      ,s
                     lbsr      RLASC         Call the main conversion routine
-                    lda       <u0079        Get dec exp val
+                    lda       <TmpReal4        Get dec exp val
                     cmpa      #$09          exp must be <10e+10
                     bgt       R.FMTE         Error if bigger
                     lbsr      RNDRL         Call rounding subr
-                    lda       <u0086        Get total field size
+                    lda       <FieldWidth        Get total field size
                     suba      #$02
                     bmi       R.FMTE
-                    suba      <u0089
+                    suba      <FracFieldSz
                     bmi       R.FMTE
-                    suba      <u008A
+                    suba      <IntFieldSz
                     bpl       R.FMT2
 ***************
 * Error Exit When Impossible to Format: Clean Up Stack +
 * Call Routine to Fill Field With Asterisks
 R.FMTE               leas      $0A,s
                     puls      u,x
-                    bra       L5A07         Exit to error filler
+                    bra       FillAsterisks         Exit to error filler
 
 ***************
 * Decode Justification Mode and bra to Formatter Routines
-R.FMT2               sta       <u0088
+R.FMT2               sta       <FmtTotalFld
                     leax      ,s            Restore buffer ptr
-                    ldb       <u0087        Get justify code
-                    beq       L59AC         O=left justify
+                    ldb       <FieldJustify        Get justify code
+                    beq       RealFmtLeft         O=left justify
                     bmi       OUTRNS         -1=center justify(money)
 ***************
 * Left Justify, Leading Sign, Trailing Space Fill
@@ -13082,10 +13086,10 @@ R.FMT2               sta       <u0088
 ***************
 * Center (Financial) Justify: Right Justify, Space Fill, Trailing Sign/Space
 * (orig: R.FMTC)
-                    bsr       L59BE
+                    bsr       RealFmtSignOut
                     bra       R.FMTX
 
-L59AC               bsr       L59BE
+RealFmtLeft               bsr       RealFmtSignOut
                     bsr       SPCFIL
                     bra       R.FMTX
 
@@ -13098,109 +13102,109 @@ R.FMTX               leas      $0A,s
                     clra
                     puls      pc,u,x
 
-L59BE               lbsr      SGNSPC
-OUTRN               lda       <u008A
+RealFmtSignOut               lbsr      SGNSPC
+OUTRN               lda       <IntFieldSz
                     lbsr      OUTZE1
-                    lbsr      L5612         then decimal point
-                    ldb       <u0079        Get decimal exponent
-                    bpl       L59F9         No problem if positive
+                    lbsr      OutDecimalPt         then decimal point
+                    ldb       <TmpReal4        Get decimal exponent
+                    bpl       OutfpFracDigits         No problem if positive
                     negb
-                    cmpb      <u0089        to many for field?
+                    cmpb      <FracFieldSz        to many for field?
                     bls       OUTRN1         ..no
-                    ldb       <u0089
+                    ldb       <FracFieldSz
 OUTRN1               pshs      b
                     lbsr      OUTZER         Output leading zeroes
-                    ldb       <u0089
+                    ldb       <FracFieldSz
                     subb      ,s+           Adjust field size for number of zeros printed
-                    stb       <u0089
-                    lda       <u008B        Get fraction digit count
-                    cmpa      <u0089        Too many for rest of field?
+                    stb       <FracFieldSz
+                    lda       <FracDigitCnt        Get fraction digit count
+                    cmpa      <FracFieldSz        Too many for rest of field?
 * 6809/6309 MOD: SHOULD BE BLS OUTFP2
                     bls       OUTRN2         ..no
 ***************
 * Output Floation Point number Elements
 * (orig: OUTFPN)
-                    lda       <u0089
+                    lda       <FracFieldSz
 OUTRN2               bra       OUTFP2
 
 ***************
 * Output Space-Fill field
-SPCFIL               ldb       <u0088
+SPCFIL               ldb       <FmtTotalFld
                     lbra      MOVSTR         Go do it
 
 OUTFP0               lbsr      SGNSPC
-                    lda       <u008A        Get int field size
+                    lda       <IntFieldSz        Get int field size
                     lbsr      OUTZE1
-                    lbsr      L5612
-L59F9               lda       <u008B
+                    lbsr      OutDecimalPt
+OutfpFracDigits               lda       <FracDigitCnt
 OUTFP2               lbsr      OUTZE1
-                    ldb       <u0089        Get frac field size
-                    subb      <u008B        Subtract #signif.
+                    ldb       <FracFieldSz        Get frac field size
+                    subb      <FracDigitCnt        Subtract #signif.
                     ble       BADRTS         Skip fill if <=0
 * (orig: OUTFP9)
                     lbra      OUTZER         Output trailing zero fill for rest of field
 
-L5A07               ldb       <u0086
+FillAsterisks               ldb       <FieldWidth
                     lda       #$2A                * (?)
-                    lbsr      L5636         Print the astericks
+                    lbsr      OutZeroLoop         Print the astericks
                     clra
 BADRTS               rts
 
-L5A10               jsr       <u0016              Go get variable type
+ExpFmtImpl               jsr       <JmpOpcode              Go get variable type
                     cmpa      #2                  Real?
                     beq       E.FMT0               Yes, skip ahead
                     lbcc      FMSMAT               If carry clear, set carry & exit
-                    lbsr      L509B               ??? Convert to real?
+                    lbsr      CallVect5FnE2               ??? Convert to real?
 E.FMT0               pshs      u,x
                     leas      -$0A,s
                     leax      ,s
                     lbsr      RLASC         Call the general conversion subr
-                    lda       <u0079        Get decimal exponent
+                    lda       <TmpReal4        Get decimal exponent
                     pshs      a             save it
                     lda       #1            Force exponent=1
-                    sta       <u0079
+                    sta       <TmpReal4
                     bsr       RNDRL         Call the rounder
                     puls      a             Restore previous exp (adjusted)
 * (orig: E.FMT1)
-                    ldb       <u0079
+                    ldb       <TmpReal4
                     cmpb      #1
-                    beq       L5A39         Skip if digits didnt shift
+                    beq       ExpFmtIntDig         Skip if digits didnt shift
                     inca
-L5A39               ldb       #1
-                    stb       <u008A        Force one int digit
-                    sta       <u0079
-                    lda       <u0086        Get total field size
+ExpFmtIntDig               ldb       #1
+                    stb       <IntFieldSz        Force one int digit
+                    sta       <TmpReal4
+                    lda       <FieldWidth        Get total field size
                     suba      #6
-                    bmi       L5A4D
-                    suba      <u0089
-                    bmi       L5A4D
-                    suba      <u008A
+                    bmi       ExpFmtErr
+                    suba      <FracFieldSz
+                    bmi       ExpFmtErr
+                    suba      <IntFieldSz
                     bpl       E.FMT2
-L5A4D               leas      $0A,s
+ExpFmtErr               leas      $0A,s
                     puls      u,x
-                    bra       L5A07
+                    bra       FillAsterisks
 
-E.FMT2               sta       <u0088
-                    ldb       <u0087
-                    beq       L5A62
+E.FMT2               sta       <FmtTotalFld
+                    ldb       <FieldJustify
+                    beq       ExpFmtLeft
                     bsr       SPCFIL
                     bsr       OUTFP0         Do number+sign
-                    lbsr      L55DA
+                    lbsr      OutrlExpStr
                     bra       E.FMTX
 
-L5A62               bsr       OUTFP0
-                    lbsr      L55DA         Do the exponent
+ExpFmtLeft               bsr       OUTFP0
+                    lbsr      OutrlExpStr         Do the exponent
 ***************
 * Common Cleanup/Exit
 E.FMTX               lbra      R.FMTX
 
 RNDRL               pshs      x                   Save ptr to beginning of string number
-                    lda       <u0079        Get decimal exponent
-                    adda      <u0089        Add # frac digits needed
+                    lda       <TmpReal4        Get decimal exponent
+                    adda      <FracFieldSz        Add # frac digits needed
                     bne       RNDRL1         >>begin patch
                     lda       ,x
                     cmpa      #$35
-                    bcc       L5A8F
+                    bcc       RndrlCarryZero
 RNDRL1               deca                    Adjust for offset
                     bmi       ENDRND         if negative its out of range
                     cmpa      #$07
@@ -13215,7 +13219,7 @@ RNDRL2               inc       ,x                  Inc ASCII digit
                     ldb       ,x                  Get digit
                     cmpb      #'9                 Past 9?
                     bls       ENDRND               No, skip ahead
-L5A8F               ldb       #'0                 Wrap to 0
+RndrlCarryZero               ldb       #'0                 Wrap to 0
                     stb       ,x
                     leax      -1,x                Bump ptr back
                     cmpx      ,s                  Hit beginning of text string yet?
@@ -13228,27 +13232,27 @@ RNDRL3               lda       ,-x                 Block move bytes from 0-6 to 
                     bhi       RNDRL3               No, keep going until done
                     lda       #'1                 Force 1st digit to 1
                     sta       ,x
-                    inc       <u0079        and adjust exponent
+                    inc       <TmpReal4        and adjust exponent
 ENDRND               puls      x                   Get string ptr back
-                    lda       <u0079        Get dec exp
+                    lda       <TmpReal4        Get dec exp
                     bpl       IPART
                     clra                    Part=0 if neg exp
-IPART               sta       <u008A
+IPART               sta       <IntFieldSz
                     nega
                     adda      #$09          Compute frac size
                     bpl       FPART
                     clra
-FPART               cmpa      <u0089
+FPART               cmpa      <FracFieldSz
                     bls       FPART2
-                    lda       <u0089        Use whatever is smaller
-FPART2               sta       <u008B
+                    lda       <FracFieldSz        Use whatever is smaller
+FPART2               sta       <FracDigitCnt
                     rts
 
 ***************
 * Unimplemented routine error
 *  currently used for: Status
 UNIMPL               ldb       #48                 Unimplemented routine error
-                    stb       <u0036              Save error code
+                    stb       <ErrCode              Save error code
                     coma                          Exit with error
                     rts
 

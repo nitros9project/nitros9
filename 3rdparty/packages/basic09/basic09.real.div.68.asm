@@ -1,13 +1,13 @@
-L4234               comb                          Default to divide by 0 error
+RealDiv               comb                          Default to divide by 0 error
                     ldb       #$2D
                     tst       2,y                 Is number to divide by 0?
-                    beq       L4233               Yes, return with error
+                    beq       RealDivRts               Yes, return with error
                     pshs      x                   Preserve X
                     tst       8,y                 Is dividend=0?
-                    lbeq      L40DD               Yes, answer=0, return from there
+                    lbeq      RmulZeroResult               Yes, answer=0, return from there
                     lda       7,y                 Get exponent of # to dividend
                     suba      1,y                 Subtract exponent of divisor
-                    lbvs      L40EF
+                    lbvs      RmulExpError
                     sta       7,y
                     lda       #$21                ??? (count for exponent shifts?)
                     ldb       5,y                 Get sign byte of dividend
@@ -26,19 +26,19 @@ L4234               comb                          Default to divide by 0 error
                     rora
                     rorb
                     clr       $B,y                Clear last byte of dividend mantissa
-                    bra       L426F
+                    bra       RdivDoDiv
 
-L426D               exg       d,x
-L426F               subd      4,y
+RdivChkDiv               exg       d,x
+RdivDoDiv               subd      4,y
                     exg       d,x
-                    bcc       L4278
+                    bcc       RdivExpNeg
                     subd      #$0001
-L4278               subd      2,y
-                    beq       L42AB
-                    bmi       L42A7
-L427E               orcc      #$01
-L4280               dec       ,y
-                    beq       L42F8
+RdivExpNeg               subd      2,y
+                    beq       RdivNextBit
+                    bmi       RdivBitSet
+RdivSetSign               orcc      #$01
+RdivSetSign2               dec       ,y
+                    beq       RdivFinish
                     rol       $B,y
                     rol       $A,y
                     rol       9,y
@@ -49,66 +49,66 @@ L4280               dec       ,y
                     exg       d,x
                     rolb
                     rola
-                    bcc       L426D
+                    bcc       RdivChkDiv
                     exg       d,x
                     addd      4,y
                     exg       d,x
-                    bcc       L42A1
+                    bcc       RdivMainLoop
                     addd      #$0001
-L42A1               addd      2,y
-                    beq       L42AB
-                    bpl       L427E
-L42A7               andcc     #$FE
-                    bra       L4280
+RdivMainLoop               addd      2,y
+                    beq       RdivNextBit
+                    bpl       RdivSetSign
+RdivBitSet               andcc     #$FE
+                    bra       RdivSetSign2
 
-L42AB               leax      ,x
-                    bne       L427E
+RdivNextBit               leax      ,x
+                    bne       RdivSetSign
                     ldb       ,y
                     decb
                     subb      #$10
-                    blt       L42CD
+                    blt       RdivNormLoop
                     subb      #$08
-                    blt       L42C2
+                    blt       RdivNorm
                     stb       ,y
                     lda       $0B,y
                     ldb       #$80
-                    bra       L42EB
+                    bra       RdivCheckSign
 
-L42C2               addb      #$08
+RdivNorm               addb      #$08
                     stb       ,y
                     ldd       #$8000
                     ldx       $0A,y
-                    bra       L42ED
+                    bra       RdivSetNeg
 
-L42CD               addb      #$08
-                    blt       L42DB
+RdivNormLoop               addb      #$08
+                    blt       RdivRound
                     stb       ,y
                     ldx       $09,y
                     lda       $0B,y
                     ldb       #$80
-                    bra       L42ED
+                    bra       RdivSetNeg
 
-L42DB               addb      #$07
+RdivRound               addb      #$07
                     stb       ,y
                     ldx       $08,y
                     ldd       $0A,y
                     orcc      #$01
-L42E5               rolb
+RdivSaveResult               rolb
                     rola
                     exg       d,x
                     rolb
                     rola
-L42EB               exg       d,x
-L42ED               andcc     #$FE
+RdivCheckSign               exg       d,x
+RdivSetNeg               andcc     #$FE
                     dec       ,y
-                    bpl       L42E5
+                    bpl       RdivSaveResult
                     exg       d,x
                     tsta
-                    bra       L42FC
+                    bra       RdivFpErr
 
-L42F8               ldx       $0A,y
+RdivFinish               ldx       $0A,y
                     ldd       8,y
-L42FC               bmi       L430C
+RdivFpErr               bmi       RdivReturn
                     exg       d,x
                     rolb
                     rola
@@ -116,23 +116,23 @@ L42FC               bmi       L430C
                     rolb
                     rola
                     dec       $07,y
-                    lbvs      L40DD
-L430C               exg       d,x
+                    lbvs      RmulZeroResult
+RdivReturn               exg       d,x
                     addd      #$0001
                     exg       d,x
-                    bcc       L4321
+                    bcc       RdivShiftMant
                     addd      #$0001
-                    bcc       L4321
+                    bcc       RdivShiftMant
                     rora
                     inc       7,y
-                    lbvs      L40EF
-L4321               std       8,y
+                    lbvs      RmulExpError
+RdivShiftMant               std       8,y
                     tfr       x,d
                     andb      #$FE                Mask out sign bit
                     orb       1,y
                     std       $A,y
                     inc       7,y
-                    lbvs      L40EF
-L4331               leay      6,y                 Eat temp var
+                    lbvs      RmulExpError
+RdivShiftDone               leay      6,y                 Eat temp var
                     clrb                          No error
                     puls      pc,x                Restore X & return

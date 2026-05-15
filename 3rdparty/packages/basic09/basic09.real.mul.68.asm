@@ -1,10 +1,10 @@
 * Main routine for REAL multiply - 6809 version
-L40D3               pshs      x                   Preserve X
+RealMul               pshs      x                   Preserve X
                     lda       2,y                 Get 1st byte of mantissa
-                    bpl       L40DD               If mantissa is in lower range, force result to 0
+                    bpl       RmulZeroResult               If mantissa is in lower range, force result to 0
                     lda       8,y                 Get 1st byte of mantissa from 2nd number
-                    bmi       L40E9               If in upper range, go do multiply
-L40DD               clra
+                    bmi       RmulChkOverflow               If in upper range, go do multiply
+RmulZeroResult               clra
                     clrb
                     std       7,y                 Save 0 as result
                     std       9,y
@@ -13,16 +13,16 @@ L40DD               clra
                     puls      pc,x
 
 * Check for possible over/underflows before doing multiply
-L40E9               lda       1,y                 Get exponent from temp var
+RmulChkOverflow               lda       1,y                 Get exponent from temp var
                     adda      7,y                 Add to exponent from 1st var
-                    bvc       L40F6               If within 8 bit range, go do multiply
-L40EF               bpl       L40DD               If resulting exponent is too small, result=0
+                    bvc       RmulDoProduct               If within 8 bit range, go do multiply
+RmulExpError               bpl       RmulZeroResult               If resulting exponent is too small, result=0
                     comb                          Resulting exponent too big, exit with
                     ldb       #$32                Floating overflow error
                     puls      pc,x
 
 * Exponent possibly in range, process
-L40F6               sta       7,y                 Save resultant exponent overtop 1st vars
+RmulDoProduct               sta       7,y                 Save resultant exponent overtop 1st vars
                     ldb       $B,y                Get sign bit of 2nd #
                     eorb      5,y                 EOR with sign bit of 1st #
                     andb      #$01                Only keep resulting sign bit
@@ -43,16 +43,16 @@ L40F6               sta       7,y                 Save resultant exponent overto
                     mul
                     addd      1,s                 Add to previous #
                     std       1,s
-                    bcc       L4120               No carry required, skip ahead
+                    bcc       RmulProd1               No carry required, skip ahead
                     inc       ,s
-L4120               lda       $A,y                2nd LSB * LSB
+RmulProd1               lda       $A,y                2nd LSB * LSB
                     ldb       5,y
                     mul
                     addd      1,s                 Add with carry to previous #
                     std       1,s
-                    bcc       L412D
+                    bcc       RmulProd2
                     inc       ,s
-L412D               ldx       ,s                  Done 16x8 multiply, now just keep MSW
+RmulProd2               ldx       ,s                  Done 16x8 multiply, now just keep MSW
                     stx       1,s
                     clr       ,s                  Zero out hi-byte in 3 byte #
                     lda       $B,y
@@ -60,23 +60,23 @@ L412D               ldx       ,s                  Done 16x8 multiply, now just k
                     mul
                     addd      1,s
                     std       1,s
-                    bcc       L4142
+                    bcc       RmulProd3
                     inc       ,s
-L4142               lda       $0A,y
+RmulProd3               lda       $0A,y
                     ldb       $04,y
                     mul
                     addd      $01,s
                     std       $01,s
-                    bcc       L414F
+                    bcc       RmulProd4
                     inc       ,s
-L414F               lda       $09,y
+RmulProd4               lda       $09,y
                     ldb       $05,y
                     mul
                     addd      1,s
                     std       1,s
-                    bcc       L415C
+                    bcc       RmulProd5
                     inc       ,s
-L415C               ldb       2,s
+RmulProd5               ldb       2,s
                     ldx       ,s
                     stx       1,s
                     clr       ,s
@@ -85,30 +85,30 @@ L415C               ldb       2,s
                     mul
                     addd      1,s
                     std       1,s
-                    bhs       L4171
+                    bhs       RmulProd6
                     inc       ,s
-L4171               lda       $A,y
+RmulProd6               lda       $A,y
                     ldb       $3,y
                     mul
                     addd      1,s
                     std       1,s
-                    bhs       L417E
+                    bhs       RmulProd7
                     inc       ,s
-L417E               lda       9,y
+RmulProd7               lda       9,y
                     ldb       4,y
                     mul
                     addd      1,s
                     std       1,s
-                    bhs       L418B
+                    bhs       RmulProd8
                     inc       ,s
-L418B               lda       $08,y
+RmulProd8               lda       $08,y
                     ldb       $05,y
                     mul
                     addd      $01,s
                     std       $01,s
-                    bhs       L4198
+                    bhs       RmulProd9
                     inc       ,s
-L4198               ldb       $02,s
+RmulProd9               ldb       $02,s
                     ldx       ,s
                     stx       $01,s
                     clr       ,s
@@ -118,23 +118,23 @@ L4198               ldb       $02,s
                     mul
                     addd      $01,s
                     std       $01,s
-                    bcc       L41AF
+                    bcc       RmulProdA
                     inc       ,s
-L41AF               lda       $09,y
+RmulProdA               lda       $09,y
                     ldb       $03,y
                     mul
                     addd      $01,s
                     std       $01,s
-                    bcc       L41BC
+                    bcc       RmulProdB
                     inc       ,s
-L41BC               lda       $08,y
+RmulProdB               lda       $08,y
                     ldb       $04,y
                     mul
                     addd      $01,s
                     std       $01,s
-                    bcc       L41C9
+                    bcc       RmulProdC
                     inc       ,s
-L41C9               ldb       $02,s
+RmulProdC               ldb       $02,s
                     ldx       ,s
                     stx       $01,s
                     clr       ,s
@@ -144,44 +144,44 @@ L41C9               ldb       $02,s
                     mul
                     addd      $01,s
                     std       $01,s
-                    bcc       L41E0
+                    bcc       RmulProdD
                     inc       ,s
-L41E0               lda       $08,y
+RmulProdD               lda       $08,y
                     ldb       $03,y
                     mul
                     addd      $01,s
                     std       $01,s
-                    bcc       L41ED
+                    bcc       RmulProdE
                     inc       ,s
-L41ED               lda       $08,y
+RmulProdE               lda       $08,y
                     ldb       $02,y
                     mul
                     addd      ,s
-                    bmi       L4202
+                    bmi       RmulProdF
                     lsl       $0B,y
                     rol       $0A,y
                     rol       $02,s
                     rolb
                     rola
                     dec       7,y
-                    bvs       L421B
-L4202               std       8,y
+                    bvs       RmulNorm1
+RmulProdF               std       8,y
                     lda       2,s
                     ldb       $A,y
                     addd      #$0001
-                    bcc       L4220
+                    bcc       RmulNorm2
                     inc       9,y
-                    bne       L4222
+                    bne       RmulNorm3
                     inc       8,y
-                    bne       L4222
+                    bne       RmulNorm3
                     ror       8,y
                     inc       7,y
-                    bvc       L4222
-L421B               leas      3,s
-                    lbra      L40EF
+                    bvc       RmulNorm3
+RmulNorm1               leas      3,s
+                    lbra      RmulExpError
 
-L4220               andb      #$FE
-L4222               orb       ,y
+RmulNorm2               andb      #$FE
+RmulNorm3               orb       ,y
                     std       $A,y
                     leay      6,y
                     leas      3,s

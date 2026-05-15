@@ -1,12 +1,12 @@
 * Main routine for REAL multiply - 6309 version
-* 08/07/95 - Change L40DD to use CLRD/CLRW/STQ (Saves 1 cycle)
+* 08/07/95 - Change RmulZeroResult to use CLRD/CLRW/STQ (Saves 1 cycle)
 *          - Changed entire routine as per Chris Dekker's RunB
 * 08/08/95 - Took out PSHS/PULS X
-L40D3               lda       2,y                 Get 1st byte of mantissa
-                    bpl       L40DD               If mantissa is in lower range, force result to 0
+RealMul               lda       2,y                 Get 1st byte of mantissa
+                    bpl       RmulZeroResult               If mantissa is in lower range, force result to 0
                     lda       8,y                 Get 1st byte of mantissa from 2nd number
-                    bmi       L40E9               If in upper range, go do multiply
-L40DD               clrd                          Force REAL result to 0
+                    bmi       RmulChkOverflow               If in upper range, go do multiply
+RmulZeroResult               clrd                          Force REAL result to 0
                     clrw
                     stq       7,y                 Save 0 as result
                     sta       $B,y
@@ -14,16 +14,16 @@ L40DD               clrd                          Force REAL result to 0
                     rts
 
 * Check for possible over/underflows before doing multiply
-L40E9               lda       1,y                 Get exponent from temp var
+RmulChkOverflow               lda       1,y                 Get exponent from temp var
                     adda      7,y                 Add to exponent from 1st var
-                    bvc       L40F6               If within 8 bit range, go do multiply
-L40EF               bpl       L40DD               If resulting exponent is too small, result=0
+                    bvc       RmulDoProduct               If within 8 bit range, go do multiply
+RmulExpError               bpl       RmulZeroResult               If resulting exponent is too small, result=0
                     comb                          Resulting exponent too big, exit with
                     ldb       #$32                Floating overflow error
                     rts
 
 * Exponent possibly in range, process
-L40F6               sta       7,y                 Save resultant exponent overtop 1st vars
+RmulDoProduct               sta       7,y                 Save resultant exponent overtop 1st vars
                     ldb       $B,y                Get sign bit of 2nd #
                     eorb      5,y                 EOR with sign bit of 1st #
                     andb      #$01                Only keep resulting sign bit
@@ -37,131 +37,131 @@ L40F6               sta       7,y                 Save resultant exponent overto
 * Possible 32x32 bit multiply routine?
                     mul                           Multiply LSB's together
                     clre
-                    clr       <u0014              Clear out 3rd byte to keep track of
+                    clr       <RealShiftCnt              Clear out 3rd byte to keep track of
                     tfr       a,f                 Save MSB into middle byte
                     lda       $B,y                LSB * 2nd LSB
                     ldb       4,y
                     mul
                     addr      d,w                 Add to previous #
-                    bcc       L4120               No carry required, skip ahead
-                    inc       <u0014
-L4120               lda       $A,y                2nd LSB * LSB
+                    bcc       RmulProd1               No carry required, skip ahead
+                    inc       <RealShiftCnt
+RmulProd1               lda       $A,y                2nd LSB * LSB
                     ldb       5,y
                     mul
                     addr      d,w                 Add to previous #
-                    bcc       L412D
-                    inc       <u0014
-L412D               tfr       e,f
-                    lde       <u0014
-                    clr       <u0014
+                    bcc       RmulProd2
+                    inc       <RealShiftCnt
+RmulProd2               tfr       e,f
+                    lde       <RealShiftCnt
+                    clr       <RealShiftCnt
                     lda       $B,y
                     ldb       3,y
                     mul
                     addr      d,w                 Add to previous #
-                    bcc       L4142
-                    inc       <u0014
-L4142               lda       $A,y
+                    bcc       RmulProd3
+                    inc       <RealShiftCnt
+RmulProd3               lda       $A,y
                     ldb       4,y
                     mul
                     addr      d,w                 Add to previous #
-                    bcc       L414F
-                    inc       <u0014
-L414F               lda       9,y
+                    bcc       RmulProd4
+                    inc       <RealShiftCnt
+RmulProd4               lda       9,y
                     ldb       5,y
                     mul
                     addr      d,w                 Add to previous #
-                    bcc       L415C
-                    inc       <u0014
-L415C               tfr       e,f
-                    lde       <u0014
-                    clr       <u0014
+                    bcc       RmulProd5
+                    inc       <RealShiftCnt
+RmulProd5               tfr       e,f
+                    lde       <RealShiftCnt
+                    clr       <RealShiftCnt
                     lda       $B,y
                     ldb       2,y
                     mul
                     addr      d,w                 Add to previous #
-                    bcc       L4171
-                    inc       <u0014
-L4171               lda       $A,y
+                    bcc       RmulProd6
+                    inc       <RealShiftCnt
+RmulProd6               lda       $A,y
                     ldb       $3,y
                     mul
                     addr      d,w                 Add to previous #
-                    bcc       L417E
-                    inc       <u0014
-L417E               lda       9,y
+                    bcc       RmulProd7
+                    inc       <RealShiftCnt
+RmulProd7               lda       9,y
                     ldb       4,y
                     mul
                     addr      d,w                 Add to previous #
-                    bcc       L418B
-                    inc       <u0014
-L418B               lda       8,y
+                    bcc       RmulProd8
+                    inc       <RealShiftCnt
+RmulProd8               lda       8,y
                     ldb       5,y
                     mul
                     addr      d,w                 Add to previous #
-                    bcc       L4198
-                    inc       <u0014
-L4198               stf       $B,y
+                    bcc       RmulProd9
+                    inc       <RealShiftCnt
+RmulProd9               stf       $B,y
                     tfr       e,f
-                    lde       <u0014
-                    clr       <u0014
+                    lde       <RealShiftCnt
+                    clr       <RealShiftCnt
                     lda       $A,y
                     ldb       2,y
                     mul
                     addr      d,w                 Add to previous #
-                    bcc       L41AF
-                    inc       <u0014
-L41AF               lda       9,y
+                    bcc       RmulProdA
+                    inc       <RealShiftCnt
+RmulProdA               lda       9,y
                     ldb       3,y
                     mul
                     addr      d,w                 Add to previous #
-                    bcc       L41BC
-                    inc       <u0014
-L41BC               lda       8,y
+                    bcc       RmulProdB
+                    inc       <RealShiftCnt
+RmulProdB               lda       8,y
                     ldb       4,y
                     mul
                     addr      d,w                 Add to previous #
-                    bcc       L41C9
-                    inc       <u0014
-L41C9               stf       $A,y
+                    bcc       RmulProdC
+                    inc       <RealShiftCnt
+RmulProdC               stf       $A,y
                     tfr       e,f
-                    lde       <u0014
-                    clr       <u0014
+                    lde       <RealShiftCnt
+                    clr       <RealShiftCnt
                     lda       9,y
                     ldb       2,y
                     mul
                     addr      d,w                 Add to previous #
-                    bcc       L41E0
-                    inc       <u0014
-L41E0               lda       8,y
+                    bcc       RmulProdD
+                    inc       <RealShiftCnt
+RmulProdD               lda       8,y
                     ldb       3,y
                     mul
                     addr      d,w                 Add to previous #
-                    bcc       L41ED
-                    inc       <u0014
-L41ED               lda       8,y
+                    bcc       RmulProdE
+                    inc       <RealShiftCnt
+RmulProdE               lda       8,y
                     ldb       2,y
                     mul
                     tfr       w,u
                     tfr       e,f
-                    lde       <u0014
+                    lde       <RealShiftCnt
                     exg       d,u
                     addr      u,w
-                    bmi       L4202
+                    bmi       RmulProdF
                     asl       $B,y
                     rol       $A,y
                     rolb
                     rolw
                     dec       7,y
-                    bvs       L421B
+                    bvs       RmulNorm1
 
-L4202               tfr       b,a
+RmulProdF               tfr       b,a
                     ldb       $A,y
                     exg       d,w
                     addw      #1
                     adcd      #0
-                    bne       L421B
+                    bne       RmulNorm1
                     rora
                     inc       7,y
-L421B               exg       d,w
+RmulNorm1               exg       d,w
                     lsrb                          Clear sign bit
                     lslb
                     orb       ,y                  Merge resultant sign bit
