@@ -7,18 +7,6 @@
 * folks. Following his sources made it so much easier to document what
 * was happening in here.
 *
-* This source will assemble byte for byte to the original kq3 shdw module.
-*
-*        Header for : shdw
-*        Module size: $A56  #2646
-*        Module CRC : $E9E019 (Good)
-*        Hdr parity : $74
-*        Exec. off  : $0012  #18
-*        Data size  : $0000  #0
-*        Edition    : $00  #0
-*        Ty/La At/Rv: $11 $81
-*        Prog mod, 6809 Obj, re-ent, R/O
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

@@ -1,18 +1,5 @@
 ********************************************************************
-* TOCGEN - Kings Quest III Table of Contents module
-*
-*        Module header for original tocgen
-*
-*
-*        Header for : tocgen
-*        Module size: $1678  #5752
-*        Module CRC : $FD7921 (Good)
-*        Hdr parity : $46
-*        Exec. off  : $001D  #29
-*        Data size  : $054F  #1359
-*        Edition    : $01  #1
-*        Ty/La At/Rv: $11 $81
-*        Prog mod, 6809 Obj, re-ent, R/O
+* tocgen - Sierra AGI interpreter table of contents module
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
