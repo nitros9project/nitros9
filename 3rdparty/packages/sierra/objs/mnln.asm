@@ -122,124 +122,124 @@ JoyTimerHi          equ       $9C
 JoyDebounce         equ       $9D
 
 
-X0089               equ       $0089     ???
+TocDataPtr          equ       $0089     TOC data pointer (direct-page slot $89)
 
-X0100               equ       $0100     pic_visible
-X0101               equ       $0101
-X0102               equ       $0102     clock_state
+PicVisible          equ       $0100     pic_visible
+InputState          equ       $0101     current input state
+ClockState          equ       $0102     clock_state (0=running, 1=paused)
 
-X0154               equ       $0154     flag for extended table look up
-X0155               equ       $0155
+InputActiveFlag     equ       $0154     flag for extended table look up / input-active
+WordWrapPtr         equ       $0155     word-wrap output position pointer (16-bit)
 
-X0157               equ       $0157
-X0158               equ       $0158
-X0159               equ       $0159
-X015A               equ       $015A
-X015B               equ       $015B
-X015C               equ       $015C
+CharCountLine       equ       $0157     current char count on current line
+MaxCharsPerLine     equ       $0158     max chars per line for word wrap
+MaxLineWidth        equ       $0159     max line width seen / box height in chars
+ParsedWordCount     equ       $015A     parsed-word count
+ColCount            equ       $015B     column count (line count / box width in chars)
+ColorStackBase      equ       $015C     color stack base address
 
-X0167               equ       $0167
+RowColStackBase     equ       $0167     row/col stack base address
 
-X0172               equ       $0172
-X0173               equ       $0173
-X0176               equ       $0176
-X0177               equ       $0177
-X0178               equ       $0178
-X0179               equ       $0179
-X017B               equ       $017B
-X017C               equ       $017C
-X017D               equ       $017D
-X017E               equ       $017E
-X017F               equ       $017F
-X0180               equ       $0180
-X01A9               equ       $01A9
-X01AB               equ       $01AB
-X01AD               equ       $01AD     state.block_state
-X01AE               equ       $01AE     state.cursor
-X01AF               equ       $01AF     state.flag
-X01B0               equ       $01B0     state.flag
-X01B1               equ       $01B1
-X01D6               equ       $01D6
-X01D7               equ       $01D7
-X01D8               equ       $01D8
-X023D               equ       $023D     state.block_x2
-X023E               equ       $023E     state.block_y2
-X0240               equ       $0240
-X0241               equ       $0241     state.pic_num
-X0242               equ       $0242
-X0244               equ       $0244     state.script_saved
-X0245               equ       $0245     state.script_count
-X0246               equ       $0246
-X0247               equ       $0247     state.status_state
-X0248               equ       $0248
-X0249               equ       $0249
-X024B               equ       $024B
+GraphicsMode        equ       $0172     graphics mode active flag / silent flag
+Unk0173             equ       $0173     unknown (unreferenced)
+BoxTopRow           equ       $0176     box top row
+BoxRightCol         equ       $0177     box right column
+BoxBottomRow        equ       $0178     box bottom row
+Unk0179             equ       $0179     unknown (unreferenced)
+WinPixWidth         equ       $017B     window pixel width
+WinPixHeight        equ       $017C     window pixel height
+WinPixX             equ       $017D     window pixel X position
+WinPixW             equ       $017E     window pixel draw width
+WinOpenFlag         equ       $017F     window-open flag
+NounTableBase       equ       $0180     noun-table / word-string pointer table base
+WordsTriePtrLo      equ       $01A9     low byte of words trie pointer ($01A8+1)
+WordsPageLo         equ       $01AB     low byte of words logic page ($01AA+1)
+BlockState          equ       $01AD     state.block_state
+CursorState         equ       $01AE     state.cursor / game flags byte
+AudioDisplayFlags   equ       $01AF     state.flag (audio/display flags)
+StateFlag1          equ       $01B0     state.flag (player control flags)
+Unk01B1             equ       $01B1     unknown (unreferenced)
+HorizonY            equ       $01D6     horizon line Y / priority override
+MonitorType         equ       $01D7     monitor type
+KeyTableBase        equ       $01D8     key-mapping table base address
+BlockX2             equ       $023D     state.block_x2
+BlockY2             equ       $023E     state.block_y2
+NewPicNum           equ       $0240     pending new pic number / room-change flag
+PicNum              equ       $0241     state.pic_num (current active pic)
+Unk0242             equ       $0242     unknown (unreferenced)
+ScriptSaved         equ       $0244     state.script_saved
+ScriptCount         equ       $0245     state.script_count
+StatusLineEnable    equ       $0246     status-line enabled flag
+StatusState         equ       $0247     state.status_state
+TickHiWord          equ       $0248     tick counter high word (32-bit timer, high 16 bits)
+TickHiLo            equ       $0249     tick counter high word low byte ($0248+1)
+Unk024B             equ       $024B     unknown (unreferenced as absolute address)
 
-X024D               equ       $024D     state.text_fg
-X024E               equ       $024E     state.text_bg
+TextFg              equ       $024D     state.text_fg
+TextBg              equ       $024E     state.text_bg
 
-X024F               equ       $024F     state.block_x1
-X0250               equ       $0250     state.block_y1
-X0251               equ       $0251     state.ego_control_state
+BlockX1             equ       $024F     state.block_x1
+BlockY1             equ       $0250     state.block_y1
+EgoCtrlState        equ       $0251     state.ego_control_state
 
-X0252               equ       $0252     state.string
+StateString         equ       $0252     state.string
 
-X0432               equ       $0432     state.var[]
-X0433               equ       $0433
-X0434               equ       $0434
-X0435               equ       $0435
-X0436               equ       $0436
-X0437               equ       $0437
-X0438               equ       $0438
-X0439               equ       $0439
-X043A               equ       $043A
-X043B               equ       $043B
-X043C               equ       $043C
-X043D               equ       $043D
-X043E               equ       $043E
-X043F               equ       $043F
-X0440               equ       $0440
-X0441               equ       $0441
-X0442               equ       $0442
-X0443               equ       $0443
-X0444               equ       $0444
-X0445               equ       $0445
-X0446               equ       $0446
-X0447               equ       $0447
-X0448               equ       $0448
-X044A               equ       $044A
-X044B               equ       $044B
-X044C               equ       $044C
+VarCurrentRoom      equ       $0432     state.var[0] current room
+VarPrevRoom         equ       $0433     state.var[1] prev room / ego entry-side
+VarLogicNum         equ       $0434     state.var[2] current/room logic number
+VarCycleFlag        equ       $0435     state.var[3] cycle flag / object-boundary flag
+VarUpdateFlag       equ       $0436     state.var[4] display update flag / boundary direction
+VarEgoDir           equ       $0437     state.var[5] ego direction
+VarScore            equ       $0438     state.var[6] current score
+VarFreePages        equ       $0439     state.var[7] free memory pages
+VarCycleState       equ       $043A     state.var[8] cycle flag / keyboard state
+VarCycleDelay       equ       $043B     state.var[9] cycle delay
+VarClockSec         equ       $043C     state.var[10] clock seconds
+VarClockMin         equ       $043D     state.var[11] clock minutes
+VarClockHour        equ       $043E     state.var[12] clock hours
+VarClockDay         equ       $043F     state.var[13] clock days
+VarJoySensitivity   equ       $0440     state.var[14] joystick repeat delay
+VarLastKey          equ       $0441     state.var[15] last key / view setup
+VarAnimInterval     equ       $0442     state.var[16] animation interval
+VarErrParam         equ       $0443     state.var[17] error parameter B
+VarPendingKey       equ       $0444     state.var[18] pending raw keycode
+VarRows             equ       $0445     state.var[19] rows variable
+VarAutoAdvTimer     equ       $0446     state.var[20] auto-advance timer
+VarInputLine        equ       $0447     state.var[21] input-line display flag
+VarVar22            equ       $0448     state.var[22] (unreferenced directly)
+VarInvSelected      equ       $044A     state.var[24] selected inventory item
+VarPicEndRow        equ       $044B     state.var[25] pic-end row / score variable
+VarVar26            equ       $044C     state.var[26] (unreferenced directly)
 
-X0532               equ       $0532
-X0541               equ       $0541
-X0542               equ       $0542
-X0543               equ       $0543
-X0545               equ       $0545
-X0547               equ       $0547
+VolHandleTable      equ       $0532     vol_handle_table
+JoyBtnStatusFlag    equ       $0541     joystick button status / button-pressed flag
+JoyBtnCount         equ       $0542     joystick button state counter
+JoyClickStampLo     equ       $0543     joystick click timestamp low word
+JoyClickStampHi     equ       $0545     joystick click timestamp high word
+EventFilter         equ       $0547     event category filter / cursor-visible flag
 
-X0550               equ       $0550     gfx_picbuffrotate
-X0551               equ       $0551     given_pic_data
-X0553               equ       $0553     display_type
+GfxPicBufRotate     equ       $0550     gfx_picbuffrotate
+GivenPicData        equ       $0551     given_pic_data
+DisplayType         equ       $0553     display_type
 
-X05AE               equ       $05AE
-X05AF               equ       $05AF
-X05B1               equ       $05B1     obj_displayed in obj_show()
-X05B8               equ       $05B8
-X05B9               equ       $05B9     input_edit_disabled
-X05EC               equ       $05EC     chgen_textmode
-X05ED               equ       $05ED
-X0659               equ       $0659
+MenuInputActive     equ       $05AE     menu-input-active flag
+ScriptBufPtr        equ       $05AF     logic table pointer / script buffer pointer
+ObjDisplayed        equ       $05B1     obj_displayed in obj_show()
+MemAvailFlag        equ       $05B8     available memory / temp-load flag
+InputEditDisabled   equ       $05B9     input_edit_disabled
+ChgenTextmode       equ       $05EC     chgen_textmode / quit-room-change flag
+VolumeCount         equ       $05ED     volume count (disk count)
+MmuTwiddleAddr      equ       $0659     MMU twiddler call address
 
-XFF01               equ       $FF01     hsync control
-XFF02               equ       $FF02     keyboard col
-XFF03               equ       $FF03     vsync control
-XFF20               equ       $FF20     d/a, cassette & rs232 out
-XFF22               equ       $FF22     vdg control and rs-232 in
-XFF23               equ       $FF23     control reg
+HsyncCtrl           equ       $FF01     hsync control
+KeyboardCol         equ       $FF02     keyboard col
+VsyncCtrl           equ       $FF03     vsync control
+DacOut              equ       $FF20     d/a, cassette & rs232 out
+VdgCtrl             equ       $FF22     vdg control and rs-232 in
+CtrlReg             equ       $FF23     control reg
 
 
-XFFA9               equ       $FFA9     task 1 block 2
+MmuBlock2           equ       $FFA9     task 1 block 2
 
 
 * Program equates
