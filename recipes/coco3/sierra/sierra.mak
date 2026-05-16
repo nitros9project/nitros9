@@ -78,20 +78,13 @@ MAME_MACHINE ?= coco3
 MAME_FLAGS   ?= -inipath $(HOME)/mame -cfg_directory $(HOME)/mame/cfg -window -ext fdc
 
 ifeq ($(SIERRA_MEDIA),80d)
-# Prepend a 5-byte JVC header so MAME's jvc_format reader recognises the
-# 80-cylinder × 2-side geometry.  Must use .dsk extension — MAME doesn't
-# register .jvc as a known CoCo format.
-MAME_DSK = mame_$(DSKIMAGE)
-$(MAME_DSK): $(DSKIMAGE)
-	python3 -c "open('$@','wb').write(bytes([0x12,0x02,0x01,0x01,0x00])+open('$<','rb').read())"
-
-run: $(MAME_DSK)
-	$(MAME) $(MAME_MACHINE) $(MAME_FLAGS) -flop1 $(MAME_DSK)
+run: $(DSKIMAGE)
+	$(MAME) $(MAME_MACHINE) $(MAME_FLAGS) -flop1 $(DSKIMAGE)
 else
 run:
 	@echo "run: MAME floppy launch not supported for DriveWire media (GAME=$(GAME))"
 endif
 
 clean:
-	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk *.jvc buildinfo $(SIERRA_TOC)
+	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo $(SIERRA_TOC)
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
