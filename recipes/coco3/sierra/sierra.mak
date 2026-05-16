@@ -73,6 +73,18 @@ $(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(SI
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 
+MAME      ?= mame
+MAME_MACHINE ?= coco3
+MAME_FLAGS   ?= -cfg_directory ./cfg -window
+
+ifeq ($(SIERRA_MEDIA),80d)
+run: $(DSKIMAGE)
+	$(MAME) $(MAME_MACHINE) $(MAME_FLAGS) -flop1 $(DSKIMAGE)
+else
+run:
+	@echo "run: MAME floppy launch not supported for DriveWire media (GAME=$(GAME))"
+endif
+
 clean:
 	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo $(SIERRA_TOC)
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
