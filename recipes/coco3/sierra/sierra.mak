@@ -75,7 +75,7 @@ $(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(SI
 
 MAME      ?= mame
 MAME_MACHINE ?= coco3
-MAME_FLAGS   ?= -cfg_directory ./cfg -window
+MAME_FLAGS   ?= -cfg_directory $(HOME)/cfg -window
 
 ifeq ($(SIERRA_MEDIA),80d)
 run: $(DSKIMAGE)
