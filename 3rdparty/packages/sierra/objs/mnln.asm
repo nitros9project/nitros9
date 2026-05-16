@@ -38,10 +38,22 @@
 *  >$05B9  input_edit_disabled
 
 
+*
+*======================================================================
+* EQUATES — I/O PATH NUMBERS
+*   Standard I/O path numbers shared with sierra, scrn, and shdw modules.
+*======================================================================
+*
 StdIn               equ       0
 StdOut              equ       1
 StdErr              equ       2
 
+*
+*======================================================================
+* EQUATES — DIRECT PAGE VARIABLES
+*   Offsets into the shared Sierra data block, accessed via the direct-page register.
+*======================================================================
+*
 *  equates for direct page vars
 *  shared with sierra module
 DataBlockSize       equ       $00       holds size of data block
@@ -122,6 +134,12 @@ JoyTimerHi          equ       $9C
 JoyDebounce         equ       $9D
 
 
+*
+*======================================================================
+* EQUATES — ABSOLUTE STATE ADDRESSES
+*   Absolute addresses in the Sierra shared data block and CoCo3 hardware registers.
+*======================================================================
+*
 TocDataPtr          equ       $0089     TOC data pointer (direct-page slot $89)
 
 PicVisible          equ       $0100     pic_visible
@@ -242,6 +260,12 @@ CtrlReg             equ       $FF23     control reg
 MmuBlock2           equ       $FFA9     task 1 block 2
 
 
+*
+*======================================================================
+* EQUATES — PROGRAM CONSTANTS
+*   AGI game-logic constants: cycle types, motion types, loop directions, and object flag bits.
+*======================================================================
+*
 * Program equates
 *  Cycle Types
 CY_NORM             equ       0
@@ -287,6 +311,12 @@ O_MOTIONLESS        equ       $4000     * 14 - no movement.
 *                                (ie, if it hits a wall or something)
 O_UNUSED            equ       $8000
 
+*
+*======================================================================
+* MODULE HEADER
+*   NitrOS-9 module preamble, data area layout, and string literals.
+*======================================================================
+*
                     nam       mnln
                     ttl       program module
 
@@ -326,6 +356,12 @@ QuitMsg             fcc       /Press ENTER to quit./
                     fcc       /Press CTRL-BREAK to keep playing./
                     fcb       0
 
+*
+*======================================================================
+* MAIN CYCLE LOOP
+*   Module entry point and the top-level AGI interpreter cycle: poll joystick, run scripts, update objects, refresh screen.
+*======================================================================
+*
 ModuleEntry         leas      -6,s      make room on the stack
                     lbsr      PatchCmdTable modifies table values at 1B0
                     lbsr      FixupEvalTbl modifies table values at D09
@@ -409,6 +445,12 @@ CycleEndCleanup     clra                clear A for flag clearing
                     lbsr      UpdateAllObjs
                     lbra      MainCycleLoop restart main game cycle
 
+*
+*======================================================================
+* BUILT-IN COMMANDS — PAUSE AND QUIT
+*   Handlers for AGI commands 0x7A (pause) and 0x7B (quit).
+*======================================================================
+*
 cmd_pause
 CmdPauseImpl        lda       #$01      set clock-state to paused
                     sta       >$0102    set clock_state = 1
@@ -432,6 +474,12 @@ DoQuitAgi           lda       #$03      load the offset to exit_agi()
                     jsr       >$0701    mmu twiddle
 CmdQuitReturn       rts
 
+*
+*======================================================================
+* COMMAND DISPATCH TABLE
+*   Jump table mapping each AGI command byte to its handler address and parameter descriptor word.
+*======================================================================
+*
 * every other word gets added to by a value saved in sierra
 * when this module is loaded. I assume it's a mem offset
 * Jump table of some kind  but what are the second words used
@@ -649,6 +697,12 @@ CmdTableStart       fdb       NoopCmdsRet,$0000 *do nothing
                     fdb       cmd_set_upper_left,$2c0 *allow menu
                     fdb       NoopCmdsRet,$0000 *do nothing
 
+*
+*======================================================================
+* COMMAND DISPATCH ENGINE
+*   Patches cmd_table with the module's load address, then dispatches a command by index.
+*======================================================================
+*
 PatchCmdTable       leas      -$01,s    allocate one byte loop counter on stack
                     lda       #$B6      load count of 182 table entries
                     sta       ,s        save loop count
@@ -683,6 +737,12 @@ CallCmdHandler      leax      >cmd_table,pcr point X to command jump table
                     cmpb      #$FC      check for special opcode threshold
                     bcs       DispatchCmd branch if another normal command follows
 DispatchCmdReturn   rts
+*
+*======================================================================
+* OBJECT ANIMATION — CEL CYCLING
+*   Advance an animated object's cel frame, handling normal, reverse, end-of-loop, and reverse-end-of-loop cycle modes.
+*======================================================================
+*
 AdvanceCelFrame     lda       <$25,u    load object animation flags
                     bita      #$10      test single-cycle-advance flag
                     beq       GetCelIndex branch if normal cycling
@@ -736,6 +796,12 @@ NotifyEndOfLoop     lda       <$27,u    load end-of-loop flag number
                     ldb       <$0074    reload final cel index
 SetCelInLoop        lbsr      SetCelHelper
 AdvCelReturn        rts
+*
+*======================================================================
+* OBJECT ANIMATION — LOOP CONTROL
+*   Commands to fix and release an object's loop selection.
+*======================================================================
+*
 CmdFixLoop          lda       ,y+       load object number from script
                     ldb       #$2B      object struct is $2B bytes wide
                     mul                 compute byte offset into object table
@@ -754,6 +820,12 @@ CmdReleaseLoop      lda       ,y+       load object number from script
                     anda      #$DF      clear loop-fix flag
                     sta       <$25,x    store updated flags
                     rts
+*
+*======================================================================
+* OBJECT TERRAIN CLASSIFICATION
+*   Predicates and range-list management for water-only and land-only object constraints.
+*======================================================================
+*
 IsOnWater           lda       #$01      assume on water (default true)
                     ldb       <$26,u    load object terrain flags
                     andb      #$51      isolate water/terrain bits
@@ -816,6 +888,12 @@ ResetObjRanges      ldx       #$0548    point to water range list
                     ldx       #$054C    point to land range list
                     lbsr      ProcessDrawList
                     rts
+*
+*======================================================================
+* OBJECT UPDATE CONTROL
+*   Commands to stop, start, and force the per-cycle screen-update step for an object.
+*======================================================================
+*
 CmdStopUpdate       lda       ,y+       load object number from script
                     ldb       #$2B      object struct is $2B bytes wide
                     mul                 compute byte offset into object table
@@ -835,6 +913,12 @@ CmdForceUpdate      lda       ,y+       load object number from script (unused)
                     bsr       SwapObjRanges swap MMU object range pages
                     bsr       UpdateObjSegments update segment mappings for all objects
                     rts
+*
+*======================================================================
+* OBJECT UPDATE HELPERS
+*   Internal helpers that set/clear the O_UPDATE flag and refresh the object's screen segments.
+*======================================================================
+*
 StopUpdateHelper    lda       <$26,u    load object state flags
                     bita      #$10      test animated/visible flag
                     beq       StopUpdateReturn branch if already stopped
@@ -860,6 +944,12 @@ StartUpdateReturn   rts
 DirTableFwd         fcb       4,4,0,0,0,4,1,1,1
 DirTableRev         fcb       4,3,0,0,0,2,1,1,1
 
+*
+*======================================================================
+* ANIMATE / UNANIMATE
+*   Commands to start or stop animation for an object or all objects.
+*======================================================================
+*
 CmdAnimateObj       lda       ,y+       load object number from script
                     bsr       AnimateObjHelper
                     rts
@@ -895,6 +985,12 @@ UnanimateAllLoop    cmpu      <$0032    compare to end of object table
                     leau      <$2B,u    advance to next object struct
                     bra       UnanimateAllLoop loop through all objects
 UnanimateAllDone    rts
+*
+*======================================================================
+* PER-CYCLE OBJECT UPDATE
+*   Iterates all objects each cycle: advances animation, checks cycle types, and triggers direction-based loop selection.
+*======================================================================
+*
 UpdateAllObjs       leas      -$01,s    allocate one byte update-happened flag
                     clr       ,s        clear update flag
                     ldu       <$0030    load pointer to first object
@@ -971,6 +1067,12 @@ UpdateAllPostLoop   lda       ,s        check update-happened flag
                     sta       <$25,u    store updated flags
 UpdateAllReturn     leas      $01,s     release stack flag byte
                     rts
+*
+*======================================================================
+* OBJECT MOTION DISPATCH
+*   Iterates all objects and calls the appropriate motion handler (normal, wander, follow, move-to).
+*======================================================================
+*
 DispatchMotion      ldu       <$0030    load pointer to first object
 MotionObjLoop       cmpu      <$0032    compare to end-of-object-table pointer
                     bcc       DispatchMotionDone branch if past all objects
@@ -1008,6 +1110,12 @@ MotionCheckCollide  bita      #$02      test blocked-by-control flag
 NextMotionObj       leau      <$2B,u    advance to next object struct
                     bra       MotionObjLoop loop to process next object
 DispatchMotionDone  rts
+*
+*======================================================================
+* MOVE OBJECT ONE STEP
+*   Moves an object one step in its current direction, applying step size and checking for block/horizon collisions.
+*======================================================================
+*
 MoveObjOneStep      leas      -$03,s    allocate 3 bytes: block status + saved pos
                     ldd       $03,u     load current object X,Y position
                     std       $01,s     save original position
@@ -1076,6 +1184,12 @@ MoveIsBlocked       lda       <$26,u    load object state flags
                     clr       >$0437    clear ego direction variable too
 MoveOneStepReturn   leas      $03,s     release 3-byte stack frame
                     rts
+*
+*======================================================================
+* BLOCK RECTANGLE COMMANDS
+*   Commands to set, clear, ignore, and observe the blocking rectangle that constrains object movement.
+*======================================================================
+*
 CmdSetBlock         lda       #$01      enable blocking rectangle
                     sta       >$01AC    store blocking-rect active flag
                     lda       ,y+       load block rect X1 (left)
@@ -1107,6 +1221,12 @@ CmdObserveBlocks    lda       ,y+       load object number from script
                     anda      #$FD      clear ignore-blocks flag
                     sta       <$26,u    store updated flags
                     rts
+*
+*======================================================================
+* COLLISION DETECTION
+*   Tests whether a position falls inside the block rectangle, and checks for collisions between objects.
+*======================================================================
+*
 InBlockRect         leas      -$01,s    allocate one byte result on stack
                     clr       ,s        assume not in block rect
                     cmpa      >$024E    compare X to left edge
@@ -1161,6 +1281,12 @@ NextCollisionObj    leax      <$2B,x    advance to next object struct
                     bra       CheckCollisionLoop loop to check next object
 CollisionDetected   lda       #$01      return 1 (collision detected)
 CollisionReturn     rts
+*
+*======================================================================
+* OBJECT INTERACTION FLAGS
+*   Commands to ignore or observe object-to-object collisions, and to measure the distance between two objects.
+*======================================================================
+*
 CmdIgnoreObjects    lda       ,y+       load object number from script
                     ldb       #$2B      object struct is $2B bytes wide
                     mul                 compute byte offset into object table
@@ -1221,6 +1347,12 @@ StoreDistResult     ldb       ,y+       load destination variable number
                     abx                 index to destination variable
                     sta       ,x        store computed distance
                     rts
+*
+*======================================================================
+* INPUT BUFFER AND KEY TABLE
+*   Clears the raw input buffer, and manages the user-defined key-to-variable mapping table.
+*======================================================================
+*
 ClearInputBuffer    ldu       #$05BA    point U to start of input buffer area
                     ldx       #$0032    load count of 50 bytes to clear
                     clrb                zero fill value
@@ -1246,6 +1378,12 @@ StoreKeyEntry       ldb       ,y+       load target variable number
                     beq       KeyDone   branch if no slot available
                     std       ,x        store key code into key table slot
 KeyDone             rts
+*
+*======================================================================
+* CYCLE TYPE COMMANDS
+*   Commands controlling how an object's cel sequence advances: normal, end-of-loop, reverse, reverse-end-of-loop, and cycle time.
+*======================================================================
+*
 CmdNormalCycle      lda       ,y+       load object number from script
                     ldb       #$2B      object struct is $2B bytes wide
                     mul                 compute byte offset into object table
@@ -1382,6 +1520,13 @@ StrTablesSize       fcc       /tables, etc.: %u/
 StrMaxScript        fcc       /max script: %u/
                     fcb       0
 
+*
+*======================================================================
+* BUILT-IN DEBUG COMMANDS
+*   Handlers for obj_status, show_mem, and version — diagnostic commands
+*   that display interpreter state.
+*======================================================================
+*
 CmdObjStatus        leas      -$54,s    allocate 84-byte local buffer on stack
                     lbsr      InputEditOn
                     lda       $01d7     load input row
@@ -1559,6 +1704,13 @@ eval_table          fdb       $0f6e,$0000
                     fdb       $0f12,$500
                     fdb       $0f22,$500
 
+*
+*======================================================================
+* CONDITION EVALUATION TABLE AND ENGINE
+*   Patches the eval_table with the module load address, then evaluates
+*   a boolean condition expression from a logic script.
+*======================================================================
+*
 FixupEvalTbl        leas      -1,s      allocate one byte loop counter on stack
                     lda       #$13      load count of 19 eval table entries
 FixupEvalTblLoop    sta       ,s        save loop count
@@ -1685,6 +1837,13 @@ EvalExprRet         rts
                     ldx       #$0431    point to variable table (have-key test)
                     lda       <$13,x    load key-pressed variable (var 19)
                     lbne      RetTrue   branch if key already pending
+*
+*======================================================================
+* CONDITION PREDICATES
+*   Boolean test functions called by the condition engine: have_key,
+*   said, posn, obj_in_box, controller, and related helpers.
+*======================================================================
+*
 HaveKeyPollLoop     lbsr      GetKeyEvent get next keyboard event
                     cmpa      #$FF      check for no-key sentinel
                     beq       HaveKeyPollLoop branch if no key available yet
@@ -1792,6 +1951,13 @@ RetTrue             lda       #$01      return 1 (condition true)
                     rts
 RetFalse            clra                return 0 (condition false)
                     rts
+*
+*======================================================================
+* DRAW AND ERASE OBJECT COMMANDS
+*   Handlers for the AGI draw and erase commands; place or remove an
+*   animated object from the visible/priority screens.
+*======================================================================
+*
 CmdDrawImpl         lda       ,y+       load object number from script
                     pshs      y         save script pointer across helper call
                     bsr       DrawObjHelper
@@ -1912,6 +2078,13 @@ EraseObjDone        leas      $04,s     release local stack frame
 XorKeyStr           fcc       /Avis Durgan/
                     fcb       0
 
+*
+*======================================================================
+* LOGIC SCRIPT DECRYPTION
+*   XOR decryption of logic scripts using the "Avis Durgan" key, applied
+*   on load before execution.
+*======================================================================
+*
 XorDecrypt          leas      -$02,s    allocate 2-byte stack slot for pointer
                     stu       ,s        save end-of-buffer pointer
                     leau      >XorKeyStr,pcr point U to start of XOR key string
@@ -1937,6 +2110,13 @@ StrTryAgain         fcb       $0a
 StrSysError         fcc       /System error #%u.%s%s/
                     fcb       0
 
+*
+*======================================================================
+* ERROR REPORTING
+*   Stores the error code and parameter, formats a system error message
+*   dialog, and optionally rings the terminal bell.
+*======================================================================
+*
 ReportError         sta       $442      store error code A in error variable
 ReportErrorB        stb       >$0443    store error param B in error param variable
                     lbsr      ResetHeap reset heap before error handling
@@ -1985,6 +2165,13 @@ NumZeroPad          fdb       $0000
                     fdb       $0000
 
 * set.pri.base command
+*
+*======================================================================
+* PRIORITY BASELINE SETUP
+*   Rebuilds the 168-entry priority lookup table based on a configurable
+*   base row (used by the set_pri_base command).
+*======================================================================
+*
 SetPriBase          leas      -$04,s    allocate 4-byte local frame on stack
                     clr       >PriBaseFlag,pcr clear priority-base-set flag
                     ldb       ,y+       load base row argument from script
@@ -2017,6 +2204,14 @@ SetPriBaseStore     stb       ,x+       store priority byte, advance X to next r
                     bcs       SetPriBaseLoop loop until all rows filled
                     leas      $04,s     release local stack frame
                     rts
+*
+*======================================================================
+* STRING AND MEMORY UTILITIES
+*   Low-level string and memory helpers: StrLen, StrCopy, MemCopy,
+*   StrAppend, StrCompare, AtoI, integer-to-decimal/hex formatters,
+*   unsigned divide, zero-pad, and ToLower.
+*======================================================================
+*
 StrLen              leas      -$02,s    allocate 2-byte save slot for X
                     stx       ,s        save original string pointer
 StrLenLoop          lda       ,x+       load byte from string, advance X
@@ -2157,6 +2352,13 @@ ToLower             cmpa      #$41      check if char is below 'A'
                     bhi       ToLowerRet branch if above 'Z' (not uppercase)
                     ora       #$20      set bit 5 to convert to lowercase
 ToLowerRet          rts
+*
+*======================================================================
+* RANDOM NUMBER COMMAND
+*   Implements the AGI random command: generates a pseudo-random value
+*   and stores it in a variable within a caller-specified range.
+*======================================================================
+*
 CmdRandomImpl       lbsr      InitRandSeed get pseudo-random value into B
                     lda       $01,y     load range max (second arg)
                     suba      ,y++      subtract range min from max, advance Y by 2
@@ -2171,6 +2373,13 @@ CmdRandomStore      ldx       #$0431    point to variable table
                     abx                 index to destination variable
                     sta       ,x        store random result in variable
                     rts
+*
+*======================================================================
+* BYTE SEARCH AND CASE HELPERS
+*   FindByte scans a string for a target byte; StrToLower converts a
+*   string to lowercase in place.
+*======================================================================
+*
 FindByte            tst       ,x        check for null terminator at current position
                     bne       FindByteLoop branch if not null (search continues)
                     ldx       #$0000    null found, return null pointer (not found)
@@ -2186,6 +2395,13 @@ StrToLowerLoop      lda       ,x        load current character
                     sta       ,x+       store lowercased char, advance X
                     bra       StrToLowerLoop loop for next character
 StrToLowerDone      rts
+*
+*======================================================================
+* EVENT QUEUE AND INPUT POLLING
+*   Event queue push/pop, joystick and keyboard polling, key remapping,
+*   and waiting for specific input events (Enter, Escape, any key).
+*======================================================================
+*
 JoystickReadInit    lbsr      cmd_init_joy initialize joystick hardware
                     bsr       events_clear clear event queue after init
                     rts
@@ -2302,6 +2518,14 @@ RemapJoyToEsc       cmpa      #$FE      check for joystick-fire (Escape) code
 StoreRemappedKey    sta       $01,x     store remapped key character in event
 RemapJoyToKeyRet    rts
 SS_GetSttData       fcb       5,2
+*
+*======================================================================
+* FILE I/O WRAPPERS
+*   Thin wrappers around OS-9 I$Open, I$Read, I$Write, I$Delete,
+*   I$Close, I$Seek, and I$GetStt that store the error code in a shared
+*   variable.
+*======================================================================
+*
 DataPathBuf         fcc       /./
 DataPathEntry       fcc       /./
                     fcb       $0d,0
@@ -2374,6 +2598,14 @@ SeekFileRet         rts
                     bcc       DupPathRet branch if dup succeeded
                     lbsr      OsErrorHandler
 DupPathRet          rts
+*
+*======================================================================
+* DISK AND DIRECTORY MANAGEMENT
+*   Reads device and disk names, scans the directory for the current
+*   disk, parses disk-name entries, and manages the directory path
+*   descriptor.
+*======================================================================
+*
 GetDeviceName       leas      <-$22,s   allocate 34-byte local frame on stack
                     sty       ,s        save output buffer pointer
                     clra                clear A for zeroing
@@ -2565,6 +2797,14 @@ GetFileTime         leas      <-$14,s   allocate 20-byte local time buffer on st
                     ldx       <$10,s    load packed date into X (return value)
                     leas      <$14,s    release local time buffer
                     rts
+*
+*======================================================================
+* OS ERROR HANDLER AND OBJECT BOUNDS
+*   Captures OS-9 error codes into a shared variable; FindObjPos
+*   searches for a valid on-screen position for an object by trying
+*   adjacent cells.
+*======================================================================
+*
 OsErrorHandler      pshs      cc        save condition codes
                     cmpb      #$D8      check for "no such device" error
                     bne       OsErrorStore branch if not that specific error
@@ -2665,6 +2905,13 @@ FlagBitTable        fcb       $80,$40,$20,$10,8,4,2,1
 
 
 
+*
+*======================================================================
+* FLAG COMMANDS
+*   Implementations of the set, reset, toggle, set_v, reset_v, and
+*   toggle_v AGI flag commands, plus the internal GetFlagBitAddr helper.
+*======================================================================
+*
 CmdSetImpl          lda       ,y+       load flag number from script
                     bra       SetFlag   jump to SetFlag to set it
 
@@ -2722,6 +2969,13 @@ GetFlagBitAddr      tfr       a,b       copy flag number to B
                     ldx       #$01AE    base address of flag table
                     abx                 index to the correct flag byte
                     rts
+*
+*======================================================================
+* FOLLOW EGO MOTION CALCULATOR
+*   Computes the next direction for a follow-ego object, with wander
+*   fallback when blocked and random delay between steps.
+*======================================================================
+*
 CalcFollowDir       leas      -$05,s    allocate 5-byte local frame on stack
                     ldb       <$27,u    load follow-object's step size
                     pshs      b,a       save step size and A
@@ -2808,6 +3062,13 @@ DataSaveGameBuf2    fcb       0
                     fcb       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
                     fcb       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
                     fcb       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+*
+*======================================================================
+* SAVE AND RESTORE GAME
+*   All save/restore game logic: slot-selection UI, path entry, file
+*   read/write of game state, and date-based slot ordering.
+*======================================================================
+*
 StrSave             fcc       /save/
                     fcb       0
 StrRestore          fcc       /restore/
@@ -3339,6 +3600,14 @@ NormalRow           ldb       >$0176    load current column position
                     lda       #$20      space character (un-highlight)
                     lbsr      PutCharToWindow write space to clear highlight
                     rts
+*
+*======================================================================
+* GAME INITIALIZATION
+*   Loads the table-of-contents, words.tok, and object data; initializes
+*   the view object array, game variable and flag tables, and the logic
+*   table.
+*======================================================================
+*
 tOC                 fcc       /toc/
                     fcb       0
 WordsTok            fcc       /words.tok/
@@ -3520,6 +3789,14 @@ StrJoystickMsg      fcc       /If you have a joystick, and/
                     fcc       /continue./
                     fcb       0
 
+*
+*======================================================================
+* JOYSTICK INITIALIZATION AND POLLING
+*   Prompts the player for joystick calibration, polls the joystick
+*   hardware each cycle, debounces buttons, and pushes joystick events
+*   onto the event queue.
+*======================================================================
+*
 cmd_init_joy        lda       <$0098    load joystick-enabled flag
                     eora      #$01      toggle bit 0 (enable/disable)
                     sta       <$0098    store updated joystick flag
@@ -3723,6 +4000,13 @@ JoyKeyMapSecondary  fcb       $0c,$01
                     fcb       $08,$07
                     fcb       $00,$00
 
+*
+*======================================================================
+* KEYBOARD INPUT
+*   Drains the keyboard path, polls for key presses, looks up direction
+*   mappings, and pushes key events onto the event queue.
+*======================================================================
+*
 clear_key_queue     lbsr      ReadStdinByte read a byte from stdin
                     tsta                test if byte was available
                     bne       clear_key_queue loop until no more bytes
@@ -3764,6 +4048,14 @@ LogicTableData      fcb       0,0
                     fcb       0,0
                     fcb       0,0
 
+*
+*======================================================================
+* LOGIC TABLE MANAGEMENT
+*   Initialises, resets, and searches the fixed-size table of loaded
+*   logic scripts; each slot holds a logic number, data pointer, and
+*   script pointer.
+*======================================================================
+*
 ClearLogicTable     leax      >LogicTableData,pcr point to logic table
                     ldd       #$0000    zero value
                     std       ,x        clear first two bytes (head ptr)
@@ -3781,6 +4073,14 @@ FindLogicSlotLoop   stu       <$0064    save current slot pointer
                     cmpb      $02,u     compare logic number to slot
                     bne       FindLogicSlotLoop continue if not a match
 FindLogicSlotRet    rts
+*
+*======================================================================
+* LOGIC LOADING
+*   Implements load_logics and load_logics_v: allocates a heap node,
+*   loads and optionally decrypts the script from a volume file, and
+*   registers it in the logic table.
+*======================================================================
+*
 cmd_load_logics     ldb       ,y+       load logic number from script
                     bsr       LoadLogicNum load and allocate the logic
                     rts
@@ -3854,6 +4154,14 @@ AllocLoadLogicEnd   lbsr      SwapObjRanges swap object range tables
                     ldu       $01,s     reload slot pointer
 AllocLoadLogicRet   leas      $07,s     release local frame
                     rts
+*
+*======================================================================
+* LOGIC EXECUTION ENGINE
+*   Implements call, call_v, set_scan_start, reset_scan_start, and the
+*   ExecLogic bytecode interpreter loop that dispatches commands and
+*   evaluates conditions.
+*======================================================================
+*
 cmd_call            leas      -$02,s    allocate two bytes for Y save
                     ldb       ,y+       load logic number from script
                     sty       ,s        save current script pointer Y
@@ -3975,6 +4283,13 @@ StrHeap             fcc       /heap/
 StrCommon           fcc       /common/
                     fcb       0
 
+*
+*======================================================================
+* HEAP MEMORY MANAGEMENT
+*   AllocHeap and AllocDataBlock carve fixed-size blocks from the shared
+*   data arena; UpdateFreeSpace recomputes the free-memory variable.
+*======================================================================
+*
 AllocHeap           leas      -$34,s    allocate large local frame
                     std       ,s        save requested heap size
                     ldd       <$4f      load current heap pointer
@@ -4046,6 +4361,13 @@ CalcPriAddr         suba      <$005F    subtract priority base row offset
                     subd      #$2000    subtract $2000 for final addr
                     leau      d,u       advance U by computed offset
                     rts
+*
+*======================================================================
+* PRIORITY COORDINATE CALCULATION
+*   Converts a screen Y coordinate to a priority value and maps a view's
+*   logic page into the address space.
+*======================================================================
+*
 CalcPriCoord        tfr       u,d       transfer priority address to D
                     anda      #$1F      isolate column within strip
                     adda      #$20      add $20 base column
@@ -4084,6 +4406,14 @@ MenuItemWidth       fcb       0
 MenuItemCol         fcb       0
 MenuItemHeight      fcb       0
 MenuSubmitted       fcb       0
+*
+*======================================================================
+* MENU SYSTEM — BUILD PHASE
+*   Implements set_menu, set_menu_item, and submit_menu: allocates
+*   linked-list nodes for menus and items, calculates geometry, and
+*   finalises the menu structure.
+*======================================================================
+*
 cmd_set_menu        leas      -$04,s    allocate four local bytes
                     ldb       ,y+       load message number from script
                     lbsr      GetMsgPtr get pointer to menu-title message
@@ -4239,6 +4569,14 @@ SetItemEnableNext   ldu       ,u        advance to next menu entry
                     bne       SetItemEnableLoop continue through all menus
                     leas      $02,s     release two-byte local frame
                     rts
+*
+*======================================================================
+* MENU SYSTEM — INPUT AND DRAW
+*   Implements menu_input and the interactive menu event loop; draws the
+*   menu bar and items with highlight, and handles keyboard/joystick
+*   navigation.
+*======================================================================
+*
 cmd_menu_input      lda       >$01AF    load misc-flags byte
                     anda      #$02      isolate menu-input-allowed bit
                     beq       MenuInputRet branch if menu input disabled
@@ -4518,6 +4856,13 @@ JoySpeedTable       fcb       1,$ff
                     fcb       7,$ff
                     fcb       $f,$ff
 
+*
+*======================================================================
+* STDIN READER
+*   Reads a single byte from the stdin path, translating OS-9 keyboard
+*   input into AGI key codes.
+*======================================================================
+*
 ReadStdinByte       leas      -$03,s    allocate three local bytes
                     sty       ,s        save Y register
                     lda       #$00      path 0 = stdin
@@ -4548,12 +4893,27 @@ ReadStdinByteErr    clra                return zero = no char / error
 ReadStdinByteRet    ldy       ,s        restore Y register
                     leas      $03,s     release local frame
                     rts
+*
+*======================================================================
+* MEMORY FILL
+*   Fills a byte range with a constant value; used to blank screen
+*   buffers and clear data areas.
+*======================================================================
+*
 FillMem             pshs      u         save U (start ptr returned to caller)
 FillMemLoop         stb       ,u+       store fill byte, advance pointer
                     leax      -$01,x    decrement byte count
                     bne       FillMemLoop loop until count is zero
                     puls      u         restore U to start of filled area
                     rts
+*
+*======================================================================
+* PICTURE DECODING AND RENDERING
+*   Decodes the Sierra AGI picture format (nibble-packed commands) and
+*   renders visual and priority data into the screen buffer via the shdw
+*   module.
+*======================================================================
+*
 PicRenderSetup      lda       $02,s     load picture file descriptor
                     sta       <$00B9    save file descriptor for reads
                     ldd       $06,s     load remaining byte count
@@ -4818,6 +5178,13 @@ gfx_picbuff_update  tst       >$0550    check if gfx-update-needed flag set
                     sta       <$0021    store twiddle opcode
                     ldx       <$0028    load shadow copy context ptr
                     jsr       >$0701    execute shadow-page copy
+*
+*======================================================================
+* SCREEN BLIT
+*   Triggers a full-screen blit from the shadow buffer to the display by
+*   calling the scrn module's update routine.
+*======================================================================
+*
 GfxUpdateBlit       ldd       #$A8A0    blit destination row/col
                     pshs      b,a       push destination argument
                     ldd       #$00A7    blit source descriptor
@@ -4828,6 +5195,14 @@ GfxUpdateBlit       ldd       #$A8A0    blit destination row/col
                     jsr       >$0701    execute screen blit
                     leas      $04,s     discard two arguments
                     rts
+*
+*======================================================================
+* OBJECT MOTION COMMANDS
+*   Implements move_obj, move_obj_v, follow_ego, wander, normal_motion,
+*   stop_motion, start_motion, step_size, step_time, set_dir, get_dir,
+*   program_control, and player_control.
+*======================================================================
+*
 cmd_move_obj        lda       ,y+       load object number from script
                     ldb       #$2B      view-object struct size = 43 bytes
                     mul                 compute object offset
@@ -5032,6 +5407,14 @@ y_dir_mult          fcb       0
                     fcb       1,1
                     fcb       0,$ff
 
+*
+*======================================================================
+* PER-OBJECT MOVEMENT UPDATE
+*   Each cycle: moves all active objects one step in their current
+*   direction, applies step-size, clamps to screen bounds, checks
+*   horizon and border hits, and updates the direction variable.
+*======================================================================
+*
 UpdateAllMotion     leas      -$0B,s    allocate 11-byte per-object frame
                     clra                clear A = 0
                     sta       >$0433    clear ego-boundary hit flag
@@ -5171,6 +5554,14 @@ UpdateObjsNext      leau      <$2B,u    advance to next object struct
 UpdateAllObjsRet    leas      $0B,s     release local frame
                     rts
 MoveTableData       fcb       8,1,2,7,0,3,6,5,4
+*
+*======================================================================
+* OBJECT MOTION HELPERS
+*   SetObjMotion recalculates an object's direction toward its target;
+*   ObjMoveReached checks arrival; CalcMoveDir and CalcAxisDir compute
+*   the 8-way direction from delta X/Y.
+*======================================================================
+*
 SetObjMotion        ldb       $1e,u     load object step size
                     pshs      b,a       push step size argument
                     ldd       <$27,u    load move target X and Y
@@ -5240,6 +5631,14 @@ CalcAxisDirNeg      ldd       $02,s     load delta again
                     bra       CalcAxisDirRet return negative direction
 CalcAxisDirPos      lda       #$01      direction = 1 (positive)
 CalcAxisDirRet      rts
+*
+*======================================================================
+* NEW ROOM COMMAND
+*   Implements new_room and new_room_v: unloads the current room's
+*   non-common logics and views, resets per-room object state, sets ego
+*   position at the entry border, and triggers room logic 0.
+*======================================================================
+*
 cmd_new_room        lda       ,y        load room number from script
                     bsr       NewRoomSetup set up the new room
                     rts
@@ -5328,6 +5727,14 @@ NewRoomFlagSetup    lda       >$01AE    load initialized-flag byte
                     ldy       #$0000    Y = 0 = no further exec
                     leas      $01,s     release one-byte local frame
                     rts
+*
+*======================================================================
+* INVENTORY / OBJECT POSSESSION
+*   Implements get, get_v, drop, put, put_v, and get_room_v: sets the
+*   room field of an object struct to move it to/from the player's
+*   inventory.
+*======================================================================
+*
 cmd_get             bsr       GetObjPtr get pointer to object struct
                     lda       #$FF      room = $FF = carried by player
                     sta       $02,u     set object room to $FF (in inventory)
@@ -5389,6 +5796,14 @@ cmd_get_room_v      bsr       GetObjPtrV get pointer via variable number
                     sta       ,x        store room number in variable
                     rts
 PriBaseFlag         fcb       1
+*
+*======================================================================
+* DRAW LIST AND VIEW OBJECT SCAN
+*   Maintains the ordered draw list of visible objects (BlitListDraw,
+*   ProcessDrawList), scans view objects to compute per-object priority
+*   (ScanViewObjs), and inserts entries by priority (InsertPriList).
+*======================================================================
+*
 BlitListDraw        leas      -2,s      allocate two bytes for X save
                     stx       ,s        save draw-list pointer X
                     pshs      x         push X for MMU call
@@ -5530,6 +5945,14 @@ PunctChars1         fcc       / ,.?!();:[]{}/
 PunctChars2         fcc       /'`-"/
                     fcb       0
 
+*
+*======================================================================
+* INPUT PARSING — SENTENCE TOKENIZER
+*   Splits the player's raw input into whitespace-delimited tokens,
+*   strips punctuation, and stores the token array for dictionary
+*   lookup.
+*======================================================================
+*
 ParseSentence       leas      -$07,s    allocate seven local bytes
                     stx       ,s        save pointer to sentence string
                     clrb                fill value = 0
@@ -5653,6 +6076,14 @@ TokenizeTerminate   clr       [,s]      null-terminate the output
                     leas      $02,s     release local frame
                     rts
 
+*
+*======================================================================
+* INPUT PARSING — WORD DICTIONARY LOOKUP
+*   Searches the words.tok trie for each input token and returns its
+*   AGI word ID; StripLastWord removes unknown tokens from the parsed
+*   list.
+*======================================================================
+*
 LookupWord          leas      -$06,s    ; allocate 6-byte local frame
                     ldd       #$FFFF
                     std       ,s        ; init word-ID slot to not-found
@@ -5751,6 +6182,13 @@ StripLastWordLoop   lda       ,x+       ; read next character
                     clr       -$01,x    ; null-terminate before the space
 StripLastWordRet    rts
 
+*
+*======================================================================
+* ADD TO PIC COMMAND
+*   Overlays a view cel onto the priority/visual picture buffers at a
+*   specified position — used for static picture decorations.
+*======================================================================
+*
 cmd_add_to_pic      ldu       #$05B2    ; point to add-to-pic parameter block
                     lda       ,y+       ; fetch view number from script
                     sta       ,u        ; store view number
@@ -5868,6 +6306,13 @@ AddToPicColor       lda       $05,x     ; reload priority/control byte
 PicListBuf          fcb       0,0,0,0,0,0,0
 PicListPtr          fdb       0
 
+*
+*======================================================================
+* PICTURE LIST MANAGEMENT
+*   Maintains the linked list of loaded pictures; implements load_pic,
+*   draw_pic, overlay_pic, show_pic, and discard_pic commands.
+*======================================================================
+*
 PicListClear        leau      $3776,pcr ; point to PicListBuf (PC-relative)
                     ldd       #0
                     std       ,u        ; clear first two bytes of pic list
@@ -6034,6 +6479,13 @@ DiscardPicFound     stu       $01,s     ; save pic list node pointer
                     leas      $03,s     ; release local frame
                     rts
 
+*
+*======================================================================
+* OBJECT POSITION COMMANDS
+*   Implements position, position_v, get_position, reposition (relative
+*   move), reposition_to, and reposition_to_v.
+*======================================================================
+*
 cmd_position        lda       ,y+       ; fetch object number from script
                     ldb       #$2B
                     mul                 ; multiply A*$2B for object array offset
@@ -6148,6 +6600,13 @@ cmd_reposition_to_v lda       ,y+       ; fetch object number from script
                     lbsr      FindObjPos ; recalculate object bounds
                     rts
 
+*
+*======================================================================
+* OBJECT TERRAIN RESTRICTION COMMANDS
+*   Implements obj_on_water, obj_on_land, and obj_on_anything to set
+*   terrain constraints for an object.
+*======================================================================
+*
 cmd_obj_on_water    lda       ,y+       ; fetch object number from script
                     ldb       #$2B
                     mul                 ; multiply A*$2B for object array offset
@@ -6178,6 +6637,13 @@ cmd_obj_on_anything lda       ,y+       ; fetch object number from script
                     sta       <$25,u    ; store updated flags
                     rts
 
+*
+*======================================================================
+* HORIZON COMMANDS
+*   Implements set_horizon, ignore_horizon, and observe_horizon to
+*   control whether objects are confined above the horizon line.
+*======================================================================
+*
 cmd_set_horizon     lda       ,y+       ; fetch horizon value from script
                     sta       >$01D6    ; store as current horizon Y
                     rts
@@ -6213,6 +6679,14 @@ PrintAtRow          fcb       $ff
 PrintAtCol          fcb       $ff
 PrintAtHeight       fcb       $ff
 
+*
+*======================================================================
+* PRINT AND MESSAGE BOX
+*   Implements print, print_v, print_at, print_at_v, and the full
+*   message_box / message_box_draw pipeline that word-wraps text and
+*   displays it in a pop-up window.
+*======================================================================
+*
 cmd_print           ldb       ,y+       ; fetch message number from script
                     lbsr      GetMsgPtr ; get pointer to message text
                     bsr       message_box ; display message box
@@ -6637,6 +7111,13 @@ GetMsgPtrRet        exg       a,b       ; swap to make D = offset word
                     leas      $01,s     ; release local frame
                     rts
 
+*
+*======================================================================
+* TEXT DISPLAY COMMANDS
+*   Implements display and display_v: formats a message and renders it
+*   to a fixed row/col position on the text screen without a message box.
+*======================================================================
+*
 cmd_display         leas      >-$03E8,s ; allocate 1000-byte text buffer
                     lbsr      PushRowCol ; save current cursor position
                     ldd       ,y++      ; fetch row,col from script
@@ -6689,6 +7170,14 @@ cmd_display_v       leas      >-$03E8,s ; allocate 1000-byte text buffer
                     leas      >$03E8,s  ; release text buffer
                     rts
 
+*
+*======================================================================
+* FORMAT STRING ENGINE
+*   ParseDecStr parses inline decimal numbers; PrintFmtStr and
+*   PrintFmtStrToScr implement printf-style formatting (%s, %d, %u,
+*   %x, %c) used throughout the message and status display code.
+*======================================================================
+*
 ParseDecStr         clrb                ; start with value 0
 ParseDecStrLoop     lda       ,x        ; peek at next char
                     cmpa      #$30
@@ -6826,6 +7315,13 @@ PrintFmtResetOutPtr ldu       >PrintFmtBasePtr,pcr ; reload line buffer base
 PrintFmtOutputCharRet puls      u,x       ; restore U and X
                     rts
 
+*
+*======================================================================
+* PRIORITY COMMANDS
+*   Implements set_priority, release_priority, get_priority, and
+*   set_priority_v to fix or release an object's draw priority.
+*======================================================================
+*
 cmd_set_priority    lda       ,y+       ; fetch object number from script
                     ldb       #$2B
                     mul                 ; multiply A*$2B for object array offset
@@ -6875,6 +7371,14 @@ cmd_set_priority_v  lda       ,y+       ; fetch object number from script
                     sta       <$24,u    ; store object priority
                     rts
 
+*
+*======================================================================
+* RANDOM SEED AND GAME RESTART
+*   InitRandSeed seeds the LCG random generator from the system clock;
+*   cmd_restart_game reloads the initial logic, resets all state, and
+*   optionally prompts the player before restarting.
+*======================================================================
+*
 InitRandSeed        leas      -$09,s    ; allocate 9-byte local frame (F$Time buf)
                     clr       ,s        ; clear seed-loaded flag
                     ldd       <$008B    ; load current random seed
@@ -7240,6 +7744,14 @@ RestoreGameViewDone lbsr      InputEditOn ; enable input editing
                     leas      >$0206,s  ; release local frame
                     rts
 
+*
+*======================================================================
+* VIEW ENTRY ALLOCATION
+*   Allocates a render-buffer node for a view object and calculates its
+*   priority coordinate; used by draw_obj and show_obj to place sprites
+*   on screen.
+*======================================================================
+*
 AllocViewEntry      ldd       #$000E    ; allocate 14-byte view entry node
                     lbsr      AllocDataBlock
                     ldd       #$0000
@@ -7509,6 +8021,13 @@ GetDiskInfoRet      sta       <$44,s    ; store result flag
                     leas      <$45,s    ; release local frame
                     rts
 
+*
+*======================================================================
+* LOGIC SCRIPT EXECUTOR
+*   Runs a compiled AGI logic script from its bytecode start, handling
+*   if/else blocks, jump offsets, and dispatching each command opcode.
+*======================================================================
+*
 ExecLogicScript     leas      -$02,s    ; allocate 2-byte local frame (if-state)
                     ldy       <$0062    ; load current logic pointer
                     ldd       $04,y     ; get logic page from logic slot
@@ -7624,6 +8143,13 @@ PaletteData         fcb       $00       composite
                     fcb       $37
                     fcb       $3F
 
+*
+*======================================================================
+* SCREEN AND TEXT CONFIGURATION
+*   Switches between text and graphics screen modes, sets palette
+*   colors, and manages text/graphics screen attributes.
+*======================================================================
+*
 cmd_text_screen     lbsr      InputEditOn ; enable input editing mode
                     lda       #1
                     sta       $5EC      ; set text-screen mode flag
@@ -7744,6 +8270,16 @@ PaletteWriteRet     puls      y         ; restore script pointer
                     leas      $04,s     ; release local frame
                     rts
 
+*
+*======================================================================
+* TEXT COLOR STACK AND SCRIPT BUFFER
+*   PushTextColor and PopTextColor maintain a small color stack so
+*   nested message boxes can restore the previous text color; the
+*   script-buffer routines (InitScriptBuf, PushScript, PopScript,
+*   ResetScriptPtrs, cmd_script_size, cmd_push_script, cmd_pop_script)
+*   manage a circular replay buffer for input-echo scripting.
+*======================================================================
+*
 PushTextColor       ldb       >$0171    ; get current color stack depth
                     cmpb      #$05
                     bcc       PushTextColorRet ; stack full (5 entries)
@@ -7849,6 +8385,15 @@ cmd_pop_script      clra                ; zero high byte
                     std       >ScriptWritePtr,pcr ; restore write pointer to checkpoint
                     rts
 
+*
+*======================================================================
+* TEXT WINDOW OUTPUT
+*   PutCharToWindow writes a character to the current text window with
+*   word-wrap and scroll; PushRowCol/PopRowCol save and restore the
+*   cursor position; ClearTextLine, ClearTextRows, DrawTextRect, and
+*   ClearTextRect erase regions of the text screen.
+*======================================================================
+*
 PutCharToWindow     leas      -$02,s    ; allocate 2-byte local frame
                     pshs      u,x       ; save U and X
                     leau      $04,s     ; U = cursor position pointer
@@ -8071,6 +8616,16 @@ VolDiskInfoPtr      fcb       0
 VolDriveFlag        fcb       0
 VolFileIdx          fcb       0
 
+*
+*======================================================================
+* VOLUME FILE ACCESS
+*   OpenVolFile, FindVol, ShowInsertDiskMsg, ShowWrongDiskMsg,
+*   ReadDiskVol, VolumesClose, and FileLoad manage multi-disk volume
+*   files: locating the correct disk/side, prompting the player to
+*   swap disks, reading compressed or raw resource data, and closing
+*   open volume handles.
+*======================================================================
+*
 OpenVolFile         leas      -6,s      ; allocate 6-byte local frame
                     std       ,s        ; save D (resource descriptor)
                     stu       $02,s     ; save U (resource pointer)
@@ -8468,6 +9023,17 @@ PicDirPtr           fdb       0
 PicDirPage          fdb       0
 SndDirPtr           fdb       0
 SndDirPage          fdb       0
+
+*
+*======================================================================
+* RESOURCE DIRECTORY LOOKUP
+*   LoadAllDirs loads the logic, view, picture, and sound directory
+*   files at startup; CheckResPtr validates a directory entry;
+*   FetchLogic, FetchView, FetchPicture, and FetchSound locate a
+*   resource in the volume file; ResNotFoundErr reports a missing
+*   resource to the player.
+*======================================================================
+*
 LoadAllDirs         leau      >LogDirPage,pcr ; address of logic dir page word
                     pshs      u         ; push page-out pointer
                     leau      >LogDirPtr,pcr ; address of logic dir pointer
@@ -8890,6 +9456,15 @@ MonthDayTable       fcb       0
                     fcb       $1e,$1f
                     fcb       $1e,$1f
 
+*
+*======================================================================
+* SOUND PLAYBACK
+*   Manages the sound list, implements cmd_load_sound and cmd_sound
+*   to schedule playback, drives the tone generator through PIA
+*   hardware (PlaySound), and saves/restores PIA state around sound
+*   output (SoundPIASave, SoundPIARestore).
+*======================================================================
+*
 SoundListClear      leau      SoundScratch9,pcr ; point to sound list head
                     ldd       #0        ; null link word
                     std       ,u        ; clear head pointer (empty list)
@@ -9163,6 +9738,14 @@ StrOn               fcc       /on /
 StrOff              fcc       /off/
                     fcb       0
 
+*
+*======================================================================
+* INVENTORY AND STATUS LINE
+*   cmd_status displays the full inventory screen (InventoryDraw,
+*   InventoryListDraw, InventoryMoveCursor); StatusLineWrite updates
+*   the score/sound status bar; cmd_status_line_on/off toggle it.
+*======================================================================
+*
 cmd_status          lbsr      InputEditOn ; ensure cursor is not shown
                     lbsr      PushTextColor ; save current text color
                     clra                ; foreground = black
@@ -9445,6 +10028,15 @@ cmd_status_line_off clr       >$0246    ; disable status line
 StrPunctuation      fcc       / .,;:'!-/
                     fcb       0
 
+*
+*======================================================================
+* STRING INPUT AND EDITING
+*   cmd_get_string prompts the player for a text string and calls
+*   EditString to handle character-by-character input with backspace
+*   and Escape support; cmd_set_string copies a literal string into a
+*   slot; cmd_word_to_string copies a parsed word into a string slot.
+*======================================================================
+*
 cmd_get_string      leas      >-$0197,s ; allocate 407-byte local frame
                     lda       >$05B9    ; current cursor-blink state
                     sta       ,s        ; save cursor state
@@ -9583,6 +10175,15 @@ EditStringDone      lda       $06,s     ; last key pressed (Enter or Esc)
                     leas      <$2F,s    ; release local frame
                     rts
 
+*
+*======================================================================
+* WORD MATCHING
+*   cmd_set_game_id stores the game identifier string; MatchWord
+*   compares two normalized words for equality; NormWord converts a
+*   raw input token to lowercase with leading/trailing whitespace
+*   stripped, ready for dictionary comparison.
+*======================================================================
+*
 cmd_set_game_id     ldb       ,y+       ; fetch message number
                     lbsr      GetMsgPtr ; get game ID string pointer
                     tfr       u,x       ; X = source string
@@ -9633,6 +10234,15 @@ NormWordNull        ldx       ,s        ; output pointer at end
                     leas      $02,s     ; release local frame
                     rts
 
+*
+*======================================================================
+* TRACE AND DEBUG COMMANDS
+*   cmd_hide_mouse and cmd_shake_screen are stubs for PC-specific
+*   features; cmd_trace_on, TraceInit, cmd_trace_info, and TraceErase
+*   implement the AGI logic-step trace display; ScriptDispatch and
+*   ScriptDisplayLine replay recorded script output for debugging.
+*======================================================================
+*
 cmd_hide_mouse      lda       ,y+       ; consume 2 args (ignored)
                     lda       ,y+       ; consume second arg (ignored)
 cmd_set_upper_left  lda       ,y+       ; consume 1 arg (ignored)
@@ -9997,6 +10607,17 @@ InputBuf            fcb       0,0,0,0
                     fcb       0,0,0,0
                     fcb       0,0,0,0,0
 
+*
+*======================================================================
+* CYCLE EVENT LOOP AND INPUT PROCESSING
+*   EventLoop drives each AGI game cycle: polls keyboard and joystick,
+*   dispatches events to InputProcess, and blits the display; the
+*   input editing commands (cmd_cancel_line, cmd_echo_line, input_echo,
+*   InputCursorBlink, InputEditOn, cmd_prevent_input, cmd_accept_input,
+*   cmd_set_cursor_char, InputRedraw) manage the text-input line at
+*   the bottom of the screen.
+*======================================================================
+*
 EventLoop           clra                ; clear A
                     sta       >$0444    ; clear pending keystroke
                     sta       >$043A    ; clear keyboard state
@@ -10185,6 +10806,15 @@ InputRedraw         leas      <-$50,s   ; allocate 80-byte local frame
 InputRedrawRet      leas      <$50,s    ; release local frame
                     rts
 
+*
+*======================================================================
+* ARITHMETIC AND VARIABLE COMMANDS
+*   Implements the full set of AGI variable arithmetic commands:
+*   increment, decrement, assignn, assignv, addn, addv, subn, subv,
+*   and indirect variants, plus multn, multv, divn, divv, and the
+*   Div8 unsigned 8-bit divide helper.
+*======================================================================
+*
 cmd_increment       ldb       ,y+       ; fetch variable index
                     ldx       #$0431    ; variable table base
                     abx                 ; point to variable
@@ -10351,6 +10981,17 @@ Div8Next            dec       <$008D    ; decrement bit counter
                     bne       Div8Loop  ; loop for all 8 bits
                     rts
 
+*
+*======================================================================
+* VIEW MANAGEMENT
+*   Maintains the view linked list (list_struct, view_find); loads
+*   view resources (cmd_load_view, view_load); sets the view, loop,
+*   and cel for an animated object (cmd_set_view, SetViewForObj,
+*   cmd_set_loop, SetLoopHelper, cmd_set_cel, SetCelHelper); queries
+*   current state (cmd_last_cel, cmd_current_*); and discards views
+*   from memory (cmd_discard_view, DiscardViewHelper).
+*======================================================================
+*
 list_struct         fcb       0,0
                     fcb       0,0
                     fcb       0,0,0
@@ -10738,6 +11379,15 @@ DiscardViewDoFree   stx       $01,s     ; save view node pointer
                     leas      $05,s     ; release local frame
                     rts
 
+*
+*======================================================================
+* OBJECT ANIMATION STEP
+*   ObjAnimStep advances a view object's cel each animation tick,
+*   handles loop direction reversal at the last cel, fires the end-
+*   of-loop flag, and dispatches the cycle-type (normal, end-of-loop,
+*   reverse-loop) to update the object's loop/cel counters.
+*======================================================================
+*
 ObjAnimStep         lda       <$27,u    ; cel animation delay counter
                     beq       AnimStepRoll ; zero = time to advance cel
                     dec       <$27,u    ; decrement delay
