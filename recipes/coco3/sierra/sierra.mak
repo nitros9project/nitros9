@@ -73,18 +73,23 @@ $(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(SI
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 
-MAME      ?= mame
+MAME         ?= mame
 MAME_MACHINE ?= coco3
 MAME_FLAGS   ?= -inipath $(HOME)/mame -cfg_directory $(HOME)/mame/cfg -window -ext fdc
 
 ifeq ($(SIERRA_MEDIA),80d)
-run: $(DSKIMAGE)
-	$(MAME) $(MAME_MACHINE) $(MAME_FLAGS) -flop1 $(DSKIMAGE)
+# JVC header: 18 spt, 2 sides, 256-byte sectors (code=1), first sector ID 1, no attrs
+MAME_DSK = $(DSKIMAGE:.dsk=.jvc)
+$(MAME_DSK): $(DSKIMAGE)
+	python3 -c "open('$@','wb').write(bytes([0x12,0x02,0x01,0x01,0x00])+open('$<','rb').read())"
+
+run: $(MAME_DSK)
+	$(MAME) $(MAME_MACHINE) $(MAME_FLAGS) -flop1 $(MAME_DSK)
 else
 run:
 	@echo "run: MAME floppy launch not supported for DriveWire media (GAME=$(GAME))"
 endif
 
 clean:
-	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo $(SIERRA_TOC)
+	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk *.jvc buildinfo $(SIERRA_TOC)
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
