@@ -78,8 +78,10 @@ MAME_MACHINE ?= coco3
 MAME_FLAGS   ?= -inipath $(HOME)/mame -cfg_directory $(HOME)/mame/cfg -window -ext fdc
 
 ifeq ($(SIERRA_MEDIA),80d)
-# JVC header: 18 spt, 2 sides, 256-byte sectors (code=1), first sector ID 1, no attrs
-MAME_DSK = $(DSKIMAGE:.dsk=.jvc)
+# Prepend a 5-byte JVC header so MAME's jvc_format reader recognises the
+# 80-cylinder × 2-side geometry.  Must use .dsk extension — MAME doesn't
+# register .jvc as a known CoCo format.
+MAME_DSK = mame_$(DSKIMAGE)
 $(MAME_DSK): $(DSKIMAGE)
 	python3 -c "open('$@','wb').write(bytes([0x12,0x02,0x01,0x01,0x00])+open('$<','rb').read())"
 
