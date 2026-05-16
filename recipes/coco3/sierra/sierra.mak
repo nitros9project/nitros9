@@ -10,7 +10,7 @@ AFLAGS := $(filter-out -DH6309=0,$(AFLAGS))
 endif
 
 vpath %.as $(LEVEL2)/cmds:$(LEVEL1)/cmds
-vpath %.asm $(LEVEL2)/coco3/modules/kernel:$(LEVEL2)/coco3/modules:$(LEVEL2)/modules:$(LEVEL2)/cmds:$(LEVEL1)/coco1/modules:$(LEVEL1)/modules:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09
+vpath %.asm $(LEVEL2)/coco3/modules/kernel:$(LEVEL2)/coco3/modules:$(LEVEL2)/modules:$(LEVEL2)/cmds:$(LEVEL1)/coco1/modules:$(LEVEL1)/modules:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/sierra/objs
 
 SIERRA_TOC ?= ./tOC
 SIERRA_MAKE_TOC ?= ../sierra/make_toc.py
@@ -38,21 +38,17 @@ $(MODDIR)/setime: $(LEVEL1)/cmds/setime.asm | $(MODDIR)
 $(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
 	$(MERGE) $(addprefix $(MODDIR)/,$(SHELLMODS)) >$@
 
-$(MODDIR)/sierra: | $(MODDIR)
-	test -f $(SIERRA_DIR)/sierra || $(MAKE) -C $(SIERRA_DIR) sierra
-	$(CP) $(SIERRA_DIR)/sierra $@
+$(MODDIR)/sierra: sierra.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
-$(MODDIR)/mnln: | $(MODDIR)
-	test -f $(SIERRA_DIR)/mnln || $(MAKE) -C $(SIERRA_DIR) mnln
-	$(CP) $(SIERRA_DIR)/mnln $@
+$(MODDIR)/mnln: mnln.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
-$(MODDIR)/scrn: | $(MODDIR)
-	test -f $(SIERRA_DIR)/scrn || $(MAKE) -C $(SIERRA_DIR) scrn
-	$(CP) $(SIERRA_DIR)/scrn $@
+$(MODDIR)/scrn: scrn.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
-$(MODDIR)/shdw: | $(MODDIR)
-	test -f $(SIERRA_DIR)/shdw || $(MAKE) -C $(SIERRA_DIR) shdw
-	$(CP) $(SIERRA_DIR)/shdw $@
+$(MODDIR)/shdw: shdw.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 $(MODDIR)/ddd0_40d.dd: rb1773desc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD40) -DDNum=0 -DDD=1
