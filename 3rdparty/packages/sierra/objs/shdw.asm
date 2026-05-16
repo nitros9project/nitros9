@@ -1,5 +1,6 @@
 ********************************************************************
-* SHDW - Sierra AGI screen rendering module
+* shdw - Sierra AGI screen rendering module
+*
 * Note the header shows a data size of 0 called from the sierra
 * module and accesses data set up in that module.
 *
@@ -1394,6 +1395,7 @@ PriTableBase
 
 * table_init()   obj_pic_buff.c
 TableInit
+
                     fcb       $B6,$05,$EE lda $05EE (priority table address)
                     fcb       $81,$FF   cmpa #$FF
                     fcb       $26,$15   bne +21
