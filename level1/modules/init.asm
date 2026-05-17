@@ -42,6 +42,19 @@ atrv                set       ReEnt+rev
 rev                 set       $00
 edition             set       1
 
+* Keyboard repeat defaults can be overridden at build time with:
+*   -DINIT_KEYRPTSTART=<ticks>  initial delay before repeats begin
+*   -DINIT_KEYRPTDELAY=<ticks>  delay between repeated keys
+*
+* The values are in 1/60th-second ticks and are consumed by the CoCo 3
+* VTIO keyboard repeat logic through the INIT module.
+                    ifndef    INIT_KEYRPTSTART
+INIT_KEYRPTSTART    equ       $1E                 30 ticks = 0.5s
+                    endc
+                    ifndef    INIT_KEYRPTDELAY
+INIT_KEYRPTDELAY    equ       $03                 3 ticks = 20 repeats/sec
+                    endc
+
 *
 * Usually, the last two words here would be the module entry
 * address and the dynamic data size requirement. Neither value is
@@ -86,8 +99,8 @@ start               equ       *
 * CC3IO section
                     fcb       Monitor             monitor type
                     fcb       0,1                 mouse info, low res right mouse
-                    fcb       $1E                 key repeat start constant
-                    fcb       $03                 key repeat delay constant
+                    fcb       INIT_KEYRPTSTART    key repeat start constant
+                    fcb       INIT_KEYRPTDELAY    key repeat delay constant
                     endc
 
 name                fcs       "Init"
