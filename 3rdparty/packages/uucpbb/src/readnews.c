@@ -61,7 +61,7 @@ int argc;
 char *argv[];
 {
      static char newsrcfile[100];
-     char sub;
+     char sub, *p;
      register int i;
      int count, index, j, c, interrupt();
      FILE *file;
@@ -119,13 +119,29 @@ char *argv[];
 
      if ((file = fopen (newsrcfile, "r")) != NULL)
        {
-          while (fscanf (file, "%100[^:!]%c 1-%d ", newsgroup, &sub, &index)
-                    != EOF)
+          while (fgets (line, sizeof (line), file) != NULL)
             {
-               i = findgroup (newsgroup, TRUE);
-               strcpy (newsrc[i].newsgroup, newsgroup);
-               newsrc[i].index = max (index, newsrc[i].index);
-               newsrc[i].sub = sub;
+               p = line;
+               i = 0;
+               while (*p != '\0' && *p != ':' && *p != '!' && i < 100)
+                    newsgroup[i++] = *p++;
+               newsgroup[i] = '\0';
+
+               if ((*p == ':') || (*p == '!'))
+                 {
+                    sub = *p++;
+                    while (*p == ' ')
+                         ++p;
+                    if ((*p == '1') && (*(p + 1) == '-'))
+                      {
+                         p += 2;
+                         index = atoi (p);
+                         i = findgroup (newsgroup, TRUE);
+                         strcpy (newsrc[i].newsgroup, newsgroup);
+                         newsrc[i].index = max (index, newsrc[i].index);
+                         newsrc[i].sub = sub;
+                      }
+                 }
             }
           fclose (file);
        }

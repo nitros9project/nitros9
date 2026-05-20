@@ -35,9 +35,11 @@
 #include "uucp.h"
 #ifndef _OSK
 #include <os9.h>
+#include "dir_6809.h"
+#else
+#include <dir.h>
 #endif
 #include <signal.h>
-#include <dir.h>
 #include "getopt.h"
 
 #define MOREWORK  128                          /* more work signal */

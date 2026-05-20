@@ -52,7 +52,7 @@ char *argv[];
      register FILE *fd;                                 /* Changed --REB */
      flag all, fserver, dayflag, uulflag;               /*               */
      int option;
-     char *day, line[256];
+     char *day, *p, *q, line[256];
 
      all = TRUE;
      fserver = FALSE;                         /* look at uulog files --REB */
@@ -107,7 +107,17 @@ char *argv[];
        {
           while (fgets (line, sizeof (line), fd) != NULL)
             {
-               sscanf (line, "%s %s", fusername, fsysname);
+               p = line;
+               q = fusername;
+               while (*p != '\0' && *p != ' ' && *p != '\t' && *p != '\n')
+                    *q++ = *p++;
+               *q = '\0';
+               while (*p == ' ' || *p == '\t')
+                    ++p;
+               q = fsysname;
+               while (*p != '\0' && *p != ' ' && *p != '\t' && *p != '\n')
+                    *q++ = *p++;
+               *q = '\0';
 
                if (!all)
                  {

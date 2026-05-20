@@ -26,6 +26,7 @@
    were made by Bob Billson  */
 
 #include <stdio.h>                                          /* Added --REB */
+#include <types.h>
 
  /**************************\
  * Compiler specific macros *

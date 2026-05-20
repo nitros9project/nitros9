@@ -34,11 +34,7 @@
    /DD/SYS/UUCP/Parameters file.  */
 
 #include "uucp.h"
-#ifndef _OSK
-#include <utime.h>
-#else
 #include <time.h>
-#endif
 
 #define WORDSIZE  5
 

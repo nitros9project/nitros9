@@ -24,9 +24,6 @@
 
 #include <setjmp.h>
 #include <signal.h>
-#ifndef _OSK
-#include <utime.h>
-#endif
 #include <time.h>
 
  /***************************************************************

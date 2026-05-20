@@ -545,6 +545,14 @@ int length;
 {
      register struct pk *outp;
 #ifdef _OSK
+#define USE_C_CHKSUM
+#endif
+
+#ifdef DCC_LW
+#define USE_C_CHKSUM
+#endif
+
+#ifdef USE_C_CHKSUM
      short cksum;
 #else
      unsigned cksum;
@@ -856,6 +864,14 @@ int *length;
 /*========== Calculate checksum routines for 6809, 6309 and OSK ==========*/
 
 #ifdef _OSK
+#define USE_C_G_CHKSUM
+#endif
+
+#ifdef DCC_LW
+#define USE_C_G_CHKSUM
+#endif
+
+#ifdef USE_C_G_CHKSUM
 /* g_chksum for OSK borrowed from Taylor UUCP */
 
 int g_chksum (z, c)

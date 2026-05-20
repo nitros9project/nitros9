@@ -31,7 +31,6 @@
 #include "mail.h"
 #include <ctype.h>
 #include <modes.h>
-#include <direct.h>                              /* Added - BAS */
 #include <sgstat.h>
 #ifndef _OSK
 #include <os9.h>

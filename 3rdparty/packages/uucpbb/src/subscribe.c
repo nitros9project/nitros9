@@ -76,6 +76,7 @@ int subscribe (newsgroup)
 char *newsgroup;
 {
      register char *p;
+     char *q;
      FILE *infile, *outfile;
      char group[512], flag, articles[512], newnewsrc[15];
      char *newsrc = _NEWSRC;
@@ -98,7 +99,17 @@ char *newsgroup;
      while (fgets (p, sizeof (line), infile) != NULL)
        {
           *articles = '\0';
-          sscanf (p, "%[^!:]%c %[^\n]\n", group, &flag, articles);
+          q = group;
+          while (*p != '\0' && *p != '!' && *p != ':')
+               *q++ = *p++;
+          *q = '\0';
+          flag = *p++;
+          while (*p == ' ')
+               ++p;
+          q = articles;
+          while (*p != '\0' && *p != '\n')
+               *q++ = *p++;
+          *q = '\0';
 
           if ((strcmp (newsgroup, "all") == 0)
                || (strcmp (newsgroup, group) == 0))

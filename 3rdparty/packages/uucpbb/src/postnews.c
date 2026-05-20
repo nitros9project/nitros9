@@ -38,9 +38,6 @@
 
 #include "uucp.h"
 #include <time.h>
-#ifndef _OSK
-#include <utime.h>
-#endif
 #include <signal.h>
 #ifndef _OSK
 #include <os9.h>

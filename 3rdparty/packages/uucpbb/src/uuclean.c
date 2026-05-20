@@ -40,9 +40,7 @@
 #include <modes.h>
 #include <time.h>
 #include <ctype.h>
-#include <direct.h>
 #ifndef _OSK
-#include <utime.h>
 #include "dir_6809.h"
 #else
 #include <dir.h>

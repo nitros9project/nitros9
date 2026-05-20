@@ -3,10 +3,9 @@
 /* Our own versions of modlink() and modload() which use
    F$NMLink and F$NMLoad to load a module  --BGP  */
 
+#include <types.h>
 #include <os9.h>
 
-#define F_NMLINK  0x21
-#define F_NMLOAD  0x22
 #if 0
 #define F_UNLOAD  0x1d
 #endif

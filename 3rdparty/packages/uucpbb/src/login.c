@@ -63,7 +63,6 @@
 #include "uucp.h"           /* several variables defined here - REQUIRED */
 #include <os9.h>
 #include <time.h>
-#include <utime.h>
 #include <sgstat.h>
 #include <password.h>       /* From Carl Kreider's CLIB -- REB */
 

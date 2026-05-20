@@ -15,12 +15,8 @@
 #define MAIN
 
 #include "uucp.h"
-#include <direct.h>
 #include <password.h>
 #include <time.h>
-#ifndef _OSK
-#include <utime.h>
-#endif
 #include <modes.h>
 #include "dir_6809.h"
 
@@ -439,7 +435,12 @@ int makesequencefiles()
           newsequence = TRUE;
 
      if (!newsequence)
-          fscanf (old, "%d", &sequence);
+       {
+          if (fgets (line, sizeof (line), old) != NULL)
+               sequence = atoi (line);
+          else
+               sequence = 0;
+       }
      else
           sequence = 0;
 
