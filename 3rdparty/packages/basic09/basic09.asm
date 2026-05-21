@@ -1613,7 +1613,7 @@ L0668               fdb       L09F9-L0668
 L066B               fdb       L094F-L066B
                     fcb       C$CR+$80            (Carriage return)
 
-                    fdb       16                  # commands this table
+                    fdb       17                  # commands this table
                     fcb       2                   # bytes to first command string
 L0671               fdb       BYEBYE-L0671
                     fcs       'BYE'
@@ -1637,7 +1637,11 @@ L06A1               fdb       RENAME-L06A1
                     fcs       'RENAME'
 L06A9               fdb       DUMP-L06A9
                     fcs       'PACK'
-L06AF               fdb       CHGMEM-L06AF
+SysCmdSavem               fdb       SAVEM-SysCmdSavem
+                    fcs       'SAVEM'
+SysCmdLoadm               fdb       LOADM-SysCmdLoadm
+                    fcs       'LOADM'
+SysCmdMem               fdb       CHGMEM-SysCmdMem
                     fcs       'MEM'
 L06B4               fdb       CHDDIR-L06B4
                     fcs       'CHD'
@@ -2428,6 +2432,520 @@ DUMP25               eora      b,x                 Calculate header parity
 DUMP04               ldx       ,--y
                     lbne      L0B8C         Repeat until there are no more
                     lbra      CLSCHL               Go close file, reopen path from <BE, rts from there
+
+* SAVEM: Save I-code procedure(s) as .up file(s).
+* '.' and '>' are interchangeable output path separators.
+* Directory target: path ending in '/' or bare absolute path (e.g. /d2) -> one procname.up per proc.
+* File target: any other path -> single merged file.
+*   SAVEM                           current proc -> CWD/procname.up
+*   SAVEM .outfile[.up]             current proc -> CWD/outfile.up
+*   SAVEM . path                    current proc -> path
+*   SAVEM name[,name]               named proc(s) -> CWD/name.up each
+*   SAVEM name[,name] [.|>] path    named proc(s) -> path (dir->each, file->merged)
+*   SAVEM*                          all procs -> CWD/name.up each
+*   SAVEM* path                     all procs -> path (dir->each, file->merged)
+* Entry: Y=ptr to char following 'SAVEM' in command line.
+
+* Peek ahead (skipping spaces) to detect leading '.' before calling PCDLST.
+SAVEM               pshs      y                    save cmd line pos for PCDLST
+SM_Peek             ldb       ,y+                  get char
+                    cmpb      #C$SPAC
+                    beq       SM_Peek              skip spaces
+                    puls      y                    restore Y (PCDLST re-parses from here)
+                    cmpb      #'.
+                    lbeq      SaveMDotSave         leading dot: save current proc to named path
+
+                    lbsr      PCDLST               build module list; U=0-marker ptr
+                    ldy       <SubrStkPtr          Y=high end of list
+                    stu       <SubrStkPtr          SubrStkPtr=U=low end
+
+* Check for > or . redirect token after the name list.
+                    pshs      y                    save list-high ptr
+                    ldy       <TmpBufCur           Y=cmd line pos after names
+SM_SkipToRedir      ldb       ,y+                  get char
+                    cmpb      #C$SPAC
+                    beq       SM_SkipToRedir       skip spaces
+                    cmpb      #'>
+                    lbeq      SaveMRedir
+                    cmpb      #'.
+                    lbeq      SaveMRedir
+                    cmpb      #C$CR
+                    beq       SM_NoRedir
+                    leay      -1,y                 non-CR: trailing path; back up to it
+                    lbra      SaveMRedir           treat as redirect (list-high stays on stack)
+SM_NoRedir          puls      y                    no trailing path; restore list-high
+
+SaveMNext           ldx       ,--y                 X=module dir entry ptr (0=done)
+                    beq       SaveMDone
+SaveMLoop           pshs      y                    [s+0..1]=listpos
+                    ldy       ,x                   Y=module addr (word at module dir entry)
+                    pshs      y                    [s+0..1]=modaddr, [s+2..3]=listpos
+                    leas      -33,s                [s+0..32]=filename buf, [s+33..34]=modaddr, [s+35..36]=listpos
+
+* Build "name.up\r" in the stack buffer; avoid TmpBuf (shared I/O state).
+                    ldy       33,s                 Y=module addr
+                    ldd       M$Name,y             D=name offset from module start
+                    leax      d,y                  X=ptr to FCS name in module header
+                    leay      ,s                   Y=ptr to stack filename buffer
+SaveMCP             lda       ,x                   A=FCS char
+                    anda      #$7F                 strip hi-bit
+                    sta       ,y+                  store plain char, advance Y
+                    tst       ,x+                  test original (hi-bit=last), advance X
+                    bpl       SaveMCP              loop until last char
+                    ldd       #$2E75               ".u"
+                    std       ,y
+                    ldd       #$700D               "p\r"
+                    std       2,y
+
+                    leax      ,s                   X=ptr to "name.up\r" on stack
+                    lda       #WRITE.
+                    ldb       #(READ.+WRITE.+PREAD.)
+                    os9       I$Create             A=path# on success
+                    lbcs      PrintErrExit         EXIT restores stack; B=error code
+
+                    pshs      a                    [s+0]=path, [s+1..33]=filename, [s+34..35]=modaddr, [s+36..37]=listpos
+                    lda       ,s
+                    ldx       34,s                 module start addr
+                    ldy       M$Size,x             Y=module size (byte count for I$Write)
+                    os9       I$Write
+                    bcs       SaveMWrErr
+                    lda       ,s
+                    os9       I$Close
+                    bcs       SaveMClErr
+                    leas      36,s                 pop path(1)+filename(33)+modaddr(2)
+                    puls      y                    pop listpos -> Y
+                    bra       SaveMNext
+
+SaveMWrErr          pshs      b                    save write error; path now at [s+1]
+                    lda       1,s
+                    os9       I$Close              close file regardless of write error
+                    puls      b                    restore write error code
+SaveMClErr          orcc      #1                   ensure carry set
+                    lbra      PrintErrExit         EXIT restores stack; B=error code
+
+SaveMDone           lbra      EXIT
+
+* SaveMDotSave: SAVEM . [/path/]file[.up]
+* Y=cmd line pos. Skip spaces and the '.' to reach the output path.
+SaveMDotSave
+                    ldx       <CurModPtr
+                    bne       SM_DsHaveMod
+                    ldb       #$2B                 unknown procedure: no current module
+                    orcc      #1
+                    lbra      PrintErrExit
+SM_DsHaveMod
+* Skip spaces, then skip '.', then skip spaces again to reach path.
+SM_DsDotSkip        ldb       ,y+
+                    cmpb      #C$SPAC
+                    beq       SM_DsDotSkip
+                    cmpb      #'.
+                    beq       SM_DsDotSkip         skip the '.' itself too
+SM_DsSpSkip         cmpb      #C$SPAC
+                    bne       SM_DsGotPath
+                    ldb       ,y+
+                    bra       SM_DsSpSkip
+SM_DsGotPath        leay      -1,y                 Y=first char of output path
+                    pshs      x                    [s+0..1]=current module addr
+                    leas      -64,s                [s+0..63]=outpath buf, [s+64..65]=modaddr
+                    leax      ,s                   X=buf start (input to SM_ParseOutPath)
+                    lbsr      SM_ParseOutPath      fill buf from Y; X,B modified
+* If path argument is a directory target, insert module name before .up.
+* Case 1: trailing '/'.  Case 2: absolute with no '/' after pos 0 (e.g. /d2).
+                    lda       -1,x             last char of raw path
+                    cmpa      #'/
+                    beq       SM_DsDirMk       trailing slash -> directory
+                    lda       ,s               buf[0]
+                    cmpa      #'/
+                    bne       SM_DsToCreate    relative path; use as-is
+                    leay      1,s              Y = buf+1; scan buf[1..namlen-1] for '/'
+                    decb                       B = namlen-1 (scan count)
+                    beq       SM_DsDirMk       namlen was 1 (just '/')
+SM_DsScanLp         lda       ,y+
+                    cmpa      #'/
+                    beq       SM_DsToCreate    internal '/' found = file path
+                    decb
+                    bne       SM_DsScanLp
+                    lda       #'/              no internal '/' = directory; add separator
+                    sta       ,x+
+SM_DsDirMk
+* Copy current module FCS name into path buffer at X.
+                    ldy       64,s             module addr (64-byte buf)
+                    ldd       M$Name,y         D = offset to name string in module
+                    leay      d,y              Y -> FCS name
+SM_DsCpyNm          lda       ,y+
+                    bmi       SM_DsNmLast      high bit set = last FCS char
+                    sta       ,x+
+                    bra       SM_DsCpyNm
+SM_DsNmLast         anda      #$7F
+                    sta       ,x+
+                    ldd       #$2E75           ".u"
+                    std       ,x
+                    ldd       #$700D           "p\r"
+                    std       2,x
+SM_DsToCreate
+                    leax      ,s               X=buf start (for I$Create)
+                    lda       #WRITE.
+                    ldb       #(READ.+WRITE.+PREAD.)
+                    os9       I$Create
+                    lbcs      PrintErrExit
+                    pshs      a                    [s+0]=path#, [s+1..64]=buf, [s+65..66]=modaddr
+                    ldx       65,s                 module addr
+                    ldy       M$Size,x             Y=module size
+                    os9       I$Write
+                    bcs       SM_DsWrErr
+                    lda       ,s
+                    os9       I$Close
+                    lbcs      PrintErrExit
+                    lbra      EXIT
+SM_DsWrErr          pshs      b
+                    lda       1,s
+                    os9       I$Close
+                    puls      b
+                    orcc      #1
+                    lbra      PrintErrExit
+
+* SaveMRedir: SAVEM name[,name] > path  or  SAVEM * path
+* On entry: Y=cmd line pos (at path start or after '>'/'.' separator),
+*           [s+0..1]=list-high ptr (pushed by pshs y before redirect check).
+* Path is a directory -> per-proc files; path is a filename -> single merged file.
+SaveMRedir
+* Skip spaces to reach the output path.
+SM_RdSpSkip         ldb       ,y+
+                    cmpb      #C$SPAC
+                    beq       SM_RdSpSkip
+                    leay      -1,y                 Y=first char of output path
+* Allocate 64-byte buffer: dir path (<=30) + '/' (1) + name (<=29) + ".up\r" (4).
+* Stack: [s+0..1]=list-high.
+                    leas      -64,s                [s+0..63]=outpath buf, [s+64..65]=list-high
+                    leax      ,s                   X=buf start
+                    lbsr      SM_ParseOutPath      fill buf from Y; X=buf+namlen, B=namlen
+* Directory detection (same logic as SaveMDotSave).
+* Trailing '/' OR absolute path (starts with '/') with no subsequent '/' = directory.
+                    lda       -1,x                 last char of path
+                    cmpa      #'/
+                    beq       SM_RdDir             trailing slash -> directory
+                    lda       ,s                   buf[0]
+                    cmpa      #'/
+                    bne       SM_RdMerge           relative path -> file -> merge
+                    leay      1,s                  Y=buf+1; scan for internal '/'
+                    decb                           B=namlen-1
+                    beq       SM_RdDir             bare '/' -> directory
+SM_RdScanLp         lda       ,y+
+                    cmpa      #'/
+                    beq       SM_RdMerge           internal '/' -> file path -> merge
+                    decb
+                    bne       SM_RdScanLp
+* No internal '/': bare device path (e.g. /d2) -> directory; append separator.
+                    lda       #'/
+                    sta       ,x+
+* SM_RdDir: X = name-start position in buf (after dir path + '/').
+* Stack: [s+0..63]=buf, [s+64..65]=list-high.
+SM_RdDir            pshs      x                    [s+0..1]=namestart, [s+2..65]=buf, [s+66..67]=list-high
+                    ldy       66,s                 Y=list-high
+SM_RdDirNext        ldx       ,--y                 X=ModList entry ptr (0=done)
+                    beq       SM_RdDirDone
+                    pshs      y                    [s+0..1]=listpos, [s+2..3]=namestart, [s+4..67]=buf
+                    ldy       ,x                   Y=module addr
+                    pshs      y                    [s+0..1]=modaddr, [s+2..3]=listpos, [s+4..5]=namestart, [s+6..69]=buf
+                    ldx       4,s                  X=namestart ptr in buf
+                    ldd       M$Name,y             D=name offset within module
+                    leay      d,y                  Y=ptr to FCS name
+SM_RdDirCpNm        lda       ,y+
+                    bmi       SM_RdDirNmLast
+                    sta       ,x+
+                    bra       SM_RdDirCpNm
+SM_RdDirNmLast      anda      #$7F
+                    sta       ,x+
+                    ldd       #$2E75               ".u"
+                    std       ,x
+                    ldd       #$700D               "p\r"
+                    std       2,x
+                    leax      6,s                  X=buf start (full path for I$Create)
+                    lda       #WRITE.
+                    ldb       #(READ.+WRITE.+PREAD.)
+                    os9       I$Create
+                    bcs       SM_RdDirOpErr
+                    pshs      a                    [s+0]=path#, [s+1..2]=modaddr, [s+3..4]=listpos, [s+5..6]=namestart, [s+7..70]=buf
+                    lda       ,s
+                    ldx       1,s                  X=module addr
+                    ldy       M$Size,x             Y=module size
+                    os9       I$Write
+                    bcs       SM_RdDirWrErr
+                    lda       ,s
+                    os9       I$Close
+                    bcs       SM_RdDirClErr
+                    leas      3,s                  pop path#(1)+modaddr(2)
+                    puls      y                    pop listpos -> Y
+                    bra       SM_RdDirNext
+SM_RdDirWrErr       pshs      b
+                    lda       1,s                  path# (at s+1 after pshs b)
+                    os9       I$Close
+                    puls      b
+SM_RdDirOpErr
+SM_RdDirClErr       orcc      #1
+                    lbra      PrintErrExit
+SM_RdDirDone        lbra      EXIT
+
+* SM_RdMerge: single merged output file; open once, write all modules.
+SM_RdMerge          leax      ,s                   X=buf start (for I$Create)
+                    lda       #WRITE.
+                    ldb       #(READ.+WRITE.+PREAD.)
+                    os9       I$Create
+                    lbcs      PrintErrExit
+                    pshs      a                    [s+0]=path#, [s+1..64]=buf, [s+65..66]=list-high
+* Write all modules in list to single file.
+                    ldy       65,s                 Y=list-high
+* Stack at SM_RdWrNext entry: [s+0]=path#, [s+1..64]=buf, [s+65..66]=list-high
+SM_RdWrNext         ldx       ,--y                 X=ptr to ModList entry (0=end)
+                    beq       SM_RdClose
+                    pshs      y                    [s+0..1]=listpos, [s+2]=path#, ...
+                    ldx       ,x                   X=module addr
+                    ldy       M$Size,x             Y=module size
+                    lda       2,s                  A=path# (at s+2 after pshs y)
+                    os9       I$Write
+                    puls      y                    restore list pos Y
+                    bcs       SM_RdWrErr
+                    bra       SM_RdWrNext
+SM_RdClose          lda       ,s                   A=path# (at s+0)
+                    os9       I$Close
+                    lbcs      PrintErrExit
+                    lbra      EXIT
+* Error path: Y already restored by puls y; stack=[s+0]=path#,...
+SM_RdWrErr          pshs      b                    [s+0]=err, [s+1]=path#, ...
+                    lda       1,s                  A=path#
+                    os9       I$Close
+                    puls      b
+                    orcc      #1
+                    lbra      PrintErrExit
+
+* SM_ParseOutPath: copy CR-terminated path from Y into buffer pointed to by X.
+* Appends ".up\r" if path does not already end in ".up" (case-insensitive).
+* Truncates input at 30 chars before any extension.
+* Entry: X=output buffer start, Y=cmd line ptr.
+* Exit:  B=total filename length (excl. CR). X=buf+namlen. Y past CR. Trashes A.
+SM_ParseOutPath
+                    clrb
+SM_PPCopy           lda       ,y+
+                    cmpa      #C$CR
+                    beq       SM_PPEnd
+                    cmpb      #30
+                    bge       SM_PPCopy            truncate (keep scanning to CR)
+                    sta       ,x+
+                    incb
+                    bra       SM_PPCopy
+SM_PPEnd
+* X=buf+namlen. Check if last 3 chars are ".up" (case-insensitive).
+                    cmpb      #3
+                    blo       SM_PPAddExt
+                    lda       -3,x                 char at namlen-3
+                    cmpa      #'.
+                    bne       SM_PPAddExt
+                    lda       -2,x
+                    anda      #$DF
+                    cmpa      #'U
+                    bne       SM_PPAddExt
+                    lda       -1,x
+                    anda      #$DF
+                    cmpa      #'P
+                    bne       SM_PPAddExt
+* Already has .up; just append CR.
+                    lda       #C$CR
+                    sta       ,x
+                    rts
+SM_PPAddExt
+                    ldd       #$2E75               ".u"
+                    std       ,x
+                    ldd       #$700D               "p\r"
+                    std       2,x
+                    rts
+
+* -----------------------------------------------------------------------
+* LOADM: Load .up file(s) into Basic09 workspace.
+*   LOADM name[.up]                 load name.up from CWD
+*   LOADM /path/name[.up]           load from absolute path
+*   LOADM name[.up],name[.up],...   load multiple files (comma-separated)
+* Each file may contain one or more OS-9 modules (merged .up).
+* Entry: Y=ptr to char following 'LOADM' in command line.
+* Errors if a procedure name already exists in workspace (KILL it first).
+
+LMLocalSz           equ       105
+lv2.sep             equ       0    ; 1: comma follows (more names); 0: CR (done)
+lv2.path            equ       1    ; open file path#
+lv2.namlen          equ       2    ; byte count of path/name
+lv2.dest            equ       3    ; 2 bytes: workspace load destination
+lv2.modsz           equ       5    ; 2 bytes: M$Size of current module
+lv2.cmdpos          equ       7    ; 2 bytes: saved cmd line Y after separator
+lv2.namebuf         equ       9    ; 96 bytes: filename
+
+LOADM               leas      -LMLocalSz,s
+                    lbra      LM_SkipNext          skip leading spaces; exit silently if no args
+
+* --- Per-filename outer loop ---
+LM_NameLoop
+* Copy path/name chars into namebuf until CR or comma.
+                    leax      lv2.namebuf,s
+                    clrb
+LM_Copy             lda       ,y+
+                    cmpa      #C$CR
+                    beq       LM_SepCR
+                    cmpa      #',
+                    beq       LM_SepComma
+LM_CopyChar         cmpb      #60
+                    bge       LM_Copy              truncate at 60 chars
+                    sta       ,x+
+                    incb
+                    bra       LM_Copy
+LM_SepCR            clr       lv2.sep,s            sep=0: done after this name
+                    bra       LM_HaveName
+LM_SepComma         lda       #1
+                    sta       lv2.sep,s            sep=1: more names follow
+                    sty       lv2.cmdpos,s         save cmd pos (past comma)
+LM_HaveName         tstb
+                    lbeq      LM_Exit              empty name: just exit
+                    stb       lv2.namlen,s
+
+* Append ".up\r" if name does not already end in ".up" (case-insensitive).
+                    cmpb      #3
+                    blo       LM_AppendExt
+                    leax      lv2.namebuf,s
+                    subb      #3
+                    abx                            X=namebuf[namlen-3]
+                    ldd       ,x
+                    andb      #$DF
+                    cmpd      #$2E55               "." and uppercase 'U'
+                    bne       LM_AppendExt
+                    lda       2,x
+                    anda      #$DF
+                    cmpa      #'P
+                    bne       LM_AppendExt
+* Already has .up: add only CR terminator. X=namebuf[namlen-3], so +3 = namebuf[namlen].
+                    lda       #C$CR
+                    sta       3,x
+                    bra       LM_OpenFile
+LM_AppendExt        ldb       lv2.namlen,s
+                    leax      lv2.namebuf,s
+                    abx                            X=namebuf[namlen]
+                    ldd       #$2E75               ".u"
+                    std       ,x
+                    ldd       #$700D               "p\r"
+                    std       2,x
+
+LM_OpenFile         lda       #READ.
+                    leax      lv2.namebuf,s
+                    os9       I$Open
+                    lbcs      PrintErrExit
+                    sta       lv2.path,s
+
+* --- Per-module inner loop: read modules until EOF ---
+LM_ModLoop
+                    ldd       <ICodeBase
+                    addd      <ICodeUsed
+                    std       lv2.dest,s           dest = ICodeBase + ICodeUsed
+                    tfr       d,x
+
+* Read 4-byte header into workspace.
+                    lda       lv2.path,s
+                    ldy       #4
+                    os9       I$Read
+                    bcs       LM_ReadChk           carry: check for EOF
+
+* Verify OS-9 module magic $87CD.
+                    ldx       lv2.dest,s
+                    ldd       ,x
+                    cmpd      #M$ID12
+                    bne       LM_CloseNext         bad/no magic: treat as end of modules
+
+* Get and validate M$Size.
+                    ldd       2,x
+                    beq       LM_CloseNext         M$Size=0 invalid
+                    std       lv2.modsz,s
+
+* Check workspace has room.
+                    cmpd      <WorkspaceFree
+                    lbhi      LM_MemFull
+
+* Read remaining M$Size-4 bytes.
+                    subd      #4
+                    tfr       d,y
+                    leax      4,x                  X=dest+4
+                    lda       lv2.path,s
+                    os9       I$Read
+                    bcs       LM_ReadErr
+
+* Duplicate check: call DIRSCH with module's own FCS name.
+                    ldy       lv2.dest,s
+                    ldd       M$Name,y             D=name offset
+                    leay      d,y                  Y=FCS name in loaded module
+                    lbsr      DIRSCH
+                    bcc       LM_Duplicate         carry clear = already in workspace
+
+* X=end-of-list slot; check ModList not full (slot addr LSB must be < $FE).
+                    tfr       x,d
+                    cmpb      #$FE
+                    lbeq      LM_TooMany
+
+* Commit: store module ptr, update list and workspace accounting.
+                    ldd       lv2.dest,s
+                    std       ,x                   store module ptr at end-of-list slot
+                    clr       2,x
+                    clr       3,x                  new $0000 end marker
+
+                    ldd       <ICodeUsed
+                    addd      lv2.modsz,s
+                    std       <ICodeUsed
+                    ldd       <WorkspaceFree
+                    subd      lv2.modsz,s
+                    std       <WorkspaceFree
+
+* Print loaded procedure name to stderr (like LOAD does).
+                    ldx       lv2.dest,s
+                    ldd       M$Name,x
+                    leax      d,x                  X=FCS name
+                    lbsr      PrintXToStderr
+
+                    bra       LM_ModLoop           try next module in file
+
+* Read returned carry set: check for EOF vs real error.
+LM_ReadChk          cmpb      #E$EOF
+                    bne       LM_ReadErr
+LM_CloseNext
+* Normal end of modules in this file: close and check for more filenames.
+                    lda       lv2.path,s
+                    os9       I$Close
+                    lbcs      PrintErrExit
+
+                    tst       lv2.sep,s
+                    beq       LM_Exit              sep=0: done
+
+* More names: restore cmd pos, skip spaces, loop.
+                    ldy       lv2.cmdpos,s
+LM_SkipNext         ldb       ,y+
+                    cmpb      #C$SPAC
+                    beq       LM_SkipNext
+                    cmpb      #C$CR
+                    beq       LM_Exit
+                    leay      -1,y
+                    lbra      LM_NameLoop
+
+LM_ReadErr          pshs      b                    [s+0]=err; frame shifts up by 1
+                    lda       lv2.path+1,s         path# now at lv2.path+1 after pshs
+                    os9       I$Close
+                    puls      b
+                    orcc      #1
+                    lbra      PrintErrExit
+
+LM_Duplicate        lda       lv2.path,s
+                    os9       I$Close
+                    ldb       #$2B                 Unknown procedure error (reuse for "already loaded")
+                    orcc      #1
+                    lbra      PrintErrExit
+
+LM_TooMany
+LM_MemFull          lda       lv2.path,s
+                    os9       I$Close
+                    lbra      ERMFUL
+
+LM_Exit             lbra      EXIT
 
 DEFILE               bsr       PCDLST
                     lda       ,y                  Get char
