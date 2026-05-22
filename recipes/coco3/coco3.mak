@@ -77,6 +77,12 @@ UTILPAK1 = attr build copy del deldir dir display list makdir mdir merge mfree p
 CMDS_BASE ?= $(STDCMDS) grfdrv shell utilpak1
 CMDS += $(CMDS_BASE) \
 	$(CMDS_EXTRA)
+ROOT_FILES ?=
+ROOT_TEXT_FILES ?= $(ROOT_FILES)
+DATA_DIR ?=
+DATA_FILES ?=
+DATA_TEXT_FILES ?= $(DATA_FILES)
+COMMA := ,
 
 all: libs $(DSKIMAGE)
 
@@ -89,15 +95,20 @@ kernelfile: $(addprefix $(MODDIR)/,$(KERNEL_TRACK))
 bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
 
-$(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP)
+$(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(ROOT_FILES) $(DATA_FILES)
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9GEN) $@ -b=bootfile -t=$(KERNELFILE)
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
 	$(MAKDIR) $@,DEFS
+	$(if $(DATA_DIR),$(MAKDIR) $@$(COMMA)$(DATA_DIR))
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
+	$(if $(ROOT_FILES),$(OS9COPY) $(ROOT_FILES) $@$(COMMA).)
+	$(if $(ROOT_TEXT_FILES),$(OS9ATTR_TEXT) $(foreach file,$(notdir $(ROOT_TEXT_FILES)),$@$(COMMA)$(file)))
+	$(if $(DATA_FILES),$(OS9COPY) $(DATA_FILES) $@$(COMMA)$(DATA_DIR))
+	$(if $(DATA_TEXT_FILES),$(OS9ATTR_TEXT) $(foreach file,$(notdir $(DATA_TEXT_FILES)),$@$(COMMA)$(DATA_DIR)/$(file)))
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 

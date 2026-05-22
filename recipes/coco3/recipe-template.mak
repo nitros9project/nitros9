@@ -32,3 +32,12 @@ RECIPE ?= coco3
 
 # Append commands copied into the disk image (bare names, no path prefix)
 # CMDS_EXTRA += mycmd
+
+# Append files copied to the disk root. By default these are marked as text.
+# ROOT_FILES += /path/to/support-file
+# ROOT_TEXT_FILES = $(ROOT_FILES)
+
+# Copy files into a recipe-owned disk directory. By default these are marked as text.
+# DATA_DIR = MYDIR
+# DATA_FILES += /path/to/support-file
+# DATA_TEXT_FILES = $(DATA_FILES)
