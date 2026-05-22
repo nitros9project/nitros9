@@ -1,0 +1,4 @@
+interface:
+  display_name: "Annotate 6809/6309 ASM"
+  short_description: "Comment and label 6809/6309 assembly"
+  default_prompt: "Use $annotate-6809-6309-assembly to add per-line comments and meaningful labels to this 6809 or 6309 assembly source."
