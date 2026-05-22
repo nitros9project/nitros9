@@ -18,3 +18,9 @@ buildinfo
 bootfile
 kerneltrack
 *.dsk
+
+# Third-party package scratch files
+3rdparty/packages/ed/c.errors
+3rdparty/packages/uemacs/test
+3rdparty/packages/uemacs/test.bin
+3rdparty/packages/uemacs/test.c

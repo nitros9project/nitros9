@@ -33,6 +33,7 @@ From the repository root, ensure:
 
 - [`40d/`](40d/) builds CoCo 3 Level 2 40-track double-sided disk images
 - [`dw/`](dw/) builds a CoCo 3 DriveWire-oriented disk image
+- [`rogue/`](rogue/) builds a CoCo 3 disk image with Rogue and its support files
 - [`sierra/`](sierra/) builds Sierra AGI CoCo 3 disk images and holds the shared Sierra recipe logic
 
 Each build directory keeps intermediate artifacts local:
