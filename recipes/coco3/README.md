@@ -32,12 +32,15 @@ From the repository root, ensure:
 - `nitros9-languages` is checked out beside NitrOS-9, or `LANGUAGES` points to it
 - for `dw_mega`, `nitros9-apps` is checked out beside NitrOS-9, or
   `NITROS9_APPS_DIR` points to it
+- for `rogue`, `nitros9-games` is checked out beside NitrOS-9, or
+  `NITROS9_GAMES_DIR` points to it
 
 ## Build Directories
 
 - [`floppy/`](floppy/) builds CoCo 3 Level 2 double-sided floppy disk images
 - [`dw/`](dw/) builds a CoCo 3 DriveWire-oriented disk image
 - [`dw_mega/`](dw_mega/) builds an expanded CoCo 3 DriveWire image with third-party software
+- [`rogue/`](rogue/) builds a CoCo 3 disk image with Rogue and its support files
 
 Each build directory keeps intermediate artifacts local:
 
@@ -101,6 +104,20 @@ This recipe defaults to:
 Optional features:
 
 - add `FUJINET=1` in `recipe.mak` to include the FujiNet utility commands listed above
+
+## Rogue Build ([`coco3/rogue`](rogue/))
+
+```sh
+cd rogue
+make
+```
+
+Primary output:
+
+- `l2_coco3_rogue.dsk`
+
+The recipe builds Rogue from the sibling `nitros9-games/rogue` source directory
+and installs its data, help, screen, and character files under `/ROGUE`.
 
 ## Mega DriveWire Build ([`coco3/dw_mega`](dw_mega/))
 
