@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(xargs grep -l -i \"annotate\\\\|asm\\\\|6809\")",
-      "Bash(awk '/^[ \\\\t]+[a-z]/ && !/ [*]/' /c/Users/asara/Documents/GitHub/nitros9/3rdparty/packages/basic09/basic09.asm)",
-      "Bash(grep -v \"^\\\\s*[a-z]\\\\+\\\\s\\\\+[a-zA-Z0-9$,\\\\+\\\\-_\\\\[\\\\]#\\\\./\\\\\\\\<>\\(\\)'\\\\\"\\\\*]*\\\\s*$\")"
-    ]
-  }
-}
