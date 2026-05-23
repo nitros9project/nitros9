@@ -42,7 +42,7 @@ FFmodulJoin         equ       *         ; define assembler symbol FFmodulJoin
                     lbsr      ParseNam  ; parse the name to find the end & length
                     bcs       FFmodulError2 ; error (illegal name), exit
                     ldu       <D.ModEnd ; get module directory end pointer
-                    bra       FFmodulBackEntryModuleTable ; start looking for it
+                    bra       FFmodulBackEntryMod ; start looking for it
 
 * Main module directory search
 * Entry: A=Module type
@@ -50,7 +50,7 @@ FFmodulJoin         equ       *         ; define assembler symbol FFmodulJoin
 *        X=Logical address of name in Caller's 64k space
 *        Y=DAT image of caller (for module name)
 *        U=Module directory Entry ptr (current module being checked)
-FFmodulModuleTypeNmLenLog pshs      d,x,y     ; preserve Mod type/nm len, Log. Addr, DAT Img ptr
+FFmodulModTypeNm    pshs      d,x,y     ; preserve Mod type/nm len, Log. Addr, DAT Img ptr
                     pshs      x,y       ; preserve Log. addr & DAT Img ptr
                     ldy       MD$MPDAT,u ; does the module have a DAT Image ptr?
                     beq       FFmodulPurge ; no, skip module
@@ -93,11 +93,11 @@ FFmodulModuleTypeNmLenLog pshs      d,x,y     ; preserve Mod type/nm len, Log. A
                     lda       $06,s     ; get type/language we are looking for
                     beq       FFmodulFoundMatch ; 0 means don't care on either, so skip ahead
                     anda      #TypeMask ; keep just type
-                    beq       FFmodulTypeLanguageWeLookingAgain ; type 0 means don't care, skip ahead
+                    beq       FFmodulTypeLangWe ; type 0 means don't care, skip ahead
                     eora      ,s        ; exclusive-OR A with ,s
                     anda      #TypeMask ; does it match?
                     bne       FFmodulPointers ; no, check next module
-FFmodulTypeLanguageWeLookingAgain lda       $06,s     ; get type/language we are looking for again
+FFmodulTypeLangWe   lda       $06,s     ; get type/language we are looking for again
                     anda      #LangMask ; keep just Language
                     beq       FFmodulFoundMatch ; 0=don't care, skip ahead
                     eora      ,s        ; does it match language we are looking for?
@@ -115,9 +115,9 @@ FFmodulPurge        leas      4,s       ; purge stack
                     bne       FFmodulPointers ; yes, skip ahead
                     stu       8,s       ; save directory entry pointer
 FFmodulPointers     puls      d,x,y     ; restore pointers
-FFmodulBackEntryModuleTable leau      -MD$ESize,u ; move back 1 entry in module table
+FFmodulBackEntryMod leau      -MD$ESize,u ; move back 1 entry in module table
                     cmpu      <D.ModDir ; at the beginning?
-                    bhs       FFmodulModuleTypeNmLenLog ; no, check entry
+                    bhs       FFmodulModTypeNm ; no, check entry
                     ldb       #E$MNF    ; get error code (module not found)
                     fcb       $8C       ; skip 2 bytes
 FFmodulError        ldb       #E$BNam   ; get error code
@@ -132,11 +132,11 @@ FFmodulError2       stb       1,s       ; save error code for caller
 *        B=DAT image block offset
 *        X=Logical address of name
 FFmodulDATImage     pshs      y         ; preserve DAT image pointer
-FFmodulAdjustOffsetMapping lbsr      AdjBlk0   ; adjust pointer to offset for mapping in
+FFmodulAdjstOffMap  lbsr      AdjBlk0   ; adjust pointer to offset for mapping in
                     lbsr      FLdMMUBlockData ; map in block
                     leax      1,x       ; compute 1,x into X
                     cmpa      #C$SPAC   ; space?
-                    beq       FFmodulAdjustOffsetMapping ; yes, eat it
+                    beq       FFmodulAdjstOffMap ; yes, eat it
                     leax      -1,x      ; move back to first character
 FFmodulChar         pshs      d,cc      ; preserve char
                     tfr       y,d       ; copy DAT pointer to D

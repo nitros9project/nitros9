@@ -32,9 +32,9 @@ _stkPageAddr@       set       0         ; define assembler symbol
 _stkPageCnt@        set       1         ; define assembler symbol
 _stkReqMem@         set       2         ; define assembler symbol
                     ldb       _stkPageAddr@,s ; get the page address from the stack
-                    beq       FMemStartFreeMemoryBitmap ; branch if it's 0
+                    beq       FMemStartFreeMem ; branch if it's 0
                     addb      _stkPageCnt@,s ; add it to te page count from the stack
-FMemStartFreeMemoryBitmap ldx       <D.FMBM   ; get the address of the start of the free memory bitmap
+FMemStartFreeMem    ldx       <D.FMBM   ; get the address of the start of the free memory bitmap
                     ldu       <D.FMBM+2 ; and the address of the end of the free memory bitmap
                     os9       F$SchBit  ; search for the location
                     bcs       ex@       ; branch if there was an error
@@ -58,11 +58,11 @@ FMemProcessorState  negb                ; update processor state
                     addb      P$PagCnt,x ; add the page count
                     addb      P$ADDR,x  ; and the base data address page
                     cmpb      P$SP,x    ; compare it to the caller's stack pointer
-                    bhi       FMemFreeMemoryBitmap ; branch if we're higher
+                    bhi       FMemFreeMemBtmp ; branch if we're higher
                     comb                ; else set the carry flag
                     ldb       #E$DelSP  ; return an error indicating the requested size would overrun the stack
                     rts                 ; return to the caller
-FMemFreeMemoryBitmap ldx       <D.FMBM   ; get the free memory bitmap pointer
+FMemFreeMemBtmp     ldx       <D.FMBM   ; get the free memory bitmap pointer
                     os9       F$DelBit  ; delete the bits
                     tfr       y,d       ; transfer register value y,d
                     negb                ; update processor state
@@ -114,10 +114,10 @@ FMemPageCount       lda       P$PagCnt,x ; get page count
                     lsra                ; shift or rotate and update condition codes
                     ldb       ,s        ; load B from ,s
                     addb      #$1F      ; add #$1F to B
-                    bcc       FMemDivideByBlockCount ; still have room, skip ahead
+                    bcc       FMemDvdByBlk ; still have room, skip ahead
                     ldb       #E$MemFul ; load B from #E$MemFul
                     bra       FMemPurge ; branch unconditionally to FMemPurge
-FMemDivideByBlockCount lsrb                ; divide by 32 to get block count
+FMemDvdByBlk        lsrb                ; divide by 32 to get block count
                     lsrb                ; shift or rotate and update condition codes
                     lsrb                ; shift or rotate and update condition codes
                     lsrb                ; shift or rotate and update condition codes
@@ -128,10 +128,10 @@ FMemDivideByBlockCount lsrb                ; divide by 32 to get block count
                     pshs      a         ; save a on the stack
                     subb      ,s+       ; subtract ,s+ from B
                   ENDC
-                    beq       FMemRequestedPageCount ; yes, save it
+                    beq       FMemReqPgCnt ; yes, save it
                     bcs       FMemJoin  ; overflow, delete the ram we just got
                     os9       F$AllImg  ; allocate the image in DAT
-                    bcc       FMemRequestedPageCount ; no error, skip ahead
+                    bcc       FMemReqPgCnt ; no error, skip ahead
 FMemPurge           leas      1,s       ; purge stack
 FMemCarryError      orcc      #Carry    ; set carry for error
                     rts                 ; return
@@ -145,7 +145,7 @@ FMemJoin            equ       *         ; define assembler symbol
                   ENDC
                     negb                ; update processor state
                     os9       F$DelImg  ; call OS-9 service F$DelImg
-FMemRequestedPageCount puls      a         ; restore requested page count
+FMemReqPgCnt        puls      a         ; restore requested page count
                     sta       P$PagCnt,x ; save it into process descriptor
 FMemPageCount2      lda       P$PagCnt,x ; get page count
                     clrb                ; clear LSB

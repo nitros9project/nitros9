@@ -85,9 +85,9 @@ FMoveJoin           equ       *         ; define assembler symbol FMoveJoin
 * Calculate move length for this pass
                     ldw       14,s      ; get full byte count
                     cmpw      ,s        ; we gonna overlap source?
-                    bls       FMoveWeGonnaOverlapDestination ; no, skip ahead
+                    bls       FMoveWeGnnOvrlp ; no, skip ahead
                     ldw       ,s        ; get remaining bytes in source block
-FMoveWeGonnaOverlapDestination cmpw      2,s       ; we gonna overlap destination?
+FMoveWeGnnOvrlp     cmpw      2,s       ; we gonna overlap destination?
                     bls       FMoveBytes2 ; no, skip ahead
                     ldw       2,s       ; get remaining bytes in destination block
 FMoveBytes2         cmpw      #$0100    ; less than 256 bytes?
@@ -105,20 +105,20 @@ FMoveCount          stw       12,s      ; save count
                     std       14,s      ; save updated count
                     ldd       ,s        ; get current offset in block
                     subd      12,s      ; need to switch source block?
-                    bne       FMoveUpdatedSourceOffsetBlock ; no, skip ahead
+                    bne       FMoveUpdSrcOff ; no, skip ahead
                     lda       #$20      ; B=0 from 'bne' above
                     subr      d,x       ; reset source back to begining of block
                     inc       11,s      ; add 2 to source DAT pointer
                     inc       11,s      ; increment 11,s
-FMoveUpdatedSourceOffsetBlock std       ,s        ; save updated source offset in block
+FMoveUpdSrcOff      std       ,s        ; save updated source offset in block
                     ldd       2,s       ; get destination offset
                     subd      12,s      ; need to switch destination block?
-                    bne       FMoveUpdatedDestinationOffsetBlock ; no, skip ahead
+                    bne       FMoveUpdDstOff ; no, skip ahead
                     lda       #$20      ; B=0 from 'bne', above
                     subr      d,u       ; reset destination back to beginning of block
                     inc       7,s       ; add 2 to destination DAT pointer
                     inc       7,s       ; increment 7,s
-FMoveUpdatedDestinationOffsetBlock std       2,s       ; save updated destination offset in block
+FMoveUpdDstOff      std       2,s       ; save updated destination offset in block
                     bra       FMoveJoin ; go do next block
 
 * Block move done, return
@@ -146,9 +146,9 @@ L0BXA               ldd       [<$6,s]   ; get block # of source into B
                     pshs      b         ; save on stack
                     ldd       <14+2,s   ; get total byte count left we are copying
                     cmpd      0+2,s     ; will that go past end of source block?
-                    bls       FMoveWeGonnaOverlapDestination ; no, check destination
+                    bls       FMoveWeGnnOvrlp ; no, check destination
                     ldd       0+2,s     ; get # of bytes until end of source block
-FMoveWeGonnaOverlapDestination cmpd      2+2,s     ; will that go past end of dest block?
+FMoveWeGnnOvrlp     cmpd      2+2,s     ; will that go past end of dest block?
                     bls       FMoveBytes2 ; no, check max size we want IRQ's of
                     ldd       2+2,s     ; get # of bytes until end of dest block
 FMoveBytes2         cmpd      #$0060    ; >96 bytes to copy left?
@@ -173,7 +173,7 @@ FMoveSizeBack       lda       <D.IRQTmp+1 ; +4 Get copy size back into A
                     beq       FMoveSystemDAT ; branch if zero is set to FMoveSystemDAT
                     sta       <D.IRQTmp ; save loop counter (# 8 byte blocks) +4
                     exg       x,u       ; swap source/destination ptrs for PULU routine
-FMoveCyclesPerBytesCopied pulu      y,d       ; 9 55 cycles per 8 bytes copied
+FMoveCyclsPerByts   pulu      y,d       ; 9 55 cycles per 8 bytes copied
                     std       ,x        ; 5 (old pulu y/sty ,x++ was 69)
                     sty       2,x       ; 6
                     pulu      y,d       ; 9
@@ -181,7 +181,7 @@ FMoveCyclesPerBytesCopied pulu      y,d       ; 9 55 cycles per 8 bytes copied
                     sty       6,x       ; 6
                     leax      8,x       ; 5
                     dec       <D.IRQTmp ; 6
-                    bne       FMoveCyclesPerBytesCopied ; 3
+                    bne       FMoveCyclsPerByts ; 3
                     exg       x,u       ; 8 Swap updated source/dest ptrs
 FMoveSystemDAT      ldy       <D.SysDAT ; 6 Get system DAT pointer
                     lda       $0B,y     ; 5 Get original MMU blocks
@@ -195,7 +195,7 @@ FMoveSystemDAT      ldy       <D.SysDAT ; 6 Get system DAT pointer
                     std       14,s      ; save new # of bytes left to copy
                     ldd       ,s        ; get # bytes until end of source block
                     subd      12,s      ; subtract # bytes copied
-                    bne       FMoveUpdatedSourceOffsetBlock ; still more in current source MMU block
+                    bne       FMoveUpdSrcOff ; still more in current source MMU block
                     ldd       #DAT.BlSz ; size of MMU block (8K)
 * Since we know where the blocks are mapped, we can change this leax
 * and the later leau to ldx #$A000 and ldu #$C000 (faster smaller)
@@ -206,15 +206,15 @@ FMoveSystemDAT      ldy       <D.SysDAT ; 6 Get system DAT pointer
 * boundaries are crossed, so not often at all
                     inc       11,s      ; 7 Add 2 to source DAT ptr
                     inc       11,s      ; increment 11,s
-FMoveUpdatedSourceOffsetBlock std       ,s        ; save new distance (8K) to end of source block
+FMoveUpdSrcOff      std       ,s        ; save new distance (8K) to end of source block
                     ldd       2,s       ; get # bytes until end of dest block
                     subd      12,s      ; subtract # bytes copied
-                    bne       FMoveUpdatedDestinationOffsetBlock ; still more in current dest MMU block
+                    bne       FMoveUpdDstOff ; still more in current dest MMU block
                     ldd       #DAT.BlSz ; load D from #DAT.BlSz
                     leau      >-DAT.BlSz,u ; wrap dest pr back
                     inc       7,s       ; 7 Add 2 to dest DAT ptr
                     inc       7,s       ; increment 7,s
-FMoveUpdatedDestinationOffsetBlock std       2,s       ; save # of bytes left in dest block
+FMoveUpdDstOff      std       2,s       ; save # of bytes left in dest block
                     lbra      L0BXA     ; branch unconditionally to L0BXA
 
 FMovePurge          leas      <$10,s    ; eat temp stack

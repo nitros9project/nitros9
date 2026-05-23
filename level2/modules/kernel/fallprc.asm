@@ -118,31 +118,31 @@ FDelPrc             lda       R$A,u     ; get process #
 FWait               ldx       <D.Proc   ; get current process
                     lda       P$CID,x   ; any children?
                     beq       FAllprcErrorExit ; no, exit with error
-FAllprcChildProcessDesc lbsr      FGprocpTarget ; get pointer to child process dsc. into Y
+FAllprcKidProcDesc  lbsr      FGprocpTarget ; get pointer to child process dsc. into Y
                   IFNE    H6309   ; begin conditional assembly for H6309
                     tim       #Dead,P$State,y ; is child dead?
                   ELSE
                     lda       P$State,y ; load A from P$State,y
                     bita      #Dead     ; test bits in A against #Dead
                   ENDC
-                    bne       FAllprcProcessIDDeadChild ; yes, send message to parent
+                    bne       FAllprcProcIDDead ; yes, send message to parent
                     lda       P$SID,y   ; no, check for another child (thru sibling list)
-                    bne       FAllprcChildProcessDesc ; yes there is another child, go see if it is dead
+                    bne       FAllprcKidProcDesc ; yes there is another child, go see if it is dead
 * NOTE: MAY WANT TO ADD IN CLRB, CHANGE TO STD R$A,u
                     sta       R$A,u     ; no child has died, clear out process # & status
                     sta       R$B,u     ; code in caller's A&B regs
                     pshs      cc        ; preserve CC
                     orcc      #IntMasks ; shut off interrupts
                     lda       <P$Signal,x ; any signals pending?
-                    beq       FAllprcHeadWaitingProcessLine ; no, skip ahead
+                    beq       FAllprcHeadWaitProc ; no, skip ahead
 * No Child died, but received signal
                     deca                ; yes, is it a wakeup signal?
-                    bne       FAllprcWakeUpSignalWillSent ; no, wake it up with proper signal
+                    bne       FAllprcWakeUpSig ; no, wake it up with proper signal
                     sta       <P$Signal,x ; clear out signal code
-FAllprcWakeUpSignalWillSent lbra      FSleepTarget ; go wake it up (no signal will be sent)
+FAllprcWakeUpSig    lbra      FSleepTarget ; go wake it up (no signal will be sent)
 
 * No dead child & no signal...execute next F$Waiting process in line
-FAllprcHeadWaitingProcessLine ldd       <D.WProcQ ; get ptr to head of waiting process line
+FAllprcHeadWaitProc ldd       <D.WProcQ ; get ptr to head of waiting process line
                     std       P$Queue,x ; save as next process in line from current one
                     stx       <D.WProcQ ; save curr. process as new head of waiting process line
                     puls      cc        ; restore interupts
@@ -155,24 +155,24 @@ FAllprcErrorExit    comb                ; exit with No Children error
 * Child has died
 * Entry: Y=Ptr to child process that died
 *        U=Ptr to caller's register stack
-FAllprcProcessIDDeadChild lda       P$ID,y    ; get process ID of dead child
+FAllprcProcIDDead   lda       P$ID,y    ; get process ID of dead child
                     ldb       <P$Signal,y ; get signal code that child received (if any)
                     std       R$D,u     ; save in caller's D
                     leau      ,y        ; point U to child process dsc.
                     leay      P$CID-P$SID,x ; bump Y up by 1 for 1st loop so P$SID below
 *                             actually references P$CID
-                    bra       FAllprcSiblingIDChildIDSt ; skip ahead
+                    bra       FAllprcSibIDKid ; skip ahead
 
 * Update linked list of sibling processes to exclude dead child
 FAllprcProcess2     lbsr      FGprocpTarget ; get pointer to process
-FAllprcSiblingIDChildIDSt lda       P$SID,y   ; get Sibling ID (or Child ID on 1st run)
+FAllprcSibIDKid     lda       P$SID,y   ; get Sibling ID (or Child ID on 1st run)
                     cmpa      P$ID,u    ; same as Dying process ID?
                     bne       FAllprcProcess2 ; no, go get ptr to Sibling process & do again
                     ldb       P$SID,u   ; yes, wrapped to our own, get Sibling ID from child
                     stb       P$SID,y   ; save as sibling process id # in other sibling
 FAllprcTarget2      pshs      d,x,u     ; preserve regs
                     cmpa      WGlobal+G.AlPID ; does dying process have an alarm set up?
-                    bne       FAllprcDyingProcessBack ; no, go on
+                    bne       FAllprcDyngProcBack ; no, go on
                   IFNE    H6309   ; begin conditional assembly for H6309
                     clrd                ; faster than 2 memory clears
                   ELSE
@@ -180,7 +180,7 @@ FAllprcTarget2      pshs      d,x,u     ; preserve regs
                     clrb                ; clear B
                   ENDC
                     std       WGlobal+G.AlPID ; clear alarm ID & signal
-FAllprcDyingProcessBack ldb       ,s        ; get dying process # back
+FAllprcDyngProcBack ldb       ,s        ; get dying process # back
                     ldx       <D.PrcDBT ; get ptr to process descriptor block table
                     abx                 ; offset into table
                     lda       ,x        ; get MSB of process dsc. ptr

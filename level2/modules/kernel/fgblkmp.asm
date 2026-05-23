@@ -21,6 +21,6 @@ FGBlkMp             ldd       #DAT.BlSz ; # bytes per MMU block (8k)
                     ldx       <D.Proc   ; get caller's task #
                     ldb       P$Task,x  ; get task # of caller
                     ldx       <D.BlkMap ; get start ptr of system block map
-FGblkmpAddrPutRequested ldu       R$X,u     ; get addr to put it that caller requested
+FGblkmpAddrPutReq   ldu       R$X,u     ; get addr to put it that caller requested
                     os9       F$Move    ; move it into caller's space
                     rts                 ; return to caller

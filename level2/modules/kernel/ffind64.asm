@@ -50,12 +50,12 @@ FFind64Block        stx       R$Y,u     ; save address of block
 *
 *
 FAll64              ldx       R$X,u     ; get base address of page table
-                    bne       FFind64FindEmptySpotPathTable ; it's been allocated, skip ahead
+                    bne       FFind64FindEmpty ; it's been allocated, skip ahead
                     bsr       FFind64Target ; allocate the page
                     bcs       FFind64Return2 ; error allocating, return
                     stx       ,x        ; save base address in page table
                     stx       R$X,u     ; save base address to caller's X
-FFind64FindEmptySpotPathTable bsr       FFind64BasePagePtrs ; find a empty spot in path table
+FFind64FindEmpty    bsr       FFind64BasePagePtrs ; find a empty spot in path table
                     bcs       FFind64Return2 ; couldn't find one, return error
                     sta       R$A,u     ; save block #
                     sty       R$Y,u     ; save address of block
@@ -95,29 +95,29 @@ TFMNull             fcb       0         ; used to clear memory
 FFind64BasePagePtrs pshs      x,u       ; preserve base page & register stack ptrs
                     clra                ; index entry #=0
 * Main search loop
-FFind64WhichIndexEntryWeChecking pshs      a         ; save which index entry we are checking
+FFind64WhchIndx     pshs      a         ; save which index entry we are checking
                     clrb                ; set position within page we are checking to 0
                     lda       a,x       ; is the current index entry used?
-                    beq       FFind64FlagDidntFind ; no, skip ahead
+                    beq       FFind64FlagDdnt ; no, skip ahead
                     tfr       d,y       ; yes, Move ptr to 256 byte block to Y
                     clra                ; clear offset for 64 byte blocks to 0
-FFind64BlockAllocated tst       d,y       ; is this 64 byte block allocated?
+FFind64BlkAlloc     tst       d,y       ; is this 64 byte block allocated?
                     beq       FFind64Target3 ; no, skip ahead
                     addb      #$40      ; yes, point to next 64 byte block in page
-                    bcc       FFind64BlockAllocated ; if not done checking entire page, keep going
+                    bcc       FFind64BlkAlloc ; if not done checking entire page, keep going
 
 * Index entry has a totally unused 256 byte page
-FFind64FlagDidntFind orcc      #Carry    ; set flag (didn't find one)
+FFind64FlagDdnt     orcc      #Carry    ; set flag (didn't find one)
 FFind64Target3      leay      d,y       ; compute d,y into Y
                     puls      a         ; get which index entry we were checking
                     bcc       FFind64Join ; if we found a blank entry, go allocate it
                     inca                ; didn't, move to next index entry
                     cmpa      #64       ; done entire index?
-                    blo       FFind64WhichIndexEntryWeChecking ; no, keep looking
+                    blo       FFind64WhchIndx ; no, keep looking
 
                     clra                ; yes, clear out to first entry
 FFind64Used         tst       a,x       ; is this one used?
-                    beq       FFind64IndexIndexEntry ; no, skip ahead
+                    beq       FFind64IndxIndx ; no, skip ahead
                     inca                ; increment index entry #
                     cmpa      #64       ; done entire index?
                     blo       FFind64Used ; no, continue looking
@@ -126,7 +126,7 @@ FFind64Used         tst       a,x       ; is this one used?
                     ldb       #E$PthFul ; load B from #E$PthFul
                     puls      x,u,pc    ; restore x,u,pc from the stack
 * Found empty page
-FFind64IndexIndexEntry pshs      x,a       ; preserve index ptr & index entry #
+FFind64IndxIndx     pshs      x,a       ; preserve index ptr & index entry #
                     bsr       FFind64Target ; allocate & clear out new 256 byte page
                     bcs       FFind64AdjustBy ; if error,exit
                     leay      ,x        ; point Y to start of new page

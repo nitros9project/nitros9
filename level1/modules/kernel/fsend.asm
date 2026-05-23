@@ -35,24 +35,24 @@
 FSend               lda       R$A,u     ; get the process ID of recipient
                     bne       getprocess@ ; if not 0, go find the process descriptor
                     inca                ; else increment A
-FSendProcessDescriptor ldx       <D.Proc   ; get the current process descriptor
+FSendProcDesc       ldx       <D.Proc   ; get the current process descriptor
                     cmpa      P$ID,x    ; and the process ID
                     beq       FSendIncreaseBy ; branch if 0
                     bsr       getprocess@ ; else go find the process descriptor
 FSendIncreaseBy     inca                ; increase A by 1
-                    bne       FSendProcessDescriptor ; branch if not error
+                    bne       FSendProcDesc ; branch if not error
                     clrb                ; clear the carry
                     rts                 ; return to the caller
 getprocess@         ldx       <D.PrcDBT ; get the process descriptor table pointer
                     os9       F$Find64  ; find the 64 byte page associated with the process iD
-                    bcc       FSendReceipientProcessDescriptor ; branch if found
+                    bcc       FSendRecvProcDesc ; branch if found
                     ldb       #E$IPrcID ; else return an illegal process ID error
                     rts                 ; return to the caller
 badid@              comb                ; set the carry flag
                     ldb       #E$IPrcID ; return an illegal process ID error
                     puls      pc,y,a    ; recover the stack and return to the caller
 * Entry: A = recipient process ID
-FSendReceipientProcessDescriptor pshs      y,a       ; save the receipient process descriptor and
+FSendRecvProcDesc   pshs      y,a       ; save the receipient process descriptor and
                     ldb       R$B,u     ; get the signal to send from the caller
                     bne       checkpending@ ; branch if not S$Kill
                     ldx       <D.Proc   ; else get current process descriptor
@@ -117,12 +117,12 @@ ex@                 clrb                ; clear carry
 
 FSend               ldx       <D.Proc   ; get current process pointer
                     lda       R$A,u     ; get destination ID
-                    bne       FSendDestinationDescriptor ; it's ok, go on
+                    bne       FSendDstDesc ; it's ok, go on
                     inca                ; add one
 * Send signal to ALL process's
 FSendFindMyself     cmpa      P$ID,x    ; find myself?
                     beq       FSendProcess ; yes, skip it
-                    bsr       FSendDestinationDescriptor ; send the signal
+                    bsr       FSendDstDesc ; send the signal
 FSendProcess        inca                ; move to next process
                     bne       FSendFindMyself ; go send it
                     clrb                ; clear errors
@@ -131,7 +131,7 @@ FSendProcess        inca                ; move to next process
 * X   = process descriptor ptr of singal sender
 * A   = process ID to send signal to
 * R$B = signal code
-FSendDestinationDescriptor lbsr      FGprocpTarget ; get pointer to destination descriptor
+FSendDstDesc        lbsr      FGprocpTarget ; get pointer to destination descriptor
                     pshs      cc,a,y,u  ; preserve registers
                     bcs       FSendReturn ; error, can't get pointer return
                     tst       R$B,u     ; kill signal?
@@ -161,15 +161,15 @@ FSendTarget         lda       P$State,y ; load A from P$State,y
                     sta       P$State,y ; store A at P$State,y
                   ENDC
                     lda       <P$Signal,y ; already have a pending signal?
-                    beq       FSendSignalDescriptor ; nope, go on
+                    beq       FSendSigDesc ; nope, go on
                     deca                ; is it a wakeup signal?
-                    beq       FSendSignalDescriptor ; yes, skip ahead
+                    beq       FSendSigDesc ; yes, skip ahead
                     inc       ,s        ; set carry on stack
                     ldb       #E$USigP  ; get pending signal error
                     puls      cc,a,y,u,pc ; return
 
 * Update sleeping process queue
-FSendSignalDescriptor stb       P$Signal,y ; save signal code in descriptor
+FSendSigDesc        stb       P$Signal,y ; save signal code in descriptor
                     ldx       #(D.SProcQ-P$Queue) ; get pointer to sleeping process queue
                   IFNE    H6309   ; begin conditional assembly for H6309
                     clrd                ; faster than 2 memory clears
@@ -230,11 +230,11 @@ FSendPqueue         ldd       P$Queue,x ; load D from P$Queue,x
                     std       P$Queue,y ; store D at P$Queue,y
                     lda       P$Signal,x ; load A from P$Signal,x
                     deca                ; decrement A
-                    bne       FSendActivateProcess ; branch if zero is clear to FSendActivateProcess
+                    bne       FSendActProc ; branch if zero is clear to FSendActProc
                     sta       P$Signal,x ; store A at P$Signal,x
                     lda       ,s        ; load A from ,s
                     tfr       a,cc      ; transfer register value a,cc
-FSendActivateProcess os9       F$AProc   ; activate the process
+FSendActProc        os9       F$AProc   ; activate the process
 FSendReturn2        puls      cc,a,y,u,pc ; restore & return
 
                   ENDC

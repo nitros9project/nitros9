@@ -15,13 +15,13 @@
 * Error:  CC = C bit set; B = error code
 *
 FGCMDir             ldx       <D.ModDir ; get pointer to module directory start
-                    bra       FGcmdirEndModuleDirectory ; skip ahead
-FGcmdirDATInitialized ldu       MD$MPDAT,x ; dAT initialized?
+                    bra       FGcmdirEndModDir ; skip ahead
+FGcmdirDATInit      ldu       MD$MPDAT,x ; dAT initialized?
                     beq       FGcmdirEmptyEntry ; no it's empty skip ahead
                     leax      MD$ESize,x ; move to next entry
-FGcmdirEndModuleDirectory cmpx      <D.ModEnd ; end of module directory?
-                    bne       FGcmdirDATInitialized ; no, keep looking
-                    bra       FGcmdirModuleDirectoryDATEnd ; branch unconditionally to FGcmdirModuleDirectoryDATEnd
+FGcmdirEndModDir    cmpx      <D.ModEnd ; end of module directory?
+                    bne       FGcmdirDATInit ; no, keep looking
+                    bra       FGcmdirModDirDAT ; branch unconditionally to FGcmdirModDirDAT
 * Move all entrys up 1 slot in directory
 FGcmdirEmptyEntry   tfr       x,y       ; move empty entry pointer to Y
                     bra       FGcmdirEsize ; branch unconditionally to FGcmdirEsize
@@ -30,7 +30,7 @@ FGcmdirMpdat        ldu       MD$MPDAT,y ; load U from MD$MPDAT,y
 FGcmdirEsize        leay      MD$ESize,y ; compute MD$ESize,y into Y
                     cmpy      <D.ModEnd ; done complete directory?
                     bne       FGcmdirMpdat ; no, keep going
-                    bra       FGcmdirNewModuleDirectoryEnd ; branch unconditionally to FGcmdirNewModuleDirectoryEnd
+                    bra       FGcmdirNewModDir ; branch unconditionally to FGcmdirNewModDir
 * Move entry up 1 slot in directory
 FGcmdirJoin         equ       *         ; define assembler symbol FGcmdirJoin
                   IFNE    H6309   ; begin conditional assembly for H6309
@@ -46,24 +46,24 @@ FGcmdirJoin         equ       *         ; define assembler symbol FGcmdirJoin
                     ldu       ,y++      ; load U from ,y++
                     stu       ,x++      ; store U at ,x++
                   ENDC
-FGcmdirCompleteDirectory cmpy      <D.ModEnd ; done complete directory?
+FGcmdirDoneDir      cmpy      <D.ModEnd ; done complete directory?
                     bne       FGcmdirMpdat ; no, keep going
 
-FGcmdirNewModuleDirectoryEnd stx       <D.ModEnd ; save new module directory end pointer
+FGcmdirNewModDir    stx       <D.ModEnd ; save new module directory end pointer
 * Shrink DAT table
-FGcmdirModuleDirectoryDATEnd ldx       <D.ModDir+2 ; get module directory DAT end pointer
-                    bra       FGcmdirBumpModuleDownBy ; branch unconditionally to FGcmdirBumpModuleDownBy
+FGcmdirModDirDAT    ldx       <D.ModDir+2 ; get module directory DAT end pointer
+                    bra       FGcmdirBumpModDown ; branch unconditionally to FGcmdirBumpModDown
 
 FGcmdirTarget       ldu       ,x        ; load U from ,x
                     beq       FGcmdirTarget2 ; branch if zero is set to FGcmdirTarget2
-FGcmdirBumpModuleDownBy leax      -2,x      ; bump module ptr down by 2
+FGcmdirBumpModDown  leax      -2,x      ; bump module ptr down by 2
                     cmpx      <D.ModDAT ; hit beginning yet?
                     bne       FGcmdirTarget ; no, keep checking
                     clrb                ; yes, return without error
                     rts                 ; return to caller
 
 FGcmdirTarget2      ldu       -2,x      ; load U from -2,x
-                    bne       FGcmdirBumpModuleDownBy ; branch if zero is clear to FGcmdirBumpModuleDownBy
+                    bne       FGcmdirBumpModDown ; branch if zero is clear to FGcmdirBumpModDown
                     tfr       x,y       ; transfer register value x,y
                     bra       FGcmdirTarget4 ; branch unconditionally to FGcmdirTarget4
 

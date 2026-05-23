@@ -40,10 +40,10 @@ FPrsNam             ldx       <D.Proc   ; get the process descriptor
                     ldx       R$X,u     ; get the pathlist from the caller's X
                     bsr       ParseNam  ; parse the pathlist
                     std       R$D,u     ; D contains the length of the name; store it in the caller's D
-                    bcs       FPrsnamContainsEndNamePlus ; branch if an error occurred
+                    bcs       FPrsnamHasEndName ; branch if an error occurred
                     stx       R$X,u     ; X contains the start of the name; store it in the caller's X
                     abx                 ; add the length in B to X
-FPrsnamContainsEndNamePlus stx       R$Y,u     ; X contains the end of the name plus one; store it in the caller's Y
+FPrsnamHasEndName   stx       R$Y,u     ; X contains the end of the name plus one; store it in the caller's Y
                     rts                 ; return to the caller
 
 * Parse name

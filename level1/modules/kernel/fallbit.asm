@@ -311,13 +311,13 @@ SkpBit2             cmpy      #$0008    ; compare Y with #$0008
                     beq       BitStEx   ; exactly 1 byte left, do final store & exit
 
 * Last byte: Not a full byte left loop
-FAllbitBumpOutLeastSigBit lsra                ; bump out least sig. bit
+FAllbitBumpOutLst   lsra                ; bump out least sig. bit
                   IFNE    H6309   ; begin conditional assembly for H6309
                     decw                ; dec the bit counter
                   ELSE
                     leay      -1,y      ; compute -1,y into Y
                   ENDC
-                    bne       FAllbitBumpOutLeastSigBit ; keep going until last one is shifted out
+                    bne       FAllbitBumpOutLst ; keep going until last one is shifted out
                     coma                ; invert byte to get proper result
                     sta       ,s        ; preserve a sec
                   IFGT    Level-1 ; begin conditional assembly for Level-1
@@ -405,7 +405,7 @@ DoDelBit            equ       *         ; define assembler symbol
                     beq       FAllbitReturn ; none, return
                     coma                ; invert current bit mask
                     sta       ,-s       ; preserve on stack
-                    bpl       FAllbitPreloadCleared ; if high bit clear, skip ahead
+                    bpl       FAllbitPrldClrd ; if high bit clear, skip ahead
                   IFGT    Level-1 ; begin conditional assembly for Level-1
                     os9       F$LDABX   ; go get byte from user's map
                   ELSE
@@ -426,7 +426,7 @@ FAllbitMask         anda      ,s        ; aND it with current mask
                     sta       ,x        ; store A at ,x
                   ENDC
                     leax      1,x       ; store finished byte & inc. ptr
-FAllbitPreloadCleared clra                ; preload a cleared byte
+FAllbitPrldClrd     clra                ; preload a cleared byte
                     bra       ChkFull   ; skip ahead
 FAllbitJoin         equ       *         ; define assembler symbol
                   IFGT    Level-1 ; begin conditional assembly for Level-1
@@ -445,13 +445,13 @@ ChkFull             cmpy      #8        ; compare Y with #8
                     bhi       FAllbitJoin ; yes, do a whole byte in 1 shot
                     beq       BitDone   ; exactly 1, store byte & exit
                     coma                ; < full byte left, invert bits
-FAllbitShiftOutRightmostBit lsra                ; shift out rightmost bit
+FAllbitShftOutRghtm lsra                ; shift out rightmost bit
                   IFNE    H6309   ; begin conditional assembly for H6309
                     decw                ; dec bits left counter
                   ELSE
                     leay      -1,y      ; compute -1,y into Y
                   ENDC
-                    bne       FAllbitShiftOutRightmostBit ; keep doing till done
+                    bne       FAllbitShftOutRghtm ; keep doing till done
                     sta       ,s        ; save finished mask
                   IFGT    Level-1 ; begin conditional assembly for Level-1
                     os9       F$LDABX   ; get original byte from task

@@ -147,15 +147,15 @@ FLinkModule         ldd       MD$MPtr,x ; get module pointer
                     pshs      a         ; save a on the stack
                     leau      ,y        ; point to module DAT image
                     bsr       FLinkProcess ; is it already linked in process space?
-                    bcc       FLinkMemoryBlockLinkCounts ; yes, skip ahead
+                    bcc       FLinkMemBlkLink ; yes, skip ahead
                     lda       ,s        ; load A from ,s
                     lbsr      FFreehbInvertWithin ; find free low block in process DAT image
-                    bcc       FLinkMemoryBlocksProcessDATImage ; found some, skip ahead
+                    bcc       FLinkMemBlksProc ; found some, skip ahead
                     leas      5,s       ; purge stack
                     bra       LinkErr   ; return error
 
-FLinkMemoryBlocksProcessDATImage lbsr      FFreehbTheseOnto ; copy memory blocks into process DAT image
-FLinkMemoryBlockLinkCounts ldb       #P$Links  ; point to memory block link counts
+FLinkMemBlksProc    lbsr      FFreehbTheseOnto ; copy memory blocks into process DAT image
+FLinkMemBlkLink     ldb       #P$Links  ; point to memory block link counts
                     abx                 ; smaller and faster than leax P$Links,x
                     sta       ,s        ; save block # on stack
                     lsla                ; account for 2 bytes/entry

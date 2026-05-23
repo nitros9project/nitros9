@@ -23,12 +23,12 @@ srchblk             cmpx      <D.BlkMap+2 ; hit end of map yet?
 * Entry: Y=pointer to start of memory found
 * Note: Due to fact that block map always starts @ $200 (up to $2FF), we
 *       don't need to calculate A
-FAllramStartRequestedBlockMemory tfr       y,d       ; copy the start of the requested block memory pointer to D (B)
+FAllramStartReqBlk  tfr       y,d       ; copy the start of the requested block memory pointer to D (B)
                     lda       ,s        ; get the number blocks requested
                     stb       ,s        ; save the starting block number
-FAllramFlagBlocksUsed inc       ,y+       ; flag the blocks as used
+FAllramFlagBlksUsed inc       ,y+       ; flag the blocks as used
                     deca                ; (for all blocks allocated)
-                    bne       FAllramFlagBlocksUsed ; do this until done
+                    bne       FAllramFlagBlksUsed ; do this until done
                     puls      b         ; get the starting block number
                     clra                ; (allow for D as per original calls)
                     std       R$D,u     ; save for the caller
@@ -54,12 +54,12 @@ FAllramCarry        comb                ; set the carry
 FAlHRAM             ldb       R$B,u     ; get the number blocks to allocate
                     pshs      b,x,y     ; preserve registers
                     ldx       <D.BlkMap+2 ; get the pointer to the end of block map
-FAllramNumberBlocksRequested ldb       ,s        ; get the number blocks requested
-FAllramWeBeginningRAMYet cmpx      <D.BlkMap ; are we at the beginning of RAM yet?
+FAllramNumBlksReq   ldb       ,s        ; get the number blocks requested
+FAllramWeBegRAM     cmpx      <D.BlkMap ; are we at the beginning of RAM yet?
                     bls       FAllramCarry ; yes, exit with No RAM error
                     lda       ,-x       ; get the RAM block marker
-                    bne       FAllramNumberBlocksRequested ; if not free, start checking the next one down
+                    bne       FAllramNumBlksReq ; if not free, start checking the next one down
                     decb                ; free block; decrement the number blocks left to find the count
-                    bne       FAllramWeBeginningRAMYet ; still more needed, so keep checking
+                    bne       FAllramWeBegRAM ; still more needed, so keep checking
                     tfr       x,y       ; found enough contiguous blocks, so move the pointer to Y
-                    bra       FAllramStartRequestedBlockMemory ; go mark then blocks as used and return the information to caller
+                    bra       FAllramStartReqBlk ; go mark then blocks as used and return the information to caller

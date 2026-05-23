@@ -60,9 +60,9 @@ FAprocTarget        clrb                ; clear B
 *  X=Process to activate
 *  U=Current process in queue links
 FAprocProcessAge    inc       P$Age,u   ; update current process age
-                    bne       FAprocMatchProcessAges ; wrap?
+                    bne       FAprocMtchProcAges ; wrap?
                     dec       P$Age,u   ; yes, reset it to max.
-FAprocMatchProcessAges cmpa      P$Age,u   ; match process ages??
+FAprocMtchProcAges  cmpa      P$Age,u   ; match process ages??
                     bhi       FAprocProcessChain ; no, skip update
 FAprocProcess       leay      ,u        ; point Y to current process
 FAprocProcessChain  ldu       P$Queue,u ; get pointer to next process in chain

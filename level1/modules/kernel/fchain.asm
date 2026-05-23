@@ -232,11 +232,11 @@ FChainThem          stu       ,y++      ; do all of them
                   ENDC
                     puls      y         ; size
                     bhi       FChainDataOver ; to < From: do F$Move
-                    beq       FChainSystemTaskNumber ; to == From, skip F$Move
+                    beq       FChainSysTaskNum ; to == From, skip F$Move
 
 * To > From: do special copy
                     leay      ,y        ; any bytes to move?
-                    beq       FChainSystemTaskNumber ; no, skip ahead
+                    beq       FChainSysTaskNum ; no, skip ahead
                   IFNE    H6309   ; begin conditional assembly for H6309
                     pshs      x         ; save address
                     addr      y,x       ; add size to FROM address
@@ -277,10 +277,10 @@ FChainGrab          ldb       ,s        ; grab ??
                     bne       FChainGrab ; branch if zero is clear to FChainGrab
 
                     puls      d,x,y,u   ; restore regs
-                    bra       FChainSystemTaskNumber ; skip over F$Move
+                    bra       FChainSysTaskNum ; skip over F$Move
 
 FChainDataOver      os9       F$Move    ; move data over?
-FChainSystemTaskNumber lda       <D.SysTsk ; get system task number
+FChainSysTaskNum    lda       <D.SysTsk ; get system task number
                     ldx       ,s        ; old process dsc ptr
                     ldu       P$SP,x    ; load U from P$SP,x
                     leax      >(P$Stack-R$Size),x ; compute >(P$Stack-R$Size),x into X
@@ -341,15 +341,15 @@ FChainModule        stu       2,s       ; save pointer to module
                     std       P$PModul,x ; save it into process descriptor
                     puls      a         ; restore module type
                     cmpa      #Prgrm+Objct ; regular module?
-                    beq       FChainOffsetModuleMemorySize ; yes, go
+                    beq       FChainOffModMem ; yes, go
                     cmpa      #Systm+Objct ; system module?
-                    beq       FChainOffsetModuleMemorySize ; branch if zero is set to FChainOffsetModuleMemorySize
+                    beq       FChainOffModMem ; branch if zero is set to FChainOffModMem
                   IFNE    H6309   ; begin conditional assembly for H6309
 *--- these lines added to allow 6309 native mode modules to be executed
                     cmpa      #Prgrm+Obj6309 ; regular module?
-                    beq       FChainOffsetModuleMemorySize ; yes, go
+                    beq       FChainOffModMem ; yes, go
                     cmpa      #Systm+Obj6309 ; system module?
-                    beq       FChainOffsetModuleMemorySize ; branch if zero is set to FChainOffsetModuleMemorySize
+                    beq       FChainOffModMem ; branch if zero is set to FChainOffModMem
 *---
                   ENDC
                     ldb       #E$NEMod  ; return unknown module
@@ -358,7 +358,7 @@ FChainPurge         leas      2,s       ; purge stack
                     comb                ; set carry
                     bra       FChainProcess2 ; return
 * Setup up data memory
-FChainOffsetModuleMemorySize ldd       #M$Mem    ; get offset to module memory size
+FChainOffModMem     ldd       #M$Mem    ; get offset to module memory size
                     leay      P$DATImg,x ; get pointer to DAT image
                     ldx       P$PModul,x ; get pointer to module header
                     os9       F$LDDDXY  ; get module memory size

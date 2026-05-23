@@ -28,7 +28,7 @@ FGModDr             ldd       <D.ModDir+2 ; get end ptr of module directory
                     ldx       <D.Proc   ; get current process task #
                     ldb       P$Task,x  ; load B from P$Task,x
                     ldx       <D.ModDir ; get start ptr of module directory
-                    bra       FGblkmpAddrPutRequested ; --- saves 4 bytes, adds 3 cycles
+                    bra       FGblkmpAddrPutReq ; --- saves 4 bytes, adds 3 cycles
 ***         ldu   R$X,u       Get caller's buffer ptr
 ***         os9   F$Move      Copy module directory in caller's buffer
 ***         rts

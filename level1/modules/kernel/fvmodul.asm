@@ -248,7 +248,7 @@ ex@                 puls      pc,y,x    ; return to caller
 FVModul             pshs      u         ; preserve register stack pointer
                     ldx       R$X,u     ; get block offset
                     ldy       R$D,u     ; get DAT image pointer
-                    bsr       FVmodulBlockOffsetDATImage ; validate it
+                    bsr       FVmodulBlkOffDAT ; validate it
                     ldx       ,s        ; get register stack pointer
                     stu       R$U,x     ; save address of module directory entry
                     puls      u,pc      ; restore & return
@@ -256,8 +256,8 @@ FVModul             pshs      u         ; preserve register stack pointer
 * Validate module - shortcut for calls within OS9p1 go here (ex. OS9Boot)
 * Entry: X=Module block offset
 *        Y=Module DAT image pointer
-FVmodulBlockOffsetDATImage pshs      x,y       ; save block offset & DAT Image ptr
-                    lbsr      FVmodulBlockOffsetDAT ; go check module ID & header parity
+FVmodulBlkOffDAT    pshs      x,y       ; save block offset & DAT Image ptr
+                    lbsr      FVmodulBlkOffDAT2 ; go check module ID & header parity
                     bcs       FVmodulTarget ; error, exit
                     ldd       #M$Type   ; get offset to module type
                     lbsr      FLdTarget ; go get 2 bytes (module type)
@@ -381,17 +381,17 @@ FVmodulTarget7      puls      x         ; restore x from the stack
 *
                     ldu       MD$MPDAT,u ; get DAT img ptr for module
                     puls      d         ; restore d from the stack
-FVmodulSameDATImageOtherModule cmpx      MD$MPDAT,y ; same as DAT img ptr for other module?
-                    bne       FVmodulBumpModuleDirectoryEntry ; no, check next one
+FVmodulSameDATImg   cmpx      MD$MPDAT,y ; same as DAT img ptr for other module?
+                    bne       FVmodulBumpModDir ; no, check next one
                     stu       MD$MPDAT,y ; match; save current entry ptr here
                     cmpd      MD$MBSiz,y ; >memory block size already here?
 * 6809/6309 LCB - couldn't we change next 2 lines to blo L051B
                     bhs       FVmodulMbsiz ; yes, use new one
                     ldd       MD$MBSiz,y ; no, get original and use that size instead
 FVmodulMbsiz        std       MD$MBSiz,y ; store D at MD$MBSiz,y
-FVmodulBumpModuleDirectoryEntry leay      MD$ESize,y ; bump ptr to next module dir entry
+FVmodulBumpModDir   leay      MD$ESize,y ; bump ptr to next module dir entry
                     cmpy      <D.ModEnd ; are we at end of module dir?
-                    bne       FVmodulSameDATImageOtherModule ; no,keep checking
+                    bne       FVmodulSameDATImg ; no,keep checking
                     puls      x,y,u,pc  ; restore x,y,u,pc from the stack
 
 * Exit: B=MMU block # of some sort
@@ -410,7 +410,7 @@ FVmodulTarget8      pshs      x,y,u     ; save x,y,u on the stack
                     comb                ; one byte shorter than incb;lslb;negb
                     lslb                ; (D=-B is what we are doing)
                     sex                 ; sign-extend B into A
-                    bsr       FVmodulEndModuleDirectoryDATImage ; call local routine FVmodulEndModuleDirectoryDATImage
+                    bsr       FVmodulEndModDir ; call local routine FVmodulEndModDir
                     bcc       FVmodulTarget9 ; branch if carry is clear to FVmodulTarget9
                     os9       F$GCMDir  ; get rid of empty slots in module directory
                   IFNE    H6309   ; begin conditional assembly for H6309
@@ -419,16 +419,16 @@ FVmodulTarget8      pshs      x,y,u     ; save x,y,u on the stack
                     ldu       #$0000    ; load U from #$0000
                   ENDC
                     stu       $05,s     ; save $0000 so U is 0 in puls below
-                    bsr       FVmodulEndModuleDirectoryDATImage ; call local routine FVmodulEndModuleDirectoryDATImage
+                    bsr       FVmodulEndModDir ; call local routine FVmodulEndModDir
 FVmodulTarget9      puls      b,x,y,u,pc ; restore b,x,y,u,pc from the stack
 
 * Entry: D=negative offset from end of module Dir DAT Img)
-FVmodulEndModuleDirectoryDATImage ldx       <D.ModDAT ; get end ptr of Module Dir DAT image
+FVmodulEndModDir    ldx       <D.ModDAT ; get end ptr of Module Dir DAT image
                     leax      d,x       ; add our negative offset
                     cmpx      <D.ModEnd ; is that past the end of the module directory?
                     blo       S.Poll    ; no, skip ahead
                     ldu       7,s       ; yes, get U from stack (0 means we compacted mod dir)
-                    bne       FVmodulNewModuleDirectoryDATImage ; not compacted, skip ahead
+                    bne       FVmodulNewModDir ; not compacted, skip ahead
                     ldy       <D.ModEnd ; get ptr to end of module directory
                     leay      MD$ESize,y ; bump up by 1 entry
                   IFNE    H6309   ; begin conditional assembly for H6309
@@ -441,7 +441,7 @@ FVmodulEndModuleDirectoryDATImage ldx       <D.ModDAT ; get end ptr of Module Di
                     sty       <D.ModEnd ; no, save new module directory end ptr
                     leay      -MD$ESize,y ; bump ptr back on entry
                     sty       $07,s     ; save that as new U on exit
-FVmodulNewModuleDirectoryDATImage stx       <D.ModDAT ; save new Module Dir DAT image end ptr
+FVmodulNewModDir    stx       <D.ModDAT ; save new Module Dir DAT image end ptr
                   IFNE    H6309   ; begin conditional assembly for H6309
                     ldd       $05,s     ; get source ptr
                     stx       $05,s     ; store X at $05,s
@@ -472,7 +472,7 @@ S.Poll              orcc      #Carry    ; set condition-code bits using #Carry
 * Check module ID & calculate module header parity & CRC
 * Entry: X=Block offset of module
 *        Y=DAT image pointer of module
-FVmodulBlockOffsetDAT pshs      x,y       ; save block offset & DAT pointer
+FVmodulBlkOffDAT2   pshs      x,y       ; save block offset & DAT pointer
                   IFNE    H6309   ; begin conditional assembly for H6309
                     clrd                ; m$ID offset
                   ELSE
@@ -481,11 +481,11 @@ FVmodulBlockOffsetDAT pshs      x,y       ; save block offset & DAT pointer
                   ENDC
                     lbsr      FLdTarget ; get module ID
                     cmpd      #M$ID12   ; legal module?
-                    beq       FVmodulStartLocationHeaderCalc ; yes, calculate header parity
+                    beq       FVmodulStartLctnHdr ; yes, calculate header parity
                     ldb       #E$BMID   ; get bad module ID error
                     bra       FVmodulUpError ; return error
 * Calculate module header parity
-FVmodulStartLocationHeaderCalc leax      2,x       ; point to start location of header calc
+FVmodulStartLctnHdr leax      2,x       ; point to start location of header calc
                     lbsr      AdjBlk0   ; adjust it for block 0
                   IFNE    H6309   ; begin conditional assembly for H6309
                     ldw       #($4A*256+M$Revs) Get initial value & count (7 bytes of header)
@@ -512,7 +512,7 @@ FVmodulModule       sta       ,s        ; save crc
 FVmodulModuleDAT    puls      x,y       ; restore module pointer & DAT pointer
 * this checks if the module CRC checking is on or off
                     lda       <D.CRC    ; is CRC checking on?
-                    bne       FVmodulOffsetModuleSize ; yes - go check it
+                    bne       FVmodulOffModSize ; yes - go check it
                   IFNE    H6309   ; begin conditional assembly for H6309
                     clrd                ; no, clear out
                   ELSE
@@ -524,7 +524,7 @@ FVmodulModuleDAT    puls      x,y       ; restore module pointer & DAT pointer
 * Begin checking Module CRC
 * Entry: X=Module pointer
 *        Y=DAT image pointer of module
-FVmodulOffsetModuleSize ldd       #M$Size   ; get offset to module size
+FVmodulOffModSize   ldd       #M$Size   ; get offset to module size
                     lbsr      FLdTarget ; get module size
                   IFNE    H6309   ; begin conditional assembly for H6309
                     tfr       d,w       ; move length to W
@@ -565,10 +565,10 @@ FVmodulModule2      lbsr      LDAXY     ; get a byte from module into A
                     puls      b,x,y     ; yes, restore CRC
                   ENDC
                     cmpb      #CRCCon1  ; cRC MSB match constant?
-                    bne       FVmodulBadModuleCRCError ; no, exit with error
+                    bne       FVmodulBadModCRC ; no, exit with error
                     cmpx      #CRCCon23 ; lSW match constant?
                     beq       FVmodulExit ; yes, skip ahead
-FVmodulBadModuleCRCError ldb       #E$BMCRC  ; bad Module CRC error
+FVmodulBadModCRC    ldb       #E$BMCRC  ; bad Module CRC error
 FVmodulUpError      orcc      #Carry    ; set up for error
 FVmodulExit         puls      x,y,pc    ; exit
 

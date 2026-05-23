@@ -48,10 +48,10 @@ LDAXY               lda       1,y       ; get MMU block #
                     puls      b,cc      ; restore b,cc from the stack
                     bra       AdjBlk0   ; branch unconditionally to AdjBlk0
 
-FLdBumpOffsetStartBlockAgain leax      >-DAT.BlSz,x ; bump offset ptr to start of block again
+FLdBumpOffStart     leax      >-DAT.BlSz,x ; bump offset ptr to start of block again
                     leay      2,y       ; bump source MMU block up to next one in DAT Image
 AdjBlk0             cmpx      #DAT.BlSz ; going to wrap out of our block?
-                    bhs       FLdBumpOffsetStartBlockAgain ; yes, go adjust
+                    bhs       FLdBumpOffStart ; yes, go adjust
                     rts                 ; no, return
 
 

@@ -121,29 +121,29 @@ FExitChildID2       lda       P$SID,y   ; get child ID
                     puls      cc        ; restore CC
                     lda       P$ID,y    ; get our ID
                     lbsr      FAllprcTarget2 ; give up our proc desc
-                    bra       FExitStartProcActiveQueue ; and start next active process
+                    bra       FExitStartProcAct ; and start next active process
 
 * Search for Waiting Parent
-FExitProcDescOurParents cmpa      P$ID,x    ; is proc desc our parent's?
-                    beq       FExitTakeParentOutWaitQueue ; ...yes!
+FExitProcDescOur    cmpa      P$ID,x    ; is proc desc our parent's?
+                    beq       FExitTakeParOut ; ...yes!
 
 FExitBaseDesc       leau      ,x        ; U is base desc
                     ldx       P$Queue,x ; X is next waiter
-                    bne       FExitProcDescOurParents ; see if parent
+                    bne       FExitProcDescOur ; see if parent
                     puls      cc        ; restore CC
                     lda       #(SysState!Dead) ; set us to system state
                     sta       P$State,y ; and mark us as dead
-                    bra       FExitStartProcActiveQueue ; so F$Wait will find us; next proc
+                    bra       FExitStartProcAct ; so F$Wait will find us; next proc
 
 * Found Parent (X)
-FExitTakeParentOutWaitQueue ldd       P$Queue,x ; take parent out of wait queue
+FExitTakeParOut     ldd       P$Queue,x ; take parent out of wait queue
                     std       P$Queue,u ; store D at P$Queue,u
                     puls      cc        ; restore CC
                     ldu       P$SP,x    ; get parent's stack register
                     ldu       R$U,u     ; load U from R$U,u
-                    lbsr      FAllprcProcessIDDeadChild ; get child's death signal to parent
+                    lbsr      FAllprcProcIDDead ; get child's death signal to parent
                     os9       F$AProc   ; move parent to active queue
-FExitStartProcActiveQueue os9       F$NProc   ; start next proc in active queue
+FExitStartProcAct   os9       F$NProc   ; start next proc in active queue
 
 * Close Proc I/O Paths & Unlink Mem
 * Entry: U=Register stack pointer

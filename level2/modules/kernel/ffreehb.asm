@@ -12,12 +12,12 @@
 
 FFreeHB             ldb       R$B,u     ; get the number blocks requested
                     ldy       R$Y,u     ; get the DAT image pointer
-                    bsr       FFreehbNumberBlocksRequested ; go find free blocks in high part of DAT
+                    bsr       FFreehbNumBlksReq ; go find free blocks in high part of DAT
 FFreehbErrorExit    bcs       FFreehbReturn ; couldn't find any, exit with error
                     sta       R$A,u     ; save the starting block number
 FFreehbReturn       rts                 ; return
 
-FFreehbNumberBlocksRequested tfr       b,a       ; copy the number blocks requested to A
+FFreehbNumBlksReq   tfr       b,a       ; copy the number blocks requested to A
 * This gets called directly from within F$Link
 FFreehbInvertWithin suba      #$09      ; invert within 8
                     nega                ; negate
@@ -26,12 +26,12 @@ FFreehbInvertWithin suba      #$09      ; invert within 8
 FFreehbTarget       pshs      d         ; save the value on the stack
 
 * Move to next block - SHOULD OPTIMIZE WITH W
-FFreehbNumberFreeBlocksFoundSo clra                ; number free blocks found so far=0
+FFreehbNumFreeBlks  clra                ; number free blocks found so far=0
                     ldb       2,s       ; get the block number
                     addb      ,s        ; add the block increment (point to next block)
                     stb       2,s       ; save the new block number to check
                     cmpb      1,s       ; same as block count?
-                    bne       FFreehbMultiplyBlockNumberBy ; no, skip ahead
+                    bne       FFreehbMulBlkNum ; no, skip ahead
                     ldb       #E$MemFul ; preset error for 207 (process memory full)
                     cmpy      <D.SysDAT ; is it the system process?
                     bne       FFreehbError ; no, exit with error 207
@@ -42,10 +42,10 @@ FFreehbError        stb       3,s       ; save the error code
 
 FFreehbNumberBlocks tfr       a,b       ; copy the number of blocks to B
                     addb      2,s       ; add the current start block number
-FFreehbMultiplyBlockNumberBy lslb                ; multiply the block number by 2
+FFreehbMulBlkNum    lslb                ; multiply the block number by 2
                     ldx       b,y       ; get the DAT marker for that block
                     cmpx      #DAT.Free ; is it an empty block?
-                    bne       FFreehbNumberFreeBlocksFoundSo ; no, move to the next block
+                    bne       FFreehbNumFreeBlks ; no, move to the next block
                     inca                ; bump up the number blocks free counter
                     cmpa      3,s       ; have we got enough?
                     bne       FFreehbNumberBlocks ; no, keep looking
@@ -69,10 +69,10 @@ FFreehbEatTemporary leas      2,s       ; eat the temporary stack
 * Rodney says: "It's called via os9p1 syscall vector in line 393"
 FSFreeLB            ldb       R$B,u     ; get the block count
                     ldy       R$Y,u     ; get the pointer to DAT Image
-                    bsr       FFreehbStartLoopBlockLoop ; go find the block numbers
+                    bsr       FFreehbStartLoopBlk ; go find the block numbers
                     bra       FFreehbErrorExit ; do error checking and exit
 
-FFreehbStartLoopBlockLoop lda       #$FF      ; the value to start the loop at block 0
+FFreehbStartLoopBlk lda       #$FF      ; the value to start the loop at block 0
                     pshs      x,d       ; preserve X, flag, and block count
 *         lda   #$01           number to add to go to the next block (positive here)
                     nega                ; -(-1)=+1
