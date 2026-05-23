@@ -92,7 +92,7 @@ MName               fcs       /Krn/
 
 * The dispatch table.
 * The kernel copies this to low RAM starting at D.Clock.
-DisTable            fdb       FAlltskSleepingProcessQueue+Where ; d.Clock absolute address at the start
+DisTable            fdb       FAlltskSleepProcQ+Where ; d.Clock absolute address at the start
                     fdb       XSWI3+Where ; d.XSWI3
                     fdb       XSWI2+Where ; d.XSWI2
                     fdb       D.Crash   ; d.XFIRQ crash on an FIRQ
@@ -542,9 +542,9 @@ KrnBlock            aslb                ; B <= 1 (hi bit goes into carry, 0 goes
 * $0280 = 1024KB (128 8KB blocks)
 * $0300 = 2048KB (256 8KB blocks)
                     bitb      #%00110000 ; is the block above 128K-256K?
-                    beq       Mc09KrnStartBootTrackMemory ; yes, no need to mark block map
+                    beq       Mc09KrnStart ; yes, no need to mark block map
                     tstb                ; is it 2 meg?
-                    beq       Mc09KrnStartBootTrackMemory ; yes, skip this
+                    beq       Mc09KrnStart ; yes, skip this
 * Mark blocks from 128k-256K to block $3F as NOT RAM.
                     abx                 ; add the maximum block number to block map start address
                     leax      -1,x      ; skip good blocks that are RAM
@@ -555,7 +555,7 @@ l@                  sta       ,x+       ; mark them all
                     bne       l@        ; not yet
 
 * ASSUME: however we got here, B=0
-Mc09KrnStartBootTrackMemory
+Mc09KrnStart
                     ldx       #Bt.Start ; start address of the boot track in memory
                     lda       #18       ; size of the boot track is $1800
                   ENDC
@@ -568,11 +568,11 @@ Mc09KrnStartBootTrackMemory
 * BGP - Load bootfile and link to init. We no longer try to link to init first and then
 * call F$Boot. This saves bytes.
                     os9       F$Boot    ; load bootfile here +BGP+
-                    bcs       KrnObviouslyCantCrashMachine ; error, go crash +BGP+
+                    bcs       KrnBadCantCrsh ; error, go crash +BGP+
                   ENDC
                     leax      <init,pc  ; point to 'Init' module name
                     bsr       link      ; try & link it
-                    bcs       KrnObviouslyCantCrashMachine ; error, go crash
+                    bcs       KrnBadCantCrsh ; error, go crash
 
 * BGP - Commented out the following lines since I moved F$Boot above
 *                    bcc       L01BF               no error, go on
@@ -608,7 +608,7 @@ KrnKrnp2sName       leax      <krnp2,pc ; point to krnp2's name
 KrnJumpKrnp2        jmp       ,y        ; jump into krnp2
 
 * BGP - This line was above L01D0 but now moved below since above lines are commented.
-KrnObviouslyCantCrashMachine jmp       <D.Crash  ; obviously can't do it, crash machine
+KrnBadCantCrsh      jmp       <D.Crash  ; obviously can't do it, crash machine
 
 * Update the system memory map to reserve the area the kernel uses.
 KrnSystemMemoryMap  ldx       <D.SysMem ; get the system memory map pointer
@@ -718,7 +718,7 @@ XSWI3               lda       #P$SWI3   ; point to the SWI3 vector
 XSWI                lda       #P$SWI    ; point to the SWI vector
                     ldx       <D.Proc   ; get the current process descriptor
                     ldu       a,x       ; is this a user defined SWI[x]?
-                    beq       KrnSystemCallServiceVector ; no, go get the option byte
+                    beq       KrnSysCallSvc ; no, go get the option byte
 GoUser              lbra      KrnJoin3  ; else call the users's routine
 
 * SWI2 vector entry
@@ -730,7 +730,7 @@ XSWI2               ldx       <D.Proc   ; get the current process descriptor
 *
 * Entry: X = The process descriptor pointer of process that made system call.
 *        U = The register stack pointer.
-KrnSystemCallServiceVector ldu       <D.SysSvc ; get the system call service vector
+KrnSysCallSvc       ldu       <D.SysSvc ; get the system call service vector
                     stu       <D.XSWI2  ; set the cross-SWI2 vector
                     ldu       <D.SysIRQ ; get the interrupt service vector
                     stu       <D.XIRQ   ; set the cross-IRQ vector
@@ -766,7 +766,7 @@ l@                  ldx       ,--y      ; get the source bytes
                     stx       R$PC,u    ; save updated the update program counter back
 * Execute the system call.
                     ldy       <D.UsrDis ; get the user dispatch table pointer
-                    lbsr      ExecSvcCall     ; go execute the op-code
+                    lbsr      ExecSvcCall ; go execute the op-code
                   IFNE    H6309   ; begin conditional assembly for H6309
                     aim       #^IntMasks,R$CC,u ; unmask interrupts in the caller's CC
                   ELSE
@@ -791,7 +791,7 @@ l@                  ldx       ,--y      ; get the source bytes
                     sta       <D.Quick  ; save quick return flag
                     beq       AllClr    ; if nothing changed, do full checks
 
-DoFull              bsr       CopySystemStackToUser ; move the stack frame back to user state
+DoFull              bsr       CpSysStkTo ; move the stack frame back to user state
                     lbra      KrnJoin   ; go back to the process
 
 * add ldu P$SP,x, etc...
@@ -825,7 +825,7 @@ l@                  lda       ,u+       ; get the source byte
 * Copy the register stack from user to system.
 *
 * Entry: U = The pointer to the register stack in the process descriptor.
-CopyUserStackToSystem           pshs      cc,x,y,u  ; preserve registers
+CpUsrStkTo          pshs      cc,x,y,u  ; preserve registers
                     ldb       P$Task,x  ; get the task #
                     ldx       P$SP,x    ; and the stack pointer
                     lbsr      FMoveLater ; calculate the block offset (only affects A&X)
@@ -835,7 +835,7 @@ CopyUserStackToSystem           pshs      cc,x,y,u  ; preserve registers
 * Copy the register stack from system to user.
 *
 * Entry: U = The pointer to the register stack in the process descriptor.
-CopySystemStackToUser          pshs      cc,x,y,u  ; preserve registers
+CpSysStkTo          pshs      cc,x,y,u  ; preserve registers
                     ldb       P$Task,x  ; get the task # of destination
                     ldx       P$SP,x    ; and the stack pointer
                     lbsr      FMoveLater ; calculate the block offset (only affects A&X)
@@ -882,9 +882,9 @@ SysCall             leau      ,s        ; get the pointer to the register stack
                     leax      1,x       ; move the PC to next position
                     stx       R$PC,u    ; save my caller's updated PC register
                     ldy       <D.SysDis ; get the system dispatch table pointer
-                    bsr       ExecSvcCall     ; execute the system call
+                    bsr       ExecSvcCall ; execute the system call
                     puls      a         ; restore the system state task number
-                    lbra      KrnSystemProcessDescriptor ; return to the process
+                    lbra      KrnSysProcDesc ; return to the process
 
 * Entry: X = system call vector to jump to
 Sys.Vec             jmp       ,x        ; execute the service call
@@ -899,13 +899,13 @@ ExecSvcCall
 * Execute I/O system calls.
                     ldx       IOEntry,y ; else get IOMan vector
 * Execute the system call.
-CallSvcVector          pshs      u         ; preserve the register stack pointer
+CallSvcVector       pshs      u         ; preserve the register stack pointer
                     jsr       [D.SysVec] ; perform a vectored system call
                     puls      u         ; restore the pointer
-UpdateCallerCC          tfr       cc,a      ; move CC to A for a stack update
-                    bcc       MergeCallerCC    ; go update it if no error from call
+UpdateCallerCC      tfr       cc,a      ; move CC to A for a stack update
+                    bcc       MergeCallerCC ; go update it if no error from call
                     stb       R$B,u     ; save the error code to caller's B
-MergeCallerCC              ldb       R$CC,u    ; get the caller's CC, R$CC = $00
+MergeCallerCC       ldb       R$CC,u    ; get the caller's CC, R$CC = $00
                   IFNE    H6309   ; begin conditional assembly for H6309
                     andd      #$2FD0    ; [A]=H,N,Z,V,C [B]=E,F,I
                     orr       b,a       merge them together
@@ -972,7 +972,7 @@ XIRQ                ldx       <D.Proc   ; get the current process pointer
                     ldd       <D.SysIRQ ; set the system IRQ routine to current
                     std       <D.XIRQ   ; store it in the cross-IRQ vector
                     jsr       [>D.SvcIRQ] ; execute interrupt service routine
-                    bcc       KrnShutDownInterrupts ; branch if the routine was serviced
+                    bcc       KrnShutDownInts ; branch if the routine was serviced
 
                     ldx       <D.Proc   ; get the current process pointer
                     ldb       P$Task,x  ; and the task of the process
@@ -985,7 +985,7 @@ XIRQ                ldx       <D.Proc   ; get the current process pointer
 
                     ora       #IntMasks ; disable its interrupts
                     lbsr      FLdabxCarry ; save it back
-KrnShutDownInterrupts orcc      #IntMasks ; shut down interrupts
+KrnShutDownInts     orcc      #IntMasks ; shut down interrupts
                     ldx       <D.Proc   ; get the current process pointer
                     tst       <D.QIRQ   ; was it a clock interrupt?
                     lbne      FNprocJoin ; if not, do a quick return
@@ -1004,8 +1004,8 @@ KrnActiveProcess    ldu       P$Queue,u ; get an active process pointer
                     cmpb      P$Prior,u ; do we bump this one?
                     blo       KrnTimeoutFlag ; branch if lower
 
-UseProcessStack          ldu       P$SP,x    ; get the stack pointer
-                    bra       FNprocCondemnedByDeadlySignal ; and branch
+UseProcessStack     ldu       P$SP,x    ; get the stack pointer
+                    bra       FNprocCndmnByDdly ; and branch
 
 KrnTimeoutFlag      anda      #^TimOut  ; clear the timeout flag
                     sta       P$State,x ; and save it to the process descriptor
@@ -1044,8 +1044,8 @@ DoneIRQ             bcc       KrnReturn ; no error on IRQ, so exit
 KrnReturn           rti                 ; return
 
 * Return from a system call.
-KrnForceSystemTaskSystem clra                ; force system task # to 0 (system)
-KrnSystemProcessDescriptor ldx       <D.SysPrc ; get the system process descriptor pointer
+KrnFrcSysTask       clra                ; force system task # to 0 (system)
+KrnSysProcDesc      ldx       <D.SysPrc ; get the system process descriptor pointer
                     lbsr      TstImg    ; check the image, and F$SetTsk (preserves A)
                     orcc      #IntMasks ; shut off interrupts
                     sta       <D.SSTskN ; save the task number for system state
@@ -1074,7 +1074,7 @@ KrnJoin2            equ       *         ; define assembler symbol KrnJoin2
                     tstb                ; is the stack at SWISTACK?
                     bne       MyRTI     ; no, we're doing a system-state rti
                   IFNE    H6309   ; begin conditional assembly for H6309
-                    ldf       #R$Size   ; e=0 from call to KrnWeGoingBackSameTask before
+                    ldf       #R$Size   ; e=0 from call to KrnWeGngBack before
                     ldu       #Where+SWIStack ; point to the stack
                     tfm       u+,y+     ; move the stack from the top of memory to user memory
                   ELSE
@@ -1105,7 +1105,7 @@ KrnJoin3            equ       *         ; define assembler symbol KrnJoin3
 * Flip to task 1 (used by WindInt to switch to GrfDrv) (pointed to
 *  by <D.Flip1). All registers are already preserved on stack for the RTI.
 S.Flip1             ldb       #2        ; get the tsk image entry number x2 for Grfdrv (task 1)
-                    bsr       KrnWeGoingBackSameTask ; copy over the DAT image
+                    bsr       KrnWeGngBack ; copy over the DAT image
                   IFNE    H6309   ; begin conditional assembly for H6309
                     oim       #$01,<D.TINIT ; switch the shadow register to task 1
                     lda       <D.TINIT  ; get a copy of the shadow register
@@ -1119,7 +1119,7 @@ S.Flip1             ldb       #2        ; get the tsk image entry number x2 for 
                     rti                 ; return
 
 * Set up the MMU in task 1, B=Task # to swap to, shifted left 1 bit.
-KrnWeGoingBackSameTask cmpb      <D.Task1N ; are we going back to the same task?
+KrnWeGngBack        cmpb      <D.Task1N ; are we going back to the same task?
                     beq       KrnReturn2 ; without the DAT image changing?
                     stb       <D.Task1N ; no, save current task in map type 1
 *[[[ Wildbits PORT

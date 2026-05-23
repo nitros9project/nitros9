@@ -53,11 +53,11 @@ FCmpnamTarget       pshs      d,x,y,u   ; preserve registers
                     ldu       4,s       ; get pointer to the second name's packet
                     pulu      x,y       ; get DAT pointer to Y and name pointer to X
                     lbsr      AdjBlk0   ; adjust X to block 0
-                    bra       FCmpnamMapBlockGrabName ; go compare the names
+                    bra       FCmpnamMapBlkGrab ; go compare the names
 
-FCmpnamSecondNamesPacket ldu       4,s       ; get pointer to second name's packet
+FCmpnamScndNmsPckt  ldu       4,s       ; get pointer to second name's packet
                     pulu      x,y       ; get DAT pointer to Y and name pointer to X
-FCmpnamMapBlockGrabName lbsr      LDAXY     ; map in the block & grab a byte from name
+FCmpnamMapBlkGrab   lbsr      LDAXY     ; map in the block & grab a byte from name
                     pshu      x,y       ; put updated DAT & name pointer back
                     pshs      a         ; save the character
                     ldu       3,s       ; pointer to the first name packet
@@ -70,7 +70,7 @@ FCmpnamMapBlockGrabName lbsr      LDAXY     ; map in the block & grab a byte fro
                     decb                ; decrement B
                     beq       FCmpnamCarry ; branch if zero is set to FCmpnamCarry
                     anda      #$DF      ; match?
-                    beq       FCmpnamSecondNamesPacket ; yes, check next character
+                    beq       FCmpnamScndNmsPckt ; yes, check next character
 FCmpnamCarry        comb                ; set carry
                     puls      d,x,y,u,pc ; restore d,x,y,u,pc from the stack
 

@@ -26,11 +26,11 @@
 FUnlink             ldd       R$U,u     ; get the pointer to the module to unlink
                     beq       okex@     ; branch if it's empty
                     ldx       <D.ModDir ; get the pointer to the first module in the module directory
-FUnlinkPassedModuleModuleDirectoryEntry cmpd      MD$MPtr,x ; compare the passed module address to the one in this module directory entry
+FUnlinkPssdModMod   cmpd      MD$MPtr,x ; compare the passed module address to the one in this module directory entry
                     beq       found@    ; if we've found it, branch
                     leax      MD$ESize,x ; else go to next entry
                     cmpx      <D.ModDir+2 ; are we at the end of the module directory?
-                    bcs       FUnlinkPassedModuleModuleDirectoryEntry ; if not, go check next entry for match
+                    bcs       FUnlinkPssdModMod ; if not, go check next entry for match
                     bra       okex@     ; else exit
 found@              lda       MD$Link,x ; get the module's link count
                     beq       dealloc@  ; branch if zero
@@ -141,9 +141,9 @@ FUnlinkTarget       ldx       2,s       ; get pointer to register stack
                     ldd       #M$Type   ; get offset to module type
                     os9       F$LDDDXY  ; get module type
                     cmpa      #FlMgr    ; is it a I/O module?
-                    blo       FUnlinkDeleteModuleMemoryModuleDirectory ; no, don't process for I/O
+                    blo       FUnlinkDltModMem ; no, don't process for I/O
                     os9       F$IODel   ; device still being used by somebody else?
-                    bcc       FUnlinkDeleteModuleMemoryModuleDirectory ; no, go on
+                    bcc       FUnlinkDltModMem ; no, go on
                     ldd       MD$Link,u ; put the link count back to where it was
                   IFNE    H6309   ; begin conditional assembly for H6309
                     incd                ; update processor state
@@ -151,9 +151,9 @@ FUnlinkTarget       ldx       2,s       ; get pointer to register stack
                     addd      #$0001    ; add #$0001 to D
                   ENDC
                     std       MD$Link,u ; store D at MD$Link,u
-                    bra       FUnlinkPurgeLocalData ; return error
+                    bra       FUnlinkPrgLclData ; return error
 * Clear module from memory
-FUnlinkDeleteModuleMemoryModuleDirectory bsr       DelMod    ; delete module from memory & module dir
+FUnlinkDltModMem    bsr       DelMod    ; delete module from memory & module dir
 FUnlinkBlock        ldb       ,s        ; get block
                     lslb                ; account for 2 bytes/entry
                     leay      b,y       ; point to block
@@ -167,13 +167,13 @@ FUnlinkBlock        ldb       ,s        ; get block
                     bne       FUnlinkErrors ; not zero, return to user
 * Clear module blocks in process DAT image
                     ldd       MD$MBSiz,u ; get block size
-                    bsr       FUnlinkRoundUpNearestBlock ; calculate # blocks to delete
+                    bsr       FUnlinkRndUpNear ; calculate # blocks to delete
                     ldx       #DAT.Free ; get DAT free marker
 FUnlinkDATImage     stx       ,y++      ; save it in DAT image
                     deca                ; done?
                     bne       FUnlinkDATImage ; no, keep going
 FUnlinkErrors       clrb                ; clear errors
-FUnlinkPurgeLocalData leas      2,s       ; purge local data
+FUnlinkPrgLclData   leas      2,s       ; purge local data
                     puls      u,pc      ; restore & return
 
 * Delete module from module directory & from memory
@@ -194,7 +194,7 @@ FUnlinkModule       leax      MD$ESize,x ; move to next module
                     bcs       FUnlinkOffsetDAT ; no, keep going
                     ldx       <D.BlkMap ; get pointer to block map
                     ldd       MD$MBSiz,u ; get memory block size
-                    bsr       FUnlinkRoundUpNearestBlock ; calculate # blocks to clear
+                    bsr       FUnlinkRndUpNear ; calculate # blocks to clear
                   IFNE    H6309   ; begin conditional assembly for H6309
                     pshs      u         ; preserve U (faster than original Y below)
                     clrb                ; setup for faster block in use clears
@@ -234,7 +234,7 @@ FUnlinkModuleEntry2 leax      MD$ESize,x ; point to next module entry
                     blo       FUnlinkMatch ; no, keep looking
 FUnlinkReturn       rts                 ; return
 
-FUnlinkRoundUpNearestBlock addd      #$1FFF    ; round up to nearest block
+FUnlinkRndUpNear    addd      #$1FFF    ; round up to nearest block
                     lsra                ; calculate block # within 64k workspace
                     lsra                ; shift or rotate and update condition codes
                     lsra                ; shift or rotate and update condition codes

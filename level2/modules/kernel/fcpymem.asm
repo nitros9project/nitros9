@@ -48,7 +48,7 @@ FCpymemJoin         equ       *         ; define assembler symbol FCpymemJoin
 
                     ldu       2,s       ; get back register stack pointer
                     lbsr      FAlltskTarget2 ; short cut OS9 F$ResTsk
-                    bcs       FCpymemPurgeOurBuffer ; if error, deallocate our stack & exit with error
+                    bcs       FCpymemPrgOurBffr ; if error, deallocate our stack & exit with error
                     tfr       b,e       ; new temp task # into E
                     lslb                ; multiply by 2 for 2 byte entries
                     ldx       <D.TskIPt ; get ptr to task image table
@@ -67,7 +67,7 @@ FCpymemJoin         equ       *         ; define assembler symbol FCpymemJoin
 *         bcs   L09FB        If error, purge stack & return with error code
                     puls      b         ; get back new task #
                     lbsr      FAlltskTarget3 ; short cut OS9 F$RelTsk
-FCpymemPurgeOurBuffer leas      <$14,s    ; purge our stack buffer & return
+FCpymemPrgOurBffr   leas      <$14,s    ; purge our stack buffer & return
                     rts                 ; return to caller
 
 FCpymemErrorExit    clrb                ; no error & exit
@@ -103,7 +103,7 @@ FCpymemJoin         clra                ; set offset to offset to 0
                     bne       FCpymemJoin ; branch if zero is clear to FCpymemJoin
                     ldu       4,s       ; get callers register stack pr back
                     lbsr      FAlltskTarget2 ; short cut os9 F$ResTsk (returns in B, destroys A)
-                    bcs       FCpymemPurgeOurBuffer ; if error, deallocate our stack & exit with error
+                    bcs       FCpymemPrgOurBffr ; if error, deallocate our stack & exit with error
                     stb       ,s        ; save copy of new temp task # (overtop temp ctr)
 * 0,s   =new temp task #
 * 1,s   =task # of caller
@@ -126,7 +126,7 @@ FCpymemJoin         clra                ; set offset to offset to 0
                     puls      b         ; get back temp task #
                     lbsr      FAlltskTarget3 ; shortcut OS9 F$RelTsk
                     leas      -2,s      ; adjust stack for fall thru
-FCpymemPurgeOurBuffer leas      $16,s     ; purge our stack buffer ptr & return
+FCpymemPrgOurBffr   leas      $16,s     ; purge our stack buffer ptr & return
                     rts                 ; return to caller
 
 FCpymemErrorExit    clrb                ; clear B

@@ -20,30 +20,30 @@ FNProc
                   ENDC
                     fcb       $8C       ; skip the next 2 bytes
 
-FNprocReEnableIrqsWait cwai      #^IntMasks ; re-enable IRQ's and wait for one
-FNprocShutOffInterruptsAgain orcc      #IntMasks ; shut off interrupts again
+FNprocReEnblIrqs    cwai      #^IntMasks ; re-enable IRQ's and wait for one
+FNprocShutOffInts   orcc      #IntMasks ; shut off interrupts again
                     lda       #Suspend  ; get suspend suspend state flag
                     ldx       #D.AProcQ-P$Queue ; for start of loop, setup to point to current process
 
 * Loop to find next active process that is not Suspended
-FNprocPreviousLinkProcessDesc leay      ,x        ; point y to previous link (process dsc. ptr)
+FNprocPrvsLinkProc  leay      ,x        ; point y to previous link (process dsc. ptr)
                     ldx       P$Queue,y ; get process dsc. ptr for next active process
-                    beq       FNprocReEnableIrqsWait ; none, allow any pending IRQ thru & try again
+                    beq       FNprocReEnblIrqs ; none, allow any pending IRQ thru & try again
                     bita      P$State,x ; there is one, is it Suspended?
-                    bne       FNprocPreviousLinkProcessDesc ; yes, skip it & try next one
+                    bne       FNprocPrvsLinkProc ; yes, skip it & try next one
 
 * Found a process in line ready to be started
                     ldd       P$Queue,x ; get next process dsc. ptr in line after found one
                     std       P$Queue,y ; save the next one in line in previous' next ptr
                     stx       <D.Proc   ; make new process dsc. the current one
-                    lbsr      FAlltskAlreadyHaveTask ; go check or make a task # for the found process
+                    lbsr      FAlltskHasHaveTask ; go check or make a task # for the found process
                     bcs       KrnActivateProcess ; couldn't get one, go to next process in line
                     lda       <D.TSlice ; reload # ticks this process can run
                     sta       <D.Slice  ; save as new tick counter for process
                     ldu       P$SP,x    ; get the process stack pointer
                     lda       P$State,x ; get it's state
-                    lbmi      KrnForceSystemTaskSystem ; if in System State, switch to system task (0)
-FNprocCondemnedByDeadlySignal bita      #Condem   ; was it condemned by a deadly signal?
+                    lbmi      KrnFrcSysTask ; if in System State, switch to system task (0)
+FNprocCndmnByDdly   bita      #Condem   ; was it condemned by a deadly signal?
                     bne       FNprocJoin2 ; yes, go exit with Error=the signal code #
                     lbsr      TstImg    ; do a F$SetTsk if the ImgChg flag is set
 FNprocSignals       ldb       <P$Signal,x ; any signals?
@@ -52,7 +52,7 @@ FNprocSignals       ldb       <P$Signal,x ; any signals?
                     beq       FNprocSignal ; yes, go wake it up
                     leas      -R$Size,s ; make a register buffer on stack
                     leau      ,s        ; point to it
-                    lbsr      CopyUserStackToSystem ; copy the stack from process to our copy of it
+                    lbsr      CpUsrStkTo ; copy the stack from process to our copy of it
                     lda       <P$Signal,x ; get last signal
                     sta       R$B,u     ; save it to process' B
 
@@ -64,7 +64,7 @@ FNprocSignals       ldb       <P$Signal,x ; any signals?
                     ldd       P$SP,x    ; get it's stack pointer
                     subd      #R$Size   ; take off register stack
                     std       P$SP,x    ; save updated SP
-                    lbsr      CopySystemStackToUser ; copy modified stack back overtop process' stack
+                    lbsr      CpSysStkTo ; copy modified stack back overtop process' stack
                     leas      R$Size,s  ; purge temporary stack
 FNprocSignal        clr       <P$Signal,x ; clear the signal
 
@@ -78,7 +78,7 @@ FNprocJoin          equ       *         ; define assembler symbol FNprocJoin
                     stb       <D.Quick  ; store B at <D.Quick
                   ENDC
 BackTo1             equ       *         ; define assembler symbol BackTo1
-FNprocUsersSystemCallService ldu       <D.UsrSvc ; get current User's system call service routine ptr
+FNprocUsrsSysCall   ldu       <D.UsrSvc ; get current User's system call service routine ptr
                     stu       <D.XSWI2  ; save as SWI2 service routine ptr
                     ldu       <D.UsrIRQ ; get IRQ entry point for user state
                     stu       <D.XIRQ   ; save as IRQ service routine ptr
@@ -86,7 +86,7 @@ FNprocUsersSystemCallService ldu       <D.UsrSvc ; get current User's system cal
                     ldb       P$Task,x  ; get task number
                     lslb                ; 2 bytes per entry in D.TskIpt
                     ldy       P$SP,x    ; get stack pointer
-                    lbsr      KrnWeGoingBackSameTask ; re-map the DAT image, if necessary
+                    lbsr      KrnWeGngBack ; re-map the DAT image, if necessary
 
                     ldb       <D.Quick  ; get quick return flag
                     lbra      KrnJoin2  ; go switch GIME over to new process & run

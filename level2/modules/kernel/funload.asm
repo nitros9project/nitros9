@@ -34,7 +34,7 @@ FUnLoad             pshs      u         ; preserve register stack pointer
 
 * Link count is zero, check if module can be removed from memory
 FUnloadModule       cmpa      #FlMgr    ; is it a I/O module?
-                    blo       FUnloadDeleteModuleMemory ; no, remove module from memory
+                    blo       FUnloadDltModMem ; no, remove module from memory
 
 * Special handling for I/O module deletion
                     clra                ; clear A
@@ -42,7 +42,7 @@ FUnloadModule       cmpa      #FlMgr    ; is it a I/O module?
                     ldy       <D.SysDAT ; get pointer to system DAT image
 FUnloadTarget       adda      #2        ; add #2 to A
                     cmpa      #DAT.ImSz ; done entire DAT?
-                    bcc       FUnloadDeleteModuleMemory ; yes, delete the module from memory
+                    bcc       FUnloadDltModMem ; yes, delete the module from memory
                     cmpx      a,y       ; find block?
                     bne       FUnloadTarget ; no, keep looking
                     lsla                ; multiply by 16 to calculate the offset
@@ -53,7 +53,7 @@ FUnloadTarget       adda      #2        ; add #2 to A
                     addd      MD$MPtr,u ; add in the pointer
                     tfr       d,x       ; copy it to X
                     os9       F$IODel   ; delete the device from memory
-                    bcc       FUnloadDeleteModuleMemory ; no error, skip ahead
+                    bcc       FUnloadDltModMem ; no error, skip ahead
 
                   IFNE    H6309   ; begin conditional assembly for H6309
                     ldw       MD$Link,u ; put link count back
@@ -67,6 +67,6 @@ FUnloadTarget       adda      #2        ; add #2 to A
                     rts                 ; return with error
 
 * Delete module from memory
-FUnloadDeleteModuleMemory lbsr      DelMod    ; delete module from memory
+FUnloadDltModMem    lbsr      DelMod    ; delete module from memory
 FUnloadErrors       clrb                ; clear errors
 FUnloadReturn       rts                 ; return

@@ -116,7 +116,7 @@ FSleep              pshs      cc        ; preserve interupt status
                     beq       SkpSleep  ; skip sleep call
                     orcc      #IntMasks ; disable interupts
                     lda       P$Signal,x ; get pending signal
-                    beq       FSleepContainsSleepTickCount ; none there, skip ahead
+                    beq       FSleepHasSlpTick ; none there, skip ahead
                     deca                ; wakeup signal?
                     bne       WakeFromSignal ; no, skip ahead
                     sta       P$Signal,x ; clear pending signal so we can wake up process
@@ -131,7 +131,7 @@ WakeFromSignal
 FSleepTarget        puls      cc        ; restore cc from the stack
                     os9       F$AProc   ; activate the process
                     bra       FSleepTarget4 ; branch unconditionally to FSleepTarget4
-FSleepContainsSleepTickCount ldd       R$X,u     ; get callers X (contains sleep tick count)
+FSleepHasSlpTick    ldd       R$X,u     ; get callers X (contains sleep tick count)
                     beq       FSleepDsprocqPqueue ; done, wake it up
                   IFNE    H6309   ; begin conditional assembly for H6309
                     decd      subtract  1 from tick count

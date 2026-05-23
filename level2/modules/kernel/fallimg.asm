@@ -26,28 +26,28 @@ FAllimgTarget       pshs      d,x,y,u   ; save d,x,y,u on the stack
                     pshs      d,x,y,u   ; save regs
 FAllimgDATBlock     ldd       ,y++      ; get DAT for current block
                     cmpd      #DAT.Free ; is it free?
-                    beq       FAllimgDropTotalBlocksNeeded ; yes, skip ahead
+                    beq       FAllimgDropTtlBlks ; yes, skip ahead
                     lda       d,u       ; no, get the memory block block type
                     cmpa      #RAMinUse ; rAM already in use?
                     puls      d         ; get # of blocks to allocate back
-                    bne       FAllimgWeCouldntAllocateMemoryFull ; not RAM in use, skip ahead
+                    bne       FAllimgWeNoAlloc ; not RAM in use, skip ahead
                   IFNE    H6309   ; begin conditional assembly for H6309
                     decd      ;         drop                # of blocks needed
                   ELSE
                     subd      #$0001    ; drop # of blocks needed
                   ENDC
                     pshs      d         ; save as new # of blocks still needed
-FAllimgDropTotalBlocksNeeded leax      -1,x      ; drop total # of blocks needed
+FAllimgDropTtlBlks  leax      -1,x      ; drop total # of blocks needed
                     bne       FAllimgDATBlock ; still more, keep checking
                     ldx       ,s++      ; get # of blocks still needed
                     beq       FAllimgSome ; none, skip ahead
-FAllimgFlagMMUBlockFullMemory lda       ,u+       ; get flag byte for next MMU block in full memory map
-                    bne       FAllimgHaveWeHitEndFull ; not free, skip ahead
+FAllimgFlagMMUBlk   lda       ,u+       ; get flag byte for next MMU block in full memory map
+                    bne       FAllimgHaveWeHit ; not free, skip ahead
                     leax      -1,x      ; free, drop total # of blocks needed
                     beq       FAllimgSome ; no more left, skip ahead
-FAllimgHaveWeHitEndFull cmpu      <D.BlkMap+2 ; have we hit the end of the full memory map?
-                    blo       FAllimgFlagMMUBlockFullMemory ; no, keep checking
-FAllimgWeCouldntAllocateMemoryFull ldb       #E$MemFul ; yes, we couldn't allocate, mem full error
+FAllimgHaveWeHit    cmpu      <D.BlkMap+2 ; have we hit the end of the full memory map?
+                    blo       FAllimgFlagMMUBlk ; no, keep checking
+FAllimgWeNoAlloc    ldb       #E$MemFul ; yes, we couldn't allocate, mem full error
                     leas      6,s       ; eat stack
                     stb       1,s       ; save error # on stack to pull off as B
                     comb                ; update processor state
@@ -55,17 +55,17 @@ FAllimgWeCouldntAllocateMemoryFull ldb       #E$MemFul ; yes, we couldn't alloca
 
 * Found enough RAM for allocation request
 FAllimgSome         puls      x,y,u     ; restore some regs
-FAllimgDATImageBlock ldd       ,y++      ; get DAT image for current 8K block
+FAllimgDATImgBlk    ldd       ,y++      ; get DAT image for current 8K block
                     cmpd      #DAT.Free ; is it marked as free?
-                    bne       FAllimgDecBlocksLeftAssign ; no, skip ahead
-FAllimgMemoryMapFlagMMUBlock lda       ,u+       ; yes, get memory map flag for MMU block
-                    bne       FAllimgMemoryMapFlagMMUBlock ; already allocated in some way, look for free one
+                    bne       FAllimgDecBlksLeft ; no, skip ahead
+FAllimgMemMapFlag   lda       ,u+       ; yes, get memory map flag for MMU block
+                    bne       FAllimgMemMapFlag ; already allocated in some way, look for free one
                     inc       ,-u       ; was unused; set to RAMinUse
                     tfr       u,d       ; move ptr to just allocated block to D
                     subd      <D.BlkMap ; subtract start of main memory map ptr
                     std       -2,y      ; save MMU block # into DAT block
-FAllimgDecBlocksLeftAssign leax      -1,x      ; dec # blocks left to assign
-                    bne       FAllimgDATImageBlock ; keep going until all are allocated
+FAllimgDecBlksLeft  leax      -1,x      ; dec # blocks left to assign
+                    bne       FAllimgDATImgBlk ; keep going until all are allocated
                     ldx       2,s       ; get process descriptor ptr back
                   IFNE    H6309   ; begin conditional assembly for H6309
                     oim       #ImgChg,P$State,x ; flag DAT IMG change for system

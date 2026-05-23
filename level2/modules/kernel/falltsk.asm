@@ -10,7 +10,7 @@
 * Error:  CC = C bit set; B = error code
 *
 FAllTsk             ldx       R$X,u     ; get pointer to process descriptor
-FAlltskAlreadyHaveTask ldb       P$Task,x  ; already have a task #?
+FAlltskHasHaveTask  ldb       P$Task,x  ; already have a task #?
                     bne       FAlltskErrors ; yes, return
                     bsr       FAlltskTarget2 ; find a free task
                     bcs       FAlltskReturn ; error, couldn't get one, return
@@ -31,7 +31,7 @@ FAlltskReturn       rts                 ; return
 * Error:  CC = C bit set; B = error code
 *
 FDelTsk             ldx       R$X,u     ; load X from R$X,u
-FAlltskGrabTaskNumber ldb       P$Task,x  ; grab the current task number
+FAlltskGrabTaskNum  ldb       P$Task,x  ; grab the current task number
                     beq       FAlltskErrors ; if system (or released), exit
                     clr       P$Task,x  ; force the task number to be zero
                     bra       FAlltskTarget3 ; do a F$RelTsk
@@ -101,16 +101,16 @@ FAlltskReturn2      rts                 ; return to caller
 FAlltskTarget2      pshs      x         ; preserve X
                     ldb       #$02      ; get starting task # (skip System/Grfdrv)
                     ldx       <D.Tasks  ; get task table pointer
-FAlltskTaskAllocated lda       b,x       ; task allocated?
-                    beq       FAlltskFlagTaskUsedCycleFaster ; no, allocate it & return
+FAlltskTaskAlloc    lda       b,x       ; task allocated?
+                    beq       FAlltskFlagTaskUsed ; no, allocate it & return
                     incb                ; move to next task
                     cmpb      #$20      ; end of task list?
-                    bne       FAlltskTaskAllocated ; no, keep looking
+                    bne       FAlltskTaskAlloc ; no, keep looking
                     comb                ; set carry for error
                     ldb       #E$NoTask ; get error code
                     puls      x,pc      ; restore x,pc from the stack
 
-FAlltskFlagTaskUsedCycleFaster stb       b,x       ; flag task used (1 cycle faster than inc)
+FAlltskFlagTaskUsed stb       b,x       ; flag task used (1 cycle faster than inc)
                     clra                ; clear carry
 FAlltskReturn3      puls      x,pc      ; restore & return
 
@@ -140,15 +140,15 @@ FAlltskReturn4      puls      b,x,pc    ; restore regs & return
 *   Possible, move ALL software-clock code into OS9p2, and therefore
 * have it auto-initialize?  All hardware clocks would then be called
 * just once a minute.
-FAlltskSleepingProcessQueue ldx       <D.SProcQ ; get sleeping process Queue ptr
-                    beq       FAlltskTimeRemainingProcess ; none (no one sleeping), so exit
+FAlltskSleepProcQ   ldx       <D.SProcQ ; get sleeping process Queue ptr
+                    beq       FAlltskTimeRmnng ; none (no one sleeping), so exit
                   IFNE    H6309   ; begin conditional assembly for H6309
                     tim       #TimSleep,P$State,x ; is it a timed sleep?
                   ELSE
                     ldb       P$State,x ; is it a timed sleep?
                     bitb      #TimSleep ; test bits in B against #TimSleep
                   ENDC
-                    beq       FAlltskTimeRemainingProcess ; no, exit: waiting for signal/interrupt
+                    beq       FAlltskTimeRmnng ; no, exit: waiting for signal/interrupt
                     ldu       P$SP,x    ; yes, get his stack pointer
                     ldd       R$X,u     ; get his sleep tick count
                   IFNE    H6309   ; begin conditional assembly for H6309
@@ -157,24 +157,24 @@ FAlltskSleepingProcessQueue ldx       <D.SProcQ ; get sleeping process Queue ptr
                     subd      #$0001    ; subtract #$0001 from D
                   ENDC
                     std       R$X,u     ; save it back
-                    bne       FAlltskTimeRemainingProcess ; still more ticks to go, so exit
+                    bne       FAlltskTimeRmnng ; still more ticks to go, so exit
 * Process needs to wake up, update queue pointers
 FAlltskProcessQueue ldu       P$Queue,x ; get next process in Queue
                     bsr       FAprocTarget ; activate it
                     leax      ,u        ; point to new process
-                    beq       FAlltskNewSleepingProcess ; don't exist, go on
+                    beq       FAlltskNewSleepProc ; don't exist, go on
                   IFNE    H6309   ; begin conditional assembly for H6309
                     tim       #TimSleep,P$State,x ; is it in a timed sleep?
                   ELSE
                     ldb       P$State,x ; is it a timed sleep?
                     bitb      #TimSleep ; test bits in B against #TimSleep
                   ENDC
-                    beq       FAlltskNewSleepingProcess ; no, go update process table
+                    beq       FAlltskNewSleepProc ; no, go update process table
                     ldu       P$SP,x    ; get it's stack pointer
                     ldd       R$X,u     ; any sleep time left?
                     beq       FAlltskProcessQueue ; no, go activate next process in queue
-FAlltskNewSleepingProcess stx       <D.SProcQ ; store new sleeping process pointer
-FAlltskTimeRemainingProcess dec       <D.Slice  ; any time remaining on process?
+FAlltskNewSleepProc stx       <D.SProcQ ; store new sleeping process pointer
+FAlltskTimeRmnng    dec       <D.Slice  ; any time remaining on process?
                     bne       FAlltskTarget4 ; yes, exit
                     inc       <D.Slice  ; reset slice count
                     ldx       <D.Proc   ; get current process pointer
