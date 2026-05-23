@@ -5,6 +5,7 @@ include ../../rules.mak
 RECIPE ?= coco3
 -include recipe.mak
 vpath %.asm $(LEVEL1)/coco1/modules
+vpath %.asm $(3RDPARTY)/packages/basic09
 
 ifeq ($(CPU),6309)
 AFLAGS += -DH6309=1
@@ -45,6 +46,8 @@ DSKIMAGE ?= l$(LEVEL)_$(RECIPE).dsk
 OS9FORMAT_CMD ?= $(OS9FORMAT_DS40)
 
 AFLAGS += -I.
+AFLAGS += -I$(3RDPARTY)/packages/basic09
+AFLAGS += -I$(L2PD)/defs
 AFLAGS += -I$(L2MD)/kernel -I$(L2PMD)
 AFLAGS += -I$(L1MD)/kernel -I$(L1MD)
 AFLAGS += $(AFLAGS_EXTRA)
@@ -77,6 +80,7 @@ UTILPAK1 = attr build copy del deldir dir display list makdir mdir merge mfree p
 CMDS_BASE ?= $(STDCMDS) grfdrv shell utilpak1
 CMDS += $(CMDS_BASE) \
 	$(CMDS_EXTRA)
+BASIC09_SAMPLES ?=
 
 all: libs $(DSKIMAGE)
 
@@ -89,7 +93,7 @@ kernelfile: $(addprefix $(MODDIR)/,$(KERNEL_TRACK))
 bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
 
-$(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP)
+$(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(BASIC09_SAMPLES)
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9GEN) $@ -b=bootfile -t=$(KERNELFILE)
@@ -98,6 +102,11 @@ $(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP)
 	$(MAKDIR) $@,DEFS
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
+ifneq ($(strip $(BASIC09_SAMPLES)),)
+	$(MAKDIR) $@,BASIC09
+	$(CPL) $(BASIC09_SAMPLES) $@,BASIC09
+	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(BASIC09_SAMPLES)),$@,BASIC09/$(file))
+endif
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 
@@ -124,6 +133,9 @@ $(MODDIR)/xmode: xmode.asm | $(MODDIR)
 
 $(MODDIR)/tmode: xmode.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DTMODE=1
+
+$(MODDIR)/runb: basic09.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DINCLUDED="RUNTIM+MATHPAK"
 
 $(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
 	$(MERGE) $(addprefix $(MODDIR)/,$(SHELLMODS)) >$@
