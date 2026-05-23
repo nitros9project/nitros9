@@ -44,7 +44,6 @@ runb_6309: runb.asm
 runb_6809: runb.asm
 	$(AS) $(ASOUT)$@ $< $(M6809)
 
-
 clean: dskclean
 	$(RM) $(ALLOBJS) *.list *.map
 
