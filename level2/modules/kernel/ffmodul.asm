@@ -18,7 +18,7 @@ FFModul             pshs      u         ; preserve register stack pointer
                     lda       R$A,u     ; get module type
                     ldx       R$X,u     ; get pointer to name
                     ldy       R$Y,u     ; get pointer to DAT image of name (from caller)
-                    bsr       L068D     ; go find it
+                    bsr       FFmodulJoin ; go find it
                     puls      y         ; restore register stack pointer
                     std       R$D,y     ; save type & revision
                     stx       R$X,y     ; save updated name pointer
@@ -29,20 +29,20 @@ FFModul             pshs      u         ; preserve register stack pointer
 * Entry: A=Module type
 *        X=Pointer to module name
 *        Y=DAT image pointer for module name
-L068D               equ       *         ; define assembler symbol L068D
+FFmodulJoin         equ       *         ; define assembler symbol FFmodulJoin
                   IFNE    H6309   ; begin conditional assembly for H6309
                     tfr       0,u       ; init directory pointer to nothing
                   ELSE
                     ldu       #$0000    ; load U from #$0000
                   ENDC
                     pshs      d,u       ; preserve (Why B?)
-                    bsr       L0712     ; go find 1st char of module name requested
+                    bsr       FFmodulDATImage ; go find 1st char of module name requested
                     cmpa      #PDELIM   ; is it a '/'?
-                    beq       L070B     ; yes, exit with error
+                    beq       FFmodulError ; yes, exit with error
                     lbsr      ParseNam  ; parse the name to find the end & length
-                    bcs       L070E     ; error (illegal name), exit
+                    bcs       FFmodulError2 ; error (illegal name), exit
                     ldu       <D.ModEnd ; get module directory end pointer
-                    bra       L0700     ; start looking for it
+                    bra       FFmodulBackEntryModuleTable ; start looking for it
 
 * Main module directory search
 * Entry: A=Module type
@@ -50,14 +50,14 @@ L068D               equ       *         ; define assembler symbol L068D
 *        X=Logical address of name in Caller's 64k space
 *        Y=DAT image of caller (for module name)
 *        U=Module directory Entry ptr (current module being checked)
-L06A1               pshs      d,x,y     ; preserve Mod type/nm len, Log. Addr, DAT Img ptr
+FFmodulModuleTypeNmLenLog pshs      d,x,y     ; preserve Mod type/nm len, Log. Addr, DAT Img ptr
                     pshs      x,y       ; preserve Log. addr & DAT Img ptr
                     ldy       MD$MPDAT,u ; does the module have a DAT Image ptr?
-                    beq       L06F6     ; no, skip module
+                    beq       FFmodulPurge ; no, skip module
                     ldx       MD$MPtr,u ; get module pointer
                     pshs      x,y       ; save module ptr & DAT Img ptr of module
                     ldd       #M$Name   ; # bytes to go in to get module name ptr
-                    lbsr      L0B02     ; go get the module name offset from module start (direct F$LDDXY call)
+                    lbsr      FLdTarget ; go get the module name offset from module start (direct F$LDDXY call)
                   IFNE    H6309   ; begin conditional assembly for H6309
                     addr      d,x       ; add it to module start
                   ELSE
@@ -81,48 +81,48 @@ L06A1               pshs      d,x,y     ; preserve Mod type/nm len, Log. Addr, D
 * 12,s  = Module type looking for
 * 13,s  = ??? (B from entry)
 * 14-15,s = Module directory ptr (inited to 0)
-                    lbsr      L07DE     ; compare the names (direct call to F$CmpNam)
+                    lbsr      FCmpnamTarget ; compare the names (direct call to F$CmpNam)
                     leas      4,s       ; purge stack
                     puls      y,x       ; restore module pointer & DAT image
                     leas      4,s       ; purge stack
-                    bcs       L06FE     ; name didn't match, skip ahead
+                    bcs       FFmodulPointers ; name didn't match, skip ahead
                     ldd       #M$Type   ; offset ptr to module type
-                    lbsr      L0B02     ; get it
+                    lbsr      FLdTarget ; get it
                     sta       ,s        ; save high byte
                     stb       $07,s     ; and low byte
                     lda       $06,s     ; get type/language we are looking for
-                    beq       L06ED     ; 0 means don't care on either, so skip ahead
+                    beq       FFmodulFoundMatch ; 0 means don't care on either, so skip ahead
                     anda      #TypeMask ; keep just type
-                    beq       L06E1     ; type 0 means don't care, skip ahead
+                    beq       FFmodulTypeLanguageWeLookingAgain ; type 0 means don't care, skip ahead
                     eora      ,s        ; exclusive-OR A with ,s
                     anda      #TypeMask ; does it match?
-                    bne       L06FE     ; no, check next module
-L06E1               lda       $06,s     ; get type/language we are looking for again
+                    bne       FFmodulPointers ; no, check next module
+FFmodulTypeLanguageWeLookingAgain lda       $06,s     ; get type/language we are looking for again
                     anda      #LangMask ; keep just Language
-                    beq       L06ED     ; 0=don't care, skip ahead
+                    beq       FFmodulFoundMatch ; 0=don't care, skip ahead
                     eora      ,s        ; does it match language we are looking for?
                     anda      #LangMask ; mask A with #LangMask
-                    bne       L06FE     ; no, check next module
-L06ED               puls      y,x,d     ; found match, restore regs
+                    bne       FFmodulPointers ; no, check next module
+FFmodulFoundMatch   puls      y,x,d     ; found match, restore regs
                     abx                 ; update processor state
                     clrb                ; clear B
                     ldb       1,s       ; load B from 1,s
                     leas      4,s       ; purge stack and return no error
                     rts                 ; return to caller
 
-L06F6               leas      4,s       ; purge stack
+FFmodulPurge        leas      4,s       ; purge stack
                     ldd       8,s       ; do we have a directory pointer?
-                    bne       L06FE     ; yes, skip ahead
+                    bne       FFmodulPointers ; yes, skip ahead
                     stu       8,s       ; save directory entry pointer
-L06FE               puls      d,x,y     ; restore pointers
-L0700               leau      -MD$ESize,u ; move back 1 entry in module table
+FFmodulPointers     puls      d,x,y     ; restore pointers
+FFmodulBackEntryModuleTable leau      -MD$ESize,u ; move back 1 entry in module table
                     cmpu      <D.ModDir ; at the beginning?
-                    bhs       L06A1     ; no, check entry
+                    bhs       FFmodulModuleTypeNmLenLog ; no, check entry
                     ldb       #E$MNF    ; get error code (module not found)
                     fcb       $8C       ; skip 2 bytes
-L070B               ldb       #E$BNam   ; get error code
+FFmodulError        ldb       #E$BNam   ; get error code
                     coma                ; set carry for error
-L070E               stb       1,s       ; save error code for caller
+FFmodulError2       stb       1,s       ; save error code for caller
                     puls      d,u,pc    ; return
 
 * Skip spaces in name string & return first character of name
@@ -131,14 +131,14 @@ L070E               stb       1,s       ; save error code for caller
 * Exit : A=First character of name
 *        B=DAT image block offset
 *        X=Logical address of name
-L0712               pshs      y         ; preserve DAT image pointer
-L0714               lbsr      AdjBlk0   ; adjust pointer to offset for mapping in
-                    lbsr      L0AC8     ; map in block
+FFmodulDATImage     pshs      y         ; preserve DAT image pointer
+FFmodulAdjustOffsetMapping lbsr      AdjBlk0   ; adjust pointer to offset for mapping in
+                    lbsr      FLdMMUBlockData ; map in block
                     leax      1,x       ; compute 1,x into X
                     cmpa      #C$SPAC   ; space?
-                    beq       L0714     ; yes, eat it
+                    beq       FFmodulAdjustOffsetMapping ; yes, eat it
                     leax      -1,x      ; move back to first character
-L0720               pshs      d,cc      ; preserve char
+FFmodulChar         pshs      d,cc      ; preserve char
                     tfr       y,d       ; copy DAT pointer to D
                     subd      3,s       ; calculate DAT image offset
                     asrb                ; divide it by 2

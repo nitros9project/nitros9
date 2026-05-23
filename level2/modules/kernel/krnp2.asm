@@ -77,7 +77,7 @@
 ** If Network I/O ptrs are disabled, F$Fork runs 72 cycles faster
 Network             equ       0         ; set to 1 to enable network I/O ptrs
 
-                  ifp1
+                  IFP1
                     use       defsfile  ; include source file defsfile
                     use       cocovtio.d ; include source file cocovtio.d
                   ENDC
@@ -186,26 +186,26 @@ krnp2               lda       #'2       ; debug: signal that we made it into krn
                     stx       <D.SWI    ; store X at <D.SWI
                   ENDC
 * Change to default directory
-L003A               ldu       <D.Init   ; get init module pointer
+Krnp2InitModule     ldu       <D.Init   ; get init module pointer
                     ldd       SysStr,u  ; get pointer to system device name (usually '/DD')
-                    beq       L004F     ; don't exist, open std device
+                    beq       Krnp2InitModule2 ; don't exist, open std device
                     leax      d,u       ; point to name
                     lda       #'x       ; debug: signal that we tried chd'ing
                     jsr       <D.BtBug  ; call routine at <D.BtBug
                     lda       #(EXEC.+READ.) ; get file mode
                     os9       I$ChgDir  ; change to it
-                    bcc       L004F     ; went ok, go on
+                    bcc       Krnp2InitModule2 ; went ok, go on
                     os9       F$Boot    ; try & load boot file
-                    bcc       L003A     ; go try again
-L004F               ldu       <D.Init   ; get init module pointer
+                    bcc       Krnp2InitModule ; go try again
+Krnp2InitModule2    ldu       <D.Init   ; get init module pointer
                     ldd       <StdStr,u ; point to default device (usually '/Term')
-                    beq       L0077     ; don't exist go do OS9P3
+                    beq       Krnp2Krnp3 ; don't exist go do OS9P3
                     leax      d,u       ; point to it
                     lda       #'o       ; debug: signal that we tried opening output window
                     jsr       <D.BtBug  ; call routine at <D.BtBug
                     lda       #UPDAT.   ; get file mode
                     os9       I$Open    ; open path to it
-                    bcc       L0066     ; went ok, save path #
+                    bcc       Krnp2Process ; went ok, save path #
 * LCB - not sure why this is remarked out and replaced with NOP's?
 *         os9    F$Boot      try & re-boot
 * nop
@@ -214,21 +214,21 @@ L004F               ldu       <D.Init   ; get init module pointer
 *         bcc    L004F       go try again
 * nop
 * nop
-                    bra       L009B     ; crash machine
+                    bra       Krnp2ControlDcrash ; crash machine
 
-L0066               ldx       <D.Proc   ; get current process pointer
+Krnp2Process        ldx       <D.Proc   ; get current process pointer
                     sta       <P$Path,x ; save stdin path
                     os9       I$Dup     ; dupe it
                     sta       <P$Path+1,x ; save stdout path
                     os9       I$Dup     ; dupe it again
                     sta       <P$Path+2,x ; save stderr path
-L0077               leax      <L0096,pc ; point to 'krnp3'
+Krnp2Krnp3          leax      <Krnp2Target,pc ; point to 'krnp3'
                     lda       #Systm    ; get type
                     os9       F$Link    ; try to link
-                    bcs       L0083     ; not there, go on
+                    bcs       Krnp2InitModule3 ; not there, go on
                     jsr       ,y        ; execute it
 * Execute module listed in Init module
-L0083               ldu       <D.Init   ; get init module pointer
+Krnp2InitModule3    ldu       <D.Init   ; get init module pointer
                     ldd       InitStr,u ; get offset to name of first module
                     leax      d,u       ; point to it
                     lda       #'C       ; debug: signal that we tried to go to SysGo
@@ -241,12 +241,12 @@ L0083               ldu       <D.Init   ; get init module pointer
                     ldy       #$0000    ; load Y from #$0000
                   ENDC
                     os9       F$Fork    ; fork it
-                    bcs       L009B     ; if error, crash the system
-L0093               os9       F$NProc   ; let it take over
+                    bcs       Krnp2ControlDcrash ; if error, crash the system
+Krnp2LetTakeOver    os9       F$NProc   ; let it take over
 
-L0096               fcs       /krnp3/
+Krnp2Target         fcs       /krnp3/
 
-L009B               jmp       <D.Crash  ; transfer control to <D.Crash
+Krnp2ControlDcrash  jmp       <D.Crash  ; transfer control to <D.Crash
 
 svctab              fcb       F$UnLink  ; define byte value(s) F$UnLink
                     fdb       FUnLink-*-2 ; define word value(s) FUnLink-*-2

@@ -131,34 +131,34 @@ FSRqMem             ldd       R$D,u     ; get the memory allocation size request
                   IFEQ    1       ; begin conditional assembly for 1
                     ldy       <D.SysMem ; get ptr to SMAP table
 * This loop updates the SMAP table if anything can be marked as unused
-L082F               ldx       <D.SysDAT ; get pointer to system DAT block list
+FSrqmemSystemDATBlockList ldx       <D.SysDAT ; get pointer to system DAT block list
                     lslb                ; adjust block offset for 2 bytes/entry
                     ldd       b,x       ; get block type/# from system DAT
                     cmpd      #DAT.Free ; unused block?
-                    beq       L0847     ; yes, mark it free in SMAP table
+                    beq       FSrqmemFillSystemPageMapNot ; yes, mark it free in SMAP table
                     ldx       <D.BlkMap ; no, get ptr to MMAP table
                     lda       d,x       ; get block marker for 2 meg mem map
                     cmpa      #RAMinUse ; is it in use (not free, ROM or used by module)?
-                    bne       L0848     ; no, mark it as type it is in SMAP table
+                    bne       FSrqmemPut ; no, mark it as type it is in SMAP table
                     leay      32,y      ; yes, move to next block in pages
-                    bra       L084F     ; move to next block & try again
+                    bra       FSrqmemBumpUpBlockCheck ; move to next block & try again
 * Free RAM:
-L0847               clra                ; byte to fill system page map with (0=Not in use)
+FSrqmemFillSystemPageMapNot clra                ; byte to fill system page map with (0=Not in use)
 * NOT! RAMinUse:
                   IFNE    H6309   ; begin conditional assembly for H6309
-L0848               sta       ,s        ; put it on stack
+FSrqmemPut          sta       ,s        ; put it on stack
                     ldw       #$0020    Get size of 8K block in pages
                     tfm       s,y+      Mark entire block's worth of pages with A
                   ELSE
-L0848               ldb       #32       ; count = 32 pages
-L084A               sta       ,y+       ; mark the RAM
+FSrqmemPut          ldb       #32       ; count = 32 pages
+FSrqmemMarkRAM      sta       ,y+       ; mark the RAM
                     decb                ; decrement B
-                    bne       L084A     ; branch if zero is clear to L084A
+                    bne       FSrqmemMarkRAM ; branch if zero is clear to FSrqmemMarkRAM
                   ENDC
-L084F               inc       1,s       ; bump up to next block to check
+FSrqmemBumpUpBlockCheck inc       1,s       ; bump up to next block to check
                     ldb       1,s       ; get it
                     cmpb      #DAT.BlCt ; done whole 64k system space?
-                    blo       L082F     ; no, keep checking
+                    blo       FSrqmemSystemDATBlockList ; no, keep checking
                   ENDC
 
 
@@ -178,24 +178,24 @@ L084F               inc       1,s       ; bump up to next block to check
                   ENDC
                     ldb       #32       ; skip block 0: it's always full
                     abx                 ; update X to point to the starting place to search for
-L0857               ldb       R$A,u     ; get the number of 256 byte pages requested
+FSrqmemNumberPagesRequested ldb       R$A,u     ; get the number of 256 byte pages requested
 * Loop from the end of the system free memory map) to look for the number continuous pages requested
-L0859               equ       *         ; define assembler symbol
+FSrqmemJoin         equ       *         ; define assembler symbol
                   IFNE    H6309   ; begin conditional assembly for H6309
                     cmpr      x,y       do we still have any system RAM left to try?
                   ELSE
                     pshs      x         ; save X
                     cmpy      ,s++      ; compare Y to X
                   ENDC
-                    bhi       L0863     ; if Y (end) is higher than X (start), continue looking
+                    bhi       FSrqmemPageMarkerStartingEndSystem ; if Y (end) is higher than X (start), continue looking
                     comb                ; else set the carry
                     ldb       #E$NoRAM  ; load the "no system RAM" error
-                    bra       L0894     ; and branch to return
+                    bra       FSrqmemExit ; and branch to return
 
-L0863               lda       ,-y       ; get the page marker (starting at the end of the system free memory map)
-                    bne       L0857     ; branch if it's not zero (the page is allocated, so test the next lower one)
+FSrqmemPageMarkerStartingEndSystem lda       ,-y       ; get the page marker (starting at the end of the system free memory map)
+                    bne       FSrqmemNumberPagesRequested ; branch if it's not zero (the page is allocated, so test the next lower one)
                     decb                ; found 1 page, decrement the number of pages we need to allocate
-                    bne       L0859     ; branch if we still more pages needed to see if we can get more
+                    bne       FSrqmemJoin ; branch if we still more pages needed to see if we can get more
                     sty       ,s        ; here, we've found all of the free contiguous pages, so save the pointer
                     lda       1,s       ; get the LSB of the pointer
                     lsra                ; A = A / 2
@@ -237,37 +237,37 @@ l@                  ldb       ,s        ; get the starting block
                     bne       l@        ; and go try next
 ok@                 puls      d,x       ; recover registers
 **************************
-                    lbsr      L09BE     ; allocate an image with our start/end block numbers
-                    bcs       L0894     ; branch if we couldn't do it
+                    lbsr      FAllimgTarget ; allocate an image with our start/end block numbers
+                    bcs       FSrqmemExit ; branch if we couldn't do it
                     ldb       R$A,u     ; else get the number of requested pages
 *         lda   #RAMinUse    Get SMAP in use flag
 *L088A    sta   ,y+          Mark all the pages requested as In Use
-L088A               inc       ,y+       ; since RAMinUse is 1, we can save space by INC'ing from 0->1
+FSrqmemSinceRaminuseWeCanSpace inc       ,y+       ; since RAMinUse is 1, we can save space by INC'ing from 0->1
                     decb                ; decrement the counter
-                    bne       L088A     ; continue if not at 0
+                    bne       FSrqmemSinceRaminuseWeCanSpace ; continue if not at 0
                     lda       1,s       ; get the MSB of the pointer to the start of the newly allocated system RAM
                     std       R$U,u     ; save to the caller's U
                     clrb                ; clear the error code and carry
-L0894               puls      u,pc      ; return (U is changed after it exits)
+FSrqmemExit         puls      u,pc      ; return (U is changed after it exits)
 
 
 **************************************************
 * F$SRtMem - Level 2 implementation
 *
 FSRtMem             ldd       R$D,u     ; get the number of pages to free up
-                    beq       L08F2     ; branch if the caller passed 0 (nothing to free!)
+                    beq       FSrqmemErrorCarry ; branch if the caller passed 0 (nothing to free!)
                     addd      #$00FF    ; else round up the value to nearest page
                     ldb       R$U+1,u   ; get the LSB of the address
-                    beq       L08A6     ; it's a even page, so skip ahead
+                    beq       FSrqmemMsbPage ; it's a even page, so skip ahead
                     comb                ; else set the carry
                     ldb       #E$BPAddr ; load the "bad page address" error number
                     rts                 ; return
 
-L08A6               ldb       R$U,u     ; get the MSB of the page address
-                    beq       L08F2     ; branc if it's 0 (not a legal page)
+FSrqmemMsbPage      ldb       R$U,u     ; get the MSB of the page address
+                    beq       FSrqmemErrorCarry ; branc if it's 0 (not a legal page)
                     ldx       <D.SysMem ; get the pointer to the system free memory map
                     abx                 ; set the pointer into the map
-L08AD               equ       *         ; define assembler symbol
+FSrqmemJoin2        equ       *         ; define assembler symbol
                   IFNE    H6309   ; begin conditional assembly for H6309
                     aim       #^RAMinUse,,x+ clear the "RAM in use" bit
                   ELSE
@@ -276,7 +276,7 @@ L08AD               equ       *         ; define assembler symbol
                     stb       ,x+       ; save the page byte back and increment the index register
                   ENDC
                     deca                ; decrement the counter
-                    bne       L08AD     ; branch if not done
+                    bne       FSrqmemJoin2 ; branch if not done
 * Scan the DAT image to find the memory blocks to free up.
                     ldx       <D.SysDAT ; get the pointer to the system DAT image
                   IFNE    H6309   ; begin conditional assembly for H6309
@@ -284,13 +284,13 @@ L08AD               equ       *         ; define assembler symbol
                   ELSE
                     ldy       #DAT.BlCt ; get the number of blocks to check
                   ENDC
-L08BC               ldd       ,x        ; get the block image
+FSrqmemBlockImage   ldd       ,x        ; get the block image
                     cmpd      #DAT.Free ; is it already free?
-                    beq       L08EC     ; yes, skip to the next one
+                    beq       FSrqmemDATBlock ; yes, skip to the next one
                     ldu       <D.BlkMap ; else get the pointer to the MMU block map
                     lda       d,u       ; get the allocation flag for this block: 16-bit offset
                     cmpa      #RAMinUse ; is it being used?
-                    bne       L08EC     ; no, move to the next block
+                    bne       FSrqmemDATBlock ; no, move to the next block
                     tfr       x,d       ; else transfer the pointer to D
                     subd      <D.SysDAT ; set D to the offset in the system DAT image
                     lslb                ; B = B * 2
@@ -302,19 +302,19 @@ L08BC               ldd       ,x        ; get the block image
                     addr      d,u       ; point to the offset in the system free memory map
 * Check if we can remove the entire memory block from system map
                     ldf       #16       get the number of pages per block / 2
-L08DA               ldd       ,u++      ; are either of these 2 pages allocated?
+FSrqmemEitherThesePagesAllocated ldd       ,u++      ; are either of these 2 pages allocated?
                   ELSE
                     leau      d,u       ; point to the offset in the system free memory map
                     ldb       #32       ; set the counter
-L08DA               lda       ,u+       ; are either of these 2 pages allocated?
+FSrqmemEitherThesePagesAllocated lda       ,u+       ; are either of these 2 pages allocated?
                   ENDC
-                    bne       L08EC     ; yes, we can't free this block, so skip to next one
+                    bne       FSrqmemDATBlock ; yes, we can't free this block, so skip to next one
                   IFNE    H6309   ; begin conditional assembly for H6309
                     decf                ; have we checked all pages?
                   ELSE
                     decb                ; decrement the counter
                   ENDC
-                    bne       L08DA     ; no, keep looking
+                    bne       FSrqmemEitherThesePagesAllocated ; no, keep looking
                     ldd       ,x        ; else get the block number into B; it could be >$80
                     ldu       <D.BlkMap ; point to the allocation table
                   IFNE    H6309   ; begin conditional assembly for H6309
@@ -324,15 +324,15 @@ L08DA               lda       ,u+       ; are either of these 2 pages allocated?
                   ENDC
                     ldd       #DAT.Free ; get the free block marker
                     std       ,x        ; save it into the DAT image
-L08EC               leax      2,x       ; move to the next DAT block
+FSrqmemDATBlock     leax      2,x       ; move to the next DAT block
                   IFNE    H6309   ; begin conditional assembly for H6309
                     dece                ; are we done?
                   ELSE
                     leay      -1,y      ; are we done?
                   ENDC
-                    bne       L08BC     ; branch if not
-L08F2               clrb                ; clear the error code and carry
-L08F3               rts                 ; return
+                    bne       FSrqmemBlockImage ; branch if not
+FSrqmemErrorCarry   clrb                ; clear the error code and carry
+FSrqmemReturn       rts                 ; return
 
 
 ;;; F$Boot
@@ -355,26 +355,26 @@ FBoot
                     jsr       <D.BtBug  ; call routine at <D.BtBug
                     coma                ; set boot flag
                     lda       <D.Boot   ; we booted once before?
-                    bne       L08F3     ; yes, return
+                    bne       FSrqmemReturn ; yes, return
                     inc       <D.Boot   ; set boot flag
                     ldx       <D.Init   ; get ptr to init module if it exists
-                    beq       L0908     ; it doesn't, point to boot name
+                    beq       FSrqmemBootPcr ; it doesn't, point to boot name
                     ldd       <BootStr,x ; get offset to text
-                    beq       L0908     ; doesn't exist, get hard coded text
+                    beq       FSrqmemBootPcr ; doesn't exist, get hard coded text
                     leax      d,x       ; adjust X to point to boot module
-                    bra       L090C     ; try & link to module
+                    bra       FSrqmemSystmObjct ; try & link to module
 
 boot                fcs       /Boot/
 
-L0908               leax      <boot,pcr ; compute <boot,pcr into X
+FSrqmemBootPcr      leax      <boot,pcr ; compute <boot,pcr into X
 * Link to module and execute
-L090C               lda       #Systm+Objct ; load A from #Systm+Objct
+FSrqmemSystmObjct   lda       #Systm+Objct ; load A from #Systm+Objct
                     os9       F$Link    ; call OS-9 service F$Link
-                    bcs       L08F3     ; return with error.
+                    bcs       FSrqmemReturn ; return with error.
                     lda       #'b       ; calling boot
                     jsr       <D.BtBug  ; call routine at <D.BtBug
                     jsr       ,y        ; load boot file
-                    bcs       L08F3     ; branch if carry is set to L08F3
+                    bcs       FSrqmemReturn ; branch if carry is set to FSrqmemReturn
                     std       <D.BtSz   ; save boot file size
                     stx       <D.BtPtr  ; save start pointer of bootfile
                     lda       #'b       ; boot returns OK
@@ -396,7 +396,7 @@ not.ext             ldd       <D.BtSz   ; load D from <D.BtSz
                     ldb       $0D,x     ; get highest allocated block number
                     incb                ; allocate block 0, too
                     ldx       <D.BlkMap ; point to the memory block map
-                    lbra      L01DF     ; and go mark the blocks as used.
+                    lbra      KrnRAMUseFlag ; and go mark the blocks as used.
                   ENDC
 
 ;;; F$VBlock
@@ -425,9 +425,9 @@ I.VBlock            leau      d,x       ; point to the end of the block
                     lsra                ; A = A / 16: the logical block * 2
                     ldy       <D.SysDAT ; get the pointer to the system DAT image
                     leay      a,y       ; point Y to the offset into the block
-L092D               ldd       M$ID,x    ; get the module ID signature
+FSrqmemModuleIDSignature ldd       M$ID,x    ; get the module ID signature
                     cmpd      #M$ID12   ; is it a valid module ID?
-                    bne       L0954     ; no, keep looking
+                    bne       FSrqmemTarget ; no, keep looking
                     ldd       M$Name,x  ; else get the name offset pointer
                     pshs      x         ; save the address of the module header onto the stack
                     leax      d,x       ; point X to the name in the module
@@ -446,15 +446,15 @@ name.prt            lda       ,x+       ; get the character of the name
                     ldd       1,s       ; get the starting address
                     leax      d,x       ; move X past it
                     puls      b         ; restore B
-                    bcc       L094E     ; branch if the validation succeeded
+                    bcc       FSrqmemModuleSize ; branch if the validation succeeded
                     cmpb      #E$KwnMod ; else an error occurred; is it the "known module" error?
-                    bne       L0954     ; no, assume a case of mistaken identity and continue
-L094E               ldd       M$Size,x  ; else get the module size
+                    bne       FSrqmemTarget ; no, assume a case of mistaken identity and continue
+FSrqmemModuleSize   ldd       M$Size,x  ; else get the module size
                     leax      d,x       ; and step over it
-                    fcb       $8C       ; skip the next 2 bytes (continue at L0956)
-L0954               leax      1,x       ; move to the next byte
-L0956               cmpx      2,s       ; have we gone through the whole bootfile?
-                    bcs       L092D     ; no, keep looking
+                    fcb       $8C       ; skip the next 2 bytes (continue at FSrqmemHaveWeGoneThroughBootfile)
+FSrqmemTarget       leax      1,x       ; move to the next byte
+FSrqmemHaveWeGoneThroughBootfile cmpx      2,s       ; have we gone through the whole bootfile?
+                    bcs       FSrqmemModuleIDSignature ; no, keep looking
                     leas      4,s       ; else recover the stack
                     clrb                ; clear the error code and carry
                     rts                 ; return

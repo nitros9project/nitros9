@@ -116,11 +116,11 @@ FSleep              pshs      cc        ; preserve interupt status
                     beq       SkpSleep  ; skip sleep call
                     orcc      #IntMasks ; disable interupts
                     lda       P$Signal,x ; get pending signal
-                    beq       L0722     ; none there, skip ahead
+                    beq       FSleepContainsSleepTickCount ; none there, skip ahead
                     deca                ; wakeup signal?
-                    bne       L0715     ; no, skip ahead
+                    bne       WakeFromSignal ; no, skip ahead
                     sta       P$Signal,x ; clear pending signal so we can wake up process
-L0715
+WakeFromSignal
                   IFNE    H6309   ; begin conditional assembly for H6309
                     aim       #^Suspend,P$State,x
                   ELSE
@@ -128,35 +128,35 @@ L0715
                     anda      #^Suspend ; mask A with #^Suspend
                     sta       P$State,x ; store A at P$State,x
                   ENDC
-L071B               puls      cc        ; restore cc from the stack
+FSleepTarget        puls      cc        ; restore cc from the stack
                     os9       F$AProc   ; activate the process
-                    bra       L0780     ; branch unconditionally to L0780
-L0722               ldd       R$X,u     ; get callers X (contains sleep tick count)
-                    beq       L076D     ; done, wake it up
+                    bra       FSleepTarget4 ; branch unconditionally to FSleepTarget4
+FSleepContainsSleepTickCount ldd       R$X,u     ; get callers X (contains sleep tick count)
+                    beq       FSleepDsprocqPqueue ; done, wake it up
                   IFNE    H6309   ; begin conditional assembly for H6309
                     decd      subtract  1 from tick count
                   ELSE
                     subd      #$0001    ; subtract #$0001 from D
                   ENDC
                     std       R$X,u     ; save it back
-                    beq       L071B     ; zero, wake up process
+                    beq       FSleepTarget ; zero, wake up process
                     pshs      x,y       ; save x,y on the stack
                     ldx       #(D.SProcQ-P$Queue) ; load X from #(D.SProcQ-P$Queue)
-L0732               std       R$X,u     ; store D at R$X,u
+FSleepRx            std       R$X,u     ; store D at R$X,u
                     stx       2,s       ; store X at 2,s
                     ldx       P$Queue,x ; load X from P$Queue,x
-                    beq       L074F     ; branch if zero is set to L074F
+                    beq       FSleepTarget2 ; branch if zero is set to FSleepTarget2
                   IFNE    H6309   ; begin conditional assembly for H6309
                     tim       #TimSleep,P$State,x
                   ELSE
                     lda       P$State,x ; load A from P$State,x
                     bita      #TimSleep ; test bits in A against #TimSleep
                   ENDC
-                    beq       L074F     ; branch if zero is set to L074F
+                    beq       FSleepTarget2 ; branch if zero is set to FSleepTarget2
                     ldy       P$SP,x    ; get process stack pointer
                     ldd       R$X,u     ; load D from R$X,u
                     subd      R$X,y     ; subtract R$X,y from D
-                    bcc       L0732     ; branch if carry is clear to L0732
+                    bcc       FSleepRx  ; branch if carry is clear to FSleepRx
                   IFNE    H6309   ; begin conditional assembly for H6309
                     negd                ; update processor state
                   ELSE
@@ -165,7 +165,7 @@ L0732               std       R$X,u     ; store D at R$X,u
                     sbca      #0        ; update processor state
                   ENDC
                     std       R$X,y     ; store D at R$X,y
-L074F               puls      y,x       ; restore y,x from the stack
+FSleepTarget2       puls      y,x       ; restore y,x from the stack
                   IFNE    H6309   ; begin conditional assembly for H6309
                     oim       #TimSleep,P$State,x
                   ELSE
@@ -177,7 +177,7 @@ L074F               puls      y,x       ; restore y,x from the stack
                     stx       P$Queue,y ; store X at P$Queue,y
                     std       P$Queue,x ; store D at P$Queue,x
                     ldx       R$X,u     ; load X from R$X,u
-                    bsr       L0780     ; call local routine L0780
+                    bsr       FSleepTarget4 ; call local routine FSleepTarget4
                     stx       R$X,u     ; store X at R$X,u
                     ldx       <D.Proc   ; load X from <D.Proc
                   IFNE    H6309   ; begin conditional assembly for H6309
@@ -189,10 +189,10 @@ L074F               puls      y,x       ; restore y,x from the stack
                   ENDC
 SkpSleep            puls      cc,pc     ; restore cc,pc from the stack
 
-L076D               ldx       #D.SProcQ-P$Queue ; load X from #D.SProcQ-P$Queue
-L0770               leay      ,x        ; compute ,x into Y
+FSleepDsprocqPqueue ldx       #D.SProcQ-P$Queue ; load X from #D.SProcQ-P$Queue
+FSleepTarget3       leay      ,x        ; compute ,x into Y
                     ldx       P$Queue,x ; load X from P$Queue,x
-                    bne       L0770     ; branch if zero is clear to L0770
+                    bne       FSleepTarget3 ; branch if zero is clear to FSleepTarget3
                     ldx       <D.Proc   ; load X from <D.Proc
                     clra                ; clear A
                     clrb                ; clear B
@@ -200,15 +200,15 @@ L0770               leay      ,x        ; compute ,x into Y
                     std       P$Queue,x ; store D at P$Queue,x
                     puls      cc        ; restore cc from the stack
 
-L0780               pshs      dp,x,y,u,pc ; save dp,x,y,u,pc on the stack
-L0782               leax      <L079C,pc ; compute <L079C,pc into X
+FSleepTarget4       pshs      dp,x,y,u,pc ; save dp,x,y,u,pc on the stack
+FSleepL079c         leax      <FSleepTarget5,pc ; compute <FSleepTarget5,pc into X
                     stx       7,s       ; store X at 7,s
                     ldx       <D.Proc   ; load X from <D.Proc
                     ldb       P$Task,x  ; this is related to the 'one-byte hack'
                     cmpb      <D.SysTsk ; that stops OS9p1 from doing an F$AllTsk on
-                    beq       L0792     ; _every_ system call.
+                    beq       FSleepPsp ; _every_ system call.
                     os9       F$DelTsk  ; call OS-9 service F$DelTsk
-L0792               ldd       P$SP,x    ; load D from P$SP,x
+FSleepPsp           ldd       P$SP,x    ; load D from P$SP,x
                   IFNE    H6309   ; begin conditional assembly for H6309
                     pshsw
                   ENDC
@@ -216,7 +216,7 @@ L0792               ldd       P$SP,x    ; load D from P$SP,x
                     sts       P$SP,x    ; store S at P$SP,x
                     os9       F$NProc   ; call OS-9 service F$NProc
 
-L079C               pshs      x         ; save x on the stack
+FSleepTarget5       pshs      x         ; save x on the stack
                     ldx       <D.Proc   ; load X from <D.Proc
                     std       P$SP,x    ; store D at P$SP,x
                     clrb                ; clear B

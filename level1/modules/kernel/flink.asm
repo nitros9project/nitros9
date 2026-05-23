@@ -73,7 +73,7 @@ ex@                 puls      pc,u      ; return to caller
 ;;;
 
 FSLink              ldy       R$Y,u     ; get DAT image pointer of name
-                    bra       L0398     ; skip ahead
+                    bra       FLinkTarget ; skip ahead
 
 ;;; F$ELink
 ;;;
@@ -89,7 +89,7 @@ FSLink              ldy       R$Y,u     ; get DAT image pointer of name
 FELink              pshs      u         ; preserve register stack pointer
                     ldb       R$B,u     ; get module type
                     ldx       R$X,u     ; get pointer to module directory entry
-                    bra       L03AF     ; skip ahead
+                    bra       FLinkReEntrant ; skip ahead
 
 **************************************************
 * System Call: F$Link
@@ -110,23 +110,23 @@ FELink              pshs      u         ; preserve register stack pointer
 FLink               equ       *         ; define assembler symbol
                     ldx       <D.Proc   ; get pointer to DAT image
                     leay      P$DATImg,x ; point to process DAT image
-L0398               pshs      u         ; preserve register stack pointer
+FLinkTarget         pshs      u         ; preserve register stack pointer
                     ldx       R$X,u     ; get pointer to path name
                     lda       R$A,u     ; get module type
-                    lbsr      L068D     ; search module directory
+                    lbsr      FFmodulJoin ; search module directory
                     bcs       LinkErr   ; not there, exit with error
                     leay      ,u        ; point to module directory entry
                     ldu       ,s        ; get register stack pointer
                     stx       R$X,u     ; save updated module name pointer
                     std       R$D,u     ; save type/language
                     leax      ,y        ; point to directory entry
-L03AF               bitb      #ReEnt    ; is it re-entrant?
-                    bne       L03BB     ; yes, skip ahead
+FLinkReEntrant      bitb      #ReEnt    ; is it re-entrant?
+                    bne       FLinkModule ; yes, skip ahead
                     ldd       MD$Link,x ; is module busy?
-                    beq       L03BB     ; no, go link it
+                    beq       FLinkModule ; no, go link it
                     ldb       #E$ModBsy ; return module busy error
                     bra       LinkErr   ; return
-L03BB               ldd       MD$MPtr,x ; get module pointer
+FLinkModule         ldd       MD$MPtr,x ; get module pointer
                     pshs      d,x       ; preserve that & directory pointer
                     ldy       MD$MPDAT,x ; get module DAT image pointer
                     ldd       MD$MBSiz,x ; get block size
@@ -146,16 +146,16 @@ L03BB               ldd       MD$MPtr,x ; get module pointer
                     lsra                ; shift or rotate and update condition codes
                     pshs      a         ; save a on the stack
                     leau      ,y        ; point to module DAT image
-                    bsr       L0422     ; is it already linked in process space?
-                    bcc       L03EB     ; yes, skip ahead
+                    bsr       FLinkProcess ; is it already linked in process space?
+                    bcc       FLinkMemoryBlockLinkCounts ; yes, skip ahead
                     lda       ,s        ; load A from ,s
-                    lbsr      L0A33     ; find free low block in process DAT image
-                    bcc       L03E8     ; found some, skip ahead
+                    lbsr      FFreehbInvertWithin ; find free low block in process DAT image
+                    bcc       FLinkMemoryBlocksProcessDATImage ; found some, skip ahead
                     leas      5,s       ; purge stack
                     bra       LinkErr   ; return error
 
-L03E8               lbsr      L0A8C     ; copy memory blocks into process DAT image
-L03EB               ldb       #P$Links  ; point to memory block link counts
+FLinkMemoryBlocksProcessDATImage lbsr      FFreehbTheseOnto ; copy memory blocks into process DAT image
+FLinkMemoryBlockLinkCounts ldb       #P$Links  ; point to memory block link counts
                     abx                 ; smaller and faster than leax P$Links,x
                     sta       ,s        ; save block # on stack
                     lsla                ; account for 2 bytes/entry
@@ -166,24 +166,24 @@ L03EB               ldb       #P$Links  ; point to memory block link counts
                   ELSE
                     addd      #$0001    ; add #$0001 to D
                   ENDC
-                    beq       L03FC     ; if wraps to 0, leave at $FFFF
+                    beq       FLinkTarget2 ; if wraps to 0, leave at $FFFF
                     std       ,u        ; otherwise, store new link count
-L03FC               ldu       $03,s     ; load U from $03,s
+FLinkTarget2        ldu       $03,s     ; load U from $03,s
                     ldd       MD$Link,u ; load D from MD$Link,u
                   IFNE    H6309   ; begin conditional assembly for H6309
                     incd                ; update processor state
                   ELSE
                     addd      #$0001    ; add #$0001 to D
                   ENDC
-                    beq       L0406     ; branch if zero is set to L0406
+                    beq       FLinkTarget3 ; branch if zero is set to FLinkTarget3
                     std       MD$Link,u ; store D at MD$Link,u
-L0406               puls      b,x,y,u   ; restore b,x,y,u from the stack
+FLinkTarget3        puls      b,x,y,u   ; restore b,x,y,u from the stack
                     lbsr      CmpLBlk   ; call local routine CmpLBlk
                     stx       R$U,u     ; store X at R$U,u
                     ldx       MD$MPtr,y ; load X from MD$MPtr,y
                     ldy       ,y        ; load Y from ,y
                     ldd       #M$Exec   ; get offset to execution address
-                    lbsr      L0B02     ; get execution offset
+                    lbsr      FLdTarget ; get execution offset
                     addd      R$U,u     ; add it to start of module
                     std       R$Y,u     ; set execution entry point
                     clrb                ; no error & return
@@ -192,7 +192,7 @@ L0406               puls      b,x,y,u   ; restore b,x,y,u from the stack
 LinkErr             orcc      #Carry    ; error & return
                     puls      u,pc      ; restore u,pc from the stack
 
-L0422               ldx       <D.Proc   ; get pointer to current process
+FLinkProcess        ldx       <D.Proc   ; get pointer to current process
                     leay      P$DATImg,x ; point to process DAT image
                     clra                ; clear A
                     pshs      d,x,y     ; save d,x,y on the stack
@@ -201,20 +201,20 @@ L0422               ldx       <D.Proc   ; get pointer to current process
                     lslb                ; shift or rotate and update condition codes
                     leay      b,y       ; compute b,y into Y
                   IFNE    H6309   ; begin conditional assembly for H6309
-L0430               ldw       ,s        Get counter
+FLinkTarget4        ldw       ,s        Get counter
                   ELSE
-L0430               ldx       ,s        ; load X from ,s
+FLinkTarget4        ldx       ,s        ; load X from ,s
                   ENDC
                     pshs      u,y       ; save u,y on the stack
-L0434               ldd       ,y++      ; load D from ,y++
+FLinkTarget5        ldd       ,y++      ; load D from ,y++
                     cmpd      ,u++      ; compare D with ,u++
-                    bne       L0449     ; branch if zero is clear to L0449
+                    bne       FLinkTarget6 ; branch if zero is clear to FLinkTarget6
                   IFNE    H6309   ; begin conditional assembly for H6309
                     decw                ; dec counter
                   ELSE
                     leax      -1,x      ; compute -1,x into X
                   ENDC
-                    bne       L0434     ; if not done, keep going
+                    bne       FLinkTarget5 ; if not done, keep going
                     puls      d,u       ; restore d,u from the stack
                     subd      4,s       ; subtract 4,s from D
                     lsrb                ; shift or rotate and update condition codes
@@ -222,10 +222,10 @@ L0434               ldd       ,y++      ; load D from ,y++
                     clrb                ; clear B
                     puls      d,x,y,pc  ; restore regs & return
 
-L0449               puls      u,y       ; restore u,y from the stack
+FLinkTarget6        puls      u,y       ; restore u,y from the stack
                     leay      -2,y      ; compute -2,y into Y
                     cmpy      4,s       ; compare Y with 4,s
-                    bcc       L0430     ; branch if carry is clear to L0430
+                    bcc       FLinkTarget4 ; branch if carry is clear to FLinkTarget4
                     puls      d,x,y,pc  ; restore d,x,y,pc from the stack
 
                   ENDC

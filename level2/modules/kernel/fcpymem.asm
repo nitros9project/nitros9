@@ -22,10 +22,10 @@
 * and I/O ($FE00-$FFFF)???
 *
 FCpyMem             ldd       R$Y,u     ; get byte count
-                    beq       L0A01     ; nothing there so nothing to move, return
+                    beq       FCpymemErrorExit ; nothing there so nothing to move, return
                     addd      R$U,u     ; add it caller's buffer start ptr.
                     cmpa      #$FE      ; is it going to overwrite Vector or I/O pages?
-                    bhs       L0A01     ; yes, exit without error
+                    bhs       FCpymemErrorExit ; yes, exit without error
                     leas      -$10,s    ; make a buffer for DAT image
                     leay      ,s        ; point to it
                     pshs      y,u       ; preserve stack buffer ptr & register stack pointer
@@ -38,17 +38,17 @@ FCpyMem             ldd       R$Y,u     ; get byte count
 
 * This loop copies the DAT image from the caller's process descriptor into
 * a temporary buffer on the stack
-L09C7               equ       *         ; define assembler symbol L09C7
+FCpymemJoin         equ       *         ; define assembler symbol FCpymemJoin
                     clrd                ; clear offset to 0
-                    bsr       L0B02     ; short cut OS9 F$LDDDXY
+                    bsr       FLdTarget ; short cut OS9 F$LDDDXY
                     std       ,u++      ; save it to buffer
                     leax      2,x       ; bump ptr
                     dece                ; decrement loop counter
-                    bne       L09C7     ; keep doing until 16 bytes is done
+                    bne       FCpymemJoin ; keep doing until 16 bytes is done
 
                     ldu       2,s       ; get back register stack pointer
-                    lbsr      L0CA6     ; short cut OS9 F$ResTsk
-                    bcs       L09FB     ; if error, deallocate our stack & exit with error
+                    lbsr      FAlltskTarget2 ; short cut OS9 F$ResTsk
+                    bcs       FCpymemPurgeOurBuffer ; if error, deallocate our stack & exit with error
                     tfr       b,e       ; new temp task # into E
                     lslb                ; multiply by 2 for 2 byte entries
                     ldx       <D.TskIPt ; get ptr to task image table
@@ -60,17 +60,17 @@ L09C7               equ       *         ; define assembler symbol L09C7
                     ldu       2,s       ; get back data area pointer
                     tfr       w,d       ; move temp & caller's task #'s into proper regs.
                     pshs      a         ; save new task #
-                    bsr       L0B25     ; f$Move the memory into the caller's requested area
+                    bsr       FMoveBytes ; f$Move the memory into the caller's requested area
 * BAD Bug! Well, maybe not.  F$Move NEVER returns an error code
 * but if it did, we'd skip the $RelTsk, and have an orphan task
 * left over.
 *         bcs   L09FB        If error, purge stack & return with error code
                     puls      b         ; get back new task #
-                    lbsr      L0CC3     ; short cut OS9 F$RelTsk
-L09FB               leas      <$14,s    ; purge our stack buffer & return
+                    lbsr      FAlltskTarget3 ; short cut OS9 F$RelTsk
+FCpymemPurgeOurBuffer leas      <$14,s    ; purge our stack buffer & return
                     rts                 ; return to caller
 
-L0A01               clrb                ; no error & exit
+FCpymemErrorExit    clrb                ; no error & exit
                     rts                 ; return to caller
 
 
@@ -79,11 +79,11 @@ L0A01               clrb                ; no error & exit
 * F$CpyMem for OS-9 Level Two- 6809 - for back in KRN
 * Entry: U=ptr to stack contents from caller (parameters)
 FCpyMem             ldd       R$Y,u     ; get # of bytes to copy
-                    beq       L0A01     ; if 0, exit
+                    beq       FCpymemErrorExit ; if 0, exit
                     addd      R$U,u     ; plus dest buff
 * LCB - Added check to match 6309 version
                     cmpa      #$FE      ; is it going to overwrite Vector or I/O pages?
-                    bhs       L0A01     ; yes, exit without error
+                    bhs       FCpymemErrorExit ; yes, exit without error
                     leas      -$10,s    ; make room on stack for temp DAT image
                     leay      ,s        ; point to it
                     pshs      y,u       ; save temp DAT img & register stack ptrs
@@ -94,16 +94,16 @@ FCpyMem             ldd       R$Y,u     ; get # of bytes to copy
                     leay      P$DATImg,x ; point to DAT image of caller
                     ldx       R$D,u     ; get caller's ptr to the DAT image they provided
                     ldu       2,s       ; get temp DAT IMG Ptr
-L09C7               clra                ; set offset to offset to 0
+FCpymemJoin         clra                ; set offset to offset to 0
                     clrb                ; clear B
-                    bsr       L0B02     ; short cut OS9 F$LDDDXY
+                    bsr       FLdTarget ; short cut OS9 F$LDDDXY
                     std       ,u++      ; to our temp DAT img
                     leax      2,x       ; 2 bytes per entry
                     dec       ,s        ; copy all 8 sets of 2 bytes
-                    bne       L09C7     ; branch if zero is clear to L09C7
+                    bne       FCpymemJoin ; branch if zero is clear to FCpymemJoin
                     ldu       4,s       ; get callers register stack pr back
-                    lbsr      L0CA6     ; short cut os9 F$ResTsk (returns in B, destroys A)
-                    bcs       L09FB     ; if error, deallocate our stack & exit with error
+                    lbsr      FAlltskTarget2 ; short cut os9 F$ResTsk (returns in B, destroys A)
+                    bcs       FCpymemPurgeOurBuffer ; if error, deallocate our stack & exit with error
                     stb       ,s        ; save copy of new temp task # (overtop temp ctr)
 * 0,s   =new temp task #
 * 1,s   =task # of caller
@@ -122,13 +122,13 @@ L09C7               clra                ; set offset to offset to 0
 * 3-4,s =callers register stack ptr
 * 5-20,s=temp DAT image
                     sta       ,s        ; save temp task #
-                    bsr       L0B25     ; shortcut F$Move memory into callers requested area
+                    bsr       FMoveBytes ; shortcut F$Move memory into callers requested area
                     puls      b         ; get back temp task #
-                    lbsr      L0CC3     ; shortcut OS9 F$RelTsk
+                    lbsr      FAlltskTarget3 ; shortcut OS9 F$RelTsk
                     leas      -2,s      ; adjust stack for fall thru
-L09FB               leas      $16,s     ; purge our stack buffer ptr & return
+FCpymemPurgeOurBuffer leas      $16,s     ; purge our stack buffer ptr & return
                     rts                 ; return to caller
 
-L0A01               clrb                ; clear B
+FCpymemErrorExit    clrb                ; clear B
                     rts                 ; return to caller
                   ENDC

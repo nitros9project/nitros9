@@ -17,7 +17,7 @@ FDelImg             ldx       R$X,u     ; get process pointer
                     lsla                ; 2 bytes per block entry
                     leau      a,u       ; point U to block entry
 * Block count in B
-L0B55
+FreeImageBlock
                   IFNE    H6309   ; begin conditional assembly for H6309
                     ldw       ,u        ; get block #
                     addw      <D.BlkMap ; add it to map ptr
@@ -25,7 +25,7 @@ L0B55
                     ldw       #DAT.Free ; get empty block marker
                     stw       ,u++      ; save it to process descriptor
                     decb                ; done?
-                    bne       L0B55     ; no, keep going
+                    bne       FreeImageBlock ; no, keep going
                     oim       #ImgChg,P$State,x ; apply immediate bit operation #ImgChg,P$State,x
                   ELSE
                     clra                ; clear A

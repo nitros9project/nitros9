@@ -24,7 +24,7 @@ FMem                ldx       <D.Proc   ; get the current process descriptor
                     bsr       RoundUpD  ; round up requested memory area
                     subb      P$PagCnt,x ; subtract the current page count from B
                     beq       returnsize@ ; branch if 0
-                    bcs       L0207     ; branch if less than 0
+                    bcs       FMemProcessorState ; branch if less than 0
                     tfr       d,y       ; else transfer requested memory area to Y
                     ldx       P$ADDR,x  ; get the process' base data address page and page count in X
                     pshs      u,y,x     ; save off registers
@@ -32,44 +32,44 @@ _stkPageAddr@       set       0         ; define assembler symbol
 _stkPageCnt@        set       1         ; define assembler symbol
 _stkReqMem@         set       2         ; define assembler symbol
                     ldb       _stkPageAddr@,s ; get the page address from the stack
-                    beq       L01E1     ; branch if it's 0
+                    beq       FMemStartFreeMemoryBitmap ; branch if it's 0
                     addb      _stkPageCnt@,s ; add it to te page count from the stack
-L01E1               ldx       <D.FMBM   ; get the address of the start of the free memory bitmap
+FMemStartFreeMemoryBitmap ldx       <D.FMBM   ; get the address of the start of the free memory bitmap
                     ldu       <D.FMBM+2 ; and the address of the end of the free memory bitmap
                     os9       F$SchBit  ; search for the location
                     bcs       ex@       ; branch if there was an error
                     stb       _stkReqMem@,s ; save it the location to the stack
                     ldb       _stkPageAddr@,s ; load B from _stkPageAddr@,s
-                    beq       L01F6     ; branch if zero is set to L01F6
+                    beq       FMemStkreqmem ; branch if zero is set to FMemStkreqmem
                     addb      _stkPageCnt@,s ; add _stkPageCnt@,s to B
                     cmpb      _stkReqMem@,s ; compare B with _stkReqMem@,s
                     bne       ex@       ; branch if zero is clear to ex@
-L01F6               ldb       _stkReqMem@,s ; load B from _stkReqMem@,s
+FMemStkreqmem       ldb       _stkReqMem@,s ; load B from _stkReqMem@,s
                     os9       F$AllBit  ; allocate the bits
                     ldd       _stkReqMem@,s ; load D from _stkReqMem@,s
                     suba      _stkPageCnt@,s ; subtract _stkPageCnt@,s from A
                     addb      _stkPageCnt@,s ; add _stkPageCnt@,s to B
                     puls      u,y,x     ; restore u,y,x from the stack
                     ldx       <D.Proc   ; get the current process descriptor
-                    bra       L0225     ; branch unconditionally to L0225
-L0207               negb                ; update processor state
+                    bra       FUnlinkReturn ; branch unconditionally to FUnlinkReturn
+FMemProcessorState  negb                ; update processor state
                     tfr       d,y       ; transfer register value d,y
                     negb                ; update processor state
                     addb      P$PagCnt,x ; add the page count
                     addb      P$ADDR,x  ; and the base data address page
                     cmpb      P$SP,x    ; compare it to the caller's stack pointer
-                    bhi       L0217     ; branch if we're higher
+                    bhi       FMemFreeMemoryBitmap ; branch if we're higher
                     comb                ; else set the carry flag
                     ldb       #E$DelSP  ; return an error indicating the requested size would overrun the stack
                     rts                 ; return to the caller
-L0217               ldx       <D.FMBM   ; get the free memory bitmap pointer
+FMemFreeMemoryBitmap ldx       <D.FMBM   ; get the free memory bitmap pointer
                     os9       F$DelBit  ; delete the bits
                     tfr       y,d       ; transfer register value y,d
                     negb                ; update processor state
                     ldx       <D.Proc   ; get the current process descriptor
                     addb      P$PagCnt,x ; add P$PagCnt,x to B
                     lda       P$ADDR,x  ; get the process' base data address page
-L0225               std       P$ADDR,x  ; store the process' base data address page and page count
+FUnlinkReturn       std       P$ADDR,x  ; store the process' base data address page and page count
 returnsize@         lda       P$PagCnt,x ; get the page count
                     clrb                ; clear B
                     std       R$D,u     ; save off the current memory area in the caller's D
@@ -89,23 +89,23 @@ RoundUpD            addd      #$00FF    ; add 255 to D
 
 FMem                ldx       <D.Proc   ; get current process pointer
                     ldd       R$D,u     ; get requested memory size
-                    beq       L0638     ; he wants current size, return it
+                    beq       FMemPageCount2 ; he wants current size, return it
                     addd      #$00FF    ; round up to nearest page
-                    bcc       L05EE     ; no overflow, skip ahead
+                    bcc       FMemMatchPageCount ; no overflow, skip ahead
                     ldb       #E$MemFul ; get mem full error
                     rts                 ; return
 
-L05EE               cmpa      P$PagCnt,x ; match current page count?
-                    beq       L0638     ; yes, return it
+FMemMatchPageCount  cmpa      P$PagCnt,x ; match current page count?
+                    beq       FMemPageCount2 ; yes, return it
                     pshs      a         ; save page count
-                    bhs       L0602     ; he's requesting more, skip ahead
+                    bhs       FMemPageCount ; he's requesting more, skip ahead
                     deca                ; subtract a page
                     ldb       #($100-R$Size) ; get size of default stack - R$Size
                     cmpd      P$SP,x    ; shrinking it into stack?
-                    bhs       L0602     ; no, skip ahead
+                    bhs       FMemPageCount ; no, skip ahead
                     ldb       #E$DelSP  ; get error code (223)
-                    bra       L0627     ; return error
-L0602               lda       P$PagCnt,x ; get page count
+                    bra       FMemPurge ; return error
+FMemPageCount       lda       P$PagCnt,x ; get page count
                     adda      #$1F      ; round it up
                     lsra                ; divide by 32 to get block count
                     lsra                ; shift or rotate and update condition codes
@@ -114,10 +114,10 @@ L0602               lda       P$PagCnt,x ; get page count
                     lsra                ; shift or rotate and update condition codes
                     ldb       ,s        ; load B from ,s
                     addb      #$1F      ; add #$1F to B
-                    bcc       L0615     ; still have room, skip ahead
+                    bcc       FMemDivideByBlockCount ; still have room, skip ahead
                     ldb       #E$MemFul ; load B from #E$MemFul
-                    bra       L0627     ; branch unconditionally to L0627
-L0615               lsrb                ; divide by 32 to get block count
+                    bra       FMemPurge ; branch unconditionally to FMemPurge
+FMemDivideByBlockCount lsrb                ; divide by 32 to get block count
                     lsrb                ; shift or rotate and update condition codes
                     lsrb                ; shift or rotate and update condition codes
                     lsrb                ; shift or rotate and update condition codes
@@ -128,15 +128,15 @@ L0615               lsrb                ; divide by 32 to get block count
                     pshs      a         ; save a on the stack
                     subb      ,s+       ; subtract ,s+ from B
                   ENDC
-                    beq       L0634     ; yes, save it
-                    bcs       L062C     ; overflow, delete the ram we just got
+                    beq       FMemRequestedPageCount ; yes, save it
+                    bcs       FMemJoin  ; overflow, delete the ram we just got
                     os9       F$AllImg  ; allocate the image in DAT
-                    bcc       L0634     ; no error, skip ahead
-L0627               leas      1,s       ; purge stack
-L0629               orcc      #Carry    ; set carry for error
+                    bcc       FMemRequestedPageCount ; no error, skip ahead
+FMemPurge           leas      1,s       ; purge stack
+FMemCarryError      orcc      #Carry    ; set carry for error
                     rts                 ; return
 
-L062C               equ       *         ; define assembler symbol
+FMemJoin            equ       *         ; define assembler symbol
                   IFNE    H6309   ; begin conditional assembly for H6309
                     addr      b,a       ; add b,a to R
                   ELSE
@@ -145,9 +145,9 @@ L062C               equ       *         ; define assembler symbol
                   ENDC
                     negb                ; update processor state
                     os9       F$DelImg  ; call OS-9 service F$DelImg
-L0634               puls      a         ; restore requested page count
+FMemRequestedPageCount puls      a         ; restore requested page count
                     sta       P$PagCnt,x ; save it into process descriptor
-L0638               lda       P$PagCnt,x ; get page count
+FMemPageCount2      lda       P$PagCnt,x ; get page count
                     clrb                ; clear LSB
                     std       R$D,u     ; save mem byte count to caller
                     std       R$Y,u     ; save memory upper limit to caller

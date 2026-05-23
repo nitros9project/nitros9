@@ -35,24 +35,24 @@
 FSend               lda       R$A,u     ; get the process ID of recipient
                     bne       getprocess@ ; if not 0, go find the process descriptor
                     inca                ; else increment A
-L0242               ldx       <D.Proc   ; get the current process descriptor
+FSendProcessDescriptor ldx       <D.Proc   ; get the current process descriptor
                     cmpa      P$ID,x    ; and the process ID
-                    beq       L024A     ; branch if 0
+                    beq       FSendIncreaseBy ; branch if 0
                     bsr       getprocess@ ; else go find the process descriptor
-L024A               inca                ; increase A by 1
-                    bne       L0242     ; branch if not error
+FSendIncreaseBy     inca                ; increase A by 1
+                    bne       FSendProcessDescriptor ; branch if not error
                     clrb                ; clear the carry
                     rts                 ; return to the caller
 getprocess@         ldx       <D.PrcDBT ; get the process descriptor table pointer
                     os9       F$Find64  ; find the 64 byte page associated with the process iD
-                    bcc       L025E     ; branch if found
+                    bcc       FSendReceipientProcessDescriptor ; branch if found
                     ldb       #E$IPrcID ; else return an illegal process ID error
                     rts                 ; return to the caller
 badid@              comb                ; set the carry flag
                     ldb       #E$IPrcID ; return an illegal process ID error
                     puls      pc,y,a    ; recover the stack and return to the caller
 * Entry: A = recipient process ID
-L025E               pshs      y,a       ; save the receipient process descriptor and
+FSendReceipientProcessDescriptor pshs      y,a       ; save the receipient process descriptor and
                     ldb       R$B,u     ; get the signal to send from the caller
                     bne       checkpending@ ; branch if not S$Kill
                     ldx       <D.Proc   ; else get current process descriptor
@@ -117,59 +117,59 @@ ex@                 clrb                ; clear carry
 
 FSend               ldx       <D.Proc   ; get current process pointer
                     lda       R$A,u     ; get destination ID
-                    bne       L0652     ; it's ok, go on
+                    bne       FSendDestinationDescriptor ; it's ok, go on
                     inca                ; add one
 * Send signal to ALL process's
-L0647               cmpa      P$ID,x    ; find myself?
-                    beq       L064D     ; yes, skip it
-                    bsr       L0652     ; send the signal
-L064D               inca                ; move to next process
-                    bne       L0647     ; go send it
+FSendFindMyself     cmpa      P$ID,x    ; find myself?
+                    beq       FSendProcess ; yes, skip it
+                    bsr       FSendDestinationDescriptor ; send the signal
+FSendProcess        inca                ; move to next process
+                    bne       FSendFindMyself ; go send it
                     clrb                ; clear errors
                     rts                 ; return
 
 * X   = process descriptor ptr of singal sender
 * A   = process ID to send signal to
 * R$B = signal code
-L0652               lbsr      L0B2E     ; get pointer to destination descriptor
+FSendDestinationDescriptor lbsr      FGprocpTarget ; get pointer to destination descriptor
                     pshs      cc,a,y,u  ; preserve registers
-                    bcs       L066A     ; error, can't get pointer return
+                    bcs       FSendReturn ; error, can't get pointer return
                     tst       R$B,u     ; kill signal?
-                    bne       L066D     ; no, go on
+                    bne       FSendShutDownIrqs ; no, go on
                     ldd       P$User,x  ; get user #
-                    beq       L066D     ; he's super user, go on
+                    beq       FSendShutDownIrqs ; he's super user, go on
                     cmpd      P$User,y  ; does he own the process?
-                    beq       L066D     ; yes, send the signal
+                    beq       FSendShutDownIrqs ; yes, send the signal
                     ldb       #E$BPrcID ; get bad process error
                     inc       ,s        ; set Carry in CC on stack
-L066A               puls      cc,a,y,u,pc ; return
+FSendReturn         puls      cc,a,y,u,pc ; return
 
 * Y = process descriptor of process receiving signal
-L066D               orcc      #IntMasks ; shut down IRQ's
+FSendShutDownIrqs   orcc      #IntMasks ; shut down IRQ's
                     ldb       R$B,u     ; get signal code
-                    bne       L067B     ; not a kill signal, skip ahead
+                    bne       FSendTarget ; not a kill signal, skip ahead
                     ldb       #E$PrcAbt ; get error 228
                   IFNE    H6309   ; begin conditional assembly for H6309
                     oim       #Condem,P$State,y condem process
-L067B               aim       #^Suspend,P$State,y take process out of suspend state
+FSendTarget         aim       #^Suspend,P$State,y take process out of suspend state
                   ELSE
                     lda       P$State,y ; load A from P$State,y
                     ora       #Condem   ; merge #Condem into A
                     sta       P$State,y ; store A at P$State,y
-L067B               lda       P$State,y ; load A from P$State,y
+FSendTarget         lda       P$State,y ; load A from P$State,y
                     anda      #^Suspend ; mask A with #^Suspend
                     sta       P$State,y ; store A at P$State,y
                   ENDC
                     lda       <P$Signal,y ; already have a pending signal?
-                    beq       L068F     ; nope, go on
+                    beq       FSendSignalDescriptor ; nope, go on
                     deca                ; is it a wakeup signal?
-                    beq       L068F     ; yes, skip ahead
+                    beq       FSendSignalDescriptor ; yes, skip ahead
                     inc       ,s        ; set carry on stack
                     ldb       #E$USigP  ; get pending signal error
                     puls      cc,a,y,u,pc ; return
 
 * Update sleeping process queue
-L068F               stb       P$Signal,y ; save signal code in descriptor
+FSendSignalDescriptor stb       P$Signal,y ; save signal code in descriptor
                     ldx       #(D.SProcQ-P$Queue) ; get pointer to sleeping process queue
                   IFNE    H6309   ; begin conditional assembly for H6309
                     clrd                ; faster than 2 memory clears
@@ -177,13 +177,13 @@ L068F               stb       P$Signal,y ; save signal code in descriptor
                     clra                ; clear A
                     clrb                ; clear B
                   ENDC
-L0697               leay      ,x        ; point Y to this process
+FSendProcess2       leay      ,x        ; point Y to this process
                     ldx       P$Queue,x ; get pointer to next process in chain
-                    beq       L06D3     ; last one, go check waiting list
+                    beq       FSendDwprocqPqueue ; last one, go check waiting list
                     ldu       P$SP,x    ; get process stack pointer
                     addd      R$X,u     ; add his sleep count
                     cmpx      2,s       ; is it destination process?
-                    bne       L0697     ; no, skip to next process
+                    bne       FSendProcess2 ; no, skip to next process
                     pshs      d         ; save sleep count
                   IFNE    H6309   ; begin conditional assembly for H6309
                     tim       #TimSleep,P$State,x
@@ -191,9 +191,9 @@ L0697               leay      ,x        ; point Y to this process
                     lda       P$State,x ; load A from P$State,x
                     bita      #TimSleep ; test bits in A against #TimSleep
                   ENDC
-                    beq       L06CF     ; no, update queue
+                    beq       FSendAdjustBy ; no, update queue
                     ldd       ,s        ; load D from ,s
-                    beq       L06CF     ; branch if zero is set to L06CF
+                    beq       FSendAdjustBy ; branch if zero is set to FSendAdjustBy
                     ldd       R$X,u     ; load D from R$X,u
                   IFNE    H6309   ; begin conditional assembly for H6309
                     ldw       ,s
@@ -205,7 +205,7 @@ L0697               leay      ,x        ; point Y to this process
                     puls      d         ; restore d from the stack
                   ENDC
                     ldu       P$Queue,x ; load U from P$Queue,x
-                    beq       L06CF     ; branch if zero is set to L06CF
+                    beq       FSendAdjustBy ; branch if zero is set to FSendAdjustBy
                     std       ,s        ; store D at ,s
                   IFNE    H6309   ; begin conditional assembly for H6309
                     tim       #TimSleep,P$State,u
@@ -213,28 +213,28 @@ L0697               leay      ,x        ; point Y to this process
                     lda       P$State,u ; load A from P$State,u
                     bita      #TimSleep ; test bits in A against #TimSleep
                   ENDC
-                    beq       L06CF     ; branch if zero is set to L06CF
+                    beq       FSendAdjustBy ; branch if zero is set to FSendAdjustBy
                     ldu       P$SP,u    ; load U from P$SP,u
                     ldd       ,s        ; load D from ,s
                     addd      R$X,u     ; add R$X,u to D
                     std       R$X,u     ; store D at R$X,u
-L06CF               leas      2,s       ; adjust stack pointer by 2,s
-                    bra       L06E0     ; branch unconditionally to L06E0
-L06D3               ldx       #(D.WProcQ-P$Queue) ; load X from #(D.WProcQ-P$Queue)
-L06D6               leay      ,x        ; compute ,x into Y
+FSendAdjustBy       leas      2,s       ; adjust stack pointer by 2,s
+                    bra       FSendPqueue ; branch unconditionally to FSendPqueue
+FSendDwprocqPqueue  ldx       #(D.WProcQ-P$Queue) ; load X from #(D.WProcQ-P$Queue)
+FSendTarget2        leay      ,x        ; compute ,x into Y
                     ldx       P$Queue,x ; load X from P$Queue,x
-                    beq       L06F4     ; branch if zero is set to L06F4
+                    beq       FSendReturn2 ; branch if zero is set to FSendReturn2
                     cmpx      2,s       ; compare X with 2,s
-                    bne       L06D6     ; branch if zero is clear to L06D6
-L06E0               ldd       P$Queue,x ; load D from P$Queue,x
+                    bne       FSendTarget2 ; branch if zero is clear to FSendTarget2
+FSendPqueue         ldd       P$Queue,x ; load D from P$Queue,x
                     std       P$Queue,y ; store D at P$Queue,y
                     lda       P$Signal,x ; load A from P$Signal,x
                     deca                ; decrement A
-                    bne       L06F1     ; branch if zero is clear to L06F1
+                    bne       FSendActivateProcess ; branch if zero is clear to FSendActivateProcess
                     sta       P$Signal,x ; store A at P$Signal,x
                     lda       ,s        ; load A from ,s
                     tfr       a,cc      ; transfer register value a,cc
-L06F1               os9       F$AProc   ; activate the process
-L06F4               puls      cc,a,y,u,pc ; restore & return
+FSendActivateProcess os9       F$AProc   ; activate the process
+FSendReturn2        puls      cc,a,y,u,pc ; restore & return
 
                   ENDC

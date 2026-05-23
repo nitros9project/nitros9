@@ -131,11 +131,11 @@ ex@                 puls      pc,u,x    ; return to caller
 
 FChain              pshs      u         ; preserve register stack pointer
                     lbsr      AllPrc    ; allocate a new process descriptor
-                    bcc       L03B7     ; do the chain if no error
+                    bcc       FChainProcess ; do the chain if no error
                     puls      u,pc      ; return to caller with error
 
 * Copy Process Descriptor Data
-L03B7               ldx       <D.Proc   ; get pointer to current process
+FChainProcess       ldx       <D.Proc   ; get pointer to current process
                     pshs      x,u       ; save old & new descriptor pointers
                   IFNE    H6309   ; begin conditional assembly for H6309
                     leax      P$SP,x    ; point to source
@@ -149,13 +149,13 @@ L03B7               ldx       <D.Proc   ; get pointer to current process
                     leay      P$SP,u    ; point to destination
                     leau      P$SP,x    ; point to source
                     ldb       #84       ; # of 3 byte sets to copy
-L03C3               pulu      a,x       ; get 3 bytes
+FChainBytes         pulu      a,x       ; get 3 bytes
                     sta       ,y+       ; copy them
                     stx       ,y++      ; store X at ,y++
                     decb                ; dec 3 byte ctr
-                    bne       L03C3     ; branch if zero is clear to L03C3
+                    bne       FChainBytes ; branch if zero is clear to FChainBytes
                   ENDC
-L03CB               ldu       2,s       ; get new descriptor pointer
+FChainNewDescriptor ldu       2,s       ; get new descriptor pointer
                     leau      <P$DATImg,u ; compute <P$DATImg,u into U
                     ldx       ,s        ; get old descriptor pointer
                     lda       P$Task,x  ; get task #
@@ -197,17 +197,17 @@ L03CB               ldu       2,s       ; get new descriptor pointer
                     lslb                ; shift or rotate and update condition codes
                     leay      b,y       ; go to the offset
                     ldu       #DAT.Free ; mark the blocks as free
-L040C               stu       ,y++      ; do all of them
+FChainThem          stu       ,y++      ; do all of them
                     deca                ; decrement A
-                    bne       L040C     ; branch if zero is clear to L040C
+                    bne       FChainThem ; branch if zero is clear to FChainThem
                     ldu       2,s       ; get new process descriptor pointer
                     stu       <D.Proc   ; make it the new process
                     ldu       4,s       ; load U from 4,s
-                    lbsr      L04B1     ; link to new module & setup register stack
+                    lbsr      FChainEverything ; link to new module & setup register stack
                   IFNE    H6309   ; begin conditional assembly for H6309
-                    bcs       L04A1     ; branch if carry is set to L04A1
+                    bcs       FChainTarget ; branch if carry is set to FChainTarget
                   ELSE
-                    lbcs      L04A1     ; branch if carry is set to L04A1
+                    lbcs      FChainTarget ; branch if carry is set to FChainTarget
                   ENDC
                     pshs      d         ; somehow D = memory size? Or parameter size?
                     os9       F$AllTsk  ; allocate a new task number
@@ -231,12 +231,12 @@ L040C               stu       ,y++      ; do all of them
                     cmpu      ,s++      ; dest ptr
                   ENDC
                     puls      y         ; size
-                    bhi       L0471     ; to < From: do F$Move
-                    beq       L0474     ; to == From, skip F$Move
+                    bhi       FChainDataOver ; to < From: do F$Move
+                    beq       FChainSystemTaskNumber ; to == From, skip F$Move
 
 * To > From: do special copy
                     leay      ,y        ; any bytes to move?
-                    beq       L0474     ; no, skip ahead
+                    beq       FChainSystemTaskNumber ; no, skip ahead
                   IFNE    H6309   ; begin conditional assembly for H6309
                     pshs      x         ; save address
                     addr      y,x       ; add size to FROM address
@@ -250,7 +250,7 @@ L040C               stu       ,y++      ; do all of them
                     cmpu      ,s++      ; compare U with ,s++
                     puls      d,x       ; restore d,x from the stack
                   ENDC
-                    bls       L0471     ; end of FROM <= start of TO: do F$Move
+                    bls       FChainDataOver ; end of FROM <= start of TO: do F$Move
 
 * The areas to copy overlap: do special move routine
                     pshs      d,x,y,u   ; save regs
@@ -265,7 +265,7 @@ L040C               stu       ,y++      ; do all of them
 
 * This all appears to be doing a copy where destination <= source,
 * in the same address space.
-L0457               ldb       ,s        ; grab ??
+FChainGrab          ldb       ,s        ; grab ??
                     leax      -1,x      ; back up one
                     os9       F$LDABX   ; call OS-9 service F$LDABX
                     exg       x,u       ; exchange register values x,u
@@ -274,13 +274,13 @@ L0457               ldb       ,s        ; grab ??
                     os9       F$STABX   ; call OS-9 service F$STABX
                     exg       x,u       ; exchange register values x,u
                     leay      -1,y      ; compute -1,y into Y
-                    bne       L0457     ; branch if zero is clear to L0457
+                    bne       FChainGrab ; branch if zero is clear to FChainGrab
 
                     puls      d,x,y,u   ; restore regs
-                    bra       L0474     ; skip over F$Move
+                    bra       FChainSystemTaskNumber ; skip over F$Move
 
-L0471               os9       F$Move    ; move data over?
-L0474               lda       <D.SysTsk ; get system task number
+FChainDataOver      os9       F$Move    ; move data over?
+FChainSystemTaskNumber lda       <D.SysTsk ; get system task number
                     ldx       ,s        ; old process dsc ptr
                     ldu       P$SP,x    ; load U from P$SP,x
                     leax      >(P$Stack-R$Size),x ; compute >(P$Stack-R$Size),x into X
@@ -288,7 +288,7 @@ L0474               lda       <D.SysTsk ; get system task number
                     os9       F$Move    ; move the stack over
                     puls      u,x       ; restore new, old process dsc's
                     lda       P$ID,u    ; load A from P$ID,u
-                    lbsr      L0386     ; check alarms
+                    lbsr      FAllprcTarget2 ; check alarms
                     os9       F$DelTsk  ; delete the old task
                     orcc      #IntMasks ; set condition-code bits using #IntMasks
                     ldd       <D.SysPrc ; load D from <D.SysPrc
@@ -304,16 +304,16 @@ L0474               lda       <D.SysTsk ; get system task number
                     os9       F$NProc   ; go to it
 
 * comes here on error with link to new module
-L04A1               puls      u,x       ; restore u,x from the stack
+FChainTarget        puls      u,x       ; restore u,x from the stack
                     stx       <D.Proc   ; store X at <D.Proc
                     pshs      b         ; save b on the stack
                     lda       ,u        ; load A from ,u
-                    lbsr      L0386     ; kill signals
+                    lbsr      FAllprcTarget2 ; kill signals
                     puls      b         ; restore b from the stack
                     os9       F$Exit    ; exit from the process with error condition
 
 * Setup new process DAT image with module
-L04B1               pshs      d,x,y,u   ; preserve everything
+FChainEverything    pshs      d,x,y,u   ; preserve everything
                     ldd       <D.Proc   ; get pointer to current process
                     pshs      d         ; save it
                     stx       <D.Proc   ; save pointer to new process
@@ -322,16 +322,16 @@ L04B1               pshs      d,x,y,u   ; preserve everything
                     ldy       ,s        ; get pointer to current process
                     leay      P$DATImg,y ; point to DAT image
                     os9       F$SLink   ; map it into new process DAT image
-                    bcc       L04D7     ; no error, keep going
+                    bcc       FChainModule ; no error, keep going
                     ldd       ,s        ; restore to current process
                     std       <D.Proc   ; store D at <D.Proc
                     ldu       4,s       ; get pointer to new process
                     os9       F$Load    ; try & load it
-                    bcc       L04D7     ; no error, keep going
+                    bcc       FChainModule ; no error, keep going
                     leas      4,s       ; purge stack
                     puls      x,y,u,pc  ; restore & return
 *
-L04D7               stu       2,s       ; save pointer to module
+FChainModule        stu       2,s       ; save pointer to module
                     pshs      a,y       ; save module type & entry point
                     ldu       $0B,s     ; restore register stack pointer
                     stx       R$X,u     ; save updated name pointer
@@ -341,33 +341,33 @@ L04D7               stu       2,s       ; save pointer to module
                     std       P$PModul,x ; save it into process descriptor
                     puls      a         ; restore module type
                     cmpa      #Prgrm+Objct ; regular module?
-                    beq       L04FB     ; yes, go
+                    beq       FChainOffsetModuleMemorySize ; yes, go
                     cmpa      #Systm+Objct ; system module?
-                    beq       L04FB     ; branch if zero is set to L04FB
+                    beq       FChainOffsetModuleMemorySize ; branch if zero is set to FChainOffsetModuleMemorySize
                   IFNE    H6309   ; begin conditional assembly for H6309
 *--- these lines added to allow 6309 native mode modules to be executed
                     cmpa      #Prgrm+Obj6309 ; regular module?
-                    beq       L04FB     ; yes, go
+                    beq       FChainOffsetModuleMemorySize ; yes, go
                     cmpa      #Systm+Obj6309 ; system module?
-                    beq       L04FB     ; branch if zero is set to L04FB
+                    beq       FChainOffsetModuleMemorySize ; branch if zero is set to FChainOffsetModuleMemorySize
 *---
                   ENDC
                     ldb       #E$NEMod  ; return unknown module
-L04F4               leas      2,s       ; purge stack
+FChainPurge         leas      2,s       ; purge stack
                     stb       3,s       ; save error
                     comb                ; set carry
-                    bra       L053E     ; return
+                    bra       FChainProcess2 ; return
 * Setup up data memory
-L04FB               ldd       #M$Mem    ; get offset to module memory size
+FChainOffsetModuleMemorySize ldd       #M$Mem    ; get offset to module memory size
                     leay      P$DATImg,x ; get pointer to DAT image
                     ldx       P$PModul,x ; get pointer to module header
                     os9       F$LDDDXY  ; get module memory size
                     cmpa      R$B,u     ; bigger or smaller than callers request?
-                    bcc       L050E     ; bigger, use it instead
+                    bcc       FChainTryDataMemory ; bigger, use it instead
                     lda       R$B,u     ; get callers memory size instead
                     clrb                ; clear LSB of mem size
-L050E               os9       F$Mem     ; try & get the data memory
-                    bcs       L04F4     ; can't do it, exit with error
+FChainTryDataMemory os9       F$Mem     ; try & get the data memory
+                    bcs       FChainPurge ; can't do it, exit with error
                     ldx       6,s       ; restore process pointer
                     leay      (P$Stack-R$Size),x ; point to new register stack
                     pshs      d         ; preserve memory size
@@ -389,7 +389,7 @@ L050E               os9       F$Mem     ; try & get the data memory
                     clrb                ; clear B
                     std       R$U,y     ; save data area start
                     stx       R$PC,y    ; save program entry point
-L053E               puls      d         ; restore process pointer
+FChainProcess2      puls      d         ; restore process pointer
                     std       <D.Proc   ; save it as current
                     puls      d,x,y,u,pc ; restore d,x,y,u,pc from the stack
 

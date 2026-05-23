@@ -177,10 +177,10 @@ GotNPrc             pshs      u         ; save pointer to new descriptor
                     tfm       x+,u+     move 'em
                   ELSE
                     ldb       #NefIOSiz ; load B from #NefIOSiz
-L0250               lda       ,x+       ; load A from ,x+
+FForkTarget         lda       ,x+       ; load A from ,x+
                     sta       ,u+       ; store A at ,u+
                     decb                ; decrement B
-                    bne       L0250     ; branch if zero is clear to L0250
+                    bne       FForkTarget ; branch if zero is clear to FForkTarget
                   ENDC
                     puls      x,u       ; restore pointers to descriptors
                   ENDC
@@ -193,10 +193,10 @@ L0250               lda       ,x+       ; load A from ,x+
                     lde       #3        next, child inherits first 3 I/O paths
                   ELSE
                     ldb       #DefIOSiz ; six bytes for CWD, six bytes for CXD
-L0261               lda       ,x+       ; load A from ,x+
+FForkTarget2        lda       ,x+       ; load A from ,x+
                     sta       ,u+       ; store A at ,u+
                     decb                ; decrement B
-                    bne       L0261     ; branch if zero is clear to L0261
+                    bne       FForkTarget2 ; branch if zero is clear to FForkTarget2
                     ldy       #3        ; next, child inherits first 3 I/O paths
                   ENDC
 
@@ -218,11 +218,11 @@ SveNPth             sta       ,u+       ; save new path #
 * Link to new module & setup task map
                     ldx       ,s        ; get pointer to new descriptor
                     ldu       2,s       ; get pointer to register stack
-                    lbsr      L04B1     ; link to module & setup register stack
-                    bcs       L02CF     ; exit if error
+                    lbsr      FChainEverything ; link to module & setup register stack
+                    bcs       FForkTarget3 ; exit if error
                     pshs      d         ; save d on the stack
                     os9       F$AllTsk  ; allocate the task & setup MMU
-                    bcs       L02CF     ; error, skip ahead
+                    bcs       FForkTarget3 ; error, skip ahead
 
 * Copy parameters to new process
                     lda       P$PagCnt,x ; get memory page count
@@ -268,11 +268,11 @@ SveNPth             sta       ,u+       ; save new path #
                     rts                 ; return
 
 * Fork error goes here
-L02CF               puls      x         ; restore x from the stack
+FForkTarget3        puls      x         ; restore x from the stack
                     pshs      b         ; save error
-                    lbsr      L05A5     ; close paths & unlink mem
+                    lbsr      FExitTarget ; close paths & unlink mem
                     lda       P$ID,x    ; get bad ID
-                    lbsr      L0386     ; delete proc desc & task #
+                    lbsr      FAllprcTarget2 ; delete proc desc & task #
                     comb                ; set carry
                     puls      pc,u,b    ; pull error code & u & return
 
