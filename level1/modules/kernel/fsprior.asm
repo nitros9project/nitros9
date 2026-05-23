@@ -32,19 +32,19 @@ ex@                 comb                ; set carry to indicate error
                   ELSE
 
 FSPrior             lda       R$A,u     ; get process #
-                    lbsr      L0B2E     ; get pointer to it
-                    bcs       L07C0     ; error, return
+                    lbsr      FGprocpTarget ; get pointer to it
+                    bcs       FSpriorReturn ; error, return
                     ldx       <D.Proc   ; get current process
                     ldd       P$User,x  ; get user #
-                    beq       L07B7     ; super user, go set priority
+                    beq       FSpriorNewPriority ; super user, go set priority
                     cmpd      P$User,y  ; user #'s match?
-                    bne       L07BD     ; no, return error
-L07B7               lda       R$B,u     ; get new priority
+                    bne       FSpriorCarryError ; no, return error
+FSpriorNewPriority  lda       R$B,u     ; get new priority
                     sta       P$Prior,y ; set it
                     clrb                ; clear errors
                     rts                 ; return
-L07BD               comb                ; set carry for error
+FSpriorCarryError   comb                ; set carry for error
                     ldb       #E$BPrcID ; load B from #E$BPrcID
-L07C0               rts                 ; return to caller
+FSpriorReturn       rts                 ; return to caller
 
                   ENDC

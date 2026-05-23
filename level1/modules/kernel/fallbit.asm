@@ -311,13 +311,13 @@ SkpBit2             cmpy      #$0008    ; compare Y with #$0008
                     beq       BitStEx   ; exactly 1 byte left, do final store & exit
 
 * Last byte: Not a full byte left loop
-L085A               lsra                ; bump out least sig. bit
+FAllbitBumpOutLeastSigBit lsra                ; bump out least sig. bit
                   IFNE    H6309   ; begin conditional assembly for H6309
                     decw                ; dec the bit counter
                   ELSE
                     leay      -1,y      ; compute -1,y into Y
                   ENDC
-                    bne       L085A     ; keep going until last one is shifted out
+                    bne       FAllbitBumpOutLeastSigBit ; keep going until last one is shifted out
                     coma                ; invert byte to get proper result
                     sta       ,s        ; preserve a sec
                   IFGT    Level-1 ; begin conditional assembly for Level-1
@@ -402,16 +402,16 @@ DoDelBit            equ       *         ; define assembler symbol
                   ELSE
                     ldy       R$Y,u     ; get # bits to clear
                   ENDC
-                    beq       L08E0     ; none, return
+                    beq       FAllbitReturn ; none, return
                     coma                ; invert current bit mask
                     sta       ,-s       ; preserve on stack
-                    bpl       L08BC     ; if high bit clear, skip ahead
+                    bpl       FAllbitPreloadCleared ; if high bit clear, skip ahead
                   IFGT    Level-1 ; begin conditional assembly for Level-1
                     os9       F$LDABX   ; go get byte from user's map
                   ELSE
                     lda       ,x        ; load A from ,x
                   ENDC
-L08AD               anda      ,s        ; aND it with current mask
+FAllbitMask         anda      ,s        ; aND it with current mask
                   IFNE    H6309   ; begin conditional assembly for H6309
                     decw                ; dec the bits left counter
                   ELSE
@@ -419,16 +419,16 @@ L08AD               anda      ,s        ; aND it with current mask
                   ENDC
                     beq       BitDone   ; done, store finished byte back in task's map
                     asr       ,s        ; shift out lowest bit, leaving highest alone
-                    bcs       L08AD     ; if it is a 1, do next bit
+                    bcs       FAllbitMask ; if it is a 1, do next bit
                   IFGT    Level-1 ; begin conditional assembly for Level-1
                     os9       F$STABX   ; if it was a 0 (which means whole byte done),
                   ELSE
                     sta       ,x        ; store A at ,x
                   ENDC
                     leax      1,x       ; store finished byte & inc. ptr
-L08BC               clra                ; preload a cleared byte
+FAllbitPreloadCleared clra                ; preload a cleared byte
                     bra       ChkFull   ; skip ahead
-L08BF               equ       *         ; define assembler symbol
+FAllbitJoin         equ       *         ; define assembler symbol
                   IFGT    Level-1 ; begin conditional assembly for Level-1
                     os9       F$STABX   ; store full byte
                   ELSE
@@ -442,16 +442,16 @@ ChkFull             cmpw      #8        at least 1 full byte left?
                     leay      -8,y      ; compute -8,y into Y
 ChkFull             cmpy      #8        ; compare Y with #8
                   ENDC
-                    bhi       L08BF     ; yes, do a whole byte in 1 shot
+                    bhi       FAllbitJoin ; yes, do a whole byte in 1 shot
                     beq       BitDone   ; exactly 1, store byte & exit
                     coma                ; < full byte left, invert bits
-L08CF               lsra                ; shift out rightmost bit
+FAllbitShiftOutRightmostBit lsra                ; shift out rightmost bit
                   IFNE    H6309   ; begin conditional assembly for H6309
                     decw                ; dec bits left counter
                   ELSE
                     leay      -1,y      ; compute -1,y into Y
                   ENDC
-                    bne       L08CF     ; keep doing till done
+                    bne       FAllbitShiftOutRightmostBit ; keep doing till done
                     sta       ,s        ; save finished mask
                   IFGT    Level-1 ; begin conditional assembly for Level-1
                     os9       F$LDABX   ; get original byte from task
@@ -466,7 +466,7 @@ BitDone             equ       *         ; define assembler symbol
                     sta       ,x        ; store A at ,x
                   ENDC
                     leas      1,s       ; eat working copy of mask
-L08E0               clrb                ; eat error & return
+FAllbitReturn       clrb                ; eat error & return
                     rts                 ; return to caller
 
 

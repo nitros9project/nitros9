@@ -49,24 +49,24 @@ ex@                 stu       P$Queue,x ; insert process with lower age as the n
                   ELSE
 
 FAProc              ldx       R$X,u     ; get ptr to process to activate
-L0D11               clrb                ; clear B
+FAprocTarget        clrb                ; clear B
                     pshs      cc,b,x,y,u ; save cc,b,x,y,u on the stack
                     lda       P$Prior,x ; get process priority
                     sta       P$Age,x   ; save it as age (How long it's been around)
                     orcc      #IntMasks ; shut down IRQ's
                     ldu       #(D.AProcQ-P$Queue) ; get ptr to active process queue
-                    bra       L0D29     ; go through the chain
+                    bra       FAprocProcess ; go through the chain
 * Update active process queue
 *  X=Process to activate
 *  U=Current process in queue links
-L0D1F               inc       P$Age,u   ; update current process age
-                    bne       L0D25     ; wrap?
+FAprocProcessAge    inc       P$Age,u   ; update current process age
+                    bne       FAprocMatchProcessAges ; wrap?
                     dec       P$Age,u   ; yes, reset it to max.
-L0D25               cmpa      P$Age,u   ; match process ages??
-                    bhi       L0D2B     ; no, skip update
-L0D29               leay      ,u        ; point Y to current process
-L0D2B               ldu       P$Queue,u ; get pointer to next process in chain
-                    bne       L0D1F     ; still more in chain, keep going
+FAprocMatchProcessAges cmpa      P$Age,u   ; match process ages??
+                    bhi       FAprocProcessChain ; no, skip update
+FAprocProcess       leay      ,u        ; point Y to current process
+FAprocProcessChain  ldu       P$Queue,u ; get pointer to next process in chain
+                    bne       FAprocProcessAge ; still more in chain, keep going
                     ldd       P$Queue,y ; load D from P$Queue,y
                     stx       P$Queue,y ; save new process to chain
                     std       P$Queue,x ; store D at P$Queue,x

@@ -11,29 +11,29 @@
 *
 FAllPrc             pshs      u         ; preserve register stack pointer
                     bsr       AllPrc    ; try & allocate descriptor
-                    bcs       L02E8     ; can't do, return
+                    bcs       FAllprcReturn ; can't do, return
                     ldx       ,s        ; get register stack pointer
                     stu       R$U,x     ; save pointer to new descriptor
-L02E8               puls      u,pc      ; restore & return
+FAllprcReturn       puls      u,pc      ; restore & return
 * Allocate a process desciptor
 * Entry: None
 AllPrc              ldx       <D.PrcDBT ; get pointer to process descriptor block table
-L02EC               lda       ,x+       ; get a process block #
-                    bne       L02EC     ; used, keep looking
+FAllprcProcessBlock lda       ,x+       ; get a process block #
+                    bne       FAllprcProcessBlock ; used, keep looking
                     leax      -1,x      ; point to it again
                     tfr       x,d       ; move it to D
                     subd      <D.PrcDBT ; subtract pointer to table (gives actual prc. ID)
                     tsta                ; id valid?
-                    beq       L02FE     ; yes, go on
+                    beq       FAllprcProcess ; yes, go on
                     comb                ; set carry
                     ldb       #E$PrcFul ; get error code
                     rts                 ; return with error
 
-L02FE               pshs      b         ; save process #
+FAllprcProcess      pshs      b         ; save process #
                     ldd       #P$Size   ; get size of descriptor
                     os9       F$SRqMem  ; request the memory for it
                     puls      a         ; restore process #
-                    bcs       L032F     ; exit if error from mem call
+                    bcs       FAllprcReturn2 ; exit if error from mem call
                     sta       P$ID,u    ; save ID to descriptor
                     tfr       u,d       ; transfer register value u,d
                     sta       ,x        ; save ID to process descriptor table
@@ -79,11 +79,11 @@ LChinese            stx       ,y++      ; 8 \                Clear 2 bytes
                     ldb       #DAT.BlCt ; # of double byte writes
                     ldx       #DAT.Free ; empty block marker
                     leay      P$DATImg,u ; compute P$DATImg,u into Y
-L0329               stx       ,y++      ; store X at ,y++
+FAllprcTarget       stx       ,y++      ; store X at ,y++
                     decb                ; done?
-                    bne       L0329     ; no, keep going
+                    bne       FAllprcTarget ; no, keep going
                     clrb                ; clear carry
-L032F               rts                 ; return
+FAllprcReturn2      rts                 ; return
 
 **************************************************
 * System Call: F$DelPrc
@@ -93,7 +93,7 @@ L032F               rts                 ; return
 * Error:  CC = C bit set; B = error code
 *
 FDelPrc             lda       R$A,u     ; get process #
-                    bra       L0386     ; delete it
+                    bra       FAllprcTarget2 ; delete it
 
 
 **************************************************
@@ -117,62 +117,62 @@ FDelPrc             lda       R$A,u     ; get process #
 *
 FWait               ldx       <D.Proc   ; get current process
                     lda       P$CID,x   ; any children?
-                    beq       L0368     ; no, exit with error
-L033A               lbsr      L0B2E     ; get pointer to child process dsc. into Y
+                    beq       FAllprcErrorExit ; no, exit with error
+FAllprcChildProcessDesc lbsr      FGprocpTarget ; get pointer to child process dsc. into Y
                   IFNE    H6309   ; begin conditional assembly for H6309
                     tim       #Dead,P$State,y ; is child dead?
                   ELSE
                     lda       P$State,y ; load A from P$State,y
                     bita      #Dead     ; test bits in A against #Dead
                   ENDC
-                    bne       L036C     ; yes, send message to parent
+                    bne       FAllprcProcessIDDeadChild ; yes, send message to parent
                     lda       P$SID,y   ; no, check for another child (thru sibling list)
-                    bne       L033A     ; yes there is another child, go see if it is dead
+                    bne       FAllprcChildProcessDesc ; yes there is another child, go see if it is dead
 * NOTE: MAY WANT TO ADD IN CLRB, CHANGE TO STD R$A,u
                     sta       R$A,u     ; no child has died, clear out process # & status
                     sta       R$B,u     ; code in caller's A&B regs
                     pshs      cc        ; preserve CC
                     orcc      #IntMasks ; shut off interrupts
                     lda       <P$Signal,x ; any signals pending?
-                    beq       L035D     ; no, skip ahead
+                    beq       FAllprcHeadWaitingProcessLine ; no, skip ahead
 * No Child died, but received signal
                     deca                ; yes, is it a wakeup signal?
-                    bne       L035A     ; no, wake it up with proper signal
+                    bne       FAllprcWakeUpSignalWillSent ; no, wake it up with proper signal
                     sta       <P$Signal,x ; clear out signal code
-L035A               lbra      L071B     ; go wake it up (no signal will be sent)
+FAllprcWakeUpSignalWillSent lbra      FSleepTarget ; go wake it up (no signal will be sent)
 
 * No dead child & no signal...execute next F$Waiting process in line
-L035D               ldd       <D.WProcQ ; get ptr to head of waiting process line
+FAllprcHeadWaitingProcessLine ldd       <D.WProcQ ; get ptr to head of waiting process line
                     std       P$Queue,x ; save as next process in line from current one
                     stx       <D.WProcQ ; save curr. process as new head of waiting process line
                     puls      cc        ; restore interupts
-                    lbra      L0780     ; go activate next process in line
+                    lbra      FSleepTarget4 ; go activate next process in line
 
-L0368               comb                ; exit with No Children error
+FAllprcErrorExit    comb                ; exit with No Children error
                     ldb       #E$NoChld ; load B from #E$NoChld
                     rts                 ; return to caller
 
 * Child has died
 * Entry: Y=Ptr to child process that died
 *        U=Ptr to caller's register stack
-L036C               lda       P$ID,y    ; get process ID of dead child
+FAllprcProcessIDDeadChild lda       P$ID,y    ; get process ID of dead child
                     ldb       <P$Signal,y ; get signal code that child received (if any)
                     std       R$D,u     ; save in caller's D
                     leau      ,y        ; point U to child process dsc.
                     leay      P$CID-P$SID,x ; bump Y up by 1 for 1st loop so P$SID below
 *                             actually references P$CID
-                    bra       L037C     ; skip ahead
+                    bra       FAllprcSiblingIDChildIDSt ; skip ahead
 
 * Update linked list of sibling processes to exclude dead child
-L0379               lbsr      L0B2E     ; get pointer to process
-L037C               lda       P$SID,y   ; get Sibling ID (or Child ID on 1st run)
+FAllprcProcess2     lbsr      FGprocpTarget ; get pointer to process
+FAllprcSiblingIDChildIDSt lda       P$SID,y   ; get Sibling ID (or Child ID on 1st run)
                     cmpa      P$ID,u    ; same as Dying process ID?
-                    bne       L0379     ; no, go get ptr to Sibling process & do again
+                    bne       FAllprcProcess2 ; no, go get ptr to Sibling process & do again
                     ldb       P$SID,u   ; yes, wrapped to our own, get Sibling ID from child
                     stb       P$SID,y   ; save as sibling process id # in other sibling
-L0386               pshs      d,x,u     ; preserve regs
+FAllprcTarget2      pshs      d,x,u     ; preserve regs
                     cmpa      WGlobal+G.AlPID ; does dying process have an alarm set up?
-                    bne       L0393     ; no, go on
+                    bne       FAllprcDyingProcessBack ; no, go on
                   IFNE    H6309   ; begin conditional assembly for H6309
                     clrd                ; faster than 2 memory clears
                   ELSE
@@ -180,11 +180,11 @@ L0386               pshs      d,x,u     ; preserve regs
                     clrb                ; clear B
                   ENDC
                     std       WGlobal+G.AlPID ; clear alarm ID & signal
-L0393               ldb       ,s        ; get dying process # back
+FAllprcDyingProcessBack ldb       ,s        ; get dying process # back
                     ldx       <D.PrcDBT ; get ptr to process descriptor block table
                     abx                 ; offset into table
                     lda       ,x        ; get MSB of process dsc. ptr
-                    beq       L03AC     ; if gone already, exit
+                    beq       FAllprcReturn3 ; if gone already, exit
                     clrb                ; clear B
                     stb       ,x        ; clear out entry in block table
                     tfr       d,x       ; move process dsc. ptr to X
@@ -192,4 +192,4 @@ L0393               ldb       ,s        ; get dying process # back
                     leau      ,x        ; point U to start of Dead process dsc.
                     ldd       #P$Size   ; size of a process dsc.
                     os9       F$SRtMem  ; deallocate process dsc. from system memory pool
-L03AC               puls      d,x,u,pc  ; restore regs & return
+FAllprcReturn3      puls      d,x,u,pc  ; restore regs & return

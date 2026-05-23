@@ -17,8 +17,8 @@ FLDABX              ldb       R$B,u     ; get task # to get byte from
 * Entry: B=Task #
 *        X=Pointer to data
 * Exit : B=Byte from other task
-L0C40               pshs      cc,a,x,u  ; save cc,a,x,u on the stack
-                    bsr       L0BF5     ; calculate offset into DAT image (fmove.asm)
+FLdabxTarget        pshs      cc,a,x,u  ; save cc,a,x,u on the stack
+                    bsr       FMoveTaskImageTable ; calculate offset into DAT image (fmove.asm)
                     ldd       a,u       ; [NAC HACK 2017Jan25] why ldd when a is never used??
                     orcc      #IntMasks ; set condition-code bits using #IntMasks
                   IFNE    mc09    ; begin conditional assembly for mc09
@@ -68,9 +68,9 @@ FSTABX              ldd       R$D,u     ; load D from R$D,u
 * Entry: A=Byte to store
 *        B=Task #
 *        X=Pointer to data
-L0C28               andcc     #^Carry   ; clear condition-code bits using #^Carry
+FLdabxCarry         andcc     #^Carry   ; clear condition-code bits using #^Carry
                     pshs      cc,d,x,u  ; save cc,d,x,u on the stack
-                    bsr       L0BF5     ; calculate offset into DAT image (fmove.asm)
+                    bsr       FMoveTaskImageTable ; calculate offset into DAT image (fmove.asm)
                     ldd       a,u       ; get memory block
                   IFNE    mc09    ; begin conditional assembly for mc09
                     orcc      #IntMasks ; set condition-code bits using #IntMasks

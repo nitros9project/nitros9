@@ -33,19 +33,19 @@ fbye                clrb                ; clear B
 
 FMove               ldd       R$D,u     ; get source & destination task #'s
 * Entry point from F$CRC
-L0B25               ldy       R$Y,u     ; get # bytes to move
+FMoveBytes          ldy       R$Y,u     ; get # bytes to move
                     beq       fbye      ; none, exit without error
                     ldx       R$X,u     ; get source pointer
                     ldu       R$U,u     ; get destination pointer
-L0B2C               pshs      d,x,y,u   ; preserve it all
+FMoveTarget         pshs      d,x,y,u   ; preserve it all
                     pshs      d,y       ; save task #'s & byte count
                     tfr       a,b       ; copy source task to B
-                    lbsr      L0BF5     ; calculate block offset of source
+                    lbsr      FMoveTaskImageTable ; calculate block offset of source
                     leay      a,u       ; point to block
                     pshs      x,y       ; save source pointer & DAT pointer of source
                     ldb       9,s       ; get destination task #
                     ldx       14,s      ; get destination pointer
-                    lbsr      L0BF5     ; calculate block offset
+                    lbsr      FMoveTaskImageTable ; calculate block offset
                     leay      a,u       ; point to block
                     pshs      x,y       ; save dest. pointer & DAT pointer to dest.
 * try ldq #$20002000/ subr x,w / pshsw (+3), take out ldd (-3)
@@ -77,7 +77,7 @@ L0B2C               pshs      d,x,y,u   ; preserve it all
 *        14,s=total byte count of move
 * Registers: X=Source pointer
 *            U=Destination pointer
-L0B6A               equ       *         ; define assembler symbol L0B6A
+FMoveJoin           equ       *         ; define assembler symbol FMoveJoin
                   IFNE    H6309   ; begin conditional assembly for H6309
                     ldd       [<6,s]    ; [B]=Block # of source
                     ldw       [<10,s]   ; [A]=Block # of destination
@@ -85,15 +85,15 @@ L0B6A               equ       *         ; define assembler symbol L0B6A
 * Calculate move length for this pass
                     ldw       14,s      ; get full byte count
                     cmpw      ,s        ; we gonna overlap source?
-                    bls       L0B82     ; no, skip ahead
+                    bls       FMoveWeGonnaOverlapDestination ; no, skip ahead
                     ldw       ,s        ; get remaining bytes in source block
-L0B82               cmpw      2,s       ; we gonna overlap destination?
-                    bls       L0B89     ; no, skip ahead
+FMoveWeGonnaOverlapDestination cmpw      2,s       ; we gonna overlap destination?
+                    bls       FMoveBytes2 ; no, skip ahead
                     ldw       2,s       ; get remaining bytes in destination block
-L0B89               cmpw      #$0100    ; less than 256 bytes?
-                    bls       L0B92     ; yes, skip ahead
+FMoveBytes2         cmpw      #$0100    ; less than 256 bytes?
+                    bls       FMoveCount ; yes, skip ahead
                     ldw       #$0100    ; force to 256 bytes
-L0B92               stw       12,s      ; save count
+FMoveCount          stw       12,s      ; save count
                     orcc      #IntMasks ; shut off interrupts
                     std       >DAT.Regs+5 ; map in the blocks
                     tfm       x+,u+     ; copy up to 256 bytes (max 774 cycles)
@@ -101,29 +101,29 @@ L0B92               stw       12,s      ; save count
                     andcc     #^IntMasks ; clear condition-code bits using #^IntMasks
                     ldd       14,s      ; get full count
                     subd      12,s      ; done?
-                    beq       L0BEF     ; yes, return
+                    beq       FMovePurge ; yes, return
                     std       14,s      ; save updated count
                     ldd       ,s        ; get current offset in block
                     subd      12,s      ; need to switch source block?
-                    bne       L0BD7     ; no, skip ahead
+                    bne       FMoveUpdatedSourceOffsetBlock ; no, skip ahead
                     lda       #$20      ; B=0 from 'bne' above
                     subr      d,x       ; reset source back to begining of block
                     inc       11,s      ; add 2 to source DAT pointer
                     inc       11,s      ; increment 11,s
-L0BD7               std       ,s        ; save updated source offset in block
+FMoveUpdatedSourceOffsetBlock std       ,s        ; save updated source offset in block
                     ldd       2,s       ; get destination offset
                     subd      12,s      ; need to switch destination block?
-                    bne       L0BEA     ; no, skip ahead
+                    bne       FMoveUpdatedDestinationOffsetBlock ; no, skip ahead
                     lda       #$20      ; B=0 from 'bne', above
                     subr      d,u       ; reset destination back to beginning of block
                     inc       7,s       ; add 2 to destination DAT pointer
                     inc       7,s       ; increment 7,s
-L0BEA               std       2,s       ; save updated destination offset in block
-                    bra       L0B6A     ; go do next block
+FMoveUpdatedDestinationOffsetBlock std       2,s       ; save updated destination offset in block
+                    bra       FMoveJoin ; go do next block
 
 * Block move done, return
-L0BEF               leas      16,s      ; purge stack
-L0BF2               clrb                ; clear errors
+FMovePurge          leas      16,s      ; purge stack
+FMoveErrors         clrb                ; clear errors
                     puls      d,x,y,u,pc ; return
 
                   ELSE
@@ -146,34 +146,34 @@ L0BXA               ldd       [<$6,s]   ; get block # of source into B
                     pshs      b         ; save on stack
                     ldd       <14+2,s   ; get total byte count left we are copying
                     cmpd      0+2,s     ; will that go past end of source block?
-                    bls       L0B82     ; no, check destination
+                    bls       FMoveWeGonnaOverlapDestination ; no, check destination
                     ldd       0+2,s     ; get # of bytes until end of source block
-L0B82               cmpd      2+2,s     ; will that go past end of dest block?
-                    bls       L0B89     ; no, check max size we want IRQ's of
+FMoveWeGonnaOverlapDestination cmpd      2+2,s     ; will that go past end of dest block?
+                    bls       FMoveBytes2 ; no, check max size we want IRQ's of
                     ldd       2+2,s     ; get # of bytes until end of dest block
-L0B89               cmpd      #$0060    ; >96 bytes to copy left?
-                    bls       L0B84     ; no, do entire # of bytes left
+FMoveBytes2         cmpd      #$0060    ; >96 bytes to copy left?
+                    bls       FMoveSizeBlock ; no, do entire # of bytes left
                     ldd       #$0060    ; yes, force to 96
-L0B84               std       12+2,s    ; save size of current copy block
+FMoveSizeBlock      std       12+2,s    ; save size of current copy block
                     puls      y         ; get source & dest MMU block #'s
                     orcc      #IntMasks ; shut IRQ's off
                     stb       <D.IRQTmp+1 ; save copy of current copy block size
                     sty       >DAT.Regs+5 ; swap in source/dest MMU blocks into $A000-$DFFF
 ***** NO STACK USE BETWEEN HERE.....
                     andb      #$07      ; 2 1st, do single byte copies for 1-7 leftover bytes
-                    beq       L0B99     ; 3 No leftovers, go to 8 byte copy routine
-L0B92               lda       ,x+       ; 6 Copy 1-7 leftover bytes
+                    beq       FMoveSizeBack ; 3 No leftovers, go to 8 byte copy routine
+FMoveCount          lda       ,x+       ; 6 Copy 1-7 leftover bytes
                     sta       ,u+       ; 6
                     decb                ; 2
-                    bne       L0B92     ; 3
-L0B99               lda       <D.IRQTmp+1 ; +4 Get copy size back into A
+                    bne       FMoveCount ; 3
+FMoveSizeBack       lda       <D.IRQTmp+1 ; +4 Get copy size back into A
                     lsra                ; divide size by 8 (since 8 byte chunks copying)
                     lsra                ; shift or rotate and update condition codes
                     lsra                ; shift or rotate and update condition codes
-                    beq       L0BBC     ; branch if zero is set to L0BBC
+                    beq       FMoveSystemDAT ; branch if zero is set to FMoveSystemDAT
                     sta       <D.IRQTmp ; save loop counter (# 8 byte blocks) +4
                     exg       x,u       ; swap source/destination ptrs for PULU routine
-L0BA4               pulu      y,d       ; 9 55 cycles per 8 bytes copied
+FMoveCyclesPerBytesCopied pulu      y,d       ; 9 55 cycles per 8 bytes copied
                     std       ,x        ; 5 (old pulu y/sty ,x++ was 69)
                     sty       2,x       ; 6
                     pulu      y,d       ; 9
@@ -181,9 +181,9 @@ L0BA4               pulu      y,d       ; 9 55 cycles per 8 bytes copied
                     sty       6,x       ; 6
                     leax      8,x       ; 5
                     dec       <D.IRQTmp ; 6
-                    bne       L0BA4     ; 3
+                    bne       FMoveCyclesPerBytesCopied ; 3
                     exg       x,u       ; 8 Swap updated source/dest ptrs
-L0BBC               ldy       <D.SysDAT ; 6 Get system DAT pointer
+FMoveSystemDAT      ldy       <D.SysDAT ; 6 Get system DAT pointer
                     lda       $0B,y     ; 5 Get original MMU blocks
                     ldb       $0D,y     ; 5
                     std       >DAT.Regs+5 ; 6 Restore originals
@@ -191,11 +191,11 @@ L0BBC               ldy       <D.SysDAT ; 6 Get system DAT pointer
                     andcc     #^IntMasks ; turn IRQ's back on
                     ldd       14,s      ; get # of bytes left to copy
                     subd      12,s      ; subtract # bytes we copied
-                    beq       L0BEF     ; done Move
+                    beq       FMovePurge ; done Move
                     std       14,s      ; save new # of bytes left to copy
                     ldd       ,s        ; get # bytes until end of source block
                     subd      12,s      ; subtract # bytes copied
-                    bne       L0BD7     ; still more in current source MMU block
+                    bne       FMoveUpdatedSourceOffsetBlock ; still more in current source MMU block
                     ldd       #DAT.BlSz ; size of MMU block (8K)
 * Since we know where the blocks are mapped, we can change this leax
 * and the later leau to ldx #$A000 and ldu #$C000 (faster smaller)
@@ -206,36 +206,36 @@ L0BBC               ldy       <D.SysDAT ; 6 Get system DAT pointer
 * boundaries are crossed, so not often at all
                     inc       11,s      ; 7 Add 2 to source DAT ptr
                     inc       11,s      ; increment 11,s
-L0BD7               std       ,s        ; save new distance (8K) to end of source block
+FMoveUpdatedSourceOffsetBlock std       ,s        ; save new distance (8K) to end of source block
                     ldd       2,s       ; get # bytes until end of dest block
                     subd      12,s      ; subtract # bytes copied
-                    bne       L0BEA     ; still more in current dest MMU block
+                    bne       FMoveUpdatedDestinationOffsetBlock ; still more in current dest MMU block
                     ldd       #DAT.BlSz ; load D from #DAT.BlSz
                     leau      >-DAT.BlSz,u ; wrap dest pr back
                     inc       7,s       ; 7 Add 2 to dest DAT ptr
                     inc       7,s       ; increment 7,s
-L0BEA               std       2,s       ; save # of bytes left in dest block
+FMoveUpdatedDestinationOffsetBlock std       2,s       ; save # of bytes left in dest block
                     lbra      L0BXA     ; branch unconditionally to L0BXA
 
-L0BEF               leas      <$10,s    ; eat temp stack
-L0BF2               clrb                ; exit w/o error
+FMovePurge          leas      <$10,s    ; eat temp stack
+FMoveErrors         clrb                ; exit w/o error
                     puls      pc,u,y,x,d ; restore pc,u,y,x,d from the stack
 
                   ENDC
 
-L0BF3               tfr       u,y       ; save a copy of U for later
+FMoveLater          tfr       u,y       ; save a copy of U for later
 * Calculate offset within DAT image
 * Entry: B=Task #
 *        X=Pointer to data
 * Exit : A=Offset into DAT image
 *        X=Offset within block from original pointer
 * Possible bug:  No one ever checks if the DAT image, in fact, exists.
-L0BF5               ldu       <D.TskIPt ; get task image ptr table
+FMoveTaskImageTable ldu       <D.TskIPt ; get task image ptr table
                     lslb                ; shift or rotate and update condition codes
                     ldu       b,u       ; get ptr to this task's DAT image
                     tfr       x,d       ; copy logical address to D
                     anda      #%11100000 ; keep only which 8K bank it's in
-                    beq       L0C07     ; bank 0, no further calcs needed
+                    beq       FMoveReturn ; bank 0, no further calcs needed
                     clrb                ; force it to start on an 8K boundary
                   IFNE    H6309   ; begin conditional assembly for H6309
                     subr      d,x       ; now X=offset into the block
@@ -250,4 +250,4 @@ L0BF5               ldu       <D.TskIPt ; get task image ptr table
                     lsra                ; 8K bank (remember that each entry in a DAT image
                     lsra                ; is 2 bytes)
                     lsra                ; shift or rotate and update condition codes
-L0C07               rts                 ; return to caller
+FMoveReturn         rts                 ; return to caller

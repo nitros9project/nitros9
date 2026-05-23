@@ -45,7 +45,7 @@
                     nam       krn
                     ttl       NitrOS-9 Level 2 Kernel
 
-                  ifp1
+                  IFP1
                     use       defsfile  ; include source file defsfile
                   ENDC
 
@@ -92,7 +92,7 @@ MName               fcs       /Krn/
 
 * The dispatch table.
 * The kernel copies this to low RAM starting at D.Clock.
-DisTable            fdb       L0CD2+Where ; d.Clock absolute address at the start
+DisTable            fdb       FAlltskSleepingProcessQueue+Where ; d.Clock absolute address at the start
                     fdb       XSWI3+Where ; d.XSWI3
                     fdb       XSWI2+Where ; d.XSWI2
                     fdb       D.Crash   ; d.XFIRQ crash on an FIRQ
@@ -449,9 +449,9 @@ l@                  stu       ,x++      ; store it
 * Walk through the map, changing the corresponding elements from 0
 * (the initialization value) to 1 (indicating 'used'). Higher
 * entries in the map remain as 0 (indicating 'unused').
-L0104               inc       ,x+       ; mark it as used
+KrnMarkUsed         inc       ,x+       ; mark it as used
                     decb                ; done?
-                    bne       L0104     ; no, go back till done
+                    bne       KrnMarkUsed ; no, go back till done
 
 *[[[ Wildbits PORT
                   IFNE    wildbits ; begin conditional assembly for wildbits
@@ -506,16 +506,16 @@ l@                  sta       b,x       ; store the flag in the appropriate offs
 
                   IFNE    H6309   ; begin conditional assembly for H6309
                     ldq       #$00080100 ; e=Marker, D=Block # to check
-L0111               asld                ; get next block #
+KrnBlock            asld                ; get next block #
                     stb       >DAT.Regs+5 ; map block into block 6 of my task
                     ste       >-$6000,x ; save marker to that block
                     cmpe      ,x        ; did it ghost to block 0?
-                    bne       L0111     ; no, keep going till ghost is found
+                    bne       KrnBlock  ; no, keep going till ghost is found
                     stb       <D.MemSz  ; save # of 8KB memory blocks that exist
                     addr      x,d       ; add number of blocks to block map start
                   ELSE
                     ldd       #$0008    ; load the initial value
-L0111               aslb                ; B <= 1 (hi bit goes into carry, 0 goes into low bit)
+KrnBlock            aslb                ; B <= 1 (hi bit goes into carry, 0 goes into low bit)
                     rola                ; A <= 1 (carry goes into low bit, hi bit goes into carry)
                     stb       >DAT.Regs+5 ; save B into the slot
                     pshs      a         ; save A onto the stack
@@ -523,7 +523,7 @@ L0111               aslb                ; B <= 1 (hi bit goes into carry, 0 goes
                     sta       >-$6000,x ; save it in the offset value
                     cmpa      ,x        ; compare against the value here
                     puls      a         ; recover A
-                    bne       L0111     ; branch if the previous comparison failed
+                    bne       KrnBlock  ; branch if the previous comparison failed
                     stb       <D.MemSz  ; else we have our memory size now
                     pshs      x         ; save X
                     addd      ,s++      ; add X into D and recover the stack
@@ -542,9 +542,9 @@ L0111               aslb                ; B <= 1 (hi bit goes into carry, 0 goes
 * $0280 = 1024KB (128 8KB blocks)
 * $0300 = 2048KB (256 8KB blocks)
                     bitb      #%00110000 ; is the block above 128K-256K?
-                    beq       L0170     ; yes, no need to mark block map
+                    beq       Mc09KrnStartBootTrackMemory ; yes, no need to mark block map
                     tstb                ; is it 2 meg?
-                    beq       L0170     ; yes, skip this
+                    beq       Mc09KrnStartBootTrackMemory ; yes, skip this
 * Mark blocks from 128k-256K to block $3F as NOT RAM.
                     abx                 ; add the maximum block number to block map start address
                     leax      -1,x      ; skip good blocks that are RAM
@@ -555,24 +555,24 @@ l@                  sta       ,x+       ; mark them all
                     bne       l@        ; not yet
 
 * ASSUME: however we got here, B=0
-L0170
+Mc09KrnStartBootTrackMemory
                     ldx       #Bt.Start ; start address of the boot track in memory
                     lda       #18       ; size of the boot track is $1800
                   ENDC
 
 * Verify the modules in the boot area and update/build a module index.
                     lbsr      I.VBlock  ; perform module validation
-                    bsr       L01D2     ; then mark the system map
+                    bsr       KrnSystemMemoryMap ; then mark the system map
 
                   IFEQ    wildbits ; begin conditional assembly for wildbits
 * BGP - Load bootfile and link to init. We no longer try to link to init first and then
 * call F$Boot. This saves bytes.
                     os9       F$Boot    ; load bootfile here +BGP+
-                    bcs       L01CE     ; error, go crash +BGP+
+                    bcs       KrnObviouslyCantCrashMachine ; error, go crash +BGP+
                   ENDC
                     leax      <init,pc  ; point to 'Init' module name
                     bsr       link      ; try & link it
-                    bcs       L01CE     ; error, go crash
+                    bcs       KrnObviouslyCantCrashMachine ; error, go crash
 
 * BGP - Commented out the following lines since I moved F$Boot above
 *                    bcc       L01BF               no error, go on
@@ -581,7 +581,7 @@ L0170
 *                    bra       L01CE               error, re-booting do D.Crash
 
 * So far, so good. Save the pointer to the init module and execute krnp2.
-L01BF               stu       <D.Init   ; save the init module pointer
+KrnInitModule       stu       <D.Init   ; save the init module pointer
                     lda       Feature1,u ; get feature byte #1 from the init module
                     bita      #CRCOn    ; is the CRC feature on?
                     beq       ShowI     ; if not, continue
@@ -593,7 +593,7 @@ ShowI
                     jsr       <D.BtBug  ; perform the action
                   ENDC
 
-L01C1               leax      <krnp2,pc ; point to krnp2's name
+KrnKrnp2sName       leax      <krnp2,pc ; point to krnp2's name
                     bsr       link      ; try to link it
 
 * BGP - Removed the following lines as krnp2 is ALWAYS in the bootfile and F$Boot is called above.
@@ -605,13 +605,13 @@ L01C1               leax      <krnp2,pc ; point to krnp2's name
 *                    bcc       L01C1               branch if no error, let's try to link it again
 *
 
-L01D0               jmp       ,y        ; jump into krnp2
+KrnJumpKrnp2        jmp       ,y        ; jump into krnp2
 
 * BGP - This line was above L01D0 but now moved below since above lines are commented.
-L01CE               jmp       <D.Crash  ; obviously can't do it, crash machine
+KrnObviouslyCantCrashMachine jmp       <D.Crash  ; obviously can't do it, crash machine
 
 * Update the system memory map to reserve the area the kernel uses.
-L01D2               ldx       <D.SysMem ; get the system memory map pointer
+KrnSystemMemoryMap  ldx       <D.SysMem ; get the system memory map pointer
                   IFNE    wildbits ; begin conditional assembly for wildbits
                     lda       #NotRAM   ; get the "not RAM" flag
                     ldb       <D.BtPtr  ; and the boot pointer MSB
@@ -621,10 +621,10 @@ L01D2               ldx       <D.SysMem ; get the system memory map pointer
                     abx                 ; point to Bt.Start - start of the boot area
                     comb                ; we have $FF-$ED pages to mark as "RAM in use"
                     sta       b,x       ; mark I/O as not RAM
-L01DF               lda       #RAMinUse ; get the "RAM in use" flag
-L01E1               sta       ,x+       ; mark this page
+KrnRAMUseFlag       lda       #RAMinUse ; get the "RAM in use" flag
+KrnMarkPage         sta       ,x+       ; mark this page
                     decb                ; done?
-                    bne       L01E1     ; no, keep going
+                    bne       KrnMarkPage ; no, keep going
                     ldx       <D.BlkMap ; get the pointer to the start of the block map
                     sta       <KrnBlk,x ; mark kernel block as "RAM in use", instead of "Module in block"
 S.AltIRQ            rts                 ; return
@@ -718,8 +718,8 @@ XSWI3               lda       #P$SWI3   ; point to the SWI3 vector
 XSWI                lda       #P$SWI    ; point to the SWI vector
                     ldx       <D.Proc   ; get the current process descriptor
                     ldu       a,x       ; is this a user defined SWI[x]?
-                    beq       L028E     ; no, go get the option byte
-GoUser              lbra      L0E5E     ; else call the users's routine
+                    beq       KrnSystemCallServiceVector ; no, go get the option byte
+GoUser              lbra      KrnJoin3  ; else call the users's routine
 
 * SWI2 vector entry
 XSWI2               ldx       <D.Proc   ; get the current process descriptor
@@ -730,7 +730,7 @@ XSWI2               ldx       <D.Proc   ; get the current process descriptor
 *
 * Entry: X = The process descriptor pointer of process that made system call.
 *        U = The register stack pointer.
-L028E               ldu       <D.SysSvc ; get the system call service vector
+KrnSystemCallServiceVector ldu       <D.SysSvc ; get the system call service vector
                     stu       <D.XSWI2  ; set the cross-SWI2 vector
                     ldu       <D.SysIRQ ; get the interrupt service vector
                     stu       <D.XIRQ   ; set the cross-IRQ vector
@@ -766,7 +766,7 @@ l@                  ldx       ,--y      ; get the source bytes
                     stx       R$PC,u    ; save updated the update program counter back
 * Execute the system call.
                     ldy       <D.UsrDis ; get the user dispatch table pointer
-                    lbsr      L033B     ; go execute the op-code
+                    lbsr      ExecSvcCall     ; go execute the op-code
                   IFNE    H6309   ; begin conditional assembly for H6309
                     aim       #^IntMasks,R$CC,u ; unmask interrupts in the caller's CC
                   ELSE
@@ -791,8 +791,8 @@ l@                  ldx       ,--y      ; get the source bytes
                     sta       <D.Quick  ; save quick return flag
                     beq       AllClr    ; if nothing changed, do full checks
 
-DoFull              bsr       L02DA     ; move the stack frame back to user state
-                    lbra      L0D80     ; go back to the process
+DoFull              bsr       CopySystemStackToUser ; move the stack frame back to user state
+                    lbra      KrnJoin   ; go back to the process
 
 * add ldu P$SP,x, etc...
 AllClr              equ       *         ; define assembler symbol AllClr
@@ -825,20 +825,20 @@ l@                  lda       ,u+       ; get the source byte
 * Copy the register stack from user to system.
 *
 * Entry: U = The pointer to the register stack in the process descriptor.
-L02CB               pshs      cc,x,y,u  ; preserve registers
+CopyUserStackToSystem           pshs      cc,x,y,u  ; preserve registers
                     ldb       P$Task,x  ; get the task #
                     ldx       P$SP,x    ; and the stack pointer
-                    lbsr      L0BF3     ; calculate the block offset (only affects A&X)
+                    lbsr      FMoveLater ; calculate the block offset (only affects A&X)
                     leax      -$6000,x  ; adjust the pointer to where the memory map will be
-                    bra       L02E9     ; go copy it
+                    bra       KrnBlockNumberWhere ; go copy it
 
 * Copy the register stack from system to user.
 *
 * Entry: U = The pointer to the register stack in the process descriptor.
-L02DA               pshs      cc,x,y,u  ; preserve registers
+CopySystemStackToUser          pshs      cc,x,y,u  ; preserve registers
                     ldb       P$Task,x  ; get the task # of destination
                     ldx       P$SP,x    ; and the stack pointer
-                    lbsr      L0BF3     ; calculate the block offset (only affects A&X)
+                    lbsr      FMoveLater ; calculate the block offset (only affects A&X)
                     leax      -$6000,x  ; adjust the pointer to where the memory map will be
                     exg       x,y       ; swap pointers & copy
 
@@ -848,7 +848,7 @@ L02DA               pshs      cc,x,y,u  ; preserve registers
 *        Y = The destination register stack.
 *        A = The offset into the DAT image of stack.
 *        B = The task number.
-L02E9               leau      a,u       ; point to the block number where stack is
+KrnBlockNumberWhere leau      a,u       ; point to the block number where stack is
                     lda       1,u       ; get the first block
                     ldb       3,u       ; get a second just in case of overlap
                     orcc      #IntMasks ; shutdown interrupts while we do this
@@ -882,9 +882,9 @@ SysCall             leau      ,s        ; get the pointer to the register stack
                     leax      1,x       ; move the PC to next position
                     stx       R$PC,u    ; save my caller's updated PC register
                     ldy       <D.SysDis ; get the system dispatch table pointer
-                    bsr       L033B     ; execute the system call
+                    bsr       ExecSvcCall     ; execute the system call
                     puls      a         ; restore the system state task number
-                    lbra      L0E2B     ; return to the process
+                    lbra      KrnSystemProcessDescriptor ; return to the process
 
 * Entry: X = system call vector to jump to
 Sys.Vec             jmp       ,x        ; execute the service call
@@ -893,19 +893,19 @@ Sys.Vec             jmp       ,x        ; execute the service call
 *
 * Entry: B = System call op-code
 *        Y = System dispatch table pointer (D.SysDis or D.UsrDis)
-L033B
+ExecSvcCall
                     lslb                ; is it a I/O call? (also multiplies by 2 for offset)
-                    bcc       L0345     ; no, go get normal vector
+                    bcc       GetSvcVector ; no, go get normal vector
 * Execute I/O system calls.
                     ldx       IOEntry,y ; else get IOMan vector
 * Execute the system call.
-L034F               pshs      u         ; preserve the register stack pointer
+CallSvcVector          pshs      u         ; preserve the register stack pointer
                     jsr       [D.SysVec] ; perform a vectored system call
                     puls      u         ; restore the pointer
-L0355               tfr       cc,a      ; move CC to A for a stack update
-                    bcc       L035B     ; go update it if no error from call
+UpdateCallerCC          tfr       cc,a      ; move CC to A for a stack update
+                    bcc       MergeCallerCC    ; go update it if no error from call
                     stb       R$B,u     ; save the error code to caller's B
-L035B               ldb       R$CC,u    ; get the caller's CC, R$CC = $00
+MergeCallerCC              ldb       R$CC,u    ; get the caller's CC, R$CC = $00
                   IFNE    H6309   ; begin conditional assembly for H6309
                     andd      #$2FD0    ; [A]=H,N,Z,V,C [B]=E,F,I
                     orr       b,a       merge them together
@@ -919,13 +919,13 @@ L035B               ldb       R$CC,u    ; get the caller's CC, R$CC = $00
                     rts                 ; return
 
 * Execute regular system calls
-L0345
+GetSvcVector
                     clra                ; clear the MSB of the offset
                     ldx       d,y       ; get the vector to call
-                    bne       L034F     ; it's initialized, go execute it
+                    bne       CallSvcVector ; it's initialized, go execute it
                     comb                ; set the carry for error
                     ldb       #E$UnkSvc ; get the error code
-                    bra       L0355     ; return with it
+                    bra       UpdateCallerCC ; return with it
 
                     use       fssvc.asm ; include source file fssvc.asm
 
@@ -972,7 +972,7 @@ XIRQ                ldx       <D.Proc   ; get the current process pointer
                     ldd       <D.SysIRQ ; set the system IRQ routine to current
                     std       <D.XIRQ   ; store it in the cross-IRQ vector
                     jsr       [>D.SvcIRQ] ; execute interrupt service routine
-                    bcc       L0D5B     ; branch if the routine was serviced
+                    bcc       KrnShutDownInterrupts ; branch if the routine was serviced
 
                     ldx       <D.Proc   ; get the current process pointer
                     ldb       P$Task,x  ; and the task of the process
@@ -980,38 +980,38 @@ XIRQ                ldx       <D.Proc   ; get the current process pointer
 
                     pshs      u,d,cc    ; save some registers
                     leau      ,s        ; point to a 'caller register stack'
-                    lbsr      L0C40     ; do a LDB 0,X in task B
+                    lbsr      FLdabxTarget ; do a LDB 0,X in task B
                     puls      u,d,cc    ; and now A (R$A,U) = the CC we want
 
                     ora       #IntMasks ; disable its interrupts
-                    lbsr      L0C28     ; save it back
-L0D5B               orcc      #IntMasks ; shut down interrupts
+                    lbsr      FLdabxCarry ; save it back
+KrnShutDownInterrupts orcc      #IntMasks ; shut down interrupts
                     ldx       <D.Proc   ; get the current process pointer
                     tst       <D.QIRQ   ; was it a clock interrupt?
-                    lbne      L0DF7     ; if not, do a quick return
+                    lbne      FNprocJoin ; if not, do a quick return
 
                     lda       P$State,x ; get its state
                     bita      #TimOut   ; is it timed out?
-                    bne       L0D7C     ; yes, wake it up
+                    bne       KrnTimeoutFlag ; yes, wake it up
 * Update the active process queue.
                     ldu       #(D.AProcQ-P$Queue) ; point to the active process queue
                     ldb       #Suspend  ; get the suspend flag
-L0D6A               ldu       P$Queue,u ; get an active process pointer
-                    beq       L0D78     ; branch if empty
+KrnActiveProcess    ldu       P$Queue,u ; get an active process pointer
+                    beq       UseProcessStack ; branch if empty
                     bitb      P$State,u ; is it suspended?
-                    bne       L0D6A     ; yes, go to the next one in the chain
+                    bne       KrnActiveProcess ; yes, go to the next one in the chain
                     ldb       P$Prior,x ; get the current process priority
                     cmpb      P$Prior,u ; do we bump this one?
-                    blo       L0D7C     ; branch if lower
+                    blo       KrnTimeoutFlag ; branch if lower
 
-L0D78               ldu       P$SP,x    ; get the stack pointer
-                    bra       L0DB9     ; and branch
+UseProcessStack          ldu       P$SP,x    ; get the stack pointer
+                    bra       FNprocCondemnedByDeadlySignal ; and branch
 
-L0D7C               anda      #^TimOut  ; clear the timeout flag
+KrnTimeoutFlag      anda      #^TimOut  ; clear the timeout flag
                     sta       P$State,x ; and save it to the process descriptor
 
-L0D80               equ       *         ; define assembler symbol L0D80
-L0D83               bsr       L0D11     ; activate next process
+KrnJoin             equ       *         ; define assembler symbol KrnJoin
+KrnActivateProcess  bsr       FAprocTarget ; activate next process
 
                     use       fnproc.asm ; include source file fnproc.asm
 
@@ -1033,7 +1033,7 @@ S.SysIRQ
                     bra       DoneIRQ   ; check for error and exit
 
 FastIRQ             jsr       [>D.SvcIRQ] ; call the orutine (normally Clock calling D.Poll)
-DoneIRQ             bcc       L0E28     ; no error on IRQ, so exit
+DoneIRQ             bcc       KrnReturn ; no error on IRQ, so exit
                   IFNE    H6309   ; begin conditional assembly for H6309
                     oim       #IntMasks,0,s ; setup RTI to shut interrupts off again
                   ELSE
@@ -1041,11 +1041,11 @@ DoneIRQ             bcc       L0E28     ; no error on IRQ, so exit
                     ora       #IntMasks ; mask interrupts
                     sta       ,s        ; and store it back
                   ENDC
-L0E28               rti                 ; return
+KrnReturn           rti                 ; return
 
 * Return from a system call.
-L0E29               clra                ; force system task # to 0 (system)
-L0E2B               ldx       <D.SysPrc ; get the system process descriptor pointer
+KrnForceSystemTaskSystem clra                ; force system task # to 0 (system)
+KrnSystemProcessDescriptor ldx       <D.SysPrc ; get the system process descriptor pointer
                     lbsr      TstImg    ; check the image, and F$SetTsk (preserves A)
                     orcc      #IntMasks ; shut off interrupts
                     sta       <D.SSTskN ; save the task number for system state
@@ -1060,7 +1060,7 @@ Fst2                leas      ,u        ; put stack ptr into U
 *
 * Entry: X = The Process descriptor pointer.
 *        U = The stack pointer.
-L0E4C               equ       *         ; define assembler symbol L0E4C
+KrnJoin2            equ       *         ; define assembler symbol KrnJoin2
                   IFNE    H6309   ; begin conditional assembly for H6309
                     oim       #$01,<D.TINIT ; switch the shadow register to task 1
                     lda       <D.TINIT  ; get the shadow register
@@ -1074,7 +1074,7 @@ L0E4C               equ       *         ; define assembler symbol L0E4C
                     tstb                ; is the stack at SWISTACK?
                     bne       MyRTI     ; no, we're doing a system-state rti
                   IFNE    H6309   ; begin conditional assembly for H6309
-                    ldf       #R$Size   ; e=0 from call to L0E8D before
+                    ldf       #R$Size   ; e=0 from call to KrnWeGoingBackSameTask before
                     ldu       #Where+SWIStack ; point to the stack
                     tfm       u+,y+     ; move the stack from the top of memory to user memory
                   ELSE
@@ -1090,7 +1090,7 @@ MyRTI               rti                 ; return from IRQ
 
 * Execute routine in task 1 pointed to by U.
 * This comes from user requested SWI vectors.
-L0E5E               equ       *         ; define assembler symbol L0E5E
+KrnJoin3            equ       *         ; define assembler symbol KrnJoin3
                   IFNE    H6309   ; begin conditional assembly for H6309
                     oim       #$01,<D.TINIT ; switch the shadow register to task 1
                     ldb       <D.TINIT  ; get the shadow register
@@ -1105,7 +1105,7 @@ L0E5E               equ       *         ; define assembler symbol L0E5E
 * Flip to task 1 (used by WindInt to switch to GrfDrv) (pointed to
 *  by <D.Flip1). All registers are already preserved on stack for the RTI.
 S.Flip1             ldb       #2        ; get the tsk image entry number x2 for Grfdrv (task 1)
-                    bsr       L0E8D     ; copy over the DAT image
+                    bsr       KrnWeGoingBackSameTask ; copy over the DAT image
                   IFNE    H6309   ; begin conditional assembly for H6309
                     oim       #$01,<D.TINIT ; switch the shadow register to task 1
                     lda       <D.TINIT  ; get a copy of the shadow register
@@ -1119,8 +1119,8 @@ S.Flip1             ldb       #2        ; get the tsk image entry number x2 for 
                     rti                 ; return
 
 * Set up the MMU in task 1, B=Task # to swap to, shifted left 1 bit.
-L0E8D               cmpb      <D.Task1N ; are we going back to the same task?
-                    beq       L0EA3     ; without the DAT image changing?
+KrnWeGoingBackSameTask cmpb      <D.Task1N ; are we going back to the same task?
+                    beq       KrnReturn2 ; without the DAT image changing?
                     stb       <D.Task1N ; no, save current task in map type 1
 *[[[ Wildbits PORT
                   IFNE    wildbits ; begin conditional assembly for wildbits
@@ -1139,14 +1139,14 @@ L0E8D               cmpb      <D.Task1N ; are we going back to the same task?
 * Update 8 MMU mappings.
 * X = address of 1st DAT MMU register to update
 * U = address of DAT image to update into MMU
-L0E93               leau      1,u       ; point to the actual MMU block
+KrnActualMMUBlock   leau      1,u       ; point to the actual MMU block
                   IFNE    H6309   ; begin conditional assembly for H6309
                     lde       #4        ; get the number of banks/2 for the task
                   ELSE
                     lda       #4        ; get the number of banks/2 for the task
                     pshs      a         ; save A
                   ENDC
-L0E9B               lda       ,u++      ; get a bank
+KrnBank             lda       ,u++      ; get a bank
                     ldb       ,u++      ; and next one
                     std       ,x++      ; save it to MMU
                   IFNE    H6309   ; begin conditional assembly for H6309
@@ -1154,7 +1154,7 @@ L0E9B               lda       ,u++      ; get a bank
                   ELSE
                     dec       ,s        ; done?
                   ENDC
-                    bne       L0E9B     ; no, keep going
+                    bne       KrnBank   ; no, keep going
                   IFEQ    H6309   ; begin conditional assembly for H6309
 * 6809 - 10 cyc down to 8
 *                   leas      1,s                 eat temporary stack
@@ -1165,7 +1165,7 @@ L0E9B               lda       ,u++      ; get a bank
                     clr       MMU_MEM_CTRL ; clear the DAT control flags
                   ENDC
 *]]] Wildbits PORT
-L0EA3               rts                 ; return
+KrnReturn2          rts                 ; return
 
 *[[[ Wildbits PORT
                   IFNE    wildbits ; begin conditional assembly for wildbits
@@ -1175,14 +1175,14 @@ CrashDump           fill      255,32
 
 * Execute FIRQ vector (called from $FEF4)
 FIRQVCT             ldx       #D.FIRQ   ; get the DP offset of the vector
-                    bra       L0EB8     ; go execute it
+                    bra       KrnFasterClrXxxx ; go execute it
 
 * Execute IRQ vector (called from $FEF7)
 IRQVCT              orcc      #IntMasks ; disable interrupts
                     ldx       #D.IRQ    ; get the DP offset of the vector
 
 * Execute interrupt vector, B=DP Vector offset
-L0EB8               clra                ; (faster than CLR >$xxxx)
+KrnFasterClrXxxx    clra                ; (faster than CLR >$xxxx)
                     sta       >DAT.Task ; force to task 0 (system state)
                   IFNE    H6309   ; begin conditional assembly for H6309
                     tfr       0,dp      ; setup the DP
@@ -1254,14 +1254,14 @@ SWICall             ldb       [R$PC,s]  ; get the op-code of the system call
                     tfm       u+,y+     ; move the stack to the top of memory
                   ELSE
                     pshs      x         ; save X
-                    lda       #R$Size/2 ; move stack to top of memory (A is reset in L0EB8, no need to preserve)
+                    lda       #R$Size/2 ; move stack to top of memory (A is reset in KrnFasterClrXxxx, no need to preserve)
 l@                  ldx       ,u++      ; get the bytes
                     stx       ,y++      ; and save them
                     deca                ; decrement the counter
                     bne       l@        ; branch if not done
                     puls      x         ; restore X
                   ENDC
-                    bra       L0EB8     ; go from map type 1 to map type 0
+                    bra       KrnFasterClrXxxx ; go from map type 1 to map type 0
 
 * Execute SWI vector (called from $FEFA)
 SWIVCT              ldx       #D.SWI    ; get the DP offset of the vector
@@ -1269,7 +1269,7 @@ SWIVCT              ldx       #D.SWI    ; get the DP offset of the vector
 
 * Execute NMI vector (called from $FEFD)
 NMIVCT              ldx       #D.NMI    ; get the DP offset of the vector
-                    bra       L0EB8     ; go execute it
+                    bra       KrnFasterClrXxxx ; go execute it
 
 * The end of the kernel module is here
                     emod
@@ -1297,16 +1297,16 @@ SWIStack
 * $FFF0-$FFFE and get directed to here. From here, the BRA takes CPU control
 * to the various handlers in the kernel.
                     bra       SWI3VCT   ; sWI3 vector comes here
-                    nop       ; no operation placeholder
+                    nop       ;         no operation placeholder
                     bra       SWI2VCT   ; sWI2 vector comes here
-                    nop       ; no operation placeholder
+                    nop       ;         no operation placeholder
                     bra       FIRQVCT   ; fIRQ vector comes here
-                    nop       ; no operation placeholder
+                    nop       ;         no operation placeholder
                     bra       IRQVCT    ; iRQ vector comes here
-                    nop       ; no operation placeholder
+                    nop       ;         no operation placeholder
                     bra       SWIVCT    ; sWI vector comes here
-                    nop       ; no operation placeholder
+                    nop       ;         no operation placeholder
                     bra       NMIVCT    ; nMI vector comes here
-                    nop       ; no operation placeholder
+                    nop       ;         no operation placeholder
 
                     end

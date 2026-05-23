@@ -14,10 +14,10 @@ FGPrDsc             ldx       <D.Proc   ; get current process dsc. ptr.
                     ldb       P$Task,x  ; get task number
                     lda       R$A,u     ; get requested process ID #
                     os9       F$GProcP  ; get ptr to process to descriptor
-                    bcs       L0962     ; error, exit with it
+                    bcs       FGprdscReturn ; error, exit with it
                     lda       <D.SysTsk ; get system task #
                     leax      ,y        ; point X to the process descriptor
                     ldy       #P$Size   ; Y=Size of process descriptor (512 bytes)
                     ldu       R$X,u     ; get requested place to put copy of process dsc.
                     os9       F$Move    ; move it into caller's space
-L0962               rts                 ; return to caller
+FGprdscReturn       rts                 ; return to caller

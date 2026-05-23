@@ -10,14 +10,14 @@
 * Error:  CC = C bit set; B = error code
 *
 FAllTsk             ldx       R$X,u     ; get pointer to process descriptor
-L0C58               ldb       P$Task,x  ; already have a task #?
-                    bne       L0C64     ; yes, return
-                    bsr       L0CA6     ; find a free task
-                    bcs       L0C65     ; error, couldn't get one, return
+FAlltskAlreadyHaveTask ldb       P$Task,x  ; already have a task #?
+                    bne       FAlltskErrors ; yes, return
+                    bsr       FAlltskTarget2 ; find a free task
+                    bcs       FAlltskReturn ; error, couldn't get one, return
                     stb       P$Task,x  ; save task #
-                    bsr       L0C79     ; load MMU with task
-L0C64               clrb                ; clear errors
-L0C65               rts                 ; return
+                    bsr       FAlltskJoin ; load MMU with task
+FAlltskErrors       clrb                ; clear errors
+FAlltskReturn       rts                 ; return
 
 **************************************************
 * System Call: F$DelTsk
@@ -31,10 +31,10 @@ L0C65               rts                 ; return
 * Error:  CC = C bit set; B = error code
 *
 FDelTsk             ldx       R$X,u     ; load X from R$X,u
-L0C68               ldb       P$Task,x  ; grab the current task number
-                    beq       L0C64     ; if system (or released), exit
+FAlltskGrabTaskNumber ldb       P$Task,x  ; grab the current task number
+                    beq       FAlltskErrors ; if system (or released), exit
                     clr       P$Task,x  ; force the task number to be zero
-                    bra       L0CC3     ; do a F$RelTsk
+                    bra       FAlltskTarget3 ; do a F$RelTsk
 
 TstImg              equ       *         ; define assembler symbol TstImg
                   IFNE    H6309   ; begin conditional assembly for H6309
@@ -43,7 +43,7 @@ TstImg              equ       *         ; define assembler symbol TstImg
                     ldb       P$State,x ; dAT image change flagged in process desc?
                     bitb      #ImgChg   ; test bits in B against #ImgChg
                   ENDC
-                    beq       L0C65     ; if not, exit now: (clear carry not needed)
+                    beq       FAlltskReturn ; if not, exit now: (clear carry not needed)
                     fcb       $8C       ; skip LDX, below
 **************************************************
 * System Call: F$SetTsk
@@ -57,7 +57,7 @@ TstImg              equ       *         ; define assembler symbol TstImg
 * Error:  CC = C bit set; B = error code
 *
 FSetTsk             ldx       R$X,u     ; get process descriptor pointer
-L0C79               equ       *         ; define assembler symbol L0C79
+FAlltskJoin         equ       *         ; define assembler symbol FAlltskJoin
                   IFNE    H6309   ; begin conditional assembly for H6309
                     aim       #^ImgChg,P$State,x ; flag DAT image change in process descriptor
                   ELSE
@@ -74,10 +74,10 @@ L0C79               equ       *         ; define assembler symbol L0C79
                     lslb                ; account for 2 bytes/entry
                     stu       b,x       ; save DAT image pointer in task table
                     cmpb      #2        ; is it either system or GrfDrv?
-                    bhi       L0C9F     ; no, return
+                    bhi       FAlltskTarget ; no, return
                     ldx       #DAT.Regs ; update system DAT image
-                    lbsr      L0E93     ; go bash the hardware
-L0C9F               puls      cc,d,x,u,pc ; restore cc,d,x,u,pc from the stack
+                    lbsr      KrnActualMMUBlock ; go bash the hardware
+FAlltskTarget       puls      cc,d,x,u,pc ; restore cc,d,x,u,pc from the stack
 
 **************************************************
 * System Call: F$ResTsk
@@ -90,29 +90,29 @@ L0C9F               puls      cc,d,x,u,pc ; restore cc,d,x,u,pc from the stack
 *
 * Error:  CC = C bit set; B = error code
 *
-FResTsk             bsr       L0CA6     ; call local routine L0CA6
+FResTsk             bsr       FAlltskTarget2 ; call local routine FAlltskTarget2
                     stb       R$B,u     ; store B at R$B,u
-L0CA5               rts                 ; return to caller
+FAlltskReturn2      rts                 ; return to caller
 
 
 * Find a free task in task map
 * Entry: None
 * Exit : B=Task #
-L0CA6               pshs      x         ; preserve X
+FAlltskTarget2      pshs      x         ; preserve X
                     ldb       #$02      ; get starting task # (skip System/Grfdrv)
                     ldx       <D.Tasks  ; get task table pointer
-L0CAC               lda       b,x       ; task allocated?
-                    beq       L0CBA     ; no, allocate it & return
+FAlltskTaskAllocated lda       b,x       ; task allocated?
+                    beq       FAlltskFlagTaskUsedCycleFaster ; no, allocate it & return
                     incb                ; move to next task
                     cmpb      #$20      ; end of task list?
-                    bne       L0CAC     ; no, keep looking
+                    bne       FAlltskTaskAllocated ; no, keep looking
                     comb                ; set carry for error
                     ldb       #E$NoTask ; get error code
                     puls      x,pc      ; restore x,pc from the stack
 
-L0CBA               stb       b,x       ; flag task used (1 cycle faster than inc)
+FAlltskFlagTaskUsedCycleFaster stb       b,x       ; flag task used (1 cycle faster than inc)
                     clra                ; clear carry
-L0CBF               puls      x,pc      ; restore & return
+FAlltskReturn3      puls      x,pc      ; restore & return
 
 
 **************************************************
@@ -127,12 +127,12 @@ L0CBF               puls      x,pc      ; restore & return
 * Error:  CC = C bit set; B = error code
 *
 FRelTsk             ldb       R$B,u     ; get task # to release
-L0CC3               pshs      b,x       ; preserve it & X
+FAlltskTarget3      pshs      b,x       ; preserve it & X
                     tstb                ; check out B
-                    beq       L0CD0     ; if system task, don't bother deleting the task
+                    beq       FAlltskReturn4 ; if system task, don't bother deleting the task
                     ldx       <D.Tasks  ; get task table ptr
                     clr       b,x       ; clear out the task
-L0CD0               puls      b,x,pc    ; restore regs & return
+FAlltskReturn4      puls      b,x,pc    ; restore regs & return
 
 * Sleeping process update (Gets executed from clock)
 * Could move this code into Clock, but what about the call to F$AProc (L0D11)?
@@ -140,45 +140,45 @@ L0CD0               puls      b,x,pc    ; restore regs & return
 *   Possible, move ALL software-clock code into OS9p2, and therefore
 * have it auto-initialize?  All hardware clocks would then be called
 * just once a minute.
-L0CD2               ldx       <D.SProcQ ; get sleeping process Queue ptr
-                    beq       L0CFD     ; none (no one sleeping), so exit
+FAlltskSleepingProcessQueue ldx       <D.SProcQ ; get sleeping process Queue ptr
+                    beq       FAlltskTimeRemainingProcess ; none (no one sleeping), so exit
                   IFNE    H6309   ; begin conditional assembly for H6309
                     tim       #TimSleep,P$State,x ; is it a timed sleep?
                   ELSE
                     ldb       P$State,x ; is it a timed sleep?
                     bitb      #TimSleep ; test bits in B against #TimSleep
                   ENDC
-                    beq       L0CFD     ; no, exit: waiting for signal/interrupt
+                    beq       FAlltskTimeRemainingProcess ; no, exit: waiting for signal/interrupt
                     ldu       P$SP,x    ; yes, get his stack pointer
                     ldd       R$X,u     ; get his sleep tick count
                   IFNE    H6309   ; begin conditional assembly for H6309
-                    decd      ; decrement           sleep count
+                    decd      ;         decrement           sleep count
                   ELSE
                     subd      #$0001    ; subtract #$0001 from D
                   ENDC
                     std       R$X,u     ; save it back
-                    bne       L0CFD     ; still more ticks to go, so exit
+                    bne       FAlltskTimeRemainingProcess ; still more ticks to go, so exit
 * Process needs to wake up, update queue pointers
-L0CE7               ldu       P$Queue,x ; get next process in Queue
-                    bsr       L0D11     ; activate it
+FAlltskProcessQueue ldu       P$Queue,x ; get next process in Queue
+                    bsr       FAprocTarget ; activate it
                     leax      ,u        ; point to new process
-                    beq       L0CFB     ; don't exist, go on
+                    beq       FAlltskNewSleepingProcess ; don't exist, go on
                   IFNE    H6309   ; begin conditional assembly for H6309
                     tim       #TimSleep,P$State,x ; is it in a timed sleep?
                   ELSE
                     ldb       P$State,x ; is it a timed sleep?
                     bitb      #TimSleep ; test bits in B against #TimSleep
                   ENDC
-                    beq       L0CFB     ; no, go update process table
+                    beq       FAlltskNewSleepingProcess ; no, go update process table
                     ldu       P$SP,x    ; get it's stack pointer
                     ldd       R$X,u     ; any sleep time left?
-                    beq       L0CE7     ; no, go activate next process in queue
-L0CFB               stx       <D.SProcQ ; store new sleeping process pointer
-L0CFD               dec       <D.Slice  ; any time remaining on process?
-                    bne       L0D0D     ; yes, exit
+                    beq       FAlltskProcessQueue ; no, go activate next process in queue
+FAlltskNewSleepingProcess stx       <D.SProcQ ; store new sleeping process pointer
+FAlltskTimeRemainingProcess dec       <D.Slice  ; any time remaining on process?
+                    bne       FAlltskTarget4 ; yes, exit
                     inc       <D.Slice  ; reset slice count
                     ldx       <D.Proc   ; get current process pointer
-                    beq       L0D0D     ; none, return
+                    beq       FAlltskTarget4 ; none, return
                   IFNE    H6309   ; begin conditional assembly for H6309
                     oim       #TimOut,P$State,x ; put him in a timeout state
                   ELSE
@@ -186,5 +186,5 @@ L0CFD               dec       <D.Slice  ; any time remaining on process?
                     orb       #TimOut   ; merge #TimOut into B
                     stb       P$State,x ; store B at P$State,x
                   ENDC
-L0D0D               clrb                ; clear B
+FAlltskTarget4      clrb                ; clear B
                     rts                 ; return to caller

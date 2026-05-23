@@ -31,7 +31,7 @@ GetName2            ldx       R$Y,u     ; get pointer to the second name
                     ldd       R$D,u     ; get length
                     leax      4,s       ; point to the first name's info packet
                     leay      ,s        ; point to the second name's info packet
-                    bsr       L07DE     ; go compare 'em
+                    bsr       FCmpnamTarget ; go compare 'em
                     leas      8,s       ; purge stack
                     rts                 ; return to caller
 
@@ -45,7 +45,7 @@ GetName2            ldx       R$Y,u     ; get pointer to the second name
 *             0,Y = DAT image pointer
 *             2,Y = Pointer to name
 *         U = Register stack ptr
-L07DE               pshs      d,x,y,u   ; preserve registers
+FCmpnamTarget       pshs      d,x,y,u   ; preserve registers
                     tfr       x,u       ; U=pointer to the first name packet
                     pulu      x,y       ; get DAT pointer to Y and name pointer to X
                     lbsr      AdjBlk0   ; adjust X to use block 0
@@ -53,11 +53,11 @@ L07DE               pshs      d,x,y,u   ; preserve registers
                     ldu       4,s       ; get pointer to the second name's packet
                     pulu      x,y       ; get DAT pointer to Y and name pointer to X
                     lbsr      AdjBlk0   ; adjust X to block 0
-                    bra       L07F6     ; go compare the names
+                    bra       FCmpnamMapBlockGrabName ; go compare the names
 
-L07F2               ldu       4,s       ; get pointer to second name's packet
+FCmpnamSecondNamesPacket ldu       4,s       ; get pointer to second name's packet
                     pulu      x,y       ; get DAT pointer to Y and name pointer to X
-L07F6               lbsr      LDAXY     ; map in the block & grab a byte from name
+FCmpnamMapBlockGrabName lbsr      LDAXY     ; map in the block & grab a byte from name
                     pshu      x,y       ; put updated DAT & name pointer back
                     pshs      a         ; save the character
                     ldu       3,s       ; pointer to the first name packet
@@ -66,18 +66,18 @@ L07F6               lbsr      LDAXY     ; map in the block & grab a byte from na
                     pshu      y,x       ; put pointers back
                     eora      ,s        ; exclusive-OR A with ,s
                     tst       ,s+       ; was it high bit?
-                    bmi       L0816     ; yes, check if last character in the second name
+                    bmi       FCmpnamName ; yes, check if last character in the second name
                     decb                ; decrement B
-                    beq       L0813     ; branch if zero is set to L0813
+                    beq       FCmpnamCarry ; branch if zero is set to FCmpnamCarry
                     anda      #$DF      ; match?
-                    beq       L07F2     ; yes, check next character
-L0813               comb                ; set carry
+                    beq       FCmpnamSecondNamesPacket ; yes, check next character
+FCmpnamCarry        comb                ; set carry
                     puls      d,x,y,u,pc ; restore d,x,y,u,pc from the stack
 
-L0816               decb                ; done whole name?
-                    bne       L0813     ; no, exit with no match
+FCmpnamName         decb                ; done whole name?
+                    bne       FCmpnamCarry ; no, exit with no match
                     anda      #$5F      ; match?
-                    bne       L0813     ; yes, keep checking
+                    bne       FCmpnamCarry ; yes, keep checking
                     clrb                ; names match, clear carry
                     puls      d,x,y,u,pc ; restore & return to caller
 

@@ -12,13 +12,13 @@
 *
 FLDAXY              ldx       R$X,u     ; get offset within block (S/B $0000-$1FFF)
                     ldy       R$Y,u     ; get ptr to DAT block entry
-                    bsr       L0AC8     ; go get byte
+                    bsr       FLdMMUBlockData ; go get byte
                     sta       R$A,u     ; save in caller's A reg.
                     rts                 ; return to caller
 
 * Entry: X=offset ($0000-$1fff) to get from block pointed to by Y (DAT entry
 * format)
-L0AC8               lda       1,y       ; get MMU block # to get data from
+FLdMMUBlockData     lda       1,y       ; get MMU block # to get data from
                     clrb                ; clear carry/setup for STB
                     pshs      cc        ; preserve interrupt status/settings
                     orcc      #IntMasks ; shut IRQ's off
@@ -48,10 +48,10 @@ LDAXY               lda       1,y       ; get MMU block #
                     puls      b,cc      ; restore b,cc from the stack
                     bra       AdjBlk0   ; branch unconditionally to AdjBlk0
 
-L0AEA               leax      >-DAT.BlSz,x ; bump offset ptr to start of block again
+FLdBumpOffsetStartBlockAgain leax      >-DAT.BlSz,x ; bump offset ptr to start of block again
                     leay      2,y       ; bump source MMU block up to next one in DAT Image
 AdjBlk0             cmpx      #DAT.BlSz ; going to wrap out of our block?
-                    bhs       L0AEA     ; yes, go adjust
+                    bhs       FLdBumpOffsetStartBlockAgain ; yes, go adjust
                     rts                 ; no, return
 
 
@@ -71,13 +71,13 @@ AdjBlk0             cmpx      #DAT.BlSz ; going to wrap out of our block?
 FLDDDXY             ldd       R$D,u     ; get offset to offset within DAT Image
                     leau      R$X,u     ; point U to Offset
                     pulu      x,y       ; Y=Offset within DAT Image, X=DAT Image ptr
-                    bsr       L0B02     ; go get 2 bytes
+                    bsr       FLdTarget ; go get 2 bytes
                     std       -(R$X+3),u ; save into caller's X
                     clrb                ; no error & return
                     rts                 ; return to caller
 * Get 2 bytes for LDDDXY (also called by other routines)
 * Should simply map in 2 blocks, and do a LDD (don't have to worry about wrap)
-L0B02               pshs      u,y,x     ; preserve regs
+FLdTarget           pshs      u,y,x     ; preserve regs
                   IFNE    H6309   ; begin conditional assembly for H6309
                     addr      d,x       ; point X to X+D
                   ELSE

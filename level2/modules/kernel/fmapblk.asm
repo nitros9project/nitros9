@@ -34,7 +34,7 @@ loop@               stx       ,y++      ; save the block number to the buffer
                     ldx       <D.Proc   ; get the current process pointer
                     leay      <P$DATImg,x ; point to the DAT image
                     os9       F$FreeHB  ; find the highest free block offset
-                    bcs       L0BA6     ; return with error if carry is set (no room)
+                    bcs       FMapblkEatDATImage ; return with error if carry is set (no room)
                   IFNE    H6309   ; begin conditional assembly for H6309
                     tfr       d,w       ; preserve the starting block number and the number of blocks
                   ELSE
@@ -54,7 +54,7 @@ loop@               stx       ,y++      ; save the block number to the buffer
                   ENDC
                     leau      ,s        ; move the DAT image into the process descriptor
                     os9       F$SetImg  ; change the process descriptor to reflect new blocks
-L0BA6               leas      <stackbuff,s ; eat the DAT image copy on the stack
+FMapblkEatDATImage  leas      <stackbuff,s ; eat the DAT image copy on the stack
                     rts                 ; return to the caller
 
 IllBlkErr           comb                ; set the carry

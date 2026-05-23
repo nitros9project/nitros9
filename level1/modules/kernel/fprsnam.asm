@@ -40,10 +40,10 @@ FPrsNam             ldx       <D.Proc   ; get the process descriptor
                     ldx       R$X,u     ; get the pathlist from the caller's X
                     bsr       ParseNam  ; parse the pathlist
                     std       R$D,u     ; D contains the length of the name; store it in the caller's D
-                    bcs       L073E     ; branch if an error occurred
+                    bcs       FPrsnamContainsEndNamePlus ; branch if an error occurred
                     stx       R$X,u     ; X contains the start of the name; store it in the caller's X
                     abx                 ; add the length in B to X
-L073E               stx       R$Y,u     ; X contains the end of the name plus one; store it in the caller's Y
+FPrsnamContainsEndNamePlus stx       R$Y,u     ; X contains the end of the name plus one; store it in the caller's Y
                     rts                 ; return to the caller
 
 * Parse name
@@ -54,7 +54,7 @@ ParseNam            equ       *         ; define assembler symbol
                     bsr       GoGetAXY  ; get the byte at X in block Y
                     cmpa      #'.       ; is the first character a period?
                     bne       IsSlash   ; no, do proper first character checking
-                    lbsr      L0AC8     ; do a LDAXY, without changing X or Y
+                    lbsr      FLdMMUBlockData ; do a LDAXY, without changing X or Y
                     bsr       ChkFirst  ; is the next character non-period?
                     lda       #'.       ; restore the period character the LDAXY destroyed
                     bcc       Do.Loop   ; if it's a non-period character, skip first character checks
@@ -88,7 +88,7 @@ NotValid            cmpa      #',       ; is it a comma?
                     ldb       #E$BNam   ; 'Bad Name' error
 RtnValid            equ       *         ; define assembler symbol
                     puls      x,y       ; recover tje offset & pointer
-                    bra       L0720     ; do a similar exit routine
+                    bra       FFmodulChar ; do a similar exit routine
 
 ChkFirst            pshs      a         ; save the character
                     anda      #$7F      ; drop the most significant bit
