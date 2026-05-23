@@ -13,8 +13,8 @@ DEPENDS		= ./makefile
 DEFOBJS		= coco3vtio.d
 TEXTFILES	= ReadMe2 install6809 install6309
 OBJS		= gfx gfx2 inkey syscall
-OBJS6809	= basic09_6809 runb_6809 runb2_6809
-OBJS6309	= basic09_6309 runb_6309 runb2_6309
+OBJS6809	= basic09_6809 runb_6809
+OBJS6309	= basic09_6309 runb_6309
 ALLOBJS		= $(DEFOBJS) $(OBJS) $(OBJS6809) $(OBJS6309)
 
 all:	banner $(ALLOBJS) $(DEPENDS)
@@ -38,11 +38,14 @@ basic09_6309: basic09.asm
 basic09_6809: basic09.asm
 	$(AS) $(ASOUT)$@ $< $(M6809)
 
-runb_6309: runb.asm
-	$(AS) $(ASOUT)$@ $< $(H6309)
+runb_6309: basic09.asm
+	$(AS) $(ASOUT)$@ $< $(H6309) -DINCLUDED="RUNTIM+MATHPAK"
 
-runb_6809: runb.asm
-	$(AS) $(ASOUT)$@ $< $(M6809)
+runb_6809: basic09.asm
+	$(AS) $(ASOUT)$@ $< $(M6809) -DINCLUDED="RUNTIM+MATHPAK"
+
+runbt_6809: basic09.asm
+	$(AS) $(ASOUT)$@ $< $(M6809) -aRUNTIME=1
 
 clean: dskclean
 	$(RM) $(ALLOBJS) *.list *.map

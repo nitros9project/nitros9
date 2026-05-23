@@ -6011,13 +6011,13 @@ OUTCDB               tfr       b,a
 * ================================================================
                     ifeq      INCLUDED&EDITOR
 
-* RunB number parser via <u002A (= L1CCA in BASIC09, L0489 in runb.asm)
+* RunB number parser via <u002A (= L1CCA in BASIC09)
 RNB_GNUM            jsr       <u002A
                     fcb       $00
                     fdb       $0007
                     fcb       $03
 
-* RunB token scanner: parse one token from source text (= L056B in runb.asm)
+* RunB token scanner: parse one token from source text
 * Entry: Y = ptr into source text
 * Exit:  u00A3 = token, u00A4 = type; token+data output to I-code; Y advanced
 RNB_SCAN            ldd       <u00AB              Save I-code end to prev
@@ -6127,7 +6127,7 @@ RNB_STRCH           lbsr      OUTCOD              Output string char
 RNB_NOQT            lda       #$29                No ending quote error
                     lbra      EREVRB
 
-* RunB-mode STOP: scan one token and undo I-code advance (= L0542 in runb.asm)
+* RunB-mode STOP: scan one token and undo I-code advance
 * Caller must re-output the token via OUTCOD/CMPRA9 if needed
 STOP                lbsr      RNB_SCAN            Scan one token (outputs to I-code)
                     ldx       <u00AD              Restore I-code end to pre-scan value
@@ -6135,7 +6135,7 @@ STOP                lbsr      RNB_SCAN            Scan one token (outputs to I-c
                     lda       <u00A3              Return token in A
                     rts
 
-* RunB-mode L1FC0: handle '(' parameter grouping (simplified from runb.asm L0523)
+* RunB-mode L1FC0: handle '(' parameter grouping
 * Entry: A = current token (from STOP)
 L1FC0               cmpa      #$4D                Is it '(' token?
                     lbne      L1FF5               No, return (L1FF5 = rts, defined above)
