@@ -431,6 +431,10 @@ INCLUDED            set       FULL
                     ttl       Basic09 Runtime
                     endc
 
+tylg                set       Prgrm+Objct
+atrv                set       ReEnt+rev
+rev                 set       $00
+
                     ifeq      INCLUDED&EDITOR
 * Begin inline RunB source. Keep byte-for-byte with standalone runb.asm.
 ********************************************************************
@@ -450,9 +454,6 @@ INCLUDED            set       FULL
 
 * Disassembled 02/12/26 08:42:45 by Disasm v1.5 (C) 1988 by RML
 
-tylg                set       Prgrm+Objct
-atrv                set       ReEnt+rev
-rev                 set       $00
 edition             set       22
 
 L0000               mod       eom,name,tylg,atrv,start,dsize
@@ -6755,7 +6756,7 @@ B09Vrsn             equ       1
 B09Major            equ       1
 B09Minor            equ       0
 
-                    mod       eom,name,Prgrm+Objct,ReEnt+0,start,size
+                    mod       eom,name,tylg,atrv,start,size
 
 u0000               rmb       2                   Start of data memory / DP pointer
 u0002               rmb       2                   Size of Data area (including DP)
