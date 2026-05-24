@@ -53,14 +53,14 @@ basic09_6309: basic09.asm $(RUNBCORE) $(SHAREDSRC)
 basic09_6809: basic09.asm $(RUNBCORE) $(SHAREDSRC)
 	$(AS) $(ASOUT)$@ $< $(M6809)
 
-runb_6309: basic09.asm $(RUNBCORE) $(SHAREDSRC)
-	$(AS) $(ASOUT)$@ $< $(H6309) -DINCLUDED="RUNTIM+MATHPAK"
+runb_6309: runb.asm $(RUNBCORE) $(SHAREDSRC)
+	$(AS) $(ASOUT)$@ $< $(H6309)
 
-runb_6809: basic09.asm $(RUNBCORE) $(SHAREDSRC)
-	$(AS) $(ASOUT)$@ $< $(M6809) -DINCLUDED="RUNTIM+MATHPAK"
+runb_6809: runb.asm $(RUNBCORE) $(SHAREDSRC)
+	$(AS) $(ASOUT)$@ $< $(M6809)
 
-runbt_6809: basic09.asm $(RUNBCORE) $(SHAREDSRC)
-	$(AS) $(ASOUT)$@ $< $(M6809) -DINCLUDED="RUNTIM+MATHPAK"
+runbt_6809: runb.asm $(RUNBCORE) $(SHAREDSRC)
+	$(AS) $(ASOUT)$@ $< $(M6809)
 
 basic09_mod_6809: build-modular-basic09.pl $(MODULARSRC)
 	perl build-modular-basic09.pl basic09 $@
@@ -75,8 +75,9 @@ verify-basic09-runb: verify-basic09-runb-source basic09_6809 runb_6809 basic09_6
 	@printf '%s  %s\n' "$(RUNB_6309_SHA256)" runb_6309 | shasum -a 256 -c -
 	@echo "basic09_6809/basic09_6309 and runb_6809/runb_6309 match known-good references"
 
-verify-basic09-runb-source: basic09.asm $(SHAREDSRC) $(VERIFYRUNBSRC)
+verify-basic09-runb-source: basic09.asm $(RUNBCORE) $(SHAREDSRC) $(VERIFYRUNBSRC)
 	perl $(VERIFYRUNBSRC) basic09.asm
+	perl $(VERIFYRUNBSRC) $(RUNBCORE)
 
 clean: dskclean
 	$(RM) $(ALLOBJS) $(MODULAROBJS) runbt_6809 *.list *.map
