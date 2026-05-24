@@ -38,8 +38,6 @@
 * 22 83/04/27  Added conditionals for Basic09 minus trig.(RFD)
 * 22 83/05/26  Changed message printed on tandy version. (MGH)
 * 22 83/06/28  Added conditionals for dragon startup msg.(MGH)
-* 22 83/07/11  Changed conditionals to use CPUType-Color (MGH)
-*               and CPUType-Dragon. CURRENTLY BROKEN ???
 
 Edition equ 22 Current edition
 
@@ -114,7 +112,8 @@ B09NAM fcs "RunB"
 * and Terry Ritter at Motorola.
 
 CPYRIT
- ifeq CPUType-Dragon
+ ifne Tandy-0
+ ifne dragon-0
  fcb $0C Clear Screen
  fcc "            BASIC09"
  fcb V$LF
@@ -129,7 +128,6 @@ CPYRIT
  fcc "    ALL RIGHTS RESERVED."
  fcb V$LF+$80
  else
- ifeq CPUType-Color
  fcb $0C Clear Screen
  fcc "            BASIC09"
  fcb V$LF
@@ -145,11 +143,11 @@ CPYRIT
  fcb V$LF
  fcc "    ALL RIGHTS RESERVED."
  fcb V$LF+$80
+ endc
  else
  fcc "Copyright 1980 by Motorola and Microware."
  fcb V$LF
  fcc "Reproduced under license"
- endc
  endc
  ifeq INCLUDED&MATHPAK
  fcb V$LF
@@ -1090,7 +1088,7 @@ EDTVRB fdb ELIST-*
  ttl CHARACTER String constants
  pag
 READY equ *
- ifeq CPUType-Color*CPUType-Dragon
+ ifne Tandy-0
  fcb C$Alpha change to alpha screen
  endc
  fcs "Ready"
@@ -1107,7 +1105,7 @@ OVWLEN equ *-OVWRIT
 RNGERR fcc "RANGE"
  fcb $87
 DBGMSG equ *
- ifeq CPUType-Color*CPUType-Dragon
+ ifne Tandy-0
  fcb C$Alpha change to alpha screen
  endc
  fcs "BREAK: "
@@ -2418,4 +2416,3 @@ FLOTU9 leas 4,S
 * End of Command routines
 
  use editor
-

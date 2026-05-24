@@ -13,7 +13,9 @@ die "mode must be basic09 or runb\n" unless $mode eq 'basic09' || $mode eq 'runb
 my $here = dirname(abs_path($0));
 my $root = abs_path("$here/../../..");
 my $src = "$here/modular";
-my $build = "$here/.modular-build/$mode";
+my $outdir = abs_path(dirname($outfile));
+die "output directory does not exist for $outfile\n" unless defined $outdir;
+my $build = "$outdir/.modular-build/$mode";
 make_path($build);
 
 my @modules = qw(comand compil binder stmts exprsn cnvio);
