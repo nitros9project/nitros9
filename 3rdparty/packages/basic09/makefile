@@ -65,8 +65,8 @@ verify-basic09-runb: basic09_6809 runb_6809 basic09_6309 runb_6309
 	@printf '%s  %s\n' "$(BASIC09_6809_SHA256)" basic09_6809 | shasum -a 256 -c -
 	@printf '%s  %s\n' "$(BASIC09_6309_SHA256)" basic09_6309 | shasum -a 256 -c -
 	@mkdir -p $(VERIFYDIR)
-	$(AS) $(ASOUT)$(VERIFYDIR)/runb_6809.ref runb.asm $(M6809)
-	$(AS) $(ASOUT)$(VERIFYDIR)/runb_6309.ref runb.asm $(H6309)
+	cd $(VERIFYDIR) && $(AS) $(ASOUT)runb_6809.ref ../runb.asm $(M6809)
+	cd $(VERIFYDIR) && $(AS) $(ASOUT)runb_6309.ref ../runb.asm $(H6309)
 	@cmp -s runb_6809 $(VERIFYDIR)/runb_6809.ref
 	@cmp -s runb_6309 $(VERIFYDIR)/runb_6309.ref
 	@echo "basic09_6809/basic09_6309 and runb_6809/runb_6309 match known-good references"
