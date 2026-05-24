@@ -23,6 +23,7 @@ MODULARSRC	= modular/comand.asm modular/compil.asm modular/binder.asm \
 		  modular/linkage modular/editor
 VERIFYDIR	= .verify
 BASIC09_6809_SHA256 = fbb7f72db7f5b861904e9fadeb24dd07bb9709de7467d178d80ec0ccac77796e
+BASIC09_6309_SHA256 = ac3d30fe910c26fcee780f8a661a881103f6ee6f26321f1b8b8e09b1131d92b8
 
 all:	banner $(ALLOBJS) $(DEPENDS)
 
@@ -60,12 +61,15 @@ basic09_mod_6809: build-modular-basic09.pl $(MODULARSRC)
 runb_mod_6809: build-modular-basic09.pl $(MODULARSRC)
 	perl build-modular-basic09.pl runb $@
 
-verify-basic09-runb: basic09_6809 runb_6809
+verify-basic09-runb: basic09_6809 runb_6809 basic09_6309 runb_6309
 	@printf '%s  %s\n' "$(BASIC09_6809_SHA256)" basic09_6809 | shasum -a 256 -c -
+	@printf '%s  %s\n' "$(BASIC09_6309_SHA256)" basic09_6309 | shasum -a 256 -c -
 	@mkdir -p $(VERIFYDIR)
 	$(AS) $(ASOUT)$(VERIFYDIR)/runb_6809.ref runb.asm $(M6809)
+	$(AS) $(ASOUT)$(VERIFYDIR)/runb_6309.ref runb.asm $(H6309)
 	@cmp -s runb_6809 $(VERIFYDIR)/runb_6809.ref
-	@echo "basic09_6809 and runb_6809 match known-good references"
+	@cmp -s runb_6309 $(VERIFYDIR)/runb_6309.ref
+	@echo "basic09_6809/basic09_6309 and runb_6809/runb_6309 match known-good references"
 
 clean: dskclean
 	$(RM) $(ALLOBJS) $(MODULAROBJS) *.list *.map

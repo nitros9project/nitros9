@@ -435,6 +435,9 @@ tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
 edition             set       22
+B09Vrsn             equ       1
+B09Major            equ       1
+B09Minor            equ       0
 
                     ifeq      INCLUDED&EDITOR
 * Begin inline RunB source. Keep byte-for-byte with standalone runb.asm.
@@ -6749,11 +6752,6 @@ err48               ldb       #E$NoRout
 eom                 equ       *
 * End inline RunB source.
                     else
-
-* Version Numbers
-B09Vrsn             equ       1
-B09Major            equ       1
-B09Minor            equ       0
 
                     mod       eom,name,tylg,atrv,start,size
 
