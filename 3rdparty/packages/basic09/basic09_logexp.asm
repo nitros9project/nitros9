@@ -47,34 +47,20 @@ L47AB
                     leay      <-$1A,y
                     leax      <$1B,y
                     leau      ,y
-                    ifne      B09RUNB
-                    lbsr      L209F
-                    lbsr      L219A
-                    else
                     lbsr      CMOVE
                     lbsr      CDENOR
-                    endc
                     clra
                     clrb
                     std       <$14,y
                     std       <$16,y
                     sta       <$18,y
-                    ifne      B09RUNB
-                    leax      >L2152,pcr
-                    else
                     leax      >L4C7F,pc
-                    endc
                     stx       <$19,y
                     lbsr      LOGEXP10
                     leax      <$14,y
                     leau      <$1B,y
-                    ifne      B09RUNB
-                    lbsr      L209F
-                    lbsr      L21B4
-                    else
                     lbsr      CMOVE
                     lbsr      CNORM
-                    endc
                     leay      <$1A,y
                     ldb       #2
                     stb       ,y
@@ -229,34 +215,20 @@ EXPF45
 EXPF50              leay      <-$1A,y
                     leax      <$1B,y
                     leau      <$14,y
-                    ifne      B09RUNB
-                    lbsr      L209F
-                    lbsr      L219A
-                    else
                     lbsr      CMOVE
                     lbsr      CDENOR
-                    endc
                     ldd       #$1000
                     std       ,y
                     clra
                     std       2,y
                     sta       4,y
-                    ifne      B09RUNB
-                    leax      >L2134,pcr
-                    else
                     leax      >FPDV45,pc
-                    endc
                     stx       <$19,y
                     bsr       LOGEXP10
                     leax      ,y
                     leau      <$1B,y
-                    ifne      B09RUNB
-                    lbsr      L209F
-                    lbsr      L21B4
-                    else
                     lbsr      CMOVE
                     lbsr      CNORM
-                    endc
                     leay      <$1A,y
                     puls      b
                     addb      1,y
@@ -267,19 +239,11 @@ EXPF50              leay      <-$1A,y
 
 LOGEXP10            lda       #1
                     sta       <u009A
-                    ifne      B09RUNB
-                    leax      >L2242,pcr
-                    else
                     leax      >L4D6F,pc
-                    endc
                     stx       <u0095
                     leax      >$005F,x
                     stx       <u0097
-                    ifne      B09RUNB
-                    lbra      L206A
-                    else
                     lbra      CORDIC
-                    endc
 
 FPOVRF              leay      -6,y
                     ifne      B09RUNB
