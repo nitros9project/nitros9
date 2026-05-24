@@ -27,6 +27,8 @@ BASIC09_6309_SHA256 = ac3d30fe910c26fcee780f8a661a881103f6ee6f26321f1b8b8e09b113
 RUNB_6809_SHA256 = 605c7a9f0fde3fed21f7672f5c634f7c43b440f385f088e593f8acca5fccba31
 RUNB_6309_SHA256 = 6c2de659b30b5dec8c9152a0d747c814d8a745211781db16aa7d2e60aa2d899e
 
+.PHONY: all banner verify-basic09-runb clean dsk dskcopy dskclean showobjs info
+
 all:	banner $(ALLOBJS) $(DEPENDS)
 
 banner:
