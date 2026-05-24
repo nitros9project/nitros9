@@ -1187,7 +1187,8 @@ L088A               lbsr      L0F49
                     ldu       <u0031
                     lds       5,u
                     ldu       7,u
-L0894               rts
+L0894
+NULSTM              rts
 
 L0895               leax      $02,x
 UNK9
@@ -1199,29 +1200,6 @@ L089D               lslb
                     ldu       <table1
                     ldd       d,u
                     jmp       d,u                 go to instruction
-
-IF                  jsr       <u0016              if...
-                    tst       $02,y
-                    beq       GOTO                = FALSE
-                    leax      $03,x               THEN
-                    ldb       ,x
-                    cmpb      #$3B
-                    bne       L0894
-                    leax      $01,x               ELSE
-
-GOTO                ldd       ,x
-                    addd      <u005E
-                    tfr       d,x
-                    rts
-
-ENDIF               leax      $01,x
-                    rts
-
-UNTIL               jsr       <u0016
-                    tst       $02,y
-                    beq       GOTO                = FALSE
-                    leax      $03,x
-                    rts
 
 L08C8               fdb       INTStep1P-L08C8
                     fdb       INTStepXP-L08C8
@@ -1257,7 +1235,7 @@ L08F9               ldd       $02,x               offset target
                     leax      $06,x
                     ldd       d,u                 target value
                     cmpd      ,y
-                    bge       GOTO                loop again
+                    lbge      GOTO                loop again
                     leax      $03,x
                     rts
 
@@ -1276,7 +1254,7 @@ L0919               ldd       $02,x
                     leax      $06,x
                     ldd       d,u
                     cmpd      ,y
-                    ble       GOTO                loop again
+                    lble      GOTO                loop again
                     leax      $03,x
                     rts
 
@@ -1501,14 +1479,6 @@ L0AAD               ldy       $01,y
                     exg       y,u
                     lbra      L071E
 
-POKE                jsr       <u0016
-                    ldd       $01,y
-                    pshs      b,a
-                    jsr       <u0016
-                    ldb       $02,y
-                    stb       [,s++]
-                    rts
-
 STOP                lbsr      PRINT
                     lda       <errpath
                     sta       <u007F
@@ -1519,32 +1489,6 @@ STOP                lbsr      PRINT
 UNK1                lbra      L070C
 
 PAUSE               lbsr      PRINT
-                    rts
-
-GOSUB               ldd       ,x
-                    leax      $03,x
-L0ADE               ldy       <u0031
-                    ldu       <$14,y
-                    cmpu      <u004A
-                    bhi       L0AEE
-                    ldb       #E$SubOvf
-                    lbra      L0EDC
-L0AEE               stx       ,--u
-                    stu       <$14,y
-                    stu       <u0046
-                    addd      <u005E
-                    tfr       d,x
-                    rts
-
-RETURN              ldy       <u0031
-                    cmpy      <$14,y
-                    bhi       L0B08
-                    ldb       #$36
-                    lbra      L0EDC
-L0B08               ldu       <$14,y
-                    ldx       ,u++
-                    stu       <$14,y
-                    stu       <u0046
                     rts
 
 ON                  ldd       ,x
@@ -1574,7 +1518,7 @@ ON                  ldd       ,x
                     ldb       ,x
                     cmpb      #$22
                     puls      x,b,a
-                    beq       L0ADE
+                    lbeq      L0ADE
                     addd      <u005E
                     tfr       d,x
                     rts
@@ -2027,7 +1971,8 @@ L0EC1               ldx       <u0048
 ERROR               jsr       <u0016
                     ldb       2,y
 UNK8
-L0EDC               stb       <u0036
+L0EDC
+EXCERR              stb       <u0036
 L0EDE               ldu       <u0031
                     beq       L0EFC               not running subroutine
                     tst       <$13,u
@@ -2077,34 +2022,8 @@ L1900               leay      ,x
 errs51              ldb       #$33
                     bra       L0EDC
 
-DEG                 lda       #$01
-                    bra       L0F38
+                    use       basic09_stmtexec.asm
 
-RAD                 clra
-L0F38               ldu       <u0031
-                    sta       1,u
-                    leax      $01,x
-                    rts
-
-UNK10
-L0F3F               lda       <u0034
-                    bita      #$01
-                    bne       L0F5F
-                    ora       #$01
-                    bra       L0F51
-UNK11
-L0F49               lda       <u0034
-                    bita      #$01
-                    beq       L0F5F
-                    anda      #$FE
-L0F51               sta       <u0034
-                    ldd       <u0017
-                    pshs      b,a
-                    ldd       <u0019
-                    std       <u0017
-                    puls      b,a
-                    std       <u0019
-L0F5F               rts
 
 RUN                 lbsr      L0727
                     pshs      x

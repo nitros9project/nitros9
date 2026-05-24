@@ -7843,30 +7843,6 @@ L33B4               lslb                          Multiply by 2
                     ldd       d,u                 Get offset
                     jmp       d,u                 Jump to that routine
 
-IFSTM               jsr       <u0016
-                    tst       2,y           Test result
-                    beq       GTOSTM
-                    leax      3,x           Move I-Code ptr
-                    ldb       ,x
-                    cmpb      #$3B          is it line ref?
-                    bne       NULSTM         Yes; do next statement
-* (orig: EIFSTM)
-                    leax      1,x           Skip line refernce TOKEN
-GTOSTM               ldd       ,x
-                    addd      <u005E        Make offset a ptr
-                    tfr       d,x           Move to I-Code ptr
-                    rts
-
-L33D3               leax      1,x
-                    rts
-
-* UNTIL
-WHLSTM               jsr       <u0016
-                    tst       2,y           Check result
-                    beq       GTOSTM               False, go back
-                    leax      3,x           Skip goto & following (do, then)
-                    rts
-
 * NEXT routine
 L33E7               leay      <L33DF,pc           Point to table
 L33EA               ldb       ,x+                 Get byte
@@ -7899,7 +7875,7 @@ L3410               ldd       2,x                 Get offset to TO variable
                     leax      6,x                 Eat temp var
                     ldd       d,u                 Get TO variable
                     cmpd      ,y                  We hit it yet?
-                    bge       GTOSTM               Yes, do X=[,x]+[u005E] & return
+                    lbge      GTOSTM               Yes, do X=[,x]+[u005E] & return
                     leax      3,x                 Eat 3 bytes from X & return
                     rts
 
@@ -7925,7 +7901,7 @@ NXTIN2               ldd       2,x                 Get offset to TO value
                     leax      6,x                 Eat temp var
                     ldd       d,u                 Get TO value
                     cmpd      ,y                  Hit TO value yet?
-                    ble       GTOSTM               Yes, do X=[,x]+[u005E] & return
+                    lble      GTOSTM               Yes, do X=[,x]+[u005E] & return
                     leax      3,x                 Eat 3 bytes from X & return
                     rts
 
@@ -8180,14 +8156,6 @@ POKSTM               ldy       1,y
                     jsr       <u001E              Return from routine
                     fcb       $06
 
-L35D2               jsr       <u0016
-                    ldd       1,y
-                    pshs      d             Save it
-                    jsr       <u0016
-                    ldb       2,y
-                    stb       [,s++]
-                    rts
-
 STPSTM               lbsr      PRTSTM
                     lda       <u002E
                     sta       <u007F
@@ -8198,34 +8166,6 @@ STPSTM               lbsr      PRTSTM
 L35F3               lbsr      PRTSTM
 L3233               jsr       <u001B              Use module header jump vector #1
                     fcb       $18
-
-GSBSTM               ldd       ,x
-                    leax      3,x           Skip offset & statement end
-GSBST1               ldy       <u0031
-                    ldu       <$14,y        Get subroutine stack ptr
-                    cmpu      <u004A        Check for overflow
-                    bhi       GSBST2         bra if ok
-                    ldb       #$35                Subroutine stack overflow error
-                    lbra      EXCERR
-
-GSBST2               stx       ,--u
-                    stu       <$14,y        Save sub stack ptr
-                    stu       <u0046        Reset opstack
-                    addd      <u005E        Make offset a ptr
-                    tfr       d,x           Move to I-Code ptr
-                    rts
-
-RETSTM               ldy       <u0031
-                    cmpy      <$14,y        Are there any return addrs?
-                    bhi       RETST1         bra if so
-                    ldb       #$36                Subroutine stack underflow error
-                    lbra      EXCERR
-
-RETST1               ldu       <$14,y
-                    ldx       ,u++          Pop return addr
-                    stu       <$14,y        Save sub stack ptr
-                    stu       <u0046        Reset opstack
-                    rts
 
 ONSTM               ldd       ,x
                     cmpa      #$1E          is this ON ERROR?
@@ -8266,7 +8206,7 @@ ONSTM               ldd       ,x
                     ldb       ,x            Get TOKEN following dispatch expression
                     cmpb      #$22          is this ON .. GOSUB?
                     puls      x,d           Get registers ready
-                    beq       GSBST1         bra if ON .. GOSUB
+                    lbeq      GSBST1         bra if ON .. GOSUB
                     addd      <u005E        Make offset into ptr
                     tfr       d,x           Use as I-Code ptr
 L366A               rts
@@ -8837,35 +8777,7 @@ L3A51               leay      ,x
 ELNSTM               ldb       #$33                Line with compiler error
                     bra       EXCERR
 
-DEGSTM               lda       #$01
-                    bra       RAD2
-
-RADSTM               clra
-RAD2               ldu       <u0031
-                    sta       1,u
-                    leax      1,x
-                    rts
-
-***************
-* Set/Clear Trace Flag
-TONSTM               lda       <u0034              Get signal flags
-                    bita      #$01                LSb set?
-                    bne       L3A89               Yes, exit
-                    ora       #$01                force it on
-                    bra       CHGTRC
-
-TOFSTM               lda       <u0034              Get signal flags
-                    bita      #$01                Least sig set?
-                    beq       L3A89               Yes, return
-                    anda      #$FE                Clear least sig
-CHGTRC               sta       <u0034              Save modified copy
-                    ldd       <u0017              Swap JMP ptrs between L3C32 & EVAL
-                    pshs      d
-                    ldd       <u0019
-                    std       <u0017
-                    puls      d
-                    std       <u0019
-L3A89               rts
+                    use       basic09_stmtexec.asm
 
 L3212               jsr       <u001B              Verify/Insert module into workspace
                     fcb       $00

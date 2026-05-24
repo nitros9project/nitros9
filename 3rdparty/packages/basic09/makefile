@@ -22,13 +22,13 @@ MODULARSRC	= modular/comand.asm modular/compil.asm modular/binder.asm \
 		  modular/defs modular/b09defs modular/b09type modular/jmpdefs \
 		  modular/linkage modular/editor
 RUNBCORE	= runb_core.asm
-SHAREDSRC	= basic09_rlcmp.asm basic09_floatfix.asm basic09_scalar.asm basic09_sqrt.asm basic09_miscfunc.asm basic09_logexp.asm basic09_compare.asm basic09_strops.asm basic09_trig.asm basic09_rnd.asm basic09_strfns.asm basic09_datefunc.asm basic09_iofunc.asm
+SHAREDSRC	= basic09_stmtexec.asm basic09_rlcmp.asm basic09_floatfix.asm basic09_scalar.asm basic09_sqrt.asm basic09_miscfunc.asm basic09_logexp.asm basic09_compare.asm basic09_strops.asm basic09_trig.asm basic09_rnd.asm basic09_strfns.asm basic09_datefunc.asm basic09_iofunc.asm
 VERIFYRUNBSRC	= verify-runb-source.pl
 VERIFYDIR	= .verify
-BASIC09_6809_SHA256 = fbb7f72db7f5b861904e9fadeb24dd07bb9709de7467d178d80ec0ccac77796e
-BASIC09_6309_SHA256 = ac3d30fe910c26fcee780f8a661a881103f6ee6f26321f1b8b8e09b1131d92b8
-RUNB_6809_SHA256 = 605c7a9f0fde3fed21f7672f5c634f7c43b440f385f088e593f8acca5fccba31
-RUNB_6309_SHA256 = 6c2de659b30b5dec8c9152a0d747c814d8a745211781db16aa7d2e60aa2d899e
+BASIC09_6809_SHA256 = abfa8300da434d52aadd530427075a7c89e54eeeeb204282c44252ba540d4904
+BASIC09_6309_SHA256 = 8fb7c502e350b23c4021be31d0657226b6974b1b779c87997b753457616c641b
+RUNB_6809_SHA256 = f285c562d2925d96383a399ec84630aa6905de3b16c728c0ac6edc56f70e552d
+RUNB_6309_SHA256 = 985dfe7ca6016ac347d251f36d76fbf079b715820c72c08051f548799dfb9110
 
 .PHONY: all banner verify-basic09-runb verify-basic09-runb-source clean dsk dskcopy dskclean showobjs info
 
