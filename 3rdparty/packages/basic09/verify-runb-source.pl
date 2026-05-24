@@ -9,7 +9,9 @@ die "usage: $0 basic09.asm runb.asm runb_core.asm\n"
 require_include($basic09, $core);
 require_include($runb, $core);
 
-runb_core($core);
+my $core_source = runb_core($core);
+require_nested_include($basic09, 'basic09_rlcmp.asm');
+require_nested_include($core, 'basic09_rlcmp.asm', $core_source);
 exit 0;
 
 sub require_include {
@@ -33,4 +35,18 @@ sub runb_core {
 
     return $1 if $source =~ /^(L0000\s+mod\s+eom,name,tylg,atrv,start,dsize\n.*?^eom\s+equ\s+\*)/ms;
     die "could not find RunB core in $file\n";
+}
+
+sub require_nested_include {
+    my ($file, $include_file, $source) = @_;
+    if (!defined $source) {
+        open my $fh, '<', $file or die "open $file: $!\n";
+        local $/;
+        $source = <$fh>;
+        close $fh;
+    }
+
+    my $include = quotemeta $include_file;
+    return if $source =~ /^\s+use\s+$include\s*$/m;
+    die "$file does not include $include_file\n";
 }

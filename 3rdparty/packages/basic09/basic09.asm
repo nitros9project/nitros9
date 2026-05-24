@@ -9997,51 +9997,7 @@ L4443               bsr       RLCMP
                     bgt       L4405
                     bra       L4409
 
-* Set flags for Real comparison
-RLCMP               pshs      y                   Preserve Y
-                    andcc     #$F0                Clear out Negative, Zero, Overflow & Carry bits
-                    lda       8,y                 Is original REAL var=0?
-                    bne       RLCM50               No, skip ahead
-* (orig: RLCM40)
-                    lda       2,y                 Is comparitive REAL var=0?
-                    beq       RLCM30               Yes, they are equal so return
-L4455               lda       5,y                 Get last byte of Mantissa with sign bit
-RLCM15               anda      #$01                Ditch everything but sign bit
-                    bne       RLCM30               Sign bit set, negative value, return
-RLCM20               andcc     #$F0                Clear out Negative, Zero, Overflow & carry bits
-                    orcc      #%00001000          Set Negative flag
-RLCM30               puls      pc,y
-
-RLCM50               lda       2,y                 Is comparitive REAL var=0?
-                    bne       L446B               No, go deal with whole exponent/mantissa mess
-                    lda       $B,y                Get sign bit of original var
-                    eora      #$01                Invert sign flag
-                    bra       RLCM15               Go set Negative bit appropriately
-
-* No zero values in REAL compare-deal with exponent & mantissa
-L446B               lda       $B,y                Get sign bit byte from original var
-                    eora      5,y                 Calculate resulting sign from it with temp var
-                    anda      #$01                Only keep sign bit
-                    bne       L4455               One of the #'s is neg, other pos, go deal with it
-                    leau      6,y                 Both same sign, point U to original var
-                    lda       5,y                 Get sign byte from temp var
-                    anda      #$01                Just keep sign bit
-                    beq       L447D               If positive, skip ahead
-                    exg       u,y                 If negative, swap ptrs to the 2 vars
-* POSSIBLE 6309 MOD: DO LDA 1,U / CMPA 1,Y FOR EXPONENT, THEN LDQ / CMPD /
-* CMPW FOR MANTISSA
-L447D               ldd       1,u                 Get exponent & 1st mantissa bytes
-                    cmpd      1,y                 Compare
-                    bne       RLCM30               Not equal, exit with appropriate flags set
-                    ldd       3,u                 Match so far, compare 2nd & 3rd mantissa bytes
-                    cmpd      3,y           Compare
-                    bne       RLCM70               Not equal, exit with flags
-                    lda       5,u                 Compare last byte of mantissa
-                    cmpa      5,y
-                    beq       RLCM30               2 #'s are equal, exit
-RLCM70               blo       RLCM20               If below, set negative flag & exit
-                    andcc     #$F0                Clear negative, zero, overflow & carry bits
-                    puls      pc,y                Restore Y & return
+                    use       basic09_rlcmp.asm
 
 *??? Copy string var of some sort <=256 chars max
 STRLIT               clrb                          Max size of string copy=256

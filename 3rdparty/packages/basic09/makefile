@@ -22,6 +22,7 @@ MODULARSRC	= modular/comand.asm modular/compil.asm modular/binder.asm \
 		  modular/defs modular/b09defs modular/b09type modular/jmpdefs \
 		  modular/linkage modular/editor
 RUNBCORE	= runb_core.asm
+SHAREDSRC	= basic09_rlcmp.asm
 VERIFYRUNBSRC	= verify-runb-source.pl
 VERIFYDIR	= .verify
 BASIC09_6809_SHA256 = fbb7f72db7f5b861904e9fadeb24dd07bb9709de7467d178d80ec0ccac77796e
@@ -46,19 +47,19 @@ coco3vtio.d: $(DEFSDIR)/cocovtio.d
 gfx2: gfx2.asm coco3vtio.d
 	$(AS) $(ASOUT)$@ $< $(M6809) -DLevel=2
 
-basic09_6309: basic09.asm $(RUNBCORE)
+basic09_6309: basic09.asm $(RUNBCORE) $(SHAREDSRC)
 	$(AS) $(ASOUT)$@ $< $(H6309)
 
-basic09_6809: basic09.asm $(RUNBCORE)
+basic09_6809: basic09.asm $(RUNBCORE) $(SHAREDSRC)
 	$(AS) $(ASOUT)$@ $< $(M6809)
 
-runb_6309: basic09.asm $(RUNBCORE)
+runb_6309: basic09.asm $(RUNBCORE) $(SHAREDSRC)
 	$(AS) $(ASOUT)$@ $< $(H6309) -DINCLUDED="RUNTIM+MATHPAK"
 
-runb_6809: basic09.asm $(RUNBCORE)
+runb_6809: basic09.asm $(RUNBCORE) $(SHAREDSRC)
 	$(AS) $(ASOUT)$@ $< $(M6809) -DINCLUDED="RUNTIM+MATHPAK"
 
-runbt_6809: basic09.asm $(RUNBCORE)
+runbt_6809: basic09.asm $(RUNBCORE) $(SHAREDSRC)
 	$(AS) $(ASOUT)$@ $< $(M6809) -DINCLUDED="RUNTIM+MATHPAK"
 
 basic09_mod_6809: build-modular-basic09.pl $(MODULARSRC)
@@ -80,7 +81,7 @@ verify-basic09-runb: verify-basic09-runb-source basic09_6809 runb_6809 basic09_6
 	@$(RM) -r $(VERIFYDIR)
 	@echo "basic09_6809/basic09_6309 and runb_6809/runb_6309 match known-good references"
 
-verify-basic09-runb-source: basic09.asm runb.asm $(RUNBCORE) $(VERIFYRUNBSRC)
+verify-basic09-runb-source: basic09.asm runb.asm $(RUNBCORE) $(SHAREDSRC) $(VERIFYRUNBSRC)
 	perl $(VERIFYRUNBSRC) basic09.asm runb.asm $(RUNBCORE)
 
 clean: dskclean

@@ -3428,44 +3428,7 @@ Rgt                 bsr       RLCMP
                     bgt       L18D8
                     bra       L18DC
 
-RLCMP               pshs      y
-                    andcc     #Entire+FIRQMask+HalfCrry+IRQMask
-                    lda       $08,y
-                    bne       L1934
-                    lda       $02,y
-                    beq       L1932
-L1928               lda       $05,y
-L192A               anda      #$01
-                    bne       L1932
-L192E               andcc     #Entire+FIRQMask+HalfCrry+IRQMask
-                    orcc      #Negative
-L1932               puls      pc,y
-L1934               lda       $02,y
-                    bne       L193E
-                    lda       $0B,y
-                    eora      #$01
-                    bra       L192A
-L193E               lda       $0B,y
-                    eora      $05,y
-                    anda      #$01
-                    bne       L1928
-                    leau      $06,y
-                    lda       $05,y
-                    anda      #$01
-                    beq       L1950
-                    exg       u,y
-L1950               ldd       1,u
-                    cmpd      $01,y
-                    bne       L1932
-                    ldd       3,u
-                    cmpd      $03,y
-                    bne       L1964
-                    lda       5,u
-                    cmpa      $05,y
-                    beq       L1932
-L1964               bcs       L192E
-                    andcc     #Entire+FIRQMask+HalfCrry+IRQMask
-                    puls      pc,y
+                    use       basic09_rlcmp.asm
 
 SCPCNST             clrb
                     stb       <u003E
