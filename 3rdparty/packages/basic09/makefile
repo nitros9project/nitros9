@@ -53,7 +53,7 @@ runb_6809: basic09.asm
 	$(AS) $(ASOUT)$@ $< $(M6809) -DINCLUDED="RUNTIM+MATHPAK"
 
 runbt_6809: basic09.asm
-	$(AS) $(ASOUT)$@ $< $(M6809) -aRUNTIME=1
+	$(AS) $(ASOUT)$@ $< $(M6809) -DINCLUDED="RUNTIM+MATHPAK"
 
 basic09_mod_6809: build-modular-basic09.pl $(MODULARSRC)
 	perl build-modular-basic09.pl basic09 $@
@@ -69,10 +69,11 @@ verify-basic09-runb: basic09_6809 runb_6809 basic09_6309 runb_6309
 	cd $(VERIFYDIR) && $(AS) $(ASOUT)runb_6309.ref ../runb.asm $(H6309)
 	@cmp -s runb_6809 $(VERIFYDIR)/runb_6809.ref
 	@cmp -s runb_6309 $(VERIFYDIR)/runb_6309.ref
+	@$(RM) -r $(VERIFYDIR)
 	@echo "basic09_6809/basic09_6309 and runb_6809/runb_6309 match known-good references"
 
 clean: dskclean
-	$(RM) $(ALLOBJS) $(MODULAROBJS) *.list *.map
+	$(RM) $(ALLOBJS) $(MODULAROBJS) runbt_6809 *.list *.map
 	$(RM) -r .modular-build $(VERIFYDIR)
 
 dsk: $(DSK)
