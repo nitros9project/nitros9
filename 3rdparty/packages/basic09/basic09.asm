@@ -419,6 +419,10 @@ FULL                equ       RUNTIM+MATHPAK+EDITOR Normal BASIC09
 INCLUDED            set       FULL
                     endc
 
+                    ifp1
+                    use       defsfile
+                    endc
+
                     ifeq      INCLUDED&EDITOR
 * Begin inline RunB source. Keep byte-for-byte with standalone runb.asm.
 ********************************************************************
@@ -439,10 +443,6 @@ INCLUDED            set       FULL
                     ttl       Basic09 Runtime
 
 * Disassembled 02/12/26 08:42:45 by Disasm v1.5 (C) 1988 by RML
-
-                    ifp1
-                    use       defsfile
-                    endc
 
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
@@ -6755,10 +6755,6 @@ B09Minor            equ       0
                     else
                     nam       RunB
                     ttl       Basic09 Runtime
-                    endc
-
-                    ifp1
-                    use       defsfile
                     endc
 
                     mod       eom,name,Prgrm+Objct,ReEnt+0,start,size
