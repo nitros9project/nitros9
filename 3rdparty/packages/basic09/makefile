@@ -16,6 +16,11 @@ OBJS		= gfx gfx2 inkey syscall
 OBJS6809	= basic09_6809 runb_6809
 OBJS6309	= basic09_6309 runb_6309
 ALLOBJS		= $(DEFOBJS) $(OBJS) $(OBJS6809) $(OBJS6309)
+MODULAROBJS	= basic09_mod_6809 runb_mod_6809
+MODULARSRC	= modular/comand.asm modular/compil.asm modular/binder.asm \
+		  modular/stmts.asm modular/exprsn.asm modular/cnvio.asm \
+		  modular/defs modular/b09defs modular/b09type modular/jmpdefs \
+		  modular/linkage modular/editor
 
 all:	banner $(ALLOBJS) $(DEPENDS)
 
@@ -47,8 +52,15 @@ runb_6809: basic09.asm
 runbt_6809: basic09.asm
 	$(AS) $(ASOUT)$@ $< $(M6809) -aRUNTIME=1
 
+basic09_mod_6809: build-modular-basic09.pl $(MODULARSRC)
+	perl build-modular-basic09.pl basic09 $@
+
+runb_mod_6809: build-modular-basic09.pl $(MODULARSRC)
+	perl build-modular-basic09.pl runb $@
+
 clean: dskclean
-	$(RM) $(ALLOBJS) *.list *.map
+	$(RM) $(ALLOBJS) $(MODULAROBJS) *.list *.map
+	$(RM) -r .modular-build
 
 dsk: $(DSK)
 

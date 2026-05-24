@@ -1,0 +1,28 @@
+ 
+***************
+* Conditional Assembly Definitions
+
+* org 1
+*Normal rmb 1 Use for all but special cases below
+*Tandy rmb 1 Special startup msg and ^N before Ready, Break for Tandy.
+*Dragon rmb 1 Same as Tandy but different startup msg.
+*
+*CPUType set Normal
+
+Tandy equ 1  (non-zero prints ^N before Ready, Break for Tandy)
+Dragon equ 0 (non-zero prints Dragon startup msg)
+*            (NOTE: When setting Dragon non-zero you must also)
+*            ( set Tandy to non-zero.)
+
+
+EDITOR  equ $01 Edit/Compile Load/Save
+RUNTIM  equ $02 Interpreter minus Cordic
+MATHPAK equ $04 Cordic trig Functions
+FULL    equ RUNTIM+MATHPAK+EDITOR Includes all facilities
+
+*INCLUDED set RUNTIM (RunB without cordic routines)
+*INCLUDED set RUNTIM+EDITOR (Basic09 without trig)
+*INCLUDED set RUNTIM+MATHPAK (normal RunB)
+ ifndef INCLUDED
+INCLUDED set FULL (normal Basic09)
+ endc
