@@ -6942,36 +6942,24 @@ u00FA               rmb       4
 u00FE               rmb       1
 u00FF               rmb       1
 u0100               rmb       $100                256 byte temporary buffer for various things
-                    ifne      INCLUDED&EDITOR
 u0200               rmb       $100                ??? ($200-$2ff) built backwards 2 bytes/time
 u0300               rmb       $100                BASIC09 stack area ($300-$3ff)
 u0400               rmb       $100                List of module ptrs (modules in BASIC09 workspace)
 u0500               rmb       $100                I-Code buffer (for running)
 u0600               rmb       $2000-.             Default buffer for BASIC09 programs & data
-                    else
-u0200               rmb       $E00                RunB workspace pool ($0200-$0FFF)
-                    endc
 size                equ       .
 
 * Jump tables installed at $1b in DP: in form of JMP to (address of BASIC09's
 * header in memory + 2 byte in table). In other words, jump to LXXXX
 L000D               fdb       L00DC               $1b jump vector
                     fdb       L1CA5               $1e jump vector
-                    ifne      INCLUDED&EDITOR
                     fdb       PLREF               $21 jump vector
-                    else
-                    fdb       PRPRAM              $21 jump vector (RunB: rts stub)
-                    endc
                     fdb       L31E8               $24 jump vector
                     fdb       L3C09               $27 jump vector
                     fdb       L5084               $2A jump vector
                     fdb       $0000               End of jump vector table marker
 
-                    ifne      INCLUDED&EDITOR
 name                fcs       /Basic09/
-                    else
-name                fcs       /RunB/
-                    endc
 
 L0022               fcb       edition             Edition #22 ($16)
                     fcb       INCLUDED
@@ -6984,14 +6972,10 @@ L0024               fcb       $0A
 L0024               fcb       $0C
 L0025               fcc       '            BASIC09'
                     fcb       $0A
-                    ifeq      INCLUDED&EDITOR
-                    fcc       '      RS VERSION 0'
-                    else
                     ifne      H6309
                     fcc       '     6309 VERSION 0'
                     else
                     fcc       '     6809 VERSION 0'
-                    endc
                     endc
                     fcb       B09Vrsn+$30
                     fcc       '.0'
@@ -7012,7 +6996,6 @@ L0025               fcc       '            BASIC09'
                     fcb       $8A
 
 * Jump vector @ $1B goes here (BASIC09 dispatch — EDITOR only)
-                    ifne      INCLUDED&EDITOR
 L00DC               pshs      x,d                 Preserve regs
                     ldb       [<$04,s]            Get function offset
                     leax      <L00EC,pc           Point to vector table
@@ -7038,269 +7021,12 @@ L00EC               fdb       DIRLNK-L00EC         Function 0
                     fdb       L1026-L00EC         Function 18
                     fdb       L10AC-L00EC         Function 1A (Pointed to by <u0019 & <u0017)
                     fdb       L10B1-L00EC         Function 1C
-                    endc
-
-* RunB mode: $1B dispatch and stubs replacing EDITOR-only functions
-                    ifeq      INCLUDED&EDITOR
-* RunB dispatch equates
-moddir              equ       u0004
-pgmaddr             equ       u002F
-u0030               equ       u002F+1
-* $1B dispatch vector - RunB: 9-entry table
-L00DC               pshs      x,d
-                    ldb       [<$04,s]
-                    leax      <L00EC,pc
-                    ldd       b,x
-                    leax      d,x
-                    stx       $4,s
-                    puls      d,x,pc
-L00EC               fdb       DIRLNK-L00EC
-                    fdb       L1287-L00EC
-                    fdb       SETEXT-L00EC
-                    fdb       EXIT-L00EC
-                    fdb       L18BE-L00EC
-                    fdb       KILLEX-L00EC
-                    fdb       BYEBYE-L00EC
-                    fdb       KILALL-L00EC
-                    fdb       L1BA2-L00EC
-* Dispatch thunks
-L00FB               jsr       <u001E
-                    fcb       $04
-L00FE               jsr       <u001E
-                    fcb       $02
-L0101               jsr       <u001E
-                    fcb       $00
-L0104               jsr       <u0021
-                    fcb       $00
-L0107
-L0116               jsr       <u0024
-                    fcb       $00
-L010A               jsr       <u0024
-                    fcb       $04
-L010D               jsr       <u0024
-                    fcb       $02
-L011F               jsr       <u002A
-                    fcb       $02
-* String table
-                    fcb       $0E
-                    fcs       "Ready"
-                    fcs       "What?"
-                    fcs       " free"
-RNB_L0123           fcs       "Program"
-                    fcs       "PROCEDURE"
-                    fcb       C$CR
-                    fcb       C$LF
-                    fcs       "  Name      Proc-Size  Data-Size"
-                    fcc       "Rewrite?: "
-                    fcc       "RANGE"
-                    fcb       $87
-                    fcb       $0E
-                    fcs       "BREAK: "
-                    fcs       "called by"
-                    fcs       "ok"
-                    fcs       "D:"
-                    fcs       "E:"
-                    fcs       "B:"
-                    fcs       "can't find:"
-* SETEXT: save return context
-SETEXT              ldd       <u00B7
-                    pshs      b,a
-                    sts       <u00B7
-                    ldd       $02,s
-                    stx       $02,s
-                    tfr       d,pc
-* EXIT: restore return context and reset temp buffer
-EXIT                lds       <u00B7
-                    puls      b,a
-                    std       <u00B7
-                    lbra      RNB_L02AD
-* Error: print error message and exit
-RNB_L0262           lbsr      L1287
-                    lbra      EXIT
-* RNB_L02AD: reset temp buffer to empty state
-RNB_L02AD           clr       <u007D
-                    inc       <u007D
-                    pshs      x
-                    ldx       <u0080
-                    stx       <u0082
-                    puls      pc,x
-* RNB_L028D: rebuild module directory list from moddir into u0044/u0046
-RNB_L028D           ldu       <u0046
-                    stu       <u0044
-                    ldx       <moddir
-RNB_L0293           ldd       ,x
-                    beq       RNB_L029B
-                    tfr       x,d
-                    leax      $02,x
-RNB_L029B           std       ,--u
-                    bne       RNB_L0293
-                    stu       <u0044
-                    lda       ,y
-                    cmpa      #$0D
-                    beq       RNB_L02A9
-                    leay      $01,y
-RNB_L02A9           sty       <u0082
-                    rts
-* BYEBYE: unlink all modules and exit RunB
-BYEBYE              bsr       KILALL
-                    clrb
-                    os9       F$Exit
-* KILLEX: unlink a specific executing process
-KILLEX              lbsr      L00FE
-                    beq       RNB_L037D
-                    lbsr      RNB_L03C6
-                    bcs       RNB_L037D
-                    ldu       <u0046
-                    clra
-                    clrb
-                    pshu      x,b,a
-                    inca
-                    sta       <u0035
-                    bsr       RNB_L0391
-                    clr       <u0035
-                    rts
-RNB_L037D           comb
-                    ldb       #E$UnkPrc
-                    rts
-* KILALL: kill all linked modules
-KILALL              ldy       <u0082
-                    lda       #$2A
-                    sta       ,y
-                    sta       <u0035
-                    lbsr      RNB_L028D
-                    clr       <pgmaddr
-                    clr       <u0030
-RNB_L0391           ldu       <u0046
-                    stu       <u0044
-                    bra       RNB_L03A7
-RNB_L0397           ldx       ,x
-                    pshs      u
-                    leau      ,x
-                    os9       F$UnLink
-                    puls      u
-                    ldd       #$FFFF
-                    std       [,u]
-RNB_L03A7           ldx       ,--u
-                    bne       RNB_L0397
-                    ldx       <moddir
-                    tfr       x,y
-RNB_L03AF           ldd       ,x++
-                    cmpd      #$FFFF
-                    beq       RNB_L03AF
-RNB_L03B7           std       ,y++
-                    bne       RNB_L03AF
-                    cmpd      ,y
-                    bne       RNB_L03B7
-                    rts
-* RNB_L03C6: DIRSCH - search procedure in module directory (case-insensitive)
-RNB_L03C6           pshs      u,y
-                    ldx       <moddir
-RNB_L03CA           ldy       ,s
-                    ldu       ,x++
-                    beq       RNB_L03E6
-                    ldd       4,u
-                    leau      d,u
-RNB_L03D5           lda       ,y+
-                    eora      ,u+
-                    anda      #$DF
-                    bne       RNB_L03CA
-                    clra
-                    tst       -1,u
-                    bpl       RNB_L03D5
-RNB_L03E2           leax      -$02,x
-                    puls      pc,u,b,a
-RNB_L03E6           coma
-                    bra       RNB_L03E2
-* DIRLNK: find procedure in directory, or link/load if not found
-DIRLNK              bsr       RNB_L03C6
-                    bcs       RNB_L03EE
-                    rts
-RNB_L03C1           ldb       #$20
-                    lbra      RNB_L0262
-RNB_L03EE           pshs      u,y,x
-                    ldb       $01,s
-                    cmpb      #$FE
-                    beq       RNB_L03C1
-                    leax      ,y
-                    clra
-                    clrb
-                    os9       F$Link
-                    bcc       RNB_L0408
-                    ldx       $02,s
-                    clra
-                    clrb
-                    os9       F$Load
-                    bcs       RNB_L040C
-RNB_L0408           stx       $02,s
-                    stu       [,s]
-RNB_L040C           puls      pc,u,y,x
-* L1287: print error message (F$PErr)
-L1287               os9       F$PErr
-                    rts
-* L18BE: type scanner - scan I-code token type from list
-L18BE               pshs      b,a
-                    bra       RNB_L0426
-RNB_L0416           pshs      y,x
-RNB_L0418           lda       ,x+
-                    cmpa      #$FF
-                    beq       RNB_L042E
-                    cmpa      ,y+
-                    beq       RNB_L0418
-                    puls      y,x
-                    leay      $01,y
-RNB_L0426           cmpy      ,s
-                    bls       RNB_L0416
-                    coma
-                    puls      pc,b,a
-RNB_L042E           puls      y,x
-                    clra
-RNB_L0431           puls      pc,b,a
-* L1BA2: token dispatch - advance Y past current I-code token
-L1BA2               pshs      x,b,a
-RNB_L0435           leax      <RNB_L0442,pcr
-                    lda       ,y+
-RNB_L043A           cmpa      ,x++
-                    bcs       RNB_L043A
-                    ldb       ,-x
-                    jmp       b,x
-RNB_L0442           fcb       $F2
-                    fcb       RNB_L045A-*
-RNB_L0444           fcb       $92
-                    fcb       RNB_L045E-*
-RNB_L0446           fcb       $91
-                    fcb       RNB_L045A-*
-RNB_L0448           fcb       $90
-                    fcb       RNB_L0460-*
-RNB_L044A           fcb       $8F
-                    fcb       RNB_L0458-*
-RNB_L044C           fcb       $8E
-                    fcb       RNB_L045A-*
-RNB_L044E           fcb       $8D
-                    fcb       RNB_L045C-*
-RNB_L0450           fcb       $55
-                    fcb       RNB_L045A-*
-RNB_L0452           fcb       $4B
-                    fcb       RNB_L045E-*
-RNB_L0454           fcb       $3E
-                    fcb       RNB_L0466-*
-RNB_L0456           fcb       $00
-                    fcb       RNB_L045E-*
-RNB_L0458           leay      $03,y
-RNB_L045A           leay      $01,y
-RNB_L045C           leay      $01,y
-RNB_L045E           bra       RNB_L0435
-RNB_L0460           tst       ,y+
-                    bpl       RNB_L0460
-                    bra       RNB_L0435
-RNB_L0466           puls      pc,x,b,a
-                    endc
 
 * UNUSED IN BASIC09
 *L0131    jsr   <u0024
 *         fcb   $0A
 
 * token/command type & command list? (EDITOR only -- RunB has no keyword scanner)
-                    ifne      INCLUDED&EDITOR
                     fdb       114                 # entries in table
                     fcb       2                   # bytes to start text
 
@@ -8342,7 +8068,6 @@ L07A2               fcs       'ok'
 L07A4               fcs       'D:'
 L07A6               fcs       'E:'
 L07A8               fcs       'B:'
-                    endc
 
 * F$Icpt routine
 INTCPT               lda       R$DP,s              Get DP register from stack
@@ -8447,13 +8172,8 @@ START15               lda       #$7E                Opcode for JMP Extended inst
                     ifeq      H6309
                     leas      2,s                 eat X on stack
                     endc
-                    ifne      INCLUDED&EDITOR
                     bsr       L0116               Go init <$50 vars, & some table ptrs
-                    else
-                    lbsr      L0116               Go init <$50 vars, & some table ptrs
-                    endc
                     puls      y                   Get parameter ptr
-                    ifne      INCLUDED&EDITOR
                     leax      >L0140,pc           Point to main command token list
                     stx       <u009E              Save it
                     ldb       ,y                  Get char from params
@@ -11209,15 +10929,6 @@ L1BD5               fcb       $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$0
                     fcb       $00,$00,$00,$00,$00,$b0,$00,$00,$00,$00,$b0,$c0,$00,$b0,$c0,$00
                     fcb       $b0,$c0,$d0,$00,$b0,$c0,$d0,$00,$b0,$c0,$00,$b0,$c0,$00,$b0,$c0
                     fcb       $00,$b0,$00,$b0,$00,$b0,$00,$00,$e2,$e2,$e2,$e2,$e2,$e2,$e2,$e2
-                    endc
-
-* RunB-mode: enter interpreter (BASIC09 mode enters COMAND above)
-                    ifeq      INCLUDED&EDITOR
-                    ldx       <u0004              Get ptr to module list
-                    ldd       ,x                  Get ptr to 1st module
-                    std       <u002F              Save it
-                    lbsr      CMPRAM              Enter RunB interpreter
-                    endc
 
 L1CA5               pshs      x,d                 Preserve regs
                     ldb       [<4,s]              Get function code
@@ -11233,12 +10944,8 @@ L1CB5               fdb       CMPRAM-L1CB5         $00 function
                     fdb       NAMSYM-L1CB5         $02 function
                     fdb       SEARC0-L1CB5         $04 function
                     fdb       MOVDWN-L1CB5         $06 function
-                    ifne      INCLUDED&EDITOR
                     fdb       L24BD-L1CB5         $08 function (EXPDSC - expand description table)
                     fdb       DIM1-L1CB5         $0A function (COMPIL - compile one statement)
-                    endc
-
-                    ifne      INCLUDED&EDITOR
 * Data of some sort: Appears to be special symbols
 L1CD0               fdb       33                  (# of entries-33)
                     fcb       $03                 (# bytes to skip to start of next?)
@@ -11680,18 +11387,6 @@ ON3               inc       [,s]
 L1F87               lbsr      ERMASS
 L1F8A               lbsr      L2156
 GOTO9               lbra      STOP
-                    endc
-
-* RunB stubs: EREVRB/ERRDIE normally defined in EDITOR block above.
-* In RunB mode these error-dispatch stubs replace symbols defined in EDITOR blocks.
-                    ifeq      INCLUDED&EDITOR
-EREVRB
-ERRDIE              rts
-L1CC1               jsr       <u001B
-                    fcb       $02
-L1CC7               jsr       <u001B
-                    fcb       $06
-                    endc
 
 L1F90               sty       <u00A7              Save ptr to end of string name
                     ldx       <u004A              ??? Get ptr to start of I-code
@@ -11711,8 +11406,6 @@ CMPRAM               bsr       L1F90               Set up some ptrs
                     cmpa      #$3F                Was it a carriage return token?
                     lbne      EREVRB               No, go process token
 CMPRA9               lbra      OUTCOD               Add token to I-code buffer, check for overflow
-
-                    ifne      INCLUDED&EDITOR
 RUN               lbsr      ERMASS
                     pshs      x             save it for return
                     lbsr      L2193         get procedure name
@@ -12324,157 +12017,6 @@ L240C               bsr       OUTCOD
                     rts
 
 OUTCDB               tfr       b,a
-                    endc
-
-* ================================================================
-* RunB-mode STOP, L1FC0, and token scanner (not present in BASIC09)
-* ================================================================
-                    ifeq      INCLUDED&EDITOR
-
-* RunB number parser via <u002A (= L1CCA in BASIC09)
-RNB_GNUM            jsr       <u002A
-                    fcb       $00
-                    fdb       $0007
-                    fcb       $03
-
-* RunB token scanner: parse one token from source text
-* Entry: Y = ptr into source text
-* Exit:  u00A3 = token, u00A4 = type; token+data output to I-code; Y advanced
-RNB_SCAN            ldd       <u00AB              Save I-code end to prev
-                    std       <u00AD
-                    lbsr      L245D               Skip spaces/LFs; Y -> first non-space
-                    sty       <u00B9              Save ptr
-                    lda       ,y                  Get first non-space char
-                    lbsr      L246E               Decimal digit?
-                    bcc       RNB_NUM             Yes, parse number
-                    cmpa      #'.                 Period?
-                    beq       RNB_DOT
-                    cmpa      #'(
-                    beq       RNB_LPAR
-                    cmpa      #')
-                    beq       RNB_RPAR
-                    cmpa      #',
-                    beq       RNB_COMMA
-                    cmpa      #'"
-                    lbeq      RNB_STR
-                    cmpa      #'$
-                    beq       RNB_DLLAR
-                    cmpa      #$0D                CR?
-                    beq       RNB_CR
-                    lda       #$0A                Unrecognized symbol error
-                    lbra      EREVRB
-
-RNB_DOT             leay      1,y                 Skip '.'
-                    lda       ,y                  Peek at next char
-                    lbsr      L246E               Is it a digit?
-                    bcs       RNB_DOT9            No: '.' alone is a separator token
-                    leay      -1,y                Yes: back up and parse as float
-                    bra       RNB_NUM
-RNB_DOT9            ldd       #$890C              '.' separator: token=$89, type=$0C
-                    bra       RNB_SETYP
-RNB_LPAR            leay      1,y
-                    ldd       #$4D0C              '(': token=$4D, type=$0C
-                    bra       RNB_SETYP
-RNB_RPAR            leay      1,y
-                    ldd       #$4E0C              ')': token=$4E, type=$0C
-                    bra       RNB_SETYP
-RNB_COMMA           leay      1,y
-                    ldd       #$4B0C              ',': token=$4B, type=$0C
-                    bra       RNB_SETYP
-RNB_CR              ldd       #$3F02              CR: token=$3F, type=$02
-RNB_SETYP           sta       <u00A3
-                    stb       <u00A4
-                    lbra      OUTCOD              Output token to I-code and return
-
-* Number literal: parse via <u002A (same dispatch as BASIC09's GETNUM)
-RNB_NUM             leax      ,y                  X = ptr to number start
-                    ldy       <u0044              Y = error address
-                    bsr       RNB_GNUM            Parse number via <u002A
-                    exg       x,y
-                    lbcs      EREVRB              Illegal literal error
-                    lda       ,x+                 First byte: 0=real, else=integer indicator
-                    cmpa      #2
-                    bne       RNB_INT             Integer
-* Real number: token=$8F, 5 data bytes follow
-                    ldd       #$8F05
-RNB_NUMST           sta       <u00A3              Store token
-RNB_NUMOUT          lbsr      OUTCOD              Output token/data byte
-                    lda       ,x+                 Get next data byte
-                    decb
-                    bpl       RNB_NUMOUT          Loop until all bytes out
-                    lda       #$06                Type = literal (6)
-                    sta       <u00A4
-                    ldy       <u00B9              Restore source ptr
-                    rts
-RNB_INT             ldd       #$8E02              2-byte integer token=$8E
-                    tst       ,x                  Is first byte zero (byte literal)?
-                    bne       RNB_NUMST           No: regular 2-byte integer
-                    ldd       #$8D01              Yes: byte literal token=$8D, 1 data byte
-                    leax      1,x                 Skip the zero byte
-                    bra       RNB_NUMST
-
-* '$' prefix: hex/string-var; back up and let RNB_GNUM parse
-RNB_DLLAR           leay      -1,y                Back up to '$'
-                    leax      ,y
-                    ldy       <u0044
-                    lbsr      RNB_GNUM
-                    exg       x,y
-                    lbcs      EREVRB
-                    lda       ,x+
-                    cmpa      #2
-                    ldd       #$9102              string-var token=$91, type=$02
-                    bra       RNB_NUMST
-
-* String literal '"': output $90 token, then chars to closing quote, then $FF
-RNB_STR             lda       #$90                String literal token
-                    ldb       #$06                Type = 6
-                    sta       <u00A3
-                    stb       <u00A4
-                    lbsr      OUTCOD              Output $90 token
-RNB_STRLP           lda       ,y+                 Get char from source
-                    cmpa      #$0D                CR = no closing quote
-                    beq       RNB_NOQT
-                    cmpa      #'"                 Closing quote?
-                    bne       RNB_STRCH           No, output char
-                    cmpa      ,y+                 Doubled quote?
-                    beq       RNB_STRCH           Yes, output it
-                    leay      -1,y                No: back up, end of string
-                    lda       #$FF                String terminator
-                    lbsr      OUTCOD
-                    rts
-RNB_STRCH           lbsr      OUTCOD              Output string char
-                    bra       RNB_STRLP           Loop
-RNB_NOQT            lda       #$29                No ending quote error
-                    lbra      EREVRB
-
-* RunB-mode STOP: scan one token and undo I-code advance
-* Caller must re-output the token via OUTCOD/CMPRA9 if needed
-STOP                lbsr      RNB_SCAN            Scan one token (outputs to I-code)
-                    ldx       <u00AD              Restore I-code end to pre-scan value
-                    stx       <u00AB
-                    lda       <u00A3              Return token in A
-                    rts
-
-* RunB-mode L1FC0: handle '(' parameter grouping
-* Entry: A = current token (from STOP)
-L1FC0               cmpa      #$4D                Is it '(' token?
-                    lbne      L1FF5               No, return (L1FF5 = rts, defined above)
-                    lbsr      CMPRA9              Yes, output '(' to I-code (lbra OUTCOD)
-                    ldd       <u00AB              Save I-code ptr
-                    lbsr      STOP                Scan next token
-                    ldb       <u00A4              Get type
-                    cmpb      #$06                Is it a literal?
-                    lbne      L1FF5               No, done (no loop for RunB)
-                    lbsr      STOP                Scan another token (e.g. ',' or ')')
-                    lda       <u00A3              Get it
-                    cmpa      #$4B                Is it ',' (comma token)?
-                    beq       L1FC0               Yes, re-enter for next param
-                    cmpa      #$4E                Is it ')' (close paren)?
-                    lbeq      L1FF5               Yes, done
-                    lda       #$25                No: missing ')' error
-                    lbra      EREVRB
-
-                    endc
 
 OUTCOD               pshs      x,d                 Preserve Table ptr & 2 mystery bytes
                     ldx       <u00AB              Get ptr to end of current I-code line
@@ -12556,8 +12098,6 @@ ALPHA7               orcc      #$01                Error, non-alpha char
 
 ALPHA8               andcc     #$FE                No error, alphabetic char
 L2493               rts
-
-                    ifne      INCLUDED&EDITOR
 ADDSYM               ldx       <u0062
                     ldd       -3,x
                     addd      #1                  INCD
@@ -12578,9 +12118,6 @@ ADDSY1               lda       ,x+
                     bpl       ADDSY1
                     leay      ,x            get ptr/size ptr
                     puls      pc,x
-                    endc
-
-                    ifne      INCLUDED&EDITOR
 L24BD               pshs      u,d
                     ldd       <u000C
                     subd      ,s
@@ -12620,7 +12157,6 @@ EXPSYM               pshs      u,d
                     std       <u0064
                     leax      ,u
                     puls      pc,u
-                    endc
 
 MOVDWN               pshs      x,d
                     leax      d,u
@@ -12674,8 +12210,6 @@ SEARC6               tst       -1,x                Check the byte
                     bpl       SEARC3               If not at end of entry, keep looking
                     sty       3,s                 Entry matched, save new source ptr
 L2558               puls      pc,u,y,x,a          Restore regs & return
-
-                    ifne      INCLUDED&EDITOR
 PLREF               pshs      x,d                 Preserve regs
                     ldb       [<$04,s]            Get table entry #
                     leax      <L256A,pc           Point to vector table
@@ -14392,9 +13926,6 @@ DONE75               lda       ,u+
 L31E2               cmpu      <u004A
                     blo       L3188
                     rts
-                    else
-PRPRAM              rts
-                    endc
 
 * Called by <$24 JMP vector
 * Entry: X=byte after the last vector installed ($2D)
