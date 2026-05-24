@@ -21,6 +21,8 @@ MODULARSRC	= modular/comand.asm modular/compil.asm modular/binder.asm \
 		  modular/stmts.asm modular/exprsn.asm modular/cnvio.asm \
 		  modular/defs modular/b09defs modular/b09type modular/jmpdefs \
 		  modular/linkage modular/editor
+VERIFYDIR	= .verify
+BASIC09_6809_SHA256 = fbb7f72db7f5b861904e9fadeb24dd07bb9709de7467d178d80ec0ccac77796e
 
 all:	banner $(ALLOBJS) $(DEPENDS)
 
@@ -58,9 +60,16 @@ basic09_mod_6809: build-modular-basic09.pl $(MODULARSRC)
 runb_mod_6809: build-modular-basic09.pl $(MODULARSRC)
 	perl build-modular-basic09.pl runb $@
 
+verify-basic09-runb: basic09_6809 runb_6809
+	@printf '%s  %s\n' "$(BASIC09_6809_SHA256)" basic09_6809 | shasum -a 256 -c -
+	@mkdir -p $(VERIFYDIR)
+	$(AS) $(ASOUT)$(VERIFYDIR)/runb_6809.ref runb.asm $(M6809)
+	@cmp -s runb_6809 $(VERIFYDIR)/runb_6809.ref
+	@echo "basic09_6809 and runb_6809 match known-good references"
+
 clean: dskclean
 	$(RM) $(ALLOBJS) $(MODULAROBJS) *.list *.map
-	$(RM) -r .modular-build
+	$(RM) -r .modular-build $(VERIFYDIR)
 
 dsk: $(DSK)
 
