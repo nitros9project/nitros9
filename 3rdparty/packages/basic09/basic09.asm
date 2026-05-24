@@ -2770,7 +2770,7 @@ L1105               jsr       <u002A
                     fdb       CHRFNC-L1188
                     fdb       STRFNI-L1188
                     fdb       L4FA8-L1188
-                    fdb       DATE$-L1188
+                    fdb       DATFNC-L1188
                     fdb       TABFNC-L1188
                     fdb       FIX-L1188
                     fdb       fixN1-L1188
@@ -2886,7 +2886,7 @@ L1188               fdb       BCPVAR-L1188
                     fdb       LXORI-L1188
                     fdb       equTRUE-L1188
                     fdb       equFALSE-L1188
-                    fdb       EOF-L1188
+                    fdb       EOFFNC-L1188
                     fdb       TRMFNC-L1188
 
 L1208               fdb       BtoI-L1208
@@ -3806,63 +3806,7 @@ MODint              lbsr      INTDIV
 
                     use       basic09_strfns.asm
 
-DATE$               pshs      x
-                    leay      -$06,y
-                    leax      -$06,y
-                    ldu       <u0048
-                    stu       $01,y
-                    os9       F$Time
-                    bcs       ENDSTR
-*         bsr   L24F4      Correction for Y2000 changes. RG
-                    lda       ,x+
-                    ldb       #$2F
-                    cmpa      #100
-                    blo       Y19
-cnty                suba      #100
-                    bhs       cnty
-                    adda      #100
-Y19                 bsr       L24F8
-                    lda       #$2F
-                    bsr       L24F2
-                    lda       #$2F
-                    bsr       L24F2
-                    lda       #$20
-                    bsr       L24F2
-                    lda       #$3A
-                    bsr       L24F2
-                    lda       #$3A
-                    bsr       L24F2
-                    bra       ENDSTR
-L24F2               sta       ,u+
-
-* byte to ASCII
-L24F4               lda       ,x+
-                    ldb       #$2F
-L24F8               incb
-                    suba      #$0A
-                    bcc       L24F8
-                    stb       ,u+
-                    ldb       #$3A
-L2501               decb
-                    inca
-                    bne       L2501
-                    stb       ,u+
-                    rts
-
-EOF                 lda       $02,y
-                    ldb       #$06
-                    os9       I$GetStt
-                    bcc       L2519
-                    cmpb      #$D3
-                    bne       L2519
-                    ldb       #$FF
-                    bra       L251B
-L2519               ldb       #$00
-L251B               clra
-                    std       $01,y
-                    lda       #$03
-                    sta       ,y
-                    rts
+                    use       basic09_datefunc.asm
 
 UNK12               ldb       #$06
                     pshs      y,x,b
@@ -14644,66 +14588,7 @@ BLNOT               com       2,y                 Single byte LNOT
 
                     use       basic09_strfns.asm
 
-* DATE$ routine
-* Minor change to accommodate Y2K changes in year. RG
-DATFNC               pshs      x
-                    leay      -6,y
-                    leax      -6,y
-                    ldu       <u0048
-                    stu       1,y
-                    os9       F$Time              Get time packet
-                    bcs       ENDSTR               Error, exit
-*         bsr   L5021      Start converting
-                    lda       ,x+
-                    ldb       #'/
-                    cmpa      #100
-                    blo       Y19
-cnty                suba      #100
-                    bhs       cnty          <<end patch
-                    adda      #100
-Y19                 bsr       DATC10
-                    lda       #'/                 Append /
-                    bsr       DATCNV
-                    lda       #'/
-                    bsr       DATCNV
-                    lda       #$20
-                    bsr       DATCNV
-                    lda       #':
-                    bsr       DATCNV
-* (orig: DATC05)
-                    lda       #':
-                    bsr       DATCNV
-                    bra       ENDSTR
-
-DATCNV               sta       ,u+
-L5021               lda       ,x+                 Get byte from time packet
-                    ldb       #'/
-DATC10               incb
-                    suba      #10
-                    bcc       DATC10
-                    stb       ,u+
-                    ldb       #':
-DATC20               decb
-                    inca
-                    bne       DATC20
-                    stb       ,u+
-                    rts
-
-EOFFNC               lda       2,y                 Get path #
-                    ldb       #SS.EOF             Check if we are at end of file
-                    os9       I$GetStt
-                    bcc       L5046               No, skip ahead
-                    cmpb      #E$EOF              Was the error an EOF error?
-                    bne       L5046               No, skip ahead
-                    ldb       #$FF
-                    bra       L5048
-
-L5046               clrb
-L5048               clra
-                    std       1,y
-                    lda       #$03
-                    sta       ,y
-                    rts
+                    use       basic09_datefunc.asm
 
 ***************
 * Subroutine INIT
