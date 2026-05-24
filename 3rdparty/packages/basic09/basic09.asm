@@ -419,6 +419,10 @@ FULL                equ       RUNTIM+MATHPAK+EDITOR Normal BASIC09
 INCLUDED            set       FULL
                     endc
 
+                    ifeq      INCLUDED&EDITOR
+                    use       runb.asm
+                    endc
+
 * Version Numbers
 B09Vrsn             equ       1
 B09Major            equ       1
