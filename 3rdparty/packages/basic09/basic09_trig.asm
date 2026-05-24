@@ -11,7 +11,7 @@ ASNFNC               pshs      x
                     lda       $05,y
                     lbeq      RETPI2
                    ifeq      INCLUDED&EDITOR
-ASNERR               lbra      err67
+ASNERR               lbra      L4FC7
                    else
 ASNERR               lbra      L4FC7
                    endc

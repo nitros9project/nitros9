@@ -122,7 +122,7 @@ L471F
                     std       <u0080
                     stu       <u0082
                     ifne      B09RUNB
-                    lbcs      err67
+                    lbcs      L4FC7
                     else
                     lbcs      L4FC7
                     endc

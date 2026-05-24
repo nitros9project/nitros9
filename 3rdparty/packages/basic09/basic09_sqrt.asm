@@ -8,7 +8,7 @@ SQRR05
                     ldb       5,y
                     asrb
                     ifne      B09RUNB
-                    lbcs      err67
+                    lbcs      L4FC7
                     else
                     lbcs      L4FC7
                     endc

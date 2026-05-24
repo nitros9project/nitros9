@@ -6,7 +6,7 @@ my ($basic09) = @ARGV;
 die "usage: $0 basic09.asm\n"
     unless defined $basic09;
 
-for my $shared_source (qw(basic09_rlcmp.asm basic09_floatfix.asm basic09_scalar.asm basic09_sqrt.asm basic09_miscfunc.asm basic09_logexp.asm basic09_compare.asm basic09_strops.asm basic09_trig.asm basic09_rnd.asm)) {
+for my $shared_source (qw(basic09_rlcmp.asm basic09_floatfix.asm basic09_scalar.asm basic09_sqrt.asm basic09_miscfunc.asm basic09_logexp.asm basic09_compare.asm basic09_strops.asm basic09_trig.asm basic09_rnd.asm basic09_strfns.asm)) {
     require_include($basic09, $shared_source);
 }
 exit 0;

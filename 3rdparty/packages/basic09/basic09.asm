@@ -2764,14 +2764,14 @@ L1102               jsr       <u0024
 L1105               jsr       <u002A
                     fcb       $02
 
-                    fdb       MID$-L1188
-                    fdb       LEFT$-L1188
-                    fdb       RIGHT$-L1188
-                    fdb       CHR$-L1188
-                    fdb       STR$int-L1188
-                    fdb       STR$rl-L1188
+                    fdb       MIDFNC-L1188
+                    fdb       L4EE2-L1188
+                    fdb       RGTFNC-L1188
+                    fdb       CHRFNC-L1188
+                    fdb       STRFNI-L1188
+                    fdb       L4FA8-L1188
                     fdb       DATE$-L1188
-                    fdb       TAB-L1188
+                    fdb       TABFNC-L1188
                     fdb       FIX-L1188
                     fdb       fixN1-L1188
                     fdb       fixN2-L1188
@@ -2852,7 +2852,7 @@ L1188               fdb       BCPVAR-L1188
                     fdb       MODrl-L1188
                     fdb       RNDFNC-L1188
                     fdb       L4B03-L1188
-                    fdb       SUBSTR-L1188
+                    fdb       SUBFNC-L1188
                     fdb       SGNint-L1188
                     fdb       SGNrl-L1188
                     fdb       SINFNC-L1188
@@ -2879,15 +2879,15 @@ L1188               fdb       BCPVAR-L1188
                     fdb       PEEK-L1188
                     fdb       LNOTI-L1188
                     fdb       VAL-L1188
-                    fdb       LEN-L1188
-                    fdb       ASC-L1188
+                    fdb       L4EAB-L1188
+                    fdb       ASCFNC-L1188
                     fdb       LANDI-L1188
                     fdb       LORI-L1188
                     fdb       LXORI-L1188
                     fdb       equTRUE-L1188
                     fdb       equFALSE-L1188
                     fdb       EOF-L1188
-                    fdb       TRIM$-L1188
+                    fdb       TRMFNC-L1188
 
 L1208               fdb       BtoI-L1208
                     fdb       INTCPY-L1208
@@ -3804,178 +3804,7 @@ MODint              lbsr      INTDIV
 
                     use       basic09_rnd.asm
 
-LEN                 ldd       <u0048
-                    ldu       $01,y
-                    subd      $01,y
-                    subd      #$0001
-                    stu       <u0048
-L2389               std       $01,y
-                    lda       #$01
-                    sta       ,y
-                    rts
-
-ASC                 ldd       $01,y
-                    std       <u0048
-                    ldb       [<$01,y]
-                    clra
-                    bra       L2389
-
-CHR$                ldd       $01,y
-                    tsta
-                    lbne      err67
-                    ldu       <u0048
-                    stu       $01,y
-                    stb       ,u+
-                    lbsr      L24BD
-                    sty       <u0044
-                    cmpu      <u0044
-                    lbcc      L44C2
-                    rts
-
-LEFT$               ldd       $01,y
-                    ble       IsNull
-                    addd      $07,y
-                    tfr       d,u
-                    cmpd      <u0048
-                    bcc       L23C4
-                    bsr       L2443
-L23C4               leay      $06,y
-                    rts
-
-IsNull              leay      $06,y
-                    ldu       $01,y
-                    bra       L2443
-
-RIGHT$              ldd       $01,y
-                    ble       IsNull
-                    pshs      x
-                    ldd       <u0048
-                    subd      $01,y
-                    subd      #$0001
-                    cmpd      $07,y
-                    bls       L23ED
-                    tfr       d,x
-                    ldu       $07,y
-L23E3               lda       ,x+
-                    sta       ,u+
-                    cmpa      #$FF
-                    bne       L23E3
-                    stu       <u0048
-L23ED               leay      $06,y
-                    puls      pc,x
-
-MID$                ldd       $01,y               size of piece
-                    ble       L23F9
-                    ldd       $07,y               starting offset
-                    bgt       L2401
-L23F9               ldd       $01,y               = LEFT$
-                    leay      $06,y
-                    std       $01,y
-                    bra       LEFT$
-
-L2401               subd      #$0001
-                    beq       L23F9
-                    addd      $0D,y               start address piece
-                    cmpd      <u0048
-                    bcs       L2411               piece exists
-                    leay      $06,y
-                    bra       IsNull
-L2411               pshs      x
-                    tfr       d,x
-                    ldb       $02,y
-                    ldu       $0D,y
-L2419               lda       ,x+
-                    sta       ,u+
-                    cmpa      #$FF
-                    beq       L242C
-                    decb
-                    bne       L2419
-                    dec       $01,y
-                    bpl       L2419
-                    lda       #$FF
-                    sta       ,u+
-L242C               stu       <u0048
-                    leay      $0C,y
-                    puls      pc,x
-
-TRIM$               ldu       <u0048
-                    leau      -1,u
-L2436               cmpu      $01,y
-                    beq       L2443
-                    lda       ,-u
-                    cmpa      #$20
-                    beq       L2436
-                    leau      1,u
-L2443               lda       #$FF
-                    sta       ,u+
-                    stu       <u0048
-                    rts
-
-SUBSTR              pshs      y,x
-                    ldd       <u0048
-                    subd      $01,y
-                    addd      $07,y
-                    addd      #$0001
-                    ldx       $07,y
-                    ldy       $01,y
-                    lbsr      L10FF
-                    bcc       L2463
-                    clra
-                    clrb
-                    bra       L246C
-L2463               tfr       y,d
-                    ldx       $02,s
-                    subd      $01,x
-                    addd      #$0001
-L246C               puls      y,x
-                    std       $07,y
-                    lda       #$01
-                    sta       $06,y
-                    leay      $06,y
-                    rts
-
-STR$int             ldb       #$02
-                    bra       L247D
-
-STR$rl              ldb       #$03
-L247D               lda       <u007D
-                    ldu       <u0082
-                    pshs      u,x,a
-                    lbsr      L1105
-                    bcs       err67
-                    ldx       <u0082
-                    lda       #$FF
-                    sta       ,x
-                    ldx       $03,s
-                    lbsr      STRLIT
-                    puls      u,x,a
-                    sta       <u007D
-                    stu       <u0082
-                    rts
-err67               ldb       #$43
-                    lbra      L1102
-
-TAB                 pshs      x
-                    ldd       $01,y
-                    blt       err67
-                    sty       <u0044
-                    ldu       <u0048
-                    stu       $01,y
-                    lda       #$20
-L24AE               cmpb      <u007D
-                    bls       L24BF
-                    sta       ,u+
-                    decb
-                    cmpu      <u0044
-                    bcs       L24AE
-                    lbra      L44C2
-L24BD               pshs      x
-L24BF               lda       #$FF
-                    sta       ,u+
-                    stu       <u0048
-                    lda       #$04
-                    sta       ,y
-                    puls      pc,x
+                    use       basic09_strfns.asm
 
 DATE$               pshs      x
                     leay      -$06,y
@@ -3983,7 +3812,7 @@ DATE$               pshs      x
                     ldu       <u0048
                     stu       $01,y
                     os9       F$Time
-                    bcs       L24BF
+                    bcs       ENDSTR
 *         bsr   L24F4      Correction for Y2000 changes. RG
                     lda       ,x+
                     ldb       #$2F
@@ -4003,7 +3832,7 @@ Y19                 bsr       L24F8
                     bsr       L24F2
                     lda       #$3A
                     bsr       L24F2
-                    bra       L24BF
+                    bra       ENDSTR
 L24F2               sta       ,u+
 
 * byte to ASCII
@@ -14813,193 +14642,7 @@ BLNOT               com       2,y                 Single byte LNOT
 
                     use       basic09_rnd.asm
 
-L4EAB               ldd       <u0048
-                    ldu       1,y
-                    subd      1,y
-                    subd      #1
-                    stu       <u0048
-L4EB6               std       1,y
-                    lda       #1
-                    sta       ,y
-                    rts
-
-ASCFNC               ldd       1,y
-                    std       <u0048
-                    ldb       [<$01,y]
-                    clra
-                    bra       L4EB6
-
-CHRFNC               ldd       1,y
-                    tsta
-                    lbne      L4FC7
-                    ldu       <u0048
-                    stu       1,y
-                    stb       ,u+
-                    lbsr      ENDS00
-                    sty       <u0044
-                    cmpu      <u0044
-                    lbhs      L44C2
-                    rts
-
-L4EE2               ldd       1,y
-                    ble       L4EF4
-                    addd      7,y
-                    tfr       d,u
-                    cmpd      <u0048
-                    bcc       L4EF1
-                    bsr       L4F70
-L4EF1               leay      6,y
-                    rts
-
-L4EF4               leay      6,y
-                    ldu       1,y
-                    bra       L4F70
-
-RGTFNC               ldd       1,y
-                    ble       L4EF4
-                    pshs      x
-                    ldd       <u0048
-                    subd      1,y
-                    subd      #1
-                    cmpd      7,y
-                    bls       RGTFN2
-                    tfr       d,x
-                    ldu       7,y
-L4F10               lda       ,x+
-                    sta       ,u+
-                    cmpa      #$FF
-                    bne       L4F10
-                    stu       <u0048
-RGTFN2               leay      6,y
-                    puls      pc,x
-
-MIDFNC               ldd       $01,y
-                    ble       VARR05
-                    ldd       $07,y
-                    bgt       MIDFN2
-VARR05               ldd       $01,y
-                    leay      $06,y
-                    std       $01,y
-                    bra       L4EE2
-
-MIDFN2               subd      #$0001
-                    beq       VARR05
-                    addd      $0D,y
-                    cmpd      <u0048
-                    bcs       MIDFN3
-                    leay      $06,y
-                    bra       L4EF4
-
-MIDFN3               pshs      x
-                    tfr       d,x
-                    ldb       $02,y
-                    ldu       $0D,y
-L4F46               lda       ,x+
-                    sta       ,u+
-                    cmpa      #$FF
-                    beq       MIDFN5
-                    decb
-                    bne       L4F46
-                    dec       1,y
-                    bpl       L4F46
-                    lda       #$FF
-                    sta       ,u+
-MIDFN5               stu       <u0048
-                    leay      $0C,y
-                    puls      pc,x
-
-TRMFNC               ldu       <u0048
-                    leau      -1,u
-TRMFN2               cmpu      $01,y
-                    beq       L4F70
-                    lda       ,-u
-                    cmpa      #$20
-                    beq       TRMFN2
-                    leau      1,u
-L4F70               lda       #$FF
-                    sta       ,u+
-                    stu       <u0048
-                    rts
-
-SUBFNC               pshs      y,x
-                    ldd       <u0048              ??? Get size of string
-                    subd      1,y                 Subtract ptr to string to search in
-                    addd      7,y                 Add to ptr to string to search for
-                    addd      #1                  +1
-                    ldx       7,y                 Get ptr to string to search for
-                    ldy       1,y                 Get ptr to string to search in
-***************
-* String Compare =>
-* (orig: STCMGE)
-                    bsr       L3C29               Call Substr function (should change to direct LBSR
-                    bcc       SUBF10               If sub-string match found, skip ahead
-                    ifne      H6309
-                    clrd
-                    else
-                    clra
-                    clrb
-                    endc
-                    bra       SUBF20
-
-L3C29               jsr       <u001B              Substr string search
-                    fcb       $08
-
-SUBF10               tfr       y,d
-                    ldx       2,s
-                    subd      1,x
-                    addd      #$0001
-SUBF20               puls      y,x
-                    std       7,y
-                    lda       #1
-                    sta       6,y
-                    leay      6,y
-                    rts
-
-STRFNI               ldb       #$02
-                    bra       STRF10         exit
-
-L4FA8               ldb       #$03
-STRF10               lda       <u007D
-                    ldu       <u0082
-                    pshs      u,x,a
-                    lbsr      L011F
-                    bcs       L4FC7
-                    ldx       <u0082
-                    lda       #$FF
-                    sta       ,x
-                    ldx       $03,s
-                    lbsr      STRLIT
-                    puls      u,x,a
-                    sta       <u007D
-                    stu       <u0082
-                    rts
-
-L4FC7               ldb       #$43                Illegal Arguement error
-                    jsr       <u0024
-                    fcb       $06
-
-TABFNC               pshs      x
-                    ldd       1,y
-                    blt       L4FC7
-                    sty       <u0044
-                    ldu       <u0048
-                    stu       $01,y
-                    lda       #$20
-TABF10               cmpb      <u007D
-                    bls       ENDSTR
-                    sta       ,u+
-                    decb
-                    cmpu      <u0044
-                    blo       TABF10
-                    lbra      L44C2
-
-ENDS00               pshs      x
-ENDSTR               lda       #$FF
-                    sta       ,u+
-                    stu       <u0048
-                    lda       #$04
-                    sta       ,y
-                    puls      pc,x
+                    use       basic09_strfns.asm
 
 * DATE$ routine
 * Minor change to accommodate Y2K changes in year. RG

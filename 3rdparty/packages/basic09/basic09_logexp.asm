@@ -31,13 +31,13 @@ L47AB
                     ldb       5,y
                     asrb
                     ifne      B09RUNB
-                    lbcs      err67
+                    lbcs      L4FC7
                     else
                     lbcs      L4FC7
                     endc
                     ldd       1,y
                     ifne      B09RUNB
-                    lbeq      err67
+                    lbeq      L4FC7
                     else
                     lbeq      L4FC7
                     endc
