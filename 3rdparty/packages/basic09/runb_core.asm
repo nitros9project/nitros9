@@ -1,3 +1,21 @@
+tylg                set       Prgrm+Objct
+atrv                set       ReEnt+rev
+rev                 set       $00
+edition             set       22
+B09RUNB             set       1
+                    ifndef    EDITOR
+EDITOR              equ       $01
+                    endc
+                    ifndef    RUNTIM
+RUNTIM              equ       $02
+                    endc
+                    ifndef    MATHPAK
+MATHPAK             equ       $04
+                    endc
+                    ifndef    INCLUDED
+INCLUDED            set       RUNTIM+MATHPAK
+                    endc
+
 L0000               mod       eom,name,tylg,atrv,start,dsize
 
 membase             rmb       2
@@ -3414,3 +3432,6 @@ L257F               fdb       WRITLN-L257F
                     fdb       L2018-L257F
 
                     use       basic09_iofunc.asm
+
+                    emod
+eom                 equ       *

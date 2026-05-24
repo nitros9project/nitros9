@@ -21,18 +21,5 @@
                     use       defsfile
                     endc
 
-tylg                set       Prgrm+Objct
-atrv                set       ReEnt+rev
-rev                 set       $00
-edition             set       22
-B09RUNB             set       1
-EDITOR              equ       $01
-RUNTIM              equ       $02
-MATHPAK             equ       $04
-INCLUDED            set       RUNTIM+MATHPAK
-
                     use       runb_core.asm
-
-                    emod
-eom                 equ       *
                     end
