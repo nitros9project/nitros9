@@ -423,6 +423,14 @@ INCLUDED            set       FULL
                     use       defsfile
                     endc
 
+                    ifne      INCLUDED&EDITOR
+                    nam       Basic09
+                    ttl       BASIC for OS-9
+                    else
+                    nam       RunB
+                    ttl       Basic09 Runtime
+                    endc
+
                     ifeq      INCLUDED&EDITOR
 * Begin inline RunB source. Keep byte-for-byte with standalone runb.asm.
 ********************************************************************
@@ -439,8 +447,6 @@ INCLUDED            set       FULL
 * vectors L00D9, L0442.
 *
 * 06/07/14 - Minor change to Date$ to accommodate F$Time Y2K changes. RG
-                    nam       RunB
-                    ttl       Basic09 Runtime
 
 * Disassembled 02/12/26 08:42:45 by Disasm v1.5 (C) 1988 by RML
 
@@ -6748,14 +6754,6 @@ eom                 equ       *
 B09Vrsn             equ       1
 B09Major            equ       1
 B09Minor            equ       0
-
-                    ifne      INCLUDED&EDITOR
-                    nam       Basic09
-                    ttl       BASIC for OS-9
-                    else
-                    nam       RunB
-                    ttl       Basic09 Runtime
-                    endc
 
                     mod       eom,name,Prgrm+Objct,ReEnt+0,start,size
 
