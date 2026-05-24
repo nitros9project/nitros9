@@ -414,7 +414,7 @@ EDITOR              equ       $01                 Edit/Compile/Load/Save
 RUNTIM              equ       $02                 Interpreter minus Cordic
 MATHPAK             equ       $04                 Cordic trig functions
 FULL                equ       RUNTIM+MATHPAK+EDITOR Normal BASIC09
-* Default: build full BASIC09. Override with -aINCLUDED=RUNTIM+MATHPAK for RunB.
+* Default: build full BASIC09. Override with -DINCLUDED=RUNTIM+MATHPAK for RunB.
                     ifndef    INCLUDED
 INCLUDED            set       FULL
                     endc
