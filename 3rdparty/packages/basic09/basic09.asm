@@ -10065,69 +10065,7 @@ RCDVAR               ldd       <u003E
 
                     use       basic09_floatfix.asm
 
-* ABS for Real #'s
-                    ifne      H6309
-ABSFNR               aim       #$fe,5,y            Force sign of real # to positive
-                    else
-***************
-* ABS - TYPE Real
-ABSFNR               lda       5,y                 Get sign bit for Real #
-                    anda      #$FE                Force to positive
-                    sta       5,y                 Save sign bit back & return
-                    rts
-                    endc
-
-* ABS for Integer's
-L45B5               ldd       1,y                 Get integer
-                    bpl       ABSIN2               If positive already, exit
-                    ifne      H6309
-                    negd                          Force to positive
-                    else
-                    nega                          NEGD (force to positive)
-                    negb
-                    sbca      #$00
-                    endc
-                    std       1,y                 Save positive value back
-ABSIN2               rts
-
-PEKFNC               clra
-                    ldb       [<1,y]
-                    std       1,y
-                    rts
-
-***************
-* SGN - TYPE Real
-SGNFNR               lda       2,y
-                    beq       SGNZER         Test - TYPE zero
-                    lda       5,y                 Get sign byte
-                    anda      #$01                Just keep sign bit
-                    bne       SGNMIN               Negative #, skip ahead
-SGNPLS               ldb       #$01
-                    bra       RETINT
-
-***************
-* SGN For Integer
-SGNFNI               ldd       $01,y
-                    bmi       SGNMIN
-                    bne       SGNPLS
-SGNZER               clrb
-                    bra       RETINT
-
-SGNMIN               ldb       #$FF
-RETINT               sex                     Prime msb
-                    bra       L45EA
-
-L45E3               ldb       <u0036
-                    clr       <u0036
-L45E7               clra                    Byte Result
-                    leay      -6,y                Make room for temp var
-L45EA               std       1,y                 Save value
-                    lda       #1                  Force type to integer & return
-                    sta       ,y
-RETBYT99               rts
-
-POSFNC               ldb       <u007D
-                    bra       L45E7
+                    use       basic09_scalar.asm
 
 SQRR05               ldb       $05,y
                     asrb                    Sign to carry

@@ -3491,52 +3491,7 @@ L15                 ldd       <u003E
 
                     use       basic09_floatfix.asm
 
-ABSrl               lda       $05,y
-                    anda      #$FE
-                    sta       $05,y
-                    rts
-
-ABSint              ldd       $01,y
-                    bpl       L1A92
-                    nega
-                    negb
-                    sbca      #$00
-                    std       $01,y
-L1A92               rts
-
-PEEK                clra
-                    ldb       [<$01,y]
-                    std       $01,y
-                    rts
-
-SGNrl               lda       $02,y
-                    beq       L1AAE
-                    lda       $05,y
-                    anda      #$01
-                    bne       L1AB1
-L1AA4               ldb       #$01
-                    bra       L1AB3
-
-SGNint              ldd       $01,y
-                    bmi       L1AB1
-                    bne       L1AA4
-L1AAE               clrb
-                    bra       L1AB3
-L1AB1               ldb       #$FF
-L1AB3               sex
-                    bra       L1ABD
-
-ERR                 ldb       <u0036
-                    clr       <u0036
-L1ABA               clra
-                    leay      -$06,y
-L1ABD               std       $01,y
-                    lda       #$01
-                    sta       ,y
-L1AC3               rts
-
-POS                 ldb       <u007D
-                    bra       L1ABA
+                    use       basic09_scalar.asm
 
 SQRT
 L1AC8               ldb       $05,y
