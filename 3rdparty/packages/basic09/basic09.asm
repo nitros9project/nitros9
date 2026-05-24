@@ -434,6 +434,7 @@ INCLUDED            set       FULL
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
+edition             set       22
 
                     ifeq      INCLUDED&EDITOR
 * Begin inline RunB source. Keep byte-for-byte with standalone runb.asm.
@@ -453,8 +454,6 @@ rev                 set       $00
 * 06/07/14 - Minor change to Date$ to accommodate F$Time Y2K changes. RG
 
 * Disassembled 02/12/26 08:42:45 by Disasm v1.5 (C) 1988 by RML
-
-edition             set       22
 
 L0000               mod       eom,name,tylg,atrv,start,dsize
 
@@ -6974,7 +6973,8 @@ name                fcs       /Basic09/
 name                fcs       /RunB/
                     endc
 
-L0022               fdb       $1607               Edition #22 ($16)
+L0022               fcb       edition             Edition #22 ($16)
+                    fcb       INCLUDED
 
 * Intro screen
 
