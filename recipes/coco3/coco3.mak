@@ -12,11 +12,13 @@ AFLAGS += -DH6309=1
 COCO3_LIB = libcoco3_6309.a
 NOS9_LIB = libnos96309l2.a
 COCO3_LFLAG = -lcoco3_6309
+RUNB_SHA256 = 6c2de659b30b5dec8c9152a0d747c814d8a745211781db16aa7d2e60aa2d899e
 else ifeq ($(CPU),6809)
 AFLAGS += -DH6309=0
 COCO3_LIB = libcoco3.a
 NOS9_LIB = libnos96809l2.a
 COCO3_LFLAG = -lcoco3
+RUNB_SHA256 = 605c7a9f0fde3fed21f7672f5c634f7c43b440f385f088e593f8acca5fccba31
 else
 $(error Unsupported CPU "$(CPU)"; use CPU=6809 or CPU=6309)
 endif
@@ -100,6 +102,9 @@ $(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(BA
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
 	$(MAKDIR) $@,DEFS
+ifneq ($(filter runb,$(CMDS)),)
+	@printf '%s  %s\n' "$(RUNB_SHA256)" $(MODDIR)/runb | shasum -a 256 -c -
+endif
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 ifneq ($(strip $(BASIC09_SAMPLES)),)
@@ -134,8 +139,9 @@ $(MODDIR)/xmode: xmode.asm | $(MODDIR)
 $(MODDIR)/tmode: xmode.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DTMODE=1
 
-$(MODDIR)/runb: basic09.asm | $(MODDIR)
+$(MODDIR)/runb: basic09.asm FORCE | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DINCLUDED="RUNTIM+MATHPAK"
+	@printf '%s  %s\n' "$(RUNB_SHA256)" $@ | shasum -a 256 -c -
 
 $(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
 	$(MERGE) $(addprefix $(MODDIR)/,$(SHELLMODS)) >$@
@@ -221,4 +227,6 @@ clean:
 	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
 
-.PHONY: all clean libs
+FORCE:
+
+.PHONY: all clean libs FORCE
