@@ -139,7 +139,7 @@ $(MODDIR)/xmode: xmode.asm | $(MODDIR)
 $(MODDIR)/tmode: xmode.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DTMODE=1
 
-$(MODDIR)/runb: basic09.asm runb_core.asm basic09_rlcmp.asm FORCE | $(MODDIR)
+$(MODDIR)/runb: basic09.asm runb_core.asm basic09_rlcmp.asm basic09_floatfix.asm FORCE | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DINCLUDED="RUNTIM+MATHPAK"
 	@printf '%s  %s\n' "$(RUNB_SHA256)" $@ | shasum -a 256 -c -
 

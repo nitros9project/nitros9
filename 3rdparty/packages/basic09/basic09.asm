@@ -440,6 +440,7 @@ B09Major            equ       1
 B09Minor            equ       0
 
                     ifeq      INCLUDED&EDITOR
+B09RUNB             set       1
 * Begin shared RunB source. Keep byte-for-byte with standalone runb.asm.
 ********************************************************************
 * RunB - Basic09 Runtime
@@ -461,6 +462,7 @@ B09Minor            equ       0
                     use       runb_core.asm
 * End shared RunB source.
                     else
+B09RUNB             set       0
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -10061,117 +10063,7 @@ RCDVAR               ldd       <u003E
                     sta       ,y
                     rts
 
-FLOAT               clra                          Force least 2 sig bytes to 0 (and sign to positive)
-                    clrb
-                    std       4,y           Clr lsdb mantissa
-                    ldd       1,y                 Get Exponent & 1st byte of mantissa
-                    bne       FLOAT1               Not 0, skip ahead
-                    stb       3,y                 Save 0 int 2nd byte of mantissa
-                    lda       #2                  Var type=Real
-                    sta       ,y            Put on stack
-                    rts
-
-FLOAT1               ldu       #$0210              ??? (528)
-                    tsta                          Exponent negative?
-                    bpl       L451F               No, positive (big number), skip ahead
-                    ifne      H6309
-                    negd
-                    else
-                    nega                    Positive
-                    negb
-                    sbca      #$00
-                    endc
-                    inc       5,y           Adjust exponent
-* (orig: FLOAT2)
-                    tsta                          Check exponent again
-L451F               bne       L4526               Exponent <>0, skip ahead
-                    ldu       #$0208              ??? If exponent=0, 522
-                    exg       a,b           Msb to D
-L4526               tsta                    Result normalized?
-                    bmi       FLOAT5         bra if no
-L4529               leau      -1,u                Drop down U counter
-                    lslb                          LSLD
-                    rola
-                    bpl       L4529               Do until hi bit is set
-FLOAT5               std       2,y
-                    stu       ,y            Save TYPE & exponent
-                    rts
-
-FLTNEX               leay      6,y                 Eat temp var
-                    bsr       FLOAT               ??? Something with reals
-                    leay      -6,y                Make room for temp var & return
-                    rts
-
-FIX               ldb       1,y                 Get exponent
-                    bgt       FIX1               If exponent >0, skip ahead
-                    bmi       FIXZER               If exponent <0, skip ahead
-                    lda       2,y                 Exponent=0, get 1st byte of mantissa
-                    bpl       FIXZER               If high bit not set, integer result=0
-                    ldd       #$0001              High bit set, Integer result=1
-                    bra       FIX4A               Go adjust sign if necessary
-
-FIXZER               clra                          Integer result=0
-                    clrb
-                    bra       FIX5               Save integer & return
-
-FIX1               subb      #$10                Subtract 16 from exponent
-                    bhi       L458C         bra if too large
-                    bne       FIX2         bra if in range
-                    ldd       2,y           get value
-                    ror       5,y           check sign
-                    bcc       FIX5         bra if positive
-                    cmpd      #$8000        -32768?
-                    bne       L458C         ..No
-                    tst       4,y           would it round out?
-                    bpl       FIX5         ..No
-                    bra       L458C
-
-FIX2               cmpb      #$F8
-                    bhi       FIX3         ..No
-                    pshs      b             Save exp
-                    ldd       2,y           Shift Mant 1 Byte Right
-                    std       3,y
-                    clr       2,y
-                    puls      b
-                    addb      #$08          Bump exp by a byte worth
-                    beq       FIX4         if exp=0 skip bit shift
-FIX3               lsr       2,y
-                    ror       3,y
-                    ror       4,y
-                    incb                    Exp
-                    bne       FIX3         Loop if not yet norm
-FIX4               ldd       2,y
-                    tst       4,y           Check remainder
-                    bpl       FIX4A         if <.5 dont round
-                    addd      #$0001        Round up
-                    bvc       FIX4A         bra if no overfl
-L458C               ldb       #$34                Value out of Range for Destination error
-                    jsr       <u0024
-                    fcb       $06
-
-FIX4A               ror       5,y                 Get sign bit of converted real #
-                    bcc       FIX5               Positive, leave integer result alone
-                    ifne      H6309
-                    negd                          Reverse sign of integer
-                    else
-                    nega                    negative
-                    negb
-                    sbca      #$00
-                    endc
-FIX5               std       1,y                 Save integer result
-                    lda       #1                  Force type to integer & return
-                    sta       ,y
-                    rts
-
-FIXNEX               leay      6,y
-                    bsr       FIX
-                    leay      -6,y
-                    rts
-
-L45A7               leay      $C,y                Eat 2 temp vars
-                    bsr       FIX
-                    leay      -$C,y               Make room for 2 temp vars & return
-                    rts
+                    use       basic09_floatfix.asm
 
 * ABS for Real #'s
                     ifne      H6309

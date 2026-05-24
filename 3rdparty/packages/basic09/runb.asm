@@ -25,6 +25,7 @@ tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
 edition             set       22
+B09RUNB             set       1
 
                     use       runb_core.asm
                     end

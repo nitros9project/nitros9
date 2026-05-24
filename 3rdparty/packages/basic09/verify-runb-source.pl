@@ -10,8 +10,10 @@ require_include($basic09, $core);
 require_include($runb, $core);
 
 my $core_source = runb_core($core);
-require_nested_include($basic09, 'basic09_rlcmp.asm');
-require_nested_include($core, 'basic09_rlcmp.asm', $core_source);
+for my $shared_source (qw(basic09_rlcmp.asm basic09_floatfix.asm)) {
+    require_nested_include($basic09, $shared_source);
+    require_nested_include($core, $shared_source, $core_source);
+}
 exit 0;
 
 sub require_include {

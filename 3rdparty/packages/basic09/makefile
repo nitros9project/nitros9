@@ -22,7 +22,7 @@ MODULARSRC	= modular/comand.asm modular/compil.asm modular/binder.asm \
 		  modular/defs modular/b09defs modular/b09type modular/jmpdefs \
 		  modular/linkage modular/editor
 RUNBCORE	= runb_core.asm
-SHAREDSRC	= basic09_rlcmp.asm
+SHAREDSRC	= basic09_rlcmp.asm basic09_floatfix.asm
 VERIFYRUNBSRC	= verify-runb-source.pl
 VERIFYDIR	= .verify
 BASIC09_6809_SHA256 = fbb7f72db7f5b861904e9fadeb24dd07bb9709de7467d178d80ec0ccac77796e
