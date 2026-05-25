@@ -773,9 +773,13 @@ RLVAR leay -OPSIZE,Y Make room on opstack
 ***************
 * Real Negate - Flip Sign Bit
 
+ ifne H6309
+NEGRL eim #1,5,Y Negate sign bit of REAL #
+ else
 NEGRL lda 5,Y
  eora #1
  sta 5,Y
+ endc
  rts
 
 ***************
@@ -2423,7 +2427,7 @@ LNGFNC lbsr EVAL20 Call eval recursively
  leay -OPSIZE,Y Make room on opstack
  cmpa #S.STR What TYPE variable?
  bcc LNGF10 bra if string or record
- leau >VARSIZ,PCR Get variable size ptr
+ leau VARSIZ,PCR Get variable size ptr
  ldb A,U Get variable size
  clra clear Msb
  bra LNGF20
@@ -2527,7 +2531,7 @@ LOG10E fcb $FF,$DE,$5B,$D8,$AA
 *  Base 10 Log
 
 LOG10 bsr LOGFNC Get natural log
- leau >LOG10E,PCR Get constant addr
+ leau LOG10E,PCR Get constant addr
  lbsr RLVAR push on opstack
  lbra RLMUL Convert to base 10 log
 
@@ -2584,7 +2588,7 @@ CBLN2 sex EXTEND Sign
  negb NEGATE Exponent
 CBLN10 anda #1 Get sign bit
  pshs D Save sign, ABS(exponent)
- leau >LN2,PCR Get addr ln(2) constant
+ leau LN2,PCR Get addr ln(2) constant
  lbsr RLVAR Move to stack
  ldb 5,Y Get lsb
  lda 1,S Get ABS(exponent)
@@ -2967,7 +2971,7 @@ D180PI fcb $06,$E5,$2E,$E0,$D4
 * Subroutine PIFNC
 *   Pi Constant
 
-PIFNC leau >PI,PCR Get address of pi value
+PIFNC leau PI,PCR Get address of pi value
  lbra RLVAR Go push pi on stack
 
 ***************
@@ -2979,7 +2983,7 @@ PIFNC leau >PI,PCR Get address of pi value
 TRIG ldu I.ASTR Get storage base
  tst U.DEG,U in radian mode?
  beq TRIG05 bra if so
- leau >DPI180,PCR Convert to radians
+ leau DPI180,PCR Convert to radians
  lbsr RLVAR Move constant to stack
  lbsr RLMUL Multiply
 TRIG05 clr I.XSGN Clear x coordinate sign

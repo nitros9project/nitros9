@@ -86,7 +86,7 @@ Edition equ 22 Current edition
 
  pag
  use defs
-BASEZERO mod 0000,B09NAM,PRGRM+OBJCT,REENT+1,START,$1000
+BASEZERO mod 0000,B09NAM,PRGRM+OBJCT,REENT+0,START,$2000
 
 O.COMAND fdb ENTRYPT offset of self
  fdb BYEBYE offset of Compile module
@@ -1189,18 +1189,29 @@ START1 std ,--X Clear out directory
 * Build Inter-Module Linkages
 
  leax BASEZERO,PCR get module load addr
+ ifne H6309
+ tfr x,w Move it to W
+ else
  pshs x save BASE 0
+ endc
  ldx G.WSPA
  leax M.COMAND,x get addr of Jump tbl
  leay O.COMAND,PCR get offset table addr
 START15 lda #$7E JMP Opcode
  sta ,X+
  ldd ,Y++ get offset of module
+ ifne H6309
+ addr w,d make absolute
+ else
  addd  ,S make absolute
+ endc
  std ,X++ fill in jump table
  ldd  ,Y End of table?
  bne START15 ..No; no; repeat
+ ifne H6309
+ else
  leas 2,S discard scratch
+ endc
 * end of Inter module linkages
 
  lbsr J$INTI Initialize interpreter
@@ -1325,10 +1336,15 @@ RUNCMD05 clr BASINP Default back to standard input
  bcc RUNC10 ..continue if no error
  cmpb #E$EOF End of file?
  bne RUNC90 ..no; reprompt
+ ifne H6309
+ ldq #'b*$1000000+'y*$10000+'e*$100+V$CR default to "BYE" command
+ stq  ,Y
+ else
  ldd #"by default to "BYE" command
  std  ,Y
  ldd #'e*256+V$CR
  std 2,Y
+ endc
 
 RUNC10 ldx 2,S command verb tbl addr
  lda #$80 ignore high order bit
@@ -2097,7 +2113,7 @@ INTE40 lbsr J$CPRM Call parameter list
  ldd I.STBG
  ldx G.VARS
  pshs D,X
- leax >INTRTS,PCR
+ leax INTRTS,PCR
  lbsr SETEXT
  ldx I.STBG Parameter list
  lbsr J$IPRM Interpret parameters

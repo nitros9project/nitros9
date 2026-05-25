@@ -20,10 +20,6 @@ J$FIX jsr M.EXPRSN
  fcb X$FIX  Fix real
 J$FLOT jsr M.EXPRSN
  fcb X$FLOT Float integer
-J$FDIV jsr M.EXPRSN
- fcb X$FDIV Real divide
-J$FMUL jsr M.EXPRSN
- fcb X$FMUL Real multiply
 
  ttl Constant Tables
  pag
@@ -328,7 +324,7 @@ ASNRL6 cmpb #19 Dec exp in tbl range?
  bls ASNRL7 Bra if ok
  subb #19 Reduce range otherwise
  pshs B save current exp
- leau >T$RL19,PCR Get add of const 1e+19
+ leau T$RL19,PCR Get add of const 1e+19
  bsr CNVOPR ..and reduce range ..
  puls B Restore exp and proceed
  lbcs NRERR ..exit if oper overflowed
@@ -360,8 +356,13 @@ CNVOPR leay -6,Y Room for new entry on opstack
  ldb 4,U
  stb 5,Y
  lda I.ESGN Get exp sign
- lbeq J$FDIV Do divide if pos
- lbra J$FMUL else do multiply
+ bne CNVOPR1 neg exp: go multiply
+ jsr M.EXPRSN Do divide if pos
+ fcb X$FDIV
+ bra CNVOPR2
+CNVOPR1 jsr M.EXPRSN else do multiply
+ fcb X$FMUL
+CNVOPR2
 
 ***************
 * Subroutine INHEX

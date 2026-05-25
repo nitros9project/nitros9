@@ -546,7 +546,11 @@ FORNIN ldd  ,X Get counter offset
 NXT1IN ldd ,X Get counter offset
  leay D,U Get counter addr
  ldd  ,Y Get counter
+ ifne H6309
+ incd Increment
+ else
  addd #1 Increment
+ endc
  std  ,Y Save it
 NXTIN1 ldd 2,X Get terminal offset
  leax 6,X Move icode ptr
@@ -1678,7 +1682,7 @@ SYSSUB ldx I.STSP Get ptr to end of string
  lda #V$CR Insert carriage return
  sta -1,X
  tfr X,D
- leax >SHELST,PCR Shell ptr
+ leax SHELST,PCR Shell ptr
  leau  ,Y param ptr
  pshs Y
  subd ,S++
@@ -1783,8 +1787,7 @@ BASSTM clra
 * Global: None
 
 REMSTM ldb ,X+ Get char count byte
- clra clear Msb
- leax D,X Advance ptr past rem
+ abx Advance ptr past rem
  rts
 
 ***************
@@ -1923,12 +1926,18 @@ RUNS30 ldd U.S,U Get data stack ptr
  sts U.S,U Mark current stack
  leas  ,Y Get parameter ptr
  ldd I.PRLM Get number of parameters
+ ifne H6309
+ subr Y,D Calc size of all parm packets
+ lsrd Divide by four to get number
+ lsrd
+ else
  pshs Y Save parameter ptr
  subd ,S++ Get parameter area size
  lsra Divide by four to get number
  rorb
  lsra
  rorb
+ endc
  pshs D Save number of parameters
  ldd M$EXEC,X Get execution offset
  leay EXECUT,PCR (programmer: know thyself)
