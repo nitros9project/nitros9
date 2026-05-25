@@ -1190,8 +1190,12 @@ START05 OS9 I$Close close all non-std paths
  leax <INTCPT,PCR Set up intercept vector
  OS9 F$ICPT
  ldx G.PRCA
+ ifne H6309
+ clrd
+ else
  clra
  clrb
+ endc
 START1 std ,--X Clear out directory
  cmpx G.DIRA
  bhi START1
@@ -1940,8 +1944,13 @@ PCDLS5 stx ,--U Push directory addr
  bne PCDLS6 ..no; done
  lbsr J$NAME Another procedure name in source?
  bne PCDLS4 ..yes; repeat
-PCDLS6 clra
+PCDLS6
+ ifne H6309
+ clrd Make End mark on opstack
+ else
+ clra
  clrb Make End mark on opstack
+ endc
  bra PCDLS2 Push it and return
 
 ***************
@@ -2358,13 +2367,21 @@ DIRLN1 pshs X,Y,U Save directory entry ptr (x)
  cmpb #-2 Last entry?
  beq ERMFUL ..too bad
  leax  ,Y get proc name ptr
- clra any type
+ ifne H6309
+ clrd any revision
+ else
+ clra
  clrb any revision
+ endc
  OS9 F$Link Try to find
  bcc DIRLN2 ..good
  ldx 2,S Restore proc name ptr
- clra any type
+ ifne H6309
+ clrd any revision
+ else
+ clra
  clrb any revision
+ endc
  OS9 F$Load Try to load module
  bcs DIRLN9 ..not found; sorry
 DIRLN2 stx 2,S Return updated module name ptr in (y)

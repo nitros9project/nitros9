@@ -6,20 +6,20 @@ SRCS = comand.asm compil.asm binder.asm stmts.asm exprsn.asm cnvio.asm \
 
 .PHONY: all clean
 
-all: basic09 runb basic09_community runb_community
+all: basic09_6809 runb_6809 basic09_6309 runb_6309
 
-basic09: $(SCRIPT) $(SRCS)
-	$(PYTHON) $(SCRIPT) basic09 $@
+basic09_6809: $(SCRIPT) $(SRCS)
+	$(PYTHON) $(SCRIPT) basic09 $@ -DCOMMUNITY=1
 
-runb: $(SCRIPT) $(SRCS)
-	$(PYTHON) $(SCRIPT) runb $@
+runb_6809: $(SCRIPT) $(SRCS)
+	$(PYTHON) $(SCRIPT) runb $@ -DCOMMUNITY=1
 
-basic09_community: $(SCRIPT) $(SRCS)
-	$(PYTHON) $(SCRIPT) basic09 $@ -DH6309=1
+basic09_6309: $(SCRIPT) $(SRCS)
+	$(PYTHON) $(SCRIPT) basic09 $@ -DCOMMUNITY=1 -DH6309=1
 
-runb_community: $(SCRIPT) $(SRCS)
-	$(PYTHON) $(SCRIPT) runb $@ -DH6309=1
+runb_6309: $(SCRIPT) $(SRCS)
+	$(PYTHON) $(SCRIPT) runb $@ -DCOMMUNITY=1 -DH6309=1
 
 clean:
-	rm -f basic09 runb basic09_community runb_community
+	rm -f basic09_6809 runb_6809 basic09_6309 runb_6309
 	rm -rf .modular-build

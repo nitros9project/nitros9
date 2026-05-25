@@ -132,8 +132,12 @@ MANT3  equ 5 LS bye mantissa
 * Initialize
 ASCNUM pshs U save ureg
  leay -6,Y Room for new item on opstack
+ ifne H6309
+ clrd
+ else
  clra
  clrb
+ endc
  sta I.ESGN Clr exp sign
  sta I.DCNT Clr dig count
  sta I.DPFL Clr dec pt flag
@@ -359,10 +363,8 @@ CNVOPR leay -6,Y Room for new entry on opstack
  bne CNVOPR1 neg exp: go multiply
  jsr M.EXPRSN Do divide if pos
  fcb X$FDIV
- bra CNVOPR2
 CNVOPR1 jsr M.EXPRSN else do multiply
  fcb X$FMUL
-CNVOPR2
 
 ***************
 * Subroutine INHEX
@@ -1349,7 +1351,8 @@ NXTFM1 ldx I.FMPT Init format ptr
  stu I.OPBG Update repeat stack ptr
  stx I.FRBG save repeat beginning ptr
 NXTFM2 lda ,X+ Get next chr
-NXTFM3 leay >T$FMCD,PCR Get addr of decode tbl
+NXTFM3 equ *
+ leay T$FMCD,PCR Get addr of decode tbl
  clrb B is counter
 * Decode Table Lookup Loop
 NXTFM4 pshs A save character

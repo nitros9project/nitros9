@@ -626,8 +626,12 @@ NXT1RL ldy I.OPBG Init opstack ptr
  leay -6,Y Make room for increment
  ldd #$0180 Set up constant one
  std 1,Y
+ ifne H6309
+ clrd
+ else
  clra
  clrb
+ endc
  std 3,Y
  sta 5,Y
  lbsr J$FADD Go do add
@@ -1713,8 +1717,12 @@ SYSSUB ldx I.STSP Get ptr to end of string
  pshs Y
  subd ,S++
  tfr D,Y parameter size
+ ifne H6309
+ clrd HIGHEST Revision
+ else
  clra
  clrb HIGHEST Revision
+ endc
  rts
 
 ***************
