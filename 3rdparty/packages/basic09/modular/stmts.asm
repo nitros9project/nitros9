@@ -198,8 +198,12 @@ EXEC30 std I.DATA Save it
  pshs Y Save it
  ldd P.PRCS,X Get beginning procedure link
  leay D,U Get ptr to it
+ ifne H6309
+ clrd
+ else
  clra
  clrb
+ endc
  bra EXEC45
 
 EXEC40 std ,Y++ Clear link
@@ -568,10 +572,17 @@ NXTINT ldd  ,X Get counter offset
  leay D,U Get counter addr
  ldd 4,X Get increment offset
  ldd D,U Get increment
+ ifne H6309
+ tfr A,E Save increment sign in E
+ addd  ,Y Add counter
+ std  ,Y Save it
+ tste Going up or down?
+ else
  pshs A Save increment sign
  addd  ,Y Add counter
  std  ,Y Save it
  tst ,S+ Going up or down?
+ endc
  bpl NXTIN1 bra if going up
 NXTIN2 ldd 2,X Get terminal offset
  leax 6,X
@@ -621,10 +632,15 @@ NXT1RL ldy I.OPBG Init opstack ptr
  sta 5,Y
  lbsr J$FADD Go do add
  bsr TRCTST Check for trace display
+ ifne H6309
+ ldq 1,Y Load new counter value
+ stq  ,U Store it
+ else
  ldd 1,Y Store new counter
  std  ,U
  ldd 3,Y
  std 2,U
+ endc
  lda 5,Y
  sta 4,U
 NXTRL1 ldb #2
@@ -654,10 +670,15 @@ NXTRLA ldd B,X Get value offset
  lda #S.REAL Set TYPE
  ldb  ,U Move value
  std  ,Y
+ ifne H6309
+ ldq 1,U Load 4 mantissa bytes from variable
+ stq 2,Y Store them on opstack
+ else
  ldd 1,U
  std 2,Y
  ldd 3,U
  std 4,Y
+ endc
  rts
 
 ***************
@@ -675,10 +696,15 @@ NXTRL ldy I.OPBG Init opstack ptr
  lbsr J$FADD Go add
  bsr TRCTST Check for trace display
  ldu SYMPTR Get counter address
+ ifne H6309
+ ldq 1,Y Load new counter value
+ stq  ,U Store it
+ else
  ldd 1,Y Store new counter
  std  ,U
  ldd 3,Y
  std 2,U
+ endc
  lda 5,Y
  sta 4,U
  lsr TYPE Test increment sign

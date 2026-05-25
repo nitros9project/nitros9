@@ -1125,14 +1125,24 @@ NOTFND fcs "can't find:"
 INTCPT lda R$DP,S
  tfr A,DP reset Basic09's direct page
  stb G.SIGN Save signal
+ ifne H6309
+ oim #$80,I.RUNM Set high bit (flag signal was received)
+ else
  lsl I.RUNM
  coma set Break flag
  ror I.RUNM
+ endc
  rti
 
 ***************
 * Basic09 Entry Point
 
+ ifne H6309
+START tfr U,D Save start of data mem into D
+ ldw #$100 Size of DP area to clear
+ clr ,-S Clear byte on stack
+ tfm S,U+ Clear out DP
+ else
 START pshs U bottom of workspace
  leau $100,U
  clra
@@ -1141,6 +1151,7 @@ START0 std ,--U clear DP Globals
  cmpu  ,S
  bhi START0
  puls D bottom of workspace
+ endc
  leau  ,X top of workspace (below params)
  std G.WSPA
  inca
@@ -2146,8 +2157,12 @@ KILLEX lbsr J$NAME name given?
  lbsr DIRSCH
  bcs KILERR ..error; return it
  ldu I.OPBG
+ ifne H6309
+ clrd
+ else
  clra
  clrb
+ endc
  pshu D,X build procedure list stack
  inca
  sta G.SIGN signal killer: external only

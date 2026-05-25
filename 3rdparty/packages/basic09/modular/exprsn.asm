@@ -541,8 +541,12 @@ INTVAR ldd  ,U Get value
  pag
 ***************
 * Integer Negate
+ ifne H6309
+NEGINT clrd
+ else
 NEGINT clra
  clrb
+ endc
  subd TOSINT,Y
  std TOSINT,Y
  rts
@@ -592,6 +596,13 @@ INSUB ldd NOSINT,Y Load first
 * Local: D,CC Destroyed
 * Global: Tos = Tos * Nos
 
+ ifne H6309
+INMUL ldd TOSINT,Y Get temp var integer
+ muld NOSINT,Y Multiply (result in Q=D:W)
+ stw NOSINT,Y Save 16-bit wrapped result
+ leay OPSIZE,Y Eat temp var
+ rts
+ else
 INMUL ldd NOSINT,Y Get nos
  beq INML30 bra if zero
  cmpd #2 Multiply by two?
@@ -623,6 +634,7 @@ INML25 lda NOSINT+1,Y Get nos lsb
  stb NOSINT,Y Save result msb
 INML30 leay OPSIZE,Y Pop one operand
  rts
+ endc
 
 ***************
 * Subroutine SETSGN
@@ -636,6 +648,40 @@ INML30 leay OPSIZE,Y Pop one operand
 * Local: D,CC - Destroyed
 * Global: Tostyp,Y Set; 0=Pos, Ff=Neg
 
+ ifne H6309
+INDIV ldd TOSINT,Y Get divisor
+ bne INDV_OK ..not zero; go do divide
+ ldb #M$ZDIV error: divide by zero
+ lbra EVLERR
+INDV_OK ldw NOSINT,Y Get 16-bit signed dividend
+ sexw Sign-extend W to Q
+ divq TOSINT,Y 32/16 signed divide; Q=quotient:remainder
+ tstw Answer positive?
+ ble INDV_ChkD bra if <= 0
+INDV_Pos tsta Is remainder positive?
+ bmi INDV_NRm bra if not
+INDV_Sav std 9,Y Save remainder for MOD
+ stw NOSINT,Y Save quotient for /
+ leay OPSIZE,Y Pop divisor
+ rts
+INDV_ChkD beq INDV_ChkZ If zero answer, need special handling
+INDV_ChkD1 tsta Is remainder negative?
+ bmi INDV_Sav bra if so
+INDV_NRm negd Negate remainder
+ bra INDV_Sav
+INDV_ChkZ lde NOSINT,Y Get MSB of dividend
+ bpl INDV_ChkZ1 bra if positive
+ incf Negative: bump flag
+INDV_ChkZ1 lde TOSINT,Y Get MSB of divisor
+ bpl INDV_ChkZ2 bra if positive
+ incf Negative: bump flag
+INDV_ChkZ2 cmpf #1 Remainder must be negative?
+ beq INDV_ChkZ3 bra if so
+ clrw Zero out answer
+ bra INDV_Pos
+INDV_ChkZ3 clrw Zero out answer
+ bra INDV_ChkD1
+ else
 SETSGN clr TOSTYP,Y Clear sign flag
  ldd NOSINT,Y Get nos
  bpl SETSG1 bra if positive
@@ -721,6 +767,7 @@ INDV55 std 9,Y Store remainder
  std NOSINT,Y
 INDV60 leay OPSIZE,Y Pop divisor
  rts
+ endc
 
  ttl REAL Operand routines
  pag
@@ -739,10 +786,17 @@ RLLIT leay -OPSIZE,Y Make room on opstack
  ldb ,X+ Get first operand byte
  lda #S.REAL Set TYPE
  std TOSTYP,Y Move to opstack
+ ifne H6309
+ ldq ,X Load 4 mantissa bytes
+ stq TOSMN1,Y Store them
+ ldb #4
+ abx Advance X past mantissa
+ else
  ldd ,X++ Finish moving operand
  std TOSMN1,Y .. to opstack
  ldd ,X++
  std TOSMN3,Y
+ endc
  rts
 
 ***************
@@ -762,10 +816,15 @@ RLVAR leay -OPSIZE,Y Make room on opstack
  lda #S.REAL Set TYPE
  ldb  ,U Get exponent
  std TOSTYP,Y Move to opstack
+ ifne H6309
+ ldq 1,U Load 4 mantissa bytes
+ stq 2,Y Store them
+ else
  ldd 1,U
  std 2,Y
  ldd 3,U
  std 4,Y
+ endc
  rts
 
  ttl Real Arithmetic routines
@@ -791,9 +850,13 @@ NEGRL lda 5,Y
 * Local: D,CC Destroyed
 * Global: I.SIGN Destroyed
 
+ ifne H6309
+RLSUB eim #1,5,Y Flip sign bit of subtrahend
+ else
 RLSUB ldb 5,Y Get subtrahend sign
  eorb #1 Flip it
  stb 5,Y Save it and fall to rladd
+ endc
 
 ***************
 * Subroutine RLADD
