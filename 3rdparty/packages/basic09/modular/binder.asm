@@ -43,22 +43,21 @@ J$MVDN jsr M.COMPIL
 *  The following tbl defines the possible treatment
 *  of Operands/Arguments for the Operators/Functions
 
- org 0
-NOARG rmb 1 No argument/operand
-ONEINT rmb 1 One integer argument/operand
-TWOINT rmb 1 Two integer
-ONERL rmb 1 One real
-TWORL rmb 1 Two real
-ONENUM rmb 1 One numeric
-TWONUM rmb 1 Two numeric
-ONESTR rmb 1 One string
-TWOSTR rmb 1 Two string
-STRINT rmb 1 One string, one integer
-STRIN2 rmb 1 One string, two integer
-ONEBL rmb 1 One boolean
-TWOBL rmb 1 Two boolean
-TWOSN rmb 1 Two string-numeric
-TWOBSN rmb 1 Two boolean-string-numeric
+NOARG  equ 0  No argument/operand
+ONEINT equ 1  One integer argument/operand
+TWOINT equ 2  Two integer
+ONERL  equ 3  One real
+TWORL  equ 4  Two real
+ONENUM equ 5  One numeric
+TWONUM equ 6  Two numeric
+ONESTR equ 7  One string
+TWOSTR equ 8  Two string
+STRINT equ 9  One string, one integer
+STRIN2 equ 10 One string, two integer
+ONEBL  equ 11 One boolean
+TWOBL  equ 12 Two boolean
+TWOSN  equ 13 Two string-numeric
+TWOBSN equ 14 Two boolean-string-numeric
 
  ttl Dispatch Tables
  pag
@@ -243,7 +242,7 @@ EXPOPR equ *
 * Destroys: X,D,CC
 * Global: I.LNT,I.APRC
 
-PLREF ldd 0,Y get line number
+PLREF ldd  ,Y get line number
  tst SMASH Compile mode?
  bne PLRE10 ..No
  pshs D save line number
@@ -257,13 +256,13 @@ PLREF ldd 0,Y get line number
 PLRE10 leay 2,Y Move past line definition
 PLRE20 lbsr SRHLIN Find/insert line number
  bcc PLRE50 bra if already defined
- std 0,X Define line number (clear sign)
+ std  ,X Define line number (clear sign)
  tfr Y,D copy I-Code ptr
  subd I.ICBG Make ptr into offset
  leax 2,X get ptr to header link
-PLRE30 ldu 0,X get next link
- std 0,X set offset in goto
-PLRE40 leax 0,U copy next link
+PLRE30 ldu  ,X get next link
+ std  ,X set offset in goto
+PLRE40 leax  ,U copy next link
  bne PLRE30 bra if not end
  bra PSTMT Go do stmt
 PLRE50 lda #M$MDLN Err: multiply defined line number
@@ -355,16 +354,16 @@ ERROR pshs D,X,Y save registers
  ldd 4,S get I-Code ptr
  subd I.ICBG Make ptr an offset
  leas -5,S get scratch room
- leax 0,S get ptr to scratch for conversion
+ leax  ,S get ptr to scratch for conversion
  bsr PRT4HX Call conversion
  lda #V$SPAC put blank in buffer
  sta ,X+
  lda #CMDOUT get I/O path
- leax 0,S get I/O ptr
+ leax  ,S get I/O ptr
  ldy #5 get length
  OS9 I$Write Print it
  leas 5,S Return scratch
- ldb 0,S get error code
+ ldb  ,S get error code
  lbsr J$EREX Print error message
 ERRO10 puls D,X,Y,PC and return
 
@@ -396,7 +395,7 @@ PRTHE1 sta ,X+
 
 PBKSL equ *
 PEOL equ *
-SKPEOL ldb 0,Y get next token
+SKPEOL ldb  ,Y get next token
  bsr EOLTST Eol?
  bne PEOL10 ..no; just return
 SKPONE leay 1,Y Skip token
@@ -441,7 +440,7 @@ PTYPE1 leay 4,Y Move past variable ref and '='
  pshs X,Y save symbol ptr & I-Code ptr
  lbsr J$EXDS get descr area
  ldd NEXALC set rcd size
- leau 0,Y copy descr ptr
+ leau  ,Y copy descr ptr
  std ,Y++
  clr ,Y+ Clear component count
  ldx I.ICLM get ptr to component list
@@ -456,7 +455,7 @@ PTYPE2 ldd ,X++ get component symbol ptr
  subd I.DSCR Make ptr into offset
  std 1,X put in symbol tbl
  lda #S.TYPD+S.RCRD
- sta 0,X set type byte
+ sta  ,X set type byte
 PTYPE3 puls D Retrieve current allocation
  std NEXALC Restore variable allocation
  rts
@@ -517,9 +516,9 @@ PDECL3 pshs B,Y save flag & I-Code ptr
  lbhs QuitBind ..Yes; abort
  bra PDECL6
 PDECL4 ldu ,X++ Pop symbol ptr
- tst 0,S Test flag
+ tst  ,S Test flag
  beq PDECL5 bra if explicit
- lda 0,U get implicit type
+ lda  ,U get implicit type
  sta TYPE set type
  lbsr GETVSZ get simple variable size
  std ELMSIZ set element size
@@ -549,7 +548,7 @@ PID lbsr GETTYP get symbol ptr, decode type byte
  lda #M$MDV Err: multiply defined variable
  lbsr ERROR
  leay 3,Y Skip varref
- ldb 0,Y get following token
+ ldb  ,Y get following token
  cmpb #T.LPAR are there subscripts?
  bne PID20 ..No
  leay 1,Y Skip '('
@@ -565,16 +564,16 @@ PID1 ldd PCOMPT
  ldx PCOMPT get component list ptr
  ldd SYMPTR get symbol ptr
  std ,X++ put in component list
- leau 0,X copy ptr to subscript count
+ leau  ,X copy ptr to subscript count
  clr ,X+ Clear subscript count
  leay 3,Y Move past id
- ldb 0,Y get next token
+ ldb  ,Y get next token
  cmpb #T.LPAR are there subscripts?
  bne PID3 No; skip processing
  leay 1,Y Skip '('
 PID2 bsr GETSIZ get dimension size
  std ,X++ put in component list
- inc 0,U Count it
+ inc  ,U Count it
  ldb ,Y+ get next token
  cmpb #T.COMA Another subscript?
  beq PID2 Yes; get it
@@ -611,7 +610,7 @@ PVTYPE lda ,Y+ get type token
  sta TYPE set type
  cmpa #S.STR string type?
  bne PVTYP1 No; get size
- ldb 0,Y get token after type
+ ldb  ,Y get token after type
  cmpb #T.LBKT '['?
  bne PVTYP1 No; get default size
  leay 1,Y Skip '['
@@ -662,7 +661,7 @@ DEFV02 clra clear Msb
  cmpd G.VARS enough room?
  lbhi QuitBind ..No; abort
  lbsr J$EXDS get description area
- ldx 0,S get variable stack ptr
+ ldx  ,S get variable stack ptr
  leau 2,Y get ptr to total size
  ldd #1 set totalsize
  std ,U++ put in descr area
@@ -675,11 +674,11 @@ DEFV03 ldd ,--X get subscript
  cmpa #S.STR What type?
  bls DEFV05 is simple
  ldd SYMPTR get rcd descr offset
- std 0,U put in descr area
+ std  ,U put in descr area
  coma set Carry
 DEFV05 ldd ELMSIZ get element size
  bcs DEFV06 bra if no descr init
- std 0,U
+ std  ,U
 DEFV06 bsr DIMMUL get total array size
  tfr Y,D copy descr ptr
  puls X,U Restore ptrs
@@ -698,9 +697,9 @@ DEFV09 std 1,U put in symbol tbl
 DEFV10 lda TYPE get type
  ora SHAPE Encode shape
  ora DEFNAS Encode definition
- sta 0,U set type byte
+ sta  ,U set type byte
  pshs X save variable stack ptr
- leax 0,U copy symbol ptr
+ leax  ,U copy symbol ptr
  lbsr ALCSTO Go allocate storage
  ldx PCOMPT get component list
  stu ,X++ put symbol ptr in list
@@ -727,7 +726,7 @@ DIMMUL pshs D save multiplier
  tsta overflow?
  bne DIMERR Yes; too bad
  stb 2,Y save partial product
- lda 0,S get multplier msb
+ lda  ,S get multplier msb
  ldb 3,Y get totalsize lsb
  mul
  tsta overflow?
@@ -768,7 +767,7 @@ PDATA ldu DATPTR get ptr to previous stmt
 * Make Previous Data Stmt Point To This One
 PDATA1 tfr Y,D copy I-Code ptr
  subd I.ICBG Make ptr into offset
- std 0,U put in previous stmt
+ std  ,U put in previous stmt
 * Process Expressions
 PDATA2 lbsr PEXPRN Bind expression
  lbsr POPOP Keep opstack clear
@@ -834,7 +833,7 @@ PASSG4 lbra SKPEOL
 * Destroys: X,D,CC
 * Global: I.SYMT
 
-PASGVR lda 0,Y get token
+PASGVR lda  ,Y get token
  cmpa #T.CXAS complex assignment?
  lbne PEXPRN Process variable reference
  leay 1,Y Skip token
@@ -898,12 +897,12 @@ PON20 ldb ,Y+ get next token
 * Destroys: X,D,CC
 * Global: I.LNT
 
-PGOTO ldd 0,Y get line number
+PGOTO ldd  ,Y get line number
  bsr SRHLIN Find/insert line number
  ldd 2,X get link/location
  bcc PGOT10 bra if defined
  sty 2,X set new header
-PGOT10 std 0,Y set link/definition
+PGOT10 std  ,Y set link/definition
  inc -1,Y Bind token
  leay 3,Y Move past goto & terminator
 PGOTXX rts
@@ -919,9 +918,9 @@ PGOSUB equ PGOTO
 SRHLIN ldx I.DSCR get ptr to tbl top
  pshs D save line number
  bra SRHL20
-SRHL10 ldd 0,X get tbl entry
+SRHL10 ldd  ,X get tbl entry
  anda #$7F Clear sign
- cmpd 0,S Line number in question?
+ cmpd  ,S Line number in question?
  beq SRHL30
 SRHL20 leax -4,X Move to next entry
  cmpx LNMTBL Out of tbl?
@@ -930,14 +929,14 @@ SRHL20 leax -4,X Move to next entry
  subd #4
  bcs QuitBind Abort if out of memory
  std G.VARS
- ldd 0,S get line number
+ ldd  ,S get line number
  ora #$80 set undefined flag
- std 0,X put in tbl
+ std  ,X put in tbl
  clra set End of list link
  clrb
  std 2,X
  stx LNMTBL Increase tbl
-SRHL30 lda 0,X get udefined flag
+SRHL30 lda  ,X get udefined flag
  rola move Flag to carry
  puls D,PC
 
@@ -1012,7 +1011,7 @@ PELSE ldd #T.IF*256+2 set parameters
  lbsr SKPEOL Skip backslashes & eol
  tfr Y,D copy I-Code ptr
  subd I.ICBG get I-Code offset
- std 0,U put in I-Code
+ std  ,U put in I-Code
  rts
 
 ***************
@@ -1052,14 +1051,14 @@ PFOR1 lda #M$IFV Err - illegal for variable
 PFOR2 ldb SHAPE simple variable?
  bne PFOR1 No; abort
  adda #T.SBYT get token
- sta 0,Y put in I-Code
+ sta  ,Y put in I-Code
  ldd 1,X get runtime storage offset
  std 1,Y put in I-Code
 PFOR3 ldx I.OPSP get control stack ptr
  leax -7,X Make room for FOR
  stx I.OPSP save ptr
  lda TYPE get type
- sta 0,X Push it
+ sta  ,X Push it
  ldd SYMPTR get symbol tbl ptr
  subd I.SYMT Make ptr into offset
  std 1,X Push it
@@ -1070,7 +1069,7 @@ PFOR3 ldx I.OPSP get control stack ptr
  bsr FORTYP Check expression type
  bsr FORSUB Allocate terminal, process expression
  std 3,X Push terminal offset
- lda 0,Y get next token
+ lda  ,Y get next token
  cmpa #T.STEP is there an increment?
  bne PFOR4 No; almost done
  bsr FORSUB Allocate increment, process expression
@@ -1098,7 +1097,7 @@ FORSUB ldd NEXALC get current allocation
  pshs D save it for return
  std 1,Y put in I-Code
  ldx I.OPSP get control stack ptr
- lda 0,X get type
+ lda  ,X get type
  leax ALCSZT,PCR get ptr to variable size tbl
  ldb A,X get variable size
  clra clear Msb
@@ -1117,7 +1116,7 @@ FORSUB ldd NEXALC get current allocation
 
 FORTYP lbsr PEXPRN Process initial expression
  lbsr POPOP get result type
- cmpa 0,U Expression types agree?
+ cmpa  ,U Expression types agree?
  beq PFOR9 Yes; done (rts)
  cmpa #S.REAL numeric?
  bcs FORTY2 Integer; float it
@@ -1161,7 +1160,7 @@ PNEXT5 ldu 1,X get ptr to FOR stmt
  tfr Y,D copy I-Code ptr
  subd I.ICBG Make ptr into offset
  addd #1 Make offset of next type byte
- std 0,U put in FOR stmt
+ std  ,U put in FOR stmt
  leau 3,U Move ptr to stmt following FOR
  tfr U,D
  subd I.ICBG Make it offset
@@ -1182,7 +1181,7 @@ PWHILE leau -1,Y get ptr to stmt beginning
  pshs U save it
  bsr PBEXPR get boolean expression
  puls D get ptr to stmt beginning
- std 0,Y save in jump ptr
+ std  ,Y save in jump ptr
  lda #T.WHIL get token
  bra PEXIF1 Push on ctl stack, skip 'do' token
 
@@ -1195,13 +1194,13 @@ PWHILE leau -1,Y get ptr to stmt beginning
 PEWHL ldd #T.WHIL*256+3 set structure type
  bsr CONCHK Call control structure check
  ldx 1,X get ptr to while jump ptr
- ldd 0,X get ptr to stmt beginning
+ ldd  ,X get ptr to stmt beginning
  subd I.ICBG get I-Code offset
- std 0,Y put in endwhile jump ptr
+ std  ,Y put in endwhile jump ptr
  leay 3,Y Move I-Code ptr to next stmt
  tfr Y,D copy I-Code ptr
  subd I.ICBG get I-Code offset
- std 0,X put in while jump ptr
+ std  ,X put in while jump ptr
  lbra POPCN
 
 ***************
@@ -1285,7 +1284,7 @@ PBEXP1 leay 1,Y Move I-Code ptr to jump ptr
 
 PEEXT ldd #T.EXIF*256+3 set parameters
  bsr CONCHK Call control structure check
- leau 0,Y get ptr to jump offset
+ leau  ,Y get ptr to jump offset
  leay 3,Y Move I-Code ptr to next stmt
  lbsr PEIF1 put in jump offset
  stu ,--X put in control stack
@@ -1329,10 +1328,10 @@ CONCHK pshs A save control structure type
 CONCH1 leax 3,X Move to next entry
 CONCH2 cmpx I.OPBG End of stack?
  bcc CONCH3 Yes; error
- lda 0,X get token
+ lda  ,X get token
  cmpa #T.EEXT is this an endexit?
  beq CONCH1 Yes; try next
- cmpa 0,S correct type?
+ cmpa  ,S correct type?
  beq CONCH4
 CONCH3 leas 3,S Return type & return addr
  lda #M$UCS Err - unmatched control structure
@@ -1352,7 +1351,7 @@ CONCH4 puls A,PC
 
 POPCN ldx I.OPSP get control stack ptr
  bra POPCN2
-POPCN1 lda 0,X get token
+POPCN1 lda  ,X get token
  cmpa #T.EEXT endexit?
  bne POPCN3 No; go pop it
  tfr Y,D copy I-Code ptr
@@ -1392,7 +1391,7 @@ PRUNER lda #M$MDV Err: multiply defined variable
  lbsr ERROR
  bra PRUN20
 PRUN10 lda #S.PROC get type
- sta 0,X Define entry
+ sta  ,X Define entry
  ldd NEXRUN get next procedure link addr
  std 1,X put in symbol tbl
  addd #2 get next procedure link
@@ -1618,14 +1617,14 @@ PEXP20 cmpb #T.AREF out of range?
  subb #OPLAST Change value range
  leax EXPOPR,PCR get expression tbl
  leax B,X get entry ptr
- ldb 0,X get code byte
+ ldb  ,X get code byte
  lbeq COMERR bra if bad token
  andb #$1F get argument processor code
  beq PEXP30 bra if no arguments/operands
  leau <EXPBRA,PCR get branch tbl addr
  aslb shift For two-byte entries
  jsr B,U Process arguments/operands
-PEXP30 ldb 0,X get code byte
+PEXP30 ldb  ,X get code byte
  andb #$E0 get result type
  beq PEXP40 Use argument/operand TYPE
  clra clear Result type
@@ -1641,7 +1640,7 @@ PEXP30 ldb 0,X get code byte
  bra PEXPRN
 PEXP40 lbsr PUSHOP Push result
  leay 1,Y Move I-Code ptr
-PEXPRN ldb 0,Y get next token
+PEXPRN ldb  ,Y get next token
  bmi PEXP10
  rts
 
@@ -1749,7 +1748,7 @@ P2NU10 lbsr INSTOK Stick it in
 P1NUM bsr PNUM Process numeric argument/operand
 P1NU10 cmpa #S.REAL is result real
  bne P1NUXX ..No
-P1NU20 inc 0,Y Adjust token
+P1NU20 inc  ,Y Adjust token
 P1NUXX rts
 
 ***************
@@ -1814,8 +1813,8 @@ P2SN lda #S.STR set type
  bsr P2ARG Process for string
  bne P2NUM bra if not successful
  ldb #2 set increment
-P2SN10 addb 0,Y Adjust token
- stb 0,Y
+P2SN10 addb  ,Y Adjust token
+ stb  ,Y
  rts
 
 ***************
@@ -1993,7 +1992,7 @@ PVREF lbsr GETTYP get type byte and decode
  bra PVR20
 PVR10 ldb #T.VREF get base token
  lbsr CHKVAR Check variable type & subscripts
- ldb 0,Y get token
+ ldb  ,Y get token
  cmpb #T.VREF subscripted?
  bne PVR20 Yes; leave as is
  ldb DEFINT get definition
@@ -2002,7 +2001,7 @@ PVR10 ldb #T.VREF get base token
  cmpa #S.RCRD rcd type?
  bcc PVR20 ..Yes
  adda #T.SBYT Convert type to token
- sta 0,Y put in I-Code
+ sta  ,Y put in I-Code
  ldd 1,X get storage offset
  std 1,Y put in I-Code
 PVR20 lda TYPE get type
@@ -2027,7 +2026,7 @@ CHKDEF lda DEFINT get definition
  stb DEFINT
  lda #S.VAR+S.SIMP set type byte
  ora TYPE
- sta 0,X
+ sta  ,X
  anda #S.TYPM get type
  cmpa #S.STR string?
  bne CHKD10 No; go allocate storage
@@ -2093,13 +2092,13 @@ GETTYP ldd 1,Y get symbol tbl offset
  addd I.SYMT get symbol tbl base
  std SYMPTR save symbol ptr
  ldx SYMPTR
-GETTY1 lda 0,X get type byte
+GETTY1 lda  ,X get type byte
  anda #S.DEFM get definition
  sta DEFINT
- lda 0,X get type byte
+ lda  ,X get type byte
  anda #S.SHPM get shape
  sta SHAPE
- lda 0,X get type byte
+ lda  ,X get type byte
  anda #S.TYPM get type
  sta TYPE
 GETTY9 rts
@@ -2112,7 +2111,7 @@ GETTY9 rts
 * Same as PVREF
 
 CHKVAR pshs B save base token
- ldb 0,Y get token
+ ldb  ,Y get token
  subb ,S+ Convert token to shape
  bne CHKV10 bra if subscripted
  tst SHAPE array?
@@ -2211,7 +2210,7 @@ ALCPAR fdb ALCSMP-ALCPAR,ALCSTP-ALCPAR,ALCCXP-ALCPAR,ALCARP-ALCPAR
 
 ALCSTO pshs X,Y,U save registers
  leay <ALCVAR,PCR get type size tbl
- ldb 0,X get type byte
+ ldb  ,X get type byte
  andb #S.DEFM get definition
  cmpb #S.VAR variable?
  beq ALCST1 Yes; set for it
@@ -2220,12 +2219,12 @@ ALCSTO pshs X,Y,U save registers
  cmpb #S.PARM parameter?
  bne ALCST6 No; do nothing
  leay ALCPAR-ALCVAR,Y get parameter routine tbl
-ALCST1 ldb 0,X get type byte
+ALCST1 ldb  ,X get type byte
  andb #S.SHPM get shape
  beq ALCST2 bra if simple
  ldd 6,Y get array routine offset
  bra ALCST5
-ALCST2 ldb 0,X get type byte
+ALCST2 ldb  ,X get type byte
  andb #S.TYPM get type
  cmpb #S.STR What type?
  bcs ALCST4 is simple; go do it
@@ -2234,17 +2233,17 @@ ALCST2 ldb 0,X get type byte
  bra ALCST5
 ALCST3 ldd 4,Y get complex routine
  bra ALCST5
-ALCST4 ldd 0,Y get simple routine
+ALCST4 ldd  ,Y get simple routine
 ALCST5 jsr D,Y Go to routine
 ALCST6 puls X,Y,U,PC
 
-ALCSMV lda 0,X get type byte
+ALCSMV lda  ,X get type byte
  anda #S.TYPM get type
  leay 1,X set ptr to storage offset
  bsr GETVSZ get variable size
 ALCSV1 pshs D save size
  ldd NEXALC get current allocation
- std 0,Y Use as run time offset
+ std  ,Y Use as run time offset
  addd ,S++ add size
  std NEXALC Update allocation
  rts
@@ -2255,7 +2254,7 @@ ALCSTV bsr ALCCMX get description area for string
 ALCCXV bsr ALCCMX get description area for structure
  addd I.DSCR get description area base
  tfr D,X get structure total size
- ldd 0,X
+ ldd  ,X
  bra ALCSV1 Finish variable allocation
 
 ALCARV bsr ALCARR Do array prep
@@ -2263,7 +2262,7 @@ ALCARV bsr ALCARR Do array prep
 
 ALCSMP leay 1,X get ptr storage offset
 ALCSP1 ldd NEXPRM get current parameter count
- std 0,Y Use as runtime parameter offset
+ std  ,Y Use as runtime parameter offset
  addd #4
  std NEXPRM
  rts
@@ -2334,7 +2333,7 @@ START pshs Y save stmt beginning ptr
  puls X Retrieve stmt beginning ptr
  ldb <SMASH Compile mode?
  bne STAR20 ..No
- lda 0,X get first token of stmt
+ lda  ,X get first token of stmt
  leau <DELTKS,PCR get list of delete-line tokens
 STAR10 cmpa ,U+ is this one?
  blo STAR20 ..no; don't delete it
@@ -2342,28 +2341,28 @@ STAR10 cmpa ,U+ is this one?
  pshs X
  tfr Y,D End of I-Code line (+1)
  subd ,S++ Minus start of I-Code line
- leay 0,X Delete from start of line
+ leay  ,X Delete from start of line
  ldu I.STBG
  stu ICDPTR Insert nothing
  lbsr J$RPLC Call replace I-Code routine
 STAR20 ldx I.ICLM
- clr 0,X wipe out byte following procedure stmts
+ clr  ,X wipe out byte following procedure stmts
  cmpy I.ICLM End of I-Code?
  bcs START ..No
 DONE ldx I.DSCR get line number tbl top
  bra DONE07
-DONE05 lda 0,X get line number
+DONE05 lda  ,X get line number
  bpl DONE07 bra if defined
  anda #$7F Clear undefined flag
- sta 0,X Update tbl
+ sta  ,X Update tbl
  ldy 2,X get first link
-DONE03 ldu 0,Y get next link
- ldd 0,X get line number
- std 0,Y Restore line number
+DONE03 ldu  ,Y get next link
+ ldd  ,X get line number
+ std  ,Y Restore line number
  dec -1,Y Unbind token
  lda #M$ULN Err: undefined line number
  lbsr ERROR
- leay 0,U is there another reference?
+ leay  ,U is there another reference?
  bne DONE03 ..Yes
 DONE07 leax -4,X Move to next entry
  cmpx LNMTBL Out of tbl?
@@ -2377,7 +2376,7 @@ DONE07 leax -4,X Move to next entry
 DONE10 ldy 1,X get error addr
  lda #M$UCS Err: unmatched control structure
  lbsr ERROR
- lda 0,X get structure token
+ lda  ,X get structure token
  cmpa #T.FOR FOR?
  bne DONE15 No; do normal
  leax 7,X Pop extra FOR bytes
@@ -2423,7 +2422,7 @@ DONE20 cmpx I.OPBG is stack empty?
  std I.DSCR Adjust description ptr
  ldu I.SYMT get symbol tbl ptr
  bra DONE80
-DONE25 leax 0,U copy symbol tbl ptr
+DONE25 leax  ,U copy symbol tbl ptr
  lbsr GETTY1 Decode type byte
  lda DEFINT get definition
  cmpa #S.VAR variable w/storage?
@@ -2446,9 +2445,9 @@ DONE30 cmpa #S.PARM parameter?
 DONE45 ldd 1,U get description offset
  addd I.DSCR Make offset into ptr
  tfr D,X
-DONE50 ldd 0,X get storage offset
+DONE50 ldd  ,X get storage offset
  addd NEXRUN Adjust for variable allocation
- std 0,X
+ std  ,X
 DONE55 lda TYPE get type
  cmpa #S.RCRD record?
  bne DONE70 ..No
@@ -2463,9 +2462,9 @@ DONE65 clra Clear Msb
  addd 1,U add array descr offset
  ldx I.DSCR get description area ptr
  leay D,X get ptr/size ptr
- ldd 0,Y get rcd descr offset
+ ldd  ,Y get rcd descr offset
  ldd D,X get rcd size
- std 0,Y Put in array description
+ std  ,Y Put in array description
 DONE70 leau 3,U Skip three byte header
 DONE75 lda ,U+ get next byte of name
  bpl DONE75 bra if not end of name

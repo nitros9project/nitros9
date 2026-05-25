@@ -21,9 +21,9 @@ J$FIX jsr M.EXPRSN
 J$FLOT jsr M.EXPRSN
  fcb X$FLOT Float integer
 J$FDIV jsr M.EXPRSN
- fcb X$FDIV real divide
+ fcb X$FDIV Real divide
 J$FMUL jsr M.EXPRSN
- fcb X$FMUL real multiply
+ fcb X$FMUL Real multiply
 
  ttl Constant Tables
  pag
@@ -126,13 +126,12 @@ Len.Fals equ *-T$FALS
 * Local:  D,CC Destroyed
 
 * Opstack offsets
- org 0
-TYPBYT rmb 1 TYPE byte
-BINEXP rmb 1 exponent
-MANT0 rmb 1 MS byte mantissa
-MANT1 rmb 1 NS byte mantissa
-MANT2 rmb 1 NS byte mantissa
-MANT3 rmb 1 LS bye mantissa
+TYPBYT equ 0 TYPE byte
+BINEXP equ 1 exponent
+MANT0  equ 2 MS byte mantissa
+MANT1  equ 3 NS byte mantissa
+MANT2  equ 4 NS byte mantissa
+MANT3  equ 5 LS bye mantissa
 
 * Initialize
 ASCNUM pshs U save ureg
@@ -261,7 +260,7 @@ ASNIN3 lda #S.INT Get TYPE code for integer
  lbra OKEXIT
 
 * Process "E Form" Decimal exponent
-ASNEX1 lda 0,X Get next char
+ASNEX1 lda  ,X Get next char
  cmpa #'+ Plus sign?
  beq ASNEX2
  cmpa #'- Minus sign?
@@ -329,7 +328,7 @@ ASNRL6 cmpb #19 Dec exp in tbl range?
  bls ASNRL7 Bra if ok
  subb #19 Reduce range otherwise
  pshs B save current exp
- leau T$RL19,PCR Get add of const 1e+19
+ leau >T$RL19,PCR Get add of const 1e+19
  bsr CNVOPR ..and reduce range ..
  puls B Restore exp and proceed
  lbcs NRERR ..exit if oper overflowed
@@ -354,7 +353,7 @@ OKEXIT sta TYPBYT,Y
 * to Opstack and Perform real Multiply Or
 * Divide, Depending on exponent Sign (I.Esgn)
 CNVOPR leay -6,Y Room for new entry on opstack
- ldd 0,U
+ ldd  ,U
  std 1,Y
  ldd 2,U
  std 3,Y
@@ -477,7 +476,7 @@ STRINP pshs U,X
  ldu I.STBG Get str stack ptr
  stu 1,Y and put ptr on stack
  lda #S.STR then the TYPE code
- sta 0,Y
+ sta  ,Y
  ldx I.IOPT Get I/O buf ptr
 INPST2 lda ,X+ Get input char
  bsr SKPDL2 Call delim test
@@ -501,7 +500,7 @@ INPST4 stx I.IOPT Repl I/O ptr
 INPBL pshs X
  leay -6,Y Carve out room on opstack
  lda #S.BOOL
- sta 0,Y Set TYPE byte
+ sta  ,Y Set TYPE byte
  clr 2,Y Set res to false
  ldx I.IOPT
  bsr SKPDL1 Skip leading crap
@@ -591,11 +590,11 @@ INST2 leau T$ITEN-2,PCR Get table addr
 * Conversion Loop
 INST3 clr I.DSAV Clear digit
  leau 2,U Move to new tble entry
-INST4 subd 0,U Subtract pwr of 10
+INST4 subd  ,U Subtract pwr of 10
  bcs INST5 Bra if underflow
  inc I.DSAV Else bump digit
  bra INST4 and loop again
-INST5 addd 0,U Restore from underflow
+INST5 addd  ,U Restore from underflow
 * Pre-digit Output Tests
  tst I.DSAV Current dig zero?
  bne INST6 if not 0 go output
@@ -646,7 +645,7 @@ RLASC pshs X,U Inz variables
  clr I.DEXP
  clr I.DCNT digit count
 * Fill Output buffer With Zeros
- leau 0,X Copy ptr
+ leau  ,X Copy ptr
  ldd #10*256+'0 Clear 10 digits
 CLRBUF stb ,U+
  deca
@@ -771,23 +770,23 @@ NMASC9 clr I.HIEX Clr ext byte
  bne NMASC9
 
 * Round to 9 digits based on remainder of conversion divide
-NARND0 sta 0,Y
+NARND0 sta  ,Y
  lda I.DCNT
  cmpa #9
  blo NASC10 No round if < 10 digits
- ldb 0,Y remainder >=.5?
+ ldb  ,Y remainder >=.5?
  bpl NASC10 if so dont round up
 NARND1 lda ,-X Get prev digit
  inca BUMP It
- sta 0,X Replace it
+ sta  ,X Replace it
  cmpa #'9 Overflow?
  bls NASC10 if not we're done
  lda #'0 This digit is zero ..
- sta 0,X
- cmpx 0,S Was it first digit
+ sta  ,X
+ cmpx  ,S Was it first digit
  bne NARND1 if not keep rounding
 * Round Overflowed - Fix It
- inc 0,X Make the zero a one
+ inc  ,X Make the zero a one
  inc I.DEXP Adjust dec exp
 
 NASC10 lda #9 Set digit count
@@ -849,7 +848,7 @@ OUTLN2 puls X,Y,PC
 * Call OS-9 to Seek a file to A Position
 
 SEEK pshs X,U save registers
- lda 0,Y Get position TYPE
+ lda  ,Y Get position TYPE
  cmpa #S.REAL What type?
  beq SEEK10 bra if real
  ldu 1,Y Get simple size
@@ -894,7 +893,7 @@ SEEK80 puls X,U,PC
 
 OUTRL pshs U,X save regs
  leas -10,S TEMP buffer on stack
- leax 0,S Copy bufptr
+ leax  ,S Copy bufptr
  lbsr RLASC Convert ..
 * Convert Output of RLASC To
 * Floating Decimal if Possible,
@@ -972,7 +971,7 @@ OUTEXP lda #'E
  deca CORRECT for scaling
  pshs A save exp val
  bpl OUTEX2
- neg 0,S Make it positive for output
+ neg  ,S Make it positive for output
  bsr OUTMIN Output minus sign
  bra OUTEX3
 OUTEX2 bsr OUTPLS Output +
@@ -1108,11 +1107,11 @@ OUTBL pshs X save regs
 
 OUTINT pshs U,X save regs
  leas -5,S Make TEMP buffer on stack
- leax 0,S Get addr of TEMP buffer
+ leax  ,S Get addr of TEMP buffer
  lbsr INTSTR Convert n to ASCII
  bsr OUTSGN Output sign if neg
  lda I.DCNT Get digit count
- leax 0,S Restore TEMP buf ptr
+ leax  ,S Restore TEMP buf ptr
  lbsr MOVDIG Copy digits
  leas 5,S Clean stack
  clra
@@ -1158,8 +1157,8 @@ SKIPZ3 clra
 
 OUTHEX pshs U
  lda #4 Trial field size
- leau 0,Y
- tst 0,U First byte zero?
+ leau  ,Y
+ tst  ,U First byte zero?
  bne OUTHX2 Go output if not
  asra ELSE Reduce field
  leau 1,U
@@ -1349,17 +1348,17 @@ NXTFM1 ldx I.FMPT Init format ptr
  stu I.OPBG Update repeat stack ptr
  stx I.FRBG save repeat beginning ptr
 NXTFM2 lda ,X+ Get next chr
-NXTFM3 leay T$FMCD,PCR Get addr of decode tbl
+NXTFM3 leay >T$FMCD,PCR Get addr of decode tbl
  clrb B is counter
 * Decode Table Lookup Loop
 NXTFM4 pshs A save character
- eora 0,Y Check for match
+ eora  ,Y Check for match
  anda #^('a-'A) (upper or lower case ok)
  puls A Restore character
  beq NXTFM5 Bra if match
  leay 3,Y Otherwise advance ptr..
  incb ..BUMP Count..
- tst 0,Y End of table (not found)?
+ tst  ,Y End of table (not found)?
  bne NXTFM4 ..no; loop
 * Error Exits
 FMTERR ldb #M$FSYN Format syntax error
@@ -1378,7 +1377,7 @@ NXTFM5 stb I.FTYP save fmt code
  bcc NXTFM51 ..got it
  ldb #1 error; default ONE
 NXTFM51 stb I.FWTH save it
- jmp 0,Y Exit to TYPE parser
+ jmp  ,Y Exit to TYPE parser
 
 
 * Subroutine FMTNUM
@@ -1493,7 +1492,7 @@ H.FMT3 ldu 1,Y Set ptr to result
  bra HEXOUT
 * Check Types
 H.FMT4 leau 1,Y Set ptr to result
- lda 0,Y Get result TYPE
+ lda  ,Y Get result TYPE
  cmpa #S.REAL TYPE real?
  bne H.FMT5 ..no
  ldb #5
@@ -1545,7 +1544,7 @@ HEXO03 pshs b
  lbsr SPACES
 HEXO05 puls b
 
-HEXO10 lda 0,U Get current byte
+HEXO10 lda  ,U Get current byte
  lsra
  lsra shift MS nybble right
  lsra
@@ -1590,7 +1589,7 @@ I.FMT jsr J$EVAL Evaluate expression
  lbsr J$FIX Convert to integer
 I.FMT1 pshs U,X Local regs
  leas -5,S Conv buffer on stack
- leax 0,S X marks the spot
+ leax  ,S X marks the spot
  lbsr INTSTR Call the master conv subr
  ldb I.FWTH Get fld width
  decb SUBT One for sign
@@ -1719,7 +1718,7 @@ R.FMT jsr J$EVAL Evaluate expression
  lbsr J$FLOT Convert to real
 R.FMT1 pshs U,X Are local
  leas -10,S Conv buffer on stack
- leax 0,S (X)=its ptr
+ leax  ,S (X)=its ptr
  lbsr RLASC Call the main conversion routine
 
 * Check Decimal exponent Bounds, then Round
@@ -1745,7 +1744,7 @@ R.FMTE leas 10,S Pop conv buffer
 
 * Decode Justification Mode and bra to Formatter Routines
 R.FMT2 sta I.FILL Whats left is fill count
- leax 0,S Restore buffer ptr
+ leax  ,S Restore buffer ptr
  ldb I.FJST Get justify code
  beq R.FMTL O=left justify
  bmi R.FMTC -1=center justify(money)
@@ -1834,7 +1833,7 @@ E.FMT jsr J$EVAL Evaluate expression
  lbsr J$FLOT Convert to real
 E.FMT0 pshs U,X Are local
  leas -10,S Put cnv buffer on stack
- leax 0,S Get ptr to it
+ leax  ,S Get ptr to it
  lbsr RLASC Call the general conversion subr
 
 * Make decimal exponent 1E+10 for formatting, rounding
@@ -1895,7 +1894,7 @@ RNDRL pshs X save cnv buffer ptr
  lda I.DEXP Get decimal exponent
  adda I.FSIZ Add # frac digits needed
  bne RNDRL1 >>begin patch
- lda 0,X
+ lda  ,X
  cmpa #'5
  bhs RNDRL25 <<end patch
 RNDRL1 deca and Adjust for offset
@@ -1909,26 +1908,26 @@ RNDRL1 deca and Adjust for offset
  cmpb #'5 Five or greater?
  blo ENDRND Don't round if so
 * Here to Round Up
-RNDRL2 inc 0,X Round this digit
- ldb 0,X and get it
+RNDRL2 inc  ,X Round this digit
+ ldb  ,X and get it
  cmpb #'9 Did it overflow?
  bls ENDRND Were done if not
 RNDRL25 ldb #'0 Else make if zero
- stb 0,X
+ stb  ,X
  leax -1,X and move ptr to next MS digit
- cmpx 0,S Check for beffer bounds
+ cmpx  ,S Check for beffer bounds
  bhs RNDRL2 Continue if not there
 
 * Here When MS digit in buffer Overflowed: Set MS=1
 * and Shift Others Back One Place
- ldx 0,S Set ptr to buffer start
+ ldx  ,S Set ptr to buffer start
  leax 8,X then to last digit
 RNDRL3 lda ,-X Get this digit
  sta 1,X Move it right
- cmpx 0,S Done yet?
+ cmpx  ,S Done yet?
  bhi RNDRL3 Loop if not
  lda #'1 Set MS digit to 1
- sta 0,X
+ sta  ,X
  inc I.DEXP and adjust exponent
 ENDRND puls X Pop buffer start
 * Compute Subfield Sizes (Int,Frac)

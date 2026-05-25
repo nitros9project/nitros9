@@ -62,7 +62,7 @@ HALT20 inca
 
 STEPM lbsr CMDSEP Get comma or space
  bne STEP1 Default one step
- leax 0,Y Tell asnm where to get the number
+ leax  ,Y Tell asnm where to get the number
  lbsr GETNUM Get number
  bcc STEP2 No error -continue
  rts ERROR - return carry set
@@ -100,7 +100,7 @@ CONTIN99 puls D,X,Y,U,PC Restore interpreter's registers and return
 * in Trace mode.
 
 TRCEXP ldy J$EVAL+3 Get address of expr interp.
- jsr 0,Y Interpret expression
+ jsr  ,Y Interpret expression
 PRTEXP pshs D,X,Y,U Save registers
  cmpy I.OPBG
  beq TRCE99
@@ -115,11 +115,11 @@ PRTEXP pshs D,X,Y,U Save registers
  lbsr NEWLIN
  lda #'= Trace expression indicator
  lbsr PUTCHR
- ldb 0,Y Get type byte
+ ldb  ,Y Get type byte
  addb #V$PRBY Adjust for cnvio
  cmpb #V$INLN Bad type?
  bhs TRCEX9 ..Yes; dont print it
- leax 0,Y Copy opstack ptr
+ leax  ,Y Copy opstack ptr
  lbsr DCVALU Print value
 TRCEX9 lbsr PRTEOL Print buffer (clears carry)
  puls B,X,U Restore I/O state
@@ -140,7 +140,7 @@ LSTBN0 clr I.OCNT Reset pretty print indentation
 
 LSTBN1 tst G.SIGN (abort) signal?
  bne LSTBN9 ..Yes; exit
- leay 0,X Copy icode ptr
+ leay  ,X Copy icode ptr
  lbsr NXTONE Find address of beginning of next line
  bsr LSTBLN List the line
  exg X,Y
@@ -166,9 +166,9 @@ LSTBLN pshs X,Y,U Save caller's registers
  ldx I.APRC
  tst P.STAT,X is this a compiled procedure?
  bmi LSTB99 ..nice try, but no answers out of me
- ldx 0,S Restore i-code ptr
+ ldx  ,S Restore i-code ptr
  tfr Y,D
- subd 0,S Size of icode line to list
+ subd  ,S Size of icode line to list
  bmi LSTBL9 None - return
  pshs D,X Save regs
  addd #64 Estimate opstack requirement of decompiler
@@ -204,10 +204,10 @@ LSTBL3 puls D,Y
  leax D,U
  stx I.ICLM
  stx I.STBG
- leay 0,U Beginning of copied line
+ leay  ,U Beginning of copied line
  tst PRTCTL Silent (save) mode?
  bmi LSTBL5 ..Yes; don't print "ERR"
- leax 0,Y Copy icode ptr
+ leax  ,Y Copy icode ptr
  lbsr CHKERR Error line?
  bne LSTBL5 ..No; don't print "ERR"
 LSTBL4 leax ERRR,PCR get "ERR" msg
@@ -238,7 +238,7 @@ DIREX1 ldy I.IOBG
  beq RSCRIT ..Yes; return (restore critical variables first)
  stx I.ICBG
  stx I.ICPT
- leay 0,X
+ leay  ,X
  ldx ICDPTR
  stx I.ICLM
  stx I.STBG
@@ -313,7 +313,7 @@ BREAK lbsr J$NAME is there a name in the command line?
  beq BREAK9 ..no; error
  lbsr DIRSCH is it in the procedure directory?
  bcs BREAK9 ..no; error
- ldx 0,X Get addr of desired procedure
+ ldx  ,X Get addr of desired procedure
  ldy I.ASTR
 BREAK1 ldy U.U,Y Get next previous procedure storage
  beq BREAK9 None found - error
@@ -400,13 +400,13 @@ DCLINE ldy I.ICPT Get icode buf addr
  bhs CPYEOL
 
 * Process Beginning of Line
-DCBEG ldb 0,Y Get first token
+DCBEG ldb  ,Y Get first token
  cmpb #T.LREF Line number?
  bne DCBEG2
  leay 1,Y Step past it
  lbsr DCLREF Decompile line ref
  lbsr OUTSPC
- ldb 0,Y Get next token
+ ldb  ,Y Get next token
 DCBEG2 tst PRTCTL
  bmi DCTOKN No pretty print
  bsr LKTOKE Lookup the token tbl entry
@@ -526,7 +526,7 @@ PRTOK1 lda -1,X Get decr again
 
 PRTOK2 cmpa #Z$SUB Subroutine entry?
  bne PRTOK3
- ldd 0,X Get the offset
+ ldd  ,X Get the offset
  jmp D,X
 PRTOK3 bsr DCLF
  bsr PRTOK4
@@ -602,7 +602,7 @@ DCVREF ldx ,Y++ Get sym offset
 * Output String At [x]
 
 CPYSTR pshs X save reg
-CPYSTR10 lda 0,X
+CPYSTR10 lda  ,X
  anda #$7F
  bsr PUTCHR output char
  tst ,X+
@@ -623,9 +623,9 @@ DCVAL1 ldd 4,Y
  std ,--X
  ldd 2,Y
  std ,--X
- ldd 0,Y
+ ldd  ,Y
  std ,--X
- leay 0,X Make y opstack ptr
+ leay  ,X Make y opstack ptr
  puls B
  bra GOCNV
 
@@ -707,7 +707,7 @@ DCNEXT leax NEXT,PCR Get str adddr
 * Decompile THEN
 DCTHEN leax THEN,PCR
  lbsr SPCSTR Output string in spaces
- lda 0,Y
+ lda  ,Y
  cmpa #T.LREF Followed by line number only?
  beq DCTHE9 ..Yes; just return
  inc I.OCNT Indent until endif is found
@@ -716,7 +716,7 @@ DCTHE9 rts return
 ***************
 * Decompile (* --- *) Remark
 REMRK2 fcs "(*" Remark literal
-DCSREM leax REMRK2,PCR
+DCSREM leax >REMRK2,PCR
  bra DCREM2
 
 * Decompile Remark Statement
@@ -750,19 +750,19 @@ DCMODE lda ,Y+ get mode byte
 DCMO10 bsr BRPTCH print char
  leax <MODTBL-2,PCR
 DCMO20 leax 2,X
- lda 0,S get remaing mode bits
- anda 0,X
+ lda  ,S get remaing mode bits
+ anda  ,X
  cmpa ,X+ bit name found?
  bne DCMO20 ..no; loop
  tsta end of table?
  beq DCMO30 ..Yes; exit
- eora 0,S
- sta 0,S unmark bits in mode
- ldd 0,X
+ eora  ,S
+ sta  ,S unmark bits in mode
+ ldd  ,X
  leax D,X ptr to mode name
  lbsr CPYSTR put string in I/O buffer
  lda #'+
- tst 0,S any more modes specified?
+ tst  ,S any more modes specified?
  bne DCMO10 ..Yes; repeat
 DCMO30 puls a,pc return
 
@@ -777,7 +777,7 @@ EXPRSN pshs U Save registers
  clr ,-U Set end of icode stack mark
  clr ,-U
  leay -1,Y Back up to current icode position
-EXPRS1 ldb 0,Y Get next icode token
+EXPRS1 ldb  ,Y Get next icode token
  bpl EXPRS9 Not expression type - exit
  lbsr LKTOKE Look up it's type
  tfr A,B
@@ -804,7 +804,7 @@ EXPRS2 leay -1,Y
  bra EXPRS1
 
 EXPRS9 sty <I.ICPT Update icode pointer
- leay 0,U Set operator stack top
+ leay  ,U Set operator stack top
  clra
  clrb
  std ,--Y Set end of operator stack marker
@@ -907,10 +907,10 @@ EXPRXT ldd ,S++ Pop token from linesp; is it endmarker?
  beq EXPRX9 ..Yes; return
  bitb #Z$LIT is it a literal token?
  bne EXPRX1 ..Yes; go do special output
- leay 0,S Set up register for call explod
+ leay  ,S Set up register for call explod
  exg A,B
  lbsr EXPLOD
- leas 0,Y Update line stack
+ leas  ,Y Update line stack
  bra EXPRXT Loop until all tokens are pulled
 
 EXPRX9 ldy I.ICPT
@@ -925,7 +925,7 @@ EXPRX9 ldy I.ICPT
 * Returns: Y,S Updated
 * Destroys: X,CC
 
-PARENS ldx 0,S Get return address
+PARENS ldx  ,S Get return address
  pshs X Move it down to make room for T.RPAR
  ldx #T.RPAR*256
  stx 2,S Put right paren in line stack
@@ -1008,7 +1008,7 @@ PARENS ldx 0,S Get return address
  pag
 EDIT lbsr PRCREF Get procedure name
  lbsr DIRADD Get procedure directory address
- ldy 0,X Get procedure address
+ ldy  ,X Get procedure address
  tst M$type,Y internal (un typed) procedure?
  bne EDTERR ..No; impossible to edit
  pshs X Save directory address
@@ -1026,18 +1026,18 @@ EDIT2 leax EDTPMT,PCR Get editor prompt string
  bcc EDIT1 Repeat
  tst G.SIGN Signal recieved?
  bne EDIT1 ..Yes; check it out
- leax EDIT1,PCR get "return" addr
+ leax >EDIT1,PCR get "return" addr
  pshs X Push it on stack
 
 * Move to line number?
 
  ldx I.IOBG Pickup line buffer
- lsl 0,X
- lsr 0,X Strip high order bit
+ lsl  ,X
+ lsr  ,X Strip high order bit
  lbsr GETNUM
  lbcs CMDERR Error - what?
  lbsr SCHLIN Search for line number
- lda 0,X
+ lda  ,X
  cmpa #V$CR Line number only?
  beq EMOVE1 ..Yes; move edit ptr to it
  ldy I.IOBG Reset I/O buffer
@@ -1051,13 +1051,13 @@ EDTERR coma
 *   Move Edit ptr to target
 
 EMOVE leax -1,Y Back up to sign
- asl 0,X
- asr 0,X Strip high order bit
+ asl  ,X
+ asr  ,X Strip high order bit
  lbsr TARGET Find target line
  lbsr CHKEOL Make sure it's end of line
 EMOVE1 sty I.ICPT Reset edit ptr
  lbsr GETLIN Find out it's line number
- leax 0,Y
+ leax  ,Y
  lbsr NXTONE Skip to next line
  lbra ELIST1 List the line found & return
 
@@ -1074,7 +1074,7 @@ INSERT tst G.VARS enough memory to compile?
  clr DEBUGGER Normal compil
  lbsr J$CMPL Compile the line
  ldx I.STBG Get the I-Code
- lda 0,X
+ lda  ,X
  cmpa #T.LREF Does it have a line number?
  bne INSER3 ..no; go insert line
  clra
@@ -1087,7 +1087,7 @@ INSERT tst G.VARS enough memory to compile?
  ldd 1,X Get the line number entered
  cmpd 1,Y is it below the next line# found?
  bls INSER1 ..Yes; good - continue
- inc 0,S Mark sequence error
+ inc  ,S Mark sequence error
 INSER1 ldy I.ICBG
  ldd 1,X
  lbsr SCHLIN Search I-Code for line just entered
@@ -1115,7 +1115,7 @@ INSER4 ldy I.ICPT Restore current edit ptr
  ldx I.ICPT
  bsr CHKERR Error line?
  bne INSER6 ..no
-INSER5 leay 0,X Stay on current line
+INSER5 leay  ,X Stay on current line
 INSER6 clra return carry clear
  rts
 
@@ -1132,7 +1132,7 @@ INSERR ldb #M$MFUL Error: memory full
 * Returns: Zero Set if it is an Error Line
 * Destroys: A
 
-CHKERR lda 0,X Get 1st token
+CHKERR lda  ,X Get 1st token
  cmpa #T.LREF Line reference?
  bne CHKER8 ..no
  lda 3,X Get 1st token following line ref
@@ -1182,7 +1182,7 @@ ELIST1 ldd I.ICLM
 
 CHKEOL pshs B,X Save regs
  ldx I.IOPT Get I/O ptr
- ldb 0,X Get next char there
+ ldb  ,X Get next char there
  cmpb #V$CR End of line?
  bne CHKEO1 ..no; what?
  puls B,X,PC Return
@@ -1221,7 +1221,7 @@ LIMIT9 rts
 * Returns: (Y)=I-Code ptr of Target Line
 
 TARGET clr ,-S Default forward target
- ldd 0,X Get command
+ ldd  ,X Get command
  cmpa #'+ Forward?
  bne TARGE2 ..no; look again
  ldy I.ICLM MAYBE "+*"
@@ -1233,12 +1233,12 @@ TARGE1 cmpb #'* to bound?
 
 TARGE2 cmpa #'- Backward?
  bne TARGE4 ..no; unsigned foreward
- inc 0,S Set negative mode
+ inc  ,S Set negative mode
  ldy I.ICBG "-*"?
  bra TARGE1 Go see if it is
 
 TARGE3 leax 1,X Update I/O ptr past sign
-TARGE4 lda 0,X Get first digit
+TARGE4 lda  ,X Get first digit
  cmpa #'0 Number?
  blo TARGE5 ..no
  cmpa #'9 Number?
@@ -1276,7 +1276,7 @@ GETNUM ldy I.OPBG Get scratch
  cmpa #S.REAL
  beq GETNCS ..no; error exit
  clra clear Carry
- ldd 0,Y Get positive integer
+ ldd  ,Y Get positive integer
  bne GETNU9 Good: return carry clear
 GETNCS coma set carry
 GETNU9 rts
@@ -1305,7 +1305,7 @@ SCHTMP equ . Total stack space needed
 
 SCHSUB leas -SCHTMP,S Chop out workspace
  stb CHNG,S Set search/change mode
- lda 0,Y Get next char
+ lda  ,Y Get next char
  clr CONTNU,S Clear continuous mode
  cmpa #'* Asterick?
  bne SCHSU1 ..no
@@ -1390,7 +1390,7 @@ FOUND2 lda ,U+
  bne FOUND2 repeat until end of string
  leay -1,Y
  ldd ,S++
- subd 0,S Length of source line to flotup
+ subd  ,S Length of source line to flotup
  puls X Restore source ptr
  lbsr FLOTUP Float change string down into line
 
@@ -1422,7 +1422,7 @@ SCHS56 lbsr OUTBUF Print the line found
  sty LSTFND,S Save most recent line found
  tst CHNG,S Change mode?
  beq SCHS57 ..no; skip to next line
- leax 0,Y Save current line ptr
+ leax  ,Y Save current line ptr
  lbsr NXTONE Skip this line
  lbsr DELLIN Delete the line
  sty I.ICPT Save current I-Code ptr for insert
@@ -1495,7 +1495,7 @@ SUBS15 lda ,X+ Get next search char
  beq SUBS15 ..Yes; keep going
  puls X,Y Restore schbet,SRCPTR
  leay 1,Y Update SRCPTR
-SUBST2 cmpy 0,S Beyond place where it might be found?
+SUBST2 cmpy  ,S Beyond place where it might be found?
  bls SUBST1 ..no; keep searching
  coma
  puls D,PC Return
@@ -1511,14 +1511,14 @@ SUBST3 puls X,Y (y)=addr of string that was found
 ERESEQ ldd #100 Defalut first line#
  ldx #10 Default increment
  pshs D,X
- leax 0,Y
+ leax  ,Y
  ldy EDTLIN
- lda 0,X
+ lda  ,X
  cmpa #'* Resequence entire procedure?
  bne RESEQ1 ..no
  ldy #0 Set top of procedure as starting point
 RESEQ0 leax 1,X
- lda 0,X
+ lda  ,X
 RESEQ1 cmpa #V$SPAC Skip any spaces here
  beq RESEQ0
  pshs Y Save starting point
@@ -1534,7 +1534,7 @@ RESEQ1 cmpa #V$SPAC Skip any spaces here
  bcs RESER1 ..error - what?
  std 4,S Save explicit increment
  bmi RESER1 ..negative - what?
- lda 0,X
+ lda  ,X
 RESEQ2 cmpa #V$CR End of line?
  bne RESER1 ..no: what?
  bsr REBIND Bind the procedure
@@ -1542,7 +1542,7 @@ RESEQ2 cmpa #V$CR End of line?
  ldy I.ICBG
  lbsr NXTLIN Skip to line to begin with
  sty I.ICPT
- ldd 0,S Get starting line number
+ ldd  ,S Get starting line number
  lbsr SCHLIN Find it in I-Code
  clr ,-S Set up for dummy resequence
  cmpy I.ICPT is it below the renumbered lines?
@@ -1554,7 +1554,7 @@ RESEQ2 cmpa #V$CR End of line?
  bne RESEQ3
  tst G.SIGN Signal recieved?
  bne RESEQ3 ..Yes; don't renumber
- inc 0,S Signal real stuff!
+ inc  ,S Signal real stuff!
  bsr RESEQ5 Do it
 RESEQ3 leas 5,S Throw away temps
  ldx 2,S Get directory addr (remember-editor saved it)
@@ -1614,7 +1614,7 @@ DELLIN ldd I.STBG
  tfr Y,D
  pshs X
  subd ,S++ Calculate number of bytes to delete
- leay 0,X Delete bytes from lower 'limit'
+ leay  ,X Delete bytes from lower 'limit'
 * Fall thru to Replace
 
 ***************
@@ -1636,11 +1636,11 @@ REPLAC pshs D,X,Y,U Save caller's registers
  pshs X Save this ptr
  ldy ICDPTR Last byte of inserted code (+1)
  ldd I.STBG
- subd 0,S (d)=length of I-Code following inserted stuff
+ subd  ,S (d)=length of I-Code following inserted stuff
  beq REPLA1
  lbsr FLOTUP Move new below old I-Code where it goes
 REPLA1 ldd ICDPTR
- ldu 0,S First byte to move
+ ldu  ,S First byte to move
  subd ,S++ (d)=number of bytes to move down
  bls REPLA2
  ldy 4,S Original I-Code ptr
@@ -1656,7 +1656,7 @@ REPLA2 ldd ICDPTR
  std I.ICLM Update I-Code limit
  std I.STBG Update bottom of free space ptr
  ldd G.VARS
- subd 0,S
+ subd  ,S
  std G.VARS Update free space count
  puls D,X,Y,U,PC Return
 
@@ -1698,10 +1698,10 @@ SCHLI0 pshs D
 SCHLI1 lbsr NXTONE Skip this line
 SCHLI2 cmpy I.ICLM At end of I-Code?
  bhs SCHLI8 ..Yes; return not found
- lda 0,Y
+ lda  ,Y
  cmpa #T.LREF Does this line begin with a line number?
  bne SCHLI1 ..no; skip it and try again
- ldd 0,S Get line reference
+ ldd  ,S Get line reference
  cmpd 1,Y is this the one we want?
  bhi SCHLI1 ..too small; get another line & repeat
 SCHLI9 puls D,PC Restore register and return (found)
@@ -1722,7 +1722,7 @@ SCHLI8 coma return Not found
 
 UNBIND pshs D,X,Y,U
  lbsr SHUFLE Shuffle procedure to top
- ldx 0,X Get address of procedure
+ ldx  ,X Get address of procedure
  stx I.APRC Set active procedure
  ldd P.PGMB,X Get I-Code area offset
  addd I.APRC
@@ -1736,7 +1736,7 @@ UNBIND pshs D,X,Y,U
  pshs D Save total size
  ldd G.WSPA
  addd G.WSPS Get ptr to top of memory
- subd 0,S Subtract size of tables
+ subd  ,S Subtract size of tables
  tfr D,U Make new top
  std I.DSCR
  ldd I.APRC Get ptr to procedure beginning
@@ -1763,7 +1763,7 @@ UNBIND pshs D,X,Y,U
  ldd -3,X Get entry count
  beq UNBIN3 Branch if none
 UNBIN1 pshs D Save count
- leau 0,X Save ptr to beginning
+ leau  ,X Save ptr to beginning
  leax 3,X Moveto beginning of name
 UNBIN2 ldb ,X+ is this the last byte
  bpl UNBIN2 ..no; try next
@@ -1771,7 +1771,7 @@ UNBIN2 ldb ,X+ is this the last byte
  cmpb #'$+$80
  bne UNBI25
  lda #S.STR
-UNBI25 sta 0,U Put in symbol table
+UNBI25 sta  ,U Put in symbol table
  puls D Get entry count
  subd #1 Any more?
  bgt UNBIN1 ..Yes; go do next
@@ -1839,7 +1839,7 @@ DOWN1 dec -1,Y
  rts
 
 * Routine Line Reference
-LINRF ldd 0,Y Get I-Code offset
+LINRF ldd  ,Y Get I-Code offset
  addd I.ICBG Add I-Code beginning
  tfr D,X
  ldd -2,X Get line number
@@ -1860,7 +1860,7 @@ NEXT1 clrb Clear type flag
  rts
 
 * Routine String
-STRNG lda 0,Y Get next byte
+STRNG lda  ,Y Get next byte
  cmpa #T.LBKT is there size given?
  bne SK1 No; return
 SK5 leay 5,Y Skip it
@@ -1874,7 +1874,7 @@ SKPST lda ,Y+ Get next byte of string literal
 
 * Routine Remrk
 *  Skip Remark Statement
-REMRK ldb 0,Y Get skip count
+REMRK ldb  ,Y Get skip count
  clra
  leay D,Y Skip it
  rts
@@ -1890,7 +1890,7 @@ SMPNXT lda #S.VAR Set definition
  sta -1,Y Put in i-code
 FNDVA1 ldx I.SYMT Get ptr to symbol table
  ldd -3,X Get entry count
- ldu 0,Y Get symbol table offset
+ ldu  ,Y Get symbol table offset
  bra FNDVA5
 FNDVA2 puls D Retrieve entry count
 FNDVA3 subd #1 At end of table?
@@ -1901,14 +1901,14 @@ FNDVA4 tst ,X+ End of name?
 FNDVA5 cmpu 1,X is it this one?
  bne FNDVA3 ..no; try next
  pshs D Save count
- lda 0,X Get type byte
+ lda  ,X Get type byte
  anda #S.DEFM Get definintion
  cmpa 2,S is it correct?
  bne FNDVA2 ..no; try next
- lda 0,X Get type byte
+ lda  ,X Get type byte
  anda #S.SHPM Get SHAPE
  bne FNDVA2 Branch if not simple
- lda 0,X Get type byte
+ lda  ,X Get type byte
  anda #S.STR Get type
  eora 3,S Test type flag
  bne FNDVA2 Branch if wrong type
@@ -1958,7 +1958,7 @@ SKIP9 puls D,X,U,PC Restore registers, return
 
 LREFS fcb T.GOTO,T.GOSB,T.LREF,$FF
 NXLNRF pshs D,X,U Save regs
- leau LREFS,PCR
+ leau >LREFS,PCR
  bra SKIP
 
 STMTS fcb T.BKSL
