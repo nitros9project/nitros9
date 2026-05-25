@@ -23,3 +23,4 @@ runb_6309: $(SCRIPT) $(SRCS)
 clean:
 	rm -f basic09_6809 runb_6809 basic09_6309 runb_6309
 	rm -rf .modular-build
+	rm *.list *.map
