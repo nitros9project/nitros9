@@ -203,7 +203,7 @@ EXEC30 std I.DATA Save it
  bra EXEC45
 
 EXEC40 std ,Y++ Clear link
-EXEC45 cmpy 0,S More to clear?
+EXEC45 cmpy  ,S More to clear?
  bcs EXEC40 bra if so
  leas 2,S Return scratch
  ldx I.APRC
@@ -267,7 +267,7 @@ STMLUP stx I.ICPT Set I-Code ptr to current line
  lda I.RUNM
 STML10 rora is Trace bit set?
  bcc STML20 bra if not
- leay 0,X Copy I-Code ptr
+ leay  ,X Copy I-Code ptr
  lbsr J$SKST Move copy to next statement
  clr I.OCNT Clear pretty print count
  lbsr J$PBLN Print line
@@ -294,7 +294,7 @@ STML30 cmpx I.ICLM At procedure end?
 * Local: D Destroyed
 * Global: I.ASTR
 
-ENDSTM ldb 0,X get next TOKEN
+ENDSTM ldb  ,X get next TOKEN
  lbsr EOLTST End of line?
  beq ENDS10 ..yes; don't print anything
  lbsr PRTSTM Print message if there is one
@@ -361,7 +361,7 @@ IFSTM jsr J$EVAL Evaluate expression
  tst 2,Y Test result
  beq GTOSTM bra if false
  leax 3,X Move I-Code ptr
- ldb 0,X Get TOKEN following
+ ldb  ,X Get TOKEN following
  cmpb #T.LRBD is it line ref?
  bne NULSTM Yes; do next statement
  leax 1,X Skip line refernce TOKEN
@@ -378,7 +378,7 @@ IFSTM jsr J$EVAL Evaluate expression
 * Local: D,CC Destroyed
 * Global: I.ICBG Used In I-Code ptr Calc.
 
-GTOSTM ldd 0,X Get destination offset
+GTOSTM ldd  ,X Get destination offset
 GTOST1 addd I.ICBG Make offset a ptr
  tfr D,X Move to I-Code ptr
  rts
@@ -522,7 +522,7 @@ NXTS10 ldb ,X+ Get TYPE of next
 *
 * Perform Initial Counter-Terminal Comparison
 
-FOR1IN ldd 0,X Get counter offset
+FOR1IN ldd  ,X Get counter offset
  leay D,U Make offset into ptr
  bra NXTIN1
 
@@ -531,7 +531,7 @@ FOR1IN ldd 0,X Get counter offset
 *
 * Same as FOR1IN
 
-FORNIN ldd 0,X Get counter offset
+FORNIN ldd  ,X Get counter offset
  leay D,U Make offset into ptr
  ldd 4,X Get increment offset
  lda D,U Test increment sign
@@ -545,13 +545,13 @@ FORNIN ldd 0,X Get counter offset
 
 NXT1IN ldd ,X Get counter offset
  leay D,U Get counter addr
- ldd 0,Y Get counter
+ ldd  ,Y Get counter
  addd #1 Increment
- std 0,Y Save it
+ std  ,Y Save it
 NXTIN1 ldd 2,X Get terminal offset
  leax 6,X Move icode ptr
  ldd D,U Get terminal
- cmpd 0,Y Compare to counter
+ cmpd  ,Y Compare to counter
  bge GTOSTM Loop if terminal >= counter
  leax 3,X Skip loop addr. & stmt terminator
  rts
@@ -560,19 +560,19 @@ NXTIN1 ldd 2,X Get terminal offset
 * Subroutine NXTINT
 *   NEXT; Integer Counter, Step N
 
-NXTINT ldd 0,X Get counter offset
+NXTINT ldd  ,X Get counter offset
  leay D,U Get counter addr
  ldd 4,X Get increment offset
  ldd D,U Get increment
  pshs A Save increment sign
- addd 0,Y Add counter
- std 0,Y Save it
+ addd  ,Y Add counter
+ std  ,Y Save it
  tst ,S+ Going up or down?
  bpl NXTIN1 bra if going up
 NXTIN2 ldd 2,X Get terminal offset
  leax 6,X
  ldd D,U Get terminal
- cmpd 0,Y Compare to counter
+ cmpd  ,Y Compare to counter
  ble GTOSTM Loop if terminal <= counter
  leax 3,X Skip loop addr. & stmt term.
  rts
@@ -618,7 +618,7 @@ NXT1RL ldy I.OPBG Init opstack ptr
  lbsr J$FADD Go do add
  bsr TRCTST Check for trace display
  ldd 1,Y Store new counter
- std 0,U
+ std  ,U
  ldd 3,Y
  std 2,U
  lda 5,Y
@@ -648,8 +648,8 @@ NXTRLA ldd B,X Get value offset
  tfr D,U
  leay -6,Y Make room on opstack
  lda #S.REAL Set TYPE
- ldb 0,U Move value
- std 0,Y
+ ldb  ,U Move value
+ std  ,Y
  ldd 1,U
  std 2,Y
  ldd 3,U
@@ -672,7 +672,7 @@ NXTRL ldy I.OPBG Init opstack ptr
  bsr TRCTST Check for trace display
  ldu SYMPTR Get counter address
  ldd 1,Y Store new counter
- std 0,U
+ std  ,U
  ldd 3,Y
  std 2,U
  lda 5,Y
@@ -795,7 +795,7 @@ ASGBRA bra ASGBYT
 * Local: D,CC Destroyed
 * Global: I.ASTR
 
-SBYTAS ldd 0,X get offset
+SBYTAS ldd  ,X get offset
  addd I.ASTR make offset into ptr
  pshs D save it
  leax 3,X move I-Code ptr
@@ -823,7 +823,7 @@ ASGBYT ldb 2,Y Get result
 
 * Same as SBYTAS, Except for Integer
 
-SINTAS ldd 0,X get offset
+SINTAS ldd  ,X get offset
  addd I.ASTR make offset into ptr
  pshs D save it
  leax 3,X move I-Code ptr
@@ -846,7 +846,7 @@ ASGINT ldd 1,Y Get result
 
 * Same as SBYTAS, Except for Real
 
-SRLAS ldd 0,X get offset
+SRLAS ldd  ,X get offset
  addd I.ASTR make offset into ptr
  pshs D save it
  leax 3,X move I-Code ptr
@@ -861,7 +861,7 @@ SRLAS ldd 0,X get offset
 
 ASGRL puls U Get variable addr
 ASGRL1 ldd 1,Y Get result msdb
- std 0,U
+ std  ,U
  ldd 3,Y
  std 2,U
  lda 5,Y
@@ -882,10 +882,10 @@ SBLAS equ SBYTAS
 
 * Same as SBYTAS
 
-SSTRAS ldd 0,X Get symbol table offset
+SSTRAS ldd  ,X Get symbol table offset
  addd I.DSCR Make offset into ptr
  tfr D,U
- ldd 0,U Get storage offset
+ ldd  ,U Get storage offset
  addd I.ASTR Make offset into ptr
  pshs D Save it
  ldd 2,U Get string max length
@@ -1003,7 +1003,7 @@ PASSTM lbsr PRTSTM Print something
 * Local: U,Y,D,CC Destroyed
 * Global: U.SBSP,U Updated
 
-GSBSTM ldd 0,X Get destination offset
+GSBSTM ldd  ,X Get destination offset
  leax 3,X Skip offset & statement end
 GSBST1 ldy I.ASTR Get storage address
  ldu U.SBSP,Y Get subroutine stack ptr
@@ -1052,11 +1052,11 @@ RETST1 ldu U.SBSP,Y Get subroutine stack ptr
 * Local: Y,D,CC Destroyed
 * Global: I.OPSP,I.ICBG
 
-ONSTM ldd 0,X Get tokens following ON
+ONSTM ldd  ,X Get tokens following ON
  cmpa #T.EROR is this ON ERROR?
  beq ONSTM2 Yes; go init error address
  jsr J$EVAL Get dispatch value
- ldd 0,X Get count (of line nums)
+ ldd  ,X Get count (of line nums)
  aslb COUNT*2
  rola
  aslb COUNT*4
@@ -1076,7 +1076,7 @@ ONSTM ldd 0,X Get tokens following ON
  addd #1 Add one for TOKEN
  ldd D,X Get I-Code offset of destination
  pshs D Save it
- ldb 0,X Get TOKEN following dispatch expression
+ ldb  ,X Get TOKEN following dispatch expression
  cmpb #T.GSBD is this ON .. GOSUB?
  puls D,X Get registers ready
  beq GSBST1 bra if ON .. GOSUB
@@ -1123,7 +1123,7 @@ OPNS10 lbcs EXCERR bra if error
  cmpb #S.INT is it integer?
  bne OPNS20 bra if not
  clr ,U+ Clear msb
-OPNS20 sta 0,U Set path number
+OPNS20 sta  ,U Set path number
  puls X,PC
 
 OPNSUB leax 1,X Skip '#'
@@ -1137,7 +1137,7 @@ OPNSUB leax 1,X Skip '#'
 OPNS30 ldu 3,S Get return address
  stx 3,S Save I-Code ptr
  ldx 1,Y Get pathlist ptr
- jmp 0,U
+ jmp  ,U
 
 ***************
 * Subroutine SEKSTM
@@ -1180,8 +1180,8 @@ INPSTM lda I.OPTH Set default path
 
 * Print PROMPT
  pshs X Save x
-INPS10 ldx 0,S Restore I-Code ptr
- ldb 0,X Get next TOKEN
+INPS10 ldx  ,S Restore I-Code ptr
+ ldb  ,X Get next TOKEN
  cmpb #T.SLIT is there prompt?
  bne INPS20 No; use default
  jsr J$EVAL Evaluate it
@@ -1219,7 +1219,7 @@ INPS50 ldb ,X+ Get next TOKEN
 INPS60 puls D,PC Clean stack & return
 
 INPVAR bsr ASGVAR Get variable address
- ldb 0,S Get TYPE
+ ldb  ,S Get TYPE
  addb #V$INBY Get code for input of TYPE
  ldy I.OPBG Init opstack ptr
  lbsr J$CVIO Go input
@@ -1227,7 +1227,7 @@ INPVAR bsr ASGVAR Get variable address
 * bra BADLIN fall through
 
 * Bad Input Handler
-BADLIN lda 0,S Get TYPE
+BADLIN lda  ,S Get TYPE
  cmpa #S.STR What type?
  bcs BADLI1 is simple; do normal clean up
  leas 2,S Remove extra bytes
@@ -1238,7 +1238,7 @@ BADLI1 leas 3,S Remove TYPE & storage
 * Call CNVIO to Output String
 STROUT pshs Y
  leas -6,S
- leay 0,S
+ leay  ,S
  stx 1,Y
  ldd I.IOBG Reset I/O buffer ptr
  std I.IOPT
@@ -1274,7 +1274,7 @@ ASGV20 ldd ,X++ Get string descr offset
  tfr D,U
  ldd 2,U Get string size
  std I.SIZE Save it
- ldd 0,U Get storage offset
+ ldd  ,U Get storage offset
  bra ASGV40
 ASGV30 ldd ,X++ Get storage offset
 ASGV40 addd I.ASTR Make offset into ptr
@@ -1287,7 +1287,7 @@ ASGV50 puls Y Get return address
  pshs U save address
  ldu I.SIZE get size
  pshs A,U save TYPE & address(size)
- jmp 0,Y Return
+ jmp  ,Y Return
 
 ***************
 * Subroutine SETCHL
@@ -1295,7 +1295,7 @@ ASGV50 puls Y Get return address
 
 * Same as PINPUT
 
-SETCHL ldb 0,X Get TOKEN
+SETCHL ldb  ,X Get TOKEN
  cmpb #T.CNUM is it path token?
  bne SETC10 bra if not
  leax 1,X Skip '#'
@@ -1313,7 +1313,7 @@ SETC10 sta I.CNCH Set path number
 
 * Same as INPSTM
 
-RDSTM ldb 0,X Get next TOKEN
+RDSTM ldb  ,X Get next TOKEN
  cmpb #T.CNUM is it channel number?
  bne RDST30
  bsr SETCHL Set path number
@@ -1345,10 +1345,10 @@ RDST40 bsr RDDATA Get a data value
 
 RDDATA lbsr ASGVAR Get variable address
  bsr EVLDAT Evaluate data value
- lda 0,S Get variable TYPE
+ lda  ,S Get variable TYPE
  bne RDDAT1 bra if not byte
  inca MAKE TYPE byte be integer
-RDDAT1 cmpa 0,Y Same as result type?
+RDDAT1 cmpa  ,Y Same as result type?
  lbeq ASGDIS Yes; dispatch to assignment routine
  cmpa #S.REAL is variable numeric?
  bcs RDDAT3 Integer; check for real result
@@ -1356,12 +1356,12 @@ RDDAT1 cmpa 0,Y Same as result type?
 RDDAT2 ldb #M$IET ERR - illegal expression TYPE
  bra RDDATErr
 
-RDDAT3 lda 0,Y Get result TYPE
+RDDAT3 lda  ,Y Get result TYPE
  cmpa #S.REAL is it real?
  bne RDDAT2 No; error
  lbsr J$FIX Fix it
  lbra ASGDIS Dispatch to assignment
-RDDAT4 cmpa 0,Y is result integer?
+RDDAT4 cmpa  ,Y is result integer?
  bcs RDDAT2 No; error
  lbsr J$FLOT Float it
  lbra ASGDIS Dispatch to assignment
@@ -1376,7 +1376,7 @@ RDDATErr lbra EXCERR
 EVLD10 jsr J$EVAL Evaluate it
  cmpb #T.COMA is there another value?
  beq EVLD20 Yes; done
- ldd 0,X Get offset of next data statement
+ ldd  ,X Get offset of next data statement
  addd I.ICBG Make ofset into ptr
  tfr D,X
 EVLD20 stx I.DATA Save data ptr
@@ -1413,7 +1413,7 @@ PRTST3 cmpb #T.COMA Comma?
  beq PRTST5
  leax -1,X Must be expression
  jsr J$EVAL Evaluate it
- ldb 0,Y Get TYPE
+ ldb  ,Y Get TYPE
  addb #V$PRBY Get output code
  bsr IODISP
  ldb -1,X Get last TOKEN
@@ -1480,7 +1480,7 @@ PUSN30 leay <PRTST6,PCR Exit CR/LF
 PUSN35 puls D,U Retrieve stack ptrs
  std I.STBG Reset string stack beginning
  stu I.OPBG Reset opstack beginning
- jmp 0,Y Exit properly
+ jmp  ,Y Exit properly
 
 ***************
 * Subroutine WRTSTM
@@ -1505,7 +1505,7 @@ WRTS10 clra use zero byte separator
  bcs IOError abort
 
 WRTS20 jsr J$EVAL Evaluate it
- ldb 0,Y Get TYPE
+ ldb  ,Y Get TYPE
  addb #V$PRBY Make code
  lbsr J$CVIO Output result
  bcs IOError bra if error
@@ -1532,7 +1532,7 @@ GETSTM bsr GPSET do get/put setup
 
 PUTSTM bsr GPSET do get/put setup
  OS9 I$Write Put record
-PUTSTM90 leax 0,U Copy I-Code ptr
+PUTSTM90 leax  ,U Copy I-Code ptr
  bcc GPSE99
 PUTErr lbra EXCERR bra if error
 
@@ -1542,7 +1542,7 @@ PUTErr lbra EXCERR bra if error
 
 GPSET lbsr SETCHL Set path number
  lbsr ASGVAR Get variable address
- leau 0,X Copy I-Code ptr
+ leau  ,X Copy I-Code ptr
  puls A Get TYPE
  cmpa #S.STR
  bcc GPSE10
@@ -1583,7 +1583,7 @@ RSTSTM ldb ,X+ Get next TOKEN
 RSTS10 addd I.ICBG Make offset into ptr
  std I.DATA Reset data ptr
  rts
-RSTS20 ldd 0,X Get I-Code offset
+RSTS20 ldd  ,X Get I-Code offset
  addd #1 Skip DATA TOKEN
  leax 3,X Skip line reference
  bra RSTS10
@@ -1656,7 +1656,7 @@ SYSSTM jsr J$EVAL Get module name
  bcs EXCERR
  pshs A save child's process ID
 SYSSTM10 OS9 F$Wait
- cmpa 0,S proper child dead?
+ cmpa  ,S proper child dead?
  bne SYSSTM10 ..No; back to sleep
  leas 1,S
  tstb
@@ -1678,8 +1678,8 @@ SYSSUB ldx I.STSP Get ptr to end of string
  lda #V$CR Insert carriage return
  sta -1,X
  tfr X,D
- leax SHELST,PCR Shell ptr
- leau 0,Y param ptr
+ leax >SHELST,PCR Shell ptr
+ leau  ,Y param ptr
  pshs Y
  subd ,S++
  tfr D,Y parameter size
@@ -1729,7 +1729,7 @@ DEBUG equ *
 
  ifne INCLUDED&EDITOR
  ldx I.ICPT Get current line ptr
- leay 0,X Copy I-Code ptr
+ leay  ,X Copy I-Code ptr
  lbsr J$SKST Find next statement
  clr I.OCNT Clear pretty print count
  lbsr J$PBLN Print line
@@ -1806,9 +1806,9 @@ DIREXC exg X,PC
 * Subroutine SKPSTM
 *   Skip Statement; for Declarative Statements
 
-SKPSTM leay 0,X Copy I-Code ptr
+SKPSTM leay  ,X Copy I-Code ptr
  lbsr J$SKST Move copy to next statement
- leax 0,Y Update I-Code ptr
+ leax  ,Y Update I-Code ptr
  rts
 
 ***************
@@ -1881,21 +1881,21 @@ RUNS05 lda ,U+ copy proc name
  bne RUNS05 repeat until end of name
  lda ,--Y
 RUNS07 ora #$80 set high order bit
- sta 0,Y
+ sta  ,Y
  ldy I.STSP ptr to name
  lbsr J$SPRC Find procedure
  bcs BADPRC bra if not found
- leau 0,X Copy procedure entry ptr
-RUNS10 ldd 0,U Get procedure ptr
+ leau  ,X Copy procedure entry ptr
+RUNS10 ldd  ,U Get procedure ptr
  bne RUNS20 bra if set
  ldy SYMPTR Get symbol table ptr
  leay 3,Y Get name ptr
  lbsr J$SPRC Find procedure
  bcs BADPRC bra if not found
- ldd 0,X Get procedure ptr
- std 0,U Save for future use
-RUNS20 ldx 0,S Retrieve I-Code ptr
- std 0,S Save procedure ptr
+ ldd  ,X Get procedure ptr
+ std  ,U Save for future use
+RUNS20 ldx  ,S Retrieve I-Code ptr
+ std  ,S Save procedure ptr
  ldu I.ASTR Get storage base
  lda I.RUNM Get current run mode
  sta U.RUNM,U Save it
@@ -1921,7 +1921,7 @@ RUNERR lbra EXCERR
 RUNS30 ldd U.S,U Get data stack ptr
  pshs D Save it
  sts U.S,U Mark current stack
- leas 0,Y Get parameter ptr
+ leas  ,Y Get parameter ptr
  ldd I.PRLM Get number of parameters
  pshs Y Save parameter ptr
  subd ,S++ Get parameter area size
@@ -1982,9 +1982,9 @@ RPARAM pshs U Save u
  pshs A,X Save count & I-Code ptr
  cmpb #T.LPAR Are there parameters?
  bne RPAR50 No; done
- leay 0,S Copy ptr to parameter count
+ leay  ,S Copy ptr to parameter count
 RPAR10 pshs Y Save count ptr
- ldb 0,X Get next TOKEN
+ ldb  ,X Get next TOKEN
  cmpb #T.CXAS is it variable?
  beq RPAR25 Yes; handle it
  jsr J$EVAL Get expression result
@@ -1995,7 +1995,7 @@ RPAR10 pshs Y Save count ptr
  beq RPAR20 Yes; handle it
  ldd 1,Y Get result value
  std 4,Y Move to back of stack
- lda 0,Y Get TYPE
+ lda  ,Y Get TYPE
 RPAR15 ldb #6 Find ptr to value
  leau <ALCSZT,PCR
  subb A,U Get 6-size
@@ -2013,7 +2013,7 @@ RPAR20 ldu 1,Y Get ptr to string
 RPAR25 leax 1,X Skip complex TOKEN
  jsr J$EVAL Call eval
 RPAR30 puls Y Retrieve count ptr
- inc 0,Y Count parameter
+ inc  ,Y Count parameter
  cmpa #S.STR need to save size?
  bcs *+6 branch if not
  pshs U save address
@@ -2037,9 +2037,9 @@ RPAR40 ldb B,X Get size
 RPAR45 std ,--U Push size
  puls D Get ptr to runtime storage
  std ,--U Push it
- dec 0,Y More parameters?
+ dec  ,Y More parameters?
  bne RPAR35 Yes; go to it
- leay 0,U
+ leay  ,U
  bra RPAR55
 RPAR50 ldy I.OPBG Get top of free memory
  sty I.PRLM Set parameter limit

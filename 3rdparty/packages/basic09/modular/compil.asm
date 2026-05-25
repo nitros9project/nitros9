@@ -42,20 +42,19 @@ J$LKTK jsr M.COMAND
 
 Z$OPTR equ %00001000 Operator token flag
 
- org 0
-VARIAB rmb 1 Namtok=variable ref.
-STMBEG rmb 1 Symtyp=statement beginning
-STMEND rmb 1 Symtyp=statement end
-RESRVD rmb 1 Symtyp=reserved
-FNCREF rmb 1 Symtyp=function reference
-OPRTR rmb 1  SYMTYP=operator
-LITRAL rmb 1 Symtyp=literal
-PROCDR rmb 1 Symtyp=procedure reference
-S.ASGN rmb 1 Symtyp=assign
-EQULTY rmb 1 Symtyp=equality
-RELATN rmb 1 Symtyp=relational
-CNLREF rmb 1 Symtyp=channel ref
-SEPRTR rmb 1 Symtyp=separator
+VARIAB equ 0  Namtok=variable ref.
+STMBEG equ 1  Symtyp=statement beginning
+STMEND equ 2  Symtyp=statement end
+RESRVD equ 3  Symtyp=reserved
+FNCREF equ 4  Symtyp=function reference
+OPRTR  equ 5  SYMTYP=operator
+LITRAL equ 6  Symtyp=literal
+PROCDR equ 7  Symtyp=procedure reference
+S.ASGN equ 8  Symtyp=assign
+EQULTY equ 9  Symtyp=equality
+RELATN equ 10 Symtyp=relational
+CNLREF equ 11 Symtyp=channel ref
+SEPRTR equ 12 Symtyp=separator
 
  ttl MAJOR Tables
  pag
@@ -186,8 +185,8 @@ EREVRB lda M$EVRB ERROR - excessive verbage
 ERRDIE pshs A save ERROR code
  ldx SRCBUF
  lda #V$CR
-ERRO05 asl 0,X
- lsr 0,X strip any high order bits set
+ERRO05 asl  ,X
+ lsr  ,X strip any high order bits set
  cmpa ,X+ end of line?
  bne ERRO05 ..No; loop until it is
  ldx SRCBUF buffer addr
@@ -211,7 +210,7 @@ ERRO05 asl 0,X
  lda #V$SPAC
  ldx I.IOBG
 ERRO07 sta ,X+ put spaces in i/o buffer
- dec 0,S
+ dec  ,S
  bpl ERRO07 until ERROR addr is reached
  ldd #ERRCHR*256+V$CR
  std -1,X
@@ -504,7 +503,7 @@ ERMGTO lda #M$MGTO ERROR - missing GOTO
 
 ON2 bsr CMPRA9 (OUTCOD) put COMMA in I-Code
  lda #T.LREF
-ON3 inc [0,S] Increment count
+ON3 inc [,S] Increment count
  bsr GOTO1 get line reference
  lbsr COMMA is it followed by a comma?
  beq ON2 ..Yes; loop until it isn't
@@ -716,8 +715,8 @@ OPEN20 cmpa ,X++ mode token?
  bhi OPEN20 ..maybe, keep looking
  bne ERIMOD ..No; error: illegal mode
  ldb -1,X get mode value
- orb 0,S update T.MODE post-byte
- stb 0,S
+ orb  ,S update T.MODE post-byte
+ stb  ,S
  bsr STOP get next token
  cmpa #T.PLUS more modes?
  beq OPEN10 ..Yes; repeat
@@ -774,7 +773,7 @@ REM ldx ICDPTR
  lbsr SKIPSP Skip spaces
  clra
 REM1 lbsr OUTCOD put next char in I-Code
- inc 0,X Update I-Code byte count
+ inc  ,X Update I-Code byte count
  lda ,Y+ get (next) src char  ..{this is  entry pt}
  cmpa #V$CR is it a carriage return?
  bne REM1 ..No; loop until it is
@@ -876,7 +875,7 @@ OPTLRF lbsr SKIPSP (entry point for optional line reference)
 LINREF bsr IFFAL1 (OUTCOD) put line ref token in I-Code
  lbsr GETNUM
  beq ERINUM Illegal number (real literal)
- ldd 0,X
+ ldd  ,X
  lbgt PRSNA8 Go put line number in I-Code; return
 
 ERINUM lda #M$INUM Error: illegal number
@@ -1030,7 +1029,7 @@ PREFIX cmpa #T.NOT is it a NOT token?
  beq PREFX2 ..Yes; process as a polish operator
  cmpa #T.MINS is it a '-' token?
  bne COMMA9 ..No; return
- lda 0,Y get next source char
+ lda  ,Y get next source char
  lbsr DECDIG is it a digit?
  bcc PREFX3 ..Yes; good - go get number
  cmpa #'. is it a period (fractional number)?
@@ -1199,7 +1198,7 @@ FUNREF lbsr STATE8 Remove (function ref) token from I-Code
  lda TOKEN get token
  pshs A save function code
  bsr FUNRE9 (STOP) get next token
- ldb 0,S
+ ldb  ,S
  lbsr J$LKTK find function ref token in Decompiler tbl
  leax <FUNRE1,PCR
  pshs X push Return addr
@@ -1316,7 +1315,7 @@ INSYM ldd ICDPTR
  lbne PRSNAM ..Yes; parse name & return
  endc
 
- lda 0,Y char=[SRCPTR]
+ lda  ,Y char=[SRCPTR]
  lbsr DECDIG is the next symbol a number?
  bcc PRSNUM ..Yes; parse number & return
 
@@ -1324,7 +1323,7 @@ INSYM ldd ICDPTR
  lda #$80 match if high order bit clear
  lbsr SEARC0 ..and search for a valid symbol
  beq ERBSYM Error: bad symbol
- ldb 0,X get address of routine - LAUNCH pad
+ ldb  ,X get address of routine - LAUNCH pad
  leau <LAUNCH,PCR get LAUNCH pad address
  jmp B,U Go process symbol found
 
@@ -1352,7 +1351,7 @@ INSYM9 stb SYMTYP save SYMTYP
 * Returns: All
 * Destroys: A,CC
 
-PRSPER lda 0,Y get char that follows period
+PRSPER lda  ,Y get char that follows period
  lbsr DECDIG is it a decimal digit?
  bcs INSYM2 ..No; go put record separater in I-Code
  leay -1,Y Point to decimal point
@@ -1379,7 +1378,7 @@ NUMVA1 bsr PRSST9 (OUTCOD) put it in I-Code
  rts DONE; return
 
 NUMVA3 ldd #T.ILIT*256+2 get integer literal & size
- tst 0,X is this really a byte literal?
+ tst  ,X is this really a byte literal?
  bne NUMVA0 ..No; go put integer in I-Code
 
  ldd #T.BLIT*256+1 get byte lit token & size
@@ -1399,7 +1398,7 @@ PRSHEX leay -1,Y Back up to '$'
 
 ***************
 GETNUM lbsr SKIPSP skip any preceeding spaces
- leax 0,Y
+ leax  ,Y
  ldy I.OPSP
  lbsr J$ASNM Go get numeric literal
  exg X,Y
@@ -1453,7 +1452,7 @@ PRSNAM ldx KEYWORDS get keyword tbl ptr
  lbsr SCHALL .. and search for a keyword (upper or lower case)
  beq PRSNA2 not found; go look for variable name
  stx SYMPT save symbol ptr
- ldd 0,X get SYMTYP & token from table
+ ldd  ,X get SYMTYP & token from table
 PRSNA0 lbra INSYM9 save token,SYMTYP; put token in I-Code; exit
 
 PRSNA2 tst DEBUGGER Are variable references permitted?
@@ -1636,7 +1635,7 @@ ADDSYM ldx I.SYMT get symbol table address
 ADDSY1 lda ,X+
  sta ,Y+ Move name string into table
  bpl ADDSY1
- leay 0,X Update source ptr
+ leay  ,X Update source ptr
  puls X,PC get symbol tbl ptr and return
 
 ***************
@@ -1654,17 +1653,17 @@ ADDSY1 lda ,X+
 
 EXPDSC pshs D,U Save regs
  ldd G.VARS get count of free memory
- subd 0,S is there more than (size)?
+ subd  ,S is there more than (size)?
  bhs EXPDS1 ..Yes; good-go do move
  lda #M$MFUL Error='memory full'
  lbra ERRDIE Exit through ERROR routine
 EXPDS1 std G.VARS Update free memory count
  ldd I.DSCR (old) description tbl addr
- subd 0,S Minus size
+ subd  ,S Minus size
  std I.DSCR Save (new) address
  ldu LNMTBL Move from
  ldd LNMTBL
- subd 0,S Minus size
+ subd  ,S Minus size
  std LNMTBL Equals new destination
  tfr D,Y Move to
  ldd I.DSCR
@@ -1674,7 +1673,7 @@ EXPDS1 std G.VARS Update free memory count
  ldd I.DSCS
  addd ,S++ Update descr tbl size
  std I.DSCS Save it
- leax 0,U Save dsctbl end for caller
+ leax  ,U Save dsctbl end for caller
  puls U,PC Restore reg & return
 
 ***************
@@ -1692,16 +1691,16 @@ EXPDS1 std G.VARS Update free memory count
 
 EXPSYM pshs D,U Save regs
  bsr EXPDSC Allocate storage by moving dsctbl down
- subd 0,S Fix size of desc table
+ subd  ,S Fix size of desc table
  std I.DSCS Save it
- leau 0,X Move FROM address for call to MOVDWN
+ leau  ,X Move FROM address for call to MOVDWN
  leax 3,Y Skip entry count & skip count
  stx I.SYMT Save new symbol table addr
  ldd I.SYMS get symbol table size
  bsr MOVDWN Move symbol table down
  addd ,S++ Update symbol table size
  std I.SYMS Save it
- leax 0,U Save symtbl end for caller
+ leax  ,U Save symtbl end for caller
  puls U,PC Restore reg and return
  endc
 
@@ -1734,7 +1733,7 @@ MOVDW1 bitb #3 count divisible by four?
 MOVDW2 pulu D,X move data 4-bytes at a time
  std ,Y++
  stx ,Y++
-MOVDW3 cmpu 0,S
+MOVDW3 cmpu  ,S
  blo MOVDW2
 MOVDW9 clr ,S++ discard temp, clear carry
  puls D,X,PC Restore count & return
@@ -1773,7 +1772,7 @@ MOVDW9 clr ,S++ discard temp, clear carry
 
 SCHALL lda #$20 Entry point to match upper and lower case
 SEARC0 pshs A,X,Y,U Save regs
-*                       0,S = Lower Case Conversion
+*                        ,S = Lower Case Conversion
 *                       1,S = Tblptr
 *                       3,S = Trgptr
 
@@ -1788,7 +1787,7 @@ SEARC1 stx 1,S save current table ptr
 SEARC3 lda ,X+ get next table char
 SEARC4 eora ,Y+ is it equal to the next source char?
  beq SEARC6 ..Yes; go check for end of string
- cmpa 0,S Check for lower case match
+ cmpa  ,S Check for lower case match
  beq SEARC6
  leax -1,X
 SEARC5 lda ,X+ get (next) table char
