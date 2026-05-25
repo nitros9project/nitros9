@@ -1043,6 +1043,176 @@ RLMUL bsr XRLMUL execute Real Multiply
  lbcs EVLERR
  rts
 
+ ifne H6309
+XRLMUL lda TOSMN1,Y          is tos=0
+ bpl FPZERO63             if so dont multiply
+ lda NOSMN1,Y             how about nos?
+ bmi FPML63_E9            if no go do it
+FPZERO63 clrd
+ clrw
+ stq NOSEXP,Y
+ sta NOSMN4,Y
+ leay OPSIZE,Y
+ rts
+FPZERO clrd
+ clrw
+ stq NOSEXP,Y
+ sta NOSMN4,Y
+ leay OPSIZE,Y
+ puls X,PC
+FPML63_E9 lda TOSEXP,Y         Get tos expo.
+ adda NOSEXP,Y            Add nos expo.
+ bvc FPML63_F6            bra if no overflow
+MULOVRF63 bpl FPZERO63
+ comb
+ ldb #M$FPOV
+ rts
+FPML63_F6 sta NOSEXP,Y         Save exponent
+ ldb NOSMN4,Y
+ eorb TOSMN4,Y
+ andb #$01
+ stb TOSTYP,Y
+ lda NOSMN4,Y
+ anda #$FE
+ sta NOSMN4,Y
+ ldb TOSMN4,Y
+ andb #$FE
+ stb TOSMN4,Y
+ mul
+ clre
+ clr <I.PRHI
+ tfr a,f
+ lda NOSMN4,Y
+ ldb TOSMN3,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN3,Y
+ ldb TOSMN4,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ tfr e,f
+ lde <I.PRHI
+ clr <I.PRHI
+ lda NOSMN4,Y
+ ldb TOSMN2,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN3,Y
+ ldb TOSMN3,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN2,Y
+ ldb TOSMN4,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ tfr e,f
+ lde <I.PRHI
+ clr <I.PRHI
+ lda NOSMN4,Y
+ ldb TOSMN1,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN3,Y
+ ldb TOSMN2,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN2,Y
+ ldb TOSMN3,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN1,Y
+ ldb TOSMN4,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ stf NOSMN4,Y
+ tfr e,f
+ lde <I.PRHI
+ clr <I.PRHI
+ lda NOSMN3,Y
+ ldb TOSMN1,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN2,Y
+ ldb TOSMN2,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN1,Y
+ ldb TOSMN3,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ stf NOSMN3,Y
+ tfr e,f
+ lde <I.PRHI
+ clr <I.PRHI
+ lda NOSMN2,Y
+ ldb TOSMN1,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN1,Y
+ ldb TOSMN2,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN1,Y
+ ldb TOSMN1,Y
+ mul
+ tfr w,u
+ tfr e,f
+ lde <I.PRHI
+ exg d,u
+ addr u,w
+ bmi FPML63_02
+ asl NOSMN4,Y
+ rol NOSMN3,Y
+ rolb
+ rolw
+ dec NOSEXP,Y
+ bvs FPML63_1B
+FPML63_02 tfr b,a
+ ldb NOSMN3,Y
+ exg d,w
+ addw #1
+ adcd #0
+ bne FPML63_1B
+ rora
+ inc NOSEXP,Y
+FPML63_1B exg d,w
+ lsrb
+ lslb
+ orb TOSTYP,Y
+ std NOSMN3,Y
+ stw NOSMN1,Y
+ leay OPSIZE,Y
+ clrb
+ rts
+ else
 XRLMUL pshs X Save x
  lda TOSMN1,Y is tos=0
  bpl FPZERO if so we dont multiply
@@ -1254,6 +1424,7 @@ FPMUL9 orb TOSTYP,Y Put in sign bit
  leas 3,S return scratch
  clrb return carry clear
  puls X,PC exit
+ endc
 
  pag
 ***************
@@ -1274,7 +1445,116 @@ RLDIV bsr XRLDIV execute Divide
 RLDIV99 rts
 
 * Check For Exceptions
-XRLDIV comb 
+ ifne H6309
+XRLDIV comb
+ ldb #M$ZDIV
+ tst TOSMN1,Y
+ beq RLDIV99
+ tst NOSMN1,Y
+ lbeq FPZERO63
+ lda NOSEXP,Y
+ suba TOSEXP,Y
+ lbvs MULOVRF63
+ sta NOSEXP,Y
+ lda #$21
+ ldb TOSMN4,Y
+ eorb NOSMN4,Y
+ andb #1
+ std TOSTYP,Y
+ ldq TOSMN1,Y
+ lsrd
+ rorw
+ stq TOSMN1,Y
+ ldq NOSMN1,Y
+ lsrd
+ rorw
+ clr NOSMN4,Y
+FPDV63_6F subw TOSMN3,Y
+ sbcd TOSMN1,Y
+ beq FPDV63_AB
+ bmi FPDV63_A7
+FPDV63_7E orcc #1
+FPDV63_80 dec TOSTYP,Y
+ beq FPDV63_F8
+ rol NOSMN4,Y
+ rol NOSMN3,Y
+ rol NOSMN2,Y
+ rol NOSMN1,Y
+ andcc #$FE
+ rolw
+ rold
+ bcc FPDV63_6F
+ addw TOSMN3,Y
+ adcd TOSMN1,Y
+ beq FPDV63_AB
+ bpl FPDV63_7E
+FPDV63_A7 andcc #$FE
+ bra FPDV63_80
+FPDV63_AB tstw
+ bne FPDV63_7E
+ ldb TOSTYP,Y
+ decb
+ subb #$10
+ blt FPDV63_CD
+ subb #$08
+ blt FPDV63_C2
+ stb TOSTYP,Y
+ lda NOSMN4,Y
+ ldb #$80
+ andcc #$FE
+ bra FPDV63_EB
+FPDV63_C2 addb #$08
+ stb TOSTYP,Y
+ ldw #$8000
+ ldd NOSMN3,Y
+ andcc #$FE
+ bra FPDV63_EB
+FPDV63_CD addb #$08
+ blt FPDV63_DB
+ stb TOSTYP,Y
+ ldq NOSMN2,Y
+ ldf #$80
+ andcc #$FE
+ bra FPDV63_EB
+FPDV63_DB addb #$07
+ stb TOSTYP,Y
+ ldq NOSMN1,Y
+ orcc #$01
+FPDV63_E5 rolw
+ rold
+FPDV63_EB dec TOSTYP,Y
+ bpl FPDV63_E5
+ tsta
+ bra FPDV63_FC
+FPDV63_F8 ldq NOSMN1,Y
+FPDV63_FC bmi FPDV63_0C
+ rolw
+ rold
+ dec NOSEXP,Y
+ lbvs FPZERO63
+FPDV63_0C addw #1
+ adcd #0
+ bcc FPDV63_21
+ rora
+ inc NOSEXP,Y
+ lbvs FPZERO63
+FPDV63_21 std NOSMN1,Y
+ tfr w,d
+ lsrb
+ lslb
+ orb TOSEXP,Y
+ std NOSMN3,Y
+ inc NOSEXP,Y
+ lbvs MULOVRF63
+ leay OPSIZE,Y
+ clrb
+ rts
+FPDV95 leay OPSIZE,Y
+ clrb
+ puls X,PC
+ else
+* Check For Exceptions
+XRLDIV comb
  ldb #M$ZDIV Zero divisor error
  tst TOSMN1,Y Test divisor
  beq RLDIV99 error
@@ -1439,6 +1719,7 @@ FPDV90 std NOSMN3,Y
 FPDV95 leay OPSIZE,Y
  clrb return carry clear
  puls X,PC
+ endc
 
 ***************
 * Subroutine RLEXP
