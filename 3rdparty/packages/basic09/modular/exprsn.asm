@@ -323,28 +323,28 @@ VARR02 ldd ,X++ Get symbol table offset
  addd I.SYMT Add base to offset
  std SYMPTR Set symbol table ptr
  ldu SYMPTR Get symbol table ptr
- lda 0,U Get TYPE byte
+ lda  ,U Get TYPE byte
  anda #S.DEFM Get definition
  sta DEFINT Set definition
  eora #S.PARM Get flag (0=param; non 0=var)
  sta DEFNAS Set flag
- lda 0,U Get TYPE byte
+ lda  ,U Get TYPE byte
  anda #S.TYPM Get TYPE
  ldb -3,X Get TOKEN
  subb TOKEN Less base gives subscript count
  pshs D Save TYPE & subscript count
- lda 0,U Get TYPE byte
+ lda  ,U Get TYPE byte
  anda #S.SHPM Get SHAPE
  lbeq VARR14 bra if simple
  ldd 1,U Get array description offset
  addd I.DSCR Add base to offset
  tfr D,U Copy array description ptr
- ldd 0,U Get array base offset
+ ldd  ,U Get array base offset
  std I.OFFS Save it
  lda 1,S Get subscript count
  bne VARR03 bra if count > 0
  lda #S.RCRD Treat unsubscripted array as record
- sta 0,S return TYPE
+ sta  ,S return TYPE
  ldd 2,U Get array total size
  std I.SIZE Save it
  clra
@@ -357,7 +357,7 @@ VARR03 leay -OPSIZE,Y Get scratch on opstack
  leau 4,U Get dimension ptr
  bra VARR05
 
-VARR04 ldd 0,U Get dimension
+VARR04 ldd  ,U Get dimension
  std 1,Y Put in opstack
  lbsr INMUL Get (partial+(subscript-base))*dimension
 VARR05 ldd 7,Y Get subscript
@@ -371,14 +371,14 @@ VARR5A addd 1,Y Get partial+(subscript-base)
  std 7,Y Move result to next-on-stack
  dec 1,S Count subscript
  bne VARR04 bra if more
- lda 0,S Get TYPE
+ lda  ,S Get TYPE
  beq VARR06 bra if byte
  cmpa #S.REAL
  bcs VARR07 bra if integer
  beq VARR09 bra if real
  cmpa #S.STR
  bcs VARR06 bra if boolean
- ldd 0,U Get record size
+ ldd  ,U Get record size
  std I.SIZE Save it
  bra VARR10
 VARR06 ldd 7,Y Get element offset
@@ -404,7 +404,7 @@ VARR11 tst DEFNAS parameter?
  puls D Retrieve element offset
  cmpd 2,U Still in parameter bounds?
  bhi PRMERR ..No
- addd 0,U Add array base ptr to element offset
+ addd  ,U Add array base ptr to element offset
  bra VARR17
 VARR12 addd I.OFFS Add array base offset to element offset
  tst I.VRFL field ref?
@@ -412,7 +412,7 @@ VARR12 addd I.OFFS Add array base offset to element offset
 VARR13 addd 1,Y Add record ptr to field element offset
  leay OPSIZE,Y Clean opstack
  bra VARR17
-VARR14 lda 0,S Get TYPE
+VARR14 lda  ,S Get TYPE
  cmpa #S.STR string?
  ldd 1,U Get symbol table entry
  bcs VARR15 bra if simple TYPE (byte,int,real,bool)
@@ -420,7 +420,7 @@ VARR14 lda 0,S Get TYPE
  tfr D,U Copy description ptr
  ldd 2,U Get record size
  std I.SIZE Save it
- ldd 0,U Get record offset
+ ldd  ,U Get record offset
 VARR15 tst I.VRFL field ref?
  beq VARR13 bra if so
  addd I.ASTR Add storage base to offset
@@ -434,7 +434,7 @@ VARR15 tst I.VRFL field ref?
  bcs VAR15A bra if so
  ldd 2,U Get actual size
  std I.SIZE Set size
-VAR15A ldu 0,U Get parameter ptr
+VAR15A ldu  ,U Get parameter ptr
  bra VARR18
 VARR16 addd I.ASTR Add storage base ptr to offset
 VARR17 tfr D,U Copy storage ptr
@@ -491,12 +491,12 @@ SVBYTE ldd ,X++ Get u relative addr
 * Local: D,CC Destroyed
 * Global: Variable Added to Opstack
 
-BYTVAR ldb 0,U Get value
+BYTVAR ldb  ,U Get value
  clra clear Msb
  leay -OPSIZE,Y make room on opstack
  std 1,Y store operand in new tos
  lda #S.INT push as integer
- sta 0,Y set TYPE
+ sta  ,Y set TYPE
  rts
 
 ***************
@@ -530,11 +530,11 @@ SVINT ldd ,X++ Get u relative addr
 
 * Same as BYTVAR, Except For Integer
 
-INTVAR ldd 0,U Get value
+INTVAR ldd  ,U Get value
  leay -OPSIZE,Y make room on opstack
  std 1,Y store operand in new tos
  lda #S.INT push integer
- sta 0,Y set TYPE
+ sta  ,Y set TYPE
  rts
 
  ttl INTEGER/BYTE Aritmetic routines
@@ -760,7 +760,7 @@ SVREAL ldd ,X++ Get storage offset
 
 RLVAR leay -OPSIZE,Y Make room on opstack
  lda #S.REAL Set TYPE
- ldb 0,U Get exponent
+ ldb  ,U Get exponent
  std TOSTYP,Y Move to opstack
  ldd 1,U
  std 2,Y
@@ -934,7 +934,7 @@ ADJEX1 adda #8
  pshs A Save count
  ldd 2,X Get lsdb
 ADJEX2 ldx #0 Get msdb
- tst 0,S Test count
+ tst  ,S Test count
  beq ADJEX7 bra if done
  bra ADJEX5 Go finish
 ADJEX3 adda #8
@@ -943,7 +943,7 @@ ADJEX3 adda #8
  clra GET Msdb
  ldb 2,X
  ldx 3,X Get lsdb
- tst 0,S Test count
+ tst  ,S Test count
  bne ADJEX6 bra if not done
  exg D,X Msdb to x
  bra ADJEX7 Go clean up
@@ -958,7 +958,7 @@ ADJEX6 lsra SHIFT Msdb
  exg D,X Msdb to x
  rora SHIFT Lsdb
  rorb
- dec 0,S Up shift count
+ dec  ,S Up shift count
  bne ADJEX5 bra if not done
 ADJEX7 leas 1,S Dump count
  rts
@@ -1023,18 +1023,18 @@ FPMUL2 sta NOSEXP,Y Save exponent
  addd 1,S
  std 1,S
  bcc *+4
- inc 0,S
+ inc  ,S
  lda NOSMN3,Y
  ldb TOSMN4,Y
  mul
  addd 1,S
  std 1,S
  bcc *+4
- inc 0,S
+ inc  ,S
  ldb 2,S
- ldx 0,S
+ ldx  ,S
  stx 1,S
- clr 0,S
+ clr  ,S
 
 * 3Rd Group Partal Products
  lda NOSMN4,Y
@@ -1043,25 +1043,25 @@ FPMUL2 sta NOSEXP,Y Save exponent
  addd 1,S
  std 1,S
  bcc *+4
- inc 0,S
+ inc  ,S
  lda NOSMN3,Y
  ldb TOSMN3,Y
  mul
  addd 1,S
  std 1,S
  bcc *+4
- inc 0,S
+ inc  ,S
  lda NOSMN2,Y
  ldb TOSMN4,Y
  mul
  addd 1,S
  std 1,S
  bcc *+4
- inc 0,S
+ inc  ,S
  ldb 2,S
- ldx 0,S
+ ldx  ,S
  stx 1,S
- clr 0,S
+ clr  ,S
 
 * 4Th Group Partial Products
  lda NOSMN4,Y
@@ -1070,32 +1070,32 @@ FPMUL2 sta NOSEXP,Y Save exponent
  addd 1,S
  std 1,S
  bcc *+4
- inc 0,S
+ inc  ,S
  lda NOSMN3,Y
  ldb TOSMN2,Y
  mul
  addd 1,S
  std 1,S
  bcc *+4
- inc 0,S
+ inc  ,S
  lda NOSMN2,Y
  ldb TOSMN3,Y
  mul
  addd 1,S
  std 1,S
  bcc *+4
- inc 0,S
+ inc  ,S
  lda NOSMN1,Y
  ldb TOSMN4,Y
  mul
  addd 1,S
  std 1,S
  bcc *+4
- inc 0,S
+ inc  ,S
  ldb 2,S
- ldx 0,S
+ ldx  ,S
  stx 1,S
- clr 0,S
+ clr  ,S
  stb NOSMN4,Y
 
 * 5Th Group Partial Products
@@ -1105,25 +1105,25 @@ FPMUL2 sta NOSEXP,Y Save exponent
  addd 1,S
  std 1,S
  bcc *+4
- inc 0,S
+ inc  ,S
  lda NOSMN2,Y
  ldb TOSMN2,Y
  mul
  addd 1,S
  std 1,S
  bcc *+4
- inc 0,S
+ inc  ,S
  lda NOSMN1,Y
  ldb TOSMN3,Y
  mul
  addd 1,S
  std 1,S
  bcc *+4
- inc 0,S
+ inc  ,S
  ldb 2,S
- ldx 0,S
+ ldx  ,S
  stx 1,S
- clr 0,S
+ clr  ,S
  stb NOSMN3,Y
 
 * 6Th Group Partial Products
@@ -1133,20 +1133,20 @@ FPMUL2 sta NOSEXP,Y Save exponent
  addd 1,S
  std 1,S
  bcc *+4
- inc 0,S
+ inc  ,S
  lda NOSMN1,Y
  ldb TOSMN2,Y
  mul
  addd 1,S
  std 1,S
  bcc *+4
- inc 0,S
+ inc  ,S
 
 * Final Partial Product
  lda NOSMN1,Y
  ldb TOSMN1,Y
  mul
- addd 0,S Add partial
+ addd  ,S Add partial
 
 * See if Result Requires Normalization
  bmi FPMUL6 Bra if no norm required
@@ -1283,7 +1283,7 @@ FPDV35 addd TOSMN1,Y Add msb
 FPDV40 andcc #^carry Clear carry
  bra FPDV30
 * Check For Premature Completion
-FPDV45 leax 0,X Done?
+FPDV45 leax  ,X Done?
  bne FPDV25 ..No
 
 * Check Shifting Possibilities
@@ -1425,12 +1425,12 @@ SVBOOL ldd ,X++ Get storage offset
 
 * Same as BYTVAR, Except For Boolean
 
-BLVAR ldb 0,U Get value
+BLVAR ldb  ,U Get value
  clra
  leay -OPSIZE,Y make room on opstack
  std 1,Y store operand in new tos
  lda #S.BOOL push boolean
- sta 0,Y set TYPE
+ sta  ,Y set TYPE
  rts
 
  ttl BOOLEAN Operation/comparison routines
@@ -1687,7 +1687,7 @@ CMPFAL10 clra
  leay OPSIZE,Y pop top-of-stack
  std 1,Y store result in new tos
  lda #S.BOOL get TYPE
- sta 0,Y
+ sta  ,Y
  rts
 
 ***************
@@ -1894,7 +1894,7 @@ STLIT4 ldb #M$STOV String overflow
 SVSTR ldd ,X++ Get descr area offset
  addd I.DSCR Make offset a ptr
  tfr D,U
- ldd 0,U Get storage offset
+ ldd  ,U Get storage offset
  addd I.ASTR Add procedure storage addr
  ldu 2,U Get size
  stu I.SIZE
@@ -1917,7 +1917,7 @@ STRVAR pshs X Save x
  ldb I.SIZE+1
  bne STRVAR10
  dec I.SIZE
-STRVAR10 leax 0,U
+STRVAR10 leax  ,U
  bsr STLIT1 push string
  puls X,PC
 
@@ -2169,7 +2169,7 @@ RETBYT clra return Byte Result
  leay -OPSIZE,Y make room on opstack
 RETBYT10 std 1,Y store operand in tos
  lda #S.INT
- sta 0,Y set TYPE
+ sta  ,Y set TYPE
 RETBYT99 rts
 
 ***************
@@ -2308,7 +2308,7 @@ MODFNR leau -12,Y Get ptr to temporary space
  pshs Y Save opstack ptr
 MODF10 ldd ,Y++ Copy arguments
  std ,U++
- cmpu 0,S Copied enough?
+ cmpu  ,S Copied enough?
  bne MODF10 ..No
  leas 2,S Scratch ptr
  leay -12,U Move opstack ptr to top of stack
@@ -2351,7 +2351,7 @@ INTF30 leau 1,U Move to next byte
 INTF40 aslb
  inca
  bne INTF40
- andb 0,U Clear bits to right
+ andb  ,U Clear bits to right
  stb ,U+
  bra INTF70
 INTF50 leau 1,U Move to next byte
@@ -2378,7 +2378,7 @@ SQFNCR leay -OPSIZE,Y Carve out some opstack
  ldd 8,Y
  std 2,Y
  ldd OPSIZE,Y
- std 0,Y
+ std  ,Y
  lbra RLMUL Go do multiply
 
 ***************
@@ -2423,7 +2423,7 @@ LNGFNC lbsr EVAL20 Call eval recursively
  leay -OPSIZE,Y Make room on opstack
  cmpa #S.STR What TYPE variable?
  bcc LNGF10 bra if string or record
- leau VARSIZ,PCR Get variable size ptr
+ leau >VARSIZ,PCR Get variable size ptr
  ldb A,U Get variable size
  clra clear Msb
  bra LNGF20
@@ -2451,7 +2451,7 @@ FALFNC ldd #V$FALS
 FALFN2 leay -OPSIZE,Y make room on opstack
  std 1,Y store operand in new tos
  lda #S.BOOL push on opstack
- sta 0,Y set TYPE
+ sta  ,Y set TYPE
  rts
 
  ttl LOGICAL Intrinsic function routines
@@ -2527,7 +2527,7 @@ LOG10E fcb $FF,$DE,$5B,$D8,$AA
 *  Base 10 Log
 
 LOG10 bsr LOGFNC Get natural log
- leau LOG10E,PCR Get constant addr
+ leau >LOG10E,PCR Get constant addr
  lbsr RLVAR push on opstack
  lbra RLMUL Convert to base 10 log
 
@@ -2584,7 +2584,7 @@ CBLN2 sex EXTEND Sign
  negb NEGATE Exponent
 CBLN10 anda #1 Get sign bit
  pshs D Save sign, ABS(exponent)
- leau LN2,PCR Get addr ln(2) constant
+ leau >LN2,PCR Get addr ln(2) constant
  lbsr RLVAR Move to stack
  ldb 5,Y Get lsb
  lda 1,S Get ABS(exponent)
@@ -2624,7 +2624,7 @@ CBLN20 inc 1,Y Increment exponent
 CBLN30 stb 2,Y Save msb
  ldb 5,Y Get sign byte
 CBLN40 andb #$FE Clear sign bit
- orb 0,S Set sign
+ orb  ,S Set sign
  stb 5,Y Save it
  puls D,PC
 
@@ -2659,13 +2659,13 @@ EXPF25 lda #113 Multiply exponent by 1/ln(2)
  pshs D Save result exponent & arg sign
  eorb 5,Y Clear sign
  stb 5,Y Replace it
- ldb 0,S
+ ldb  ,S
 EXPF30 lbsr CBLN2 Multiply new exponent by ln(2)
  lbsr RLSUB Subtract adjustment from argument
  ldb 1,Y Get result exponent
  ble EXPF40
- addb 0,S
- stb 0,S
+ addb  ,S
+ stb  ,S
  ldb 1,Y
  bra EXPF30
 EXPF40 puls D Retrieve result exponent & arg sign
@@ -2673,13 +2673,13 @@ EXPF40 puls D Retrieve result exponent & arg sign
  tstb IS Arg positive
  beq EXPF50 bra if so
  nega NEGATE Exponent
- sta 0,S
+ sta  ,S
  orb 5,Y Replace sign
  stb 5,Y
 EXPF45 leau LN2,PCR Move constant to stack
  lbsr RLVAR
  lbsr RLADD Add constant
- dec 0,S
+ dec  ,S
  ldb 5,Y Get result sign byte
  andb #1 Get sign
  bne EXPF45 bra if not positive yet
@@ -2967,7 +2967,7 @@ D180PI fcb $06,$E5,$2E,$E0,$D4
 * Subroutine PIFNC
 *   Pi Constant
 
-PIFNC leau PI,PCR Get address of pi value
+PIFNC leau >PI,PCR Get address of pi value
  lbra RLVAR Go push pi on stack
 
 ***************
@@ -2979,7 +2979,7 @@ PIFNC leau PI,PCR Get address of pi value
 TRIG ldu I.ASTR Get storage base
  tst U.DEG,U in radian mode?
  beq TRIG05 bra if so
- leau DPI180,PCR Convert to radians
+ leau >DPI180,PCR Convert to radians
  lbsr RLVAR Move constant to stack
  lbsr RLMUL Multiply
 TRIG05 clr I.XSGN Clear x coordinate sign
@@ -3085,10 +3085,10 @@ CORD40 jsr [CORDT,Y] Call routine
 * Global: None
 
 CMOVE pshs X,Y Save registers
- lda 0,X Get operand
+ lda  ,X Get operand
  ldy 1,X
  ldx 3,X
- sta 0,U
+ sta  ,U
  sty 1,U
  stx 3,U
  puls X,Y,PC
@@ -3097,7 +3097,7 @@ CMOVE pshs X,Y Save registers
 * Subroutine CSR
 *   Cordic Shift Right
 
-CSR ldb 0,X Get msb
+CSR ldb  ,X Get msb
  sex GET Prime msb
  ldb I.BITS Get byte shift count
  lsrb
@@ -3124,18 +3124,18 @@ CSR35 leau -5,U Move ptr to beginning
  cmpb #4 Shift left or right?
  bcs CSRONE bra if right
  subb #8 Adjust shift count
- lda 0,X Get least significant byte
+ lda  ,X Get least significant byte
 CSR4 asla shift Left
  rol 4,U
  rol 3,U
  rol 2,U
  rol 1,U
- rol 0,U
+ rol  ,U
  incb
  bne CSR4 bra if not done
  rts
 
-CSRONE asr 0,U Do bit shift
+CSRONE asr  ,U Do bit shift
  ror 1,U
  ror 2,U
  ror 3,U
@@ -3237,12 +3237,12 @@ CADD ldd 3,X Get lsdb
  bcc CADD10
  addd #1 Propogate carry
  bcc CADD10
- inc 0,X
+ inc  ,X
 CADD10 addd 1,U Add next msdb
  std 1,X
- lda 0,X
- adca 0,U
- sta 0,X
+ lda  ,X
+ adca  ,U
+ sta  ,X
  rts
 
 ***************
@@ -3258,20 +3258,20 @@ CSUB ldd 3,X Get lsdb
  bcc CSUB10
  subd #1
  bcc CSUB10
- dec 0,X
+ dec  ,X
 CSUB10 subd 1,U Subtract next msdb
  std 1,X
- lda 0,X Get msb
- sbca 0,U
- sta 0,X
+ lda  ,X Get msb
+ sbca  ,U
+ sta  ,X
  rts
 
 ***************
 * Subroutine CDENOR
 *   Denormalize Real Number For Cordic
 
-CDENOR ldb 0,U Get exponent
- clr 0,U Clear msb
+CDENOR ldb  ,U Get exponent
+ clr  ,U Clear msb
  addb #4 Adjust for current position
  bge CDEN20 bra if left shift needed
  negb MAKE Positive shift count
@@ -3280,7 +3280,7 @@ CDEN10 asl 4,U
  rol 3,U
  rol 2,U
  rol 1,U
- rol 0,U
+ rol  ,U
  decb COUNT Shift down
 CDEN20 bne CDEN10
  rts
@@ -3289,11 +3289,11 @@ CDEN20 bne CDEN10
 * Subroutine CNORM
 *   Normalizes Result of Cordic
 
-CNORM lda 0,U Get msb
+CNORM lda  ,U Get msb
  bpl CNOR05 bra if positive
  clra RETURN Zero
  clrb
- std 0,U
+ std  ,U
  std 2,U
  sta 4,U
  rts
@@ -3303,15 +3303,15 @@ CNOR10 decb DECREMENT Exponent
  rol 3,U
  rol 2,U
  rol 1,U
- rol 0,U
+ rol  ,U
  bmi CNOR20 bra if done
  deca shifted Enough?
  bne CNOR10 ..No
  clrb RETURN Zero
- std 0,U
+ std  ,U
  rts
-CNOR20 lda 0,U Shuffle mantissa down
- stb 0,U Store exponent
+CNOR20 lda  ,U Shuffle mantissa down
+ stb  ,U Store exponent
  ldb 1,U Mantissa shuffle
  sta 1,U
  lda 2,U
@@ -3326,7 +3326,7 @@ CNOR20 lda 0,U Shuffle mantissa down
  inc 1,U
  bne CNOR30
  ror 1,U Overflow
- inc 0,U
+ inc  ,U
 CNOR30 rts
 
  ttl CORDIC Tables
@@ -3420,7 +3420,7 @@ RNDFNC clra clear Acc
  ldb 5,Y else look at sign bit 
  bitb #1 zero?
  bne RMOVE ..No
- com 0,S set pos flag to FF
+ com  ,S set pos flag to FF
  bra RND1 use old seed
 RMOVE addb #$FE Clear sign bit
  addb 1,Y Add exponent to low byte
@@ -3504,7 +3504,7 @@ RNDNOR lda #31 set shift counter
  pshs A
  ldd 2,Y get high double-byte
  bmi RNDNR2 if normalized, exit
-RNDNR1 dec 0,S 31 iterations?
+RNDNR1 dec  ,S 31 iterations?
  beq RNDNR2 ..Yes; exit
  dec 1,Y decrement exponent
  asl 5,Y rotate all four bytes
@@ -3736,7 +3736,7 @@ STRF10 lda I.IOCT Get position count
  bcs ILLARG bra if error
  ldx I.IOPT
  lda #V$ESTR
- sta 0,X insert string terminator
+ sta  ,X insert string terminator
  ldx 3,S get addr of converted string
  lbsr STRLIT move string to String buffer
  puls A,X,U
@@ -3847,7 +3847,7 @@ INIT ldb #6 Set move count
  leax RSEED,PCR Get ptr to random initial values
 INIT1 ldd ,X++ Copy values
  std ,Y++
- dec 0,S Count down
+ dec  ,S Count down
  bne INIT1
  leax OPRTBL,PCR Get exprssion dispatch table
  stx D.IOPD Set it

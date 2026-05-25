@@ -1138,10 +1138,10 @@ START pshs U bottom of workspace
  clra
  clrb
 START0 std ,--U clear DP Globals
- cmpu 0,S
+ cmpu  ,S
  bhi START0
  puls D bottom of workspace
- leau 0,X top of workspace (below params)
+ leau  ,X top of workspace (below params)
  std G.WSPA
  inca
  sta SMASH Set binder for non-compil mode (non-zero)
@@ -1196,9 +1196,9 @@ START1 std ,--X Clear out directory
 START15 lda #$7E JMP Opcode
  sta ,X+
  ldd ,Y++ get offset of module
- addd 0,S make absolute
+ addd  ,S make absolute
  std ,X++ fill in jump table
- ldd 0,Y End of table?
+ ldd  ,Y End of table?
  bne START15 ..No; no; repeat
  leas 2,S discard scratch
 * end of Inter module linkages
@@ -1209,7 +1209,7 @@ START15 lda #$7E JMP Opcode
  ifne INCLUDED&EDITOR
  leax KEYTAB,PCR
  stx KEYWORDS save Keyword Table addr for compiler
- ldb 0,Y
+ ldb  ,Y
  cmpb #V$CR End of command line?
  beq COMAND ..yes; enter Basic09 command
  leax <START2,PCR
@@ -1225,7 +1225,7 @@ START2 puls Y get shell param ptr
 
  bsr SETUP
  ldx G.DIRA
- ldd 0,X get first procedure loaded
+ ldd  ,X get first procedure loaded
  std I.APRC make it ACTIVE
  lbsr INTERP (will exit to COMAN0)
 
@@ -1326,7 +1326,7 @@ RUNCMD05 clr BASINP Default back to standard input
  cmpb #E$EOF End of file?
  bne RUNC90 ..no; reprompt
  ldd #"by default to "BYE" command
- std 0,Y
+ std  ,Y
  ldd #'e*256+V$CR
  std 2,Y
 
@@ -1340,7 +1340,7 @@ RUNC10 ldx 2,S command verb tbl addr
  lda #'a-'A match upper/lower case
  lbsr J$SRCH command word found?
  beq RUNC90 ..no; return carry set
-RUNC20 ldd 0,X
+RUNC20 ldd  ,X
  leas 4,S
  jmp D,X execute command
 
@@ -1355,7 +1355,7 @@ RUNC90 coma return carry set
 
 CHGMEM lbsr CMDSEP Skip command separator
  bne CHGME1
- leax 0,Y
+ leax  ,Y
  ldd G.PRCA
  addd G.PRCS Find top of procedure storage
  inca round up
@@ -1386,7 +1386,7 @@ CHGER1 coma RETURN Error - carry set
 * Return: Nothing Useful
 * Destroys: A,B,X,Y,CC
 
-DIR leax 0,Y get pathname of listing device
+DIR leax  ,Y get pathname of listing device
  lbsr OPNCHL Open output path
 DIR05 leax DIRHDR,PCR
  lbsr PRTLIN Print line
@@ -1456,11 +1456,11 @@ ItoA pshs D,X,Y save regs
 ItoA.A ldx #$2F00 ASCII zero - 1
 ItoA.B puls D restore remainder
 ItoA.C leax $100,X build ASCII digit
- subd 0,Y
+ subd  ,Y
  bhs ItoA.C repeat until overflow
  addd ,Y++ skip to next table entry
  pshs D save remainder
- ldd 0,Y Is this the units digit?
+ ldd  ,Y Is this the units digit?
  tfr X,D  prime (A)=ASCII digit
  beq ItoA.Z ..Yes; print it and exit
  cmpd #$3000 suppressed high-order digit?
@@ -1485,7 +1485,7 @@ Ten.Tbl fdb 10000
 *   Execute OS-9 Shell command
 
 INVOKE lbsr CMDSEP Skip any spaces in command line
- leau 0,Y Parameter string ptr
+ leau  ,Y Parameter string ptr
  clrb
 INVK10 incb COUNT Parameter size
  lda ,Y+
@@ -1500,7 +1500,7 @@ INVK10 incb COUNT Parameter size
  bcs ERREXT Report error, exit
  pshs A save child process ID
 INVK20 OS9 F$Wait Wait for command to finish
- cmpa 0,S proper child dead?
+ cmpa  ,S proper child dead?
  bne INVK20 ..No; wait again
  leas 1,S
  tstb
@@ -1515,7 +1515,7 @@ CHDDIR lda #DIR.+UPDAT. change data directory
  bra CHXD10
 
 CHXDIR lda #DIR.+EXEC. change execution directory
-CHXD10 leax 0,Y (x)=pathname ptr
+CHXD10 leax  ,Y (x)=pathname ptr
  OS9 I$ChgDir change directory
  bcs ERREXT if error; report it
  rts else return carry clear
@@ -1530,7 +1530,7 @@ RENAME bsr PRCREF get (old) procedure name
  lbsr DIRSCH Is it in directory?
  bcs ERUPRC No; error - not in workspace
  pshs X
- ldx 0,X get procedure address
+ ldx  ,X get procedure address
  tst M$TYPE,X internal (un-typed) procedure?
  bne ERUPRC ..no; sorry
  bsr CMDSEP Skip separator
@@ -1626,7 +1626,7 @@ LODER1 cmpb #E$EOF End of File?
  beq EXIT1 ..yes; return
  bra ERREXT Print error message & return
 
-LOAD leax 0,Y get path name ptr
+LOAD leax  ,Y get path name ptr
  lda #READ. Open for input
  OS9 I$Open Open the input file
  bcs LODER1 Exit if error
@@ -1639,10 +1639,10 @@ LOAD1 lbsr J$NAME get procedure name
  pshs Y Save procedure name ptr
  lbsr DIRSCH Is name in directory?
  bcs LOAD15 ..no; don't try kill
- ldy 0,S
+ ldy  ,S
  leay -1,Y Must have a preceeding space
  lbsr KILLER Destroy any old version that may have existed
-LOAD15 ldy 0,S get ptr to procedure name
+LOAD15 ldy  ,S get ptr to procedure name
  lbsr DIRADD Add it to the directory
  lbsr UNBIND Unbind the new procedure
  puls X Restore proc name ptr
@@ -1700,7 +1700,7 @@ PRCLI9 rts RETURN to user
 DUMP lbsr DEFILE Parse procedure names, get pathnname
  ldu I.OPBG
  bra DUMP02 Repeat
-DUMP01 ldy 0,Y get proc addr
+DUMP01 ldy  ,Y get proc addr
  tst M$TYPE,Y internal (un-typed) procedure?
  lbne ERABRT ..no; illegal to compile
  lda P.STAT,Y
@@ -1728,7 +1728,7 @@ DUMP03 pshs Y Save opstack (procedure list) ptr
  lbsr J$BIND Rebind squished procedure
  inc SMASH Reset
  ldx I.SYMT get symbol tbl ptr
- leay 0,X (in case of no symbols)
+ leay  ,X (in case of no symbols)
  ldd G.WSPA
  addd G.WSPS
  tfr D,U ptr to top of free space
@@ -1737,7 +1737,7 @@ DUMP03 pshs Y Save opstack (procedure list) ptr
  pshs U
 DUMP1 pshs D Save symbol table count
  leax 1,X
- ldd 0,X
+ ldd  ,X
  pshu D Build stack of save info from symbol table
  clr ,X+ Clear out symbol table entry
  clr ,X+
@@ -1748,7 +1748,7 @@ DUMP2 lda ,X+
  bne DUMP1 Repeat until whole table copied
  ldy I.ICBG
  bra DUMP4 While not end of icode
-DUMP3 ldd 0,Y get symbol table ptr
+DUMP3 ldd  ,Y get symbol table ptr
  ldx I.SYMT
  leax D,X Actual addr of symbol tbl entry
  ldd 1,X get linked list
@@ -1759,7 +1759,7 @@ DUMP4 lbsr NXTVAR Skip to next complex variable or run
  puls U get top of free space again
  ldx I.SYMT get old symbol table ptr
  ldd -3,X Number of entries in symbol table
- leay 0,X Set beginning of new symbol table
+ leay  ,X Set beginning of new symbol table
 DUMP5 leau -2,U Move to current entry
  pshs D,U Save number of entries, stack ptr
  clra
@@ -1769,13 +1769,13 @@ DUMP5 leau -2,U Move to current entry
  tfr Y,D Copy new symbol ptr
  subd I.SYMT Make ptr into offset
  bra DUMP7
-DUMP6 std 0,U Set symbol offset
- leau 0,X Copy ptr to next reference
-DUMP7 ldx 0,U get ptr to next reference
+DUMP6 std  ,U Set symbol offset
+ leau  ,X Copy ptr to next reference
+DUMP7 ldx  ,U get ptr to next reference
  bne DUMP6 Branch if there is one
- std 0,U Set offset of last
+ std  ,U Set offset of last
  puls X Retrieve old symbol ptr
- lda 0,X get type byte
+ lda  ,X get type byte
  sta ,Y+ Copy it
  ldu [2,S] get old contents
  stu ,Y++ Copy them
@@ -1802,9 +1802,9 @@ DUMP20 equ *
  tfr Y,D Copy procedure end ptr
  subd I.APRC Make ptr into size
  std P.SIZE,X Set size
- ldd 0,S get difference
+ ldd  ,S get difference
  subd P.SIZE,X
- std 0,S Save it
+ std  ,S Save it
  addd G.VARS Adjust free space size
  std G.VARS
  ldd G.PRCS Adjust procedure space
@@ -1816,7 +1816,7 @@ DUMP20 equ *
  stb M$TYPE,X
  ldb #$80
  stb P.STAT,X Set compiled (and external) status
- leau 0,Y (u)=end of module
+ leau  ,Y (u)=end of module
  ldd #$FFFF
  std ,--U initialize crc to $FFFFFF
  sta ,-U
@@ -1848,7 +1848,7 @@ DUMP04 ldx ,--Y get next procedure directory addr
 *   get list of procedure names and (possibly default) pathname
 
 DEFILE bsr PCDLST get list of procedures
- lda 0,Y
+ lda  ,Y
  cmpa #V$CR End of line?
  bne DEFIL1 ..no; exit
  ldx I.OPBG get list of procedure names
@@ -1857,7 +1857,7 @@ DEFILE bsr PCDLST get list of procedures
  leax D,X Point to it's name
  lbsr STRSPC Put it in the I/O buffer
  lbsr CPYEOL Followed by a carriage return
-DEFIL1 leax 0,Y Copy I.IOPT (ptr to pathname)
+DEFIL1 leax  ,Y Copy I.IOPT (ptr to pathname)
  rts
  endc
 
@@ -1881,14 +1881,14 @@ PCDLST ldu I.OPBG
  endc
 
  ldx G.DIRA get directory addr
-PCDLS1 ldd 0,X End of directory?
+PCDLS1 ldd  ,X End of directory?
  beq PCDLS2 ..yes, exit
  tfr X,D get addr of directory entry
  leax 2,X Update directory ptr
 PCDLS2 std ,--U Push directory addr on opstack
  bne PCDLS1 Repeat if not end marker
  stu I.OPSP Save updated opstack ptr
- lda 0,Y
+ lda  ,Y
  cmpa #V$CR End of line?
  beq PCDL25 ..yes; dont update icode ptr
  leay 1,Y Skip separator preceeding pathlist
@@ -1936,14 +1936,14 @@ SAVE tst G.VARS At least one page of free memory?
 *   List Procedure(S)
 
 LIST bsr PCDLST Parse list of procedure names
- leax 0,Y get I/O ptr (pathname)
+ leax  ,Y get I/O ptr (pathname)
 LIST0 stx I.ICPT out of range to KILL "*" on current
  bsr OPNCHL Open output path
  ldy I.OPBG get top of list
  stu I.OPBG Carve out opstack space used
  bra LIST2
 LIST1 pshs Y Save proc list ptr
- ldy [0,Y] get procedure addr
+ ldy [,Y] get procedure addr
  sty I.APRC set active procedure
  ldd P.PGMB,Y set icode beginning offset
  addd I.APRC
@@ -1962,7 +1962,7 @@ LIST1 pshs Y Save proc list ptr
 LSEXIT lbra EXIT (this will fall through)
 LIST12 tst PRTCTL doing a save?
  bmi LIST15 ..yes; don't produce error list
- ldx [0,S] restore directory ptr
+ ldx [,S] restore directory ptr
  lbsr UNBIND Unbind procedure
  lbsr J$BIND Rebind it (show errors)
 LIST15 puls Y Restore proc list ptr
@@ -1994,12 +1994,12 @@ OPNCHL lbsr CMDSEP
 OPNCH0 pshs D,X,U save regs
  lda #CMDOUT
  OS9 I$Close eliminate output path
-OPNCH1 ldd 0,S get mode
+OPNCH1 ldd  ,S get mode
  OS9 I$Create Open new file
  bcc OPNC90 Opened ok, return
  cmpb #E$CEF Creating existing file?
  bne ERRST Error; reset command output path
- ldd 0,S mode
+ ldd  ,S mode
  ldx 2,S pathname ptr
  OS9 I$Open open existing file
  bcs ERRST ..error; reset comand output
@@ -2018,7 +2018,7 @@ OPNCH1 ldd 0,S get mode
  lda #CMDOUT
  ldb #SS.Size
  ldx #0
- leau 0,X
+ leau  ,X
  OS9 I$SetStt set file size to zero
  bcs ERRST ..error; reset command path
 OPNC90 puls D,Y,U,PC return, output redirected
@@ -2043,16 +2043,16 @@ INTERP lbsr J$NAME Is a procedure name given?
  bne INTER1 ..yes; continue
 INTE05 pshs Y Save command line ptr
  lbsr PRCREF get default procedure name
- ldx 0,S
+ ldx  ,S
 INTER0 lda ,Y+
  sta ,X+ Copy the default name into command line
  bpl INTER0
  lda #V$CR
- sta 0,X
+ sta  ,X
  puls Y Restore command line ptr
 INTER1 lbsr DIRLNK Try to find procedure
  lbcs ERUPRC Not found - error
- ldx 0,X get active procedure addr
+ ldx  ,X get active procedure addr
  stx I.APRC Set active procedure
  lda M$TYPE,X external or bound?
  beq INTE30 ..Yes; check type
@@ -2065,7 +2065,7 @@ INTE30 lda P.STAT,X
  bcs ERABRT Run aborted - procedure errors
 INTE40 lbsr J$CPRM Call parameter list
  ldy I.STBG get ptr to parameter list
- ldb 0,Y test parameter
+ ldb  ,Y test parameter
  cmpb #T.ERRL Error?
  beq ERABRT ..Yes; abort
  sty I.ICBG
@@ -2097,7 +2097,7 @@ INTE40 lbsr J$CPRM Call parameter list
  ldd I.STBG
  ldx G.VARS
  pshs D,X
- leax INTRTS,PCR
+ leax >INTRTS,PCR
  lbsr SETEXT
  ldx I.STBG Parameter list
  lbsr J$IPRM Interpret parameters
@@ -2153,7 +2153,7 @@ KILERR comb
 
 KILALL ldy I.IOPT build "All" name in I/O buffer
  lda #'*
- sta 0,Y (kill all)
+ sta  ,Y (kill all)
  sta G.SIGN
 
 KILLER lbsr PCDLST get list of procedures to kill
@@ -2162,7 +2162,7 @@ KILLER lbsr PCDLST get list of procedures to kill
 KILL0 ldu I.OPBG
  stu I.OPSP Reset opstack ptr
  bra KILL2 For each member of list, do
-KILL1 ldx 0,X get procedure addr
+KILL1 ldx  ,X get procedure addr
  ifne INCLUDED&EDITOR
  ldb M$TYPE,X internal (un typed) procedure?
  beq KILL15 ..yes; delete from workspace
@@ -2173,16 +2173,16 @@ KILL1 ldx 0,X get procedure addr
  bmi KILL15 ..yes; delete from workspace
  endc
 KILL12 pshs U
- leau 0,X
+ leau  ,X
  OS9 F$Unlink Unlink external modules
  puls U
  ifne INCLUDED&EDITOR
  bra KILL18 Zap directory entry
 KILL15 tst G.SIGN Signal set?
  bne KILL2 ..yes; don't kill internal procs
- ldx 0,U Restore directory addr
+ ldx  ,U Restore directory addr
  lbsr SHUFLE Shuffle it to the top
- ldy 0,X get procedure addr
+ ldy  ,X get procedure addr
  ldd G.PRCS
  subd P.SIZE,Y
  std G.PRCS Decrement procedure workspace size
@@ -2194,7 +2194,7 @@ KILL15 tst G.SIGN Signal set?
  std I.STBG
  endc
 KILL18 ldd #-1
- std [0,U] Zap directory addr
+ std [,U] Zap directory addr
 KILL2 ldx ,--U get next proc in list
  bne KILL1 Until there are no more
  ldx G.DIRA
@@ -2204,7 +2204,7 @@ KILL3 ldd ,X++ Compress deleted entries
  beq KILL3
 KILL4 std ,Y++
  bne KILL3 Gotta check the whole list
- cmpd 0,Y
+ cmpd  ,Y
  bne KILL4 Wipe out tail end of directory
  rts
 
@@ -2251,7 +2251,7 @@ DIRAD2 incb
  std P.EXEC,U First executable stmt
  std P.PGMB,U Icode beginning
  std P.DSCB,U Description tbl beginning
- stu [0,S] Store addr of new procedure there
+ stu [,S] Store addr of new procedure there
  pshs B Temp save b
  addd #3 Form actual size of new (null) procedure
  std P.SIZE,U Procedure size
@@ -2290,7 +2290,7 @@ ERMFUL ldb #M$MFUL
 
 DIRSCH pshs Y,U Save registers
  ldx G.DIRA get directory addr
-DIRSC0 ldy 0,S Reset proc name string
+DIRSC0 ldy  ,S Reset proc name string
  ldu ,X++ get (next) procedure addr
  beq DIRSC9 End of directory - not found exit
  ldd M$NAME,U
@@ -2326,7 +2326,7 @@ DIRLN1 pshs X,Y,U Save directory entry ptr (x)
  ldb 1,S
  cmpb #-2 Last entry?
  beq ERMFUL ..too bad
- leax 0,Y get proc name ptr
+ leax  ,Y get proc name ptr
  clra any type
  clrb any revision
  OS9 F$Link Try to find
@@ -2337,7 +2337,7 @@ DIRLN1 pshs X,Y,U Save directory entry ptr (x)
  OS9 F$Load Try to load module
  bcs DIRLN9 ..not found; sorry
 DIRLN2 stx 2,S Return updated module name ptr in (y)
- stu [0,S] Module (procedure) addr goes in directory
+ stu [,S] Module (procedure) addr goes in directory
 DIRLN9 puls X,Y,U,PC Return
 
  ifne INCLUDED&EDITOR
@@ -2353,8 +2353,8 @@ SHUFLE pshs X,Y Save regs
  ldd G.PRCA
  addd G.PRCS
  tfr D,Y ..high addr
- ldx 0,X ..low addr
- sty [0,S] Reset procedure addr in directory
+ ldx  ,X ..low addr
+ sty [,S] Reset procedure addr in directory
  ldd P.SIZE,X get procedure size
  bsr FLOTUP "FLOAT" it up to bottom of free space
  pshs D,X,Y
@@ -2364,7 +2364,7 @@ SHUFL1 cmpd 2,S Below affected addres?
  blo SHUFL2
  cmpd 4,S Above the one just shuffled up (external)?
  bhi SHUFL2 ..yes
- subd 0,S Adjust directory entry of each procedure that was moved down
+ subd  ,S Adjust directory entry of each procedure that was moved down
  std -2,X
 SHUFL2 ldd ,X++
  bne SHUFL1
@@ -2386,11 +2386,11 @@ FLOTUP pshs D,X,Y,U Save parameters
  pshs D,X
  addd 4,S Already at top?
  beq FLOTU9 ..yes, return
-FLOTU1 lda 0,X
+FLOTU1 lda  ,X
  pshs A Savebyte=[low memory]
  bra FLOTU3
-FLOTU2 lda 0,Y [moveto]=[movefrom]
- sta 0,X
+FLOTU2 lda  ,Y [moveto]=[movefrom]
+ sta  ,X
  leau 1,U Bytecnt=bytecnt+1
  tfr Y,X Moveto=movefrom
 FLOTU3 tfr X,D
@@ -2402,12 +2402,12 @@ FLOTU4 tfr D,Y
  cmpd 3,S Movefrom=lowmem?
  bne FLOTU2
  puls A
- sta 0,X [moveto]=savebyte
+ sta  ,X [moveto]=savebyte
  leax 1,Y
  stx 2,S Update lowmem
  leau 1,U Bytecnt=bytecnt+1
  tfr U,D
- addd 0,S Total number of bytes moved?
+ addd  ,S Total number of bytes moved?
  bne FLOTU1 ..no; keep moving
 FLOTU9 leas 4,S
  puls D,X,Y,U,PC
