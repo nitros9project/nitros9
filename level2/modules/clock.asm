@@ -283,6 +283,7 @@ DoToggle
                stb       >IRQEnR             Enable CART
                clrb
                endc
+               andcc     #^Carry             clear carry so DoneIRQ does not mask IRQs
                rts
 
 
