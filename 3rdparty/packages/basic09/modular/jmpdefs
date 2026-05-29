@@ -1,0 +1,75 @@
+
+ ttl SYSTEM EXTERNAL Entry Offsets
+ pag
+* Module ENTRY offsets
+
+*** Command Entries
+ org 0
+X$SPRC rmb 2 Search directory for procedure
+X$EREX rmb 2 Print error messsage and return
+X$SEXT rmb 2 Set (error) exit address
+X$EXIT rmb 2 Exit via (error) exit address
+X$SBST rmb 2 Search for substring
+X$KILL rmb 2 Kill external procedure
+X$BYE  rmb 2 exit basic09, give up workspace
+X$KALL rmb 2 kill all external procs
+X$SKST rmb 2 Skip to next logical icode stmt beginning
+ ifne INCLUDED&EDITOR
+
+X$LKTK rmb 2 Lookup token in decompile table
+X$RPLC rmb 2 Replace i-code
+X$PBLN rmb 2 Print a bound line
+X$DBUG rmb 2 Enter debug state
+X$TEXP rmb 2 Trace expression address
+X$TEXR rmb 2 Trace result
+ endc
+
+*** Compiler Entries
+ org 0
+X$CPRM rmb 2 Compile parameter list
+X$NAME rmb 2 Look for a name subroutine
+X$SRCH rmb 2 Table search subroutine
+X$MVDN rmb 2 Block move down subroutine
+ ifne INCLUDED&EDITOR
+
+X$EXDS rmb 2 Expand desr tbl
+X$CMPL rmb 2 Line compiler
+ endc
+
+*** Binder Entries
+ org 0
+X$BPRM rmb 2 Bind parameters
+ ifne INCLUDED&EDITOR
+
+X$BIND rmb 2 Bind procedure
+X$BSTM rmb 2 Bind statement
+X$PHEX rmb 2 Print hex number
+ endc
+
+*** Statement Interpreter Entries
+ org 0
+X$INTI rmb 2 Initialize interpreter
+X$INTX rmb 2 Execute interpreter
+X$IPRM rmb 2 Interpret parameters
+X$STER rmb 2 Statement error exit
+X$ISTM rmb 2 Interpret single statement
+X$TRON rmb 2 Turn on trace mode
+X$TROF rmb 2 Turn off trace mode
+
+*** Expression Interpreter Entries
+ org 0
+X$EXPI rmb 2 Initialize expression
+X$VREF rmb 2 Evaluate variable reference
+X$FADD rmb 2 Real add
+X$FMUL rmb 2 Real mult
+X$FDIV rmb 2 Real divide
+X$FCMP rmb 2 Real compare
+X$FIX rmb 2 Fix real
+X$FLOT rmb 2 Float integer
+
+*** Conversion & I/O Entries
+ org 0
+X$ASNM rmb 2 Cnv ascii > numeric
+X$CVIO rmb 2 Call cnvio
+
+

@@ -5,17 +5,20 @@ include ../../rules.mak
 RECIPE ?= coco3
 -include recipe.mak
 vpath %.asm $(LEVEL1)/coco1/modules
+vpath %.asm $(3RDPARTY)/packages/basic09
 
 ifeq ($(CPU),6309)
 AFLAGS += -DH6309=1
 COCO3_LIB = libcoco3_6309.a
 NOS9_LIB = libnos96309l2.a
 COCO3_LFLAG = -lcoco3_6309
+RUNB_SHA256 = 6c2de659b30b5dec8c9152a0d747c814d8a745211781db16aa7d2e60aa2d899e
 else ifeq ($(CPU),6809)
 AFLAGS += -DH6309=0
 COCO3_LIB = libcoco3.a
 NOS9_LIB = libnos96809l2.a
 COCO3_LFLAG = -lcoco3
+RUNB_SHA256 = 605c7a9f0fde3fed21f7672f5c634f7c43b440f385f088e593f8acca5fccba31
 else
 $(error Unsupported CPU "$(CPU)"; use CPU=6809 or CPU=6309)
 endif
@@ -47,6 +50,8 @@ DSK_POST_COPY ?= @:
 OS9FORMAT_CMD ?= $(OS9FORMAT_DS40)
 
 AFLAGS += -I.
+AFLAGS += -I$(3RDPARTY)/packages/basic09
+AFLAGS += -I$(L2PD)/defs
 AFLAGS += -I$(L2MD)/kernel -I$(L2PMD)
 AFLAGS += -I$(L1MD)/kernel -I$(L1MD)
 AFLAGS += $(AFLAGS_EXTRA)
@@ -79,6 +84,7 @@ UTILPAK1 = attr build copy del deldir dir display list makdir mdir merge mfree p
 CMDS_BASE ?= $(STDCMDS) grfdrv shell utilpak1
 CMDS += $(CMDS_BASE) \
 	$(CMDS_EXTRA)
+BASIC09_SAMPLES ?=
 
 all: libs $(DSKIMAGE)
 
@@ -91,15 +97,23 @@ kernelfile: $(addprefix $(MODDIR)/,$(KERNEL_TRACK))
 bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
 
-$(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(DSK_EXTRA_DEPS)
+$(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(DSK_EXTRA_DEPS) $(BASIC09_SAMPLES)
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9GEN) $@ -b=bootfile -t=$(KERNELFILE)
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
 	$(MAKDIR) $@,DEFS
+ifneq ($(filter runb,$(CMDS)),)
+	@printf '%s  %s\n' "$(RUNB_SHA256)" $(MODDIR)/runb | shasum -a 256 -c -
+endif
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
+ifneq ($(strip $(BASIC09_SAMPLES)),)
+	$(MAKDIR) $@,BASIC09
+	$(CPL) $(BASIC09_SAMPLES) $@,BASIC09
+	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(BASIC09_SAMPLES)),$@,BASIC09/$(file))
+endif
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 	$(DSK_POST_COPY)
@@ -127,6 +141,10 @@ $(MODDIR)/xmode: xmode.asm | $(MODDIR)
 
 $(MODDIR)/tmode: xmode.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DTMODE=1
+
+$(MODDIR)/runb: basic09.asm runb_core.asm basic09_rlcmp.asm basic09_floatfix.asm basic09_scalar.asm basic09_sqrt.asm basic09_miscfunc.asm basic09_logexp.asm FORCE | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DINCLUDED="RUNTIM+MATHPAK"
+	@printf '%s  %s\n' "$(RUNB_SHA256)" $@ | shasum -a 256 -c -
 
 $(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
 	$(MERGE) $(addprefix $(MODDIR)/,$(SHELLMODS)) >$@
@@ -212,4 +230,6 @@ clean:
 	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
 
-.PHONY: all clean libs
+FORCE:
+
+.PHONY: all clean libs FORCE
