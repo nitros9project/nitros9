@@ -1,0 +1,4 @@
+link shell
+load utilpak1
+date -t
+chd basic09; basic09 unittest #24k </1

@@ -347,12 +347,20 @@ VARR02 ldd ,X++ Get symbol table offset
  sta  ,S return TYPE
  ldd 2,U Get array total size
  std I.SIZE Save it
+ ifne H6309
+ clrd Use zero indexing offset
+ else
  clra
  clrb Use zero indexing offset
+ endc
  bra VARR11
 VARR03 leay -OPSIZE,Y Get scratch on opstack
+ ifne H6309
+ clrd Clear partial result
+ else
  clra
  clrb Clear partial result
+ endc
  std 1,Y
  leau 4,U Get dimension ptr
  bra VARR05
@@ -541,8 +549,12 @@ INTVAR ldd  ,U Get value
  pag
 ***************
 * Integer Negate
+ ifne H6309
+NEGINT clrd
+ else
 NEGINT clra
  clrb
+ endc
  subd TOSINT,Y
  std TOSINT,Y
  rts
@@ -592,6 +604,13 @@ INSUB ldd NOSINT,Y Load first
 * Local: D,CC Destroyed
 * Global: Tos = Tos * Nos
 
+ ifne H6309
+INMUL ldd TOSINT,Y Get temp var integer
+ muld NOSINT,Y Multiply (result in Q=D:W)
+ stw NOSINT,Y Save 16-bit wrapped result
+ leay OPSIZE,Y Eat temp var
+ rts
+ else
 INMUL ldd NOSINT,Y Get nos
  beq INML30 bra if zero
  cmpd #2 Multiply by two?
@@ -623,6 +642,7 @@ INML25 lda NOSINT+1,Y Get nos lsb
  stb NOSINT,Y Save result msb
 INML30 leay OPSIZE,Y Pop one operand
  rts
+ endc
 
 ***************
 * Subroutine SETSGN
@@ -636,6 +656,40 @@ INML30 leay OPSIZE,Y Pop one operand
 * Local: D,CC - Destroyed
 * Global: Tostyp,Y Set; 0=Pos, Ff=Neg
 
+ ifne H6309
+INDIV ldd TOSINT,Y Get divisor
+ bne INDV_OK ..not zero; go do divide
+ ldb #M$ZDIV error: divide by zero
+ lbra EVLERR
+INDV_OK ldw NOSINT,Y Get 16-bit signed dividend
+ sexw Sign-extend W to Q
+ divq TOSINT,Y 32/16 signed divide; Q=quotient:remainder
+ tstw Answer positive?
+ ble INDV_ChkD bra if <= 0
+INDV_Pos tsta Is remainder positive?
+ bmi INDV_NRm bra if not
+INDV_Sav std 9,Y Save remainder for MOD
+ stw NOSINT,Y Save quotient for /
+ leay OPSIZE,Y Pop divisor
+ rts
+INDV_ChkD beq INDV_ChkZ If zero answer, need special handling
+INDV_ChkD1 tsta Is remainder negative?
+ bmi INDV_Sav bra if so
+INDV_NRm negd Negate remainder
+ bra INDV_Sav
+INDV_ChkZ lde NOSINT,Y Get MSB of dividend
+ bpl INDV_ChkZ1 bra if positive
+ incf Negative: bump flag
+INDV_ChkZ1 lde TOSINT,Y Get MSB of divisor
+ bpl INDV_ChkZ2 bra if positive
+ incf Negative: bump flag
+INDV_ChkZ2 cmpf #1 Remainder must be negative?
+ beq INDV_ChkZ3 bra if so
+ clrw Zero out answer
+ bra INDV_Pos
+INDV_ChkZ3 clrw Zero out answer
+ bra INDV_ChkD1
+ else
 SETSGN clr TOSTYP,Y Clear sign flag
  ldd NOSINT,Y Get nos
  bpl SETSG1 bra if positive
@@ -721,6 +775,7 @@ INDV55 std 9,Y Store remainder
  std NOSINT,Y
 INDV60 leay OPSIZE,Y Pop divisor
  rts
+ endc
 
  ttl REAL Operand routines
  pag
@@ -739,10 +794,17 @@ RLLIT leay -OPSIZE,Y Make room on opstack
  ldb ,X+ Get first operand byte
  lda #S.REAL Set TYPE
  std TOSTYP,Y Move to opstack
+ ifne H6309
+ ldq ,X Load 4 mantissa bytes
+ stq TOSMN1,Y Store them
+ ldb #4
+ abx Advance X past mantissa
+ else
  ldd ,X++ Finish moving operand
  std TOSMN1,Y .. to opstack
  ldd ,X++
  std TOSMN3,Y
+ endc
  rts
 
 ***************
@@ -762,10 +824,15 @@ RLVAR leay -OPSIZE,Y Make room on opstack
  lda #S.REAL Set TYPE
  ldb  ,U Get exponent
  std TOSTYP,Y Move to opstack
+ ifne H6309
+ ldq 1,U Load 4 mantissa bytes
+ stq 2,Y Store them
+ else
  ldd 1,U
  std 2,Y
  ldd 3,U
  std 4,Y
+ endc
  rts
 
  ttl Real Arithmetic routines
@@ -773,9 +840,13 @@ RLVAR leay -OPSIZE,Y Make room on opstack
 ***************
 * Real Negate - Flip Sign Bit
 
+ ifne H6309
+NEGRL eim #1,5,Y Negate sign bit of REAL #
+ else
 NEGRL lda 5,Y
  eora #1
  sta 5,Y
+ endc
  rts
 
 ***************
@@ -787,9 +858,13 @@ NEGRL lda 5,Y
 * Local: D,CC Destroyed
 * Global: I.SIGN Destroyed
 
+ ifne H6309
+RLSUB eim #1,5,Y Flip sign bit of subtrahend
+ else
 RLSUB ldb 5,Y Get subtrahend sign
  eorb #1 Flip it
  stb 5,Y Save it and fall to rladd
+ endc
 
 ***************
 * Subroutine RLADD
@@ -800,168 +875,291 @@ RLSUB ldb 5,Y Get subtrahend sign
 * Local: D,CC Destroyed
 * Global: I.SIGN Destroyed
 
-RLADD pshs X Save x
- tst TOSMN1,Y Zero addend
- beq RADD20
- tst NOSMN1,Y Zero augend
- bne RADD30
-RADD10 ldd TOSEXP,Y return addend
+ ifne H6309
+* Community 6309 Real Addition
+RLADD pshs X Preserve X
+ tst TOSMN1,Y 1st byte of mantissa 0?
+ beq L3FC7 Yes, eat temp var & leave other var alone
+ tst NOSMN1,Y Is original # a 0?
+ bne L3FCB No, go do actual add
+L3FBB ldq TOSEXP,Y Get Exponent & 1st 3 bytes of mantissa
+ stq NOSEXP,Y Save in destination var space
+ lda TOSMN4,Y Copy last byte of mantissa to orig var
+ sta NOSMN4,Y
+L3FC7 leay OPSIZE,Y Eat temp var & return
+ puls PC,X
+L3FCB lda NOSEXP,Y Get 1st exponent
+ suba TOSEXP,Y Calculate difference in exponents
+ bvc L3FD5 Didn't exceed +127 or -128
+ bpl L3FBB Went too big on plus side
+ bra L3FC7 Too small
+L3FD5 bmi L3FDD If negative difference, skip ahead
+ cmpa #31 Difference within 0-31?
+ ble L3FE5 Yes, go deal with it
+ bra L3FC7 Out of range
+L3FDD cmpa #-31 Difference within -1 to -31?
+ blt L3FBB Out of range, copy temp to answer
+ ldb TOSEXP,Y Since negative, copy temp exponent
+ stb NOSEXP,Y overtop destination exponent
+L3FE5 ldb NOSMN4,Y Get sign of dest. var
+ andb #$01 Keep sign bit only
+ stb ,Y Save copy over var type
+ eorb TOSMN4,Y EOR with sign bit of temp var
+ andb #$01 Keep only merged sign bit
+ stb TOSEXP,Y Save what resulting sign should be
+ fcb $62,$FE,$2B AIM #$FE,NOSMN4,Y
+ fcb $62,$FE,$25 AIM #$FE,TOSMN4,Y
+ tsta Are exponents exactly the same?
+ beq L4031 Yes, skip ahead
+ bpl L4029 Exponent difference positive
+ nega Force to positive
+ leax OPSIZE,Y Point X to dest. var
+ bsr L4082 Shift mantissa
+ tst TOSEXP,Y Result going to be positive?
+ beq L4039 Yes, skip ahead
+L400B subw TOSMN3,Y Q=Q-[2,y]
+ sbcd TOSMN1,Y
+ bcc L404D No borrow required
+ comw Do NEGQ
+ comd
+ addw #1
+ adcd #0
+L4025 dec ,Y Drop exponent by 1
+ bra L404D
+Shift24 beq SkpSh24 Even byte, skip ahead
+ ldb 2,X Get MSB of # to shift
+S24Lp lsrb Shift it down
+ deca Until done
+ bne S24Lp
+ tfr d,w Copy to LSW
+ clrb Clear out MSW
+ rts
+SkpSh24 ldf 2,X Get LSB
+ clre Clear 2nd LSB
+ clrb Clear MS 24 bits
+ rts
+L4029 leax ,Y Point X to temp var
+ bsr L4082 Shift mantissa
+ stq TOSMN1,Y Save shifted result
+L4031 ldq NOSMN1,Y Get mantissa of dest var into Q
+ tst TOSEXP,Y Check exponent of temp var
+ bne L400B <>0, go do Subtract again
+L4039 addw TOSMN3,Y 32 bit add of Q+[2,y]
+ adcd TOSMN1,Y
+ bcc L404D No overflow carry
+ rord Overflow, divide by 2
+ rorw
+ inc NOSEXP,Y Bump up exponent
+L404D tsta Check sign of MSb of Q
+ bmi L4060 Set, skip ahead
+ andcc #^Carry Force carry bit off
+L4050 dec NOSEXP,Y Drop exponent of dest var by 1
+ bvc L4054 Not underflowed
+ puls X Pull X back before zeroing out answer
+ bra FPZERO63 Underflow; answer=0
+L4054 rolw 32 bit multiply by 2
+ rold
+ bpl L4050 Keep doing until a set bit comes out
+L4060 addw #1 Add 1 to Q
+ adcd #0
+ bcc L4071 No carry
+ rora
+ inc NOSEXP,Y
+L4071 std NOSMN1,Y Save MSW of answer
+ tfr w,d Move LSW to D
+ lsrb Eat sign bit
+ lslb
+ orb ,Y Put in sign of result
+L407C std NOSMN3,Y Save LSW with sign bit
+ leay OPSIZE,Y Eat temp var
+ puls PC,X Restore X & return
+L4082 suba #24 24-31 bit shift?
+ bge Shift24 Yes
+ adda #8 16-23 bit shift?
+ bge Shift16 Yes
+ adda #8 8-15 bit shift?
+ bge Shift8 Yes
+ adda #8 Restore 1-7 bit shift count
+ sta <I.PRHI Save # of shifts required
+ ldq 2,X Get # to shift
+L40BD lsrd Shift 32 bit #
+ rorw
+ dec <I.PRHI Dec # shifts left to do
+ bne L40BD Keep doing until done
+ rts
+Shift16 beq SkpSh16 Even 2 bytes
+ ldw 2,X Get MSW of # to shift
+S16Lp lsrw Shift it down
+ deca Until done
+ bne S16Lp
+ clrb Clear MSW of Q
+ rts
+SkpSh16 ldw 2,X Get LSW of Q
+ clrb
+ rts
+Shift8 beq SkpSh8 Exactly 8, use faster method
+ ldb 2,X Get LS 24 bits
+ ldw 3,X
+S8Lp lsrb Shift it down
+ rorw
+ deca
+ bne S8Lp
+ rts
+SkpSh8 ldb 2,X Get MSW of Q
+ ldw 3,X Get LSW of Q
+ rts
+ else
+* Community 6809 Real Addition
+RLADD pshs X Preserve X
+ tst TOSMN1,Y 1st byte of mantissa 0?
+ beq L3FC7 Yes, eat temp var & leave other var alone
+ tst NOSMN1,Y Is original # a 0?
+ bne L3FCB No, go do actual add
+L3FBB ldd TOSEXP,Y Copy temp var's value overtop original var
  std NOSEXP,Y
  ldd TOSMN2,Y
  std NOSMN2,Y
- lda TOSMN4,Y
+ lda TOSMN4,Y Copy last byte of mantissa to orig var
  sta NOSMN4,Y
-RADD20 leay OPSIZE,Y
- puls X,PC
-RADD30 lda NOSEXP,Y Get augend exponent
- suba TOSEXP,Y Subtract addend exponent
- bvc RADD31 bra if in range
- bpl RADD10 bra if tos > nos
- bra RADD20
-RADD31 bmi RADD35 bra if tos > nos
- cmpa #31 Operands within range?
- ble RADD36 bra if so
- bra RADD20
-RADD35 cmpa #-31 Operands within range?
- blt RADD10 ..No
- ldb TOSEXP,Y Copy result exponent
- stb NOSEXP,Y
-RADD36 ldb NOSMN4,Y Get nos sign byte
- andb #1 Get nos sign
- stb TOSTYP,Y Save it
- eorb TOSMN4,Y Get operand sign difference
- andb #1 Get sign difference only
- stb TOSEXP,Y Save difference
- ldb NOSMN4,Y Get nos ABS value
+L3FC7 leay OPSIZE,Y Eat temp var & return
+ puls PC,X
+L3FCB lda NOSEXP,Y Get 1st exponent
+ suba TOSEXP,Y Calculate difference in exponents
+ bvc L3FD5 Didn't exceed +127 or -128
+ bpl L3FBB Went too big on plus side
+ bra L3FC7 Too small
+L3FD5 bmi L3FDD If negative difference, skip ahead
+ cmpa #31 Difference within 0-31?
+ ble L3FE5 Yes, go deal with it
+ bra L3FC7 Out of range
+L3FDD cmpa #-31 Difference within -1 to -31?
+ blt L3FBB Out of range, copy temp to answer
+ ldb TOSEXP,Y Since negative, copy temp exponent
+ stb NOSEXP,Y overtop destination exponent
+L3FE5 ldb NOSMN4,Y Get sign of dest. var
+ andb #$01 Keep sign bit only
+ stb ,Y Save copy over var type
+ eorb TOSMN4,Y EOR with sign bit of temp var
+ andb #$01 Keep only merged sign bit
+ stb TOSEXP,Y Save what resulting sign should be
+ ldb NOSMN4,Y
  andb #$FE
  stb NOSMN4,Y
- ldb TOSMN4,Y Get tos ABS value
+ ldb TOSMN4,Y
  andb #$FE
  stb TOSMN4,Y
- tsta TEST Exponent difference
- beq RADD60 bra if no shifting needed
- bpl RADD50 bra if shift addend
- nega GET Difference ABS value
- leax OPSIZE,Y Get ptr to augend
- bsr ADJEXP Shift it
- tst TOSEXP,Y Are signs alike?
- beq RADD65 bra if so
-RADD40 subd 4,Y Subtract addend lsb
- exg D,X Msb to D
- sbcb 3,Y
- sbca 2,Y
- bcc RADD70
- coma COMPLEMENT Result
+ tsta Are exponents exactly the same?
+ beq L4031 Yes, skip ahead
+ bpl L4029 Exponent difference positive
+ nega Force to positive
+ leax OPSIZE,Y Point X to dest. var
+ bsr L4082 Shift mantissa (into X:D)
+ tst TOSEXP,Y Result going to be positive?
+ beq L4039 Yes, skip ahead
+L400B subd TOSMN3,Y X:D=X:D-(2,y)
+ exg D,X
+ sbcb TOSMN2,Y
+ sbca TOSMN1,Y
+ bcc L404D No borrow required
+ coma Compliment all 4 bytes
  comb
- exg D,X Lsb to D
+ exg D,X
  coma
  comb
  addd #1
- exg D,X Msb to D
- bcc RADD45
- addd #1 Propagate carry
-RADD45 dec TOSTYP,Y Change sign
- bra RADD70
-RADD50 leax TOSTYP,Y Get ptr to addend
- bsr ADJEXP Shift it
- stx 2,Y Save msb
- std 4,Y Save lsb
-RADD60 ldx 8,Y Get msb augend
- ldd 10,Y Get lsb augend
- tst TOSEXP,Y Are signs alike?
- bne RADD40 ..No
-RADD65 addd 4,Y Add lsb
- exg D,X Msb to D
- adcb 3,Y
- adca 2,Y
- bcc RADD70 bra if no carry
- rora RESULT/2
+ exg D,X
+ bcc L4025 If no carry, skip ahead
+ addd #1 +1 to rest of 32 bit #
+L4025 dec ,Y Drop exponent by 1
+ bra L404D
+L4029 leax ,Y Point X to temp var
+ bsr L4082 Shift mantissa (into X:D)
+ stx TOSMN1,Y
+ std TOSMN3,Y
+L4031 ldx NOSMN1,Y Get mantissa of dest var into X:D
+ ldd NOSMN3,Y
+ tst TOSEXP,Y Check exponent of temp var
+ bne L400B <>0, go process
+L4039 addd TOSMN3,Y 32 bit add of X:D + [2,y]
+ exg D,X
+ adcb TOSMN2,Y
+ adca TOSMN1,Y
+ bcc L404D No overflow carry
+ rora Overflow, divide by 2
  rorb
- exg D,X Lsb to D
+ exg D,X
  rora
  rorb
- inc 7,Y Adjust exponent
- exg D,X Msb to D
-RADD70 tsta IS Result normalized?
- bmi RADD80 bra if so
-RADD75 dec 7,Y Decrement exponent
+ inc NOSEXP,Y Bump up exponent
+ exg D,X
+L404D tsta
+ bmi L4060
+L4050 dec NOSEXP,Y
  lbvs FPZERO
- exg D,X Lsb to D
- aslb
+ exg D,X
+ lslb
  rola
  exg D,X
  rolb
  rola
- bpl RADD75 bra if another shift
-RADD80 exg D,X Lsb to D
- addd #1 Round
+ bpl L4050
+L4060 exg D,X
+ addd #1
  exg D,X
- bcc RADD85
- addd #1 Proagate carry
- bcc RADD85
- rora set High bit of result
- inc 7,Y Increment exponent
-RADD85 std 8,Y Store msb
- tfr X,D Lsb to D
- andb #$FE Clear sign bit
- tst TOSTYP,Y is result negative?
- beq RADD90 ..No
- incb set Sign
-RADD90 std 10,Y Store lsb
- leay OPSIZE,Y
- puls X,PC
-
-***************
-* Subroutine ADJEXP
-*   Adjust Exponent For Addition
-
-* Input: A = Shift Count
-*        X = Operand ptr
-* Output: X = Msdb of Operand
-*         D = Lsdb of Operand
-* Local: CC Destroyed
-* Global: None
-
-ADJEXP suba #16 Decrement counter
- bcs ADJEX3
- suba #8 Decrement counter
- bcs ADJEX1
- pshs A Save count
- clra GET Lsdb
+ bcc L4071
+ addd #1
+ bcc L4071
+ rora
+ inc NOSEXP,Y
+L4071 std NOSMN1,Y
+ tfr X,D
+ andb #$FE Mask out sign bit
+ tst ,Y Result supposed to be negative?
+ beq L407C No, leave it alone
+ incb Set sign bit
+L407C std NOSMN3,Y Save LSW of mantissa
+ leay OPSIZE,Y Eat temp var
+ puls PC,X Restore X & return
+L4082 suba #16 Subtract 16 from exponent difference
+ blo L40A0 Wrapped to negative
+ suba #8 Try subtracting 8
+ blo L4091 Wrapped
+ sta <I.PRHI Save number of rotates needed
+ clra
  ldb 2,X
- bra ADJEX2 Go finish
-ADJEX1 adda #8
- pshs A Save count
- ldd 2,X Get lsdb
-ADJEX2 ldx #0 Get msdb
- tst  ,S Test count
- beq ADJEX7 bra if done
- bra ADJEX5 Go finish
-ADJEX3 adda #8
- bcc ADJEX4
- pshs A Save count
- clra GET Msdb
- ldb 2,X
- ldx 3,X Get lsdb
- tst  ,S Test count
- bne ADJEX6 bra if not done
- exg D,X Msdb to x
- bra ADJEX7 Go clean up
-ADJEX4 adda #8
- pshs A Save count
- ldd 2,X Get msdb
- ldx 4,X Get lsdb
- bra ADJEX6 Go shift
-ADJEX5 exg D,X Msdb to D
-ADJEX6 lsra SHIFT Msdb
- rorb
- exg D,X Msdb to x
- rora SHIFT Lsdb
- rorb
- dec  ,S Up shift count
- bne ADJEX5 bra if not done
-ADJEX7 leas 1,S Dump count
+ bra L4097 Go get Low word into X & process
+L4091 adda #8 Bump # shifts back up
+ sta <I.PRHI Save number of rotates needed
+ ldd 2,X
+L4097 ldx #0
+ tst <I.PRHI Any shifts required?
+ bne L40BD Yes
  rts
+L40A0 adda #8 Add 8 back (back to 1 byte shift)
+ bhs L40B3 Still more
+ sta <I.PRHI
+ clra
+ ldb 2,X
+ ldx 3,X
+ tst <I.PRHI Any shifts to do?
+ bne L40BF Yes
+ exg D,X
+ rts
+L40B3 adda #8 Add 8 back again
+ sta <I.PRHI Save # bit shifts needed
+ ldd 2,X Get 32 bit mantissa into D:X
+ ldx 4,X
+ bra L40BF Go perform shift
+L40BD exg D,X
+L40BF lsra
+ rorb
+ exg D,X
+ rora
+ rorb
+ dec <I.PRHI
+ bne L40BD
+ rts
+ endc
 
 ***************
 * Subroutine RLMUL
@@ -973,9 +1171,181 @@ ADJEX7 leas 1,S Dump count
 *         U,X Preserved
 
 RLMUL bsr XRLMUL execute Real Multiply
- lbcs EVLERR
+ bcs RLMUL_ERR
  rts
+RLMUL_ERR jsr <M.STMTS
+ fcb $06
 
+ ifne H6309
+XRLMUL lda TOSMN1,Y          is tos=0
+ bpl FPZERO63             if so dont multiply
+ lda NOSMN1,Y             how about nos?
+ bmi FPML63_E9            if no go do it
+FPZERO63 clrd
+ clrw
+ stq NOSEXP,Y
+ sta NOSMN4,Y
+ leay OPSIZE,Y
+ rts
+FPZERO clrd
+ clrw
+ stq NOSEXP,Y
+ sta NOSMN4,Y
+ leay OPSIZE,Y
+ puls X,PC
+FPML63_E9 lda TOSEXP,Y         Get tos expo.
+ adda NOSEXP,Y            Add nos expo.
+ bvc FPML63_F6            bra if no overflow
+MULOVRF63 bpl FPZERO63
+ comb
+ ldb #M$FPOV
+ rts
+FPML63_F6 sta NOSEXP,Y         Save exponent
+ ldb NOSMN4,Y
+ eorb TOSMN4,Y
+ andb #$01
+ stb ,Y
+ lda NOSMN4,Y
+ anda #$FE
+ sta NOSMN4,Y
+ ldb TOSMN4,Y
+ andb #$FE
+ stb TOSMN4,Y
+ mul
+ clre
+ clr <I.PRHI
+ tfr a,f
+ lda NOSMN4,Y
+ ldb TOSMN3,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN3,Y
+ ldb TOSMN4,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ tfr e,f
+ lde <I.PRHI
+ clr <I.PRHI
+ lda NOSMN4,Y
+ ldb TOSMN2,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN3,Y
+ ldb TOSMN3,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN2,Y
+ ldb TOSMN4,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ tfr e,f
+ lde <I.PRHI
+ clr <I.PRHI
+ lda NOSMN4,Y
+ ldb TOSMN1,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN3,Y
+ ldb TOSMN2,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN2,Y
+ ldb TOSMN3,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN1,Y
+ ldb TOSMN4,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ stf NOSMN4,Y
+ tfr e,f
+ lde <I.PRHI
+ clr <I.PRHI
+ lda NOSMN3,Y
+ ldb TOSMN1,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN2,Y
+ ldb TOSMN2,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN1,Y
+ ldb TOSMN3,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ stf NOSMN3,Y
+ tfr e,f
+ lde <I.PRHI
+ clr <I.PRHI
+ lda NOSMN2,Y
+ ldb TOSMN1,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN1,Y
+ ldb TOSMN2,Y
+ mul
+ addr d,w
+ bcc *+4
+ inc <I.PRHI
+ lda NOSMN1,Y
+ ldb TOSMN1,Y
+ mul
+ tfr w,u
+ tfr e,f
+ lde <I.PRHI
+ exg d,u
+ addr u,w
+ bmi FPML63_02
+ asl NOSMN4,Y
+ rol NOSMN3,Y
+ rolb
+ rolw
+ dec NOSEXP,Y
+ bvs FPML63_1B
+FPML63_02 tfr b,a
+ ldb NOSMN3,Y
+ exg d,w
+ addw #1
+ adcd #0
+ bne FPML63_1B
+ rora
+ inc NOSEXP,Y
+FPML63_1B exg d,w
+ lsrb
+ lslb
+ orb ,Y
+ std NOSMN3,Y
+ stw NOSMN1,Y
+ leay OPSIZE,Y
+ clrb
+ rts
+ else
 XRLMUL pshs X Save x
  lda TOSMN1,Y is tos=0
  bpl FPZERO if so we dont multiply
@@ -1187,6 +1557,7 @@ FPMUL9 orb TOSTYP,Y Put in sign bit
  leas 3,S return scratch
  clrb return carry clear
  puls X,PC exit
+ endc
 
  pag
 ***************
@@ -1203,11 +1574,118 @@ FPMUL9 orb TOSTYP,Y Put in sign bit
 * Global:
 
 RLDIV bsr XRLDIV execute Divide
- lbcs EVLERR abort if error
+ bcs RLDIV_ERR
 RLDIV99 rts
+RLDIV_ERR jsr <M.STMTS
+ fcb $06
 
 * Check For Exceptions
-XRLDIV comb 
+ ifne H6309
+XRLDIV comb
+ ldb #M$ZDIV
+ tst TOSMN1,Y
+ beq RLDIV99
+ tst NOSMN1,Y
+ lbeq FPZERO63
+ lda NOSEXP,Y
+ suba TOSEXP,Y
+ lbvs MULOVRF63
+ sta NOSEXP,Y
+ lda #$21
+ ldb TOSMN4,Y
+ eorb NOSMN4,Y
+ andb #1
+ std ,Y
+ ldq TOSMN1,Y
+ lsrd
+ rorw
+ stq TOSMN1,Y
+ ldq NOSMN1,Y
+ lsrd
+ rorw
+ clr NOSMN4,Y
+FPDV63_6F subw TOSMN3,Y
+ sbcd TOSMN1,Y
+ beq FPDV63_AB
+ bmi FPDV63_A7
+FPDV63_7E orcc #1
+FPDV63_80 dec ,Y
+ beq FPDV63_F8
+ rol NOSMN4,Y
+ rol NOSMN3,Y
+ rol NOSMN2,Y
+ rol NOSMN1,Y
+ andcc #$FE
+ rolw
+ rold
+ bcc FPDV63_6F
+ addw TOSMN3,Y
+ adcd TOSMN1,Y
+ beq FPDV63_AB
+ bpl FPDV63_7E
+FPDV63_A7 andcc #$FE
+ bra FPDV63_80
+FPDV63_AB tstw
+ bne FPDV63_7E
+ ldb ,Y
+ decb
+ subb #$10
+ blt FPDV63_CD
+ subb #$08
+ blt FPDV63_C2
+ stb ,Y
+ lda NOSMN4,Y
+ ldb #$80
+ andcc #$FE
+ bra FPDV63_EB
+FPDV63_C2 addb #$08
+ stb ,Y
+ ldw #$8000
+ ldd NOSMN3,Y
+ andcc #$FE
+ bra FPDV63_EB
+FPDV63_CD addb #$08
+ blt FPDV63_DB
+ stb ,Y
+ ldq NOSMN2,Y
+ ldf #$80
+ andcc #$FE
+ bra FPDV63_EB
+FPDV63_DB addb #$07
+ stb ,Y
+ ldq NOSMN1,Y
+ orcc #$01
+FPDV63_E5 rolw
+ rold
+FPDV63_EB dec ,Y
+ bpl FPDV63_E5
+ tsta
+ bra FPDV63_FC
+FPDV63_F8 ldq NOSMN1,Y
+FPDV63_FC bmi FPDV63_0C
+ rolw
+ rold
+ dec NOSEXP,Y
+ lbvs FPZERO63
+FPDV63_0C addw #1
+ adcd #0
+ bcc FPDV63_21
+ rora
+ inc NOSEXP,Y
+ lbvs FPZERO63
+FPDV63_21 std NOSMN1,Y
+ tfr w,d
+ lsrb
+ lslb
+ orb TOSEXP,Y
+ std NOSMN3,Y
+ inc NOSEXP,Y
+ lbvs MULOVRF63
+FPDV95 leay OPSIZE,Y
+ rts
+ else
+* Check For Exceptions
+XRLDIV comb
  ldb #M$ZDIV Zero divisor error
  tst TOSMN1,Y Test divisor
  beq RLDIV99 error
@@ -1372,6 +1850,7 @@ FPDV90 std NOSMN3,Y
 FPDV95 leay OPSIZE,Y
  clrb return carry clear
  puls X,PC
+ endc
 
 ***************
 * Subroutine RLEXP
@@ -1974,8 +2453,13 @@ RCDVAR ldd I.SIZE Get record size
 *         Y,X,U,S Preserved
 
 FLTTOP equ *
-FLOAT clra
+FLOAT
+ ifne H6309
+ clrd
+ else
+ clra
  clrb
+ endc
  std 4,Y Clr lsdb mantissa
  ldd 1,Y Get integer value
  bne FLOAT1 zero?
@@ -2033,8 +2517,13 @@ FIX ldb 1,Y Get exponent
  ldd #1 Otherwise = 1
  bra FIX4A
 
-FIXZER clra
+FIXZER
+ ifne H6309
+ clrd
+ else
+ clra
  clrb
+ endc
  bra FIX5
 
 FIX1 subb #16 Subtr int bias
@@ -2220,8 +2709,12 @@ SQRR05 ldb #31 Set cycle count
 SQRR10 std -4,Y Copy mantissa
  ldd 4,Y
 SQRR20 std -2,Y
- clra clear Result
+ ifne H6309
+ clrd
+ else
+ clra
  clrb
+ endc
  std 2,Y
  std 4,Y
  std -OPSIZE,Y Clear temporary
@@ -2329,8 +2822,12 @@ INTFNI equ FLOAT
 
 INTFNR lda 1,Y Get exponent
  bgt INTF20 bra if arg>=1
+ ifne H6309
+ clrd
+ else
  clra
  clrb
+ endc
  std 1,Y return zero
  std 3,Y
  stb 5,Y
@@ -2549,8 +3046,12 @@ LOGFNC pshs X Save x
  leau CORDX,Y
  lbsr CMOVE
  lbsr CDENOR Denormalize it
+ ifne H6309
+ clrd Clear cordic TEMP
+ else
  clra
  clrb Clear cordic TEMP
+ endc
  std CORDZ,Y
  std CORDZ+2,Y
  sta CORDZ+4,Y
@@ -2867,8 +3368,12 @@ ATNF30 cmpb #2 Exponent small enough?
 ATNSUB leau CORDY,Y
  lbsr CMOVE Move argument to y
  lbsr CDENOR Denormalize it
- clra clear Z-coord
+ ifne H6309
+ clrd
+ else
+ clra
  clrb
+ endc
  std CORDZ,Y
  std CORDZ+2,Y
  sta CORDZ+4,Y
@@ -3291,8 +3796,12 @@ CDEN20 bne CDEN10
 
 CNORM lda  ,U Get msb
  bpl CNOR05 bra if positive
- clra RETURN Zero
+ ifne H6309
+ clrd
+ else
+ clra
  clrb
+ endc
  std  ,U
  std 2,U
  sta 4,U
@@ -3410,8 +3919,13 @@ RSEED fdb $0E12,$14A2
 RNDA fdb $BB40,$E62D a=3141592621
 RNDC fdb $3619,$62E9 c=907633385
 
-RNDFNC clra clear Acc
+RNDFNC
+ ifne H6309
+ clrd
+ else
+ clra
  clrb
+ endc
  std I.ACC
  std I.ACC+2
  pshs A Save sign flag
@@ -3522,8 +4036,12 @@ RND2 ldd I.SEED+2 Get seed
  std ,--Y and put it on
  ldd I.SEED the operand stack
  std ,--Y
- clra (with Exponent of zero)
+ ifne H6309
+ clrd
+ else
+ clra
  clrb
+ endc
  std ,--Y
  bsr RNDNOR normalize before mult
  lbra RLMUL mult random num by arg
@@ -3703,8 +4221,12 @@ SUBFNC pshs X,Y Save registers
  ldy 1,Y Get ptr to string
  lbsr J$SBST Call search
  bcc SUBF10 bra if found
- clra RETURN Zero position
+ ifne H6309
+ clrd
+ else
+ clra
  clrb
+ endc
  bra SUBF20
 SUBF10 tfr Y,D Copy ptr to where found
  ldx 2,S Get opstack ptr

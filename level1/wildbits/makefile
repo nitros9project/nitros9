@@ -60,7 +60,7 @@ dskcopy: $(DSKS)
 reload:
 	osascript -e 'tell application "DriveWire"' -e 'tell server of first document' -e 'reload drive 0' -e 'end tell' -e 'end tell'
 
-BASIC09_FILES = $(foreach file,$(3RDPARTY)/packages/basic09/samples/*.b09,$(file))
+BASIC09_FILES = $(foreach file,$(3RDPARTY)/packages/basic09/samples/*,$(file))
 BF_FILES = $(foreach file,$(3RDPARTY)/packages/bf/*.bf,$(file))
 SOUND_FILES = $(foreach file,sound/*,$(file))
 

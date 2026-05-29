@@ -8,7 +8,7 @@ BOOTMODS = krnp2 ioman init \
 DSK_EXTRA_DEPS = $(MODDIR)/sysgo_dd
 DSK_POST_COPY = $(MAKE) copy-sysgo-root DSKIMAGE=$@
 BASIC09_CMDS = basic09 runb gfx2 gfx inkey syscall
-BASIC09_SAMPLES ?= $(3RDPARTY)/packages/basic09/samples/hello.b09
+BASIC09_SAMPLES ?= $(3RDPARTY)/packages/basic09/samples/unittest
 CMDS_EXTRA += $(BASIC09_CMDS)
 include ../coco3.mak
 
@@ -35,3 +35,9 @@ ifeq ($(MAME),1)
 startup.mame: $(NITROS9DIR)/level2/$(PORT)/startup
 	{ echo "keyrpt 0 0</1"; cat $<; } >$@
 endif
+
+$(MODDIR)/basic09: basic09.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/runb: runb.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@

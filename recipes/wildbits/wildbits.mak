@@ -80,7 +80,7 @@ CMDS += dmem minted mmap modpatch \
 endif
 
 BASIC09 = basic09 runb inkey syscall wild
-BASIC09_FILES = $(wildcard $(3RDPARTY)/packages/basic09/samples/*.b09)
+BASIC09_FILES = $(wildcard $(3RDPARTY)/packages/basic09/samples/*)
 RUNB_SHA256 = 605c7a9f0fde3fed21f7672f5c634f7c43b440f385f088e593f8acca5fccba31
 STARTUP = $(LEVEL2)/wildbits/startup
 FEU_STARTUP = feu.startup
