@@ -116,6 +116,9 @@ L002E               sta       ,x+                 clear mem
 * I presume this should also get IFEQ to specify 50 for PAL systems
                     lda       #60                 Init clock ctr to 60
                     sta       <V.ClkCnt,u
+                    sta       <V.KyDly,u          Init key repeat start delay
+                    lda       #$05
+                    sta       <V.KySpd,u          Init key repeat speed
                     leax      <AltIRQ,pcr         get IRQ routine ptr
                     stx       >D.AltIRQ           store in AltIRQ
                     leax      >SetDsply,pcr       get display vector
@@ -242,20 +245,22 @@ L00F1               bsr       L015C
                     bne       L00CC               Key pressed, go process
                     cmpa      <V.6F,u             Check flag: Same as last key pressed?
                     bne       L010E               No, skip ahead
+                    tst       <V.KyDly,u          repeat disabled?
+                    beq       CheckFlash          Yes, just keep IRQ housekeeping running
                     ldb       <V.ClkCnt,u         Get clock tick count
-                    beq       L010A               If 0, reload it with 5
+                    beq       L010A               If 0, reload with repeat speed
                     decb                          Otherwise, drop by 1 & save back
 L0105               stb       <V.ClkCnt,u
                     bra       CheckFlash          Check of we should flash cursor (separate counter)
 
-L010A               ldb       #$05                Set clock counter back to 5
+L010A               ldb       <V.KySpd,u          Set clock counter back to repeat speed
                     bra       L011A               Save it and continue
 
 L010E               sta       <V.6F,u             Save copy of key pressed?
-                    ldb       #$05                Default timer to 5 tickets
+                    ldb       <V.KySpd,u          Default timer to repeat speed
                     tst       <V.KySame,u         Same key as last time?
-                    bne       L0105               Yes, save clock tick count of 5, check for cursor flash
-                    ldb       #60                 No, set clock tick count to 60
+                    bne       L0105               Yes, save clock tick count, check for cursor flash
+                    ldb       <V.KyDly,u          No, set clock tick count to initial delay
 L011A               stb       <V.ClkCnt,u
                     ldb       V.IBufH,u           get head pointer in B
                     leax      V.InBuf,u           point X to input buffer
@@ -287,7 +292,7 @@ WakeIt              ldb       #S$Wake             get wake signal
 L0153               beq       L0158               branch if none
                     os9       F$Send              else send wakeup signal
 L0158               clr       V.WAKE,u            clear process to wake flag
-                    bra       AltIRQEnd           and move along
+                    lbra      AltIRQEnd           and move along
 
 L015C               clra
                     clrb
@@ -942,13 +947,25 @@ SetStat             sta       <V.WrChr,u          save function code
                     cmpa      #SS.SLGBf
                     beq       SSSLGBF
                     cmpa      #SS.KySns
-                    bne       CoGetStt
+                    bne       ChkGIP
                     ldd       R$X,x               get caller's key sense set data
                     beq       L0558               branch if zero
                     ldb       #$FF                else set all bits
 L0558               stb       <V.KySnsF,u         store value in KySnsFlag
 L055B               clrb
 L055C               rts
+
+ChkGIP              cmpa      #SS.GIP             Global input parameters?
+                    bne       CoGetStt            No, try CO-module SetStat
+                    ldd       R$Y,x               get caller's key repeat settings
+                    cmpa      #$FF                Start constant "don't change"?
+                    beq       ChkKSpd             Yes, skip to repeat speed
+                    sta       <V.KyDly,u          Save new keyboard repeat start delay
+                    sta       <V.ClkCnt,u         Apply to the active repeat counter too
+ChkKSpd             cmpb      #$FF                Repeat speed "don't change"?
+                    beq       L055B               Yes, done
+                    stb       <V.KySpd,u          Save new repeat speed
+                    bra       L055B
 
 CoGetStt            ldb       #$09                CO-module setstat
 JmpCO               pshs      b
