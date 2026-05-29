@@ -17,6 +17,6 @@ run: $(DSKIMAGE)
 =======
 ifeq ($(MAME),1)
 startup.mame: $(NITROS9DIR)/level1/$(PORT)/startup
-	{ echo "keyrpt 0 0"; cat $<; } >$@
+	{ echo "keyrpt 0 0</1"; cat $<; } >$@
 endif
 >>>>>>> 92853301 (Add MAME startup repeat setting)

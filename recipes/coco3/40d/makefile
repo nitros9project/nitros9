@@ -31,5 +31,5 @@ include ../coco3.mak
 
 ifeq ($(MAME),1)
 startup.mame: $(NITROS9DIR)/level2/$(PORT)/startup
-	{ echo "keyrpt 0 0"; cat $<; } >$@
+	{ echo "keyrpt 0 0</1"; cat $<; } >$@
 endif
