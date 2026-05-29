@@ -22,3 +22,14 @@ copy-sysgo-root:
 	$(OS9ATTR_EXEC) $(DSKIMAGE),sysgo
 
 .PHONY: copy-sysgo-root run
+
+MAME ?= 0
+ifeq ($(MAME),1)
+STARTUP = startup.mame
+endif
+include ../coco3.mak
+
+ifeq ($(MAME),1)
+startup.mame: $(NITROS9DIR)/level2/$(PORT)/startup
+	{ echo "keyrpt 0 0"; cat $<; } >$@
+endif
