@@ -53,7 +53,8 @@ start               bsr       ParseByte ; parse repeat start delay into B
                     clra                ; select standard input path 0
                     ldb       #SS.GIP   ; request global input parameter SetStat
                     os9       I$SetStt  ; ask VTIO to update keyboard repeat timing
-                    bra       Exit      ; exit with the SetStat status in B
+Exit                clrb                ; return success status in B and clear carry
+                    os9       F$Exit    ; terminate process with B as status
 
 UsagePull           leas      1,s       ; drop saved start delay after second parse failed
 Usage               equ       *         ; common syntax-error exit path
@@ -63,8 +64,7 @@ Usage               equ       *         ; common syntax-error exit path
                     lda       #2        ; write usage text to standard error
                     os9       I$WritLn  ; display the usage line
                     endc
-Exit                clrb
-                    os9       F$Exit    ; terminate process with B as status
+                    bra       Exit      ; exit with the SetStat status in B
 
 ParseByte           bsr       SkipSep   ; move X to the next candidate byte
                     cmpa      #C$CR     ; detect missing value at end of line
