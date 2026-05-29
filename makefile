@@ -47,6 +47,27 @@ dskcopy:	all
 dskclean:
 	$(foreach dir,$(dirs),$(MAKE) -C $(dir) dskclean &&) :
 
+# Populate /3rdparty on the Pico-Thing L2 x0 disk image with the contents
+# of every non-NOS9 disk image found in $(DSKDIR), each in its own
+# subdirectory named after the package.  When multiple variants exist for
+# the same package, the _dw image is preferred (selection logic lives in
+# scripts/pt_select_3rdparty.py).
+picothing-3rdparty:
+	@target='$(DSKDIR)/NOS9_6809_L2_DEV_picothing_x0.dsk'; \
+	test -f "$$target" || { echo "Target not found: $$target (run 'make dskcopy' first)"; exit 1; }; \
+	$(MAKDIR) "$$target,3rdparty" >/dev/null 2>&1 || true; \
+	python3 $(NITROS9DIR)/scripts/pt_select_3rdparty.py $(DSKDIR) | \
+	while IFS=$$'\t' read -r pkg src; do \
+		echo "  -> 3rdparty/$$pkg from $$(basename $$src)"; \
+		$(MAKDIR) "$$target,3rdparty/$$pkg" >/dev/null 2>&1 || true; \
+		$(OS9) dsave -e "$$src," "$$target,3rdparty/$$pkg" >/dev/null || \
+			{ echo "    FAILED on $$pkg"; exit 1; }; \
+	done; \
+	echo "  -> 3rdparty/src from $(NITROS9DIR)/3rdparty/ (LF->CR for text)"; \
+	python3 $(NITROS9DIR)/scripts/pt_copy_src_tree.py \
+		$(NITROS9DIR)/3rdparty "$$target" 3rdparty/src || \
+		{ echo "    one or more files failed on src tree"; exit 1; }
+
 info:
 	@$(foreach dir,$(dirs), $(MAKE) --no-print-directory -C $(dir) info &&) :
 

@@ -992,4 +992,4 @@ CurLSN              fcb       0,0,0     current 3-byte lsn being read
 SegCnt              fdb       0         remaining sectors in segment
 RCDest              fdb       0         destination buffer pointer
 
-                    end
+                    end       Chunk

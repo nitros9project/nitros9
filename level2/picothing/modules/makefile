@@ -13,6 +13,7 @@ IDEFLAGS    = $(AFLAGS) -DIDE=1 $(FLAGS)
 
 KERNEL      = krn krnp2
 SYSMODS     = ioman init sysgo boot_picothing boot_dw_pt rel_picothing
+RELSREC     = rel_picothing.srec
 CLOCKS      = clock_picothing clock2_null
 RBF         = rbf.mn rbsuper.dr llide_pt.dr ddi0_pt.dd \
               i0_pt.dd i1_pt.dd i2_pt.dd i3_pt.dd \
@@ -26,7 +27,7 @@ DW          = dwio.sb rbdw.dr ddx0.dd x0.dd x1.dd x2.dd x3.dd \
               clock2_dw
 PIPE        = pipeman.mn piper.dr pipe.dd
 
-ALLOBJS     = $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(GFX) $(DW) $(PIPE)
+ALLOBJS     = $(KERNEL) $(SYSMODS) $(RELSREC) $(CLOCKS) $(RBF) $(SCF) $(GFX) $(DW) $(PIPE)
 
 all:    $(ALLOBJS)
 
@@ -90,6 +91,10 @@ boot_dw_pt: boot_dw_pt.asm
 # REL - early hardware init and relocation chunk (raw binary at Bt.Start)
 rel_picothing: rel_picothing.asm
 	$(AS) --format=raw $(AFLAGS) $(ASOUT)$@ $<
+
+# Same REL source as a Motorola S-record (for usim09pt / firmware load)
+rel_picothing.srec: rel_picothing.asm
+	$(AS) --format=srec $(AFLAGS) $(ASOUT)$@ $<
 
 # Clock module
 clock_picothing: clock_picothing.asm
