@@ -81,6 +81,7 @@ endif
 
 BASIC09 = basic09 runb inkey syscall wild
 BASIC09_FILES = $(wildcard $(3RDPARTY)/packages/basic09/samples/*.b09)
+RUNB_SHA256 = 605c7a9f0fde3fed21f7672f5c634f7c43b440f385f088e593f8acca5fccba31
 STARTUP = $(LEVEL2)/wildbits/startup
 FEU_STARTUP = feu.startup
 SCRIPTS_DIR = $(LEVEL1)/wildbits/scripts
@@ -156,6 +157,9 @@ endif
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
 	$(MAKDIR) $@,DEFS
+ifneq ($(filter runb,$(CMDS)),)
+	@printf '%s  %s\n' "$(RUNB_SHA256)" $(MODDIR)/runb | shasum -a 256 -c -
+endif
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 	$(OS9RENAME) $@,CMDS/shellplus shell
@@ -191,6 +195,10 @@ $(MODDIR)/xmode: xmode.asm | $(MODDIR)
 
 $(MODDIR)/tmode: xmode.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DTMODE=1
+
+$(MODDIR)/runb: runb.asm runb_core.asm basic09_rlcmp.asm basic09_floatfix.asm basic09_scalar.asm basic09_sqrt.asm basic09_miscfunc.asm basic09_logexp.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+	@printf '%s  %s\n' "$(RUNB_SHA256)" $@ | shasum -a 256 -c -
 
 ifeq ($(LEVEL),2)
 $(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1_MODS)) | $(MODDIR)

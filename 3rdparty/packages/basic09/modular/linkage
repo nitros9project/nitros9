@@ -1,0 +1,16 @@
+***************
+* Basic09 Linkage header
+
+* All External BASIC09 References to this module vector
+* through this routine.
+
+ENTRYPT equ * entry point to this module
+ pshs D,X save regs
+ ldb [4,S] get entry offset desired
+ leax <ENTRYTBL,PCR addr of entry table
+ ldd B,X get offset of entry
+ leax D,X address desired entry
+ stx 4,S 
+ puls D,X,PC vector to routine
+
+ENTRYTBL equ *
