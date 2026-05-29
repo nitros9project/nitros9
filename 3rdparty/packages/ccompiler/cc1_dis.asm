@@ -8,7 +8,7 @@ atrv                set       ReEnt+rev
 rev                 set       $01
 edition             set       $04
 
-                    mod       eom,name,tylg,atrv,start,size
+                    mod       eom,name,tylg,atrv,_start,size
 
 u0000               rmb       2401
 size                equ       .
@@ -17,13 +17,13 @@ name                equ       *
                     fcs       /cc1/
                     fcb       edition
 
-L0011               lda       ,y+
+copybytes           lda       ,y+
 L0013               sta       ,u+
 L0015               leax      -$01,x
-L0017               bne       L0011
+L0017               bne       copybytes
 L0019               rts
 
-start               pshs      y
+_start              pshs      y
                     pshs      u
                     clra
 L001F               clrb
@@ -37,12 +37,12 @@ L002D               pshs      x
 L002F               leay      L1DAC,pcr
                     ldx       ,y++
                     beq       L003B
-                    bsr       L0011
+                    bsr       copybytes
                     ldu       $02,s
 L003B               leau      >$002d,u
                     ldx       ,y++
 L0041               beq       L0046
-L0043               bsr       L0011
+L0043               bsr       copybytes
 L0045               clra
 L0046               cmpu      ,s
                     beq       L004F
@@ -119,27 +119,25 @@ L00DD               leax      $01BF,u
                     ldd       $01FB,u
                     pshs      d
                     leay      ,u
-                    bsr       L00F7
-                    lbsr      L0179
+                    bsr       stkinit
+                    lbsr      main
                     clr       ,-s
                     clr       ,-s
-                    lbsr      L1DA0
-L00F7               leax      $05E1,y
+                    lbsr      exit
+stkinit             leax      $05E1,y
                     stx       $0209,y
                     sts       $01FD,y
                     sts       $020b,y
                     ldd       #$FF82
-L010C               leax      d,s
+stkcheck            leax      d,s
                     cmpx      $020b,y
                     bcc       L011E
                     cmpx      $0209,y
                     bcs       L0138
                     stx       $020b,y
 L011E               rts
-L011F               fcb       $2a,$2a,$2a,$2a,$20,$53,$54,$41
-                    fcb       $43,$4b,$20,$4f,$56,$45,$52,$46
-                    fcb       $4C,$4f,$57,$20,$2a,$2a,$2a,$2a
-                    fcb       $0d
+L011F               fcc       /**** STACK OVERFLOW ****/
+                    fcb       $0d       carriage return terminator
 L0138               leax      L011F,pcr
                     ldb       #$CF
                     pshs      b
@@ -147,7 +145,7 @@ L0138               leax      L011F,pcr
                     ldy       #$0064
                     os9       I$WritLn
                     clr       ,-s
-                    lbsr      L1DA6
+                    lbsr      _exit
                     ldd       $01FD,y
                     subd      $020b,y
                     rts
@@ -169,9 +167,9 @@ L0167               ldd       ,y++
                     leas      $04,s
                     rts
 
-L0179               pshs      u
+main                pshs      u
                     ldd       #$FFA1
-                    lbsr      L010C
+                    lbsr      stkcheck
                     leas      -$0f,s
                     leax      L0D1A,pcr
                     pshs      x
@@ -179,7 +177,7 @@ L0179               pshs      u
                     pshs      d
                     leax      $0088,y
                     pshs      x
-                    lbsr      L119C
+                    lbsr      fprintf
                     leas      $06,s
                     clra
                     clrb
@@ -265,7 +263,7 @@ L0249               ldd       #$0001
                     lbra      L03B6
 
 L0251               ldd       #$0001
-                    std       L0011
+                    std       copybytes
                     lbra      L03B6
 
 L0259               ldd       #$0001
@@ -486,12 +484,12 @@ L0458               ldd       L0025
                     pshs      x
                     leax      $0088,y
                     pshs      x
-                    lbsr      L119C
+                    lbsr      fprintf
                     leas      $04,s
                     clra
                     clrb
                     pshs      d
-                    lbsr      L1DA0
+                    lbsr      exit
                     leas      $02,s
 L0476               ldd       $000D
                     addd      $000B
@@ -893,7 +891,7 @@ L0853               leax      $04FB,y
                     pshs      x
                     lbsr      L1991
                     leas      $04,s
-                    ldd       L0011
+                    ldd       copybytes
                     lbne      L08FD
                     leax      $0E8D,pcr
                     pshs      x
@@ -1222,7 +1220,7 @@ L0B76               clra
                     pshs      x
                     leax      $040b,y
                     pshs      x
-                    lbsr      $1980
+                    lbsr      L1980
                     std       ,s
                     leax      L0F37,pcr
                     pshs      x
@@ -1232,7 +1230,7 @@ L0BA0               leas      $0f,s
                     puls      pc,u
                     pshs      u
                     ldd       #$FFB4
-                    lbsr      L010C
+                    lbsr      stkcheck
                     leas      -$02,s
                     clra
                     clrb
@@ -1246,7 +1244,7 @@ L0BA0               leas      $0f,s
                     tfr       d,u
                     cmpu      #$FFFF
                     bne       L0BCF
-                    lbsr      $0F48
+                    lbsr      L0F48
                     bra       L0BF1
 
 L0BCF               pshs      u
@@ -1267,7 +1265,7 @@ L0BF1               puls      pc,u,x
                     puls      pc,u,x
 L0BF5               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010C
+                    lbsr      stkcheck
                     ldd       $04,s
                     beq       L0C15
                     ldd       $04,s
@@ -1281,28 +1279,28 @@ L0BF5               pshs      u
 L0C15               puls      pc,u
 L0C17               pshs      u
                     ldd       #$FFB6
-                    lbsr      L010C
+                    lbsr      stkcheck
                     ldd       $06,s
                     pshs      d
                     ldd       $06,s
                     pshs      d
                     leax      $0088,y
                     pshs      x
-                    lbsr      L119C
+                    lbsr      fprintf
                     leas      $06,s
                     leax      $0088,y
                     pshs      x
                     ldd       #$000D
                     pshs      d
-                    lbsr      $1690
+                    lbsr      fputc
                     leas      $04,s
                     ldd       #$0001
                     pshs      d
-                    lbsr      L1DA0
+                    lbsr      exit
                     puls      pc,u,x
 L0C4C               pshs      u
                     ldd       #$FFC0
-                    lbsr      L010C
+                    lbsr      stkcheck
                     ldu       $04,s
 L0C56               ldb       ,u+
                     bne       L0C56
@@ -1322,7 +1320,7 @@ L0C6C               ldb       $07,s
 L0C70               puls      pc,u
 L0C72               pshs      u
                     ldd       #$FFBD
-                    lbsr      L010C
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$03,s
 L0C7E               clra
@@ -1358,341 +1356,159 @@ L0CB4               leas      $03,s
                     puls      pc,u
 L0CB8               pshs      u
                     ldd       #$FFB8
-                    lbsr      L010C
+                    lbsr      stkcheck
                     ldd       $04,s
                     pshs      d
                     ldd       $002B
                     pshs      d
-                    lbsr      L119C
+                    lbsr      fprintf
                     leas      $04,s
                     puls      pc,u
-                    coma
-                    coma
-                    leay      0,y
-                    rorb
-                    fcb       $45
-                    fcb       $52
-                    comb
-                    rola
-                    clra
-                    fcb       $4e
-                    bra       L0D01
-                    com       $0D43
-                    fcb       $4f,$50,$59,$52,$49,$47,$48,$54
-                    fcb       $20,$31,$39,$38,$33,$20,$4d,$49
-                    fcb       $43,$52,$4f,$57,$41,$52,$45
-                    fcb       $0d,$52,$45,$50,$52,$4f,$44
-                    fcb       $55,$43,$45
-L0D00               fcb       $44
-L0D01               fcb       $20,$55,$4e,$44,$45,$52,$20,$4C
-                    fcb       $49,$43,$45,$4e,$53,$45,$0d
-                    lsrb
-                    clra
-                    bra       L0D68
-                    fcb       $41
-                    fcb       $4e
-                    lsra
-                    rolb
-                    tst       $0000
-L0D1A               fcb       $52
-                    comb
-                    bra       L0D4E
-                    leay      $0e,y
-                    leax      -$10,y
-                    bgt       L0D54
-                    leax      0,x
-L0D26               asr       >$0063
-                    fcb       $61
-                    jmp       $07,y
-                    lsr       $206F
-                    neg       $656E
-                    bra       L0DA7
-                    asl       $05,s
-                    inc       $0C,s
-                    bra       L0D9D
-                    clr       $0d,s
-                    tst       $01,s
-                    jmp       $04,s
-                    bra       $0DA8
-                    rol       $0C,s
-                    fcb       $65
-                    neg       L0053
-                    fcb       $75
-                    ror       $06,s
-                    rol       -$08,s
-                    bra       $0D75
-
-L0D4E               bgt       $0D75
-                    com       $07,y
-                    bra       L0DC2
-
-L0D54               clr       -$0C,s
-                    bra       L0DB9
-                    inc       $0C,s
-                    clr       -$09,s
-                    fcb       $65
-                    lsr       0,y
-                    ror       $0f,s
-                    fcb       $72
-                    bra       L0DD3
-                    fcb       $75
-L0D65               lsr       $7075
-L0D68               lsr       >$0054
-                    clr       $0f,s
-                    bra       $0DDC
-                    fcb       $61
-                    jmp       -$07,s
-                    bra       $0DE0
-                    rol       $02,s
-                    fcb       $72
-                    fcb       $61
-                    fcb       $72
-                    rol       $05,s
-                    com       >L0075
-                    fcb       $6e,$6b,$6e,$6f,$77,$6e,$20,$66
-                    fcb       $6C,$61,$67,$20,$3a,$20,$2d,$25
-                    fcb       $63,$0d,$00
-L0D91               bcs       $0E06
-                    bra       $0DCF
-                    bra       $0E05
-                    clr       0,y
-                    fcb       $72
-                    fcb       $65
-                    com       $0f,s
-L0D9D               asr       $0e,s
-                    rol       -$06,s
-                    fcb       $65
-                    lsr       0,y
-                    com       $7566
-L0DA7               ror       $09,s
-                    asl       >$006E
-                    clr       0,y
-                    ror       $09,s
-                    inc       $05,s
-                    com       $210D
-                    neg       L0069
-                    jmp       $03,s
-
-L0DB9               clr       $0d,s
-                    neg       $6174
-                    rol       $02,s
-                    inc       $05,s
-L0DC2               bra       L0E2A
-                    inc       $01,s
-                    asr       -$0d,s
-                    neg       L0025
-                    com       $203A
-                    bra       L0E3E
-                    fcb       $75
-                    lsr       $7075
-L0DD3               lsr       $206E
-                    fcb       $61
-                    tst       $05,s
-                    bra       $0E49
-                    clr       -$0C,s
-                    bra       L0E40
-                    neg       $706C
-                    rol       $03,s
-                    fcb       $61
-                    fcb       $62
-                    inc       $05,s
-                    neg       $006F
-                    fcb       $75
-                    lsr       $7075
-                    lsr       >$002E
-                    tst       0,x
-L0DF3               bgt       L0E67
-                    neg       L0065
-                    com       $08,s
-                    clr       0,y
-                    beq       L0DFD
-L0DFD               beq       $0E0C
-                    neg       L002D
-                    asl       L0D65
-                    com       $08,s
-                    clr       0,y
-                    com       $0e,y
-                    neg       $7265
-                    neg       $3A0D
-                    neg       L0043
-                    bgt       L0E64
-                    fcb       $52
-                    fcb       $45
-                    negb
-                    bra       L0E19
-
-L0E19               blt       $0E87
-                    bra       L0E1D
-
-L0E1D               bra       L0E1F
-
-L0E1F               bra       L0E21
-
-L0E21               bra       L0E61
-                    neg       $000D
-                    asl       L0D65
-                    com       $08,s
-L0E2A               clr       0,y
-                    com       $0e,y
-                    neg       $6173
-                    com       $313A
-                    tst       $0000
-L0E36               coma
-                    bgt       $0E89
-                    fcb       $41
-                    comb
-                    comb
-                    leay      0,y
-L0E3E               neg       L002D
-L0E40               fcb       $65
-                    bra       L0E43
-
-L0E43               bra       $0E72
-                    com       $2000
-L0E48               bra       L0E77
-                    neg       $2000
-L0E4D               bra       L0E7C
-                    clr       -$03,y
-                    neg       $000D
-                    lsr       $05,s
-                    inc       0,y
-                    neg       $000D
-                    neg       L0065
-                    com       $08,s
-                    clr       0,y
-                    com       $0e,y
-L0E61               neg       $6173
-L0E64               com       $323A
-L0E67               tst       $0000
-L0E69               coma
-                    bgt       L0EBC
-                    fcb       $41
-                    comb
-                    comb
-                    leas      0,y
-                    neg       L0020
-                    blt       L0EE8
-                    bra       L0E77
-
-L0E77               bra       $0EA6
-                    neg       $2000
-L0E7C               bra       L0E7E
-
-L0E7E               bra       L0EAD
-                    clr       -$03,y
-                    neg       $000D
-                    lsr       $05,s
-                    inc       0,y
-                    neg       L0020
-                    neg       $000D
-                    neg       L0065
-                    com       $08,s
-                    clr       0,y
-                    com       $0e,y
-                    clr       -$10,s
-                    lsr       $3A0D
-                    neg       L0043
-                    bgt       L0EEC
-                    negb
-                    lsrb
-                    bra       L0EA1
-
-L0EA1               bra       L0EA3
-
-L0EA3               tst       $0000
-L0EA5               lsr       $05,s
-                    inc       0,y
-                    neg       $000D
-                    neg       L0065
-L0EAD               com       $08,s
-                    clr       0,y
-                    com       $0e,y
-                    fcb       $61
-                    com       $6D3A
-                    tst       $0000
-L0EB9               coma
-                    bgt       L0EFD
-L0EBC               comb
-                    tsta
-                    bra       L0EC0
-
-L0EC0               bra       $0EEF
-                    clr       -$03,y
-                    neg       $000D
-                    neg       $0064
-                    fcb       $65
-                    inc       0,y
-                    neg       $000D
-                    neg       L0065
-                    com       $08,s
-                    clr       0,y
-                    com       $0e,y
-                    inc       $09,s
-                    jmp       $0b,s
-                    abx
-                    tst       $0000
-L0EDC               coma
-                    bgt       $0F2B
-                    rola
-                    fcb       $4e
-                    fcb       $4b
-                    bra       L0EE4
-
-L0EE4               ble       L0F4A
-                    lsr       0,x
-L0EE8               ble       $0F56
-                    rol       $02,s
-L0EEC               ble       $0F51
-                    com       $7461
-                    fcb       $72
-                    lsr       $2E72
-                    neg       L0020
-                    neg       L0020
-                    neg       L0020
-                    blt       L0F6C
-L0EFD               mul
-                    neg       L0020
-                    neg       L0020
-                    blt       $0F70
-                    mul
-                    neg       L002F
-                    inc       $09,s
-                    fcb       $62
-                    ble       L0F6F
-                    inc       $09,s
-                    fcb       $62
-                    bgt       L0F7D
-                    bra       L0F13
-
-L0F13               tst       $0000
-L0F15               lsr       $05,s
-                    inc       0,y
-                    neg       $000D
-                    neg       L002D
-                    lsr       $202D
-                    neg       L0D00
-L0F23               fcb       $72
-                    neg       $0063
-                    fcb       $61
-                    jmp       $07,y
-                    lsr       $2072
-                    fcb       $65
-                    clr       -$10,s
-                    fcb       $65
-                    jmp       0,y
-                    beq       L0F59
-                    com       $2700
-L0F37               com       $6865
-                    inc       $0C,s
-                    neg       $0063
-                    com       $04,s
-                    fcb       $65
-                    ror       $6963
-                    fcb       $65
-                    neg       L0020
-                    neg       $0034
-                    nega
-L0F4A               leas      -$07,s
+* ------------------------------------------------------------------
+* String pool for the cc1 compiler driver: the sign-on banner, error
+* messages, and the shell command-line fragments used to build the
+* pass invocations (c.prep, c.pass1, ... c.link).  Referenced by the
+* driver code via leax <label>,pcr; the banner (L0CCF) is reached
+* indirectly through the relocated work-block pointer at base+$5f.
+* ------------------------------------------------------------------
+L0CCF               fcc       /CC1 VERSION %s/    sign-on banner, %s = version string
+                    fcb       $0D
+                    fcc       /COPYRIGHT 1983 MICROWARE/
+                    fcb       $0D
+                    fcc       /REPRODUCED UNDER LICENSE/
+                    fcb       $0D
+                    fcc       /TO TANDY/
+                    fcb       $0D,$00
+L0D1A               fcc       /RS 01.00.00/
+                    fcb       $00
+L0D26               fcc       /w/
+                    fcb       $00
+                    fcc       /can't open shell command file/
+                    fcb       $00
+                    fcc       /Suffix '.%c' not allowed for output/
+                    fcb       $00
+                    fcc       /Too many libraries/
+                    fcb       $00
+                    fcc       /unknown flag : -%c/
+                    fcb       $0D,$00
+L0D91               fcc       /%s : no recognized suffix/
+                    fcb       $00
+                    fcc       /no files!/
+                    fcb       $0D,$00
+                    fcc       /incompatible flags/
+                    fcb       $00
+                    fcc       /%s : output name not applicable/
+                    fcb       $00
+                    fcc       /output/
+                    fcb       $00
+                    fcc       /.m/
+                    fcb       $00
+L0DF3               fcc       /.r/
+                    fcb       $00
+                    fcc       /echo '/
+                    fcb       $00
+L0DFD               fcc       /'/
+                    fcb       $0D,$00
+                    fcc       /-x/
+                    fcb       $0D
+                    fcc       /echo c.prep:/
+                    fcb       $0D,$00
+                    fcc       /C.PREP /
+                    fcb       $00
+L0E19               fcc       /-l /
+                    fcb       $00
+L0E1D               fcc       / /
+                    fcb       $00
+L0E1F               fcc       / /
+                    fcb       $00
+L0E21               fcc       / >/
+                    fcb       $00,$0D
+                    fcc       /x/
+                    fcb       $0D
+                    fcc       /echo c.pass1:/
+                    fcb       $0D,$00
+L0E36               fcc       /C.PASS1 /
+                    fcb       $00
+                    fcc       /-e /
+                    fcb       $00
+L0E43               fcc       / -s /
+                    fcb       $00
+L0E48               fcc       / -p /
+                    fcb       $00
+L0E4D               fcc       / -o=/
+                    fcb       $00,$0D
+                    fcc       /del /
+                    fcb       $00,$0D,$00
+                    fcc       /echo c.pass2:/
+                    fcb       $0D,$00
+L0E69               fcc       /C.PASS2 /
+                    fcb       $00
+                    fcc       / -s /
+                    fcb       $00
+L0E77               fcc       / -p /
+                    fcb       $00
+L0E7C               fcc       / /
+                    fcb       $00
+L0E7E               fcc       / -o=/
+                    fcb       $00,$0D
+                    fcc       /del /
+                    fcb       $00
+                    fcc       / /
+                    fcb       $00,$0D,$00
+                    fcc       /echo c.opt:/
+                    fcb       $0D,$00
+                    fcc       /C.OPT /
+                    fcb       $00
+L0EA1               fcc       / /
+                    fcb       $00
+L0EA3               fcb       $0D,$00
+L0EA5               fcc       /del /
+                    fcb       $00,$0D,$00
+                    fcc       /echo c.asm:/
+                    fcb       $0D,$00
+L0EB9               fcc       /C.ASM /
+                    fcb       $00
+L0EC0               fcc       / -o=/
+                    fcb       $00,$0D,$00
+                    fcc       /del /
+                    fcb       $00,$0D,$00
+                    fcc       /echo c.link:/
+                    fcb       $0D,$00
+L0EDC               fcc       /C.LINK /
+                    fcb       $00
+L0EE4               fcc       |/dd|
+                    fcb       $00
+L0EE8               fcc       |/lib/cstart.r|
+                    fcb       $00
+                    fcc       / /
+                    fcb       $00
+                    fcc       / /
+                    fcb       $00
+                    fcc       / -o=/
+                    fcb       $00
+                    fcc       / /
+                    fcb       $00
+                    fcc       / -l=/
+                    fcb       $00
+                    fcc       |/lib/clib.l |
+                    fcb       $00
+L0F13               fcb       $0D,$00
+L0F15               fcc       /del /
+                    fcb       $00,$0D,$00
+                    fcc       /-t -p/
+                    fcb       $0D,$00
+L0F23               fcc       /r/
+                    fcb       $00
+                    fcc       /can't reopen '%s'/
+                    fcb       $00
+L0F37               fcc       /shell/
+                    fcb       $00
+                    fcc       /ccdevice/
+                    fcb       $00
+                    fcc       / /
+                    fcb       $00
+L0F48               pshs      u
+                    leas      -$07,s
                     clra
                     clrb
                     pshs      d
@@ -1739,10 +1555,9 @@ L0FA3               clra
                     clrb
 L0FA5               leas      $07,s
                     puls      pc,u
-L0FA9               rola
-                    jmp       $09,s
-                    lsr       >$0034
-                    nega
+L0FA9               fcc       /Init/              "Init" string constant
+                    fcb       $00
+L0FAE               pshs      u
                     leau      >$006e,y
 L0FB4               ldd       $06,u
                     clra
@@ -1760,7 +1575,7 @@ L0FB4               ldd       $06,u
 L0FD5               pshs      u
                     ldu       $08,s
                     bne       L0FDF
-                    bsr       $0FAE
+                    bsr       L0FAE
                     tfr       d,u
 L0FDF               stu       -$02,s
                     beq       L1029
@@ -1978,13 +1793,13 @@ L116D               ldd       ,s
                     leax      >L1187,pcr
                     pshs      x
                     pshs      u
-                    lbsr      L11B8
+                    lbsr      sprintf
                     leas      $06,s
 L1183               ldd       $06,s
                     puls      pc,u,x
-L1187               bcs       L11ED
-                    neg       $0034
-                    nega
+L1187               fcc       /%d/                integer format string
+                    fcb       $00
+L118A               pshs      u
                     leax      >$007b,y
                     stx       $05C5,y
                     leax      $06,s
@@ -1992,7 +1807,7 @@ L1187               bcs       L11ED
                     ldd       $06,s
                     bra       L11AA
 
-L119C               pshs      u
+fprintf             pshs      u
                     ldd       $04,s
                     std       $05C5,y
                     leax      $08,s
@@ -2001,10 +1816,10 @@ L119C               pshs      u
 L11AA               pshs      d
                     leax      L1664,pcr
                     pshs      x
-                    bsr       L11DC
+                    bsr       doprnt
                     leas      $06,s
                     puls      pc,u
-L11B8               pshs      u
+sprintf             pshs      u
                     ldd       $04,s
                     std       $05C5,y
                     leax      $08,s
@@ -2013,14 +1828,14 @@ L11B8               pshs      u
                     pshs      d
                     leax      L1677,pcr
                     pshs      x
-                    bsr       L11DC
+                    bsr       doprnt
                     leas      $06,s
                     clra
                     clrb
                     stb       [>$05C5,y]
                     ldd       $04,s
                     puls      pc,u
-L11DC               pshs      u
+doprnt              pshs      u
                     ldu       $06,s
                     leas      -$0b,s
                     bra       L11F4
@@ -2185,7 +2000,7 @@ L131A               ldd       $06,s
                     ldb       $0e,s
                     sex
                     pshs      d
-                    lbsr      $1975
+                    lbsr      L1975
                     leas      $06,s
                     lbra      L13AC
 
@@ -2522,7 +2337,7 @@ L15FD               pshs      u
                     ldd       $08,s
                     pshs      d
                     pshs      u
-                    lbsr      $1980
+                    lbsr      L1980
                     leas      $02,s
                     nega
                     negb
@@ -2570,7 +2385,7 @@ L1664               pshs      u
                     pshs      d
                     ldd       $06,s
                     pshs      d
-                    lbsr      $1690
+                    lbsr      fputc
 L1673               leas      $04,s
                     puls      pc,u
 L1677               pshs      u
@@ -2580,11 +2395,9 @@ L1677               pshs      u
                     stx       $05C5,y
                     stb       -$01,x
                     puls      pc,u
-L1689               blt       L16BE
-                    leas      -$09,y
-                    pshu      y,x,dp
-                    neg       $0034
-                    nega
+L1689               fcc       /-32768/            INT_MIN literal, special-cased by itoa
+                    fcb       $00
+fputc               pshs      u         stream putc: write char to FILE at work+$5c5
                     ldu       $06,s
                     ldd       $06,u
                     anda      #$80
@@ -2667,12 +2480,12 @@ L1731               ldd       $04,s
                     ldd       #$0008
                     lbsr      L1A66
                     pshs      d
-                    lbsr      $1690
+                    lbsr      fputc
                     leas      $04,s
                     ldd       $06,s
                     pshs      d
                     pshs      u
-                    lbsr      $1690
+                    lbsr      fputc
                     lbra      L189F
 
 L1758               pshs      u,d
@@ -2941,13 +2754,13 @@ L195D               cmpx      #$0064
                     lbeq      L1940
                     bra       L194F
                     puls      pc,u
-L1974               neg       $0034
-                    nega
+L1974               fcb       $00       empty string
+L1975               pshs      u
                     leax      >L197F,pcr
                     tfr       x,d
                     puls      pc,u
-L197F               neg       $0034
-                    nega
+L197F               fcb       $00       empty string
+L1980               pshs      u
                     ldu       $04,s
 L1984               ldb       ,u+
                     bne       L1984
@@ -3464,263 +3277,64 @@ L1D9B               bcs       L1D92
                     clrb
                     rts
 
-L1DA0               lbsr      L1DAB
+exit                lbsr      L1DAB
                     lbsr      L1758
-L1DA6               ldd       $02,s
+_exit               ldd       $02,s
                     os9       F$Exit
 L1DAB               rts
 
-L1DAC               neg       $0001
-                    neg       $0001
-                    sbca      $0063
-                    lsr       $6D70
-                    bgt       L1E0F
-                    aslb
-                    aslb
-                    aslb
-                    aslb
-                    aslb
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0063
-                    bgt       $1E2B
-                    clr       $0d,s
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $000C
-                    fcb       $CF
-                    beq       L1DF7
-                    com       $00E8
-                    neg       $0064
-                    neg       $000A
-                    neg       L0069
-                    inc       -$08,s
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-L1DF7               neg       $0000
-                    fcb       $01
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    fcb       $02
-                    neg       $0001
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-L1E0F               neg       $0000
-                    neg       $0000
-                    fcb       $42
-                    neg       $0002
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0001
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $11
-                    fcb       $11
-                    fcb       $01
-                    fcb       $11
-                    fcb       $11
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    fcb       $01
-                    leax      0,y
-                    bra       L1F07
-                    bra       L1F09
-                    bra       L1F0B
-                    bra       L1F0D
-                    bra       L1F0F
-                    bra       L1F11
-                    bra       L1F13
-                    asla
-                    asla
-                    asla
-                    asla
-                    asla
-                    asla
-                    asla
-                    asla
-                    asla
-                    asla
-                    bra       $1F1F
-                    bra       $1F21
-                    bra       $1F23
-                    bra       L1F47
-                    fcb       $42
-                    fcb       $42
-L1F07               fcb       $42
-                    fcb       $42
-L1F09               fcb       $42
-                    fcb       $02
-L1F0B               fcb       $02
-                    fcb       $02
-L1F0D               fcb       $02
-                    fcb       $02
-L1F0F               fcb       $02
-                    fcb       $02
-L1F11               fcb       $02
-                    fcb       $02
-L1F13               fcb       $02
-                    fcb       $02
-                    fcb       $02
-                    fcb       $02
-                    fcb       $02
-                    fcb       $02
-                    fcb       $02
-                    fcb       $02
-                    fcb       $02
-                    fcb       $02
-                    fcb       $02
-                    bra       L1F40
-                    bra       L1F42
-                    bra       $1F44
-                    lsra
-                    lsra
-                    lsra
-                    lsra
-                    lsra
-                    lsra
-                    lsr       $0004
-                    lsr       $0004
-                    lsr       $0004
-                    lsr       $0004
-                    lsr       $0004
-                    lsr       $0004
-                    lsr       $0004
-                    lsr       $0004
-                    lsr       $0004
-                    lsr       $0004
-                    bra       $1F60
+* ------------------------------------------------------------------
+* L1DAC - initialisation image for the cc1 work block, walked once by
+* the _start routine: count1 word + count1 bytes copied to base, then
+* count2 word + count2 bytes copied to base+$2d, then two relocation
+* directories that fix up embedded pointers (see _start at $001A).
+* ------------------------------------------------------------------
+L1DAC               fdb       $0001     count1 - bytes copied to base
+                    fcb       $00       block1 image (-> base+$00)
+                    fdb       $0192     count2 - bytes copied to base+$2d
 
-L1F40               bra       $1F62
-L1F42               fcb       $01
-                    neg       $0001
-                    neg       $005F
-L1F47               neg       $0001
-                    neg       L0069
-                    com       $03,s
-                    leay      0,x
+* block2 - work block template ($192 bytes) copied to base+$2d
+                    fcc       /ctmp.XXXXXX/       base+$2d temporary file name template
+                    zmb       9         pad
+                    fcc       /c.com/             base+$41 compiler command name
+                    zmb       25        pad
+                    fdb       L0CCF     base+$5f reloc ptr (+module base) -> banner
+                    fdb       $2710,$03E8,$0064,$000A base+$61 powers of ten 10000,1000,100,10
+                    fdb       $0069     base+$69 relocatable pointer, +work base
+                    fcb       $6C,$78,$00 base+$6b
+                    zmb       7         work block default fields
+                    fcb       $01
+                    zmb       12
+                    fcb       $02,$00,$01
+                    zmb       10
+                    fcb       $42,$00,$02
+                    zmb       173
+                    fcb       $01,$01,$01,$01,$01,$01,$01,$01 character classification table
+                    fcb       $01,$11,$11,$01,$11,$11,$01,$01
+                    fcb       $01,$01,$01,$01,$01,$01,$01,$01
+                    fcb       $01,$01,$01,$01,$01,$01,$01,$01
+                    fcb       $30,$20,$20,$20,$20,$20,$20,$20
+                    fcb       $20,$20,$20,$20,$20,$20,$20,$20
+                    fcb       $48,$48,$48,$48,$48,$48,$48,$48
+                    fcb       $48,$48,$20,$20,$20,$20,$20,$20
+                    fcb       $20,$42,$42,$42,$42,$42,$42,$02
+                    fcb       $02,$02,$02,$02,$02,$02,$02,$02
+                    fcb       $02,$02,$02,$02,$02,$02,$02,$02
+                    fcb       $02,$02,$02,$20,$20,$20,$20,$20
+                    fcb       $20,$44,$44,$44,$44,$44,$44,$04
+                    fcb       $04,$04,$04,$04,$04,$04,$04,$04
+                    fcb       $04,$04,$04,$04,$04,$04,$04,$04
+                    fcb       $04,$04,$04,$20,$20,$20,$20,$01
+
+* relocation directory
+                    fdb       $0001     nreloc1
+                    fdb       $005F     relocate word at work+$5f by module base
+                    fdb       $0001     nreloc2
+                    fdb       $0069     relocate word at work+$69 by work base
+
+* trailing module name string
+                    fcc       /cc1/
+                    fcb       $00
 
                     emod
 eom                 equ       *
