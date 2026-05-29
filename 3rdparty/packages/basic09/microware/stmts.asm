@@ -198,8 +198,12 @@ EXEC30 std I.DATA Save it
  pshs Y Save it
  ldd P.PRCS,X Get beginning procedure link
  leay D,U Get ptr to it
+ ifne H6309
+ clrd
+ else
  clra
  clrb
+ endc
  bra EXEC45
 
 EXEC40 std ,Y++ Clear link
@@ -546,7 +550,11 @@ FORNIN ldd  ,X Get counter offset
 NXT1IN ldd ,X Get counter offset
  leay D,U Get counter addr
  ldd  ,Y Get counter
+ ifne H6309
+ incd Increment
+ else
  addd #1 Increment
+ endc
  std  ,Y Save it
 NXTIN1 ldd 2,X Get terminal offset
  leax 6,X Move icode ptr
@@ -564,10 +572,17 @@ NXTINT ldd  ,X Get counter offset
  leay D,U Get counter addr
  ldd 4,X Get increment offset
  ldd D,U Get increment
+ ifne H6309
+ tfr A,E Save increment sign in E
+ addd  ,Y Add counter
+ std  ,Y Save it
+ tste Going up or down?
+ else
  pshs A Save increment sign
  addd  ,Y Add counter
  std  ,Y Save it
  tst ,S+ Going up or down?
+ endc
  bpl NXTIN1 bra if going up
 NXTIN2 ldd 2,X Get terminal offset
  leax 6,X
@@ -611,16 +626,25 @@ NXT1RL ldy I.OPBG Init opstack ptr
  leay -6,Y Make room for increment
  ldd #$0180 Set up constant one
  std 1,Y
+ ifne H6309
+ clrd
+ else
  clra
  clrb
+ endc
  std 3,Y
  sta 5,Y
  lbsr J$FADD Go do add
  bsr TRCTST Check for trace display
+ ifne H6309
+ ldq 1,Y Load new counter value
+ stq  ,U Store it
+ else
  ldd 1,Y Store new counter
  std  ,U
  ldd 3,Y
  std 2,U
+ endc
  lda 5,Y
  sta 4,U
 NXTRL1 ldb #2
@@ -650,10 +674,15 @@ NXTRLA ldd B,X Get value offset
  lda #S.REAL Set TYPE
  ldb  ,U Move value
  std  ,Y
+ ifne H6309
+ ldq 1,U Load 4 mantissa bytes from variable
+ stq 2,Y Store them on opstack
+ else
  ldd 1,U
  std 2,Y
  ldd 3,U
  std 4,Y
+ endc
  rts
 
 ***************
@@ -671,10 +700,15 @@ NXTRL ldy I.OPBG Init opstack ptr
  lbsr J$FADD Go add
  bsr TRCTST Check for trace display
  ldu SYMPTR Get counter address
+ ifne H6309
+ ldq 1,Y Load new counter value
+ stq  ,U Store it
+ else
  ldd 1,Y Store new counter
  std  ,U
  ldd 3,Y
  std 2,U
+ endc
  lda 5,Y
  sta 4,U
  lsr TYPE Test increment sign
@@ -1678,13 +1712,17 @@ SYSSUB ldx I.STSP Get ptr to end of string
  lda #V$CR Insert carriage return
  sta -1,X
  tfr X,D
- leax >SHELST,PCR Shell ptr
+ leax SHELST,PCR Shell ptr
  leau  ,Y param ptr
  pshs Y
  subd ,S++
  tfr D,Y parameter size
+ ifne H6309
+ clrd HIGHEST Revision
+ else
  clra
  clrb HIGHEST Revision
+ endc
  rts
 
 ***************
@@ -1783,8 +1821,7 @@ BASSTM clra
 * Global: None
 
 REMSTM ldb ,X+ Get char count byte
- clra clear Msb
- leax D,X Advance ptr past rem
+ abx Advance ptr past rem
  rts
 
 ***************
@@ -1923,12 +1960,18 @@ RUNS30 ldd U.S,U Get data stack ptr
  sts U.S,U Mark current stack
  leas  ,Y Get parameter ptr
  ldd I.PRLM Get number of parameters
+ ifne H6309
+ subr Y,D Calc size of all parm packets
+ lsrd Divide by four to get number
+ lsrd
+ else
  pshs Y Save parameter ptr
  subd ,S++ Get parameter area size
  lsra Divide by four to get number
  rorb
  lsra
  rorb
+ endc
  pshs D Save number of parameters
  ldd M$EXEC,X Get execution offset
  leay EXECUT,PCR (programmer: know thyself)

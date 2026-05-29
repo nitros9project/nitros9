@@ -20,10 +20,6 @@ J$FIX jsr M.EXPRSN
  fcb X$FIX  Fix real
 J$FLOT jsr M.EXPRSN
  fcb X$FLOT Float integer
-J$FDIV jsr M.EXPRSN
- fcb X$FDIV Real divide
-J$FMUL jsr M.EXPRSN
- fcb X$FMUL Real multiply
 
  ttl Constant Tables
  pag
@@ -136,8 +132,12 @@ MANT3  equ 5 LS bye mantissa
 * Initialize
 ASCNUM pshs U save ureg
  leay -6,Y Room for new item on opstack
+ ifne H6309
+ clrd
+ else
  clra
  clrb
+ endc
  sta I.ESGN Clr exp sign
  sta I.DCNT Clr dig count
  sta I.DPFL Clr dec pt flag
@@ -328,7 +328,7 @@ ASNRL6 cmpb #19 Dec exp in tbl range?
  bls ASNRL7 Bra if ok
  subb #19 Reduce range otherwise
  pshs B save current exp
- leau >T$RL19,PCR Get add of const 1e+19
+ leau T$RL19,PCR Get add of const 1e+19
  bsr CNVOPR ..and reduce range ..
  puls B Restore exp and proceed
  lbcs NRERR ..exit if oper overflowed
@@ -360,8 +360,11 @@ CNVOPR leay -6,Y Room for new entry on opstack
  ldb 4,U
  stb 5,Y
  lda I.ESGN Get exp sign
- lbeq J$FDIV Do divide if pos
- lbra J$FMUL else do multiply
+ bne CNVOPR1 neg exp: go multiply
+ jsr M.EXPRSN Do divide if pos
+ fcb X$FDIV
+CNVOPR1 jsr M.EXPRSN else do multiply
+ fcb X$FMUL
 
 ***************
 * Subroutine INHEX
@@ -1348,7 +1351,8 @@ NXTFM1 ldx I.FMPT Init format ptr
  stu I.OPBG Update repeat stack ptr
  stx I.FRBG save repeat beginning ptr
 NXTFM2 lda ,X+ Get next chr
-NXTFM3 leay >T$FMCD,PCR Get addr of decode tbl
+NXTFM3 equ *
+ leay T$FMCD,PCR Get addr of decode tbl
  clrb B is counter
 * Decode Table Lookup Loop
 NXTFM4 pshs A save character
