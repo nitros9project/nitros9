@@ -10,63 +10,63 @@
 *
 * Error:  CC = C bit set; B = error code
 *
-FUnLoad        pshs      u                   preserve register stack pointer
-               lda       R$A,u               get module type
-               ldx       <D.Proc             get current process pointer
-               leay      P$DATImg,x          point to DAT image
-               ldx       R$X,u               get pointer to name
-               os9       F$FModul            find it in module directory
-               puls      y                   restore register stack pointer
-               bcs       L0A4F               couldn't find it, return error
-               stx       R$X,y               save update name pointer
-               ifne      H6309
-               ldw       MD$Link,u           get link count
-               beq       L0A21               already 0 check if it's a I/O module
-               decw                          subtract 1
-               stw       MD$Link,u           save it back
-               else      
-               ldx       MD$Link,u           get module link count
-               beq       L0A21               branch if zero
-               leax      -1,x                else decrement
-               stx       MD$Link,u
-               endc      
-               bne       L0A4E               not zero, don't remove from memory, return
+FUnLoad             pshs      u         ; preserve register stack pointer
+                    lda       R$A,u     ; get module type
+                    ldx       <D.Proc   ; get current process pointer
+                    leay      P$DATImg,x ; point to DAT image
+                    ldx       R$X,u     ; get pointer to name
+                    os9       F$FModul  ; find it in module directory
+                    puls      y         ; restore register stack pointer
+                    bcs       FUnloadReturn ; couldn't find it, return error
+                    stx       R$X,y     ; save update name pointer
+                  IFNE    H6309   ; begin conditional assembly for H6309
+                    ldw       MD$Link,u ; get link count
+                    beq       FUnloadModule ; already 0 check if it's a I/O module
+                    decw                ; subtract 1
+                    stw       MD$Link,u ; save it back
+                  ELSE
+                    ldx       MD$Link,u ; get module link count
+                    beq       FUnloadModule ; branch if zero
+                    leax      -1,x      ; else decrement
+                    stx       MD$Link,u ; store X at MD$Link,u
+                  ENDC
+                    bne       FUnloadErrors ; not zero, don't remove from memory, return
 
 * Link count is zero, check if module can be removed from memory
-L0A21          cmpa      #FlMgr              is it a I/O module?
-               blo       L0A4B               no, remove module from memory
+FUnloadModule       cmpa      #FlMgr    ; is it a I/O module?
+                    blo       FUnloadDltModMem ; no, remove module from memory
 
 * Special handling for I/O module deletion
-               clra      
-               ldx       [MD$MPDAT,u]        get 1st 2 blocks in DAT image of module
-               ldy       <D.SysDAT           get pointer to system DAT image
-L0A2B          adda      #2
-               cmpa      #DAT.ImSz           done entire DAT?
-               bcc       L0A4B               yes, delete the module from memory
-               cmpx      a,y                 find block?
-               bne       L0A2B               no, keep looking
-               lsla                          multiply by 16 to calculate the offset
-               lsla      
-               lsla      
-               lsla      
-               clrb      
-               addd      MD$MPtr,u           add in the pointer
-               tfr       d,x                 copy it to X
-               os9       F$IODel             delete the device from memory
-               bcc       L0A4B               no error, skip ahead
+                    clra                ; clear A
+                    ldx       [MD$MPDAT,u] ; get 1st 2 blocks in DAT image of module
+                    ldy       <D.SysDAT ; get pointer to system DAT image
+FUnloadTarget       adda      #2        ; add #2 to A
+                    cmpa      #DAT.ImSz ; done entire DAT?
+                    bcc       FUnloadDltModMem ; yes, delete the module from memory
+                    cmpx      a,y       ; find block?
+                    bne       FUnloadTarget ; no, keep looking
+                    lsla                ; multiply by 16 to calculate the offset
+                    lsla                ; shift or rotate and update condition codes
+                    lsla                ; shift or rotate and update condition codes
+                    lsla                ; shift or rotate and update condition codes
+                    clrb                ; clear B
+                    addd      MD$MPtr,u ; add in the pointer
+                    tfr       d,x       ; copy it to X
+                    os9       F$IODel   ; delete the device from memory
+                    bcc       FUnloadDltModMem ; no error, skip ahead
 
-               ifne      H6309
-               ldw       MD$Link,u           put link count back
-               incw      
-               stw       MD$Link,u
-               else      
-               ldx       MD$Link,u           put link count back
-               leax      1,x
-               stx       MD$Link,u
-               endc      
-               rts                           Return with error
+                  IFNE    H6309   ; begin conditional assembly for H6309
+                    ldw       MD$Link,u ; put link count back
+                    incw                ; increment W
+                    stw       MD$Link,u ; store W at MD$Link,u
+                  ELSE
+                    ldx       MD$Link,u ; put link count back
+                    leax      1,x       ; compute 1,x into X
+                    stx       MD$Link,u ; store X at MD$Link,u
+                  ENDC
+                    rts                 ; return with error
 
 * Delete module from memory
-L0A4B          lbsr      DelMod              Delete module from memory
-L0A4E          clrb                          clear errors
-L0A4F          rts                           return
+FUnloadDltModMem    lbsr      DelMod    ; delete module from memory
+FUnloadErrors       clrb                ; clear errors
+FUnloadReturn       rts                 ; return
