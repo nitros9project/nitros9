@@ -120,31 +120,39 @@ def parse_os9_header(data: bytes) -> dict:
 def find_string_regions(data: bytes, start: int, end: int) -> list[tuple[int, int]]:
     """Return list of (start, end) byte ranges for high-confidence string data.
 
-    To minimise false-positives we require strings to be:
-      - CR-terminated ($0D), at least 16 bytes of printable ASCII before the $0D
-      - Starting with a letter, '*', '/', '(', '"', '#', or '%'
-        (never starting with a digit or control character)
-      - Containing at least two different letter characters
+    Two terminator styles are recognised, both requiring a run of printable
+    ASCII that starts with a letter, '*', '/', '(', '"', '#', or '%' (never a
+    digit or control character) and contains at least two different letters:
 
-    FCS-terminated strings are deliberately excluded here because they are
-    much harder to distinguish from code bytes that happen to have bit 7 set.
+      - CR-terminated ($0D): at least 16 bytes total (long banner/message text).
+      - NUL-terminated ($00): at least 4 printable characters before the $00.
+        These are the short C string constants ("Init", "C.PREP ", paths, ...)
+        that would otherwise be decoded as code; because they are often odd in
+        length they push the decoder out of phase into the routine that follows
+        them, so catching them also rescues that routine's real entry point.
+
+    The terminator is included in the returned region so the decoder resumes
+    cleanly on the byte after it.  FCS-terminated strings are deliberately
+    excluded: they are much harder to tell from code bytes with bit 7 set.
     """
-    MIN_LEN = 16
+    CR_MIN_LEN      = 16    # CR-terminated: total bytes incl. the $0D
+    NUL_MIN_CONTENT = 4     # NUL-terminated: printable chars before the $00
     regions: list[tuple[int, int]] = []
     i = start
-    while i < end - MIN_LEN:
+    while i < end:
         first = data[i]
         # String must start with a letter or specific printable symbol
         if not (chr(first).isalpha() or first in b'*/(\"#%'):
             i += 1
             continue
-        # Scan forward for CR terminator
+        # Scan forward for a CR or NUL terminator over printable ASCII
         j = i
         letters: set[int] = set()
-        ok = True
+        term: int | None = None
         while j < end:
             b = data[j]
-            if b == 0x0D:               # CR terminator found
+            if b == 0x0D or b == 0x00:  # terminator found
+                term = b
                 j += 1
                 break
             if 0x20 <= b <= 0x7E:       # printable ASCII (no high bit)
@@ -152,14 +160,17 @@ def find_string_regions(data: bytes, start: int, end: int) -> list[tuple[int, in
                     letters.add(b)
                 j += 1
             else:
-                ok = False
-                break
-        else:
-            ok = False                  # hit end without terminator
+                break                   # non-text byte: not a clean string
+        if term is None:                # hit a non-text byte or ran off the end
+            i += 1
+            continue
 
-        length = j - i
-        if ok and length >= MIN_LEN and len(letters) >= 2:
-            regions.append((i, j - 1))
+        total = j - i                   # printable run plus the terminator
+        accept = len(letters) >= 2 and (
+            (term == 0x0D and total >= CR_MIN_LEN) or
+            (term == 0x00 and total - 1 >= NUL_MIN_CONTENT))
+        if accept:
+            regions.append((i, j - 1))  # include the terminator byte
             i = j
         else:
             i += 1
