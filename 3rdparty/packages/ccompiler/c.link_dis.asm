@@ -5048,11 +5048,22 @@ L2EA1               cmpx      #$0064
                     lbeq      L2E84
                     bra       L2E93
                     puls      pc,u
+* ------------------------------------------------------------------
+* L2EB8/L2EC3 - reached ONLY via leax,pcr data pointers (never
+* branched or called), so the linear sweep decoded them as code.  They
+* read as a pair of function-pointer thunks: L2EB8 returns &L2EC3
+* in D; L2EC3 is strlen(4,s) - scan ldb,u+/bne for the NUL, length =
+* (end - start - 1).  But the leading "neg $34 / nega" ($00 $34 $40)
+* prologue would clobber DP $34 and A, which makes no sense as code, so
+* these may instead be data the sweep mis-framed.  Left as code: byte-
+* exact either way and the body reads as a genuine strlen.
+* ------------------------------------------------------------------
 L2EB8               neg       $0034
                     nega
                     leax      >L2EC3,pcr
                     tfr       x,d
                     puls      pc,u
+* L2EC3 - strlen routine (entered via the &L2EC3 pointer returned above):
 L2EC3               neg       $0034
                     nega
                     ldu       $04,s
