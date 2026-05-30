@@ -5465,11 +5465,9 @@ L30F9               ldd       L001B
                     lbsr      L515E
 L3104               leas      $04,s
 L3106               puls      pc,u
-L3108               blt       $313D
-                    leas      -$09,y
-                    pshu      y,x,dp
-                    neg       $0034
-                    rorb
+L3108               fcc       /-32768/
+                    fcb       $00
+L310F               pshs      u,x,d
                     ldd       $08,s
                     pshs      d
                     lbsr      L31AE
@@ -10225,10 +10223,7 @@ L5C6D               andb      #$80
                     sta       $22,u
 L5C76               rts
 
-L5C77               neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       L0081
+L5C77               fcb       $00,$00,$00,$00,$00,$00,$00,$81
                     leax      >L5C77,pcr
 L5C83               pshs      a
                     ldd       ,x

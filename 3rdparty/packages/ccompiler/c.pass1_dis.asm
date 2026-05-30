@@ -9324,11 +9324,9 @@ L5486               ldd       $000F
                     lbsr      L6F01
 L5491               leas      $04,s
 L5493               puls      pc,u
-L5495               blt       $54CA
-                    leas      -$09,y
-                    pshu      y,x,dp
-                    neg       $00AE
-                    fcb       $62
+L5495               fcc       /-32768/
+                    fcb       $00
+L549C               ldx       $02,s
                     leas      -$08,s
                     ldd       $05,x
                     aslb
@@ -12218,9 +12216,9 @@ L6E98               ldd       ,s
 L6EAE               ldd       $06,s
                     leas      $02,s
                     puls      pc,u
-L6EB4               bcs       L6F1A
-                    neg       $0034
-                    nega
+L6EB4               fcc       /%d/
+                    fcb       $00
+L6EB7               pshs      u
                     ldu       $04,s
                     leas      -$04,s
                     clra

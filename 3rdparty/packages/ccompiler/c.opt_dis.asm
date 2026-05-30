@@ -3649,11 +3649,9 @@ L1F99               pshs      u
                     stx       $086b,y
                     stb       -$01,x
                     puls      pc,u
-L1FAB               blt       L1FE0
-                    leas      -$09,y
-                    pshu      y,x,dp
-                    neg       $0034
-                    nega
+L1FAB               fcc       /-32768/
+                    fcb       $00
+L1FB2               pshs      u
                     ldu       $06,s
                     ldd       $06,u
                     anda      #$80
