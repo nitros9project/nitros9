@@ -136,22 +136,38 @@ stkcheck            leax      d,s
                     bcs       L013C
                     stx       $02D0,y
 L0122               rts
-L0123               fcc       /**** STACK OVERFLOW ****/
-                    fcb       $0D
+
+L0123               bpl       $014F
+                    bpl       L0151
+                    bra       L017C
+                    lsrb
+                    fcb       $41
+                    coma
+                    fcb       $4B
+                    bra       $017E
+                    rorb
+                    fcb       $45,$52
+                    rora
+                    inca
+                    clra
+                    asrb
+                    bra       L0162
+                    bpl       $0164
+                    bpl       L0149
 L013C               leax      L0123,pcr
                     ldb       #$CF
                     pshs      b
                     lda       #$02
                     ldy       #$0064
-                    os9       I$WritLn
+L0149               os9       I$WritLn
                     clr       ,-s
                     lbsr      L7946
-                    ldd       $02C2,y
+L0151               ldd       $02C2,y
                     subd      $02D0,y
                     rts
                     ldd       $02D0,y
                     subd      $02CE,y
-                    rts
+L0162               rts
 
 L0163               pshs      x
                     leax      d,y
@@ -165,7 +181,7 @@ L016B               ldd       ,y++
                     cmpy      ,s
                     bne       L016B
                     leas      $04,s
-                    rts
+L017C               rts
 
 L017D               pshs      u
                     ldu       $04,s
@@ -370,7 +386,7 @@ L0323               ldd       L0029
                     pshs      x
                     lbsr      L702C
                     leas      $02,s
-                    leax      $0568,pcr
+                    leax      L0568,pcr
                     pshs      x
                     bsr       L0365
 L0343               leas      $02,s
@@ -577,30 +593,22 @@ L0506               ldd       $005F
                     cmpd      #$FFFF
                     bne       L0503
 L051E               puls      pc,u
-L0520               bcs       L0595
-                    bra       L055E
-                    bra       L0526
+L0520               fcc       /%s : /
+                    fcb       $00
 L0526               fcc       /multiple definition/
                     fcb       $00
 L053A               fcc       /compiler error - /
                     fcb       $00
 L054C               fcc       /line %d  /
                     fcb       $00
-L0556               bpl       L0582
-                    bpl       $0584
-                    bra       L057C
-                    bcs       $05D1
-L055E               bra       L0580
-                    bpl       $058C
-                    bpl       $058E
-                    tst       $0000
+L0556               fcc       /****  %s  ****/
+                    fcb       $0D,$00
 L0566               fcb       $5E
-                    neg       $0074
-                    fcc       /oo many errors - AB/
-L057C               fcb       $4F,$52,$54
+                    fcb       $00
+L0568               fcc       /too many errors - ABORT/
                     fcb       $00
 L0580               pshs      u
-L0582               ldd       #$FFA2
+                    ldd       #$FFA2
                     lbsr      stkcheck
                     leas      -$0e,s
                     lbsr      L0694
@@ -608,7 +616,7 @@ L0582               ldd       #$FFA2
                     lbne      L0679
                     clra
                     clrb
-L0595               lbra      L0690
+                    lbra      L0690
                     lbra      L0679
 
 L059B               ldd       $005F
@@ -3593,7 +3601,7 @@ L2058               ldd       #$0001
                     pshs      u
                     lbsr      L2027
                     leas      $04,s
-L206F               lbra      L2303
+                    lbra      L2303
 
 L2072               cmpx      #$0001
                     beq       L2040
@@ -4163,7 +4171,7 @@ L2546               pshs      u
                     ldd       $08,x
                     cmpd      #$0011
                     beq       L2567
-L2563               leax      $02,s
+                    leax      $02,s
                     bra       L2584
 
 L2567               ldd       #$0036
@@ -8184,7 +8192,7 @@ L4B1D               pshs      u
                     lbsr      stkcheck
                     ldd       $04,s
                     pshs      d
-                    leax      $50C1,pcr
+                    leax      L50C1,pcr
                     lbra      L4C0F
 
 L4B30               pshs      u
@@ -8286,7 +8294,7 @@ L4BFF               pshs      u
                     lbsr      stkcheck
                     ldd       $04,s
                     pshs      d
-                    leax      $50C6,pcr
+                    leax      L50C6,pcr
 L4C0F               pshs      x
                     ldd       $0025
                     pshs      d
@@ -8834,15 +8842,15 @@ L509E               pshs      u
                     lbsr      L4C68
                     leas      $04,s
                     puls      pc,u
-L50BE               bcs       $5124
-                    neg       $0025
-                    bgt       L50FC
-                    com       >$0046
-                    bcs       $513C
-                    tst       $0000
-L50CB               leax      $0C,y
-                    neg       $0034
-                    nega
+L50BE               fcb       $25,$64
+                    fcb       $00
+L50C1               fcc       /%.8s/
+                    fcb       $00
+L50C6               fcb       $46,$25,$73
+                    fcb       $0D,$00
+L50CB               fcb       $30,$2C
+                    fcb       $00
+L50CE               pshs      u
                     leax      $01C1,y
                     stx       $000F
                     ldd       #$0001
@@ -9831,13 +9839,13 @@ L5897               pshs      u
                     std       $0041
                     ldd       #$0001
                     pshs      d
-                    leax      $6230,pcr
+                    leax      L6230,pcr
                     pshs      x
                     lbsr      L5BD5
                     leas      $04,s
                     ldd       #$0005
                     pshs      d
-                    leax      $6234,pcr
+                    leax      L6234,pcr
                     pshs      x
                     lbsr      L5BD5
                     leas      $04,s
@@ -9900,7 +9908,7 @@ L5897               pshs      u
                     leas      $04,s
                     ldd       #$0014
                     pshs      d
-                    leax      $6270,pcr
+                    leax      L6270,pcr
                     pshs      x
                     lbsr      L5BD5
                     leas      $04,s
@@ -9942,7 +9950,7 @@ L5897               pshs      u
                     leas      $04,s
                     ldd       #$001B
                     pshs      d
-                    leax      $6299,pcr
+                    leax      L6299,pcr
                     pshs      x
                     lbsr      L5BD5
                     leas      $04,s
@@ -9954,7 +9962,7 @@ L5897               pshs      u
                     leas      $04,s
                     ldd       #$0004
                     pshs      d
-                    leax      $62A5,pcr
+                    leax      L62A5,pcr
                     pshs      x
                     lbsr      L5BD5
                     leas      $04,s
@@ -10893,16 +10901,15 @@ L6210               fcc       /float/
                     fcb       $00
 L6216               fcc       /typedef/
                     fcb       $00
-L621E               fcb       $73,$74
-L6220               fcc       /atic/
+L621E               fcc       /static/
                     fcb       $00
 L6225               fcc       /sizeof/
                     fcb       $00
-L622C               rol       $0e,s
-                    lsr       >L0069
-                    jmp       -$0C,s
-                    neg       L0066
-                    fcc       /loat/
+L622C               fcb       $69,$6E,$74
+                    fcb       $00
+L6230               fcb       $69,$6E,$74
+                    fcb       $00
+L6234               fcc       /float/
                     fcb       $00
 L623A               fcc       /char/
                     fcb       $00
@@ -10920,9 +10927,9 @@ L6261               fcc       /goto/
                     fcb       $00
 L6266               fcc       /return/
                     fcb       $00
-L626D               rol       $06,s
-                    neg       $0077
-                    fcc       /hile/
+L626D               fcb       $69,$66
+                    fcb       $00
+L6270               fcc       /while/
                     fcb       $00
 L6276               fcc       /else/
                     fcb       $00
@@ -10934,14 +10941,13 @@ L6287               fcc       /break/
                     fcb       $00
 L628D               fcc       /continue/
                     fcb       $00
-L6296               lsr       $0f,s
-                    neg       L0064
-                    fcc       /efault/
+L6296               fcb       $64,$6F
                     fcb       $00
-L62A1               ror       $0f,s
-                    fcb       $72
-                    neg       $0073
-                    fcc       /truct/
+L6299               fcc       /default/
+                    fcb       $00
+L62A1               fcb       $66,$6F,$72
+                    fcb       $00
+L62A5               fcc       /struct/
                     fcb       $00
 L62AC               fcc       /union/
                     fcb       $00
@@ -10957,15 +10963,14 @@ L62CC               fcc       /out of memory/
                     fcb       $00
 L62DA               fcc       /unterminated character constant/
                     fcb       $00
-L62FA               asr       $2B00
+L62FA               fcb       $77,$2B
+                    fcb       $00
 L62FD               fcc       /can't open strings file/
                     fcb       $00
 L6315               fcc       /unterminated string/
                     fcb       $00
-L6329               bra       L639D
-                    dec       L6220
-                    bcs       $6394
-                    tst       $0000
+L6329               fcc       / rzb %d/
+                    fcb       $0D,$00
 L6332               pshs      u
                     leax      $060C,y
                     stx       $006A
@@ -11016,7 +11021,7 @@ L6385               clra
                     lbsr      L7311
                     leas      $04,s
 L639A               lbsr      L65A3
-L639D               std       $006A
+                    std       $006A
                     lbeq      L64A4
                     ldb       [$006A,y]
                     cmpb      #$23
@@ -11042,7 +11047,7 @@ L63D1               lbsr      L6800
 L63D4               lbsr      L4BEC
                     leax      $060C,y
                     pshs      x
-                    leax      $6632,pcr
+                    leax      L6632,pcr
                     lbra      L6456
 
 L63E4               leax      $060C,y
@@ -11129,19 +11134,19 @@ L64AA               ldd       $06,s
                     pshs      x
                     leax      L6655,pcr
                     pshs      x
-                    lbsr      $50CE
+                    lbsr      L50CE
                     leas      $06,s
                     bra       L64D0
 
 L64C5               leax      L6663,pcr
                     pshs      x
-                    lbsr      $50CE
+                    lbsr      L50CE
                     leas      $02,s
 L64D0               leax      $060C,y
                     pshs      x
                     leax      L666F,pcr
                     pshs      x
-                    lbsr      $50CE
+                    lbsr      L50CE
                     leas      $04,s
                     ldb       $02EE,y
                     beq       L651B
@@ -11162,7 +11167,7 @@ L6504               ldd       $02,s
                     std       $02,s
                     subd      #$FFFF
                     bne       L64F4
-                    leax      $667D,pcr
+                    leax      L667D,pcr
                     pshs      x
                     lbsr      L6E3F
                     leas      $02,s
@@ -11237,7 +11242,7 @@ L65A3               pshs      u,d
                     beq       L65D9
                     leax      $01CE,y
                     pshs      x
-                    leax      $667F,pcr
+                    leax      L667F,pcr
                     pshs      x
                     lbsr      L6E61
                     leas      $04,s
@@ -11285,37 +11290,24 @@ L660C               cmpu      $0189,y
                     leas      $02,s
 L662D               leas      $02,s
                     puls      pc,u
-L6631               neg       $0025
-                    com       $0D00
-L6636               bra       L66A8
-                    fcc       /sect %s,0,0,%d,0,0/
+L6631               fcb       $00
+L6632               fcb       $25,$73
                     fcb       $0D,$00
-L664C               bra       $66BC
-                    fcb       $61
-                    tst       0,y
-                    bcs       $66C6
-                    tst       $0000
+L6636               fcc       / psect %s,0,0,%d,0,0/
+                    fcb       $0D,$00
+L664C               fcc       / nam %s/
+                    fcb       $0D,$00
 L6655               fcc       /%s : line %d /
                     fcb       $00
 L6663               fcc       /argument : /
                     fcb       $00
-L666F               bpl       L669B
-                    bpl       L669D
-                    bra       L669A
-                    com       $202A
-                    bpl       L66A4
-                    bpl       L6689
-                    neg       $005E
-                    neg       L0049
-                    fcc       /NPUT FILE/
-L6689               fcc       / ERROR : TEMPORAR/
-L669A               fcb       $59
-L669B               fcb       $20,$46
-L669D               fcb       $49,$4C,$45
+L666F               fcc       /**** %s ****/
                     fcb       $0D,$00
-L66A2               fcb       $69,$6E
-L66A4               fcc       /put /
-L66A8               fcc       /line too long/
+L667D               fcb       $5E
+                    fcb       $00
+L667F               fcc       /INPUT FILE ERROR : TEMPORARY FILE/
+                    fcb       $0D,$00
+L66A2               fcc       /input line too long/
                     fcb       $00
 L66B6               pshs      u
                     lbsr      L686D
@@ -11373,7 +11365,7 @@ L6719               pshs      u
                     ldd       $08,s
                     addd      #$0014
                     pshs      d
-                    leax      $6923,pcr
+                    leax      L6923,pcr
                     pshs      x
                     ldd       $0025
                     pshs      d
@@ -11408,7 +11400,7 @@ L6772               clra
                     pshs      d
                     ldd       $06,s
                     pshs      d
-                    leax      $6932,pcr
+                    leax      L6932,pcr
                     pshs      x
                     ldd       $0025
                     pshs      d
@@ -11547,7 +11539,7 @@ L688A               ldd       $006C
                     clra
                     andb      #$20
                     beq       L68AD
-                    leax      $694D,pcr
+                    leax      L694D,pcr
                     ldd       $06,x
                     clra
                     andb      #$20
@@ -11598,19 +11590,11 @@ L690D               ldd       ,s
                     leas      $02,s
 L6916               leas      $02,s
 L6918               puls      pc,u
-L691A               bra       $698E
-                    tst       $02,s
-                    bra       L6945
-                    lsr       $0d,x
-                    neg       $0025
-                    bgt       $695E
-                    com       L2563
-                    bra       L699D
-                    tst       $02,s
-                    bra       L6954
-                    lsr       $0d,x
-                    neg       $0025
-                    fcc       /.8s%c/
+L691A               fcc       / rmb %d/
+                    fcb       $0D,$00
+L6923               fcc       /%.8s%c rmb %d/
+                    fcb       $0D,$00
+L6932               fcc       /%.8s%c/
                     fcb       $00
 L6939               fcc       /%.8s%c/
                     fcb       $00
@@ -11618,10 +11602,9 @@ L6940               fcc       /fcb /
                     fcb       $00
 L6945               fcc       /fdb /
                     fcb       $00
-L694A               bpl       $696C
-                    neg       L0064
-                    fcc       /umpstr/
-L6954               fcc       /ings/
+L694A               fcb       $2A,$20
+                    fcb       $00
+L694D               fcc       /dumpstrings/
                     fcb       $00
 L6959               pshs      u
                     leau      $02C6,y
@@ -11661,7 +11644,7 @@ L6993               lda       $07,x
                     pshs      x
                     leax      $07,x
                     pshs      x,a
-L699D               bra       L69B9
+                    bra       L69B9
 
 L699F               ldx       $01,s
                     ldb       #$06
@@ -11838,7 +11821,7 @@ L6AE0               leau      $01,u
                     std       $0025
                     bne       L6B11
                     pshs      u
-                    leax      $6C1F,pcr
+                    leax      L6C1F,pcr
                     pshs      x
                     leax      $01CE,y
                     pshs      x
@@ -11899,7 +11882,7 @@ L6B68               ldd       $0072
                     leas      $06,s
                     std       L0023
                     bne       L6B98
-                    leax      $6C44,pcr
+                    leax      L6C44,pcr
                     pshs      x
                     lbsr      L0228
                     leas      $02,s
@@ -11955,22 +11938,17 @@ L6C09               ldd       #$0001
                     lbsr      exit
                     leas      $02,s
                     puls      pc,u
-L6C15               clrb
-                    fcc       /dummy_/
+L6C15               fcc       /_dummy_/
                     fcb       $00
-L6C1D               asr       >$0063
-                    fcb       $61
-                    jmp       $07,y
-                    lsr       L206F
-                    neg       $656E
-                    bra       L6C50
-                    com       $0D00
+L6C1D               fcb       $77
+                    fcb       $00
+L6C1F               fcc       /can't open %s/
+                    fcb       $0D,$00
 L6C2E               fcc       /unknown flag : -%c/
                     fcb       $0D,$00
 L6C42               fcb       $72
-                    neg       $0063
-                    fcc       /an't open i/
-L6C50               fcc       /nput file/
+                    fcb       $00
+L6C44               fcc       /can't open input file/
                     fcb       $00
 L6C5A               fcc       /error writing assembly code file/
                     fcb       $00
