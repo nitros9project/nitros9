@@ -114,6 +114,16 @@ L00CD               cmpa      #$0d
 L00DD               clr       -$01,x
                     bra       L0085
 
+* ------------------------------------------------------------------
+* SPURIOUS $00 below (defect in the c.pass1 FCB source, shared with
+* c.pass2; cc1/c.comp/c.opt are clean).  cstart.a shows the real crt0
+* tail is:  leax argv,u / pshs x / ldd argc,u / pshs d / leay 0,u /
+* bsr stkinit / lbsr main / lbsr exit.  A stray $00 turns
+* 'ldd argc,u' (EC C9 02 C0) into 'ldd 0,x' + 'adcb #2' (EC 00 C9 02 ..);
+* the following $C0 (SUBB #, 2 bytes) then swallows the 'pshs d' opcode
+* and derails 'lbsr main'.  The bytes below are byte-faithful to the
+* defective FCB; the genuine binary uses the clean form above.
+* ------------------------------------------------------------------
 L00E1               leax      $0284,u
                     pshs      x
                     ldd       0,x

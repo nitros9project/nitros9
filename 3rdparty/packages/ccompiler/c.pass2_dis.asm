@@ -114,6 +114,14 @@ L00CD               cmpa      #$0d
 L00DD               clr       -$01,x
                     bra       L0085
 
+* ------------------------------------------------------------------
+* SPURIOUS $00 below (defect in the c.pass2 FCB source, same as c.pass1).
+* cstart.a's real crt0 loads 'ldd argc,u' (EC C9 02 4E); the stray $00
+* makes it 'ldd 0,x' + 'adcb #2' (EC 00 C9 02 ..).  Here the trailing $4E
+* is an undefined 1-byte opcode, so the decode re-syncs at 'pshs d' and
+* 'lbsr main' survives.  Bytes below are byte-faithful to the defective
+* FCB; the genuine binary uses the clean 'ldd argc,u' form.
+* ------------------------------------------------------------------
 L00E1               leax      $0212,u
                     pshs      x
                     ldd       0,x
