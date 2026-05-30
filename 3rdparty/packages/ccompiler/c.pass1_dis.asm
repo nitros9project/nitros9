@@ -8683,8 +8683,7 @@ L4F4F               ldd       $06,u
                     leax      ,s
                     pshs      x
                     bsr       L4F63
-                    neg       $0000
-                    neg       $0000
+                    fcb       $00,$00,$00,$00
 L4F63               puls      x
                     lbsr      L74D3
                     ldd       $0025
@@ -8712,10 +8711,7 @@ L4F8B               ldd       $06,u
                     leax      ,s
                     pshs      x
                     bsr       L4FA3
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
 L4FA3               puls      x
                     lbsr      L69FF
                     ldd       $0025
@@ -10217,10 +10213,7 @@ L5C59               pshs      u
                     leax      $08,s
                     pshs      x
                     bsr       L5C71
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
 L5C71               puls      x
                     lbsr      L69FF
                     leax      $08,s
@@ -10246,8 +10239,7 @@ L5C89               ldb       $0065
 L5CA5               leax      $02,s
                     pshs      x
                     bsr       L5CAF
-                    neg       $0000
-                    neg       $0000
+                    fcb       $00,$00,$00,$00
 L5CAF               puls      x
                     lbsr      L74D3
                     ldb       $0065

@@ -276,6 +276,59 @@ def coalesce_fcc(rows: list[str], fmt) -> list[str]:
     return out
 
 
+def find_inline_data_regions(data: bytes, start: int, end: int) -> list[tuple[int, int]]:
+    """Detect the inline-data-after-call idiom.
+
+    Microware C emits parameter blocks inline after a call:
+
+                        bsr   helper          ; push return address, call helper
+                        fcb   ...             ; inline data (the parameter block)
+        helper          puls  x               ; pull return address -> pointer in X
+                        ...                   ; consume inline data via X
+
+    The helper grabs the pushed return address with a ``puls`` into a pointer
+    register, so the bytes between the call and its target are data reached only
+    through that pointer, never executed as instructions.  A naive linear sweep
+    decodes them as garbage (typically ``neg $00xx`` runs from NUL padding).
+
+    Returns a list of (start, end) inclusive byte ranges to mark as data.  The
+    match is deliberately tight - a forward ``bsr``/``lbsr`` with a small gap
+    whose target is a ``puls`` of a pointer register (x, y or u) - so it cannot
+    misfire on ordinary control flow.
+    """
+    regions: list[tuple[int, int]] = []
+    PTR_REGS = 0x70  # x ($10) | y ($20) | u ($40) in a puls/pshs postbyte
+    p = start
+    while p < end:
+        b = data[p]
+        if b == 0x8D and p + 1 < end:               # bsr (8-bit relative)
+            disp = data[p + 1]
+            if disp & 0x80:
+                disp -= 0x100
+            ret = p + 2                             # address after the call
+            target = ret + disp
+        elif b == 0x17 and p + 2 < end:             # lbsr (16-bit relative)
+            disp = (data[p + 1] << 8) | data[p + 2]
+            if disp & 0x8000:
+                disp -= 0x10000
+            ret = p + 3
+            target = ret + disp
+        else:
+            p += 1
+            continue
+        gap = target - ret
+        # forward call, short inline block, target is a puls of a pointer reg
+        if (1 <= gap <= 16 and target + 1 < end
+                and data[target] == 0x35
+                and (data[target + 1] & PTR_REGS)
+                and not (data[target + 1] & 0x80)):
+            regions.append((ret, target - 1))
+            p = target
+        else:
+            p += 1
+    return regions
+
+
 def make_info(hdr: dict, data: bytes = b'') -> str:
     n0  = hdr['name_off']
     ne  = hdr['name_end']
@@ -313,6 +366,15 @@ def make_info(hdr: dict, data: bytes = b'') -> str:
             rows.append('* detected string/data regions')
             for s, e in string_regions:
                 rows.append(f'CHAR {s:04X}-{e:04X}')
+
+        # Mark inline parameter blocks (data reached only via a pulled return
+        # address) so f9dasm emits them as data instead of garbage instructions.
+        inline_regions = find_inline_data_regions(data, code_start, code_end)
+        if inline_regions:
+            rows.append('')
+            rows.append('* inline data after call (bsr/lbsr -> puls)')
+            for s, e in inline_regions:
+                rows.append(f'DATA {s:04X}-{e:04X}')
 
     return '\n'.join(rows) + '\n'
 
