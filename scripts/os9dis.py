@@ -135,45 +135,66 @@ def find_string_regions(data: bytes, start: int, end: int) -> list[tuple[int, in
     cleanly on the byte after it.  FCS-terminated strings are deliberately
     excluded: they are much harder to tell from code bytes with bit 7 set.
     """
-    CR_MIN_LEN      = 16    # CR-terminated: total bytes incl. the $0D
-    NUL_MIN_CONTENT = 4     # NUL-terminated: printable chars before the $00
+    MIN_CONTENT = 4         # content bytes before the $00 to anchor a run
+
+    def is_print(b: int) -> bool:
+        return 0x20 <= b <= 0x7E
+
+    def is_content(b: int) -> bool:
+        # CR is part of message-string content (e.g. "%s\r"); NUL terminates.
+        return 0x20 <= b <= 0x7E or b == 0x0D
+
+    def qualifies(s: int, tpos: int) -> bool:
+        """A 'real' NUL-terminated string, strong enough to anchor a run
+        (anti false-positive): starts with a letter/symbol, has >= 2 distinct
+        letters, and >= MIN_CONTENT content bytes."""
+        if not (chr(data[s]).isalpha() or data[s] in b'*/(\"#%'):
+            return False
+        if len({b for b in data[s:tpos] if 0x41 <= (b & 0xDF) <= 0x5A}) < 2:
+            return False
+        return (tpos - s) >= MIN_CONTENT
+
     regions: list[tuple[int, int]] = []
     i = start
     while i < end:
-        first = data[i]
-        # String must start with a letter or specific printable symbol
-        if not (chr(first).isalpha() or first in b'*/(\"#%'):
+        if not is_print(data[i]):
             i += 1
             continue
-        # Scan forward for a CR or NUL terminator over printable ASCII
-        j = i
-        letters: set[int] = set()
-        term: int | None = None
-        while j < end:
-            b = data[j]
-            if b == 0x0D or b == 0x00:  # terminator found
-                term = b
-                j += 1
-                break
-            if 0x20 <= b <= 0x7E:       # printable ASCII (no high bit)
-                if chr(b).isalpha():
-                    letters.add(b)
-                j += 1
+        # Collect a maximal RUN of consecutive NUL-terminated strings (CR is
+        # content, not a terminator).  A string table interleaves short entries
+        # ("if", "do", " psect %s", "%s\r") that wouldn't pass the anchor test
+        # alone, so we accept the whole run as data as long as at least one
+        # member is a 'real' (qualifying) string.  The run ends at the first
+        # content stretch NOT terminated by NUL (e.g. code that merely looks
+        # printable, like a 'pshs u' = $34,$40 = "4@").
+        run: list[tuple[int, int]] = []     # (start, terminator_pos)
+        anchored = False
+        k = i
+        while k < end and is_content(data[k]):
+            s = k
+            while k < end and is_content(data[k]):
+                k += 1
+            if k < end and data[k] == 0x00:
+                run.append((s, k))          # string s..k-1 plus NUL at k
+                if qualifies(s, k):
+                    anchored = True
+                k += 1
             else:
-                break                   # non-text byte: not a clean string
-        if term is None:                # hit a non-text byte or ran off the end
-            i += 1
-            continue
-
-        total = j - i                   # printable run plus the terminator
-        accept = len(letters) >= 2 and (
-            (term == 0x0D and total >= CR_MIN_LEN) or
-            (term == 0x00 and total - 1 >= NUL_MIN_CONTENT))
-        if accept:
-            regions.append((i, j - 1))  # include the terminator byte
-            i = j
+                break                       # unterminated -> not part of the run
+        if run and anchored:
+            # Absorb leading NUL padding before the run: an isolated $00 just
+            # before a string table is otherwise decoded as 'neg' and eats the
+            # first character of the first string.
+            rs = run[0][0]
+            while rs > start and data[rs - 1] == 0x00:
+                rs -= 1
+            if rs < run[0][0]:
+                regions.append((rs, run[0][0] - 1))
+            regions.extend(run)             # (start, terminator) inclusive
+            i = run[-1][1] + 1
         else:
             i += 1
+    regions.sort()
     return regions
 
 
