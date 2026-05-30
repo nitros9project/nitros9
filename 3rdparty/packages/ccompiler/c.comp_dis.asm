@@ -8,7 +8,7 @@ atrv                set       ReEnt+rev
 rev                 set       $01
 edition             set       $05
 
-                    mod       eom,name,tylg,atrv,start,size
+                    mod       eom,name,tylg,atrv,_start,size
 
 u0000               rmb       4389
 size                equ       .
@@ -17,13 +17,13 @@ name                equ       *
                     fcs       /c.comp/
                     fcb       edition
 
-L0014               lda       ,y+
+copybytes           lda       ,y+
 L0016               sta       ,u+
 L0018               leax      -$01,x
-L001A               bne       L0014
+L001A               bne       copybytes
 L001C               rts
 
-start               pshs      y
+_start              pshs      y
 L001F               pshs      u
 L0021               clra
 L0022               clrb
@@ -37,12 +37,12 @@ L0030               pshs      x
 L0032               leay      LB358,pcr
 L0036               ldx       ,y++
 L0038               beq       L003E
-L003A               bsr       L0014
+L003A               bsr       copybytes
 L003C               ldu       $02,s
 L003E               leau      >$0078,u
 L0042               ldx       ,y++
 L0044               beq       L0049
-L0046               bsr       L0014
+L0046               bsr       copybytes
 L0048               clra
 L0049               cmpu      ,s
 L004C               beq       L0052
@@ -119,27 +119,25 @@ L00E0               leax      $0316,u
                     ldd       $0352,u
                     pshs      d
                     leay      ,u
-                    bsr       L00FA
-                    lbsr      L017C
+                    bsr       stkinit
+                    lbsr      main
                     clr       ,-s
                     clr       ,-s
-                    lbsr      LB34C
-L00FA               leax      $08A5,y
+                    lbsr      exit
+stkinit             leax      $08A5,y
                     stx       $0360,y
                     sts       $0354,y
                     sts       $0362,y
                     ldd       #$FF82
-L010F               leax      d,s
+stkcheck            leax      d,s
                     cmpx      $0362,y
                     bcc       L0121
                     cmpx      $0360,y
                     bcs       L013B
                     stx       $0362,y
 L0121               fcb       $39
-L0122               fcb       $2a,$2a,$2a,$2a,$20,$53,$54,$41
-                    fcb       $43,$4b,$20,$4f,$56,$45,$52,$46
-                    fcb       $4C,$4f,$57,$20,$2a,$2a,$2a,$2a
-                    fcb       $0d
+L0122               fcc       /**** STACK OVERFLOW ****/
+                    fcb       $0D
 L013B               leax      L0122,pcr
                     ldb       #$CF
                     pshs      b
@@ -169,7 +167,7 @@ L016A               ldd       ,y++
                     leas      $04,s
                     rts
 
-L017C               pshs      u
+main                pshs      u
                     leax      L5DC9,pcr
                     pshs      x
                     lbsr      $B31C
@@ -231,7 +229,7 @@ L01E4               leau      $01,u
                     pshs      x
                     leax      $0260,y
                     pshs      x
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $06,s
                     lbsr      L02F2
 L0215               leax      ,s
@@ -248,7 +246,7 @@ L0220               ldb       ,u
                     pshs      x
                     leax      $0260,y
                     pshs      x
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $06,s
                     lbsr      L02F2
                     bra       L0257
@@ -295,7 +293,7 @@ L0295               ldd       $04,s
                     std       $04,s
                     lbgt      L01B7
                     lbsr      L42A6
-                    lbsr      $5F26
+                    lbsr      L5F26
                     bra       L02AB
 
 L02A8               lbsr      L8192
@@ -308,7 +306,7 @@ L02AB               ldd       $003F
                     clra
                     andb      #$20
                     beq       L02CA
-                    leax      $0345,pcr
+                    leax      L0345,pcr
                     pshs      x
                     lbsr      L042D
                     leas      $02,s
@@ -320,24 +318,23 @@ L02CA               leax      $0253,y
                     beq       L02F0
                     ldd       $0009
                     pshs      d
-                    leax      $0366,pcr
+                    leax      L0366,pcr
                     pshs      x
                     leax      $0260,y
                     pshs      x
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $06,s
                     bsr       L02F2
 L02F0               puls      pc,u
 L02F2               pshs      u
                     ldd       #$0001
                     pshs      d
-                    lbsr      LB34C
+                    lbsr      exit
                     leas      $02,s
                     puls      pc,u
 L0300               clrb
-                    lsr       -$0b,s
-                    tst       $0d,s
-                    rol       L5F00
+                    fcc       /dummy_/
+                    fcb       $00
 L0308               asr       >L0063
                     fcb       $61
                     jmp       $07,y
@@ -345,46 +342,17 @@ L0308               asr       >L0063
                     neg       $656E
                     bra       L033B
                     com       $0D00
-L0319               fcb       $75,$6e,$6b,$6e,$6f,$77,$6e,$20
-                    fcb       $66,$6C,$61,$67,$20,$3a,$20,$2d
-                    fcb       $25,$63,$0d,$00
+L0319               fcc       /unknown flag : -%c/
+                    fcb       $0D,$00
 L032D               fcb       $72
                     neg       L0063
-                    fcb       $61
-                    jmp       $07,y
-                    lsr       $206F
-                    neg       $656E
-                    bra       $03A4
-
-L033B               jmp       -$10,s
-                    fcb       $75
-                    lsr       L2066
-                    rol       $0C,s
-                    fcb       $65
-                    neg       L0065
-                    fcb       $72
-                    fcb       $72
-                    clr       -$0e,s
-                    bra       $03C3
-                    fcb       $72
-                    rol       -$0C,s
-                    rol       $0e,s
-                    asr       0,y
-                    fcb       $61
-                    com       $7365
-                    tst       $02,s
-                    inc       -$07,s
-                    bra       $03C0
-                    clr       $04,s
-                    fcb       $65
-                    bra       $03C8
-                    rol       $0C,s
-                    fcb       $65
-                    neg       L0065
-                    fcb       $72,$72,$6f,$72,$73,$20,$69,$6e
-                    fcb       $20,$63,$6f,$6d,$70,$69,$6C,$61
-                    fcb       $74,$69,$6f,$6e,$20,$3a,$20,$25
-                    fcb       $64,$0d,$00
+                    fcc       /an't open i/
+L033B               fcc       /nput file/
+                    fcb       $00
+L0345               fcc       /error writing assembly code file/
+                    fcb       $00
+L0366               fcc       /errors in compilation : %d/
+                    fcb       $0D,$00
 L0382               pshs      u
                     ldu       $04,s
                     leas      -$06,s
@@ -603,7 +571,7 @@ L054F               pshs      u
                     pshs      d
                     leax      $0260,y
                     pshs      x
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $08,s
                     puls      pc,u
 L056A               pshs      u
@@ -756,7 +724,7 @@ L06C1               pshs      u
                     ldd       $003F
                     cmpd      $04,s
                     bne       L06D1
-                    lbsr      $5F26
+                    lbsr      L5F26
 L06CD               clra
                     clrb
 L06CF               puls      pc,u
@@ -784,7 +752,7 @@ L06FF               ldd       #$0001
 L0704               pshs      u
                     bra       L070B
 
-L0708               lbsr      $5F26
+L0708               lbsr      L5F26
 L070B               ldd       $003F
                     cmpd      #$0028
                     beq       L0723
@@ -798,70 +766,34 @@ L0723               puls      pc,u
 L0725               bcs       L079A
                     bra       L0763
                     bra       L072B
-
-L072B               tst       -$0b,s
-                    inc       -$0C,s
-                    rol       -$10,s
-                    inc       $05,s
-                    bra       L0799
-                    fcb       $65
-                    ror       $09,s
-                    jmp       $09,s
-                    lsr       $696F
-                    jmp       0,x
-
-L073F               com       $0f,s
-                    tst       -$10,s
-                    rol       $0C,s
-                    fcb       $65
-                    fcb       $72
-                    bra       L07AE
-                    fcb       $72
-                    fcb       $72
-                    clr       -$0e,s
-                    bra       $077C
-                    bra       L0751
-
-L0751               inc       $09,s
-                    jmp       $05,s
-                    bra       $077C
-                    lsr       0,y
-                    bra       L075B
-
+L072B               fcc       /multiple definition/
+                    fcb       $00
+L073F               fcc       /compiler error - /
+                    fcb       $00
+L0751               fcc       /line %d  /
+                    fcb       $00
 L075B               bpl       L0787
                     bpl       $0789
                     bra       L0781
                     bcs       $07D6
-L0763               bra       $0785
+L0763               bra       L0785
                     bpl       $0791
                     bpl       $0793
                     tst       $0000
-L076B               fcb       $5e
+L076B               fcb       $5E
                     neg       $0074
-                    clr       $0f,s
-                    bra       $07DF
-                    fcb       $61
-                    jmp       -$07,s
-                    bra       L07DC
-                    fcb       $72
-                    fcb       $72
-                    clr       -$0e,s
-                    com       L202D
-                    bra       L07C1
-                    fcb       $42
-L0781               clra
-                    fcb       $52
-                    lsrb
-                    neg       $0034
-                    nega
+                    fcc       /oo many errors - AB/
+L0781               fcb       $4F,$52,$54
+                    fcb       $00
+L0785               pshs      u
 L0787               ldd       #$FFA2
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$0e,s
                     lbsr      L0899
                     std       $0C,s
                     lbne      L087E
                     clra
-L0799               clrb
+                    clrb
 L079A               lbra      L0895
                     lbra      L087E
 
@@ -872,16 +804,16 @@ L07A0               ldd       $003F
                     std       ,s
                     ldd       L001F
                     std       $04,s
-L07AE               ldd       $0043
+                    ldd       $0043
                     std       $02,s
-                    lbsr      $5F26
+                    lbsr      L5F26
                     ldx       $0a,s
                     bra       L07D2
 
 L07B9               ldd       $0a,s
                     cmpd      #$00A0
                     blt       L07C9
-L07C1               ldd       $0a,s
+                    ldd       $0a,s
                     cmpd      #$00A9
                     ble       L07DE
 L07C9               ldd       $08,s
@@ -893,11 +825,11 @@ L07D2               cmpx      #$0064
                     beq       L07DE
                     cmpx      #$0078
                     beq       L07DE
-L07DC               bra       L07B9
+                    bra       L07B9
 
 L07DE               ldd       ,s
                     pshs      d
-                    lbsr      $0785
+                    lbsr      L0785
                     leas      $02,s
                     tfr       d,u
                     stu       -$02,s
@@ -916,7 +848,7 @@ L07DE               ldd       ,s
                     std       $04,s
                     ldd       #$0003
                     pshs      d
-                    lbsr      $0785
+                    lbsr      L0785
                     leas      $02,s
                     std       $06,s
                     beq       L083C
@@ -980,7 +912,7 @@ L0895               leas      $0e,s
                     puls      pc,u
 L0899               pshs      u
                     ldd       #$FFA4
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$0C,s
                     ldu       #$0000
                     ldx       $003F
@@ -1003,10 +935,10 @@ L08AB               ldd       $0043
                     lbsr      L0FD8
                     leas      $0C,s
                     tfr       d,u
-                    lbsr      $5F26
+                    lbsr      L5F26
                     lbra      L0A63
 
-L08D0               lbsr      $5F26
+L08D0               lbsr      L5F26
                     lbsr      L05DF
                     std       -$02,s
                     beq       L08FE
@@ -1028,7 +960,7 @@ L08D0               lbsr      $5F26
 L08FE               clra
                     clrb
                     pshs      d
-                    lbsr      $0785
+                    lbsr      L0785
                     leas      $02,s
                     tfr       d,u
                     stu       -$02,s
@@ -1066,7 +998,7 @@ L093F               ldd       $003F
                     std       $06,s
                     ldd       $0043
                     std       $04,s
-                    lbsr      $5F26
+                    lbsr      L5F26
                     lbsr      L0899
                     std       $0a,s
                     beq       L097A
@@ -1097,11 +1029,11 @@ L0986               ldd       L001F
                     std       $06,s
                     ldd       $0043
                     std       $04,s
-                    lbsr      $5F26
+                    lbsr      L5F26
                     ldd       $003F
                     cmpd      #$002D
                     bne       L09C8
-                    lbsr      $5F26
+                    lbsr      L5F26
                     lbsr      L05DF
                     std       -$02,s
                     beq       L09AA
@@ -1112,7 +1044,7 @@ L0986               ldd       L001F
 L09AA               clra
                     clrb
                     pshs      d
-                    lbsr      $0785
+                    lbsr      L0785
                     leas      $02,s
                     std       $0a,s
                     bne       L09BC
@@ -1195,7 +1127,7 @@ L0A73               ldd       $0043
                     std       $04,s
                     ldd       L001F
                     std       $06,s
-                    lbsr      $5F26
+                    lbsr      L5F26
                     ldd       $04,s
                     pshs      d
                     ldd       $08,s
@@ -1213,10 +1145,10 @@ L0A73               ldd       $0043
                     ldd       #$002E
                     lbra      L0B1A
 
-L0AA4               lbsr      $5F26
+L0AA4               lbsr      L5F26
                     ldd       #$0002
                     pshs      d
-                    lbsr      $0785
+                    lbsr      L0785
                     leas      $02,s
                     std       $0a,s
                     bne       L0AD8
@@ -1283,7 +1215,7 @@ L0B24               ldd       $003F
                     ldd       L0021
                     addd      #$0001
                     std       L0021
-                    lbsr      $5F26
+                    lbsr      L5F26
                     ldd       L0021
                     addd      #$FFFF
                     std       L0021
@@ -1324,7 +1256,7 @@ L0B4F               ldd       $0043
                     lbsr      L0FD8
                     leas      $0C,s
                     tfr       d,u
-                    lbsr      $5F26
+                    lbsr      L5F26
                     lbra      L0A6E
 
 L0B94               cmpx      #$002D
@@ -1363,7 +1295,7 @@ L0BC6               ldd       $0043
                     lbsr      L0FD8
                     leas      $0C,s
                     tfr       d,u
-                    lbsr      $5F26
+                    lbsr      L5F26
                     bra       L0BF3
 
 L0BE9               cmpx      #$003C
@@ -1375,7 +1307,7 @@ L0BF5               leas      $0C,s
                     puls      pc,u
 L0BF9               pshs      u
                     ldd       #$FFAE
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$02,s
                     ldu       #$0000
                     bra       L0C08
@@ -1385,7 +1317,7 @@ L0C08               ldd       $003F
                     beq       L0C50
                     ldd       #$0002
                     pshs      d
-                    lbsr      $0785
+                    lbsr      L0785
                     leas      $02,s
                     std       ,s
                     beq       L0C43
@@ -1410,7 +1342,7 @@ L0C08               ldd       $003F
 L0C43               ldd       $003F
                     cmpd      #$0030
                     bne       L0C50
-                    lbsr      $5F26
+                    lbsr      L5F26
                     bra       L0C08
 
 L0C50               tfr       u,d
@@ -1418,11 +1350,11 @@ L0C50               tfr       u,d
 
 L0C54               pshs      u
                     ldd       #$FFB8
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$02,s
                     ldd       $06,s
                     pshs      d
-                    lbsr      $0785
+                    lbsr      L0785
                     std       ,s
                     lbsr      L111D
                     leas      $02,s
@@ -1453,7 +1385,7 @@ L0C9C               leas      $02,s
                     puls      pc,u
 L0CA0               pshs      u
                     ldd       #$FFC0
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldx       $003F
                     bra       L0CF9
 
@@ -1506,7 +1438,7 @@ L0CF9               cmpx      #$0041
                     puls      pc,u
 L0D26               pshs      u
                     ldd       #$FFB8
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldx       $04,s
                     lbra      L0E98
 
@@ -1730,7 +1662,7 @@ L0E98               cmpx      #$0050
                     puls      pc,u
 L0F4C               pshs      u
                     ldd       #$FFA2
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$0e,s
                     ldd       L001F
                     std       $04,s
@@ -1759,7 +1691,7 @@ L0F4C               pshs      u
                     leas      $02,s
                     ldd       $06,s
                     beq       L0F9D
-                    leax      $10FB,pcr
+                    leax      L10FB,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
@@ -1796,7 +1728,7 @@ L0F9D               ldd       $02,s
                     puls      pc,u
 L0FD8               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldd       $000D
                     beq       L0FEC
                     ldu       $000D
@@ -1828,7 +1760,7 @@ L0FF8               ldd       $04,s
                     puls      pc,u
 L101A               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leax      L110A,pcr
                     pshs      x
                     lbsr      L0450
@@ -1836,7 +1768,7 @@ L101A               pshs      u
 
 L102E               pshs      u
                     ldd       #$FFB6
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       [$04,s]
                     ldx       $06,u
                     bra       L1081
@@ -1884,74 +1816,23 @@ L1081               cmpx      #$0034
                     lbeq      L1072
                     lbra      L103D
                     puls      pc,u
-L109C               lsr       L6869
-                    fcb       $72
-                    lsr       0,y
-                    fcb       $65
-                    asl       $7072
-                    fcb       $65
-                    com       $7369
-                    clr       $0e,s
-                    bra       L111B
-                    rol       -$0d,s
-                    com       L696E
-                    asr       0,x
-L10B5               clr       -$10,s
-                    fcb       $65
-                    fcb       $72
-                    fcb       $61
-                    jmp       $04,s
-                    bra       $1123
-                    asl       L7065
-                    com       -$0C,s
-                    fcb       $65
-                    lsr       0,x
-L10C6               neg       L7269
-                    tst       $01,s
-                    fcb       $72
-                    rol       $2065
-                    asl       L7065
-                    com       -$0C,s
-                    fcb       $65
-                    lsr       0,x
-L10D7               com       $0f,s
-                    jmp       -$0d,s
-                    lsr       $616E
-                    lsr       $2072
-                    fcb       $65
-                    fcb       $71
-                    fcb       $75
-                    rol       -$0e,s
-                    fcb       $65
-                    lsr       0,x
-L10E9               com       $0f,s
-                    jmp       -$0d,s
-                    lsr       $616E
-                    lsr       $206F
-                    neg       $6572
-                    fcb       $61
-                    lsr       $6F72
-                    neg       $006E
-                    fcb       $61
-                    tst       $05,s
-                    bra       L116A
-                    jmp       0,y
-                    fcb       $61
-                    bra       $1169
-                    fcb       $61
-                    com       $7400
-L110A               fcb       $65
-                    asl       $7072
-                    fcb       $65
-                    com       $7369
-                    clr       $0e,s
-                    bra       $1183
-                    rol       -$0d,s
-                    com       L696E
-L111B               asr       0,x
+L109C               fcc       /third expression missing/
+                    fcb       $00
+L10B5               fcc       /operand expected/
+                    fcb       $00
+L10C6               fcc       /primary expected/
+                    fcb       $00
+L10D7               fcc       /constant required/
+                    fcb       $00
+L10E9               fcc       /constant operator/
+                    fcb       $00
+L10FB               fcc       /name in a cast/
+                    fcb       $00
+L110A               fcc       /expression missing/
+                    fcb       $00
 L111D               pshs      u
                     ldd       #$FFAE
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$0C,s
                     stu       -$02,s
@@ -1984,7 +1865,7 @@ L115B               pshs      u
                     ldd       $0a,u
                     std       $0a,s
                     ldd       $0C,u
-L116A               std       $08,s
+                    std       $08,s
                     ldd       $06,u
                     std       $04,s
                     cmpd      #$0064
@@ -2060,7 +1941,7 @@ L1204               tfr       u,d
                     puls      pc,u
 L120A               pshs      u
                     ldd       #$FFA8
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$0e,s
                     stu       -$02,s
@@ -2426,7 +2307,7 @@ L1524               leas      $0e,s
                     puls      pc,u
 L1528               pshs      u
                     ldd       #$FFC0
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     stu       -$02,s
                     beq       L156E
@@ -2454,7 +2335,7 @@ L156E               clra
                     puls      pc,u
 L1572               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leax      L287A,pcr
                     pshs      x
                     lbsr      L0450
@@ -2462,7 +2343,7 @@ L1572               pshs      u
                     puls      pc,u
 L1587               pshs      u
                     ldd       #$FF9C
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$14,s
                     ldx       $18,s
                     ldu       $0a,x
@@ -2651,7 +2532,7 @@ L170C               pshs      u
                     andb      #$30
                     cmpd      #$0020
                     bne       L1747
-L172C               leax      $28A2,pcr
+L172C               leax      L28A2,pcr
                     pshs      x
                     ldd       $1a,s
                     pshs      d
@@ -3593,7 +3474,7 @@ L1F57               ldd       $02,u
                     lbra      L2028
 
 L1F6B               leas      -$14,x
-                    leax      $2924,pcr
+                    leax      L2924,pcr
                     pshs      x
                     ldd       $1a,s
                     pshs      d
@@ -3624,7 +3505,7 @@ L1F7F               ldd       ,u
                     ldx       $12,s
                     cmpd      $02,x
                     beq       L1FCA
-L1FB7               leax      $2932,pcr
+L1FB7               leax      L2932,pcr
                     pshs      x
                     ldd       $1a,s
                     pshs      d
@@ -3685,7 +3566,7 @@ L202D               ldd       $0e,s
                     leax      $14,s
                     lbra      L1E76
 
-L203B               leax      $2943,pcr
+L203B               leax      L2943,pcr
                     pshs      x
                     ldd       $1a,s
                     pshs      d
@@ -3700,11 +3581,11 @@ L204E               cmpx      #$0034
                     cmpx      #$004A
 L205F               lbeq      L16E1
                     cmpx      #$004B
-L2066               lbeq      L16F1
+                    lbeq      L16F1
                     cmpx      #$0037
                     lbeq      L1701
                     cmpx      #$0020
-L2074               lbeq      L170C
+                    lbeq      L170C
 L2078               cmpx      #$0041
                     lbeq      L178B
                     cmpx      #$0042
@@ -3793,14 +3674,14 @@ L2170               ldd       $0C,s
                     puls      pc,u
 L2193               pshs      u
                     ldd       #$FFB8
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     ldd       $06,u
                     cmpd      #$0036
                     bne       L21A9
                     ldd       $08,u
                     beq       L21BF
-L21A9               leax      $294E,pcr
+L21A9               leax      L294E,pcr
                     pshs      x
                     pshs      u
                     lbsr      L0498
@@ -3813,7 +3694,7 @@ L21A9               leax      $294E,pcr
 L21BF               puls      pc,u
 L21C1               pshs      u
                     ldd       #$FFB6
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$02,s
                     pshs      u
@@ -3835,7 +3716,7 @@ L21E4               std       ,s
                     leas      $04,s
                     bra       L2224
 
-L21F0               leax      $295D,pcr
+L21F0               leax      L295D,pcr
                     pshs      x
                     pshs      u
                     lbsr      L0498
@@ -3864,7 +3745,7 @@ L2224               ldd       ,s
                     puls      pc,u
 L222C               pshs      u
                     ldd       #$FFAC
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$04,s
                     clra
@@ -4230,7 +4111,7 @@ L2540               ldd       $0a,s
 
 L2545               pshs      u
                     ldd       #$FFB4
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$04,s
                     pshs      u
@@ -4289,7 +4170,7 @@ L25C5               leas      $04,s
                     puls      pc,u
 L25C9               pshs      u
                     ldd       #$FFB0
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldd       $08,s
                     pshs      d
                     ldd       $06,s
@@ -4363,7 +4244,7 @@ L2657               std       $12,u
                     puls      pc,u
 L2668               pshs      u
                     ldd       #$FFB6
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$02,s
                     ldd       $06,u
@@ -4397,7 +4278,7 @@ L26B5               bne       L26C1
                     ldd       ,u
                     cmpd      #$0004
                     lbne      L27B6
-L26C1               leax      $2968,pcr
+L26C1               leax      L2968,pcr
                     pshs      x
                     pshs      u
                     lbsr      L0498
@@ -4409,7 +4290,7 @@ L26C1               leax      $2968,pcr
 
 L26D8               pshs      u
                     ldd       #$FFB8
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     ldd       $06,u
                     cmpd      #$0034
@@ -4427,7 +4308,7 @@ L26D8               pshs      u
 
 L2707               pshs      u
                     ldd       #$FFB6
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$02,s
                     ldd       ,u
@@ -4487,7 +4368,7 @@ L276C               ldd       #$0036
                     bra       L278B
 
 L2789               leas      -$02,x
-L278B               leax      $298C,pcr
+L278B               leax      L298C,pcr
                     pshs      x
                     pshs      u
                     lbsr      L0498
@@ -4510,7 +4391,7 @@ L27B6               leas      $02,s
 L27B8               puls      pc,u
 L27BA               pshs      u
                     ldd       #$FFB8
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     ldd       ,u
                     cmpd      #$0004
@@ -4530,7 +4411,7 @@ L27E7               ldd       ,u
                     puls      pc,u
 L27EB               pshs      u
                     ldd       #$FFB6
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     ldd       #$0006
                     pshs      d
@@ -4560,7 +4441,7 @@ L27EB               pshs      u
                     puls      pc,u
 L2832               pshs      u
                     ldd       #$FFC0
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldx       $04,s
                     bra       L2843
 
@@ -4579,7 +4460,7 @@ L2843               cmpx      #$0001
                     puls      pc,u
 L2861               pshs      u
                     ldd       #$FFB8
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leax      L29C4,pcr
                     pshs      x
                     ldd       $06,s
@@ -4587,207 +4468,47 @@ L2861               pshs      u
                     lbsr      L0498
                     leas      $04,s
                     puls      pc,u
-L287A               lsr       $09,s
-                    ror       $6964
-                    fcb       $65
-                    bra       L28E4
-                    rol       $207A
-                    fcb       $65
-                    fcb       $72
-                    clr       0,x
-L2889               lsr       $7970
-                    fcb       $65
-                    lsr       $05,s
-                    ror       0,y
-                    blt       $28B3
-                    jmp       $0f,s
-                    lsr       $2061
-                    bra       L2910
-                    fcb       $61
-                    fcb       $72
-                    rol       $01,s
-                    fcb       $62
-                    inc       $05,s
-                    neg       L0063
-                    fcb       $61
-                    jmp       $0e,s
-                    clr       -$0C,s
-                    bra       L290D
-                    fcb       $61
-                    com       $7400
-L28AE               com       $01,s
-                    jmp       $07,y
-                    lsr       L2074
-                    fcb       $61
-                    fcb       $6b
-                    fcb       $65
-                    bra       $291B
-                    lsr       $04,s
-                    fcb       $72
-                    fcb       $65
-                    com       $7300
-L28C1               neg       L6F69
-                    jmp       -$0C,s
-                    fcb       $65
-                    fcb       $72
-                    bra       $293C
-                    fcb       $65
-                    fcb       $71
-                    fcb       $75
-                    rol       -$0e,s
-                    fcb       $65
-                    lsr       0,x
-L28D2               neg       L6F69
-                    jmp       -$0C,s
-                    fcb       $65
-                    fcb       $72
-                    bra       $294A
-                    fcb       $72
-                    bra       L2947
-                    jmp       -$0C,s
-                    fcb       $65
-                    asr       $05,s
-                    fcb       $72
-L28E4               bra       $2958
-                    fcb       $65
-                    fcb       $71
-                    fcb       $75
-                    rol       -$0e,s
-                    fcb       $65
-                    lsr       0,x
-L28EE               jmp       $0f,s
-                    lsr       $2061
-                    bra       L295B
-                    fcb       $75
-                    jmp       $03,s
-                    lsr       $696F
-                    jmp       0,x
-L28FD               fcb       $62
-                    clr       -$0C,s
-                    asl       0,y
-                    tst       -$0b,s
-                    com       $7420
-                    fcb       $62
-                    fcb       $65
-                    bra       $2974
-                    jmp       -$0C,s
-L290D               fcb       $65
-                    asr       -$0e,s
-L2910               fcb       $61
-                    inc       0,x
-L2913               neg       L6F69
-                    jmp       -$0C,s
-                    fcb       $65
-                    fcb       $72
-                    bra       L2989
-                    rol       -$0d,s
-                    tst       $01,s
-                    lsr       L6368
-                    neg       $0074
-                    rol       L7065
-                    bra       L2997
-                    rol       -$0d,s
-                    tst       $01,s
-                    lsr       L6368
-                    neg       L0070
-                    clr       $09,s
-                    jmp       -$0C,s
-                    fcb       $65
-                    fcb       $72
-                    bra       $29A8
-                    rol       -$0d,s
-                    tst       $01,s
-                    lsr       L6368
-                    neg       $0074
-                    rol       L7065
-L2947               bra       L29AC
-                    asl       $05,s
-                    com       $0b,s
-                    neg       $0073
-                    asl       $0f,s
-                    fcb       $75
-                    inc       $04,s
-                    bra       $29B8
-                    fcb       $65
-                    bra       L29A7
-                    fcb       $55
-                    inca
-L295B               inca
-                    neg       $0074
-                    rol       L7065
-                    bra       $29C8
-                    fcb       $72
-                    fcb       $72
-                    clr       -$0e,s
-                    neg       L006C
-                    ror       $616C
-                    fcb       $75
-                    fcb       $65
-                    bra       $29E2
-                    fcb       $65
-                    fcb       $71
-                    fcb       $75
-                    rol       -$0e,s
-                    fcb       $65
-                    lsr       0,x
-L2978               fcb       $75
-                    jmp       $04,s
-                    fcb       $65
-                    com       $0C,s
-                    fcb       $61
-                    fcb       $72
-                    fcb       $65
-                    lsr       0,y
-                    ror       L6172
-                    rol       $01,s
-                    fcb       $62
-L2989               inc       $05,s
-                    neg       $0073
-                    lsr       L7275
-                    com       -$0C,s
-                    bra       $2A01
-                    fcb       $65
-                    tst       $02,s
-L2997               fcb       $65
-                    fcb       $72
-                    bra       $2A0D
-                    fcb       $65
-                    fcb       $71
-                    fcb       $75
-                    rol       -$0e,s
-                    fcb       $65
-                    lsr       0,x
-L29A3               com       L7472
-                    fcb       $75
-L29A7               com       -$0C,s
-                    fcb       $75
-                    fcb       $72
-                    fcb       $65
-L29AC               bra       $2A1D
-                    fcb       $72
-                    bra       L2A26
-                    jmp       $09,s
-                    clr       $0e,s
-                    bra       $2A20
-                    jmp       $01,s
-                    neg       $7072
-                    clr       -$10,s
-                    fcb       $72
-                    rol       $01,s
-                    lsr       L6500
-L29C4               tst       -$0b,s
-                    com       $7420
-                    fcb       $62
-                    fcb       $65
-                    bra       L2A36
-                    jmp       -$0C,s
-                    fcb       $65
-                    asr       -$0e,s
-                    fcb       $61
-                    inc       0,x
+L287A               fcc       /divide by zero/
+                    fcb       $00
+L2889               fcc       /typedef - not a variable/
+                    fcb       $00
+L28A2               fcc       /cannot cast/
+                    fcb       $00
+L28AE               fcc       /can't take address/
+                    fcb       $00
+L28C1               fcc       /pointer required/
+                    fcb       $00
+L28D2               fcc       /pointer or integer required/
+                    fcb       $00
+L28EE               fcc       /not a function/
+                    fcb       $00
+L28FD               fcc       /both must be integral/
+                    fcb       $00
+L2913               fcc       /pointer mismatch/
+                    fcb       $00
+L2924               fcc       /type mismatch/
+                    fcb       $00
+L2932               fcc       /pointer mismatch/
+                    fcb       $00
+L2943               fcc       /type check/
+                    fcb       $00
+L294E               fcc       /should be NULL/
+                    fcb       $00
+L295D               fcc       /type error/
+                    fcb       $00
+L2968               fcc       /lvalue required/
+                    fcb       $00
+L2978               fcc       /undeclared variable/
+                    fcb       $00
+L298C               fcc       /struct member required/
+                    fcb       $00
+L29A3               fcc       /structure or union inappropriate/
+                    fcb       $00
+L29C4               fcc       /must be integral/
+                    fcb       $00
 L29D5               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldd       $003F
                     cmpd      #$0028
                     beq       L29ED
@@ -4831,10 +4552,10 @@ L2A2C               lbsr      L3235
                     lbra      L2B10
 
 L2A32               leax      L3401,pcr
-L2A36               pshs      x
+                    pshs      x
                     lbsr      L0450
                     leas      $02,s
-                    lbsr      $5F26
+                    lbsr      L5F26
                     lbra      L2A9C
 
 L2A43               leax      ,s
@@ -4860,14 +4581,14 @@ L2A48               cmpx      #$0013
                     beq       L2A21
                     cmpx      #$001A
                     beq       L2A26
-                    cmpx      #start
+                    cmpx      #_start
                     beq       L2A2C
                     cmpx      #$0015
                     beq       L2A32
                     bra       L2A43
 
 L2A86               lbsr      L89B7
-                    lbsr      $5F26
+                    lbsr      L5F26
                     puls      pc,u
 L2A8E               puls      pc,u
 L2A90               lbsr      L42B9
@@ -4892,7 +4613,7 @@ L2AB5               leax      L3414,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
-L2AC0               lbsr      $5F26
+L2AC0               lbsr      L5F26
                     ldd       $003F
                     cmpd      #$0028
                     bne       L2AC0
@@ -4923,7 +4644,7 @@ L2AEC               cmpx      #$0028
                     lbeq      L2A8E
                     cmpx      #$0034
                     lbeq      L2A90
-L2B0D               lbra      L2AA7
+                    lbra      L2AA7
 
 L2B10               ldd       #$0028
                     pshs      d
@@ -4932,9 +4653,9 @@ L2B10               ldd       #$0028
                     puls      pc,u
 L2B1C               pshs      u
                     ldd       #$FFAE
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$06,s
-                    lbsr      $5F26
+                    lbsr      L5F26
                     lbsr      L337E
                     std       ,s
                     ldd       $000B
@@ -4948,7 +4669,7 @@ L2B1C               pshs      u
                     ldd       $003F
                     cmpd      #$0028
                     bne       L2B6B
-                    lbsr      $5F26
+                    lbsr      L5F26
                     clra
                     clrb
                     pshs      d
@@ -4987,7 +4708,7 @@ L2B8D               ldd       $003F
                     ldd       $0041
                     cmpd      #$0015
                     bne       L2BD2
-                    lbsr      $5F26
+                    lbsr      L5F26
                     ldd       $003F
                     cmpd      #$0028
                     beq       L2BD2
@@ -5018,7 +4739,7 @@ L2BD2               ldd       $02,s
                     puls      pc,u
 L2BDF               pshs      u
                     ldd       #$FFAA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$0a,s
                     ldd       $0033
                     std       $08,s
@@ -5028,7 +4749,7 @@ L2BDF               pshs      u
                     std       $04,s
                     ldd       $0788,y
                     std       $02,s
-                    lbsr      $5F26
+                    lbsr      L5F26
                     ldd       $000B
                     addd      #$0001
                     std       $000B
@@ -5095,9 +4816,9 @@ L2C52               ldd       $0035
                     puls      pc,u
 L2C8F               pshs      u
                     ldd       #$FFA8
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$0e,s
-                    lbsr      $5F26
+                    lbsr      L5F26
                     ldd       $0037
                     addd      #$0001
                     std       $0037
@@ -5130,7 +4851,7 @@ L2C8F               pshs      u
                     clra
                     clrb
                     pshs      d
-                    lbsr      $0785
+                    lbsr      L0785
                     std       ,s
                     lbsr      L111D
                     leas      $02,s
@@ -5260,9 +4981,9 @@ L2DCB               ldd       $0033
 
 L2DF6               pshs      u
                     ldd       #$FFB8
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$02,s
-L2E00               lbsr      $5F26
+                    lbsr      L5F26
                     clra
                     clrb
                     pshs      d
@@ -5312,14 +5033,14 @@ L2E5A               bsr       L2E9C
 
 L2E5E               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
-                    lbsr      $5F26
+                    lbsr      stkcheck
+                    lbsr      L5F26
                     ldd       $0037
                     bne       L2E6F
                     bsr       L2E9C
 L2E6F               ldd       $0784,y
                     beq       L2E80
-L2E75               leax      $3435,pcr
+L2E75               leax      L3435,pcr
                     pshs      x
                     lbsr      L0450
                     bra       L2E90
@@ -5338,15 +5059,15 @@ L2E90               leas      $02,s
 
 L2E9C               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
-                    leax      $3447,pcr
+                    lbsr      stkcheck
+                    leax      L3447,pcr
                     pshs      x
                     lbsr      L0450
 L2EAD               leas      $02,s
                     puls      pc,u
 L2EB1               pshs      u
                     ldd       #$FFAA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$0a,s
                     ldd       $0033
                     std       $08,s
@@ -5367,7 +5088,7 @@ L2EB1               pshs      u
                     addd      #$0001
                     std       $000B
                     std       $0033
-                    lbsr      $5F26
+                    lbsr      L5F26
                     ldd       $000B
                     addd      #$0001
                     std       $000B
@@ -5382,11 +5103,11 @@ L2EB1               pshs      u
                     ldd       $0041
                     cmpd      #$0014
                     beq       L2F1C
-L2F11               leax      $345B,pcr
+L2F11               leax      L345B,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
-L2F1C               lbsr      $5F26
+L2F1C               lbsr      L5F26
                     ldd       $0035
                     pshs      d
                     lbsr      L57B2
@@ -5418,7 +5139,7 @@ L2F1C               lbsr      $5F26
                     puls      pc,u
 L2F5F               pshs      u
                     ldd       #$FFA6
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$0e,s
                     clra
                     clrb
@@ -5444,7 +5165,7 @@ L2F5F               pshs      u
                     addd      #$0001
                     std       $000B
                     std       $0033
-                    lbsr      $5F26
+                    lbsr      L5F26
                     ldd       #$002D
                     pshs      d
                     lbsr      L06C1
@@ -5482,7 +5203,7 @@ L2FE5               ldd       #$0028
                     clra
                     clrb
                     pshs      d
-                    lbsr      $0785
+                    lbsr      L0785
                     std       ,s
                     lbsr      L111D
                     leas      $02,s
@@ -5561,15 +5282,15 @@ L3094               leas      $0e,s
                     puls      pc,u
 L3098               pshs      u
                     ldd       #$FFB6
-                    lbsr      L010F
-                    lbsr      $5F26
+                    lbsr      stkcheck
+                    lbsr      L5F26
                     ldd       $003F
                     cmpd      #$0028
                     lbeq      L3197
                     clra
                     clrb
                     pshs      d
-                    lbsr      $0785
+                    lbsr      L0785
                     leas      $02,s
                     tfr       d,u
                     stu       -$02,s
@@ -5607,7 +5328,7 @@ L30F5               pshs      u
                     bra       L3109
 
 L3100               pshs      u
-                    lbsr      $3987
+                    lbsr      L3987
                     leas      $02,s
                     bra       L310B
 
@@ -5692,8 +5413,8 @@ L3197               clra
 
 L31B8               pshs      u
                     ldd       #$FFB6
-                    lbsr      L010F
-                    lbsr      $5F26
+                    lbsr      stkcheck
+                    lbsr      L5F26
                     ldd       $0033
                     bne       L31D4
                     leax      L346A,pcr
@@ -5720,11 +5441,11 @@ L31F1               ldd       #$0018
 
 L31F7               pshs      u
                     ldd       #$FFB6
-                    lbsr      L010F
-                    lbsr      $5F26
+                    lbsr      stkcheck
+                    lbsr      L5F26
                     ldd       $0035
                     bne       L3213
-                    leax      $3476,pcr
+                    leax      L3476,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
@@ -5748,12 +5469,12 @@ L3230               ldd       #$0019
 
 L3235               pshs      u
                     ldd       #$FFB6
-                    lbsr      L010F
-                    lbsr      $5F26
+                    lbsr      stkcheck
+                    lbsr      L5F26
                     ldd       $003F
                     cmpd      #$0034
                     beq       L3255
-                    leax      $3485,pcr
+                    leax      L3485,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
@@ -5768,20 +5489,20 @@ L3255               lbsr      L32C2
                     pshs      d
                     ldd       $06,u
                     pshs      d
-                    ldd       #start
+                    ldd       #_start
                     pshs      d
                     lbsr      L4623
                     leas      $06,s
                     ldd       $0a,u
                     orb       #$02
                     std       $0a,u
-L3276               lbsr      $5F26
-L3279               ldd       #start
+L3276               lbsr      L5F26
+L3279               ldd       #_start
 L327C               std       $002F
                     puls      pc,u
 L3280               pshs      u
                     ldd       #$FFB6
-                    lbsr      L010F
+                    lbsr      stkcheck
                     bsr       L32C2
                     tfr       d,u
                     stu       -$02,s
@@ -5806,12 +5527,12 @@ L329D               ldd       #$000F
                     ldd       $0a,u
                     orb       #$01
                     std       $0a,u
-L32BA               lbsr      $5F26
-                    lbsr      $5F26
+L32BA               lbsr      L5F26
+                    lbsr      L5F26
                     puls      pc,u
 L32C2               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $0041
                     ldd       ,u
                     cmpd      #$0009
@@ -5850,10 +5571,10 @@ L32F4               ldd       #$0009
 
 L3319               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldd       $04,s
                     pshs      d
-                    lbsr      $0785
+                    lbsr      L0785
                     leas      $02,s
                     tfr       d,u
                     stu       -$02,s
@@ -5868,7 +5589,7 @@ L3319               pshs      u
 
 L3342               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     pshs      u
                     lbsr      L26D8
@@ -5897,7 +5618,7 @@ L336D               pshs      u
 
 L337E               pshs      u
                     ldd       #$FFB8
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$02,s
                     ldd       #$002D
                     pshs      d
@@ -5914,11 +5635,11 @@ L337E               pshs      u
 
 L33A5               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     clra
                     clrb
                     pshs      d
-                    lbsr      $0785
+                    lbsr      L0785
                     std       ,s
                     lbsr      L111D
                     leas      $02,s
@@ -5929,7 +5650,7 @@ L33A5               pshs      u
                     lbsr      L26D8
                     bra       L33D1
 
-L33C8               leax      $34AD,pcr
+L33C8               leax      L34AD,pcr
                     pshs      x
                     lbsr      L0450
 L33D1               leas      $02,s
@@ -5937,7 +5658,7 @@ L33D3               tfr       u,d
                     puls      pc,u
 L33D7               pshs      u
                     ldd       #$FFB4
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     stu       -$02,s
                     beq       L33FF
@@ -5954,118 +5675,31 @@ L33D7               pshs      u
                     lbsr      L0598
 L33FD               leas      $02,s
 L33FF               puls      pc,u
-L3401               jmp       $0f,s
-                    bra       $342C
-                    rol       $06,s
-                    beq       $3429
-                    ror       $0f,s
-                    fcb       $72
-                    bra       $3435
-                    fcb       $65
-                    inc       -$0d,s
-                    fcb       $65
-                    beq       L3414
-L3414               rol       $0C,s
-                    inc       $05,s
-                    asr       $01,s
-                    inc       0,y
-                    lsr       $05,s
-                    com       $0C,s
-                    fcb       $61
-                    fcb       $72
-                    fcb       $61
-                    lsr       $696F
-                    jmp       0,x
-
-L3428               com       L796E
-                    lsr       $6178
-                    bra       L3495
-                    fcb       $72
-                    fcb       $72
-                    clr       -$0e,s
-                    neg       $006D
-                    fcb       $75
-                    inc       -$0C,s
-                    rol       -$10,s
-                    inc       $05,s
-                    bra       $34A3
-                    fcb       $65
-                    ror       $01,s
-                    fcb       $75
-                    inc       -$0C,s
-                    com       >$006E
-                    clr       0,y
-                    com       $7769
-                    lsr       L6368
-                    bra       $34C5
-                    lsr       L6174
-                    fcb       $65
-                    tst       $05,s
-                    jmp       -$0C,s
-                    neg       $0077
-                    asl       $09,s
-                    inc       $05,s
-                    bra       $34C7
-                    asl       L7065
-                    com       -$0C,s
-                    fcb       $65
-                    lsr       0,x
-L346A               fcb       $62
-                    fcb       $72
-                    fcb       $65
-                    fcb       $61
-                    fcb       $6b
-                    bra       $34D6
-                    fcb       $72
-                    fcb       $72
-                    clr       -$0e,s
-                    neg       L0063
-                    clr       $0e,s
-                    lsr       L696E
-                    fcb       $75
-                    fcb       $65
-                    bra       L34E5
-                    fcb       $72
-                    fcb       $72
-                    clr       -$0e,s
-                    neg       L006C
-                    fcb       $61
-                    fcb       $62
-                    fcb       $65
-                    inc       0,y
-                    fcb       $72
-                    fcb       $65
-                    fcb       $71
-                    fcb       $75
-                    rol       -$0e,s
-                    fcb       $65
-                    lsr       0,x
-L3494               fcb       $61
-L3495               inc       -$0e,s
-                    fcb       $65
-                    fcb       $61
-                    lsr       -$07,s
-                    bra       L34FE
-                    bra       L350B
-                    clr       $03,s
-                    fcb       $61
-                    inc       0,y
-                    ror       L6172
-                    rol       $01,s
-                    fcb       $62
-                    inc       $05,s
-                    neg       L0063
-                    clr       $0e,s
-                    lsr       $09,s
-                    lsr       $696F
-                    jmp       0,y
-                    jmp       $05,s
-                    fcb       $65
-                    lsr       $05,s
-                    lsr       0,x
+L3401               fcc       /no 'if' for 'else'/
+                    fcb       $00
+L3414               fcc       /illegal declaration/
+                    fcb       $00
+L3428               fcc       /syntax error/
+                    fcb       $00
+L3435               fcc       /multiple defaults/
+                    fcb       $00
+L3447               fcc       /no switch statement/
+                    fcb       $00
+L345B               fcc       /while expected/
+                    fcb       $00
+L346A               fcc       /break error/
+                    fcb       $00
+L3476               fcc       /continue error/
+                    fcb       $00
+L3485               fcc       /label required/
+                    fcb       $00
+L3494               fcc       /already a local variable/
+                    fcb       $00
+L34AD               fcc       /condition needed/
+                    fcb       $00
 L34BE               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldd       $04,s
                     pshs      d
                     bsr       L34D9
@@ -6077,10 +5711,10 @@ L34BE               pshs      u
                     puls      pc,u
 L34D9               pshs      u
                     ldd       #$FFAE
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$06,s
-L34E5               ldd       $06,u
+                    ldd       $06,u
                     std       $02,s
                     tfr       d,x
                     lbra      L379C
@@ -6092,13 +5726,13 @@ L34EE               pshs      u
                     lbsr      L77AC
                     leas      $02,s
                     ldx       $06,u
-L34FE               bra       L351A
+                    bra       L351A
 
 L3500               ldd       $08,u
                     lbeq      L3894
                     pshs      u
                     ldd       #$0077
-L350B               pshs      d
+                    pshs      d
                     ldd       #$007B
 L3510               pshs      d
                     lbsr      L4623
@@ -6122,7 +5756,7 @@ L3530               ldd       $0a,u
 
 L353F               ldd       $0a,u
                     pshs      d
-                    lbsr      $3987
+                    lbsr      L3987
                     leas      $02,s
                     ldd       $0a,u
                     pshs      d
@@ -6473,7 +6107,7 @@ L3894               leas      $06,s
                     puls      pc,u
 L3898               pshs      u
                     ldd       #$FFB4
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldx       $04,s
                     ldx       $06,x
                     bra       L38D5
@@ -6509,7 +6143,7 @@ L38D5               cmpx      #$0034
 L38E6               puls      pc,u
 L38E8               pshs      u
                     ldd       #$FFB2
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$02,s
                     ldd       $08,u
@@ -6574,12 +6208,11 @@ L396E               ldd       #$0070
                     leas      $04,s
                     leas      $02,s
                     puls      pc,u
-L3981               inc       $0f,s
-                    jmp       $07,s
-                    com       >$0034
-                    nega
+L3981               fcc       /longs/
+                    fcb       $00
+L3987               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldd       $04,s
                     pshs      d
                     bsr       L39A2
@@ -6591,7 +6224,7 @@ L3981               inc       $0f,s
                     puls      pc,u
 L39A2               pshs      u
                     ldd       #$FFAE
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$08,s
                     ldd       ,u
@@ -6633,7 +6266,7 @@ L39EC               ldd       $0a,u
 
 L39F5               ldd       $0a,u
                     pshs      d
-                    lbsr      $3987
+                    lbsr      L3987
 L39FC               leas      $02,s
                     leax      $08,s
                     bra       L39D0
@@ -6648,7 +6281,7 @@ L3A02               ldd       $08,u
                     leas      $06,s
                     lbra      L3BAE
 
-L3A18               leax      $3987,pcr
+L3A18               leax      L3987,pcr
                     pshs      x
                     pshs      u
                     lbsr      L7567
@@ -6657,7 +6290,7 @@ L3A18               leax      $3987,pcr
 
 L3A27               ldd       $0a,u
                     pshs      d
-                    lbsr      $3987
+                    lbsr      L3987
                     leas      $02,s
                     ldd       $02,s
                     pshs      d
@@ -6686,7 +6319,7 @@ L3A47               ldd       #$0080
                     leas      $04,s
                     ldd       $0a,u
                     pshs      d
-                    lbsr      $3987
+                    lbsr      L3987
                     leas      $02,s
                     ldd       $02,s
                     pshs      d
@@ -6727,7 +6360,7 @@ L3ABA               pshs      u
 
 L3AC3               ldd       $0a,u
                     pshs      d
-                    lbsr      $3987
+                    lbsr      L3987
                     leas      $02,s
                     ldd       #$006E
                     pshs      d
@@ -6737,7 +6370,7 @@ L3AC3               ldd       $0a,u
                     leas      $04,s
                     ldd       $0C,u
                     pshs      d
-                    lbsr      $3987
+                    lbsr      L3987
                     leas      $02,s
                     ldd       $06,s
                     pshs      d
@@ -6750,7 +6383,7 @@ L3AF2               leax      $08,s
 
 L3AF7               ldd       $0a,u
                     pshs      d
-                    lbsr      $3987
+                    lbsr      L3987
                     leas      $02,s
                     ldd       #$0071
                     pshs      d
@@ -6760,7 +6393,7 @@ L3AF7               ldd       $0a,u
                     leas      $04,s
                     ldd       $0C,u
                     pshs      d
-                    lbsr      $3987
+                    lbsr      L3987
                     leas      $02,s
                     leax      $08,s
                     lbra      L3B95
@@ -6774,7 +6407,7 @@ L3B1D               leas      -$08,x
                     ldx       $04,s
                     ldd       $0a,x
                     pshs      d
-                    lbsr      $3987
+                    lbsr      L3987
                     leas      $02,s
                     ldd       #$0071
                     pshs      d
@@ -6789,7 +6422,7 @@ L3B1D               leas      -$08,x
 
 L3B4F               ldd       $04,s
                     pshs      d
-                    lbsr      $3987
+                    lbsr      L3987
                     leas      $02,s
                     ldd       #$0071
                     pshs      d
@@ -6913,12 +6546,11 @@ L3BD7               cmpx      #$0080
 
 L3CAC               leas      $08,s
                     puls      pc,u
-L3CB0               ror       $0C,s
-                    clr       $01,s
-                    lsr       $7300
+L3CB0               fcc       /floats/
+                    fcb       $00
 L3CB7               pshs      u
                     ldd       #$FFB0
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$04,s
                     ldx       $0a,s
@@ -6983,7 +6615,7 @@ L3D3C               ldd       $0C,s
                     bne       L3D90
                     ldd       #$0001
                     std       L0056
-                    lbsr      $5F26
+                    lbsr      L5F26
                     ldd       $003F
                     cmpd      #$0037
                     bne       L3D89
@@ -7008,7 +6640,7 @@ L3D76               leax      L4244,pcr
                     pshs      x
                     lbsr      L0450
 L3D7F               leas      $02,s
-L3D81               lbsr      $5F26
+L3D81               lbsr      L5F26
                     leax      $04,s
                     lbra      L3DE5
 
@@ -7018,7 +6650,7 @@ L3D89               ldd       #$0002
 
 L3D90               ldd       #$0002
                     std       L0056
-                    lbsr      $5F26
+                    lbsr      L5F26
 L3D98               ldd       $0C,s
                     cmpd      #$0004
                     bne       L3DB5
@@ -7068,7 +6700,7 @@ L3DEE               leas      $04,s
                     puls      pc,u
 L3DF2               pshs      u
                     ldd       #$FFA8
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $06,s
                     leas      -$0C,s
                     ldd       $16,s
@@ -7084,7 +6716,7 @@ L3E0F               ldd       $003F
                     bne       L3E21
                     ldd       #$0001
                     std       $0a,s
-                    lbsr      $5F26
+                    lbsr      L5F26
                     bra       L3E25
 
 L3E21               clra
@@ -7138,7 +6770,7 @@ L3E62               ldd       $16,s
                     ldd       $003F
                     cmpd      #$0030
                     bne       L3EA0
-                    lbsr      $5F26
+                    lbsr      L5F26
                     bra       L3E98
 
 L3E98               ldd       $003F
@@ -7180,11 +6812,11 @@ L3EDE               ldd       $16,s
 L3EE9               ldd       $003F
                     cmpd      #$0030
                     bne       L3EF4
-                    lbsr      $5F26
+                    lbsr      L5F26
 L3EF4               ldd       $003F
                     cmpd      #$002A
                     bne       L3F02
-                    lbsr      $5F26
+                    lbsr      L5F26
                     lbra      L3FB7
 
 L3F02               leax      L424D,pcr
@@ -7200,7 +6832,7 @@ L3F13               ldd       $10,s
                     ldd       $14,s
                     std       ,s
                     bne       L3F6C
-                    leax      $425F,pcr
+                    leax      L425F,pcr
                     lbra      L3FC0
 
 L3F2C               ldx       ,s
@@ -7229,7 +6861,7 @@ L3F46               pshs      d
                     ldd       $003F
                     cmpd      #$0030
                     bne       L3F95
-                    lbsr      $5F26
+                    lbsr      L5F26
                     bra       L3F6C
 
 L3F6C               ldd       $003F
@@ -7282,7 +6914,7 @@ L3FCC               leas      $0C,s
                     puls      pc,u
 L3FD0               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leax      L428F,pcr
                     pshs      x
                     lbsr      L5756
@@ -7295,11 +6927,11 @@ L3FD0               pshs      u
                     puls      pc,u
 L3FF1               pshs      u
                     ldd       #$FFAE
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$08,s
                     ldd       #$0002
                     pshs      d
-                    lbsr      $0785
+                    lbsr      L0785
                     std       ,s
                     lbsr      L111D
                     leas      $02,s
@@ -7500,7 +7132,7 @@ L419B               leas      $08,s
                     puls      pc,u
 L419F               pshs      u
                     ldd       #$FFB6
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$02,s
                     ldx       $08,s
@@ -7546,8 +7178,8 @@ L41FF               leas      $02,s
                     puls      pc,u
 L4203               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
-                    leax      $4294,pcr
+                    lbsr      stkcheck
+                    leax      L4294,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
@@ -7555,12 +7187,12 @@ L4203               pshs      u
                     puls      pc,u
 L421A               pshs      u
                     ldd       #$FFBC
-                    lbsr      L010F
+                    lbsr      stkcheck
 L4222               ldx       $003F
                     bra       L422D
 
 L4226               puls      pc,u
-L4228               lbsr      $5F26
+L4228               lbsr      L5F26
                     bra       L4222
 
 L422D               cmpx      #$0030
@@ -7571,54 +7203,18 @@ L422D               cmpx      #$0030
                     lbeq      L4226
                     bra       L4228
                     puls      pc,u
-L4244               lsr       $6F6F
-                    bra       $42B5
-                    clr       $0e,s
-                    asr       0,x
-L424D               lsr       $6F6F
-                    bra       L42BF
-                    fcb       $61
-                    jmp       -$07,s
-                    bra       $42BC
-                    inc       $05,s
-                    tst       $05,s
-                    jmp       -$0C,s
-                    com       >L0075
-                    jmp       $09,s
-                    clr       $0e,s
-                    com       $206E
-                    clr       -$0C,s
-                    bra       $42CC
-                    inc       $0C,s
-                    clr       -$09,s
-                    fcb       $65
-                    lsr       0,x
-L4272               com       $0f,s
-                    jmp       -$0d,s
-                    lsr       $616E
-                    lsr       $2065
-                    asl       $7072
-                    fcb       $65
-                    com       $7369
-                    clr       $0e,s
-                    bra       L42F9
-                    fcb       $65
-                    fcb       $71
-                    fcb       $75
-                    rol       -$0e,s
-                    fcb       $65
-                    lsr       0,x
-L428F               fcb       $72
-                    dec       $6220
-                    neg       L0063
-                    fcb       $61
-                    jmp       $0e,s
-                    clr       -$0C,s
-                    bra       $4305
-                    jmp       $09,s
-                    lsr       $6961
-                    inc       $09,s
-                    dec       L6500
+L4244               fcc       /too long/
+                    fcb       $00
+L424D               fcc       /too many elements/
+                    fcb       $00
+L425F               fcc       /unions not allowed/
+                    fcb       $00
+L4272               fcc       /constant expression required/
+                    fcb       $00
+L428F               fcc       /rzb /
+                    fcb       $00
+L4294               fcc       /cannot initialize/
+                    fcb       $00
 L42A6               pshs      u
                     leax      $0584,y
                     stx       $004A
@@ -7727,7 +7323,7 @@ L4371               leax      $0584,y
                     pshs      x
                     ldd       $0005
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $08,s
                     leax      $078a,y
                     pshs      x
@@ -7735,7 +7331,7 @@ L4371               leax      $0584,y
 L43B5               pshs      x
                     ldd       $0005
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $06,s
                     lbra      L430E
 
@@ -7779,7 +7375,7 @@ L4409               ldd       $06,s
                     leas      $06,s
                     bra       L442F
 
-L4424               leax      $45D0,pcr
+L4424               leax      L45D0,pcr
                     pshs      x
                     lbsr      L9A1F
                     leas      $02,s
@@ -7817,7 +7413,7 @@ L447A               ldd       $04,s
                     lbne      L430E
                     ldd       #$0001
                     pshs      d
-                    lbsr      LB34C
+                    lbsr      exit
                     leas      $02,s
                     lbra      L430E
 
@@ -7892,7 +7488,7 @@ L4509               pshs      u,d
                     leas      $04,s
                     ldd       #$0001
                     pshs      d
-                    lbsr      LB34C
+                    lbsr      exit
                     leas      $02,s
 L4546               clra
                     clrb
@@ -7939,30 +7535,18 @@ L459A               leas      $02,s
                     puls      pc,u
 L459E               neg       L0025
                     com       $0D00
-L45A3               bra       $4615
-                    fcb       $73,$65,$63,$74,$20,$25,$73,$2C
-                    fcb       $30,$2C,$30,$2C,$25,$64,$2C,$30
-                    fcb       $2C,$30,$0d,$00
+L45A3               bra       L4615
+                    fcc       /sect %s,0,0,%d,0,0/
+                    fcb       $0D,$00
 L45B9               bra       $4629
                     fcb       $61
                     tst       0,y
                     bcs       $4633
                     tst       $0000
-L45C2               bcs       $4637
-                    bra       L4600
-                    bra       L4634
-                    rol       $0e,s
-                    fcb       $65
-                    bra       L45F2
-                    lsr       0,y
-                    neg       L0061
-                    fcb       $72
-                    asr       -$0b,s
-                    tst       $05,s
-                    jmp       -$0C,s
-                    bra       L4614
-                    bra       L45DC
-
+L45C2               fcc       /%s : line %d /
+                    fcb       $00
+L45D0               fcc       /argument : /
+                    fcb       $00
 L45DC               bpl       L4608
                     bpl       L460A
                     bra       L4607
@@ -7971,24 +7555,16 @@ L45DC               bpl       L4608
                     bpl       L45F6
                     neg       $005E
                     neg       L0049
-                    fcb       $4e,$50,$55,$54,$20
-L45F2               fcb       $46,$49,$4C,$45
-L45F6               fcb       $20,$45,$52,$52,$4f,$52,$20,$3a
-                    fcb       $20,$54
-L4600               fcb       $45,$4d,$50,$4f,$52,$41,$52
+                    fcc       /NPUT FILE/
+L45F6               fcc       / ERROR : TEMPORAR/
 L4607               fcb       $59
 L4608               fcb       $20,$46
-L460A               fcb       $49,$4C,$45,$0d,$00
-L460F               rol       $0e,s
-L4611               neg       $7574
-L4614               bra       $4682
-                    rol       $0e,s
-                    fcb       $65
-                    bra       $468F
-                    clr       $0f,s
-                    bra       L468B
-                    clr       $0e,s
-                    asr       0,x
+L460A               fcb       $49,$4C,$45
+                    fcb       $0D,$00
+L460F               fcb       $69,$6E
+L4611               fcc       /put /
+L4615               fcc       /line too long/
+                    fcb       $00
 L4623               pshs      u
                     ldu       $0a,s
                     leas      -$08,s
@@ -7996,7 +7572,7 @@ L4623               pshs      u
                     cmpd      #$0088
                     bne       L4641
                     ldd       $10,s
-L4634               pshs      d
+                    pshs      d
                     ldd       $10,s
                     pshs      d
                     lbsr      L4D79
@@ -8023,7 +7599,7 @@ L465E               ldd       $0e,s
                     pshs      x
                     ldd       $0005
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $06,s
                     ldd       $000F
                     subd      #$0002
@@ -8076,13 +7652,13 @@ L46D3               pshs      u
 L46E7               leax      $58B0,pcr
                     bra       L4715
 
-L46ED               leax      $58B7,pcr
+L46ED               leax      L58B7,pcr
                     bra       L4715
 
-L46F3               leax      $58BE,pcr
+L46F3               leax      L58BE,pcr
                     bra       L4715
 
-L46F9               leax      $58C4,pcr
+L46F9               leax      L58C4,pcr
                     bra       L4715
 
 L46FF               leax      L58CA,pcr
@@ -8091,7 +7667,7 @@ L46FF               leax      L58CA,pcr
 L4705               leax      L58D0,pcr
                     bra       L4715
 
-L470B               leax      $58D6,pcr
+L470B               leax      L58D6,pcr
                     bra       L4715
 
 L4711               leax      L58DD,pcr
@@ -8105,7 +7681,7 @@ L471D               leax      L58E3,pcr
 L4724               leax      L58F7,pcr
                     lbra      L4840
 
-L472B               leax      $5902,pcr
+L472B               leax      L5902,pcr
                     pshs      x
                     lbsr      L5756
                     leas      $02,s
@@ -8219,14 +7795,14 @@ L480B               leax      $591B,pcr
 L4830               leax      L591E,pcr
                     bra       L4840
 
-L4836               leax      $5929,pcr
+L4836               leax      L5929,pcr
                     bra       L4840
 
-L483C               leax      $5934,pcr
+L483C               leax      L5934,pcr
 L4840               pshs      x
                     lbra      L4B21
 
-L4845               leax      $593F,pcr
+L4845               leax      L593F,pcr
                     pshs      x
                     lbsr      L5756
                     leas      $02,s
@@ -8282,7 +7858,7 @@ L48AE               std       $06,s
                     pshs      x
                     ldd       $0005
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     lbra      L4C78
 
 L48C9               ldd       $10,s
@@ -8332,7 +7908,7 @@ L48E7               cmpx      #$007A
                     lbeq      L471D
                     cmpx      #$0044
                     lbeq      L4724
-                    cmpx      #start
+                    cmpx      #_start
                     lbeq      L472B
                     cmpx      #$007C
                     lbeq      L4751
@@ -8511,7 +8087,7 @@ L4B21               lbsr      L576F
 L4B24               leas      $02,s
                     lbra      L4D75
 
-L4B29               leax      $5982,pcr
+L4B29               leax      L5982,pcr
                     lbra      L4BAD
 
 L4B30               ldd       $10,s
@@ -8521,11 +8097,11 @@ L4B30               ldd       $10,s
                     bne       L4B55
                     ldd       $06,s
                     pshs      d
-                    leax      L5985,pcr
+                    leax      $5985,pcr
 L4B47               pshs      x
                     ldd       $0005
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $06,s
                     lbra      L4D75
 
@@ -8653,7 +8229,7 @@ L4C5D               ldd       $10,s
 L4C6F               pshs      x
                     ldd       $0005
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
 L4C78               leas      $08,s
                     lbra      L4D75
 
@@ -8759,7 +8335,7 @@ L4D5E               pshs      u
                     pshs      x
                     ldd       $0005
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
 L4D75               leas      $08,s
                     puls      pc,u
 L4D79               pshs      u
@@ -8805,37 +8381,37 @@ L4DD0               leax      L59C7,pcr
                     lbsr      L576F
                     lbra      L5470
 
-L4DDC               leax      $59EA,pcr
+L4DDC               leax      L59EA,pcr
                     bra       L4E1C
 
-L4DE2               leax      $59F1,pcr
+L4DE2               leax      L59F1,pcr
                     bra       L4E2F
 
-L4DE8               leax      $59F7,pcr
+L4DE8               leax      L59F7,pcr
                     bra       L4E2F
 
-L4DEE               leax      $59FD,pcr
+L4DEE               leax      L59FD,pcr
                     bra       L4E2F
 
 L4DF4               leax      L5A03,pcr
                     bra       L4E2F
 
-L4DFA               leax      $5A09,pcr
+L4DFA               leax      L5A09,pcr
                     bra       L4E2F
 
-L4E00               leax      $5A0F,pcr
+L4E00               leax      L5A0F,pcr
                     bra       L4E2F
 
-L4E06               leax      $5A15,pcr
+L4E06               leax      L5A15,pcr
                     bra       L4E2F
 
 L4E0C               leax      $5A1A,pcr
                     bra       L4E2F
 
-L4E12               leax      $5A20,pcr
+L4E12               leax      L5A20,pcr
                     bra       L4E1C
 
-L4E18               leax      $5A26,pcr
+L4E18               leax      L5A26,pcr
 L4E1C               pshs      x
                     lbsr      L520E
                     leas      $02,s
@@ -8843,12 +8419,12 @@ L4E1C               pshs      x
                     subd      #$0002
                     lbra      L5229
 
-L4E2B               leax      $5A2C,pcr
+L4E2B               leax      L5A2C,pcr
 L4E2F               pshs      x
                     lbsr      L520E
                     lbra      L5470
 
-L4E37               leax      $5A33,pcr
+L4E37               leax      L5A33,pcr
                     bra       L4E59
 
 L4E3D               leax      L5A39,pcr
@@ -8857,13 +8433,13 @@ L4E3D               leax      L5A39,pcr
 L4E43               leax      L5A41,pcr
                     bra       L4E59
 
-L4E49               leax      $5A48,pcr
+L4E49               leax      L5A48,pcr
                     bra       L4E59
 
-L4E4F               leax      $5A4F,pcr
+L4E4F               leax      L5A4F,pcr
                     bra       L4E59
 
-L4E55               leax      $5A55,pcr
+L4E55               leax      L5A55,pcr
 L4E59               pshs      x
                     lbsr      L520E
                     leas      $02,s
@@ -8962,7 +8538,7 @@ L4F6B               ldd       #$0004
 L4F72               lbsr      L5130
 L4F75               leas      $04,s
                     puls      pc,u
-L4F79               leax      $5A6A,pcr
+L4F79               leax      L5A6A,pcr
                     pshs      x
                     lbsr      L522D
                     leas      $02,s
@@ -8977,11 +8553,11 @@ L4F8C               cmpu      #$0005
 
 L4F97               ldd       #$0037
 L4F9A               pshs      d
-                    leax      $5A72,pcr
+                    leax      L5A72,pcr
                     pshs      x
                     ldd       $0005
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $06,s
                     puls      pc,u
 L4FAD               cmpu      #$0005
@@ -8989,25 +8565,25 @@ L4FAD               cmpu      #$0005
                     leax      L5A7D,pcr
                     bra       L4FBD
 
-L4FB9               leax      $5A84,pcr
+L4FB9               leax      L5A84,pcr
 L4FBD               tfr       x,d
                     pshs      d
                     lbsr      L522D
                     lbra      L5205
 
-L4FC7               leax      $5A8B,pcr
+L4FC7               leax      L5A8B,pcr
                     bra       L4FE3
 
-L4FCD               leax      $5A91,pcr
+L4FCD               leax      L5A91,pcr
                     bra       L4FE3
 
-L4FD3               leax      $5A97,pcr
+L4FD3               leax      L5A97,pcr
                     bra       L4FE3
 
 L4FD9               leax      L5A9D,pcr
                     bra       L4FE3
 
-L4FDF               leax      $5AA3,pcr
+L4FDF               leax      L5AA3,pcr
 L4FE3               pshs      x
                     lbsr      L522D
                     leas      $02,s
@@ -9015,7 +8591,7 @@ L4FE3               pshs      x
                     addd      #$0008
                     lbra      L5229
 
-L4FF2               leax      $5AAA,pcr
+L4FF2               leax      L5AAA,pcr
                     bra       L5048
 
 L4FF8               cmpu      #$0005
@@ -9023,12 +8599,12 @@ L4FF8               cmpu      #$0005
                     leax      L5AB0,pcr
                     bra       L501A
 
-L5004               leax      $5AB6,pcr
+L5004               leax      L5AB6,pcr
                     bra       L501A
 
 L500A               cmpu      #$0005
                     bne       L5016
-                    leax      $5ABC,pcr
+                    leax      L5ABC,pcr
                     bra       L501A
 
 L5016               leax      L5AC2,pcr
@@ -9039,27 +8615,27 @@ L501A               tfr       x,d
 L5020               leax      L5AC8,pcr
                     bra       L5048
 
-L5026               leax      $5ACE,pcr
+L5026               leax      L5ACE,pcr
                     bra       L5048
 
-L502C               leax      $5AD4,pcr
+L502C               leax      L5AD4,pcr
                     bra       L5048
 
-L5032               leax      $5ADA,pcr
+L5032               leax      L5ADA,pcr
                     bra       L5048
 
-L5038               leax      $5AE0,pcr
+L5038               leax      L5AE0,pcr
                     bra       L5048
 
-L503E               leax      $5AE6,pcr
+L503E               leax      L5AE6,pcr
                     bra       L5048
 
-L5044               leax      $5AEC,pcr
+L5044               leax      L5AEC,pcr
 L5048               pshs      x
 L504A               lbsr      L522D
                     lbra      L5470
 
-L5050               leax      $5AF2,pcr
+L5050               leax      L5AF2,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
@@ -9151,7 +8727,7 @@ L5130               pshs      u,d
                     pshs      d
                     lbsr      L57C3
                     leas      $02,s
-                    leax      $5B07,pcr
+                    leax      L5B07,pcr
                     pshs      x
                     lbsr      L576F
                     leas      $02,s
@@ -9175,7 +8751,7 @@ L518B               cmpu      #$0000
                     std       ,s
                     bra       L51A3
 
-L5198               leax      $5B0E,pcr
+L5198               leax      L5B0E,pcr
                     pshs      x
                     lbsr      L5794
                     leas      $02,s
@@ -9278,7 +8854,7 @@ L5266               std       $02,s
 L5274               leax      ,u
                     bra       L528C
 
-L5278               leax      L5B11,pcr
+L5278               leax      $5B11,pcr
                     bra       L5288
 
 L527E               leax      $5B15,pcr
@@ -9400,14 +8976,14 @@ L536D               ldd       $0e,s
 
 L5376               cmpu      #$0057
                     lbne      L5425
-                    leax      $5B21,pcr
+                    leax      L5B21,pcr
                     bra       L5396
 
 L5384               cmpu      #$0057
                     lbeq      L5425
                     cmpu      #$0059
                     bne       L53A0
-                    leax      $5B26,pcr
+                    leax      L5B26,pcr
 L5396               pshs      x
                     lbsr      L576F
                     leas      $02,s
@@ -9440,11 +9016,11 @@ L53CE               ldd       $04,s
                     pshs      d
                     ldd       $06,s
                     pshs      d
-                    leax      $5B2B,pcr
+                    leax      L5B2B,pcr
                     pshs      x
                     ldd       $0005
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $08,s
                     ldd       $000F
                     addd      #$0002
@@ -9554,7 +9130,7 @@ L54C9               ldd       #$0023
                     ldd       $0a,s
                     lbra      L5605
 
-L54D8               leax      $5B4F,pcr
+L54D8               leax      L5B4F,pcr
                     pshs      x
                     lbsr      L5794
                     leas      $02,s
@@ -9653,7 +9229,7 @@ L55AA               ldd       ,u
                     andb      #$30
                     cmpd      #$0030
                     bne       L55BD
-                    leax      $5B56,pcr
+                    leax      L5B56,pcr
                     pshs      x
                     bra       L55C3
 
@@ -9725,7 +9301,7 @@ L5654               ldd       $00B0,y
                     pshs      d
                     lbsr      L5794
                     leas      $02,s
-                    leax      $5B69,pcr
+                    leax      L5B69,pcr
                     pshs      x
                     lbsr      L5794
                     leas      $02,s
@@ -9734,7 +9310,7 @@ L5654               ldd       $00B0,y
                     std       $000F
                     bra       L56B8
 
-L5673               leax      L5B6C,pcr
+L5673               leax      $5B6C,pcr
 L5677               pshs      x
                     lbsr      L0450
 L567C               leas      $02,s
@@ -9773,11 +9349,11 @@ L56D0               pshs      u
                     ldx       $04,s
                     bra       L571F
 
-L56D6               leax      $5B78,pcr
+L56D6               leax      L5B78,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
-L56E1               leax      $5B7F,pcr
+L56E1               leax      L5B7F,pcr
                     bra       L571B
 
 L56E7               leax      L5B83,pcr
@@ -9866,7 +9442,7 @@ L5794               pshs      u
                     pshs      d
                     ldd       $0005
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
 L57A1               leas      $04,s
                     puls      pc,u
 L57A5               pshs      u
@@ -9942,7 +9518,7 @@ L5832               pshs      u
 L583C               pshs      x
                     ldd       $0005
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $06,s
                     puls      pc,u
 L5849               pshs      u
@@ -9958,38 +9534,23 @@ L5849               pshs      u
                     pshs      x
                     ldd       $0005
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $08,s
                     puls      pc,u
                     bge       $58E8
                     neg       L002C
                     com       >L006C
-                    fcb       $62
-                    com       L7220
-                    neg       L006C
-                    fcb       $62
-                    fcb       $72
-                    fcb       $61
-                    bra       L587F
-
-L587F               com       $0C,s
-                    fcb       $72
-                    fcb       $61
-                    neg       L0075
-                    jmp       $0b,s
-                    jmp       $0f,s
-                    asr       L6E20
-                    clr       -$10,s
-                    fcb       $65
-                    fcb       $72
-                    fcb       $61
-                    lsr       $6F72
-                    bra       L58D0
-                    bra       L5898
-
+                    fcc       /bsr /
+                    fcb       $00
+                    fcc       /lbra /
+                    fcb       $00
+L587F               fcc       /clra/
+                    fcb       $00
+                    fcc       /unknown operator : /
+                    fcb       $00
 L5898               bra       L590A
                     com       L6873
-                    bra       $58C4
+                    bra       L58C4
                     com       $0d,x
                     neg       L006C
                     fcb       $62
@@ -10000,108 +9561,81 @@ L5898               bra       L590A
                     bge       $591D
                     com       $0d,x
                     neg       L0063
-                    com       $0d,s
-                    fcb       $75
-                    inc       -$0C,s
-                    neg       L0063
-                    com       -$0b,s
-                    lsr       $09,s
-                    ror       >L0063
-                    com       $04,s
-                    rol       -$0a,s
-                    neg       L0063
-                    com       $01,s
-                    com       $6C00
-L58CA               com       $03,s
-                    fcb       $61
-                    com       L7200
-L58D0               com       $03,s
-                    inc       -$0d,s
-                    fcb       $72
-                    neg       L0063
-                    com       -$0b,s
-                    tst       $0f,s
-                    lsr       0,x
-L58DD               com       $03,s
-                    tst       $0f,s
-                    lsr       0,x
+                    fcc       /cmult/
+                    fcb       $00
+L58B7               fcc       /ccudiv/
+                    fcb       $00
+L58BE               fcc       /ccdiv/
+                    fcb       $00
+L58C4               fcc       /ccasl/
+                    fcb       $00
+L58CA               fcc       /ccasr/
+                    fcb       $00
+L58D0               fcc       /cclsr/
+                    fcb       $00
+L58D6               fcc       /ccumod/
+                    fcb       $00
+L58DD               fcc       /ccmod/
+                    fcb       $00
 L58E3               jmp       $05,s
                     asr       $01,s
                     tst       $0020
                     jmp       $05,s
                     asr       $02,s
                     tst       $0020
-                    com       $6263
-                    fcb       $61
-                    bra       $5918
-                    leax      0,x
+                    fcc       /sbca #0/
+                    fcb       $00
 L58F7               com       $0f,s
                     tst       $01,s
                     tst       $0020
-                    com       $0f,s
-                    tst       $02,s
-                    neg       L006C
-                    fcb       $65
-                    fcb       $61
-                    asl       L2000
-L5908               inc       $05,s
-L590A               fcb       $61
-                    com       L2000
+                    fcc       /comb/
+                    fcb       $00
+L5902               fcc       /leax /
+                    fcb       $00
+L5908               fcb       $6C,$65
+L590A               fcb       $61,$73,$20
+                    fcb       $00
 L590E               bge       $5988
                     tst       $0000
-L5912               dec       -$0d,s
-                    fcb       $72
-                    bra       L5917
-
+L5912               fcc       /jsr /
+                    fcb       $00
 L5917               com       $6578
                     neg       L006C
                     lsr       0,x
 L591E               fcb       $61
                     com       L6C62
                     tst       $0020
-                    fcb       $72
-                    clr       $0C,s
-                    fcb       $61
-                    neg       L0061
+                    fcc       /rola/
+                    fcb       $00
+L5929               fcb       $61
                     com       L7261
                     tst       $0020
-                    fcb       $72
-                    clr       -$0e,s
-                    fcb       $62
-                    neg       L006C
-                    com       L7261
+                    fcc       /rorb/
+                    fcb       $00
+L5934               inc       -$0d,s
+                    fcb       $72,$61
                     tst       $0020
-                    fcb       $72
-                    clr       -$0e,s
-                    fcb       $62
-                    neg       L006C
-                    lsr       -$07,s
-                    bra       L5944
-
-L5944               inc       $04,s
-                    fcb       $75
-                    bra       L5949
-
-L5949               inc       $05,s
-                    fcb       $61
-                    asl       L2000
+                    fcc       /rorb/
+                    fcb       $00
+L593F               fcc       /ldy /
+                    fcb       $00
+L5944               fcc       /ldu /
+                    fcb       $00
+L5949               fcc       /leax /
+                    fcb       $00
 L594F               bcs       L59B5
                     bge       L5978
                     com       $0d,x
                     neg       $0064
-                    bge       $597E
+                    bge       L597E
                     com       $0d,x
                     neg       $0073
                     fcb       $65
                     asl       >L0061
-                    lsr       $03,s
-                    fcb       $61
-                    bra       $5989
-                    leax      0,x
-L5968               com       $6263
-                    fcb       $61
-                    bra       L5991
-                    leax      0,x
+                    fcc       /dca #0/
+                    fcb       $00
+L5968               fcc       /sbca #0/
+                    fcb       $00
 L5970               bcs       $59D6
                     bge       L5999
                     com       $0d,x
@@ -10109,26 +9643,24 @@ L5970               bcs       $59D6
 L5978               inc       -$0e,s
                     fcb       $61
                     tst       $0020
-                    com       $0C,s
-                    fcb       $72
-                    fcb       $62
-                    neg       L006C
-                    lsr       0,x
-L5985               bra       L59FA
-                    lsr       L2563
-                    bra       L59B9
-                    leas      $0C,y
-                    com       $0D00
+                    fcb       $63
+L597E               fcb       $6C,$72,$62
+                    fcb       $00
+L5982               inc       $04,s
+                    neg       $0020
+                    com       L7425
+                    com       0,y
+                    blt       L59BF
+                    bge       L5A02
+                    tst       $0000
 L5991               com       $0d,s
                     neg       >$0073
                     lsr       >$0073
-L5999               fcb       $75
-                    fcb       $62
+L5999               fcb       $75,$62
                     neg       L0061
                     lsr       $04,s
                     neg       L006C
-                    fcb       $65
-                    fcb       $61
+                    fcb       $65,$61
                     neg       $0020
                     fcb       $65
                     asl       $6720
@@ -10137,265 +9669,212 @@ L5999               fcb       $75
                     com       $0d,x
                     neg       $0064
                     bge       L59B3
-L59B3               inca
-                    fcb       $45
-L59B5               fcb       $41
-                    bra       L5A19
-                    fcb       $72
-L59B9               asr       0,x
+L59B3               fcb       $4C,$45
+L59B5               fcc       /A arg/
+                    fcb       $00
 L59BB               bra       L5A31
                     ror       -$0e,s
-                    bra       $59E6
+L59BF               bra       L59E6
                     com       $0C,y
-                    bcs       $5A28
+                    bcs       L5A28
                     tst       $0000
 L59C7               inc       $04,s
                     fcb       $61
                     bra       L59FC
-                    bge       $5A46
+                    bge       L5A46
                     tst       $0020
                     clr       -$0e,s
 L59D2               fcb       $61
                     bra       L5A06
-                    bge       $5A4F
+                    bge       L5A4F
                     tst       $0020
                     clr       -$0e,s
                     fcb       $61
                     bra       L5A10
                     bge       L5A58
                     tst       $0020
-                    clr       -$0e,s
-                    fcb       $61
-                    bra       $5A1A
-                    bge       $5A61
-                    neg       L005F
-                    inc       $0d,s
-                    clr       -$0a,s
-                    fcb       $65
-                    neg       L005F
-                    inc       $01,s
-                    lsr       $04,s
-                    neg       L005F
-                    inc       -$0d,s
-L59FA               fcb       $75
-                    fcb       $62
-L59FC               neg       L005F
-                    inc       $0d,s
-                    fcb       $75
-                    inc       0,x
+                    fcc       /ora /
+L59E6               fcb       $33,$2C,$78
+                    fcb       $00
+L59EA               clrb
+                    fcc       /lmove/
+                    fcb       $00
+L59F1               clrb
+                    fcc       /ladd/
+                    fcb       $00
+L59F7               clrb
+                    fcc       /lsub/
+L59FC               fcb       $00
+L59FD               clrb
+                    fcc       /lmul/
+L5A02               fcb       $00
 L5A03               clrb
-                    inc       $04,s
-L5A06               rol       -$0a,s
-                    neg       L005F
-                    inc       $0d,s
-                    clr       $04,s
-L5A0E               neg       L005F
-L5A10               inc       $01,s
-                    jmp       $04,s
-                    neg       L005F
+                    fcb       $6C,$64
+L5A06               fcb       $69,$76
+                    fcb       $00
+L5A09               clrb
+                    fcc       /lmod/
+L5A0E               fcb       $00
+L5A0F               clrb
+L5A10               fcc       /land/
+                    fcb       $00
+L5A15               clrb
                     inc       $0f,s
                     fcb       $72
-L5A19               neg       L005F
-                    inc       -$08,s
-                    clr       -$0e,s
                     neg       L005F
-                    inc       -$0d,s
-                    asl       $0C,s
-                    neg       L005F
-                    inc       -$0d,s
-                    asl       -$0e,s
-                    neg       L005F
-                    inc       $03,s
-                    tst       -$10,s
+                    fcc       /lxor/
+                    fcb       $00
+L5A20               clrb
+                    fcc       /lshl/
+                    fcb       $00
+L5A26               clrb
+                    fcb       $6C
+L5A28               fcb       $73,$68,$72
+                    fcb       $00
+L5A2C               clrb
+                    fcc       /lcmp/
 L5A31               fcb       $72
-                    neg       L005F
-                    inc       $0e,s
-                    fcb       $65
-                    asr       0,x
+                    fcb       $00
+L5A33               clrb
+                    fcc       /lneg/
+                    fcb       $00
 L5A39               clrb
-                    inc       $03,s
-                    clr       $0d,s
-                    neg       $6C00
+                    fcc       /lcompl/
+                    fcb       $00
 L5A41               clrb
-                    inc       $09,s
-                    lsr       $6F6C
-                    neg       L005F
-                    inc       -$0b,s
-                    lsr       $6F6C
-                    neg       L005F
-                    inc       $09,s
-                    jmp       $03,s
-                    neg       L005F
-                    inc       $04,s
-L5A58               fcb       $65
-                    com       0,x
-L5A5B               com       $0f,s
-                    lsr       $07,s
-                    fcb       $65
-                    jmp       0,y
-                    blt       $5A84
-                    inc       $0f,s
-                    jmp       $07,s
-                    com       >L005F
-                    lsr       -$0d,s
-                    lsr       L6163
-                    fcb       $6b
-                    neg       $0020
-                    inc       $04,s
-                    fcb       $61
+                    fcc       /lito/
+L5A46               fcb       $6C
+                    fcb       $00
+L5A48               clrb
+                    fcc       /lutol/
+                    fcb       $00
+L5A4F               clrb
+                    fcc       /linc/
+                    fcb       $00
+L5A55               clrb
+                    fcb       $6C,$64
+L5A58               fcb       $65,$63
+                    fcb       $00
+L5A5B               fcc       /codgen - longs/
+                    fcb       $00
+L5A6A               clrb
+                    fcc       /dstack/
+                    fcb       $00
+L5A72               bra       L5AE0
+                    lsr       $01,s
                     bra       L5A9D
                     com       $0C,y
                     asl       $0D00
 L5A7D               clrb
-                    ror       $0d,s
-                    clr       -$0a,s
-                    fcb       $65
-                    neg       L005F
-                    lsr       $0d,s
-                    clr       -$0a,s
-                    fcb       $65
-                    neg       L005F
-                    lsr       $01,s
-                    lsr       $04,s
-                    neg       L005F
-                    lsr       -$0d,s
-                    fcb       $75
-                    fcb       $62
-                    neg       L005F
-                    lsr       $0d,s
-                    fcb       $75
-                    inc       0,x
+                    fcc       /fmove/
+                    fcb       $00
+L5A84               clrb
+                    fcc       /dmove/
+                    fcb       $00
+L5A8B               clrb
+                    fcc       /dadd/
+                    fcb       $00
+L5A91               clrb
+                    fcc       /dsub/
+                    fcb       $00
+L5A97               clrb
+                    fcc       /dmul/
+                    fcb       $00
 L5A9D               clrb
-                    lsr       $04,s
-                    rol       -$0a,s
-                    neg       L005F
-                    lsr       $03,s
-                    tst       -$10,s
-                    fcb       $72
-                    neg       L005F
-                    lsr       $0e,s
-                    fcb       $65
-                    asr       0,x
+                    fcc       /ddiv/
+                    fcb       $00
+L5AA3               clrb
+                    fcc       /dcmpr/
+                    fcb       $00
+L5AAA               clrb
+                    fcc       /dneg/
+                    fcb       $00
 L5AB0               clrb
-                    ror       $09,s
-                    jmp       $03,s
-                    neg       L005F
-                    lsr       $09,s
-                    jmp       $03,s
-                    neg       L005F
-                    ror       $04,s
-                    fcb       $65
-                    com       0,x
+                    fcc       /finc/
+                    fcb       $00
+L5AB6               clrb
+                    fcc       /dinc/
+                    fcb       $00
+L5ABC               clrb
+                    fcc       /fdec/
+                    fcb       $00
 L5AC2               clrb
-                    lsr       $04,s
-                    fcb       $65
-                    com       0,x
+                    fcc       /ddec/
+                    fcb       $00
 L5AC8               clrb
-                    lsr       -$0C,s
-                    clr       $06,s
-                    neg       L005F
-                    ror       -$0C,s
-                    clr       $04,s
-                    neg       L005F
-                    inc       -$0C,s
-                    clr       $04,s
-                    neg       L005F
-                    rol       -$0C,s
-                    clr       $04,s
-                    neg       L005F
-                    fcb       $75
-                    lsr       $6F64
-                    neg       L005F
-                    lsr       -$0C,s
-                    clr       $0C,s
-                    neg       L005F
-                    lsr       -$0C,s
-                    clr       $09,s
-                    neg       L0063
-                    clr       $04,s
-                    asr       $05,s
-                    jmp       0,y
-                    blt       L5B1B
-                    ror       $0C,s
-                    clr       $01,s
-                    lsr       $7300
-L5B02               fcb       $62
-                    com       L7220
-                    neg       L0070
-                    fcb       $75
-                    inc       -$0d,s
-                    bra       L5B85
-                    neg       L0030
-                    bge       L5B11
-L5B11               fcb       $61
+                    fcc       /dtof/
+                    fcb       $00
+L5ACE               clrb
+                    fcc       /ftod/
+                    fcb       $00
+L5AD4               clrb
+                    fcc       /ltod/
+                    fcb       $00
+L5ADA               clrb
+                    fcc       /itod/
+                    fcb       $00
+L5AE0               clrb
+                    fcc       /utod/
+                    fcb       $00
+L5AE6               clrb
+                    fcc       /dtol/
+                    fcb       $00
+L5AEC               clrb
+                    fcc       /dtoi/
+                    fcb       $00
+L5AF2               fcc       /codgen - floats/
+                    fcb       $00
+L5B02               fcc       /bsr /
+                    fcb       $00
+L5B07               fcc       /puls x/
+                    fcb       $00
+L5B0E               leax      $0C,y
+                    neg       L0061
                     jmp       $04,s
                     neg       $006F
                     fcb       $72
                     neg       L0065
                     clr       -$0e,s
-L5B1B               neg       L0063
-                    clr       $0d,s
-                    fcb       $61
                     neg       L0063
-                    inc       -$0e,s
-                    fcb       $62
-                    neg       L0063
-                    clr       $0d,s
-                    fcb       $62
-                    neg       $0020
-                    bcs       L5BA1
-                    fcb       $61
-                    bra       $5B5D
-                    com       L2B0D
+                    fcb       $6F,$6D,$61
+                    fcb       $00
+L5B21               fcc       /clrb/
+                    fcb       $00
+L5B26               fcc       /comb/
+                    fcb       $00
+L5B2B               bra       L5B52
+                    com       L6120
+                    bge       L5BA5
+                    bmi       L5B41
                     bra       $5B5B
                     com       $6220
                     bge       $5BAE
-                    bmi       $5B4A
+                    bmi       L5B4A
                     neg       L0063
-                    clr       $0d,s
-                    neg       L696C
-                    fcb       $65
-                    fcb       $72
-                    bra       $5BBC
-                    fcb       $72
-                    clr       -$0b,s
-                    fcb       $62
-                    inc       $05,s
-                    neg       L005F
-                    ror       $0C,s
-                    fcb       $61
-                    com       $03,s
-                    neg       L002C
-                    neg       L6372
+                    fcb       $6F,$6D
+L5B41               fcc       /piler tro/
+L5B4A               fcc       /uble/
+                    fcb       $00
+L5B4F               clrb
+                    fcb       $66,$6C
+L5B52               fcb       $61,$63,$63
+                    fcb       $00
+L5B56               bge       $5BC8
+                    com       -$0e,s
                     neg       $0073
-                    lsr       $6F72
-                    fcb       $61
-                    asr       $05,s
-                    bra       L5BC9
-                    fcb       $72
-                    fcb       $72
-                    clr       -$0e,s
-                    neg       $002B
-                    bmi       L5B6C
-L5B6C               lsr       $05,s
-                    fcb       $72
-                    fcb       $65
-                    ror       $05,s
-                    fcb       $72
-                    fcb       $65
-                    jmp       $03,s
-                    fcb       $65
-                    neg       $0072
-                    fcb       $65
-                    inc       0,y
-                    clr       -$10,s
-                    neg       L0065
-                    fcb       $71
+                    fcc       /torage error/
+                    fcb       $00
+L5B69               bmi       $5B96
+                    neg       $0064
+                    fcc       /ereference/
+                    fcb       $00
+L5B78               fcc       /rel op/
+                    fcb       $00
+L5B7F               fcb       $65,$71
                     bra       L5B83
 
 L5B83               jmp       $05,s
-
-L5B85               bra       L5B87
+                    bra       L5B87
 
 L5B87               inc       $05,s
                     bra       L5B8B
@@ -10416,31 +9895,27 @@ L5B9B               inc       $0f,s
                     bra       L5B9F
 
 L5B9F               asl       -$0d,s
-L5BA1               bra       L5BA3
+                    bra       L5BA3
 
 L5BA3               asl       $09,s
-                    bra       L5BA7
+L5BA5               bra       L5BA7
 
 L5BA7               bcs       $5C0D
                     neg       L0025
                     bgt       L5BE5
                     com       >L006C
-                    fcb       $65
-                    fcb       $61
-                    com       L2000
+                    fcc       /eas /
+                    fcb       $00
 L5BB5               bra       L5C23
-                    fcb       $65
-                    fcb       $61
-                    bcs       L5C1E
-                    bra       L5BBD
-
+                    fcc       /ea%c /
+                    fcb       $00
 L5BBD               bcs       $5C22
                     bcs       L5C25
                     bge       $5C33
                     com       -$0e,s
                     tst       $0000
 L5BC7               pshs      u
-L5BC9               lbsr      L5D72
+                    lbsr      L5D72
                     lbsr      L5D64
                     ldd       $0009
                     lbeq      L5DFF
@@ -10458,11 +9933,11 @@ L5BE5               leas      $02,s
                     leas      $02,s
                     ldd       $06,s
                     pshs      d
-                    leax      $5E14,pcr
+                    leax      L5E14,pcr
                     pshs      x
                     ldd       $0005
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     bra       L5C2D
 
 L5C03               pshs      u
@@ -10478,7 +9953,7 @@ L5C13               pshs      u
                     pshs      d
                     lbsr      L5D4E
                     leas      $02,s
-L5C1E               ldd       #$0020
+                    ldd       #$0020
 L5C21               pshs      d
 L5C23               ldd       $08,s
 L5C25               pshs      d
@@ -10501,7 +9976,7 @@ L5C34               pshs      u
                     pshs      x
                     ldd       $0005
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $0a,s
                     puls      pc,u
 L5C57               pshs      u
@@ -10522,7 +9997,7 @@ L5C6F               pshs      u
                     pshs      x
                     ldd       $0005
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $06,s
                     ldd       $06,s
                     pshs      d
@@ -10540,11 +10015,11 @@ L5C6F               pshs      u
                     std       $000B
                     std       L005C
                     pshs      d
-                    leax      $5E52,pcr
+                    leax      L5E52,pcr
                     pshs      x
                     ldd       $0005
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $06,s
 L5CB8               ldd       $0017
                     lbeq      L5DFF
@@ -10575,7 +10050,7 @@ L5CEB               pshs      u
 L5CF9               pshs      x
                     ldd       $0005
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $06,s
 L5D04               puls      pc,u
 L5D06               pshs      u
@@ -10591,7 +10066,7 @@ L5D06               pshs      u
                     pshs      x
                     ldd       $0005
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $08,s
 L5D28               puls      pc,u
 L5D2A               pshs      u
@@ -10616,13 +10091,13 @@ L5D4E               pshs      u
                     leax      $5F03,pcr
                     bra       L5D5E
 
-L5D5A               leax      $5F0C,pcr
+L5D5A               leax      L5F0C,pcr
 L5D5E               tfr       x,d
                     pshs      d
                     bra       L5D6C
 
 L5D64               pshs      u
-                    leax      $5F12,pcr
+                    leax      L5F12,pcr
 L5D6A               pshs      x
 L5D6C               lbsr      L576F
                     lbra      L5DFD
@@ -10653,7 +10128,7 @@ L5D90               ldd       L004C
                     clra
                     andb      #$20
                     beq       L5DB5
-                    leax      $5F1A,pcr
+                    leax      L5F1A,pcr
                     pshs      x
                     lbsr      L042D
                     leas      $02,s
@@ -10690,23 +10165,14 @@ L5DF4               ldd       ,s
                     leas      $02,s
 L5DFD               leas      $02,s
 L5DFF               puls      pc,u
-L5E01               ror       $01,s
-                    rol       $0C,s
-                    bra       $5E7A
-                    clr       -$0b,s
-                    fcb       $72
-                    com       $05,s
-                    bra       L5E73
-                    fcb       $72
-                    fcb       $72
-                    clr       -$0e,s
-                    com       >$0020
-                    fcb       $72
+L5E01               fcc       /fail source errors/
+                    fcb       $00
+L5E14               bra       $5E88
                     tst       $02,s
                     bra       $5E3F
                     lsr       $0d,x
                     neg       L0025
-                    bgt       $5E58
+                    bgt       L5E58
                     com       L2563
                     bra       L5E97
                     tst       $02,s
@@ -10715,24 +10181,26 @@ L5E01               ror       $01,s
                     neg       $0020
                     ror       $03,s
                     com       0,y
-                    bhi       $5E58
+                    bhi       L5E58
                     bgt       L5E6D
                     com       $220D
                     bra       L5EA0
                     com       $02,s
-                    bra       $5E6E
+                    bra       L5E6E
                     tst       $0000
 L5E40               bra       L5EB6
                     lsr       $6C20
                     bcs       L5E75
                     fcb       $38
                     com       $0D00
-L5E4B               neg       L7368
-L5E4E               com       $2075
-                    neg       $0020
-                    inc       $04,s
-                    lsr       0,y
-                    bls       $5EB8
+L5E4B               fcb       $70,$73,$68
+L5E4E               fcb       $73,$20,$75
+                    fcb       $00
+L5E52               bra       L5EC0
+                    lsr       $04,s
+                    bra       $5E7B
+
+L5E58               clrb
                     bcs       $5EBF
                     tst       $0020
                     inc       $02,s
@@ -10743,18 +10211,17 @@ L5E4E               com       $2075
                     fcb       $65
                     com       $0b,s
                     tst       $0000
-L5E6D               inc       $05,s
-                    fcb       $61
-                    asl       L2000
+L5E6D               fcb       $6C
+L5E6E               fcc       /eax /
+                    fcb       $00
 L5E73               bge       $5EE5
 L5E75               com       -$0e,s
                     tst       $0020
                     neg       L7368
                     com       L2078
                     tst       $0020
-                    inc       $05,s
-                    fcb       $61
-                    asl       L2000
+                    fcc       /leax /
+                    fcb       $00
 L5E87               bge       L5EF9
                     com       -$0e,s
                     tst       $0020
@@ -10766,23 +10233,22 @@ L5E97               com       L7220
                     clrb
                     neg       L726F
                     ror       $0d,x
-L5EA0               bra       $5F0E
-                    fcb       $65
-                    fcb       $61
+L5EA0               bra       L5F0E
+                    fcb       $65,$61
                     com       $2034
                     bge       L5F1C
                     tst       $0000
-L5EAB               bra       $5F1D
+L5EAB               bra       L5F1D
                     com       L6873
-                    bra       $5F16
+                    bra       L5F16
                     tst       $0020
                     inc       $05,s
 L5EB6               fcb       $61
                     asl       L205F
-                    bcs       $5F20
+                    bcs       L5F20
                     bge       L5F2E
                     com       -$0e,s
-                    tst       $0020
+L5EC0               tst       $0020
                     neg       L7368
                     com       L2078
                     tst       $0020
@@ -10793,8 +10259,7 @@ L5EB6               fcb       $61
                     neg       L726F
                     ror       $0d,x
                     bra       $5F44
-                    fcb       $65
-                    fcb       $61
+                    fcb       $65,$61
                     com       $2032
                     bge       L5F52
                     tst       $0020
@@ -10804,36 +10269,33 @@ L5EB6               fcb       $61
 L5EE9               clrb
                     bcs       $5F50
                     bra       $5F53
-                    fcb       $71
-                    fcb       $75
-                    bra       $5F17
+                    fcb       $71,$75
+                    bra       L5F17
                     lsr       $0d,x
                     tst       $0000
-L5EF6               ror       $03,s
-                    fcb       $62
-L5EF9               bra       L5EFB
-
-L5EFB               ror       $04,s
-                    fcb       $62
-                    bra       L5F00
-
-L5F00               bpl       $5F22
+L5EF6               fcb       $66,$63,$62
+L5EF9               fcb       $20
+                    fcb       $00
+L5EFB               fcc       /fdb /
+                    fcb       $00
+L5F00               bpl       L5F22
                     neg       $0076
-                    com       L6563
-                    lsr       $2064
-                    neg       >$0076
-                    com       L6563
-                    lsr       >L0065
-                    jmp       $04,s
-                    com       L6563
-                    lsr       >$0064
-                    fcb       $75
-L5F1C               tst       -$10,s
-                    com       L7472
-                    rol       $0e,s
-                    asr       -$0d,s
-                    neg       $0034
-                    nega
+                    fcc       /sect dp/
+                    fcb       $00
+L5F0C               fcb       $76,$73
+L5F0E               fcb       $65,$63,$74
+                    fcb       $00
+L5F12               fcc       /ends/
+L5F16               fcb       $65
+L5F17               fcb       $63,$74
+                    fcb       $00
+L5F1A               fcb       $64,$75
+L5F1C               fcb       $6D
+L5F1D               fcb       $70,$73,$74
+L5F20               fcb       $72,$69
+L5F22               fcb       $6E,$67,$73
+                    fcb       $00
+L5F26               pshs      u
                     leas      -$15,s
                     lbsr      L42B9
 L5F2E               ldb       $0045
@@ -10948,7 +10410,7 @@ L6004               ldd       #$0008
                     ldd       #$004B
                     bra       L6033
 
-L6020               leax      $6CEC,pcr
+L6020               leax      L6CEC,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
@@ -11066,7 +10528,7 @@ L6111               ldb       $0045
                     bra       L60E2
 
 L611E               ldb       $0045
-                    cmpb      #$3d
+L6120               cmpb      #$3d
                     lbne      L628D
                     ldd       $003F
                     addd      #$0050
@@ -11096,7 +10558,7 @@ L6155               ldd       #$005C
                     lbra      L61F7
 
 L6160               cmpx      #$003C
-L6163               beq       L6135
+                    beq       L6135
                     cmpx      #$003D
                     beq       L6155
                     lbra      L628D
@@ -11104,7 +10566,7 @@ L6163               beq       L6135
 L616D               ldb       $0045
                     sex
                     tfr       d,x
-L6172               bra       L619F
+                    bra       L619F
 
 L6174               ldd       #$0055
                     std       $003F
@@ -11224,19 +10686,19 @@ L628D               leas      $15,s
 L6292               pshs      u
                     ldd       #$0006
                     pshs      d
-                    leax      $6CFE,pcr
+                    leax      L6CFE,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
                     ldd       #$0005
                     pshs      d
-                    leax      $6D05,pcr
+                    leax      L6D05,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
                     ldd       #$001E
                     pshs      d
-                    leax      $6D0B,pcr
+                    leax      L6D0B,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
@@ -11248,13 +10710,13 @@ L6292               pshs      u
                     leas      $04,s
                     ldd       #$003B
                     pshs      d
-                    leax      $6D1A,pcr
+                    leax      L6D1A,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
                     ldd       #$0001
                     pshs      d
-                    leax      $6D21,pcr
+                    leax      L6D21,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
@@ -11277,19 +10739,19 @@ L6292               pshs      u
                     std       L0021
                     ldd       #$0002
                     pshs      d
-                    leax      $6D2F,pcr
+                    leax      L6D2F,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
                     ldd       #$000A
                     pshs      d
-                    leax      $6D34,pcr
+                    leax      L6D34,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
                     ldd       #$000D
                     pshs      d
-                    leax      $6D3A,pcr
+                    leax      L6D3A,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
@@ -11303,17 +10765,17 @@ L6292               pshs      u
                     pshs      d
                     leax      L6D46,pcr
                     pshs      x
-L6368               lbsr      L65D0
+                    lbsr      L65D0
                     leas      $04,s
                     ldd       #$0010
                     pshs      d
-L6372               leax      $6D4D,pcr
+                    leax      L6D4D,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
-                    ldd       #start
+                    ldd       #_start
                     pshs      d
-                    leax      $6D56,pcr
+                    leax      L6D56,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
@@ -11337,19 +10799,19 @@ L6372               leax      $6D4D,pcr
                     leas      $04,s
                     ldd       #$0015
                     pshs      d
-                    leax      $6D6B,pcr
+                    leax      L6D6B,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
                     ldd       #$0016
                     pshs      d
-                    leax      $6D70,pcr
+                    leax      L6D70,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
                     ldd       #$0017
                     pshs      d
-                    leax      $6D77,pcr
+                    leax      L6D77,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
@@ -11361,25 +10823,25 @@ L6372               leax      $6D4D,pcr
                     leas      $04,s
                     ldd       #$0019
                     pshs      d
-                    leax      $6D82,pcr
+                    leax      L6D82,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
                     ldd       #$001A
                     pshs      d
-                    leax      $6D8B,pcr
+                    leax      L6D8B,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
                     ldd       #$001B
                     pshs      d
-                    leax      L6D8E,pcr
+                    leax      $6D8E,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
                     ldd       #$001C
                     pshs      d
-                    leax      $6D96,pcr
+                    leax      L6D96,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
@@ -11391,13 +10853,13 @@ L6372               leax      $6D4D,pcr
                     leas      $04,s
                     ldd       #$0003
                     pshs      d
-                    leax      $6DA1,pcr
+                    leax      L6DA1,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
                     ldd       #$0007
                     pshs      d
-                    leax      $6DA7,pcr
+                    leax      L6DA7,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
@@ -11407,7 +10869,7 @@ L6372               leax      $6D4D,pcr
                     pshs      x
                     lbsr      L65D0
                     leas      $04,s
-                    leax      $6DB5,pcr
+                    leax      L6DB5,pcr
                     pshs      x
                     lbsr      L652E
                     leas      $02,s
@@ -11418,7 +10880,7 @@ L6372               leax      $6D4D,pcr
                     std       $08,u
                     ldd       #$0002
                     std       $02,u
-                    leax      $6DBB,pcr
+                    leax      L6DBB,pcr
                     pshs      x
                     lbsr      L652E
                     leas      $02,s
@@ -11466,7 +10928,7 @@ L64F9               ldb       $0045
                     sex
                     pshs      d
                     bsr       L6507
-L6500               std       ,s++
+                    std       ,s++
                     bne       L64F6
                     lbra      L6650
 
@@ -11515,8 +10977,8 @@ L6556               ldb       $14,u
                     ldb       [$0C,s]
                     sex
                     cmpd      ,s++
-L6563               bne       L6580
-L6565               ldd       #$0008
+                    bne       L6580
+                    ldd       #$0008
                     pshs      d
                     pshs      u
                     ldd       #$0014
@@ -11617,7 +11079,7 @@ L6622               pshs      u,d
                     std       ,s
                     cmpd      #$FFFF
                     bne       L6640
-                    leax      $6DC1,pcr
+                    leax      L6DC1,pcr
                     pshs      x
                     lbsr      L042D
                     leas      $02,s
@@ -11883,7 +11345,7 @@ L6858               ldb       $0045
                     cmpb      #$6b
                     beq       L683F
                     ldd       $06,s
-L6869               cmpd      #$0028
+                    cmpd      #$0028
                     lbge      L68CB
                     ldd       $02,s
 L6873               pshs      d
@@ -12003,15 +11465,15 @@ L6955               ldd       $0e,s
                     pshs      d
                     ldd       #$000A
                     lbsr      $AFAC
-L6963               pshs      d
+                    pshs      d
                     leax      $08,s
                     lbsr      LAE0D
                     bsr       L6970
-L696C               leas      $0C,s
-L696E               puls      pc,u
+                    leas      $0C,s
+                    puls      pc,u
 L6970               pshs      u
                     ldd       $0C,s
-L6974               beq       L69B6
+                    beq       L69B6
                     leas      -$02,s
                     leax      $01BA,y
                     stx       ,s
@@ -12064,7 +11526,7 @@ L69D5               ldb       $0045
 L69DD               ldb       $0045
                     cmpb      #$27
                     lbeq      L6ABC
-                    leax      $6DCF,pcr
+                    leax      L6DCF,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
@@ -12076,7 +11538,7 @@ L69F3               pshs      u
 
 L69F9               ldd       L004C
                     bne       L6A1D
-                    leax      $6DEF,pcr
+                    leax      L6DEF,pcr
                     pshs      x
                     leax      $0096,y
                     pshs      x
@@ -12114,11 +11576,11 @@ L6A37               clra
                     pshs      d
                     ldd       #$005F
                     pshs      d
-                    leax      $6E0A,pcr
+                    leax      L6E0A,pcr
                     pshs      x
                     ldd       $0064
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $08,s
                     bra       L6A99
 
@@ -12170,11 +11632,11 @@ L6ABF               puls      pc,u
 L6AC1               pshs      u
                     ldd       $003D
                     bne       L6AD6
-                    leax      $6E23,pcr
+                    leax      L6E23,pcr
                     pshs      x
                     ldd       $0064
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $04,s
 L6AD6               ldd       $04,s
                     cmpd      #$0020
@@ -12188,7 +11650,7 @@ L6AE6               ldd       $04,s
                     pshs      x
                     ldd       $0064
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $06,s
                     bra       L6B27
 
@@ -12208,7 +11670,7 @@ L6AFB               ldd       $0064
                     pshs      x
                     ldd       $0064
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $04,s
 L6B27               clra
                     clrb
@@ -12224,7 +11686,7 @@ L6B34               pshs      u
                     pshs      x
                     ldd       $0064
                     pshs      d
-                    lbsr      L9A34
+                    lbsr      fprintf
                     leas      $06,s
                     puls      pc,u
 L6B4B               pshs      u,d
@@ -12426,184 +11888,89 @@ L6CD5               ldb       $05,s
 L6CDA               clra
                     clrb
 L6CDC               puls      pc,u
-L6CDE               fcb       $62
-                    fcb       $61
-                    lsr       0,y
-                    com       $08,s
-                    fcb       $61
-                    fcb       $72
-                    fcb       $61
-                    com       -$0C,s
-                    fcb       $65
-                    fcb       $72
-                    neg       L0063
-                    clr       $0e,s
-                    com       $7461
-                    jmp       -$0C,s
-                    bra       $6D65
-                    ror       $6572
-                    ror       $0C,s
-                    clr       -$09,s
-                    neg       $0064
-                    clr       -$0b,s
-                    fcb       $62
-                    inc       $05,s
-                    neg       $0066
-                    inc       $0f,s
-                    fcb       $61
-                    lsr       >$0074
-                    rol       L7065
-                    lsr       $05,s
-                    ror       0,x
-L6D13               com       $7461
-                    lsr       L6963
-                    neg       $0073
-                    rol       -$06,s
-                    fcb       $65
-                    clr       $06,s
-                    neg       $0069
-                    jmp       -$0C,s
-                    neg       $0069
+L6CDE               fcc       /bad character/
+                    fcb       $00
+L6CEC               fcc       /constant overflow/
+                    fcb       $00
+L6CFE               fcc       /double/
+                    fcb       $00
+L6D05               fcc       /float/
+                    fcb       $00
+L6D0B               fcc       /typedef/
+                    fcb       $00
+L6D13               fcc       /static/
+                    fcb       $00
+L6D1A               fcc       /sizeof/
+                    fcb       $00
+L6D21               rol       $0e,s
+                    lsr       >$0069
                     jmp       -$0C,s
                     neg       $0066
-                    inc       $0f,s
-                    fcb       $61
-                    lsr       >L0063
-                    asl       $01,s
-                    fcb       $72
-                    neg       $0073
-                    asl       $0f,s
-                    fcb       $72
-                    lsr       >L0061
-                    fcb       $75
-                    lsr       L6F00
-L6D3F               fcb       $65
-                    asl       $7465
-                    fcb       $72
-                    jmp       0,x
-
-L6D46               lsr       $09,s
-                    fcb       $72
-                    fcb       $65
-                    com       -$0C,s
-                    neg       $0072
-                    fcb       $65
-                    asr       $09,s
-                    com       $7465
-                    fcb       $72
-                    neg       $0067
-                    clr       -$0C,s
-                    clr       0,x
-L6D5B               fcb       $72
-                    fcb       $65
-                    lsr       $7572
-                    jmp       0,x
-
+                    fcc       /loat/
+                    fcb       $00
+L6D2F               fcc       /char/
+                    fcb       $00
+L6D34               fcc       /short/
+                    fcb       $00
+L6D3A               fcc       /auto/
+                    fcb       $00
+L6D3F               fcc       /extern/
+                    fcb       $00
+L6D46               fcc       /direct/
+                    fcb       $00
+L6D4D               fcc       /register/
+                    fcb       $00
+L6D56               fcc       /goto/
+                    fcb       $00
+L6D5B               fcc       /return/
+                    fcb       $00
 L6D62               rol       $06,s
                     neg       $0077
-                    asl       $09,s
-                    inc       $05,s
-                    neg       L0065
-                    inc       -$0d,s
-                    fcb       $65
-                    neg       $0073
-                    asr       L6974
-                    com       $08,s
-                    neg       L0063
-                    fcb       $61
-                    com       L6500
-L6D7C               fcb       $62
-                    fcb       $72
-                    fcb       $65
-                    fcb       $61
-                    fcb       $6b
-                    neg       L0063
-                    clr       $0e,s
-                    lsr       L696E
-                    fcb       $75
-                    fcb       $65
+                    fcc       /hile/
+                    fcb       $00
+L6D6B               fcc       /else/
+                    fcb       $00
+L6D70               fcc       /switch/
+                    fcb       $00
+L6D77               fcc       /case/
+                    fcb       $00
+L6D7C               fcc       /break/
+                    fcb       $00
+L6D82               fcc       /continue/
+                    fcb       $00
+L6D8B               lsr       $0f,s
                     neg       $0064
-                    clr       0,x
-L6D8E               lsr       $05,s
-                    ror       $01,s
-                    fcb       $75
-                    inc       -$0C,s
-                    neg       $0066
-                    clr       -$0e,s
+                    fcc       /efault/
+                    fcb       $00
+L6D96               ror       $0f,s
+                    fcb       $72
                     neg       $0073
-                    lsr       L7275
-                    com       -$0C,s
-                    neg       L0075
-                    jmp       $09,s
-                    clr       $0e,s
-                    neg       L0075
-                    jmp       -$0d,s
-                    rol       $07,s
-                    jmp       $05,s
-                    lsr       0,x
-L6DB0               inc       $0f,s
-                    jmp       $07,s
-                    neg       L0065
-                    fcb       $72
-                    fcb       $72
-                    jmp       $0f,s
-                    neg       L006C
-                    com       L6565
-                    fcb       $6b
-                    neg       $006F
-                    fcb       $75
-                    lsr       $206F
-                    ror       0,y
-                    tst       $05,s
-                    tst       $0f,s
-                    fcb       $72
-                    rol       >L0075
-                    jmp       -$0C,s
-                    fcb       $65
-                    fcb       $72
-                    tst       $09,s
-                    jmp       $01,s
-                    lsr       $6564
-                    bra       L6E40
-                    asl       $01,s
-                    fcb       $72
-                    fcb       $61
-                    com       -$0C,s
-                    fcb       $65
-                    fcb       $72
-                    bra       L6E4A
-                    clr       $0e,s
-                    com       $7461
-                    jmp       -$0C,s
-                    neg       $0077
-                    bmi       L6DF2
-L6DF2               com       $01,s
-                    jmp       $07,y
-                    lsr       $206F
-                    neg       $656E
-                    bra       L6E71
-                    lsr       L7269
-                    jmp       $07,s
-                    com       L2066
-                    rol       $0C,s
-                    fcb       $65
-                    neg       L0025
-                    com       $05,y
-                    lsr       0,x
-L6E0F               fcb       $75
-                    jmp       -$0C,s
-                    fcb       $65
-                    fcb       $72
-                    tst       $09,s
-                    jmp       $01,s
-                    lsr       $6564
-                    bra       $6E90
-                    lsr       L7269
-L6E20               jmp       $07,s
-                    neg       $0020
-                    ror       $03,s
-                    com       0,y
-                    bhi       L6E2A
+                    fcc       /truct/
+                    fcb       $00
+L6DA1               fcc       /union/
+                    fcb       $00
+L6DA7               fcc       /unsigned/
+                    fcb       $00
+L6DB0               fcc       /long/
+                    fcb       $00
+L6DB5               fcc       /errno/
+                    fcb       $00
+L6DBB               fcc       /lseek/
+                    fcb       $00
+L6DC1               fcc       /out of memory/
+                    fcb       $00
+L6DCF               fcc       /unterminated character constant/
+                    fcb       $00
+L6DEF               asr       $2B00
+L6DF2               fcc       /can't open strings file/
+                    fcb       $00
+L6E0A               fcc       /%c%d/
+                    fcb       $00
+L6E0F               fcc       /unterminated string/
+                    fcb       $00
+L6E23               bra       $6E8B
+                    fcc       /cc "/
+                    fcb       $00
 L6E2A               bhi       $6E39
                     bra       L6E94
                     com       $02,s
@@ -12615,11 +11982,11 @@ L6E36               bhi       $6E45
                     fcb       $72
                     dec       $6220
                     bcs       $6EA4
-L6E40               tst       $0000
+                    tst       $0000
 L6E42               pshs      u
                     ldd       #$FFB4
-                    lbsr      L010F
-L6E4A               ldu       $04,s
+                    lbsr      stkcheck
+                    ldu       $04,s
                     pshs      u
                     lbsr      L6EAC
                     leas      $02,s
@@ -12635,12 +12002,12 @@ L6E4A               ldu       $04,s
                     pshs      d
                     lbsr      L4623
                     leas      $08,s
-L6E71               ldd       #$0070
-L6E74               bra       L6EA8
+                    ldd       #$0070
+                    bra       L6EA8
 
 L6E76               pshs      u
                     ldd       #$FFB4
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     pshs      u
                     lbsr      L7E9C
@@ -12662,7 +12029,7 @@ L6EA8               std       $06,u
 L6EAA               puls      pc,u
 L6EAC               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     ldx       ,u
                     bra       L6ED7
@@ -12672,7 +12039,7 @@ L6EBA               pshs      u
                     bra       L6ED3
 
 L6EC1               pshs      u
-                    lbsr      $3987
+                    lbsr      L3987
                     bra       L6ED3
 
 L6EC8               pshs      u
@@ -12694,14 +12061,14 @@ L6ED7               cmpx      #$0008
 L6EEA               puls      pc,u
 L6EEC               pshs      u
                     ldd       #$FFB4
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     ldx       $06,u
                     lbra      L6F5F
 
 L6EFB               pshs      u
                     ldd       #$0077
-L6F00               pshs      d
+                    pshs      d
                     ldd       #$0071
                     pshs      d
                     ldd       #$0075
@@ -12749,7 +12116,7 @@ L6F5B               std       $06,u
 L6F5F               cmpx      #$0037
                     lbeq      L6EFB
                     cmpx      #$0041
-L6F69               beq       L6F1D
+                    beq       L6F1D
                     cmpx      #$0071
                     beq       L6F81
                     cmpx      #$0070
@@ -12763,7 +12130,7 @@ L6F69               beq       L6F1D
 L6F81               puls      pc,u
 L6F83               pshs      u
                     ldd       #$FFB4
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$02,s
                     ldd       $06,u
@@ -12853,7 +12220,7 @@ L7028               ldd       $0a,u
 
 L7046               ldd       $0a,u
                     pshs      d
-                    lbsr      $3987
+                    lbsr      L3987
                     leas      $02,s
                     ldd       #$008F
                     pshs      d
@@ -12973,7 +12340,7 @@ L7176               tfr       u,d
                     puls      pc,u
 L717C               pshs      u
                     ldd       #$FFAE
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$06,s
                     ldx       $0C,s
                     ldu       $0a,x
@@ -13035,7 +12402,7 @@ L71F7               ldd       $04,s
                     pshs      d
                     lbsr      L9754
                     std       ,s++
-L7200               bne       L7229
+                    bne       L7229
                     ldd       $04,s
                     pshs      d
                     lbsr      L6EAC
@@ -13056,7 +12423,7 @@ L7220               std       $06,x
 
 L7229               pshs      u
                     lbsr      L6E42
-L722E               leas      $02,s
+                    leas      $02,s
                     ldd       $04,s
                     pshs      d
                     lbsr      L6F83
@@ -13278,7 +12645,7 @@ L73E6               cmpx      #$0051
                     lbeq      L72EC
                     cmpx      #$005D
                     lbeq      L72EC
-                    cmpx      #$005C
+L7425               cmpx      #$005C
                     lbeq      L72EC
                     cmpx      #$005E
                     lbeq      L72EC
@@ -13300,7 +12667,7 @@ L73E6               cmpx      #$0051
                     lbeq      L735E
 L746B               cmpx      #$004E
                     lbeq      L7372
-L7472               cmpx      #$0053
+                    cmpx      #$0053
                     lbeq      L73AA
                     cmpx      #$004C
                     lbeq      L73AA
@@ -13321,7 +12688,7 @@ L7494               ldd       #$0070
 
 L749E               pshs      u
                     ldd       #$FFC0
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       #$0000
                     bra       L74C2
 
@@ -13342,7 +12709,7 @@ L74C2               cmpu      #$000E
 
 L74CB               pshs      u
                     ldd       #$FFB0
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$04,s
                     ldd       #$0001
@@ -13410,7 +12777,7 @@ L74CB               pshs      u
 
 L7567               pshs      u
                     ldd       #$FFAE
-L756C               lbsr      L010F
+L756C               lbsr      stkcheck
                     ldu       $04,s
                     leas      -$06,s
                     ldd       #$0001
@@ -13466,7 +12833,7 @@ L75DF               leas      $06,s
                     puls      pc,u
 L75E3               pshs      u
                     ldd       #$FFB2
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$04,s
                     ldd       $000F
                     std       ,s
@@ -13502,7 +12869,7 @@ L7627               ldd       ,u
                     cmpd      #$0006
                     bne       L7648
 L7637               pshs      u
-                    lbsr      $3987
+                    lbsr      L3987
                     leas      $02,s
                     ldd       #$006E
                     pshs      d
@@ -13566,7 +12933,7 @@ L7680               ldx       $02,s
 
 L76BF               pshs      u
                     ldd       #$FFB8
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$02,s
                     ldx       $06,u
@@ -13609,7 +12976,7 @@ L7719               leas      $02,s
                     puls      pc,u
 L771D               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     ldx       $06,u
                     bra       L774B
@@ -13635,7 +13002,7 @@ L774B               cmpx      #$0050
 
 L7759               pshs      u
                     ldd       #$FFC0
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldx       $04,s
                     ldd       $12,x
                     cmpd      #$0002
@@ -13645,7 +13012,7 @@ L7759               pshs      u
 
 L7771               pshs      u
                     ldd       #$FFC0
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     ldx       $06,u
                     bra       L7790
@@ -13671,7 +13038,7 @@ L77A8               clra
 L77AA               puls      pc,u
 L77AC               pshs      u
                     ldd       #$FFB4
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     ldd       $06,u
                     anda      #$80
@@ -13698,7 +13065,7 @@ L77AC               pshs      u
 L77E4               puls      pc,u
 L77E6               pshs      u
                     ldd       #$FFB0
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$04,s
                     ldx       $08,s
                     ldd       $0C,x
@@ -13864,7 +13231,7 @@ L792C               pshs      u
 
 L794A               pshs      u
                     ldd       #$FFB0
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$04,s
                     ldx       $08,s
                     ldd       $0C,x
@@ -13878,7 +13245,7 @@ L794A               pshs      u
                     addd      #$FFB0
                     std       $0a,s
                     ldd       ,u
-L796E               cmpd      #$0007
+                    cmpd      #$0007
                     bne       L7998
                     ldx       $0a,s
                     bra       L7989
@@ -14113,7 +13480,7 @@ L7B63               pshs      u
 
 L7B83               pshs      u
                     ldd       #$FFB4
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     ldd       $06,u
                     anda      #$7f
@@ -14146,7 +13513,7 @@ L7BBC               ldd       #$0071
                     puls      pc,u
 L7BD2               pshs      u
                     ldd       #$FFB0
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$04,s
                     ldd       $0a,u
@@ -14296,7 +13663,7 @@ L7D15               leas      $04,s
                     puls      pc,u
 L7D19               pshs      u
                     ldd       #$FFAC
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$08,s
                     ldx       $0C,s
                     ldu       $0a,x
@@ -14455,7 +13822,7 @@ L7E56               ldd       $0e,s
 
 L7E63               pshs      u
                     ldd       #$FFB4
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     pshs      u
                     bsr       L7E9C
@@ -14479,7 +13846,7 @@ L7E95               ldd       #$0071
                     puls      pc,u
 L7E9C               pshs      u
                     ldd       #$FFAC
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$08,s
                     ldx       $0C,s
                     ldu       $0a,x
@@ -14773,7 +14140,7 @@ L812E               leas      $08,s
                     puls      pc,u
 L8132               pshs      u
                     ldd       #$FFC0
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldd       $04,s
                     cmpd      #$006F
                     beq       L814A
@@ -14786,45 +14153,21 @@ L814A               ldd       #$0001
 L814F               clra
                     clrb
 L8151               puls      pc,u
-L8153               lsr       L7261
-                    jmp       -$0d,s
-                    inc       $01,s
-                    lsr       $696F
-                    jmp       0,x
-
+L8153               fcc       /translation/
+                    fcb       $00
 L815F               bcs       $81D9
                     tst       $0000
-L8163               fcb       $62
-                    rol       $0e,s
-                    fcb       $61
-                    fcb       $72
-                    rol       $206F
-                    neg       L2E00
-L816E               rol       $0e,s
-                    lsr       $09,s
-                    fcb       $72
-                    fcb       $65
-                    com       -$0C,s
-                    rol       $0f,s
-                    jmp       0,x
-
-L817A               rol       $0e,s
-                    lsr       $09,s
-                    fcb       $72
-                    fcb       $65
-                    com       -$0C,s
-                    rol       $0f,s
-                    jmp       0,x
-
-L8186               asl       L2074
-                    fcb       $72
-                    fcb       $61
-                    jmp       -$0d,s
-                    inc       $01,s
-                    lsr       L6500
+L8163               fcc       /binary op./
+                    fcb       $00
+L816E               fcc       /indirection/
+                    fcb       $00
+L817A               fcc       /indirection/
+                    fcb       $00
+L8186               fcc       /x translate/
+                    fcb       $00
 L8192               pshs      u
                     ldd       #$FFA2
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$14,s
                     bra       L81AD
 
@@ -14832,7 +14175,7 @@ L819F               leax      L925F,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
-                    lbsr      $5F26
+                    lbsr      L5F26
 L81AD               ldd       $003F
                     cmpd      #$002A
                     beq       L819F
@@ -14852,7 +14195,7 @@ L81AD               ldd       $003F
                     pshs      x
                     lbsr      L916F
                     leas      $02,s
-                    lbsr      $5F26
+                    lbsr      L5F26
                     lbra      L843C
 
 L81E2               lbsr      L8B51
@@ -15082,7 +14425,7 @@ L83A3               ldd       $06,s
                     ldd       $06,s
                     cmpd      #$0003
                     bne       L83F4
-L83DF               leax      $9297,pcr
+L83DF               leax      L9297,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
@@ -15113,7 +14456,7 @@ L841C               leas      -$14,x
 L841F               ldd       $003F
                     cmpd      #$0030
                     bne       L842D
-                    lbsr      $5F26
+                    lbsr      L5F26
                     lbra      L8228
 
 L842D               ldd       #$0028
@@ -15126,14 +14469,14 @@ L843C               leas      $14,s
                     puls      pc,u
 L8441               pshs      u
                     ldd       #$FFA4
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$12,s
                     lbsr      L8B51
                     std       $10,s
                     tfr       d,x
                     bra       L8469
 
-L8456               leax      $92AB,pcr
+L8456               leax      L92AB,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
@@ -15182,7 +14525,7 @@ L848E               ldd       $0a,s
                     ldd       $04,s
                     cmpd      #$000A
                     bne       L84CF
-L84C2               leax      $92BC,pcr
+L84C2               leax      L92BC,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
@@ -15243,7 +14586,7 @@ L851A               ldd       $04,s
 L853E               lbsr      L0443
                     bra       L8566
 
-L8543               leax      $92CB,pcr
+L8543               leax      L92CB,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
@@ -15265,7 +14608,7 @@ L8566               ldd       $003F
 L8571               ldd       $003F
                     cmpd      #$0030
                     bne       L857F
-                    lbsr      $5F26
+                    lbsr      L5F26
                     lbra      L848E
 
 L857F               ldd       #$0028
@@ -15278,14 +14621,14 @@ L857F               ldd       #$0028
 
 L8593               pshs      u
                     ldd       #$FF9E
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$12,s
                     lbsr      L8B51
                     std       $10,s
                     tfr       d,x
                     bra       L85BB
 
-L85A8               leax      $92DB,pcr
+L85A8               leax      L92DB,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
@@ -15450,7 +14793,7 @@ L870C               ldd       $12,s
 L871A               leas      $06,s
                     lbra      L87C3
 
-L871F               lbsr      $5F26
+L871F               lbsr      L5F26
                     ldd       $12,s
                     clra
                     andb      #$30
@@ -15461,7 +14804,7 @@ L871F               lbsr      $5F26
                     lbeq      L878A
                     ldd       #$0002
                     pshs      d
-                    lbsr      $0785
+                    lbsr      L0785
                     leas      $02,s
                     std       $0C,s
                     beq       L878A
@@ -15534,7 +14877,7 @@ L87C3               ldd       $003F
                     leas      $06,s
                     bra       L87D7
 
-L87CF               lbsr      $5F26
+L87CF               lbsr      L5F26
                     leas      $06,s
                     lbra      L85DE
 
@@ -15546,7 +14889,7 @@ L87E1               leas      $12,s
                     puls      pc,u
 L87E6               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     ldd       ,u
                     cmpd      $06,s
@@ -15557,7 +14900,7 @@ L87E6               pshs      u
                     ldd       $0a,u
                     cmpd      $08,s
                     beq       L8816
-L8806               leax      $92E9,pcr
+L8806               leax      L92E9,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
@@ -15568,7 +14911,7 @@ L8816               clra
                     puls      pc,u
 L881A               pshs      u
                     ldd       #$FFC0
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldd       $04,s
                     cmpd      #$0010
                     bne       L886B
@@ -15605,7 +14948,7 @@ L886B               ldd       $04,s
                     puls      pc,u
 L886F               pshs      u
                     ldd       #$FFAC
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$0a,s
                     ldd       #$0001
                     std       $0031
@@ -15752,23 +15095,23 @@ L8992               clra
                     ldd       $003F
                     cmpd      #$FFFF
                     bne       L89B0
-                    leax      $92FE,pcr
+                    leax      L92FE,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
-L89B0               lbsr      $5F26
+L89B0               lbsr      L5F26
                     leas      $0a,s
                     puls      pc,u
 L89B7               pshs      u
                     ldd       #$FFAA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$06,s
                     ldd       $002B
                     std       $02,s
                     clra
                     clrb
                     std       $002B
-                    lbsr      $5F26
+                    lbsr      L5F26
                     ldd       $0031
                     addd      #$0001
                     std       $0031
@@ -15885,12 +15228,12 @@ L8ABF               std       $000F
                     puls      pc,u
 L8AC5               pshs      u
                     ldd       #$FFB8
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$02,s
                     clra
                     clrb
                     std       [$06,s]
-L8AD4               lbsr      $5F26
+L8AD4               lbsr      L5F26
 L8AD7               ldd       $003F
                     cmpd      #$002E
                     lbeq      L8B45
@@ -15930,7 +15273,7 @@ L8B2C               clra
                     clrb
                     std       $10,u
                     stu       ,s
-                    lbsr      $5F26
+                    lbsr      L5F26
                     bra       L8B3B
 
 L8B38               lbsr      L924A
@@ -15945,14 +15288,14 @@ L8B45               ldd       #$002E
 
 L8B51               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$02,s
                     lbsr      L0641
                     std       -$02,s
                     beq       L8B9A
                     ldd       $0041
                     std       ,s
-                    lbsr      $5F26
+                    lbsr      L5F26
                     ldd       $003F
                     cmpd      #$0033
                     bne       L8B96
@@ -15973,7 +15316,7 @@ L8B89               cmpx      #$000F
                     beq       L8B7D
                     cmpx      #$000E
                     beq       L8B82
-L8B93               lbsr      $5F26
+L8B93               lbsr      L5F26
 L8B96               ldd       ,s
                     bra       L8B9C
 
@@ -15983,7 +15326,7 @@ L8B9C               leas      $02,s
                     puls      pc,u
 L8BA0               pshs      u
                     ldd       #$FF98
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$1a,s
                     clra
                     clrb
@@ -16003,7 +15346,7 @@ L8BA0               pshs      u
 
 L8BCC               ldd       #$0001
                     std       $02,s
-L8BD1               lbsr      $5F26
+L8BD1               lbsr      L5F26
                     ldd       $003F
                     cmpd      #$0033
                     lbne      L8EE4
@@ -16015,7 +15358,7 @@ L8BD1               lbsr      $5F26
 L8BEA               ldd       #$0001
                     bra       L8C20
 
-L8BEF               lbsr      $5F26
+L8BEF               lbsr      L5F26
                     ldd       #$0004
                     std       ,s
                     ldd       $003F
@@ -16034,7 +15377,7 @@ L8C13               ldd       #$0006
 
 L8C1D               ldd       #$0004
 L8C20               std       ,s
-L8C22               lbsr      $5F26
+L8C22               lbsr      L5F26
                     lbra      L8EE4
 
 L8C28               clra
@@ -16052,7 +15395,7 @@ L8C2F               clra
                     clra
                     clrb
                     std       $18,s
-                    lbsr      $5F26
+                    lbsr      L5F26
                     ldd       L0021
                     addd      #$FFFF
                     std       L0021
@@ -16074,11 +15417,11 @@ L8C70               ldx       $18,s
                     ldd       $08,x
                     cmpd      #$0008
                     beq       L8C86
-                    leax      $931E,pcr
+                    leax      L931E,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
-L8C86               lbsr      $5F26
+L8C86               lbsr      L5F26
                     ldd       $003F
                     cmpd      #$0029
                     beq       L8CBC
@@ -16120,7 +15463,7 @@ L8CE5               ldd       L0021
                     clra
                     clrb
                     std       L0021
-                    lbsr      $5F26
+                    lbsr      L5F26
                     ldd       $10,s
                     std       L0021
                     ldd       $003F
@@ -16179,7 +15522,7 @@ L8D5C               ldd       ,u
                     ldd       $06,u
                     cmpd      $1a,s
                     beq       L8D91
-L8D7F               leax      $9337,pcr
+L8D7F               leax      L9337,pcr
                     pshs      x
                     lbsr      L0450
                     bra       L8D8F
@@ -16190,7 +15533,7 @@ L8D8F               leas      $02,s
 L8D91               ldd       $12,s
                     cmpd      #$000A
                     bne       L8DA5
-                    leax      $934E,pcr
+                    leax      L934E,pcr
                     pshs      x
                     lbsr      L0450
                     leas      $02,s
@@ -16264,7 +15607,7 @@ L8E2F               ldd       $003F
 L8E37               leas      $04,s
                     bra       L8E43
 
-L8E3B               lbsr      $5F26
+L8E3B               lbsr      L5F26
                     leas      $04,s
                     lbra      L8D17
 
@@ -16323,7 +15666,7 @@ L8EBC               ldd       $003F
                     std       [$20,s]
                     ldd       $0a,u
                     std       [$22,s]
-                    lbsr      $5F26
+                    lbsr      L5F26
                     ldd       ,u
                     bra       L8EF0
 
@@ -16337,7 +15680,7 @@ L8EF0               leas      $1a,s
                     puls      pc,u
 L8EF5               pshs      u
                     ldd       #$FFAA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$0C,s
                     clra
                     clrb
@@ -16350,7 +15693,7 @@ L8F08               ldd       $0a,s
                     lbsr      L0688
                     leas      $02,s
                     std       $0a,s
-                    lbsr      $5F26
+                    lbsr      L5F26
 L8F16               ldd       $003F
                     cmpd      #$0042
                     beq       L8F08
@@ -16359,13 +15702,13 @@ L8F16               ldd       $003F
                     bne       L8F30
                     ldd       $0041
                     std       [$10,s]
-                    lbsr      $5F26
+                    lbsr      L5F26
                     bra       L8F6A
 
 L8F30               ldd       $003F
                     cmpd      #$002D
                     bne       L8F6A
-                    lbsr      $5F26
+                    lbsr      L5F26
                     ldd       $0031
                     addd      #$0001
                     std       $0031
@@ -16431,7 +15774,7 @@ L8FB4               ldd       $0a,s
                     rola
                     addd      #$0020
                     std       $0a,s
-                    lbsr      $5F26
+                    lbsr      L5F26
                     ldd       #$0004
                     pshs      d
                     lbsr      L6622
@@ -16488,7 +15831,7 @@ L9024               ldd       $0a,s
                     puls      pc,u
 L9035               pshs      u
                     ldd       #$FFBC
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$02,s
                     ldd       $06,s
                     std       ,s
@@ -16514,7 +15857,7 @@ L905D               ldd       ,s
 
 L906B               pshs      u
                     ldd       #$FFB2
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$04,s
                     ldd       ,u
@@ -16582,7 +15925,7 @@ L90DD               std       $02,u
                     puls      pc,u
 L90F5               pshs      u
                     ldd       #$FFB8
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $08,s
                     leas      -$02,s
                     ldd       $06,s
@@ -16639,7 +15982,7 @@ L916A               ldd       $08,s
 
 L916F               pshs      u
                     ldd       #$FF74
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$40,s
                     ldu       [$44,s]
                     lbra      L922C
@@ -16659,7 +16002,7 @@ L9180               ldd       $10,u
                     ldd       #$0014
                     addd      ,s++
                     pshs      d
-                    leax      $9362,pcr
+                    leax      L9362,pcr
                     pshs      x
                     leax      $06,s
                     pshs      x
@@ -16726,195 +16069,57 @@ L922C               stu       -$02,s
                     puls      pc,u
 L923C               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leax      L9375,pcr
                     bra       L9256
 
 L924A               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
-                    leax      $938A,pcr
+                    lbsr      stkcheck
+                    leax      L938A,pcr
 L9256               pshs      x
                     lbsr      L0450
 L925B               leas      $02,s
                     puls      pc,u
-L925F               lsr       $6F6F
-                    bra       $92D1
-                    fcb       $61
-                    jmp       -$07,s
-                    bra       $92CB
-                    fcb       $72
-                    fcb       $61
-                    com       $0b,s
-                    fcb       $65
-                    lsr       $7300
-L9271               ror       -$0b,s
-                    jmp       $03,s
-                    lsr       $696F
-                    jmp       0,y
-                    asl       $05,s
-                    fcb       $61
-                    lsr       $05,s
-                    fcb       $72
-                    bra       L92EF
-                    rol       -$0d,s
-                    com       L696E
-                    asr       0,x
-L9289               com       $746F
-                    fcb       $72
-                    fcb       $61
-                    asr       $05,s
-                    bra       L92F7
-                    fcb       $72
-                    fcb       $72
-                    clr       -$0e,s
-                    neg       $0066
-                    fcb       $75
-                    jmp       $03,s
-                    lsr       $696F
-                    jmp       0,y
-                    lsr       $7970
-                    fcb       $65
-                    bra       $930B
-                    fcb       $72
-                    fcb       $72
-                    clr       -$0e,s
-                    neg       L0061
-                    fcb       $72
-                    asr       -$0b,s
-                    tst       $05,s
-                    jmp       -$0C,s
-                    bra       $9328
-                    lsr       $6F72
-                    fcb       $61
-                    asr       $05,s
-                    neg       L0061
-                    fcb       $72
-                    asr       -$0b,s
-                    tst       $05,s
-                    jmp       -$0C,s
-                    bra       $932B
-                    fcb       $72
-                    fcb       $72
-                    clr       -$0e,s
-                    neg       $006E
-                    clr       -$0C,s
-                    bra       L9331
-                    jmp       0,y
-                    fcb       $61
-                    fcb       $72
-                    asr       -$0b,s
-                    tst       $05,s
-                    jmp       -$0C,s
-                    neg       $0073
-                    lsr       $6F72
-                    fcb       $61
-                    asr       $05,s
-                    bra       $9349
-                    fcb       $72
-                    fcb       $72
-                    clr       -$0e,s
-                    neg       $0064
-                    fcb       $65
-                    com       $0C,s
-                    fcb       $61
-                    fcb       $72
-L92EF               fcb       $61
-                    lsr       $696F
-                    jmp       0,y
-                    tst       $09,s
-L92F7               com       $6D61
-                    lsr       L6368
-                    neg       $0066
-                    fcb       $75
-                    jmp       $03,s
-                    lsr       $696F
-                    jmp       0,y
-                    fcb       $75
-                    jmp       $06,s
-                    rol       $0e,s
-                    rol       -$0d,s
-                    asl       $05,s
-                    lsr       0,x
-L9312               jmp       $01,s
-                    tst       $05,s
-                    lsr       0,y
-                    lsr       $7769
-                    com       $05,s
-                    neg       $006E
-                    fcb       $61
-                    tst       $05,s
-                    bra       $9387
-                    inc       $01,s
-                    com       $6800
-L9329               com       L7472
-                    fcb       $75
-                    com       -$0C,s
-                    bra       $93A4
-
-L9331               rol       L6E74
-                    fcb       $61
-                    asl       >$0073
-                    lsr       L7275
-                    com       -$0C,s
-                    bra       $93AC
-                    fcb       $65
-                    tst       $02,s
-                    fcb       $65
-                    fcb       $72
-                    bra       $93B3
-                    rol       -$0d,s
-                    tst       $01,s
-                    lsr       L6368
-                    neg       L0075
-                    jmp       $04,s
-                    fcb       $65
-                    ror       $09,s
-                    jmp       $05,s
-                    lsr       0,y
-                    com       L7472
-                    fcb       $75
-                    com       -$0C,s
-                    fcb       $75
-                    fcb       $72
-                    fcb       $65
-                    neg       L006C
-                    fcb       $61
-                    fcb       $62
-                    fcb       $65
-                    inc       0,y
-                    fcb       $75
-                    jmp       $04,s
-                    fcb       $65
-                    ror       $09,s
-                    jmp       $05,s
-                    lsr       0,y
-                    abx
-                    bra       L9375
-
-L9375               com       $01,s
-                    jmp       $0e,s
-                    clr       -$0C,s
-                    bra       $93E2
-                    ror       $616C
-                    fcb       $75
-                    fcb       $61
-                    lsr       $6520
-                    com       $697A
-                    fcb       $65
-                    neg       $0069
-                    lsr       $05,s
-                    jmp       -$0C,s
-                    rol       $06,s
-                    rol       $05,s
-                    fcb       $72
-                    bra       L9403
-                    rol       -$0d,s
-                    com       L696E
-                    asr       0,x
+L925F               fcc       /too many brackets/
+                    fcb       $00
+L9271               fcc       /function header missing/
+                    fcb       $00
+L9289               fcc       /storage error/
+                    fcb       $00
+L9297               fcc       /function type error/
+                    fcb       $00
+L92AB               fcc       /argument storage/
+                    fcb       $00
+L92BC               fcc       /argument error/
+                    fcb       $00
+L92CB               fcc       /not an argument/
+                    fcb       $00
+L92DB               fcc       /storage error/
+                    fcb       $00
+L92E9               fcc       /declaration mismatch/
+                    fcb       $00
+L92FE               fcc       /function unfinished/
+                    fcb       $00
+L9312               fcc       /named twice/
+                    fcb       $00
+L931E               fcc       /name clash/
+                    fcb       $00
+L9329               fcc       /struct syntax/
+                    fcb       $00
+L9337               fcc       /struct member mismatch/
+                    fcb       $00
+L934E               fcc       /undefined structure/
+                    fcb       $00
+L9362               fcc       /label undefined : /
+                    fcb       $00
+L9375               fcc       /cannot evaluate size/
+                    fcb       $00
+L938A               fcc       /identifier missing/
+                    fcb       $00
 L939D               pshs      u
                     ldd       #$FFAE
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$04,s
                     ldd       $06,u
@@ -16963,7 +16168,7 @@ L93F2               ldd       ,s
 L93FC               ldd       #$0001
                     subd      $0e,s
                     pshs      d
-L9403               ldd       $0C,s
+                    ldd       $0C,s
                     pshs      d
                     ldd       $10,s
                     pshs      d
@@ -17046,7 +16251,7 @@ L94A6               ldd       $06,u
                     bne       L94B0
                     ldu       $0a,u
 L94B0               pshs      u
-                    lbsr      $3987
+                    lbsr      L3987
                     leas      $02,s
                     ldd       ,u
                     pshs      d
@@ -17120,7 +16325,7 @@ L9573               leas      $04,s
                     puls      pc,u
 L9577               pshs      u
                     ldd       #$FFAE
-                    lbsr      L010F
+                    lbsr      stkcheck
                     leas      -$06,s
                     ldx       $0C,s
                     ldd       $0a,x
@@ -17336,7 +16541,7 @@ L973E               ldd       $02,s
                     puls      pc,u
 L9754               pshs      u
                     ldd       #$FFBA
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldx       $04,s
                     ldx       $06,x
                     bra       L9772
@@ -17357,7 +16562,7 @@ L9772               cmpx      #$0034
                     lbra      L998C
                     pshs      u
                     ldd       #$FFC0
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldx       $04,s
                     ldd       $06,x
                     cmpd      #$0034
@@ -17372,7 +16577,7 @@ L9772               cmpx      #$0034
 
 L97AE               pshs      u
                     ldd       #$FFB0
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     leas      -$04,s
                     clra
@@ -17503,7 +16708,7 @@ L98ED               leas      $04,s
                     puls      pc,u
 L98F1               pshs      u
                     ldd       #$FFC0
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldx       $04,s
                     bra       L991B
 
@@ -17528,7 +16733,7 @@ L991B               cmpx      #$005A
                     puls      pc,u
 L9929               pshs      u
                     ldd       #$FFC0
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldx       $04,s
                     bra       L9947
 
@@ -17556,7 +16761,7 @@ L9947               cmpx      #$005A
                     puls      pc,u
 L9971               pshs      u
                     ldd       #$FFC0
-                    lbsr      L010F
+                    lbsr      stkcheck
                     ldu       $04,s
                     ldd       $06,u
                     cmpd      #$0036
@@ -17657,7 +16862,7 @@ L9A1F               pshs      u
                     ldd       $06,s
                     bra       L9A45
 
-L9A34               pshs      u
+fprintf             pshs      u
                     ldd       $04,s
                     std       L0070
                     ldd       #$0001
@@ -17666,7 +16871,7 @@ L9A34               pshs      u
                     pshs      x
                     ldd       $08,s
 L9A45               pshs      d
-                    bsr       L9A6C
+                    bsr       doprnt
                     leas      $04,s
                     puls      pc,u
                     pshs      u
@@ -17678,13 +16883,13 @@ L9A45               pshs      d
                     pshs      x
                     ldd       $08,s
                     pshs      d
-                    bsr       L9A6C
+                    bsr       doprnt
                     leas      $04,s
                     clra
                     clrb
                     stb       [L0070,y]
                     puls      pc,u
-L9A6C               pshs      u
+doprnt              pshs      u
                     ldu       $04,s
                     leas      -$0b,s
                     bra       L9A84
@@ -20728,382 +19933,148 @@ LB33F               clra
 LB348               bcs       LB33F
                     clra
                     clrb
-LB34C               rts
+exit                rts
                     lbsr      LB358
                     lbsr      LA296
                     ldd       $02,s
                     os9       F$Exit
-LB358               rts
-                    neg       $0003
-                    neg       $0002
-                    rora
-                    fcb       $02
-                    ldx       $0000
-                    fcb       $01
-                    neg       $0002
-                    neg       $0000
-                    neg       $0000
-                    neg       $000C
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       L008C
-                    com       -$0d,s
-                    lsr       L722E
-                    aslb
-                    aslb
-                    aslb
-                    aslb
-                    aslb
-                    neg       L0078
-                    bra       $B3F1
-                    asl       L7065
-                    com       -$0C,s
-                    fcb       $65
-                    lsr       0,x
-                    ror       $0083
-                    aslb
-                    tst       -$08,u
-                    neg       $5873
-                    aslb
-                    rol       L587F
-                    aslb
-                    anda      #$00
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $006D
-                    nega
-                    rol       0,x
-                    neg       L0054
-                    fcb       $41
-                    asl       $0d,y
-                    bgt       LB40F
-                    negb
-                    leax      $03,u
-                    fcb       $45
-                    comb
-                    fcb       $6b
-                    fcb       $6b
-                    fcb       $6b
-                    fcb       $6b
-                    fcb       $6b
-                    fcb       $6b
-                    fcb       $6b
-                    fcb       $6b
-                    fcb       $6b
-                    fcb       $6b
-                    ble       $B406
-                    tstb
-                    asl       $5F64
-                    neg       L006A
-                    dec       $0a,s
-                    dec       $0a,s
-                    dec       $0a,s
-                    dec       $0a,s
-                    dec       $0a,s
-                    dec       $0a,s
-                    dec       $0a,s
-                    dec       $0a,s
-                    dec       $0a,s
-                    dec       $0a,s
-                    dec       $0a,s
-                    dec       $0a,s
-                    dec       $0b,y
-                    ror       $0C,y
-                    rolb
-                    dec       0,x
-                    dec       $0a,s
-                    dec       $0a,s
-                    dec       $0a,s
-                    dec       $0a,s
-                    dec       $0a,s
-                    dec       $0a,s
-LB40F               dec       $0a,s
-                    dec       $0a,s
-                    dec       $0a,s
-                    dec       $0a,s
-                    dec       $0a,s
-                    dec       $0a,s
-                    dec       $0a,s
-                    bvs       $B477
-                    bpl       $B465
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    rol       $0000
-                    neg       $0000
-                    tst       $000E
-                    neg       $0000
-                    neg       $000E
-                    inc       $0001
-                    jmp       $000F
-                    tst       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0003
-                    neg       $000A
-                    fcb       $02
-                    dec       $0003
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    asr       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    ror       $0000
-                    jmp       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0081
-                    bra       LB4AC
-
-LB4AC               neg       $0000
-                    neg       $0000
-                    neg       L0084
-                    asla
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    fcb       $87
-                    dec       >$0000
-                    neg       $0000
-                    neg       $0000
-                    ora       #$1C
-                    nega
-                    neg       $0000
-                    neg       $0000
-                    neg       L008E
-                    coma
-                    negb
-                    neg       $0000
-                    neg       $0000
-                    neg       $0091
-                    lsr       L2400
-                    neg       $0000
-                    neg       $0000
-                    anda      L0018
-                    lda       L0080
-                    neg       $0000
-                    neg       $0000
-                    eora      L003E
-                    cmpx      L2000
-                    neg       $0000
-                    neg       $009B
-                    jmp       $0b,s
-                    bvc       LB4EE
-LB4EE               neg       $0000
-                    neg       L009E
-                    fcb       $15
-                    fcb       $02
-                    adcb      >$0000
-                    neg       $0000
-                    sbca      $0d,y
-                    asl       $EBC5
-                    cmpx      $02,s
-                    neg       $00C3
-                    rola
-                    sbcb      $C9CD
-                    lsr       $0067
-                    clra
-                    andb      0,x
-                    fcb       $02
-                    neg       $0004
-                    neg       $0008
-                    neg       $0010
-                    neg       $0020
-                    neg       $0040
-                    neg       L0080
-                    fcb       $01
-                    neg       $0002
-                    neg       $0004
-                    neg       $0008
-                    neg       $0010
-                    neg       $0020
-                    neg       $0040
-                    neg       $0027
-                    fcb       $10
-                    com       $00E8
-                    neg       $0064
-                    neg       $000A
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0001
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    fcb       $02
-                    neg       $0001
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
+* ------------------------------------------------------------------
+* LB358 - cc1-style init image for the c.comp work block (see _start).
+* First byte is an rts (the exit routine's stub); the table proper
+* follows: count1+block1 -> base, count2+block2 -> base+$78, then two
+* relocation directories.
+* ------------------------------------------------------------------
+LB358               rts                 exit rts stub / table anchor
+                    fdb       $0003     count1 - bytes copied to base
+                    fcb       $00,$02   block1
+                    fcb       $46
+                    fdb       $029E     count2 - bytes copied to base+$78
+* block2 - work block template ($29E bytes)
+                    fcb       $00,$01,$00,$02,$00,$00,$00,$00
+                    fcb       $00,$0C,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$8C
+                    fcc       /cstr.XXXXX/
+                    fcb       $00
+                    fcc       /x expected/
+                    fcb       $00,$06,$83
+                    fcc       /XmXpXsXyX/
+                    fcb       $7F
+                    fcb       $58
+                    fcb       $84,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00
+                    fcb       $6D,$40,$69
+                    fcb       $00,$00
+                    fcc       |TAh-.BP0CESkkkkkkkkkk/(]x_d|
+                    fcb       $00
+                    fcc       /jjjjjjjjjjjjjjjjjjjjjjjjjj+f,Yj/
+                    fcb       $00
+                    fcc       /jjjjjjjjjjjjjjjjjjjjjjjjjj)X*D/
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$09,$00,$00,$00,$0D,$0E
+                    fcb       $00,$00,$00,$0E,$0C,$01,$0E,$0F
+                    fcb       $0D,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$03,$00,$0A,$02,$0A
+                    fcb       $03,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$07
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$06,$00,$0E
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $81
+                    fcb       $20
+                    fcb       $00,$00,$00,$00,$00,$00,$84
+                    fcb       $48
+                    fcb       $00,$00,$00,$00,$00,$00,$87
+                    fcb       $7A
+                    fcb       $00,$00,$00,$00,$00,$00,$8A,$1C
+                    fcb       $40
+                    fcb       $00,$00,$00,$00,$00,$8E
+                    fcb       $43,$50
+                    fcb       $00,$00,$00,$00,$00,$91
+                    fcb       $74,$24
+                    fcb       $00,$00,$00,$00,$00,$94,$18,$96
+                    fcb       $80,$00,$00,$00,$00,$98
+                    fcb       $3E
+                    fcb       $BC
+                    fcb       $20
+                    fcb       $00,$00,$00,$00,$9B
+                    fcb       $6E,$6B,$28
+                    fcb       $00,$00,$00,$00,$9E,$15,$02,$F9
+                    fcb       $00,$00,$00,$00,$A2
+                    fcb       $2D,$78
+                    fcb       $EB,$C5,$AC
+                    fcb       $62
+                    fcb       $00,$C3
+                    fcb       $49
+                    fcb       $F2,$C9,$CD,$04
+                    fcb       $67,$4F
+                    fcb       $E4,$00,$02,$00,$04,$00,$08,$00
+                    fcb       $10,$00
+                    fcb       $20
+                    fcb       $00
+                    fcb       $40
+                    fcb       $00,$80,$01,$00,$02,$00,$04,$00
+                    fcb       $08,$00,$10,$00
+                    fcb       $20
+                    fcb       $00
+                    fcb       $40
+                    fcb       $00
+                    fcb       $27
+                    fcb       $10,$03,$E8,$00
+                    fcb       $64
+                    fcb       $00,$0A,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$01,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$02,$00
+                    fcb       $01,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00
                     fcb       $42
-                    neg       $0002
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0006
-                    neg       L00B8
-                    neg       L00B6
-                    neg       L00B4
-                    neg       L00B2
-                    neg       L00B0
-                    neg       L00AE
-                    neg       $0003
-                    neg       L0094
-                    neg       L00AC
-                    neg       $0001
-                    com       $0e,y
-                    com       $0f,s
-                    tst       -$10,s
+                    fcb       $00,$02,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
+                    fcb       $00,$00,$00,$00,$00,$00
+                    fdb       $0006     nreloc1
+* relocate by module base
+                    fdb       $00B8
+                    fdb       $00B6
+                    fdb       $00B4
+                    fdb       $00B2
+                    fdb       $00B0
+                    fdb       $00AE
+                    fdb       $0003     nreloc2
+* relocate by work base
+                    fdb       $0094
+                    fdb       $00AC
+                    fdb       $0001
+* trailing module name
+                    fcc       /c.comp/
 
                     emod
 eom                 equ       *
