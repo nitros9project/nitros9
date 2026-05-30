@@ -177,6 +177,71 @@ def find_string_regions(data: bytes, start: int, end: int) -> list[tuple[int, in
     return regions
 
 
+_FCB_HEX = re.compile(r'^(\S*)\s+fcb\s+((?:\s*\$[0-9A-Fa-f]{2},?)+)\s*$')
+
+
+def coalesce_fcc(rows: list[str], fmt) -> list[str]:
+    """Re-render runs of consecutive `fcb $xx,...` rows as readable `fcc`.
+
+    Operates purely on already-emitted hex byte rows, so it is byte-exact: a
+    printable run of >= 4 bytes becomes `fcc /text/`, everything else stays
+    `fcb`.  Any label is kept at its exact byte offset within the run, so a
+    referenced address in the middle of a string still gets its own directive
+    (and NUL/CR bytes naturally split adjacent strings apart).
+    """
+    def pick(s: str) -> str:
+        for d in '/|!^"':
+            if d not in s:
+                return d
+        return '/'
+
+    def render(b: list[int], labels: dict) -> list[str]:
+        res: list[str] = []
+        o, n = 0, len(b)
+        while o < n:
+            lbl = labels.get(o, '')
+            if 0x20 <= b[o] <= 0x7E:
+                st = o; o += 1
+                while o < n and 0x20 <= b[o] <= 0x7E and o not in labels:
+                    o += 1
+                seg = b[st:o]
+                if len(seg) >= 4:
+                    t = bytes(seg).decode('latin1'); d = pick(t)
+                    res.append(fmt(lbl, 'fcc', f'{d}{t}{d}'))
+                else:
+                    res.append(fmt(lbl, 'fcb', ','.join(f'${x:02X}' for x in seg)))
+            else:
+                st = o; o += 1
+                while o < n and not (0x20 <= b[o] <= 0x7E) and o not in labels:
+                    o += 1
+                res.append(fmt(lbl, 'fcb', ','.join(f'${x:02X}' for x in b[st:o])))
+        return res
+
+    out: list[str] = []
+    i = 0
+    while i < len(rows):
+        m = _FCB_HEX.match(rows[i])
+        if not m:
+            out.append(rows[i]); i += 1
+            continue
+        b: list[int] = []
+        labels: dict = {}
+        if m.group(1):
+            labels[0] = m.group(1)
+        b += [int(h, 16) for h in re.findall(r'\$([0-9A-Fa-f]{2})', m.group(2))]
+        i += 1
+        while i < len(rows):
+            m2 = _FCB_HEX.match(rows[i])
+            if not m2:
+                break
+            if m2.group(1):
+                labels[len(b)] = m2.group(1)
+            b += [int(h, 16) for h in re.findall(r'\$([0-9A-Fa-f]{2})', m2.group(2))]
+            i += 1
+        out += render(b, labels)
+    return out
+
+
 def make_info(hdr: dict, data: bytes = b'') -> str:
     n0  = hdr['name_off']
     ne  = hdr['name_end']
@@ -602,6 +667,9 @@ def postprocess(raw: str, hdr: dict, data: bytes = b'') -> str:
 
         out.append(fmt(label_out, mnem, operand))
         prev_mnem = mnem
+
+    # Re-render runs of fcb hex bytes as readable fcc strings (byte-exact).
+    out = coalesce_fcc(out, fmt)
 
     # End of module — emod emits the 3-byte CRC; eom is defined AFTER emod so
     # it captures the address past the CRC, giving the total module size as
