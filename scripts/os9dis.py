@@ -214,6 +214,14 @@ def find_string_regions(data: bytes, start: int, end: int) -> list[tuple[int, in
 _FCB_HEX = re.compile(r'^(\S*)\s+fcb\s+((?:\s*\$[0-9A-Fa-f]{2},?)+)\s*$')
 
 
+def _pick_delim(s: str) -> str:
+    """Choose an fcc delimiter that does not occur in the string content."""
+    for d in '/|!^"':
+        if d not in s:
+            return d
+    return '/'
+
+
 def coalesce_fcc(rows: list[str], fmt) -> list[str]:
     """Re-render runs of consecutive `fcb $xx,...` rows as readable `fcc`.
 
@@ -223,11 +231,7 @@ def coalesce_fcc(rows: list[str], fmt) -> list[str]:
     referenced address in the middle of a string still gets its own directive
     (and NUL/CR bytes naturally split adjacent strings apart).
     """
-    def pick(s: str) -> str:
-        for d in '/|!^"':
-            if d not in s:
-                return d
-        return '/'
+    pick = _pick_delim
 
     def render(b: list[int], labels: dict) -> list[str]:
         res: list[str] = []
@@ -329,7 +333,7 @@ def find_inline_data_regions(data: bytes, start: int, end: int) -> list[tuple[in
     return regions
 
 
-def make_info(hdr: dict, data: bytes = b'') -> str:
+def make_info(hdr: dict, data: bytes = b'', forced_data=None) -> str:
     n0  = hdr['name_off']
     ne  = hdr['name_end']
     ed  = hdr['edition_off']
@@ -361,6 +365,14 @@ def make_info(hdr: dict, data: bytes = b'') -> str:
     if data:
         code_end = mod_size - 3  # last 3 bytes are the CRC
         string_regions = find_string_regions(data, code_start, code_end)
+        # A caller-forced data range wins: drop any auto-detected string region
+        # that overlaps it (e.g. a single-char token table inside a work-block
+        # image), so the whole range renders uniformly as data.
+        if forced_data:
+            string_regions = [
+                (s, e) for (s, e) in string_regions
+                if not any(s <= fe and fs <= e for fs, fe in forced_data)
+            ]
         if string_regions:
             rows.append('')
             rows.append('* detected string/data regions')
@@ -375,6 +387,14 @@ def make_info(hdr: dict, data: bytes = b'') -> str:
             rows.append('* inline data after call (bsr/lbsr -> puls)')
             for s, e in inline_regions:
                 rows.append(f'DATA {s:04X}-{e:04X}')
+
+    # Caller-forced data ranges (e.g. crt0 work-block images that no detector
+    # recognises).  Emitted last so they win over any heuristic above.
+    if forced_data:
+        rows.append('')
+        rows.append('* caller-forced data ranges (--data)')
+        for s, e in forced_data:
+            rows.append(f'DATA {s:04X}-{e:04X}')
 
     return '\n'.join(rows) + '\n'
 
@@ -469,9 +489,21 @@ def postprocess(raw: str, hdr: dict, data: bytes = b'') -> str:
         # ── FCC: "text" → /text/ — do this BEFORE any identifier processing
         # so that the string content is never treated as identifiers/registers.
         if mnem == 'fcc':
-            op = _NOISE_COMMENT.sub('', op).strip()
-            op = re.sub(r'^"(.*)"$', r'/\1/', op)
-            return op
+            # f9dasm wraps the text in a delimiter (the first character, usually
+            # " or /).  Extract the content between that delimiter and its next
+            # occurrence FIRST - before any comment handling - because the
+            # content itself may contain ';' (which the noise-comment stripper
+            # would otherwise treat as the start of a comment) or the '/' we
+            # would otherwise pick as our own delimiter.
+            op = op.lstrip()
+            if op and op[0] in '/"|!^':
+                d0 = op[0]
+                end = op.find(d0, 1)
+                if end != -1:
+                    content = op[1:end]
+                    nd = _pick_delim(content)
+                    return f'{nd}{content}{nd}'
+            return _NOISE_COMMENT.sub('', op).strip()
 
         # ── FCB quoted chars: 'c → $xx ─────────────────────────────────────
         # Apply BEFORE stripping the comment so that f9dasm's "' " encoding
@@ -764,6 +796,19 @@ def postprocess(raw: str, hdr: dict, data: bytes = b'') -> str:
         out.append(fmt(label_out, mnem, operand))
         prev_mnem = mnem
 
+    # A lone printable byte that f9dasm rendered as a single-character fcc
+    # (e.g. an isolated $43 inside a binary pointer table) is data, not text.
+    # Demote it to fcb so coalesce_fcc can merge it into the surrounding run.
+    _fcc1 = re.compile(r'^(\S*)\s+fcc\s+(.)(.)\2\s*$')
+    demoted: list[str] = []
+    for r in out:
+        m = _fcc1.match(r)
+        if m:
+            demoted.append(fmt(m.group(1), 'fcb', f'${ord(m.group(3)):02X}'))
+        else:
+            demoted.append(r)
+    out = demoted
+
     # Re-render runs of fcb hex bytes as readable fcc strings (byte-exact).
     out = coalesce_fcc(out, fmt)
 
@@ -794,7 +839,18 @@ def main() -> None:
                     help='Input is a raw OS-9 binary, not an FCB-format .asm')
     ap.add_argument('-f', '--f9dasm', default='f9dasm',
                     help='Path to f9dasm binary (default: f9dasm in PATH)')
+    ap.add_argument('--data', action='append', default=[], metavar='START-END',
+                    help='Force a hex byte range to be treated as data (e.g. '
+                         '3A9B-3C98 for a crt0 work-block image).  Repeatable.')
     args = ap.parse_args()
+
+    forced_data: list[tuple[int, int]] = []
+    for spec in args.data:
+        try:
+            lo, hi = spec.split('-')
+            forced_data.append((int(lo, 16), int(hi, 16)))
+        except ValueError:
+            sys.exit(f'bad --data range (expected START-END hex): {spec!r}')
 
     # 1. extract binary
     if args.binary:
@@ -830,7 +886,7 @@ def main() -> None:
         with open(bin_path,  'wb') as fh:
             fh.write(data)
         with open(info_path, 'w') as fh:
-            fh.write(make_info(hdr, data))
+            fh.write(make_info(hdr, data, forced_data))
 
         # 4. run f9dasm
         try:
