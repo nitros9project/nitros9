@@ -10915,10 +10915,7 @@ L6654               pshs      u
                     leax      $08,s
                     pshs      x
                     bsr       L666C
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0000
+                    fcb       $00,$00,$00,$00,$00,$00,$00,$00
 L666C               puls      x
                     lbsr      LAE34
                     leax      $08,s
@@ -10944,8 +10941,7 @@ L6684               ldb       $0045
 L66A0               leax      $02,s
                     pshs      x
                     bsr       L66AA
-                    neg       $0000
-                    neg       $0000
+                    fcb       $00,$00,$00,$00
 L66AA               puls      x
                     lbsr      LAEDF
                     ldb       $0045
@@ -17488,8 +17484,7 @@ LA089               ldd       $0b,u
                     ldd       ,x
                     pshs      d
                     bsr       LA0A6
-                    neg       $0000
-                    neg       $0000
+                    fcb       $00,$00,$00,$00
 LA0A6               puls      x
                     lbsr      LAE7B
                     bge       LA0B4
@@ -17554,9 +17549,9 @@ LA10F               ldd       $06,u
                     pshs      d
                     ldd       ,x
                     pshs      d
-                    bsr       $A13B
-                    stu       $FFFF
-                    stu       L3510
+                    bsr       LA13B
+                    fcb       $FF,$FF,$FF,$FF
+LA13B               puls      x
                     lbsr      LAE7B
                     bne       LA147
                     ldd       #$FFFF
@@ -17586,9 +17581,9 @@ LA164               pshs      u
                     clra
                     andb      #$03
                     bne       LA184
-LA171               bsr       $A177
-                    stu       $FFFF
-                    stu       L3510
+LA171               bsr       LA177
+                    fcb       $FF,$FF,$FF,$FF
+LA177               puls      x
                     leau      $0358,y
                     pshs      u
                     lbsr      LAEDF

@@ -7990,9 +7990,9 @@ L4919               std       ,s
 L491B               ldd       ,s
                     cmpd      $02DC,y
                     bne       L48F0
-                    bsr       $492A
-                    stu       $FFFF
-                    stu       $3510
+                    bsr       L492A
+                    fcb       $FF,$FF,$FF,$FF
+L492A               puls      x
 L492C               leau      $0254,y
                     pshs      u
                     lbsr      L5E23
@@ -8041,9 +8041,9 @@ L498C               leax      $01,s
                     pshs      d
                     ldd       ,x
                     pshs      d
-                    bsr       $49AA
-                    stu       $FFFF
-                    stu       $3510
+                    bsr       L49AA
+                    fcb       $FF,$FF,$FF,$FF
+L49AA               puls      x
                     lbsr      L5DBF
                     bne       L49B6
 L49B1               leax      $05,s
@@ -8767,8 +8767,7 @@ L501A               ldd       $0b,u
                     ldd       ,x
                     pshs      d
                     bsr       L5037
-                    neg       $0000
-                    neg       $0000
+                    fcb       $00,$00,$00,$00
 L5037               puls      x
                     lbsr      L5DBF
                     bge       L5045
@@ -8833,9 +8832,9 @@ L50A0               ldd       $06,u
                     pshs      d
                     ldd       ,x
                     pshs      d
-                    bsr       $50CC
-                    stu       $FFFF
-                    stu       $3510
+                    bsr       L50CC
+                    fcb       $FF,$FF,$FF,$FF
+L50CC               puls      x
                     lbsr      L5DBF
                     bne       L50D8
                     ldd       #$FFFF
@@ -8865,9 +8864,9 @@ L50F5               pshs      u
                     clra
                     andb      #$03
                     bne       L5115
-L5102               bsr       $5108
-                    stu       $FFFF
-                    stu       $3510
+L5102               bsr       L5108
+                    fcb       $FF,$FF,$FF,$FF
+L5108               puls      x
                     leau      $0254,y
                     pshs      u
                     lbsr      L5E23
