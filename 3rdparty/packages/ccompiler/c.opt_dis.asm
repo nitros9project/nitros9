@@ -135,23 +135,39 @@ stkinit             leax      $0887,y
                     cmpx      $055f,y
                     bcs       L013A
                     stx       $0561,y
-L0120               fcb       $39
-L0121               fcc       /**** STACK OVERFLOW ****/
-                    fcb       $0D
+L0120               rts
+
+L0121               bpl       $014D
+                    bpl       L014F
+                    bra       L017A
+                    lsrb
+                    fcb       $41
+                    coma
+                    fcb       $4B
+                    bra       $017C
+                    rorb
+                    fcb       $45,$52
+                    rora
+                    inca
+                    clra
+                    asrb
+                    bra       L0160
+                    bpl       $0162
+                    bpl       L0147
 L013A               leax      L0121,pcr
                     ldb       #$CF
                     pshs      b
                     lda       #$02
                     ldy       #$0064
-                    os9       I$WritLn
+L0147               os9       I$WritLn
                     clr       ,-s
                     lbsr      L27D6
-                    ldd       $0553,y
+L014F               ldd       $0553,y
                     subd      $0561,y
                     rts
                     ldd       $0561,y
                     subd      $055f,y
-                    rts
+L0160               rts
 
 L0161               pshs      x
                     leax      d,y
@@ -165,7 +181,7 @@ L0169               ldd       ,y++
                     cmpy      ,s
                     bne       L0169
 L0178               leas      $04,s
-                    rts
+L017A               rts
 
 main                pshs      u
                     leas      -$08,s
@@ -281,7 +297,7 @@ L026C               leas      $06,s
                     bne       L0283
                     ldd       $02,s
                     pshs      d
-                    leax      $06C5,pcr
+                    leax      L06C5,pcr
                     pshs      x
                     lbsr      L1814
                     leas      $04,s
@@ -297,7 +313,7 @@ L0283               ldd       ,s
                     bne       L02AB
                     ldd       ,s
                     pshs      d
-                    leax      $06D5,pcr
+                    leax      L06D5,pcr
                     pshs      x
                     lbsr      L1814
                     leas      $04,s
@@ -318,7 +334,7 @@ L02AB               ldd       $0567,y
                     leas      $04,s
                     ldd       $0009
                     pshs      d
-                    leax      $06F0,pcr
+                    leax      L06F0,pcr
                     pshs      x
 L02E2               leax      $045f,y
                     pshs      x
@@ -553,7 +569,7 @@ L04DE               leax      L0790,pcr
                     beq       L053B
                     lbra      L056C
 
-L04F5               leax      $0794,pcr
+L04F5               leax      L0794,pcr
 L04F9               pshs      x
                     leax      $6b,s
                     pshs      x
@@ -694,7 +710,7 @@ L0625               ldd       $0565,y
                     beq       L0660
                     leax      $0C,s
                     pshs      x
-                    leax      $07A2,pcr
+                    leax      L07A2,pcr
                     pshs      x
                     leax      L079E,pcr
                     pshs      x
@@ -723,7 +739,7 @@ L0671               pshs      u
 L0681               lbsr      L0D20
 L0684               ldd       copybytes
                     bne       L0681
-L0688               leax      L07A3,pcr
+L0688               leax      $07A3,pcr
                     pshs      x
                     ldd       $0567,y
                     pshs      d
@@ -738,18 +754,17 @@ L069F               fcc       /unknown option '%s'/
 L06B4               fcc       /too many files/
                     fcb       $00
 L06C3               fcb       $72
-                    neg       $0063
-                    fcc       /an't open %s/
                     fcb       $00
-L06D3               asr       >$0063
-                    fcc       /an't open %s/
+L06C5               fcc       /can't open %s/
                     fcb       $00
-L06E3               com       $7461
-                    lsr       $6973
-                    lsr       $6963
-                    com       $3A0D
-                    neg       $0009
-                    fcc       /total instructions : %d/
+L06D3               fcb       $77
+                    fcb       $00
+L06D5               fcc       /can't open %s/
+                    fcb       $00
+L06E3               fcc       /statistics:/
+                    fcb       $0D,$00
+L06F0               rol       L0074
+                    fcc       /otal instructions : %d/
                     fcb       $0D,$00
 L070A               rol       $006C
                     fcc       /ong branches :  %5d, %5d, %3d%%/
@@ -764,24 +779,23 @@ L0775               fcc       /endsect/
                     fcb       $00
 L077D               fcc       /info/
                     fcb       $00
-L0782               jmp       $01,s
-                    tst       0,x
-L0786               bcs       $07FB
-                    tst       $0000
+L0782               fcb       $6E,$61,$6D
+                    fcb       $00
+L0786               fcb       $25,$73
+                    fcb       $0D,$00
 L078A               fcc       /psect/
                     fcb       $00
-L0790               lsr       $746C
-                    neg       $0076
-                    fcc       /sect/
+L0790               fcb       $74,$74,$6C
                     fcb       $00
-L079A               bcs       $080F
-                    tst       $0000
-L079E               jmp       $0f,s
-                    neg       >$0000
-L07A3               bra       $080A
-                    jmp       $04,s
-                    com       $6563
-                    lsr       $0D00
+L0794               fcc       /vsect/
+                    fcb       $00
+L079A               fcb       $25,$73
+                    fcb       $0D,$00
+L079E               fcb       $6E,$6F,$70
+                    fcb       $00
+L07A2               neg       L0020
+                    fcc       /endsect/
+                    fcb       $0D,$00
 L07AD               pshs      u
                     ldu       $06,s
                     leas      -$02,s
@@ -1521,7 +1535,7 @@ L0DDA               pshs      d
 L0DF2               leax      L10DA,pcr
 L0DF6               tfr       x,d
                     pshs      d
-                    leax      $10CF,pcr
+                    leax      L10CF,pcr
                     pshs      x
                     ldd       $0567,y
                     pshs      d
@@ -1808,47 +1822,57 @@ L1047               ldd       $0005
                     std       $0005
 L1050               puls      pc,u
                     fcb       $72,$61
-                    neg       $0073
-                    fcb       $72
-                    neg       $0065
-                    fcb       $71
-                    neg       $006E
-                    fcb       $65
-                    neg       $006C
-                    lsr       >L0067
-                    fcb       $65
-                    neg       $006C
-                    fcb       $65
-                    neg       L0067
-                    lsr       >$006C
-                    clr       0,x
-                    asl       -$0d,s
-                    neg       $006C
-                    com       >$0068
-                    rol       0,x
-                    neg       $6C00
-L1079               tst       $09,s
-                    neg       $0063
-                    com       0,x
-L107F               com       -$0d,s
-                    neg       $0076
-                    com       0,x
-                    ror       $7300
+                    fcb       $00
+                    fcb       $73,$72
+                    fcb       $00
+                    fcb       $65,$71
+                    fcb       $00
+                    fcb       $6E,$65
+                    fcb       $00
+                    fcb       $6C,$74
+                    fcb       $00
+                    fcb       $67,$65
+                    fcb       $00
+                    fcb       $6C,$65
+                    fcb       $00
+                    fcb       $67,$74
+                    fcb       $00
+                    fcb       $6C,$6F
+                    fcb       $00
+                    fcb       $68,$73
+                    fcb       $00
+                    fcb       $6C,$73
+                    fcb       $00
+L1073               fcb       $68,$69
+                    fcb       $00
+                    fcb       $70,$6C
+                    fcb       $00
+L1079               fcb       $6D,$69
+                    fcb       $00
+                    fcb       $63,$63
+                    fcb       $00
+L107F               fcb       $63,$73
+                    fcb       $00
+                    fcb       $76,$63
+                    fcb       $00
+                    fcb       $76,$73
+                    fcb       $00
 L1088               fcc       /puls/
                     fcb       $00
-L108D               bge       L10FF
-                    com       0,x
-L1091               fcb       $72
-                    lsr       $7300
+L108D               fcb       $2C,$70,$63
+                    fcb       $00
+L1091               fcb       $72,$74,$73
+                    fcb       $00
 L1095               fcc       /run out of instructions/
                     fcb       $00
 L10AD               fcc       /removing too many instructions/
                     fcb       $00
-L10CC               bcs       L1141
-                    neg       L0025
-                    fcc       /sb%s %s/
+L10CC               fcb       $25,$73
                     fcb       $00
-L10D8               inc       0,x
+L10CF               fcc       /%sb%s %s/
+                    fcb       $00
+L10D8               fcb       $6C
+                    fcb       $00
 L10DA               neg       L0025
                     com       >L0020
                     bcs       $1154
@@ -1867,7 +1891,7 @@ L10EA               ldd       $02,u
                     leax      d,x
                     stx       ,s
                     ldd       [,s]
-L10FF               std       $0e,u
+                    std       $0e,u
                     stu       [,s]
                     leau      $10,u
 L1106               ldd       ,u
@@ -1895,7 +1919,7 @@ L111A               leax      >$0015,y
                     ldd       $04,x
                     lbeq      L11C3
                     ldd       $06,u
-L1141               clra
+                    clra
                     andb      #$20
                     lbeq      L12F1
                     ldd       $06,u
@@ -2605,7 +2629,7 @@ L171D               ldd       ,s
                     ldd       $04,s
                     addd      #$000C
                     pshs      d
-                    leax      $17EE,pcr
+                    leax      L17EE,pcr
                     pshs      x
                     pshs      u
                     lbsr      L0A92
@@ -2665,39 +2689,37 @@ L17A1               ldd       $06,s
                     bne       L1766
                     leas      $02,s
                     puls      pc,u
-                    bge       $1823
-                    bmi       L17AD
-L17AD               bge       $1828
-                    bmi       L17B1
-L17B1               bge       $1828
-                    bmi       L17B5
-L17B5               bge       $17E4
-                    asl       >$002C
-                    blt       L1835
-                    neg       $002C
-                    blt       L1835
-                    neg       $002C
-                    asl       L2B2B
-                    neg       $002C
-                    rol       L2B2B
-                    neg       $002C
-                    fcb       $75
-                    bmi       $17FA
-                    neg       $002C
-                    blt       L1800
-                    asl       >$002C
-                    blt       $1805
-                    rol       >$002C
-                    blt       L180A
-                    fcb       $75
-                    neg       $002C
-                    com       L2B2B
-                    neg       $002D
-                    pshs      y,dp,b
-                    com       >$002D
-                    pshu      y,dp,b
-                    com       >$006C
-                    fcb       $62,$72,$61
+                    fcb       $2C,$78,$2B
+                    fcb       $00
+                    fcb       $2C,$79,$2B
+                    fcb       $00
+                    fcb       $2C,$75,$2B
+                    fcb       $00
+                    fcb       $2C,$2D,$78
+                    fcb       $00
+                    fcb       $2C,$2D,$79
+                    fcb       $00
+                    fcb       $2C,$2D,$75
+                    fcb       $00
+                    fcc       /,x++/
+                    fcb       $00
+                    fcc       /,y++/
+                    fcb       $00
+                    fcc       /,u++/
+                    fcb       $00
+                    fcc       /,--x/
+                    fcb       $00
+                    fcc       /,--y/
+                    fcb       $00
+                    fcc       /,--u/
+                    fcb       $00
+                    fcc       /,s++/
+                    fcb       $00
+                    fcc       /-4,s/
+                    fcb       $00
+                    fcc       /-6,s/
+                    fcb       $00
+L17EE               fcc       /lbra/
                     fcb       $00
 L17F3               pshs      u,d
                     ldd       $06,s
@@ -2705,10 +2727,10 @@ L17F3               pshs      u,d
                     lbsr      L273E
                     leas      $02,s
                     std       ,s
-L1800               cmpd      #$FFFF
+                    cmpd      #$FFFF
                     bne       L1810
                     leax      >L185E,pcr
-L180A               pshs      x
+                    pshs      x
                     bsr       L1814
                     leas      $02,s
 L1810               ldd       ,s
@@ -2728,7 +2750,7 @@ L1814               pshs      u
                     ldd       $0a,s
                     pshs      d
                     ldd       $0a,s
-L1835               pshs      d
+                    pshs      d
                     leax      $045f,y
                     pshs      x
                     lbsr      fprintf
@@ -4906,8 +4928,8 @@ L27DC               fcb       $00,$07,$00,$00,$00,$00,$00,$00 init table / work-
                     fcb       $36
                     fcb       $00,$BB,$01
                     fcb       $3E
-                    fcb       $00,$02,$17,$DF,$00,$00,$00
-L2B2B               fcb       $02,$00,$E4,$01
+                    fcb       $00,$02,$17,$DF,$00,$00,$00,$02
+                    fcb       $00,$E4,$01
                     fcb       $36
                     fcb       $00,$CB,$00
                     fcb       $4B
