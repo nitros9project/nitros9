@@ -46,7 +46,7 @@ def parse_fcb_file(path: str) -> bytes:
     with open(path, 'r', errors='replace') as fh:
         for line in fh:
             m = re.search(
-                r'\bfcb\s+((?:\$[0-9A-Fa-f]{1,2},?\s*)+)',
+                r'\bfcb\s+(\$[0-9A-Fa-f]{1,2}(?:,\$[0-9A-Fa-f]{1,2})*)',
                 line, re.IGNORECASE)
             if m:
                 for tok in re.findall(r'\$([0-9A-Fa-f]{1,2})', m.group(1)):
