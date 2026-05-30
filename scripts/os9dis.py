@@ -167,10 +167,23 @@ def find_string_regions(data: bytes, start: int, end: int) -> list[tuple[int, in
         # member is a 'real' (qualifying) string.  The run ends at the first
         # content stretch NOT terminated by NUL (e.g. code that merely looks
         # printable, like a 'pshs u' = $34,$40 = "4@").
-        run: list[tuple[int, int]] = []     # (start, terminator_pos)
+        run: list[tuple[int, int]] = []     # (start, end) regions
         anchored = False
         k = i
-        while k < end and is_content(data[k]):
+        while k < end:
+            if data[k] == 0x00:
+                # Extra NUL padding between table entries (e.g. "nop\0\0 endsect").
+                # Absorb only if another string follows; trailing NULs before
+                # code are left alone (could be a real 'neg' = $00,$xx).
+                p0 = k
+                while k < end and data[k] == 0x00:
+                    k += 1
+                if k < end and is_content(data[k]):
+                    run += [(p, p) for p in range(p0, k)]
+                    continue
+                break
+            if not is_content(data[k]):
+                break                       # code byte -> end of run
             s = k
             while k < end and is_content(data[k]):
                 k += 1
