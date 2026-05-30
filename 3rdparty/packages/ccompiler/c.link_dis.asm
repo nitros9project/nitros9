@@ -4320,11 +4320,9 @@ L28AA               pshs      u
                     stx       $066d,y
                     stb       -$01,x
                     puls      pc,u
-L28BC               blt       L28F1
-                    leas      -$09,y
-                    pshu      y,x,dp
-                    neg       $0034
-                    nega
+L28BC               fcc       /-32768/
+                    fcb       $00
+L28C3               pshs      u
                     ldu       $04,s
                     leas      -$06,s
                     cmpu      #$0000

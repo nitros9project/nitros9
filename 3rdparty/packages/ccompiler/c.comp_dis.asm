@@ -17135,11 +17135,9 @@ L9DD7               ldd       L0070
                     lbsr      LA1CD
 L9DE2               leas      $04,s
 L9DE4               puls      pc,u
-L9DE6               blt       $9E1B
-                    leas      -$09,y
-                    pshu      y,x,dp
-                    neg       $0034
-                    nega
+L9DE6               fcc       /-32768/
+                    fcb       $00
+L9DED               pshs      u
                     leau      $0246,y
 L9DF3               ldd       $06,u
                     clra
@@ -17411,9 +17409,9 @@ L9FEE               ldd       ,s
 LA004               ldd       $06,s
                     leas      $02,s
                     puls      pc,u
-LA00A               bcs       LA070
-                    neg       $0034
-                    nega
+LA00A               fcc       /%d/
+                    fcb       $00
+LA00D               pshs      u
                     ldu       $04,s
                     leas      -$06,s
                     cmpu      #$0000
@@ -18994,10 +18992,7 @@ LAD29               andb      #$80
                     sta       $22,u
 LAD32               rts
 
-LAD33               neg       $0000
-                    neg       $0000
-                    neg       $0000
-                    neg       $0081
+LAD33               fcb       $00,$00,$00,$00,$00,$00,$00,$81
                     leax      >LAD33,pcr
 LAD3F               pshs      a
                     ldd       ,x
