@@ -29,7 +29,7 @@ L0020               clra
 L0021               clrb
 L0022               sta       ,u+
 L0024               decb
-L0025               bne       L0022
+                    bne       L0022
                     ldx       ,s
                     leau      ,x
 L002B               leax      $0887,x
@@ -321,7 +321,7 @@ L02AB               ldd       $0567,y
                     std       $0569,y
                     lbsr      L091F
                     lbsr      L0A7C
-                    lbsr      $10E2
+                    lbsr      L10E2
                     lbsr      L03C0
                     ldd       $0007
                     lbeq      L037E
@@ -739,7 +739,7 @@ L0671               pshs      u
 L0681               lbsr      L0D20
 L0684               ldd       copybytes
                     bne       L0681
-L0688               leax      $07A3,pcr
+L0688               leax      L07A3,pcr
                     pshs      x
                     ldd       $0567,y
                     pshs      d
@@ -793,8 +793,8 @@ L079A               fcb       $25,$73
                     fcb       $0D,$00
 L079E               fcb       $6E,$6F,$70
                     fcb       $00
-L07A2               neg       L0020
-                    fcc       /endsect/
+L07A2               fcb       $00
+L07A3               fcc       / endsect/
                     fcb       $0D,$00
 L07AD               pshs      u
                     ldu       $06,s
@@ -1547,7 +1547,7 @@ L0E0D               pshs      u
                     ldd       #$0008
                     addd      ,s++
                     pshs      d
-                    leax      $10DB,pcr
+                    leax      L10DB,pcr
                     pshs      x
                     ldd       $0567,y
                     pshs      d
@@ -1557,7 +1557,7 @@ L0E0D               pshs      u
                     beq       L0E42
                     ldd       $13,u
                     pshs      d
-                    leax      $10DE,pcr
+                    leax      L10DE,pcr
                     pshs      x
                     ldd       $0567,y
                     pshs      d
@@ -1873,11 +1873,12 @@ L10CF               fcc       /%sb%s %s/
                     fcb       $00
 L10D8               fcb       $6C
                     fcb       $00
-L10DA               neg       L0025
-                    com       >L0020
-                    bcs       $1154
-                    neg       $0034
-                    rora
+L10DA               fcb       $00
+L10DB               fcb       $25,$73
+                    fcb       $00
+L10DE               fcb       $20,$25,$73
+                    fcb       $00
+L10E2               pshs      u,d
                     leau      $0146,y
                     bra       L1106
 
