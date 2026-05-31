@@ -76,7 +76,7 @@ UTILPAK1_MODS = attr copy date del deiniz dir display list makdir mdir \
 CMDS += dmem minted mmap modpatch \
 	proc pmap smap \
 	gfxstatus xtclut drawtest play \
-	shellbg shellbgoff ntptime view utilpak1
+	shellbg shellbgoff ntptime view utilpak1 fadein fadeout
 endif
 
 BASIC09 = basic09 runb inkey syscall wild
