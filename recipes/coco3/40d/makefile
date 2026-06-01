@@ -10,12 +10,12 @@ DSK_POST_COPY = $(MAKE) copy-sysgo-root DSKIMAGE=$@
 
 include ../coco3.mak
 
-MAME         ?= mame
+MAME_BINARY  ?= mame
 MAME_MACHINE ?= coco3
 MAME_FLAGS   ?= -window -nothrottle -skip_gameinfo -autoboot_delay 5 -autoboot_command "DOS\n" -ext fdc -ext:fdc:wd17xx:0 525qd
 
 run: $(DSKIMAGE)
-	$(MAME) $(MAME_MACHINE) $(MAME_FLAGS) -flop1 $(DSKIMAGE)
+	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) -flop1 $(DSKIMAGE)
 
 copy-sysgo-root:
 	$(OS9COPY) $(MODDIR)/sysgo_dd $(DSKIMAGE),sysgo
