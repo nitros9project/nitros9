@@ -10142,11 +10142,13 @@ SidStopOut          puls      cc,a,pc
 
 SidDirSize          equ       404                 ; 101 max-slot entries x 4 BE bytes
 SidMaxStream        equ       16384               ; matches /sid driver SidBufSize
-* XSID Phase D: /sid driver SetStt/GetStt codes
-SS.SidLoad          equ       $93                 ; push stream into driver
+SidChunkSize        equ       512                 ; chunked-write transfer unit
+* XSID Phase D (chunked-write): /sid driver SetStt/GetStt codes
+SS.SidPrep          equ       $93                 ; reset+set total length (was SS.SidLoad)
 SS.SidStart         equ       $94                 ; begin playback
 SS.SidStop          equ       $95                 ; halt playback
 SS.SidActv          equ       $96                 ; query active state
+SS.SidWrite         equ       $97                 ; F$Move one chunk into driver buffer
 
 * --------------------------------------------------------------------
 * SidStartupInit
@@ -10272,20 +10274,24 @@ SPD_Miss            puls      a,x,y,u
                     rts
 
 * --------------------------------------------------------------------
-* SidPlayPoly  (XSID Phase D — /sid driver client)
+* SidPlayPoly  (XSID Phase D — /sid driver client, chunked-write)
 *   Inputs:  X = file offset of stream within sidSnd
 *            Y = total stream length in bytes
 *   Output:  CC.C = 0 stream played to completion via /sid driver
 *            CC.C = 1 init failed (caller falls back to mono+SID)
 *
-*   Reads the entire stream into a 16 KB user-mode buffer (lazy-
-*   allocated via F$SRqMem on first call), then pushes it to the
-*   /sid driver with SS.SidLoad, kicks playback with SS.SidStart,
-*   and polls SS.SidActv with F$Sleep until the driver auto-stops.
+*   Tells the driver to allocate (SS.SidPrep), seeks sidSnd to the
+*   requested offset, streams the data into the driver in 512-byte
+*   chunks via I$Read into SidChunkBuf + SS.SidWrite, kicks playback
+*   with SS.SidStart, and polls SS.SidActv with F$Sleep until the
+*   driver auto-stops.
 *
 *   The 3-voice ring-buffer engine and per-voice state structs that
-*   previously lived in this module are GONE — that work is now done
-*   in IRQ context by sidirq.dr (loaded via OS9Boot).
+*   previously lived in this module are GONE -- that work is now done
+*   in IRQ context by sidirq.dr (loaded via OS9Boot).  The previous
+*   one-shot F$Mem path was replaced because F$Mem-grown buffers can
+*   collide with sierra.asm's manually-poked task-1 MMU slots and
+*   corrupt mnln's own code; see the sidirq.asm header comment.
 * --------------------------------------------------------------------
 SidPlayPoly         pshs      a,b,x,y,u
 * Stack frame after pshs (S+0..S+7):
@@ -10309,23 +10315,12 @@ SidPlayPoly         pshs      a,b,x,y,u
                     cmpd      #9                  ; driver requires hdr+>=1 byte
                     lblo      SPP_Fail
 
-* --- Lazy-allocate the user-mode read buffer (16 KB) ---
-                    ldd       >SidStreamPtr,pcr
-                    bne       SPP_HaveBuf
-* User-mode programs cannot call F$SRqMem (system-only -> E$UnkSvc).
-* Use F$Mem to grow our own data area; new bytes start at the old
-* upper bound (returned by the first F$Mem D=0 call in Y).
-                    ldd       #$0000              ; query current size
-                    os9       F$Mem
+* --- Tell driver the total length; resets WritePos=0 ---
+                    ldy       4,s                 ; R$Y = stream length
+                    lda       >SidDevPath,pcr
+                    ldb       #SS.SidPrep
+                    os9       I$SetStt
                     lbcs      SPP_Fail
-                    sty       >SidStreamPtr,pcr   ; save old top = buffer base
-                    addd      #SidMaxStream       ; D = current + 16 KB
-                    os9       F$Mem
-                    bcc       SPP_HaveBuf
-                    ldd       #$0000
-                    std       >SidStreamPtr,pcr   ; retry on next call
-                    lbra      SPP_Fail
-SPP_HaveBuf
 
 * --- Seek sidSnd to start of this stream ---
                     ldx       2,s                 ; X = file offset
@@ -10334,24 +10329,51 @@ SPP_HaveBuf
                     clrb                          ; absolute seek
                     lda       >SidSndPath,pcr
                     os9       I$Seek
-                    lbcs      SPP_Fail
+                    lbcs      SPP_StopErr
 
-* --- Read entire stream into our buffer ---
-                    ldx       >SidStreamPtr,pcr
-                    ldy       4,s                 ; length
+* --- Chunked read/write loop ---
+*   Push remaining = stream_length onto the stack.  All access to the
+*   original a,b,x,y,u frame shifts by +2 while the loop runs (so the
+*   length is at 6,s instead of 4,s, etc).  After the loop the extra
+*   word is popped to restore the original frame for the existing
+*   poll-and-exit code below.
+                    ldd       4,s                 ; D = total length
+                    pshs      d                   ; [,s] = remaining
+
+SPP_ChunkLoop       ldd       ,s                  ; D = remaining bytes still to push
+                    lbeq      SPP_AllWritten
+                    cmpd      #SidChunkSize
+                    bls       SPP_ChunkOK         ; remaining <= chunk size
+                    ldd       #SidChunkSize
+SPP_ChunkOK         tfr       d,y                 ; Y = bytes to read this iteration
+                    leax      >SidChunkBuf,pcr    ; X = read destination
                     lda       >SidSndPath,pcr
                     os9       I$Read
-                    lbcs      SPP_Fail
-                    cmpy      4,s                 ; got full length?
-                    lblo      SPP_Fail
+                    lbcs      SPP_ChunkErr
+                    cmpy      #0
+                    lbeq      SPP_ChunkErr        ; EOF before total bytes consumed
 
-* --- Push stream to /sid driver (SS.SidLoad expects X=ptr, Y=len) ---
-                    ldx       >SidStreamPtr,pcr
-                    ldy       4,s
+* Y = actual bytes read (may be < requested for a short read).
+* Push that many bytes into the driver via SS.SidWrite.  The driver
+* does NOT modify the caller's R$Y, so Y is still valid afterward.
+                    leax      >SidChunkBuf,pcr    ; R$X = src in caller task
                     lda       >SidDevPath,pcr
-                    ldb       #SS.SidLoad
+                    ldb       #SS.SidWrite
                     os9       I$SetStt
-                    lbcs      SPP_Fail
+                    lbcs      SPP_ChunkErr
+
+* Update remaining -= Y (=bytes actually written this iteration).
+                    pshs      y                   ; [,s] = count, [2,s] = remaining
+                    ldd       2,s                 ; D = remaining
+                    subd      ,s                  ; D = remaining - count
+                    std       2,s                 ; updated remaining
+                    leas      2,s                 ; pop count
+                    bra       SPP_ChunkLoop
+
+SPP_ChunkErr        leas      2,s                 ; pop remaining
+                    lbra      SPP_StopErr
+
+SPP_AllWritten      leas      2,s                 ; pop remaining; original frame restored
 
 * --- Start playback ---
                     lda       >SidDevPath,pcr
@@ -10387,8 +10409,9 @@ SPP_PollOK          leas      2,s
                     andcc     #$FE
                     rts
 
-* On start/poll failure, ask driver to stop before returning failure
-* so mono+SID fallback doesn't fight IRQ-driven voice writes.
+* On any failure after SS.SidPrep succeeded, ask driver to stop before
+* returning failure so mono+SID fallback doesn't fight stale driver
+* state.  SS.SidStop is a safe no-op when not currently playing.
 SPP_StopErr         lda       >SidDevPath,pcr
                     ldb       #SS.SidStop
                     os9       I$SetStt
@@ -10416,9 +10439,9 @@ SidLoaded           fcb       0                   ; 0=uninit, 1=ready, $FF=fail
 SidCurSound         fcb       0                   ; sound# captured at PlaySound
 SidSndPath          fcb       0                   ; persistent sidSnd path number
 SidDevPath          fcb       $FF                 ; /sid path ($FF=not open -> mono fallback)
-SidStreamPtr        fdb       0                   ; F$SRqMem'd 16 KB read buffer (0=not yet)
 
 SidDirBuf           fill      0,SidDirSize        ; 101 entries x 4 BE bytes (max)
+SidChunkBuf         fill      0,SidChunkSize      ; per-chunk read buffer for SS.SidWrite
 
 
 StrNothing          fcc       /nothing/
