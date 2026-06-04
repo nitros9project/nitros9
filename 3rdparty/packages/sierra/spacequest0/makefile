@@ -23,7 +23,8 @@ DISK_1_80D_NAME	= "Space Quest 0 Disk 1"
 DISK_2_80D_NAME	= "Space Quest 0 Disk 2"
 DISK_DW_NAME	= "Space Quest 0"
 
-CMDS		= sierra mnln scrn shdw tocgen
+CMDS		= sierra mnln scrn shdw tocgen xsidhello xsidpoly xsidstat
+BOOTOBJS	= sidirq.dr sid.dd
 MD		= $(LEVEL2)/coco3/modules
 
 # We make our own bootfile and kernel track
@@ -38,6 +39,7 @@ OS9BOOT_40D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft $(MD)/sysgo_dd
 
 OS9BOOT_80D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -47,6 +49,7 @@ OS9BOOT_80D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft $(MD)/sysgo_dd
 
 OS9BOOT_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -56,6 +59,7 @@ OS9BOOT_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 OS9BOOT_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -65,6 +69,7 @@ OS9BOOT_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 BOOTCMDS	= $(LEVEL2)/coco3/cmds/shell_21 $(LEVEL2)/coco3/cmds/date \
@@ -76,19 +81,34 @@ TEXTFILES	= ../startup tOC_80d.txt
 TEXTFILES_DW	= ../startup tOC_dw.txt
 
 SUPPORTFILES_D1	= logDir object picDir sndDir viewDir vol.0 \
-		vol.1 words.tok
+		vol.1 words.tok 
 
 SUPPORTFILES_D2	= object vol.0 vol.2
 
 SUPPORTFILES_D3	= object vol.0 vol.3
 
 SUPPORTFILES	= logDir object picDir sndDir viewDir vol.0 \
-		vol.1 vol.2 words.tok
+		vol.1 vol.2 words.tok $(SIDFILES)
 
 SUPPORTFILES_DW	= logDir object picDir sndDir viewDir vol.0 \
-		vol.1 vol.2 vol.3 words.tok
+		vol.1 vol.2 vol.3 words.tok $(SIDFILES)
 
-ALLOBJS		= $(CMDS)
+# Phase 2: optional SID polyphonic sound sidecar files.
+# Generated from the user's PC AGI Space Quest 0: Replicated install by
+# the Python extractor in ../tools/.  If $(SQ0R_PCASSETS) is unset or
+# its SNDDIR is missing, $(SIDFILES) is empty and the build proceeds
+# with mono-only sound resources (Phase 1 behaviour, fully backwards
+# compatible).
+SQ0R_PCASSETS	?= $(HOME)/sq0r-pcassets
+SIDFILES	:= $(if $(wildcard $(SQ0R_PCASSETS)/SNDDIR),sidDir sidSnd,)
+dsk: $(SIDFILES)
+
+sidDir sidSnd:	$(SQ0R_PCASSETS)/SNDDIR ../tools/agi_sid_extract.py \
+		../tools/agi_snd_parser.py
+	python3 ../tools/agi_sid_extract.py $(SQ0R_PCASSETS) \
+		--sid-dir sidDir --sid-snd sidSnd
+
+ALLOBJS		= $(CMDS) $(BOOTOBJS)
 
 all:	$(ALLOBJS)
 
@@ -208,7 +228,7 @@ dskcopy: dsk
 	$(CP) $(DSKS) $(DSKDIR)
 
 dskclean:
-	$(RM) $(DSKS)
+	$(RM) $(DSKS) sidDir sidSnd
 
 info:
 	@$(ECHO) "*** Space Quest 0 ***"

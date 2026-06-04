@@ -22,6 +22,7 @@ DISK_80D_NAME   = "King's Quest III"
 DSK_DW_NAME	= "King's Quest III"
 
 CMDS		= sierra mnln scrn shdw tocgen
+BOOTOBJS	= sidirq.dr sid.dd
 MD		= $(LEVEL2)/coco3/modules
 
 # We make our own bootfile and kernel track
@@ -36,6 +37,7 @@ OS9BOOT_40D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft $(MD)/sysgo_dd
 
 OS9BOOT_80D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -45,6 +47,7 @@ OS9BOOT_80D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft $(MD)/sysgo_dd
 
 BOOTFILE_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -54,6 +57,7 @@ BOOTFILE_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 BOOTFILE_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -63,6 +67,7 @@ BOOTFILE_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 BOOTCMDS	= $(LEVEL2)/coco3/cmds/shell_21 $(LEVEL2)/coco3/cmds/date \
@@ -82,9 +87,24 @@ SUPPORTFILES_D3	= object vol.0 vol.5 vol.6 vol.7 vol.9 vol.11 vol.12 vol.14
 
 SUPPORTFILES	= logDir object picDir sndDir viewDir vol.0 \
 		vol.1 vol.2 vol.3 vol.4 vol.5 vol.6 vol.7 vol.8 vol.9 \
-		vol.11 vol.12 vol.14 words.tok
+		vol.11 vol.12 vol.14 words.tok $(SIDFILES)
 
-ALLOBJS		= $(CMDS)
+# Phase 2: optional SID polyphonic sound sidecar files.
+# Generated from the user's PC AGI kingsquest3 install by the Python
+# extractor in ../tools/.  If $(KQ3_PCASSETS) is unset or its
+# SNDDIR is missing, $(SIDFILES) is empty and the build proceeds with
+# mono-only sound resources (Phase 1 behaviour, fully backwards
+# compatible with the original engine).
+KQ3_PCASSETS	?= $(HOME)/kingsquest3-pcassets
+SIDFILES	:= $(if $(wildcard $(KQ3_PCASSETS)/SNDDIR),sidDir sidSnd,)
+dsk: $(SIDFILES)
+
+sidDir sidSnd:	$(KQ3_PCASSETS)/SNDDIR ../tools/agi_sid_extract.py \
+		../tools/agi_snd_parser.py
+	python3 ../tools/agi_sid_extract.py $(KQ3_PCASSETS) \
+		--sid-dir sidDir --sid-snd sidSnd
+
+ALLOBJS		= $(CMDS) $(BOOTOBJS)
 
 all:	$(ALLOBJS)
 
@@ -199,7 +219,7 @@ dskcopy: dsk
 	$(CP) $(DSKS) $(DSKDIR)
 
 dskclean:
-	$(RM) $(DSKS)
+	$(RM) $(DSKS) sidDir sidSnd
 
 info:
 	@$(ECHO) "*** King's Quest III ***"

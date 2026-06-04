@@ -20,6 +20,7 @@ DISK_3_80D_NAME = "Gold Rush Disk 3"
 DSKDW_NAME	= "Gold Rush"
 
 CMDS		= sierra mnln scrn shdw tocgen
+BOOTOBJS	= sidirq.dr sid.dd
 MD		= $(LEVEL2)/coco3/modules
 
 # We make our own bootfile and kernel track
@@ -33,6 +34,7 @@ BOOTFILE_80D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft $(MD)/sysgo_dd
 
 BOOTFILE_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -42,6 +44,7 @@ BOOTFILE_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 BOOTFILE_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -51,6 +54,7 @@ BOOTFILE_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 BOOTCMDS	= $(LEVEL2)/coco3/cmds/shell_21 $(LEVEL2)/coco3/cmds/date \
@@ -61,7 +65,7 @@ TEXTFILES_D1	= ../startup tOC_80d.txt
 TEXTFILES_DW	= ../startup tOC_dw.txt
 
 SUPPORTFILES_D1	= logDir object picDir sndDir viewDir vol.0 \
-		vol.1 vol.2 vol.9 vol.10 vol.11 vol.12 words.tok
+		vol.1 vol.2 vol.9 vol.10 vol.11 vol.12 words.tok $(SIDFILES)
 
 SUPPORTFILES_D2	= object vol.0 vol.3 vol.9 vol.11
 
@@ -69,9 +73,24 @@ SUPPORTFILES_D3	= object vol.0 vol.4 vol.5 vol.9 vol.11 vol.12
 
 SUPPORTFILES_ALL	= logDir object picDir sndDir viewDir vol.0 \
 		vol.1 vol.2 vol.3 vol.4 vol.5 vol.9 vol.10 \
-		vol.11 vol.12 words.tok
+		vol.11 vol.12 words.tok $(SIDFILES)
 
-ALLOBJS		= $(CMDS)
+# Phase 2: optional SID polyphonic sound sidecar files.
+# Generated from the user's PC AGI goldrush install by the Python
+# extractor in ../tools/.  If $(GOLDRUSH_PCASSETS) is unset or its
+# SNDDIR is missing, $(SIDFILES) is empty and the build proceeds with
+# mono-only sound resources (Phase 1 behaviour, fully backwards
+# compatible with the original engine).
+GOLDRUSH_PCASSETS	?= $(HOME)/goldrush-pcassets
+SIDFILES	:= $(if $(wildcard $(GOLDRUSH_PCASSETS)/SNDDIR),sidDir sidSnd,)
+dsk: $(SIDFILES)
+
+sidDir sidSnd:	$(GOLDRUSH_PCASSETS)/SNDDIR ../tools/agi_sid_extract.py \
+		../tools/agi_snd_parser.py
+	python3 ../tools/agi_sid_extract.py $(GOLDRUSH_PCASSETS) \
+		--sid-dir sidDir --sid-snd sidSnd
+
+ALLOBJS		= $(CMDS) $(BOOTOBJS)
 
 all:	$(ALLOBJS)
 
@@ -164,7 +183,7 @@ dskcopy: dsk
 	$(CP) $(DSKS) $(DSKDIR)
 
 dskclean:
-	$(RM) $(DSKS)
+	$(RM) $(DSKS) sidDir sidSnd
 
 info:
 	@$(ECHO) "*** Gold Rush ***"

@@ -15,6 +15,7 @@ DSK_NAME	= "Leisure Suit Larry"
 DSKS		= $(DSK_FLOPPY) $(DSK_DW) $(DSK_DW_BECKER)
 
 CMDS		= sierra mnln scrn shdw tocgen
+BOOTOBJS	= sidirq.dr sid.dd
 MD		= $(LEVEL2)/coco3/modules
 
 # We make our own bootfile and kernel track
@@ -29,6 +30,7 @@ BOOTFILE_FLOPPY	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft $(MD)/sysgo_dd
 
 BOOTFILE_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -38,6 +40,7 @@ BOOTFILE_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 BOOTFILE_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -47,12 +50,28 @@ BOOTFILE_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 SUPPORTFILES	= logDir object picDir sndDir viewDir vol.0 \
-		vol.1 vol.2 vol.3 vol.4 words.tok
+		vol.1 vol.2 vol.3 vol.4 words.tok $(SIDFILES)
 
-ALLOBJS		= $(CMDS)
+# Phase 2: optional SID polyphonic sound sidecar files.
+# Generated from the user's PC AGI leisuresuitlarry install by the Python
+# extractor in ../tools/.  If $(LSL_PCASSETS) is unset or its
+# SNDDIR is missing, $(SIDFILES) is empty and the build proceeds with
+# mono-only sound resources (Phase 1 behaviour, fully backwards
+# compatible with the original engine).
+LSL_PCASSETS	?= $(HOME)/leisuresuitlarry-pcassets
+SIDFILES	:= $(if $(wildcard $(LSL_PCASSETS)/SNDDIR),sidDir sidSnd,)
+dsk: $(SIDFILES)
+
+sidDir sidSnd:	$(LSL_PCASSETS)/SNDDIR ../tools/agi_sid_extract.py \
+		../tools/agi_snd_parser.py
+	python3 ../tools/agi_sid_extract.py $(LSL_PCASSETS) \
+		--sid-dir sidDir --sid-snd sidSnd
+
+ALLOBJS		= $(CMDS) $(BOOTOBJS)
 
 all:	$(ALLOBJS)
 
@@ -119,7 +138,7 @@ dskcopy: dsk
 	$(CP) $(DSKS) $(DSKDIR)
 
 dskclean:
-	$(RM) $(DSKS)
+	$(RM) $(DSKS) sidDir sidSnd
 
 info:
 	@$(ECHO) "*** Leisure Suit Larry ***"

@@ -16,6 +16,7 @@ DISK_40D_NAME	= "King's Quest I"
 DSKDW_NAME	= $(DISK_40D_NAME)
 
 CMDS		= sierra mnln scrn shdw tocgen
+BOOTOBJS	= sidirq.dr sid.dd
 MD		= $(LEVEL2)/coco3/modules
 
 # We make our own bootfile and kernel track
@@ -30,6 +31,7 @@ BOOTFILE_40D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft $(MD)/sysgo_dd
 
 BOOTFILE_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -39,6 +41,7 @@ BOOTFILE_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 BOOTFILE_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -48,6 +51,7 @@ BOOTFILE_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 BOOTCMDS	= $(LEVEL2)/coco3/cmds/shell_21 $(LEVEL2)/coco3/cmds/date \
@@ -57,9 +61,24 @@ BOOTCMDS	= $(LEVEL2)/coco3/cmds/shell_21 $(LEVEL2)/coco3/cmds/date \
 TEXTFILES	= ../startup tOC_40d.txt
 
 SUPPORTFILES	= logDir object picDir sndDir viewDir vol.0 \
-		vol.1 vol.2 words.tok
+		vol.1 vol.2 words.tok $(SIDFILES)
 
-ALLOBJS		= $(CMDS)
+# Phase 2: optional SID polyphonic sound sidecar files.
+# Generated from the user's PC AGI kingsquest1 install by the Python
+# extractor in ../tools/.  If $(KQ1_PCASSETS) is unset or its
+# SNDDIR is missing, $(SIDFILES) is empty and the build proceeds with
+# mono-only sound resources (Phase 1 behaviour, fully backwards
+# compatible with the original engine).
+KQ1_PCASSETS	?= $(HOME)/kingsquest1-pcassets
+SIDFILES	:= $(if $(wildcard $(KQ1_PCASSETS)/SNDDIR),sidDir sidSnd,)
+dsk: $(SIDFILES)
+
+sidDir sidSnd:	$(KQ1_PCASSETS)/SNDDIR ../tools/agi_sid_extract.py \
+		../tools/agi_snd_parser.py
+	python3 ../tools/agi_sid_extract.py $(KQ1_PCASSETS) \
+		--sid-dir sidDir --sid-snd sidSnd
+
+ALLOBJS		= $(CMDS) $(BOOTOBJS)
 
 all:	$(ALLOBJS)
 
@@ -141,7 +160,7 @@ dskcopy: dsk
 	$(CP) $(DSKS) $(DSKDIR)
 
 dskclean:
-	$(RM) $(DSKS)
+	$(RM) $(DSKS) sidDir sidSnd
 
 info:
 	@$(ECHO) "*** King's Quest I ***"

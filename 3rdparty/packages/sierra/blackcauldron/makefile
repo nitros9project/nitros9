@@ -20,6 +20,7 @@ DISK_80D_NAME   = "The Black Cauldron"
 DSK_DW_NAME     = $(DISK_80D_NAME)
 
 CMDS		= sierra mnln scrn shdw tocgen
+BOOTOBJS	= sidirq.dr sid.dd
 MD		= $(LEVEL2)/coco3/modules
 
 # We make our own bootfile and KERNEL_FLOPPY track
@@ -33,6 +34,7 @@ BOOTFILE_40D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft $(MD)/sysgo_dd
 
 BOOTFILE_80D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -42,6 +44,7 @@ BOOTFILE_80D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft $(MD)/sysgo_dd
 
 BOOTFILE_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -51,6 +54,7 @@ BOOTFILE_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 BOOTFILE_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -60,6 +64,7 @@ BOOTFILE_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 
@@ -71,13 +76,28 @@ TEXTFILES_D1	= ../startup tOC_40d.txt
 TEXTFILES	= ../startup tOC_40d.txt
 
 SUPPORTFILES_D1	= logDir object picDir sndDir viewDir vol.0 \
-		vol.1 words.tok
+		vol.1 words.tok $(SIDFILES)
 
 SUPPORTFILES_D2	= object vol.0 vol.2
 
 SUPPORTFILES	= $(sort $(SUPPORTFILES_D1) $(SUPPORTFILES_D2))
 
-ALLOBJS		= $(CMDS)
+# Phase 2: optional SID polyphonic sound sidecar files.
+# Generated from the user's PC AGI blackcauldron install by the Python
+# extractor in ../tools/.  If $(BLACKCAULDRON_PCASSETS) is unset or its
+# SNDDIR is missing, $(SIDFILES) is empty and the build proceeds with
+# mono-only sound resources (Phase 1 behaviour, fully backwards
+# compatible with the original engine).
+BLACKCAULDRON_PCASSETS	?= $(HOME)/blackcauldron-pcassets
+SIDFILES	:= $(if $(wildcard $(BLACKCAULDRON_PCASSETS)/SNDDIR),sidDir sidSnd,)
+dsk: $(SIDFILES)
+
+sidDir sidSnd:	$(BLACKCAULDRON_PCASSETS)/SNDDIR ../tools/agi_sid_extract.py \
+		../tools/agi_snd_parser.py
+	python3 ../tools/agi_sid_extract.py $(BLACKCAULDRON_PCASSETS) \
+		--sid-dir sidDir --sid-snd sidSnd
+
+ALLOBJS		= $(CMDS) $(BOOTOBJS)
 
 all:	$(ALLOBJS)
 
@@ -188,7 +208,7 @@ dskcopy: dsk
 	$(CP) $(DSKS) $(DSKDIR)
 
 dskclean:
-	$(RM) $(DSKS)
+	$(RM) $(DSKS) sidDir sidSnd
 
 info:
 	@$(ECHO) "*** The Black Cauldron ***"

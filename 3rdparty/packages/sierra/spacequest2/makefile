@@ -23,6 +23,7 @@ DISK_80D_NAME   = "Space Quest II"
 DISK_DW_NAME   = "Space Quest II"
 
 CMDS		= sierra mnln scrn shdw tocgen
+BOOTOBJS	= sidirq.dr sid.dd
 MD		= $(LEVEL2)/coco3/modules
 
 # We make our own bootfile and kernel track
@@ -37,6 +38,7 @@ OS9BOOT_40D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft $(MD)/sysgo_dd
 
 OS9BOOT_80D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -46,6 +48,7 @@ OS9BOOT_80D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft $(MD)/sysgo_dd
 
 OS9BOOT_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -55,6 +58,7 @@ OS9BOOT_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 OS9BOOT_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -64,6 +68,7 @@ OS9BOOT_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
+		sidirq.dr sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 BOOTCMDS	= $(LEVEL2)/coco3/cmds/shell_21 $(LEVEL2)/coco3/cmds/date \
@@ -74,16 +79,42 @@ TEXTFILES_D1	= ../startup tOC_40d.txt
 TEXTFILES	= ../startup tOC_80d.txt
 
 SUPPORTFILES_D1	= logDir object picDir sndDir viewDir vol.0 \
-		vol.1 words.tok
+		vol.1 words.tok $(SIDFILES)
 
 SUPPORTFILES_D2	= object vol.0 vol.2
 
 SUPPORTFILES_D3	= object vol.0 vol.3
 
-SUPPORTFILES	= logDir object picDir sndDir viewDir vol.0 \
+# The 720KB 80-track variant cannot fit sidSnd alongside the 4 VOL files
+# + boot track + words.tok + sidDir (verified 2026-06-04: copy ran out of
+# free sectors mid-sidSnd).  Use the DriveWire or Becker variants for
+# polyphonic SID on SpaceQuest II.  The 80d disk falls back to mono+SID.
+SUPPORTFILES_80D	= logDir object picDir sndDir viewDir vol.0 \
 		vol.1 vol.2 vol.3 words.tok
 
-ALLOBJS		= $(CMDS)
+SUPPORTFILES	= logDir object picDir sndDir viewDir vol.0 \
+		vol.1 vol.2 vol.3 words.tok $(SIDFILES)
+
+# Phase 2: optional SID polyphonic sound sidecar files.
+# Generated from the user's PC AGI Space Quest II install by the Python
+# extractor in ../tools/.  If $(SQ2_PCASSETS) is unset or its SNDDIR
+# is missing, $(SIDFILES) is empty and the build proceeds with mono-only
+# sound resources (Phase 1 behaviour, fully backwards compatible).
+#
+# Disk-space note: the 720KB 80-track variant used to omit sidDir/sidSnd
+# (~19KB) because the boot+vol files were tight.  After the Phase E
+# poly-driver rollout (sidirq.dr +1067 B, sid.dd +35 B), free-space audit
+# showed ~50KB headroom, so sidDir/sidSnd are now included on 80d too.
+SQ2_PCASSETS	?= $(HOME)/spacequest2-pcassets
+SIDFILES	:= $(if $(wildcard $(SQ2_PCASSETS)/SNDDIR),sidDir sidSnd,)
+dsk: $(SIDFILES)
+
+sidDir sidSnd:	$(SQ2_PCASSETS)/SNDDIR ../tools/agi_sid_extract.py \
+		../tools/agi_snd_parser.py
+	python3 ../tools/agi_sid_extract.py $(SQ2_PCASSETS) \
+		--sid-dir sidDir --sid-snd sidSnd
+
+ALLOBJS		= $(CMDS) $(BOOTOBJS)
 
 all:	$(ALLOBJS)
 
@@ -141,7 +172,7 @@ $(DISK_80D):
 	$(OS9RENAME) $@,CMDS/sierra AutoEx
 	$(CPL) $(TEXTFILES) $@,.
 	$(OS9RENAME) $@,tOC_80d.txt tOC.txt
-	$(OS9COPY) $(SUPPORTFILES) $@,.
+	$(OS9COPY) $(SUPPORTFILES_80D) $@,.
 	$(MOVE) tocgen toctmp	# to not confuse Windows hosts
 	tocgen $@,tOC.txt $@,tOC
 	$(MOVE) toctmp tocgen
@@ -198,7 +229,7 @@ dskcopy: dsk
 	$(CP) $(DSKS) $(DSKDIR)
 
 dskclean:
-	$(RM) $(DSKS)
+	$(RM) $(DSKS) sidDir sidSnd
 
 info:
 	@$(ECHO) "*** Space Quest II ***"

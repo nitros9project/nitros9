@@ -9012,6 +9012,12 @@ StrPicDir           fcc       /picDir/
                     fcb       0
 StrSndDir           fcc       /sndDir/
                     fcb       0
+StrSidDir           fcc       /sidDir/
+                    fcb       0
+StrSidSnd           fcc       /sidSnd/
+                    fcb       0
+StrSidDev           fcc       "/sid"
+                    fcb       0
 StrResNotFound      fcc       /%s #%d not found./
                     fcb       0
 
@@ -9074,7 +9080,8 @@ LoadSndDirCall      leau      >SndDirPage,pcr ; address of sound dir page word
                     pshs      x         ; push filename
                     lbsr      FileLoad  ; load sound directory
                     leas      $08,s     ; discard args
-                    rts
+                    lbra      SidStartupInit ; XSID Phase 2: probe + load sidDir/sidSnd
+*                   (SidStartupInit's rts returns to LoadAllDirs caller)
 
 CheckResPtr         lda       ,u        ; load first byte of dir entry
                     cmpa      #$FF      ; is entry invalid?
@@ -9325,6 +9332,12 @@ SoundPIA1Ctrl       fcb       0
 SoundPIA2Ctrl       fcb       0
 SoundEnableReg      fcb       0
 
+* XSID extension: detection state for the CoCo X-SID cart in MPI slot 1.
+*   0     = not yet probed (will probe on first PlaySound call)
+*   $01   = present and verified -> PlaySound routes voice 1 to SID
+*   $FF   = absent / probe failed -> PlaySound uses original DAC code
+SidPresent          fcb       0
+
 NoteFreqTable       fcb       $07,$78
                     fcb       $07,$0C
                     fcb       $06,$A8
@@ -9447,6 +9460,139 @@ NoteFreqTable       fcb       $07,$78
                     fcb       $00,$3D
                     fcb       $00,$40
                     fcb       $00,$42
+
+* XSID extension: SID voice-1 frequency-register values, one per note,
+* parallel to the half-period entries at the top of NoteFreqTable.
+* Generated to match the same audible frequency that the original
+* DAC bit-bang loop produces for each note, computed assuming the
+* MAME coco_xsid stock 1 MHz clock.  Pitch is only approximate (the
+* DAC loop's actual frequency depends on exact CPU clock rate), but
+* well within musical tolerance for Phase 1.
+*   freq_reg = audible_hz * 16777216 / 1_000_000
+*   audible_hz = cpu_hz / (54 + 14 * half_period)   (cpu_hz = 894886)
+* 61 entries, 16-bit each = 122 bytes.
+SidFreqTable        fdb       $0230               ; n000 hp=$0778 ~   33 Hz
+                    fdb       $0251               ; n001 hp=$070C ~   35 Hz
+                    fdb       $0274               ; n002 hp=$06A8 ~   37 Hz
+                    fdb       $0299               ; n003 hp=$0648 ~   40 Hz
+                    fdb       $02C2               ; n004 hp=$05EC ~   42 Hz
+                    fdb       $02EB               ; n005 hp=$0598 ~   45 Hz
+                    fdb       $0317               ; n006 hp=$0548 ~   47 Hz
+                    fdb       $0346               ; n007 hp=$04FC ~   50 Hz
+                    fdb       $0378               ; n008 hp=$04B4 ~   53 Hz
+                    fdb       $03AD               ; n009 hp=$0470 ~   56 Hz
+                    fdb       $03E5               ; n010 hp=$0430 ~   59 Hz
+                    fdb       $0420               ; n011 hp=$03F4 ~   63 Hz
+                    fdb       $045D               ; n012 hp=$03BC ~   67 Hz
+                    fdb       $04A0               ; n013 hp=$0386 ~   71 Hz
+                    fdb       $04E5               ; n014 hp=$0354 ~   75 Hz
+                    fdb       $052F               ; n015 hp=$0324 ~   79 Hz
+                    fdb       $0580               ; n016 hp=$02F6 ~   84 Hz
+                    fdb       $05D2               ; n017 hp=$02CC ~   89 Hz
+                    fdb       $0629               ; n018 hp=$02A4 ~   94 Hz
+                    fdb       $0687               ; n019 hp=$027E ~  100 Hz
+                    fdb       $06EA               ; n020 hp=$025A ~  106 Hz
+                    fdb       $0753               ; n021 hp=$0238 ~  112 Hz
+                    fdb       $07C2               ; n022 hp=$0218 ~  118 Hz
+                    fdb       $0837               ; n023 hp=$01FA ~  125 Hz
+                    fdb       $08B2               ; n024 hp=$01DE ~  133 Hz
+                    fdb       $093B               ; n025 hp=$01C2 ~  141 Hz
+                    fdb       $09BF               ; n026 hp=$01AA ~  149 Hz
+                    fdb       $0A52               ; n027 hp=$0192 ~  157 Hz
+                    fdb       $0AF8               ; n028 hp=$017A ~  167 Hz
+                    fdb       $0B94               ; n029 hp=$0166 ~  177 Hz
+                    fdb       $0C41               ; n030 hp=$0152 ~  187 Hz
+                    fdb       $0D04               ; n031 hp=$013E ~  199 Hz
+                    fdb       $0DC9               ; n032 hp=$012C ~  210 Hz
+                    fdb       $0E8D               ; n033 hp=$011C ~  222 Hz
+                    fdb       $0F69               ; n034 hp=$010C ~  235 Hz
+                    fdb       $105F               ; n035 hp=$00FC ~  250 Hz
+                    fdb       $1152               ; n036 hp=$00EE ~  264 Hz
+                    fdb       $123A               ; n037 hp=$00E2 ~  278 Hz
+                    fdb       $1368               ; n038 hp=$00D4 ~  296 Hz
+                    fdb       $148D               ; n039 hp=$00C8 ~  314 Hz
+                    fdb       $159C               ; n040 hp=$00BE ~  330 Hz
+                    fdb       $1709               ; n041 hp=$00B2 ~  351 Hz
+                    fdb       $1860               ; n042 hp=$00A8 ~  372 Hz
+                    fdb       $1A35               ; n043 hp=$009C ~  400 Hz
+                    fdb       $1B3A               ; n044 hp=$0096 ~  415 Hz
+                    fdb       $1CB8               ; n045 hp=$008E ~  438 Hz
+                    fdb       $1E63               ; n046 hp=$0086 ~  464 Hz
+                    fdb       $2042               ; n047 hp=$007E ~  492 Hz
+                    fdb       $21D2               ; n048 hp=$0078 ~  516 Hz
+                    fdb       $2428               ; n049 hp=$0070 ~  552 Hz
+                    fdb       $2622               ; n050 hp=$006A ~  582 Hz
+                    fdb       $2856               ; n051 hp=$0064 ~  615 Hz
+                    fdb       $2ACF               ; n052 hp=$005E ~  653 Hz
+                    fdb       $2CA2               ; n053 hp=$005A ~  681 Hz
+                    fdb       $2FAE               ; n054 hp=$0054 ~  728 Hz
+                    fdb       $31F4               ; n055 hp=$0050 ~  762 Hz
+                    fdb       $3475               ; n056 hp=$004C ~  800 Hz
+                    fdb       $38B8               ; n057 hp=$0046 ~  865 Hz
+                    fdb       $3BF7               ; n058 hp=$0042 ~  915 Hz
+                    fdb       $3F9C               ; n059 hp=$003E ~  971 Hz
+                    fdb       $419A               ; n060 hp=$003C ~ 1001 Hz
+                    fdb       $FFFF               ; n061 hp=$0002 ~10913 Hz
+                    fdb       $FFFF               ; n062 hp=$0002 ~10913 Hz
+                    fdb       $FFFF               ; n063 hp=$0002 ~10913 Hz
+                    fdb       $FFFF               ; n064 hp=$0003 ~ 9322 Hz
+                    fdb       $FFFF               ; n065 hp=$0003 ~ 9322 Hz
+                    fdb       $FFFF               ; n066 hp=$0003 ~ 9322 Hz
+                    fdb       $FFFF               ; n067 hp=$0003 ~ 9322 Hz
+                    fdb       $FFFF               ; n068 hp=$0003 ~ 9322 Hz
+                    fdb       $FFFF               ; n069 hp=$0003 ~ 9322 Hz
+                    fdb       $FFFF               ; n070 hp=$0004 ~ 8135 Hz
+                    fdb       $FFFF               ; n071 hp=$0004 ~ 8135 Hz
+                    fdb       $FFFF               ; n072 hp=$0004 ~ 8135 Hz
+                    fdb       $FFFF               ; n073 hp=$0004 ~ 8135 Hz
+                    fdb       $FFFF               ; n074 hp=$0005 ~ 7217 Hz
+                    fdb       $FFFF               ; n075 hp=$0005 ~ 7217 Hz
+                    fdb       $FFFF               ; n076 hp=$0005 ~ 7217 Hz
+                    fdb       $FFFF               ; n077 hp=$0005 ~ 7217 Hz
+                    fdb       $FFFF               ; n078 hp=$0006 ~ 6485 Hz
+                    fdb       $FFFF               ; n079 hp=$0006 ~ 6485 Hz
+                    fdb       $FFFF               ; n080 hp=$0006 ~ 6485 Hz
+                    fdb       $FFFF               ; n081 hp=$0007 ~ 5887 Hz
+                    fdb       $FFFF               ; n082 hp=$0007 ~ 5887 Hz
+                    fdb       $FFFF               ; n083 hp=$0008 ~ 5391 Hz
+                    fdb       $FFFF               ; n084 hp=$0008 ~ 5391 Hz
+                    fdb       $FFFF               ; n085 hp=$0009 ~ 4972 Hz
+                    fdb       $FFFF               ; n086 hp=$0009 ~ 4972 Hz
+                    fdb       $FFFF               ; n087 hp=$000A ~ 4613 Hz
+                    fdb       $FFFF               ; n088 hp=$000A ~ 4613 Hz
+                    fdb       $FFFF               ; n089 hp=$000B ~ 4302 Hz
+                    fdb       $FFFF               ; n090 hp=$000C ~ 4031 Hz
+                    fdb       $FFFF               ; n091 hp=$000C ~ 4031 Hz
+                    fdb       $F881               ; n092 hp=$000D ~ 3792 Hz
+                    fdb       $EA97               ; n093 hp=$000E ~ 3580 Hz
+                    fdb       $EA97               ; n094 hp=$000E ~ 3580 Hz
+                    fdb       $DE26               ; n095 hp=$000F ~ 3390 Hz
+                    fdb       $D2F6               ; n096 hp=$0010 ~ 3219 Hz
+                    fdb       $C8D9               ; n097 hp=$0011 ~ 3065 Hz
+                    fdb       $BFA8               ; n098 hp=$0012 ~ 2924 Hz
+                    fdb       $B746               ; n099 hp=$0013 ~ 2797 Hz
+                    fdb       $AF97               ; n100 hp=$0014 ~ 2679 Hz
+                    fdb       $A887               ; n101 hp=$0015 ~ 2572 Hz
+                    fdb       $9BFA               ; n102 hp=$0017 ~ 2380 Hz
+                    fdb       $912B               ; n103 hp=$0019 ~ 2215 Hz
+                    fdb       $8C4E               ; n104 hp=$001A ~ 2141 Hz
+                    fdb       $87C2               ; n105 hp=$001B ~ 2071 Hz
+                    fdb       $7F7E               ; n106 hp=$001D ~ 1945 Hz
+                    fdb       $7BBA               ; n107 hp=$001E ~ 1888 Hz
+                    fdb       $74D4               ; n108 hp=$0020 ~ 1783 Hz
+                    fdb       $6EA8               ; n109 hp=$0022 ~ 1688 Hz
+                    fdb       $691A               ; n110 hp=$0024 ~ 1604 Hz
+                    fdb       $6415               ; n111 hp=$0026 ~ 1527 Hz
+                    fdb       $5F84               ; n112 hp=$0028 ~ 1457 Hz
+                    fdb       $5967               ; n113 hp=$002B ~ 1364 Hz
+                    fdb       $55BE               ; n114 hp=$002D ~ 1308 Hz
+                    fdb       $50C8               ; n115 hp=$0030 ~ 1233 Hz
+                    fdb       $4C5D               ; n116 hp=$0033 ~ 1165 Hz
+                    fdb       $49AD               ; n117 hp=$0035 ~ 1124 Hz
+                    fdb       $44D6               ; n118 hp=$0039 ~ 1050 Hz
+                    fdb       $4097               ; n119 hp=$003D ~  986 Hz
+                    fdb       $3DBC               ; n120 hp=$0040 ~  942 Hz
+                    fdb       $3BF7               ; n121 hp=$0042 ~  915 Hz
 
 MonthDayTable       fcb       0
                     fcb       $1f,$1c
@@ -9628,10 +9774,51 @@ SoundSetFlagDone    lda       ,y+       ; fetch flag number to set
                     leas      $0B,s     ; release local frame
                     rts
 
-PlaySound           pshs      y         ; save logic script pointer
-                    clrb                ; B = 0 (initial silence)
+PlaySound           pshs      y,u       ; save logic script ptr + sound node U
+                    ldb       2,u       ; XSID Phase 2: capture sound# from node
+                    stb       >SidCurSound,pcr
+* XSID extension: probe for X-SID on first PlaySound call.
+*   SidPresent = $00  not yet probed (initial state in .fcb)
+*   SidPresent = $01  probed and X-SID present  -> use SID, mute DAC
+*   SidPresent = $FF  probed and X-SID absent   -> fall through to
+*                                                  original DAC path
+* On systems without X-SID (or even without MPI), this branch leaves
+* SoundPIASave's DAC setup intact and the original PlaySoundLoop +
+* PlaySoundWaveHigh DAC bit-bang runs unchanged.
+                    lda       >SidPresent,pcr
+                    bne       PlaySoundProbed   ; already probed
+                    lbsr      SidProbe          ; first call: probe
+                    lda       >SidPresent,pcr   ; reload result
+PlaySoundProbed     cmpa      #$01              ; SID actually present?
+                    bne       PlaySoundNoSid    ; no -> pure DAC Phase 0 path
+* SID present: attempt Phase 2 polyphonic playback first.
+* SidPlayDispatch checks SidDir for a matching stream; if found, loads
+* and plays it (blocking with IRQs enabled), then returns CC.C=0.
+* If no poly stream available, returns CC.C=1 and we fall through to
+* the Phase 1 SID-driven mono path.
+                    ldb       >SidCurSound,pcr
+                    lbsr      SidPlayDispatch
+                    bcs       PlaySoundSidMono  ; no poly -> Phase 1 mono+SID
+* Polyphonic stream played to completion. Return D=0 to skip
+* cmd_sound's elapsed-time advance (IRQs ran during poly play, OS
+* clock already advanced naturally).
+                    ldd       #$0000
+                    puls      u,y,pc
+
+PlaySoundNoSid      ldu       2,s       ; reload node ptr (U was at offset 2 after pshs y,u)
                     ldu       $03,u     ; follow pointer to sound data
-                    bsr       SoundPIASave ; configure PIA for sound output
+                    clrb                ; B = 0 (initial silence)
+                    lbsr      SoundPIASave ; configure PIA for sound output
+                    bra       PlaySoundLoop ; original DAC bit-bang path
+
+PlaySoundSidMono    ldu       2,s       ; reload node ptr (U was at offset 2 after pshs y,u)
+                    ldu       $03,u     ; follow pointer to sound data
+                    clrb                ; B = 0 (initial silence)
+                    lbsr      SoundPIASave ; configure PIA for sound output
+                    lda       >$FF23            ; SID present: mute DAC so the
+                    anda      #$F7              ; bit-bang loop's $FF20 toggles
+                    sta       >$FF23            ; can't bleed into the speaker
+                    lbsr      SidSetupVoice1    ; master vol + v1 ADSR
 PlaySoundLoop       ldb       ,u+       ; read note byte (0xFF = end)
                     cmpb      #$FF      ; end of sound?
                     beq       PlaySoundEnd ; branch to finish
@@ -9647,6 +9834,7 @@ PlaySoundLoop       ldb       ,u+       ; read note byte (0xFF = end)
                     leax      >$007A,x  ; offset to wave-count table
                     ldd       ,x        ; load wave-count entry
                     std       <$0090    ; store wave count in DP
+                    lbsr      SidGateForNote ; XSID: drive SID v1 for this note
 * The RS-232 line is now masked and forced high.
 * Therefore $FF20 can't be tested for $00 but we can test the actual
 * data stream. RG
@@ -9666,7 +9854,7 @@ PlaySoundHighDelay  subd      #$0001    ; count down delay
                     bne       PlaySoundHighLoop ; loop for all waves
                     leay      -$01,y    ; decrement duration counter
                     bne       PlaySoundWaveHigh ; loop for full duration
-                    bra       PlaySoundLoop ; next note
+                    bra       PlaySoundLoop ; next note (legato - no gate off)
 PlaySoundWaveLow    ldx       <$0090    ; wave repetition count
 PlaySoundLowLoop    ldd       <$008E    ; half-period delay
 PlaySoundLowDelay   subd      #$0001    ; count down delay
@@ -9677,11 +9865,11 @@ PlaySoundLowDelay   subd      #$0001    ; count down delay
                     bne       PlaySoundLowLoop ; loop for all waves
                     leay      -$01,y    ; decrement duration counter
                     bne       PlaySoundWaveLow ; loop for full duration
-                    bra       PlaySoundLoop ; next note
-PlaySoundEnd        bsr       SoundPIARestore ; restore PIA to pre-sound state
+                    bra       PlaySoundLoop ; next note (legato - no gate off)
+PlaySoundEnd        lbsr      SidStopVoice ; XSID: release SID v1 at song end
+                    lbsr      SoundPIARestore ; restore PIA to pre-sound state
                     ldd       ,u        ; load elapsed time word
-                    puls      y         ; restore logic script pointer
-                    rts
+                    puls      u,y,pc    ; restore U+Y from pshs y,u and return
 
 *Sound on
 * RS-232 toggle change. RG
@@ -9718,6 +9906,520 @@ SoundPIARestore     lda       >SoundPIA1Ctrl,pcr get saved PIA HSYNC setting
                     lda       $FF22     ; clear PIA2 interrupt latch
                     andcc     #$AF      ; re-enable interrupts
                     rts
+
+************************************************************************
+* XSID extension: CoCo X-SID (MOS 8580) playback support.
+*
+* The X-SID lives in an MPI slot.  Software routes the SCS bus to it
+* by writing $30 to $FF7F (bits 0-1 = SCS slot-1, bits 4-5 = CTS slot-4
+* so the FDC ROM stays accessible).  Default routing is restored with
+* $FF.  While SCS is pointed at the SID, an FDC IRQ that reads FDC
+* status at $FF48 would instead hit the SID, so every SID register
+* burst is wrapped in an interrupt-masked critical section.  The SID
+* sustains the tone autonomously between bursts, so we keep the bursts
+* very brief and let interrupts run freely the rest of the time.
+*
+* Register cheat-sheet (offsets from $FF40, MOS6581/8580):
+*   v1 freq lo/hi   $00 / $01
+*   v1 ctrl         $04   bit 0=GATE, bit 4=triangle, 5=saw, 6=pulse, 7=noise
+*   v1 attack/decay $05   high nibble=A, low nibble=D
+*   v1 sustain/rel  $06   high nibble=S, low nibble=R
+*   v3 freq lo/hi   $0E / $0F
+*   v3 ctrl/AD/SR   $12 / $13 / $14
+*   OSC3 readback   $1B
+*   ENV3 readback   $1C
+*   filter cut lo/hi$15 / $16
+*   res/filt sel    $17
+*   mode + master   $18   low nibble = master volume 0-15
+************************************************************************
+
+************************************************************************
+* SidProbe - detect whether the X-SID is reachable through MPI slot 1.
+*   Strategy (ENV3 envelope-readback detection):
+*     1. Mask IRQs, select MPI slot 1, zero all 25 SID write registers.
+*     2. Read ENV3 ($FF5C).  On a real SID it must be 0 (we just zeroed
+*        every register and the envelope hasn't been gated).  Anything
+*        else (floating bus = $FF, junk = non-zero) means no SID.
+*     3. Set master volume max, gate voice 3 with A=0 (fastest attack)
+*        and S=$F at a mid-range frequency.
+*     4. Spin ~22 ms (>> 2 ms attack time) for envelope to climb to peak.
+*     5. Re-read ENV3.  Must be >= $80 (envelope at or near peak).
+*        $00 or low values mean no SID is driving the bus.
+*     6. Cache result in SidPresent:  $01 = present, $FF = absent.
+*     7. Zero registers again to silence v3, restore MPI routing.
+*   Cost: ~25 ms of busy-loop on first PlaySound call only.
+*   Caveat: on a CoCo3 *without* MPI (FDC card directly in cart slot),
+*           the $FF40-$FF5F writes during step 1 land on the FDC, which
+*           briefly disturbs disk-controller state (the final $FF48 = $00
+*           = "restore" command moves the head to track 0 - benign but
+*           audible if heads aren't already there).  The probe still
+*           correctly detects absence and falls back to the DAC path.
+*   Clobbers: A, B, X, Y.
+************************************************************************
+SidProbe            pshs      cc,a,b,x,y
+                    orcc      #IntMasks
+                    lda       #$30                ; SCS=slot1, CTS=slot4
+                    sta       >$FF7F
+
+* Zero all 25 SID write registers ($FF40-$FF58).  Wipes any power-on
+* noise so the readback in step 2 has a known starting state.
+                    ldx       #$FF40
+                    ldb       #25
+SidProbeZero1       clr       ,x+
+                    decb
+                    bne       SidProbeZero1
+
+* Step 2: after zeroing, ENV3 must be 0 on a real SID.
+                    lda       >$FF5C
+                    bne       SidProbeAbsent      ; non-zero = no SID
+
+* Step 3: set up voice 3 to ramp envelope to peak instantly.
+                    lda       #$0F                ; master vol max so ENV3
+                    sta       >$FF58              ; readback isn't masked
+                    clr       >$FF53              ; v3 AD: A=0 (fastest), D=0
+                    lda       #$F0                ; v3 SR: S=15 (peak), R=0
+                    sta       >$FF54
+                    lda       #$D6                ; v3 freq lo (~440 Hz)
+                    sta       >$FF4E
+                    lda       #$1C                ; v3 freq hi
+                    sta       >$FF4F
+                    lda       #$11                ; v3 ctrl: triangle + gate
+                    sta       >$FF52
+
+* Step 4: spin ~22 ms (4096 iterations * ~5 cycles @ 0.89 MHz).
+                    ldx       #$1000
+SidProbeSpin        leax      -1,x
+                    bne       SidProbeSpin
+
+* Step 5: ENV3 must now be near peak (>= $80).  Anything less means
+* either the SID isn't really there or the bus is returning garbage.
+                    lda       >$FF5C
+                    cmpa      #$80
+                    blo       SidProbeAbsent
+
+* Step 6: present.
+                    lda       #$01
+                    bra       SidProbeDone
+SidProbeAbsent      lda       #$FF
+SidProbeDone        sta       >SidPresent,pcr
+
+* Step 7: cleanup.  Zero registers again to silence v3 (envelope was
+* gated above) and restore the default MPI routing so the FDC sees a
+* normal $FF7F state when interrupts re-enable.
+                    ldx       #$FF40
+                    ldb       #25
+SidProbeZero2       clr       ,x+
+                    decb
+                    bne       SidProbeZero2
+
+                    lda       #$FF                ; restore default MPI routing
+                    sta       >$FF7F
+                    puls      cc,a,b,x,y,pc
+
+************************************************************************
+* SidSetupVoice1 - one-time per PlaySound call: set master volume and
+*   voice-1 envelope parameters.  Called only when SidPresent = 1.
+*   Clobbers nothing (saves CC + A).
+************************************************************************
+SidSetupVoice1      pshs      cc,a
+                    lda       >SidPresent,pcr
+                    cmpa      #$01                ; no-op if SID absent
+                    bne       SidSetupV1Out
+                    orcc      #IntMasks
+                    lda       #$30
+                    sta       >$FF7F
+                    lda       #$0F                ; master volume max, no filter
+                    sta       >$FF58
+                    lda       #$00                ; v1 AD: A=0, D=0 (no decay
+                    sta       >$FF45              ; ramp - stay at peak)
+                    lda       #$F0                ; v1 SR: S=15 (peak), R=0
+                    sta       >$FF46              ; (matches DAC's constant-
+                                                  ;  amplitude square wave)
+                    clr       >$FF44              ; v1 ctrl=0 (no waveform yet)
+                    lda       #$FF
+                    sta       >$FF7F
+SidSetupV1Out       puls      cc,a,pc
+
+************************************************************************
+* SidGateForNote - called inside the PlaySound loop right after the
+*   half-period and wave-count have been looked up.  If SID is present,
+*   gates voice 1 to this note's pitch (using SidFreqTable indexed by
+*   B = note*2), or gates off if the note byte at -3,u is 0 (silent).
+*   No-op if SidPresent != 1.
+*   Inputs: B = note*2 (caller did lslb before this call).
+*           U = stream pointer (3 bytes past the note byte).
+*   Preserves: all registers (saves CC + A + B + X).
+************************************************************************
+SidGateForNote      pshs      cc,a,b,x
+                    lda       >SidPresent,pcr
+                    cmpa      #$01                ; no-op if SID absent
+                    bne       SidGateOut
+                    tst       -3,u                ; amp == 0 -> hold previous note
+                    beq       SidGateOut          ; (mimic original DAC behavior:
+                                                  ;  silence by holding last state,
+                                                  ;  not by gate-off or mute)
+                    ldb       -4,u                ; recover original note index
+                    cmpb      #$FF                ; defensive: end byte
+                    beq       SidGateOut
+                    cmpb      #121                ; clamp to table size (122 entries)
+                    bls       SidGateN_OK
+                    ldb       #121
+SidGateN_OK         orcc      #IntMasks
+                    lda       #$30
+                    sta       >$FF7F
+* Waveform decision: noise ($81) for very-high SFX notes, triangle
+* ($11) otherwise.  Music tops out around note 60; SFX uses 60-121.
+* Threshold 100 keeps mid-range tonal SFX (whistles, beeps) on
+* triangle while routing the percussive top of the table to noise.
+* Sustain is left at SidSetupVoice1's $F0 (peak) - per-note amp
+* scaling sounded too quiet because the music's amp byte is ~$30.
+                    pshs      b                   ; save note index
+                    lslb                          ; doubled for fdb table
+                    leax      >SidFreqTable,pcr
+                    abx
+                    ldd       ,x                  ; A=hi, B=lo
+                    sta       >$FF41              ; v1 freq hi (write hi FIRST per
+                                                  ; SID convention - minimizes
+                                                  ; mid-cycle oscillator glitch)
+                    stb       >$FF40              ; v1 freq lo
+                    puls      b                   ; restore note index
+                    lda       #$11                ; default: triangle + gate
+                    cmpb      #100                ; high-SFX threshold
+                    blo       SidGateN_Wav        ; below -> keep triangle
+                    lda       #$81                ; noise + gate (idempotent if
+                                                  ; already $81 -> no retrigger)
+SidGateN_Wav        sta       >$FF44
+                    lda       #$FF
+                    sta       >$FF7F
+SidGateOut          puls      cc,a,b,x,pc
+
+************************************************************************
+* SidStopVoice - gate voice 1 off (envelope enters release phase).
+*   Called at PlaySoundEnd.  No-op if SidPresent != $01.
+*   Preserves: all registers (saves CC + A).
+************************************************************************
+SidStopVoice        pshs      cc,a
+                    lda       >SidPresent,pcr
+                    cmpa      #$01                ; no-op if SID absent
+                    bne       SidStopOut
+                    orcc      #IntMasks
+                    lda       #$30
+                    sta       >$FF7F
+                    lda       #$10                ; triangle, gate=0
+                    sta       >$FF44
+                    lda       #$FF
+                    sta       >$FF7F
+SidStopOut          puls      cc,a,pc
+
+************************************************************************
+* XSID Phase 2: polyphonic 3-voice playback
+*
+* Adds a parallel playback path that consumes pre-extracted sidDir/sidSnd
+* sidecar files (built by tools/agi_sid_extract.py from the upstream PC
+* AGI sound resources).  Each on-disk sound# may have a polyphonic SID
+* stream; if so, this path plays it via 60 Hz F$Sleep ticks and three
+* voices.  If not, the engine falls through to the Phase 1 mono SID path
+* (or Phase 0 DAC bit-bang on non-SID systems).
+*
+* Memory layout: SidDirBuf (404 bytes = 101 entries x 4 BE bytes) plus
+* three per-voice ring buffers (SidV1Buf=768, SidV2Buf=768, SidV3Buf=512;
+* total 2 KB) are statically reserved in the module body.  Total mnln
+* size is constrained to under ~29.5 KB by an empirical Sierra MMU
+* loader cliff (see checkpoint 014).
+*
+* Phase 2.5 streaming model: the polyphonic stream is NOT pre-loaded.
+* Instead each voice's bytes are streamed in via I$Read on demand into
+* its per-voice ring buffer.  This removes the prior 2 KB / 8 KB
+* whole-stream-must-fit cap and lets title music (5-12 KB) play
+* polyphonic without a per-stream memory ceiling.
+*
+* Per-game sidDir sizes are NOT fixed at 404 bytes - each game's SNDDIR
+* dictates a slot count (SQ2=70, KQ3=40, SQ0=101, ...).  The engine
+* handles this by accepting any read length up to 404 bytes; the
+* statically zeroed SidDirBuf leaves unread entries at length=0 which
+* SidLookup interprets as "absent".
+************************************************************************
+
+SidDirSize          equ       404                 ; 101 max-slot entries x 4 BE bytes
+SidMaxStream        equ       16384               ; matches /sid driver SidBufSize
+* XSID Phase D: /sid driver SetStt/GetStt codes
+SS.SidLoad          equ       $93                 ; push stream into driver
+SS.SidStart         equ       $94                 ; begin playback
+SS.SidStop          equ       $95                 ; halt playback
+SS.SidActv          equ       $96                 ; query active state
+
+* --------------------------------------------------------------------
+* SidStartupInit
+*   Called once from end of LoadAllDirs.  Probes for X-SID and, if
+*   present, loads sidDir + opens sidSnd persistently.  Silent on
+*   absence/failure (engine falls back to mono).
+* --------------------------------------------------------------------
+SidStartupInit      lbsr      SidProbe
+                    lda       >SidPresent,pcr
+                    cmpa      #$01
+                    bne       SSI_Done
+                    lbsr      SidLoadDirAndOpen
+SSI_Done            rts
+
+* --------------------------------------------------------------------
+* SidLoadDirAndOpen
+*   Opens sidDir read-only, slurps 404 bytes into SidDirBuf, closes
+*   sidDir, then opens sidSnd read-only and stashes the path number
+*   in SidSndPath.  Uses raw OS9 syscalls (NOT the OpenFile/ReadFile
+*   wrappers) so missing files are silent — disks without sidcar
+*   files just skip poly support without user-visible error.
+*   Sets SidLoaded = $01 on success, $FF on failure.
+* --------------------------------------------------------------------
+SidLoadDirAndOpen   lda       >SidLoaded,pcr
+                    bne       SLDO_Already        ; already attempted
+                    lda       #$01                ; read mode
+                    leax      >StrSidDir,pcr
+                    os9       I$Open
+                    bcs       SLDO_Fail           ; no sidDir on this disk
+                    pshs      a                   ; save path number
+                    leax      >SidDirBuf,pcr
+                    ldy       #SidDirSize
+                    os9       I$Read              ; Y = bytes read
+                    puls      a                   ; restore path
+                    pshs      cc                  ; save read status
+                    os9       I$Close             ; close sidDir
+                    puls      cc
+                    bcs       SLDO_Fail
+                    cmpy      #4                  ; at least one entry?
+                    blo       SLDO_Fail           ; (entries are 4 BE bytes each;
+                                                  ;  short reads are OK because
+                                                  ;  SidDirBuf is statically zeroed
+                                                  ;  and SidLookup treats length=0
+                                                  ;  as absent.  Per-game slot
+                                                  ;  counts vary: SQ0=101, SQ2=70,
+                                                  ;  KQ3=40, etc.)
+                    lda       #$01                ; read mode
+                    leax      >StrSidSnd,pcr
+                    os9       I$Open
+                    bcs       SLDO_Fail
+                    sta       >SidSndPath,pcr     ; persistent path
+* XSID Phase D: open /sid driver (non-fatal if absent -> falls
+* back to user-mode mono+SID path on PlaySound).
+                    lda       #UPDAT.
+                    leax      >StrSidDev,pcr
+                    os9       I$Open
+                    bcs       SLDO_NoSidDev
+                    sta       >SidDevPath,pcr
+SLDO_NoSidDev
+                    lda       #$01
+                    sta       >SidLoaded,pcr
+SLDO_Already        rts
+SLDO_Fail           lda       #$FF
+                    sta       >SidLoaded,pcr
+                    rts
+
+* --------------------------------------------------------------------
+* SidLookup
+*   Input:  B = sound number (0..100)
+*   Output: CC.C = 0 if present (X = byte offset in sidSnd,
+*                                 Y = byte length to read)
+*           CC.C = 1 if absent or oversize
+*   Clobbers: A, B, X, Y
+* --------------------------------------------------------------------
+SidLookup           pshs      b
+                    lda       >SidLoaded,pcr
+                    cmpa      #$01
+                    bne       SLU_Absent
+                    ldb       ,s                  ; reload sound#
+                    cmpb      #101
+                    bhs       SLU_Absent
+                    clra
+                    aslb
+                    rola
+                    aslb
+                    rola                          ; D = sound# * 4
+                    leax      >SidDirBuf,pcr
+                    leax      d,x                 ; X = entry ptr
+                    ldy       2,x                 ; Y = length (BE word)
+                    beq       SLU_Absent
+                    cmpy      #SidMaxStream       ; sanity (16-bit file offset)
+                    bhi       SLU_Absent
+                    cmpy      #9                  ; need header + >=1 data byte
+                    blo       SLU_Absent
+                    ldd       ,x                  ; D = offset (BE word)
+                    cmpd      #$FFFF              ; absent marker?
+                    beq       SLU_Absent
+                    tfr       d,x                 ; X = offset
+                    puls      b
+                    andcc     #$FE                ; CC.C = 0 success
+                    rts
+SLU_Absent          puls      b
+                    orcc      #$01                ; CC.C = 1
+                    rts
+
+* --------------------------------------------------------------------
+* SidPlayDispatch
+*   Input:  B = sound number
+*   Output: CC.C = 0 if polyphonic stream played to completion
+*           CC.C = 1 if no poly stream available (caller falls back)
+*   This is the integration point from PlaySound.
+* --------------------------------------------------------------------
+SidPlayDispatch     pshs      a,x,y,u
+                    lbsr      SidLookup
+                    bcs       SPD_Miss
+                    lbsr      SidPlayPoly         ; X=file offset, Y=length
+                    bcs       SPD_Miss
+                    puls      a,x,y,u
+                    andcc     #$FE
+                    rts
+SPD_Miss            puls      a,x,y,u
+                    orcc      #$01
+                    rts
+
+* --------------------------------------------------------------------
+* SidPlayPoly  (XSID Phase D — /sid driver client)
+*   Inputs:  X = file offset of stream within sidSnd
+*            Y = total stream length in bytes
+*   Output:  CC.C = 0 stream played to completion via /sid driver
+*            CC.C = 1 init failed (caller falls back to mono+SID)
+*
+*   Reads the entire stream into a 16 KB user-mode buffer (lazy-
+*   allocated via F$SRqMem on first call), then pushes it to the
+*   /sid driver with SS.SidLoad, kicks playback with SS.SidStart,
+*   and polls SS.SidActv with F$Sleep until the driver auto-stops.
+*
+*   The 3-voice ring-buffer engine and per-voice state structs that
+*   previously lived in this module are GONE — that work is now done
+*   in IRQ context by sidirq.dr (loaded via OS9Boot).
+* --------------------------------------------------------------------
+SidPlayPoly         pshs      a,b,x,y,u
+* Stack frame after pshs (S+0..S+7):
+*    0,s = a, 1,s = b
+*    2,s = x_hi (stream offset hi)
+*    3,s = x_lo
+*    4,s = y_hi (stream length hi)
+*    5,s = y_lo
+*    6,s = u_hi
+*    7,s = u_lo
+
+* --- Driver must have been opened at startup ---
+                    lda       >SidDevPath,pcr
+                    cmpa      #$FF
+                    lbeq      SPP_Fail
+
+* --- Stream must fit driver buffer and carry at least a header ---
+                    ldd       4,s                 ; length
+                    cmpd      #SidMaxStream
+                    lbhi      SPP_Fail
+                    cmpd      #9                  ; driver requires hdr+>=1 byte
+                    lblo      SPP_Fail
+
+* --- Lazy-allocate the user-mode read buffer (16 KB) ---
+                    ldd       >SidStreamPtr,pcr
+                    bne       SPP_HaveBuf
+* User-mode programs cannot call F$SRqMem (system-only -> E$UnkSvc).
+* Use F$Mem to grow our own data area; new bytes start at the old
+* upper bound (returned by the first F$Mem D=0 call in Y).
+                    ldd       #$0000              ; query current size
+                    os9       F$Mem
+                    lbcs      SPP_Fail
+                    sty       >SidStreamPtr,pcr   ; save old top = buffer base
+                    addd      #SidMaxStream       ; D = current + 16 KB
+                    os9       F$Mem
+                    bcc       SPP_HaveBuf
+                    ldd       #$0000
+                    std       >SidStreamPtr,pcr   ; retry on next call
+                    lbra      SPP_Fail
+SPP_HaveBuf
+
+* --- Seek sidSnd to start of this stream ---
+                    ldx       2,s                 ; X = file offset
+                    tfr       x,u                 ; U = offset low
+                    ldx       #$0000              ; X = offset high
+                    clrb                          ; absolute seek
+                    lda       >SidSndPath,pcr
+                    os9       I$Seek
+                    lbcs      SPP_Fail
+
+* --- Read entire stream into our buffer ---
+                    ldx       >SidStreamPtr,pcr
+                    ldy       4,s                 ; length
+                    lda       >SidSndPath,pcr
+                    os9       I$Read
+                    lbcs      SPP_Fail
+                    cmpy      4,s                 ; got full length?
+                    lblo      SPP_Fail
+
+* --- Push stream to /sid driver (SS.SidLoad expects X=ptr, Y=len) ---
+                    ldx       >SidStreamPtr,pcr
+                    ldy       4,s
+                    lda       >SidDevPath,pcr
+                    ldb       #SS.SidLoad
+                    os9       I$SetStt
+                    lbcs      SPP_Fail
+
+* --- Start playback ---
+                    lda       >SidDevPath,pcr
+                    ldb       #SS.SidStart
+                    os9       I$SetStt
+                    bcs       SPP_StopErr
+
+* --- Poll SS.SidActv until LoadState != 2 ---
+* Bound the wait so a buggy driver or runaway stream can't hang the
+* engine.  $1200 polls * 83 ms = ~404 s (6.7 min), comfortably above
+* the longest known SQ0 cue (~116 s).
+                    ldx       #$1200              ; max-polls counter
+                    pshs      x
+SPP_Poll            ldx       #$0006              ; ~83 ms per poll
+                    os9       F$Sleep
+                    lda       >SidDevPath,pcr
+                    ldb       #SS.SidActv
+                    os9       I$GetStt
+                    bcs       SPP_PollErr
+                    cmpx      #$0002              ; still playing?
+                    bne       SPP_PollOK
+                    ldx       ,s
+                    leax      -1,x
+                    stx       ,s
+                    bne       SPP_Poll
+* Timeout: force stop and report failure to caller.
+                    leas      2,s
+                    bra       SPP_StopErr
+SPP_PollErr         leas      2,s
+                    bra       SPP_StopErr
+SPP_PollOK          leas      2,s
+                    puls      a,b,x,y,u
+                    andcc     #$FE
+                    rts
+
+* On start/poll failure, ask driver to stop before returning failure
+* so mono+SID fallback doesn't fight IRQ-driven voice writes.
+SPP_StopErr         lda       >SidDevPath,pcr
+                    ldb       #SS.SidStop
+                    os9       I$SetStt
+SPP_Fail            puls      a,b,x,y,u
+                    orcc      #$01
+                    rts
+
+
+* --------------------------------------------------------------------
+* XSID Phase 2.5 streaming state and buffers
+*   Placed at the end of the SID code block, well away from
+*   SidPresent (line ~9332), to avoid the lwasm PCR-offset
+*   regression observed in Phase 1.
+*
+*   Per-voice 12-byte state struct layout (matches code's offset usage):
+*     +0  FilePos    fdb   ; next file byte to read (16-bit, BE word)
+*     +2  FileEnd    fdb   ; one past last file byte for this voice
+*     +4  Ptr        fdb   ; next byte to consume in ring buffer
+*     +6  Avail      fdb   ; bytes still available starting at Ptr
+*     +8  Tick       fdb   ; ticks remaining in current note
+*     +10 MaskBit    fcb   ; SidVoiceMask bit (1, 2, or 4)
+*     +11 SidOff     fcb   ; offset added to $FF40 (0, 7, or 14)
+* --------------------------------------------------------------------
+SidLoaded           fcb       0                   ; 0=uninit, 1=ready, $FF=fail
+SidCurSound         fcb       0                   ; sound# captured at PlaySound
+SidSndPath          fcb       0                   ; persistent sidSnd path number
+SidDevPath          fcb       $FF                 ; /sid path ($FF=not open -> mono fallback)
+SidStreamPtr        fdb       0                   ; F$SRqMem'd 16 KB read buffer (0=not yet)
+
+SidDirBuf           fill      0,SidDirSize        ; 101 entries x 4 BE bytes (max)
+
 
 StrNothing          fcc       /nothing/
                     fcb       0
