@@ -4,6 +4,26 @@ vpath %.asm ../objs
 
 AFLAGS      += -I.
 
+# XSID Phase 20.3.A DISABLED again (regression 2026-06-05):
+# Two attempts at per-game PC AGI async sound semantics for KQ4
+# (Phase 20.3 and Phase 20.3.A) both broke the game in the same
+# way: after the joystick prompt, the engine never reaches the
+# title screen and instead repeats "You can't wear it" dialog.
+#
+# Phase 20.3.A added two defensive mechanisms (in-flight idempotent
+# suppression + 1-cycle TTL just-ended one-shot) but did not fix
+# the regression -- suggesting the root cause is something other
+# than redundant restart races (possibly a low-numbered AGI
+# reserved-flag overlap, or a script-pattern we haven't identified).
+#
+# Reverting to Phase 20.2 fire-and-forget baseline: title music
+# still cuts off short, but the game boots, plays, and is fully
+# usable.  The Phase 20.3.A conditional code is retained in
+# mnln.asm under IFNE XSID_PC_AGI for future debugging; just
+# re-enable by uncommenting the line below.
+#
+# AFLAGS      += -DXSID_PC_AGI=1
+
 DEPENDS		= ./makefile
 
 DISK_1_80D	= KingsQuestIV_d1_80d.dsk

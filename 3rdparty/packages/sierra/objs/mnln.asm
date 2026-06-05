@@ -389,6 +389,9 @@ StoreStateFlag      sta       >$01AE    save updated flags
                     lda       >$01AE    reload flags
                     anda      #$F7      clear another state bit
                     sta       >$01AE    save flags again
+                    IFNE      XSID_PC_AGI
+                    lbsr      SidAsyncPoll ; XSID Phase 20.3: check for /sid async end
+                    ENDC
                     lbsr      EventLoop process pending game events
                     ldx       <$0030    load ego object pointer
                     lda       >$0250    check joystick control flag
@@ -613,7 +616,7 @@ CmdTableStart       fdb       NoopCmdsRet,$0000 *do nothing
 
                     fdb       cmd_load_sound,$100 *load sound
                     fdb       cmd_sound,$200 *sound
-                    fdb       NoopCmdsRet,$0000 *stop sound
+                    fdb       cmd_stop_sound,$0000 *stop sound
                     fdb       cmd_print,$100 *print
                     fdb       cmd_print_v,$180 *print v
                     fdb       cmd_display,$300 *display
@@ -9669,6 +9672,71 @@ LoadSoundRet        leas      $05,s     ; release local frame
 cmd_sound           leas      -$0B,s    ; allocate 11-byte local frame (time struct)
                     ldb       ,y+       ; fetch sound number
                     stb       ,s        ; save sound number
+                    IFNE      XSID_PC_AGI
+* XSID Phase 20.3.A (PC AGI mode):
+*
+* (1) In-flight idempotent suppression: if a previously started async
+*     sound for the same (sound#, flag#) tuple is still playing, this
+*     redundant call is a true no-op (just consume the flag operand
+*     and return).  No SetFlag, no ClearFlag, no SidStopIfActive, no
+*     PlaySound restart.  This handles the CoCo-port idiom
+*     `if (NOT fX) sound(N, fX)` which would otherwise infinite-restart
+*     every cycle while fX stays FALSE during async playback.
+*
+* (2) One-shot post-end suppression: if SidAsyncPoll fired SetFlag(fX)
+*     in this same cycle (natural end of sound (N, fX)) and the script
+*     re-issues sound(N, fX), suppress the restart so the script's
+*     `if (!fX) wait` (or equivalent) can advance past it.  Just-ended
+*     state has a 1-cycle TTL (cleared at top of SidAsyncPoll), so
+*     legitimate later replays of the same (sound, flag) play normally.
+*
+* (3) On any non-matching call: clear stale just-ended and proceed.
+*     SidAsyncSignalPending then signals the OLD pending flag (per
+*     ScummVM PC AGI's implicit "new sound cancels prior" semantics)
+*     and SidStopIfActive silences the driver.
+*
+* B = incoming sound#, Y = address of flag# byte in script (not yet
+* consumed).  B is preserved through lda/cmpa (no instruction below
+* this header modifies B prior to the suppression returns).
+                    lda       >SidPendingValid,pcr
+                    beq       SoundPCheckJE
+                    cmpb      >SidPendingSound,pcr
+                    bne       SoundPCheckJE
+                    lda       ,y                  ; peek flag# (no auto-inc)
+                    cmpa      >SidPendingFlag,pcr
+                    bne       SoundPCheckJE
+* In-flight match: same (sound#, flag#) is still playing — true no-op.
+                    leay      $01,y               ; consume flag operand
+                    leas      $0B,s               ; release local frame
+                    rts
+SoundPCheckJE       lda       >SidJustEndedValid,pcr
+                    beq       SoundPNotPend
+                    cmpb      >SidJustEndedSound,pcr
+                    bne       SoundPJEClear
+                    lda       ,y
+                    cmpa      >SidJustEndedFlag,pcr
+                    bne       SoundPJEClear
+* Just-ended match: this (sound#, flag#) ended this cycle — suppress
+* the restart, leave fX TRUE (already set by SidAsyncPoll), consume
+* one-shot.
+                    clr       >SidJustEndedValid,pcr
+                    leay      $01,y
+                    leas      $0B,s
+                    rts
+SoundPJEClear       clr       >SidJustEndedValid,pcr  ; stale, drop it
+SoundPNotPend       lbsr      SidAsyncSignalPending
+                    ENDC
+* XSID Phase 20.2: fire-and-forget model.  The IRQ-driven /sid driver
+* plays asynchronously, so cmd_sound returns immediately and the game
+* cycle keeps running animations/cursor while music plays.  The AGI
+* completion flag is SET right away (in TimeRestorePage below) -- this
+* preserves the pre-Phase-20 contract that scripts assume: when sound()
+* returns, the flag is TRUE.  Scripts using the CoCo idiom
+* `if (NOT fX) sound(N, fX)` therefore play the sound exactly once.
+* If a previous /sid sound is still playing when a new sound() comes
+* in, just stop it cleanly -- no flag bookkeeping needed since each
+* call sets its flag immediately.
+                    lbsr      SidStopIfActive ; XSID Phase 20.2: silence any prior
                     lbsr      SoundListFind ; search sound list
                     cmpu      #$0000    ; found?
                     bne       SoundCheckFlags ; branch if found
@@ -9690,7 +9758,11 @@ SoundCheckFlags     lda       >$01AF    ; game flags byte
                     ldu       $01,s     ; restore sound node pointer
                     lbsr      PlaySound ; play the sound (returns duration in D)
                     cmpd      #$0000    ; any elapsed time returned?
-                    lbeq      TimeRestorePage ; skip time update if zero
+                    IFNE      XSID_PC_AGI
+                    lbeq      SidPcAgiPlaySuccess ; PC AGI: install pending flag, ClearFlag, return
+                    ELSE
+                    lbeq      TimeRestorePage ; poly success: flag set immediately (async fire-and-forget)
+                    ENDC
                     pshs      b,a       ; save elapsed time
                     addb      $0C,s     ; add seconds field
                     bcc       TimeSecCarry ; branch if no second overflow
@@ -10272,14 +10344,21 @@ SPD_Miss            puls      a,x,y,u
 * SidPlayPoly  (XSID Phase D — /sid driver client, chunked-write)
 *   Inputs:  X = file offset of stream within sidSnd
 *            Y = total stream length in bytes
-*   Output:  CC.C = 0 stream played to completion via /sid driver
+*   Output:  CC.C = 0 stream queued and playback started via /sid driver
 *            CC.C = 1 init failed (caller falls back to mono+SID)
 *
 *   Tells the driver to allocate (SS.SidPrep), seeks sidSnd to the
 *   requested offset, streams the data into the driver in 512-byte
 *   chunks via I$Read into SidChunkBuf + SS.SidWrite, kicks playback
-*   with SS.SidStart, and polls SS.SidActv with F$Sleep until the
-*   driver auto-stops.
+*   with SS.SidStart, and returns immediately (CC.C=0) -- playback
+*   continues in the driver's IRQ context.  The caller (cmd_sound)
+*   sets the AGI completion flag immediately via TimeRestorePage
+*   (fire-and-forget model; matches the pre-Phase-20 contract that
+*   scripts assume sound() returns with the flag TRUE).
+*
+*   Overlap handling: cmd_sound's prologue (SidStopIfActive) has
+*   already silenced any prior /sid sound, so by the time we get
+*   here the driver is quiesced.
 *
 *   The 3-voice ring-buffer engine and per-voice state structs that
 *   previously lived in this module are GONE -- that work is now done
@@ -10309,6 +10388,10 @@ SidPlayPoly         pshs      a,b,x,y,u
                     lbhi      SPP_Fail
                     cmpd      #9                  ; driver requires hdr+>=1 byte
                     lblo      SPP_Fail
+
+* --- Overlap handling moved to SidStopIfActive (called from
+*     top of cmd_sound).  Any previous /sid sound has already
+*     been silenced by the time we get here. ---
 
 * --- Tell driver the total length; resets WritePos=0 ---
                     ldy       4,s                 ; R$Y = stream length
@@ -10376,30 +10459,10 @@ SPP_AllWritten      leas      2,s                 ; pop remaining; original fram
                     os9       I$SetStt
                     bcs       SPP_StopErr
 
-* --- Poll SS.SidActv until LoadState != 2 ---
-* Bound the wait so a buggy driver or runaway stream can't hang the
-* engine.  $1200 polls * 83 ms = ~404 s (6.7 min), comfortably above
-* the longest known SQ0 cue (~116 s).
-                    ldx       #$1200              ; max-polls counter
-                    pshs      x
-SPP_Poll            ldx       #$0006              ; ~83 ms per poll
-                    os9       F$Sleep
-                    lda       >SidDevPath,pcr
-                    ldb       #SS.SidActv
-                    os9       I$GetStt
-                    bcs       SPP_PollErr
-                    cmpx      #$0002              ; still playing?
-                    bne       SPP_PollOK
-                    ldx       ,s
-                    leax      -1,x
-                    stx       ,s
-                    bne       SPP_Poll
-* Timeout: force stop and report failure to caller.
-                    leas      2,s
-                    bra       SPP_StopErr
-SPP_PollErr         leas      2,s
-                    bra       SPP_StopErr
-SPP_PollOK          leas      2,s
+* --- Async return: playback is now running in driver's IRQ context.
+*     Return CC.C=0 so PlaySound returns D=0 to its caller; cmd_sound
+*     then routes to TimeRestorePage which sets the AGI flag
+*     immediately (fire-and-forget). ---
                     puls      a,b,x,y,u
                     andcc     #$FE
                     rts
@@ -10412,6 +10475,138 @@ SPP_StopErr         lda       >SidDevPath,pcr
                     os9       I$SetStt
 SPP_Fail            puls      a,b,x,y,u
                     orcc      #$01
+                    rts
+
+
+* --------------------------------------------------------------------
+* SidStopIfActive  (XSID Phase 20.2 — silence the /sid driver, no
+*                   flag bookkeeping)
+*   Called from cmd_sound entry and cmd_stop_sound.  Issues SS.SidStop
+*   on the open /sid path; safe no-op if the driver isn't currently
+*   playing.  Preserves all caller registers (cmd_sound needs Y to
+*   keep pointing at the script byte stream).
+*   No-op if /sid was never opened (SidDevPath==$FF).
+* --------------------------------------------------------------------
+SidStopIfActive     pshs      a,b,x,y,u
+                    lda       >SidDevPath,pcr
+                    cmpa      #$FF
+                    beq       SSIA_Done
+                    ldb       #SS.SidStop
+                    os9       I$SetStt            ; safe no-op when quiesced
+SSIA_Done           puls      a,b,x,y,u
+                    rts
+
+
+                    IFNE      XSID_PC_AGI
+* --------------------------------------------------------------------
+* SidAsyncSignalPending  (XSID Phase 20.3 PC AGI helper)
+*   If a /sid sound was previously started in PC AGI async mode and
+*   has not yet finished naturally (via SidAsyncPoll), set its
+*   pending AGI completion flag and clear pending state.  Does NOT
+*   stop the driver -- caller is responsible for that if needed.
+*   No-op if no async sound pending.
+* --------------------------------------------------------------------
+SidAsyncSignalPending
+                    pshs      a,b,x
+                    lda       >SidPendingValid,pcr
+                    beq       SASP_Done
+                    lda       >SidPendingFlag,pcr
+                    lbsr      SetFlag
+                    clr       >SidPendingValid,pcr
+SASP_Done           puls      a,b,x,pc
+
+* --------------------------------------------------------------------
+* SidAsyncPoll  (XSID Phase 20.3 PC AGI helper)
+*   Called once per game cycle (before EventLoop runs).  If an async
+*   /sid sound is pending and the driver's LoadState has transitioned
+*   out of 2 (playing) into 0/1 (idle), set the pending AGI flag.
+*   On any I$GetStt error, leave pending state intact so the next
+*   cycle's poll retries; benign worst case is a one-cycle delay.
+* --------------------------------------------------------------------
+SidAsyncPoll        pshs      a,b,x,y,u
+* XSID Phase 20.3.A: 1-cycle TTL for one-shot post-end suppression.
+* Any unconsumed just-ended state from the prior cycle is wiped now.
+* If we detect a new natural end below, just-ended will be
+* re-populated for this cycle.  Net effect: just-ended is consumed
+* only by cmd_sound calls in the same cycle as natural end.
+                    clr       >SidJustEndedValid,pcr
+                    lda       >SidPendingValid,pcr
+                    beq       SAP_Done
+                    lda       >SidDevPath,pcr
+                    cmpa      #$FF
+                    beq       SAP_Done
+                    ldb       #SS.SidActv
+                    os9       I$GetStt            X = LoadState (0/1/2)
+                    bcs       SAP_Done
+                    cmpx      #$0002
+                    beq       SAP_Done            still playing
+                    lda       >SidPendingFlag,pcr
+                    lbsr      SetFlag
+                    clr       >SidPendingValid,pcr
+* XSID Phase 20.3.A: record just-ended (sound#, flag#) so the next
+* cmd_sound call this cycle for the same tuple is suppressed.
+                    lda       >SidPendingFlag,pcr
+                    sta       >SidJustEndedFlag,pcr
+                    lda       >SidPendingSound,pcr
+                    sta       >SidJustEndedSound,pcr
+                    lda       #$01
+                    sta       >SidJustEndedValid,pcr
+SAP_Done           puls       a,b,x,y,u,pc
+
+* --------------------------------------------------------------------
+* SidPcAgiPlaySuccess  (XSID Phase 20.3 PC AGI cmd_sound success path)
+*   Called from cmd_sound when SidPlayPoly successfully starts an
+*   async polyphonic sound.  Replaces the Phase 20.2 TimeRestorePage
+*   branch (which would SetFlag immediately for fire-and-forget).
+*     - Restores the saved logic page (same as TimeRestorePage).
+*     - Consumes the flag# operand from Y (script byte stream).
+*     - Stashes flag# in SidPendingFlag, sets SidPendingValid=1.
+*     - ClearFlag(flag): PC AGI semantics -- flag is FALSE while
+*       sound plays; SidAsyncPoll will set it TRUE when sound ends.
+*     - Releases the 11-byte stack frame and returns.
+* --------------------------------------------------------------------
+SidPcAgiPlaySuccess
+                    ldd       $03,s             saved logic page
+                    lbsr      SetLogicPage      preserves Y
+                    lda       >SidCurSound,pcr  ; copy sound# into pending tuple
+                    sta       >SidPendingSound,pcr
+                    lda       ,y+               consume flag# from script
+                    sta       >SidPendingFlag,pcr
+                    ldb       #$01
+                    stb       >SidPendingValid,pcr
+                    lbsr      ClearFlag         A = flag#; PC AGI: clear flag at start
+                    leas      $0B,s             release local frame
+                    rts
+                    ENDC
+
+
+* --------------------------------------------------------------------
+* cmd_stop_sound  (XSID Phase 20.2 — AGI stop.sound opcode handler)
+*   Dispatched from cmd_table at the stop-sound slot (was NoopCmdsRet
+*   pre-Phase-20).  Opcode takes no operands from the script byte
+*   stream.
+*
+*   Semantics per AGI spec / ScummVM's cmdStopSound:
+*     - Stop currently-playing sound (driver-side).
+*     - Phase 20.2 (default): no flag bookkeeping needed under
+*       fire-and-forget model (each sound() call already set its
+*       completion flag immediately).
+*     - Phase 20.3 (XSID_PC_AGI=1): signal the pending flag (matches
+*       ScummVM cmdStopSound calling stopSound which sets the
+*       end-of-sound flag).
+*
+*   On systems without /sid (SidDevPath==$FF): no-op.  The original
+*   mono path doesn't have an "in flight" concept since it blocks; if
+*   a script issues stop.sound while a mono sound is running, the
+*   mono play loop won't notice -- but that already matches the
+*   pre-Phase-20 behavior (NoopCmdsRet), and mono paths only run on
+*   non-SID hardware or non-/sid disks, so no regression.
+* --------------------------------------------------------------------
+cmd_stop_sound      lbsr      SidStopIfActive
+                    IFNE      XSID_PC_AGI
+                    lbsr      SidAsyncSignalPending
+                    clr       >SidJustEndedValid,pcr ; explicit stop wipes one-shot
+                    ENDC
                     rts
 
 
@@ -10434,6 +10629,14 @@ SidLoaded           fcb       0                   ; 0=uninit, 1=ready, $FF=fail
 SidCurSound         fcb       0                   ; sound# captured at PlaySound
 SidSndPath          fcb       0                   ; persistent sidSnd path number
 SidDevPath          fcb       $FF                 ; /sid path ($FF=not open -> mono fallback)
+                    IFNE      XSID_PC_AGI
+SidPendingFlag      fcb       0                   ; XSID 20.3 PC AGI: pending sound's AGI flag#
+SidPendingSound     fcb       0                   ; XSID 20.3.A: pending sound's sound# (copy of SidCurSound at install)
+SidPendingValid     fcb       0                   ; 1=async sound in flight w/pending flag, 0=none
+SidJustEndedValid   fcb       0                   ; XSID 20.3.A: 1=just-ended (sound#,flag#) recorded this cycle
+SidJustEndedSound   fcb       0                   ; XSID 20.3.A: just-ended sound# for one-shot suppression
+SidJustEndedFlag    fcb       0                   ; XSID 20.3.A: just-ended flag# for one-shot suppression
+                    ENDC
 
 SidDirBuf           fill      0,SidDirSize        ; 101 entries x 4 BE bytes (max)
 SidChunkBuf         fill      0,SidChunkSize      ; per-chunk read buffer for SS.SidWrite
