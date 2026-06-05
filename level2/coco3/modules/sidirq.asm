@@ -63,17 +63,8 @@
 
                     ifp1
                     use       defsfile
+                    use       sid.d
                     endc
-
-* --- Custom SS.* codes (driver-private, not in os9.d) ---
-SS.SidCnt           equ       $90
-SS.SidClr           equ       $91
-SS.SidChrp          equ       $92
-SS.SidPrep          equ       $93                 was SS.SidLoad in Phase C
-SS.SidStart         equ       $94
-SS.SidStop          equ       $95
-SS.SidActv          equ       $96
-SS.SidWrite         equ       $97
 
 * --- X-SID hardware ---
 SidBase             equ       $FF40
@@ -95,8 +86,7 @@ ChirpFreqHi         equ       $1D
 ChirpFreqLo         equ       $40
 
 * --- Stream config ---
-SidBufSize          equ       16384               16 KB stream buffer (SQ0 max=12783)
-SidMinStream        equ       9                   8 hdr + >= 1 byte data
+* SidMaxStream and SidMinStream are defined in defs/sid.d (use'd above).
 SidEvtSize          equ       5
 SidEvtEnd           equ       $FFFF
 
@@ -279,7 +269,7 @@ VSPrep1             clr       LoadState,u         invalidate any prior load
                     ldd       R$Y,x
                     cmpd      #SidMinStream
                     blo       VSPrepBadArg
-                    cmpd      #SidBufSize
+                    cmpd      #SidMaxStream
                     bhi       VSPrepBadArg
                     std       StreamLen,u
 
@@ -287,7 +277,7 @@ VSPrep1             clr       LoadState,u         invalidate any prior load
                     bne       VSPrepHaveBuf
 * First-time allocation.
                     pshs      y,u                 save path desc + driver static
-                    ldd       #SidBufSize
+                    ldd       #SidMaxStream
                     os9       F$SRqMem
                     bcs       VSPrepAFail
                     tfr       u,x                 X = buffer addr

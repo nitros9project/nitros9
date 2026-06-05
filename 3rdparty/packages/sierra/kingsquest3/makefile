@@ -22,7 +22,6 @@ DISK_80D_NAME   = "King's Quest III"
 DSK_DW_NAME	= "King's Quest III"
 
 CMDS		= sierra mnln scrn shdw tocgen
-BOOTOBJS	= sidirq.dr sid.dd
 MD		= $(LEVEL2)/coco3/modules
 
 # We make our own bootfile and kernel track
@@ -37,7 +36,7 @@ OS9BOOT_40D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
-		sidirq.dr sid.dd \
+		$(MD)/sidirq.dr $(MD)/sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft $(MD)/sysgo_dd
 
 OS9BOOT_80D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -47,7 +46,7 @@ OS9BOOT_80D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
-		sidirq.dr sid.dd \
+		$(MD)/sidirq.dr $(MD)/sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft $(MD)/sysgo_dd
 
 BOOTFILE_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -57,7 +56,7 @@ BOOTFILE_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
-		sidirq.dr sid.dd \
+		$(MD)/sidirq.dr $(MD)/sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 BOOTFILE_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -67,7 +66,7 @@ BOOTFILE_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
-		sidirq.dr sid.dd \
+		$(MD)/sidirq.dr $(MD)/sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 BOOTCMDS	= $(LEVEL2)/coco3/cmds/shell_21 $(LEVEL2)/coco3/cmds/date \
@@ -104,7 +103,7 @@ sidDir sidSnd:	$(KQ3_PCASSETS)/SNDDIR ../tools/agi_sid_extract.py \
 	python3 ../tools/agi_sid_extract.py $(KQ3_PCASSETS) \
 		--sid-dir sidDir --sid-snd sidSnd
 
-ALLOBJS		= $(CMDS) $(BOOTOBJS)
+ALLOBJS		= $(CMDS)
 
 all:	$(ALLOBJS)
 

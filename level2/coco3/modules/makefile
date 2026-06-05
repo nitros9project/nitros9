@@ -85,7 +85,12 @@ PIPE		= pipeman.mn pipeman_named.mn \
 
 RFM		= rfm.mn rfmdrv.dr ddy0.dd y0.dd y1.dd y2.dd y3.dd
 
-ALLOBJS		=  $(BOOTTRACK) $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(PIPE) $(RFM)
+# X-SID polyphonic audio (X-SID cart in MPI slot 1, $FF40-$FF5F).
+# Optional: only referenced by disks that explicitly add it to their
+# OS9BOOT_* recipe (Sierra AGI packages today).
+XSID		= sidirq.dr sid.dd
+
+ALLOBJS		=  $(BOOTTRACK) $(KERNEL) $(SYSMODS) $(CLOCKS) $(RBF) $(SCF) $(PIPE) $(RFM) $(XSID)
 
 all:	$(ALLOBJS)
 
@@ -186,6 +191,10 @@ rb1773_scii_ff58.dr:    rb1773.asm
 
 emudsk.dr: emudsk.asm
 	$(AS) $< $(ASOUT)$@ $(AFLAGS)
+
+# X-SID descriptor (output name doesn't match source basename)
+sid.dd: siddesc.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS)
 
 # REL Modules
 rel_32: rel.asm

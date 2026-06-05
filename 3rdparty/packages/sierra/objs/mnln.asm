@@ -322,6 +322,7 @@ O_UNUSED            equ       $8000
 
                   IFP1
                     use       defsfile
+                    use       sid.d
                   ENDC
 
 tylg                set       Prgrm+Objct
@@ -10141,14 +10142,8 @@ SidStopOut          puls      cc,a,pc
 ************************************************************************
 
 SidDirSize          equ       404                 ; 101 max-slot entries x 4 BE bytes
-SidMaxStream        equ       16384               ; matches /sid driver SidBufSize
 SidChunkSize        equ       512                 ; chunked-write transfer unit
-* XSID Phase D (chunked-write): /sid driver SetStt/GetStt codes
-SS.SidPrep          equ       $93                 ; reset+set total length (was SS.SidLoad)
-SS.SidStart         equ       $94                 ; begin playback
-SS.SidStop          equ       $95                 ; halt playback
-SS.SidActv          equ       $96                 ; query active state
-SS.SidWrite         equ       $97                 ; F$Move one chunk into driver buffer
+* SS.Sid* codes, SidMaxStream, SidMinStream come from sid.d (use'd at top of file).
 
 * --------------------------------------------------------------------
 * SidStartupInit

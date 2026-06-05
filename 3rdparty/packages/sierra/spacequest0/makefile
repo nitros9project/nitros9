@@ -23,8 +23,7 @@ DISK_1_80D_NAME	= "Space Quest 0 Disk 1"
 DISK_2_80D_NAME	= "Space Quest 0 Disk 2"
 DISK_DW_NAME	= "Space Quest 0"
 
-CMDS		= sierra mnln scrn shdw tocgen xsidhello xsidpoly xsidstat
-BOOTOBJS	= sidirq.dr sid.dd
+CMDS		= sierra mnln scrn shdw tocgen
 MD		= $(LEVEL2)/coco3/modules
 
 # We make our own bootfile and kernel track
@@ -39,7 +38,7 @@ OS9BOOT_40D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
-		sidirq.dr sid.dd \
+		$(MD)/sidirq.dr $(MD)/sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft $(MD)/sysgo_dd
 
 OS9BOOT_80D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -49,7 +48,7 @@ OS9BOOT_80D	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
-		sidirq.dr sid.dd \
+		$(MD)/sidirq.dr $(MD)/sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft $(MD)/sysgo_dd
 
 OS9BOOT_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -59,7 +58,7 @@ OS9BOOT_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
-		sidirq.dr sid.dd \
+		$(MD)/sidirq.dr $(MD)/sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 OS9BOOT_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -69,7 +68,7 @@ OS9BOOT_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
-		sidirq.dr sid.dd \
+		$(MD)/sidirq.dr $(MD)/sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 BOOTCMDS	= $(LEVEL2)/coco3/cmds/shell_21 $(LEVEL2)/coco3/cmds/date \
@@ -108,7 +107,7 @@ sidDir sidSnd:	$(SQ0R_PCASSETS)/SNDDIR ../tools/agi_sid_extract.py \
 	python3 ../tools/agi_sid_extract.py $(SQ0R_PCASSETS) \
 		--sid-dir sidDir --sid-snd sidSnd
 
-ALLOBJS		= $(CMDS) $(BOOTOBJS)
+ALLOBJS		= $(CMDS)
 
 all:	$(ALLOBJS)
 

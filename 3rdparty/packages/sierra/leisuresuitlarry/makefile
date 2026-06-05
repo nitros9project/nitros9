@@ -15,7 +15,6 @@ DSK_NAME	= "Leisure Suit Larry"
 DSKS		= $(DSK_FLOPPY) $(DSK_DW) $(DSK_DW_BECKER)
 
 CMDS		= sierra mnln scrn shdw tocgen
-BOOTOBJS	= sidirq.dr sid.dd
 MD		= $(LEVEL2)/coco3/modules
 
 # We make our own bootfile and kernel track
@@ -30,7 +29,7 @@ BOOTFILE_FLOPPY	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
-		sidirq.dr sid.dd \
+		$(MD)/sidirq.dr $(MD)/sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_soft $(MD)/sysgo_dd
 
 BOOTFILE_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -40,7 +39,7 @@ BOOTFILE_DW	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
-		sidirq.dr sid.dd \
+		$(MD)/sidirq.dr $(MD)/sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 BOOTFILE_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
@@ -50,7 +49,7 @@ BOOTFILE_DW_BECKER	= $(MD)/krnp2 $(MD)/ioman $(MD)/init \
 		$(MD)/joydrv_joy.sb $(MD)/snddrv_cc3.sb \
 		$(MD)/covdg_small.io $(MD)/term_vdg.dt \
 		$(MD)/vrn.dr $(MD)/vi.dd \
-		sidirq.dr sid.dd \
+		$(MD)/sidirq.dr $(MD)/sid.dd \
 		$(MD)/clock_60hz $(MD)/clock2_dw $(MD)/sysgo_dd
 
 SUPPORTFILES	= logDir object picDir sndDir viewDir vol.0 \
@@ -71,7 +70,7 @@ sidDir sidSnd:	$(LSL_PCASSETS)/SNDDIR ../tools/agi_sid_extract.py \
 	python3 ../tools/agi_sid_extract.py $(LSL_PCASSETS) \
 		--sid-dir sidDir --sid-snd sidSnd
 
-ALLOBJS		= $(CMDS) $(BOOTOBJS)
+ALLOBJS		= $(CMDS)
 
 all:	$(ALLOBJS)
 
