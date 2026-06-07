@@ -13,4 +13,4 @@ SCF = scf.mn vtio.dr snddrv_cc3.sb joydrv_joy.sb cowin.io \
 	n3_scdwv.dd n4_scdwv.dd n5_scdwv.dd
 CLOCK = clock_60hz clock2_dw
 
-CMDS_EXTRA += dw inetd telnet httpd
+CMDS_EXTRA += dw httpd inetd telnet

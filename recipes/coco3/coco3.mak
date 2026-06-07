@@ -5,6 +5,8 @@ include ../../rules.mak
 RECIPE ?= coco3
 -include recipe.mak
 vpath %.asm $(LEVEL1)/coco1/modules
+vpath %.asm $(LEVEL2)/sys
+vpath %.hp $(LEVEL2)/sys:$(LEVEL1)/sys
 
 ifeq ($(CPU),6309)
 AFLAGS += -DH6309=1
@@ -64,6 +66,8 @@ CLOCK ?= clock_60hz clock2_soft
 KERNEL_TRACK ?= $(REL) boot_1773_6ms krn
 KERNELFILE = kerneltrack
 STARTUP ?= $(NITROS9DIR)/level2/$(PORT)/startup
+TELNET_PORT ?= 6809
+HTTPD_PORT ?= 8809
 
 BOOTMODS ?= krnp2 ioman init \
 	$(RBF) \
@@ -76,9 +80,13 @@ BOOTMODS ?= krnp2 ioman init \
 SHELLMODS = shellplus date deiniz echo iniz link load save unlink
 UTILPAK1 = attr build copy del deldir dir display list makdir mdir merge mfree procs rename tmode
 
-CMDS_BASE ?= $(STDCMDS) grfdrv shell utilpak1
-CMDS += $(CMDS_BASE) \
-	$(CMDS_EXTRA)
+CMDS_BASE ?= $(sort $(filter-out shell_21 shellplus,$(STDCMDS)) dmem grfdrv mmap modpatch montype pmap proc reboot shell smap utilpak1 wcreate)
+CMDS = $(sort $(CMDS_BASE) $(CMDS_EXTRA))
+
+SYSDIR ?= .sys
+SYSBIN = ibmedcfont isolatin1font stdfonts stdpats_2 stdpats_4 stdpats_16 stdptrs
+SYSHELP = $(sort $(wildcard $(LEVEL1)/sys/*.hp) $(wildcard $(LEVEL2)/sys/*.hp))
+SYSTEXT = errmsg helpmsg inetd.conf motd password
 
 all: libs $(DSKIMAGE)
 
@@ -91,7 +99,8 @@ kernelfile: $(addprefix $(MODDIR)/,$(KERNEL_TRACK))
 bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
 
-$(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(DSK_EXTRA_DEPS)
+$(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) \
+	$(addprefix $(SYSDIR)/,$(SYSBIN) $(SYSTEXT)) $(STARTUP) $(DSK_EXTRA_DEPS)
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9GEN) $@ -b=bootfile -t=$(KERNELFILE)
@@ -100,6 +109,10 @@ $(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(DS
 	$(MAKDIR) $@,DEFS
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
+	$(OS9COPY) $(addprefix $(SYSDIR)/,$(SYSBIN)) $@,SYS
+	$(OS9ATTR_TEXT) $(foreach file,$(SYSBIN),$@,SYS/$(file))
+	$(CPL) $(addprefix $(SYSDIR)/,$(SYSTEXT)) $@,SYS
+	$(OS9ATTR_TEXT) $(foreach file,$(SYSTEXT),$@,SYS/$(file))
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 	$(DSK_POST_COPY)
@@ -133,6 +146,30 @@ $(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
 
 $(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1)) | $(MODDIR)
 	$(MERGE) $(addprefix $(MODDIR)/,$(UTILPAK1)) >$@
+
+# SYS files
+$(SYSDIR):
+	@mkdir -p $@
+
+$(SYSDIR)/%: %.asm | $(SYSDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(SYSDIR)/helpmsg: $(SYSHELP) | $(SYSDIR)
+	$(MERGE) $^ >$@
+
+$(SYSDIR)/errmsg: $(LEVEL1)/sys/errmsg | $(SYSDIR)
+	$(CP) $< $@
+
+$(SYSDIR)/password: $(LEVEL1)/sys/password | $(SYSDIR)
+	$(CP) $< $@
+
+$(SYSDIR)/motd: | $(SYSDIR)
+	@$(ECHO) > $@
+	@$(ECHO) "Welcome to NitrOS-9 Level $(LEVEL) $(NITROS9VER) !" >> $@
+	@$(ECHO) >> $@
+
+$(SYSDIR)/inetd.conf: $(LEVEL1)/sys/inetd.conf | $(SYSDIR)
+	@sed -e 's/%TELNET_PORT%/$(TELNET_PORT)/' -e 's/%HTTPD_PORT%/$(HTTPD_PORT)/' $< >$@
 
 # CoCo 3 kernel/booter variants
 $(MODDIR)/boot_1773_6ms: boot_1773.asm | $(MODDIR)
@@ -210,6 +247,6 @@ $(MODDIR)/n5_scdwv.dd: scdwvdesc.asm | $(MODDIR)
 
 clean:
 	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo
-	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
+	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR) $(SYSDIR)
 
 .PHONY: all clean libs
