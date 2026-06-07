@@ -30,7 +30,7 @@ CMDS    = asm attr backup bawk binex build cmp copy \
 		pmap proc procs prompt pwd pxd rename save setime shellplus \
 		shell_21 sleep smap tee tmode touch tsmon unlink verify xmode \
 		bootos9 wbinfo wbreset rogue gfxstatus scfg xtclut drawtest play wild shellbg shellbgoff ntptime \
-		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) view $(CMDS_FN)
+		$(CMDS_DW) $(BASIC09) $(BF) $(CPM) view fadeout fadein $(CMDS_FN)
 
 CMDS_CART      = asm attr backup bawk binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \

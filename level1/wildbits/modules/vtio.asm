@@ -790,7 +790,7 @@ ex@                 rts
 CurRght             ldd       V.CurRow,u
                     incb                          increment the column
                     cmpb      V.WWidth,u          is it >= the number of columns?
-                    bgt       nextrow@
+                    bge       nextrow@
 ex@                 std       V.CurRow,u
 bye@                rts
 nextrow@            ldb       V.WHeight,u

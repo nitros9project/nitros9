@@ -18,15 +18,15 @@
 ;;;
 ;;; Note: The value of DP cannot be the same as it was when you called F$Icpt.
 
-FIcpt          ldx       <D.Proc             get the current process descriptor
-               ldd       R$X,u               get the address of the intercept routine from the caller
-               ifne      H6309
-               ldw       R$U,u               get the data area pointer for the intercept routine
-               stq       P$SigVec,x          save them in the process descriptor
-               else
-               std       <P$SigVec,x         store it in the process descriptor
-               ldd       R$U,u               get the caller's data pointer
-               std       <P$SigDat,x         store it in the process descriptor
-               endc
-               clrb                          clear carry
-               rts                           return to the caller
+FIcpt               ldx       <D.Proc   ; get the current process descriptor
+                    ldd       R$X,u     ; get the address of the intercept routine from the caller
+                  IFNE    H6309   ; begin conditional assembly for H6309
+                    ldw       R$U,u     get the data area pointer for the intercept routine
+                    stq       P$SigVec,x save them in the process descriptor
+                  ELSE
+                    std       <P$SigVec,x ; store it in the process descriptor
+                    ldd       R$U,u     ; get the caller's data pointer
+                    std       <P$SigDat,x ; store it in the process descriptor
+                  ENDC
+                    clrb                ; clear carry
+                    rts                 ; return to the caller

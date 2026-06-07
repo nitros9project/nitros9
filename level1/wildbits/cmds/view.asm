@@ -13,6 +13,10 @@
 *
 *   3      2025/11/08  Roger Taylor
 * Add option to show a specific bitmap # if no file is specified.
+*
+*   4      2025/05/09  Roger Taylor
+* Improve pixel block calculation speed in GetXYBlk routine
+* Added -r option to free all bitmaps and return to text mode, exit
 
                     nam       view
                     ttl       Picture viewer
@@ -26,7 +30,7 @@
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       1
+edition             set       4
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -63,6 +67,7 @@ HEIGHT	rmb	2		image height
 PX                  rmb       2	                  True pixel location x,y
 PY                  rmb       2
 
+cliptr              rmb       2                   Command line pointer for parsing arguments
 blkadj              rmb       1
 color               rmb       2
 pixaddr             rmb       2
@@ -98,40 +103,59 @@ inittext            fcc       /Picture Viewer by Roger Taylor/
 
 clutpathname        fcn       "/dd/cmds/xtclut"
 
+skipspace           lda       ,x+                 grab a character
+                    cmpa      #C$SPAC             space?
+                    beq       skipspace           yes, skip it
+                    leax      -1,x                otherwise point to last non-space
+                    rts
+
 start
                     clra
                     clrb
                     os9       F$Mem
                     lbcs      err
-                    sty       fmemupper
-                    std       fmemsize
-                    clr       filepath
+                    sty       <fmemupper
+                    std       <fmemsize
+                    clr       <filepath
 
                     clra
                     clrb
-                    std       bitmapnum
-                    std       clutnum
-                    lda       #1                  Path #
-                    sta       currPath            Store current path
+                    std       <bitmapnum
+                    std       <clutnum
+                    inca                          Set reg.a to Path #1
+                    sta       <currPath           Store current path
+                    stx       <cliptr
 
-                    lda       ,x
+GetOpts             ldx       <cliptr
+                    bsr       skipspace
+*                    cmpa      #13
+*                    beq       nf@
                     cmpa      #'-'
                     bne       OpenFile
                     leax      1,x
-                    ldb       ,x
-                    subb      #'0'
-                    cmpb      #2
-                    bhi       OpenFile            If bitmap # not 0-2 then assume 0
-                    stb       bitmapnum+1
-                    stb       clutnum+1
+                    stx       <cliptr
+                    lda       ,x
+                    cmpa      #'r'
+                    bne       setplane
                     leax      1,x
-
+                    stx       <cliptr
+                    lbsr      GrOff
+                    bra       bye
+setplane            suba      #'0'
+                    cmpa      #2
+                    bhi       OpenFile            If bitmap # not 0-2 then assume 0
+                    sta       bitmapnum+1
+                    sta       clutnum+1
+                    leax      1,x
+                    stx       <cliptr
+                    bra       GetOpts
 OpenFile            lda       ,x
                     cmpa      #$0D
                     beq       nf@
                     lda       #READ.
                     os9       I$Open
                     lbcs      err
+                    stx       <cliptr
                     sta       filepath
 nf@                 lbsr      CreateBitmap
                     lda       filepath
@@ -146,7 +170,6 @@ nc@                 lbsr      GrOn
                     beq       nd@
                     lbsr      LOADBMP
 nd@                 lbsr      Bitmap2Layer
-
                     bra       bye
 
 clsdemo             ldd       #$0200
@@ -162,7 +185,7 @@ keyloop@            lbsr      INKEY               Inkey routine with handlers fo
 
 bye                 clrb
 err                 pshs      cc,b
-*                   lbsr      GrOff
+*                    lbsr      GrOff
                     puls      b,cc
                     os9       F$Exit
 
@@ -173,7 +196,7 @@ Cls                 ldb       #9
                     pshs      b
 l@                  ldb       ,s
                     bsr       MapRelPicBlk
-                    ldx       mapaddr
+                    ldx       <mapaddr
                     ldy       #$2000
                     ldb       <color
                     tfr       b,a
@@ -185,37 +208,37 @@ w@                  std       ,x++
                     puls      b,pc
 
 SetPixel            bsr       GetXYBlk            Returns relative 8K block # in reg.b, offset into the block in reg.x
-                    stx       offset
+                    stx       <offset
                     bsr       MapRelPicBlk        Maps in the relative block # of the bitmap screen
                     bcs       x@
-                    ldd       offset
-                    adda      mapaddr
+                    ldd       <offset
+                    adda      <mapaddr
                     tfr       d,x
                     ldb       <color
                     stb       ,x                  write pixel             
 x@                  rts                           Return to the caller
 
 PixelToX            bsr       GetXYBlk            Returns relative 8K block # in reg.b, offset into the block in reg.x
-                    stx       offset
+                    stx       <offset
                     bsr       MapRelPicBlk        Maps in the relative block # of the bitmap screen
                     bcs       x@
-                    ldd       offset
-                    adda      mapaddr
+                    ldd       <offset
+                    adda      <mapaddr
                     tfr       d,x
 x@                  rts                           Return to the caller
 
-MapRelPicBlk        addb      bmblock
-                    cmpb      currBlk
+MapRelPicBlk        addb      <bmblock
+                    cmpb      <currBlk
                     beq       exit@               Block is already mapped in
-                    stb       currBlk
+                    stb       <currBlk
                     pshs      u                   F$ClrBlk will destroy U, so push it
-                    ldu       mapaddr
+                    ldu       <mapaddr
                     cmpu      #-1
                     beq       n@
                     ldb       #1
                     os9       F$ClrBlk
 n@                  puls      u                   Restore U from stack                   
-                    ldb       currBlk
+                    ldb       <currBlk
                     clra
                     tfr       d,x
                     ldb       #1
@@ -224,7 +247,7 @@ n@                  puls      u                   Restore U from stack
                     bcc       ok@
                     puls      u                   restore U from stack
                     bra       exit@
-ok@                 stu       mapaddr
+ok@                 stu       <mapaddr
                     puls      u                   restore U from stack
                     clrb
 exit@               rts
@@ -232,20 +255,18 @@ exit@               rts
 
 * Convert PX/PY into relative 8K block #
 * and offset into that block.
-* (PY*320) is the same as (PY*256)+(PY*64)
+* 
 * Then add PX, divide by 32 to get 8K block of the pixel.
 GetXYBlk            pshs      d
                     clr       <blkadj
-                    lda       <PY+1               PY*256
+                    lda       <PY+1               (PY*256)+(PY*64) is the same as (PY*320)
                     clrb
-                    std       ,s
-                    lda       <PY+1
-                    clrb
+                    std       ,s                  Store (PY*256) to stack
                     lsra
                     rorb
                     lsra
                     rorb
-                    addd      ,s                  (PY*256)+(PY*64)
+                    addd      ,s                  Add (PY*64) to stack
                     pshs      cc
                     addd      <PX
                     pshs      cc
@@ -260,18 +281,19 @@ GetXYBlk            pshs      d
                     ldb       #8
                     stb       <blkadj
                     puls      b
-h@                  puls      cc
-                    puls      cc
-                    TFR       D,X
-                    LSRA
-                    LSRA
-                    LSRA
-	            LSRA
-	            LSRA
+h@                  leas      2,s                 Cleanly pop both CC regs from stack
+*                    puls      cc
+*                    puls      cc
+                    tfr       d,x
+                    lsra
+                    lsra
+                    lsra
+                    lsra
+                    lsra
                     adda      <blkadj
                     sta       1,s
-                    TFR       X,D
-                    ANDA      #31
+                    tfr       x,d
+                    anda      #31
                     tfr       d,x
                     puls      d,pc
 
@@ -283,7 +305,7 @@ h@                  puls      cc
 *                   Sprite  =  %00100000          Sprite Enable
 GrOn                ldx       #%00001111
                     ldy       #%11111111          Don't change FFC1  FT_OMIT = %11111111
-                    lda       currPath            Path #
+                    lda       <currPath            Path #
                     ldb       #SS.DScrn           Display Screen with new settings
                     os9       I$SetStt            Turn on Graphics
                     bcs       x@
@@ -292,18 +314,21 @@ x@                  rts
 
 GrOff               ldx       #%00000001          Turn Text on BM_TXT = %00000001
                     ldy       #%11111111          Don't change FFC1  FT_OMIT = %11111111
-                    lda       currPath            Path #
+                    lda       <currPath            Path #
                     ldb       #SS.DScrn           Display screen with new settings
                     os9       I$SetStt
                     bcs       x@                  Error
-                    ldy       #2                  BM 0-2
-par2@               lda       currPath            Path #
+                    ldy       #0                  BM 0
+                    bsr       groff2
+                    ldy       #1                  BM 1
+                    bsr       groff2
+                    ldy       #2                  BM 2
+groff2              lda       <currPath           Path #
                     ldb       #SS.FScrn           Free Bitmap
                     os9       I$SetStt
-                    bcs       x@                  Error
+*                    bcs       x@                  Error
                     clrb                          No Error
-x@                  rts                           return to the caller
-                    
+x@                  rts
 
 * The term for "Color Lookup Table" has been called "PALETTE" for the past 40+ years.
 LoadClut            pshs      a,x,y,u             Preserve regs
@@ -314,42 +339,42 @@ LoadClut            pshs      a,x,y,u             Preserve regs
                     beq       l@                  Use CLUT data if no error
                     os9       F$Load              Load and set y=entry point
                     bcs       x@
-l@                  ldx       clutnum
-                    lda       currPath            Path #
+l@                  ldx       <clutnum
+                    lda       <currPath            Path #
                     ldb       #SS.DfPal           Define Palette CLUT/Palette#0 with Y data
                     os9       I$SetStt
                     os9       F$Unlink            Clut/Palette defined now this saves 8K for Basic09         
                     bcs       x@
                     ldu       5,s                 F$Link,F$Load,F$Unlink all trash U
-                    ldx       clutnum             CLUT/Palette #
-                    ldy       bitmapnum           Bitmap # 1st param
-                    lda       currPath            Path #
+                    ldx       <clutnum             CLUT/Palette #
+                    ldy       <bitmapnum           Bitmap # 1st param
+                    lda       <currPath            Path #
                     ldb       #SS.Palet           Assign CLUT/Palette # to Bitmap #
                     os9       I$SetStt
                     clrb
 x@                  puls      u,y,x,a,pc
 
-CreateBitmap        ldy       bitmapnum
+CreateBitmap        ldy       <bitmapnum
                     ldx       #0                  2nd parameter screentype 0=320x240 1=320x200
-                    lda       currPath            Path #
+                    lda       <currPath            Path #
                     ldb       #SS.AScrn           Assign and create bitmap
                     os9       I$SetStt         
                     bcc       storeblk            No error store block #
                     cmpb      #E$WADef            Check if window already defined
                     bne       x@
 storeblk            tfr       x,d              
-                    stb       bmblock             Save BMBlock
+                    stb       <bmblock             Save BMBlock
 x@                  ldb       #-1
-                    stb       currBlk             Force first pixel to map in it's 8K block
+                    stb       <currBlk             Force first pixel to map in it's 8K block
                     ldd       #-1
-                    std       mapaddr
+                    std       <mapaddr
                     clrb
                     rts
 
 **** Assign Bitmap to Layer
 Bitmap2Layer        ldx       #0                  Layer # 
-                    ldy       bitmapnum           Bitmap #
-                    lda       currPath            Path #
+                    ldy       <bitmapnum           Bitmap #
+                    lda       <currPath            Path #
                     ldb       #SS.PScrn           Position Bitmap # to Layer #
                     os9       I$SetStt
                     rts
@@ -366,15 +391,15 @@ LONG                lda       3,x
                     rts
 
 ReadFileByte        pshs      b,x,y
-                    lda       filepath
+                    lda       <filepath
                     leax      filebyte,u
                     ldy       #1
                     os9       I$Read
-                    lda       filebyte
+                    lda       <filebyte
                     puls      b,x,y,pc
 
 ReadLineData        pshs      b,x,y
-                    lda       filepath
+                    lda       <filepath
                     leax      LineData,u
                     ldy       #320
                     os9       I$Read
@@ -410,7 +435,11 @@ A@                  lbsr      ReadFileByte
                     ldd       COMPRES+2,x
                     lbne      RLERR
                     LDD       HWIDTH+2,x
-                    STD       <WIDTH
+                    tstb
+                    beq       m@
+                    addd      #3
+                    andb      #%11111100 mod 4
+m@                  STD       <WIDTH
                     LDD       HDEPTH+2,x
                     STD       <HEIGHT
                     ldb       <BITS+1,x	convert bits to color count
@@ -463,7 +492,7 @@ NOPAL               CLR	      <color	clear screen to the first color in the pale
 * 8-bit BMP pictures contain a palette, and the colors are single bytes
 BIT8                lbsr      UPDPY   update height; part of inversion
                     bmi       x@
-                    lda       filepath
+                    lda       <filepath
                     leax      LineData,u
                     ldy       #320
                     os9       I$Read
@@ -472,8 +501,10 @@ a@                  lda       ,y+
                     sta       <color
                     lbsr      SetPixel
                     ldd       <PX	update the horizontal pointer
-                    addd      #1
-                    std       <PX
+                    incb
+                    bne       c@
+                    inca
+c@                  std       <PX
                     cmpd      <WIDTH
                     blo       a@
 *                     LDB       <WIDTH+1        8-bit bmp files stored in multiples of long numbers
@@ -492,7 +523,7 @@ x@                  rts
 * Load 160 bytes per line at once, then split each byte into two 4-bit colors.
 BIT4                lbsr      UPDPY   update height; part of inversion
                     bmi       x@
-                    lda       filepath
+                    lda       <filepath
                     leax      LineData,u
                     ldy       #160
                     os9       I$Read

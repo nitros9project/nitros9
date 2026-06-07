@@ -76,6 +76,8 @@ V.4E                RMB       1                   Flood Fill full byte color mas
 V.4F                RMB       1
 V.Caps              RMB       1                   caps lock info: $00=lower $FF=upper
 V.ClkCnt            RMB       1                   clock count ??
+V.KyDly             RMB       1                   key repeat initial delay
+V.KySpd             RMB       1                   key repeat secondary delay
 V.WrChr             RMB       1                   character to write
 V.CurCo             RMB       1                   current CO-module in use
 * start of CoWP-specific static memory

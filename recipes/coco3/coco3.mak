@@ -43,6 +43,8 @@ TERM_ALTCOLOR_FLAGS =
 endif
 
 DSKIMAGE ?= l$(LEVEL)_$(RECIPE).dsk
+DSK_EXTRA_DEPS ?=
+DSK_POST_COPY ?= @:
 OS9FORMAT_CMD ?= $(OS9FORMAT_DS40)
 
 AFLAGS += -I.
@@ -100,7 +102,7 @@ kernelfile: $(addprefix $(MODDIR)/,$(KERNEL_TRACK))
 bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
 
-$(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP)
+$(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(DSK_EXTRA_DEPS)
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9GEN) $@ -b=bootfile -t=$(KERNELFILE)
@@ -111,6 +113,7 @@ $(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP)
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
+	$(DSK_POST_COPY)
 
 # /TERM window descriptors — column count and colors controlled by TERM_COLS and TERM_ALTCOLOR
 $(MODDIR)/term_win40.dt: term_win40.asm | $(MODDIR)
