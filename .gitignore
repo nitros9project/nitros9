@@ -18,3 +18,14 @@ buildinfo
 bootfile
 kerneltrack
 *.dsk
+
+# Checked-in deliverables that the broad globs above would otherwise hide.
+# These are committed artifacts with no build rule (not produced by `make`),
+# so keep them tracked.
+!/3rdparty/packages/l2upgrade/l2v3d1.dsk
+!/3rdparty/packages/l2upgrade/update2.dsk
+!/3rdparty/packages/l2upgrade/upgrade1.dsk
+!/3rdparty/packages/l2upgrade/utility.dsk
+!/3rdparty/packages/l2upgrade/windisk.dsk
+!/3rdparty/packages/os9l2bbs/os9l2bbs.dsk
+!/3rdparty/packages/uucpbb/sample_config/bin.list
