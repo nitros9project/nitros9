@@ -6,6 +6,20 @@ RECIPE ?= coco3
 -include recipe.mak
 vpath %.asm $(LEVEL1)/coco1/modules
 
+ifeq ($(CPU),6309)
+AFLAGS += -DH6309=1
+COCO3_LIB = libcoco3_6309.a
+NOS9_LIB = libnos96309l2.a
+COCO3_LFLAG = -lcoco3_6309
+else ifeq ($(CPU),6809)
+AFLAGS += -DH6309=0
+COCO3_LIB = libcoco3.a
+NOS9_LIB = libnos96809l2.a
+COCO3_LFLAG = -lcoco3
+else
+$(error Unsupported CPU "$(CPU)"; use CPU=6809 or CPU=6309)
+endif
+
 # Set TERM_COLS to 32, 40, or 80 to select the /TERM display width (default: 80).
 #   32 uses the VDG chip via covdg.io + term_vdg.dt (32x16, CoCo 1/2-style).
 #   40 and 80 use the CoCo 3 window system via cowin.io + term_win{40,80}.dt.
@@ -28,13 +42,15 @@ TERM_ALTCOLOR_FLAGS =
 endif
 
 DSKIMAGE ?= l$(LEVEL)_$(RECIPE).dsk
+DSK_EXTRA_DEPS ?=
+DSK_POST_COPY ?= @:
 OS9FORMAT_CMD ?= $(OS9FORMAT_DS40)
 
 AFLAGS += -I.
 AFLAGS += -I$(L2MD)/kernel -I$(L2PMD)
 AFLAGS += -I$(L1MD)/kernel -I$(L1MD)
 AFLAGS += $(AFLAGS_EXTRA)
-LFLAGS += -L $(LIBDIR) -lcoco3 -lnet -lalib
+LFLAGS += -L $(LIBDIR) $(COCO3_LFLAG) -lnet -lalib
 LFLAGS += $(LFLAGS_EXTRA)
 
 DSDD40 = -DCyls=40 -DSides=2 -DSectTrk=18 -DSectTrk0=18 -DInterlv=3 -DSAS=8 -DDensity=1
@@ -66,7 +82,7 @@ CMDS += $(CMDS_BASE) \
 
 all: libs $(DSKIMAGE)
 
-LIB_NAMES = libnos96809l2.a libnet.a libalib.a libcoco3.a
+LIB_NAMES = $(NOS9_LIB) libnet.a libalib.a $(COCO3_LIB)
 include ../../libs.mak
 
 kernelfile: $(addprefix $(MODDIR)/,$(KERNEL_TRACK))
@@ -75,7 +91,7 @@ kernelfile: $(addprefix $(MODDIR)/,$(KERNEL_TRACK))
 bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
 
-$(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP)
+$(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(DSK_EXTRA_DEPS)
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9GEN) $@ -b=bootfile -t=$(KERNELFILE)
@@ -86,6 +102,7 @@ $(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP)
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
+	$(DSK_POST_COPY)
 
 # /TERM window descriptors — column count and colors controlled by TERM_COLS and TERM_ALTCOLOR
 $(MODDIR)/term_win40.dt: term_win40.asm | $(MODDIR)

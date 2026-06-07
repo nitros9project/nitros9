@@ -1,6 +1,6 @@
 include ../../../../rules.mak
 
-vpath %.asm ../objs_lsl
+vpath %.asm ../objs
 
 AFLAGS      += -I.
 

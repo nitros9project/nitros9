@@ -1,0 +1,8 @@
+Level equ 1
+ use os9.d
+ use scf.d
+ use rbf.d
+ use wildbits.d
+
+MappedIOStart equ $FE00
+MappedIOEnd equ $FFFF

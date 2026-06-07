@@ -19,6 +19,7 @@ else
 endif
 
 DSKIMAGE ?= l$(LEVEL)_$(RECIPE)$(PLATFORM).dsk
+OS9FORMAT_CMD ?= $(OS9FORMAT_SD)
 
 AFLAGS += -D$(PLATFORM) -I.
 ifeq ($(LEVEL),2)
@@ -38,14 +39,15 @@ else
 SD_RBF += s0 s1
 endif
 
-RBF = rbf rbsuper llwbsd rbmem $(SD_RBF) f0 f1
-SCF = scf vtio $(KEYSUB) term bannerfont palette
+RBF = rbf rbsuper llwbsd rbmem $(SD_RBF) f0 f1 $(RBF_EXTRA)
+SCF = scf vtio $(KEYSUB) term bannerfont palette $(SCF_EXTRA)
 ifeq ($(LEVEL),2)
 SCF += mousedrv_ps2
 endif
 DRIVEWIRE_RBF = rbdw x0 x1 x2 x3
 DRIVEWIRE_SCF = scdwv n1 n2 n3 n4 n5
 DRIVEWIRE = dwio_serial $(DRIVEWIRE_RBF) $(DRIVEWIRE_SCF)
+DRIVEWIRE_BOOTMODS = dwio_serial $(PIPE) $(SC16550)
 PIPE = pipeman piper pipe
 SC16550 = sc16550 t0_sc16550
 CLOCK = clock clock2_wildbits
@@ -80,7 +82,7 @@ UTILPAK1_MODS = attr copy date del deiniz dir display list makdir mdir \
 CMDS += dmem minted mmap modpatch \
 	proc pmap smap \
 	gfxstatus xtclut drawtest play \
-	shellbg shellbgoff ntptime view utilpak1
+	shellbg shellbgoff ntptime view utilpak1 fadein fadeout
 endif
 
 BASIC09 = basic09 runb inkey syscall wild
@@ -150,7 +152,7 @@ else
 $(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets
 endif
 	$(RM) $@
-	$(OS9FORMAT_SD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
+	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9COPY) bootfile $@,OS9Boot
 ifeq ($(LEVEL),2)
 	$(OS9COPY) $(MODDIR)/sysgo $@,sysgo

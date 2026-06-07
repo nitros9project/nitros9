@@ -9,6 +9,11 @@
 # Example: l2_coco3custom.dsk
 RECIPE ?= coco3
 
+# Set CPU on the make command line to select the CoCo 3 build flavor.
+# Supported values: 6809, 6309
+# Example: make CPU=6309
+# CPU = 6809
+
 # Set to 32, 40, or 80 to select the /TERM display width (default: 80).
 #   32 uses the VDG chip (covdg.io + term_vdg.dt, 32x16 CoCo 1/2-style).
 #   40 and 80 use the CoCo 3 window system (cowin.io + term_win{40,80}.dt).
