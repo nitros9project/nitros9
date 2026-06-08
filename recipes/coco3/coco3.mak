@@ -82,7 +82,7 @@ BOOTMODS ?= krnp2 ioman init \
 SHELLMODS = shellplus date deiniz echo iniz link load save unlink
 UTILPAK1 = attr build copy del deldir dir display list makdir mdir merge mfree procs rename tmode
 
-CMDS_BASE ?= $(sort $(filter-out shell_21 shellplus,$(STDCMDS)) basic09 dmem gfx2 grfdrv inkey mmap modpatch montype pmap proc reboot runb shell smap syscall utilpak1 wcreate)
+CMDS_BASE ?= $(sort $(filter-out shell_21 shellplus,$(STDCMDS)) basic09 dmem gfx gfx2 grfdrv inkey mmap modpatch montype pmap proc reboot runb shell smap syscall utilpak1 wcreate)
 CMDS = $(sort $(CMDS_BASE) $(CMDS_EXTRA))
 
 SYSDIR ?= .sys
