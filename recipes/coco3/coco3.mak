@@ -76,7 +76,7 @@ BOOTMODS ?= krnp2 ioman init \
 	$(SCF) \
 	$(PIPE) \
 	$(CLOCK) \
-	sysgo_dd shell_21 \
+	sysgo_dd \
 	$(BOOTMODS_EXTRA)
 
 SHELLMODS = shellplus date deiniz echo iniz link load save unlink
