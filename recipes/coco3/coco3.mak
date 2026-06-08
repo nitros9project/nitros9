@@ -6,6 +6,7 @@ RECIPE ?= coco3
 -include recipe.mak
 vpath %.asm $(LEVEL1)/coco1/modules
 vpath %.asm $(LEVEL2)/sys
+vpath %.asm $(3RDPARTY)/packages/basic09
 vpath %.hp $(LEVEL2)/sys:$(LEVEL1)/sys
 
 ifeq ($(CPU),6309)
@@ -51,6 +52,7 @@ OS9FORMAT_CMD ?= $(OS9FORMAT_DS40)
 AFLAGS += -I.
 AFLAGS += -I$(L2MD)/kernel -I$(L2PMD)
 AFLAGS += -I$(L1MD)/kernel -I$(L1MD)
+AFLAGS += -I$(3RDPARTY)/packages/basic09 -I$(MODDIR)
 AFLAGS += $(AFLAGS_EXTRA)
 LFLAGS += -L $(LIBDIR) $(COCO3_LFLAG) -lnet -lalib
 LFLAGS += $(LFLAGS_EXTRA)
@@ -80,7 +82,7 @@ BOOTMODS ?= krnp2 ioman init \
 SHELLMODS = shellplus date deiniz echo iniz link load save unlink
 UTILPAK1 = attr build copy del deldir dir display list makdir mdir merge mfree procs rename tmode
 
-CMDS_BASE ?= $(sort $(filter-out shell_21 shellplus,$(STDCMDS)) dmem grfdrv mmap modpatch montype pmap proc reboot shell smap utilpak1 wcreate)
+CMDS_BASE ?= $(sort $(filter-out shell_21 shellplus,$(STDCMDS)) basic09 dmem gfx2 grfdrv inkey mmap modpatch montype pmap proc reboot runb shell smap syscall utilpak1 wcreate)
 CMDS = $(sort $(CMDS_BASE) $(CMDS_EXTRA))
 
 SYSDIR ?= .sys
@@ -146,6 +148,12 @@ $(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
 
 $(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1)) | $(MODDIR)
 	$(MERGE) $(addprefix $(MODDIR)/,$(UTILPAK1)) >$@
+
+$(MODDIR)/coco3vtio.d: $(DEFSDIR)/cocovtio.d | $(MODDIR)
+	$(AS) $(AFLAGS) --preprocess -DLevel=2 -DCOCOVTIO.D=0 $< >$@
+
+$(MODDIR)/gfx2: gfx2.asm $(MODDIR)/coco3vtio.d | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DLevel=2
 
 # SYS files
 $(SYSDIR):
