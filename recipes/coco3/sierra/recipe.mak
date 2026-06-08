@@ -11,50 +11,56 @@ SIERRA_DATA_FILES = $(notdir $(wildcard $(SIERRA_DIR)/logDir $(SIERRA_DIR)/objec
 	$(SIERRA_DIR)/words.tok $(SIERRA_DIR)/vol.*))
 
 ifeq ($(GAME),blackcauldron)
-SIERRA_MEDIA = 80d
-SIERRA_TOC_TXT = $(SIERRA_DIR)/tOC_40d.txt
+SIERRA_DEFAULT_MEDIA = 80d
+SIERRA_TOC_DEFAULT = $(SIERRA_DIR)/tOC_40d.txt
 else ifeq ($(GAME),christmas86)
-SIERRA_MEDIA = 80d
-SIERRA_TOC_TXT = $(SIERRA_DIR)/tOC.txt
+SIERRA_DEFAULT_MEDIA = 80d
+SIERRA_TOC_DEFAULT = $(SIERRA_DIR)/tOC.txt
 else ifeq ($(GAME),goldrush)
-SIERRA_MEDIA = dw
-SIERRA_TOC_TXT = $(SIERRA_DIR)/tOC_dw.txt
+SIERRA_DEFAULT_MEDIA = dw
+SIERRA_TOC_DEFAULT = $(SIERRA_DIR)/tOC_dw.txt
 else ifeq ($(GAME),kingsquest1)
-SIERRA_MEDIA = 80d
-SIERRA_TOC_TXT = $(SIERRA_DIR)/tOC_80d.txt
+SIERRA_DEFAULT_MEDIA = 80d
+SIERRA_TOC_DEFAULT = $(SIERRA_DIR)/tOC_80d.txt
 else ifeq ($(GAME),kingsquest2)
-SIERRA_MEDIA = 80d
-SIERRA_TOC_TXT = $(SIERRA_DIR)/tOC_80d.txt
+SIERRA_DEFAULT_MEDIA = 80d
+SIERRA_TOC_DEFAULT = $(SIERRA_DIR)/tOC_80d.txt
 else ifeq ($(GAME),kingsquest3)
-SIERRA_MEDIA = 80d
-SIERRA_TOC_TXT = $(SIERRA_DIR)/tOC_80d.txt
+SIERRA_DEFAULT_MEDIA = 80d
+SIERRA_TOC_DEFAULT = $(SIERRA_DIR)/tOC_80d.txt
 else ifeq ($(GAME),kingsquest4)
-SIERRA_MEDIA = dw
-SIERRA_TOC_TXT = $(SIERRA_DIR)/tOC_dw.txt
+SIERRA_DEFAULT_MEDIA = dw
+SIERRA_TOC_DEFAULT = $(SIERRA_DIR)/tOC_dw.txt
 else ifeq ($(GAME),leisuresuitlarry)
-SIERRA_MEDIA = 80d
-SIERRA_TOC_TXT = $(SIERRA_DIR)/tOC.txt
+SIERRA_DEFAULT_MEDIA = 80d
+SIERRA_TOC_DEFAULT = $(SIERRA_DIR)/tOC.txt
 else ifeq ($(GAME),manhunter1)
-SIERRA_MEDIA = dw
-SIERRA_TOC_TXT = $(SIERRA_DIR)/tOC_dw.txt
+SIERRA_DEFAULT_MEDIA = dw
+SIERRA_TOC_DEFAULT = $(SIERRA_DIR)/tOC_dw.txt
 else ifeq ($(GAME),manhunter2)
-SIERRA_MEDIA = dw
-SIERRA_TOC_TXT = $(SIERRA_DIR)/tOC_dw.txt
+SIERRA_DEFAULT_MEDIA = dw
+SIERRA_TOC_DEFAULT = $(SIERRA_DIR)/tOC_dw.txt
 else ifeq ($(GAME),policequest1)
-SIERRA_MEDIA = dw
-SIERRA_TOC_TXT = $(SIERRA_DIR)/tOC_dw.txt
+SIERRA_DEFAULT_MEDIA = dw
+SIERRA_TOC_DEFAULT = $(SIERRA_DIR)/tOC_dw.txt
 else ifeq ($(GAME),spacequest0)
-SIERRA_MEDIA = dw
-SIERRA_TOC_TXT = $(SIERRA_DIR)/tOC_dw.txt
+SIERRA_DEFAULT_MEDIA = dw
+SIERRA_TOC_DEFAULT = $(SIERRA_DIR)/tOC_dw.txt
 else ifeq ($(GAME),spacequest1)
-SIERRA_MEDIA = 80d
-SIERRA_TOC_TXT = $(SIERRA_DIR)/tOC_80d.txt
+SIERRA_DEFAULT_MEDIA = 80d
+SIERRA_TOC_DEFAULT = $(SIERRA_DIR)/tOC_80d.txt
 else ifeq ($(GAME),spacequest2)
-SIERRA_MEDIA = 80d
-SIERRA_TOC_TXT = $(SIERRA_DIR)/tOC_80d.txt
+SIERRA_DEFAULT_MEDIA = 80d
+SIERRA_TOC_DEFAULT = $(SIERRA_DIR)/tOC_80d.txt
 else
 $(error Unsupported Sierra GAME "$(GAME)")
 endif
+
+# Override SIERRA_MEDIA on the command line to build a game with a different
+# supported disk backend, e.g. GAME=kingsquest3 SIERRA_MEDIA=dw.
+SIERRA_MEDIA ?= $(SIERRA_DEFAULT_MEDIA)
+SIERRA_TOC_DW = $(wildcard $(SIERRA_DIR)/tOC_dw.txt)
+SIERRA_TOC_TXT ?= $(if $(and $(filter dw,$(SIERRA_MEDIA)),$(SIERRA_TOC_DW)),$(SIERRA_TOC_DW),$(SIERRA_TOC_DEFAULT))
 
 ifeq ($(SIERRA_MEDIA),80d)
 OS9FORMAT_CMD = $(OS9FORMAT_DS80)
