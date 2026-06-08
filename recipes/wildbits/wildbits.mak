@@ -89,10 +89,11 @@ SCRIPTS = $(notdir $(wildcard $(SCRIPTS_DIR)/*))
 TESTS = $(notdir $(wildcard $(TESTS_DIR)/*))
 FONT_DIR = $(LEVEL1)/wildbits/sys/fonts
 BACKGROUND_DIR = $(LEVEL1)/wildbits/sys/backgrounds
-FONTS = 800yfont applefont bigbluefont boxedfont bannerfont.sb \
-	c256seriffont cbmfont commodedorfont enemigafont f256standardfont \
-	IIishfont jessefont msxbannerfont msxfont petticoatsfont \
-	phoenixegafont.sb quadrotextfont techfont thickefont
+FONTS = 800yfont anglefont applefont bannerfont.sb bigbluefont boldfont boxedfont \
+	c256seriffont cbmfont commodedorfont comicfont emojifont enemigafont f256standardfont \
+	gothicfont IIishfont jessefont msxbannerfont msxfont petticoatsfont \
+	phoenixegafont.sb quadrotextfont retrofont singlefont techfont thickefont \
+    uncialfont versalsfont
 BACKGROUNDS = clutbeach clutgrid clutmeadow clutmetal clutspace clutstone clutstone2 clutwood \
 	pixmapbeach pixmapgrid pixmapmeadow pixmapmetal pixmapspace pixmapstone \
 	pixmapstone2 pixmapwood pixmappaintspl pixmappaint2 clutpaintspl clutpaint2 \
