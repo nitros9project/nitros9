@@ -20,6 +20,7 @@ Only edit `myrecipe/recipe.mak` for common customization:
 - `RECIPE` to change output name
 - `CMDS_EXTRA` to add disk commands
 - `BOOTMODS_EXTRA` to add boot modules
+- `FUJINET=1` to include the FujiNet utility commands
 - `AFLAGS_EXTRA` / `LFLAGS_EXTRA` for extra flags
 
 ## Prerequisites
@@ -51,6 +52,18 @@ Primary output:
 
 - `l2_coco3.dsk` (default)
 
+Optional features:
+
+- add `FUJINET=1` in `recipe.mak` to include:
+  - `fngetdevfile`
+  - `fnsetdevfile`
+  - `fnlisthosts`
+  - `fngethost`
+  - `fnsethost`
+  - `fnlistdevs`
+  - `fnmount`
+  - `fnstatus`
+
 ## DriveWire Build ([`coco3/dw`](dw/))
 
 ```sh
@@ -68,6 +81,10 @@ This recipe defaults to:
 - DriveWire virtual terminal modules (`scdwv` + `n*` descriptors)
 - `startup.dw`
 - DriveWire disk format settings (`$(OS9FORMAT_DW)`)
+
+Optional features:
+
+- add `FUJINET=1` in `recipe.mak` to include the FujiNet utility commands listed above
 
 ## Sierra Build ([`coco3/sierra`](sierra/))
 
