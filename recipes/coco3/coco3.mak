@@ -84,10 +84,7 @@ CMDS += $(CMDS_BASE) \
 	$(CMDS_EXTRA)
 BASIC09_SAMPLES ?=
 
-all: libs coco3vtio.d $(DSKIMAGE)
-
-coco3vtio.d: $(DEFSDIR)/cocovtio.d
-	$(AS) $(AFLAGS) --preprocess -DLevel=2 -DCOCOVTIO.D=0 $< > $@
+all: libs $(DSKIMAGE)
 
 LIB_NAMES = $(NOS9_LIB) libnet.a libalib.a $(COCO3_LIB)
 include ../../libs.mak
@@ -224,7 +221,7 @@ $(MODDIR)/n5_scdwv.dd: scdwvdesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=5
 
 clean:
-	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo coco3vtio.d
+	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
 
 FORCE:
