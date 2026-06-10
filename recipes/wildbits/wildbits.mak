@@ -65,7 +65,7 @@ BOOTMODS = krn krnp2 ioman init \
 	$(BOOTMODS_EXTRA)
 endif
 
-CMDS += $(STDCMDS) \
+CMDS += $(STDCMDS) shellplus \
 	bootos9 scfg wbinfo wbreset modem \
 	inetd telnet dw httpd $(BASIC09) $(BF) \
 	$(CMDS_EXTRA)
@@ -236,6 +236,9 @@ $(MODDIR)/ddc0: rbmemdesc.asm | $(MODDIR)
 # DriveWire dwio modules
 $(MODDIR)/dwio_wizfi: dwio.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDWIO_WIZFI
+
+$(MODDIR)/wizfidesc: wizfidesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDeviceMode=0 -DConnection=0
 
 $(MODDIR)/dwio_serial: dwio.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDWIO_SERIAL
