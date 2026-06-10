@@ -21,10 +21,11 @@ include ../coco3.mak
 
 MAME_BINARY  ?= mame
 MAME_MACHINE ?= coco3
-MAME_FLAGS   ?= -window -nothrottle -skip_gameinfo -autoboot_delay 5 -autoboot_command "DOS\n" -ext fdc -ext:fdc:wd17xx:0 525qd
+MAME_FLAGS   ?= -window -skip_gameinfo -autoboot_delay 5 -autoboot_command "DOS\n" -ext fdc -ext:fdc:wd17xx:0 525qd
+DW_PORT      ?= 65400
 
 run: $(DSKIMAGE)
-	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) -flop1 $(DSKIMAGE)
+	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) -flop1 $(DSKIMAGE) -rs232 null_modem -bitbanger socket.127.0.0.1:$(DW_PORT)
 
 copy-sysgo-root:
 	$(OS9COPY) $(MODDIR)/sysgo_dd $(DSKIMAGE),sysgo
