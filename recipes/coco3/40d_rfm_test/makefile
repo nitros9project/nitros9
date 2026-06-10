@@ -5,8 +5,10 @@ BOOTMODS = krnp2 ioman init \
 	$(SCF) \
 	$(PIPE) \
 	$(CLOCK) \
+	dwio_rs232pak \
 	rfm rfmdrv y0 \
 	$(BOOTMODS_EXTRA)
+
 DSK_EXTRA_DEPS = $(MODDIR)/sysgo_dd
 DSK_POST_COPY = $(MAKE) copy-sysgo-root DSKIMAGE=$@
 BASIC09_CMDS = basic09 gfx gfx2 inkey runb syscall
@@ -40,6 +42,9 @@ endif
 
 $(MODDIR)/basic09: basic09.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/dwio_rs232pak: dwio.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DSY6551N=1
 
 $(MODDIR)/y0: rfmdesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=0
