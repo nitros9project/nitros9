@@ -115,9 +115,20 @@ chkdelim            cmpa      #PDELIM
                     lda       R$A,u
                     pshs      a
 
+* push process ID
+                    ifgt      Level-1
+                    ldx       <D.Proc
+                    else
+                    ldx       >D.Proc
+                    endc
+                    lda       P$ID,x
+                    pshs      a
+* reload vstat ptr (trashed by D.Proc access)
+                    ldx       3,s
+
 * put command byte & path # on stack
                     lda       V.DWCMD,x
-                    ldy       4,s
+                    ldy       5,s
                     ldb       PD.PD,y
                     pshs      d                   ; p# PD.PD Regs
 
@@ -126,7 +137,7 @@ chkdelim            cmpa      #PDELIM
                     pshs      a                   ; DWOP RFMOP p# PD.PD Regs
 
                     leax      ,s                  ; point X to stack
-                    ldy       #4                  ; 3 bytes to send
+                    ldy       #5                  ; 5 bytes to send
 
                     ifgt      Level-1
                     ldu       <D.DWSubAddr
@@ -136,7 +147,7 @@ chkdelim            cmpa      #PDELIM
 
                     orcc      #IntMasks
                     jsr       6,u
-                    leas      4,s                 ;clean stack   PD.PD Regs
+                    leas      5,s                 ;clean stack   PD.PD Regs
 
                     ifgt      Level-1
 * now send path string
