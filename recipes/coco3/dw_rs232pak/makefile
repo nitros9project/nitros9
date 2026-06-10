@@ -40,10 +40,15 @@ coco3.rom: $(DWDOS_SRC) dw3dos_defs.asm
 		-o/tmp/dw3dos_build.rom $< -DCoCo=3 -DSY6551N=1
 	dd if=/tmp/dw3dos_build.rom of=$@ bs=32768 count=1
 	$(RM) /tmp/dw3dos_build.rom
+	mkdir -p coco3
+	cp $@ coco3/coco3.rom
+	unzip -p $(MAME_ROMPATH)/coco3.zip disk11.rom > /tmp/disk11.rom
+	zip -j coco3.zip $@ /tmp/disk11.rom
+	$(RM) /tmp/disk11.rom
 
 run: $(DSKIMAGE) coco3.rom
 	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) \
-		-rompath "$(CURDIR):$(MAME_ROMPATH)" \
+		-rompath "$(CURDIR);$(MAME_ROMPATH)" \
 		-rs232 null_modem \
 		-bitbanger socket.127.0.0.1:$(DW_PORT)
 
