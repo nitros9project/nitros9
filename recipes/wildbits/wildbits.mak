@@ -65,7 +65,8 @@ BOOTMODS = krn krnp2 ioman init \
 	$(BOOTMODS_EXTRA)
 endif
 
-CMDS += $(STDCMDS) shellplus \
+SHELLMODS = shellplus date deiniz echo iniz link load save unlink
+CMDS += $(STDCMDS) shell \
 	bootos9 scfg wbinfo wbreset modem \
 	inetd telnet dw httpd $(BASIC09) $(BF) \
 	$(CMDS_EXTRA)
@@ -162,7 +163,6 @@ ifneq ($(filter runb,$(CMDS)),)
 endif
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
-	$(OS9RENAME) $@,CMDS/shellplus shell
 	$(CPL) $(SYS_TEXT_FILES) $@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYS_TEXT_FILES)),$@,SYS/$(file))
 ifneq ($(strip $(SYS_BIN_FILES)),)
@@ -184,6 +184,9 @@ endif
 	$(CPL) $(FEU_STARTUP) $@,FEU/startup
 
 # Command rules
+$(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
+	$(MERGE) $(addprefix $(MODDIR)/,$(SHELLMODS)) >$@
+
 $(MODDIR)/pwd: pd.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DPWD=1
 
