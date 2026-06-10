@@ -5,7 +5,12 @@ vpath %.asm $(NITROS9DIR)/level1/$(PORT)/feu
 vpath %.as $(NITROS9DIR)/level1/$(PORT)/feu
 include ../../rules.mak
 
-ifeq ($(PLATFORM), jr2)
+ifeq ($(strip $(PLATFORM)),)
+  $(info PLATFORM not set; defaulting to jr2)
+  PLATFORM = jr2
+endif
+
+ifneq ($(filter $(PLATFORM),jr jr2),)
   KEYSUB = keydrv_ps2
 else
   KEYSUB = keydrv_k2
@@ -14,12 +19,19 @@ endif
 
 DSKIMAGE = feu_wildbits$(PLATFORM).dsk
 
-AFLAGS += -I.
+AFLAGS += -D$(PLATFORM) -I.
 AFLAGS += -I$(L1MD)/kernel -I$(L1PMD)
 LFLAGS += -L $(LIBDIR) -lwildbitsl$(LEVEL) -lnet -lalib
 
 KERNEL = krn krnp2 ioman init
-RBF = rbf rbsuper llwbsd rbmem dds0 s0 s1 f0 f1
+SD_RBF = dds0
+ifneq ($(filter $(PLATFORM),jr k),)
+SD_RBF += s0
+else
+SD_RBF += s0 s1
+endif
+
+RBF = rbf rbsuper llwbsd rbmem $(SD_RBF) f0 f1
 SCF = scf vtio $(KEYSUB) term bannerfont palette
 DRIVEWIRE_RBF = rbdw x0 x1 x2 x3
 DRIVEWIRE_SCF = scdwv n1 n2 n3 n4 n5

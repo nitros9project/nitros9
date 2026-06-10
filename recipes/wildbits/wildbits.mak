@@ -32,8 +32,14 @@ AFLAGS += $(AFLAGS_EXTRA)
 LFLAGS += -L $(LIBDIR) -lwildbitsl$(LEVEL) -lnet -lalib
 LFLAGS += $(LFLAGS_EXTRA)
 
-BOOT_RBF ?= dds0
-RBF = rbf rbsuper llwbsd rbmem $(BOOT_RBF) s1 f0 f1 $(RBF_EXTRA)
+SD_RBF = dds0
+ifneq ($(filter $(PLATFORM),jr k),)
+SD_RBF += s0
+else
+SD_RBF += s0 s1
+endif
+
+RBF = rbf rbsuper llwbsd rbmem $(SD_RBF) f0 f1 $(RBF_EXTRA)
 SCF = scf vtio $(KEYSUB) term bannerfont palette $(SCF_EXTRA)
 ifeq ($(LEVEL),2)
 SCF += mousedrv_ps2
