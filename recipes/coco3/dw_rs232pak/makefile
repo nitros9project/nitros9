@@ -28,20 +28,17 @@ $(MODDIR)/boot_dw_rs232pak: boot_dw.asm | $(MODDIR)
 $(MODDIR)/dwio_rs232pak.sb: dwio.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DSY6551N=1
 
-DWDOS_SRC    = /Users/boisy/Projects/coco-shelf/toolshed/dwdos/dw3dos.asm
+HDBDOS_SRC   = /Users/boisy/Projects/coco-shelf/toolshed/hdbdos/hdbdw3sy.rom
 MAME_ROMPATH = /Users/boisy/Documents/Resources/Computing/mame/roms
 MAME_BINARY  ?= mame
 MAME_MACHINE ?= coco3
 MAME_FLAGS   ?= -window -skip_gameinfo
 DW_PORT      ?= 65400
 
-coco3.zip: $(DWDOS_SRC) dw3dos_defs.asm
-	lwasm.orig --format=raw --no-warn=ifp1 --pragma=condundefzero \
-		-o/tmp/dw3dos_dsk_build.rom $< -DCoCo=2 -DDISKROM=1 -DSY6551N=1
-	dd if=/tmp/dw3dos_dsk_build.rom of=/tmp/disk11.rom bs=8192 count=1
+coco3.zip: $(HDBDOS_SRC)
 	unzip -p $(MAME_ROMPATH)/coco3.zip coco3.rom > /tmp/coco3.rom
-	zip -j $@ /tmp/coco3.rom /tmp/disk11.rom
-	$(RM) /tmp/dw3dos_dsk_build.rom /tmp/disk11.rom /tmp/coco3.rom
+	zip -j $@ /tmp/coco3.rom $<
+	$(RM) /tmp/coco3.rom
 
 run: $(DSKIMAGE) coco3.zip
 	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) \
