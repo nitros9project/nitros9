@@ -74,4 +74,4 @@ clean:
 		$(DWDOS_BIN) $(DWDOS_CAS)
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
 
-.PHONY: all run run-hdbdos clean
+.PHONY: all run run-hdbdos copy-sysgo-root clean
