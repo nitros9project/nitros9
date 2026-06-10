@@ -14,6 +14,9 @@ CLOCK ?= clock_60hz clock2_dw
 
 OS9FORMAT_CMD = $(OS9FORMAT_DW)
 
+DSK_EXTRA_DEPS = $(MODDIR)/sysgo_dd
+DSK_POST_COPY = $(MAKE) copy-sysgo-root DSKIMAGE=$@
+
 HDBDOS_ROM   = /Users/boisy/Projects/coco-shelf/toolshed/hdbdos/hdbdw3bc3.rom
 MAME_ROMPATH = /Users/boisy/Documents/Resources/Computing/mame/roms
 
@@ -29,6 +32,10 @@ MAME_FLAGS   ?= -window -skip_gameinfo
 DW_PORT      ?= 65504
 
 include ../coco3.mak
+
+copy-sysgo-root:
+	$(OS9COPY) $(MODDIR)/sysgo_dd $(DSKIMAGE),sysgo
+	$(OS9ATTR_EXEC) $(DSKIMAGE),sysgo
 
 all: libs $(DSKIMAGE) $(DWDOS_CAS)
 
