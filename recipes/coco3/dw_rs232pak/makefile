@@ -28,12 +28,12 @@ $(MODDIR)/boot_dw_rs232pak: boot_dw.asm | $(MODDIR)
 $(MODDIR)/dwio_rs232pak.sb: dwio.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DSY6551N=1
 
-HDBDOS_SRC   = /Users/boisy/Projects/coco-shelf/toolshed/hdbdos/hdbdw3sy.rom
+HDBDOS_SRC   = /Users/boisy/Projects/coco-shelf/toolshed/hdbdos/hdbdw3bck.rom
 MAME_ROMPATH = /Users/boisy/Documents/Resources/Computing/mame/roms
 MAME_BINARY  ?= mame
 MAME_MACHINE ?= coco3
 MAME_FLAGS   ?= -window -skip_gameinfo
-DW_PORT      ?= 65400
+DW_PORT      ?= 65504
 
 coco3.zip: $(HDBDOS_SRC)
 	unzip -p $(MAME_ROMPATH)/coco3.zip coco3.rom > /tmp/coco3.rom
@@ -42,8 +42,6 @@ coco3.zip: $(HDBDOS_SRC)
 
 run: $(DSKIMAGE) coco3.zip
 	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) \
-		-rompath "$(CURDIR);$(MAME_ROMPATH)" \
-		-rs232 null_modem \
-		-bitbanger socket.127.0.0.1:$(DW_PORT)
+		-rompath "$(CURDIR);$(MAME_ROMPATH)"
 
 .PHONY: run coco3.zip
