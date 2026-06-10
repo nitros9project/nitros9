@@ -68,12 +68,17 @@ KERNEL_TRACK ?= $(REL) boot_1773_6ms krn
 KERNELFILE = kerneltrack
 STARTUP ?= $(NITROS9DIR)/level2/$(PORT)/startup
 
+SYSDIR      ?= $(L2PD)/sys
+SYSBIN      ?= $(shell make -C $(SYSDIR) --no-print-directory showbinobjs)
+SYSTEXT     ?= $(shell make -C $(SYSDIR) --no-print-directory showtextobjs)
+PORTDEFSDIR ?= $(L2PD)/defs
+PORTDEFS    ?= $(shell make -C $(PORTDEFSDIR) --no-print-directory showobjs)
+
 BOOTMODS ?= krnp2 ioman init \
 	$(RBF) \
 	$(SCF) \
 	$(PIPE) \
 	$(CLOCK) \
-	sysgo_dd shell_21 \
 	$(BOOTMODS_EXTRA)
 
 SHELLMODS = shellplus date deiniz echo iniz link load save unlink
@@ -101,7 +106,15 @@ $(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(DS
 	$(OS9GEN) $@ -b=bootfile -t=$(KERNELFILE)
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
+	$(MAKE) -C $(SYSDIR) --no-print-directory
+	$(CD) $(SYSDIR); $(OS9COPY) $(SYSBIN) $(CURDIR)/$@,SYS
+	$(OS9ATTR_TEXT) $(foreach file,$(SYSBIN),$@,SYS/$(file))
+	$(CD) $(SYSDIR); $(CPL) $(SYSTEXT) $(CURDIR)/$@,SYS
+	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
 	$(MAKDIR) $@,DEFS
+	$(MAKE) -C $(PORTDEFSDIR) --no-print-directory
+	$(CD) $(PORTDEFSDIR); $(CPL) $(PORTDEFS) $(CURDIR)/$@,DEFS
+	$(OS9ATTR_TEXT) $(foreach file,$(PORTDEFS),$@,DEFS/$(file))
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 ifneq ($(strip $(BASIC09_SAMPLES)),)
