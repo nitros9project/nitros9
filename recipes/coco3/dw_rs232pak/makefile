@@ -28,13 +28,23 @@ $(MODDIR)/boot_dw_rs232pak: boot_dw.asm | $(MODDIR)
 $(MODDIR)/dwio_rs232pak.sb: dwio.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DSY6551N=1
 
+DWDOS_SRC    = /Users/boisy/Projects/coco-shelf/toolshed/dwdos/dw3dos.asm
+MAME_ROMPATH = /Users/boisy/Documents/Resources/Computing/mame/roms
 MAME_BINARY  ?= mame
 MAME_MACHINE ?= coco3
 MAME_FLAGS   ?= -window -skip_gameinfo
 DW_PORT      ?= 65400
 
-run: $(DSKIMAGE)
-	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) \
-		-rs232 null_modem -bitbanger socket.127.0.0.1:$(DW_PORT)
+coco3.rom: $(DWDOS_SRC) dw3dos_defs.asm
+	lwasm.orig --format=raw --no-warn=ifp1 --pragma=condundefzero \
+		-o/tmp/dw3dos_build.rom $< -DCoCo=3 -DSY6551N=1
+	dd if=/tmp/dw3dos_build.rom of=$@ bs=32768 count=1
+	$(RM) /tmp/dw3dos_build.rom
 
-.PHONY: run
+run: $(DSKIMAGE) coco3.rom
+	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) \
+		-rompath "$(CURDIR):$(MAME_ROMPATH)" \
+		-rs232 null_modem \
+		-bitbanger socket.127.0.0.1:$(DW_PORT)
+
+.PHONY: run coco3.rom
