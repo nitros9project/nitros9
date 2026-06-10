@@ -16,6 +16,9 @@ CLOCK ?= clock_60hz clock2_dw
 
 OS9FORMAT_CMD = $(OS9FORMAT_DW)
 
+HDBDOS_ROM   = /Users/boisy/Projects/coco-shelf/toolshed/hdbdos/hdbdw3bc3.rom
+MAME_ROMPATH = /Users/boisy/Documents/Resources/Computing/mame/roms
+
 # DWDOS Becker port cassette loader
 DWDOS_SRC    = /Users/boisy/Projects/coco-shelf/toolshed/dwdos/dw3dos.asm
 DWDOS_BIN    = dw3dosbck_cc3.bin
@@ -44,15 +47,26 @@ $(DWDOS_BIN): $(DWDOS_SRC)
 $(DWDOS_CAS): $(DWDOS_BIN)
 	$(MAKEWAV) -r -c -k -2 -n DWDOS -o$@ $<
 
-# Start server with: drivewire-cli --tcp-port 65504 --disk0 $(DSKIMAGE)
-# Becker port must be enabled in MAME's Tab -> Machine Configuration menu
-# At BASIC prompt: CLOADM:EXEC  then  DOS
+# HDB-DOS Becker port disk controller ROM (replaces disk11.rom)
+# Becker port must be enabled in MAME Tab -> Machine Configuration
+coco3.zip: $(HDBDOS_ROM)
+	unzip -p $(MAME_ROMPATH)/coco3.zip coco3.rom > /tmp/coco3.rom
+	cp $< /tmp/disk11.rom
+	zip -j $@ /tmp/coco3.rom /tmp/disk11.rom
+	$(RM) /tmp/coco3.rom /tmp/disk11.rom
+
+# run-hdbdos: type DOS at BASIC prompt — no cassette needed
+run-hdbdos: $(DSKIMAGE) coco3.zip
+	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) \
+		-rompath "$(CURDIR);$(MAME_ROMPATH)"
+
+# run: cassette approach (CLOADM:EXEC then DOS)
 run: $(DSKIMAGE) $(DWDOS_CAS)
 	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) -cass $(DWDOS_CAS)
 
 clean:
-	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo \
+	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo coco3.zip \
 		$(DWDOS_BIN) $(DWDOS_CAS)
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
 
-.PHONY: all run clean
+.PHONY: all run run-hdbdos clean
