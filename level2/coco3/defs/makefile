@@ -29,8 +29,11 @@ coco3vtio.d: $(DEFSDIR)/cocovtio.d
 	$(AS) $(AFLAGS) $(DEFOPTS) -DCOCOVTIO.D=0 $< > $@
 	$(DROP_EXTRA_SPACES) $@
 
+Defsfile: $(LEVEL2)/defs/Defsfile
+	$(SOFTLINK) -f $<
+
 clean:
-	$(RM) $(DEFS) *.tmp
+	$(RM) $(DEFS) $(PERMDEFS) *.tmp
 
 showobjs:
 	@$(ECHO) $(ALLOBJS)
