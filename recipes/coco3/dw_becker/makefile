@@ -10,7 +10,7 @@ all: $(DSKIMAGE)
 
 $(DSKIMAGE): $(DWDOS_BIN)
 	$(DECB) dskini $@
-	$(DECB) copy $< $@,DWDOS.BIN
+	$(DECB) copy -2 -b $< $@,DWDOS.BIN
 
 run: $(DSKIMAGE)
 	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) -flop1 $(DSKIMAGE)
