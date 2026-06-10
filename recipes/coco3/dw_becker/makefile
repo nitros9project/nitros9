@@ -20,7 +20,7 @@ $(DWDOS_CAS): $(DWDOS_BIN)
 # Load via cassette — no -ext fdc so $FF41-$FF42 (Becker port) is uncontested
 # At BASIC prompt: CLOADM:EXEC
 run: $(DWDOS_CAS)
-	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) -beckerport 1 -cass $(DWDOS_CAS)
+	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) -cass $(DWDOS_CAS)
 
 clean:
 	$(RM) $(DWDOS_BIN) $(DWDOS_CAS)
