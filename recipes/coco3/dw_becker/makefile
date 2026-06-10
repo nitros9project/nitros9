@@ -1,26 +1,28 @@
 DWDOS_SRC    = /Users/boisy/Projects/coco-shelf/toolshed/dwdos/dw3dos.asm
 DWDOS_BIN    = dw3dosbck_cc3.bin
+DWDOS_CAS    = dw3dosbck_cc3.cas
 DECB         = decb
+MAKEWAV      = makewav
 MAME_BINARY  ?= mame
 MAME_MACHINE ?= coco3
-MAME_FLAGS   ?= -window -skip_gameinfo -ext fdc -ext:fdc:wd17xx:0 525qd
-DSKIMAGE     = dwdos_becker.dsk
+MAME_FLAGS   ?= -window -skip_gameinfo
 DW_PORT      ?= 65504
 
-all: $(DSKIMAGE)
+all: $(DWDOS_CAS)
 
 $(DWDOS_BIN): $(DWDOS_SRC)
 	lwasm.orig --format=decb --no-warn=ifp1 --pragma=condundefzero \
 		-o$@ $< -DCoCo=3 -DBIN=1 -DBECKER=1
 
-$(DSKIMAGE): $(DWDOS_BIN)
-	$(DECB) dskini $@
-	$(DECB) copy -2 -b $< $@,DWDOS.BIN
+$(DWDOS_CAS): $(DWDOS_BIN)
+	$(MAKEWAV) -r -c -k -2 -n DWDOS -o$@ $<
 
-run: $(DSKIMAGE)
-	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) -flop1 $(DSKIMAGE)
+# Load via cassette — no -ext fdc so $FF41-$FF42 (Becker port) is uncontested
+# At BASIC prompt: CLOADM:EXEC
+run: $(DWDOS_CAS)
+	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) -cass $(DWDOS_CAS)
 
 clean:
-	$(RM) $(DSKIMAGE) $(DWDOS_BIN)
+	$(RM) $(DWDOS_BIN) $(DWDOS_CAS)
 
 .PHONY: all run clean
