@@ -7,8 +7,7 @@ BOOTMODS = krnp2 ioman init \
 	$(BOOTMODS_EXTRA)
 DSK_EXTRA_DEPS = $(MODDIR)/sysgo_dd
 DSK_POST_COPY = $(MAKE) copy-sysgo-root DSKIMAGE=$@
-BASIC09_CMDS = basic09 runb gfx2 gfx inkey syscall
-BASIC09_SAMPLES ?= $(wildcard $(3RDPARTY)/packages/basic09/samples/*)
+BASIC09_CMDS = basic09 gfx gfx2 inkey runb syscall
 CMDS_EXTRA += $(BASIC09_CMDS)
 
 MAME ?= 0
