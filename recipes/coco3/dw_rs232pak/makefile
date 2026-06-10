@@ -35,21 +35,18 @@ MAME_MACHINE ?= coco3
 MAME_FLAGS   ?= -window -skip_gameinfo
 DW_PORT      ?= 65400
 
-coco3.rom: $(DWDOS_SRC) dw3dos_defs.asm
+coco3.zip: $(DWDOS_SRC) dw3dos_defs.asm
 	lwasm.orig --format=raw --no-warn=ifp1 --pragma=condundefzero \
-		-o/tmp/dw3dos_build.rom $< -DCoCo=3 -DSY6551N=1
-	dd if=/tmp/dw3dos_build.rom of=$@ bs=32768 count=1
-	$(RM) /tmp/dw3dos_build.rom
-	mkdir -p coco3
-	cp $@ coco3/coco3.rom
-	unzip -p $(MAME_ROMPATH)/coco3.zip disk11.rom > /tmp/disk11.rom
-	zip -j coco3.zip $@ /tmp/disk11.rom
-	$(RM) /tmp/disk11.rom
+		-o/tmp/dw3dos_dsk_build.rom $< -DCoCo=2 -DDISKROM=1 -DSY6551N=1
+	dd if=/tmp/dw3dos_dsk_build.rom of=/tmp/disk11.rom bs=8192 count=1
+	unzip -p $(MAME_ROMPATH)/coco3.zip coco3.rom > /tmp/coco3.rom
+	zip -j $@ /tmp/coco3.rom /tmp/disk11.rom
+	$(RM) /tmp/dw3dos_dsk_build.rom /tmp/disk11.rom /tmp/coco3.rom
 
-run: $(DSKIMAGE) coco3.rom
+run: $(DSKIMAGE) coco3.zip
 	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) \
 		-rompath "$(CURDIR);$(MAME_ROMPATH)" \
 		-rs232 null_modem \
 		-bitbanger socket.127.0.0.1:$(DW_PORT)
 
-.PHONY: run coco3.rom
+.PHONY: run coco3.zip
