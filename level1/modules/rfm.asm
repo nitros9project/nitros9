@@ -244,8 +244,8 @@ chgdir              lda       #DW.chgdir
 * Exit:  CC.Carry = 0 (no error), 1 (error)
 *        B = error code (if CC.Carry == 1)
 *
-delete              lda       #DW.delete
-                    lbra      sendit
+delete              ldb       #DW.delete
+                    lbra      create1
 
 
 ******************************
