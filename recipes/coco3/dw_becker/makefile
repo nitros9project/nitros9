@@ -10,7 +10,7 @@ SCF ?= scf.mn vtio.dr snddrv_cc3.sb joydrv_joy.sb cowin.io \
 	term_win80.dt w.dw w1.dw w2.dw w3.dw w4.dw w5.dw w6.dw w7.dw \
 	w8.dw w9.dw w10.dw w11.dw w12.dw w13.dw w14.dw w15.dw
 
-CLOCK ?= clock_60hz clock2_dw
+CLOCK ?= clock_60hz clock2_soft
 
 OS9FORMAT_CMD = $(OS9FORMAT_DW)
 
