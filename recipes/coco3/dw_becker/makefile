@@ -30,10 +30,12 @@ MAME_BINARY  ?= mame
 MAME_MACHINE ?= coco3
 MAME_FLAGS   ?= -window -skip_gameinfo -autoboot_delay 3 -autoboot_command "DOS\n"
 DW_PORT      ?= 65504
+STARTUP      ?= $(NITROS9DIR)/level2/$(PORT)/startup.dw
 
 MAME ?= 0
 ifeq ($(MAME),1)
 MAME_FLAGS   = -window -nothrottle -skip_gameinfo -autoboot_delay 3 -autoboot_command "DOS\n"
+STARTUP      = startup.mame
 endif
 
 include ../coco3.mak
@@ -78,5 +80,10 @@ clean:
 	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo coco3.zip \
 		$(DWDOS_BIN) $(DWDOS_CAS)
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
+
+ifeq ($(MAME),1)
+startup.mame: $(NITROS9DIR)/level2/$(PORT)/startup.dw
+	{ echo "keyrpt 0 0</1"; cat $<; } >$@
+endif
 
 .PHONY: all run run-hdbdos copy-sysgo-root clean
