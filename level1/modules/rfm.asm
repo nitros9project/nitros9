@@ -218,8 +218,8 @@ open2               puls      x,y,u,pc
 * Exit:  CC.Carry = 0 (no error), 1 (error)
 *        B = error code (if CC.Carry == 1)
 *
-makdir              ldb       #DW.makdir
-                    bra       create1
+makdir              lda       #DW.makdir
+                    lbra      sendit
 
 ******************************
 *
