@@ -28,12 +28,12 @@ MAKEWAV      = makewav
 
 MAME_BINARY  ?= mame
 MAME_MACHINE ?= coco3
-MAME_FLAGS   ?= -window -skip_gameinfo
+MAME_FLAGS   ?= -window -skip_gameinfo -autoboot_delay 3 -autoboot_command "DOS\n"
 DW_PORT      ?= 65504
 
 MAME ?= 0
 ifeq ($(MAME),1)
-MAME_FLAGS   = -window -nothrottle -skip_gameinfo
+MAME_FLAGS   = -window -nothrottle -skip_gameinfo -autoboot_delay 3 -autoboot_command "DOS\n"
 endif
 
 include ../coco3.mak
