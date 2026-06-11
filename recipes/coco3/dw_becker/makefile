@@ -16,6 +16,7 @@ OS9FORMAT_CMD = $(OS9FORMAT_DW)
 
 DSK_EXTRA_DEPS = $(MODDIR)/sysgo_dd
 DSK_POST_COPY = $(MAKE) copy-sysgo-root DSKIMAGE=$@
+BOOTMODS_EXTRA += rfm rfmdrv y0
 
 HDBDOS_ROM   = /Users/boisy/Projects/coco-shelf/toolshed/hdbdos/hdbdw3bc3.rom
 MAME_ROMPATH = /Users/boisy/Documents/Resources/Computing/mame/roms
@@ -51,6 +52,9 @@ $(MODDIR)/boot_dw_becker: boot_dw.asm | $(MODDIR)
 
 $(MODDIR)/dwio_becker.sb: dwio.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DBECKER=1
+
+$(MODDIR)/y0: rfmdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=0
 
 $(DWDOS_BIN): $(DWDOS_SRC)
 	lwasm.orig --format=decb --no-warn=ifp1 --pragma=condundefzero \
