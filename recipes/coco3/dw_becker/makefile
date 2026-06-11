@@ -31,6 +31,11 @@ MAME_MACHINE ?= coco3
 MAME_FLAGS   ?= -window -skip_gameinfo
 DW_PORT      ?= 65504
 
+MAME ?= 0
+ifeq ($(MAME),1)
+MAME_FLAGS   = -window -nothrottle -skip_gameinfo
+endif
+
 include ../coco3.mak
 
 copy-sysgo-root:
