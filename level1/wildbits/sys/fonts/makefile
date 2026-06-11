@@ -8,10 +8,11 @@ AFLAGS		+= -I$(LEVEL1)/$(PORT)/sys/fonts
 
 DEPENDS		= ./makefile
 
-FONTS	= 800yfont applefont bigbluefont boxedfont bannerfont.sb \
-	  c256seriffont cbmfont commodedorfont enemigafont f256standardfont \
-	  IIishfont jessefont msxbannerfont msxfont petticoatsfont \
-	  phoenixegafont.sb quadrotextfont techfont thickefont
+FONTS	= 800yfont anglefont applefont bannerfont.sb bigbluefont boldfont boxedfont  \
+	  c256seriffont cbmfont commodedorfont comicfont emojifont enemigafont \
+	  f256standardfont gothicfont IIishfont jessefont msxbannerfont msxfont petticoatsfont \
+	  phoenixegafont.sb quadrotextfont retrofont singlefont techfont thickefont \
+      uncialfont versalsfont
 
 ALLOBJS		= $(FONTS)
 

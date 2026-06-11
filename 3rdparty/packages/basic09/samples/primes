@@ -1,0 +1,15 @@
+// primes - Sieve of Eratosthenes up to 50
+
+DIM I:INTEGER;J:INTEGER;IS_PRIME:BOOLEAN
+
+FOR I = 2 TO 50
+  IS_PRIME = TRUE
+  FOR J = 2 TO I-1
+    IF MOD(I,J) = 0 THEN
+      IS_PRIME = FALSE
+    ENDIF
+  NEXT J
+  IF IS_PRIME THEN
+    PRINT I
+  ENDIF
+NEXT I

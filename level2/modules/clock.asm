@@ -281,8 +281,8 @@ DoToggle
                orb       #GI.Toggl           --- ensure that 60Hz IRQ's are always enabled
                sta       >IRQEnR             Disable CART
                stb       >IRQEnR             Enable CART
-               clrb
                endc
+               clrb
                rts
 
 

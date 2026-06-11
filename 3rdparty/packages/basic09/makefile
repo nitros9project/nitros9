@@ -17,6 +17,8 @@ OBJS6809	= basic09_6809 runb_6809
 OBJS6309	= basic09_6309 runb_6309
 ALLOBJS		= $(DEFOBJS) $(OBJS) $(OBJS6809) $(OBJS6309)
 
+.PHONY: all banner clean dsk dskcopy dskclean showobjs info
+
 all:	banner $(ALLOBJS) $(DEPENDS)
 
 banner:
@@ -44,9 +46,11 @@ runb_6309: runb.asm
 runb_6809: runb.asm
 	$(AS) $(ASOUT)$@ $< $(M6809)
 
+runbt_6809: runb.asm
+	$(AS) $(ASOUT)$@ $< $(M6809)
 
 clean: dskclean
-	$(RM) $(ALLOBJS) *.list *.map
+	$(RM) $(ALLOBJS) runbt_6809 *.list *.map
 
 dsk: $(DSK)
 
@@ -67,7 +71,7 @@ dskclean:
 
 showobjs:
 	@$(ECHO) $(ALLOBJS)
-	
+
 info:
 	@$(ECHO) "*** Basic09 ***"
 	@$(ECHO) $(DSK)

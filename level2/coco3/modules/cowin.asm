@@ -3027,8 +3027,7 @@ L0FFC               ldy       >WGlobal+g00BB      Get ptr to work window table
                     lda       Wt.Fore,y           Get current foreground color mask to preserve
                     sta       >GrfMem+gr00B5
                     ENDC
-*** IS THIS A BUG? A IS NOT USED BY GETCOLR - B IS. IT *RETURNS* A
-                    lda       #1                  ??? I THINK THIS SHOULD BE A LDB INSTEAD? LCB
+                    lda       #WColor1
                     lbsr      GetColr             convert it to mask
                     sta       Wt.Fore,y
                     lbsr      L1013               calculate X size
@@ -3492,9 +3491,14 @@ GetColr             pshs      b,x                 save color & table pointer
                     ldb       >WGlobal+g00BD      get screen type
                     leax      <ColrMsk-1,pc       point to color mask table (-1 since base 0)
                     ldb       b,x
+                    bmi       GetColr1Bit         special case for 1 bit
                     mul
-                    tfr       b,a
+GetColrCmn          tfr       b,a
                     puls      b,x,pc              restore & return
+GetColr1Bit         tsta
+                    bne       GetColrCmn
+                    clra
+                    puls      b,x,pc
 
 ColrMsk             fcb       $ff,$55,$55,$11
 

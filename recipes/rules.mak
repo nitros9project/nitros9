@@ -230,8 +230,8 @@ buildinfo:
 
 STDCMDS = asm attr backup bawk binex build cmp copy date dcheck debug \
 	ded deiniz del deldir devs dir dirsort disasm display dmode dsave \
-	dump echo edit error exbin format free grep help ident iniz irqs \
+	dump echo edit error exbin format free grep help ident iniz irqs keyrpt \
 	link list load login makdir megaread mdir merge mfree more \
 	padrom park pick printerr procs prompt pwd pxd rename save \
-	setime shellplus shell_21 sleep tee tmode touch tsmon unlink verify \
+	setime sleep tee tmode touch tsmon unlink verify \
 	xmode

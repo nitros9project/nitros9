@@ -1530,6 +1530,7 @@ SSGIP               ldy       <D.CCMem            get ptr to CC mem
                     cmpa      #$FF                Start constant "don't change"?
                     beq       ChkKSpd             Yes, skip to check keyboard delay
                     sta       <G.KyDly,y          Save new keyboard delay setting
+                    sta       <G.KyRept,y         Apply to the active repeat counter too
 ChkKSpd             cmpb      #$FF                Don't change key repeat delay?
                     beq       L0853               Yes, skip to mouse settings
                     stb       <G.KySpd,y          Save new repeat delay
