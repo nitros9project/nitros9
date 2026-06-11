@@ -75,338 +75,344 @@
                     ttl       NitrOS-9 Level 2 Kernel Part 2
 
 ** If Network I/O ptrs are disabled, F$Fork runs 72 cycles faster
-Network             equ       0         Set to 1 to enable network I/O ptrs
+Network             equ       0         ; set to 1 to enable network I/O ptrs
 
                   IFP1
-                    use       defsfile
-                    use       cocovtio.d
+                    use       defsfile  ; include source file defsfile
+                    use       cocovtio.d ; include source file cocovtio.d
                   ENDC
 
-TC9                 set       false     "true" use TC-9 6309 trap vector
-Edition             equ       20
-Revision            equ       0
+TC9                 set       false     ; "true" use TC-9 6309 trap vector
+Edition             equ       20        ; define assembler symbol Edition
+Revision            equ       0         ; define assembler symbol Revision
 
-                    mod       eom,MName,Systm+Objct,ReEnt+Revision,krnp2,$0100
+                    mod       eom,MName,Systm+Objct,ReEnt+Revision,krnp2,$0100 ; define OS-9 module header
 
 MName               fcs       /KrnP2/
-                    fcb       Edition
+                    fcb       Edition   ; define byte value(s) Edition
 
-                  IFEQ    TC9-1
+                  IFEQ    TC9-1   ; begin conditional assembly for TC9-1
 * Entry: None
 * Exit : Process killed & register dump produced for user
-Trap                bitmd     #%01000000 illegal instruction?
-                    bne       BadIns    yes, go process
-                    bitmd     #%10000000 division by 0?
-                    bne       Div0      yes, go process
-                    jmp       [<D.XSWI] act as if nothing happened
+Trap                bitmd     #%01000000 ; illegal instruction?
+                    bne       BadIns    ; yes, go process
+                    bitmd     #%10000000 ; division by 0?
+                    bne       Div0      ; yes, go process
+                    jmp       [<D.XSWI] ; act as if nothing happened
 
 * Process illegal instruction trap
-BadIns              bsr       SetProc   move the register stack here
-                    ldb       #18       get error code for F$Exit
-                    bra       TrapDone
+BadIns              bsr       SetProc   ; move the register stack here
+                    ldb       #18       ; get error code for F$Exit
+                    bra       TrapDone  ; branch unconditionally to TrapDone
 
 * Process division by 0 trap
-Div0                bsr       SetProc   move the register stack
-                    ldb       #45       get error code for F$Exit
+Div0                bsr       SetProc   ; move the register stack
+                    ldb       #45       ; get error code for F$Exit
 * Return to system after the trap
 * Entry: B=Error code
 *        U=Pointer to register stack
-TrapDone            stb       R$B,u     save the error code to register stack for F$Exit
-                    lbra      FExit     enter F$Exit directly
+TrapDone            stb       R$B,u     ; save the error code to register stack for F$Exit
+                    lbra      FExit     ; enter F$Exit directly
 
 * Set process to system state & copy register stack for trap processing
-SetProc             ldd       <D.SysSvc set system call processor to system side
-                    std       <D.XSWI2
-                    ldd       <D.SysIRQ do the same thing for IRQ's
-                    std       <D.XIRQ
-                    ldx       <D.Proc   get current process pointer
-                  IFNE    H6309
-                    oim       #SysState,P$State,x mark process as system state
+SetProc             ldd       <D.SysSvc ; set system call processor to system side
+                    std       <D.XSWI2  ; store D at <D.XSWI2
+                    ldd       <D.SysIRQ ; do the same thing for IRQ's
+                    std       <D.XIRQ   ; store D at <D.XIRQ
+                    ldx       <D.Proc   ; get current process pointer
+                  IFNE    H6309   ; begin conditional assembly for H6309
+                    oim       #SysState,P$State,x ; mark process as system state
                   ELSE
-                    ldb       P$State,x
-                    orb       #SysState
-                    stb       P$State,x
+                    ldb       P$State,x ; load B from P$State,x
+                    orb       #SysState ; merge #SysState into B
+                    stb       P$State,x ; store B at P$State,x
                   ENDC
 * copy register stack to process descriptor
-                    sts       P$SP,x    save stack pointer
-                    leas      (P$Stack-R$Size),x point S to register stack destination
-                    andcc     #^IntMasks force interrupts back on
-                    leau      ,s        point to destination register stack
-                    ldb       P$Task,x  get task # of destination
-                    ldx       P$SP,x    get the user/system stack pointer
-                    pshs      b         preserve task for a moment
-                    tfr       x,d       copy it for easier calcs
-                    bita      #%11100000 offset above block 0?
-                    beq       done      yes, no calc needed get out
-                    anda      #%00011111 make it a offset within a block
-                    tfr       d,x       copy new offset
-                    lsra                make A an offset into DAT image
-                    lsra
-                    lsra
-                    lsra
-done                puls      b         restore task #
-                    leax      -$6000,x  make it a pointer to where I'll map the block
-                    tfr       u,y
-                    pshs      cc,u      preserve IRQ status & dest pointer
-                    ldu       <D.TskIPt
-                    lslb                adjust task # to fit table
-                    ldu       b,u       get the DAT image pointer
-                    leau      a,u       point to the blocks needed
-                    lda       1,u       get 1st block
-                    ldb       3,u       get a second in case of overlap
-                    orcc      #IntMasks shut IRQ's down
-                    std       >DAT.Regs+5 map in the blocks
-                  IFNE    H6309
-                    ldw       #R$Size   get size of register stack
-                    tfm       x+,y+     move 'em to process descriptor
+                    sts       P$SP,x    ; save stack pointer
+                    leas      (P$Stack-R$Size),x ; point S to register stack destination
+                    andcc     #^IntMasks ; force interrupts back on
+                    leau      ,s        ; point to destination register stack
+                    ldb       P$Task,x  ; get task # of destination
+                    ldx       P$SP,x    ; get the user/system stack pointer
+                    pshs      b         ; preserve task for a moment
+                    tfr       x,d       ; copy it for easier calcs
+                    bita      #%11100000 ; offset above block 0?
+                    beq       done      ; yes, no calc needed get out
+                    anda      #%00011111 ; make it a offset within a block
+                    tfr       d,x       ; copy new offset
+                    lsra                ; make A an offset into DAT image
+                    lsra                ; shift or rotate and update condition codes
+                    lsra                ; shift or rotate and update condition codes
+                    lsra                ; shift or rotate and update condition codes
+done                puls      b         ; restore task #
+                    leax      -$6000,x  ; make it a pointer to where I'll map the block
+                    tfr       u,y       ; transfer register value u,y
+                    pshs      cc,u      ; preserve IRQ status & dest pointer
+                    ldu       <D.TskIPt ; load U from <D.TskIPt
+                    lslb                ; adjust task # to fit table
+                    ldu       b,u       ; get the DAT image pointer
+                    leau      a,u       ; point to the blocks needed
+                    lda       1,u       ; get 1st block
+                    ldb       3,u       ; get a second in case of overlap
+                    orcc      #IntMasks ; shut IRQ's down
+                    std       >DAT.Regs+5 ; map in the blocks
+                  IFNE    H6309   ; begin conditional assembly for H6309
+                    ldw       #R$Size   ; get size of register stack
+                    tfm       x+,y+     ; move 'em to process descriptor
                   ELSE
-                    ldb       #R$Size
-Uday                lda       ,x+
-                    sta       ,y+
-                    decb
-                    bne       Uday
+                    ldb       #R$Size   ; load B from #R$Size
+Uday                lda       ,x+       ; load A from ,x+
+                    sta       ,y+       ; store A at ,y+
+                    decb                ; decrement B
+                    bne       Uday      ; branch if zero is clear to Uday
                   ENDC
-                    ldx       <D.SysDAT get the system DAT image pointer
-                    lda       $0B,x     get the original blocks
-                    ldb       $0D,x
-                    std       >DAT.Regs+5 map 'em back in
-                    puls      cc,u,pc   restore IRQ's, register stack pointer & return
+                    ldx       <D.SysDAT ; get the system DAT image pointer
+                    lda       $0B,x     ; get the original blocks
+                    ldb       $0D,x     ; load B from $0D,x
+                    std       >DAT.Regs+5 ; map 'em back in
+                    puls      cc,u,pc   ; restore IRQ's, register stack pointer & return
                   ENDC
 
-krnp2               equ       *
-                  IFNE    H6309
-                    leay      <SvcTab,pc install system calls
+krnp2               equ       *         ; entry point for kernel part 2
+                  IFNE    H6309   ; begin conditional assembly for H6309
+                    leay      <SvcTab,pc ; install system calls
                   ELSE
-                    leay      SvcTab,pc install system calls
+                    leay      SvcTab,pc ; install system calls
                   ENDC
-                    os9       F$SSvc
-                  IFEQ    TC9-1
-                    leax      Trap,pc
-                    stx       <D.SWI
+                    os9       F$SSvc    ; call OS-9 service F$SSvc
+                  IFEQ    TC9-1   ; begin conditional assembly for TC9-1
+                    leax      Trap,pc   ; compute Trap,pc into X
+                    stx       <D.SWI    ; store X at <D.SWI
                   ENDC
 * Change to default directory
-L003A               ldu       <D.Init   get init module pointer
-                    ldd       SysStr,u  get pointer to system device name (usually '/DD')
-                    beq       L004F     don't exist, open std device
-                    leax      d,u       point to name
-                    lda       #(EXEC.+READ.) get file mode
-                    os9       I$ChgDir  change to it
-                    bcc       L004F     went ok, go on
-                    os9       F$Boot    try & load boot file
-                    bcc       L003A     go try again
-L004F
-                    ldu       <D.Init   get init module pointer
-                    ldd       <StdStr,u point to default device (usually '/Term')
-                    beq       L0077     don't exist go do OS9P3
-                    leax      d,u       point to it
-                    lda       #UPDAT.   get file mode
-                    os9       I$Open    open path to it
-                    bcc       L0066     went ok, save path #
-                    bra       L009B     crash machine
+Krnp2InitModule     ldu       <D.Init   ; get init module pointer
+                    ldd       SysStr,u  ; get pointer to system device name (usually '/DD')
+                    beq       Krnp2InitModule2 ; don't exist, open std device
+                    leax      d,u       ; point to name
+                    lda       #(EXEC.+READ.) ; get file mode
+                    os9       I$ChgDir  ; change to it
+                    bcc       Krnp2InitModule2 ; went ok, go on
+                    os9       F$Boot    ; try & load boot file
+                    bcc       Krnp2InitModule ; go try again
+Krnp2InitModule2    ldu       <D.Init   ; get init module pointer
+                    ldd       <StdStr,u ; point to default device (usually '/Term')
+                    beq       Krnp2Krnp3 ; don't exist go do OS9P3
+                    leax      d,u       ; point to it
+                    lda       #UPDAT.   ; get file mode
+                    os9       I$Open    ; open path to it
+                    bcc       Krnp2Process ; went ok, save path #
+* LCB - not sure why this is remarked out and replaced with NOP's?
+*         os9    F$Boot      try & re-boot
+* nop
+* nop
+* nop
+*         bcc    L004F       go try again
+* nop
+* nop
+                    bra       Krnp2ControlDcrash ; crash machine
 
-L0066
-                    ldx       <D.Proc   get current process pointer
-                    sta       <P$Path,x save stdin path
-                    os9       I$Dup     dupe it
-                    sta       <P$Path+1,x save stdout path
-                    os9       I$Dup     dupe it again
-                    sta       <P$Path+2,x save stderr path
-L0077               leax      <L0096,pc point to 'krnp3'
-                    lda       #Systm    get type
-                    os9       F$Link    try to link
-                    bcs       L0083     not there, go on
-                    jsr       ,y        execute it
+Krnp2Process        ldx       <D.Proc   ; get current process pointer
+                    sta       <P$Path,x ; save stdin path
+                    os9       I$Dup     ; dupe it
+                    sta       <P$Path+1,x ; save stdout path
+                    os9       I$Dup     ; dupe it again
+                    sta       <P$Path+2,x ; save stderr path
+Krnp2Krnp3          leax      <Krnp2Target,pc ; point to 'krnp3'
+                    lda       #Systm    ; get type
+                    os9       F$Link    ; try to link
+                    bcs       Krnp2InitModule3 ; not there, go on
+                    jsr       ,y        ; execute it
 * Execute module listed in Init module
-L0083               ldu       <D.Init   get init module pointer
-                    ldd       InitStr,u get offset to name of first module
-                    leax      d,u       point to it
-                    lda       #Objct    get module type
-                    clrb                get mem size
-                  IFNE    H6309
-                    tfr       0,y       Get parameter size
+Krnp2InitModule3    ldu       <D.Init   ; get init module pointer
+                    ldd       InitStr,u ; get offset to name of first module
+                    leax      d,u       ; point to it
+                    lda       #Objct    ; get module type
+                    clrb                ; get mem size
+                  IFNE    H6309   ; begin conditional assembly for H6309
+                    tfr       0,y       ; get parameter size
                   ELSE
-                    ldy       #$0000
+                    ldy       #$0000    ; load Y from #$0000
                   ENDC
-                    os9       F$Fork    fork it
-                    bcs       L009B     if error, crash the system
-L0093               os9       F$NProc   let it take over
+                    os9       F$Fork    ; fork it
+                    bcs       Krnp2ControlDcrash ; if error, crash the system
+Krnp2LetTakeOver    os9       F$NProc   ; let it take over
 
-L0096               fcs       /krnp3/
+Krnp2Target         fcs       /krnp3/
 
-L009B               jmp       <D.Crash
+Krnp2ControlDcrash  jmp       <D.Crash  ; transfer control to <D.Crash
 
-svctab              fcb       F$UnLink
-                    fdb       FUnLink-*-2
-                    fcb       F$AllRAM
-                    fdb       FAllRAM-*-2
-                    fcb       F$AlHRAM+SysState
-                    fdb       FAlHRAM-*-2
-                    fcb       F$Fork
-                    fdb       FFork-*-2
-                    fcb       F$Wait
-                    fdb       FWait-*-2
-                    fcb       F$Chain
-                    fdb       FChain-*-2
-                    fcb       F$Exit
-                    fdb       FExit-*-2
-                    fcb       F$Mem
-                    fdb       FMem-*-2
-                    fcb       F$Send
-                    fdb       FSend-*-2
-                    fcb       F$Icpt
-                    fdb       FIcpt-*-2
-                    fcb       F$Sleep
-                    fdb       FSleep-*-2
-                    fcb       F$SPrior
-                    fdb       FSPrior-*-2
-                    fcb       F$ID
-                    fdb       FID-*-2
-                    fcb       F$SSWI
-                    fdb       FSSWI-*-2
-                    fcb       F$STime
-                    fdb       FSTime-*-2
-                    fcb       F$SchBit
-                    fdb       FSchBit-*-2
-                    fcb       F$SchBit+SysState
-                    fdb       FSSchBit-*-2
-                    fcb       F$AllBit
-                    fdb       FAllBit-*-2
-                    fcb       F$AllBit+SysState
-                    fdb       FSAllBit-*-2
-                    fcb       F$DelBit
-                    fdb       FDelBit-*-2
-                    fcb       F$DelBit+SysState
-                    fdb       FSDelBit-*-2
-                    fcb       F$GPrDsc
-                    fdb       FGPrDsc-*-2
-                    fcb       F$GBlkMp
-                    fdb       FGBlkMp-*-2
-                    fcb       F$GModDr
-                    fdb       FGModDr-*-2
-                  IFEQ    H6309+wildbits
-                    fcb       F$DelRAM
-                    fdb       FDelRAM-*-2
+svctab              fcb       F$UnLink  ; define byte value(s) F$UnLink
+                    fdb       FUnLink-*-2 ; define word value(s) FUnLink-*-2
+                    fcb       F$AllRAM  ; define byte value(s) F$AllRAM
+                    fdb       FAllRAM-*-2 ; define word value(s) FAllRAM-*-2
+                    fcb       F$AlHRAM+SysState ; define byte value(s) F$AlHRAM+SysState
+                    fdb       FAlHRAM-*-2 ; define word value(s) FAlHRAM-*-2
+                    fcb       F$Fork    ; define byte value(s) F$Fork
+                    fdb       FFork-*-2 ; define word value(s) FFork-*-2
+                    fcb       F$Wait    ; define byte value(s) F$Wait
+                    fdb       FWait-*-2 ; define word value(s) FWait-*-2
+                    fcb       F$Chain   ; define byte value(s) F$Chain
+                    fdb       FChain-*-2 ; define word value(s) FChain-*-2
+                    fcb       F$Exit    ; define byte value(s) F$Exit
+                    fdb       FExit-*-2 ; define word value(s) FExit-*-2
+                    fcb       F$Mem     ; define byte value(s) F$Mem
+                    fdb       FMem-*-2  ; define word value(s) FMem-*-2
+                    fcb       F$Send    ; define byte value(s) F$Send
+                    fdb       FSend-*-2 ; define word value(s) FSend-*-2
+                    fcb       F$Icpt    ; define byte value(s) F$Icpt
+                    fdb       FIcpt-*-2 ; define word value(s) FIcpt-*-2
+                    fcb       F$Sleep   ; define byte value(s) F$Sleep
+                    fdb       FSleep-*-2 ; define word value(s) FSleep-*-2
+                    fcb       F$SPrior  ; define byte value(s) F$SPrior
+                    fdb       FSPrior-*-2 ; define word value(s) FSPrior-*-2
+                    fcb       F$ID      ; define byte value(s) F$ID
+                    fdb       FID-*-2   ; define word value(s) FID-*-2
+                    fcb       F$SSWI    ; define byte value(s) F$SSWI
+                    fdb       FSSWI-*-2 ; define word value(s) FSSWI-*-2
+                    fcb       F$STime   ; define byte value(s) F$STime
+                    fdb       FSTime-*-2 ; define word value(s) FSTime-*-2
+                    fcb       F$SchBit  ; define byte value(s) F$SchBit
+                    fdb       FSchBit-*-2 ; define word value(s) FSchBit-*-2
+                    fcb       F$SchBit+SysState ; define byte value(s) F$SchBit+SysState
+                    fdb       FSSchBit-*-2 ; define word value(s) FSSchBit-*-2
+                    fcb       F$AllBit  ; define byte value(s) F$AllBit
+                    fdb       FAllBit-*-2 ; define word value(s) FAllBit-*-2
+                    fcb       F$AllBit+SysState ; define byte value(s) F$AllBit+SysState
+                    fdb       FSAllBit-*-2 ; define word value(s) FSAllBit-*-2
+                    fcb       F$DelBit  ; define byte value(s) F$DelBit
+                    fdb       FDelBit-*-2 ; define word value(s) FDelBit-*-2
+                    fcb       F$DelBit+SysState ; define byte value(s) F$DelBit+SysState
+                    fdb       FSDelBit-*-2 ; define word value(s) FSDelBit-*-2
+                    fcb       F$GPrDsc  ; define byte value(s) F$GPrDsc
+                    fdb       FGPrDsc-*-2 ; define word value(s) FGPrDsc-*-2
+                    fcb       F$GBlkMp  ; define byte value(s) F$GBlkMp
+                    fdb       FGBlkMp-*-2 ; define word value(s) FGBlkMp-*-2
+                    fcb       F$GModDr  ; define byte value(s) F$GModDr
+                    fdb       FGModDr-*-2 ; define word value(s) FGModDr-*-2
+                  IFEQ    H6309+wildbits ; begin conditional assembly for H6309+wildbits
+                    fcb       F$DelRAM  ; define byte value(s) F$DelRAM
+                    fdb       FDelRAM-*-2 ; define word value(s) FDelRAM-*-2
                   ENDC
-                    fcb       F$SUser   Added back here for room in OS9p1
-                    fdb       FSUser-*-2
-                    fcb       F$UnLoad
-                    fdb       FUnLoad-*-2
-                    fcb       F$Find64+$80
-                    fdb       FFind64-*-2
-                    fcb       F$All64+$80
-                    fdb       FAll64-*-2
-                    fcb       F$Ret64+$80
-                    fdb       FRet64-*-2
-                    fcb       F$GProcP+$80
-                    fdb       FGProcP-*-2
-                    fcb       F$DelImg+$80
-                    fdb       FDelImg-*-2
-                    fcb       F$AllPrc+$80
-                    fdb       FAllPrc-*-2
-                    fcb       F$DelPrc+$80
-                    fdb       FDelPrc-*-2
-                    fcb       F$MapBlk
-                    fdb       FMapBlk-*-2
-                    fcb       F$ClrBlk
-                    fdb       FClrBlk-*-2
-                    fcb       F$GCMDir+$80
-                    fdb       FGCMDir-*-2
-                    fcb       F$Debug
-                    fdb       FDebug-*-2
-                    fcb       F$CRCMod  new system call to change module CRC calcs on/off
-                    fdb       FCRCMod-*-2
-                    fcb       $7f
-                    fdb       GetIOMan-*-2
-                    fcb       $80
+                    fcb       F$SUser   ; added back here for room in OS9p1
+                    fdb       FSUser-*-2 ; define word value(s) FSUser-*-2
+                    fcb       F$UnLoad  ; define byte value(s) F$UnLoad
+                    fdb       FUnLoad-*-2 ; define word value(s) FUnLoad-*-2
+                    fcb       F$Find64+$80 ; define byte value(s) F$Find64+$80
+                    fdb       FFind64-*-2 ; define word value(s) FFind64-*-2
+                    fcb       F$All64+$80 ; define byte value(s) F$All64+$80
+                    fdb       FAll64-*-2 ; define word value(s) FAll64-*-2
+                    fcb       F$Ret64+$80 ; define byte value(s) F$Ret64+$80
+                    fdb       FRet64-*-2 ; define word value(s) FRet64-*-2
+                    fcb       F$GProcP+$80 ; define byte value(s) F$GProcP+$80
+                    fdb       FGProcP-*-2 ; define word value(s) FGProcP-*-2
+                    fcb       F$DelImg+$80 ; define byte value(s) F$DelImg+$80
+                    fdb       FDelImg-*-2 ; define word value(s) FDelImg-*-2
+                    fcb       F$AllPrc+$80 ; define byte value(s) F$AllPrc+$80
+                    fdb       FAllPrc-*-2 ; define word value(s) FAllPrc-*-2
+                    fcb       F$DelPrc+$80 ; define byte value(s) F$DelPrc+$80
+                    fdb       FDelPrc-*-2 ; define word value(s) FDelPrc-*-2
+                    fcb       F$MapBlk  ; define byte value(s) F$MapBlk
+                    fdb       FMapBlk-*-2 ; define word value(s) FMapBlk-*-2
+                    fcb       F$ClrBlk  ; define byte value(s) F$ClrBlk
+                    fdb       FClrBlk-*-2 ; define word value(s) FClrBlk-*-2
+                    fcb       F$GCMDir+$80 ; define byte value(s) F$GCMDir+$80
+                    fdb       FGCMDir-*-2 ; define word value(s) FGCMDir-*-2
+                    fcb       F$Debug   ; define byte value(s) F$Debug
+                    fdb       FDebug-*-2 ; define word value(s) FDebug-*-2
+                    fcb       F$CRCMod  ; new system call to change module CRC calcs on/off
+                    fdb       FCRCMod-*-2 ; define word value(s) FCRCMod-*-2
+                    fcb       $7f       ; define byte value(s) $7f
+                    fdb       GetIOMan-*-2 ; define word value(s) GetIOMan-*-2
+                    fcb       $80       ; define byte value(s) $80
 
-                    use       fcrcmod.asm
+                    use       fcrcmod.asm ; include source file fcrcmod.asm
 
 * Link & execute IOMan
 * Entry: None
 * Exit : I/O handling installed & ready for use
-GetIOMan            pshs      d,x,y,u   preserve regs
-                    bsr       LnkIOMan  link to ioman
-                    bcc       GotIOMan  no errors, go on
-                    os9       F$Boot    re-load boot file
-                    bcs       IOManErr  error loading, return
-                    bsr       LnkIOMan  link to ioman
-                    bcs       IOManErr  error, save it & return
-GotIOMan            jsr       ,y        execute IOMan's init routine
-                    puls      d,x,y,u   restore registers
-                    jmp       [IOEntry,y] Execute I/O vector
+GetIOMan            pshs      d,x,y,u   ; preserve regs
+                    bsr       LnkIOMan  ; link to ioman
+                    bcc       GotIOMan  ; no errors, go on
+                    os9       F$Boot    ; re-load boot file
+                    bcs       IOManErr  ; error loading, return
+                    bsr       LnkIOMan  ; link to ioman
+                    bcs       IOManErr  ; error, save it & return
+GotIOMan            jsr       ,y        ; execute IOMan's init routine
+                    puls      d,x,y,u   ; restore registers
+                    jmp       [IOEntry,y] ; execute I/O vector
 
-IOManErr            stb       1,s       save error if any
-                    puls      d,x,y,u,pc restore & return
+IOManErr            stb       1,s       ; save error if any
+                    puls      d,x,y,u,pc ; restore & return
 
 * Link to IOMan
 * Entry: None
 * Exit : U=Pointer to IOMan module header
 *        Y=Pointer to IOMan entry point
-LnkIOMan            leax      <IOMan,pc point to name
-                    lda       #(Systm+Objct) get type
-                    os9       F$Link    link it
-                    rts                 return
+LnkIOMan            leax      <IOMan,pc ; point to name
+                    lda       #(Systm+Objct) ; get type
+                    os9       F$Link    ; link it
+                    rts                 ; return
 
 IOMan               fcs       /IOMan/
 
-                    use       funlink.asm
+                    use       funlink.asm ; include source file funlink.asm
 
-                    use       ffork.asm
+                    use       ffork.asm ; include source file ffork.asm
 
-                    use       fallprc.asm
+                    use       fallprc.asm ; include source file fallprc.asm
 
-                    use       fchain.asm
+                    use       fchain.asm ; include source file fchain.asm
 
-                    use       fexit.asm
+                    use       fexit.asm ; include source file fexit.asm
 
-                    use       fmem.asm
+                    use       fmem.asm  ; include source file fmem.asm
 
-                    use       fsend.asm
+                    use       fsend.asm ; include source file fsend.asm
 
-                    use       ficpt.asm
+                    use       ficpt.asm ; include source file ficpt.asm
 
-                    use       fsleep.asm
+                    use       fsleep.asm ; include source file fsleep.asm
 
-                    use       fallram.asm
+                    use       fallram.asm ; include source file fallram.asm
 
-                    use       fsprior.asm
+                    use       fsprior.asm ; include source file fsprior.asm
 
-                    use       fid.asm
+                    use       fid.asm   ; include source file fid.asm
 
-                  IFEQ    H6309+wildbits
-                    use       fdelram.asm
+                  IFEQ    H6309+wildbits ; begin conditional assembly for H6309+wildbits
+                    use       fdelram.asm ; include source file fdelram.asm
                   ENDC
 
-                    use       fsswi.asm
+                    use       fsswi.asm ; include source file fsswi.asm
 
-                    use       fstime.asm
+                    use       fstime.asm ; include source file fstime.asm
 
-                    use       fallbit.asm
+                    use       fallbit.asm ; include source file fallbit.asm
 
-                    use       fgprdsc.asm
+                    use       fgprdsc.asm ; include source file fgprdsc.asm
 
-                    use       fgblkmp.asm
+                    use       fgblkmp.asm ; include source file fgblkmp.asm
 
-                    use       fgmoddr.asm
+                    use       fgmoddr.asm ; include source file fgmoddr.asm
 
-                    use       fsuser.asm
+                    use       fsuser.asm ; include source file fsuser.asm
 
-                    use       funload.asm
+                    use       funload.asm ; include source file funload.asm
 
-                    use       ffind64.asm
+                    use       ffind64.asm ; include source file ffind64.asm
 
-                    use       fgprocp.asm
+                    use       fgprocp.asm ; include source file fgprocp.asm
 
-                    use       fdelimg.asm
+                    use       fdelimg.asm ; include source file fdelimg.asm
 
-                    use       fmapblk.asm
+                    use       fmapblk.asm ; include source file fmapblk.asm
 
-                    use       fclrblk.asm
+                    use       fclrblk.asm ; include source file fclrblk.asm
 
-                    use       fgcmdir.asm
+                    use       fgcmdir.asm ; include source file fgcmdir.asm
 
-                    use       fdebug.asm
+                    use       fdebug.asm ; include source file fdebug.asm
 
                     emod
-eom                 equ       *
+eom                 equ       *         ; define assembler symbol eom
                     end
