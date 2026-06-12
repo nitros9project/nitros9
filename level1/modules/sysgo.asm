@@ -85,6 +85,10 @@ ExecDir             fcc       "CMDS"
 
 Shell               fcc       "Shell"
                     fcb       C$CR
+                  IFNE    picothing
+TSMon               fcc       "TSMon"
+                    fcb       C$CR
+                  ENDC
 AutoEx              fcc       "AutoEx"
                     fcb       C$CR
 AutoExPr            fcc       ""
@@ -275,6 +279,19 @@ DoAuto              leax      >AutoEx,pcr
 
 L0186               equ       *
                     puls      u,y
+                  IFNE    picothing
+* Chain into TSMon monitoring the inherited console paths; it forks
+* LOGIN on each wake-up, so the console gets a login prompt instead of
+* an unauthenticated shell.  Parameter line is empty (CR only), which
+* tells TSMon to use its stdin rather than open a named device.
+FrkShell            leax      >CRtn,pcr copy the empty parameter line
+                    leay      ,u
+                    lda       ,x
+                    sta       ,y
+                    leax      >TSMon,pcr
+                    ldd       #256      memory size (B not zero on the L1 re-fork path)
+                    ldy       #1        parameter length: just the CR
+                  ELSE
 FrkShell            leax      >ShellPrm,pcr
                     leay      ,u
                     ldb       #ShellPL
@@ -286,6 +303,7 @@ L0190               lda       ,x+
                     leax      >Shell,pcr
                     lda       #$01      D = 256 (B already 0 from above)
                     ldy       #ShellPL
+                  ENDC
                   IFGT    Level-1
                     os9       F$Chain   Level 2/3. Should not return..
                     ldb       #$06      it did! Fatal. Load error code
