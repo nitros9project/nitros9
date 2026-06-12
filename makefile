@@ -38,9 +38,16 @@ dsk:	all
 	$(foreach dir,$(dirs),$(MAKE) -C $(dir) dsk &&) :
 
 # Copy DSK images
+# After the per-port copies land in $(DSKDIR), populate /3rdparty on the
+# Pico-Thing L2 x0 image from the freshly copied package disks and the
+# 3rdparty source tree.  Skipped when that image is not part of this
+# build (e.g. a PORTS= selection without picothing).
 dskcopy:	all
 	mkdir -p $(DSKDIR)
 	$(foreach dir,$(dirs),$(MAKE) -C $(dir) dskcopy &&) :
+	if test -f '$(DSKDIR)/NOS9_6809_L2_DEV_picothing_x0.dsk'; then \
+		$(MAKE) picothing-3rdparty; \
+	fi
 	$(MKDSKINDEX) $(DSKDIR) > $(DSKDIR)/index.html
 
 # Clean DSK images
