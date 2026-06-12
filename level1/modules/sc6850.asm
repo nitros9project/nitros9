@@ -134,7 +134,12 @@ Wrk.Type            rmb       1         type work byte (MUST immediately precede
 Wrk.Baud            rmb       1         baud work byte (MUST immediately follow Wrk.Type)
 Wrk.XTyp            rmb       1         extended type work byte
 
-regWbuf             rmb       2         substitute for regW
+regWbuf             rmb       2         substitute for regW (process context: Write)
+irqWbuf             rmb       2         substitute for regW (IRQ context: IRQSvc)
+* regWbuf holds Write's pending Tx character across the TxE wait, which
+* sleeps with IRQs enabled.  IRQSvc therefore MUST NOT touch regWbuf or
+* a receive interrupt during an echo replaces the pending character
+* (typically with $00, transmitting a NUL).  IRQSvc uses irqWbuf.
 RxBufDSz            equ       256-.     default Rx buffer gets remainder of page...
 RxBuff              rmb       RxBufDSz  default Rx buffer
 MemSize             equ       .
@@ -781,7 +786,7 @@ SavRxDat            equ       *
                   ELSE
                     pshs      d
                     ldd       <RxDatLen
-                    std       <regWbuf
+                    std       <irqWbuf
                     cmpd      <RxBufSiz
                     puls      d
                   ENDC
@@ -806,9 +811,9 @@ SetLayDn            stx       <RxBufPut set new Rx data laydown pointer
                     cmpw      <RxBufMax at or past maximum fill point?
                   ELSE
                     pshs      d
-                    ldd       <regWbuf
+                    ldd       <irqWbuf
                     addd      #1
-                    std       <regWbuf
+                    std       <irqWbuf
                     std       <RxDatLen
                     cmpd      <RxBufMax
                     puls      d
