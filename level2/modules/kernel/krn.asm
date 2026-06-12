@@ -1407,6 +1407,20 @@ SWI2VCT             orcc      #IntMasks ; disable interrupts
 * It saves about 200 cycles (calls to I.LDABX and L029E) on GrvDrv system
 * and user state system calls.
 SWICall             ldb       [R$PC,s]  ; get the op-code of the system call
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Pico-Thing: D.TINIT holds the process task number and is deliberately
+* not cleared in system state (the task is preserved for later restore),
+* so it cannot distinguish a system-state caller from a user-state
+* caller.  CoCo3's D.TINIT bit 0 tracks the current map and can.  The
+* Pico firmware mirrors task writes into the read register, so read the
+* hardware instead: task 0 means the SWI was issued from system state.
+                    lda       >DAT.Task get the task the SWI was issued from
+                    beq       KrnFasterClrXxxx system state: dispatch on the current stack
+* User-state caller: A = the caller's task number.  Stay in the caller's
+* map and fall through to copy the register frame to SWIStack (the sta
+* below rewrites the same task, harmlessly sharing the common tail).
+* GrfDrv is not used on Pico-Thing, so no D.SSTskN test is needed.
+                  ELSE
 * NOTE: Alan DeKok claims that this is BAD.  It crashed Colin McKay's
 * CoCo 3.  Instead, we should do a clra/sta >DAT.Task.
 *         clr   >DAT.Task       go to map type 1
@@ -1426,20 +1440,14 @@ SWICall             ldb       [R$PC,s]  ; get the op-code of the system call
 * CANNOT be vectored to L0EBF because the user SWI service routine has been
 * changed.
                     lda       <D.TINIT  ; get the shadow register
-                  IFNE    picothing ; begin conditional assembly for picothing
-* Pico-Thing uses task numbers 0,2,3,4... (not just 0/1 like CoCo3).
-* CoCo3's bita #$01 fails for even task numbers > 0 (treats them as
-* system state).  Use tsta instead: task 0 = system, anything else = user.
-                    tsta                task 0 (system state)?
-                  ELSE
                     bita      #$01      ; check it without changing it
-                  ENDC
 
 * Change to LBEQ R.SysSvc to avoid JMP [,X]
 * and add R.SysSvc STA >DAT.Task ???
                     beq       MapT0     ; in map 0; restore the hardware and do system service
                     tst       <D.SSTskN ; get system state 0,1
                     bne       MapGrf    ; if in grfdrv, go to map 0 and do system service
+                  ENDC
 
 * The preceding few lines are necessary, as all SWI's still pass through
 * here before being vectored to the system service routine, which
