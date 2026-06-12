@@ -6,8 +6,10 @@ MD          = ../modules
 DEPENDS     = ./makefile
 
 # Kernel
+# krnp3_perr installs the F$PErr replacement that prints full error text
+# from /dd/sys/errmsg; krnp2 links and runs "krnp3" at boot if present.
 KERNEL      = $(MD)/krn
-KERNELP2    = $(MD)/krnp2 $(MD)/init $(MD)/ioman
+KERNELP2    = $(MD)/krnp2 $(MD)/krnp3_perr $(MD)/init $(MD)/ioman
 
 # Boot modules
 BOOT_IDE    = $(MD)/boot_picothing

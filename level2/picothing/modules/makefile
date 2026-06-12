@@ -11,7 +11,7 @@ DEPENDS     = ./makefile
 
 IDEFLAGS    = $(AFLAGS) -DIDE=1 $(FLAGS)
 
-KERNEL      = krn krnp2
+KERNEL      = krn krnp2 krnp3_perr
 SYSMODS     = ioman init sysgo boot_picothing boot_dw_pt rel_picothing
 RELSREC     = rel_picothing.srec
 CLOCKS      = clock_picothing clock2_null
