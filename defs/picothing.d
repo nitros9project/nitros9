@@ -84,6 +84,15 @@ TICK.Ctrl           EQU       IO.Base+$C8 write: bit 0 = enable (1) / disable (0
 TICK.Stat           EQU       IO.Base+$C9 read: bit 7 = IRQ pending; cleared on read
 
 *
+* SystemWatchpoint control (Pico at $FFCA)
+*
+* Writing a non-zero value arms the vector watchpoint: the $FFF0-$FFFF
+* vector region becomes read-only and any write there traps via NMI.
+* Writing zero disarms it.
+*
+WatchCtl            EQU       IO.Base+$CA hardware vector watchpoint control
+
+*
 * PATA Hard Disk (in I/O space $FF00-$FFBF)
 *
 * Note: the Pico maps the 16-bit ATA data word at PTIDEBase+0, shifting
