@@ -34,7 +34,7 @@ rev                 set       $00
                     fcb       $00       IT.NUL end of line null count
                     fcb       $00       IT.PAU pause: no end of page pause
                     fcb       25        IT.PAG lines per page
-                    fcb       C$BSP     IT.BSP backspace character
+                    fcb       $7F       IT.BSP backspace character (DEL, as modern terminals send)
                     fcb       C$DEL     IT.DEL delete line character
                     fcb       C$CR      IT.EOR end of record character
                     fcb       C$EOF     IT.EOF end of file character
