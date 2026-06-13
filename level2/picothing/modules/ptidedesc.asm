@@ -10,12 +10,17 @@
 *   SOFF1   - sector offset high byte (partition number * $20)
 *             each unit of $20 = 2097152 sectors = 512MB
 *             default 0 (no offset)
+*   DRVID   - physical IDE drive: 0 = master (name /I), 1 = slave
+*             (name /J). Sets both the rbsuper drive-table index
+*             (PD.DRV) and the low-level device-select bit (PD.DNS
+*             bit 0, the ATA DEV bit). Default 0.
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
 *     1    2025       Initial version for Pico-Thing
 *     2    2026/03/10 MarkM - add SOFF1 partitioning support
+*     3    2026/06/13 MarkM - add DRVID master/slave support
 
                   IFP1
                     use       defsfile
@@ -32,11 +37,14 @@ SOFF1               set       0
                     ifndef    PNUM
 PNUM                set       SOFF1/$20
                   ENDC
+                    ifndef    DRVID
+DRVID               set       0
+                  ENDC
 
-ITDRV               set       0         drive number (master)
+ITDRV               set       DRVID     drive table index: 0=master 1=slave
 ITSTP               set       0         step rate (not used for PATA)
 ITTYP               set       $81       hard disk, drive size query on
-ITDNS               set       0         media density: master (IDE ID 0)
+ITDNS               set       DRVID     device select: bit 0 = ATA DEV bit
 
 * Geometry: 512MB partition (2097152 sectors)
 * 1024 cyls x 64 sides x 32 sectors/track = 2097152 sectors
@@ -86,7 +94,11 @@ initsize            equ       *
                   IFNE    DD
 name                fcs       /DD/
                   ELSE
-name                fcc       /I/
+                  IFNE    DRVID
+name                fcc       /J/       slave drive partitions
+                  ELSE
+name                fcc       /I/       master drive partitions
+                  ENDC
                     fcb       '0+PNUM+$80
                   ENDC
 

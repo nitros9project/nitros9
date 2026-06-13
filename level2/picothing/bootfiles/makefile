@@ -43,9 +43,11 @@ SHELLMOD    = ../cmds/shell
 
 # --- Loadable modules (on disk in /Modules, load as needed) ---
 
-# IDE partition descriptors
+# IDE partition descriptors (master /I0../I7 and slave /J0../J7)
 IDE_PARTS   = $(MD)/i0_pt.dd $(MD)/i1_pt.dd $(MD)/i2_pt.dd $(MD)/i3_pt.dd \
-              $(MD)/i4_pt.dd $(MD)/i5_pt.dd $(MD)/i6_pt.dd $(MD)/i7_pt.dd
+              $(MD)/i4_pt.dd $(MD)/i5_pt.dd $(MD)/i6_pt.dd $(MD)/i7_pt.dd \
+              $(MD)/j0_pt.dd $(MD)/j1_pt.dd $(MD)/j2_pt.dd $(MD)/j3_pt.dd \
+              $(MD)/j4_pt.dd $(MD)/j5_pt.dd $(MD)/j6_pt.dd $(MD)/j7_pt.dd
 
 # Graphics console (CoPico)
 GFX         = $(MD)/vtio_picothing.dr $(MD)/copico $(MD)/term_gfx.dd

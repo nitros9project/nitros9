@@ -30,6 +30,8 @@ LOADMODS    = $(addprefix modules/,$(GFX) \
               n1_scdwv.dd n2_scdwv.dd n3_scdwv.dd n4_scdwv.dd \
               i0_pt.dd i1_pt.dd i2_pt.dd i3_pt.dd \
               i4_pt.dd i5_pt.dd i6_pt.dd i7_pt.dd \
+              j0_pt.dd j1_pt.dd j2_pt.dd j3_pt.dd \
+              j4_pt.dd j5_pt.dd j6_pt.dd j7_pt.dd \
               clock2_dw)
 
 # All modules for large disk images (everything except kernel pair and raw REL)

@@ -18,6 +18,8 @@ CLOCKS      = clock_picothing clock2_null
 RBF         = rbf.mn rbsuper.dr llide_pt.dr ddi0_pt.dd \
               i0_pt.dd i1_pt.dd i2_pt.dd i3_pt.dd \
               i4_pt.dd i5_pt.dd i6_pt.dd i7_pt.dd \
+              j0_pt.dd j1_pt.dd j2_pt.dd j3_pt.dd \
+              j4_pt.dd j5_pt.dd j6_pt.dd j7_pt.dd \
               rammer.dr r0.dd
 SCF         = scf.mn sc6850.dr term_pt.dd
 GFX         = vtio_picothing.dr copico term_gfx.dd
@@ -72,6 +74,32 @@ i6_pt.dd: ptidedesc.asm
 
 i7_pt.dd: ptidedesc.asm
 	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DSOFF1=0xE0
+
+# Slave-drive partitions (DRVID=1): same SOFF1 layout as the master,
+# named /J0../J7, selected via the ATA DEV bit.
+j0_pt.dd: ptidedesc.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DDRVID=1 -DSOFF1=0x00
+
+j1_pt.dd: ptidedesc.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DDRVID=1 -DSOFF1=0x20
+
+j2_pt.dd: ptidedesc.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DDRVID=1 -DSOFF1=0x40
+
+j3_pt.dd: ptidedesc.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DDRVID=1 -DSOFF1=0x60
+
+j4_pt.dd: ptidedesc.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DDRVID=1 -DSOFF1=0x80
+
+j5_pt.dd: ptidedesc.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DDRVID=1 -DSOFF1=0xA0
+
+j6_pt.dd: ptidedesc.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DDRVID=1 -DSOFF1=0xC0
+
+j7_pt.dd: ptidedesc.asm
+	$(AS) $(ASOUT)$@ $< $(AFLAGS) -DDRVID=1 -DSOFF1=0xE0
 
 # RAM disk driver and descriptor (128KB default)
 rammer.dr: $(LEVEL2)/coco3/modules/rammer.asm
