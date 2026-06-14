@@ -298,7 +298,8 @@ ChkQuit             bsr       CantTouch
                     tst       <quiterr
                     beq       ExitOK
                     bra       ProcRTS
-DoCreate            ldb       #PREAD.+UPDAT.
+DoCreate            anda      #^DIR.              ; clear DIR bit — creating a file, not a directory
+                    ldb       #PREAD.+UPDAT.
                     pshs      x
                     os9       I$Create
                     puls      x

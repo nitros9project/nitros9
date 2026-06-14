@@ -1,8 +1,1 @@
-Level    equ   2         
-
-         ifp1            
-         use   /dd/defs/os9.d
-         use   /dd/defs/rbf.d
-         use   /dd/defs/scf.d
-         use   /dd/defs/coco.d
-         endc            
+/Users/boisy/Projects/coco-shelf/nitros9/level2/defs/Defsfile
