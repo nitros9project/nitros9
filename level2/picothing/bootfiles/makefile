@@ -43,7 +43,12 @@ SHELLMOD    = ../cmds/shell
 
 # --- Loadable modules (on disk in /Modules, load as needed) ---
 
-# IDE partition descriptors (master /I0../I7 and slave /J0../J7)
+# IDE partition descriptors (master /I0../I7 and slave /J0../J7).
+# These are baked into the bootfile (see BOOTFILE_PT below): a device
+# descriptor loaded at runtime needs I$Attach to F$SLink it into the
+# 64K system map, which fails E$NoRAM when a fork+F$Load has filled the
+# 8 system-DAT slots.  Boot-resident descriptors are already mapped, so
+# loading an executable from /I0../I7 or /J0../J7 works.
 IDE_PARTS   = $(MD)/i0_pt.dd $(MD)/i1_pt.dd $(MD)/i2_pt.dd $(MD)/i3_pt.dd \
               $(MD)/i4_pt.dd $(MD)/i5_pt.dd $(MD)/i6_pt.dd $(MD)/i7_pt.dd \
               $(MD)/j0_pt.dd $(MD)/j1_pt.dd $(MD)/j2_pt.dd $(MD)/j3_pt.dd \
@@ -71,6 +76,7 @@ BOOT_PAD      = 1024
 # on disk for load/unload experimentation.
 BOOTFILE_PT = $(KERNELP2) \
               $(RBF_CORE) \
+              $(IDE_PARTS) \
               $(SCF) \
               $(CLOCK) \
               $(PIPE) \
