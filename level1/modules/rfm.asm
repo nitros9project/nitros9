@@ -84,51 +84,68 @@ create1
                     lbcs      open2
                     stu       V.BUF,x
 
-* use PrsNam to validate pathlist and count length
+* scan pathlist to find length — F$PrsNam cannot be used here because it rejects
+* valid OS-9 path elements like '.' and '..' as first characters
                     ldu       4,s                 ; get pointer to caller's registers
-                    ldy       R$X,u
-                    sty       V.PATHNAME,x
-                    tfr       y,x
-prsloop             os9       F$PrsNam
-                    bcs       open2
-                    tfr       y,x
-                    anda      #$7F
+                    ldy       R$X,u               ; Y = start of pathname in caller's space
+                    sty       V.PATHNAME,x        ; save pathname pointer to V$STAT
+                    tfr       y,x                 ; X = current scan position
+                    ifgt      Level-1
+                    pshs      x                   ; save pathname ptr
+                    ldx       <D.Proc
+                    ldb       P$Task,x            ; B = caller's task number for F$LDABX
+                    puls      x                   ; X = pathname ptr restored
+                    endc
+                    ldy       #0                  ; Y = length counter
+prsloop
+                    ifgt      Level-1
+                    os9       F$LDABX             ; A = byte at X in caller's task (X not auto-advanced)
+                    tsta                          ; F$LDABX doesn't update CC — set N/Z from A
+                    else
+                    lda       ,x                  ; A = byte at X (lda sets CC naturally)
+                    endc
+                    bmi       prslastchar         ; high bit set = last char
+                    beq       prsdone             ; null terminator
+                    cmpa      #C$CR
+                    beq       prsdone             ; carriage return
+                    cmpa      #C$SPAC
+                    beq       prsdone             ; space
                     cmpa      #PENTIR
-                    bne       chkdelim
-                    ldb       #E$BPNam
-                    bra       openerr
-chkdelim            cmpa      #PDELIM
-                    beq       prsloop
-* at this point X points to the character AFTER the last character in the name
-* update callers R$X
+                    beq       prsdone             ; '@' entire device
+                    leax      1,x
+                    leay      1,y
+                    bra       prsloop
+prslastchar
+                    leax      1,x
+                    anda      #$7F                ; strip high bit
+                    leay      1,y
+prsdone
                     ldu       4,s                 ; get caller's registers
                     stx       R$X,u
-
-* compute the length of the pathname and save it
-                    tfr       x,d
-                    ldx       ,s                  ; get the device memory pointer
-                    subd      V.PATHNAME,x
-                    std       V.PATHNAMELEN,x     ; save the length
+                    ldx       ,s                  ; get device memory pointer
+                    sty       V.PATHNAMELEN,x     ; save the length
 
 * put the mode byte on the stack
                     pshs      cc
                     lda       R$A,u
                     pshs      a
 
-* push process ID
+* push parent process ID, then process ID
                     ifgt      Level-1
                     ldx       <D.Proc
                     else
                     ldx       >D.Proc
                     endc
-                    lda       P$ID,x
+                    lda       P$PID,x             ; parent process ID
+                    pshs      a
+                    lda       P$ID,x              ; process ID
                     pshs      a
 * reload vstat ptr (trashed by D.Proc access)
-                    ldx       3,s
+                    ldx       4,s
 
 * put command byte & path # on stack
                     lda       V.DWCMD,x
-                    ldy       5,s
+                    ldy       6,s
                     ldb       PD.PD,y
                     pshs      d                   ; p# PD.PD Regs
 
@@ -137,7 +154,7 @@ chkdelim            cmpa      #PDELIM
                     pshs      a                   ; DWOP RFMOP p# PD.PD Regs
 
                     leax      ,s                  ; point X to stack
-                    ldy       #5                  ; 5 bytes to send
+                    ldy       #6                  ; 6 bytes to send
 
                     ifgt      Level-1
                     ldu       <D.DWSubAddr
@@ -147,7 +164,7 @@ chkdelim            cmpa      #PDELIM
 
                     orcc      #IntMasks
                     jsr       6,u
-                    leas      5,s                 ;clean stack   PD.PD Regs
+                    leas      6,s                 ;clean stack   PD.PD Regs
 
                     ifgt      Level-1
 * now send path string
@@ -231,8 +248,8 @@ makdir              ldb       #DW.makdir
 * Exit:  CC.Carry = 0 (no error), 1 (error)
 *        B = error code (if CC.Carry == 1)
 *
-chgdir              lda       #DW.chgdir
-                    lbra      sendit
+chgdir              ldb       #DW.chgdir
+                    lbra      create1
 
 ******************************
 *
@@ -378,20 +395,19 @@ read1               ldx       PD.DEV,y            ; to our static storage
                     ldy       #2
                     jsr       6,u
 
-                    leas      1,s                 ; leave 1 byte for server response in next section
+                    leas      -2,s                ; leave 2 bytes for server response
 
-* read # bytes coming (0 = eof) from server
+* read # bytes coming (0 = eof) from server — 2-byte big-endian count
                     leax      ,s
-                    ldy       #1
+                    ldy       #2
                     jsr       3,u
 
 * store size
-                    clra
-                    puls      b                   ;PD.PD Regs
+                    puls      d                   ; D = byte count from server
 
 
 * check for 0
-                    tstb
+                    cmpd      #0
                     beq       readln1             ; 0 bytes = EOF
 
 * read the data from server if > 0
@@ -582,9 +598,9 @@ getstt
                     cmpb      #SS.FD
                     beq       GstFD
                     cmpb      #SS.FDInf
-                    beq       GstFDInf
+                    lbeq       GstFDInf
                     cmpb      #SS.DirEnt
-                    beq       GstDirEnt
+                    lbeq       GstDirEnt
 *               comb
 *               ldb       #E$UnkSvc
                     clrb
@@ -598,8 +614,31 @@ GstOPT
 * SS.EOF
 * Entry A = path
 *       B = SS.EOF
+* Exit  CC.Carry = 0 if not at EOF, 1 if at EOF
+*       B = E$EOF if at EOF, 0 otherwise
+* Server returns 1 byte: 0 = not at EOF, non-zero = at EOF
 GstEOF
-                    rts
+                    ldx       PD.DEV,y
+                    ldx       V$STAT,x
+                    pshs      x,y,u
+
+                    clr       ,-s                 ; 1-byte receive buffer
+                    leax      ,s
+                    ldy       #1
+                    ifgt      Level-1
+                    ldu       <D.DWSubAddr
+                    else
+                    ldu       >D.DWSubAddr
+                    endc
+                    jsr       3,u                 ; recv 1 byte from server
+                    puls      b                   ; B = 0 (not EOF) or non-zero (EOF)
+                    tstb
+                    bne       gsteof_e
+                    clrb
+                    puls      x,y,u,pc
+gsteof_e            ldb       #E$EOF
+                    coma                          ; set carry = error
+                    puls      x,y,u,pc
 
 * SS.Ready - Check for data available on path
 * Entry A = path
@@ -613,16 +652,58 @@ GstReady
 *       B = SS.SIZ
 * Exit  X = msw of files size
 *       U = lsw of files size
+* Server returns 4 bytes big-endian: [MSW_hi, MSW_lo, LSW_hi, LSW_lo]
 GstSize
-                    rts
+                    ldx       PD.DEV,y
+                    ldx       V$STAT,x
+                    pshs      x,y,u
+
+                    leas      -4,s                ; 4-byte receive buffer
+                    leax      ,s
+                    ldy       #4
+                    ifgt      Level-1
+                    ldu       <D.DWSubAddr
+                    else
+                    ldu       >D.DWSubAddr
+                    endc
+                    jsr       3,u                 ; recv 4 bytes
+                    ldd       ,s                  ; D = MSW
+                    ldu       2,s                 ; U = LSW
+                    leas      4,s                 ; free buffer
+                    ldx       4,s                 ; X = caller register stack
+                    std       R$X,x               ; R$X = MSW of size
+                    stu       R$U,x               ; R$U = LSW of size
+                    clrb
+                    puls      x,y,u,pc
 
 * SS.Pos - Return the current position in the file
 * Entry A = path
 *       B = SS.Pos
 * Exit  X = msw of pos
 *       U = lsw of pos
+* Server returns 4 bytes big-endian: [MSW_hi, MSW_lo, LSW_hi, LSW_lo]
 GstPOS
-                    rts
+                    ldx       PD.DEV,y
+                    ldx       V$STAT,x
+                    pshs      x,y,u
+
+                    leas      -4,s                ; 4-byte receive buffer
+                    leax      ,s
+                    ldy       #4
+                    ifgt      Level-1
+                    ldu       <D.DWSubAddr
+                    else
+                    ldu       >D.DWSubAddr
+                    endc
+                    jsr       3,u                 ; recv 4 bytes
+                    ldd       ,s                  ; D = MSW
+                    ldu       2,s                 ; U = LSW
+                    leas      4,s                 ; free buffer
+                    ldx       4,s                 ; X = caller register stack
+                    std       R$X,x               ; R$X = MSW of position
+                    stu       R$U,x               ; R$U = LSW of position
+                    clrb
+                    puls      x,y,u,pc
 
 * SS.FD - Return file descriptor sector
 * Entry: A = path
@@ -697,8 +778,61 @@ GstFD
 *        Y = msb - Length of read
 *              lsb - MSB of LSN
 *        U = LSW of LSN
+*
+* sendgstt already sent [OP_VFM, DW.getstt, path#, SS.FDInf].
+* Now send R$Y + R$U (4 bytes: len, LSN[0], LSN[1], LSN[2]),
+* receive 256 bytes into V.BUF, then F$Move to caller's X buffer.
 GstFDInf
-                    rts
+                    ldx       PD.DEV,y
+                    ldx       V$STAT,x
+                    pshs      x,y,u               ; [S+0..1]=V$STAT, [S+2..3]=path_desc, [S+4..5]=caller_regs
+
+* build 4-byte send packet: [Y_hi=len, Y_lo=LSN_MSB, U_hi=LSN_mid, U_lo=LSN_lo]
+                    ldy       R$U,u               ; Y = caller's U (LSN_LSW)
+                    pshs      y                   ; push U (2 bytes)
+                    ldx       R$Y,u               ; X = caller's Y (len|LSN_MSB)
+                    pshs      x                   ; push Y (2 bytes): stack=[Y_hi,Y_lo,U_hi,U_lo,...]
+
+                    leax      ,s
+                    ldy       #4
+
+                    ifgt      Level-1
+                    ldu       <D.DWSubAddr
+                    else
+                    ldu       >D.DWSubAddr
+                    endc
+
+                    jsr       6,u                 ; send 4 bytes
+                    leas      4,s                 ; clean stack
+
+* receive 256 bytes into V.BUF
+                    ldx       ,s                  ; V$STAT
+                    ldx       V.BUF,x
+                    ldy       #256
+
+                    ifgt      Level-1
+                    pshs      x                   ; save V.BUF ptr for F$Move
+                    endc
+
+                    jsr       3,u                 ; recv 256 bytes
+
+                    ifgt      Level-1
+* F$Move 256 bytes from V.BUF (system task) to caller's X (caller's task)
+                    ldx       6,s                 ; caller_regs
+                    ldu       R$X,x               ; U = caller's X = dest buffer
+                    sty       R$Y,x               ; update caller's Y
+
+                    lda       <D.SysTsk           ; A = system task (source)
+                    ldx       <D.Proc
+                    ldb       P$Task,x            ; B = caller's task (dest)
+                    puls      x                   ; X = V.BUF
+                    ldy       #256
+                    os9       F$Move
+                    else
+                    endc
+
+                    clrb
+                    puls      x,y,u,pc
 
 * SS.DirEnt -
 * Entry: A = path

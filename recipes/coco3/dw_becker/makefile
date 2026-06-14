@@ -1,7 +1,7 @@
 LEVEL = 2
 
 # Becker port kernel track and modules
-KERNEL_TRACK ?= $(REL) boot_dw_becker krn
+KERNEL_TRACK ?= $(REL) boot_rfm_becker krn
 
 RBF ?= rbf.mn rbdw.dr dwio_becker.sb ddx0.dd x0.dd x1.dd x2.dd x3.dd \
 	ddd0_40d.dd d0_40d.dd d1_40d.dd d2_40d.dd
@@ -12,10 +12,11 @@ SCF ?= scf.mn vtio.dr snddrv_cc3.sb joydrv_joy.sb cowin.io \
 
 CLOCK ?= clock_60hz clock2_soft
 
+# DW virtual disk image served by the DriveWire server as /DD.
 OS9FORMAT_CMD = $(OS9FORMAT_DW)
 
 DSK_EXTRA_DEPS = $(MODDIR)/sysgo_dd
-DSK_POST_COPY = $(MAKE) copy-sysgo-root DSKIMAGE=$@
+DSK_POST_COPY = $(MAKE) post-copy DSKIMAGE=$@
 BOOTMODS_EXTRA += rfm rfmdrv y0
 
 HDBDOS_ROM   = /Users/boisy/Projects/coco-shelf/toolshed/hdbdos/hdbdw3bc3.rom
@@ -45,9 +46,20 @@ copy-sysgo-root:
 	$(OS9COPY) $(MODDIR)/sysgo_dd $(DSKIMAGE),sysgo
 	$(OS9ATTR_EXEC) $(DSKIMAGE),sysgo
 
-all: libs $(DSKIMAGE) $(DWDOS_CAS)
+# Write sysgo and then re-stamp the kernel track last so it can't be overwritten.
+post-copy:
+	$(OS9COPY) $(MODDIR)/sysgo_dd $(DSKIMAGE),sysgo
+	$(OS9ATTR_EXEC) $(DSKIMAGE),sysgo
+
+all: libs $(DSKIMAGE) $(DWDOS_CAS) OS9Boot
+
+OS9Boot: bootfile
+	cp bootfile $@
 
 $(MODDIR)/boot_dw_becker: boot_dw.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DBECKER=1
+
+$(MODDIR)/boot_rfm_becker: boot_rfm.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DBECKER=1
 
 $(MODDIR)/dwio_becker.sb: dwio.asm | $(MODDIR)
@@ -71,7 +83,7 @@ coco3.zip: $(HDBDOS_ROM)
 	zip -j $@ /tmp/coco3.rom /tmp/disk11.rom
 	$(RM) /tmp/coco3.rom /tmp/disk11.rom
 
-# run-hdbdos: type DOS at BASIC prompt — no cassette needed
+# run-hdbdos: HDB-DOS ROM fetches boot track from DriveWire server — no floppy needed.
 run-hdbdos: $(DSKIMAGE) coco3.zip
 	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) \
 		-rompath "$(CURDIR);$(MAME_ROMPATH)"
@@ -81,7 +93,7 @@ run: $(DSKIMAGE) $(DWDOS_CAS)
 	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) -cass $(DWDOS_CAS)
 
 clean:
-	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo coco3.zip \
+	$(RM) *.list *.map bootfile OS9Boot $(KERNELFILE) *.dsk buildinfo coco3.zip \
 		$(DWDOS_BIN) $(DWDOS_CAS)
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
 
@@ -90,4 +102,4 @@ startup.mame: $(NITROS9DIR)/level2/$(PORT)/startup.dw
 	{ echo "keyrpt 0 0</1"; cat $<; } >$@
 endif
 
-.PHONY: all run run-hdbdos copy-sysgo-root clean
+.PHONY: all run run-hdbdos copy-sysgo-root post-copy clean
