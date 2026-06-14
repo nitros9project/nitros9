@@ -11,9 +11,17 @@
 *             each unit of $20 = 2097152 sectors = 512MB
 *             default 0 (no offset)
 *   DRVID   - physical IDE drive: 0 = master (name /I), 1 = slave
-*             (name /J). Sets both the rbsuper drive-table index
-*             (PD.DRV) and the low-level device-select bit (PD.DNS
+*             (name /J). Sets the low-level device-select bit (PD.DNS
 *             bit 0, the ATA DEV bit). Default 0.
+*
+* The rbsuper drive-table index (PD.DRV = IT.DRV) must be UNIQUE per
+* partition, not per physical drive. rbsuper keys its sector cache and
+* its drive table (root-dir/bitmap copy from LSN0) on PD.DRV, but the
+* partition offset IT.SOFF1 is added only AFTER the cache check, so two
+* partitions of one drive sharing a PD.DRV would alias - the second
+* served the first's cached sector and LSN0. So IT.DRV = DRVID*8 + PNUM:
+* master partitions 0-7, slave partitions 8-15 (needs DrvCount 16 in the
+* rbsuper/llide build). Master/slave select is the separate PD.DNS bit.
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
@@ -21,6 +29,7 @@
 *     1    2025       Initial version for Pico-Thing
 *     2    2026/03/10 MarkM - add SOFF1 partitioning support
 *     3    2026/06/13 MarkM - add DRVID master/slave support
+*     4    2026/06/14 MarkM - unique IT.DRV per partition (cache aliasing fix)
 
                   IFP1
                     use       defsfile
@@ -41,7 +50,7 @@ PNUM                set       SOFF1/$20
 DRVID               set       0
                   ENDC
 
-ITDRV               set       DRVID     drive table index: 0=master 1=slave
+ITDRV               set       DRVID*8+PNUM unique per partition: I0-7=0-7 J0-7=8-15
 ITSTP               set       0         step rate (not used for PATA)
 ITTYP               set       $81       hard disk, drive size query on
 ITDNS               set       DRVID     device select: bit 0 = ATA DEV bit

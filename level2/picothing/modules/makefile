@@ -41,9 +41,15 @@ krn krnp2: FORCE
 
 FORCE:
 
-# Pico-Thing PATA IDE low-level driver
+# Pico-Thing PATA IDE: rbsuper + llide share a static whose drive table
+# is sized by DrvCount. Build both with 16 slots so the 8 master (/I0-7,
+# IT.DRV 0-7) and 8 slave (/J0-7, IT.DRV 8-15) partitions each get their
+# own cache/drive-table slot (see ptidedesc.asm). The two MUST agree.
+rbsuper.dr: rbsuper.asm
+	$(AS) $(AFLAGS) -DDrvCount=16 $< $(ASOUT)$@
+
 llide_pt.dr: llide_pt.asm
-	$(AS) $(AFLAGS) $(ASOUT)$@ $<
+	$(AS) $(AFLAGS) -DDrvCount=16 $(ASOUT)$@ $<
 
 # Pico-Thing PATA disk descriptors
 # DD = default drive (partition 0), I0-I7 = partitions 0-7
