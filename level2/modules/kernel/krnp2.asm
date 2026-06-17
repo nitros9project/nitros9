@@ -173,8 +173,7 @@ Uday                lda       ,x+       ; load A from ,x+
                     puls      cc,u,pc   ; restore IRQ's, register stack pointer & return
                   ENDC
 
-krnp2               lda       #'2       ; debug: signal that we made it into krnp2
-                    jsr       <D.BtBug  ; call routine at <D.BtBug
+krnp2               equ       *         ; entry point for kernel part 2
                   IFNE    H6309   ; begin conditional assembly for H6309
                     leay      <SvcTab,pc ; install system calls
                   ELSE
@@ -190,8 +189,6 @@ Krnp2InitModule     ldu       <D.Init   ; get init module pointer
                     ldd       SysStr,u  ; get pointer to system device name (usually '/DD')
                     beq       Krnp2InitModule2 ; don't exist, open std device
                     leax      d,u       ; point to name
-                    lda       #'x       ; debug: signal that we tried chd'ing
-                    jsr       <D.BtBug  ; call routine at <D.BtBug
                     lda       #(EXEC.+READ.) ; get file mode
                     os9       I$ChgDir  ; change to it
                     bcc       Krnp2InitModule2 ; went ok, go on
@@ -201,8 +198,6 @@ Krnp2InitModule2    ldu       <D.Init   ; get init module pointer
                     ldd       <StdStr,u ; point to default device (usually '/Term')
                     beq       Krnp2Krnp3 ; don't exist go do OS9P3
                     leax      d,u       ; point to it
-                    lda       #'o       ; debug: signal that we tried opening output window
-                    jsr       <D.BtBug  ; call routine at <D.BtBug
                     lda       #UPDAT.   ; get file mode
                     os9       I$Open    ; open path to it
                     bcc       Krnp2Process ; went ok, save path #
@@ -231,8 +226,6 @@ Krnp2Krnp3          leax      <Krnp2Target,pc ; point to 'krnp3'
 Krnp2InitModule3    ldu       <D.Init   ; get init module pointer
                     ldd       InitStr,u ; get offset to name of first module
                     leax      d,u       ; point to it
-                    lda       #'C       ; debug: signal that we tried to go to SysGo
-                    jsr       <D.BtBug  ; call routine at <D.BtBug
                     lda       #Objct    ; get module type
                     clrb                ; get mem size
                   IFNE    H6309   ; begin conditional assembly for H6309

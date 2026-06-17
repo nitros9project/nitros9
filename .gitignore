@@ -18,3 +18,6 @@ buildinfo
 bootfile
 kerneltrack
 *.dsk
+
+# usim09pt FRAM persistence file (emulator artifact, holds reset vector)
+picothing.fram

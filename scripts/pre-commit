@@ -10,6 +10,7 @@ FAILED=0
 for FILE in $STAGED_FILES; do
   python3 scripts/asmprettyprint.py "$FILE" > /tmp/asmprettyprint.out
   mv /tmp/asmprettyprint.out "$FILE"
+  git add "$FILE"
 
   if [ $? -ne 0 ]; then
     FAILED=1

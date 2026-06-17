@@ -356,7 +356,7 @@ FChainModule        stu       2,s       ; save pointer to module
 FChainPurge         leas      2,s       ; purge stack
                     stb       3,s       ; save error
                     comb                ; set carry
-                    bra       FChainProcess2 ; return
+                    lbra      FChainProcess2 ; return
 * Setup up data memory
 FChainOffModMem     ldd       #M$Mem    ; get offset to module memory size
                     leay      P$DATImg,x ; get pointer to DAT image

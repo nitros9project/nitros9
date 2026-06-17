@@ -16,42 +16,46 @@
 *
 
 
-                    ifne      MEGAMINIMPI
-                    use dwwrite/dwwrite_mmmpi.asm
-                    endc
+                  IFNE    MEGAMINIMPI
+                    use       dwwrite/dwwrite_mmmpi.asm
+                  ENDC
 
-                    ifne      wildbits
-                    ifne      DWIO_WIZFI
-                    use dwwrite_wildbits_wizfi.asm
-                    else
-                    use dwwrite_wildbits_serial.asm
-                    endc
-                    endc
+                  IFNE    wildbits
+                  IFNE    DWIO_WIZFI
+                    use       dwwrite_wildbits_wizfi.asm
+                  ELSE
+                    use       dwwrite_wildbits_serial.asm
+                  ENDC
+                  ENDC
 
-                    ifne      ARDUINO
-                    use dwwrite/dwwrite_arduino.asm
-                    endc
+                  IFNE    ARDUINO
+                    use       dwwrite/dwwrite_arduino.asm
+                  ENDC
 
-                    ifne      SY6551N
-                    use dwwrite/dwwrite_sy6551.asm
-                    endc
+                  IFNE    SY6551N
+                    use       dwwrite/dwwrite_sy6551.asm
+                  ENDC
 
-                    ifne      JMCPBCK
-                    use dwwrite/dwwrite_jmcpbck.asm
-                    endc
+                  IFNE    JMCPBCK
+                    use       dwwrite/dwwrite_jmcpbck.asm
+                  ENDC
 
-                    ifne      BECKER
-                    use dwwrite/dwwrite_becker.asm
-                    endc
+                  IFNE    BECKER
+                    use       dwwrite/dwwrite_becker.asm
+                  ENDC
 
-                    ifne      BAUD38400
-		    use dwwrite/dwwrite_bb38400.asm
-                    endc
+                  IFNE    BAUD38400
+                    use       dwwrite/dwwrite_bb38400.asm
+                  ENDC
 
-                    ifeq      BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+BAUD38400+wildbits+MEGAMINIMPI
-                    ifeq      H6309
-                    use dwwrite/dwwrite_bb6809.asm
-                    else
-                    use dwwrite/dwwrite_bb6309.asm
-                    endc
-                    endc
+                  IFNE    picothing
+                    use       dwwrite/dwwrite_picothing.asm
+                  ENDC
+
+                  IFEQ    BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+BAUD38400+wildbits+MEGAMINIMPI+picothing
+                  IFEQ    H6309
+                    use       dwwrite/dwwrite_bb6809.asm
+                  ELSE
+                    use       dwwrite/dwwrite_bb6309.asm
+                  ENDC
+                  ENDC

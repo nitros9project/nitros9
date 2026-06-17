@@ -219,10 +219,13 @@ SveNPth             sta       ,u+       ; save new path #
                     ldx       ,s        ; get pointer to new descriptor
                     ldu       2,s       ; get pointer to register stack
                     lbsr      FChainEverything ; link to module & setup register stack
-                    bcs       FForkTarget3 ; exit if error
+                    lbcs      FForkTarget3 ; exit if error
                     pshs      d         ; save d on the stack
                     os9       F$AllTsk  ; allocate the task & setup MMU
-                    bcs       FForkTarget3 ; error, skip ahead
+                    bcc       atok@     ; no error, continue
+                    leas      2,s       ; clean pshs d before error path
+                    lbra      FForkTarget3 ; error, skip ahead
+atok@               equ       *
 
 * Copy parameters to new process
                     lda       P$PagCnt,x ; get memory page count
