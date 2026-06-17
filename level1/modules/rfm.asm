@@ -82,7 +82,7 @@ create1
                     ldd       #256
                     os9       F$SRqMem            ; ask for D bytes (# bytes server said is coming)
                     lbcs      open2
-                    stu       V.BUF,x
+                    stu       PD.BUF,y
 
 * scan pathlist to find length — F$PrsNam cannot be used here because it rejects
 * valid OS-9 path elements like '.' and '..' as first characters
@@ -178,7 +178,8 @@ prsdone
 
                     ldx       1,s                 ; get device mem ptr
                     ifgt      Level-1
-                    ldu       V.BUF,x             ; get destination pointer in U
+                    ldu       3,s                 ; get path descriptor pointer
+                    ldu       PD.BUF,u            ; get destination pointer in U
                     endc
                     ldy       V.PATHNAMELEN,x     ; get count in Y
                     ldx       V.PATHNAME,x        ; get source in X
@@ -219,10 +220,40 @@ prsdone
                     puls      b                   ; PD.PD Regs
 moverr              puls      cc
                     tstb
-                    beq       open2
+                    beq       openok
 
 openerr             coma                          ; set error
-open2               puls      x,y,u,pc
+                    ldy       2,s                 ; get path descriptor pointer
+                    pshs      b
+                    ldu       PD.BUF,y
+                    beq       openerrnofree
+                    ldd       #256
+                    os9       F$SRtMem
+                    clr       PD.BUF,y
+                    clr       PD.BUF+1,y
+openerrnofree
+                    puls      b
+                    coma                          ; restore error condition
+                    bra       open2ret
+
+openok              ldx       ,s                  ; get device memory pointer
+                    lda       V.DWCMD,x
+                    cmpa      #DW.open
+                    beq       open2ret
+                    cmpa      #DW.create
+                    beq       open2ret
+                    ldy       2,s                 ; get path descriptor pointer
+                    ldu       PD.BUF,y
+                    beq       openoknofree
+                    ldd       #256
+                    os9       F$SRtMem
+                    clr       PD.BUF,y
+                    clr       PD.BUF+1,y
+openoknofree        clrb
+                    bra       open2ret
+
+open2               bra       openerr
+open2ret            puls      x,y,u,pc
 
 
 ******************************
@@ -415,8 +446,8 @@ go_on               pshs      d                   ;xfersz PD.PD Regs
 
 * load data from server into mem block
                     ifgt      Level-1
-                    ldx       3,s                 ; V$STAT
-                    ldx       V.BUF,x
+                    ldx       5,s                 ; path descriptor
+                    ldx       PD.BUF,x
                     else
                     ldx       7,s                 ; caller regs
                     std       R$Y,x
@@ -447,8 +478,8 @@ go_on               pshs      d                   ;xfersz PD.PD Regs
                     ldx       <D.Proc             get calling proc desc
                     ldb       P$Task,x            ; B = callers task #
 
-                    ldx       ,s                  ; V$STAT     - PD Regs
-                    ldx       V.BUF,x
+                    ldx       2,s                 ; path descriptor
+                    ldx       PD.BUF,x
 
 *  F$Move the bytes (seems to work)
                     os9       F$Move
@@ -533,8 +564,8 @@ write1              ldx       PD.DEV,y            ; to our static storage
                     ldb       <D.SysTsk           ; dst B = us
 
                     pshs      u                   ; dwsub  cc vstat PD.PD Regs
-                    ldx       3,s
-                    ldu       V.BUF,x             ; dst U = our v.buf
+                    ldx       5,s
+                    ldu       PD.BUF,x            ; dst U = our path buffer
 
                     ldx       <D.Proc             get calling proc desc
                     lda       P$Task,x            ; src A = callers task #
@@ -549,8 +580,8 @@ write1              ldx       PD.DEV,y            ; to our static storage
                     *         send                v.buf to server
 
                     puls      u                   ;      cc vstat PD.PD Regs
-                    ldx       1,s
-                    ldx       V.BUF,x
+                    ldx       3,s
+                    ldx       PD.BUF,x
                     else
                     ldx       5,s
                     ldx       R$X,x
@@ -734,10 +765,10 @@ GstFD
 
                     jsr       6,u
 
-                    *         recv                bytes into v.buf
+                    *         recv                bytes into path buffer
                     puls      y
-                    ldx       ,s                  ; V$STAT
-                    ldx       V.BUF,x
+                    ldx       2,s                 ; path descriptor
+                    ldx       PD.BUF,x
 
                     ifgt      Level-1
                     pshs      x
@@ -746,7 +777,7 @@ GstFD
                     jsr       3,u
 
                     ifgt      Level-1
-                    *         move                v.buf into caller
+                    *         move                path buffer into caller
 
                     ldx       4,s
                     ldu       R$X,x               ; U = caller's X = dest ptr
@@ -757,7 +788,7 @@ GstFD
                     ldx       <D.Proc             get calling proc desc
                     ldb       P$Task,x            ; B = callers task #
 
-                    puls      x                   ; V.BUF from earlier
+                    puls      x                   ; PD.BUF from earlier
 
 *  F$Move the bytes (seems to work)
                     os9       F$Move
@@ -781,7 +812,7 @@ GstFD
 *
 * sendgstt already sent [OP_VFM, DW.getstt, path#, SS.FDInf].
 * Now send R$Y + R$U (4 bytes: len, LSN[0], LSN[1], LSN[2]),
-* receive 256 bytes into V.BUF, then F$Move to caller's X buffer.
+* receive 256 bytes into PD.BUF, then F$Move to caller's X buffer.
 GstFDInf
                     ldx       PD.DEV,y
                     ldx       V$STAT,x
@@ -805,19 +836,19 @@ GstFDInf
                     jsr       6,u                 ; send 4 bytes
                     leas      4,s                 ; clean stack
 
-* receive 256 bytes into V.BUF
-                    ldx       ,s                  ; V$STAT
-                    ldx       V.BUF,x
+* receive 256 bytes into PD.BUF
+                    ldx       2,s                 ; path descriptor
+                    ldx       PD.BUF,x
                     ldy       #256
 
                     ifgt      Level-1
-                    pshs      x                   ; save V.BUF ptr for F$Move
+                    pshs      x                   ; save PD.BUF ptr for F$Move
                     endc
 
                     jsr       3,u                 ; recv 256 bytes
 
                     ifgt      Level-1
-* F$Move 256 bytes from V.BUF (system task) to caller's X (caller's task)
+* F$Move 256 bytes from PD.BUF (system task) to caller's X (caller's task)
                     ldx       6,s                 ; caller_regs
                     ldu       R$X,x               ; U = caller's X = dest buffer
                     sty       R$Y,x               ; update caller's Y
@@ -825,7 +856,7 @@ GstFDInf
                     lda       <D.SysTsk           ; A = system task (source)
                     ldx       <D.Proc
                     ldb       P$Task,x            ; B = caller's task (dest)
-                    puls      x                   ; X = V.BUF
+                    puls      x                   ; X = PD.BUF
                     ldy       #256
                     os9       F$Move
                     else
@@ -858,10 +889,10 @@ GstDirEnt
 
                     jsr       6,u
 
-                    *         recv                bytes into v.buf
+                    *         recv                bytes into path buffer
                     puls      y
-                    ldx       ,s                  ; V$STAT
-                    ldx       V.BUF,x
+                    ldx       2,s                 ; path descriptor
+                    ldx       PD.BUF,x
 
                     ifgt      Level-1
                     pshs      x
@@ -870,7 +901,7 @@ GstDirEnt
                     jsr       3,u
 
                     ifgt      Level-1
-                    *         move                v.buf into caller
+                    *         move                path buffer into caller
 
                     ldx       4,s
                     ldu       R$X,x               ; U = caller's X = dest ptr
@@ -881,7 +912,7 @@ GstDirEnt
                     ldx       <D.Proc             get calling proc desc
                     ldb       P$Task,x            ; B = callers task #
 
-                    puls      x                   ; V.BUF from earlier
+                    puls      x                   ; PD.BUF from earlier
 
 *  F$Move the bytes (seems to work)
                     os9       F$Move
@@ -961,13 +992,13 @@ SstFD
                     jsr       6,u
 
                     ifgt      Level-1
-* move caller bytes into v.buf
+* move caller bytes into path buffer
 
                     puls      y                   ; get number of bytes pushed earlier
                     ldx       4,s
                     ldx       R$X,x               ; U = caller's X = dest ptr
-                    ldu       ,s
-                    ldu       V.BUF,u
+                    ldu       2,s
+                    ldu       PD.BUF,u
 
                     ldx       <D.Proc             get calling proc desc
                     lda       P$Task,x            ; A = callers task #
@@ -978,7 +1009,7 @@ SstFD
 *  F$Move the bytes (seems to work)
                     os9       F$Move
 
-* write bytes from v.buf
+* write bytes from path buffer
                     tfr       u,x
 
                     ifgt      Level-1
@@ -1050,10 +1081,10 @@ close
 * free system mem
                     ldd       #256
                     ldx       1,s                 ; orig Y
-                    ldx       PD.DEV,x
-                    ldx       V$STAT,x
-                    ldu       V.BUF,x
+                    ldu       PD.BUF,x
+                    beq       closememdone
                     os9       F$SRtMem
+closememdone
 
                     puls      b                   ; server sends result code
                     tstb
@@ -1111,4 +1142,3 @@ sendit              pshs      a,x,y,u
                     emod
 eom                 equ       *
                     end
-
