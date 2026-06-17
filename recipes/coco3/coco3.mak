@@ -105,14 +105,18 @@ $(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(DS
 	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9GEN) $@ -b=bootfile -t=$(KERNELFILE)
 	$(MAKDIR) $@,CMDS
+ifneq ($(SYSDIR),)
 	$(MAKDIR) $@,SYS
 	$(MAKE) -C $(SYSDIR) --no-print-directory
 	$(CD) $(SYSDIR); $(OS9COPY) $(SYSBIN) $(CURDIR)/$@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(SYSBIN),$@,SYS/$(file))
 	$(CD) $(SYSDIR); $(CPL) $(SYSTEXT) $(CURDIR)/$@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
+endif
+ifneq ($(PORTDEFSDIR),)
 	$(MAKDIR) $@,DEFS
 	$(MAKE) -C $(PORTDEFSDIR) --no-print-directory
+endif
 	$(CD) $(PORTDEFSDIR); $(CPL) $(PORTDEFS) $(CURDIR)/$@,DEFS
 	$(OS9ATTR_TEXT) $(foreach file,$(PORTDEFS),$@,DEFS/$(file))
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS

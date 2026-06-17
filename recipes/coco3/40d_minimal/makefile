@@ -1,18 +1,23 @@
 LEVEL = 2
+RECIPE ?= coco3_minimal
+RBF = rbf.mn rb1773.dr ddd0_40d.dd
+SCF ?= scf.mn vtio.dr snddrv_cc3.sb joydrv_joy.sb $(TERM_IO) \
+	$(TERM_WIN_DT)
 BOOTMODS = krnp2 ioman init \
 	$(RBF) \
 	$(SCF) \
-	$(PIPE) \
 	$(CLOCK) \
 	$(BOOTMODS_EXTRA)
 DSK_EXTRA_DEPS = $(MODDIR)/sysgo_dd
 DSK_POST_COPY = $(MAKE) copy-sysgo-root DSKIMAGE=$@
-BASIC09_CMDS = basic09 gfx gfx2 inkey runb syscall
-CMDS_EXTRA += $(BASIC09_CMDS)
+CMDS_BASE = shell grfdrv
+STARTUP = startup
+SYSDIR =
+PORTDEFSDIR =
 
 MAME ?= 0
 ifeq ($(MAME),1)
-STARTUP = startup.mame
+CMDS_BASE += keyrpt
 endif
 
 include ../coco3.mak
@@ -28,12 +33,10 @@ copy-sysgo-root:
 	$(OS9COPY) $(MODDIR)/sysgo_dd $(DSKIMAGE),sysgo
 	$(OS9ATTR_EXEC) $(DSKIMAGE),sysgo
 
-.PHONY: copy-sysgo-root run
+.PHONY: copy-sysgo-root run $(STARTUP)
 
+$(STARTUP):
+	echo "link shell" > $@
 ifeq ($(MAME),1)
-startup.mame: $(NITROS9DIR)/level2/$(PORT)/startup
-	{ echo "keyrpt 0 0</1"; cat $<; } >$@
-endif
-
-$(MODDIR)/basic09: basic09.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@
+	echo "keyrpt 0 0</1" >> $@
+endif	
