@@ -33,15 +33,18 @@
 *
 *  13r6    2019/10/30  Bill Nobel, from discussions with L. Curtis Boyle
 * Added I$ModDsc call (modify device descriptor in system memory) BN/LCB
+*
+*          2026/06/17  Codex
+* Annotated source and normalized comments.
 
                     nam       IOMan
                     ttl       NitrOS-9 Level 2 I/O Manager module
 
 * Disassembled 02/04/29 23:10:07 by Disasm v1.6 (C) 1988 by RML
 
-                    ifp1
+                  IFP1
                     use       defsfile
-                    endc
+                  ENDC
 
 tylg                set       Systm+Objct
 atrv                set       ReEnt+rev
@@ -56,103 +59,103 @@ size                equ       .
 name                fcs       /IOMan/
                     fcb       edition
 
-start               ldx       <D.Init             get pointer to init module
-                    lda       DevCnt,x            get number of entries in device table
-                    ldb       #DEVSIZ             get size of each entry
-                    mul                           calculate size needed for device table
-                    pshs      d                   preserve it
-                    lda       PollCnt,x           get number of entries in polling table
-                    ldb       #POLSIZ             get size of each entry
-                    mul                           calculate size needed for polling table
-                    pshs      d                   preserve it
-                    IFNE      H6309
-                    asld
-                    ELSE
-                    lslb                          multiply by 2
-                    rola
-                    ENDC
-                    addd      2,s                 add to size of device table
-                    os9       F$SRqMem            allocate memory
-                    bcs       Crash               branch if error
+start               ldx       <D.Init   ; get pointer to init module
+                    lda       DevCnt,x  ; get number of entries in device table
+                    ldb       #DEVSIZ   ; get size of each entry
+                    mul                 ; calculate size needed for device table
+                    pshs      d         ; preserve it
+                    lda       PollCnt,x ; get number of entries in polling table
+                    ldb       #POLSIZ   ; get size of each entry
+                    mul                 ; calculate size needed for polling table
+                    pshs      d         ; preserve it
+                  IFNE    H6309
+                    asld                ; double polling table byte count for VIRQ table space
+                  ELSE
+                    lslb                ; multiply by 2
+                    rola                ; finish 16-bit multiply-by-two for polling table space
+                  ENDC
+                    addd      2,s       ; add to size of device table
+                    os9       F$SRqMem  ; allocate memory
+                    bcs       Crash     ; branch if error
 * clear allocated mem
-                    leax      ,u                  point to memory
-                    IFNE      H6309
-                    leay      <TheZero,pcr
-                    tfr       d,w
-                    tfm       y,x+
-                    ELSE
-ClrLoop             clr       ,x+                 clear a byte
-                    subd      #$0001              done?
-                    bne       ClrLoop             no, keep going
-                    ENDC
-                    stu       <D.DevTbl           save pointer to device table
-                    IFNE      H6309
-                    puls      x,d
-                    addr      u,x
-                    stx       <D.PolTbl
-                    addr      d,x
-                    stx       <D.CLTb
-                    ELSE
-                    ldd       ,s++                get pointer to device table
-                    std       <D.CLTb             save to globals temporarily
-                    ldd       ,s++                get size of device table
-                    leax      d,u                 point x to the end of device table
-                    stx       <D.PolTbl           save to globals
-                    ldd       <D.CLTb             get VIRQ table size
-                    leax      d,x                 add it to end of device table
-                    stx       <D.CLTb             and save VIRQ table address
-                    ENDC
-                    ldx       <D.PthDBT           get address of path desc table
-                    os9       F$All64             split it into 64 byte chunks
-                    bcs       Crash               branch if error
-                    stx       <D.PthDBT           save pointer back
-                    os9       F$Ret64
-                    leax      >IRQPoll,pcr        point to polling routine
-                    stx       <D.Poll             save the vector address
-                    leay      <IOCalls,pcr        point to service vector table
-                    os9       F$SSvc              set up calls
-                    rts                           and return to system
+                    leax      ,u        ; point to memory
+                  IFNE    H6309
+                    leay      <TheZero,pcr ; point Y at source zero byte
+                    tfr       d,w       ; copy allocation size into W transfer count
+                    tfm       y,x+      ; clear allocated I/O tables with zero fill
+                  ELSE
+ClrLoop             clr       ,x+       ; clear a byte
+                    subd      #$0001    ; done?
+                    bne       ClrLoop   ; no, keep going
+                  ENDC
+                    stu       <D.DevTbl ; save pointer to device table
+                  IFNE    H6309
+                    puls      x,d       ; recover polling and device table sizes
+                    addr      u,x       ; compute start of polling table after device table
+                    stx       <D.PolTbl ; save polling table base
+                    addr      d,x       ; compute start of VIRQ client table
+                    stx       <D.CLTb   ; save VIRQ client table base
+                  ELSE
+                    ldd       ,s++      ; get pointer to device table
+                    std       <D.CLTb   ; save to globals temporarily
+                    ldd       ,s++      ; get size of device table
+                    leax      d,u       ; point x to the end of device table
+                    stx       <D.PolTbl ; save to globals
+                    ldd       <D.CLTb   ; get VIRQ table size
+                    leax      d,x       ; add it to end of device table
+                    stx       <D.CLTb   ; and save VIRQ table address
+                  ENDC
+                    ldx       <D.PthDBT ; get address of path desc table
+                    os9       F$All64   ; split it into 64 byte chunks
+                    bcs       Crash     ; branch if error
+                    stx       <D.PthDBT ; save pointer back
+                    os9       F$Ret64   ; release the extra 64-byte block after table initialization
+                    leax      >IRQPoll,pcr ; point to polling routine
+                    stx       <D.Poll   ; save the vector address
+                    leay      <IOCalls,pcr ; point to service vector table
+                    os9       F$SSvc    ; set up calls
+                    rts                 ; and return to system
 
 ******************************
 *
 * Fatal error Crash the system
 *
 Crash
-                    IFGT      Level-1
-                    jmp       <D.Crash
-                    ELSE
-                    jmp       [>$FFFE]
-                    ENDC
+                  IFGT    Level-1
+                    jmp       <D.Crash  ; vector fatal error through system crash handler
+                  ELSE
+                    jmp       [>$FFFE]  ; fall through reset vector on Level 1 fatal error
+                  ENDC
 
 ******************************
 *
 * System service routine vector table
 *
-IOCalls             fcb       $7F                 Special for User I/O calls (see UsrIODis table)?
+IOCalls             fcb       $7F       ; special for User I/O calls (see UsrIODis table)?
                     fdb       UsrIO-*-2
-                    fcb       F$Load              User & System
+                    fcb       F$Load    ; user & System
                     fdb       FLoad-*-2
-                    IFGT      Level-1
-                    fcb       I$Detach            User & System
+                  IFGT    Level-1
+                    fcb       I$Detach  ; user & System
                     fdb       IDetach0-*-2
-                    ENDC
-                    fcb       F$PErr              User & System
+                  ENDC
+                    fcb       F$PErr    ; user & System
                     fdb       FPErr-*-2
-                    fcb       F$IOQu+$80          System ONLY
+                    fcb       F$IOQu+$80 ; system ONLY
                     fdb       FIOQu-*-2
-                    fcb       $FF                 Special for System I/O calls (see SysIODis table)?
+                    fcb       $FF       ; special for System I/O calls (see SysIODis table)?
                     fdb       SysIO-*-2
-                    fcb       F$IRQ+$80           System ONLY
+                    fcb       F$IRQ+$80 ; system ONLY
                     fdb       FIRQ-*-2
-                    fcb       F$IODel+$80         System ONLY
+                    fcb       F$IODel+$80 ; system ONLY
                     fdb       FIODel-*-2
-                    IFGT      Level-1
-                    fcb       F$NMLink            User & System
+                  IFGT    Level-1
+                    fcb       F$NMLink  ; user & System
                     fdb       FNMLink-*-2
-                    fcb       F$NMLoad            User & System
+                    fcb       F$NMLoad  ; user & System
                     fdb       FNMLoad-*-2
-                    ENDC
-                    fcb       $80                 End of F$SSvc table marker
+                  ENDC
+                    fcb       $80       ; end of F$SSvc table marker
 
 ******************************
 *
@@ -160,37 +163,37 @@ IOCalls             fcb       $7F                 Special for User I/O calls (se
 *
 * Entry: U = Callers register stack pointer
 *
-FIODel              ldx       R$X,u               get address of module
-                    ldu       <D.Init             get pointer to init module
-                    ldb       DevCnt,u            get device count
-                    ldu       <D.DevTbl           get pointer to device table
-L0086               ldy       V$DESC,u            descriptor exists?
-                    beq       L0097               no, move to next device
-                    cmpx      V$DESC,u            device match?
-                    beq       L009E               no, move to next device
-                    cmpx      V$DRIV,u            driver match?
-                    beq       L009E               yes, return module busy
-                    cmpx      V$FMGR,u            fmgr match?
-                    beq       L009E               yes, return module busy
-L0097               leau      DEVSIZ,u            move to next dev entry
-                    decb                          done them all?
-                    bne       L0086               no, keep going
-                    clrb                          clear carry
-L009D               rts                           and return
+FIODel              ldx       R$X,u     ; get address of module
+                    ldu       <D.Init   ; get pointer to init module
+                    ldb       DevCnt,u  ; get device count
+                    ldu       <D.DevTbl ; get pointer to device table
+CheckModuleBusyLoop ldy       V$DESC,u  ; descriptor exists?
+                    beq       NextModuleBusyEntry ; no, move to next device
+                    cmpx      V$DESC,u  ; device match?
+                    beq       ModuleBusyError ; no, move to next device
+                    cmpx      V$DRIV,u  ; driver match?
+                    beq       ModuleBusyError ; yes, return module busy
+                    cmpx      V$FMGR,u  ; fmgr match?
+                    beq       ModuleBusyError ; yes, return module busy
+NextModuleBusyEntry leau      DEVSIZ,u  ; move to next dev entry
+                    decb                ; done them all?
+                    bne       CheckModuleBusyLoop ; no, keep going
+                    clrb                ; clear carry
+ModuleNotBusyReturn rts                 ; and return
 
-L009E               comb                          else set carry
-                    ldb       #E$ModBsy           submit error
-                    rts                           and return
+ModuleBusyError     comb                ; else set carry
+                    ldb       #E$ModBsy ; submit error
+                    rts                 ; and return
 
-                    IFNE      H6309
+                  IFNE    H6309
 TheZero             fcb       $00
-                    ENDC
+                  ENDC
 
 UsrIODis            fdb       IAttach-UsrIODis
                     fdb       IDetach-UsrIODis
                     fdb       UIDup-UsrIODis
-                    fdb       IUsrCall-UsrIODis   Create (User)
-                    fdb       IUsrCall-UsrIODis   Open (User)
+                    fdb       IUsrCall-UsrIODis ; create (User)
+                    fdb       IUsrCall-UsrIODis ; open (User)
                     fdb       IMakDir-UsrIODis
                     fdb       IChgDir-UsrIODis
                     fdb       IDelete-UsrIODis
@@ -208,8 +211,8 @@ UsrIODis            fdb       IAttach-UsrIODis
 SysIODis            fdb       IAttach-SysIODis
                     fdb       IDetach-SysIODis
                     fdb       SIDup-SysIODis
-                    fdb       ISysCall-SysIODis   Create (System)
-                    fdb       ISysCall-SysIODis   Open (System)
+                    fdb       ISysCall-SysIODis ; create (System)
+                    fdb       ISysCall-SysIODis ; open (System)
                     fdb       IMakDir-SysIODis
                     fdb       IChgDir-SysIODis
                     fdb       IDelete-SysIODis
@@ -222,42 +225,42 @@ SysIODis            fdb       IAttach-SysIODis
                     fdb       SISeek-SysIODis
                     fdb       SIClose-SysIODis
                     fdb       IDeletX-SysIODis
-                    fdb       SIModDsc-SysIODis   New system call designed by LCB/BN, implemented by BN
+                    fdb       SIModDsc-SysIODis ; new system call designed by LCB/BN, implemented by BN
 
 * Entry to User and System I/O dispatch table
 * B = I/O system call code (shifted to base 0, and *2 since 2 bytes per jump table entry)
-UsrIO               leax      <UsrIODis,pcr
-                    bra       IODsptch
+UsrIO               leax      <UsrIODis,pcr ; select user I/O dispatch table
+                    bra       IODsptch  ; use common I/O dispatch logic
 
-SysIO               leax      <SysIODis,pcr
-IODsptch            cmpb      #(I$ModDsc-$80)*2   compare with last I/O call
-                    bhi       L00F9               branch if greater
-                    IFNE      H6309
-                    ldw       b,x
-                    lsrb
-                    jmp       w,x
-                    ELSE
-                    pshs      d
-                    ldd       b,x
-                    leax      d,x
-                    puls      d
-                    lsrb
-                    jmp       ,x
-                    ENDC
+SysIO               leax      <SysIODis,pcr ; select system I/O dispatch table
+IODsptch            cmpb      #(I$ModDsc-$80)*2 ; compare with last I/O call
+                    bhi       UnknownServiceError ; branch if greater
+                  IFNE    H6309
+                    ldw       b,x       ; load signed dispatch-table displacement
+                    lsrb                ; restore service index from word offset
+                    jmp       w,x       ; jump through computed service entry
+                  ELSE
+                    pshs      d         ; preserve original service code
+                    ldd       b,x       ; load signed dispatch-table displacement
+                    leax      d,x       ; convert displacement into absolute target
+                    puls      d         ; restore original service code
+                    lsrb                ; restore service index from word offset
+                    jmp       ,x        ; jump through computed service entry
+                  ENDC
 
 ******************************
 *
 * Unknown service code error handler
 *
-L00F9               comb
-                    ldb       #E$UnkSvc
-                    rts
+UnknownServiceError comb                ; set carry for unknown service error
+                    ldb       #E$UnkSvc ; return unknown service code
+                    rts                 ; return to caller with error
 
-VDRIV               equ       $00                 \
-VSTAT               equ       $02                 |
-VDESC               equ       $04                 |--- Temporary device table entry
-VFMGR               equ       $06                 |
-VUSRS               equ       $08                 /
+VDRIV               equ       $00       ; \
+VSTAT               equ       $02       ; |
+VDESC               equ       $04       ; |--- temporary device table entry
+VFMGR               equ       $06       ; |
+VUSRS               equ       $08       ; /
 DRVENT              equ       $09
 FMENT               equ       $0B
 AMODE               equ       $0D
@@ -271,7 +274,7 @@ CALLREGS            equ       $19
 RETERR              equ       $1A
 EOSTACK             equ       $1B
 
-                    IFGT      Level-1
+                  IFGT    Level-1
 * I$ModDsc
 * LCB NOTE: FOR B=IF NEGATIVE VALUE, MAYBE READ EXISTING BYTES?
 *  (in case we want to restore original settings that can not be accessed
@@ -294,451 +297,451 @@ EOSTACK             equ       $1B
 
 * offsets on pre-allocated stack for I$ModDsc
                     org       0
-MDTmpCtr            rmb       1                   Tmp ctr variable
-MDSrcTsk            rmb       1                   Callers task #
-MDTmpTsk            rmb       1                   Temp task # (for module being modified)
-MDChgCnt            rmb       1                   # of byte pairs to change (max 127)
-MDPDscPt            rmb       2                   Callers Process Descriptor ptr
-MDRegPtr            rmb       2                   Callers register stack ptr
-MDMDirPt            rmb       2                   Module directory entry ptr
-MDModOff            rmb       2                   Module offset (from module directory)
-MDPairSc            rmb       2                   Pointer in caller's task that byte pairs are at (Callers R$U)
-MDModSiz            rmb       2                   Module size
-MDTmpSiz            equ       .-MDTmpCtr          Size of fixed temp vars
-MDBytPrs            rmb       1                   Byte pairs start here (variable length)
+MDTmpCtr            rmb       1         ; tmp ctr variable
+MDSrcTsk            rmb       1         ; callers task #
+MDTmpTsk            rmb       1         ; temp task # (for module being modified)
+MDChgCnt            rmb       1         ; # of byte pairs to change (max 127)
+MDPDscPt            rmb       2         ; callers Process Descriptor ptr
+MDRegPtr            rmb       2         ; callers register stack ptr
+MDMDirPt            rmb       2         ; module directory entry ptr
+MDModOff            rmb       2         ; module offset (from module directory)
+MDPairSc            rmb       2         ; pointer in caller's task that byte pairs are at (Callers R$U)
+MDModSiz            rmb       2         ; module size
+MDTmpSiz            equ       .-MDTmpCtr ; size of fixed temp vars
+MDBytPrs            rmb       1         ; byte pairs start here (variable length)
 
 * I$ModDsc - System process entry point
-SIModDsc            ldx       <D.SysPrc           Get ptr to System process descriptor
-                    fcb       $8c                 Skip two bytes (cmpx immediate opcode)
+SIModDsc            ldx       <D.SysPrc ; get ptr to System process descriptor
+                    fcb       $8c       ; skip two bytes (cmpx immediate opcode)
 * I$ModDsc - User process entry point
-UIModDsc            ldx       <D.Proc             get pointer to user's process descriptor
-                    ldb       R$B,u               Get # of byte pairs
-                    bpl       imod001             <=127 is legal, go ahead
-                    comb
-                    ldb       #E$IllArg           >127 is illegal argument error (May change to read flag later?)
-                    rts
+UIModDsc            ldx       <D.Proc   ; get pointer to user's process descriptor
+                    ldb       R$B,u     ; get # of byte pairs
+                    bpl       imod001   ; <=127 is legal, go ahead
+                    comb                ; set carry for illegal argument error
+                    ldb       #E$IllArg ; >127 is illegal argument error (May change to read flag later?)
+                    rts                 ; return with byte count error
 
-imod001             negb                          Make negative number
-                    sex                           16 bit
-                    lslb                          *2
-                    rola
-                    subd      #MDTmpSiz           subtract size of fixed temp vars as well
-                    leas      d,s                 Allocate temp vars on stack
-                    stu       MDRegPtr,s          Save copy of callers register stack ptr
-                    stx       MDPDscPt,s          Save copy of callers process descriptor ptr
-                    ldd       R$U,u               Get callers ptr to byte pairs
-                    std       MDPairSc,s          Save it
-                    ldb       R$B,u               Get # of byte pairs again
-                    stb       MDChgCnt,s          Save copy for reinitializing counter
-                    lda       P$Task,x            Get callers task #
-                    sta       MDSrcTsk,s          Save copy
-                    leay      P$DATImg,x          Point to DAT image of process
-                    lda       #Devic+Objct        We only allow Device Descriptors with this call
-                    ldx       R$X,u               Get ptr to module name from caller
-                    os9       F$FModul            Go find the descriptor in the module directory (into U)
-                    bcc       imod002             If no error on link, go do the call
+imod001             negb                ; make negative number
+                    sex                 ; sign-extend negative byte-pair count
+                    lslb                ; scale pair count by two bytes per pair
+                    rola                ; propagate scaled count into high byte
+                    subd      #MDTmpSiz ; subtract size of fixed temp vars as well
+                    leas      d,s       ; allocate temp vars on stack
+                    stu       MDRegPtr,s ; save copy of callers register stack ptr
+                    stx       MDPDscPt,s ; save copy of callers process descriptor ptr
+                    ldd       R$U,u     ; get callers ptr to byte pairs
+                    std       MDPairSc,s ; save it
+                    ldb       R$B,u     ; get # of byte pairs again
+                    stb       MDChgCnt,s ; save copy for reinitializing counter
+                    lda       P$Task,x  ; get callers task #
+                    sta       MDSrcTsk,s ; save copy
+                    leay      P$DATImg,x ; point to DAT image of process
+                    lda       #Devic+Objct ; we only allow Device Descriptors with this call
+                    ldx       R$X,u     ; get ptr to module name from caller
+                    os9       F$FModul  ; go find the descriptor in the module directory (into U)
+                    bcc       imod002   ; if no error on link, go do the call
 * Entry: B=error code, CC has carry set if error, carry clear if not
-imodexit            pshs      cc,b,x              Save error code & error flag, reserve room for stack offset calc
-                    ldb       MDChgCnt+4,s        Get # of byte pairs
-                    sex                           Make 16 bit
-                    addd      #MDTmpSiz           Add fixed temp var size as well
-                    std       2,s                 Save on stack
-                    puls      x                   Restore CC and B into X
-                    puls      d                   Get Stack size offset
-                    leas      d,s                 Deallocate stack
-                    tfr       x,d                 Move error to D
-                    tfr       a,cc                and restore CC
+imodexit            pshs      cc,b,x    ; save error code & error flag, reserve room for stack offset calc
+                    ldb       MDChgCnt+4,s ; get # of byte pairs
+                    sex                 ; make 16 bit
+                    addd      #MDTmpSiz ; add fixed temp var size as well
+                    std       2,s       ; save on stack
+                    puls      x         ; restore CC and B into X
+                    puls      d         ; get Stack size offset
+                    leas      d,s       ; deallocate stack
+                    tfr       x,d       ; move error to D
+                    tfr       a,cc      ; and restore CC
                     rts
 
 * Entry: U=module dir entry ptr for device descriptor we are modifying (MD$* structure).
 * Make the temp DAT img here (see below with D.TskIPt) so that we can get the proper M$DTyp
 * byte from the actual module, no matter if it's mapped in system RAM or not at this point
-imod002             stu       MDMDirPt,s          Save ptr to module's module directory entry
-                    os9       F$ResTsk            Reserve a temp task for the module's DAT image (in B)
-                    stb       MDTmpTsk,s          Save temp task #
-                    lslb                          2 bytes/task table entry
-                    ldy       MD$MPDAT,u          Get DAT img ptr for module
-                    ldx       <D.TskIPt           Point to task image table
-                    abx                           Point to our new entry
-                    sty       ,x                  Save as DAT IMG ptr for new task
-                    lsrb                          B=temp task #
-                    ldx       MD$MPtr,u           Get ptr to device dsc module itself
-                    stx       MDModOff,s          Save copy while we have it
+imod002             stu       MDMDirPt,s ; save ptr to module's module directory entry
+                    os9       F$ResTsk  ; reserve a temp task for the module's DAT image (in B)
+                    stb       MDTmpTsk,s ; save temp task #
+                    lslb                ; 2 bytes/task table entry
+                    ldy       MD$MPDAT,u ; get DAT img ptr for module
+                    ldx       <D.TskIPt ; point to task image table
+                    abx                 ; point to our new entry
+                    sty       ,x        ; save as DAT IMG ptr for new task
+                    lsrb                ; b=temp task #
+                    ldx       MD$MPtr,u ; get ptr to device dsc module itself
+                    stx       MDModOff,s ; save copy while we have it
 * Entry: B=Temp task #
 *        U=Module dir entry ptr
 *        X=Ptr to device dsc module (in it's own task)
-imod005             leax      M$Size,x            Point to module size
-                    os9       F$LDABX             Get high byte of size
-                    sta       MDModSiz,s          Save it
-                    leax      1,x                 Point to low byte of size
-                    os9       F$LDABX             Get it
-                    sta       MDModSiz+1,s        Save it
-                    leay      MDBytPrs,s          Point to where we are copying byte pair buffer to on stack
-                    ldb       MDChgCnt,s          Get # byte pairs back
-                    stb       MDTmpCtr,s          Save as counter
-                    ldx       MDPairSc,s          Get ptr to callers byte pair list
-                    ldb       MDSrcTsk,s          Get callers Task #
+imod005             leax      M$Size,x  ; point to module size
+                    os9       F$LDABX   ; get high byte of size
+                    sta       MDModSiz,s ; save it
+                    leax      1,x       ; point to low byte of size
+                    os9       F$LDABX   ; get it
+                    sta       MDModSiz+1,s ; save it
+                    leay      MDBytPrs,s ; point to where we are copying byte pair buffer to on stack
+                    ldb       MDChgCnt,s ; get # byte pairs back
+                    stb       MDTmpCtr,s ; save as counter
+                    ldx       MDPairSc,s ; get ptr to callers byte pair list
+                    ldb       MDSrcTsk,s ; get callers Task #
 * Copy patch byte pairs from caller to stack
-PtchCpLp            os9       F$LDABX             Get offset byte from caller
-                    cmpa      #IT.DTP             Is it past module header?
-                    bhi       imod010             Yes, see if within end range of what we are allowed to modify
-imodIlAg            ldb       #E$IllArg           No, illegal argument (tried to modify header)
-                    coma
-                    bra       imodexit
+PtchCpLp            os9       F$LDABX   ; get offset byte from caller
+                    cmpa      #IT.DTP   ; is it past module header?
+                    bhi       imod010   ; yes, see if within end range of what we are allowed to modify
+imodIlAg            ldb       #E$IllArg ; no, illegal argument (tried to modify header)
+                    coma                ; set carry for illegal descriptor offset
+                    bra       imodexit  ; clean up stack and return error
 
 * Entry: X=offset into callers task we are copying from
 *        Y=ptr to current 2 byte offset/new value pair on temp stack
 *        U=Callers register stack ptr
 *        A=current offset (0-127)
-imod010             cmpa      #IT.BDC             Past maximum part of descriptor we are allowed to change?
-                    bhi       imodIlAg            Yes, exit with illegal argument error
-                    sta       1,y                 Save byte offset to change
-                    leax      1,x                 Point to new value
-                    os9       F$LDABX             Get new value byte from caller
-                    sta       ,y++                Save it as well (stack has ,s=new value, 1,s=offset)
-                    leax      1,x                 Bump up to next pair
-                    dec       MDTmpCtr,s          Dec # of bytes to change counter
-                    bne       PtchCpLp            Still more, keep copying the change pairs over to stack
+imod010             cmpa      #IT.BDC   ; past maximum part of descriptor we are allowed to change?
+                    bhi       imodIlAg  ; yes, exit with illegal argument error
+                    sta       1,y       ; save byte offset to change
+                    leax      1,x       ; point to new value
+                    os9       F$LDABX   ; get new value byte from caller
+                    sta       ,y++      ; save it as well (stack has ,s=new value, 1,s=offset)
+                    leax      1,x       ; bump up to next pair
+                    dec       MDTmpCtr,s ; dec # of bytes to change counter
+                    bne       PtchCpLp  ; still more, keep copying the change pairs over to stack
 * We now have all byte pairs copied onto stack. Now, use the temp task pointing to the
 * DAT image for the module that we are modifying
-                    ldb       MDChgCnt,s          Get # byte pairs back
-                    stb       MDTmpCtr,s          Save as counter
-                    leay      MDBytPrs,s          Point to start of byte pairs on stack
-WrPtchLp            ldd       ,y++                Get new value/offset pair
-                    ldx       MDModOff,s          Get dest module ptr (in temp task)
-                    abx                           Point X to byte offset in dest module
-                    ldb       MDTmpTsk,s          get temp task #
-                    os9       F$STABX             Save byte A into module
-                    dec       MDTmpCtr,s          Dec # of pairs left
-                    bne       WrPtchLp            Do until all of them done.
+                    ldb       MDChgCnt,s ; get # byte pairs back
+                    stb       MDTmpCtr,s ; save as counter
+                    leay      MDBytPrs,s ; point to start of byte pairs on stack
+WrPtchLp            ldd       ,y++      ; get new value/offset pair
+                    ldx       MDModOff,s ; get dest module ptr (in temp task)
+                    abx                 ; point X to byte offset in dest module
+                    ldb       MDTmpTsk,s ; get temp task #
+                    os9       F$STABX   ; save byte A into module
+                    dec       MDTmpCtr,s ; dec # of pairs left
+                    bne       WrPtchLp  ; do until all of them done.
 * All bytes should be patched. Now, update CRC 1 byte at a time
 * NOTE: F$CRC uses D.Proc, but since we are calling it here from the system process
 *, we need to temporarily swap the system process ptr in D.Proc's place.
-                    ldx       <D.SysPrc           Get system process descriptor ptr (we are calling from)
-                    stx       <D.Proc             Save for F$CRC to use (we have original process dsc ptr at MDPDscPt,s
-                    ldd       #$FFFF              Init CRC on stack
-                    pshs      d
-                    pshs      d                   Also init place holder for byte we are adding to CRC
-                    leau      1,s                 Point to running CRC
-                    ldd       MDModSiz+4,s        Get module size
-                    subd      #3                  minus 3 CRC bytes
-                    pshs      d                   Save as counter (using new stack entry since 2 byte #)
-                    ldy       #1                  Always updating 1 byte/time
-                    ldx       MDModOff+6,s        Get dest module ptr (in temp task)
-CRCLp               ldb       MDTmpTsk+6,s        Get temp task #
-                    os9       F$LDABX             Get byte
-                    sta       2,s                 Save it
-                    pshs      x                   Save src ptr
-                    leax      2+2,s               Point to byte we got from module
-                    os9       F$CRC               Update CRC with new byte
-                    puls      x                   Get src ptr back
-                    leax      1,x                 Point to next byte
-                    ldd       ,s                  Drop # of bytes left by 1
-                    subd      #1
-                    std       ,s
-                    bne       CRCLp               Keep going until done
+                    ldx       <D.SysPrc ; get system process descriptor ptr (we are calling from)
+                    stx       <D.Proc   ; save for F$CRC to use (we have original process dsc ptr at MDPDscPt,s
+                    ldd       #$FFFF    ; init CRC on stack
+                    pshs      d         ; push initial CRC value
+                    pshs      d         ; also init place holder for byte we are adding to CRC
+                    leau      1,s       ; point to running CRC
+                    ldd       MDModSiz+4,s ; get module size
+                    subd      #3        ; minus 3 CRC bytes
+                    pshs      d         ; save as counter (using new stack entry since 2 byte #)
+                    ldy       #1        ; always updating 1 byte/time
+                    ldx       MDModOff+6,s ; get dest module ptr (in temp task)
+CRCLp               ldb       MDTmpTsk+6,s ; get temp task #
+                    os9       F$LDABX   ; get byte
+                    sta       2,s       ; save it
+                    pshs      x         ; save src ptr
+                    leax      2+2,s     ; point to byte we got from module
+                    os9       F$CRC     ; update CRC with new byte
+                    puls      x         ; get src ptr back
+                    leax      1,x       ; point to next byte
+                    ldd       ,s        ; drop # of bytes left by 1
+                    subd      #1        ; decrement remaining CRC byte count
+                    std       ,s        ; store updated CRC byte count
+                    bne       CRCLp     ; keep going until done
 * Copy original caller's process ptr back (if it wasn't system)
-                    ldd       MDPDscPt+6,s        Get original caller's process desc ptr back
-                    cmpd      <D.SysPrc           Was it system process?
-                    beq       YesSystm            Yes, leave D.Proc alone
-                    std       <D.Proc             No, save user's process descriptor ptr back
+                    ldd       MDPDscPt+6,s ; get original caller's process desc ptr back
+                    cmpd      <D.SysPrc ; was it system process?
+                    beq       YesSystm  ; yes, leave D.Proc alone
+                    std       <D.Proc   ; no, save user's process descriptor ptr back
 * Finally, copy new CRC over old (X pointing to CRC within task)
-YesSystm            ldb       MDTmpTsk+6,s        Get temp task #
-                    lda       #3                  3 byte in CRC
-                    sta       ,s                  Save ctr
-CRCSavLp            lda       ,u+                 Get CRC byte
-                    coma                          Final CRC is complimented first
-                    os9       F$STABX             Save in module
-                    leax      1,x
-                    dec       ,s                  Do until all 3 bytes copied
-                    bne       CRCSavLp
+YesSystm            ldb       MDTmpTsk+6,s ; get temp task #
+                    lda       #3        ; 3 byte in CRC
+                    sta       ,s        ; save ctr
+CRCSavLp            lda       ,u+       ; get CRC byte
+                    coma                ; final CRC is complimented first
+                    os9       F$STABX   ; save in module
+                    leax      1,x       ; advance to next CRC destination byte
+                    dec       ,s        ; do until all 3 bytes copied
+                    bne       CRCSavLp  ; continue until all CRC bytes are stored
 * Finally, F$RelTsk our temp task, clean up stack and return without error
-                    ldb       MDTmpTsk+6,s        Get temp task #
-                    os9       F$RelTsk            Release it
-                    ldb       MDChgCnt+6,s        Get original # of byte pairs
-                    clra                          D=# of pairs *2
-                    lslb
-                    addd      #6+MDTmpSiz         Add fixed temp var size + 6 bytes we used for CRC stuff
-                    leas      d,s                 Eat stack & return with no error
-                    clrb
-                    rts
-                    ENDC
+                    ldb       MDTmpTsk+6,s ; get temp task #
+                    os9       F$RelTsk  ; release it
+                    ldb       MDChgCnt+6,s ; get original # of byte pairs
+                    clra                ; d=# of pairs *2
+                    lslb                ; convert byte-pair count to byte count
+                    addd      #6+MDTmpSiz ; add fixed temp var size + 6 bytes we used for CRC stuff
+                    leas      d,s       ; eat stack & return with no error
+                    clrb                ; report successful descriptor update
+                    rts                 ; return to caller
+                  ENDC
 
 * Entry: U=module header pointer
 IAttach             equ       *
-                    IFNE      H6309
-                    ldw       #EOSTACK            get stack count
-                    leas      <-EOSTACK,s         make stack
-                    leax      TheZero,pcr         point at zero
-                    tfr       s,y                 move S to Y
-                    tfm       x,y+                and transfer 0 to stack
-                    ELSE
-                    ldb       #EOSTACK-1          get stack count - 1
-IALoop              clr       ,-s                 clear each byte
-                    decb                          decrement
-                    bpl       IALoop              and branch until = 0
-                    ENDC
-                    stu       <CALLREGS,s         save caller regs
-                    lda       R$A,u               access mode
-                    sta       AMODE,s             save on stack
-                    IFGT      Level-1
-                    ldx       <D.Proc             get curr proc desc
-                    stx       <ODPROC,s           save on stack
-                    leay      <P$DATImg,x         point to DAT img of curr proc
-                    ldx       <D.SysPrc           get sys proc
-                    stx       <D.Proc             make sys proc current proc
-                    ENDC
-                    ldx       R$X,u               get caller's X
-                    lda       #Devic+0            link to device desc
-                    IFGT      Level-1
-                    os9       F$SLink             link to it
-                    ELSE
-                    os9       F$Link              link to it
-                    ENDC
-                    bcs       L0155               branch if error
-                    stu       VDESC,s             save dev desc ptr
-                    ldy       <CALLREGS,s         get caller regs
-                    stx       R$X,y               save updated X
-                    lda       M$Port,u            get hw page
-                    sta       HWPG,s              save onto stack
-                    ldd       M$Port+1,u          get hw addr
-                    std       HWPORT,s            save onto stack
-                    IFNE      H6309
-                    ldx       M$PDev,u            get driver name ptr
-                    addr      u,x                 add U to X
-                    ELSE
-                    ldd       M$PDev,u            get driver name ptr
-                    leax      d,u                 add D to U and put in X
-                    ENDC
-                    lda       #Drivr+0            driver
-                    os9       F$Link              link to driver
-                    bcs       L0155               branch if error
-                    stu       VDRIV,s             else save addr save on stack
-                    sty       DRVENT,s            save entry point on stack
-                    ldu       VDESC,s             get desc ptr
-                    IFNE      H6309
-                    ldx       M$FMgr,u            get fm name
-                    addr      u,x                 add U to X
-                    ELSE
-                    ldd       M$FMgr,u            get fm name
-                    leax      d,u                 add D to U and put in X
-                    ENDC
-                    lda       #FlMgr+0            link to fm
-                    os9       F$Link              link to it!
-L0155
-                    IFGT      Level-1
-                    ldx       <ODPROC,s           get caller's proc desc
-                    stx       <D.Proc             restore orig proc desc
-                    ENDC
-                    bcc       L016A               branch if not error
+                  IFNE    H6309
+                    ldw       #EOSTACK  ; get stack count
+                    leas      <-EOSTACK,s ; make stack
+                    leax      TheZero,pcr ; point at zero
+                    tfr       s,y       ; move S to Y
+                    tfm       x,y+      ; and transfer 0 to stack
+                  ELSE
+                    ldb       #EOSTACK-1 ; get stack count - 1
+IALoop              clr       ,-s       ; clear each byte
+                    decb                ; decrement
+                    bpl       IALoop    ; and branch until = 0
+                  ENDC
+                    stu       <CALLREGS,s ; save caller regs
+                    lda       R$A,u     ; access mode
+                    sta       AMODE,s   ; save on stack
+                  IFGT    Level-1
+                    ldx       <D.Proc   ; get curr proc desc
+                    stx       <ODPROC,s ; save on stack
+                    leay      <P$DATImg,x ; point to DAT img of curr proc
+                    ldx       <D.SysPrc ; get sys proc
+                    stx       <D.Proc   ; make sys proc current proc
+                  ENDC
+                    ldx       R$X,u     ; get caller's X
+                    lda       #Devic+0  ; link to device desc
+                  IFGT    Level-1
+                    os9       F$SLink   ; link to it
+                  ELSE
+                    os9       F$Link    ; link to it
+                  ENDC
+                    bcs       AttRestoreProc ; branch if error
+                    stu       VDESC,s   ; save dev desc ptr
+                    ldy       <CALLREGS,s ; get caller regs
+                    stx       R$X,y     ; save updated X
+                    lda       M$Port,u  ; get hw page
+                    sta       HWPG,s    ; save onto stack
+                    ldd       M$Port+1,u ; get hw addr
+                    std       HWPORT,s  ; save onto stack
+                  IFNE    H6309
+                    ldx       M$PDev,u  ; get driver name ptr
+                    addr      u,x       ; add U to X
+                  ELSE
+                    ldd       M$PDev,u  ; get driver name ptr
+                    leax      d,u       ; add D to U and put in X
+                  ENDC
+                    lda       #Drivr+0  ; driver
+                    os9       F$Link    ; link to driver
+                    bcs       AttRestoreProc ; branch if error
+                    stu       VDRIV,s   ; else save addr save on stack
+                    sty       DRVENT,s  ; save entry point on stack
+                    ldu       VDESC,s   ; get desc ptr
+                  IFNE    H6309
+                    ldx       M$FMgr,u  ; get fm name
+                    addr      u,x       ; add U to X
+                  ELSE
+                    ldd       M$FMgr,u  ; get fm name
+                    leax      d,u       ; add D to U and put in X
+                  ENDC
+                    lda       #FlMgr+0  ; link to fm
+                    os9       F$Link    ; link to it!
+AttRestoreProc
+                  IFGT    Level-1
+                    ldx       <ODPROC,s ; get caller's proc desc
+                    stx       <D.Proc   ; restore orig proc desc
+                  ENDC
+                    bcc       AttFMgrLinked ; branch if not error
 * Error on attach, so detach
-L015C               stb       <RETERR,s           save off error code
-                    leau      VDRIV,s             point U to device table entry
-                    os9       I$Detach            detach
-                    leas      <RETERR,s           adjust stack
-                    comb                          set carry
-                    puls      pc,b                exit
+AttachErrorDetach   stb       <RETERR,s ; save off error code
+                    leau      VDRIV,s   ; point U to device table entry
+                    os9       I$Detach  ; detach
+                    leas      <RETERR,s ; adjust stack
+                    comb                ; set carry
+                    puls      pc,b      ; exit
 
-L016A               stu       VFMGR,s             save off fm module ptr
-                    sty       FMENT,s             save off fm entry point
-                    ldx       <D.Init             get D.Init
-                    ldb       DevCnt,x            get device entry count
-                    IFNE      H6309
-                    tfr       b,f
-                    ELSE
-                    tfr       b,a
-                    ENDC
-                    ldu       <D.DevTbl           get device table pointer
-L0177               ldx       V$DESC,u            get dev desc ptr
-                    beq       L01B4               branch if empty
-                    cmpx      VDESC,s             same as dev desc being attached?
-                    bne       L0196               branch if not
-                    ldx       V$STAT,u            get driver static
-                    bne       L0191               branch if zero
-                    IFNE      H6309
-                    lde       V$USRS,u            get user count
-                    beq       L0177               If none,
-                    ELSE
-                    pshs      a                   save off A
-                    lda       V$USRS,u            get user count
-                    beq       L0188               branch if zero
-                    ENDC
-                    pshs      u,b
-                    lbsr      FIOQu2              call F$IOQu directly
-                    puls      u,b
-                    IFEQ      H6309
-L0188               puls      a                   pull A from stack
-                    ENDC
-                    bra       L0177
+AttFMgrLinked       stu       VFMGR,s   ; save off fm module ptr
+                    sty       FMENT,s   ; save off fm entry point
+                    ldx       <D.Init   ; get D.Init
+                    ldb       DevCnt,x  ; get device entry count
+                  IFNE    H6309
+                    tfr       b,f       ; keep device count in F while B is reused
+                  ELSE
+                    tfr       b,a       ; keep device count in A while B is reused
+                  ENDC
+                    ldu       <D.DevTbl ; get device table pointer
+AttScanDevTbl       ldx       V$DESC,u  ; get dev desc ptr
+                    beq       AttNextDevEntry ; branch if empty
+                    cmpx      VDESC,s   ; same as dev desc being attached?
+                    bne       AttCmpHardware ; branch if not
+                    ldx       V$STAT,u  ; get driver static
+                    bne       AttSaveCurEntry ; branch if zero
+                  IFNE    H6309
+                    lde       V$USRS,u  ; get user count
+                    beq       AttScanDevTbl ; if none,
+                  ELSE
+                    pshs      a         ; save off A
+                    lda       V$USRS,u  ; get user count
+                    beq       AttRestoreUsrCnt ; branch if zero
+                  ENDC
+                    pshs      u,b       ; preserve table entry pointer and scan count
+                    lbsr      FIOQu2    ; call F$IOQu directly
+                    puls      u,b       ; restore table entry pointer and scan count
+                  IFEQ    H6309
+AttRestoreUsrCnt    puls      a         ; pull A from stack
+                  ENDC
+                    bra       AttScanDevTbl ; resume scan after queued users are handled
 
-L0191               stu       <CURDTE,s           save current dev table ptr
-                    ldx       V$DESC,u            get dev desc ptr
-L0196               ldy       M$Port+1,x          get hw addr
-                    cmpy      HWPORT,s            same as dev entry on stack?
-                    bne       L01B4               branch if not
-                    IFNE      H6309
-                    lde       M$Port,x            get hw port
-                    cmpe      HWPG,s              same as dev entry on stack?
-                    ELSE
-                    ldy       M$Port,x            get hw port
-                    cmpy      HWPG,s              same as dev entry on stack?
-                    ENDC
-                    bne       L01B4               branch if not
-                    ldx       V$DRIV,u            get driver ptr
-                    cmpx      VDRIV,s             same as dev entry on stack?
-                    bne       L01B4               branch if not
+AttSaveCurEntry     stu       <CURDTE,s ; save current dev table ptr
+                    ldx       V$DESC,u  ; get dev desc ptr
+AttCmpHardware      ldy       M$Port+1,x ; get hw addr
+                    cmpy      HWPORT,s  ; same as dev entry on stack?
+                    bne       AttNextDevEntry ; branch if not
+                  IFNE    H6309
+                    lde       M$Port,x  ; get hw port
+                    cmpe      HWPG,s    ; same as dev entry on stack?
+                  ELSE
+                    ldy       M$Port,x  ; get hw port
+                    cmpy      HWPG,s    ; same as dev entry on stack?
+                  ENDC
+                    bne       AttNextDevEntry ; branch if not
+                    ldx       V$DRIV,u  ; get driver ptr
+                    cmpx      VDRIV,s   ; same as dev entry on stack?
+                    bne       AttNextDevEntry ; branch if not
 * A match between device table entries has occurred
-                    ldx       V$STAT,u            get driver static
-                    stx       VSTAT,s             save off in our statics
-                    tst       V$USRS,u            any users for this device
-                    beq       L01B4               branch if not
-                    IFEQ      H6309
-                    sta       HWPG,s
-                    ENDC
-L01B4               leau      DEVSIZ,u            advance to the next device entry
-                    decb
-                    bne       L0177
-                    ldu       <CURDTE,s           get curr dev entry ptr
-                    bne       L0264               branch if not zero
-                    ldu       <D.DevTbl
-                    IFNE      H6309
-                    tfr       f,a
-                    ENDC
-L01C4               ldx       V$DESC,u            get desc ptr
-                    beq       L01DD               branch if zero
-                    leau      DEVSIZ,u            move to next dev table entry
-                    deca
-                    bne       L01C4
-                    ldb       #E$DevOvf           dev table overflow
-                    bra       L015C
+                    ldx       V$STAT,u  ; get driver static
+                    stx       VSTAT,s   ; save off in our statics
+                    tst       V$USRS,u  ; any users for this device
+                    beq       AttNextDevEntry ; branch if not
+                  IFEQ    H6309
+                    sta       HWPG,s    ; preserve hardware page while matching shared static storage
+                  ENDC
+AttNextDevEntry     leau      DEVSIZ,u  ; advance to the next device entry
+                    decb                ; decrement remaining device entries
+                    bne       AttScanDevTbl ; continue scanning device table
+                    ldu       <CURDTE,s ; get curr dev entry ptr
+                    bne       AttachCheckModes ; branch if not zero
+                    ldu       <D.DevTbl ; restart search at first device table entry
+                  IFNE    H6309
+                    tfr       f,a       ; restore device entry count for empty-slot scan
+                  ENDC
+AttachFindFreeEntry ldx       V$DESC,u  ; get desc ptr
+                    beq       AttAllocStatic ; branch if zero
+                    leau      DEVSIZ,u  ; move to next dev table entry
+                    deca                ; decrement empty-slot scan count
+                    bne       AttachFindFreeEntry ; continue until a free entry is found
+                    ldb       #E$DevOvf ; dev table overflow
+                    bra       AttachErrorDetach ; detach partial attachment and report overflow
 
-L01D1
-                    IFNE      H6309
-                    lsrd                          /2
-                    lsrd                          /4
-                    lsrd                          /8
-                    lsrd                          /16
-                    lsrd                          /32
-                    ELSE
+CalcDatBlock
+                  IFNE    H6309
+                    lsrd                ; /2
+                    lsrd                ; /4
+                    lsrd                ; /8
+                    lsrd                ; /16
+                    lsrd                ; /32
+                  ELSE
                     lsra
-                    rorb                          /2
+                    rorb                ; /2
                     lsra
-                    rorb                          /4
+                    rorb                ; /4
                     lsra
-                    rorb                          /8
+                    rorb                ; /8
                     lsra
-                    rorb                          /16
+                    rorb                ; /16
                     lsra
-                    rorb                          /32
-                    ENDC
-                    clra
-                    rts
+                    rorb                ; /32
+                  ENDC
+                    clra                ; clear high byte of calculated DAT block value
+                    rts                 ; return DAT block/page calculation
 
-L01DD               ldx       VSTAT,s             get static storage off stack
-                    bne       L0259               branch if already alloced
-                    stu       <CURDTE,s           else store off ptr to dev table entry
-                    ldx       VDRIV,s             get ptr to driver
-                    ldd       M$Mem,x             get driver storage req
-                    os9       F$SRqMem            allocate memory
-                    lbcs      L015C               branch if error
-                    stu       VSTAT,s             save newly alloc'ed driver static storage ptr
-                    IFNE      H6309
-                    leay      VSTAT+1,s           point to zero byte
-                    tfr       d,w                 tfr count to w counter
-                    tfm       y,u+                clear driver static storage
-                    ELSE
-Loop2               clr       ,u+                 clear newly alloc'ed mem
-                    subd      #$0001
-                    bhi       Loop2
-                    ENDC
+AttAllocStatic      ldx       VSTAT,s   ; get static storage off stack
+                    bne       AttCopyDevEntry ; branch if already alloced
+                    stu       <CURDTE,s ; else store off ptr to dev table entry
+                    ldx       VDRIV,s   ; get ptr to driver
+                    ldd       M$Mem,x   ; get driver storage req
+                    os9       F$SRqMem  ; allocate memory
+                    lbcs      AttachErrorDetach ; branch if error
+                    stu       VSTAT,s   ; save newly alloc'ed driver static storage ptr
+                  IFNE    H6309
+                    leay      VSTAT+1,s ; point to zero byte
+                    tfr       d,w       ; tfr count to w counter
+                    tfm       y,u+      ; clear driver static storage
+                  ELSE
+Loop2               clr       ,u+       ; clear newly alloc'ed mem
+                    subd      #$0001    ; decrement remaining static-storage bytes
+                    bhi       Loop2     ; continue until all allocated memory is clear
+                  ENDC
 * Code here appears to be for Level III?
-                    IFGT      Level-2
-                    ldd       HWPG,s              get hwpage and upper addr
-                    bsr       L01D1
-                    std       <DATBYT2,s          save off
-                    ldu       #$0000
-                    tfr       u,y
-                    stu       <DATBYT1,s
-                    ldx       <D.SysDAT           get system mem map ptr
-L0209               ldd       ,x++
-                    cmpd      <DATBYT2,s
-                    beq       L023B
-                    cmpd      #DAT.Free
-                    bne       L021D
-                    sty       <DATBYT1,s
-                    leau      -2,x
-L021D               leay      >$2000,y
-                    bne       L0209
-                    ldb       #E$NoRAM
-                    IFNE      H6309
-                    cmpr      0,u
-                    ELSE
-                    cmpu      #$0000
-                    ENDC
-                    lbeq      L015C
-                    ldd       <DATBYT2,s
-                    std       ,u
-                    ldx       <D.SysPrc
-                    IFNE      H6309
+                  IFGT    Level-2
+                    ldd       HWPG,s    ; get hwpage and upper addr
+                    bsr       CalcDatBlock ; convert hardware address to DAT block value
+                    std       <DATBYT2,s ; save off
+                    ldu       #$0000    ; clear candidate DAT entry pointer
+                    tfr       u,y       ; start system address scan at zero
+                    stu       <DATBYT1,s ; clear selected DAT address accumulator
+                    ldx       <D.SysDAT ; get system mem map ptr
+AttachScanSystemDat ldd       ,x++      ; read next system DAT image entry
+                    cmpd      <DATBYT2,s ; compare against target hardware DAT value
+                    beq       AttUseMapping ; reuse existing mapping when already present
+                    cmpd      #DAT.Free ; test whether this DAT slot is free
+                    bne       AttachNextDatSlot ; skip occupied DAT slots
+                    sty       <DATBYT1,s ; remember system address for first free slot
+                    leau      -2,x      ; remember pointer to free DAT image slot
+AttachNextDatSlot   leay      >$2000,y  ; advance to next 8K logical address
+                    bne       AttachScanSystemDat ; scan until logical address wraps
+                    ldb       #E$NoRAM  ; prepare no RAM error if no DAT slot exists
+                  IFNE    H6309
+                    cmpr      0,u       ; test whether a free DAT slot was recorded
+                  ELSE
+                    cmpu      #$0000    ; test whether a free DAT slot was recorded
+                  ENDC
+                    lbeq      AttachErrorDetach ; fail attachment when no DAT slot is available
+                    ldd       <DATBYT2,s ; reload hardware DAT value
+                    std       ,u        ; install hardware mapping into free DAT slot
+                    ldx       <D.SysPrc ; get system process descriptor
+                  IFNE    H6309
                     oim       #ImgChg,P$State,x
-                    ELSE
+                  ELSE
                     lda       P$State,x
                     ora       #ImgChg
                     sta       P$State,x
-                    ENDC
-                    os9       F$ID
-                    bra       L023F
+                  ENDC
+                    os9       F$ID      ; force process DAT image reload
+                    bra       AttachSetupPort ; continue with mapped port address setup
 
-L023B               sty       <DATBYT1,s
-                    ENDC
-L023F               ldd       HWPORT,s
-                    IFGT      Level-2
-                    anda      #$1F
-                    addd      <DATBYT1,s
-                    ENDC
-                    ldu       VSTAT,s             load U with static storage of drvr
-                    clr       V.PAGE,u            clear page byte
-                    std       V.PORT,u            save port address
-                    ldy       VDESC,s             load Y with desc ptr
-                    jsr       [<DRVENT,s]         call driver init routine
-                    lbcs      L015C               branch if error
-                    ldu       <CURDTE,s
-L0259
-                    IFNE      H6309
-                    ldw       #DEVSIZ
-                    tfr       s,x
-                    tfm       x+,u+
-                    leau      -DEVSIZ,u
-                    ELSE
-                    ldb       #DEVSIZ-1           size of device table - 1
-LilLoop             lda       b,s                 get from src
-                    sta       b,u                 save in dest
-                    decb
-                    bpl       LilLoop
-                    ENDC
+AttUseMapping       sty       <DATBYT1,s ; save existing logical address for hardware page
+                  ENDC
+AttachSetupPort     ldd       HWPORT,s  ; reload device hardware port address
+                  IFGT    Level-2
+                    anda      #$1F      ; keep offset within mapped 8K page
+                    addd      <DATBYT1,s ; form logical port address in system map
+                  ENDC
+                    ldu       VSTAT,s   ; load U with static storage of drvr
+                    clr       V.PAGE,u  ; clear page byte
+                    std       V.PORT,u  ; save port address
+                    ldy       VDESC,s   ; load Y with desc ptr
+                    jsr       [<DRVENT,s] ; call driver init routine
+                    lbcs      AttachErrorDetach ; branch if error
+                    ldu       <CURDTE,s ; reload selected device table entry
+AttCopyDevEntry
+                  IFNE    H6309
+                    ldw       #DEVSIZ   ; copy one device table entry
+                    tfr       s,x       ; use temporary stack entry as source
+                    tfm       x+,u+     ; copy temporary entry into device table
+                    leau      -DEVSIZ,u ; restore U to start of copied entry
+                  ELSE
+                    ldb       #DEVSIZ-1 ; size of device table - 1
+LilLoop             lda       b,s       ; get from src
+                    sta       b,u       ; save in dest
+                    decb                ; decrement reverse copy index
+                    bpl       LilLoop   ; copy until every entry byte is stored
+                  ENDC
 * Here, U points to Device Table
-L0264               ldx       V$DESC,u            get desc ptr in X
-                    ldb       M$Revs,x            get revs
-                    lda       AMODE,s             get access mode byte passed in A
-                    anda      M$Mode,x            and with MODE byte in desc.
-                    ldx       V$DRIV,u            X points to driver module
-                    anda      M$Mode,x            AND with mode byte in driver
-                    cmpa      AMODE,s             same as passed mode?
-                    beq       L0279               if so, ok
-                    ldb       #E$BMode            else bad mode
-                    lbra      L015C               and return
+AttachCheckModes    ldx       V$DESC,u  ; get desc ptr in X
+                    ldb       M$Revs,x  ; get revs
+                    lda       AMODE,s   ; get access mode byte passed in A
+                    anda      M$Mode,x  ; and with MODE byte in desc.
+                    ldx       V$DRIV,u  ; x points to driver module
+                    anda      M$Mode,x  ; aND with mode byte in driver
+                    cmpa      AMODE,s   ; same as passed mode?
+                    beq       AttIncUsers ; if so, ok
+                    ldb       #E$BMode  ; else bad mode
+                    lbra      AttachErrorDetach ; and return
 
-L0279               inc       V$USRS,u            else inc user count
-                    bne       L027F               if not zero, continue
-                    dec       V$USRS,u            else bump back to 255
-L027F               ldx       <CALLREGS,s
-                    stu       R$U,x
-                    leas      <EOSTACK,s
-                    clrb
-                    rts
+AttIncUsers         inc       V$USRS,u  ; else inc user count
+                    bne       AttachReturnSuccess ; if not zero, continue
+                    dec       V$USRS,u  ; else bump back to 255
+AttachReturnSuccess ldx       <CALLREGS,s ; reload caller register stack pointer
+                    stu       R$U,x     ; return device table entry in caller's U
+                    leas      <EOSTACK,s ; release temporary attach stack frame
+                    clrb                ; report successful attach
+                    rts                 ; return to caller
 
-IDetach             ldu       R$U,u
-                    ldx       V$DESC,u            this was incorrectly commented out in 13r4!!
+IDetach             ldu       R$U,u     ; get device table entry from caller's U
+                    ldx       V$DESC,u  ; this was incorrectly commented out in 13r4!!
 *** BUG FIX
 * The following two lines fix a long-standing bug in IOMan where
 * the I$Detach routine would deallocate the V$STAT area.  This is
@@ -748,769 +751,769 @@ IDetach             ldu       R$U,u
 * this value was zero, so here force I$Detach to do the lookup no
 * matter the V$USRS value
 * BGP 04/30/2002
-                    tst       V$USRS,u
-                    beq       IDetach2
+                    tst       V$USRS,u  ; force lookup when user count is zero
+                    beq       IDetach2  ; perform full detach lookup path
 *** BUG FIX
-L0297               lda       #$FF
-                    cmpa      V$USRS,u
-                    beq       L0351
-                    dec       V$USRS,u
-                    bne       L0335
-IDetach2            ldx       <D.Init
-                    ldb       DevCnt,x
-                    pshs      u,b
-                    ldx       V$STAT,u
-                    clr       V$STAT,u
-                    clr       V$STAT+1,u
-                    ldy       <D.DevTbl
-L02B4               cmpx      V$STAT,y
-                    beq       L032B
-                    leay      DEVSIZ,y
-                    decb
-                    bne       L02B4
-                    ldy       <D.Proc
-                    ldb       P$ID,y
-                    stb       V$USRS,u
-                    ldy       V$DESC,u
-                    IFGT      Level-1
-                    ldu       V$DRIVEX,u
-                    exg       x,u                 X pts to driver, U pts to static
-                    pshs      u
-                    jsr       D$TERM,x            $F,x Call Terminate routine in driver
-                    puls      u
-                    ELSE
-                    ldu       V$DRIV,u
-                    exg       x,u                 X pts to driver, U pts to static
-                    ldd       M$Exec,x
-                    leax      d,x
-                    pshs      u
-                    jsr       D$TERM,x            $F,x Call Terminate routine in driver
-                    puls      u
-                    ENDC
-                    ldx       1,s                 get ptr to dev table
-                    ldx       V$DRIV,x            load X with driver addr
-                    ldd       M$Mem,x             get static storage size
-                    addd      #$00FF              round up one page
-                    clrb                          clear lo byte
-                    os9       F$SRtMem            return mem
+DetachCheckUsers    lda       #$FF      ; load saturated user-count value
+                    cmpa      V$USRS,u  ; test whether user count is pinned at 255
+                    beq       DetachWakeAndReturn ; leave shared device attached when count is saturated
+                    dec       V$USRS,u  ; drop one user reference
+                    bne       DetachUnlinkModules ; unlink modules while other users remain
+IDetach2            ldx       <D.Init   ; get init module pointer
+                    ldb       DevCnt,x  ; get device table entry count
+                    pshs      u,b       ; save current device table entry and scan count
+                    ldx       V$STAT,u  ; get static storage pointer for target device
+                    clr       V$STAT,u  ; clear static pointer high byte in target entry
+                    clr       V$STAT+1,u ; clear static pointer low byte in target entry
+                    ldy       <D.DevTbl ; start scan at device table base
+DetachFindStatic    cmpx      V$STAT,y  ; does another device entry share this static storage?
+                    beq       DetachClearDev ; keep static storage if another entry uses it
+                    leay      DEVSIZ,y  ; advance to next device entry
+                    decb                ; decrement remaining entries
+                    bne       DetachFindStatic ; continue static-storage sharing scan
+                    ldy       <D.Proc   ; get current process descriptor
+                    ldb       P$ID,y    ; load current process ID
+                    stb       V$USRS,u  ; tag entry while driver terminate runs
+                    ldy       V$DESC,u  ; load descriptor pointer for terminate call
+                  IFGT    Level-1
+                    ldu       V$DRIVEX,u ; load driver execution entry for Level 2
+                    exg       x,u       ; x pts to driver, U pts to static
+                    pshs      u         ; save static storage pointer during driver call
+                    jsr       D$TERM,x  ; $f,x Call Terminate routine in driver
+                    puls      u         ; restore static storage pointer
+                  ELSE
+                    ldu       V$DRIV,u  ; load driver module pointer
+                    exg       x,u       ; x pts to driver, U pts to static
+                    ldd       M$Exec,x  ; get driver execution offset
+                    leax      d,x       ; point X at driver execution table
+                    pshs      u         ; save static storage pointer during driver call
+                    jsr       D$TERM,x  ; $f,x Call Terminate routine in driver
+                    puls      u         ; restore static storage pointer
+                  ENDC
+                    ldx       1,s       ; get ptr to dev table
+                    ldx       V$DRIV,x  ; load X with driver addr
+                    ldd       M$Mem,x   ; get static storage size
+                    addd      #$00FF    ; round up one page
+                    clrb                ; clear lo byte
+                    os9       F$SRtMem  ; return mem
 * Code here appears to be for Level III?
-                    IFGT      Level-2
-                    ldx       $01,s               get old U on stack (Ptr to our device table entry)
-                    ldx       V$DESC,x            Get ptr to device descriptor
-                    ldd       M$Port,x            Get ptr to hardware port
-                    beq       L032B               None, abort
-                    lbsr      L01D1
-                    cmpb      #$3F
-                    beq       L032B
-                    tfr       d,y
-                    IFNE      H6309
-                    ldf       ,s
-                    ENDC
-                    ldu       <D.DevTbl
-L02F4               cmpu      $01,s
-                    beq       L0309
-                    ldx       V$DESC,u
-                    beq       L0309
-                    ldd       M$Port,x
-                    beq       L0309
-                    lbsr      L01D1
-                    IFNE      H6309
-                    cmpr      y,d
-                    ELSE
-                    pshs      y
-                    cmpd      ,s++
-                    ENDC
-                    beq       L032B
-L0309               leau      DEVSIZ,u
-                    IFNE      H6309
-                    decf
-                    ELSE
-                    dec       ,s
-                    ENDC
-                    bne       L02F4
-                    ldx       <D.SysPrc
-                    ldu       <D.SysDAT
-                    IFNE      H6309
-                    ldf       #$08
-                    ELSE
-                    ldb       #$08
-                    pshs      b
-                    ENDC
-L0316               ldd       ,u++
-                    IFNE      H6309
-                    cmpr      y,d
-                    ELSE
-                    pshs      y
-                    cmpd      ,s++
-                    ENDC
-                    beq       L0323
-                    IFNE      H6309
-                    decf
-                    ELSE
-                    dec       ,s
-                    ENDC
-                    bne       L0316
-                    IFEQ      H6309
-                    leas      1,s
-                    ENDC
-                    bra       L032B
-L0323
-                    IFEQ      H6309
-                    leas      1,s
-                    ENDC
-                    ldd       #DAT.Free
-                    std       -$02,u
-                    IFNE      H6309
+                  IFGT    Level-2
+                    ldx       $01,s     ; get old U on stack (Ptr to our device table entry)
+                    ldx       V$DESC,x  ; get ptr to device descriptor
+                    ldd       M$Port,x  ; get ptr to hardware port
+                    beq       DetachClearDev ; none, abort
+                    lbsr      CalcDatBlock ; convert hardware address to DAT block value
+                    cmpb      #$3F      ; test for non-remappable DAT block
+                    beq       DetachClearDev ; skip DAT release for fixed mapping
+                    tfr       d,y       ; keep target DAT value in Y for comparisons
+                  IFNE    H6309
+                    ldf       ,s        ; restore remaining device count for 6309 scan
+                  ENDC
+                    ldu       <D.DevTbl ; start scan for other users of DAT mapping
+DetachCheckMap      cmpu      $01,s     ; skip the device entry being detached
+                    beq       DetachNextMap ; do not compare target entry against itself
+                    ldx       V$DESC,u  ; get descriptor for candidate entry
+                    beq       DetachNextMap ; skip empty device table entries
+                    ldd       M$Port,x  ; get candidate hardware port
+                    beq       DetachNextMap ; skip entries without mapped hardware port
+                    lbsr      CalcDatBlock ; convert candidate port to DAT block value
+                  IFNE    H6309
+                    cmpr      y,d       ; compare candidate DAT block against target
+                  ELSE
+                    pshs      y         ; put target DAT value on stack for comparison
+                    cmpd      ,s++      ; compare candidate DAT block against target
+                  ENDC
+                    beq       DetachClearDev ; keep mapping if another device still uses it
+DetachNextMap       leau      DEVSIZ,u  ; advance to next device table entry
+                  IFNE    H6309
+                    decf                ; decrement remaining entries in 6309 scan
+                  ELSE
+                    dec       ,s        ; decrement remaining entries in 6809 scan
+                  ENDC
+                    bne       DetachCheckMap ; continue looking for shared DAT mapping
+                    ldx       <D.SysPrc ; get system process descriptor
+                    ldu       <D.SysDAT ; get system DAT image pointer
+                  IFNE    H6309
+                    ldf       #$08      ; scan eight system DAT entries
+                  ELSE
+                    ldb       #$08      ; scan eight system DAT entries
+                    pshs      b         ; keep remaining DAT entry count on stack
+                  ENDC
+DetachScanSystemDat ldd       ,u++      ; read next system DAT image entry
+                  IFNE    H6309
+                    cmpr      y,d       ; compare system DAT entry to target mapping
+                  ELSE
+                    pshs      y         ; put target DAT value on stack for comparison
+                    cmpd      ,s++      ; compare system DAT entry to target mapping
+                  ENDC
+                    beq       DetachFreeDatEntry ; found DAT mapping to free
+                  IFNE    H6309
+                    decf                ; decrement remaining DAT entries in 6309 scan
+                  ELSE
+                    dec       ,s        ; decrement remaining DAT entries in 6809 scan
+                  ENDC
+                    bne       DetachScanSystemDat ; continue scanning system DAT image
+                  IFEQ    H6309
+                    leas      1,s       ; discard 6809 DAT scan counter
+                  ENDC
+                    bra       DetachClearDev ; skip DAT release when mapping was not found
+DetachFreeDatEntry
+                  IFEQ    H6309
+                    leas      1,s       ; discard 6809 DAT scan counter
+                  ENDC
+                    ldd       #DAT.Free ; prepare free-DAT marker
+                    std       -$02,u    ; mark matched system DAT entry as free
+                  IFNE    H6309
                     oim       #ImgChg,P$State,x
-                    ELSE
+                  ELSE
                     lda       P$State,x
                     ora       #ImgChg
                     sta       P$State,x
-                    ENDC
-                    ENDC
+                  ENDC
+                  ENDC
 
-L032B               puls      u,b
-                    ldx       V$DESC,u            get descriptor in X
-                    clr       V$DESC,u            clear out descriptor
-                    clr       V$DESC+1,u
-                    clr       V$USRS,u            and users
-L0335
-                    IFGT      Level-1
-                    IFNE      H6309
-                    ldw       <D.Proc             get cur process dsc ptr
-                    ELSE
-                    ldd       <D.Proc             get cur process dsc ptr
-                    pshs      d                   save it
-                    ENDC
-                    ldd       <D.SysPrc           make system the current process
+DetachClearDev      puls      u,b       ; restore device entry pointer and scan count
+                    ldx       V$DESC,u  ; get descriptor in X
+                    clr       V$DESC,u  ; clear out descriptor
+                    clr       V$DESC+1,u ; clear descriptor pointer low byte
+                    clr       V$USRS,u  ; and users
+DetachUnlinkModules
+                  IFGT    Level-1
+                  IFNE    H6309
+                    ldw       <D.Proc   ; get cur process dsc ptr
+                  ELSE
+                    ldd       <D.Proc   ; get cur process dsc ptr
+                    pshs      d         ; save it
+                  ENDC
+                    ldd       <D.SysPrc ; make system the current process
                     std       <D.Proc
-                    ENDC
-                    ldy       V$DRIV,u            get driver module address
-                    ldu       V$FMGR,u            get file manager module address
-                    os9       F$UnLink            unlink file manager
-                    leau      ,y                  point to driver
-                    os9       F$UnLink            unlink driver
-                    leau      ,x                  point to descriptor
-                    os9       F$UnLink            unlink it
-                    IFGT      Level-1
-                    IFNE      H6309
-                    stw       <D.Proc             restore current process
-                    ELSE
-                    puls      d                   restore current process
+                  ENDC
+                    ldy       V$DRIV,u  ; get driver module address
+                    ldu       V$FMGR,u  ; get file manager module address
+                    os9       F$UnLink  ; unlink file manager
+                    leau      ,y        ; point to driver
+                    os9       F$UnLink  ; unlink driver
+                    leau      ,x        ; point to descriptor
+                    os9       F$UnLink  ; unlink it
+                  IFGT    Level-1
+                  IFNE    H6309
+                    stw       <D.Proc   ; restore current process
+                  ELSE
+                    puls      d         ; restore current process
                     std       <D.Proc
-                    ENDC
-                    ENDC
-L0351               lbsr      L0595
-                    clrb
-                    rts
+                  ENDC
+                  ENDC
+DetachWakeAndReturn lbsr      WakeNextIOQueue ; wake next process waiting in I/O queue
+                    clrb                ; report successful detach
+                    rts                 ; return to caller
 
 * User State I$Dup
-UIDup               bsr       LocFrPth            look for a free path
-                    bcs       L0376               branch if error
-                    pshs      x,a                 else save off
-                    lda       R$A,u               get path to dup
-                    lda       a,x                 point to path to dup
-                    bsr       L036F
-                    bcs       L036B
-                    puls      x,b
-                    stb       R$A,u               save off new path to caller's A
-                    sta       b,x
-                    rts
+UIDup               bsr       LocFrPth  ; look for a free path
+                    bcs       DupReturn ; branch if error
+                    pshs      x,a       ; else save off
+                    lda       R$A,u     ; get path to dup
+                    lda       a,x       ; point to path to dup
+                    bsr       DupPathDescriptor ; resolve path descriptor and increment use count
+                    bcs       DupRestoreError ; return error if source path is invalid
+                    puls      x,b       ; restore process path table and new path number
+                    stb       R$A,u     ; save off new path to caller's A
+                    sta       b,x       ; store duplicated system path in new process slot
+                    rts                 ; return duplicated user path number
 
-L036B               puls      pc,x,a
+DupRestoreError     puls      pc,x,a    ; restore saved registers and return error
 
 * System State I$Dup
-SIDup               lda       R$A,u
-L036F               lbsr      GetPDesc            find path descriptor
-                    bcs       L0376               exit if error
-                    inc       PD.CNT,y            else increment path descriptor
-L0376               rts
+SIDup               lda       R$A,u     ; get system path number to duplicate
+DupPathDescriptor   lbsr      GetPDesc  ; find path descriptor
+                    bcs       DupReturn ; exit if error
+                    inc       PD.CNT,y  ; else increment path descriptor
+DupReturn           rts                 ; return with duplicate-path status
 
 * Find next free path position in current proc
 * Exit: X = Ptr to proc's path table
 *       A = Free path number (valid if carry clear)
 *    Carry set if path table in process descriptor is full
-LocFrPth            ldx       <D.Proc             get ptr to current proc desc
-                    leax      <P$Path,x           point X to proc's path table
-                    clra                          start from 0
-L037D               tst       a,x                 this path free?
-                    beq       L038A               Yes, exit with that path #
-                    inca                          No, try next
-                    cmpa      #NumPaths           are we at the end?
-                    blo       L037D               No, try that one
-                    comb                          else path table is full
-                    ldb       #E$PthFul
-                    rts
+LocFrPth            ldx       <D.Proc   ; get ptr to current proc desc
+                    leax      <P$Path,x ; point X to proc's path table
+                    clra                ; start from 0
+FindFreePathLoop    tst       a,x       ; this path free?
+                    beq       FindFreePathFound ; yes, exit with that path #
+                    inca                ; no, try next
+                    cmpa      #NumPaths ; are we at the end?
+                    blo       FindFreePathLoop ; no, try that one
+                    comb                ; else path table is full
+                    ldb       #E$PthFul ; report full path table
+                    rts                 ; return with carry set
 
-L038A               andcc     #^Carry
-                    rts
+FindFreePathFound   andcc     #^Carry   ; clear carry for free path slot found
+                    rts                 ; return free path number in A
 
 * Open/Create from User process
-IUsrCall            bsr       LocFrPth            Get next free path # for process
-                    bcs       L039F               No free ones, return with error
-                    pshs      u,x,a               Save regs
-                    bsr       ISysCall            Process I/O call (Open or Create)
-                    puls      u,x,a               Restore regs
-                    bcs       L039F               If there was an error, return with it
-                    ldb       R$A,u
-                    stb       a,x
-                    sta       R$A,u
-L039F               rts
+IUsrCall            bsr       LocFrPth  ; get next free path # for process
+                    bcs       UserCallReturn ; no free ones, return with error
+                    pshs      u,x,a     ; save regs
+                    bsr       ISysCall  ; process I/O call (Open or Create)
+                    puls      u,x,a     ; restore regs
+                    bcs       UserCallReturn ; if there was an error, return with it
+                    ldb       R$A,u     ; get allocated system path number
+                    stb       a,x       ; save system path in user path table slot
+                    sta       R$A,u     ; return user-visible path number
+UserCallReturn      rts                 ; return open/create status
 
 * Open/Create from System
-ISysCall            pshs      b                   Save B
-                    ldb       R$A,u               Get access mode
-                    bsr       AllcPDsc
-                    bcs       L03B4
-                    puls      b
-                    lbsr      CallFMgr
-                    bcs       L03C3
-                    lda       PD.PD,y
-                    sta       R$A,u
-                    rts
+ISysCall            pshs      b         ; save call selector
+                    ldb       R$A,u     ; get access mode
+                    bsr       AllcPDsc  ; allocate and initialize path descriptor
+                    bcs       RestoreCallRet ; return if descriptor allocation failed
+                    puls      b         ; restore call selector
+                    lbsr      CallFMgr  ; dispatch open/create to file manager
+                    bcs       CleanupPathDesc ; clean up path descriptor on file manager error
+                    lda       PD.PD,y   ; get system path number from descriptor
+                    sta       R$A,u     ; return system path number to caller
+                    rts                 ; return successful open/create
 
-L03B4               puls      pc,a
+RestoreCallRet      puls      pc,a      ; discard saved call selector and return error
 
 * Make Directory
-IMakDir             pshs      b
-                    ldb       #DIR.+WRITE.
-L03BA               bsr       AllcPDsc
-                    bcs       L03B4
-                    puls      b
-                    lbsr      CallFMgr
-L03C3               pshs      b,cc
-                    ldu       PD.DEV,y
-                    os9       I$Detach
-                    lda       PD.PD,y
-                    ldx       <D.PthDBT
-                    os9       F$Ret64
-                    puls      pc,b,cc
+IMakDir             pshs      b         ; save make-directory call selector
+                    ldb       #DIR.+WRITE. ; force directory write mode
+AllocCallFMgr       bsr       AllcPDsc  ; allocate path descriptor for directory/file operation
+                    bcs       RestoreCallRet ; return if allocation failed
+                    puls      b         ; restore file manager call selector
+                    lbsr      CallFMgr  ; dispatch request to file manager
+CleanupPathDesc     pshs      b,cc      ; preserve status while cleaning path descriptor
+                    ldu       PD.DEV,y  ; get attached device table entry
+                    os9       I$Detach  ; detach device used by path descriptor
+                    lda       PD.PD,y   ; get path descriptor slot number
+                    ldx       <D.PthDBT ; get path descriptor block table
+                    os9       F$Ret64   ; release path descriptor block
+                    puls      pc,b,cc   ; restore file manager status and return
 
 * Change Directory
-IChgDir             pshs      b
-                    ldb       R$A,u
-                    orb       #DIR.
-                    bsr       AllcPDsc
-                    bcs       L03B4
-                    puls      b
-                    lbsr      CallFMgr
-                    bcs       L03C3
-                    ldu       <D.Proc
-                    IFNE      H6309
+IChgDir             pshs      b         ; save change-directory call selector
+                    ldb       R$A,u     ; get requested access mode
+                    orb       #DIR.     ; force directory mode
+                    bsr       AllcPDsc  ; allocate path descriptor for target directory
+                    bcs       RestoreCallRet ; return if allocation failed
+                    puls      b         ; restore file manager call selector
+                    lbsr      CallFMgr  ; ask file manager to change directory
+                    bcs       CleanupPathDesc ; clean up descriptor on error
+                    ldu       <D.Proc   ; get current process descriptor
+                  IFNE    H6309
                     tim       #PWRIT.+PREAD.+UPDAT.,PD.MOD,y
-                    ELSE
-                    ldb       PD.MOD,y
-                    bitb      #PWRIT.+PREAD.+UPDAT.
-                    ENDC
-                    beq       IChgExec
-                    ldx       PD.DEV,y            Get our device table entry ptr
-                    stx       <P$DIO,u            Save as I/O ptr in process dsc.
-                    inc       V$USRS,x            Bump up # of users
-                    bne       IChgExec            If we max out at 255, leave at 255
-                    dec       V$USRS,x
+                  ELSE
+                    ldb       PD.MOD,y  ; get path mode bits
+                    bitb      #PWRIT.+PREAD.+UPDAT. ; test data-directory mode bits
+                  ENDC
+                    beq       IChgExec  ; skip data directory update if no data mode bits set
+                    ldx       PD.DEV,y  ; get our device table entry ptr
+                    stx       <P$DIO,u  ; save as I/O ptr in process dsc.
+                    inc       V$USRS,x  ; bump up # of users
+                    bne       IChgExec  ; if we max out at 255, leave at 255
+                    dec       V$USRS,x  ; keep saturated user count at 255
 IChgExec
-                    IFNE      H6309
+                  IFNE    H6309
                     tim       #PEXEC.+EXEC.,PD.MOD,y
-                    ELSE
-                    bitb      #PEXEC.+EXEC.
-                    ENDC
-                    beq       L0406               Not Exec dir, exit w/o error
-                    ldx       PD.DEV,y            Get our device table entry ptr
-                    stx       <P$DIO+6,u          Save as Exec dir I/O Ptr in process dsc.
-                    inc       V$USRS,x            Bump up # of users
-                    bne       L0406               If we max out at 255, leave at 255
-                    dec       V$USRS,x
-L0406               clrb
-                    bra       L03C3
+                  ELSE
+                    bitb      #PEXEC.+EXEC. ; test execution-directory mode bits
+                  ENDC
+                    beq       ChgDirCleanupOk ; not Exec dir, exit w/o error
+                    ldx       PD.DEV,y  ; get our device table entry ptr
+                    stx       <P$DIO+6,u ; save as Exec dir I/O Ptr in process dsc.
+                    inc       V$USRS,x  ; bump up # of users
+                    bne       ChgDirCleanupOk ; if we max out at 255, leave at 255
+                    dec       V$USRS,x  ; keep saturated user count at 255
+ChgDirCleanupOk     clrb                ; report successful directory change
+                    bra       CleanupPathDesc ; close temporary path descriptor
 
-IDelete             pshs      b
-                    ldb       #WRITE.
-                    bra       L03BA
+IDelete             pshs      b         ; save delete call selector
+                    ldb       #WRITE.   ; delete requires write access
+                    bra       AllocCallFMgr ; allocate descriptor and call file manager
 
-IDeletX             ldb       #7                  Delete offset in file manager
-                    pshs      b
-                    ldb       R$A,u
-                    bra       L03BA
+IDeletX             ldb       #7        ; delete offset in file manager
+                    pshs      b         ; save file manager delete-entry selector
+                    ldb       R$A,u     ; get caller's access mode/path context
+                    bra       AllocCallFMgr ; allocate descriptor and dispatch delete
 
 * Allocate path descriptor
 * Entry:
 *    B = mode
-AllcPDsc            ldx       <D.Proc             get pointer to curr proc in X
-                    pshs      u,x                 save U/X
-                    ldx       <D.PthDBT           get ptr to path desc base table
-                    os9       F$All64             allocate 64 byte page
-                    bcs       L0484               branch if error
-                    inc       PD.CNT,y            set path count
-                    stb       PD.MOD,y            save mode byte
-                    IFGT      Level-1
-                    ldx       <D.Proc             get curr proc desc
-                    ldb       P$Task,x            get task #
-                    ENDC
-                    ldx       R$X,u               X points to pathlist
-L042C
-                    IFGT      Level-1
-                    os9       F$LDABX             get byte from pathlist
-                    leax      1,x                 move to next
-                    ELSE
-                    lda       ,x+                 Get byte from pathlist
-                    ENDC
-                    cmpa      #C$SPAC             space?
-                    beq       L042C               continue if so
-                    leax      -1,x                else back up
-                    stx       R$X,u               save updated pointer
-                    cmpa      #PDELIM             leading slash?
-                    beq       L0459               yep...
-                    ldx       <D.Proc             else get curr proc
-                    IFNE      H6309
-                    tim       #EXEC.,PD.MOD,y     Exec Dir set in mode byte?
-                    ELSE
-                    ldb       PD.MOD,y            get mode byte
-                    bitb      #EXEC.              exec. dir relative?
-                    ENDC
-                    beq       L0449               nope...
-                    ldx       <P$DIO+6,x          else get dev entry for exec path
-                    bra       L044C               and branch
+AllcPDsc            ldx       <D.Proc   ; get pointer to curr proc in X
+                    pshs      u,x       ; save U/X
+                    ldx       <D.PthDBT ; get ptr to path desc base table
+                    os9       F$All64   ; allocate 64 byte page
+                    bcs       AllocPathReturn ; branch if error
+                    inc       PD.CNT,y  ; set path count
+                    stb       PD.MOD,y  ; save mode byte
+                  IFGT    Level-1
+                    ldx       <D.Proc   ; get curr proc desc
+                    ldb       P$Task,x  ; get task #
+                  ENDC
+                    ldx       R$X,u     ; x points to pathlist
+SkipPathSpaces
+                  IFGT    Level-1
+                    os9       F$LDABX   ; get byte from pathlist
+                    leax      1,x       ; move to next
+                  ELSE
+                    lda       ,x+       ; get byte from pathlist
+                  ENDC
+                    cmpa      #C$SPAC   ; space?
+                    beq       SkipPathSpaces ; continue if so
+                    leax      -1,x      ; else back up
+                    stx       R$X,u     ; save updated pointer
+                    cmpa      #PDELIM   ; leading slash?
+                    beq       ParsePathName ; yep...
+                    ldx       <D.Proc   ; else get curr proc
+                  IFNE    H6309
+                    tim       #EXEC.,PD.MOD,y ; exec Dir set in mode byte?
+                  ELSE
+                    ldb       PD.MOD,y  ; get mode byte
+                    bitb      #EXEC.    ; exec. dir relative?
+                  ENDC
+                    beq       UseDataDirectory ; nope...
+                    ldx       <P$DIO+6,x ; else get dev entry for exec path
+                    bra       CheckCurrentDir ; and branch
 
-L0449               ldx       <P$DIO,x            get dev entry for data path
-L044C               beq       L0489               branch if empty
-                    IFGT      Level-1
-                    ldd       <D.SysPrc           get system proc ptr
-                    std       <D.Proc             Make current process
-                    ENDC
-                    ldx       V$DESC,x            get descriptor pointer
-                    ldd       M$Name,x            get name offset
-                    IFNE      H6309
-                    addr      d,x                 point X to name in descriptor
-                    ELSE
-                    leax      d,x                 point X to name in descriptor
-                    ENDC
-L0459               pshs      y                   save off path desc ptr in Y
-                    os9       F$PrsNam            parse it
-                    puls      y                   restore path desc ptr
-                    bcs       L0489               branch if error
-                    lda       PD.MOD,y            get mode byte
-                    os9       I$Attach            attach to device
-                    stu       PD.DEV,y            save dev tbl entry
-                    bcs       L048B               branch if error
-                    ldx       V$DESC,u            else get descriptor pointer
+UseDataDirectory    ldx       <P$DIO,x  ; get dev entry for data path
+CheckCurrentDir     beq       BadPathName ; branch if empty
+                  IFGT    Level-1
+                    ldd       <D.SysPrc ; get system proc ptr
+                    std       <D.Proc   ; make current process
+                  ENDC
+                    ldx       V$DESC,x  ; get descriptor pointer
+                    ldd       M$Name,x  ; get name offset
+                  IFNE    H6309
+                    addr      d,x       ; point X to name in descriptor
+                  ELSE
+                    leax      d,x       ; point X to name in descriptor
+                  ENDC
+ParsePathName       pshs      y         ; save off path desc ptr in Y
+                    os9       F$PrsNam  ; parse it
+                    puls      y         ; restore path desc ptr
+                    bcs       BadPathName ; branch if error
+                    lda       PD.MOD,y  ; get mode byte
+                    os9       I$Attach  ; attach to device
+                    stu       PD.DEV,y  ; save dev tbl entry
+                    bcs       AllocPathErrClean ; branch if error
+                    ldx       V$DESC,u  ; else get descriptor pointer
 * copy options from dev desc to path desc
-                    leax      <M$Opt,x            point to opts in desc
-                    IFNE      H6309
-                    ldf       ,x+                 Get options count
-                    leau      <PD.OPT,y           Point to Options section of path dsc
-                    cmpf      #$20                Past max size we can fit in path dsc?
+                    leax      <M$Opt,x  ; point to opts in desc
+                  IFNE    H6309
+                    ldf       ,x+       ; get options count
+                    leau      <PD.OPT,y ; point to Options section of path dsc
+                    cmpf      #$20      ; past max size we can fit in path dsc?
 * LCB - Slight bug fix - was blo, so would miss 32nd byte (if used)
-                    bls       L047E               No, copy the amount we need
-                    ldf       #$20                Yes, will copy max of 32 bytes
-L047E               clre
-                    tfm       x+,u+
-                    ELSE
-                    ldb       ,x+                 get options count
-                    leau      <PD.OPT,y           Point to Options section of path dsc
+                    bls       CopyOptions6309 ; no, copy the amount we need
+                    ldf       #$20      ; yes, will copy max of 32 bytes
+CopyOptions6309     clre                ; clear high byte of options transfer count
+                    tfm       x+,u+     ; copy descriptor options into path descriptor
+                  ELSE
+                    ldb       ,x+       ; get options count
+                    leau      <PD.OPT,y ; point to Options section of path dsc
 * LCB 6809 note: Should be 2 cycles faster per byte copied (so up to 64 cycles faster)
-                    cmpb      #$20                Past max size we can fit in path dsc?
-                    bls       StartCpy            No, copy the amount we need
-                    ldb       #$20                Yes, will copy max of 32 bytes
-StartCpy            decb                          Adjust so we do right range
-KeepLoop            lda       b,x                 Get byte from device dsc
-                    sta       b,u                 Save in path dsc
-                    decb                          Done all of them?
-                    bpl       KeepLoop            Copy till done
-                    ENDC
-                    clrb
-L0484               puls      u,x                 Restore regs
-                    IFGT      Level-1
-                    stx       <D.Proc             Restore current process ptr
-                    ENDC
-                    rts
+                    cmpb      #$20      ; past max size we can fit in path dsc?
+                    bls       StartCpy  ; no, copy the amount we need
+                    ldb       #$20      ; yes, will copy max of 32 bytes
+StartCpy            decb                ; adjust so we do right range
+KeepLoop            lda       b,x       ; get byte from device dsc
+                    sta       b,u       ; save in path dsc
+                    decb                ; done all of them?
+                    bpl       KeepLoop  ; copy till done
+                  ENDC
+                    clrb                ; report successful path descriptor allocation
+AllocPathReturn     puls      u,x       ; restore regs
+                  IFGT    Level-1
+                    stx       <D.Proc   ; restore current process ptr
+                  ENDC
+                    rts                 ; return allocation status
 
-L0489               ldb       #E$BPNam            Bad pathname error
-L048B               pshs      b                   Save error code
-                    lda       ,y
-                    ldx       <D.PthDBT
-                    os9       F$Ret64             Return the 64 bytes of path dsc mem to system
-                    puls      b                   Restore error # & return with it
-                    coma
-                    bra       L0484
+BadPathName         ldb       #E$BPNam  ; bad pathname error
+AllocPathErrClean   pshs      b         ; save error code
+                    lda       ,y        ; get path descriptor slot number
+                    ldx       <D.PthDBT ; get path descriptor block table
+                    os9       F$Ret64   ; return the 64 bytes of path dsc mem to system
+                    puls      b         ; restore error # & return with it
+                    coma                ; set carry for allocation/attach failure
+                    bra       AllocPathReturn ; restore registers and return error
 
-UISeek              bsr       S2UPath             get user path #
-                    bcc       GtPDClFM            get PD, call FM
-                    rts
+UISeek              bsr       S2UPath   ; get user path #
+                    bcc       GtPDClFM  ; get PD, call FM
+                    rts                 ; return seek status
 
-SISeek              lda       R$A,u               Get path #
-GtPDClFM            bsr       GetPDesc            Get path descriptor
-                    IFNE      H6309
-                    bcc       CallFMgr            No error, call file manager
-                    ELSE
-                    lbcc      CallFMgr            No error, call file manager
-                    ENDC
-                    rts
+SISeek              lda       R$A,u     ; get path #
+GtPDClFM            bsr       GetPDesc  ; get path descriptor
+                  IFNE    H6309
+                    bcc       CallFMgr  ; no error, call file manager
+                  ELSE
+                    lbcc      CallFMgr  ; no error, call file manager
+                  ENDC
+                    rts                 ; return system seek status
 
-L04A5               ldb       #E$Read             Default to Read error
-                    IFNE      H6309
-                    tim       #WRITE.,,s          Was this a Write call?
-                    ELSE
-                    lda       ,s                  Was this a Write call?
-                    bita      #WRITE.
-                    ENDC
-                    beq       L04B2               No, exit with Read error
-                    ldb       #E$Write            Yes, exit with Write error
-                    bra       L04B2
+ReadWriteRangeError ldb       #E$Read   ; default to Read error
+                  IFNE    H6309
+                    tim       #WRITE.,,s ; was this a Write call?
+                  ELSE
+                    lda       ,s        ; was this a Write call?
+                    bita      #WRITE.   ; test whether original request was a write
+                  ENDC
+                    beq       ReturnStackedError ; no, exit with Read error
+                    ldb       #E$Write  ; yes, exit with Write error
+                    bra       ReturnStackedError ; return read/write range error
 
-L04B0               ldb       #E$BMode
-L04B2               com       ,s+                 Eat temp stack, exit with error in B
-                    rts
+BadModeError        ldb       #E$BMode  ; report incompatible path mode
+ReturnStackedError  com       ,s+       ; eat temp stack, exit with error in B
+                    rts                 ; return read/write setup error
 
-UIRead              bsr       S2UPath             get user path #
-                    bcc       L04E3
-                    rts
+UIRead              bsr       S2UPath   ; get user path #
+                    bcc       SystemReadSetup ; proceed when user path resolved
+                    rts                 ; return path-number error
 
-UIWrite             bsr       S2UPath
-                    bcc       L04C1
-                    rts
+UIWrite             bsr       S2UPath   ; translate user write path to system path
+                    bcc       SystemWriteSetup ; proceed when user path resolved
+                    rts                 ; return path-number error
 
-SIWrite             lda       R$A,u
-L04C1               pshs      b
-                    ldb       #WRITE.
-                    bra       L04E7
+SIWrite             lda       R$A,u     ; get system write path number
+SystemWriteSetup    pshs      b         ; save file manager call selector
+                    ldb       #WRITE.   ; require write access
+                    bra       ValidateRWPath ; validate descriptor and call file manager
 
 * get path descriptor
 * Passed:    A = path number
 * Returned:  Y = address of path desc for path num
-GetPDesc            ldx       <D.PthDBT           Get path descriptor block table ptr
-                    os9       F$Find64            Get address of path descriptor
-                    bcs       L04DD               Error, exit with Bad Path Number
-                    rts
+GetPDesc            ldx       <D.PthDBT ; get path descriptor block table ptr
+                    os9       F$Find64  ; get address of path descriptor
+                    bcs       BadPathNumber ; error, exit with Bad Path Number
+                    rts                 ; return path descriptor lookup status
 
 * System to User Path routine
 * Exit:
 *   A = user path #
 *   X = path table in path desc. of current proc.
-S2UPath             lda       R$A,u               Get local path # from user (0-15 max)
-                    cmpa      #NumPaths           Beyond maximum allowed per process?
-                    bhs       L04DD               Yes, illegal path number
-                    ldx       <D.Proc             Get caller's process dsc ptr
-                    adda      #P$Path             Add offset to local path #'s in descriptor
-                    lda       a,x                 Get local path #
-                    bne       L04E0               There is one, return
-L04DD               comb                          Path asked for is not defined; Bad Path Number error
-                    ldb       #E$BPNum
-L04E0               rts
+S2UPath             lda       R$A,u     ; get local path # from user (0-15 max)
+                    cmpa      #NumPaths ; beyond maximum allowed per process?
+                    bhs       BadPathNumber ; yes, illegal path number
+                    ldx       <D.Proc   ; get caller's process dsc ptr
+                    adda      #P$Path   ; add offset to local path #'s in descriptor
+                    lda       a,x       ; get local path #
+                    bne       PathTranslateReturn ; there is one, return
+BadPathNumber       comb                ; path asked for is not defined; bad Path Number error
+                    ldb       #E$BPNum  ; return bad path number error
+PathTranslateReturn rts                 ; return translated path status
 
-SIRead              lda       R$A,u               get user path
-L04E3               pshs      b
-                    ldb       #EXEC.+READ.
-L04E7               bsr       GetPDesc            get path descriptor from path in A
-                    bcs       L04B2               branch if error
-                    bitb      PD.MOD,y            test bits against mode in path desc
-                    beq       L04B0               branch if no corresponding bits
-                    ldd       R$Y,u               else get count from user
-                    beq       L051C               branch if zero count
-                    addd      R$X,u               else update buffer pointer with size
-                    bcs       L04A5               branch if carry set
-                    IFGT      Level-1
-                    IFNE      H6309
-                    decd      subtract            1 from count
-                    ELSE
-                    subd      #$0001              subtract 1 from count
-                    ENDC
-                    lsra                          / 2
-                    lsra                          / 4
-                    lsra                          / 8
-                    lsra                          / 16
-                    lsra                          / 32
-                    ldb       R$X,u               get address of buffer to hold read data
-                    lsrb                          Divide by 16
-                    lsrb
-                    lsrb
-                    lsrb
-                    ldx       <D.Proc             Get caller's process dsc ptr
-                    leax      <P$DATImg,x         Point to process' DAT IMG
-                    abx                           Point to MMU block within image we will read into
-                    lsrb                          Divide by 2 more
-                    IFNE      H6309
-                    subr      b,a
-                    tfr       a,e
-                    ELSE
-                    pshs      b
-                    suba      ,s
-                    sta       ,s
-                    ENDC
-L0510               ldd       ,x++                Get DAT marker for MMU RAM block
-                    cmpd      #DAT.Free           Free block?
-                    IFNE      H6309
-                    beq       L04A5               Yes, exit with error
-                    dece                          No, check next MMU block until we have checked all we need
-                    ELSE
-                    bne       L051X               No, process
-                    puls      a                   Yes, eat temp stack
-                    bra       L04A5               and exit with error
+SIRead              lda       R$A,u     ; get user path
+SystemReadSetup     pshs      b         ; save file manager call selector
+                    ldb       #EXEC.+READ. ; require read or execute access
+ValidateRWPath      bsr       GetPDesc  ; get path descriptor from path in A
+                    bcs       ReturnStackedError ; branch if error
+                    bitb      PD.MOD,y  ; test bits against mode in path desc
+                    beq       BadModeError ; branch if no corresponding bits
+                    ldd       R$Y,u     ; else get count from user
+                    beq       FMgrDispatchCont ; branch if zero count
+                    addd      R$X,u     ; else update buffer pointer with size
+                    bcs       ReadWriteRangeError ; branch if carry set
+                  IFGT    Level-1
+                  IFNE    H6309
+                    decd      subtract  ; 1 from count
+                  ELSE
+                    subd      #$0001    ; subtract 1 from count
+                  ENDC
+                    lsra                ; / 2
+                    lsra                ; / 4
+                    lsra                ; / 8
+                    lsra                ; / 16
+                    lsra                ; / 32
+                    ldb       R$X,u     ; get address of buffer to hold read data
+                    lsrb                ; divide by 16
+                    lsrb                ; continue buffer start block calculation
+                    lsrb                ; continue buffer start block calculation
+                    lsrb                ; finish buffer start block calculation
+                    ldx       <D.Proc   ; get caller's process dsc ptr
+                    leax      <P$DATImg,x ; point to process' DAT IMG
+                    abx                 ; point to MMU block within image we will read into
+                    lsrb                ; divide by 2 more
+                  IFNE    H6309
+                    subr      b,a       ; compute number of DAT blocks touched
+                    tfr       a,e       ; keep DAT block count in E for 6309 scan
+                  ELSE
+                    pshs      b         ; save start block for range calculation
+                    suba      ,s        ; compute number of DAT blocks touched
+                    sta       ,s        ; store block count for 6809 scan
+                  ENDC
+CheckDatBlockLoop   ldd       ,x++      ; get DAT marker for MMU RAM block
+                    cmpd      #DAT.Free ; free block?
+                  IFNE    H6309
+                    beq       ReadWriteRangeError ; yes, exit with error
+                    dece                ; no, check next MMU block until we have checked all we need
+                  ELSE
+                    bne       CheckNextDatBlock ; no, process
+                    puls      a         ; yes, eat temp stack
+                    bra       ReadWriteRangeError ; and exit with error
 
-L051X               dec       ,s                  No, check next MMU block until we have checked all we need
-                    ENDC
-                    bpl       L0510
-                    IFEQ      H6309
-                    puls      a                   Eat temp ctr
-                    ENDC
-                    ENDC
-L051C               puls      b                   Restore B
-CallFMgr            subb      #$03
-                    pshs      u,y,x               Save regs (Y=path dsc ptr)
-                    ldx       <D.Proc             Get caller's process dsc. ptr
-L0524
-                    IFNE      H6309
-                    lde       PD.CPR,y            Is their a current process using this path?
-                    ELSE
-                    tst       PD.CPR,y            Is their a current process using this path?
-                    ENDC
-                    bne       L054B               Yes, skip ahead
-                    lda       P$ID,x              No, get process id# of current process
-                    sta       PD.CPR,y            Save it as current process using this path
-                    stu       PD.RGS,y            Save register stack ptr for current process in this path
-                    ldx       PD.DEV,y            Get ptr to device table entry address for this path
-                    IFGT      Level-1
-                    ldx       V$FMGREX,x          get file manager execution (branch table) address
-                    ELSE
-                    ldx       V$FMGR,x            Get file manager address
-                    ldd       M$Exec,x            Get it's offset to it's execution (branch table)
-                    leax      d,x                 Point to it
-                    ENDC
-                    lda       #3                  length of lbra instruction (size of each entry in branch table)
-                    mul                           Calc offset to specific file manager function we are calling
-                    jsr       b,x                 Call file manager function
-L0538               pshs      b,cc                preserve return status (C,B) from call
-                    bsr       L0595               Wake up next process in I/O Queue
-                    ldy       $04,s               get Y off stack
-                    ldx       <D.Proc             Get current process dsc ptr
-                    lda       P$ID,x              Get process id #
-                    cmpa      PD.CPR,y            Same as current process # using this path descriptor?
-                    bne       L0549               No, clean up and return
-                    clr       PD.CPR,y            Yes, clear out current process # in path descriptor
-L0549               puls      pc,u,y,x,b,cc       return.. with return status in C, B.
+CheckNextDatBlock   dec       ,s        ; no, check next MMU block until we have checked all we need
+                  ENDC
+                    bpl       CheckDatBlockLoop ; keep checking DAT blocks through end of buffer
+                  IFEQ    H6309
+                    puls      a         ; eat temp ctr
+                  ENDC
+                  ENDC
+FMgrDispatchCont    puls      b         ; restore B
+CallFMgr            subb      #$03      ; convert I/O call code to file manager branch index
+                    pshs      u,y,x     ; save regs (Y=path dsc ptr)
+                    ldx       <D.Proc   ; get caller's process dsc. ptr
+WaitPathAvailable
+                  IFNE    H6309
+                    lde       PD.CPR,y  ; is their a current process using this path?
+                  ELSE
+                    tst       PD.CPR,y  ; is their a current process using this path?
+                  ENDC
+                    bne       QueueForPathAccess ; yes, skip ahead
+                    lda       P$ID,x    ; no, get process id# of current process
+                    sta       PD.CPR,y  ; save it as current process using this path
+                    stu       PD.RGS,y  ; save register stack ptr for current process in this path
+                    ldx       PD.DEV,y  ; get ptr to device table entry address for this path
+                  IFGT    Level-1
+                    ldx       V$FMGREX,x ; get file manager execution (branch table) address
+                  ELSE
+                    ldx       V$FMGR,x  ; get file manager address
+                    ldd       M$Exec,x  ; get it's offset to it's execution (branch table)
+                    leax      d,x       ; point to it
+                  ENDC
+                    lda       #3        ; length of lbra instruction (size of each entry in branch table)
+                    mul                 ; calc offset to specific file manager function we are calling
+                    jsr       b,x       ; call file manager function
+FinishFMgrCall      pshs      b,cc      ; preserve return status (C,B) from call
+                    bsr       WakeNextIOQueue ; wake up next process in I/O Queue
+                    ldy       $04,s     ; get Y off stack
+                    ldx       <D.Proc   ; get current process dsc ptr
+                    lda       P$ID,x    ; get process id #
+                    cmpa      PD.CPR,y  ; same as current process # using this path descriptor?
+                    bne       ReturnFMgrStatus ; no, clean up and return
+                    clr       PD.CPR,y  ; yes, clear out current process # in path descriptor
+ReturnFMgrStatus    puls      pc,u,y,x,b,cc ; return.. with return status in C, B.
 
 * A process is already using current path
-L054B               pshs      u,y,x,b             Save regs
-                    lbsr      FIOQu2              Insert process # in A into I/O Queue
-                    puls      u,y,x,b             Get regs back
-                    coma
-                    lda       <P$Signal,x         Get any impending signal
-                    beq       L0524               None, loop back
-                    tfr       a,b                 Move signal code to B
-                    bra       L0538               go back and wake next process in queue
+QueueForPathAccess  pshs      u,y,x,b   ; save regs
+                    lbsr      FIOQu2    ; insert process # in A into I/O Queue
+                    puls      u,y,x,b   ; get regs back
+                    coma                ; set carry so pending signal returns as error/status
+                    lda       <P$Signal,x ; get any impending signal
+                    beq       WaitPathAvailable ; none, loop back
+                    tfr       a,b       ; move signal code to B
+                    bra       FinishFMgrCall ; go back and wake next process in queue
 
-UIGetStt            lbsr      S2UPath             get usr path #
-                    ldx       <D.Proc             Get current process dsc. ptr
-                    bcc       L0568               If no error getting user path#, go process
-                    rts
+UIGetStt            lbsr      S2UPath   ; get usr path #
+                    ldx       <D.Proc   ; get current process dsc. ptr
+                    bcc       GetStatusDispatch ; if no error getting user path#, go process
+                    rts                 ; return get-status setup error
 
-SIGetStt            lda       R$A,u               Get path
-                    IFGT      Level-1
-                    ldx       <D.SysPrc           Get system process ptr
-                    ENDC
-L0568               pshs      x,d                 Save regs
-                    lda       R$B,u               get func code
-                    sta       1,s                 place on stack in B
-                    puls      a                   get path off stack
-                    lbsr      GtPDClFM            Get process Descriptor and call file manager
-                    puls      x,a                 get func code in A, sys proc in X
-                    pshs      u,y,b,cc            Save regs (and status/error from GtPDClFM
-                    tsta                          SS.Opt?
-                    beq       SSOpt               Yes, go do
-                    cmpa      #SS.DevNm           Get device name?
-                    beq       SSDevNm             Yes, go do
-                    puls      pc,u,y,b,cc         Any other call, restore regs & return
+SIGetStt            lda       R$A,u     ; get path
+                  IFGT    Level-1
+                    ldx       <D.SysPrc ; get system process ptr
+                  ENDC
+GetStatusDispatch   pshs      x,d       ; save regs
+                    lda       R$B,u     ; get func code
+                    sta       1,s       ; place on stack in B
+                    puls      a         ; get path off stack
+                    lbsr      GtPDClFM  ; get process Descriptor and call file manager
+                    puls      x,a       ; get func code in A, sys proc in X
+                    pshs      u,y,b,cc  ; save regs (and status/error from GtPDClFM
+                    tsta                ; test for SS.Opt status request
+                    beq       SSOpt     ; yes, go do
+                    cmpa      #SS.DevNm ; get device name?
+                    beq       SSDevNm   ; yes, go do
+                    puls      pc,u,y,b,cc ; any other call, restore regs & return
 
 SSOpt               equ       *
-                    IFGT      Level-1
-                    lda       <D.SysTsk           Get system task #
-                    ldb       P$Task,x            Get user task #
-                    ENDC
-                    leax      <PD.OPT,y           Point to options in path dsc.
-SSCopy              ldy       #PD.OPT             Offset to PD.Opt
-                    ldu       R$X,u               Get callers address to receive Opt packet
-                    IFGT      Level-1
-                    os9       F$Move              Move data to caller
-                    ELSE
-Looper              lda       ,x+                 Copy data to caller
-                    sta       ,u+
-                    decb
-                    bne       Looper
-                    ENDC
-                    leas      $2,s                Eat temp stack
-                    clrb                          No error, restore regs & return
-                    puls      pc,u,y
+                  IFGT    Level-1
+                    lda       <D.SysTsk ; get system task #
+                    ldb       P$Task,x  ; get user task #
+                  ENDC
+                    leax      <PD.OPT,y ; point to options in path dsc.
+SSCopy              ldy       #PD.OPT   ; offset to PD.Opt
+                    ldu       R$X,u     ; get callers address to receive Opt packet
+                  IFGT    Level-1
+                    os9       F$Move    ; move data to caller
+                  ELSE
+Looper              lda       ,x+       ; copy data to caller
+                    sta       ,u+       ; copy option/name byte to caller buffer
+                    decb                ; decrement remaining byte count
+                    bne       Looper    ; continue local copy until complete
+                  ENDC
+                    leas      $2,s      ; eat temp stack
+                    clrb                ; no error, restore regs & return
+                    puls      pc,u,y    ; discard saved status and return success
 
 * Update I/O Queue linked list pointers and wake up next process in I/O Queue
 * LCB 6809/6309 note: Since both routines that call this do their own B/Carry
-*   handling, remove the CLRB from L05AC
-L0595               pshs      y                   Save reg
-                    ldy       <D.Proc             get current process ptr
-                    lda       <P$IOQN,y           get ID# of next process in I/O queue
-                    beq       L05AC               There is none, return
-                    clr       <P$IOQN,y           else clear it
-                    ldb       #S$Wake             wake signal
-                    os9       F$Send              wake up the process that was next in the IO Queue
-                    IFGT      Level-1
-                    os9       F$GProcP            Get copy of process descriptor
-                    ELSE
-                    ldx       <D.PrcDBT           Get ptr to Process descriptor block table
-                    os9       F$Find64            Find path descriptor address for queued process
-                    ENDC
-                    clr       P$IOQP,y            Clear it's previous queued process #
-L05AC               clrb
-                    puls      pc,y                Restore Y & return
+*   handling, remove the CLRB from WakeQueueDone
+WakeNextIOQueue     pshs      y         ; save reg
+                    ldy       <D.Proc   ; get current process ptr
+                    lda       <P$IOQN,y ; get ID# of next process in I/O queue
+                    beq       WakeQueueDone ; there is none, return
+                    clr       <P$IOQN,y ; else clear it
+                    ldb       #S$Wake   ; wake signal
+                    os9       F$Send    ; wake up the process that was next in the IO Queue
+                  IFGT    Level-1
+                    os9       F$GProcP  ; get copy of process descriptor
+                  ELSE
+                    ldx       <D.PrcDBT ; get ptr to Process descriptor block table
+                    os9       F$Find64  ; find path descriptor address for queued process
+                  ENDC
+                    clr       P$IOQP,y  ; clear it's previous queued process #
+WakeQueueDone       clrb                ; report successful queue wake/check
+                    puls      pc,y      ; restore Y & return
 
 SSDevNm
-                    IFGT      Level-1
-                    lda       <D.SysTsk           Get System process task #
-                    ldb       P$Task,x            Get caller's task #
-                    ENDC
-                    IFEQ      H6309
-                    pshs      d                   Save task #'s
-                    ENDC
-                    ldx       PD.DEV,y            Get path's device table entry address
-                    ldx       V$DESC,x            Get ptr to device descriptor
-                    IFNE      H6309
-                    ldw       M$Name,x            Get offset to descriptor's name
-                    addr      w,x                 Point to name of descriptor
-                    ELSE
-                    ldd       M$Name,x            Get offset to descriptor's name
-                    leax      d,x                 Point to name of descriptor
-                    puls      d                   Get the two task #'s back
-                    ENDC
-                    bra       SSCopy              Move name to caller and return
+                  IFGT    Level-1
+                    lda       <D.SysTsk ; get System process task #
+                    ldb       P$Task,x  ; get caller's task #
+                  ENDC
+                  IFEQ    H6309
+                    pshs      d         ; save task #'s
+                  ENDC
+                    ldx       PD.DEV,y  ; get path's device table entry address
+                    ldx       V$DESC,x  ; get ptr to device descriptor
+                  IFNE    H6309
+                    ldw       M$Name,x  ; get offset to descriptor's name
+                    addr      w,x       ; point to name of descriptor
+                  ELSE
+                    ldd       M$Name,x  ; get offset to descriptor's name
+                    leax      d,x       ; point to name of descriptor
+                    puls      d         ; get the two task #'s back
+                  ENDC
+                    bra       SSCopy    ; move name to caller and return
 
-UIClose             lbsr      S2UPath             get user path #
-                    bcs       L05CE               If error, exit with it
-                    IFNE      H6309
-                    lde       R$A,u               Get path # from caller
-                    adde      #P$Path             Add offset to paths in process dsc
-                    clr       e,x                 zero path entry
-                    ELSE
-                    pshs      b                   Save reg
-                    ldb       R$A,u               Get path # from caller
-                    addb      #P$Path             Add offset to paths in process dsc
-                    clr       b,x                 Zero path entry
-                    puls      b                   Restore reg
-                    ENDC
-                    bra       L05D1               Finish I$Close
+UIClose             lbsr      S2UPath   ; get user path #
+                    bcs       CloseReturn ; if error, exit with it
+                  IFNE    H6309
+                    lde       R$A,u     ; get path # from caller
+                    adde      #P$Path   ; add offset to paths in process dsc
+                    clr       e,x       ; zero path entry
+                  ELSE
+                    pshs      b         ; save reg
+                    ldb       R$A,u     ; get path # from caller
+                    addb      #P$Path   ; add offset to paths in process dsc
+                    clr       b,x       ; zero path entry
+                    puls      b         ; restore reg
+                  ENDC
+                    bra       CloseSystemPath ; finish I$Close
 
-L05CE               rts
+CloseReturn         rts                 ; return close status
 
-SIClose             lda       R$A,u               Get callers path #
-L05D1               lbsr      GetPDesc            Get path dsc
-                    bcs       L05CE               If error, return with it
-                    dec       PD.CNT,y            Dec # of open paths
-                    tst       PD.CPR,y            Is there a process currently accessing this path?
-                    bne       L05DF               yes, skip ahead
-                    lbsr      CallFMgr            Call CLOSE in the file manager
-L05DF               tst       PD.CNT,y            How many open paths now?
-                    bne       L05CE               Still some left, return
-                    lbra      L03C3               None, Detach the device and return 64 byte path dsc mem to system
+SIClose             lda       R$A,u     ; get callers path #
+CloseSystemPath     lbsr      GetPDesc  ; get path dsc
+                    bcs       CloseReturn ; if error, return with it
+                    dec       PD.CNT,y  ; dec # of open paths
+                    tst       PD.CPR,y  ; is there a process currently accessing this path?
+                    bne       CloseIfLastPath ; yes, skip ahead
+                    lbsr      CallFMgr  ; call CLOSE in the file manager
+CloseIfLastPath     tst       PD.CNT,y  ; how many open paths now?
+                    bne       CloseReturn ; still some left, return
+                    lbra      CleanupPathDesc ; none, Detach the device and return 64 byte path dsc mem to system
 
 * F$IRQ - Add or remove IRQ device from IRQ polling table
-FIRQ                ldx       R$X,u               get ptr to IRQ packet
-                    ldb       ,x                  B = flip byte
-                    ldx       $01,x               X = mask/priority
-                    clra
-                    pshs      cc                  Save CC with carry clear
-                    pshs      x,b                 Save flip, mask, priority bytes
-                    ldx       <D.Init             Get ptr to Init module
-                    ldb       PollCnt,x           Get max # of entries in IRQ polling table
-                    ldx       <D.PolTbl           Get ptr to I/O polling table
-                    ldy       R$X,u               Get packet address (or remove device) from caller
-                    beq       L0634               X=0 means remove device, go remove it
-                    tst       $01,s               test mask byte
-                    beq       L0662               No bits to trigger, exit with polling table full error
-                    decb                          dec poll table count
-                    lda       #POLSIZ             Calc offset to last possible entry in I/O table
-                    mul
-                    IFNE      H6309
-                    addr      d,x                 point to last entry in table
-                    ELSE
-                    leax      d,x                 point to last entry in table
-                    ENDC
-                    lda       Q$MASK,x            Get Mask byte
-                    bne       L0662               If any bits set (keep when masked), skip ahead
-                    orcc      #IntMasks           Shut off IRQ's
-L060D               ldb       $02,s               get priority byte
-                    cmpb      -(POLSIZ-Q$PRTY),x  compare with prev entry's priority
-                    blo       L0620               If lower, skip ahead
-                    ldb       #POLSIZ             If our priority is higher or same, B=last entry #
-L0615               lda       ,-x                 Copy previous entry to next entry
-                    sta       POLSIZ,x
-                    decb                          Until done entire entry
-                    bne       L0615
-                    cmpx      <D.PolTbl           Are we now pointing to the first entry?
-                    bhi       L060D               Not yet, keep shifting entries down until at start or higher priority
+FIRQ                ldx       R$X,u     ; get ptr to IRQ packet
+                    ldb       ,x        ; b = flip byte
+                    ldx       $01,x     ; x = mask/priority
+                    clra                ; clear high byte before saving IRQ packet fields
+                    pshs      cc        ; save CC with carry clear
+                    pshs      x,b       ; save flip, mask, priority bytes
+                    ldx       <D.Init   ; get ptr to Init module
+                    ldb       PollCnt,x ; get max # of entries in IRQ polling table
+                    ldx       <D.PolTbl ; get ptr to I/O polling table
+                    ldy       R$X,u     ; get packet address (or remove device) from caller
+                    beq       RemoveIrqPollEntry ; x=0 means remove device, go remove it
+                    tst       $01,s     ; test mask byte
+                    beq       PollTableFullClean ; no bits to trigger, exit with polling table full error
+                    decb                ; dec poll table count
+                    lda       #POLSIZ   ; calc offset to last possible entry in I/O table
+                    mul                 ; compute offset to final polling table slot
+                  IFNE    H6309
+                    addr      d,x       ; point to last entry in table
+                  ELSE
+                    leax      d,x       ; point to last entry in table
+                  ENDC
+                    lda       Q$MASK,x  ; get Mask byte
+                    bne       PollTableFullClean ; if any bits set (keep when masked), skip ahead
+                    orcc      #IntMasks ; shut off IRQ's
+FindIrqInsertSlot   ldb       $02,s     ; get priority byte
+                    cmpb      -(POLSIZ-Q$PRTY),x ; compare with prev entry's priority
+                    blo       InsertIrqPollEntry ; if lower, skip ahead
+                    ldb       #POLSIZ   ; if our priority is higher or same, B=last entry #
+ShiftPollEntryDown  lda       ,-x       ; copy previous entry to next entry
+                    sta       POLSIZ,x  ; shift one byte into the following polling slot
+                    decb                ; until done entire entry
+                    bne       ShiftPollEntryDown ; continue shifting one polling entry
+                    cmpx      <D.PolTbl ; are we now pointing to the first entry?
+                    bhi       FindIrqInsertSlot ; not yet, keep shifting entries down until at start or higher priority
 * Insert new entry
-L0620               ldd       R$D,u               get dev stat reg address
-                    std       Q$POLL,x            save in polling table
-                    ldd       ,s++                get flip/mask
-                    std       Q$FLIP,x            save in polling table
-                    ldb       ,s+                 get priority
-                    stb       Q$PRTY,x            Save in polling table
-                    IFNE      H6309
-                    ldq       R$Y,u               Get IRQ service routine address & IRQ Static storage ptr
-                    stq       Q$SERV,x            Save them in polling table
-                    ELSE
-                    ldd       R$Y,u               get IRQ svc addr
-                    std       Q$SERV,x            Save in polling table
-                    ldd       R$U,u               get IRQ static storage ptr
-                    std       Q$STAT,x            Save in polling table
-                    ENDC
-                    puls      pc,cc               No error, turn interrupts back on & return
+InsertIrqPollEntry  ldd       R$D,u     ; get dev stat reg address
+                    std       Q$POLL,x  ; save in polling table
+                    ldd       ,s++      ; get flip/mask
+                    std       Q$FLIP,x  ; save in polling table
+                    ldb       ,s+       ; get priority
+                    stb       Q$PRTY,x  ; save in polling table
+                  IFNE    H6309
+                    ldq       R$Y,u     ; get IRQ service routine address & IRQ Static storage ptr
+                    stq       Q$SERV,x  ; save them in polling table
+                  ELSE
+                    ldd       R$Y,u     ; get IRQ svc addr
+                    std       Q$SERV,x  ; save in polling table
+                    ldd       R$U,u     ; get IRQ static storage ptr
+                    std       Q$STAT,x  ; save in polling table
+                  ENDC
+                    puls      pc,cc     ; no error, turn interrupts back on & return
 
 * Search for device to remove from IRQ polling table
-L0634               leas      4,s                 clean stack
-                    ldy       R$U,u               Get ptr to service routine's static mem ptr
-L0639               cmpy      Q$STAT,x            Same as static mem ptr we are currently checking against?
-                    beq       L0645               Yes, found the one to remove (static is unique to each device)
-                    leax      POLSIZ,x            Point to next entry
-                    decb                          Are we done all entries?
-                    bne       L0639               No, keep looking for match
-                    clrb                          Done all of them, no match, return w/o error
-                    rts
+RemoveIrqPollEntry  leas      4,s       ; clean stack
+                    ldy       R$U,u     ; get ptr to service routine's static mem ptr
+FindIrqPollEntry    cmpy      Q$STAT,x  ; same as static mem ptr we are currently checking against?
+                    beq       RemoveIrqPollFound ; yes, found the one to remove (static is unique to each device)
+                    leax      POLSIZ,x  ; point to next entry
+                    decb                ; are we done all entries?
+                    bne       FindIrqPollEntry ; no, keep looking for match
+                    clrb                ; done all of them, no match, return w/o error
+                    rts                 ; return when no matching polling entry exists
 
 * Remove device from polling table
-                    IFNE      H6309
-L0645               orcc      #IntMasks           Shut off IRQ's
-                    decb                          Dec polling table entry #
-                    beq       L0654               If we are at start, go zero out first entry
-                    lda       #POLSIZ             Otherwise, calc size of all remaining entries combined
-                    mul
-                    tfr       d,w                 That is size to move
-                    leay      POLSIZ,x            Point to next entry
-                    tfm       y+,x+               Block copy them all up one entry position
-L0654               ldw       #POLSIZ             Clear out our old entry
-                    clr       ,-s
-                    tfm       s,x+
-                    leas      $01,s               Eat temp stack
-                    andcc     #^IntMasks          Turn IRQ's on & return
-                    rts
-                    ELSE
-L0645               pshs      b,cc                Save polling table entry # & IRQ status
-                    orcc      #IntMasks           Shut off IRQ's
-                    bra       L0565
+                  IFNE    H6309
+RemoveIrqPollFound  orcc      #IntMasks ; shut off IRQ's
+                    decb                ; dec polling table entry #
+                    beq       ClearRemovedPoll ; if we are at start, go zero out first entry
+                    lda       #POLSIZ   ; otherwise, calc size of all remaining entries combined
+                    mul                 ; compute byte count for remaining polling entries
+                    tfr       d,w       ; that is size to move
+                    leay      POLSIZ,x  ; point to next entry
+                    tfm       y+,x+     ; block copy them all up one entry position
+ClearRemovedPoll    ldw       #POLSIZ   ; clear out our old entry
+                    clr       ,-s       ; create a zero byte for TFM clear
+                    tfm       s,x+      ; clear vacated polling table entry
+                    leas      $01,s     ; eat temp stack
+                    andcc     #^IntMasks ; turn IRQ's on & return
+                    rts                 ; return after removing polling entry
+                  ELSE
+RemoveIrqPollFound  pshs      b,cc      ; save polling table entry # & IRQ status
+                    orcc      #IntMasks ; shut off IRQ's
+                    bra       CompactPollLoop ; enter 6809 polling-table compaction loop
 
 * Move prev poll entry up one
-L055E               ldb       POLSIZ,x            Point to our entry+1
-                    stb       ,x+                 copy to our entry
-                    deca                          Copy whole polling table entry
-                    bne       L055E               Unti; dpme
-L0565               lda       #POLSIZ             Polling table entry size
-                    dec       1,s                 dec count
-                    bne       L055E               Still more to copy, go do
-L056B               clr       ,x+                 Clear out current entry
-                    deca
-                    bne       L056B
-                    puls      pc,a,cc             Eat temp ctr, turn IRQ's back on & return
-                    ENDC
+CompactPollByte     ldb       POLSIZ,x  ; point to our entry+1
+                    stb       ,x+       ; copy to our entry
+                    deca                ; copy whole polling table entry
+                    bne       CompactPollByte ; unti; dpme
+CompactPollLoop     lda       #POLSIZ   ; polling table entry size
+                    dec       1,s       ; dec count
+                    bne       CompactPollByte ; still more to copy, go do
+ClearPollEntryLoop  clr       ,x+       ; clear out current entry
+                    deca                ; decrement bytes left to clear
+                    bne       ClearPollEntryLoop ; continue clearing vacated polling entry
+                    puls      pc,a,cc   ; eat temp ctr, turn IRQ's back on & return
+                  ENDC
 
-L0662               leas      $04,s               Eat temp stack
-L0664               comb                          Exit with Polling Table Full error
-                    ldb       #E$Poll
-                    rts
+PollTableFullClean  leas      $04,s     ; eat temp stack
+PollError           comb                ; exit with Polling Table Full error
+                    ldb       #E$Poll   ; return polling table full/not found error
+                    rts                 ; return IRQ service error
 
 ***************************
 * Device polling routine (Pointed to by <D.Poll)
@@ -1518,140 +1521,140 @@ L0664               comb                          Exit with Polling Table Full e
 * NOTE: Could slightly speed up (by 6 cycles) by putting PollCnt from INIT module into
 *   an unused DP location, so that we can replace LDX <D.Init/ldb PollCnt,x with ldb <xxxx
 *   unless X needs to keep pointing at Init
-IRQPoll             ldy       <D.PolTbl           get pointer to polling table
-                    ldx       <D.Init             get pointer to init module
-                    ldb       PollCnt,x           get number of entries in table
-L066F               lda       [Q$POLL,y]          get device's status register
-                    eora      Q$FLIP,y            Invert any status bits to 1's for mask that are needed
-                    bita      Q$MASK,y            Any IRQ status bits set?
-                    bne       L067E               yes, likely source of IRQ, go process
-L0677               leay      POLSIZ,y            else move to next entry
-                    decb                          done checking all entries?
-                    bne       L066F               no, try next one
-                    bra       L0664               IRQ we received not in polling table, exit with Polling Table Full error
+IRQPoll             ldy       <D.PolTbl ; get pointer to polling table
+                    ldx       <D.Init   ; get pointer to init module
+                    ldb       PollCnt,x ; get number of entries in table
+PollDeviceLoop      lda       [Q$POLL,y] ; get device's status register
+                    eora      Q$FLIP,y  ; invert any status bits to 1's for mask that are needed
+                    bita      Q$MASK,y  ; any IRQ status bits set?
+                    bne       PollServiceDevice ; yes, likely source of IRQ, go process
+PollNextDevice      leay      POLSIZ,y  ; else move to next entry
+                    decb                ; done checking all entries?
+                    bne       PollDeviceLoop ; no, try next one
+                    bra       PollError ; iRQ we received not in polling table, exit with Polling Table Full error
 
 * Found source
-L067E               ldu       Q$STAT,y            get device static storage
-                    pshs      y,b                 preserve device # & poll address
-                    jsr       [<Q$SERV,y]         execute service routine
-                    puls      y,b                 restore device # & poll address
-                    bcs       L0677               go to next device if error
-                    rts                           return
+PollServiceDevice   ldu       Q$STAT,y  ; get device static storage
+                    pshs      y,b       ; preserve device # & poll address
+                    jsr       [<Q$SERV,y] ; execute service routine
+                    puls      y,b       ; restore device # & poll address
+                    bcs       PollNextDevice ; go to next device if error
+                    rts                 ; return
 
-                    IFGT      Level-1
-FNMLoad             pshs      u                   save caller's regs ptr
-                    ldx       R$X,u               Get ptr to module name
-                    lbsr      LoadMod             Load module (allocates fake proc desc)
-                    bcs       L06E2               Error, restore U and return with it
-                    ldy       ,s                  get caller's regs ptr in Y
-                    stx       R$X,y               Save ptr to end of module name+1 back to caller
-                    ldy       ,u
-                    ldx       $04,u
-                    ldd       #$0006
-                    os9       F$LDDDXY
-                    leay      ,u
-                    puls      u
-                    bra       L06BF
+                  IFGT    Level-1
+FNMLoad             pshs      u         ; save caller's regs ptr
+                    ldx       R$X,u     ; get ptr to module name
+                    lbsr      LoadMod   ; load module (allocates fake proc desc)
+                    bcs       RestoreCallerRet ; error, restore U and return with it
+                    ldy       ,s        ; get caller's regs ptr in Y
+                    stx       R$X,y     ; save ptr to end of module name+1 back to caller
+                    ldy       ,u        ; get module DAT image pointer from load context
+                    ldx       $04,u     ; get module offset within DAT image
+                    ldd       #$0006    ; read module type through revision fields
+                    os9       F$LDDDXY  ; load module header bytes from loaded module
+                    leay      ,u        ; point Y at load context/module directory data
+                    puls      u         ; restore caller register stack pointer
+                    bra       ReturnModLinkInfo ; return link information to caller
 
-FNMLink             ldx       <D.Proc             Get ptr to current process descriptor
-                    leay      <P$DATImg,x         Point to its DAT image
-                    pshs      u                   Preserve callers register stack ptr
-                    ldx       R$X,u               Get ptr to module name to link
-                    lda       R$A,u               Get type/language byte (each nibble that is 0=wildcard/don't care)
-                    os9       F$FModul            Find module in module directory
-                    bcs       L06E2               Could not find, exit with error
-                    leay      ,u                  Point Y to module directory entry ptr
-                    puls      u                   Get caller's register stack ptr back
-                    stx       R$X,u               Save updated name ptr (pointing to end of name+1)
-L06BF               std       R$A,u               Save type/language (A) & Attribute/Revision (B)
-                    ldx       MD$Link,y           get link count
-                    beq       L06C9               If 0, go bump it to 1
-                    bitb      #ReEnt              At least 1, is it reentrant?
-                    beq       L06DF               No, single user and in use, exit with module busy error
-L06C9               leax      1,x                 increment module link count
-                    beq       L06CF               If it wraps 65535 to 0, leave at 65535
-                    stx       MD$Link,y           else save new link count
-L06CF               ldx       MD$MPtr,y           get module pointer in X
-                    ldy       MD$MPDAT,y          get module DAT image ptr
-                    ldd       #$000B              Offset for either M$Mem (for driver or program) or M$PDev (for descriptor)
-                    os9       F$LDDDXY            Get M$Mem (stack size requirement) or M$PDev (offset to device driver name)
-                    bcs       L06DE               Error, exit with it
-                    std       R$Y,u               Save memory requirement into callers Y & return
-L06DE               rts
+FNMLink             ldx       <D.Proc   ; get ptr to current process descriptor
+                    leay      <P$DATImg,x ; point to its DAT image
+                    pshs      u         ; preserve callers register stack ptr
+                    ldx       R$X,u     ; get ptr to module name to link
+                    lda       R$A,u     ; get type/language byte (each nibble that is 0=wildcard/don't care)
+                    os9       F$FModul  ; find module in module directory
+                    bcs       RestoreCallerRet ; could not find, exit with error
+                    leay      ,u        ; point Y to module directory entry ptr
+                    puls      u         ; get caller's register stack ptr back
+                    stx       R$X,u     ; save updated name ptr (pointing to end of name+1)
+ReturnModLinkInfo   std       R$A,u     ; save type/language (A) & Attribute/Revision (B)
+                    ldx       MD$Link,y ; get link count
+                    beq       BumpModuleLink ; if 0, go bump it to 1
+                    bitb      #ReEnt    ; at least 1, is it reentrant?
+                    beq       ModuleBusy ; no, single user and in use, exit with module busy error
+BumpModuleLink      leax      1,x       ; increment module link count
+                    beq       ReturnModulePointer ; if it wraps 65535 to 0, leave at 65535
+                    stx       MD$Link,y ; else save new link count
+ReturnModulePointer ldx       MD$MPtr,y ; get module pointer in X
+                    ldy       MD$MPDAT,y ; get module DAT image ptr
+                    ldd       #$000B    ; offset for either M$Mem (for driver or program) or M$PDev (for descriptor)
+                    os9       F$LDDDXY  ; get M$Mem (stack size requirement) or M$PDev (offset to device driver name)
+                    bcs       ModuleLinkReturn ; error, exit with it
+                    std       R$Y,u     ; save memory requirement into callers Y & return
+ModuleLinkReturn    rts                 ; return module link status
 
-L06DF               comb                          Exit with Module Busy error
-                    ldb       #E$ModBsy
-L06E2               puls      pc,u
-                    ENDC
+ModuleBusy          comb                ; exit with Module Busy error
+                    ldb       #E$ModBsy ; report module busy
+RestoreCallerRet    puls      pc,u      ; restore caller register stack pointer and return
+                  ENDC
 
 FLoad
-                    IFGT      Level-1
-                    pshs      u                   place caller's reg ptr on stack
-                    ldx       R$X,u               get pathname to load
-                    bsr       LoadMod             allocate a process descriptor
-                    bcs       L070F               exit if error
-                    puls      y                   get caller's reg ptr into Y
-L06EE               pshs      y                   preserve y
-                    stx       R$X,y               save updated pathlist
-                    ldy       ,u                  get DAT image pointer
-                    ldx       $04,u               get offset within DAT image
-                    ldd       #M$Type             Offset for type/lanugage & attrib/revision
-                    os9       F$LDDDXY            get language & type
-                    ldx       ,s                  get caller's reg ptr in X
-                    std       R$D,x               update language/type codes
-                    leax      ,u
-                    os9       F$ELink
-                    bcs       L070F
-                    ldx       ,s                  get caller's reg ptr in X
-                    sty       R$Y,x
-                    stu       R$U,x
-L070F               puls      pc,u
+                  IFGT    Level-1
+                    pshs      u         ; place caller's reg ptr on stack
+                    ldx       R$X,u     ; get pathname to load
+                    bsr       LoadMod   ; allocate a process descriptor
+                    bcs       FLoadReturn ; exit if error
+                    puls      y         ; get caller's reg ptr into Y
+FinishLoadVals      pshs      y         ; preserve y
+                    stx       R$X,y     ; save updated pathlist
+                    ldy       ,u        ; get DAT image pointer
+                    ldx       $04,u     ; get offset within DAT image
+                    ldd       #M$Type   ; offset for type/lanugage & attrib/revision
+                    os9       F$LDDDXY  ; get language & type
+                    ldx       ,s        ; get caller's reg ptr in X
+                    std       R$D,x     ; update language/type codes
+                    leax      ,u        ; point X at loaded module context
+                    os9       F$ELink   ; enter/link loaded module in module directory
+                    bcs       FLoadReturn ; return if link failed
+                    ldx       ,s        ; get caller's reg ptr in X
+                    sty       R$Y,x     ; return module execution entry pointer
+                    stu       R$U,x     ; return module pointer
+FLoadReturn         puls      pc,u      ; restore caller register stack pointer and return
 
-                    ELSE
-                    pshs      u
-                    ldx       R$X,u
-                    bsr       L05BC
-                    bcs       L05BA
-                    inc       $02,u               increment link count
-                    ldy       ,u                  get mod header addr
-                    ldu       ,s                  get caller regs
-                    stx       R$X,u
-                    sty       R$U,u
-                    lda       M$Type,y
-                    ldb       M$Revs,y
-                    std       R$D,u
-                    ldd       M$Exec,y
-                    leax      d,y
-                    stx       R$Y,u
-L05BA               puls      pc,u
-                    ENDC
+                  ELSE
+                    pshs      u         ; save caller register stack pointer
+                    ldx       R$X,u     ; get module pathname
+                    bsr       Level1LoadModule ; load/link module using Level 1 path
+                    bcs       Level1LoadReturn ; return if load failed
+                    inc       $02,u     ; increment link count
+                    ldy       ,u        ; get mod header addr
+                    ldu       ,s        ; get caller regs
+                    stx       R$X,u     ; return updated pathname pointer
+                    sty       R$U,u     ; return loaded module pointer
+                    lda       M$Type,y  ; get module type/language
+                    ldb       M$Revs,y  ; get module attributes/revision
+                    std       R$D,u     ; return type and attributes
+                    ldd       M$Exec,y  ; get execution offset
+                    leax      d,y       ; compute execution entry pointer
+                    stx       R$Y,u     ; return execution entry pointer
+Level1LoadReturn    puls      pc,u      ; restore caller register stack pointer and return
+                  ENDC
 
-                    IFGT      Level-1
-IDetach0            pshs      u                   save off regs ptr
-                    ldx       R$X,u               get ptr to device name
-                    bsr       LoadMod
-                    bcs       L0729
-                    puls      y
-                    ldd       <D.Proc             Get ptr to current process descriptor
-                    pshs      y,d
-                    ldd       R$U,y
-                    std       <D.Proc
-                    bsr       L06EE
-                    puls      x
-                    stx       <D.Proc
-L0729               puls      pc,u
-                    ENDC
+                  IFGT    Level-1
+IDetach0            pshs      u         ; save off regs ptr
+                    ldx       R$X,u     ; get ptr to device name
+                    bsr       LoadMod   ; load module named by caller
+                    bcs       Detach0Return ; return if load failed
+                    puls      y         ; restore caller register stack pointer into Y
+                    ldd       <D.Proc   ; get ptr to current process descriptor
+                    pshs      y,d       ; save caller registers pointer and current process
+                    ldd       R$U,y     ; get caller's process descriptor pointer
+                    std       <D.Proc   ; make caller's process current for load completion
+                    bsr       FinishLoadVals ; finish load return values
+                    puls      x         ; restore saved process descriptor
+                    stx       <D.Proc   ; restore current process pointer
+Detach0Return       puls      pc,u      ; restore caller register stack pointer and return
+                  ENDC
 
 * Load module from file
 * Entry: X = pathlist to file containing module(s)
 * A fake process descriptor is created, then the file is
 * opened and validated into memory.
 LoadMod
-                    IFGT      Level-1
+                  IFGT    Level-1
 * Level 2 - load a module
-                    os9       F$AllPrc            allocate proc desc
-                    bcc       L0731               No error, continue with Load
-                    rts                           Error; return with it
+                    os9       F$AllPrc  ; allocate proc desc
+                    bcc       LoadModSetup ; no error, continue with Load
+                    rts                 ; error; return with it
 
 * Stack after setup in first lines below is:
 * 0-1,s   = $0000
@@ -1663,303 +1666,303 @@ LoadMod
 * 19-20,s = Ptr to module name (or just past it if successful open)
 * 21-22,s = temp proc dsc ptr
 * 23-24,s = $0000 on init
-L0731               leay      ,u                  point Y at newly allocated mem
-                    ldu       #$0000
-                    pshs      u,y,x,d             Save regs
-                    leas      <-17,s              make 17 byte temp buffer on stack
-                    clr       7,s
-                    stu       ,s                  save $0000
-                    stu       2,s                 save $0000
-                    ldu       <D.Proc             get current proc desc ptr
-                    stu       $04,s               save onto stack
-                    clr       $06,s
-                    lda       P$Prior,u           Copy priority from current proc to temp proc
-                    sta       P$Prior,y
-                    sta       P$Age,y             and save as age in temp proc
-                    lda       #EXEC.              from exec dir
-                    os9       I$Open              open it
-                    lbcs      L07E1               branch if error
-                    sta       6,s                 else save path
-                    stx       <19,s               put updated pathlist in X on stack (end of pathname+1)
-                    ldx       <21,s               get temp proc desc ptr back
-                    os9       F$AllTsk            allocate task
-                    bcs       L07E1               Error, go deal with it
-                    stx       <D.Proc             Make temp proc the current proc
-L0765               ldx       <21,s               get temp proc desc ptr back
-                    lda       P$Prior,x           get priority
-                    adda      #$08                add eight
-                    bhs       L0770               If that hasn't wrapped 255, use that value for temp task priority
-                    lda       #$FF                Wrapped, force to 255
-L0770               sta       P$Prior,x           Save new bumped up priority
-                    sta       P$Age,x             and age
-                    ldd       #$0009
-                    ldx       2,s
-                    lbsr      L0866
-                    bcs       L07E1
-                    ldu       <21,s               Get temp proc dsc ptr
-                    lda       P$Task,u            Get source task #
-                    ldb       <D.SysTsk           Destination task # is system task
-                    leau      8,s                 Point to where we are copying to
-                    pshs      x                   Save X
-                    ldx       4,s                 Point to where we are copying from
-                    os9       F$Move              Copy Y bytes from source to dest
-                    puls      x                   Restore X
-                    ldd       M$ID,u              Get Module ID check byte ($87CD)
-                    cmpd      #M$ID12             Does it match what it is supposed to be?
-                    bne       L07DF               No, exit with Bad Module ID error
-                    ldd       M$Size,u            Get module size
-                    subd      #M$IDSize           Subtract header size
-                    lbsr      L0866
-                    bcs       L07E1
-                    ldx       4,s
-                    lda       P$Prior,x           Get priority of calling process
-                    ldy       <$15,s              get new proc desc ptr
-                    sta       P$Prior,y           Duplicate priority in new process
-                    sta       P$Age,y             And set as current age (for queueing)
-                    leay      <P$DATImg,y         Point to the DAT image for new process
-                    tfr       y,d                 Move ptr to D
-                    ldx       2,s
-                    os9       F$VModul            Validate the module (checks header parity & CRC)
-                    bcc       L07C0               No error, continue
-                    cmpb      #E$KwnMod           Incorrect module CRC error?
-                    beq       L07C6               Yes, skip ahead
-                    bra       L07E1               All other errors skip ahead
+LoadModSetup        leay      ,u        ; point Y at newly allocated mem
+                    ldu       #$0000    ; prepare zero word for stack initialization
+                    pshs      u,y,x,d   ; save regs
+                    leas      <-17,s    ; make 17 byte temp buffer on stack
+                    clr       7,s       ; clear saved error/path byte
+                    stu       ,s        ; save $0000
+                    stu       2,s       ; save $0000
+                    ldu       <D.Proc   ; get current proc desc ptr
+                    stu       $04,s     ; save onto stack
+                    clr       $06,s     ; clear saved path byte before open
+                    lda       P$Prior,u ; copy priority from current proc to temp proc
+                    sta       P$Prior,y ; copy caller priority into temp process
+                    sta       P$Age,y   ; and save as age in temp proc
+                    lda       #EXEC.    ; from exec dir
+                    os9       I$Open    ; open it
+                    lbcs      LoadModCleanup ; branch if error
+                    sta       6,s       ; else save path
+                    stx       <19,s     ; put updated pathlist in X on stack (end of pathname+1)
+                    ldx       <21,s     ; get temp proc desc ptr back
+                    os9       F$AllTsk  ; allocate task
+                    bcs       LoadModCleanup ; error, go deal with it
+                    stx       <D.Proc   ; make temp proc the current proc
+LoadNextModule      ldx       <21,s     ; get temp proc desc ptr back
+                    lda       P$Prior,x ; get priority
+                    adda      #$08      ; add eight
+                    bhs       SetLoadPriority ; if that hasn't wrapped 255, use that value for temp task priority
+                    lda       #$FF      ; wrapped, force to 255
+SetLoadPriority     sta       P$Prior,x ; save new bumped up priority
+                    sta       P$Age,x   ; and age
+                    ldd       #$0009    ; request room to read module header
+                    ldx       2,s       ; get current load buffer pointer
+                    lbsr      ReadIntoLoadProcess ; ensure temp process has mapped memory
+                    bcs       LoadModCleanup ; clean up if allocation/read failed
+                    ldu       <21,s     ; get temp proc dsc ptr
+                    lda       P$Task,u  ; get source task #
+                    ldb       <D.SysTsk ; destination task # is system task
+                    leau      8,s       ; point to where we are copying to
+                    pshs      x         ; save X
+                    ldx       4,s       ; point to where we are copying from
+                    os9       F$Move    ; copy Y bytes from source to dest
+                    puls      x         ; restore X
+                    ldd       M$ID,u    ; get Module ID check byte ($87CD)
+                    cmpd      #M$ID12   ; does it match what it is supposed to be?
+                    bne       BadLoadedModHdr ; no, exit with Bad Module ID error
+                    ldd       M$Size,u  ; get module size
+                    subd      #M$IDSize ; subtract header size
+                    lbsr      ReadIntoLoadProcess ; read remaining module body into temp process
+                    bcs       LoadModCleanup ; clean up if body read failed
+                    ldx       4,s       ; get original caller process descriptor
+                    lda       P$Prior,x ; get priority of calling process
+                    ldy       <$15,s    ; get new proc desc ptr
+                    sta       P$Prior,y ; duplicate priority in new process
+                    sta       P$Age,y   ; and set as current age (for queueing)
+                    leay      <P$DATImg,y ; point to the DAT image for new process
+                    tfr       y,d       ; move ptr to D
+                    ldx       2,s       ; get module start pointer for validation
+                    os9       F$VModul  ; validate the module (checks header parity & CRC)
+                    bcc       AdvanceLoadedModule ; no error, continue
+                    cmpb      #E$KwnMod ; incorrect module CRC error?
+                    beq       SaveFirstLoadMod ; yes, skip ahead
+                    bra       LoadModCleanup ; all other errors skip ahead
 
-L07C0               ldd       2,s
-                    addd      $A,s
-                    std       2,s
+AdvanceLoadedModule ldd       2,s       ; get current module load pointer
+                    addd      $A,s      ; advance pointer by validated module size
+                    std       2,s       ; save pointer for next module scan
 * U = mod dir entry
-L07C6               ldd       <$17,s
-                    bne       L0765
-                    ldd       MD$MPtr,u           Get module ptr from module directory entry
-                    std       <$11,s              Save it
-                    ldd       [MD$MPDAT,u]        Get block 0 DAT setting
-                    std       <$17,s              Save it
-                    ldd       MD$Link,u           Get Module link count from module directory
-                    IFNE      H6309
-                    incd                          Increase link count
-                    ELSE
-                    addd      #$0001              Increase link count
-                    ENDC
-                    beq       L0765               If wrapped to 0, don't update it
-                    std       MD$Link,u           Save increased link count
-                    bra       L0765
+SaveFirstLoadMod    ldd       <$17,s    ; test whether first module directory entry is saved
+                    bne       LoadNextModule ; continue loading more modules when already saved
+                    ldd       MD$MPtr,u ; get module ptr from module directory entry
+                    std       <$11,s    ; save it
+                    ldd       [MD$MPDAT,u] ; get block 0 DAT setting
+                    std       <$17,s    ; save it
+                    ldd       MD$Link,u ; get Module link count from module directory
+                  IFNE    H6309
+                    incd                ; increase link count
+                  ELSE
+                    addd      #$0001    ; increase link count
+                  ENDC
+                    beq       LoadNextModule ; if wrapped to 0, don't update it
+                    std       MD$Link,u ; save increased link count
+                    bra       LoadNextModule ; continue scanning loaded file for more modules
 
-L07DF               ldb       #E$BMID             Illegal Module Header error
-L07E1               stb       7,s
-                    ldd       4,s                 Get process desc ptr
-                    beq       L07E9               If none, don't change current one
-                    std       <D.Proc             Save as current process desc ptr
-L07E9               lda       6,s                 Get path used for Load
-                    beq       L07F0               If none, skip ahead
-                    os9       I$Close             close path to file
-L07F0               ldd       2,s                 Get mem requirement of some sort
-                    addd      #$1FFF              Round up to even 8K boundary
-                    lsra                          Divide by 32 (for MMU block # in process space)
-                    lsra
-                    lsra
-                    lsra
-                    lsra
-                    sta       2,s                 Save it
-                    ldb       ,s
-                    beq       L081D
-                    lsrb                          Divide by 32 (for MMU block # in process space?)
-                    lsrb
-                    lsrb
-                    lsrb
-                    lsrb
-                    subb      2,s                 Subtract previous calc, to get # of 8K blocks we are returning to system
-                    beq       L081D
-                    ldx       <$15,s              Get our temp process descriptor ptr
-                    leax      <P$DATImg,x         Point to DAT IMG within it
-                    lsla                          * 2 since bytes per DAT IMG block entry # (2 bytes each)
-                    leax      a,x                 Calculate offset
-                    leax      1,x                 Point to next byte
-                    ldu       <D.BlkMap           U=ptr to memory block map ptr (what 8K blocks are used, up to 2 MB)
-L0816               lda       ,x++                Get MMU Block # from process descriptor
-                    clr       a,u                 Flag the block as free in main memory block map
-                    decb                          Are we done freeing all the blocks?
-                    bne       L0816               No, keep going until done
-L081D               ldx       <$15,s              Get our temp process descriptor ptr back
-                    lda       P$ID,x              Get process ID #
-                    os9       F$DelPrc            Delete the temporary process we used to Load
-                    ldd       <$17,s
-                    bne       L0832
-                    ldb       $07,s
-                    stb       <$12,s
-                    comb
-                    bra       L0861
+BadLoadedModHdr     ldb       #E$BMID   ; illegal Module Header error
+LoadModCleanup      stb       7,s       ; save cleanup error code
+                    ldd       4,s       ; get process desc ptr
+                    beq       CloseLoadedPath ; if none, don't change current one
+                    std       <D.Proc   ; save as current process desc ptr
+CloseLoadedPath     lda       6,s       ; get path used for Load
+                    beq       FreeTempBlocks ; if none, skip ahead
+                    os9       I$Close   ; close path to file
+FreeTempBlocks      ldd       2,s       ; get mem requirement of some sort
+                    addd      #$1FFF    ; round up to even 8K boundary
+                    lsra                ; divide by 32 (for MMU block # in process space)
+                    lsra                ; continue conversion to 8K block count
+                    lsra                ; continue conversion to 8K block count
+                    lsra                ; continue conversion to 8K block count
+                    lsra                ; finish conversion to 8K block count
+                    sta       2,s       ; save it
+                    ldb       ,s        ; get previous allocation high byte/count
+                    beq       DeleteTempProcess ; skip block release when nothing was allocated
+                    lsrb                ; divide by 32 (for MMU block # in process space?)
+                    lsrb                ; continue previous block-count conversion
+                    lsrb                ; continue previous block-count conversion
+                    lsrb                ; continue previous block-count conversion
+                    lsrb                ; finish previous block-count conversion
+                    subb      2,s       ; subtract previous calc, to get # of 8K blocks we are returning to system
+                    beq       DeleteTempProcess ; skip block map update when no blocks need release
+                    ldx       <$15,s    ; get our temp process descriptor ptr
+                    leax      <P$DATImg,x ; point to DAT IMG within it
+                    lsla                ; * 2 since bytes per DAT IMG block entry # (2 bytes each)
+                    leax      a,x       ; calculate offset
+                    leax      1,x       ; point to next byte
+                    ldu       <D.BlkMap ; u=ptr to memory block map ptr (what 8K blocks are used, up to 2 MB)
+FreeTempBlockLoop   lda       ,x++      ; get MMU Block # from process descriptor
+                    clr       a,u       ; flag the block as free in main memory block map
+                    decb                ; are we done freeing all the blocks?
+                    bne       FreeTempBlockLoop ; no, keep going until done
+DeleteTempProcess   ldx       <$15,s    ; get our temp process descriptor ptr back
+                    lda       P$ID,x    ; get process ID #
+                    os9       F$DelPrc  ; delete the temporary process we used to Load
+                    ldd       <$17,s    ; test whether any module directory entry was saved
+                    bne       FindLoadedModEnt ; adjust saved module link count if one was loaded
+                    ldb       $07,s     ; reload saved cleanup error code
+                    stb       <$12,s    ; return error code in saved B slot
+                    comb                ; set carry for load failure
+                    bra       LoadModReturn ; release loader stack frame and return
 
-L0832               ldu       <D.ModDir           Get ptr to module directory
-                    ldx       <$11,s              Get ptr to module
-                    ldd       <$17,s              Get block #0
-                    leau      -MD$ESize,u         Init current entry ptr to -1 for loop
-L083C               leau      MD$ESize,u          Point to next module directory entry
-                    cmpu      <D.ModEnd           Have we hit end of module directory?
-                    blo       L084B               No, skip ahead
-                    comb                          Didn't find module
-                    ldb       #E$MNF              Module not found error
-                    stb       <$12,s
-                    bra       L0861
+FindLoadedModEnt    ldu       <D.ModDir ; get ptr to module directory
+                    ldx       <$11,s    ; get ptr to module
+                    ldd       <$17,s    ; get block #0
+                    leau      -MD$ESize,u ; init current entry ptr to -1 for loop
+ScanModuleDirectory leau      MD$ESize,u ; point to next module directory entry
+                    cmpu      <D.ModEnd ; have we hit end of module directory?
+                    blo       CheckModDirEntry ; no, skip ahead
+                    comb                ; didn't find module
+                    ldb       #E$MNF    ; module not found error
+                    stb       <$12,s    ; save module-not-found error code for return
+                    bra       LoadModReturn ; release loader stack frame and return
 
-L084B               cmpx      MD$MPtr,u           Is current module dir entry ptr same as temp one we made?
-                    bne       L083C               No, skip to next entry
-                    cmpd      [MD$MPDAT,u]        Yes, is the MMU block mapped into block 0 of this entry same as temp one we made?
-                    bne       L083C               No, skip to next entry
-                    ldd       MD$Link,u           yes, Get link counter
-                    beq       L085D               Already 0, skip ahead
-                    subd      #$0001              <>0, dec by 1
-                    std       MD$Link,u           Save back to module directory entry
-L085D               stu       <$17,s              Save ptr to module directory entry we found match in
-                    clrb                          flag no error
-L0861               leas      <$11,s              Eat temp stack
-                    puls      pc,u,y,x,d          Restore regs & return
+CheckModDirEntry    cmpx      MD$MPtr,u ; is current module dir entry ptr same as temp one we made?
+                    bne       ScanModuleDirectory ; no, skip to next entry
+                    cmpd      [MD$MPDAT,u] ; yes, is the MMU block mapped into block 0 of this entry same as temp one we made?
+                    bne       ScanModuleDirectory ; no, skip to next entry
+                    ldd       MD$Link,u ; yes, Get link counter
+                    beq       SaveFoundModEntry ; already 0, skip ahead
+                    subd      #$0001    ; <>0, dec by 1
+                    std       MD$Link,u ; save back to module directory entry
+SaveFoundModEntry   stu       <$17,s    ; save ptr to module directory entry we found match in
+                    clrb                ; flag no error
+LoadModReturn       leas      <$11,s    ; eat temp stack
+                    puls      pc,u,y,x,d ; restore regs & return
 
-L0866               pshs      y,x,d
-                    addd      2,s
-                    std       4,s
-                    cmpd      8,s
-                    bls       L08C2
-                    addd      #$1FFF              Round up to even 8K
-                    lsra                          /32 to calculate block # within 64K process space
-                    lsra
-                    lsra
-                    lsra
-                    lsra
-                    cmpa      #$07                Is it in the last 8K block?
-                    bhi       L08A4               Yes, Process Memory Full error
-                    ldb       8,s                 Get block # we save earlier
-                    lsrb                          /32 to calculate block # within 64k process space
-                    lsrb
-                    lsrb
-                    lsrb
-                    lsrb
-                    IFNE      H6309
-                    subr      b,a                 Calc start block # within 64k process space
-                    lslb                          *2 for 2 bytes/per entry in DAT image
-                    exg       b,a
-                    ELSE
-                    pshs      b
-                    exg       b,a
-                    subb      ,s+                 Calc start block # within 64k process space
-                    lsla                          *2 for 2 bytes/per entry in DAT image
-                    ENDC
-                    ldu       <$1D,s              Get ptr to our temp process descriptor
-                    leau      <P$DATImg,u         Point to DAT Image within it
-                    leau      a,u                 Point to specific MMU block entry within it
-                    clra
-                    IFNE      H6309
-                    tfr       b,f                 # of 8K blocks we will need to allocate in our process
-                    ELSE
-                    tfr       d,x                 # of 8K blocks we will need to allocate in our process
-                    ENDC
-                    ldy       <D.BlkMap           Get ptr to main memory block table
-                    clrb                          D=0 now (DAT IMG block #)
-L0899               tst       ,y+                 Scan main memory block until we find unused entry
-                    beq       L08A9               Found unallocated block, skip ahead
-L089D               equ       *
-                    IFNE      H6309
-                    incd                          Bump up DAT IMG MMU Block #
-                    ELSE
-                    addd      #$0001
-                    ENDC
-                    cmpy      <D.BlkMap+2         Have we hit end of memory block map?
-                    bne       L0899               No, keep checking.
-L08A4               comb                          Couldn't find free RAM, exit with Process RAM full
-                    ldb       #E$MemFul
-                    bra       L08CC
+ReadIntoLoadProcess pshs      y,x,d     ; save requested byte count and buffer state
+                    addd      2,s       ; compute new end address after read
+                    std       4,s       ; save updated end address
+                    cmpd      8,s       ; compare against mapped high-water mark
+                    bls       ReadModuleChunk ; read directly if existing mapping is sufficient
+                    addd      #$1FFF    ; round up to even 8K
+                    lsra                ; /32 to calculate block # within 64K process space
+                    lsra                ; continue conversion to 8K block number
+                    lsra                ; continue conversion to 8K block number
+                    lsra                ; continue conversion to 8K block number
+                    lsra                ; finish conversion to 8K block number
+                    cmpa      #$07      ; is it in the last 8K block?
+                    bhi       ProcessMemoryFull ; yes, Process Memory Full error
+                    ldb       8,s       ; get block # we save earlier
+                    lsrb                ; /32 to calculate block # within 64k process space
+                    lsrb                ; continue old block number calculation
+                    lsrb                ; continue old block number calculation
+                    lsrb                ; continue old block number calculation
+                    lsrb                ; finish old block number calculation
+                  IFNE    H6309
+                    subr      b,a       ; calc start block # within 64k process space
+                    lslb                ; *2 for 2 bytes/per entry in DAT image
+                    exg       b,a       ; place DAT entry offset in A and block count in B
+                  ELSE
+                    pshs      b         ; save previous high-water block number
+                    exg       b,a       ; move new high-water block number into B
+                    subb      ,s+       ; calc start block # within 64k process space
+                    lsla                ; *2 for 2 bytes/per entry in DAT image
+                  ENDC
+                    ldu       <$1D,s    ; get ptr to our temp process descriptor
+                    leau      <P$DATImg,u ; point to DAT Image within it
+                    leau      a,u       ; point to specific MMU block entry within it
+                    clra                ; clear high byte of DAT block number
+                  IFNE    H6309
+                    tfr       b,f       ; # of 8K blocks we will need to allocate in our process
+                  ELSE
+                    tfr       d,x       ; # of 8K blocks we will need to allocate in our process
+                  ENDC
+                    ldy       <D.BlkMap ; get ptr to main memory block table
+                    clrb                ; d=0 now (DAT IMG block #)
+FindFreeBlockLoop   tst       ,y+       ; scan main memory block until we find unused entry
+                    beq       AllocateFreeBlock ; found unallocated block, skip ahead
+NextMemoryBlock     equ       *
+                  IFNE    H6309
+                    incd                ; bump up DAT IMG MMU Block #
+                  ELSE
+                    addd      #$0001    ; advance to next physical DAT block number
+                  ENDC
+                    cmpy      <D.BlkMap+2 ; have we hit end of memory block map?
+                    bne       FindFreeBlockLoop ; no, keep checking.
+ProcessMemoryFull   comb                ; couldn't find free RAM, exit with Process RAM full
+                    ldb       #E$MemFul ; return process memory full error
+                    bra       ReadChunkReturn ; unwind helper stack and return
 
 * unused MMU block found
-L08A9               inc       -1,y                Flag unused block as RAM IN USE
-                    std       ,u++                Save block # in process' DAT IMG
-                    IFNE      H6309
-                    lde       8,s
-                    adde      #$20                ? I think add 8K (high byte) to ???
-                    ste       8,s
-                    decf                          Dec # of 8K blocks left we need to allocate for temp process
-                    ELSE
-                    pshs      a
-                    lda       9,s
-                    adda      #$20                ? I think add 8K (high byte) to ???
-                    sta       9,s
-                    puls      a
-                    leax      -1,x                Dec # of 8K blocks left we need to allocate for temp process
-                    ENDC
-                    bne       L089D               Still more blocks to allocate, keep going
-                    ldx       <$1D,s              Get ptr to our temp process descriptor
-                    os9       F$SetTsk            Set the DAT registers to what the process DAT image says
-                    bcs       L08CC               If error, exit with it
+AllocateFreeBlock   inc       -1,y      ; flag unused block as RAM IN USE
+                    std       ,u++      ; save block # in process' DAT IMG
+                  IFNE    H6309
+                    lde       8,s       ; get current high-water address byte
+                    adde      #$20      ; ? i think add 8K (high byte) to ???
+                    ste       8,s       ; save updated high-water address byte
+                    decf                ; dec # of 8K blocks left we need to allocate for temp process
+                  ELSE
+                    pshs      a         ; preserve DAT block high byte
+                    lda       9,s       ; get current high-water address byte
+                    adda      #$20      ; ? i think add 8K (high byte) to ???
+                    sta       9,s       ; save updated high-water address byte
+                    puls      a         ; restore DAT block high byte
+                    leax      -1,x      ; dec # of 8K blocks left we need to allocate for temp process
+                  ENDC
+                    bne       NextMemoryBlock ; still more blocks to allocate, keep going
+                    ldx       <$1D,s    ; get ptr to our temp process descriptor
+                    os9       F$SetTsk  ; set the DAT registers to what the process DAT image says
+                    bcs       ReadChunkReturn ; if error, exit with it
 * We have memory allocated in our temp process to load the module, so now load it
-L08C2               lda       $0E,s               Get temp file path #
-                    ldx       2,s                 Get Ptr to buffer we are reading into
-                    ldy       ,s                  Get size of buffer to read
-                    os9       I$Read              Read it in & return
-L08CC               leas      4,s
-                    puls      pc,x
+ReadModuleChunk     lda       $0E,s     ; get temp file path #
+                    ldx       2,s       ; get Ptr to buffer we are reading into
+                    ldy       ,s        ; get size of buffer to read
+                    os9       I$Read    ; read it in & return
+ReadChunkReturn     leas      4,s       ; discard helper temporaries
+                    puls      pc,x      ; restore X and return helper status
 
-                    ELSE
+                  ELSE
 * Level 1 load module
 * Entry: X=Ptr to module name to load
 * Temp 10 byte stack (starts @ 6,s since x,y,u saved on stack right after temp buffer allocated):
 * 6,s=path # to module file
 * 7-15,s=9 byte buffer for module header
-L05BC               lda       #EXEC.              We want executable modules only
-                    os9       I$Open              Open the module
-                    bcs       L0632               Error, return with it
-                    leas      -10,s               Temp buffer on stack
-                    ldu       #$0000
-                    pshs      u,y,x               Save regs
-                    sta       6,s                 save path
-L05CC               ldd       4,s                 get ptr to callers registers
-                    bne       L05D2               There is a ptr, skip ahead
-                    stu       4,s                 Save 0 on stack
-L05D2               lda       6,s                 get path
-                    leax      7,s                 point to place on stack
-                    ldy       #M$IDSize           read module header from file
-                    os9       I$Read
-                    bcs       L061E               Error; close file & report error
-                    ldd       ,x                  Get 1st 2 bytes of module
-                    cmpd      #M$ID12             Proper module header ID code?
-                    bne       L061C               No, report Illegal Module header
-                    ldd       9,s                 get module size from module header
-                    os9       F$SRqMem            Request that much RAM from system
-                    bcs       L061E               Couldn't, close file & report error
-                    ldb       #M$IDSize           Copy module header to our newly allocated memory
-L05F0               lda       ,x+
-                    sta       ,u+
-                    decb
-                    bne       L05F0
-                    lda       6,s                 Get file path
-                    leax      ,u                  Point X to our new memory,just past module header
-                    ldu       9,s                 Get module size
-                    leay      -M$IDSize,u         We already read header, so subtract size of header
-                    os9       I$Read              Read the rest of the module
-                    leax      -M$IDSize,x         Point to start of entire module
-                    bcs       L060B               If there was an error
-                    os9       F$VModul            Validate the module header & CRC
-                    bcc       L05CC               No error, see if more modules specified?
-L060B               pshs      u,b                 Error with Read, save regs
-                    leau      ,x                  Point U at memory allocated
-                    ldd       M$Size,x            Size of memory we allocated
-                    os9       F$SRtMem            Return mem to system
-                    puls      u,b                 Get regs back
-                    cmpb      #E$KwnMod           Was a module with this name already loaded?
-                    beq       L05CC               Yes, skip to check next one (if any)
-                    bra       L061E               Any other error, close file & report error
+Level1LoadModule    lda       #EXEC.    ; we want executable modules only
+                    os9       I$Open    ; open the module
+                    bcs       Level1LoadDone ; error, return with it
+                    leas      -10,s     ; temp buffer on stack
+                    ldu       #$0000    ; clear loaded-module pointer sentinel
+                    pshs      u,y,x     ; save regs
+                    sta       6,s       ; save path
+L1ReadNextModule    ldd       4,s       ; get ptr to callers registers
+                    bne       Level1ReadHeader ; there is a ptr, skip ahead
+                    stu       4,s       ; save 0 on stack
+Level1ReadHeader    lda       6,s       ; get path
+                    leax      7,s       ; point to place on stack
+                    ldy       #M$IDSize ; read module header from file
+                    os9       I$Read    ; read module header into stack buffer
+                    bcs       Level1LoadCleanup ; error; close file & report error
+                    ldd       ,x        ; get 1st 2 bytes of module
+                    cmpd      #M$ID12   ; proper module header ID code?
+                    bne       BadModuleHeader ; no, report Illegal Module header
+                    ldd       9,s       ; get module size from module header
+                    os9       F$SRqMem  ; request that much RAM from system
+                    bcs       Level1LoadCleanup ; couldn't, close file & report error
+                    ldb       #M$IDSize ; copy module header to our newly allocated memory
+CopyModHdrLoop      lda       ,x+       ; copy next header byte from stack buffer
+                    sta       ,u+       ; store header byte in allocated module memory
+                    decb                ; decrement header byte count
+                    bne       CopyModHdrLoop ; continue until full header is copied
+                    lda       6,s       ; get file path
+                    leax      ,u        ; point X to our new memory,just past module header
+                    ldu       9,s       ; get module size
+                    leay      -M$IDSize,u ; we already read header, so subtract size of header
+                    os9       I$Read    ; read the rest of the module
+                    leax      -M$IDSize,x ; point to start of entire module
+                    bcs       Level1LoadReadError ; if there was an error
+                    os9       F$VModul  ; validate the module header & CRC
+                    bcc       L1ReadNextModule ; no error, see if more modules specified?
+Level1LoadReadError pshs      u,b       ; error with Read, save regs
+                    leau      ,x        ; point U at memory allocated
+                    ldd       M$Size,x  ; size of memory we allocated
+                    os9       F$SRtMem  ; return mem to system
+                    puls      u,b       ; get regs back
+                    cmpb      #E$KwnMod ; was a module with this name already loaded?
+                    beq       L1ReadNextModule ; yes, skip to check next one (if any)
+                    bra       Level1LoadCleanup ; any other error, close file & report error
 
-L061C               ldb       #E$BMID             Illegal module header error
-L061E               puls      u,y,x               Restore regs
-                    lda       ,s                  get file path #
-                    stb       ,s                  save error code
-                    os9       I$Close             close the file
-                    ldb       ,s                  Get error code back
-                    leas      10,s                clear up stack
-                    cmpu      #$0000
-                    bne       L0632
-                    coma
-L0632               rts
+BadModuleHeader     ldb       #E$BMID   ; illegal module header error
+Level1LoadCleanup   puls      u,y,x     ; restore regs
+                    lda       ,s        ; get file path #
+                    stb       ,s        ; save error code
+                    os9       I$Close   ; close the file
+                    ldb       ,s        ; get error code back
+                    leas      10,s      ; clear up stack
+                    cmpu      #$0000    ; test whether any module was loaded successfully
+                    bne       Level1LoadDone ; return success if loaded-module pointer is nonzero
+                    coma                ; set carry when no module was loaded
+Level1LoadDone      rts                 ; return Level 1 load status
 
-                    ENDC
+                  ENDC
 
 ********************************
 *
@@ -1970,57 +1973,57 @@ L0632               rts
 
 ErrHead             fcc       /ERROR #/
 ErrNum              equ       *-ErrHead
-                    fcb       $2F,$3A,$30         Inited dummy data set up to generate decimal error code
+                    fcb       $2F,$3A,$30 ; inited dummy data set up to generate decimal error code
                     fcb       C$CR
 ErrMessL            equ       *-ErrHead
 
-FPErr               ldx       <D.Proc             get current process pointer
-                    lda       <P$Path+2,x         get stderr path
-                    beq       L0922               return if not there
-                    leas      -ErrMessL,s         make room on stack
+FPErr               ldx       <D.Proc   ; get current process pointer
+                    lda       <P$Path+2,x ; get stderr path
+                    beq       CommonReturn ; return if not there
+                    leas      -ErrMessL,s ; make room on stack
 * copy error message to stack
-                    leax      <ErrHead,pcr        point to error text
-                    leay      ,s                  point to buffer
-L08E9               lda       ,x+                 get a byte
-                    sta       ,y+                 store a byte
-                    cmpa      #C$CR               done?
-                    bne       L08E9               no, keep going
-                    ldb       R$B,u               get error #
+                    leax      <ErrHead,pcr ; point to error text
+                    leay      ,s        ; point to buffer
+CopyErrMsgLoop      lda       ,x+       ; get a byte
+                    sta       ,y+       ; store a byte
+                    cmpa      #C$CR     ; done?
+                    bne       CopyErrMsgLoop ; no, keep going
+                    ldb       R$B,u     ; get error #
 * Convert error code to decimal
-L08F3               inc       ErrNum,s            Inc hundreds digit
-                    subb      #100                Sub 100 from error #
-                    bcc       L08F3               Didn't wrap, do another 100
-L08F9               dec       ErrNum+1,s          Drop 10's digit
-                    addb      #10                 Add 10
-                    bcc       L08F9               Didn't wrap, keep doing 10's
-                    addb      #$30                ASCII-fy the 1's digit
-                    stb       ErrNum+2,s          Save 1's digit
-                    IFGT      Level-1
+ConvErrHundreds     inc       ErrNum,s  ; inc hundreds digit
+                    subb      #100      ; sub 100 from error #
+                    bcc       ConvErrHundreds ; didn't wrap, do another 100
+ConvertErrorTens    dec       ErrNum+1,s ; drop 10's digit
+                    addb      #10       ; add 10
+                    bcc       ConvertErrorTens ; didn't wrap, keep doing 10's
+                    addb      #$30      ; aSCII-fy the 1's digit
+                    stb       ErrNum+2,s ; save 1's digit
+                  IFGT    Level-1
 * Level 2/3
-                    ldx       <D.Proc             get current process pointer
-                    ldu       P$SP,x              get process' stack pointer
-                    leau      -ErrMessL,u         put a buffer in it to hold error message
-                    lda       <D.SysTsk           get system task number
-                    ldb       P$Task,x            get task number of process
-                    leax      ,s                  point to error text
-                    ldy       #ErrMessL           get length of text
-L0913               os9       F$Move              Copy error message into process' buffer (on it's stack)
-                    leax      ,u                  Point to the moved text
-                    ldu       <D.Proc             get current process pointer
-                    lda       <P$Path+2,u         get it's error path number
-                    os9       I$WritLn            write the text
-                    leas      ErrMessL,s          purge the temp error string buffer
-                    ELSE
+                    ldx       <D.Proc   ; get current process pointer
+                    ldu       P$SP,x    ; get process' stack pointer
+                    leau      -ErrMessL,u ; put a buffer in it to hold error message
+                    lda       <D.SysTsk ; get system task number
+                    ldb       P$Task,x  ; get task number of process
+                    leax      ,s        ; point to error text
+                    ldy       #ErrMessL ; get length of text
+MoveErrorToProcess  os9       F$Move    ; copy error message into process' buffer (on it's stack)
+                    leax      ,u        ; point to the moved text
+                    ldu       <D.Proc   ; get current process pointer
+                    lda       <P$Path+2,u ; get it's error path number
+                    os9       I$WritLn  ; write the text
+                    leas      ErrMessL,s ; purge the temp error string buffer
+                  ELSE
 * Level 1
 * 6809/6309 - This ldx is useless - X is immediately reloaded, and U gets D.Proc
 *         ldx   <D.Proc        Get process descriptor
-                    leax      ,s                  point to error message
-                    ldu       <D.Proc             Get ptr to process descriptor
-                    lda       <P$Path+2,u         Get Error path #
-                    os9       I$WritLn            write message
-                    leas      ErrMessL,s          fix up stack
-                    ENDC
-L0922               rts                           return
+                    leax      ,s        ; point to error message
+                    ldu       <D.Proc   ; get ptr to process descriptor
+                    lda       <P$Path+2,u ; get Error path #
+                    os9       I$WritLn  ; write message
+                    leas      ErrMessL,s ; fix up stack
+                  ENDC
+CommonReturn        rts                 ; return
 
 * F$IOQu - entry point for system call (insert process # in A into current
 *  processes I/O Queue, and puts 'A' to sleep
@@ -2028,132 +2031,132 @@ L0922               rts                           return
 * Note: This is a linked list (with each process descriptor containing process #'s
 *   for both the next entry (P$IOQN) and the previous entry (P$IOQP).
 FIOQu
-                    IFNE      H6309
-                    lde       R$A,u               Get process # we are inserting ourself into it's IO Queue
-                    ENDC
+                  IFNE    H6309
+                    lde       R$A,u     ; get process # we are inserting ourself into it's IO Queue
+                  ENDC
 * F$IOQu - entry point for direct call from within IOMAN
-FIOQu2              ldy       <D.Proc             Get current process descriptor
-                    IFNE      H6309
-                    clrf                          I think W=process descriptor ptr?
-                    ENDC
-L092B               lda       <P$IOQN,y           Get next I/O Queue link #
-                    beq       L094F               None, skip ahead
-                    IFNE      H6309
-                    cmpr      e,a                 Same process # as requested?
-                    ELSE
-                    cmpa      R$A,u               Same process # as requested?
-                    ENDC
-                    bne       L094A               No, skip ahead
-                    IFNE      H6309
-                    stf       <P$IOQN,y           Yes, clear I/O Queue next link
-                    ELSE
-                    clr       <P$IOQN,y           Yes, clear I/O Queue next link
-                    ENDC
-                    IFGT      Level-1
-                    os9       F$GProcP            Get ptr to process descriptor for process # in A
-                    ELSE
-                    ldx       <D.PrcDBT           Get ptr to Process Descriptor Block table
-                    os9       F$Find64            Get the ptr to 64 byte process descriptor for level 1 (into Y)
-                    ENDC
-                    bcs       L0922               Error, return with it
-                    IFNE      H6309
-                    stf       P$IOQP,y            Save in previous I/O Queue
-                    ELSE
-                    clr       P$IOQP,y            Save in previous I/O Queue
-                    ENDC
-                    ldb       #S$Wake             Send a wake signal to process # in A
-                    os9       F$Send
-                    ldu       <D.Proc             Get current process descriptor ptr
-                    bra       L0958
-L094A
-                    IFGT      Level-1
-                    os9       F$GProcP            Get process descriptor ptr
-                    ELSE
-                    ldx       <D.PrcDBT           Get ptr to process descriptor block table
-                    os9       F$Find64            Find our particular ptr
-                    ENDC
-                    bcc       L092B               No error, continue updating linked list
-L094F
-                    IFNE      H6309
-                    tfr       e,a                 A=process #
-                    ELSE
-                    lda       R$A,u               A=process #
-                    ENDC
-                    ldu       <D.Proc             Get current process dsc ptr into U
-                    IFGT      Level-1
-                    os9       F$GProcP            Get process descriptor ptr
-                    ELSE
-                    ldx       <D.PrcDBT           Get process descriptor block table ptr
-                    os9       F$Find64            Get process descriptor ptr
-                    ENDC
-                    bcs       L09B1               If error, skip ahead
-L0958               leax      ,y                  Point X to process descriptor
-                    lda       <P$IOQN,y           Get I/O Queue process # for next one in linked list
-                    beq       L097A               None (end of list), skip ahead
-                    IFGT      Level-1
-                    os9       F$GProcP            Get process descriptor ptr to next process in linked list
-                    ELSE
-                    ldx       <D.PrcDBT           Get process descriptor block table ptr
-                    os9       F$Find64            Get process descriptor ptr to next process in linked list
-                    ENDC
-                    bcs       L09B1               Error, skip ahead
-                    ldb       P$Age,u             Get I/O queue age in current process
-                    cmpb      P$Age,y             Compare with age of process that we are checking against
-                    bls       L0958               If <=, don't change anything, continue down linked list
-                    ldb       ,u                  Get P$ID (process ID #)
-                    stb       <P$IOQN,x           Save as next in linked list in current process descriptor
-                    ldb       ,x                  Get P$ID (process ID #) from current process descriptor
-                    stb       P$IOQP,u            Save as I/O Queue Previous link in linked list
-                    IFNE      H6309
-                    stf       P$IOQP,y            Clear out previous link in other process descriptor
-                    ELSE
-                    clr       P$IOQP,y            Clear out previous link in other process descriptor
-                    ENDC
-                    exg       y,u                 Swap process descriptor pointers
-                    bra       L0958               Keep updating linked list
+FIOQu2              ldy       <D.Proc   ; get current process descriptor
+                  IFNE    H6309
+                    clrf                ; i think W=process descriptor ptr?
+                  ENDC
+FindQueuedProcLoop  lda       <P$IOQN,y ; get next I/O Queue link #
+                    beq       InsertQueueProcess ; none, skip ahead
+                  IFNE    H6309
+                    cmpr      e,a       ; same process # as requested?
+                  ELSE
+                    cmpa      R$A,u     ; same process # as requested?
+                  ENDC
+                    bne       AdvanceQueueSearch ; no, skip ahead
+                  IFNE    H6309
+                    stf       <P$IOQN,y ; yes, clear I/O Queue next link
+                  ELSE
+                    clr       <P$IOQN,y ; yes, clear I/O Queue next link
+                  ENDC
+                  IFGT    Level-1
+                    os9       F$GProcP  ; get ptr to process descriptor for process # in A
+                  ELSE
+                    ldx       <D.PrcDBT ; get ptr to Process Descriptor Block table
+                    os9       F$Find64  ; get the ptr to 64 byte process descriptor for level 1 (into Y)
+                  ENDC
+                    bcs       CommonReturn ; error, return with it
+                  IFNE    H6309
+                    stf       P$IOQP,y  ; save in previous I/O Queue
+                  ELSE
+                    clr       P$IOQP,y  ; save in previous I/O Queue
+                  ENDC
+                    ldb       #S$Wake   ; send a wake signal to process # in A
+                    os9       F$Send    ; wake the duplicate queued process
+                    ldu       <D.Proc   ; get current process descriptor ptr
+                    bra       QueueInsertScan ; re-enter insertion scan with current process
+AdvanceQueueSearch
+                  IFGT    Level-1
+                    os9       F$GProcP  ; get process descriptor ptr
+                  ELSE
+                    ldx       <D.PrcDBT ; get ptr to process descriptor block table
+                    os9       F$Find64  ; find our particular ptr
+                  ENDC
+                    bcc       FindQueuedProcLoop ; no error, continue updating linked list
+InsertQueueProcess
+                  IFNE    H6309
+                    tfr       e,a       ; a=process #
+                  ELSE
+                    lda       R$A,u     ; a=process #
+                  ENDC
+                    ldu       <D.Proc   ; get current process dsc ptr into U
+                  IFGT    Level-1
+                    os9       F$GProcP  ; get process descriptor ptr
+                  ELSE
+                    ldx       <D.PrcDBT ; get process descriptor block table ptr
+                    os9       F$Find64  ; get process descriptor ptr
+                  ENDC
+                    bcs       IOQueueReturn ; if error, skip ahead
+QueueInsertScan     leax      ,y        ; point X to process descriptor
+                    lda       <P$IOQN,y ; get I/O Queue process # for next one in linked list
+                    beq       SleepQueuedProcess ; none (end of list), skip ahead
+                  IFGT    Level-1
+                    os9       F$GProcP  ; get process descriptor ptr to next process in linked list
+                  ELSE
+                    ldx       <D.PrcDBT ; get process descriptor block table ptr
+                    os9       F$Find64  ; get process descriptor ptr to next process in linked list
+                  ENDC
+                    bcs       IOQueueReturn ; error, skip ahead
+                    ldb       P$Age,u   ; get I/O queue age in current process
+                    cmpb      P$Age,y   ; compare with age of process that we are checking against
+                    bls       QueueInsertScan ; if <=, don't change anything, continue down linked list
+                    ldb       ,u        ; get P$ID (process ID #)
+                    stb       <P$IOQN,x ; save as next in linked list in current process descriptor
+                    ldb       ,x        ; get P$ID (process ID #) from current process descriptor
+                    stb       P$IOQP,u  ; save as I/O Queue Previous link in linked list
+                  IFNE    H6309
+                    stf       P$IOQP,y  ; clear out previous link in other process descriptor
+                  ELSE
+                    clr       P$IOQP,y  ; clear out previous link in other process descriptor
+                  ENDC
+                    exg       y,u       ; swap process descriptor pointers
+                    bra       QueueInsertScan ; keep updating linked list
 
-L097A               lda       ,u                  Get P$ID (process ID #) for U process descriptor
-                    sta       <P$IOQN,y           Save as I/O Queue Next entry in Y process descriptor
-                    lda       ,y                  Get P$ID (process #) from Y process descriptor
-                    sta       P$IOQP,u            Save as I/O Queue Previous entry in U process descriptor
-                    ldx       #$0000              Sleep remainder of tick
-                    os9       F$Sleep
-                    ldu       <D.Proc
-                    lda       P$IOQP,u
-                    beq       L09B1
-                    IFGT      Level-1
-                    os9       F$GProcP            Get process descriptor ptr to next process in linked list
-                    ELSE
-                    ldx       <D.PrcDBT           Get process descriptor block table ptr
-                    os9       F$Find64            Get process descriptor ptr to next process in linked list
-                    ENDC
-                    bcs       L09AE
-                    lda       <P$IOQN,y
-                    beq       L09AE
-                    lda       <P$IOQN,u
-                    sta       <P$IOQN,y
-                    beq       L09AE
-                    IFNE      H6309
-                    stf       <P$IOQN,u
-                    ELSE
-                    clr       <P$IOQN,u
-                    ENDC
-                    IFGT      Level-1
-                    os9       F$GProcP
-                    ELSE
-                    ldx       <D.PrcDBT
-                    os9       F$Find64
-                    ENDC
-                    bcs       L09AE
-                    lda       P$IOQP,u
-                    sta       P$IOQP,y
-L09AE
-                    IFNE      H6309
-                    stf       P$IOQP,u
-                    ELSE
-                    clr       P$IOQP,u
-                    ENDC
-L09B1               rts
+SleepQueuedProcess  lda       ,u        ; get P$ID (process ID #) for U process descriptor
+                    sta       <P$IOQN,y ; save as I/O Queue Next entry in Y process descriptor
+                    lda       ,y        ; get P$ID (process #) from Y process descriptor
+                    sta       P$IOQP,u  ; save as I/O Queue Previous entry in U process descriptor
+                    ldx       #$0000    ; sleep remainder of tick
+                    os9       F$Sleep   ; sleep current process after queue insertion
+                    ldu       <D.Proc   ; reload current process descriptor after wake
+                    lda       P$IOQP,u  ; get previous queue link
+                    beq       IOQueueReturn ; return if process is no longer queued
+                  IFGT    Level-1
+                    os9       F$GProcP  ; get process descriptor ptr to next process in linked list
+                  ELSE
+                    ldx       <D.PrcDBT ; get process descriptor block table ptr
+                    os9       F$Find64  ; get process descriptor ptr to next process in linked list
+                  ENDC
+                    bcs       ClearCurQueuePrev ; clear local queue links if previous descriptor is unavailable
+                    lda       <P$IOQN,y ; get previous process next link
+                    beq       ClearCurQueuePrev ; skip relink if previous process has no next link
+                    lda       <P$IOQN,u ; get this process next link
+                    sta       <P$IOQN,y ; splice this process out of previous next link
+                    beq       ClearCurQueuePrev ; skip next-process fixup if this was queue tail
+                  IFNE    H6309
+                    stf       <P$IOQN,u ; clear this process next link
+                  ELSE
+                    clr       <P$IOQN,u ; clear this process next link
+                  ENDC
+                  IFGT    Level-1
+                    os9       F$GProcP  ; get descriptor for next queued process
+                  ELSE
+                    ldx       <D.PrcDBT ; get process descriptor block table
+                    os9       F$Find64  ; find descriptor for next queued process
+                  ENDC
+                    bcs       ClearCurQueuePrev ; skip next-link fixup if descriptor lookup fails
+                    lda       P$IOQP,u  ; get this process previous queue link
+                    sta       P$IOQP,y  ; store it as next process previous link
+ClearCurQueuePrev
+                  IFNE    H6309
+                    stf       P$IOQP,u  ; clear this process previous link
+                  ELSE
+                    clr       P$IOQP,u  ; clear this process previous link
+                  ENDC
+IOQueueReturn       rts                 ; return I/O queue status
 
                     emod
 eom                 equ       *
