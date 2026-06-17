@@ -1,3 +1,11 @@
+                    ifp1
+                    use       defsfile
+                    endc
+
+                    IFEQ      Level-1
+                    use       ioman_l1.asm
+                    ELSE
+
 ********************************************************************
 * IOMan - NitrOS-9 Level 2 I/O Manager module
 *
@@ -41,10 +49,6 @@
                     ttl       NitrOS-9 Level 2 I/O Manager module
 
 * Disassembled 02/04/29 23:10:07 by Disasm v1.6 (C) 1988 by RML
-
-                  IFP1
-                    use       defsfile
-                  ENDC
 
 tylg                set       Systm+Objct
 atrv                set       ReEnt+rev
@@ -206,7 +210,9 @@ UsrIODis            fdb       IAttach-UsrIODis
                     fdb       UISeek-UsrIODis
                     fdb       UIClose-UsrIODis
                     fdb       IDeletX-UsrIODis
+                  IFGT    Level-1
                     fdb       UIModDsc-UsrIODis
+                  ENDC
 
 SysIODis            fdb       IAttach-SysIODis
                     fdb       IDetach-SysIODis
@@ -225,7 +231,9 @@ SysIODis            fdb       IAttach-SysIODis
                     fdb       SISeek-SysIODis
                     fdb       SIClose-SysIODis
                     fdb       IDeletX-SysIODis
+                  IFGT    Level-1
                     fdb       SIModDsc-SysIODis ; new system call designed by LCB/BN, implemented by BN
+                  ENDC
 
 * Entry to User and System I/O dispatch table
 * B = I/O system call code (shifted to base 0, and *2 since 2 bytes per jump table entry)
@@ -233,6 +241,7 @@ UsrIO               leax      <UsrIODis,pcr ; select user I/O dispatch table
                     bra       IODsptch  ; use common I/O dispatch logic
 
 SysIO               leax      <SysIODis,pcr ; select system I/O dispatch table
+                  IFGT    Level-1
 IODsptch            cmpb      #(I$ModDsc-$80)*2 ; compare with last I/O call
                     bhi       UnknownServiceError ; branch if greater
                   IFNE    H6309
@@ -245,6 +254,16 @@ IODsptch            cmpb      #(I$ModDsc-$80)*2 ; compare with last I/O call
                     leax      d,x       ; convert displacement into absolute target
                     puls      d         ; restore original service code
                     lsrb                ; restore service index from word offset
+                    jmp       ,x        ; jump through computed service entry
+                  ENDC
+                  ELSE
+IODsptch            cmpb      #I$DeletX ; compare with last I/O call
+                    bhi       UnknownServiceError ; branch if greater
+                    pshs      b         ; preserve original service code
+                    lslb                ; convert service code to dispatch-table offset
+                    ldd       b,x       ; load signed dispatch-table displacement
+                    leax      d,x       ; convert displacement into absolute target
+                    puls      b         ; restore original service code
                     jmp       ,x        ; jump through computed service entry
                   ENDC
 
@@ -2161,3 +2180,5 @@ IOQueueReturn       rts                 ; return I/O queue status
                     emod
 eom                 equ       *
                     end
+
+                    ENDC

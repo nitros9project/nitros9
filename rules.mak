@@ -158,6 +158,10 @@ MASTER = -DITDNS=0
 %.io: %.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
+# Shared I/O manager
+ioman: $(LEVEL2)/modules/ioman.asm $(LEVEL2)/modules/ioman_l1.asm
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
 # All other modules
 %: %.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
