@@ -23,6 +23,12 @@ RECIPE ?= coco3
 # (applies to 40- and 80-column window modes only).
 # TERM_ALTCOLOR = 1
 
+# Set to 1 to include the FujiNet utility commands on the disk image.
+# This adds:
+#   fngetdevfile fnsetdevfile fnlisthosts fngethost
+#   fnsethost fnlistdevs fnmount fnstatus
+# FUJINET = 1
+
 # Append additional compiler/linker flags
 # AFLAGS_EXTRA += -DMY_FEATURE=1
 # LFLAGS_EXTRA += -L /path/to/extra/libdir

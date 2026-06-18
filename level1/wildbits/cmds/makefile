@@ -14,10 +14,12 @@ AFLAGS      += -I$(3RDPARTY)/packages/bf
 AFLAGS      += -I$(3RDPARTY)/packages/cpm
 AFLAGS      += -I.
 LFLAGS		+= -L$(NITROS9DIR)/lib -L$(LEVEL1)/$(PORT)/libs/wbsnd
-LFLAGS		+= -lnet -lalib -lwildbitsl1 -lwbsnd
+LFLAGS		+= -lnet -lalib -lwildbitsl1 -lwbsnd -lfuji
 
 BASIC09		= basic09 runb inkey syscall
 BF  		= bf
+CMDS_FN		= fngetdevfile fnsetdevfile fnlisthosts fngethost fnsethost fnlistdevs fnmount fnstatus
+
 CMDS		= asm attr backup bawk binex build cmp copy \
 		date dcheck debug ded deiniz del deldir devs dir dirsort disasm \
 		display dmode dsave dump echo edit error exbin format \
@@ -27,7 +29,7 @@ CMDS		= asm attr backup bawk binex build cmp copy \
 		tee tmode touch tsmon unlink verify xmode \
 		scfg \
 		inetd telnet dw httpd $(BASIC09) $(BF) \
-		bootos9 wbinfo wbreset pick modem
+		bootos9 wbinfo wbreset pick modem $(CMDS_FN)
 
 ALLOBJS		= $(CMDS)
 
