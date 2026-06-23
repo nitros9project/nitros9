@@ -28,11 +28,11 @@ DWSS.GetDir         EQU       $10
 
                     ORG       V.USER
 V.DWCMD             RMB       1                   last DW command sent
-V.BUF               RMB       2                   pointer to buffer
+V.RELFLG            RMB       1                   nonzero if current path is relative
+                    RMB       1                   reserved
 V.PATHNAME          RMB       2                   pointer to pathname
 V.PATHNAMELEN       RMB       2                   pathname length
 V.FILESIZE          RMB       4                   file size
 V.MODTIME           RMB       6                   modified time
 V.FATTR             RMB       2                   modified time
 V.RFM               EQU       .                   Total RFM manager static overhead
-
