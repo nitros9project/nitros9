@@ -84,7 +84,7 @@ BOOTMODS ?= krnp2 ioman init \
 SHELLMODS = shellplus date deiniz echo iniz link load save unlink
 UTILPAK1 = attr build copy del deldir dir display list makdir mdir merge mfree procs rename tmode
 
-CMDS_BASE ?= $(STDCMDS) grfdrv shell utilpak1
+CMDS_BASE ?= $(STDCMDS) grfdrv shell utilpak1 pmap dmem smap mmap
 CMDS += $(CMDS_BASE) \
 	$(CMDS_EXTRA)
 BASIC09_SAMPLES ?=
@@ -234,7 +234,7 @@ $(MODDIR)/n5_scdwv.dd: scdwvdesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=5
 
 clean:
-	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo
+	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo startup.mame
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
 
 FORCE:

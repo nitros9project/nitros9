@@ -84,12 +84,31 @@ create1
                     lbcs      open2
                     stu       PD.BUF,y
 
-* scan pathlist to find length — F$PrsNam cannot be used here because it rejects
-* valid OS-9 path elements like '.' and '..' as first characters
+* scan pathlist to find length
                     ldu       4,s                 ; get pointer to caller's registers
                     ldy       R$X,u               ; Y = start of pathname in caller's space
                     sty       V.PATHNAME,x        ; save pathname pointer to V$STAT
                     tfr       y,x                 ; X = current scan position
+                    ifgt      Level-1
+                    pshs      x                   ; save pathname ptr
+                    ldx       <D.Proc
+                    ldb       P$Task,x            ; B = caller's task number for F$LDABX
+                    puls      x                   ; X = pathname ptr restored
+                    endc
+                    pshs      x                   ; save pathname ptr
+                    ifgt      Level-1
+                    os9       F$LDABX             ; A = first pathname byte
+                    tsta                          ; F$LDABX doesn't update CC — set N/Z from A
+                    else
+                    lda       ,x                  ; A = first pathname byte
+                    endc
+                    puls      x                   ; X = pathname ptr restored
+                    ldu       ,s                  ; get device memory pointer
+                    ldb       #1
+                    cmpa      #PDELIM             ; absolute path?
+                    bne       relsave             ; no, remember relative path
+                    clrb                          ; yes, do not use current-dir context
+relsave            stb       V.RELFLG,u           ; save path type for server context
                     ifgt      Level-1
                     pshs      x                   ; save pathname ptr
                     ldx       <D.Proc
@@ -127,7 +146,8 @@ prsdone
 
 * put the mode byte on the stack
                     pshs      cc
-                    lda       R$A,u
+                    ldy       3,s                 ; get path descriptor pointer
+                    lda       PD.MOD,y            ; get mode saved by IOMan
                     pshs      a
 
 * push parent process ID, then process ID
@@ -137,6 +157,18 @@ prsdone
                     ldx       >D.Proc
                     endc
                     lda       P$PID,x             ; parent process ID
+                    ldu       2,s                 ; get device memory pointer
+                    tst       V.RELFLG,u           ; relative path?
+                    beq       pidparent           ; no, keep true parent process ID
+                    ldb       ,s                  ; get request mode
+                    bitb      #PEXEC.+EXEC.       ; execution directory request?
+                    beq       piddata             ; no, use data directory context
+                    ldb       P$DIO+9,x           ; get saved execution directory owner
+                    bra       pidcheck
+piddata             ldb       P$DIO+3,x           ; get saved data directory owner
+pidcheck            beq       pidparent           ; no saved context, keep true parent
+                    tfr       b,a                 ; use saved directory owner as context
+pidparent
                     pshs      a
                     lda       P$ID,x              ; process ID
                     pshs      a
@@ -242,6 +274,23 @@ openok              ldx       ,s                  ; get device memory pointer
                     beq       open2ret
                     cmpa      #DW.create
                     beq       open2ret
+                    cmpa      #DW.chgdir
+                    bne       openokfree
+                    ldy       2,s                 ; get path descriptor pointer
+                    ifgt      Level-1
+                    ldu       <D.Proc
+                    else
+                    ldu       >D.Proc
+                    endc
+                    lda       P$ID,u              ; save server-side directory owner
+                    ldb       PD.MOD,y            ; get resolved mode bits
+                    bitb      #PWRIT.+PREAD.+UPDAT. ; data directory request?
+                    beq       chgexec             ; no, test execution directory
+                    sta       P$DIO+3,u           ; remember CWD owner context
+chgexec             bitb      #PEXEC.+EXEC.       ; execution directory request?
+                    beq       openokfree          ; no, just free temporary buffer
+                    sta       P$DIO+9,u           ; remember CXD owner context
+openokfree
                     ldy       2,s                 ; get path descriptor pointer
                     ldu       PD.BUF,y
                     beq       openoknofree
