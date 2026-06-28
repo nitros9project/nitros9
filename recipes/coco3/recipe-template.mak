@@ -1,7 +1,7 @@
 # Optional per-recipe overrides for coco3/coco3.mak.
 #
 # Usage:
-#   1) Copy l2/ to a new recipe folder (for example myrecipe/).
+#   1) Copy floppy/ to a new recipe folder (for example myrecipe/).
 #   2) Copy this file to myrecipe/recipe.mak.
 #   3) Edit only what you need.
 
@@ -13,6 +13,14 @@ RECIPE ?= coco3
 # Supported values: 6809, 6309
 # Example: make CPU=6309
 # CPU = 6809
+
+# Set floppy media to 40 or 80 tracks (default: 40).
+# Example: make TRACKS=80
+# TRACKS = 40
+
+# Set to 0 to disable OS-9 key repeat in a generated startup file.
+# Leave unset to keep the normal startup file.
+# KEYRPT = 0
 
 # Set to 32, 40, or 80 to select the /TERM display width (default: 80).
 #   32 uses the VDG chip (covdg.io + term_vdg.dt, 32x16 CoCo 1/2-style).

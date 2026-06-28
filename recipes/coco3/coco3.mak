@@ -45,7 +45,14 @@ endif
 DSKIMAGE ?= l$(LEVEL)_$(RECIPE).dsk
 DSK_EXTRA_DEPS ?=
 DSK_POST_COPY ?= @:
+TRACKS ?= 40
+ifeq ($(TRACKS),40)
 OS9FORMAT_CMD ?= $(OS9FORMAT_DS40)
+else ifeq ($(TRACKS),80)
+OS9FORMAT_CMD ?= $(OS9FORMAT_DS80)
+else
+$(error Unsupported TRACKS "$(TRACKS)"; use TRACKS=40 or TRACKS=80)
+endif
 
 AFLAGS += -I.
 AFLAGS += -I$(3RDPARTY)/packages/basic09
@@ -57,8 +64,9 @@ LFLAGS += -L $(LIBDIR) $(COCO3_LFLAG) -lnet -lalib
 LFLAGS += $(LFLAGS_EXTRA)
 
 DSDD40 = -DCyls=40 -DSides=2 -DSectTrk=18 -DSectTrk0=18 -DInterlv=3 -DSAS=8 -DDensity=1
+DSDD80 = -DCyls=80 -DSides=2 -DSectTrk=18 -DSectTrk0=18 -DInterlv=3 -DSAS=8 -DDensity=1
 
-RBF ?= rbf.mn rb1773.dr ddd0_40d.dd d0_40d.dd d1_40d.dd d2_40d.dd
+RBF ?= rbf.mn rb1773.dr ddd0_$(TRACKS)d.dd d0_$(TRACKS)d.dd d1_$(TRACKS)d.dd d2_$(TRACKS)d.dd
 SCF ?= scf.mn vtio.dr snddrv_cc3.sb joydrv_joy.sb $(TERM_IO) \
 	$(TERM_WIN_DT) w.dw w1.dw w2.dw w3.dw w4.dw w5.dw w6.dw w7.dw \
 	w8.dw w9.dw w10.dw w11.dw w12.dw w13.dw w14.dw w15.dw
@@ -100,7 +108,7 @@ kernelfile: $(addprefix $(MODDIR)/,$(KERNEL_TRACK))
 bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
 
-$(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(DSK_EXTRA_DEPS) $(BASIC09_SAMPLES)
+$(DSKIMAGE): libs kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(DSK_EXTRA_DEPS) $(BASIC09_SAMPLES)
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9GEN) $@ -b=bootfile -t=$(KERNELFILE)
@@ -198,6 +206,18 @@ $(MODDIR)/d1_40d.dd: rb1773desc.asm | $(MODDIR)
 
 $(MODDIR)/d2_40d.dd: rb1773desc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD40) -DDNum=2
+
+$(MODDIR)/ddd0_80d.dd: rb1773desc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD80) -DDNum=0 -DDD=1
+
+$(MODDIR)/d0_80d.dd: rb1773desc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD80) -DDNum=0
+
+$(MODDIR)/d1_80d.dd: rb1773desc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD80) -DDNum=1
+
+$(MODDIR)/d2_80d.dd: rb1773desc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD80) -DDNum=2
 
 # DriveWire RBF descriptors
 $(MODDIR)/ddx0.dd: dwdesc.asm | $(MODDIR)

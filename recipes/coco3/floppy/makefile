@@ -10,9 +10,9 @@ DSK_POST_COPY = $(MAKE) copy-sysgo-root DSKIMAGE=$@
 BASIC09_CMDS = basic09 gfx gfx2 inkey runb syscall
 CMDS_EXTRA += $(BASIC09_CMDS)
 
-MAME ?= 0
-ifeq ($(MAME),1)
-STARTUP = startup.mame
+KEYRPT ?=
+ifneq ($(KEYRPT),)
+STARTUP = startup.keyrpt
 endif
 
 include ../coco3.mak
@@ -30,9 +30,10 @@ copy-sysgo-root:
 
 .PHONY: copy-sysgo-root run
 
-ifeq ($(MAME),1)
-startup.mame: $(NITROS9DIR)/level2/$(PORT)/startup
-	{ echo "keyrpt 0 0</1"; cat $<; } >$@
+ifneq ($(KEYRPT),)
+KEYRPT_ARGS = $(if $(filter 0,$(KEYRPT)),0 0,$(KEYRPT))
+startup.keyrpt: $(NITROS9DIR)/level2/$(PORT)/startup
+	{ echo "keyrpt $(KEYRPT_ARGS)</1"; cat $<; } >$@
 endif
 
 $(MODDIR)/basic09: basic09.asm | $(MODDIR)
