@@ -9,7 +9,7 @@ You can clone the base recipe folder with minimal makefile edits.
 Example from [`coco/`](./). The template file is [`recipe-template.mak`](recipe-template.mak).
 
 ```sh
-cp -R 40d myrecipe
+cp -R floppy myrecipe
 cp recipe-template.mak myrecipe/recipe.mak
 cd myrecipe
 make
@@ -31,7 +31,8 @@ From the repository root, ensure:
 
 ## Build Directories
 
-- [`40d/`](40d/) builds CoCo 1/2 Level 1 40-track double-sided disk images
+- [`floppy/`](floppy/) builds CoCo 1/2 Level 1 double-sided floppy disk images
+- [`40d/`](40d/) builds the legacy CoCo 1/2 Level 1 40-track double-sided disk image
 - [`dw/`](dw/) builds a CoCo 1/2 DriveWire-oriented Level 1 disk image
 
 Each build directory keeps intermediate artifacts local:
@@ -39,16 +40,26 @@ Each build directory keeps intermediate artifacts local:
 - `.obj/` object files
 - `.lib/` static libraries
 
-## 40-Track Build ([`coco/40d`](40d/))
+## Level 1 Floppy Build ([`coco/floppy`](floppy/))
 
 ```sh
-cd 40d
+cd floppy
 make
+make TRACKS=80
+make MINIMAL=1
 ```
 
 Primary output:
 
 - `l1_coco.dsk` (default)
+- `l1_coco_minimal.dsk` (`MINIMAL=1`)
+
+This recipe defaults to `TRACKS=40`. Use `TRACKS=80` for an 80-track floppy image.
+Use `MINIMAL=1` for a smaller bootable disk with only the core boot modules and shell.
+
+Use `KEYRPT=0` to build a generated startup file that disables OS-9 key repeat,
+which helps faster-than-real-time MAME runs avoid rapid repeated keys. Leave
+`KEYRPT` unset to keep the normal startup file.
 
 ## DriveWire Build ([`coco/dw`](dw/))
 
