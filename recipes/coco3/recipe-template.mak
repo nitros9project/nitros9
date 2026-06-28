@@ -18,6 +18,10 @@ RECIPE ?= coco3
 # Example: make TRACKS=80
 # TRACKS = 40
 
+# Set to 1 for a smaller bootable floppy with core modules and commands only.
+# Example: make MINIMAL=1
+# MINIMAL = 0
+
 # Set to 0 to disable OS-9 key repeat in a generated startup file.
 # Leave unset to keep the normal startup file.
 # KEYRPT = 0

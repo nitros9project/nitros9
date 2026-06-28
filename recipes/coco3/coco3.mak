@@ -45,6 +45,7 @@ endif
 DSKIMAGE ?= l$(LEVEL)_$(RECIPE).dsk
 DSK_EXTRA_DEPS ?=
 DSK_POST_COPY ?= @:
+CLEAN_EXTRA ?=
 TRACKS ?= 40
 ifeq ($(TRACKS),40)
 OS9FORMAT_CMD ?= $(OS9FORMAT_DS40)
@@ -124,9 +125,9 @@ endif
 ifneq ($(PORTDEFSDIR),)
 	$(MAKDIR) $@,DEFS
 	$(MAKE) -C $(PORTDEFSDIR) --no-print-directory
-endif
 	$(CD) $(PORTDEFSDIR); $(CPL) $(PORTDEFS) $(CURDIR)/$@,DEFS
 	$(OS9ATTR_TEXT) $(foreach file,$(PORTDEFS),$@,DEFS/$(file))
+endif
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 ifneq ($(strip $(BASIC09_SAMPLES)),)
@@ -258,7 +259,7 @@ $(MODDIR)/n5_scdwv.dd: scdwvdesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=5
 
 clean:
-	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo
+	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo $(CLEAN_EXTRA)
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
 
 FORCE:

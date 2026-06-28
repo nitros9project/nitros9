@@ -46,13 +46,17 @@ Each build directory keeps intermediate artifacts local:
 cd floppy
 make
 make TRACKS=80
+make MINIMAL=1
 ```
 
 Primary output:
 
 - `l2_coco3.dsk` (default)
+- `l2_coco3_minimal.dsk` (`MINIMAL=1`)
 
 This recipe defaults to `TRACKS=40`. Use `TRACKS=80` for an 80-track floppy image.
+Use `MINIMAL=1` for a smaller bootable disk with only the core boot modules,
+one floppy descriptor, `shell`, and `grfdrv`.
 
 Use `KEYRPT=0` to build a generated startup file that disables OS-9 key repeat,
 which helps faster-than-real-time MAME runs avoid rapid repeated keys. Leave
