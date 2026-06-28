@@ -969,6 +969,10 @@ OneEffHandler2
                     beq       revon
                     cmpa      #$21
                     beq       revoff
+                    cmpa      #$31
+                    ifgt      Level-1
+                    lbeq      DeleteLine
+                    endc
 ResetHandler        leax      DefaultHandler,pcr
                     bra       SetHandler
 revoff              tst       V.Reverse,u         is reverse already off?
@@ -2161,6 +2165,68 @@ Blk2Addr            clra                          clear a, block # is in b
                     lslb                          x32 ($20)
                     rola
                     rts
+
+DeleteLine
+* Preserve register Y (holds the path descriptor pointer for the active I/O path)
+                    pshs      y
+* Check if cursor is at the bottom row (CurRow + 1 >= WHeight)
+                    lda       V.CurRow,u
+                    adda      #1
+                    cmpa      V.WHeight,u
+                    bhs       dl_clear_y          * If at/past bottom row, restore Y and erase line
+
+* Not on bottom line: scroll all lines below the cursor UP by one row
+* Calculate rows to copy: WHeight - (CurRow + 1)
+                    pshs      a                   * Push CurRow + 1 to stack
+                    lda       V.WHeight,u
+                    suba      ,s+                 * A = WHeight - (CurRow + 1), pops stack
+* Calculate bytes to copy: rows * WWidth
+                    ldb       V.WWidth,u
+                    mul                           * D = rows * WWidth
+                    tfr       d,y                 * Y = bytes to copy (safe to overwrite Y now)
+* Calculate start address offset: CurRow * WWidth
+                    lda       V.CurRow,u
+                    ldb       V.WWidth,u
+                    mul                           * D = offset to CurRow
+                    ldx       #G.ScrStart
+                    leax      d,x                 * X = start address of scroll area
+
+* Block scroll loop: copy characters and attributes 2 bytes at a time
+                    pshs      cc                  * Save CC (interrupt state)
+                    orcc      #IntMasks           * Disable interrupts during mapping
+                    lda       MAPSLOT             * Save original MMU mapping slot
+                    pshs      a
+
+dl_loop             lda       #$C2                * Map text block into MMU slot
+                    sta       MAPSLOT
+                    ldb       V.WWidth,u
+                    ldd       b,x                 * Load 2 chars from row below (X + WWidth)
+                    std       ,x                  * Store 2 chars in current row (X)
+
+                    lda       #$C3                * Map attributes block into MMU slot
+                    sta       MAPSLOT
+                    ldb       V.WWidth,u
+                    ldd       b,x                 * Load 2 attributes from row below (X + WWidth)
+                    std       ,x++                * Store 2 attributes in current row (X), X += 2
+
+                    leay      -2,y                * Decrement byte copy counter by 2
+                    bne       dl_loop             * Loop until all bytes copied
+
+                    puls      a                   * Restore original MMU slot mapping
+                    sta       MAPSLOT
+                    puls      cc                  * Restore interrupts state
+                    puls      y                   * Restore path descriptor register Y
+
+* Erase the bottom row (clears the last line since it shifted up)
+dl_clear            lda       V.WHeight,u
+                    deca                          * A = bottom row index (WHeight - 1)
+                    clrb                          * B = 0 (start at column 0)
+                    lbsr      EraseLineCore       * Call erase helper to fill row with spaces
+                    lbra      ResetHandler        * Reset escape handler to DefaultHandler
+
+* Helper label to restore Y and proceed to clear row
+dl_clear_y          puls      y                   * Restore path descriptor register Y
+                    bra       dl_clear            * Proceed to clear bottom row
                     endc
 
 
