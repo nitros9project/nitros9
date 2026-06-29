@@ -970,9 +970,7 @@ OneEffHandler2
                     cmpa      #$21
                     beq       revoff
                     cmpa      #$31
-                    ifgt      Level-1
                     lbeq      DeleteLine
-                    endc
 ResetHandler        leax      DefaultHandler,pcr
                     bra       SetHandler
 revoff              tst       V.Reverse,u         is reverse already off?
@@ -2165,21 +2163,21 @@ Blk2Addr            clra                          clear a, block # is in b
                     lslb                          x32 ($20)
                     rola
                     rts
+                    endc
 
 DeleteLine
-* Preserve register Y (holds the path descriptor pointer for the active I/O path)
-                    pshs      y
 * Check if cursor is at the bottom row (CurRow + 1 >= WHeight)
                     lda       V.CurRow,u
-                    adda      #1
+                    inca
                     cmpa      V.WHeight,u
-                    bhs       dl_clear_y          * If at/past bottom row, restore Y and erase line
+                    bhs       dl_clear            * If at/past bottom row, erase line
 
 * Not on bottom line: scroll all lines below the cursor UP by one row
+* Preserve register Y (holds the path descriptor pointer for the active I/O path)
+                    pshs      y
 * Calculate rows to copy: WHeight - (CurRow + 1)
-                    pshs      a                   * Push CurRow + 1 to stack
-                    lda       V.WHeight,u
-                    suba      ,s+                 * A = WHeight - (CurRow + 1), pops stack
+                    nega
+                    adda      V.WHeight,u
 * Calculate bytes to copy: rows * WWidth
                     ldb       V.WWidth,u
                     mul                           * D = rows * WWidth
@@ -2223,11 +2221,6 @@ dl_clear            lda       V.WHeight,u
                     clrb                          * B = 0 (start at column 0)
                     lbsr      EraseLineCore       * Call erase helper to fill row with spaces
                     lbra      ResetHandler        * Reset escape handler to DefaultHandler
-
-* Helper label to restore Y and proceed to clear row
-dl_clear_y          puls      y                   * Restore path descriptor register Y
-                    bra       dl_clear            * Proceed to clear bottom row
-                    endc
 
 
                     emod
