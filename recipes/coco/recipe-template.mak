@@ -1,13 +1,25 @@
 # Optional per-recipe overrides for coco/coco.mak.
 #
 # Usage:
-#   1) Copy 40d/ to a new recipe folder (for example myrecipe/).
+#   1) Copy floppy/ to a new recipe folder (for example myrecipe/).
 #   2) Copy this file to myrecipe/recipe.mak.
 #   3) Edit only what you need.
 
 # Used in output name: l<LEVEL>_<RECIPE>.dsk
 # Example: l1_mykit.dsk
 RECIPE ?= coco
+
+# Set floppy media to 40 or 80 tracks (default: 40).
+# Example: make TRACKS=80
+# TRACKS = 40
+
+# Set to 1 for a smaller bootable floppy with core modules and shell only.
+# Example: make MINIMAL=1
+# MINIMAL = 0
+
+# Set to 0 to disable OS-9 key repeat in a generated startup file.
+# Leave unset to keep the normal startup file.
+# KEYRPT = 0
 
 # Set to 1 to enable true lowercase on CoCo 2 boards with the 6847T1 VDG chip.
 # Assembles term_vdg with ModCoVDG+1 instead of ModCoVDG.
