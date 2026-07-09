@@ -16,7 +16,7 @@
 * bug fixed.
 *
 * Pre-merge baseline: edition=12  M$Revs=$80 (rev=0)  size=$070A  md5=8f90cbb5c41ea378735f33701bd33db5
-* Post-merge:         edition=13  M$Revs=$86 (rev=6)  size=$070D  md5=07a883d84f5663a89bb045437b4d054c
+* Post-merge:         edition=13  M$Revs=$86 (rev=6)  size=varies  md5=98170043978eb537327ae1498d2eadd7
 *
 *          ????/??/??  ???
 * NitrOS-9 2.00 distribution.
@@ -541,6 +541,133 @@ CRCSavLp            lda       ,u+       ; get CRC byte
 
 * Entry: U=module header pointer
 
+                    IFEQ      Level-1
+IAttach             ldb       #$11
+L0100               clr       ,-s
+                    decb
+                    bpl       L0100
+                    stu       <$10,s              caller regs
+                    lda       R$A,u
+                    sta       $09,s               device mode
+                    ldx       R$X,u
+                    lda       #Devic+0
+                    os9       F$Link              link to device desc.
+                    bcs       L0139
+                    stu       $04,s               address of mod hdr
+                    ldy       <$10,s              get caller regs
+                    stx       R$X,y               save updated ptr
+                    ldd       M$Port+1,u          get port addr
+                    std       $0C,s               save on stack
+                    ldd       M$PDev,u            get driver name
+                    leax      d,u                 point X to driver name
+                    lda       #Drivr+0
+                    os9       F$Link              link to driver
+                    bcs       L0139
+                    stu       ,s                  save driver addr on stack
+                    ldu       $04,s               get addr of dev desc.
+                    ldd       M$FMgr,u            get file mgr name
+                    leax      d,u                 point X to fmgr name
+                    lda       #FlMgr+0
+                    os9       F$Link              link to fmgr
+L0139               bcc       L0149
+* error on attach, so detach
+L013B               stb       <$11,s              save fmgr addr on stack
+                    leau      ,s                  point U to S
+                    os9       I$Detach
+                    leas      <$11,s              clean up stack
+                    comb
+                    puls      pc,b                return to caller
+L0149               stu       $06,s               save fmgr addr
+                    ldx       <D.Init
+                    ldb       DevCnt,x
+                    lda       DevCnt,x
+                    ldu       D.DevTbl
+L0153               ldx       V$DESC,u            get desc addr
+                    beq       L0188
+                    cmpx      $04,s               same?
+                    bne       L016E               branch if not
+                    ldx       V$STAT,u            get stat
+                    bne       L016C               branch if zero
+                    pshs      a
+                    lda       V$USRS,u            get user count
+                    beq       L0168
+                    os9       F$IOQu
+L0168               puls      a
+                    bra       L0153
+L016C               stu       $0E,s               save dev entry on stack
+L016E               ldx       V$DESC,u            get dev desc ptr
+                    ldy       M$Port+1,x
+                    cmpy      $0C,s               compare to port addr on stack
+                    bne       L0188
+                    ldx       V$DRIV,u
+                    cmpx      ,s                  compare to driver addr on stack
+                    bne       L0188
+                    ldx       V$STAT,u            get static
+                    stx       $02,s               save static on stack
+                    tst       V$USRS,u            test user count
+                    beq       L0188               branch if zero
+                    sta       $0A,s               store on stack
+L0188               leau      DEVSIZ,u            go to next entry
+                    decb                          decrement count
+                    bne       L0153               go back to loop if not zero
+                    ldu       $0E,s               get dev entry off stack
+                    lbne      L01E6
+                    ldu       D.DevTbl
+L0195               ldx       V$DESC,u            get dev desc ptr
+                    beq       L01A6               branch if zero
+                    leau      DEVSIZ,u
+                    deca
+                    bne       L0195               continue loop
+                    ldb       #E$DevOvf           device table overflow
+                    bra       L013B
+L01A2               ldb       #E$BMode            bad mode
+                    bra       L013B
+L01A6               ldx       $02,s               get static storage off stack
+                    lbne      L01DD
+                    stu       $0E,s               save off dev entry on stack
+                    ldx       ,s                  get driver addr off stack
+                    ldd       M$Mem,x             get memory requirement
+                    addd      #$00FF              round up to next page
+                    clrb
+                    os9       F$SRqMem
+                    lbcs      L013B
+                    stu       $02,s               save off on stack
+L01BF               clr       ,u+                 clear static mem
+                    subd      #$0001
+                    bhi       L01BF
+                    ldd       $0C,s               get port addr off stack
+                    ldu       $02,s               get static storage ptr
+                    clr       V.PAGE,u
+                    std       V.PORT,u            save addr
+                    ldy       $04,s               get dev desc addr
+                    ldx       ,s                  get driver addr
+                    ldd       M$Exec,x            get driver exec
+                    jsr       d,x                 call Init routine
+                    lbcs      L013B
+                    ldu       $0E,s               get dev entry
+L01DD               ldb       #$08                copy 8 bytes from stack to dev entry
+L01DF               lda       b,s
+                    sta       b,u
+                    decb
+                    bpl       L01DF
+L01E6               ldx       V$DESC,u            get dev desc
+                    ldb       M$Revs,x
+                    lda       $09,s               get device mode off stack
+                    anda      M$Mode,x            AND mode with desc mode
+                    ldx       V$DRIV,u            get driver ptr
+                    anda      M$Mode,x            AND mode with driver mode
+                    cmpa      $09,s               compare with passed mode
+                    lbne      L01A2               branch if error
+                    inc       V$USRS,u            else inc user count of dev entry
+                    bne       L01FE               branch if not overflow from 255->0
+                    dec       V$USRS,u            else dec
+L01FE               ldx       <$10,s              get caller regs
+                    stu       R$U,x
+                    leas      <$12,s              restore stack
+                    clrb
+                    rts
+
+                    ELSE
 IAttach             equ       *
                   IFNE    H6309
                     ldw       #EOSTACK  ; get stack count
@@ -813,6 +940,8 @@ AttachReturnSuccess ldx       <CALLREGS,s ; reload caller register stack pointer
                     clrb                ; report successful attach
                     rts                 ; return to caller
 
+
+                    ENDC
 
 IDetach             ldu       R$U,u     ; get device table entry from caller's U
                     ldx       V$DESC,u  ; this was incorrectly commented out in 13r4!!
