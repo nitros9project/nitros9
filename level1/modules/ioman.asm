@@ -16,7 +16,7 @@
 * bug fixed.
 *
 * Pre-merge baseline: edition=12  M$Revs=$80 (rev=0)  size=$070A  md5=8f90cbb5c41ea378735f33701bd33db5
-* Post-merge:         edition=13  M$Revs=$86 (rev=6)  size=varies  md5=0526983849bc89a2a53024c034c8e997
+* Post-merge:         edition=13  M$Revs=$86 (rev=6)  size=varies  md5=18b915bd4078ea5b868948e975247463
 *
 *          ????/??/??  ???
 * NitrOS-9 2.00 distribution.
@@ -1686,6 +1686,7 @@ SSCopy              ldy       #PD.OPT   ; offset to PD.Opt
                   IFGT    Level-1
                     os9       F$Move    ; move data to caller
                   ELSE
+                    ldb       #PD.OPT   ; Level 1: set copy count (Y holds count but Looper uses B)
 Looper              lda       ,x+       ; copy data to caller
                     sta       ,u+       ; copy option/name byte to caller buffer
                     decb                ; decrement remaining byte count
