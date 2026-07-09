@@ -70,11 +70,11 @@ size                equ       .
 name                fcs       /IOMan/
                     fcb       edition
 
-                    IFEQ      Level-1
 * IOMan is called from OS9p2
 IOManEnt            equ       *
+                    ldx       <D.Init   ; get pointer to init module
+                    IFEQ      Level-1
 * allocate device and polling tables
-                    ldx       <D.Init             get pointer to init module
                     lda       PollCnt,x           grab number of polling entries
                     ldb       #POLSIZ             and size per entry
                     mul                           D = size of all entries in bytes
@@ -101,20 +101,7 @@ L0033               clr       ,x+
                     addd      ,s++                grab poll table size
                     leax      d,u
                     stx       <D.CLTB
-                    ldx       <D.PthDBT
-                    os9       F$All64
-                    bcs       Crash
-                    stx       <D.PthDBT
-                    os9       F$Ret64
-                    leax      >IRQPoll,pcr          get address of IRQ poll routine
-                    stx       <D.Poll             save in statics
-* install I/O system calls
-                    leay      <IOCalls,pcr        point to I/O calls
-                    os9       F$SSvc              install them
-                    rts                           return to OS9p2
-
                     ELSE
-IOManEnt            ldx       <D.Init   ; get pointer to init module
                     lda       DevCnt,x  ; get number of entries in device table
                     ldb       #DEVSIZ   ; get size of each entry
                     mul                 ; calculate size needed for device table
@@ -160,22 +147,23 @@ ClrLoop             clr       ,x+       ; clear a byte
                     leax      d,x       ; add it to end of device table
                     stx       <D.CLTb   ; and save VIRQ table address
                   ENDC
-                    ldx       <D.PthDBT ; get address of path desc table
-                    os9       F$All64   ; split it into 64 byte chunks
-                    bcs       Crash     ; branch if error
-                    stx       <D.PthDBT ; save pointer back
-                    os9       F$Ret64   ; release the extra 64-byte block after table initialization
-                    leax      >IRQPoll,pcr ; point to polling routine
-                    stx       <D.Poll   ; save the vector address
-                    leay      <IOCalls,pcr ; point to service vector table
-                    os9       F$SSvc    ; set up calls
-                    rts                 ; and return to system
+                    ENDC
+
+                    ldx       <D.PthDBT ; get address of path descriptor table
+                    os9       F$All64   ; split it into 64-byte chunks
+                    bcs       Crash     ; crash if table initialization fails
+                    stx       <D.PthDBT ; save updated table pointer
+                    os9       F$Ret64   ; release the extra 64-byte block
+                    leax      >IRQPoll,pcr ; install IRQ polling routine address
+                    stx       <D.Poll   ; save polling vector
+                    leay      <IOCalls,pcr ; point to I/O service vector table
+                    os9       F$SSvc    ; install I/O system calls
+                    rts                 ; return to kernel initialization
 
 ******************************
 *
 * Fatal error Crash the system
 *
-                    ENDC
 
 Crash
                   IFGT    Level-1
@@ -1944,81 +1932,6 @@ RestoreCallerRet    puls      pc,u      ; restore caller register stack pointer 
                   ENDC
 
 
-                    IFEQ      Level-1
-FLoad               pshs      u
-                    ldx       R$X,u
-                    bsr       L05BC
-                    bcs       L05BA
-                    inc       $02,u               increment link count
-                    ldy       ,u                  get mod header addr
-                    ldu       ,s                  get caller regs
-                    stx       R$X,u
-                    sty       R$U,u
-                    lda       M$Type,y
-                    ldb       M$Revs,y
-                    std       R$D,u
-                    ldd       M$Exec,y
-                    leax      d,y
-                    stx       R$Y,u
-L05BA               puls      pc,u
-
-L05BC               lda       #EXEC.
-                    os9       I$Open
-                    bcs       L0632
-                    leas      -$0A,s              make room on stack
-                    ldu       #$0000
-                    pshs      u,y,x
-                    sta       6,s                 save path
-L05CC               ldd       4,s                 get U (caller regs) from stack
-                    bne       L05D2
-                    stu       4,s
-L05D2               lda       6,s                 get path
-                    leax      7,s                 point to place on stack
-                    ldy       #M$IDSize           read M$IDSize bytes
-                    os9       I$Read
-                    bcs       L061E
-                    ldd       ,x
-                    cmpd      #M$ID12
-                    bne       L061C
-                    ldd       $09,s               get module size
-                    os9       F$SRqMem            allocate mem
-                    bcs       L061E
-                    ldb       #M$IDSize
-L05F0               lda       ,x+                 copy over first M$IDSize bytes
-                    sta       ,u+
-                    decb
-                    bne       L05F0
-                    lda       $06,s               get path
-                    leax      ,u                  point X at updated U
-                    ldu       $09,s               get module size
-                    leay      -M$IDSize,u         subtract count
-                    os9       I$Read
-                    leax      -M$IDSize,x
-                    bcs       L060B
-                    os9       F$VModul            validate module
-                    bcc       L05CC
-L060B               pshs      u,b
-                    leau      ,x                  point U at memory allocated
-                    ldd       M$Size,x
-                    os9       F$SRtMem            return mem
-                    puls      u,b
-                    cmpb      #E$KwnMod
-                    beq       L05CC
-                    bra       L061E
-L061C               ldb       #E$BMID
-L061E               puls      u,y,x
-                    lda       ,s                  get path
-                    stb       ,s                  save error code
-                    os9       I$Close             close path
-                    ldb       ,s
-                    leas      $0A,s               clear up stack
-                    cmpu      #$0000
-                    bne       L0632
-                    coma
-L0632               rts
-
-
-                    ELSE
 FLoad
                   IFGT    Level-1
                     pshs      u         ; place caller's reg ptr on stack
@@ -2402,9 +2315,6 @@ Level1LoadDone      rts                 ; return Level 1 load status
 *
 * Entry: U = Register stack pointer
 *
-
-
-                    ENDC
 
 ErrHead             fcc       /ERROR #/
 ErrNum              equ       *-ErrHead
