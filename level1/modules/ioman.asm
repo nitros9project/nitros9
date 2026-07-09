@@ -16,7 +16,7 @@
 * bug fixed.
 *
 * Pre-merge baseline: edition=12  M$Revs=$80 (rev=0)  size=$070A  md5=8f90cbb5c41ea378735f33701bd33db5
-* Post-merge:         edition=13  M$Revs=$86 (rev=6)  size=$070D  md5=94a9472396b0f4a4ffa1c29e86a866d8
+* Post-merge:         edition=13  M$Revs=$86 (rev=6)  size=$070D  md5=07a883d84f5663a89bb045437b4d054c
 *
 *          ????/??/??  ???
 * NitrOS-9 2.00 distribution.
@@ -1333,7 +1333,11 @@ CheckNextDatBlock   dec       ,s        ; no, check next MMU block until we have
                   ENDC
                   ENDC
 FMgrDispatchCont    puls      b         ; restore B
-CallFMgr            subb      #$03      ; convert I/O call code to file manager branch index
+                  IFEQ    Level-1
+CallFMgr            subb      #$83      ; Level 1: raw I/O call code base is $83
+                  ELSE
+CallFMgr            subb      #$03      ; Level 2: dispatch pre-normalises to 0-based index
+                  ENDC
                     pshs      u,y,x     ; save regs (Y=path dsc ptr)
                     ldx       <D.Proc   ; get caller's process dsc. ptr
 WaitPathAvailable
