@@ -16,7 +16,7 @@
 * bug fixed.
 *
 * Pre-merge baseline: edition=12  M$Revs=$80 (rev=0)  size=$070A  md5=8f90cbb5c41ea378735f33701bd33db5
-* Post-merge:         edition=13  M$Revs=$86 (rev=6)  size=varies  md5=98170043978eb537327ae1498d2eadd7
+* Post-merge:         edition=13  M$Revs=$86 (rev=6)  size=varies  md5=0526983849bc89a2a53024c034c8e997
 *
 *          ????/??/??  ???
 * NitrOS-9 2.00 distribution.
@@ -943,6 +943,77 @@ AttachReturnSuccess ldx       <CALLREGS,s ; reload caller register stack pointer
 
                     ENDC
 
+                    IFEQ      Level-1
+IDetach             ldu       R$U,u
+                    ldx       V$DESC,u
+                    ifeq      edition-11
+* Note:  the following lines constitute a bug that can, in certain
+*        circumstances, wipe out a device's static storage out from
+*        underneath it.
+                    ldb       V$USRS,u            get user count
+                    bne       L0218               branch if not zero
+                    pshs      u,b
+                    ldu       V$STAT,u
+                    pshs      u
+                    bra       L0254
+                    else
+                    tst       V$USRS,u
+                    beq       IDetach2
+                    endc
+L0218               lda       #255
+                    cmpa      V$USRS,u            255 users?
+                    lbeq      L0283               branch if so
+                    dec       V$USRS,u            else dec user count
+                    lbne      L0271               branch if dec not 0
+IDetach2
+                    ldx       <D.Init
+                    ldb       DevCnt,x
+                    pshs      u,b
+                    ldx       V$STAT,u
+                    clr       V$STAT,u
+                    clr       V$STAT+1,u
+                    ldy       <D.DevTbl
+L0235               cmpx      V$STAT,y
+                    beq       L0267
+                    leay      DEVSIZ,y
+                    decb
+                    bne       L0235
+                    ldy       <D.Proc
+                    ldb       P$ID,y
+                    stb       V$USRS,u
+                    ldy       V$DESC,u
+                    ldu       V$DRIV,u
+                    exg       x,u                 X pts to driver, U pts to static
+                    ldd       M$Exec,x
+                    leax      d,x
+                    pshs      u
+                    jsr       $0F,x               call term routine
+L0254               puls      u
+                    ldx       1,s                 get U from stack (dev entry to detach)
+                    ldx       V$DRIV,x
+                    ldd       M$Mem,x             get memory requirements
+                    addd      #$00FF              round up to next page
+                    clrb
+                    os9       F$SRtMem            return mem
+                    ldx       1,s                 get U from stack (dev entry to detach)
+                    ldx       V$DESC,x            get dev desc ptr
+L0267               puls      u,b                 get U,B
+                    ldx       V$DESC,u
+                    clr       V$DESC,u
+                    clr       V$DESC+1,u
+                    clr       V$USRS,u
+L0271               ldy       V$DRIV,u
+                    ldu       V$FMGR,u
+                    os9       F$UnLink            unlink file manager
+                    leau      ,y
+                    os9       F$UnLink            unlink driver
+                    leau      ,x
+                    os9       F$UnLink            unlink descriptor
+L0283               lbsr      WakeNextIOQueue
+                    clrb
+                    rts
+
+                    ELSE
 IDetach             ldu       R$U,u     ; get device table entry from caller's U
                     ldx       V$DESC,u  ; this was incorrectly commented out in 13r4!!
 *** BUG FIX
@@ -1112,6 +1183,8 @@ DetachWakeAndReturn lbsr      WakeNextIOQueue ; wake next process waiting in I/O
 
 
 * User State I$Dup
+                    ENDC
+
 UIDup               bsr       LocFrPth  ; look for a free path
                     bcs       DupReturn ; branch if error
                     pshs      x,a       ; else save off
@@ -1242,6 +1315,74 @@ IDeletX             ldb       #7        ; delete offset in file manager
 * Allocate path descriptor
 * Entry:
 *    B = mode
+                    IFEQ      Level-1
+AllcPDsc            pshs      u
+                    ldx       <D.PthDBT
+                    os9       F$All64
+                    bcs       L03A8
+                    inc       PD.CNT,y
+                    stb       PD.MOD,y
+                    ldx       R$X,u
+L0358               lda       ,x+
+                    cmpa      #$20
+                    beq       L0358
+                    leax      -1,x
+                    stx       R$X,u
+                    ldb       PD.MOD,y
+                    cmpa      #PDELIM
+                    beq       L037E
+                    ldx       <D.Proc
+                    bitb      #PEXEC.+EXEC.
+                    beq       L0373
+                    ldx       <P$DIO+6,x
+                    bra       L0376
+L0373               ldx       <P$DIO,x
+L0376               beq       L03AA
+                    ldx       V$DESC,x
+                    ldd       M$Name,x
+                    leax      d,x
+L037E               pshs      y
+                    os9       F$PrsNam
+                    puls      y
+                    bcs       L03AA
+                    lda       PD.MOD,y
+                    os9       I$Attach
+                    stu       PD.DEV,y
+                    bcs       L03AC
+                    ldx       V$DESC,u
+                    leax      <M$Opt,x
+                    ldb       ,x+
+                    leau      <PD.DTP,y
+                    cmpb      #$20
+                    bls       L03A4
+                    ldb       #$1F
+L03A0               lda       ,x+
+                    sta       ,u+
+L03A4               decb
+                    bpl       L03A0
+                    clrb
+L03A8               puls      pc,u
+L03AA               ldb       #E$BPNam
+L03AC               pshs      b
+                    lda       ,y
+                    ldx       <D.PthDBT
+                    os9       F$Ret64
+                    puls      b
+                    coma
+                    bra       L03A8
+L03BA               lda       $01,u
+                    cmpa      #$10
+                    bcc       L03CB
+                    ldx       <D.Proc
+                    leax      <$26,x
+                    andcc     #^Carry
+                    lda       a,x
+                    bne       L03CE
+L03CB               comb
+                    ldb       #E$BPNum
+L03CE               rts
+
+                    ELSE
 AllcPDsc            ldx       <D.Proc   ; get pointer to curr proc in X
                     pshs      u,x       ; save U/X
                     ldx       <D.PthDBT ; get ptr to path desc base table
@@ -1340,6 +1481,8 @@ AllocPathErrClean   pshs      b         ; save error code
                     coma                ; set carry for allocation/attach failure
                     bra       AllocPathReturn ; restore registers and return error
 
+
+                    ENDC
 
 UISeek              bsr       S2UPath   ; get user path #
                     bcc       GtPDClFM  ; get PD, call FM
@@ -1798,6 +1941,81 @@ RestoreCallerRet    puls      pc,u      ; restore caller register stack pointer 
                   ENDC
 
 
+                    IFEQ      Level-1
+FLoad               pshs      u
+                    ldx       R$X,u
+                    bsr       L05BC
+                    bcs       L05BA
+                    inc       $02,u               increment link count
+                    ldy       ,u                  get mod header addr
+                    ldu       ,s                  get caller regs
+                    stx       R$X,u
+                    sty       R$U,u
+                    lda       M$Type,y
+                    ldb       M$Revs,y
+                    std       R$D,u
+                    ldd       M$Exec,y
+                    leax      d,y
+                    stx       R$Y,u
+L05BA               puls      pc,u
+
+L05BC               lda       #EXEC.
+                    os9       I$Open
+                    bcs       L0632
+                    leas      -$0A,s              make room on stack
+                    ldu       #$0000
+                    pshs      u,y,x
+                    sta       6,s                 save path
+L05CC               ldd       4,s                 get U (caller regs) from stack
+                    bne       L05D2
+                    stu       4,s
+L05D2               lda       6,s                 get path
+                    leax      7,s                 point to place on stack
+                    ldy       #M$IDSize           read M$IDSize bytes
+                    os9       I$Read
+                    bcs       L061E
+                    ldd       ,x
+                    cmpd      #M$ID12
+                    bne       L061C
+                    ldd       $09,s               get module size
+                    os9       F$SRqMem            allocate mem
+                    bcs       L061E
+                    ldb       #M$IDSize
+L05F0               lda       ,x+                 copy over first M$IDSize bytes
+                    sta       ,u+
+                    decb
+                    bne       L05F0
+                    lda       $06,s               get path
+                    leax      ,u                  point X at updated U
+                    ldu       $09,s               get module size
+                    leay      -M$IDSize,u         subtract count
+                    os9       I$Read
+                    leax      -M$IDSize,x
+                    bcs       L060B
+                    os9       F$VModul            validate module
+                    bcc       L05CC
+L060B               pshs      u,b
+                    leau      ,x                  point U at memory allocated
+                    ldd       M$Size,x
+                    os9       F$SRtMem            return mem
+                    puls      u,b
+                    cmpb      #E$KwnMod
+                    beq       L05CC
+                    bra       L061E
+L061C               ldb       #E$BMID
+L061E               puls      u,y,x
+                    lda       ,s                  get path
+                    stb       ,s                  save error code
+                    os9       I$Close             close path
+                    ldb       ,s
+                    leas      $0A,s               clear up stack
+                    cmpu      #$0000
+                    bne       L0632
+                    coma
+L0632               rts
+
+
+                    ELSE
 FLoad
                   IFGT    Level-1
                     pshs      u         ; place caller's reg ptr on stack
@@ -2182,6 +2400,8 @@ Level1LoadDone      rts                 ; return Level 1 load status
 * Entry: U = Register stack pointer
 *
 
+
+                    ENDC
 
 ErrHead             fcc       /ERROR #/
 ErrNum              equ       *-ErrHead
