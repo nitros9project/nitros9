@@ -16,7 +16,7 @@
 * bug fixed.
 *
 * Pre-merge baseline: edition=12  M$Revs=$80 (rev=0)  size=$070A  md5=8f90cbb5c41ea378735f33701bd33db5
-* Post-merge:         edition=13  M$Revs=$86 (rev=6)  size=varies  md5=18b915bd4078ea5b868948e975247463
+* Post-merge:         edition=13  M$Revs=$86 (rev=6)  size=varies  md5=2752f55b263128ccf6ba12efdfafe001
 *
 *          ????/??/??  ???
 * NitrOS-9 2.00 distribution.
@@ -1627,8 +1627,10 @@ WaitPathAvailable
                     ldx       V$FMGREX,x ; get file manager execution (branch table) address
                   ELSE
                     ldx       V$FMGR,x  ; get file manager address
+                    pshs      b         ; Level 1: save FM branch index before ldd overwrites B
                     ldd       M$Exec,x  ; get it's offset to it's execution (branch table)
                     leax      d,x       ; point to it
+                    puls      b         ; Level 1: restore FM branch index
                   ENDC
                     lda       #3        ; length of lbra instruction (size of each entry in branch table)
                     mul                 ; calc offset to specific file manager function we are calling
