@@ -1,7 +1,3 @@
-                    ifp1
-                    use       defsfile
-                    endc
-
 ********************************************************************
 * IOMan - OS-9 I/O Manager module
 *
@@ -57,6 +53,10 @@
                     nam       IOMan
                     ttl       OS-9 I/O Manager module
 
+                    ifp1
+                    use       defsfile
+                    endc
+
 tylg                set       Systm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $06
@@ -70,38 +70,9 @@ size                equ       .
 name                fcs       /IOMan/
                     fcb       edition
 
-* IOMan is called from OS9p2
+* IOMan is called from krnp2
 IOManEnt            equ       *
                     ldx       <D.Init   ; get pointer to init module
-                    IFEQ      Level-1
-* allocate device and polling tables
-                    lda       PollCnt,x           grab number of polling entries
-                    ldb       #POLSIZ             and size per entry
-                    mul                           D = size of all entries in bytes
-                    pshs      b,a                 save off
-                    lda       DevCnt,x            get device table count in init mod
-                    ldb       #DEVSIZ             get size per dev table entry
-                    mul                           D = size of all entires in bytes
-                    pshs      b,a                 save off
-                    addd      2,s                 add devsize to polsiz
-                    addd      #$0018              add in ???
-                    addd      #$00FF              bring up to next page
-                    clrb
-                    os9       F$SRqMem            ask for the memory
-                    bcs       Crash               crash if we can't get it
-* clear allocated mem
-                    leax      ,u                  point to dev table
-L0033               clr       ,x+
-                    subd      #$0001
-                    bhi       L0033
-                    stu       <D.PolTbl           U = pointer to polling table
-                    ldd       ,s++                get dev table size
-                    leax      d,u                 point X past polling table to dev table
-                    stx       <D.DevTbl           save off X to system vars
-                    addd      ,s++                grab poll table size
-                    leax      d,u
-                    stx       <D.CLTB
-                    ELSE
                     lda       DevCnt,x  ; get number of entries in device table
                     ldb       #DEVSIZ   ; get size of each entry
                     mul                 ; calculate size needed for device table
@@ -147,7 +118,6 @@ ClrLoop             clr       ,x+       ; clear a byte
                     leax      d,x       ; add it to end of device table
                     stx       <D.CLTb   ; and save VIRQ table address
                   ENDC
-                    ENDC
 
                     ldx       <D.PthDBT ; get address of path descriptor table
                     os9       F$All64   ; split it into 64-byte chunks
