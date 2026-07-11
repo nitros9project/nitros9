@@ -1070,74 +1070,6 @@ IDeletX             ldb       #7        ; delete offset in file manager
 * Allocate path descriptor
 * Entry:
 *    B = mode
-                    IFEQ      Level-1
-AllcPDsc            pshs      u
-                    ldx       <D.PthDBT
-                    os9       F$All64
-                    bcs       L03A8
-                    inc       PD.CNT,y
-                    stb       PD.MOD,y
-                    ldx       R$X,u
-L0358               lda       ,x+
-                    cmpa      #$20
-                    beq       L0358
-                    leax      -1,x
-                    stx       R$X,u
-                    ldb       PD.MOD,y
-                    cmpa      #PDELIM
-                    beq       L037E
-                    ldx       <D.Proc
-                    bitb      #PEXEC.+EXEC.
-                    beq       L0373
-                    ldx       <P$DIO+6,x
-                    bra       L0376
-L0373               ldx       <P$DIO,x
-L0376               beq       L03AA
-                    ldx       V$DESC,x
-                    ldd       M$Name,x
-                    leax      d,x
-L037E               pshs      y
-                    os9       F$PrsNam
-                    puls      y
-                    bcs       L03AA
-                    lda       PD.MOD,y
-                    os9       I$Attach
-                    stu       PD.DEV,y
-                    bcs       L03AC
-                    ldx       V$DESC,u
-                    leax      <M$Opt,x
-                    ldb       ,x+
-                    leau      <PD.DTP,y
-                    cmpb      #$20
-                    bls       L03A4
-                    ldb       #$1F
-L03A0               lda       ,x+
-                    sta       ,u+
-L03A4               decb
-                    bpl       L03A0
-                    clrb
-L03A8               puls      pc,u
-L03AA               ldb       #E$BPNam
-L03AC               pshs      b
-                    lda       ,y
-                    ldx       <D.PthDBT
-                    os9       F$Ret64
-                    puls      b
-                    coma
-                    bra       L03A8
-L03BA               lda       $01,u
-                    cmpa      #$10
-                    bcc       L03CB
-                    ldx       <D.Proc
-                    leax      <$26,x
-                    andcc     #^Carry
-                    lda       a,x
-                    bne       L03CE
-L03CB               comb
-                    ldb       #E$BPNum
-L03CE               rts
-
-                    ELSE
 AllcPDsc            ldx       <D.Proc   ; get pointer to curr proc in X
                     pshs      u,x       ; save U/X
                     ldx       <D.PthDBT ; get ptr to path desc base table
@@ -1235,9 +1167,6 @@ AllocPathErrClean   pshs      b         ; save error code
                     puls      b         ; restore error # & return with it
                     coma                ; set carry for allocation/attach failure
                     bra       AllocPathReturn ; restore registers and return error
-
-
-                    ENDC
 
 UISeek              bsr       S2UPath   ; get user path #
                     bcc       GtPDClFM  ; get PD, call FM
