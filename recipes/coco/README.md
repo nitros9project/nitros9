@@ -32,7 +32,6 @@ From the repository root, ensure:
 ## Build Directories
 
 - [`floppy/`](floppy/) builds CoCo 1/2 Level 1 double-sided floppy disk images
-- [`40d/`](40d/) builds the legacy CoCo 1/2 Level 1 40-track double-sided disk image
 - [`dw/`](dw/) builds a CoCo 1/2 DriveWire-oriented Level 1 disk image
 
 Each build directory keeps intermediate artifacts local:
@@ -59,7 +58,8 @@ Use `MINIMAL=1` for a smaller bootable disk with only the core boot modules and 
 
 Use `KEYRPT=0` to build a generated startup file that disables OS-9 key repeat,
 which helps faster-than-real-time MAME runs avoid rapid repeated keys. Leave
-`KEYRPT` unset to keep the normal startup file.
+`KEYRPT` unset to keep the normal startup file. `MAME=1` is accepted as a
+compatibility alias for `KEYRPT=0`.
 
 ## DriveWire Build ([`coco/dw`](dw/))
 

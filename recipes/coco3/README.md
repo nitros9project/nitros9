@@ -60,7 +60,8 @@ one floppy descriptor, `shell`, and `grfdrv`.
 
 Use `KEYRPT=0` to build a generated startup file that disables OS-9 key repeat,
 which helps faster-than-real-time MAME runs avoid rapid repeated keys. Leave
-`KEYRPT` unset to keep the normal startup file.
+`KEYRPT` unset to keep the normal startup file. `MAME=1` is accepted as a
+compatibility alias for `KEYRPT=0`.
 
 ## DriveWire Build ([`coco3/dw`](dw/))
 
