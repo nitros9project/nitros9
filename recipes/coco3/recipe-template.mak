@@ -24,6 +24,7 @@ RECIPE ?= coco3
 
 # Set to 0 to disable OS-9 key repeat in a generated startup file.
 # Leave unset to keep the normal startup file.
+# MAME = 1 is accepted by floppy recipes as a compatibility alias.
 # KEYRPT = 0
 
 # Set to 32, 40, or 80 to select the /TERM display width (default: 80).

@@ -19,6 +19,7 @@ RECIPE ?= coco
 
 # Set to 0 to disable OS-9 key repeat in a generated startup file.
 # Leave unset to keep the normal startup file.
+# MAME = 1 is accepted by floppy recipes as a compatibility alias.
 # KEYRPT = 0
 
 # Set to 1 to enable true lowercase on CoCo 2 boards with the 6847T1 VDG chip.
