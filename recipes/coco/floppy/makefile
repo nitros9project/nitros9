@@ -1,6 +1,10 @@
 LEVEL = 1
 MINIMAL ?= 0
-KEYRPT ?=
+MAME ?= 0
+ifeq ($(MAME),1)
+KEYRPT_DEFAULT = 0
+endif
+KEYRPT ?= $(KEYRPT_DEFAULT)
 CLEAN_EXTRA += startup.keyrpt startup.minimal
 
 ifeq ($(MINIMAL),1)
