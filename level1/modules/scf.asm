@@ -224,42 +224,42 @@ SCFName             fcs       /SCF/                      ; store compressed stri
 *               123456789!123456789!1234567890
 *msg      fcc   'by B.Nobel,C.Boyle,W.Gale-1993'
 msg                 fcc       'www.nitros9.org'          ; store character string 'www.nitros9.org'
-msgsize             equ       *-msg     ; Size of default input buffer message
+msgsize             equ       *-msg     ; size of default input buffer message
                     fcb       C$CR      ; 2nd CR for buffer pad fill
-blksize             equ       256-msgsize ; Size of blank space after it
+blksize             equ       256-msgsize ; size of blank space after it
 
 * Return bad pathname error
 opbpnam             puls      y         ; restore y from stack
-bpnam               comb                ; Set carry for error
-                    ldb       #E$BPNam  ; Get error code
-oerr                rts                 ; Return to caller
+bpnam               comb                ; set carry for error
+                    ldb       #E$BPNam  ; get error code
+oerr                rts                 ; return to caller
 
 * I$Create/I$Open entry point
 * Entry: Y= Path dsc. ptr
-open                ldx       PD.DEV,y  ; Get device table pointer
-                    stx       PD.TBL,y  ; Save it
-                    ldu       PD.RGS,y  ; Get callers register stack pointer
-                    pshs      y         ; Save path descriptor pointer
-                    ldx       R$X,u     ; Get pointer to device pathname
-                    os9       F$PrsNam  ; Parse it
-                    bcs       opbpnam   ; Error, exit
-                    tsta                ; End of pathname?
-                    bmi       open1     ; Yes, go on
-                    leax      ,y        ; Point to actual device name
-                    os9       F$PrsNam  ; Parse it again
-                    bcc       opbpnam   ; Return to caller with bad path name if more
-open1               sty       R$X,u     ; Save updated name pointer to caller
-                    puls      y         ; Restore path descriptor pointer
-                    ldd       #256      ; Get size of input buffer in bytes
-                    os9       F$SRqMem  ; Allocate it
-                    bcs       oerr      ; Can't allocate it return with error
-                    stu       PD.BUF,y  ; Save buffer address to path descriptor
-                    leax      <msg,pc   ; Get ptr to init string
+open                ldx       PD.DEV,y  ; get device table pointer
+                    stx       PD.TBL,y  ; save it
+                    ldu       PD.RGS,y  ; get callers register stack pointer
+                    pshs      y         ; save path descriptor pointer
+                    ldx       R$X,u     ; get pointer to device pathname
+                    os9       F$PrsNam  ; parse it
+                    bcs       opbpnam   ; error, exit
+                    tsta                ; end of pathname?
+                    bmi       open1     ; yes, go on
+                    leax      ,y        ; point to actual device name
+                    os9       F$PrsNam  ; parse it again
+                    bcc       opbpnam   ; return to caller with bad path name if more
+open1               sty       R$X,u     ; save updated name pointer to caller
+                    puls      y         ; restore path descriptor pointer
+                    ldd       #256      ; get size of input buffer in bytes
+                    os9       F$SRqMem  ; allocate it
+                    bcs       oerr      ; can't allocate it return with error
+                    stu       PD.BUF,y  ; save buffer address to path descriptor
+                    leax      <msg,pc   ; get ptr to init string
                   IFNE    H6309   ; assemble following block when H6309 is true
                     ldw       #msgsize  ; get size of default message
-                    tfm       x+,u+     ; Copy it into buffer (leaves X pointing to 2nd CR)
-                    ldw       #blksize  ; Size of rest of buffer
-                    tfm       x,u+      ; Fill rest of buffer with CR's
+                    tfm       x+,u+     ; copy it into buffer (leaves X pointing to 2nd CR)
+                    ldw       #blksize  ; size of rest of buffer
+                    tfm       x,u+      ; fill rest of buffer with CR's
                   ELSE    ;       select alternate assembly branch
 CopyMsg             lda       ,x+       ; load a from ,x+
                     sta       ,u+       ; store a into ,u+
@@ -270,21 +270,21 @@ CopyCR              sta       ,u+       ; store a into ,u+
                     decb                ; decrement b counter
                     bne       CopyCR    ; branch if comparison was not equal to CopyCR
                   ENDC    ;       end conditional assembly block
-                    ldu       PD.DEV,y  ; Get device table entry address
-                    beq       bpnam     ; Doesn't exist, exit with bad pathname error
-                    ldx       V$STAT,u  ; Get devices' static storage address
-                    lda       PD.PAG,y  ; Get devices page length
-                    sta       V.LINE,x  ; Save it to devices static storage
-                    ldx       V$DESC,u  ; Get descriptor address
-                    ldd       PD.D2P,y  ; Get offset to device name (duplicate from dev dsc)
-                    beq       L00CF     ; None, skip ahead
+                    ldu       PD.DEV,y  ; get device table entry address
+                    beq       bpnam     ; doesn't exist, exit with bad pathname error
+                    ldx       V$STAT,u  ; get devices' static storage address
+                    lda       PD.PAG,y  ; get devices page length
+                    sta       V.LINE,x  ; save it to devices static storage
+                    ldx       V$DESC,u  ; get descriptor address
+                    ldd       PD.D2P,y  ; get offset to device name (duplicate from dev dsc)
+                    beq       L00CF     ; none, skip ahead
                   IFNE    H6309   ; assemble following block when H6309 is true
-                    addr      d,x       ; Point to device name in descriptor
-                    lda       PD.MOD,y  ; Get device mode (Read/Write/Update)
+                    addr      d,x       ; point to device name in descriptor
+                    lda       PD.MOD,y  ; get device mode (Read/Write/Update)
                     lsrd                ; ??? (swap Read/Write bits around in A?)
                   ELSE    ;       select alternate assembly branch
                     leax      d,x       ; compute address d,x into x
-                    lda       PD.MOD,y  ; Get device mode (Read/Write/Update)
+                    lda       PD.MOD,y  ; get device mode (Read/Write/Update)
                     lsra                ; shift a right one bit
                     rorb                ; continue SCF file-manager flow
                   ENDC    ;       end conditional assembly block
@@ -294,33 +294,33 @@ CopyCR              sta       ,u+       ; store a into ,u+
                     rorb                ; continue SCF file-manager flow
                     rola                ; continue SCF file-manager flow
                   IFGT    Level-1 ; assemble following block when Level-1 is true
-                    pshs      y         ; Save path descriptor pointer temporarily
-                    ldy       <D.Proc   ; Get current process pointer
-                    ldu       <D.SysPrc ; Get system process descriptor pointer
-                    stu       <D.Proc   ; Make system current process
+                    pshs      y         ; save path descriptor pointer temporarily
+                    ldy       <D.Proc   ; get current process pointer
+                    ldu       <D.SysPrc ; get system process descriptor pointer
+                    stu       <D.Proc   ; make system current process
                   ENDC    ;       end conditional assembly block
-                    os9       I$Attach  ; Attempt to attach to device name in device desc.
+                    os9       I$Attach  ; attempt to attach to device name in device desc.
                   IFGT    Level-1 ; assemble following block when Level-1 is true
-                    sty       <D.Proc   ; Restore old current process pointer
-                    puls      y         ; Restore path descriptor pointer
+                    sty       <D.Proc   ; restore old current process pointer
+                    puls      y         ; restore path descriptor pointer
                   ENDC    ;       end conditional assembly block
-                    bcs       OpenErr   ; Couldn't attach to device, detach & exit with error
-                    stu       PD.DV2,y  ; Save new output (echo) device table pointer
+                    bcs       OpenErr   ; couldn't attach to device, detach & exit with error
+                    stu       PD.DV2,y  ; save new output (echo) device table pointer
 *         ldu   PD.DEV,y     Get device table pointer
-L00CF               ldu       V$STAT,u  ; Point to it's static storage
+L00CF               ldu       V$STAT,u  ; point to it's static storage
                   IFNE    H6309   ; assemble following block when H6309 is true
                     clrd                ; clear d to zero
                   ELSE    ;       select alternate assembly branch
                     clra                ; clear a and carry state for success/zero value
                     clrb                ; clear b and carry state for success/zero value
                   ENDC    ;       end conditional assembly block
-                    std       PD.PLP,y  ; Clear out path descriptor list pointer
-                    sta       PD.PST,y  ; Clear path status: Carrier not lost
-                    pshs      d         ; Save 0 on stack
-                    ldx       V.PDLHd,u ; Get path descriptor list header pointer
+                    std       PD.PLP,y  ; clear out path descriptor list pointer
+                    sta       PD.PST,y  ; clear path status: Carrier not lost
+                    pshs      d         ; save 0 on stack
+                    ldx       V.PDLHd,u ; get path descriptor list header pointer
 * 05/25/93 mod - Boisy Pitre's non-sharable device patches
 * 01/15/10 mod - Boisy Pitre redoes his non-sharable device patch
-                    beq       Yespath   ; No paths open, so we know we can open it
+                    beq       Yespath   ; no paths open, so we know we can open it
 * IOMan has already vetted the mode byte of the driver and the descriptor
 * and compared it to REGA of I$Open (now in PD.MOD of this current path).
 * here we know there is at least one path open for this device.
@@ -344,92 +344,92 @@ L00CF               ldu       V$STAT,u  ; Point to it's static storage
                     lda       PD.MOD,x  ; load a from PD.MOD,x
                     bita      #SHARE.   ; test a bits against #SHARE.
                   ENDC    ;       end conditional assembly block
-                    beq       CkCar     ; Check carrier status
-NoShare             leas      2,s       ; Eat extra stack (including good path count)
+                    beq       CkCar     ; check carrier status
+NoShare             leas      2,s       ; eat extra stack (including good path count)
                     comb                ; complement b to set carry for error return
-                    ldb       #E$DevBsy ; Non-sharable device busy error
-                    bra       OpenErr   ; Go detach device & exit with error
+                    ldb       #E$DevBsy ; non-sharable device busy error
+                    bra       OpenErr   ; go detach device & exit with error
 
-Yespath             sty       V.PDLHd,u ; Save path descriptor ptr
-                    bra       L00F8     ; Go open the path
+Yespath             sty       V.PDLHd,u ; save path descriptor ptr
+                    bra       L00F8     ; go open the path
 
-L00E6               tfr       d,x       ; Change to PD.PLP path descriptor
-CkCar               ldb       PD.PST,x  ; Get Carrier status
-                    bne       L00EF     ; Carrier was lost, don't update count
-                    inc       1,s       ; Carrier not lost, bump up count of good paths
-L00EF               ldd       PD.PLP,x  ; Get path descriptor list pointer
-                    bne       L00E6     ; There is one, go make it the current one
-                    sty       PD.PLP,x  ; Save path descriptor ptr as path dsc. list ptr
-L00F8               lda       #SS.Open  ; Internal open call
-                    pshs      a         ; Save it on the stack
-                    inc       2,s       ; Bump counter of good paths up by 1
-                    lbsr      L025B     ; Do the SS.Open call to the driver
-                    lda       2,s       ; Get counter of good paths
-                    leas      3,s       ; Eat stack
+L00E6               tfr       d,x       ; change to PD.PLP path descriptor
+CkCar               ldb       PD.PST,x  ; get Carrier status
+                    bne       L00EF     ; carrier was lost, don't update count
+                    inc       1,s       ; carrier not lost, bump up count of good paths
+L00EF               ldd       PD.PLP,x  ; get path descriptor list pointer
+                    bne       L00E6     ; there is one, go make it the current one
+                    sty       PD.PLP,x  ; save path descriptor ptr as path dsc. list ptr
+L00F8               lda       #SS.Open  ; internal open call
+                    pshs      a         ; save it on the stack
+                    inc       2,s       ; bump counter of good paths up by 1
+                    lbsr      L025B     ; do the SS.Open call to the driver
+                    lda       2,s       ; get counter of good paths
+                    leas      3,s       ; eat stack
 * NEW: return with error if SS.Open return error
                     bcs       L010F     ; +++BGP+++
-                    deca                ; Bump down good path count
-                    bne       L0129     ; If more still open, exit without error
-                    blo       L010F     ; If negative, something went wrong
-                    lbra      L0250     ; Set parity/baud & return
+                    deca                ; bump down good path count
+                    bne       L0129     ; if more still open, exit without error
+                    blo       L010F     ; if negative, something went wrong
+                    lbra      L0250     ; set parity/baud & return
 
 * we come here if there was an error in Open (after I$Attach and F$SRqMem!)
-L010F               bsr       RemoveFromPDList ; Error, go clear stuff out
-OpenErr             pshs      b,cc      ; Preserve error status
-                    bsr       L0136     ; Detach device
-                    puls      pc,b,cc   ; Restore error status & return
+L010F               bsr       RemoveFromPDList ; error, go clear stuff out
+OpenErr             pshs      b,cc      ; preserve error status
+                    bsr       L0136     ; detach device
+                    puls      pc,b,cc   ; restore error status & return
 
 * I$Close entry point
-close               pshs      cc        ; Preserve interrupt status
-                    orcc      #IntMasks ; Disable interrupts
-                    ldx       PD.DEV,y  ; Get device table pointer
-                    bsr       L0182     ; Check it
-                    ldx       PD.DV2,y  ; Get output device table pointer
-                    bsr       L0182     ; Check it
-                    puls      cc        ; Restore interrupts
-                    lda       PD.CNT,y  ; Any open images?
-                    beq       L012B     ; No, go on
-L0129               clra                ; Clear carry
-L012A               rts                 ; Return
+close               pshs      cc        ; preserve interrupt status
+                    orcc      #IntMasks ; disable interrupts
+                    ldx       PD.DEV,y  ; get device table pointer
+                    bsr       L0182     ; check it
+                    ldx       PD.DV2,y  ; get output device table pointer
+                    bsr       L0182     ; check it
+                    puls      cc        ; restore interrupts
+                    lda       PD.CNT,y  ; any open images?
+                    beq       L012B     ; no, go on
+L0129               clra                ; clear carry
+L012A               rts                 ; return
 
 * Detach device & return buffer memory
 L012B               bsr       RemoveFromPDList ; unlink this path descriptor from the device list
-                    lda       #SS.Close ; Get setstat code for close
+                    lda       #SS.Close ; get setstat code for close
                     ldx       PD.DEV,y  ; get pointer to device table
                     ldx       V$STAT,x  ; get static mem ptr
-                    ldb       V.TYPE,x  ; Get device type    \ WON'T THIS SCREW UP WITH
-                    bmi       L0136     ; Window, skip ahead / MARK OR SPACE PARITY???
-                    pshs      x,a       ; Save close code & X for SS.Close calling routine
-                    lbsr      L025B     ; Not window, go call driver's SS.Close routine
-                    leas      3,s       ; Purge stack
-L0136               ldu       PD.DV2,y  ; Get output device pointer
-                    beq       L013D     ; Nothing there, go on
-                    os9       I$Detach  ; Detach it
-L013D               ldu       PD.BUF,y  ; Get buffer pointer
-                    beq       L0147     ; None defined go on
-                    ldd       #256      ; Get buffer size
-                    os9       F$SRtMem  ; Return buffer memory to system
-L0147               clra                ; Clear carry
-                    rts                 ; Return
+                    ldb       V.TYPE,x  ; get device type    \ WON'T THIS SCREW UP WITH
+                    bmi       L0136     ; window, skip ahead / MARK OR SPACE PARITY???
+                    pshs      x,a       ; save close code & X for SS.Close calling routine
+                    lbsr      L025B     ; not window, go call driver's SS.Close routine
+                    leas      3,s       ; purge stack
+L0136               ldu       PD.DV2,y  ; get output device pointer
+                    beq       L013D     ; nothing there, go on
+                    os9       I$Detach  ; detach it
+L013D               ldu       PD.BUF,y  ; get buffer pointer
+                    beq       L0147     ; none defined go on
+                    ldd       #256      ; get buffer size
+                    os9       F$SRtMem  ; return buffer memory to system
+L0147               clra                ; clear carry
+                    rts                 ; return
 
 * Remove path descriptor from device path descriptor linked list
 * Entry: Y = path descriptor
 RemoveFromPDList
                     ldx       #1        ; load x from #1
                     pshs      cc,d,x,y,u ; save cc,d,x,y,u on stack
-                    ldu       PD.DEV,y  ; Get device table pointer
-                    beq       L017B     ; None, skip ahead
-                    ldu       V$STAT,u  ; Get static storage pointer
-                    beq       L017B     ; None, skip ahead
-                    ldx       V.PDLHd,u ; Get path descriptor list header
-                    beq       L017B     ; None, skip ahead
-                    ldd       PD.PLP,y  ; Get path descriptor list pointer
+                    ldu       PD.DEV,y  ; get device table pointer
+                    beq       L017B     ; none, skip ahead
+                    ldu       V$STAT,u  ; get static storage pointer
+                    beq       L017B     ; none, skip ahead
+                    ldx       V.PDLHd,u ; get path descriptor list header
+                    beq       L017B     ; none, skip ahead
+                    ldd       PD.PLP,y  ; get path descriptor list pointer
                     cmpy      V.PDLHd,u ; is the passed path descriptor the same?
                     bne       L0172     ; branch if not
                     std       V.PDLHd,u ; store d into V.PDLHd,u
                     bne       L017B     ; branch if comparison was not equal to L017B
-                    clr       4,s       ; Clear LSB of X on stack
-                    bra       L017B     ; Return
+                    clr       4,s       ; clear LSB of X on stack
+                    bra       L017B     ; return
 
 * D = path descriptor to store
 L016D               ldx       PD.PLP,x  ; advance to next path descriptor in list
@@ -450,103 +450,103 @@ L0180               puls      cc,d,x,y,u,pc ; restore cc,d,x,y,u,pc and return
 * Check path number?
 * Entry: X=Ptr to device table (just LDX'd)
 *        Y=Path dsc. ptr
-L0182               beq       L012A     ; No device table, return to caller
-                    ldx       V$STAT,x  ; Get static storage pointer
-                    ldb       PD.PD,y   ; Get system path number from path dsc.
-                    lda       PD.CPR,y  ; Get ID # of process currently using path
-                    pshs      d,x,y     ; Save everything
-                    cmpa      V.LPRC,x  ; Current process same as last process using path?
-                    bne       L01CA     ; No, return
+L0182               beq       L012A     ; no device table, return to caller
+                    ldx       V$STAT,x  ; get static storage pointer
+                    ldb       PD.PD,y   ; get system path number from path dsc.
+                    lda       PD.CPR,y  ; get ID # of process currently using path
+                    pshs      d,x,y     ; save everything
+                    cmpa      V.LPRC,x  ; current process same as last process using path?
+                    bne       L01CA     ; no, return
                   IFGT    Level-1 ; assemble following block when Level-1 is true
-                    ldx       <D.Proc   ; Get current process pointer
+                    ldx       <D.Proc   ; get current process pointer
                   ELSE    ;       select alternate assembly branch
-                    ldx       >D.Proc   ; Get current process pointer
+                    ldx       >D.Proc   ; get current process pointer
                   ENDC    ;       end conditional assembly block
-                    leax      P$Path,x  ; Point to local path table
-                    clra                ; Start path # = 0 (Std In)
-L0198               cmpb      a,x       ; Same path as one is process' local path list?
-                    beq       L01CA     ; Yes, return
-                    inca                ; Move to next path
-                    cmpa      #NumPaths ; Done all paths?
-                    blo       L0198     ; No, keep going
-                    pshs      y         ; Preserve path descriptor pointer
+                    leax      P$Path,x  ; point to local path table
+                    clra                ; start path # = 0 (Std In)
+L0198               cmpb      a,x       ; same path as one is process' local path list?
+                    beq       L01CA     ; yes, return
+                    inca                ; move to next path
+                    cmpa      #NumPaths ; done all paths?
+                    blo       L0198     ; no, keep going
+                    pshs      y         ; preserve path descriptor pointer
                   IFNE    H6309   ; assemble following block when H6309 is true
-                    lda       #SS.Relea ; Release signals SetStat
-                    ldf       #D$PSTA   ; Get Setstat offset
+                    lda       #SS.Relea ; release signals SetStat
+                    ldf       #D$PSTA   ; get Setstat offset
                   ELSE    ;       select alternate assembly branch
                     ldd       #SS.Relea*256+D$PSTA ; load d from #SS.Relea*256+D$PSTA
                   ENDC    ;       end conditional assembly block
-                    bsr       L01FA     ; Execute driver setstat routine
-                    puls      y         ; Restore path pointer
+                    bsr       L01FA     ; execute driver setstat routine
+                    puls      y         ; restore path pointer
                   IFGT    Level-1 ; assemble following block when Level-1 is true
-                    ldx       <D.Proc   ; Get current process pointer
+                    ldx       <D.Proc   ; get current process pointer
                   ELSE    ;       select alternate assembly branch
-                    ldx       >D.Proc   ; Get current process pointer
+                    ldx       >D.Proc   ; get current process pointer
                   ENDC    ;       end conditional assembly block
-                    lda       P$PID,x   ; Get parent process ID
-                    sta       ,s        ; Save it
+                    lda       P$PID,x   ; get parent process ID
+                    sta       ,s        ; save it
                   IFGT    Level-1 ; assemble following block when Level-1 is true
-                    os9       F$GProcP  ; Get pointer to parent process descriptor
+                    os9       F$GProcP  ; get pointer to parent process descriptor
                   ELSE    ;       select alternate assembly branch
                     ldx       <D.PrcDBT ; load x from <D.PrcDBT
                     os9       F$Find64  ; call OS-9 service F$Find64
                   ENDC    ;       end conditional assembly block
-                    leax      P$Path,y  ; Point to local path table
-                    ldb       1,s       ; Get path number
-                    clra                ; Get starting path number
-L01B9               cmpb      a,x       ; Same path?
-                    beq       L01C4     ; Yes, go on
-                    inca                ; Move to next path
-                    cmpa      #NumPaths ; Done all paths?
-                    blo       L01B9     ; No, keep checking
-                    clr       ,s        ; Clear process ID
-L01C4               lda       ,s        ; Get process ID
-                    ldx       2,s       ; Get static storage pointer
-                    sta       V.LPRC,x  ; Store it as last process
-L01CA               puls      d,x,y,pc  ; Restore & return
+                    leax      P$Path,y  ; point to local path table
+                    ldb       1,s       ; get path number
+                    clra                ; get starting path number
+L01B9               cmpb      a,x       ; same path?
+                    beq       L01C4     ; yes, go on
+                    inca                ; move to next path
+                    cmpa      #NumPaths ; done all paths?
+                    blo       L01B9     ; no, keep checking
+                    clr       ,s        ; clear process ID
+L01C4               lda       ,s        ; get process ID
+                    ldx       2,s       ; get static storage pointer
+                    sta       V.LPRC,x  ; store it as last process
+L01CA               puls      d,x,y,pc  ; restore & return
 
 * I$GetStt entry point
-getstt              lda       PD.PST,y  ; Path status ok?
-                    lbne      L04C6     ; No, terminate process
-                    ldx       PD.RGS,y  ; Get register stack pointer
-                    lda       R$B,x     ; Get function code
-                    bne       L01F8     ; If not SS.Opt, call driver with function code
+getstt              lda       PD.PST,y  ; path status ok?
+                    lbne      L04C6     ; no, terminate process
+                    ldx       PD.RGS,y  ; get register stack pointer
+                    lda       R$B,x     ; get function code
+                    bne       L01F8     ; if not SS.Opt, call driver with function code
 * ($00) SS.Opt Getstat - All of PD.OPT is already set up, *except* parity/baud, so we need to grab that
-                    pshs      a,x,y     ; Preserve registers (LCB: why X? SS.ComSt doesn't use X)
-                    lda       #SS.ComSt ; Get code for Comstat
-                    sta       R$B,x     ; Save it in callers B
-                    ldu       R$Y,x     ; Preserve callers Y
+                    pshs      a,x,y     ; preserve registers (LCB: why X? SS.ComSt doesn't use X)
+                    lda       #SS.ComSt ; get code for Comstat
+                    sta       R$B,x     ; save it in callers B
+                    ldu       R$Y,x     ; preserve callers Y
                     pshs      u         ; save u on stack
-                    bsr       L01F8     ; Call SS.ComSt GetStat in driver (puts parity/baud into callers Y)
-                    puls      u         ; Restore callers Y
-                    puls      a,x,y     ; Restore registers
-                    sta       R$B,x     ; Save SS.Opt code back into caller's B
-                    ldd       R$Y,x     ; Get com stat (baud/parity)
-                    stu       R$Y,x     ; Put original callers Y back
-                    bcs       L01F6     ; Return if error
-                    std       PD.PAR,y  ; Update path descriptor with baud/parity
-L01F6               clrb                ; Clear carry
-L01F7               rts                 ; Return
+                    bsr       L01F8     ; call SS.ComSt GetStat in driver (puts parity/baud into callers Y)
+                    puls      u         ; restore callers Y
+                    puls      a,x,y     ; restore registers
+                    sta       R$B,x     ; save SS.Opt code back into caller's B
+                    ldd       R$Y,x     ; get com stat (baud/parity)
+                    stu       R$Y,x     ; put original callers Y back
+                    bcs       L01F6     ; return if error
+                    std       PD.PAR,y  ; update path descriptor with baud/parity
+L01F6               clrb                ; clear carry
+L01F7               rts                 ; return
 
 * Execute device driver Get/Set Status routine
 * Entry: A=GetStat/SetStat code
 *        Y=path descriptor ptr
                   IFNE    H6309   ; assemble following block when H6309 is true
-L01F8               ldf       #D$GSTA   ; Get Getstat driver entry offset
-L01FA               ldx       PD.DEV,y  ; Get device table pointer
-                    ldu       V$STAT,x  ; Get static storage pointer
+L01F8               ldf       #D$GSTA   ; get Getstat driver entry offset
+L01FA               ldx       PD.DEV,y  ; get device table pointer
+                    ldu       V$STAT,x  ; get static storage pointer
                   IFGT    Level-1 ; assemble following block when Level-1 is true
                     ldx       V$DRIVEX,x ; get execution pointer of driver
                   ELSE    ;       select alternate assembly branch
                     pshs      d         ; save d on stack
                     ldx       V$DRIV,x  ; get driver module
-                    ldd       M$EXEC,x  ; Point to entry point in driver
+                    ldd       M$EXEC,x  ; point to entry point in driver
                     leax      d,x       ; compute address d,x into x
                     puls      d         ; restore d from stack
                   ENDC    ;       end conditional assembly block
-                    pshs      y,u       ; Preserve registers
-                    jsr       f,x       ; Execute driver
-                    puls      y,u,pc    ; Restore & return
+                    pshs      y,u       ; preserve registers
+                    jsr       f,x       ; execute driver
+                    puls      y,u,pc    ; restore & return
                   ELSE    ;       select alternate assembly branch
 L01F8               ldb       #D$GSTA   ; load b from #D$GSTA
 L01FA               ldx       PD.DEV,y  ; load x from PD.DEV,y
@@ -567,30 +567,30 @@ LC486               jsr       b,x       ; call subroutine at b,x
 
 * I$SetStt entry point
 setstt              lbsr      L04A2     ; call distant local routine L04A2
-L0212               bsr       L021B     ; Check codes
-                    pshs      cc,b      ; Preserve registers
-                    lbsr      L0453     ; Wait for device
-                    puls      cc,b,pc   ; Restore & return
+L0212               bsr       L021B     ; check codes
+                    pshs      cc,b      ; preserve registers
+                    lbsr      L0453     ; wait for device
+                    puls      cc,b,pc   ; restore & return
 
-putkey              cmpa      #SS.Fill  ; Buffer preload?
-                    bne       L01FA     ; No, go execute driver setstat
+putkey              cmpa      #SS.Fill  ; buffer preload?
+                    bne       L01FA     ; no, go execute driver setstat
                     pshs      u,y,x     ; save u,y,x on stack
                   IFGT    Level-1 ; assemble following block when Level-1 is true
-                    ldx       <D.Proc   ; Get current process pointer
+                    ldx       <D.Proc   ; get current process pointer
                   ELSE    ;       select alternate assembly branch
-                    ldx       >D.Proc   ; Get current process pointer
+                    ldx       >D.Proc   ; get current process pointer
                   ENDC    ;       end conditional assembly block
-                    lda       R$Y,u     ; Get flag byte for CR/NO CR
-                    pshs      a         ; Save it
+                    lda       R$Y,u     ; get flag byte for CR/NO CR
+                    pshs      a         ; save it
                   IFGT    Level-1 ; assemble following block when Level-1 is true
-                    lda       P$Task,x  ; Get task number
-                    ldb       <D.SysTsk ; Get system task
+                    lda       P$Task,x  ; get task number
+                    ldb       <D.SysTsk ; get system task
                   IFNE    H6309   ; assemble following block when H6309 is true
-                    ldx       R$X,u     ; Get pointer to data to move
-                    ldf       R$Y+1,u   ; Get number of bytes (max size of 256 bytes)
-                    ldu       PD.BUF,y  ; Get input buffer pointer
-                    clre                ; High byte of Y
-                    tfr       w,y       ; Move size into proper register for F$Move
+                    ldx       R$X,u     ; get pointer to data to move
+                    ldf       R$Y+1,u   ; get number of bytes (max size of 256 bytes)
+                    ldu       PD.BUF,y  ; get input buffer pointer
+                    clre                ; high byte of Y
+                    tfr       w,y       ; move size into proper register for F$Move
                   ELSE    ;       select alternate assembly branch
                     pshs      d         ; save d on stack
                     clra                ; clear a and carry state for success/zero value
@@ -601,41 +601,41 @@ putkey              cmpa      #SS.Fill  ; Buffer preload?
                     puls      d         ; restore d from stack
                   ENDC    ;       end conditional assembly block
 * X=Source ptr from caller, Y=# bytes to move, U=Input buffer ptr
-                    os9       F$Move    ; Move it
-                    bcs       putkey1   ; Exit if error
-                    tfr       y,d       ; Move number of bytes to D
+                    os9       F$Move    ; move it
+                    bcs       putkey1   ; exit if error
+                    tfr       y,d       ; move number of bytes to D
                   ELSE    ;       select alternate assembly branch
 loop                lda       ,x+       ; load a from ,x+
                     sta       ,u+       ; store a into ,u+
                     leay      -1,y      ; compute address -1,y into y
                     bne       loop      ; branch if comparison was not equal to loop
                   ENDC    ;       end conditional assembly block
-                    lda       ,s        ; Get CR flag
-                    bmi       putkey1   ; Don't want CR appended, exit
-                    lda       #C$CR     ; Get code for carriage return
-                    sta       b,u       ; Put it in buffer to terminate string
-putkey1             puls      a,x,y,u,pc ; Eat stack & return
+                    lda       ,s        ; get CR flag
+                    bmi       putkey1   ; don't want CR appended, exit
+                    lda       #C$CR     ; get code for carriage return
+                    sta       b,u       ; put it in buffer to terminate string
+putkey1             puls      a,x,y,u,pc ; eat stack & return
 
                   IFNE    H6309   ; assemble following block when H6309 is true
-L021B               ldf       #D$PSTA   ; Get driver entry offset for setstat
+L021B               ldf       #D$PSTA   ; get driver entry offset for setstat
                   ELSE    ;       select alternate assembly branch
-L021B               ldb       #D$PSTA   ; Get driver entry offset for setstat
+L021B               ldb       #D$PSTA   ; get driver entry offset for setstat
                   ENDC    ;       end conditional assembly block
-                    lda       R$B,u     ; Get function code from caller
-                    bne       putkey    ; Not SS.OPT, go check buffer load
+                    lda       R$B,u     ; get function code from caller
+                    bne       putkey    ; not SS.OPT, go check buffer load
 * SS.OPT SETSTAT
-                    ldx       PD.PAU,y  ; Get current pause & page
+                    ldx       PD.PAU,y  ; get current pause & page
                   IFGT    Level-1 ; assemble following block when Level-1 is true
-                    pshs      y,x       ; Preserve Path pointer & pause/page
-                    ldx       <D.Proc   ; Get current process pointer
-                    lda       P$Task,x  ; Get task number
-                    ldb       <D.SysTsk ; Get system task number
-                    ldx       R$X,u     ; Get callers destination pointer
-                    leau      PD.OPT,y  ; Point to path options
-                    ldy       #OPTCNT   ; Get option length
-                    os9       F$Move    ; Move it to caller
-                    puls      y,x       ; Restore Path pointer & page/pause status
-                    bcs       L01F7     ; Return if error from move
+                    pshs      y,x       ; preserve Path pointer & pause/page
+                    ldx       <D.Proc   ; get current process pointer
+                    lda       P$Task,x  ; get task number
+                    ldb       <D.SysTsk ; get system task number
+                    ldx       R$X,u     ; get callers destination pointer
+                    leau      PD.OPT,y  ; point to path options
+                    ldy       #OPTCNT   ; get option length
+                    os9       F$Move    ; move it to caller
+                    puls      y,x       ; restore Path pointer & page/pause status
+                    bcs       L01F7     ; return if error from move
                   ELSE    ;       select alternate assembly branch
                     pshs      x,y       ; save x,y on stack
                     ldx       R$X,u     ; load x from R$X,u
@@ -650,67 +650,67 @@ optloop             lda       ,x+       ; load a from ,x+
                   IFEQ    H6309   ; assemble following block when H6309 is true
                     pshs      x         ; save x on stack
                   ENDC    ;       end conditional assembly block
-                    ldd       PD.PAU,y  ; Get new page/pause status
+                    ldd       PD.PAU,y  ; get new page/pause status
                   IFNE    H6309   ; assemble following block when H6309 is true
-                    cmpr      d,x       ; Same as old?
+                    cmpr      d,x       ; same as old?
                   ELSE    ;       select alternate assembly branch
                     cmpd      ,s++      ; compare d with ,s++
                   ENDC    ;       end conditional assembly block
-                    beq       L0250     ; Yes, go on
-                    ldu       PD.DEV,y  ; Get device table pointer
-                    ldu       V$STAT,u  ; Get static storage pointer
-                    beq       L0250     ; Go on if none
-                    stb       V.LINE,u  ; Update new line count
-L0250               ldx       PD.PAR,y  ; Get parity/baud
-                    lda       #SS.ComSt ; Get code for ComSt
-                    pshs      a,x       ; Preserve them
-                    bsr       L025B     ; Update parity & baud
-                    puls      a,x,pc    ; Restore & return
+                    beq       L0250     ; yes, go on
+                    ldu       PD.DEV,y  ; get device table pointer
+                    ldu       V$STAT,u  ; get static storage pointer
+                    beq       L0250     ; go on if none
+                    stb       V.LINE,u  ; update new line count
+L0250               ldx       PD.PAR,y  ; get parity/baud
+                    lda       #SS.ComSt ; get code for ComSt
+                    pshs      a,x       ; preserve them
+                    bsr       L025B     ; update parity & baud
+                    puls      a,x,pc    ; restore & return
 
 * Update path Parity & baud
-L025B               pshs      x,y,u     ; Preserve everything
-                    ldx       PD.RGS,y  ; Get callers register pointer
-                    ldu       R$Y,x     ; Get his Y
-                    lda       R$B,x     ; Get his B
-                    pshs      a,x,y,u   ; Preserve it all
-                    ldd       $10,s     ; Get current parity/baud
-                    std       R$Y,x     ; Put it in callers Y
-                    lda       $0F,s     ; Get function code
-                    sta       R$B,x     ; Put it in callers B
-                    lbsr      L04A7     ; Wait for device to be ready
-                    lbsr      L0212     ; Send it to driver
-                    puls      a,x,y,u   ; Restore callers registers
-                    stu       R$Y,x     ; Put back his Y
-                    sta       R$B,x     ; Put back his B
-                    bcc       L0282     ; Return if no error
-                    cmpb      #E$UnkSvc ; Unknown service request?
-                    beq       L0282     ; Yes, return
-                    coma                ; Set carry
-L0282               puls      x,y,u,pc  ; Restore & return
+L025B               pshs      x,y,u     ; preserve everything
+                    ldx       PD.RGS,y  ; get callers register pointer
+                    ldu       R$Y,x     ; get his Y
+                    lda       R$B,x     ; get his B
+                    pshs      a,x,y,u   ; preserve it all
+                    ldd       $10,s     ; get current parity/baud
+                    std       R$Y,x     ; put it in callers Y
+                    lda       $0F,s     ; get function code
+                    sta       R$B,x     ; put it in callers B
+                    lbsr      L04A7     ; wait for device to be ready
+                    lbsr      L0212     ; send it to driver
+                    puls      a,x,y,u   ; restore callers registers
+                    stu       R$Y,x     ; put back his Y
+                    sta       R$B,x     ; put back his B
+                    bcc       L0282     ; return if no error
+                    cmpb      #E$UnkSvc ; unknown service request?
+                    beq       L0282     ; yes, return
+                    coma                ; set carry
+L0282               puls      x,y,u,pc  ; restore & return
 
 * I$Read entry point
-read                lbsr      L04A2     ; Go wait for device to be ready for us
-                    bcc       L028A     ; No error, go on
-L0289               rts                 ; Return with error
+read                lbsr      L04A2     ; go wait for device to be ready for us
+                    bcc       L028A     ; no error, go on
+L0289               rts                 ; return with error
 
-L028A               inc       PD.RAW,y  ; Make sure we do Raw read
-                    ldx       R$Y,u     ; Get number of characters to read
-                    beq       L02DC     ; Return if zero
-                    pshs      x         ; Save character count
+L028A               inc       PD.RAW,y  ; make sure we do Raw read
+                    ldx       R$Y,u     ; get number of characters to read
+                    beq       L02DC     ; return if zero
+                    pshs      x         ; save character count
                     ldx       #0        ; load x from #0
-                    ldu       PD.BUF,y  ; Get buffer address
-                    bsr       L03E2     ; Read 1 character from device
-                    bcs       L02A4     ; Return if error
-                    tsta                ; Character read zero?
-                    beq       L02C4     ; Yes, go try again
-                    cmpa      PD.EOF,y  ; End of file character?
-                    bne       L02BC     ; No, keep checking
-L02A2               ldb       #E$EOF    ; Get EOF error code
-L02A4               leas      2,s       ; Purge stack
-                    pshs      b         ; Save error code
-                    bsr       L02D5     ; Return
-                    comb                ; Set carry
-                    puls      b,pc      ; Restore & return
+                    ldu       PD.BUF,y  ; get buffer address
+                    bsr       L03E2     ; read 1 character from device
+                    bcs       L02A4     ; return if error
+                    tsta                ; character read zero?
+                    beq       L02C4     ; yes, go try again
+                    cmpa      PD.EOF,y  ; end of file character?
+                    bne       L02BC     ; no, keep checking
+L02A2               ldb       #E$EOF    ; get EOF error code
+L02A4               leas      2,s       ; purge stack
+                    pshs      b         ; save error code
+                    bsr       L02D5     ; return
+                    comb                ; set carry
+                    puls      b,pc      ; restore & return
 
 ******************************
 *
@@ -720,20 +720,20 @@ L02A4               leas      2,s       ; Purge stack
 *        U = Callers register stack pointer
 *
 
-SCFEnt              lbra      open      ; Create path
-                    lbra      open      ; Open path
-                    lbra      bpnam     ; Makdir
-                    lbra      bpnam     ; Chgdir
-                    lbra      L0129     ; Delete (return no error)
-                    lbra      L0129     ; Seek (return no error)
-                    bra       read      ; Read character
+SCFEnt              lbra      open      ; create path
+                    lbra      open      ; open path
+                    lbra      bpnam     ; makdir
+                    lbra      bpnam     ; chgdir
+                    lbra      L0129     ; delete (return no error)
+                    lbra      L0129     ; seek (return no error)
+                    bra       read      ; read character
                     nop
-                    lbra      write     ; Write character
-                    lbra      readln    ; ReadLn
-                    lbra      writln    ; WriteLn
-                    lbra      getstt    ; Get Status
-                    lbra      setstt    ; Set Status
-                    lbra      close     ; Close path
+                    lbra      write     ; write character
+                    lbra      readln    ; readLn
+                    lbra      writln    ; writeLn
+                    lbra      getstt    ; get Status
+                    lbra      setstt    ; set Status
+                    lbra      close     ; close path
 
 * MAIN READ LOOP (no editing)
 L02AD               tfr       x,d       ; move character count to D
@@ -748,7 +748,7 @@ L02B7               bsr       L03E2     ; get a character from device
 L02BC               ldb       PD.EKO,y  ; echo turned on?
                     beq       L02C4     ; no, don't write it to device
                     lbsr      L0565     ; send it to device write
-L02C4               ldb       #1        ; Bump up char count
+L02C4               ldb       #1        ; bump up char count
                     abx                 ; add b to x for indexed byte advance
                     sta       ,u+       ; save character in local buffer
                     beq       L02CF     ; go try again if it was a null
@@ -764,76 +764,76 @@ L02D5               bsr       L042B     ; move local buffer to caller
 L02DC               bra       L0453     ; update path descriptor and return
 
 * Read character from device
-L03E2               pshs      u,y,x     ; Preserve regs
-                    ldx       PD.DEV,y  ; Get device table pointer for input
-                    beq       L0401     ; None, exit
-                    ldu       PD.DV2,y  ; Get device table pointer for echoed output
-                    beq       L03F1     ; No echoed output device, skip ahead
-L03EA               ldu       V$STAT,u  ; Get device static storage ptr for echo device
-                    ldb       PD.PAG,y  ; Get lines per page
-                    stb       V.LINE,u  ; Store it in device static
-L03F1               tfr       u,d       ; Yes, move echo device' static storage to D
-                    ldu       V$STAT,x  ; Get static storage ptr for input
-                    std       V.DEV2,u  ; Save echo device's static storage into input device
+L03E2               pshs      u,y,x     ; preserve regs
+                    ldx       PD.DEV,y  ; get device table pointer for input
+                    beq       L0401     ; none, exit
+                    ldu       PD.DV2,y  ; get device table pointer for echoed output
+                    beq       L03F1     ; no echoed output device, skip ahead
+L03EA               ldu       V$STAT,u  ; get device static storage ptr for echo device
+                    ldb       PD.PAG,y  ; get lines per page
+                    stb       V.LINE,u  ; store it in device static
+L03F1               tfr       u,d       ; yes, move echo device' static storage to D
+                    ldu       V$STAT,x  ; get static storage ptr for input
+                    std       V.DEV2,u  ; save echo device's static storage into input device
                     clra                ; clear a and carry state for success/zero value
-                    sta       V.WAKE,u  ; Flag input device to be awake
+                    sta       V.WAKE,u  ; flag input device to be awake
                   IFGT    Level-1 ; assemble following block when Level-1 is true
-                    ldx       V$DRIVEX,x ; Get driver execution pointer
+                    ldx       V$DRIVEX,x ; get driver execution pointer
                   ELSE    ;       select alternate assembly branch
                     pshs      d         ; save d on stack
                     ldx       V$DRIV,x  ; get driver module
-                    ldd       M$EXEC,x  ; Get driver execution pointer
+                    ldd       M$EXEC,x  ; get driver execution pointer
                     leax      d,x       ; compute address d,x into x
                     puls      d         ; restore d from stack
                   ENDC    ;       end conditional assembly block
-                    jsr       D$READ,x  ; Execute READ routine in driver
-L0401               puls      pc,u,y,x  ; Restore regs & return
+                    jsr       D$READ,x  ; execute READ routine in driver
+L0401               puls      pc,u,y,x  ; restore regs & return
 
 * Move buffer to caller
 * Entry: Y=Path dsc. ptr
 *        X=# chars to move
-L042B               pshs      y,x       ; Preserve path dsc. ptr & char. count
-                    ldd       ,s        ; Get # bytes to move
-                    beq       L0451     ; Exit if none
-                    tstb                ; Uneven # bytes (not even page of 256)?
-                    bne       L0435     ; Yes, go on
+L042B               pshs      y,x       ; preserve path dsc. ptr & char. count
+                    ldd       ,s        ; get # bytes to move
+                    beq       L0451     ; exit if none
+                    tstb                ; uneven # bytes (not even page of 256)?
+                    bne       L0435     ; yes, go on
                     deca                ; >256, so bump MSB down
-L0435               clrb                ; Force to even page
-                    ldu       PD.RGS,y  ; Get callers register stack pointer
-                    ldu       R$X,u     ; Get ptr to caller's buffer
+L0435               clrb                ; force to even page
+                    ldu       PD.RGS,y  ; get callers register stack pointer
+                    ldu       R$X,u     ; get ptr to caller's buffer
                   IFNE    H6309   ; assemble following block when H6309 is true
-                    addr      d,u       ; Offset to even page into buffer
-                    clre                ; Clear MSB of count
-                    ldf       1,s       ; LSB of count on even page?
-                    bne       L0442     ; No, go on
-                    ince                ; Make it even 256
+                    addr      d,u       ; offset to even page into buffer
+                    clre                ; clear MSB of count
+                    ldf       1,s       ; lSB of count on even page?
+                    bne       L0442     ; no, go on
+                    ince                ; make it even 256
 L0442
                   IFGT    Level-1 ; assemble following block when Level-1 is true
-                    lda       <D.SysTsk ; Get source task number
+                    lda       <D.SysTsk ; get source task number
                   ENDC    ;       end conditional assembly block
                   ELSE    ;       select alternate assembly branch
                     leau      d,u       ; compute address d,u into u
                     clra                ; clear a and carry state for success/zero value
                     ldb       1,s       ; load b from 1,s
-                    bne       L0442     ; No, go on
+                    bne       L0442     ; no, go on
                     inca                ; advance a counter
 L0442               pshs      d         ; save d on stack
                   IFGT    Level-1 ; assemble following block when Level-1 is true
-                    lda       <D.SysTsk ; Get source task number
+                    lda       <D.SysTsk ; get source task number
                   ENDC    ;       end conditional assembly block
                   ENDC    ;       end conditional assembly block
                   IFGT    Level-1 ; assemble following block when Level-1 is true
-                    ldx       <D.Proc   ; Get destination task number
+                    ldx       <D.Proc   ; get destination task number
                     ldb       P$Task,x  ; load b from P$Task,x
-                    ldx       PD.BUF,y  ; Get buffer pointer
+                    ldx       PD.BUF,y  ; get buffer pointer
                   IFNE    H6309   ; assemble following block when H6309 is true
-                    tfr       w,y       ; Put count into proper register
+                    tfr       w,y       ; put count into proper register
                   ELSE    ;       select alternate assembly branch
                     puls      y         ; restore y from stack
                   ENDC    ;       end conditional assembly block
-                    os9       F$Move    ; Move it to caller
+                    os9       F$Move    ; move it to caller
                   ELSE    ;       select alternate assembly branch
-                    ldx       PD.BUF,y  ; Get buffer pointer
+                    ldx       PD.BUF,y  ; get buffer pointer
                   IFEQ    H6309   ; assemble following block when H6309 is true
                     puls      y         ; restore y from stack
                   ELSE    ;       select alternate assembly branch
@@ -846,184 +846,184 @@ L0443               lda       ,x+       ; load a from ,x+
                     bne       L0443     ; branch if comparison was not equal to L0443
                     puls      u         ; restore u from stack
                   ENDC    ;       end conditional assembly block
-L0451               puls      pc,y,x    ; Restore & return
+L0451               puls      pc,y,x    ; restore & return
 
 * I$ReadLn entry point
-readln              bsr       L04A2     ; Go wait for device to be ready for us
-                    bcc       L02E5     ; No error, continue
-                    rts                 ; Error, exit with it
+readln              bsr       L04A2     ; go wait for device to be ready for us
+                    bcc       L02E5     ; no error, continue
+                    rts                 ; error, exit with it
 
-L02E5               ldd       R$Y,u     ; Get character count
-                    beq       L0453     ; If none, mark device as un-busy
-                    tsta                ; Past 256 bytes?
-                    beq       L02EF     ; No, go on
-                    ldd       #$0100    ; Get new character count
-L02EF               pshs      d         ; Save character count
-                    ldd       #$FFFF    ; Get maximum character count
-                    std       PD.MAX,y  ; Store it in path descriptor
-                    ldx       #0        ; Set character count so far to 0
-                    ldu       PD.BUF,y  ; Get buffer ptr
-                    lbra      L05F8     ; Go process readln
+L02E5               ldd       R$Y,u     ; get character count
+                    beq       L0453     ; if none, mark device as un-busy
+                    tsta                ; past 256 bytes?
+                    beq       L02EF     ; no, go on
+                    ldd       #$0100    ; get new character count
+L02EF               pshs      d         ; save character count
+                    ldd       #$FFFF    ; get maximum character count
+                    std       PD.MAX,y  ; store it in path descriptor
+                    ldx       #0        ; set character count so far to 0
+                    ldu       PD.BUF,y  ; get buffer ptr
+                    lbra      L05F8     ; go process readln
 
 * Wait for device - Clears out V.BUSY if either Default or output devices are
 * no longer busy
 * Modifies X and A
 L0453
                   IFGT    Level-1 ; assemble following block when Level-1 is true
-                    ldx       <D.Proc   ; Get current process
+                    ldx       <D.Proc   ; get current process
                   ELSE    ;       select alternate assembly branch
-                    ldx       >D.Proc   ; Get current process
+                    ldx       >D.Proc   ; get current process
                   ENDC    ;       end conditional assembly block
-                    lda       P$ID,x    ; Get it's process ID
-                    ldx       PD.DEV,y  ; Get device table pointer from our path dsc.
-                    bsr       L045D     ; Check if it's busy
-                    ldx       PD.DV2,y  ; Get output device table pointer
-L045D               beq       L0467     ; Doesn't exist, exit
-                    ldx       V$STAT,x  ; Get static storage pointer for our device
-                    cmpa      V.BUSY,x  ; Same process as current process?
-                    bne       L0467     ; No, device busy return
+                    lda       P$ID,x    ; get it's process ID
+                    ldx       PD.DEV,y  ; get device table pointer from our path dsc.
+                    bsr       L045D     ; check if it's busy
+                    ldx       PD.DV2,y  ; get output device table pointer
+L045D               beq       L0467     ; doesn't exist, exit
+                    ldx       V$STAT,x  ; get static storage pointer for our device
+                    cmpa      V.BUSY,x  ; same process as current process?
+                    bne       L0467     ; no, device busy return
                     clra                ; clear a and carry state for success/zero value
-                    sta       V.BUSY,x  ; Yes, mark device as free for use
-L0467               rts                 ; Return
+                    sta       V.BUSY,x  ; yes, mark device as free for use
+L0467               rts                 ; return
 
-L0468               pshs      x,a       ; Preserve device table entry pointer & process ID
-L046A               ldx       V$STAT,x  ; Get device static storage address
-                    ldb       V.BUSY,x  ; Get active process ID
-                    beq       L048A     ; No active process, device not busy go reserve it
-                    cmpb      ,s        ; Is it our own process?
-                    beq       L049F     ; Yes, return without error
-                    bsr       L0453     ; Go wait for device to no longer be busy
-                    tfr       b,a       ; Get process # busy using device
-                    os9       F$IOQu    ; Put our process into the IO Queue
-                    inc       PD.MIN,y  ; Mark device as not mine
+L0468               pshs      x,a       ; preserve device table entry pointer & process ID
+L046A               ldx       V$STAT,x  ; get device static storage address
+                    ldb       V.BUSY,x  ; get active process ID
+                    beq       L048A     ; no active process, device not busy go reserve it
+                    cmpb      ,s        ; is it our own process?
+                    beq       L049F     ; yes, return without error
+                    bsr       L0453     ; go wait for device to no longer be busy
+                    tfr       b,a       ; get process # busy using device
+                    os9       F$IOQu    ; put our process into the IO Queue
+                    inc       PD.MIN,y  ; mark device as not mine
                   IFGT    Level-1 ; assemble following block when Level-1 is true
-                    ldx       <D.Proc   ; Get current process
+                    ldx       <D.Proc   ; get current process
                   ELSE    ;       select alternate assembly branch
-                    ldx       >D.Proc   ; Get current process
+                    ldx       >D.Proc   ; get current process
                   ENDC    ;       end conditional assembly block
-                    ldb       P$Signal,x ; Get signal code
-                    lda       ,s        ; Get our process id # again for L046A
-                    beq       L046A     ; No signal go try again
-                    coma                ; Set carry
-                    puls      x,a,pc    ; Restore device table ptr (eat a) & return
+                    ldb       P$Signal,x ; get signal code
+                    lda       ,s        ; get our process id # again for L046A
+                    beq       L046A     ; no signal go try again
+                    coma                ; set carry
+                    puls      x,a,pc    ; restore device table ptr (eat a) & return
 
 * Mark device as busy;copy pause/interrupt/quit/xon/xoff chars into static mem
-L048A               sta       V.BUSY,x  ; Make it as process # busy on this device
-                    sta       V.LPRC,x  ; Save it as the last process to use device
-                    lda       PD.PSC,y  ; Get pause character from path dsc.
-                    sta       V.PCHR,x  ; Save copy in static storage (faster later)
-                    ldd       PD.INT,y  ; Get keyboard interrupt & quit chars
-                    std       V.INTR,x  ; Save copies in static mem
-                    ldd       PD.XON,y  ; Get XON/XOFF chars
-                    std       V.XON,x   ; Save them in static mem too
-L049F               clra                ; No error & return
-                    puls      pc,x,a    ; Restore A=Process #,X=Dev table entry ptr
+L048A               sta       V.BUSY,x  ; make it as process # busy on this device
+                    sta       V.LPRC,x  ; save it as the last process to use device
+                    lda       PD.PSC,y  ; get pause character from path dsc.
+                    sta       V.PCHR,x  ; save copy in static storage (faster later)
+                    ldd       PD.INT,y  ; get keyboard interrupt & quit chars
+                    std       V.INTR,x  ; save copies in static mem
+                    ldd       PD.XON,y  ; get XON/XOFF chars
+                    std       V.XON,x   ; save them in static mem too
+L049F               clra                ; no error & return
+                    puls      pc,x,a    ; restore A=Process #,X=Dev table entry ptr
 
 * Wait for device?
-L04A2               lda       PD.PST,y  ; Get path status (carrier)
-                    bne       L04C4     ; If carrier was lost, hang up process
+L04A2               lda       PD.PST,y  ; get path status (carrier)
+                    bne       L04C4     ; if carrier was lost, hang up process
 L04A7
                   IFGT    Level-1 ; assemble following block when Level-1 is true
-                    ldx       <D.Proc   ; Get current process ID
+                    ldx       <D.Proc   ; get current process ID
                   ELSE    ;       select alternate assembly branch
-                    ldx       >D.Proc   ; Get current process ID
+                    ldx       >D.Proc   ; get current process ID
                   ENDC    ;       end conditional assembly block
                     clra                ; clear a and carry state for success/zero value
-                    sta       PD.MIN,y  ; Flag device is mine
-                    lda       P$ID,x    ; Get process ID #
-                    ldx       PD.DEV,y  ; Get device table pointer
-                    bsr       L0468     ; Busy?
-                    bcs       L04C1     ; No, return
-                    ldx       PD.DV2,y  ; Get output device table pointer
-                    beq       L04BB     ; Go on if it doesn't exist
-                    bsr       L0468     ; Busy?
-                    bcs       L04C1     ; No, return
-L04BB               lda       PD.MIN,y  ; Device mine?
-                    bne       L04A2     ; No, go wait for it
-                    sta       PD.RAW,y  ; Mark device with editing
-L04C1               ldu       PD.RGS,y  ; Get register stack pointer
-                    rts                 ; Return
+                    sta       PD.MIN,y  ; flag device is mine
+                    lda       P$ID,x    ; get process ID #
+                    ldx       PD.DEV,y  ; get device table pointer
+                    bsr       L0468     ; busy?
+                    bcs       L04C1     ; no, return
+                    ldx       PD.DV2,y  ; get output device table pointer
+                    beq       L04BB     ; go on if it doesn't exist
+                    bsr       L0468     ; busy?
+                    bcs       L04C1     ; no, return
+L04BB               lda       PD.MIN,y  ; device mine?
+                    bne       L04A2     ; no, go wait for it
+                    sta       PD.RAW,y  ; mark device with editing
+L04C1               ldu       PD.RGS,y  ; get register stack pointer
+                    rts                 ; return
 
 * Hangup process
-L04C4               leas      2,s       ; Purge return address
-L04C6               ldb       #E$HangUp ; Get hangup error code
-                    cmpa      #S$Abort  ; Termination signal (or carrier lost)?
-                    blo       L04D3     ; Yes, increment status flag & return
-                    lda       PD.CPR,y  ; Get current process ID # using path
-                    ldb       #S$Kill   ; Get kill signal
-                    os9       F$Send    ; Send it to process
-L04D3               inc       PD.PST,y  ; Set path status
-                    orcc      #Carry    ; Set carry
-                    rts                 ; Return
+L04C4               leas      2,s       ; purge return address
+L04C6               ldb       #E$HangUp ; get hangup error code
+                    cmpa      #S$Abort  ; termination signal (or carrier lost)?
+                    blo       L04D3     ; yes, increment status flag & return
+                    lda       PD.CPR,y  ; get current process ID # using path
+                    ldb       #S$Kill   ; get kill signal
+                    os9       F$Send    ; send it to process
+L04D3               inc       PD.PST,y  ; set path status
+                    orcc      #Carry    ; set carry
+                    rts                 ; return
 
 * I$WritLn entry point
-writln              bsr       L04A2     ; Go wait for device to be ready for us
-                    bra       L04E1     ; Go write
+writln              bsr       L04A2     ; go wait for device to be ready for us
+                    bra       L04E1     ; go write
 
 * I$Write entry point
-write               bsr       L04A2     ; Go wait for device to be ready for us
-                    inc       PD.RAW,y  ; Mark device for raw write
-L04E1               ldx       R$Y,u     ; Get number of characters to write
-                    lbeq      L055A     ; Zero so return
-                    pshs      x         ; Save character count
-                    ldx       #$0000    ; Get write data offset
-                    bra       L04F1     ; Go write data
+write               bsr       L04A2     ; go wait for device to be ready for us
+                    inc       PD.RAW,y  ; mark device for raw write
+L04E1               ldx       R$Y,u     ; get number of characters to write
+                    lbeq      L055A     ; zero so return
+                    pshs      x         ; save character count
+                    ldx       #$0000    ; get write data offset
+                    bra       L04F1     ; go write data
 
-L04EC               tfr       u,d       ; Move current position in PD.BUF to D
-                    tstb                ; At 256 (end of PD.BUF)?
-                    bne       L0523     ; No, keep writing from current PD.BUF
+L04EC               tfr       u,d       ; move current position in PD.BUF to D
+                    tstb                ; at 256 (end of PD.BUF)?
+                    bne       L0523     ; no, keep writing from current PD.BUF
 
 * Get new block of data to write into [PD.BUF]
 * Only allows up to 32 bytes at a time, and puts them in the last 32 bytes of
 * the 256 byte [PD.BUF] buffer. This way, can use TFR U,D/TSTB to see if fin-
 * ished.
 * NOTE: 32 bytes max for 6809, to keep "lockout" of grfdrv down to less CPU time
-L04F1               pshs      y,x       ; Save write offset & path descriptor pointer
-                    tfr       x,d       ; Move data offset to D
-                    ldu       PD.RGS,y  ; Get register stack pointer
-                    ldx       R$X,u     ; Get pointer to user's WRITE string
+L04F1               pshs      y,x       ; save write offset & path descriptor pointer
+                    tfr       x,d       ; move data offset to D
+                    ldu       PD.RGS,y  ; get register stack pointer
+                    ldx       R$X,u     ; get pointer to user's WRITE string
                   IFNE    H6309   ; assemble following block when H6309 is true
-                    addr      d,x       ; Point to where we are in it now
-                    ldw       R$Y,u     ; Get # chars of original write
-                    subr      d,w       ; Calculate # chars we have left to write
-                    cmpw      #64       ; More than 64?
-                    bls       L0508     ; No, go on
-                    ldw       #64       ; Max size per chunk 6309=64
-L0508               ldd       PD.BUF,y  ; Get buffer ptr
-                    inca                ; Point to PD.BUF+256 (1 byte past end
-                    subr      w,d       ; Subtract data size
+                    addr      d,x       ; point to where we are in it now
+                    ldw       R$Y,u     ; get # chars of original write
+                    subr      d,w       ; calculate # chars we have left to write
+                    cmpw      #64       ; more than 64?
+                    bls       L0508     ; no, go on
+                    ldw       #64       ; max size per chunk 6309=64
+L0508               ldd       PD.BUF,y  ; get buffer ptr
+                    inca                ; point to PD.BUF+256 (1 byte past end
+                    subr      w,d       ; subtract data size
                   ELSE    ;       select alternate assembly branch
-                    leax      d,x       ; Point to where we are in it now
-                    ldd       R$Y,u     ; Get # chars of original write
-                    subd      ,s        ; Calculate # chars we have left to write
-                    cmpd      #32       ; More than 32?
-                    bls       L0508     ; No, go on
-                    ldd       #32       ; Max size per chunk 6809=32
-L0508               pshs      d         ; Save buffered chunk size on stack
-                    ldd       PD.BUF,y  ; Get buffer ptr
-                    inca                ; Point to PD.BUF+256 (1 byte past end)
-                    subd      ,s        ; Subtract data size
+                    leax      d,x       ; point to where we are in it now
+                    ldd       R$Y,u     ; get # chars of original write
+                    subd      ,s        ; calculate # chars we have left to write
+                    cmpd      #32       ; more than 32?
+                    bls       L0508     ; no, go on
+                    ldd       #32       ; max size per chunk 6809=32
+L0508               pshs      d         ; save buffered chunk size on stack
+                    ldd       PD.BUF,y  ; get buffer ptr
+                    inca                ; point to PD.BUF+256 (1 byte past end)
+                    subd      ,s        ; subtract data size
                   ENDC    ;       end conditional assembly block
-                    tfr       d,u       ; Move it to U
-                    lda       #C$CR     ; Put a carriage return 1 byte before start
+                    tfr       d,u       ; move it to U
+                    lda       #C$CR     ; put a carriage return 1 byte before start
                     sta       -1,u      ; of write portion of buffer
                   IFGT    Level-1 ; assemble following block when Level-1 is true
-                    ldy       <D.Proc   ; Get current process pointer
-                    lda       P$Task,y  ; Get the task number
-                    ldb       <D.SysTsk ; Get system task number
+                    ldy       <D.Proc   ; get current process pointer
+                    lda       P$Task,y  ; get the task number
+                    ldb       <D.SysTsk ; get system task number
                   IFNE    H6309   ; assemble following block when H6309 is true
-                    tfr       w,y       ; Get number of bytes to move
+                    tfr       w,y       ; get number of bytes to move
                   ELSE    ;       select alternate assembly branch
                     puls      y         ; restore y from stack
                   ENDC    ;       end conditional assembly block
-                    os9       F$Move    ; Move data to buffer
+                    os9       F$Move    ; move data to buffer
                   ELSE    ;       select alternate assembly branch
                   IFNE    H6309   ; assemble following block when H6309 is true
-                    pshs      u         ; Move data to buffer (level 1)
+                    pshs      u         ; move data to buffer (level 1)
                     tfm       x+,u+     ; transfer memory block x+,u+
                     puls      u         ; restore u from stack
                   ELSE    ;       select alternate assembly branch
-                    puls      y         ; Move data to buffer (level 1)
+                    puls      y         ; move data to buffer (level 1)
                     pshs      u         ; save u on stack
 L0509               lda       ,x+       ; load a from ,x+
                     sta       ,u+       ; store a into ,u+
@@ -1032,7 +1032,7 @@ L0509               lda       ,x+       ; load a from ,x+
                     puls      u         ; restore u from stack
                   ENDC    ;       end conditional assembly block
                   ENDC    ;       end conditional assembly block
-                    puls      y,x       ; Restore path descriptor pointer and data offset
+                    puls      y,x       ; restore path descriptor pointer and data offset
 
 * at this point, we have
 * 0,s = end address of characters to write
@@ -1085,141 +1085,141 @@ g.done              leas      1,s       ; kill max. count of characters to use
 
 no.wptr             puls      b,x,y,u   ; restore all registers
                   ENDC    ;       end conditional assembly block
-L0524               lda       ,u+       ; Get character to write
-                    ldb       PD.RAW,y  ; Raw mode?
-                    bne       L053D     ; Yes, go write it
-                    ldb       PD.UPC,y  ; Force uppercase?
-                    beq       L052A     ; No, continue
-                    bsr       L0403     ; Make it uppercase
-L052A               cmpa      #C$LF     ; Is it a Line feed?
-                    bne       L053D     ; No, go print it
-                    lda       #C$CR     ; Get code for carriage return
-                    ldb       PD.ALF,y  ; Auto Line feed?
-                    bne       L053D     ; Yes, go print carriage return first
-                    bsr       L0573     ; Print carriage return
-                    bcs       L055D     ; If error, go wait for device
-                    lda       #C$LF     ; Now, print the line feed
+L0524               lda       ,u+       ; get character to write
+                    ldb       PD.RAW,y  ; raw mode?
+                    bne       L053D     ; yes, go write it
+                    ldb       PD.UPC,y  ; force uppercase?
+                    beq       L052A     ; no, continue
+                    bsr       L0403     ; make it uppercase
+L052A               cmpa      #C$LF     ; is it a Line feed?
+                    bne       L053D     ; no, go print it
+                    lda       #C$CR     ; get code for carriage return
+                    ldb       PD.ALF,y  ; auto Line feed?
+                    bne       L053D     ; yes, go print carriage return first
+                    bsr       L0573     ; print carriage return
+                    bcs       L055D     ; if error, go wait for device
+                    lda       #C$LF     ; now, print the line feed
 
 * Write character to device (call driver)
-L053D               bsr       L0573     ; Go write it to device
-                    bcs       L055D     ; If error, go wait for device
-                    ldb       #1        ; Bump up # chars we have written
+L053D               bsr       L0573     ; go write it to device
+                    bcs       L055D     ; if error, go wait for device
+                    ldb       #1        ; bump up # chars we have written
                     abx                 ; add b to x for indexed byte advance
-L0544               cmpx      ,s        ; Done whole WRITE call?
-                    bhs       L0554     ; Yes, go save # chars written & exit
-                    ldb       PD.RAW,y  ; Raw mode?
-                    lbne      L04EC     ; Yes, keep writing
-                    lda       -1,u      ; Get the char we wrote
-                    lbeq      L04EC     ; NUL, keep writing
-                    cmpa      PD.EOR,y  ; End of record?
-                    lbne      L04EC     ; No, keep writing
-L0554               leas      2,s       ; Eof record, stop & Eat end of buffer ptr???
-L0556               ldu       PD.RGS,y  ; Get callers register pointer
-                    stx       R$Y,u     ; Save character count to callers Y
-L055A               lbra      L0453     ; Mark device write clear and return
+L0544               cmpx      ,s        ; done whole WRITE call?
+                    bhs       L0554     ; yes, go save # chars written & exit
+                    ldb       PD.RAW,y  ; raw mode?
+                    lbne      L04EC     ; yes, keep writing
+                    lda       -1,u      ; get the char we wrote
+                    lbeq      L04EC     ; nUL, keep writing
+                    cmpa      PD.EOR,y  ; end of record?
+                    lbne      L04EC     ; no, keep writing
+L0554               leas      2,s       ; eof record, stop & Eat end of buffer ptr???
+L0556               ldu       PD.RGS,y  ; get callers register pointer
+                    stx       R$Y,u     ; save character count to callers Y
+L055A               lbra      L0453     ; mark device write clear and return
 
 * Check for forced uppercase
-L0403               cmpa      #'a       ; Less then 'a'?
-                    blo       L0412     ; Yes, leave it
-                    cmpa      #'z       ; Higher than 'z'?
-                    bhi       L0412     ; Yes, leave it
-                    suba      #$20      ; Make it uppercase
-L0412               rts                 ; Return
+L0403               cmpa      #'a       ; less then 'a'?
+                    blo       L0412     ; yes, leave it
+                    cmpa      #'z       ; higher than 'z'?
+                    bhi       L0412     ; yes, leave it
+                    suba      #$20      ; make it uppercase
+L0412               rts                 ; return
 
-L055D               leas      2,s       ; Purge stack
-                    pshs      b,cc      ; Preserve registers
-                    bsr       L0556     ; Wait for device
-                    puls      pc,b,cc   ; Restore & return
+L055D               leas      2,s       ; purge stack
+                    pshs      b,cc      ; preserve registers
+                    bsr       L0556     ; wait for device
+                    puls      pc,b,cc   ; restore & return
 
 * Check for end of page (part of send char to driver)
-L0573               pshs      u,y,x,a   ; Preserve registers
-                    ldx       PD.DEV,y  ; Get device table pointer
-                    cmpa      #C$CR     ; Carriage return?
-                    bne       L056F     ; No, go print it
-                    ldu       V$STAT,x  ; Get pointer to device stactic storage
-                    ldb       V.PAUS,u  ; Pause request?
-                    bne       L0590     ; Yes, go pause device
-                    ldb       PD.RAW,y  ; Raw output mode?
-                    bne       L05A2     ; Yes, go on
-                    ldb       PD.PAU,y  ; End of page pause enabled?
-                    beq       L05A2     ; No, go on
-                    dec       V.LINE,u  ; Subtract a line
-                    bne       L05A2     ; Not done, go on
+L0573               pshs      u,y,x,a   ; preserve registers
+                    ldx       PD.DEV,y  ; get device table pointer
+                    cmpa      #C$CR     ; carriage return?
+                    bne       L056F     ; no, go print it
+                    ldu       V$STAT,x  ; get pointer to device stactic storage
+                    ldb       V.PAUS,u  ; pause request?
+                    bne       L0590     ; yes, go pause device
+                    ldb       PD.RAW,y  ; raw output mode?
+                    bne       L05A2     ; yes, go on
+                    ldb       PD.PAU,y  ; end of page pause enabled?
+                    beq       L05A2     ; no, go on
+                    dec       V.LINE,u  ; subtract a line
+                    bne       L05A2     ; not done, go on
                     ldb       #$ff      ; do a immediate pause request
                     stb       V.PAUS,u  ; store b into V.PAUS,u
-                    bra       L059A     ; Go read next character
+                    bra       L059A     ; go read next character
 
-L03DA               pshs      u,y,x     ; Preserve registers
-                    ldx       PD.DV2,y  ; Get output device table pointer
-                    beq       NoOut     ; None, exit
-                    ldu       PD.DEV,y  ; Get device table pointer
-                    lbra      L03EA     ; Process & return
+L03DA               pshs      u,y,x     ; preserve registers
+                    ldx       PD.DV2,y  ; get output device table pointer
+                    beq       NoOut     ; none, exit
+                    ldu       PD.DEV,y  ; get device table pointer
+                    lbra      L03EA     ; process & return
 
-NoOut               puls      pc,u,y,x  ; No output device so exit
+NoOut               puls      pc,u,y,x  ; no output device so exit
 
 * Wait for pause release
-L0590               bsr       L03DA     ; Read next character
-                    bcs       L059A     ; Error, try again
-                    cmpa      PD.PSC,y  ; Pause char?
-                    bne       L0590     ; No, try again
-L059A               bsr       L03DA     ; Reset line count and read a character
-                    cmpa      PD.PSC,y  ; Pause character?
-                    beq       L059A     ; Yes, go read again
+L0590               bsr       L03DA     ; read next character
+                    bcs       L059A     ; error, try again
+                    cmpa      PD.PSC,y  ; pause char?
+                    bne       L0590     ; no, try again
+L059A               bsr       L03DA     ; reset line count and read a character
+                    cmpa      PD.PSC,y  ; pause character?
+                    beq       L059A     ; yes, go read again
 * Process Carriage return - do auto linefeed & Null's if necessary
 * Entry: A=CHR$($0D)
-L05A2               ldu       V$STAT,x  ; Get static storage pointer
+L05A2               ldu       V$STAT,x  ; get static storage pointer
                     clra                ; clear a and carry state for success/zero value
-                    sta       V.PAUS,u  ; Clear pause request
-                    lda       #C$CR     ; Carriage return (in cases from pause)
-                    bsr       L05C9     ; Send it to driver
-                    lda       PD.RAW,y  ; Raw mode?
-                    bne       L05C7     ; Yes, return
-                    ldb       PD.NUL,y  ; Get end of line null count
-                    pshs      b         ; Save it
-                    lda       PD.ALF,y  ; Auto line feed enabled?
-                    beq       L05BE     ; No, go on
-                    lda       #C$LF     ; Get line feed code
-L05BA               bsr       L05C9     ; Execute driver write routine
-                    bcs       L05C5     ; Error, purge stack and return
-L05BE               clra                ; Get null character
-                    dec       ,s        ; Done null count?
-                    bpl       L05BA     ; No, go send it to driver
-                    clra                ; Clear carry
-L05C5               leas      1,s       ; Purge stack
-L05C7               puls      pc,u,y,x,a ; Restore & return
+                    sta       V.PAUS,u  ; clear pause request
+                    lda       #C$CR     ; carriage return (in cases from pause)
+                    bsr       L05C9     ; send it to driver
+                    lda       PD.RAW,y  ; raw mode?
+                    bne       L05C7     ; yes, return
+                    ldb       PD.NUL,y  ; get end of line null count
+                    pshs      b         ; save it
+                    lda       PD.ALF,y  ; auto line feed enabled?
+                    beq       L05BE     ; no, go on
+                    lda       #C$LF     ; get line feed code
+L05BA               bsr       L05C9     ; execute driver write routine
+                    bcs       L05C5     ; error, purge stack and return
+L05BE               clra                ; get null character
+                    dec       ,s        ; done null count?
+                    bpl       L05BA     ; no, go send it to driver
+                    clra                ; clear carry
+L05C5               leas      1,s       ; purge stack
+L05C7               puls      pc,u,y,x,a ; restore & return
 
 * Execute device driver write routine
 * Entry: A=Character to write
 * Execute device driver
 * Entry: W=Entry offset (for type of function, ex. Write, Read)
 *        A=Code to send to driver
-L05C9               ldu       V$STAT,x  ; Get device static storage pointer
-                    pshs      y,x       ; Preserve registers
+L05C9               ldu       V$STAT,x  ; get device static storage pointer
+                    pshs      y,x       ; preserve registers
                     clrb                ; clear b and carry state for success/zero value
-                    stb       V.WAKE,u  ; Wake it up
+                    stb       V.WAKE,u  ; wake it up
                   IFGT    Level-1 ; assemble following block when Level-1 is true
-                    ldx       V$DRIVEX,x ; Get driver execution pointer
+                    ldx       V$DRIVEX,x ; get driver execution pointer
                   ELSE    ;       select alternate assembly branch
                     pshs      d         ; save d on stack
-                    ldx       V$DRIV,x  ; Get driver execution pointer
+                    ldx       V$DRIV,x  ; get driver execution pointer
                     ldd       M$EXEC,x  ; load d from M$EXEC,x
                     leax      d,x       ; compute address d,x into x
                     puls      d         ; restore d from stack
                   ENDC    ;       end conditional assembly block
-                    jsr       D$WRIT,x  ; Execute driver
-                    puls      pc,y,x    ; Restore & return
+                    jsr       D$WRIT,x  ; execute driver
+                    puls      pc,y,x    ; restore & return
 
 * Send character to driver
-L0565               pshs      u,y,x,a   ; Preserve registers
-                    ldx       PD.DV2,y  ; Get output device table pointer
-                    beq       L0571     ; Return if none
-                    cmpa      #C$CR     ; Carriage return?
-                    beq       L05A2     ; Yes, go process it
-L056F               ldu       V$STAT,x  ; Get device static storage pointer
+L0565               pshs      u,y,x,a   ; preserve registers
+                    ldx       PD.DV2,y  ; get output device table pointer
+                    beq       L0571     ; return if none
+                    cmpa      #C$CR     ; carriage return?
+                    beq       L05A2     ; yes, go process it
+L056F               ldu       V$STAT,x  ; get device static storage pointer
                     clrb                ; clear b and carry state for success/zero value
-                    stb       V.WAKE,u  ; Wake it up
+                    stb       V.WAKE,u  ; wake it up
                   IFGT    Level-1 ; assemble following block when Level-1 is true
-                    ldx       V$DRIVEX,x ; Get driver execution pointer
+                    ldx       V$DRIVEX,x ; get driver execution pointer
                   ELSE    ;       select alternate assembly branch
                     pshs      d         ; save d on stack
                     ldx       V$DRIV,x  ; get driver module
@@ -1227,24 +1227,24 @@ L056F               ldu       V$STAT,x  ; Get device static storage pointer
                     leax      d,x       ; compute address d,x into x
                     puls      d         ; restore d from stack
                   ENDC    ;       end conditional assembly block
-                    jsr       D$WRIT,x  ; Execute driver
-L0571               puls      pc,u,y,x,a ; Restore & return
+                    jsr       D$WRIT,x  ; execute driver
+L0571               puls      pc,u,y,x,a ; restore & return
 
 
 * Check for printable character (Entry: A=char to echo)
-L0413               ldb       PD.EKO,y  ; Echo turned on?
-                    bne       L0418     ; Yes, go do
-                    rts                 ; No, just return
+L0413               ldb       PD.EKO,y  ; echo turned on?
+                    bne       L0418     ; yes, go do
+                    rts                 ; no, just return
 
-L0418               cmpa      #C$SPAC   ; CHR$(32) or higher?
-                    bhs       L0565     ; Yes, go send to driver
-                    cmpa      #C$CR     ; Ctrl char
-                    beq       L0565     ; Yes, send it to the driver
+L0418               cmpa      #C$SPAC   ; cHR$(32) or higher?
+                    bhs       L0565     ; yes, go send to driver
+                    cmpa      #C$CR     ; ctrl char
+                    beq       L0565     ; yes, send it to the driver
 * Any ctrl char <> CR, replace with period when echoed to device
-L0423               pshs      a         ; Save code
-                    lda       #'.       ; Get code for period
-                    bsr       L0565     ; Output it to device
-                    puls      pc,a      ; Restore original ctrl char & return
+L0423               pshs      a         ; save code
+                    lda       #'.       ; get code for period
+                    bsr       L0565     ; output it to device
+                    puls      pc,a      ; restore original ctrl char & return
 
 L0624               bsr       L0418     ; check if it's printable and send it to driver
 * Process ReadLn
@@ -1259,7 +1259,7 @@ L05F8               lbsr      L03E2     ; get a character from device
                     bne       L0629     ; no, Check line editor keys
                     cmpx      PD.MAX,y  ; character count at maximum?
                     beq       L05F8     ; yes, go read next character
-                    ldb       #1        ; Bump char count up by 1
+                    ldb       #1        ; bump char count up by 1
                     abx                 ; add b to x for indexed byte advance
                     cmpx      ,s        ; done?
                     bhs       L0620     ; yes, exit
@@ -1271,152 +1271,152 @@ L05F8               lbsr      L03E2     ; get a character from device
 L0620               leax      -1,x      ; bump character count back 1
                     bra       L05F8     ; go read next character
 
-L0629               cmpa      #C$PLINE  ; Print rest of line code?
-                    bne       L0647     ; No, check insert
+L0629               cmpa      #C$PLINE  ; print rest of line code?
+                    bne       L0647     ; no, check insert
 * Process print rest of line
-L062D               pshs      u         ; Save buffer pointer
-                    lbsr      L038B     ; Go print rest of line
-                    lda       PD.BSE,y  ; Get backspace echo character
-L0634               cmpu      ,s        ; Beginning of buffer?
-                    beq       L0642     ; Yes, exit
-                    leau      -1,u      ; Bump buffer pointer back 1
-                    leax      -1,x      ; Bump character count back 1
-                    bsr       L0565     ; Print it
-                    bra       L0634     ; Keep going
+L062D               pshs      u         ; save buffer pointer
+                    lbsr      L038B     ; go print rest of line
+                    lda       PD.BSE,y  ; get backspace echo character
+L0634               cmpu      ,s        ; beginning of buffer?
+                    beq       L0642     ; yes, exit
+                    leau      -1,u      ; bump buffer pointer back 1
+                    leax      -1,x      ; bump character count back 1
+                    bsr       L0565     ; print it
+                    bra       L0634     ; keep going
 
-L0642               leas      2,s       ; Purge buffer pointer
-                    bra       L05F8     ; Return
+L0642               leas      2,s       ; purge buffer pointer
+                    bra       L05F8     ; return
 
-L0647               cmpa      #C$INSERT ; Insert character code?
-                    bne       L0664     ; No, check delete
+L0647               cmpa      #C$INSERT ; insert character code?
+                    bne       L0664     ; no, check delete
 * Process Insert character (NOTE:Currently destroys W)
                   IFNE    H6309   ; assemble following block when H6309 is true
-                    pshs      x,y       ; Preserve x&y a moment
-                    tfr       u,w       ; Dupe buffer pointer into w
-                    ldf       #$fe      ; End of buffer -1
-                    tfr       w,x       ; Source copy address
-                    incw                ; Include char we are on & dest address is+1
-                    tfr       w,y       ; Destination copy address
+                    pshs      x,y       ; preserve x&y a moment
+                    tfr       u,w       ; dupe buffer pointer into w
+                    ldf       #$fe      ; end of buffer -1
+                    tfr       w,x       ; source copy address
+                    incw                ; include char we are on & dest address is+1
+                    tfr       w,y       ; destination copy address
                     subr      u,w       ; w=w-u (Size of copy)
-                    tfm       x-,y-     ; Move buffer up one
-                    puls      y,x       ; Get back original y & x
-                    lda       #C$SPAC   ; Get code for space
-                    sta       ,u        ; Save it there
+                    tfm       x-,y-     ; move buffer up one
+                    puls      y,x       ; get back original y & x
+                    lda       #C$SPAC   ; get code for space
+                    sta       ,u        ; save it there
                   ELSE    ;       select alternate assembly branch
                     pshs      u         ; save u on stack
-                    tfr       u,d       ; Move buffer ptr to D
-                    ldb       #$FF      ; Point to end of buffer
-                    tfr       d,u       ; Move back to U
+                    tfr       u,d       ; move buffer ptr to D
+                    ldb       #$FF      ; point to end of buffer
+                    tfr       d,u       ; move back to U
 L06DE               lda       ,-u       ; shift buffer later by 1 char
                     sta       1,u       ; store a into 1,u
                     cmpu      ,s        ; compare u with ,s
                     bne       L06DE     ; branch if comparison was not equal to L06DE
-                    lda       #C$SPAC   ; Insert space at insert point in buffer
+                    lda       #C$SPAC   ; insert space at insert point in buffer
                     sta       ,u        ; store a into ,u
                     leas      2,s       ; adjust stack pointer by 2,s
                   ENDC    ;       end conditional assembly block
-                    bra       L062D     ; Go print rest of line
+                    bra       L062D     ; go print rest of line
 
-L0664               cmpa      #C$DELETE ; Delete character code?
-                    bne       L068B     ; No, check end of line
+L0664               cmpa      #C$DELETE ; delete character code?
+                    bne       L068B     ; no, check end of line
 * Process delete line
-                    pshs      u         ; Save buffer pointer
-                    lda       ,u        ; Get character there
-                    cmpa      PD.EOR,y  ; End of record?
-                    beq       L0687     ; Yes, don't bother to delete it
-L0671               lda       1,u       ; Get character beside it
-                    cmpa      PD.EOR,y  ; This an end of record?
-                    beq       L067C     ; Yes, delete it
-                    sta       ,u+       ; Bump character back
-                    bra       L0671     ; Go do next character
+                    pshs      u         ; save buffer pointer
+                    lda       ,u        ; get character there
+                    cmpa      PD.EOR,y  ; end of record?
+                    beq       L0687     ; yes, don't bother to delete it
+L0671               lda       1,u       ; get character beside it
+                    cmpa      PD.EOR,y  ; this an end of record?
+                    beq       L067C     ; yes, delete it
+                    sta       ,u+       ; bump character back
+                    bra       L0671     ; go do next character
 
-L067C               lda       #C$SPAC   ; Get code for space
-                    cmpa      ,u        ; Already there?
-                    bne       L0685     ; No, put it in
-                    lda       PD.EOR,y  ; Get end of record code
-L0685               sta       ,u        ; Put it there
-L0687               puls      u         ; Restore buffer pointer
-                    bra       L062D     ; Go print rest of line
+L067C               lda       #C$SPAC   ; get code for space
+                    cmpa      ,u        ; already there?
+                    bne       L0685     ; no, put it in
+                    lda       PD.EOR,y  ; get end of record code
+L0685               sta       ,u        ; put it there
+L0687               puls      u         ; restore buffer pointer
+                    bra       L062D     ; go print rest of line
 
 * Delete rest of buffer
-L068B               cmpa      PD.EOR,y  ; End of record code? (normally CR)
-                    bne       L02FE     ; No, check for special path dsc. chars
+L068B               cmpa      PD.EOR,y  ; end of record code? (normally CR)
+                    bne       L02FE     ; no, check for special path dsc. chars
 * CR hit, replace rest of buffer with spaces?
-                    pshs      u         ; Yes, Save buffer pointer
-                    bra       L069F     ; Go erase rest of buffer
+                    pshs      u         ; yes, Save buffer pointer
+                    bra       L069F     ; go erase rest of buffer
 
-L0696               pshs      a         ; Save CR code
-                    lda       #C$SPAC   ; Get code for space
-                    lbsr      L0565     ; Print it
-                    puls      a         ; Restore CR code
-L069F               cmpa      ,u+       ; End of record?
-                    bne       L0696     ; No, go print a space
-                    puls      u         ; Restore buffer pointer
+L0696               pshs      a         ; save CR code
+                    lda       #C$SPAC   ; get code for space
+                    lbsr      L0565     ; print it
+                    puls      a         ; restore CR code
+L069F               cmpa      ,u+       ; end of record?
+                    bne       L0696     ; no, go print a space
+                    puls      u         ; restore buffer pointer
 * Check character read against path descriptor
-L02FE               tsta                ; Usable character?
-                    beq       L030C     ; No, go on
-                    ldb       #PD.BSP   ; Get start point in path descriptor
-L0303               cmpa      b,y       ; Match code in descriptor?
-                    beq       L032C     ; Yes, go process it
-                    incb                ; Move to next one
-                    cmpb      #PD.QUT   ; Done check?
-                    bls       L0303     ; No, keep going
-L030C               cmpx      PD.MAX,y  ; Past maximum character count?
-                    bls       L0312     ; No, go on
-                    stx       PD.MAX,y  ; Update maximum character count
-L0312               ldb       #1        ; Add 1 char
+L02FE               tsta                ; usable character?
+                    beq       L030C     ; no, go on
+                    ldb       #PD.BSP   ; get start point in path descriptor
+L0303               cmpa      b,y       ; match code in descriptor?
+                    beq       L032C     ; yes, go process it
+                    incb                ; move to next one
+                    cmpb      #PD.QUT   ; done check?
+                    bls       L0303     ; no, keep going
+L030C               cmpx      PD.MAX,y  ; past maximum character count?
+                    bls       L0312     ; no, go on
+                    stx       PD.MAX,y  ; update maximum character count
+L0312               ldb       #1        ; add 1 char
                     abx                 ; add b to x for indexed byte advance
-                    cmpx      ,s        ; Past requested amount?
-                    blo       L0322     ; No, go on
-                    lda       PD.OVF,y  ; Get overflow character
-                    lbsr      L0565     ; Send it to driver
-                    leax      -1,x      ; Subtract a character
-                    lbra      L05F8     ; Go try again
+                    cmpx      ,s        ; past requested amount?
+                    blo       L0322     ; no, go on
+                    lda       PD.OVF,y  ; get overflow character
+                    lbsr      L0565     ; send it to driver
+                    leax      -1,x      ; subtract a character
+                    lbra      L05F8     ; go try again
 
-L0322               ldb       PD.UPC,y  ; Force uppercase?
-                    beq       L0328     ; No, put char in buffer
-                    lbsr      L0403     ; Make character uppercase
-L0328               sta       ,u+       ; Put character in buffer
-                    lbsr      L0413     ; Check for printable
-                    lbra      L05F8     ; Go try again
+L0322               ldb       PD.UPC,y  ; force uppercase?
+                    beq       L0328     ; no, put char in buffer
+                    lbsr      L0403     ; make character uppercase
+L0328               sta       ,u+       ; put character in buffer
+                    lbsr      L0413     ; check for printable
+                    lbra      L05F8     ; go try again
 
 * Process path option characters
-L032C               pshs      x,pc      ; Preserve character count & PC
-                    leax      <L033F,pc ; Point to branch table
-                    subb      #PD.BSP   ; Subtract off first code
+L032C               pshs      x,pc      ; preserve character count & PC
+                    leax      <L033F,pc ; point to branch table
+                    subb      #PD.BSP   ; subtract off first code
                     lslb                Account ; for 2 bytes a entry
-                    abx                 ; Point to entry point
-                    stx       2,s       ; Save it in PC on stack
-                    puls      x         ; Restore X
-C8E3                jsr       [,s++]    ; Execute routine
-                    lbra      L05F8     ; Continue on
+                    abx                 ; point to entry point
+                    stx       2,s       ; save it in PC on stack
+                    puls      x         ; restore X
+C8E3                jsr       [,s++]    ; execute routine
+                    lbra      L05F8     ; continue on
 
 * Vector points for PD.BSP-PD.QUT
-L033F               bra       L03BB     ; Process PD.BSP
-                    bra       L03A5     ; Process PD.DEL
-                    bra       L0351     ; Process PD.EOR
-                    bra       L0366     ; Process PD.EOF
-                    bra       L0381     ; Process PD.RPR
-                    bra       L038B     ; Process PD.DUP
-                    rts                 ; PD.PSC we don't worry about
+L033F               bra       L03BB     ; process PD.BSP
+                    bra       L03A5     ; process PD.DEL
+                    bra       L0351     ; process PD.EOR
+                    bra       L0366     ; process PD.EOF
+                    bra       L0381     ; process PD.RPR
+                    bra       L038B     ; process PD.DUP
+                    rts                 ; pD.PSC we don't worry about
                     nop
-                    bra       L03A5     ; Process PD.INT
-                    bra       L03A5     ; Process PD.QUT
+                    bra       L03A5     ; process PD.INT
+                    bra       L03A5     ; process PD.QUT
 
 * Process PD.EOR character
-L0351               leas      2,s       ; Purge return address
-                    sta       ,u        ; Save character in buffer
+L0351               leas      2,s       ; purge return address
+                    sta       ,u        ; save character in buffer
                     lbsr      L0413     ; call distant local routine L0413
-                    ldu       PD.RGS,y  ; Get callers register stack pointer
-                    ldb       #1        ; Bump up char count by 1
+                    ldu       PD.RGS,y  ; get callers register stack pointer
+                    ldb       #1        ; bump up char count by 1
                     abx                 ; add b to x for indexed byte advance
-                    stx       R$Y,u     ; Store it in callers Y
+                    stx       R$Y,u     ; store it in callers Y
                     lbsr      L042B     ; call distant local routine L042B
                     leas      2,s       ; adjust stack pointer by 2,s
                     lbra      L0453     ; long branch unconditionally to L0453
 
 * Process PD.EOF
-L0366               leas      2,s       ; Purge return address
+L0366               leas      2,s       ; purge return address
                     leax      ,x        ; read anything?
                     lbeq      L02A2     ; long branch if comparison was equal to L02A2
                     bra       L030C     ; branch unconditionally to L030C
@@ -1424,58 +1424,58 @@ L0366               leas      2,s       ; Purge return address
 L0370               pshs      b         ; save b on stack
                     lda       #C$CR     ; load a from #C$CR
                     sta       ,u        ; store a into ,u
-                    lbsr      L0565     ; Send it to the driver
+                    lbsr      L0565     ; send it to the driver
                     puls      b         ; restore b from stack
                     lbra      L02A4     ; long branch unconditionally to L02A4
 
 * Process PD.RPR
-L0381               lda       PD.EOR,y  ; Get end of record character
-                    sta       ,u        ; Put it in buffer
+L0381               lda       PD.EOR,y  ; get end of record character
+                    sta       ,u        ; put it in buffer
                     ldx       #0        ; load x from #0
-                    ldu       PD.BUF,y  ; Get buffer ptr
-L0388               lbsr      L0418     ; Send it to driver
-L038B               cmpx      PD.MAX,y  ; Character maximum?
-                    beq       L03A2     ; Yes, return
-                    ldb       #1        ; Bump char count up by 1
+                    ldu       PD.BUF,y  ; get buffer ptr
+L0388               lbsr      L0418     ; send it to driver
+L038B               cmpx      PD.MAX,y  ; character maximum?
+                    beq       L03A2     ; yes, return
+                    ldb       #1        ; bump char count up by 1
                     abx                 ; add b to x for indexed byte advance
-                    cmpx      2,s       ; Done count?
-                    bhs       L03A0     ; Yes, exit
-                    lda       ,u+       ; Get character from buffer
-                    beq       L0388     ; Null, go send it
-                    cmpa      PD.EOR,y  ; Done line?
-                    bne       L0388     ; No go send it
-                    leau      -1,u      ; Move back a character
-L03A0               leax      -1,x      ; Move character count back
-L03A2               rts                 ; Return
+                    cmpx      2,s       ; done count?
+                    bhs       L03A0     ; yes, exit
+                    lda       ,u+       ; get character from buffer
+                    beq       L0388     ; null, go send it
+                    cmpa      PD.EOR,y  ; done line?
+                    bne       L0388     ; no go send it
+                    leau      -1,u      ; move back a character
+L03A0               leax      -1,x      ; move character count back
+L03A2               rts                 ; return
 
 L03A3               bsr       L03BF     ; erase one character while deleting the current line
 * PD.DEL/PD.QUT/PD.INT processing
-L03A5               leax      ,x        ; Any characters?
-                    beq       L03B8     ; No, reset buffer ptr
-                    ldb       PD.DLO,y  ; Backspace over line?
-                    beq       L03A3     ; Yes, go do it
-                    ldb       PD.EKO,y  ; Echo character?
-                    beq       L03B5     ; No, zero out buffer pointers & return
-                    lda       #C$CR     ; Send CR to the driver
+L03A5               leax      ,x        ; any characters?
+                    beq       L03B8     ; no, reset buffer ptr
+                    ldb       PD.DLO,y  ; backspace over line?
+                    beq       L03A3     ; yes, go do it
+                    ldb       PD.EKO,y  ; echo character?
+                    beq       L03B5     ; no, zero out buffer pointers & return
+                    lda       #C$CR     ; send CR to the driver
                     lbsr      L0565     ; send it to driver
 L03B5               ldx       #0        ; zero out count
 L03B8               ldu       PD.BUF,y  ; reset buffer pointer
 L03BA               rts                 ; return
 
 * Process PD.BSP
-L03BB               leax      ,x        ; Any characters?
-                    beq       L03A2     ; No, return
-L03BF               leau      -1,u      ; Mover buffer pointer back 1 character
-                    leax      -1,x      ; Move character count back 1
-                    ldb       PD.EKO,y  ; Echoing characters?
-                    beq       L03BA     ; No, return
-                    ldb       PD.BSO,y  ; Which backspace method?
-                    beq       L03D4     ; Use BSE
-                    bsr       L03D4     ; Do a BSE
-                    lda       #C$SPAC   ; Get code for space
-                    lbsr      L0565     ; Send it to driver
-L03D4               lda       PD.BSE,y  ; Get BSE
-                    lbra      L0565     ; Send it to driver
+L03BB               leax      ,x        ; any characters?
+                    beq       L03A2     ; no, return
+L03BF               leau      -1,u      ; mover buffer pointer back 1 character
+                    leax      -1,x      ; move character count back 1
+                    ldb       PD.EKO,y  ; echoing characters?
+                    beq       L03BA     ; no, return
+                    ldb       PD.BSO,y  ; which backspace method?
+                    beq       L03D4     ; use BSE
+                    bsr       L03D4     ; do a BSE
+                    lda       #C$SPAC   ; get code for space
+                    lbsr      L0565     ; send it to driver
+L03D4               lda       PD.BSE,y  ; get BSE
+                    lbra      L0565     ; send it to driver
 
                   IFGT    Level-1 ; assemble following block when Level-1 is true
 * check PD.DTP,y and update PD.WPTR,y if it's device type $10 (grfdrv)
@@ -1493,18 +1493,18 @@ get.wptr            pshs      x,u       ; save x,u on stack
                     tst       V.ParmCnt,u ; are we busy getting more parameters?
                     bne       no.fast   ; yes, don't do buffered writes
 * Get window table pointer & verify it: copied from CoWin and modified
-                    ldb       V.WinNum,u ; Get window # from device mem
-                    lda       #Wt.Siz   ; Size of each entry
-                    mul                 ; Calculate window table offset
-                    addd      #WinBase  ; Point to specific window table entry
-                    tfr       d,y       ; Move to y, the register we want
-                    lda       Wt.STbl,y ; Get MSB of scrn tbl ptr
-                    bgt       VerExit   ; If $01-$7f, should be ok
+                    ldb       V.WinNum,u ; get window # from device mem
+                    lda       #Wt.Siz   ; size of each entry
+                    mul                 ; calculate window table offset
+                    addd      #WinBase  ; point to specific window table entry
+                    tfr       d,y       ; move to y, the register we want
+                    lda       Wt.STbl,y ; get MSB of scrn tbl ptr
+                    bgt       VerExit   ; if $01-$7f, should be ok
 * Return illegal window definition error
 no.fast             comb                ; set carry: no error code, it's an internal routine
                     puls      x,u,pc    ; restore x,u,pc and return
 
-VerExit             clra                ; No error
+VerExit             clra                ; no error
                     puls      x,u,pc    ; restore x,u,pc and return
 
 call.grf            pshs      d,x,y,u   ; save registers
