@@ -36,7 +36,7 @@ MVSYSOBJS2		=	$(shell $(CD) $(MVSYSSDIR); make --no-print-directory showobjs)
 #B09CMDSNAMES = gfx gfx2 inkey syscall b09 runb
 DIRS		= defs cmds modules sys bootfiles $(B09DIR) $(MVDIR) #wwwroot
 
-BASIC09_SAMPLES = $(foreach file,$(3RDPARTY)/packages/basic09/samples/*.b09,$(file))
+BASIC09_SAMPLES = $(foreach file,$(3RDPARTY)/packages/basic09/samples/*,$(file))
 
 MODULECMDS	= shell grfdrv del echo format makdir merge os9gen prompt tmode
 
@@ -116,4 +116,3 @@ dskcopy: $(DSKS)
 info:
 	@$(ECHO) "*** NitrOS-9/$(CPU) Level $(LEVEL) for the $(MACHINE) ***"
 	@$(foreach dsk, $(DSKS), $(ECHO) $(dsk);)
-

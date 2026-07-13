@@ -59,7 +59,10 @@ Annotate 6809 or 6309 assembly in-place so the result is easier for a human to r
    - prefer an existing project symbol over introducing a new local `equ`
    - if the correct shared symbol is missing, add it to the appropriate shared definition include instead of leaving a magic number behind
    - do not replace ordinary algorithmic constants, loop bounds, ASCII literals, bit masks, or scratch values unless they clearly correspond to an established symbolic definition
-10. Add comments to each code line.
+10. Add comments to each executable code line, except pseudo-ops that must remain uncommented.
+    - Do not append comments to conditional pseudo-op lines such as `IFNE`, `IFEQ`, `IFGT`, `IFLT`, `IFGE`, `IFLE`, `IFP1`, `IFP2`, `ELSE`, or `ENDC`.
+    - Apply this exception to equivalent `IF*` conditional directives in the assembler dialect.
+    - Do not append comments to `use`, `nam`, `ttl`, or `pag` pseudo-op lines.
 11. Add or improve labels only if the user explicitly asks for label work, except for stack-offset symbols defined as part of function-frame documentation.
     - when an exported symbol is also a label definition, write it with a trailing colon, for example `_foo:`, not `_foo`
     - do not add colons to internal/local labels unless they are explicitly exported
@@ -72,6 +75,7 @@ Annotate 6809 or 6309 assembly in-place so the result is easier for a human to r
 ## Required Output Rules
 
 - Add a meaningful comment to every executable instruction line.
+- Leave designated pseudo-op lines uncommented. Never append comments to `IFNE`, `IFEQ`, `IFGT`, `IFLT`, `IFGE`, `IFLE`, `IFP1`, `IFP2`, `ELSE`, `ENDC`, equivalent `IF*` directives, `use`, `nam`, `ttl`, or `pag`.
 - Add comments to data and directive lines when their purpose is inferable.
 - Preserve existing comments when they are useful. Refine them only when needed for clarity.
 - Ensure the opening source header is in OS-9 assembly style. If no `Edt/Rev` history exists, add one in the opening comment block.

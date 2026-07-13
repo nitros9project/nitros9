@@ -29,7 +29,7 @@
                     ifp1
                     use       os9.d
                     use       scf.d
-                    use       coco3vtio.d
+                    use       cocovtio.d
                     endc
 
 tylg                set       Sbrtn+Objct

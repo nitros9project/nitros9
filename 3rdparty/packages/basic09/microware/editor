@@ -1,0 +1,2299 @@
+
+ ifne INCLUDED&EDITOR
+ ttl DEBUG State command routines
+ pag
+
+***************
+* Debug State Entry Point
+*   Process Debugging Commands
+
+*  Called by Interpreter during execution of
+*  a procedure.  I.Dots are set up, and must be
+*  maintained, as well as Opstack and I.Stbg.
+*  All registers should be unchanged upon return,
+*  with the execption of CC.
+
+DEBUG pshs D,X,Y,U Preserve registers
+ lda I.ERR
+ cmpa #M$SSOV System stack overflow?
+ beq HALT ..Yes; exit
+ tst DEBUGGER already in Debugger?
+ bne CONTIN99 ..Yes; don't enter recursively
+ inc DEBUGGER Signal Debugger Entered
+ lda G.SIGN Abort signal recieved?
+ bne DEBUG9 ..Yes; don't check step count
+ ldd STEPS in step mode?
+ subd #1 (decrement step count)
+ bhi NXSTEP ..not expired; continue stepping
+ bmi DEBUG2 ..Yes; don't reprint header
+DEBUG1 lbsr NEWLIN Clean up I/O buffer
+ leax DBGMSG,PCR Get debug message
+ lbsr STRSPC
+ lbsr PAPRCN Print active procedure name
+DEBUG2 leax DBGPMT,PCR Get prompt string
+ leay DBGVRB,PCR Get debug verb table ptr
+ lbsr RUNCMD Execute debug command
+ bcc DEBUG2 Repeat
+ lda G.SIGN (keyboadr abort) signal received?
+ bne DEBUG9 ..Yes; go check out
+ lbsr CMDERR print "WHAT?"
+ bra DEBUG2 Repeat
+
+DEBUG9 cmpa #S$Abort Keyboard abort?
+ bne DEBUG1 ..no; enter debug mode
+
+***************
+* Halt
+*   Abort execution and return to command mode
+
+HALT lbsr J$TROF Insure trace is turned off
+ lda #3
+HALT10 cmpa BASOUT command output path?
+ beq HALT20 ..Yes; don't close it
+ OS9 I$Close Close all but std I/O paths
+HALT20 inca
+ cmpa #NumPaths
+ blo HALT10
+ lbra EXIT Return to command mode
+
+***************
+* Subroutine Step
+*   Enter single step mode
+
+STEPM lbsr CMDSEP Get comma or space
+ bne STEP1 Default one step
+ leax  ,Y Tell asnm where to get the number
+ lbsr GETNUM Get number
+ bcc STEP2 No error -continue
+ rts ERROR - return carry set
+
+NXSTEP bsr STEP2 (will not return)
+STEP0 clrb
+ bra STEP15
+STEP1 ldb #1 Use default
+STEP15 clra
+STEP2 std STEPS
+ lsl I.RUNM
+ coma set Carry
+ ror I.RUNM Request another pause
+ bra CONTI1 (continue interpretation)
+
+***************
+* Subroutine Contin
+*   Continue execution of suspended procedure
+
+CONTIN lbsr NEWLIN Reset I/O ptrs
+ lsl I.RUNM
+ lsr I.RUNM Clear break flag
+ ldd #1
+ std STEPS
+CONTI1 leas 2,S discard DEBUG's return addr
+ clr DEBUGGER signal NOT in debugger
+CONTIN99 puls D,X,Y,U,PC Restore interpreter's registers and return
+
+***************
+* Trcexp
+*   Trace expression
+
+* This routine is called by statement dispatch
+* instead of the Expression Interpreter when
+* in Trace mode.
+
+TRCEXP ldy J$EVAL+3 Get address of expr interp.
+ jsr  ,Y Interpret expression
+PRTEXP pshs D,X,Y,U Save registers
+ cmpy I.OPBG
+ beq TRCE99
+
+* What About Expression Errors & Condition Codes?
+
+ ldb I.IOCT Save I/O state
+ ldx I.IOBG
+ ldu I.IOPT
+ pshs B,X,U
+ stu I.IOBG
+ lbsr NEWLIN
+ lda #'= Trace expression indicator
+ lbsr PUTCHR
+ ldb  ,Y Get type byte
+ addb #V$PRBY Adjust for cnvio
+ cmpb #V$INLN Bad type?
+ bhs TRCEX9 ..Yes; dont print it
+ leax  ,Y Copy opstack ptr
+ lbsr DCVALU Print value
+TRCEX9 lbsr PRTEOL Print buffer (clears carry)
+ puls B,X,U Restore I/O state
+ stb I.IOCT
+ stx I.IOBG
+ stu I.IOPT
+TRCE99 puls D,X,Y,U,PC Restore regs & return
+
+***************
+* Subroutine Lstbnd
+*   List Currently active, Bound procedure
+
+LSTBND lbsr PCURPC Print active procedure name
+ tst P.STAT,X Compiled procedure?
+ bmi LSTBN9 ..mum's the word
+ ldx I.ICBG
+LSTBN0 clr I.OCNT Reset pretty print indentation
+
+LSTBN1 tst G.SIGN (abort) signal?
+ bne LSTBN9 ..Yes; exit
+ leay  ,X Copy icode ptr
+ lbsr NXTONE Find address of beginning of next line
+ bsr LSTBLN List the line
+ exg X,Y
+ cmpx I.ICLM
+ blo LSTBN1
+ cmpx I.ICPT
+ bne LSTBN9
+ cmpy I.ICLM End of icode?
+ blo LSTBN1 ..no
+LSTBN9 clra clear Carry
+ rts
+
+***************
+* Subroutine Lstbln
+*   List bound I-Code line
+
+* Passed: (X) - I-Code ptr to Line to List
+*         (Y) - I-Code ptr to End of Line +1
+* Destroys: D
+
+LSTBLN pshs X,Y,U Save caller's registers
+ lbsr NEWLIN
+ ldx I.APRC
+ tst P.STAT,X is this a compiled procedure?
+ bmi LSTB99 ..nice try, but no answers out of me
+ ldx  ,S Restore i-code ptr
+ tfr Y,D
+ subd  ,S Size of icode line to list
+ bmi LSTBL9 None - return
+ pshs D,X Save regs
+ addd #64 Estimate opstack requirement of decompiler
+ cmpd G.VARS Enough free space?
+ lbhs ERMFUL ..no; abort
+ tst PRTCTL Silent (save) mode?
+ bmi LSTBL3 Skip address stuff
+ lda #V$SPAC
+ cmpx I.ICPT Above current line?
+ bhi LSTBL2 ..Yes
+ beq LSTBL1 At current line
+ cmpy I.ICPT in current line?
+ bls LSTBL2 ..no
+LSTBL1 lda #'* Mark current line
+LSTBL2 lbsr PUTCHR
+ cmpx I.ICLM End of procedure?
+ bhs LSTBL3 ..Yes; exit
+ tfr X,D
+ subd I.ICBG Get offset address of line
+ ldx I.IOPT
+ lbsr J$PHEX Put it in I/O buffer
+ lda #V$SPAC
+ sta ,X+
+ stx I.IOPT
+ lbsr OUTBUF
+LSTBL3 puls D,Y
+ cmpy I.ICLM End of icode?
+ bhs LSTBL9 ..Yes; dont print line
+ ldu I.STBG
+ lbsr MOVUP Copy line to free memory
+ lbsr SVCRIT Save sensitive data
+ stu I.ICPT
+ leax D,U
+ stx I.ICLM
+ stx I.STBG
+ leay  ,U Beginning of copied line
+ tst PRTCTL Silent (save) mode?
+ bmi LSTBL5 ..Yes; don't print "ERR"
+ leax  ,Y Copy icode ptr
+ lbsr CHKERR Error line?
+ bne LSTBL5 ..No; don't print "ERR"
+LSTBL4 leax ERRR,PCR get "ERR" msg
+ lbsr PRTSTR
+LSTBL5 lbsr NEWLIN
+ lbsr UNBICD Unbind the line
+ lbsr DCLINE Decompile the line
+ bsr RSCRIT Restore sensitive data
+ dec I.IOPT+1
+LSTBL9 lbsr PRTEOL
+LSTB99 puls X,Y,U,PC Restore registers and return
+
+***************
+* Subroutine Direxq
+*   Process Direct Execution statement
+
+DIREXQ ldx I.APRC
+ tst P.STAT,X is this a compiled procedure?
+ bpl DIREX1 ..no; ok!
+ coma COMPILER Can't handle compiled state
+ rts
+
+DIREX1 ldy I.IOBG
+ lbsr J$CMPL Compile the line
+ bsr SVCRIT Save critical global variables
+ ldx I.STBG
+ lbsr CHKERR Did the compiler generate an error line?
+ beq RSCRIT ..Yes; return (restore critical variables first)
+ stx I.ICBG
+ stx I.ICPT
+ leay  ,X
+ ldx ICDPTR
+ stx I.ICLM
+ stx I.STBG
+ lbsr J$BSTM Bind compiled statement
+ ldx I.APRC
+ lda P.STAT,X
+ clr P.STAT,X
+ tsta ANY Binder errors?
+ bne RSCRIT ..Yes; avoid running
+ leax <RSCRIT,PCR
+ lbsr SETEXT Set error exit for interpreter
+ ldx I.ICBG
+ lbsr J$ISTM Interpret statement
+ lbra EXIT Exit (this will fall through to restore critical variables)
+
+***************
+* Subroutine Rscrit
+*   Restore critical suspension state variables from Opstack
+
+RSCRIT pshs D,X,Y,U
+ ldu I.OPBG Get stack ptr
+ pulu D,X,Y
+ sty G.PRCS
+ stx G.VARS
+ std I.STBG
+ pulu D,X,Y
+ sty I.ICLM
+ stx I.ICBG
+ std I.ICPT
+RSCRI1 stu I.OPBG
+ stu I.OPSP
+ clra (return carry clear)
+ puls D,X,Y,U,PC return
+
+***************
+* Subroutine Svcrit
+*   Save critical suspension state variables on Opstack
+
+SVCRIT pshs D,X,Y,U
+ ldu I.OPBG Get opstack ptr
+ ldd I.ICPT
+ ldx I.ICBG
+ ldy I.ICLM
+ pshu D,X,Y
+ ldd I.STBG
+ ldx G.VARS
+ ldy G.PRCS
+ pshu D,X,Y
+ bra RSCRI1
+
+***************
+* Subroutine State
+*   Print current procedure, followed by caller, and
+*    so on until Top level procedure has been reached
+
+STATE ldy I.ASTR Get active procedure's u.dots
+ leax PRCEDR,PCR
+STATE1 bsr NLIN
+ lbsr STRSPC
+ ldx U.PROC,Y Get this procedure's address
+ bsr PRTNAM Print this procedure's name
+ leax CALLBY,PCR
+ ldy U.U,Y Get caller's u.dots
+ bne STATE1 Repeat until top level is found
+NLIN lbra NEWLIN
+
+***************
+* Subroutine Break
+*   Set pause on return to higher level procedure
+
+BREAK lbsr J$NAME is there a name in the command line?
+ beq BREAK9 ..no; error
+ lbsr DIRSCH is it in the procedure directory?
+ bcs BREAK9 ..no; error
+ ldx  ,X Get addr of desired procedure
+ ldy I.ASTR
+BREAK1 ldy U.U,Y Get next previous procedure storage
+ beq BREAK9 None found - error
+ cmpx U.PROC,Y is it the desired one?
+ bne BREAK1 ..no; loop until it is
+ lsl U.RUNM,Y
+ coma set Pause in run mode
+ ror U.RUNM,Y
+ leax OKMSG,PCR get "OK"
+ bra PRTLIN
+
+BREAK9 coma (return Carry set)
+ rts
+
+***************
+* Subroutine PRTNAM
+*   Print current procedure name
+
+* Passed: (X)=Address of Procedure Whose Name is Desired
+* Destroys: None
+
+PCURPC bsr NLIN
+PAPRCN leax PRCEDR,PCR get "PROCEDURE"
+ lbsr STRSPC Put it in I/O buffer
+ ldx I.APRC Get active procedure ptr
+
+PRTNAM pshs X Save
+ leax P.NAME,X Get ptr to name string
+ bsr STREOL Print the name (followed by crlf)
+ puls X,PC Return
+
+***************
+* Subroutine PRTLIN
+*   Print Line
+
+* Passed: (X)=String ptr
+* Returns: Nothing Useful
+* Destroys: A,X,CC
+
+PRTLIN bsr NLIN reset I/O ptrs
+STREOL lbsr CPYSTR
+PRTEOL lbsr PUTCR put EOL in buffer
+ bsr OUTBUF
+ bra NLIN
+
+PRTSTR bsr NLIN
+ lbsr CPYSTR
+
+OUTBUF pshs D,X,Y Save regs
+ ldd I.IOPT
+ subd I.IOBG Length of string in I/O buffer
+ bls PRTEXT exit if none
+ tfr D,Y
+ ldx I.IOBG
+ lda #CMDOUT
+ OS9 I$WritLn
+ bcc PRTEXT
+ bsr PRTERR Print error msg
+PRTEXT puls D,X,Y,PC return
+
+ endc
+
+ pag
+***************
+* Subroutine PRTERR
+*   Print error message
+
+PRTERR OS9 F$PErr Use system error routine
+ rts
+
+ ifne INCLUDED&EDITOR
+ ttl DECOMPILER
+ pag
+***************
+* Decompile Statement Routine
+
+* Decompiles I-Code to source in I/O buffer
+
+* Passed: I-Code in I-Code Buffer (I.ICBG)
+* Return : Decompiled stmt in IOBuff; char cnt in I.IOCT
+
+DCLINE ldy I.ICPT Get icode buf addr
+ cmpy I.ICLM
+ bhs CPYEOL
+
+* Process Beginning of Line
+DCBEG ldb  ,Y Get first token
+ cmpb #T.LREF Line number?
+ bne DCBEG2
+ leay 1,Y Step past it
+ lbsr DCLREF Decompile line ref
+ lbsr OUTSPC
+ ldb  ,Y Get next token
+DCBEG2 tst PRTCTL
+ bmi DCTOKN No pretty print
+ bsr LKTOKE Lookup the token tbl entry
+ ldb I.OCNT Get indent count
+ pshs B Save global count
+ bsr INDCHK Do the indent test
+ puls A
+ sta I.OCNT Restore global count
+ tfr B,A Copy indent count
+ lbsr DCLF10 tab over to pretty print field
+DCTOKN ldb ,Y+ Restore token
+ bmi DCTOK1 Expression member
+ bsr LKTOKE Look up token description
+ bsr INDCHK Update global pretty print
+ bsr PRTOKE Process token
+ bra DCTOK2
+DCTOK1 lbsr EXPRSN
+DCTOK2 cmpy I.ICLM Above icode limit?
+ blo DCTOKN ..no; repeat
+DCEXIT sty I.ICPT
+CPYEOL lda #V$CR Put cr in out buf
+ lbra PUTCHR Output eol & return
+
+* Decompile end of line token
+
+DCEOL leas 2,S Throw away return address
+ bra DCEXIT All through!
+
+* Subroutine to test token description
+*  for Loop structure references.
+* Updates local and global indentation counts.
+
+* Passed: A = Descr Byte
+*         B = Local Count
+* Returns: B = New Local Count, Other Regs Preserved
+
+INDCHK sta ,-S Save descr
+ bmi INCHK4 Bra if expr type
+ anda #3 Mask fmt bits
+ beq INCHK4 Bra if not loop part
+ cmpa #1 Top?
+ bne INCHK2 Bra if not
+ inc I.OCNT Bump global count
+ bra INCHK4
+INCHK2 decb DECR Local cnt
+ bpl INCHK3
+ clrb
+INCHK3 cmpa #3
+ beq INCHK4 Bra if else only
+ dec I.OCNT Otherwise decr global
+ bpl INCHK4
+ clr I.OCNT
+INCHK4 lda ,S+ Pop the descr
+ rts
+
+***************
+* Subr Lktoke
+*   Lookup token Description in token table
+
+* Passed: B=Token
+* Returns: X=Addr of tbl Entry
+*          A=Token Descr Byte From tble
+
+LKTOKE leax DCMTBL,PCR Get tbl addr
+ tstb
+ bpl LKTOK1
+ subb #T.SBYT-T.LBNE-1
+LKTOK1 lda #3 3 bytes/entry
+ mul
+ leax D,X Form addr
+ lda ,X Get addr
+ rts
+
+***************
+* Subr Explod
+* Explode I-Code to char
+
+* Looks up token with Lktoke, converts it with Prtoke
+
+* Passed: B=Token
+* Returns: Source code in I/O Buffer
+
+EXPLOD bsr LKTOKE Find token entry
+* Fall Through to Prtoke
+
+***************
+* Subr Prtoke
+*    Convert I-Code token to char string.
+*    Uses Decompile table data to determine
+*    proper decompile action.
+
+* Data in table descriptor (B6:B5) decoded as:
+*     x00xxxxx = Pointer to Keyword string
+*     x01xxxxx = Relative subroutine offset
+*     x10xxxxx = One char literal
+*     x11xxxxx = Two char literal
+
+* Passed: A = Descr Byte From Table
+*         X = ptr to Table Pack
+*         Y = I-Code ptr (Opcode+1)
+
+PRTOKE leax 1,X Move to value part
+ anda #$60 Mask code bits
+ beq PRTOK1 Bra if keyword str
+ cmpa #Z$STSK Keyword+skip?
+ bne PRTOK2 Bra if not
+ leay 2,Y Skip the line ref
+PRTOK1 lda -1,X Get decr again
+ pshs A Save it
+ ldd ,X Get str addr
+ leax D,X Find abs addr
+ puls A Restore descr
+ anda #$18 Mask fnc bits
+ cmpa #$10 is it function?
+ beq CPYSTR No spaces if so
+ bra SPCSTR Space,string,space
+
+PRTOK2 cmpa #Z$SUB Subroutine entry?
+ bne PRTOK3
+ ldd  ,X Get the offset
+ jmp D,X
+PRTOK3 bsr DCLF
+ bsr PRTOK4
+PRTOK4 lda ,X+ Get the char
+ bne PUTCHR Output it
+
+DCLF lda I.IOCT print LF if beyond right "margin"
+ cmpa #MARGIN beyond right 'MARGIN'?
+ bcs DCLF90 ..no; return carry set
+ lda #V$LF
+ bsr PUTCHR
+ clr I.IOCT reset current position
+ tst PRTCTL Pretty printing?
+ bmi DCLF90 ..no; done
+ lda I.OCNT
+ adda #3
+DCLF10 asla
+ adda #6 add in offset field size
+ ldb #V$TAB
+ lbsr J$CVIO put spaces in buffer
+ clra return carry clear
+DCLF90 rts return
+
+ pag
+* Output to I/O buffer ptr in (U), updates I.IOCT
+SPCSTR bsr OUTSPC Output a space
+
+* Output string (X), followed by space
+STRSPC bsr CPYSTR Output the string
+
+* Output space (only if previous char was not)
+OUTSPC pshs D,U Save regs
+ bsr DCLF check for right MARGIN
+ bcc OUTSP9 ..Yes; return
+ ldu I.IOPT Get the buf ptr
+ lda #V$SPAC
+ cmpa -1,U Was prev char a space?
+ beq OUTSP9 Exit if so
+ cmpu I.IOBG Beginning of buffer?
+ bne PUTCH2 ..no; print space
+OUTSP9 puls D,U,PC Exit
+
+***************
+* Put Char (A) in Output Buffer
+
+PUTCR lda #V$CR put EOL in buffer
+PUTCHR pshs D,U
+ ldu I.IOPT
+PUTCH2 sta ,U+
+ ldd I.IOPT
+ subd I.IOBG
+ tsta
+ bne PUTCH9
+ inc I.IOCT
+ stu I.IOPT
+PUTCH9 puls D,U,PC
+
+***************
+* Decompile Record Reference
+DCRREF lda #'. Get record separator char
+ bsr PUTCHR Put it in source line
+* Fall thru to handle like var ref
+
+***************
+* Decompile Variable Reference
+DCVREF ldx ,Y++ Get sym offset
+ ldd I.SYMT Add tbl beg addr
+ leax D,X
+ leax 3,X Plus string offset
+* Fall thru to copy string
+
+***************
+* Output String At [x]
+
+CPYSTR pshs X save reg
+CPYSTR10 lda  ,X
+ anda #$7F
+ bsr PUTCHR output char
+ tst ,X+
+ bpl CPYSTR10 repeat until EOS
+ puls X,PC
+
+ ttl DECOMPILER Special token routines
+ pag
+***************
+* Convert Real Literal
+DRLLIT ldb #V$PRRL Print real code
+ ldx I.OPSP
+ pshs B,Y
+ leay -1,Y
+ bra DCVAL1
+DCVALU pshs B,Y
+DCVAL1 ldd 4,Y
+ std ,--X
+ ldd 2,Y
+ std ,--X
+ ldd  ,Y
+ std ,--X
+ leay  ,X Make y opstack ptr
+ puls B
+ bra GOCNV
+
+***************
+* Decompile Byte Literal Routine
+DBYTLT ldb ,Y Get value
+DCBYTE clra
+ bra CVINT2 Join int subr
+
+***************
+* Decompile GOSUB
+DCGOSB leax GOSUB,PCR Get str addr
+ bra DCGOT2
+
+***************
+* Decompile GOTO
+DCGOTO leax GOTO,PCR
+DCGOT2 bsr SPCSTR Output str in spaces
+
+***************
+* Decompile Integer Literal Or Line Ref
+DCLREF equ *
+CNVINT ldd ,Y++ Get value
+CVINT2 pshs Y Save ptr
+ ldy I.OPSP
+ leay -6,Y
+ std 1,Y Put value on stack
+ ldb #V$PRIN
+GOCNV lbsr J$CVIO
+ puls Y,PC
+
+***************
+* Decompile String Literal
+
+DCSTLT bsr DCQuote output first quote
+DCST2 lda ,Y+ Get next char
+ cmpa #V$ESTR
+ beq DCQuote exit if end str
+ bsr PUTCHR Output it
+ cmpa #'" Was it a quote?
+ bne DCST2 ..No
+ bra DCSTLT convert to double-quote
+
+DCQuote lda #'" quote char
+BRPTCH lbra PUTCHR Put it in I/O buffer
+
+***************
+* Decompile Hex Literal
+DHXLIT lda #'$
+ bsr BRPTCH
+ ldb #V$OHEX
+ lbsr J$CVIO
+ leay 2,Y
+ rts
+
+***************
+* Decompile BASE
+DCBASE leax BASE,PCR
+ lbsr STRSPC Output string, space
+ lda -1,Y Get base token
+ adda #'0-T.BAS0 Convert to ASCII 0 or 1
+ bra BRPTCH Put it out
+
+***************
+* Decompile RUN
+DCRUN leax RUN,PCR Get run
+DCRUN1 lbsr STRSPC Print it
+ lbra DCVREF Print the procedure name too
+
+***************
+* Decompile NEXT
+DCNEXT leax NEXT,PCR Get str adddr
+ leay 1,Y Skip varref token
+ bsr DCRUN1 Output string and varref
+ leay 6,Y And the junk
+ rts
+
+***************
+* Decompile THEN
+DCTHEN leax THEN,PCR
+ lbsr SPCSTR Output string in spaces
+ lda  ,Y
+ cmpa #T.LREF Followed by line number only?
+ beq DCTHE9 ..Yes; just return
+ inc I.OCNT Indent until endif is found
+DCTHE9 rts return
+
+***************
+* Decompile (* --- *) Remark
+REMRK2 fcs "(*" Remark literal
+DCSREM leax >REMRK2,PCR
+ bra DCREM2
+
+* Decompile Remark Statement
+DCREM leax REM,PCR Get the rem str
+DCREM2 lbsr STRSPC Output it
+DCERLN ldb ,Y+ Get the char count
+DCREM3 decb DECR It
+ beq DCTHE9 Exit if done
+ lda ,Y+ Get next char
+ bsr BRPTCH
+ bra DCREM3 .. and loop
+
+***************
+* Decompile T.MODE byte
+
+MODTBL fcb UPDAT.
+ fdb UPDATE-*
+ fcb READ.
+ fdb READ-*
+ fcb WRITE.
+ fdb WRITE-*
+ fcb EXEC.
+ fdb EXEC-*
+ fcb DIR.
+ fdb DIRECT-*
+ fcb 0
+
+DCMODE lda ,Y+ get mode byte
+ pshs a save it
+ lda #':
+DCMO10 bsr BRPTCH print char
+ leax <MODTBL-2,PCR
+DCMO20 leax 2,X
+ lda  ,S get remaing mode bits
+ anda  ,X
+ cmpa ,X+ bit name found?
+ bne DCMO20 ..no; loop
+ tsta end of table?
+ beq DCMO30 ..Yes; exit
+ eora  ,S
+ sta  ,S unmark bits in mode
+ ldd  ,X
+ leax D,X ptr to mode name
+ lbsr CPYSTR put string in I/O buffer
+ lda #'+
+ tst  ,S any more modes specified?
+ bne DCMO10 ..Yes; repeat
+DCMO30 puls a,pc return
+
+ ttl EXPRESSION Decompiler
+ pag
+***************
+* Subroutine Exprsn
+*  Convert I-Code polish expression to string
+
+EXPRSN pshs U Save registers
+ ldu <I.OPSP Get icode stack pointer
+ clr ,-U Set end of icode stack mark
+ clr ,-U
+ leay -1,Y Back up to current icode position
+EXPRS1 ldb  ,Y Get next icode token
+ bpl EXPRS9 Not expression type - exit
+ lbsr LKTOKE Look up it's type
+ tfr A,B
+ lda ,Y+ Get token again
+ bitb #Z$GARB Garbage component?
+ bne EXPRS1 ..Yes; throw away (garbage)
+ orb #$80 Mark operator
+ pshu D Push token & type on expr stack
+ bitb #Z$OPTR+Z$FREF is it an operator or func ref?
+ bne EXPRS1 ..Yes; go get some more
+ andb #$7F Mark operand
+ pshu D token is an operand - push some extra room
+ bitb #Z$LIT is it a literal?
+ bne EXPRS2 ..Yes; go handle specially
+ ldd ,Y++ Get symtbl ptr
+ std 2,U Patch it into expr stack
+ bra EXPRS1 Loop until end of expression
+
+* token is a literal
+EXPRS2 leay -1,Y
+ sty 2,U Save pointer to icode literal
+ ldb ,Y+ Get token again
+ lbsr NXTTOK Skip literal
+ bra EXPRS1
+
+EXPRS9 sty <I.ICPT Update icode pointer
+ leay  ,U Set operator stack top
+ clra
+ clrb
+ std ,--Y Set end of operator stack marker
+ pshs D Set end of line stack marker
+ sta I.CPRC Set old precedence = 0
+ sta TEMP Last operator=false
+* Fall into Explup
+
+* Y=Optr: Temporary Operator Stack
+* U=Expr Stack: Already Full (In Reverse Order)
+* S=Line Output Stack
+* Destroys A,B,D
+
+EXPLUP ldd ,U++ Pop next token,type
+ bitb #Z$OPTR is it an operator?
+ beq EXPLU2 ..no; go see what else it might be
+ andb #7 Mask precedence
+ cmpb I.CPRC is it higher than old precedence?
+ bhi EXPLU1 ..Yes; no parens around operands
+ bne EXPLU0 If lower, it needs parens
+ cmpb #6 Power function?
+ bne EXPL05 ..no
+ tst TEMP Two power operators in a row?
+ beq EXPLU0 ..no; put parens around operands (right to left evaluation)
+ bra EXPLU1
+EXPL05 tst TEMP Two operators in a row?
+ beq EXPLU1 ..no; no parens needed (equal precedence)
+EXPLU0 lbsr PARENS Put parenthesis around its operands
+EXPLU1 stb I.CPRC Update current precedence
+ orb #$80 Remark operator bit
+ std ,--Y Push operator on operator stack
+ lda #1
+ sta TEMP Mark last operator
+ bra EXPLUP Loop until done
+
+* This code deals with Operands
+EXPLU2 clr TEMP Last operator=false
+ bitb #3 Does this thing have any dimensions?
+ beq EXPLU5 ..no; go handle a simple variable
+ bitb #Z$LIT is it a literal?
+ bne EXPLU5 ..Yes; they handle like simple variables
+ bitb #Z$FREF is this a function reference?
+ bne EXPL25 ..Yes; no SYMPTR entry
+ pulu X Pop SYMPTR of variable
+ stx ,--Y Push it on operator stack
+EXPL25 std ,--Y Push variable token on operator stack
+ andb #3 Mask dimensions
+ bsr PARENS Put parens around dimensions
+ cmpa #T.EOF End of file function?
+ bne EXPL27 ..no; continue
+ ldx #T.CNUM*256+$FF
+ stx ,--Y put channel reference inside parens
+
+EXPL27 ldx #T.COMA*256+$80 Setup comma operator - 0 precedence
+ bra EXPLU4
+EXPLU3 stx ,--Y Push next comma on operator stack
+EXPLU4 decb
+ bne EXPLU3 Loop until all commas are accounted for
+ stb I.CPRC Erase current precedence for dims (args)
+EXPL45 bra EXPLUP Go back for next icode token
+
+* This code handles simple variable & literal Tokens
+EXPLU5 bitb #Z$FREF
+ bne EXPL55
+ pulu X Pull SYMPTR from icode stack
+EXPL52 pshs X Put symbol in line stack
+EXPL55 pshs D
+ cmpa #T.PERD Was that a record reference?
+ blo EXPL65
+ cmpa #T.P3D
+ bls EXPLUP ..Yes; don't pop next operator yet!
+EXPL65 ldd ,Y++ Pull operator from opstack
+ tstb IS It an operand token?
+ bmi EXPLU7 ..no; go do operator stuff
+ beq EXPLU8 Bra if end marker
+ ldx ,Y++
+ bra EXPL52 Loop looking for operator
+
+EXPLU7 pshs D Push operator token on line stack
+ clr 1,S Throw away precedence stuff
+ bitb #Z$FREF is it a null operator or funct ref?
+ bne EXPL65 ..Yes; loop until a real operator is found
+ andb #$07 Mask precedence
+ stb I.CPRC Update current operator precedence
+ bra EXPL45 Go pop next icode token
+
+EXPLU8 ldx ,U++ Pop (hopefully endmark) token from icode
+ beq EXPRXT Go finish up if it is endmarker!
+ pshu X Restore what you got
+ std ,--Y Restore end of operand stack marker
+ bra EXPL45 (explup) loop
+
+EXPRX1 puls Y Get ptr to icode literal
+ ldb ,Y+
+ lbsr EXPLOD
+
+* This section pops the Line stack out to the line
+
+EXPRXT ldd ,S++ Pop token from linesp; is it endmarker?
+ beq EXPRX9 ..Yes; return
+ bitb #Z$LIT is it a literal token?
+ bne EXPRX1 ..Yes; go do special output
+ leay  ,S Set up register for call explod
+ exg A,B
+ lbsr EXPLOD
+ leas  ,Y Update line stack
+ bra EXPRXT Loop until all tokens are pulled
+
+EXPRX9 ldy I.ICPT
+ puls U,PC Return
+
+***************
+* Subroutine Parens
+*   Put parenthesis around current operator
+
+* Passed: (Y)=Operator Stack
+*         (S)=Line Stack
+* Returns: Y,S Updated
+* Destroys: X,CC
+
+PARENS ldx  ,S Get return address
+ pshs X Move it down to make room for T.RPAR
+ ldx #T.RPAR*256
+ stx 2,S Put right paren in line stack
+ ldx #T.LPAR*256+Z$NULL Generated left paren
+ stx ,--Y Push left paren on operator stack
+ rts return
+
+* End of Decompiler routines
+
+ endc
+
+ ifne INCLUDED&EDITOR
+ ttl EDITOR Commands
+ pag
+***************
+* Editor Directives:
+
+* in the following description, "<Target>" may
+*  be any one of the following:
+*   +N         Forward N lines
+*   +          Forward one line
+*   (Cr)       Forward one line
+*   +*         Forward to bottom of procedure
+*   -N         Backward N lines
+*   -          Backward one line
+*   -*         Backward to top of procedure
+
+* - - - - - - -
+* Insert
+*   <Space><Source Line>
+*              Inserts source line before the edit
+*                ptr, if possible.
+*              if the line is numbered and out of
+*                sequence, the edit ptr will be
+*                moved to the line with the next
+*                higher line number.  Lines with the
+*                same number will be replaced.
+
+* List Commands
+*   L<Target>  List lines between edit ptr & target
+*   L<N>       List next N lines (same as "L+N")
+*   L*         List entire procedure
+
+* Delete Commands
+*   D<Target>  Delete lines between edit ptr & target
+*   D<N>       Delete next N lines (same as "D+N")
+*   D*         Delete Entire procedure (caution!)
+
+* Move Edit ptr
+*   <Target>   Move edit ptr to target
+*   <Line#>    Move edit ptr to line with >= line#
+
+* Search
+*   S <Delim><Sch Str> [<Same Delim>]
+*              Print first line containing <Sch Str>
+*              (<Delim> may be any desired delimiter except space.
+*   S*<Delim><Sch Str> [<Same Delim>]
+*              Print all following lines that contain <Sch Str>
+*              Move edit ptr to last line printed.
+
+* Change
+*   C <Delim> <Sch Str> <Same Delim> <Chg Str> [<Same Delim>]
+*              Change the first occurance of <Sch Str> to <Chg Str>
+*   C*<Delim> <Sch Str> <Same Delim> <Chg Str> [<Same Delim>]
+*              Change all following occurances from <Sch Str>
+*                to <Chg Str>
+
+* Resequence (Entire Procedure)
+*   R*         Reseq procedure from 100 by 10
+*   R*<Line#>  Reseq procedure from <Line#> by 10
+*   R*<Line#>,<Inc>
+*              Reseq procedure from <Line#> by <Inc>
+
+* Resequence from Edit ptr to End of Procedure
+*   R          Same as above, without '*'
+
+* Quit Editing
+*   Q          Bind procedure and return to Command
+
+ pag
+EDIT lbsr PRCREF Get procedure name
+ lbsr DIRADD Get procedure directory address
+ ldy  ,X Get procedure address
+ tst M$type,Y internal (un typed) procedure?
+ bne EDTERR ..No; impossible to edit
+ pshs X Save directory address
+ lbsr UNBIND Unbind the procedure
+ lbsr PCURPC Print current procedure name
+ ldy I.ICBG
+ bsr EMOVE1 Move to and print the first line
+EDIT1 lda G.SIGN
+ cmpa #S$Abort Keyboard abort?
+ bne EDIT2 ..no; continue
+ lbsr EQUIT Exit editor
+EDIT2 leax EDTPMT,PCR Get editor prompt string
+ leay EDTVRB,PCR Get editor verb table ptr
+ lbsr RUNCMD Execute editor command
+ bcc EDIT1 Repeat
+ tst G.SIGN Signal recieved?
+ bne EDIT1 ..Yes; check it out
+ leax >EDIT1,PCR get "return" addr
+ pshs X Push it on stack
+
+* Move to line number?
+
+ ldx I.IOBG Pickup line buffer
+ lsl  ,X
+ lsr  ,X Strip high order bit
+ lbsr GETNUM
+ lbcs CMDERR Error - what?
+ lbsr SCHLIN Search for line number
+ lda  ,X
+ cmpa #V$CR Line number only?
+ beq EMOVE1 ..Yes; move edit ptr to it
+ ldy I.IOBG Reset I/O buffer
+ bra EINSRT Compile the line
+
+EDTERR coma
+ rts
+
+***************
+* Subroutine Emove
+*   Move Edit ptr to target
+
+EMOVE leax -1,Y Back up to sign
+ asl  ,X
+ asr  ,X Strip high order bit
+ lbsr TARGET Find target line
+ lbsr CHKEOL Make sure it's end of line
+EMOVE1 sty I.ICPT Reset edit ptr
+ lbsr GETLIN Find out it's line number
+ leax  ,Y
+ lbsr NXTONE Skip to next line
+ lbra ELIST1 List the line found & return
+
+***************
+* Subroutine Einsrt
+*   Compile and insert line of I-Code at Edit ptr
+
+EINSRT bsr INSERT
+ bcc EMOVE1 Print the current line, and return
+ rts just return if error
+
+INSERT tst G.VARS enough memory to compile?
+ beq INSERR ..no; error: memory full
+ clr DEBUGGER Normal compil
+ lbsr J$CMPL Compile the line
+ ldx I.STBG Get the I-Code
+ lda  ,X
+ cmpa #T.LREF Does it have a line number?
+ bne INSER3 ..no; go insert line
+ clra
+ clrb
+ sta ,-S
+ ldy I.ICPT Get edit ptr
+ lbsr SCHLI0 Find next line with a number
+ cmpy I.ICLM Was any found?
+ bhs INSER1 ..no; continue
+ ldd 1,X Get the line number entered
+ cmpd 1,Y is it below the next line# found?
+ bls INSER1 ..Yes; good - continue
+ inc  ,S Mark sequence error
+INSER1 ldy I.ICBG
+ ldd 1,X
+ lbsr SCHLIN Search I-Code for line just entered
+ tst ,S+ Already known out of sequence?
+ bne INSER2 ..Yes; go move edit ptr
+ bcc INSER2 Found identical line# - go move edit ptr
+ cmpy I.ICPT is (next higher) line# above curr line?
+ bhs INSER3 ..Yes; don't need to move edit ptr
+INSER2 sty I.ICPT Move edit ptr to line found
+ cmpy I.ICLM At end of procedure?
+ bhs INSER3 ..Yes; go do insertion
+ ldx I.STBG Restore I-Code ptr
+ ldd 1,X Get the line# of the new line
+ cmpd 1,Y is it a replacement number?
+ bne INSER3 ..no; go do insertion
+ pshs Y
+ lbsr NXTONE Skip over the line to replace
+ tfr Y,D
+ subd ,S++ Find number of bytes to delete
+ bra INSER4 Go do replacement
+INSER3 clra
+ clrb set Number of bytes to delete = zero
+INSER4 ldy I.ICPT Restore current edit ptr
+ lbsr REPLAC Stick the new line in
+ ldx I.ICPT
+ bsr CHKERR Error line?
+ bne INSER6 ..no
+INSER5 leay  ,X Stay on current line
+INSER6 clra return carry clear
+ rts
+
+INSERR ldb #M$MFUL Error: memory full
+ lbsr PRTERR
+ coma return carry set
+ rts
+
+***************
+* Chkerr
+*   See if current line is an Error line
+
+* Passed: (X)=I-Code ptr
+* Returns: Zero Set if it is an Error Line
+* Destroys: A
+
+CHKERR lda  ,X Get 1st token
+ cmpa #T.LREF Line reference?
+ bne CHKER8 ..no
+ lda 3,X Get 1st token following line ref
+CHKER8 cmpa #T.ERRL Numbered error line?
+ rts
+
+***************
+* Subroutine GETLIN
+*   Get ordinal number of current Edit line
+
+GETLIN ldx #0
+ ldy I.ICBG Start at beginning of procedure
+GETLI1 cmpy I.ICPT Are we at the editors current line?
+ bhs GETLI2 ..Yes; return
+ leax 1,X Count one for each line skipped over
+ lbsr NXTONE Skip one line
+ cmpy I.ICLM At end of procedure?
+ blo GETLI1 ..no; repeat until line is found
+GETLI2 sty I.ICPT insure "CLEAN" edit ptr
+ stx EDTLIN Save line number
+ clra (return Carry clear)
+ rts
+
+***************
+* ELIST
+*   Process List command
+
+ELIST bsr LIMITS Get list limits
+ bsr CHKEOL Make sure we've hit end of line
+ cmpx I.ICBG List from beginning of procedure?
+ bhi ELIST1 ..no
+ pshs X,Y
+ lbsr PCURPC Print current procedure name
+ puls X,Y
+ELIST1 ldd I.ICLM
+ pshs D
+ sty I.ICLM
+ lbsr LSTBN0 Do the listing
+ puls D
+ std I.ICLM
+ clra (return Carry clear)
+ rts
+
+***************
+* Subroutine CHKEOL
+*   Check for end of line
+
+CHKEOL pshs B,X Save regs
+ ldx I.IOPT Get I/O ptr
+ ldb  ,X Get next char there
+ cmpb #V$CR End of line?
+ bne CHKEO1 ..no; what?
+ puls B,X,PC Return
+CHKEO1 leas 5,S Pull of b,x,pc
+ lbra CMDERR Print what? and return to caller's caller
+
+***************
+* Subroutine LIMITS
+*   Find Low and High limits to List or Delete
+
+LIMITS lda ,Y+
+ cmpa #V$SPAC Space?
+ beq LIMITS ..Yes; skip it
+ cmpa #'* Entire procedure?
+ bne LIMIT2 ..no; continue
+ sty I.IOPT
+ ldx I.ICBG
+ ldy I.ICLM
+ rts
+
+LIMIT2 leax -1,Y
+ bsr TARGET Must be a target - get it
+ bcs LIMIT9
+ ldx I.ICPT
+ cmpy I.ICPT is limit found below current ptr?
+ bhs LIMIT9 ..no
+ exg X,Y
+ clra clear Carry (no error)
+LIMIT9 rts
+
+***************
+* Subroutine TARGET
+*   Find user's Target line
+
+* Passed: (X)=ptr to Command Line Target
+* Returns: (Y)=I-Code ptr of Target Line
+
+TARGET clr ,-S Default forward target
+ ldd  ,X Get command
+ cmpa #'+ Forward?
+ bne TARGE2 ..no; look again
+ ldy I.ICLM MAYBE "+*"
+TARGE1 cmpb #'* to bound?
+ bne TARGE3 ..no; go get number
+ leax 2,X Update I/O ptr
+ stx I.IOPT
+ puls A,PC Clean up stack & return
+
+TARGE2 cmpa #'- Backward?
+ bne TARGE4 ..no; unsigned foreward
+ inc  ,S Set negative mode
+ ldy I.ICBG "-*"?
+ bra TARGE1 Go see if it is
+
+TARGE3 leax 1,X Update I/O ptr past sign
+TARGE4 lda  ,X Get first digit
+ cmpa #'0 Number?
+ blo TARGE5 ..no
+ cmpa #'9 Number?
+ bls TARGE6 .yes
+TARGE5 ldd #1 Default one
+ bra TARGE7
+TARGE6 bsr GETNUM Get number of lines forward
+ bcs TRGERR Target error - what?
+TARGE7 stx I.IOPT Save updated I/O ptr
+ ldy I.ICPT Get current edit ptr
+ tst ,S+ Positive target?
+ beq TARGE8 ..Yes; go do it
+ ldy I.ICBG Skip from bottom up
+ pshs D Save absolute target
+ ldd EDTLIN Get current edit line
+ subd ,S++ Compute absolute line number of target
+ bhs TARGE8 Trying to get below I-Code beginning?
+ clra Naughty
+ clrb Naughty
+TARGE8 lbsr NXTLIN Skip lines to target
+ clra return Carry clear
+ rts
+
+TRGERR ldy I.ICPT Return with current line
+ com ,S+ Return carry set
+ rts
+
+***************
+* Subroutine GETNUM
+*   Get positive integer from command line
+
+GETNUM ldy I.OPBG Get scratch
+ lbsr J$ASNM Get the number
+ lda ,Y+ Right type?
+ cmpa #S.REAL
+ beq GETNCS ..no; error exit
+ clra clear Carry
+ ldd  ,Y Get positive integer
+ bne GETNU9 Good: return carry clear
+GETNCS coma set carry
+GETNU9 rts
+
+***************
+* Subroutine SCHSUB
+*   Editor Search and Change commands
+
+* Passed: (Y)=Line ptr
+
+SEARCH clrb clear Change mode
+ bra SCHSUB
+CHANGE ldb #1 set change mode as "bne if change mode"
+
+ org 0 Stack temporary variables
+CHNG rmb 1 Change mode
+CONTNU rmb 1 continuous "*" mode
+SCHLEN rmb 2 Search string length
+CHGLEN rmb 2 Change string length
+CHGSTR rmb 2 Change string ptr
+SCHPTR rmb 2 Current search i-code line
+FOUND rmb 1 Outcome of substring check
+LSTFND rmb 2 I-Code ptr to last line found
+OPBEG rmb 2 Opstack beginning save
+SCHTMP equ . Total stack space needed
+
+SCHSUB leas -SCHTMP,S Chop out workspace
+ stb CHNG,S Set search/change mode
+ lda  ,Y Get next char
+ clr CONTNU,S Clear continuous mode
+ cmpa #'* Asterick?
+ bne SCHSU1 ..no
+ sta CONTNU,S ..Yes; set continuous mode
+ leay 1,Y Skip over asterick
+SCHSU1 ldb ,Y+ Get delim char
+ cmpb #V$SPAC
+ beq SCHSU1 ..but skip spaces
+ tfr B,A
+ sty I.IOPT Save search string address
+ lbsr NXDLIM Skip over search string
+ stu SCHLEN,S Save length of search string
+ lbmi SCHERR ..no search string - error
+ tst CHNG,S Change mode?
+ beq SCHSU2 ..no; don't get change string
+ lbsr NXDLIM Skip over change string
+ stu CHGLEN,S Save change string length
+ lbmi SCHERR No change string present - error
+SCHSU2 cmpa #V$CR End of line?
+ beq SCHSU3 ..Yes, continue
+ lda ,Y+ Get next char
+ cmpa #V$CR End of line?
+ lbne SCHERR ..no; syntax error
+SCHSU3 ldu I.OPBG Get opstack addr
+ stu OPBEG,S Save it
+SCHSU4 lda ,-Y
+ sta ,-U Copy search/change string(s) to opstack
+ cmpy I.IOPT
+ bhi SCHSU4
+ stu I.OPBG Save new opstack beginning
+ stu I.OPSP
+ ldd SCHLEN,S
+ leau D,U Compute change string address
+ leau 1,U (skip delim)
+ stu CHGSTR,S Save it
+ ldy I.ICPT Start search with current line
+ sty LSTFND,S Initialize last found line
+ clr FOUND,S set "NOT FOUND"
+ lbra SCHSU6 While not end of I-Code do
+SCHSU5 lbsr NEWLIN Reset I/O ptrs
+ sty I.ICPT Tell decompiler which line to decompile
+ lbsr DCLINE Decompile line
+ ldy I.IOBG Address of source line
+ leay 5,Y Skip over line reference field
+ asl FOUND,S
+ asr FOUND,S unmark Found in current line flag
+FIND tst G.SIGN (abort) signal?
+ bne SCHSXT ..Yes; exit
+ ldd I.IOPT Get end of decompiled line
+ subd SCHLEN,S (d)=last byte to search
+ ldx I.OPBG Address of search string
+ lbsr SUBST Search for search string in source line
+ bcs SCHS55 ..not found; skip to next line
+
+* Search string Found in I-Code line
+*  (Y)=Addr of string in source line
+
+ lda #$81 Found in current line
+ sta FOUND,S Set found flag
+ tst CHNG,S Change mode?
+ beq SCHS55 ..no; exit
+
+* Replace Search string with Change string
+ ldd I.IOPT
+ addd CHGLEN,S
+ subd SCHLEN,S
+ subd I.IOBG
+ cmpd #230 Super long line?
+ bhi SCHS55 ..Yes; skip it
+ ldx I.IOPT Get end of decompiled line
+ exg X,Y
+ ldd SCHLEN,S Length of search string
+ lbsr FLOTUP Float search string to top of line
+ tfr Y,D
+ subd SCHLEN,S Compute new end of I/O buffer
+ tfr D,Y
+ ldu CHGSTR,S Get addr of change stirng
+ pshs D,X Save limits of source line info
+FOUND2 lda ,U+
+ sta ,Y+ Copy replacement string to end of I/O buffer
+ cmpa #V$ESTR
+ bne FOUND2 repeat until end of string
+ leay -1,Y
+ ldd ,S++
+ subd  ,S Length of source line to flotup
+ puls X Restore source ptr
+ lbsr FLOTUP Float change string down into line
+
+* Returns:
+*    Change Str    Remainder of Source Line
+*  !------------!------------------------------!
+* (X)           (.............(D)............)(Y)
+
+ sty I.IOPT Save new end of line ptr
+ ldd CHGLEN,S Get change string length
+ leay D,X Set (y) to rest of line
+ ldd SCHLEN,S Zero search length?
+ bne FOUND4 ..no; good
+ leay 1,Y Give line ptr a little nudge
+FOUND4 tst CONTNU,S Continuous change mode?
+ bne FIND ..Yes; search rest of line for occurance
+SCHS55 tst FOUND,S Was string found in this line?
+ bpl SCHS57 ..no; skip to next line
+ ldy SCHPTR,S
+ ldd CHNG,S Test change and continuous modes
+ bne SCHS56 Bra if either change or continuous
+SCHSXT ldx OPBEG,S Reset opstack ptrs
+ stx I.OPBG
+ stx I.OPSP
+ leas SCHTMP,S Throw away temps
+ lbra EMOVE1 Print current line, and exit
+
+SCHS56 lbsr OUTBUF Print the line found
+ sty LSTFND,S Save most recent line found
+ tst CHNG,S Change mode?
+ beq SCHS57 ..no; skip to next line
+ leax  ,Y Save current line ptr
+ lbsr NXTONE Skip this line
+ lbsr DELLIN Delete the line
+ sty I.ICPT Save current I-Code ptr for insert
+ ldy I.IOBG Get address of replacement line
+ lbsr INSERT Insert it
+ sty I.ICPT
+ ldy SCHPTR,S Get editor's current line ptr
+ lbsr NXTONE Skip over this line
+ cmpy I.ICPT Did insert have to move the line?
+ bne SCHSU7 ..Yes; stop searching
+ tst CONTNU,S Continuous mode?
+ beq SCHSU7 ..no; stop searching
+SCHS57 ldy SCHPTR,S
+ lbsr NXTONE Skip to next line
+SCHSU6 sty SCHPTR,S Save current I-Code line
+ cmpy I.ICLM End of I-Code?
+ lblo SCHSU5 ..no repeat
+SCHSU7 lbsr NEWLIN Reset I/O ptrs
+ tst FOUND,S Was any occurance found?
+ bne SCHSU8 ..Yes; ok
+ leax NOTFND,PCR get "CAN'T FIND" string
+ lbsr STRSPC Print string
+ ldy I.OPBG Get search string addr
+ lbsr DCSTLT Print it
+ lbsr PRTEOL
+SCHSU8 ldy LSTFND,S Restore ICDPTR to last found line
+ sty I.ICPT
+ ldx OPBEG,S Reset opstack ptrs
+ stx I.OPBG
+ stx I.OPSP
+ leas SCHTMP,S Throw away temps
+ lbra GETLIN Make this line current, and return
+
+***************
+* Subroutine NXDLIM
+*   Skip to next delimiter
+
+NXDLIM ldu #-1
+NXDLI1 cmpa #V$CR
+ beq NXDLI9
+ leau 1,U Update char cnt
+ lda ,Y+
+ cmpb -1,Y Delimiter char?
+ bne NXDLI1 ..no; loop
+NXDLI9 clr -1,Y
+ com -1,Y warning: V$ESTR must equal $FF
+ rts
+ endc
+
+***************
+* Subroutine SUBST
+*   Find search string in source string
+
+* Passed: (X)=Addr(Search String)
+*         (Y)=Addr(Source String)
+*         (D)=Highest Location to Search from
+*              (End of Source String - Length of Search String)
+* Returns: (Y)=Addr of String if Found
+*          (Y)=Greater Than (D) if Not Found
+*           CC=Set if Not Found
+* Destroys: None
+
+SUBST pshs D Save search limit
+ bra SUBST2
+SUBST1 pshs X,Y Save schbeg,SRCPTR
+SUBS15 lda ,X+ Get next search char
+ cmpa #V$ESTR
+ beq SUBST3 End of string - found
+ cmpa ,Y+ Does it match sourch char?
+ beq SUBS15 ..Yes; keep going
+ puls X,Y Restore schbet,SRCPTR
+ leay 1,Y Update SRCPTR
+SUBST2 cmpy  ,S Beyond place where it might be found?
+ bls SUBST1 ..no; keep searching
+ coma
+ puls D,PC Return
+SUBST3 puls X,Y (y)=addr of string that was found
+ clra clear Carry - found
+ puls D,PC Return
+
+ ifne INCLUDED&EDITOR
+***************
+* Subroutine ERESEQ
+*   Resequence numbered procedure lines
+
+ERESEQ ldd #100 Defalut first line#
+ ldx #10 Default increment
+ pshs D,X
+ leax  ,Y
+ ldy EDTLIN
+ lda  ,X
+ cmpa #'* Resequence entire procedure?
+ bne RESEQ1 ..no
+ ldy #0 Set top of procedure as starting point
+RESEQ0 leax 1,X
+ lda  ,X
+RESEQ1 cmpa #V$SPAC Skip any spaces here
+ beq RESEQ0
+ pshs Y Save starting point
+ cmpa #V$CR End of line?
+ beq RESEQ2 ..Yes; go do resequencing
+ lbsr GETNUM Get explicit starting line#
+ bcs RESER1 ..error - what?
+ std 2,S Reset starting line#
+ lda ,X+
+ cmpa #V$CR End of command line?
+ beq RESEQ2 ..Yes; use default increment
+ lbsr GETNUM Get increment
+ bcs RESER1 ..error - what?
+ std 4,S Save explicit increment
+ bmi RESER1 ..negative - what?
+ lda  ,X
+RESEQ2 cmpa #V$CR End of line?
+ bne RESER1 ..no: what?
+ bsr REBIND Bind the procedure
+ ldd ,S++ Get starting point
+ ldy I.ICBG
+ lbsr NXTLIN Skip to line to begin with
+ sty I.ICPT
+ ldd  ,S Get starting line number
+ lbsr SCHLIN Find it in I-Code
+ clr ,-S Set up for dummy resequence
+ cmpy I.ICPT is it below the renumbered lines?
+ blo RESER2 ..Yes; error - bad range
+ bsr RESEQ5 Try it out
+ cmpx #0 Did it work?
+ ble RESER2 ..no; error - bad range
+ tst G.SIGN
+ bne RESEQ3
+ tst G.SIGN Signal recieved?
+ bne RESEQ3 ..Yes; don't renumber
+ inc  ,S Signal real stuff!
+ bsr RESEQ5 Do it
+RESEQ3 leas 5,S Throw away temps
+ ldx 2,S Get directory addr (remember-editor saved it)
+ lbsr UNBIND Unbind the procedure
+ ldy I.ICBG
+ ldd EDTLIN Get current editor line number
+ lbsr NXTLIN Skip to it
+ sty I.ICPT Reset current I-Code ptr
+ clra return Carry set
+ rts
+
+RESEQ5 ldy I.ICPT Get starting I-Code ptr
+ ldx 3,S Get starting line number
+RESEQ6 clra
+ clrb
+ lbsr SCHLI0 Find next line with a number
+RESEQ7 cmpy I.ICLM Run out of I-Code?
+ bhs RESEQ9 ..Yes; good - done!
+ tst 2,S Trial run?
+ beq RESEQ8 ..Yes - don't mess up I-Code
+ stx 1,Y Renumber the line
+RESEQ8 lbsr NXTONE Skip over this line
+ tfr X,D
+ addd 5,S Form next line#
+ tfr D,X
+ bpl RESEQ6 Exit if out of range
+RESEQ9 rts
+
+RESER1 leas 6,S Discard temps
+ bra SCHER9
+SCHERR leas SCHTMP,S
+SCHER9 lbra CMDERR Error - what?
+RESER2 leax RNGERR,PCR
+ lbsr PRTLIN print BAD RANGE
+ bra RESEQ3 Unbind procedure and return
+
+***************
+* Subroutine EQUIT
+*   Quit Editing; return to Command mode
+
+EQUIT leas 4,S Throw away return addr & TEMP
+REBIND lbsr J$BIND Bind the procedure & return
+ clra (return Carry clear)
+ rts
+
+***************
+* Subroutine EDELET
+*   Process Editor's delete command
+
+EDELET lbsr LIMITS
+ lbsr CHKEOL
+ bsr DELLIN Delete the line
+ lbra EMOVE1 Print the current line, return
+
+DELLIN ldd I.STBG
+ std ICDPTR Insure nothing gets inserted
+ tfr Y,D
+ pshs X
+ subd ,S++ Calculate number of bytes to delete
+ leay  ,X Delete bytes from lower 'limit'
+* Fall thru to Replace
+
+***************
+* Subroutine REPLACE
+*   Replace a part of the I-Code
+
+* Passed: (D)=# Bytes to Delete Before Insertion
+*         (Y)=ptr to I-Code
+* Returns: (D)=Net Change in I-Code Size
+*          (Y)=Updated Past Inserted I-Code
+* Destroys: None
+
+* For this routine to work properly, the code to be
+* inserted must be located at [I.STBG] thru ICDPTR.
+* Also, I.STBG must equal I.ICLM
+
+REPLAC pshs D,X,Y,U Save caller's registers
+ leax D,Y Skip over deleted area
+ pshs X Save this ptr
+ ldy ICDPTR Last byte of inserted code (+1)
+ ldd I.STBG
+ subd  ,S (d)=length of I-Code following inserted stuff
+ beq REPLA1
+ lbsr FLOTUP Move new below old I-Code where it goes
+REPLA1 ldd ICDPTR
+ ldu  ,S First byte to move
+ subd ,S++ (d)=number of bytes to move down
+ bls REPLA2
+ ldy 4,S Original I-Code ptr
+ lbsr J$MVDN Accomplish the deletion by moving down
+REPLA2 ldd ICDPTR
+ subd I.STBG (d)=number of bytes added
+ ldy 4,S
+ leay D,Y
+ sty 4,S Update I-Code ptr past inserted bytes
+ subd ,S++ (minus number deleted)
+ pshs D Equals the net change in I-Code size
+ addd I.ICLM
+ std I.ICLM Update I-Code limit
+ std I.STBG Update bottom of free space ptr
+ ldd G.VARS
+ subd  ,S
+ std G.VARS Update free space count
+ puls D,X,Y,U,PC Return
+
+***************
+* Subroutine MOVUP
+
+* Passed: (D)=Count
+*         (Y)='from'
+*         (U)='To'
+
+MOVUP pshs D,X,Y
+ leay D,Y
+ leau D,U
+ andb #3
+MOVUP1 beq MOVUP3
+ lda ,-Y
+ sta ,-U
+ decb
+ bra MOVUP1
+MOVUP2 ldx ,--Y
+ ldd ,--Y
+ pshu D,X
+MOVUP3 cmpy 4,S
+ bne MOVUP2
+ puls D,X,Y,PC
+
+***************
+* Subroutine SCHLIN
+*   Search I-Code for line number
+
+* Passed: (D)=Line Number Desired
+* Returns: (Y)=ptr to I-Code Line with that Number
+*       (Next Higher Number and Carry Set if not found)
+* Destroys: None
+
+SCHLIN ldy I.ICBG
+SCHLI0 pshs D
+ bra SCHLI2
+SCHLI1 lbsr NXTONE Skip this line
+SCHLI2 cmpy I.ICLM At end of I-Code?
+ bhs SCHLI8 ..Yes; return not found
+ lda  ,Y
+ cmpa #T.LREF Does this line begin with a line number?
+ bne SCHLI1 ..no; skip it and try again
+ ldd  ,S Get line reference
+ cmpd 1,Y is this the one we want?
+ bhi SCHLI1 ..too small; get another line & repeat
+SCHLI9 puls D,PC Restore register and return (found)
+
+SCHLI8 coma return Not found
+ puls D,PC
+
+ ttl SKIP/UNBIND Routines
+ pag
+***************
+* Subroutine UNBIND
+*   Un-does actions of the Binder
+
+* Passed: (X)=Procedure Directory Entry
+*         (U)=Top of Free Memory
+* Returns: Nothing
+* Destroys: CC
+
+UNBIND pshs D,X,Y,U
+ lbsr SHUFLE Shuffle procedure to top
+ ldx  ,X Get address of procedure
+ stx I.APRC Set active procedure
+ ldd P.PGMB,X Get I-Code area offset
+ addd I.APRC
+ std I.ICBG
+ ldd P.DSCB,X
+ addd I.APRC Compute i-code limit
+ std I.ICLM Set I-Code area end (+1)
+ std I.STBG
+ ldd P.SIZE,X
+ subd P.DSCB,X Compute symbol tbl size + desc tbl size
+ pshs D Save total size
+ ldd G.WSPA
+ addd G.WSPS Get ptr to top of memory
+ subd  ,S Subtract size of tables
+ tfr D,U Make new top
+ std I.DSCR
+ ldd I.APRC Get ptr to procedure beginning
+ addd P.DSCB,X Add offset of description area
+ tfr D,Y
+ puls D
+ bsr MOVUP
+ ldd P.SYMB,X
+ subd P.DSCB,X Calculate description table size
+ subd #3
+ std I.DSCS
+ addd I.DSCR
+ addd #3 Compute new symbol tbl addr
+ std I.SYMT
+ ldd P.SIZE,X
+ subd P.SYMB,X
+ addd #3 Compute symbol tbl size
+ std I.SYMS
+ ldy I.ICBG Get ptr to I-Code beginning
+ bsr UNBICD Unbind the I-Code
+
+* Undefine all variables in the symbol table
+ ldx I.SYMT Get symbol table ptr
+ ldd -3,X Get entry count
+ beq UNBIN3 Branch if none
+UNBIN1 pshs D Save count
+ leau  ,X Save ptr to beginning
+ leax 3,X Moveto beginning of name
+UNBIN2 ldb ,X+ is this the last byte
+ bpl UNBIN2 ..no; try next
+ lda #S.REAL
+ cmpb #'$+$80
+ bne UNBI25
+ lda #S.STR
+UNBI25 sta  ,U Put in symbol table
+ puls D Get entry count
+ subd #1 Any more?
+ bgt UNBIN1 ..Yes; go do next
+
+* Clear description area
+UNBIN3 ldx I.DSCR Get description area ptr
+ ldd I.DSCS Get description area size
+ leax D,X Update descr area ptr
+ stx LNMTBL Initialize binder's line number tbl
+ stx I.DSCR
+ addd G.VARS Update free space size
+ std G.VARS
+ clr I.DSCS Clear description area size
+ clr I.DSCS+1
+ puls D,X,Y,U,PC Return
+
+ pag
+UNBIC1 ldb ,Y+ Get next token
+ bpl UNBIC2
+ subb #T.SBYT-T.LBNE-1 Adjust for hole in token defs
+UNBIC2 clra
+ leax SKPTBL,PCR Get address of table
+ ldb D,X
+ lsrb UNBINDER Has ms nibble
+ lsrb
+ lsrb
+ lsrb
+ lbsr NXTTO1 Vector to routine
+UNBICD cmpy I.ICLM End of I-Code?
+ bcs UNBIC1
+ rts
+
+UNBTBL equ *
+ fcb SK0-UNBTBL    U$SKP0
+ fcb SK1-UNBTBL    U$SKP1
+ fcb SK2-UNBTBL    U$SKP2
+ fcb SK5-UNBTBL    U$SKP5
+ fcb SK9-UNBTBL    N$SKP9
+ fcb SKPST-UNBTBL  U$SKST
+ fcb NXT-UNBTBL    U$SKNX
+ fcb REMRK-UNBTBL  U$SKRM
+ fcb STRNG-UNBTBL  U$SKSR
+ fcb LINRF-UNBTBL  U$SKLR
+ fcb SMPVAR-UNBTBL U$SVAR
+ fcb DOWN1-UNBTBL  U$DWN1
+ fcb DOWN2-UNBTBL  U$DWN2
+ fcb DOWN3-UNBTBL  U$DWN3
+ fcb ADRREF-UNBTBL U$ADRF
+
+* Routine ADRREF
+
+ADRREF lda -1,Y Get token
+ adda #T.VREF-T.AREF Make variable ref token
+ sta -1,Y Fix I-Code (fall through to sk2)
+
+* Skip Routines
+SK2 leay 1,Y
+SK1 leay 1,Y
+SK0 rts
+
+* token Fixup Routines
+DOWN3 dec -1,Y
+DOWN2 dec -1,Y
+DOWN1 dec -1,Y
+ rts
+
+* Routine Line Reference
+LINRF ldd  ,Y Get I-Code offset
+ addd I.ICBG Add I-Code beginning
+ tfr D,X
+ ldd -2,X Get line number
+ std ,Y++ Restore it
+ dec -3,Y Declare it unbound
+ rts
+
+* Routine Next
+NXT lda ,Y+ Get next token
+ cmpa #T.VREF is it bound?
+ bne NEXT1 ..Yes; unbind it
+SK9 leay 9,Y Skip unbound reference
+ rts
+
+NEXT1 clrb Clear type flag
+ bsr SMPNXT Unbind counter variable
+ leay 7,Y Skip extra next stuff
+ rts
+
+* Routine String
+STRNG lda  ,Y Get next byte
+ cmpa #T.LBKT is there size given?
+ bne SK1 No; return
+SK5 leay 5,Y Skip it
+ rts
+
+* Routine Skipst
+SKPST lda ,Y+ Get next byte of string literal
+ cmpa #V$ESTR
+ bne SKPST Loop until end of string
+ rts
+
+* Routine Remrk
+*  Skip Remark Statement
+REMRK ldb  ,Y Get skip count
+ clra
+ leay D,Y Skip it
+ rts
+
+* Routine Smpvar
+SMPVAR ldb -1,Y Get token
+ andb #S.STR Set type flag
+SMPNXT lda #S.VAR Set definition
+
+*   Fix Simple Variable Reference
+ pshs D Save definition & type flag
+ lda #T.VREF Fix token
+ sta -1,Y Put in i-code
+FNDVA1 ldx I.SYMT Get ptr to symbol table
+ ldd -3,X Get entry count
+ ldu  ,Y Get symbol table offset
+ bra FNDVA5
+FNDVA2 puls D Retrieve entry count
+FNDVA3 subd #1 At end of table?
+ beq FNDVA7 Branch if so
+ leax 3,X Skip type & ptr
+FNDVA4 tst ,X+ End of name?
+ bpl FNDVA4 Branch if not
+FNDVA5 cmpu 1,X is it this one?
+ bne FNDVA3 ..no; try next
+ pshs D Save count
+ lda  ,X Get type byte
+ anda #S.DEFM Get definintion
+ cmpa 2,S is it correct?
+ bne FNDVA2 ..no; try next
+ lda  ,X Get type byte
+ anda #S.SHPM Get SHAPE
+ bne FNDVA2 Branch if not simple
+ lda  ,X Get type byte
+ anda #S.STR Get type
+ eora 3,S Test type flag
+ bne FNDVA2 Branch if wrong type
+FNDVA6 tfr X,D
+ subd I.SYMT Make ptr an offset
+ std ,Y++ Put in I-Code
+ leas 2,S
+FNDVA7 leas 2,S Return scratch
+ rts
+
+***************
+* Skip token
+
+NXTTOK tstb
+ bpl NXTADJ
+ subb #T.SBYT-T.LBNE-1 Adjust for hole in token defs
+NXTADJ leax <SKPTBL,PCR
+ clra
+ ldb D,X
+ andb #$0F Strip off unbinder part
+NXTTO1 leax UNBTBL,PCR Get routine table
+ ldb B,X
+ jmp B,X Goto routine
+
+***************
+* Skip Routines
+*   Skip Through I-Code Looking For Various Things
+
+* Passed: (Y)=I-Code ptr
+*         (U)=Ascending token list, ending with $FF Byte
+*             Caller Must Pshs D,X,U and Bra Here (Not Bsr)
+* Returns: (Y)=Updated I-Code ptr
+*          (D,X,U)=Restored
+*          CC=Set if token Not Found
+
+SKIP0 pshs U
+ ldb ,Y+ Get next token
+SKIP1 cmpb ,U+ is it desired (or above)?
+ bhi SKIP1 ..maybe; try next
+ puls U
+ beq SKIP9 ..Yes,desired; return
+ bsr NXTTOK ..no; skip over token
+SKIP cmpy I.ICLM Repeat (entry point of skip routine)
+ blo SKIP0 Until end of i-code
+ coma set Carry (not found)
+SKIP9 puls D,X,U,PC Restore registers, return
+
+LREFS fcb T.GOTO,T.GOSB,T.LREF,$FF
+NXLNRF pshs D,X,U Save regs
+ leau >LREFS,PCR
+ bra SKIP
+
+STMTS fcb T.BKSL
+EOLTOK fcb T.EOL,$FF
+NXTSTM pshs D,X,U
+ leau <STMTS,PCR
+ bra SKIP
+
+NXLINE pshs D,X,U
+ leau <EOLTOK,PCR
+ bra SKIP
+
+VAREFS fcb T.RUN
+ fcb T.VREF,T.VR1D,T.VR2D,T.VR3D
+ fcb T.PERD,T.P1D,T.P2D,T.P3D
+ fcb T.AREF,T.AR1D,T.AR2D,T.AR3D
+ fcb T.APRD,T.AP1D,T.AP2D,T.AP3D
+ fcb $FF
+NXTVAR pshs D,X,U
+ leau <VAREFS,PCR
+ bra SKIP
+
+***************
+* NXTLIN - Skip N Lines
+
+* Passed: (D)=Number of Lines to Skip
+*         (Y)=I-Code ptr
+* Returns: (Y)=Updated
+* Destroys: D,CC
+
+NXTONE clra ENTRY Pt to skip one line
+ clrb
+NXTLI0 bsr NXLINE Skip to next I-Code line
+ bcs NXTLI1 ..no more lines, return
+NXTLIN subd #1 Decrement count
+ bhs NXTLI0 Loop until expired
+NXTLI1 rts
+
+ ttl UNBIND/SKIP Table
+ pag
+N$SKP0 equ $00 Skip next 0
+N$SKP1 equ $01 Skip next 1
+N$SKP2 equ $02 Skip next 2
+N$SKP5 equ $03 Skip next 5
+N$SKP9 equ $04 Skip 'next' statement
+N$SKST equ $05 Skip next string
+* (Unused By Skip Routines)
+N$SKRM equ $07 Skip next remark
+
+U$SKP0 equ $00 Unbind next 0
+U$SKP1 equ $10 Unbind next 1
+U$SKP2 equ $20 Unbind next 2
+U$SKP5 equ $30 Unbind next 5
+* (Unused By Unbinder)
+U$SKST equ $50 Unbind next string
+U$SKNX equ $60 Unbind next next
+U$SKRM equ $70 Unbind next remark
+U$SKSR equ $80 Unbind next T.STR
+U$SKLR equ $90 Unbind next line ref
+U$SVAR equ $A0 Unbind next simple variable
+U$DWN1 equ $B0 Unbind next down 1
+U$DWN2 equ $C0 Unbind next down 2
+U$DWN3 equ $D0 Unbind next down 3
+U$ADRF equ $E0 Unbind next address reference
+
+ pag
+SKPTBL equ *
+
+* Statement Verb Tokens
+ fcb N$SKP0+U$SKP0 T.GLOB
+ fcb N$SKP0+U$SKP0 T.PRAM
+ fcb N$SKP0+U$SKP0 T.type
+ fcb N$SKP0+U$SKP0 T.DIM
+ fcb N$SKP0+U$SKP0 T.DATA
+ fcb N$SKP0+U$SKP0 T.STOP
+ fcb N$SKP0+U$SKP0 T.BYE
+ fcb N$SKP0+U$SKP0 T.TRON
+ fcb N$SKP0+U$SKP0 T.TROF
+ fcb N$SKP0+U$SKP0 T.PAUS
+ fcb N$SKP0+U$SKP0 T.DEG
+ fcb N$SKP0+U$SKP0 T.RAD
+ fcb N$SKP0+U$SKP0 T.RETN
+ fcb N$SKP0+U$SKP0 T.LET
+ fcb N$SKP0+U$SKP0 T.CXAS
+ fcb N$SKP0+U$SKP0 T.POKE
+ fcb N$SKP0+U$SKP0 T.IF
+ fcb N$SKP2+U$SKP2 T.ELSE
+ fcb N$SKP0+U$SKP0 T.EIF
+ fcb N$SKP0+U$SKP0 T.FOR
+ fcb N$SKP9+U$SKNX T.NEXT
+ fcb N$SKP0+U$SKP0 T.WHIL
+ fcb N$SKP2+U$SKP2 T.EWHL
+ fcb N$SKP0+U$SKP0 T.REPT
+ fcb N$SKP0+U$SKP0 T.UNTL
+ fcb N$SKP0+U$SKP0 T.LOOP
+ fcb N$SKP2+U$SKP2 T.ELOP
+ fcb N$SKP0+U$SKP0 T.EXIF
+ fcb N$SKP2+U$SKP2 T.EEXT
+ fcb N$SKP0+U$SKP0 T.ON
+ fcb N$SKP0+U$SKP0 T.EROR
+ fcb N$SKP2+U$SKP2 T.GOTO (unbound)
+ fcb N$SKP2+U$SKLR T.GTBD (bound)
+ fcb N$SKP2+U$SKP2 T.GOSB (unbound)
+ fcb N$SKP2+U$SKLR T.GSBD (bound)
+ fcb N$SKP2+U$SKP2 T.RUN
+ fcb N$SKP0+U$SKP0 T.KILL
+ fcb N$SKP0+U$SKP0 T.INPT
+ fcb N$SKP0+U$SKP0 T.PRNT
+ fcb N$SKP0+U$SKP0 T.CHD
+ fcb N$SKP0+U$SKP0 T.CHX
+ fcb N$SKP0+U$SKP0 T.CRET
+ fcb N$SKP0+U$SKP0 T.OPEN
+ fcb N$SKP0+U$SKP0 T.SEEK
+ fcb N$SKP0+U$SKP0 T.READ
+ fcb N$SKP0+U$SKP0 T.WRIT
+ fcb N$SKP0+U$SKP0 T.GET
+ fcb N$SKP0+U$SKP0 T.PUT
+ fcb N$SKP0+U$SKP0 T.CLOS
+ fcb N$SKP0+U$SKP0 T.REST
+ fcb N$SKP0+U$SKP0 T.DELT
+ fcb N$SKP0+U$SKP0 T.CHIN
+ fcb N$SKP0+U$SKP0 T.SYS
+ fcb N$SKP0+U$SKP0 T.BAS0
+ fcb N$SKP0+U$SKP0 T.BAS1
+ fcb N$SKRM+U$SKRM T.REM1
+ fcb N$SKRM+U$SKRM T.REM2
+ fcb N$SKP0+U$SKP0 T.END
+ fcb N$SKP2+U$SKP2 T.LREF (unbound)
+ fcb N$SKP2+U$SKLR T.LRBD (bound)
+ fcb N$SKRM+U$SKRM T.DEXC
+ fcb N$SKRM+U$SKRM T.ERRL
+ fcb N$SKP0+U$SKP0 T.BKSL
+ fcb N$SKP0+U$SKP0 T.EOL
+
+* Secondary Keyword/Misc symbol Tokens
+
+ fcb N$SKP0+U$SKP0 T.BYTE
+ fcb N$SKP0+U$SKP0 T.INT
+ fcb N$SKP0+U$SKP0 T.REAL
+ fcb N$SKP0+U$SKP0 T.BOOL
+ fcb N$SKP0+U$SKSR T.STR
+ fcb N$SKP0+U$SKP0 T.THEN
+ fcb N$SKP2+U$SKP2 T.TO
+ fcb N$SKP2+U$SKP2 T.STEP
+ fcb N$SKP0+U$SKP0 T.DO
+ fcb N$SKP0+U$SKP0 T.USNG
+ fcb N$SKP1+U$SKP1 T.MODE
+ fcb N$SKP0+U$SKP0 T.COMA
+ fcb N$SKP0+U$SKP0 T.COL
+ fcb N$SKP0+U$SKP0 T.LPAR
+ fcb N$SKP0+U$SKP0 T.RPAR
+ fcb N$SKP0+U$SKP0 T.LBKT
+ fcb N$SKP0+U$SKP0 T.RBKT
+ fcb N$SKP0+U$SKP0 T.SCOL
+ fcb N$SKP0+U$SKP0 T.ASGN
+ fcb N$SKP0+U$SKP0 T.ASG1
+ fcb N$SKP0+U$SKP0 T.CNUM
+ fcb N$SKP2+U$SKP2 T.LBNE
+
+* Operand Tokens
+ fcb N$SKP2+U$SVAR T.SBYT
+ fcb N$SKP2+U$SVAR T.SINT
+ fcb N$SKP2+U$SVAR T.SRL
+ fcb N$SKP2+U$SVAR T.SBL
+ fcb N$SKP2+U$SVAR T.SSTR
+ fcb N$SKP2+U$SKP2 T.VREF
+ fcb N$SKP2+U$SKP2 T.VR1D
+ fcb N$SKP2+U$SKP2 T.VR2D
+ fcb N$SKP2+U$SKP2 T.VR3D
+ fcb N$SKP2+U$SKP2 T.PERD
+ fcb N$SKP2+U$SKP2 T.P1D
+ fcb N$SKP2+U$SKP2 T.P2D
+ fcb N$SKP2+U$SKP2 T.P3D
+ fcb N$SKP1+U$SKP1 T.BLIT
+ fcb N$SKP2+U$SKP2 T.ILIT
+ fcb N$SKP5+U$SKP5 T.RLIT
+ fcb N$SKST+U$SKST T.SLIT
+ fcb N$SKP2+U$SKP2 T.HLIT
+ fcb N$SKP0+U$SKP0 T.ADDR
+ fcb N$SKP0+U$SKP0 T.ADDR (dup)
+ fcb N$SKP0+U$SKP0 T.LENG
+ fcb N$SKP0+U$SKP0 T.LENG (dup)
+ fcb N$SKP0+U$SKP0 T.POS
+ fcb N$SKP0+U$SKP0 T.ERR
+ fcb N$SKP0+U$SKP0 T.MOD
+ fcb N$SKP0+U$DWN1 T.MOD (dup)
+ fcb N$SKP0+U$SKP0 T.RND
+ fcb N$SKP0+U$SKP0 T.PI
+ fcb N$SKP0+U$SKP0 T.SUBS
+ fcb N$SKP0+U$SKP0 T.SGN
+ fcb N$SKP0+U$DWN1 T.SGN (dup)
+ fcb N$SKP0+U$SKP0 T.SIN
+ fcb N$SKP0+U$SKP0 T.COS
+ fcb N$SKP0+U$SKP0 T.TAN
+ fcb N$SKP0+U$SKP0 T.ASN
+ fcb N$SKP0+U$SKP0 T.ACS
+ fcb N$SKP0+U$SKP0 T.ATN
+ fcb N$SKP0+U$SKP0 T.EXP
+ fcb N$SKP0+U$SKP0 T.ABS
+ fcb N$SKP0+U$DWN1 T.ABS (dup)
+ fcb N$SKP0+U$SKP0 T.LN
+ fcb N$SKP0+U$SKP0 T.LOG
+ fcb N$SKP0+U$SKP0 T.SQR
+ fcb N$SKP0+U$DWN1 T.SQR (dup)
+ fcb N$SKP0+U$SKP0 T.INTF
+ fcb N$SKP0+U$DWN1 T.INTF (dup)
+ fcb N$SKP0+U$SKP0 T.FIX
+ fcb N$SKP0+U$DWN1 T.FIX (dup)
+ fcb N$SKP0+U$SKP0 T.FLOT
+ fcb N$SKP0+U$DWN1 T.FLOT (dup)
+ fcb N$SKP0+U$SKP0 T.SQ
+ fcb N$SKP0+U$DWN1 T.SQ (dup)
+ fcb N$SKP0+U$SKP0 T.PEEK
+ fcb N$SKP0+U$SKP0 T.NNOT
+ fcb N$SKP0+U$SKP0 T.VAL
+ fcb N$SKP0+U$SKP0 T.LEN
+ fcb N$SKP0+U$SKP0 T.ASC
+ fcb N$SKP0+U$SKP0 T.NAND
+ fcb N$SKP0+U$SKP0 T.NOR
+ fcb N$SKP0+U$SKP0 T.NXOR
+ fcb N$SKP0+U$SKP0 T.TRUE
+ fcb N$SKP0+U$SKP0 T.FALS
+ fcb N$SKP0+U$SKP0 T.EOF
+ fcb N$SKP0+U$SKP0 T.TRIM
+ fcb N$SKP0+U$SKP0 T.MID
+ fcb N$SKP0+U$SKP0 T.LEFT
+ fcb N$SKP0+U$SKP0 T.RGHT
+ fcb N$SKP0+U$SKP0 T.CHR
+ fcb N$SKP0+U$SKP0 T.STRF
+ fcb N$SKP0+U$DWN1 T.STRF (dup)
+ fcb N$SKP0+U$SKP0 T.DATE
+ fcb N$SKP0+U$SKP0 T.TAB
+ fcb N$SKP0+U$SKP0 T.FIX1
+ fcb N$SKP0+U$SKP0 T.FIX2
+ fcb N$SKP0+U$SKP0 T.FIX3
+ fcb N$SKP0+U$SKP0 T.FLT1
+ fcb N$SKP0+U$SKP0 T.FLT2
+
+* Operator Tokens
+ fcb N$SKP0+U$SKP0 T.NOT
+ fcb N$SKP0+U$SKP0 T.NEG
+ fcb N$SKP0+U$DWN1 T.NEG (dup)
+ fcb N$SKP0+U$SKP0 T.AND
+ fcb N$SKP0+U$SKP0 T.OR
+ fcb N$SKP0+U$SKP0 T.XOR
+ fcb N$SKP0+U$SKP0 T.GT
+ fcb N$SKP0+U$DWN1 T.GT (dup)
+ fcb N$SKP0+U$DWN2 T.GT (dup)
+ fcb N$SKP0+U$SKP0 T.LT
+ fcb N$SKP0+U$DWN1 T.LT (dup)
+ fcb N$SKP0+U$DWN2 T.LT (dup)
+ fcb N$SKP0+U$SKP0 T.NE
+ fcb N$SKP0+U$DWN1 T.NE (dup)
+ fcb N$SKP0+U$DWN2 T.NE (dup)
+ fcb N$SKP0+U$DWN3 T.NE (dup)
+ fcb N$SKP0+U$SKP0 T.EQ
+ fcb N$SKP0+U$DWN1 T.EQ (dup)
+ fcb N$SKP0+U$DWN2 T.EQ (dup)
+ fcb N$SKP0+U$DWN3 T.EQ (dup)
+ fcb N$SKP0+U$SKP0 T.GE
+ fcb N$SKP0+U$DWN1 T.GE (dup)
+ fcb N$SKP0+U$DWN2 T.GE (dup)
+ fcb N$SKP0+U$SKP0 T.LE
+ fcb N$SKP0+U$DWN1 T.LE (dup)
+ fcb N$SKP0+U$DWN2 T.LE (dup)
+ fcb N$SKP0+U$SKP0 T.PLUS
+ fcb N$SKP0+U$DWN1 T.PLUS (dup)
+ fcb N$SKP0+U$DWN2 T.PLUS (dup)
+ fcb N$SKP0+U$SKP0 T.MINS
+ fcb N$SKP0+U$DWN1 T.MINS (dup)
+ fcb N$SKP0+U$SKP0 T.MUL
+ fcb N$SKP0+U$DWN1 T.MUL (dup)
+ fcb N$SKP0+U$SKP0 T.DIV
+ fcb N$SKP0+U$DWN1 T.DIV (dup)
+ fcb N$SKP0+U$SKP0 T.POWR '^'
+ fcb N$SKP0+U$SKP0 T.POWR '**'
+
+* Address reference Tokens
+ fcb N$SKP2+U$ADRF T.AREF
+ fcb N$SKP2+U$ADRF T.AR1D
+ fcb N$SKP2+U$ADRF T.AR2D
+ fcb N$SKP2+U$ADRF T.AR3D
+ fcb N$SKP2+U$ADRF T.APRD
+ fcb N$SKP2+U$ADRF T.AP1D
+ fcb N$SKP2+U$ADRF T.AP2D
+ fcb N$SKP2+U$ADRF T.AP3D
+
+* End of Unbinder routines
+ else
+ ttl SKIP Routines
+ pag
+***************
+* Subroutine NXTSTM  (RUNTIME only version)
+*   Used only to skip over DATA statements imbedded
+*   in packed modules.  These routines are slightly
+*   slower than those used in the full BASIC09
+*   runtime system, but can be avoided altogether if
+*   DATA statements are not placed inline with
+*   executable code.
+
+* Passed: (Y)=current I-code ptr
+* Returns: (Y)=Updated past EOL token
+* Destroys: CC
+
+NXTSTM pshs D,X save regs
+NXTSTM10 leax <SKPTBL,PCR get skip table ptr
+ lda ,Y+ get/skip next I-Code token
+NXTSTM20 cmpa ,X++ in this skip-type group?
+ blo NXTSTM20 ..No; move to next table entry
+ ldb ,-X get offset of required routine
+ jmp B,X vector to routine
+
+SKPTBL equ *
+ fcb T.AREF,SKIP2-*-1
+ fcb T.ADDR,SKIP0-*-1
+ fcb T.HLIT,SKIP2-*-1
+ fcb T.SLIT,SKIPST-*-1
+ fcb T.RLIT,SKIP5-*-1
+ fcb T.ILIT,SKIP2-*-1
+ fcb T.BLIT,SKIP1-*-1
+ fcb T.LBNE,SKIP2-*-1
+ fcb T.COMA,SKIP0-*-1
+ fcb T.BKSL,SKIPEXIT-*-1
+ fcb T.GLOB,SKIP0-*-1
+
+SKIP5 leay 3,Y
+SKIP2 leay 1,Y
+SKIP1 leay 1,Y
+SKIP0 bra NXTSTM10
+
+SKIPST tst ,Y+ skip to end of string
+ bpl SKIPST
+ bra NXTSTM10
+
+SKIPEXIT puls D,X,PC return
+
+ endc
+
