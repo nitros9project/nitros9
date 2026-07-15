@@ -7,6 +7,7 @@
 include ../dw/recipe.mak
 
 RECIPE = coco3_dw_mega
+SCF += vrn.dr vi.dd
 CLEAN_DIRS += .external .sierra
 
 EXTERNAL_DIR ?= .external
