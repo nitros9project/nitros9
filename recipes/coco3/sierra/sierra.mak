@@ -17,9 +17,6 @@ SIERRA_MAKE_TOC ?= ../sierra/make_toc.py
 DSDD80 = -DCyls=80 -DSides=2 -DSectTrk=18 -DSectTrk0=18 -DInterlv=3 -DSAS=8 -DDensity=1
 DSDD40 = -DCyls=40 -DSides=2 -DSectTrk=18 -DSectTrk0=18 -DInterlv=3 -DSAS=8 -DDensity=1
 
-$(MODDIR)/covdg_small.io: covdg.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@
-
 $(MODDIR)/shell_21: $(LEVEL1)/cmds/shell_21.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 

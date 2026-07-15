@@ -2,9 +2,9 @@
 
 GAME ?= kingsquest3
 RECIPE = coco3_$(GAME)
-TERM_COLS = 32
+TERM_COLS = 40
 STARTUP = ./startup
-CMDS_BASE = shell utilpak1
+CMDS_BASE = shell utilpak1 grfdrv
 SIERRA_DIR = $(3RDPARTY)/packages/sierra/$(GAME)
 SIERRA_DATA_FILES = $(notdir $(wildcard $(SIERRA_DIR)/logDir $(SIERRA_DIR)/object \
 	$(SIERRA_DIR)/picDir $(SIERRA_DIR)/sndDir $(SIERRA_DIR)/viewDir \
@@ -59,19 +59,19 @@ endif
 ifeq ($(SIERRA_MEDIA),80d)
 OS9FORMAT_CMD = $(OS9FORMAT_DS80)
 RBF = rbf.mn rb1773.dr ddd0_80d.dd
-KERNEL_TRACK = rel_32 boot_1773_6ms krn
+KERNEL_TRACK = $(REL) boot_1773_6ms krn
 else ifeq ($(SIERRA_MEDIA),dw)
 OS9FORMAT_CMD = $(OS9FORMAT_DW)
 RBF = rbf.mn rbdw.dr dwio.sb ddx0.dd
-KERNEL_TRACK = rel_32 boot_dw krn
+KERNEL_TRACK = $(REL) boot_dw krn
 else
 $(error Unsupported SIERRA_MEDIA "$(SIERRA_MEDIA)")
 endif
 
-# Sierra's AGI games expect the CoCo 3 VDG-compatible terminal stack plus
-# the VRN and VI modules.
-SCF = scf.mn vtio.dr snddrv_cc3.sb joydrv_joy.sb covdg_small.io \
-	term_vdg.dt vrn.dr vi.dd
+# Run Sierra's AGI games with a 40-column CoWin terminal. Co3HiRes supplies
+# the application-screen services formerly provided by CoVDG.
+SCF = scf.mn vtio.dr co3hires.sb snddrv_cc3.sb joydrv_joy.sb cowin.io \
+	term_win40.dt vrn.dr vi.dd
 PIPE =
 BOOTMODS = krnp2 ioman init \
 	$(RBF) \

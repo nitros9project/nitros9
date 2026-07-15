@@ -67,7 +67,7 @@ DSDD40 = -DCyls=40 -DSides=2 -DSectTrk=18 -DSectTrk0=18 -DInterlv=3 -DSAS=8 -DDe
 DSDD80 = -DCyls=80 -DSides=2 -DSectTrk=18 -DSectTrk0=18 -DInterlv=3 -DSAS=8 -DDensity=1
 
 RBF ?= rbf.mn rb1773.dr ddd0_$(TRACKS)d.dd d0_$(TRACKS)d.dd d1_$(TRACKS)d.dd d2_$(TRACKS)d.dd
-SCF ?= scf.mn vtio.dr snddrv_cc3.sb joydrv_joy.sb $(TERM_IO) \
+SCF ?= scf.mn vtio.dr co3hires.sb snddrv_cc3.sb joydrv_joy.sb $(TERM_IO) \
 	$(TERM_WIN_DT) w.dw w1.dw w2.dw w3.dw w4.dw w5.dw w6.dw w7.dw \
 	w8.dw w9.dw w10.dw w11.dw w12.dw w13.dw w14.dw w15.dw
 PIPE ?= pipeman.mn piper.dr pipe.dd
@@ -89,11 +89,13 @@ BOOTMODS ?= krnp2 ioman init \
 	$(CLOCK) \
 	$(BOOTMODS_EXTRA)
 
+$(addprefix $(MODDIR)/,vtio.dr co3hires.sb cowin.io covdg.io covdg_small.io): $(DEFSDIR)/cocovtio.d
+
 SHELLMODS = shellplus date deiniz echo iniz link load save unlink
 UTILPAK1 = attr build copy del deldir dir display list makdir mdir merge mfree procs rename tmode
 
 CMDS_BASE ?= $(STDCMDS) grfdrv shell utilpak1
-CMDS += $(CMDS_BASE) \
+CMDS += $(CMDS_BASE) hirestest \
 	$(CMDS_EXTRA)
 BASIC09_SAMPLES ?=
 RECIPE_DEPS ?=
