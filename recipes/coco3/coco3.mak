@@ -44,6 +44,7 @@ endif
 
 DSKIMAGE ?= l$(LEVEL)_$(RECIPE).dsk
 CLEAN_EXTRA ?=
+CLEAN_DIRS ?=
 TRACKS ?= 40
 ifeq ($(TRACKS),40)
 OS9FORMAT_CMD ?= $(OS9FORMAT_DS40)
@@ -95,6 +96,7 @@ CMDS_BASE ?= $(STDCMDS) grfdrv shell utilpak1
 CMDS += $(CMDS_BASE) \
 	$(CMDS_EXTRA)
 BASIC09_SAMPLES ?=
+RECIPE_DEPS ?=
 
 all: libs $(DSKIMAGE)
 
@@ -107,7 +109,7 @@ kernelfile: $(addprefix $(MODDIR)/,$(KERNEL_TRACK))
 bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
 
-$(DSKIMAGE): libs kernelfile bootfile $(MODDIR)/sysgo_dd $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(BASIC09_SAMPLES)
+$(DSKIMAGE): libs kernelfile bootfile $(MODDIR)/sysgo_dd $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(BASIC09_SAMPLES) $(RECIPE_DEPS)
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9GEN) $@ -b=bootfile -t=$(KERNELFILE)
@@ -137,6 +139,7 @@ endif
 	$(OS9ATTR_EXEC) $@,sysgo
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
+	$(call RECIPE_INSTALL,$@)
 
 # /TERM window descriptors — column count and colors controlled by TERM_COLS and TERM_ALTCOLOR
 $(MODDIR)/term_win40.dt: term_win40.asm | $(MODDIR)
@@ -259,7 +262,7 @@ $(MODDIR)/n5_scdwv.dd: scdwvdesc.asm | $(MODDIR)
 
 clean:
 	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo $(CLEAN_EXTRA)
-	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
+	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR) $(CLEAN_DIRS)
 
 FORCE:
 

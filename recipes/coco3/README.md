@@ -33,6 +33,7 @@ From the repository root, ensure:
 
 - [`floppy/`](floppy/) builds CoCo 3 Level 2 double-sided floppy disk images
 - [`dw/`](dw/) builds a CoCo 3 DriveWire-oriented disk image
+- [`dw_mega/`](dw_mega/) builds an expanded CoCo 3 DriveWire image with third-party software
 - [`sierra/`](sierra/) builds Sierra AGI CoCo 3 disk images and holds the shared Sierra recipe logic
 
 Each build directory keeps intermediate artifacts local:
@@ -80,6 +81,56 @@ This recipe defaults to:
 - DriveWire virtual terminal modules (`scdwv` + `n*` descriptors)
 - `startup.dw`
 - DriveWire disk format settings (`$(OS9FORMAT_DW)`)
+
+## Mega DriveWire Build ([`coco3/dw_mega`](dw_mega/))
+
+```sh
+cd dw_mega
+make
+```
+
+Primary output:
+
+- `l2_coco3_mega.dsk`
+
+In addition to the normal recipe prerequisites, this build needs `git`, CMOC,
+and the CMOC OS-9 runtime. By default it expects the usual coco-shelf layout:
+`bin/cmoc` and `cmoc_os9/` alongside the `nitros9/` checkout. Set
+`COCO_SHELF=/path/to/coco-shelf` if yours differs.
+
+The mega recipe extends the existing [`dw/`](dw/) recipe and adds native OS-9
+software fetched and built from pinned upstream revisions:
+
+- [`drpitre/raakatu`](https://github.com/drpitre/raakatu), installed as the
+  `raakatu` command
+- [`drpitre/forth09`](https://github.com/drpitre/forth09), installed as the
+  `forth09` command, with its test program in `/FORTH09/forthtest.4th`
+- [`rlucente-retro/infocom-os9-port`](https://github.com/rlucente-retro/infocom-os9-port),
+  installed as the `infocom` command
+- the Version 3 Zork I-III story files under `/GAMES/INFOCOM`
+
+The upstream checkouts are kept in `dw_mega/.external` and removed by `make
+clean`. The pinned `FORTH09_REF`, `INFOCOM_REF`, and `RAAKATU_REF` values make
+normal builds repeatable; all repository URLs and revisions can be overridden
+on the `make` command line.
+
+After booting, run Raaka-Tu directly. Start an Infocom title by passing its
+story file to the native interpreter:
+
+```text
+raakatu
+forth09
+forth09 </dd/FORTH09/forthtest.4th
+infocom /dd/GAMES/INFOCOM/ZORK1.DAT
+```
+
+`INFOCOM_STORY_DIR` and `INFOCOM_STORIES` may be overridden to package another
+legally obtained Version 3 story-file collection:
+
+```sh
+make INFOCOM_STORY_DIR=/path/to/stories \
+  INFOCOM_STORIES="ZORK1.DAT PLANETFALL.DAT WITNESS.DAT"
+```
 
 ## Sierra Build ([`coco3/sierra`](sierra/))
 
