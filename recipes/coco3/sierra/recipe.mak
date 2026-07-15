@@ -78,7 +78,6 @@ BOOTMODS = krnp2 ioman init \
 	$(SCF) \
 	$(PIPE) \
 	$(CLOCK) \
-	sysgo_dd \
 	$(BOOTMODS_EXTRA)
 
 CMDS_EXTRA += sierra mnln scrn shdw

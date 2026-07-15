@@ -59,7 +59,7 @@ $(MODDIR)/ddd0_80d.dd: rb1773desc.asm | $(MODDIR)
 $(SIERRA_TOC): $(SIERRA_TOC_TXT) $(SIERRA_MAKE_TOC)
 	python3 $(SIERRA_MAKE_TOC) $(SIERRA_TOC_TXT) $@
 
-$(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(SIERRA_TOC)
+$(DSKIMAGE): kernelfile bootfile $(MODDIR)/sysgo_dd $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(SIERRA_TOC)
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9GEN) $@ -b=bootfile -t=$(KERNELFILE)
@@ -70,6 +70,8 @@ $(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(SI
 	$(OS9COPY) $(addprefix $(SIERRA_DIR)/,$(SIERRA_DATA_FILES)) $@,.
 	$(CPL) $(SIERRA_TOC_TXT) $@,tOC.txt
 	$(CPL) $(SIERRA_TOC) $@,tOC
+	$(OS9COPY) $(MODDIR)/sysgo_dd $@,sysgo
+	$(OS9ATTR_EXEC) $@,sysgo
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 

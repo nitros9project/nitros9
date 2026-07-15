@@ -43,8 +43,6 @@ TERM_ALTCOLOR_FLAGS =
 endif
 
 DSKIMAGE ?= l$(LEVEL)_$(RECIPE).dsk
-DSK_EXTRA_DEPS ?=
-DSK_POST_COPY ?= @:
 CLEAN_EXTRA ?=
 TRACKS ?= 40
 ifeq ($(TRACKS),40)
@@ -109,7 +107,7 @@ kernelfile: $(addprefix $(MODDIR)/,$(KERNEL_TRACK))
 bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
 
-$(DSKIMAGE): libs kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(DSK_EXTRA_DEPS) $(BASIC09_SAMPLES)
+$(DSKIMAGE): libs kernelfile bootfile $(MODDIR)/sysgo_dd $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(BASIC09_SAMPLES)
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9GEN) $@ -b=bootfile -t=$(KERNELFILE)
@@ -135,9 +133,10 @@ ifneq ($(strip $(BASIC09_SAMPLES)),)
 	$(CPL) $(BASIC09_SAMPLES) $@,BASIC09
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(BASIC09_SAMPLES)),$@,BASIC09/$(file))
 endif
+	$(OS9COPY) $(MODDIR)/sysgo_dd $@,sysgo
+	$(OS9ATTR_EXEC) $@,sysgo
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
-	$(DSK_POST_COPY)
 
 # /TERM window descriptors — column count and colors controlled by TERM_COLS and TERM_ALTCOLOR
 $(MODDIR)/term_win40.dt: term_win40.asm | $(MODDIR)
