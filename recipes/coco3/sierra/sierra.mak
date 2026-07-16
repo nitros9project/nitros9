@@ -10,7 +10,7 @@ AFLAGS := $(filter-out -DH6309=0,$(AFLAGS))
 endif
 
 vpath %.as $(LEVEL2)/cmds:$(LEVEL1)/cmds
-vpath %.asm $(LEVEL2)/coco3/modules/kernel:$(LEVEL2)/coco3/modules:$(LEVEL2)/modules:$(LEVEL2)/cmds:$(LEVEL1)/coco1/modules:$(LEVEL1)/modules:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/sierra/objs
+vpath %.asm $(LEVEL2)/coco3/modules/kernel:$(LEVEL2)/coco3/modules:$(LEVEL2)/modules:$(LEVEL2)/cmds:$(LEVEL1)/coco1/modules:$(LEVEL1)/modules:$(LEVEL1)/cmds:$(LANGUAGES)/basic09:$(3RDPARTY)/packages/sierra/objs
 
 SIERRA_TOC ?= ./tOC
 SIERRA_MAKE_TOC ?= ../sierra/make_toc.py

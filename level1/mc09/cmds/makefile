@@ -1,11 +1,11 @@
 include ../port.mak
 
 vpath %.as $(LEVEL1)/cmds
-vpath %.asm $(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09
+vpath %.asm $(LEVEL1)/cmds:$(LANGUAGES)/basic09
 
 DEPENDS		= ./makefile
 
-AFLAGS		+= --includedir=$(3RDPARTY)/packages/basic09
+AFLAGS		+= --includedir=$(LANGUAGES)/basic09
 LFLAGS		+= -L $(NITROS9DIR)/lib -lnet -lmc09 -lalib
 
 CMDS		= asm attr backup bawk binex build calldbg cmp cobbler copy cputype \

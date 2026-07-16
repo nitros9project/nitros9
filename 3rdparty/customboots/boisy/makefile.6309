@@ -3,7 +3,7 @@
 
 include $(NITROS9DIR)/rules.mak
 
-vpath %.asm ../../../utils/boisy:..:$(LEVEL2)/cmds:$(LEVEL1)/cmds:$(LEVEL1)/modules:$(NITROS9DIR)/3rdparty/packages/basic09
+vpath %.asm ../../../utils/boisy:..:$(LEVEL2)/cmds:$(LEVEL1)/cmds:$(LEVEL1)/modules:$(LANGUAGES)/basic09
 
 AFLAGS		+= -aNoTerm=1 -acoco3=1
 

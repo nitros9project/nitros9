@@ -28,17 +28,17 @@ Local compatibility edits for lwasm and the NitrOS-9 tree:
 - `b09type` lets make pass `INCLUDED=RUNTIM+MATHPAK` for RunB builds.
 - `cnvio.asm` reserves the final three CRC bytes explicitly.
 
+## Canonical source
+
+This modular layout is the sole source of truth for Basic09 and RunB in this
+repository. Both the 6809 and 6309 modules shipped by the package are built
+from these files. The older monolithic disassemblies and their extracted
+floating-point fragments have been removed.
+
 ## 6309 optimizations
 
 Beyond `081ec321`, the sources have been extended with HD6309-specific
-optimizations drawn from `basic09.asm` in the parent directory: native
-multiply and divide (`MULD`/`DIVQ`), block transfer (`TFM`), immediate
-bit-manipulation (`OIM`), quad-word load/store (`LDQ`/`STQ`), and others.
-These are conditioned on the `H6309` assembly flag and do not affect the
-6809 output.
-
-## Future direction
-
-This Microware modular source is intended to become the canonical source for
-Basic09 and RunB in this repository, superseding the monolithic `basic09.asm`
-and `runb.asm` in the parent directory.
+optimizations: native multiply and divide (`MULD`/`DIVQ`), block transfer
+(`TFM`), immediate bit-manipulation (`OIM`), quad-word load/store
+(`LDQ`/`STQ`), and others. These are conditioned on the `H6309` assembly flag
+and do not affect the 6809 output.

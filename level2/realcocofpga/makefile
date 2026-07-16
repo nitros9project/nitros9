@@ -21,7 +21,7 @@ RBF		= $(shell $(CD) modules; make --no-print-directory showrbf)
 SCF		= $(shell $(CD) modules; make --no-print-directory showscf)
 PIPE		= $(shell $(CD) modules; make --no-print-directory showpipe)
 
-B09DIR = $(3RDPARTY)/packages/basic09
+B09DIR = $(LANGUAGES)/basic09
 B09CMDS = $(B09DIR)/gfx $(B09DIR)/gfx2 $(B09DIR)/inkey $(B09DIR)/syscall
 B09CMDSFINAL = $(B09CMDS) basic09 runb
 
@@ -36,7 +36,7 @@ MVSYSOBJS2		=	$(shell $(CD) $(MVSYSSDIR); make --no-print-directory showobjs)
 #B09CMDSNAMES = gfx gfx2 inkey syscall b09 runb
 DIRS		= defs cmds modules sys bootfiles $(B09DIR) $(MVDIR) #wwwroot
 
-BASIC09_SAMPLES = $(foreach file,$(3RDPARTY)/packages/basic09/samples/*,$(file))
+BASIC09_SAMPLES = $(foreach file,$(LANGUAGES)/basic09/samples/*,$(file))
 
 MODULECMDS	= shell grfdrv del echo format makdir merge os9gen prompt tmode
 

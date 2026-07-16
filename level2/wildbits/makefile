@@ -64,10 +64,10 @@ dskcopy: $(DSKS)
 reload:
 	osascript -e 'tell application "DriveWire"' -e 'tell server of every document' -e 'reload drive 0' -e 'end tell' -e 'end tell'
 
-BASIC09_FILES = $(foreach file,$(3RDPARTY)/packages/basic09/samples/*,$(file))
+BASIC09_FILES = $(foreach file,$(LANGUAGES)/basic09/samples/*,$(file))
 ROGUE_OBJS = $(shell $(CD) $(3RDPARTY)/packages/rogue; make --no-print-directory showobjs)
 ROGUE_FILES = $(shell $(CD) $(3RDPARTY)/packages/rogue; make --no-print-directory showfiles)
-BF_FILES = $(foreach file,$(3RDPARTY)/packages/bf/*.bf,$(file))
+BF_FILES = $(foreach file,$(LANGUAGES)/bf/*.bf,$(file))
 CPM_FILES = $(3RDPARTY)/packages/cpm/software
 SOUND_FILES = $(foreach file,$(LEVEL1)/wildbits/sound/*,$(file))
 

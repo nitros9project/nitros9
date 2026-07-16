@@ -5,7 +5,7 @@ include ../../rules.mak
 RECIPE ?= coco3
 -include recipe.mak
 vpath %.asm $(LEVEL1)/coco1/modules
-vpath %.asm $(3RDPARTY)/packages/basic09
+vpath %.asm $(LANGUAGES)/basic09
 
 ifeq ($(CPU),6309)
 AFLAGS += -DH6309=1
@@ -55,7 +55,7 @@ $(error Unsupported TRACKS "$(TRACKS)"; use TRACKS=40 or TRACKS=80)
 endif
 
 AFLAGS += -I.
-AFLAGS += -I$(3RDPARTY)/packages/basic09
+AFLAGS += -I$(LANGUAGES)/basic09
 AFLAGS += -I$(L2PD)/defs
 AFLAGS += -I$(L2MD)/kernel -I$(L2PMD)
 AFLAGS += -I$(L1MD)/kernel -I$(L1MD)

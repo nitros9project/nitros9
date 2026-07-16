@@ -4,6 +4,8 @@ SCRIPT = build-modular-basic09.py
 SRCS = comand.asm compil.asm binder.asm stmts.asm exprsn.asm cnvio.asm \
        defs b09defs b09type jmpdefs linkage editor
 
+.NOTPARALLEL:
+
 .PHONY: all clean
 
 all: basic09_6809 runb_6809 basic09_6309 runb_6309
@@ -23,4 +25,4 @@ runb_6309: $(SCRIPT) $(SRCS)
 clean:
 	rm -f basic09_6809 runb_6809 basic09_6309 runb_6309
 	rm -rf .modular-build
-	rm *.list *.map
+	rm -f *.list *.map

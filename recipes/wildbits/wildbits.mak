@@ -4,7 +4,7 @@ MODDIR = .mods
 include ../../rules.mak
 -include recipe.mak
 
-vpath %.asm $(3RDPARTY)/packages/basic09
+vpath %.asm $(LANGUAGES)/basic09
 
 ifeq ($(strip $(PLATFORM)),)
   $(info PLATFORM not set; defaulting to jr2)
@@ -27,7 +27,7 @@ AFLAGS += -I$(L2PD)
 AFLAGS += -I$(L2MD)/kernel -I$(L2PMD)
 endif
 AFLAGS += -I$(L1MD)/kernel -I$(L1PMD)
-AFLAGS += -I$(3RDPARTY)/packages/basic09
+AFLAGS += -I$(LANGUAGES)/basic09
 AFLAGS += $(AFLAGS_EXTRA)
 LFLAGS += -L $(LIBDIR) -lwildbitsl$(LEVEL) -lnet -lalib
 LFLAGS += $(LFLAGS_EXTRA)
@@ -81,7 +81,7 @@ CMDS += dmem minted mmap modpatch \
 endif
 
 BASIC09 = basic09 runb inkey syscall wild
-BASIC09_FILES = $(wildcard $(3RDPARTY)/packages/basic09/samples/*)
+BASIC09_FILES = $(wildcard $(LANGUAGES)/basic09/samples/*)
 RUNB_SHA256 = 605c7a9f0fde3fed21f7672f5c634f7c43b440f385f088e593f8acca5fccba31
 STARTUP = $(LEVEL2)/wildbits/startup
 FEU_STARTUP = feu.startup
