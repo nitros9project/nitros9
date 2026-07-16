@@ -19,3 +19,4 @@ The archive currently includes:
 - historical utilities
 - VEF image assets
 - unfinished work-in-progress sources
+- historical application packages
