@@ -41,7 +41,10 @@ def main():
         sys.exit(1)
 
     here = os.path.dirname(os.path.abspath(sys.argv[0]))
-    root = os.path.abspath(os.path.join(here, '..', '..', '..', '..'))
+    nitros9_dir = os.environ.get('NITROS9DIR')
+    if not nitros9_dir:
+        sys.exit("NITROS9DIR must point to a NitrOS-9 source checkout")
+    defs_dir = os.path.join(os.path.abspath(nitros9_dir), 'defs')
     src = here
     outdir = os.path.abspath(os.path.dirname(outfile))
     build = os.path.join(outdir, '.modular-build', mode)
@@ -64,7 +67,7 @@ def main():
             '--format=os9',
             '--pragma=pcaspcr,nosymbolcase,condundefzero,undefextern,dollarnotlocal,noforwardrefmax',
             f'--includedir={src}',
-            f'--includedir={root}/defs',
+            f'--includedir={defs_dir}',
             *defs,
             f'-o{obj}',
             os.path.join(src, f'{module}.asm'),

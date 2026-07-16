@@ -1,12 +1,12 @@
 include ../port.mak
 
 vpath %.as $(LEVEL2)/cmds:$(LEVEL1)/cmds
-vpath %.asm $(LEVEL2)/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09
+vpath %.asm $(LEVEL2)/cmds:$(LEVEL1)/cmds:$(LANGUAGES)/basic09
 
 DEPENDS		= ./makefile $(NOSLIB)/net.o
 
 AFLAGS		+= -I$(LEVEL2)/$(PORT) -I$(LEVEL1)/modules
-AFLAGS      += -I$(3RDPARTY)/packages/basic09
+AFLAGS      += -I$(LANGUAGES)/basic09
 AFLAGS      += -I../defs
 LFLAGS		+= -L$(NITROS9DIR)/lib
 ifdef	H6309

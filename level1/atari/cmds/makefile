@@ -1,11 +1,11 @@
 include ../port.mak
 
 vpath %.as $(LEVEL1)/cmds
-vpath %.asm $(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/bf
+vpath %.asm $(LEVEL1)/cmds:$(LANGUAGES)/basic09:$(LANGUAGES)/bf
 
 DEPENDS		= ./makefile
 
-AFLAGS          += --includedir=$(3RDPARTY)/packages/basic09 --includedir=$(3RDPARTY)/packages/bf
+AFLAGS          += --includedir=$(LANGUAGES)/basic09 --includedir=$(LANGUAGES)/bf
 AFLAGS          += -I.
 LFLAGS          += -L $(NITROS9DIR)/lib -lnet -latari -lalib
 

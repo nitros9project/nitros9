@@ -1,7 +1,7 @@
 include ../port.mak
 
 vpath %.as $(LEVEL1)/cmds
-vpath %.asm $(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09:$(3RDPARTY)/packages/bf
+vpath %.asm $(LEVEL1)/cmds:$(LANGUAGES)/basic09:$(LANGUAGES)/bf
 
 AFLAGS      += -I.
 
@@ -9,8 +9,8 @@ DEPENDS		= ./makefile $(NOSLIB)/net.o
 
 
 AFLAGS      += -I$(LEVEL1)/$(PORT)
-AFLAGS      += -I$(3RDPARTY)/packages/basic09
-AFLAGS      += -I$(3RDPARTY)/packages/bf
+AFLAGS      += -I$(LANGUAGES)/basic09
+AFLAGS      += -I$(LANGUAGES)/bf
 AFLAGS      += -I$(3RDPARTY)/packages/cpm
 AFLAGS      += -I.
 LFLAGS		+= -L$(NITROS9DIR)/lib -L$(LEVEL1)/$(PORT)/libs/wbsnd

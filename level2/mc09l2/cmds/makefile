@@ -2,10 +2,10 @@ PORT = mc09
 include $(NITROS9DIR)/rules.mak
 
 vpath %.as $(LEVEL2)/cmds:$(LEVEL1)/cmds
-vpath %.asm $(LEVEL2)/cmds:$(LEVEL1)/cmds:$(3RDPARTY)/packages/basic09
+vpath %.asm $(LEVEL2)/cmds:$(LEVEL1)/cmds:$(LANGUAGES)/basic09
 
 DEPENDS		= ./makefile
-AFLAGS          += --includedir=$(3RDPARTY)/packages/basic09
+AFLAGS          += --includedir=$(LANGUAGES)/basic09
 AFLAGS          += --includedir=../defs
 LFLAGS		+= -L$(NITROS9DIR)/lib
 LFLAGS		+= -lmc09

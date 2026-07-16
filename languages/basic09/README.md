@@ -22,6 +22,12 @@ of this package.
 The gfx, syscall and inkey subroutine modules are also included, as well
 as gfx2, the graphics module for OS-9 Level Two and NitrOS-9.
 
+Building `basic09.dsk` does not format a standalone distribution disk. It
+copies `recipes/coco3/floppy/l2_coco3.dsk`, then replaces the Basic09, RunB,
+gfx, gfx2, inkey, and syscall modules in its `CMDS` directory with the
+canonical 6809 artifacts built here. Build the CoCo 3 floppy recipe first so
+that its disk image exists.
+
 Installation
 ============
 1.  Change into the directory that holds the diskette:
@@ -44,4 +50,3 @@ programs.  To do this, type:
 	del runb
 	rename new_runb runb
 	attr runb e pe
-

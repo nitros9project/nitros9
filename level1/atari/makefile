@@ -18,8 +18,8 @@ WWWROOT		= $(shell $(CD) wwwroot; make --no-print-directory showobjs)
 DEFS		= $(shell $(CD) defs; make --no-print-directory showobjs)
 STARTUP		= startup
 
-BASIC09_FILES = $(foreach file,$(3RDPARTY)/packages/basic09/samples/*,$(file))
-BF_FILES = $(foreach file,$(3RDPARTY)/packages/bf/*.bf,$(file))
+BASIC09_FILES = $(foreach file,$(LANGUAGES)/basic09/samples/*,$(file))
+BF_FILES = $(foreach file,$(LANGUAGES)/bf/*.bf,$(file))
 
 DSK		= $(DISTROVER).dsk
 DSK_DEMO	= ataridemo.dsk

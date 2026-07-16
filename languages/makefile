@@ -1,32 +1,26 @@
 include $(NITROS9DIR)/rules.mak
 
-dirs	= arcadepak cpm deskmate3 flightsim2 koronis kyumgai mmission multivue os9l2bbs pacos9 rescueof rogue sierra subsim uucpbb #raakatu
+dirs = basic09 bf ccompiler
 
-# Make all components
 all:
 	@$(ECHO) "**************************************************"
 	@$(ECHO) "*                                                *"
-	@$(ECHO) "*               3rd Party Packages               *"
+	@$(ECHO) "*                    Languages                   *"
 	@$(ECHO) "*                                                *"
 	@$(ECHO) "**************************************************"
 	$(foreach dir,$(dirs),$(MAKE) -C $(dir) &&) :
 
-# Clean all components
 clean:
-	$(foreach dir, $(dirs), ($(CD) $(dir); make clean);)
+	$(foreach dir,$(dirs),$(MAKE) -C $(dir) clean &&) :
 
-# Create dsk images
 dsk:
 	$(foreach dir,$(dirs),$(MAKE) -C $(dir) dsk &&) :
 
-# Copy dsk images
 dskcopy:
 	$(foreach dir,$(dirs),$(MAKE) -C $(dir) dskcopy &&) :
 
-# Clean dsk images
 dskclean:
-	$(foreach dir, $(dirs), ($(CD) $(dir); make dskclean);)
+	$(foreach dir,$(dirs),$(MAKE) -C $(dir) dskclean &&) :
 
-# Info
 info:
-	@$(foreach dir, $(dirs), $(MAKE) -C $(dir) info; $(ECHO);)
+	@$(foreach dir,$(dirs),$(MAKE) --no-print-directory -C $(dir) info &&) :

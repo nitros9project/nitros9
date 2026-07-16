@@ -117,7 +117,7 @@ system("os9 attr tmp.dsk,sysgo -epepr");
 system("os9 dsave -e $NITROS9DIR/$DISTRO/nos9"."$DISTRO"."_80d.dsk, tmp.dsk, >&/dev/null");
 system("os9 dsave -e $NITROS9DIR/3rdparty/packages/uucpbb/uucpbb21_6309.dsk, tmp.dsk, >&/dev/null");
 system("os9 dsave -e $NITROS9DIR/3rdparty/packages/cc/cc.dsk, tmp.dsk, >&/dev/null");
-system("os9 dsave -e $NITROS9DIR/3rdparty/packages/basic09/basic09v010100.dsk, tmp.dsk, >&/dev/null");
+system("os9 dsave -e $NITROS9DIR/languages/basic09/basic09v010100.dsk, tmp.dsk, >&/dev/null");
 system("os9 dsave -e $CLOUD9DIR/Products/Ved/Software/ved.dsk, tmp.dsk, >&/dev/null");
 system("os9 format -qe -ss -dd boot.dsk");
 system("os9 gen -b=bootfile -t=trackfile boot.dsk>&/dev/null");

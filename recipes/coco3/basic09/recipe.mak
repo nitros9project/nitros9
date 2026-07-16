@@ -7,5 +7,5 @@ CMDS_BASE = $(filter-out asm dcheck debug disasm,$(STDCMDS)) grfdrv shell utilpa
 CMDS_EXTRA += basic09 runb
 
 BASIC09_SAMPLES = \
-	$(3RDPARTY)/packages/basic09/kernel_utility.b09 \
-	$(wildcard $(3RDPARTY)/packages/basic09/samples/*)
+	$(LANGUAGES)/basic09/kernel_utility.b09 \
+	$(wildcard $(LANGUAGES)/basic09/samples/*)

@@ -11,7 +11,7 @@ DEPENDS		= ./makefile
 
 #SOURCEFILES = inout.bf helloworld.bf donothing.bf
 SOURCEFILES = $(shell echo *.bf)
-TEXTFILES	= ReadMe $(SOURCEFILES)
+TEXTFILES	= README.md $(SOURCEFILES)
 OBJS		= bf
 ALLOBJS		= $(OBJS)
 

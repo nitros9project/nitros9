@@ -1,4 +1,4 @@
-include ../../../rules.mak
+include $(NITROS9DIR)/rules.mak
 
 DSK		= CCompiler.dsk
 CMDS		= cc1 c.prep c.pass1 c.pass2 c.opt c.asm c_asm c.link make
