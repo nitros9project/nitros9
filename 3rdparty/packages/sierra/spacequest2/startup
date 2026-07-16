@@ -1,8 +1,0 @@
-* Echo welcome message
-echo * Sierra welcomes you to the *
-echo * world of 3-D adventuring.  *
-* Lock shell and std utils into memory
-link shell
-* Start system time from keyboard
-setime </1
-date -t

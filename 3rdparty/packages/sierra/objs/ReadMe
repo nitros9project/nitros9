@@ -1,8 +1,0 @@
-Disassembly of the Sierra King's Quest 3 interpreter
-
-The files here are not used, all games instead use objs_lsl/* 
-(originally from Leisure Suit Larry), but the folder is kept for
-reference.
-
-The KQ3's interpreter was the first to be disassembled and seems to
-contains more comments than the LSL one.

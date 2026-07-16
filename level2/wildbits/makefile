@@ -65,8 +65,6 @@ reload:
 	osascript -e 'tell application "DriveWire"' -e 'tell server of every document' -e 'reload drive 0' -e 'end tell' -e 'end tell'
 
 BASIC09_FILES = $(foreach file,$(LANGUAGES)/basic09/samples/*,$(file))
-ROGUE_OBJS = $(shell $(CD) $(3RDPARTY)/packages/rogue; make --no-print-directory showobjs)
-ROGUE_FILES = $(shell $(CD) $(3RDPARTY)/packages/rogue; make --no-print-directory showfiles)
 BF_FILES = $(foreach file,$(LANGUAGES)/bf/*.bf,$(file))
 CPM_FILES = $(3RDPARTY)/packages/cpm/software
 SOUND_FILES = $(foreach file,$(LEVEL1)/wildbits/sound/*,$(file))
@@ -99,10 +97,6 @@ $(DSKSD_K2):
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
-	$(MAKDIR) $@,ROGUE
-	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_OBJS) ../../../level2/wildbits/$@,CMDS
-	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_FILES) ../../../level2/wildbits/$@,ROGUE
-	$(OS9ATTR_EXEC) $(foreach file,$(ROGUE_OBJS),$@,CMDS/$(file))
 	$(MAKDIR) $@,BF
 	$(CPL) $(BF_FILES) $@,BF
 	$(MAKDIR) $@,SOUNDS
@@ -143,10 +137,6 @@ $(DSKDW_K2):
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
-	$(MAKDIR) $@,ROGUE
-	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_OBJS) ../../../level2/wildbits/$@,CMDS
-	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_FILES) ../../../level2/wildbits/$@,ROGUE
-	$(OS9ATTR_EXEC) $(foreach file,$(ROGUE_OBJS),$@,CMDS/$(file))
 	$(MAKDIR) $@,BF
 	$(CPL) $(BF_FILES) $@,BF
 	$(MAKDIR) $@,SOUNDS
@@ -187,10 +177,6 @@ $(DSKSD_K):
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
-	$(MAKDIR) $@,ROGUE
-	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_OBJS) ../../../level2/wildbits/$@,CMDS
-	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_FILES) ../../../level2/wildbits/$@,ROGUE
-	$(OS9ATTR_EXEC) $(foreach file,$(ROGUE_OBJS),$@,CMDS/$(file))
 	$(MAKDIR) $@,BF
 	$(CPL) $(BF_FILES) $@,BF
 	$(MAKDIR) $@,SOUNDS
@@ -231,10 +217,6 @@ $(DSKDW_K):
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
-	$(MAKDIR) $@,ROGUE
-	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_OBJS) ../../../level2/wildbits/$@,CMDS
-	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_FILES) ../../../level2/wildbits/$@,ROGUE
-	$(OS9ATTR_EXEC) $(foreach file,$(ROGUE_OBJS),$@,CMDS/$(file))
 	$(MAKDIR) $@,BF
 	$(CPL) $(BF_FILES) $@,BF
 	$(MAKDIR) $@,SOUNDS
@@ -276,10 +258,6 @@ $(DSKSD_JR):
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
-	$(MAKDIR) $@,ROGUE
-	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_OBJS) ../../../level2/wildbits/$@,CMDS
-	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_FILES) ../../../level2/wildbits/$@,ROGUE
-	$(OS9ATTR_EXEC) $(foreach file,$(ROGUE_OBJS),$@,CMDS/$(file))
 	$(MAKDIR) $@,BF
 	$(CPL) $(BF_FILES) $@,BF
 	$(MAKDIR) $@,SOUNDS
@@ -321,10 +299,6 @@ $(DSKDW_JR):
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
-	$(MAKDIR) $@,ROGUE
-	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_OBJS) ../../../level2/wildbits/$@,CMDS
-	$(CD) $(3RDPARTY)/packages/rogue; $(OS9COPY) $(ROGUE_FILES) ../../../level2/wildbits/$@,ROGUE
-	$(OS9ATTR_EXEC) $(foreach file,$(ROGUE_OBJS),$@,CMDS/$(file))
 	$(MAKDIR) $@,BF
 	$(CPL) $(BF_FILES) $@,BF
 	$(MAKDIR) $@,SOUNDS

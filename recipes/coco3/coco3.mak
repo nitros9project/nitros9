@@ -1,7 +1,7 @@
 PORT ?= coco3
 CPU ?= 6809
 MACHINE ?= Tandy Color Computer 3
-include ../../rules.mak
+include $(NITROS9DIR)/recipes/rules.mak
 RECIPE ?= coco3
 -include recipe.mak
 vpath %.asm $(LEVEL1)/coco1/modules
@@ -101,7 +101,7 @@ RECIPE_DEPS ?=
 all: libs $(DSKIMAGE)
 
 LIB_NAMES = $(NOS9_LIB) libnet.a libalib.a $(COCO3_LIB)
-include ../../libs.mak
+include $(NITROS9DIR)/recipes/libs.mak
 
 kernelfile: $(addprefix $(MODDIR)/,$(KERNEL_TRACK))
 	$(MERGE) $(addprefix $(MODDIR)/,$(KERNEL_TRACK))>$(KERNELFILE)
