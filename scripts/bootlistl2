@@ -21,8 +21,8 @@ $NITROS9DIR/$DISTRO/modules/init
 $NITROS9DIR/$DISTRO/modules/rbf.mn
 *
 * EMUDsk (for emulators)
-*$NITROS9DIR/3rdparty/drivers/emudsk/emudsk.dr
-*$NITROS9DIR/3rdparty/drivers/emudsk/ddh0.dd
+*$NITROS9DIR/archive/drivers/emudsk/emudsk.dr
+*$NITROS9DIR/archive/drivers/emudsk/ddh0.dd
 *~/cdf3.mn
 *~/cd.dd
 *
@@ -98,9 +98,9 @@ $NITROS9DIR/$DISTRO/modules/d1_40d.dd
 *$NITROS9DIR/$DISTRO/modules/r0_192k.dd
 * Memory device descriptor
 *$NITROS9DIR/$DISTRO/modules/md.dd
-* 3rd Party Disto RAMPak driver
-$NITROS9DIR/3rdparty/drivers/disto/rampak.dr
-$NITROS9DIR/3rdparty/drivers/disto/r0_512_l2.dd
+* Archived Disto RAMPak driver
+*$NITROS9DIR/archive/drivers/disto/rampak.dr
+*$NITROS9DIR/archive/drivers/disto/r0_512_l2.dd
 ***************************************
 * SCF Section
 *

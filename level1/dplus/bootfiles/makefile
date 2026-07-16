@@ -37,7 +37,6 @@ BOOTFILE_CODPLUS_DS40 = $(MD)/ioman \
 		$(MD)/ddd0_40d.dd \
 		$(MD)/d0_40d.dd $(MD)/d1_40d.dd \
 		$(MD)/d2_40d.dd $(MD)/d3_40d.dd\
-		$(MD)/vinit.dr $(MD)/vdisk.dr $(MD)/v0.dd\
 		$(MD)/scf.mn \
 		$(MD)/vtio.dr $(MD)/codplus.io $(MD)/term_dplus.dt \
 		$(MD)/scdpp.dr $(MD)/p_dpp.dd \
@@ -50,7 +49,6 @@ BOOTFILE_CODPLUS_DS80 = $(MD)/ioman \
 		$(MD)/ddd0_80d.dd \
 		$(MD)/d0_80d.dd $(MD)/d1_80d.dd \
 		$(MD)/d2_80d.dd $(MD)/d3_80d.dd\
-		$(MD)/vinit.dr $(MD)/vdisk.dr $(MD)/v0.dd\
 		$(MD)/scf.mn \
 		$(MD)/vtio.dr $(MD)/codplus.io $(MD)/term_dplus.dt \
 		$(MD)/scdpp.dr $(MD)/p_dpp.dd \
@@ -63,7 +61,6 @@ BOOTFILE_CODPLUS_SS40 = $(MD)/ioman \
 		$(MD)/ddd0_40d.dd \
 		$(MD)/d0_40s.dd $(MD)/d1_40s.dd \
 		$(MD)/d2_40s.dd $(MD)/d3_40s.dd\
-		$(MD)/vinit.dr $(MD)/vdisk.dr $(MD)/v0.dd\
 		$(MD)/scf.mn \
 		$(MD)/vtio.dr $(MD)/codplus.io $(MD)/term_dplus.dt \
 		$(MD)/scdpp.dr $(MD)/p_dpp.dd \
@@ -98,4 +95,3 @@ kernel: $(KERNEL) $(DEPENDS)
 
 clean:
 	$(RM) $(ALLOBJS)
-

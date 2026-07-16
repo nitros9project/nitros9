@@ -89,10 +89,6 @@
 *../MODULES/RBF/d2_80d.dd
 * D3 - drive 3 - choose if needed
 *../MODULES/RBF/d3_35s.dd
-* Dragon Plus VRAM disk
-../MODULES/RBF/vinit.dr
-../MODULES/RBF/vdisk.dr
-../MODULES/RBF/v0.dd
 ***************************************
 * SCF Section
 *

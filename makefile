@@ -6,7 +6,7 @@ endif
 export NITROS9DIR
 include rules.mak
 
-dirs	=  $(NOSLIB) $(LEVEL1) $(LEVEL2) $(3RDPARTY) #$(LEVEL3)
+dirs	=  $(NOSLIB) $(LEVEL1) $(LEVEL2) #$(LEVEL3)
 
 # Allow the user to specify a selection of ports to build
 ifdef PORTS

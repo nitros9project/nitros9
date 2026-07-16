@@ -6,7 +6,7 @@ dirs	= msf
 all:
 	@$(ECHO) "**************************************************"
 	@$(ECHO) "*                                                *"
-	@$(ECHO) "*                  File Managers                 *"
+	@$(ECHO) "*             Archived File Managers             *"
 	@$(ECHO) "*                                                *"
 	@$(ECHO) "**************************************************"
 	$(foreach dir,$(dirs),$(MAKE) -C $(dir) &&) :

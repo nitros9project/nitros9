@@ -1,12 +1,12 @@
-include ../rules.mak
+include ../../rules.mak
 
-dirs	= drivers fmgrs p2mods subrtns utils packages
+dirs	= burke disto ide mmc s16550 sdisk sdisk3 tccc nocan
 
 # Make all components
 all:
 	@$(ECHO) "**************************************************"
 	@$(ECHO) "*                                                *"
-	@$(ECHO) "*               3rd Party Software               *"
+	@$(ECHO) "*          Archived Third-Party Drivers          *"
 	@$(ECHO) "*                                                *"
 	@$(ECHO) "**************************************************"
 	$(foreach dir,$(dirs),$(MAKE) -C $(dir) &&) :

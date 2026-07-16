@@ -100,9 +100,6 @@ system("os9 gen -b=bootfile -t=trackfile tmp.dsk>&/dev/null");
 system("os9 copy -o=0 $NITROS9DIR/$DISTRO/modules/sysgo_dd tmp.dsk,sysgo");
 system("os9 attr tmp.dsk,sysgo -epepr");
 system("os9 dsave -e $NITROS9DIR/$DISTRO/nos9"."$DISTRO"."_80d.dsk, tmp.dsk, >&/dev/null");
-system("os9 copy -o=0 $NITROS9DIR/3rdparty/p2mods/noice/calldbg tmp.dsk,cmds/calldbg");
-system("os9 attr tmp.dsk,cmds/calldbg -epepr");
-
 print "Step 3 - Put it all together\n";
 system("mv tmp.dsk $diskname");
 

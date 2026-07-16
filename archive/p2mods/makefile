@@ -9,7 +9,7 @@ all:	banner $(ALLOBJS)
 banner:
 	@$(ECHO) "**************************************************"
 	@$(ECHO) "*                                                *"
-	@$(ECHO) "*            3rd Party System Modules            *"
+	@$(ECHO) "*          Archived Third-Party Modules          *"
 	@$(ECHO) "*                                                *"
 	@$(ECHO) "**************************************************"
 
