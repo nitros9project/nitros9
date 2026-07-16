@@ -1,6 +1,0 @@
-@GPRINT
-Syntax: gprint
-Usage : Printer setup utility for Multi-Vue.  Lets 
-        user graphically set up the margins for a 
-        printed page.  Selectable as Printer from
-        the desk utilities menu.

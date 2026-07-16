@@ -25,7 +25,7 @@ B09DIR = $(LANGUAGES)/basic09
 B09CMDS = $(B09DIR)/gfx $(B09DIR)/gfx2 $(B09DIR)/inkey $(B09DIR)/syscall
 B09CMDSFINAL = $(B09CMDS) basic09 runb
 
-MVDIR			=	$(3RDPARTY)/packages/multivue
+MVDIR			=	$(NITROS9_APPS_DIR)/multivue
 MVCMDSDIR		=	$(MVDIR)/cmds_6809
 MVSYSSDIR		=	$(MVDIR)/sys
 MVCMDS			=	$(MVCMDSDIR)/gshell $(MVCMDSDIR)/cocopr $(MVCMDSDIR)/control $(MVCMDSDIR)/demo $(MVCMDSDIR)/fstat \

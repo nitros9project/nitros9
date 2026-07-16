@@ -1,8 +1,0 @@
-These are header files which this package needs for compiling on the CoCo.
-Some of these were not on the original Microware C compiler disks.
-
-stdio.h has a few changes from the Microware original file.  DIR in the
-original file has been changed to _DIR to avoid a conflict in the dir.h file.
-
-If you have modified your original MW DEFS files, check to make sure your
-changes will not deleted before copying these replacements.

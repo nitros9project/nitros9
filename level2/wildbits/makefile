@@ -66,7 +66,7 @@ reload:
 
 BASIC09_FILES = $(foreach file,$(LANGUAGES)/basic09/samples/*,$(file))
 BF_FILES = $(foreach file,$(LANGUAGES)/bf/*.bf,$(file))
-CPM_FILES = $(3RDPARTY)/packages/cpm/software
+CPM_FILES = $(NITROS9_APPS_DIR)/cpm/software
 SOUND_FILES = $(foreach file,$(LEVEL1)/wildbits/sound/*,$(file))
 
 $(DSKSD_K2):

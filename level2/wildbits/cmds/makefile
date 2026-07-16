@@ -3,14 +3,14 @@ include ../port.mak
 AFLAGS      += -I.
 
 vpath %.as $(LEVEL1)/wildbits/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds
-vpath %.asm $(LEVEL1)/wildbits/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds:$(LANGUAGES)/basic09:$(LANGUAGES)/bf:$(3RDPARTY)/packages/cpm
+vpath %.asm $(LEVEL1)/wildbits/cmds:$(LEVEL2)/cmds:$(LEVEL1)/cmds:$(LANGUAGES)/basic09:$(LANGUAGES)/bf:$(NITROS9_APPS_DIR)/cpm
 
 DEPENDS		= ./makefile $(NOSLIB)/net.o
 
 AFLAGS      += -I$(LEVEL2)/$(PORT)
 AFLAGS      += -I$(LANGUAGES)/basic09
 AFLAGS      += -I$(LANGUAGES)/bf
-AFLAGS      += -I$(3RDPARTY)/packages/cpm
+AFLAGS      += -I$(NITROS9_APPS_DIR)/cpm
 AFLAGS      += -I.
 LFLAGS		+= -L$(NITROS9DIR)/lib -L$(LEVEL2)/$(PORT)/libs
 LFLAGS		+= -lwildbitsl2 -lwbsnd

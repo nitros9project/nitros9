@@ -21,6 +21,7 @@ $hdbdos_offset = 45312;		# 0x00B100
 # ATTENTION!  Set the number of HDB-DOS virtual disks (must be in decimal)
 $num_hdbdos_disks = 128;
 $NITROS9DIR = $ENV{'NITROS9DIR'};
+$NITROS9_APPS_DIR = $ENV{'NITROS9_APPS_DIR'} || "$NITROS9DIR/../nitros9-apps";
 $CLOUD9DIR = $ENV{'CLOUD9DIR'};
 $DISTRO = "6809l2";
 
@@ -115,8 +116,8 @@ system("os9 gen -b=bootfile -t=trackfile tmp.dsk>&/dev/null");
 system("os9 copy -o=0 $NITROS9DIR/$DISTRO/modules/sysgo_dd tmp.dsk,sysgo");
 system("os9 attr tmp.dsk,sysgo -epepr");
 system("os9 dsave -e $NITROS9DIR/$DISTRO/nos9"."$DISTRO"."_80d.dsk, tmp.dsk, >&/dev/null");
-system("os9 dsave -e $NITROS9DIR/3rdparty/packages/uucpbb/uucpbb21_6309.dsk, tmp.dsk, >&/dev/null");
-system("os9 dsave -e $NITROS9DIR/3rdparty/packages/cc/cc.dsk, tmp.dsk, >&/dev/null");
+system("os9 dsave -e $NITROS9_APPS_DIR/uucpbb/uucpbb21_6309.dsk, tmp.dsk, >&/dev/null");
+system("os9 dsave -e $NITROS9DIR/languages/ccompiler/CCompiler.dsk, tmp.dsk, >&/dev/null");
 system("os9 dsave -e $NITROS9DIR/languages/basic09/basic09v010100.dsk, tmp.dsk, >&/dev/null");
 system("os9 dsave -e $CLOUD9DIR/Products/Ved/Software/ved.dsk, tmp.dsk, >&/dev/null");
 system("os9 format -qe -ss -dd boot.dsk");

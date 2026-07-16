@@ -33,7 +33,7 @@ FORTH09_TEST = $(FORTH09_COCO_DIR)/forthtest.4th
 
 # The interpreter supports Version 3 story files. Override INFOCOM_STORY_DIR
 # and INFOCOM_STORIES to package another legally obtained collection.
-INFOCOM_STORY_DIR ?= $(3RDPARTY)/packages/cpm/software/zork
+INFOCOM_STORY_DIR ?= $(NITROS9_APPS_DIR)/cpm/software/zork
 INFOCOM_STORIES ?= ZORK1.DAT ZORK2.DAT ZORK3.DAT
 INFOCOM_STORY_FILES = $(addprefix $(INFOCOM_STORY_DIR)/,$(INFOCOM_STORIES))
 
