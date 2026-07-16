@@ -8,8 +8,6 @@ AFLAGS		+= -I.
 CLOCKSOFT       = -DRTCSoft=1
 
 DEPENDS		= ./makefile
-TPB		= $(3RDPARTY)/booters
-
 BOOTERS		= 
 KERNEL		= krn krnp2
 SYSMODS		= ioman init sysgo sysgo_rom
@@ -170,5 +168,4 @@ showpipe:
 
 identify:
 	$(IDENT_SHORT) $(ALLOBJS)
-
 

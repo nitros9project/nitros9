@@ -20,8 +20,6 @@ IDEFLAGS        = $(AFLAGS) -DIDE=1 $(FLAGS)
 SDFLAGS         = $(AFLAGS) -DCOCOSDC=1 -DITTYP=128 $(FLAGS)
 
 DEPENDS		= ./makefile
-TPB		= $(3RDPARTY)/booters
-
 BOOTERS		= boot_1773_6ms boot_1773_30ms \
 		boot_burke boot_rampak boot_wd1002 boot_dw boot_dw_becker boot_dw_arduino \
 		boot_tc3 boot_ide boot_rom

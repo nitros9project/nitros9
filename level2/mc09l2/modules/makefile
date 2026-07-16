@@ -11,8 +11,6 @@ IDEFLAGS        = $(AFLAGS) -DIDE=1 $(FLAGS)
 SDFLAGS         = $(AFLAGS) -DCOCOSDC=1 -DITTYP=128 $(FLAGS)
 
 DEPENDS		= ./makefile
-TPB		= $(3RDPARTY)/booters
-
 BOOTERS		= boot_sdc
 BOOTTRACK	= rel_80 $(BOOTERS) mc09krn
 

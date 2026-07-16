@@ -22,8 +22,6 @@ SDFLAGS         = $(AFLAGS) -DCOCOSDC=1 -DITTYP=128 $(FLAGS)
 CC3FPGAFLAGS    = $(AFLAGS) -DCC3FPGA=1 $(FLAGS)
 
 DEPENDS		= ./makefile
-TPB		= $(3RDPARTY)/booters
-
 BOOTERS		= boot_1773_6ms boot_1773_30ms boot_realcocofpga
 BOOTTRACK	= rel_32 rel_40 rel_80 rel_32_50hz rel_40_50hz rel_80_50hz $(BOOTERS) krn
 KERNEL		= krnp2 krnp3_perr krnp4_regdump #ccbkrn
@@ -564,4 +562,3 @@ showpipe:
 
 identify:
 	$(IDENT_SHORT) $(ALLOBJS)
-

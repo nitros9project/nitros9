@@ -10,8 +10,6 @@ CLOCKSOFT       = -DRTCSoft=1
 SDFLAGS		= $(AFLAGS) -DCOCOSDC=1 -DITTYP=128 $(FLAGS)
 
 DEPENDS		= ./makefile
-TPB		= $(3RDPARTY)/booters
-
 BOOTERS		= boot_sdc
 BOOTTRACK	= rel $(BOOTERS)
 KERNEL		= krn krnp2 wbug
@@ -296,5 +294,4 @@ showpipe:
 
 identify:
 	$(IDENT_SHORT) $(ALLOBJS)
-
 

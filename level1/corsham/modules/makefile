@@ -8,8 +8,6 @@ AFLAGS		+= -I$(LEVEL1)/modules
 CLOCKSOFT       = -DRTCSoft=1
 
 DEPENDS		= ./makefile
-TPB		= $(3RDPARTY)/booters
-
 BOOTERS		= rel boot_cshsd
 KERNEL		= krn krnp2
 SYSMODS		= ioman init sysgo sysgo_rom pio.sb
@@ -91,5 +89,4 @@ showpipe:
 
 identify:
 	$(IDENT_SHORT) $(ALLOBJS)
-
 

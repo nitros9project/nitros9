@@ -44,8 +44,6 @@ CLOCKMESSEMU    = -DRTCMessEmu=1
 CLOCKJVEMU      = -DRTCJVEmu=1
 
 DEPENDS		= ./makefile
-TPB		= $(3RDPARTY)/booters
-
 BOOTERS		= boot_d64
 
 BOOTTRACK	= rel $(BOOTERS)

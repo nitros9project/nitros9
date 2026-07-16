@@ -1,6 +1,6 @@
 include ../rules.mak
 
-dirs	= booters drivers fmgrs p2mods subrtns utils packages
+dirs	= drivers fmgrs p2mods subrtns utils packages
 
 # Make all components
 all:

@@ -21,8 +21,6 @@ SDFLAGS         = $(AFLAGS) -DCOCOSDC=1 -DITTYP=128 $(FLAGS)
 CC3FPGAFLAGS    = $(AFLAGS) -DCC3FPGA=1 $(FLAGS)
 
 DEPENDS		= ./makefile
-TPB		= $(3RDPARTY)/booters
-
 BOOTERS		= boot_1773_6ms boot_1773_30ms \
 		boot_burke boot_rampak boot_wd1002 boot_dw boot_dw_becker boot_dw_arduino \
 		boot_tc3 boot_dide boot_ide boot_sdc boot_rom boot_dw_rs232pak boot_dw_directmodempak \

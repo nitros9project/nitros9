@@ -13,8 +13,6 @@ AFLAGS		+= -I$(LEVEL1)/modules
 LFLAGS	    += -L $(NITROS9DIR)/lib -L $(LEVEL2)/$(PORT)/libs -lnet -lwildbitsl2 -lalib -lwbsnd
 
 DEPENDS		= ./makefile
-TPB		= $(3RDPARTY)/booters
-
 KERNEL		= krn krnp2
 SYSMODS		= ioman init sysgo
 CLOCKS		= clock clock2_wildbits

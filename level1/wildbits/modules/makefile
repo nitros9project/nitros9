@@ -15,8 +15,6 @@ LFLAGS	    += -L $(NITROS9DIR)/lib -L $(LEVEL1)/$(PORT)/libs/wbsnd -lnet -lwildb
 CLOCKSOFT	= -DRTCSoft=1
 
 DEPENDS		= ./makefile
-TPB		= $(3RDPARTY)/booters
-
 KERNEL		= krn krnp2
 SYSMODS		= ioman init sysgo
 CLOCKS	    = clock clock2_wildbits
@@ -243,4 +241,3 @@ showpipe:
 
 identify:
 	$(IDENT_SHORT) $(ALLOBJS)
-
