@@ -117,7 +117,7 @@ DROP_EXTRA_SPACES = fn() { mv "$$1" "$$1.tmp" && sed 's/  */ /g' "$$1.tmp" > "$$
 
 # Directories
 3RDPARTY	= $(NITROS9DIR)/3rdparty
-LANGUAGES	= $(NITROS9DIR)/languages
+LANGUAGES	?= $(abspath $(NITROS9DIR)/../nitros9-languages)
 LEVEL1		= $(NITROS9DIR)/level1
 LEVEL2		= $(NITROS9DIR)/level2
 LEVEL3		= $(NITROS9DIR)/level3

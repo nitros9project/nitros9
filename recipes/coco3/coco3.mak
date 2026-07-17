@@ -165,8 +165,11 @@ $(MODDIR)/xmode: xmode.asm | $(MODDIR)
 $(MODDIR)/tmode: xmode.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DTMODE=1
 
-$(MODDIR)/runb: runb.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@
+$(MODDIR)/runb: $(LANGUAGES)/basic09/runb_$(CPU) | $(MODDIR)
+	$(CP) $< $@
+
+$(LANGUAGES)/basic09/runb_$(CPU):
+	$(MAKE) -C $(LANGUAGES)/basic09 runb_$(CPU)
 
 $(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
 	$(MERGE) $(addprefix $(MODDIR)/,$(SHELLMODS)) >$@

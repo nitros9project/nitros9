@@ -1,8 +1,0 @@
-t
--x
-del syslib.l
-x
-merge >temp1 abort.r signal.r change.r stat.r access.r io.r misc.r mod.r
-merge >temp2 dir.r mem.r time.r process.r id.r intercept.r syscall.r
-merge >syslib.l temp1 temp2 syscommon.r cfinish.r profdummy.r tidyup.r
-del temp1 temp2
