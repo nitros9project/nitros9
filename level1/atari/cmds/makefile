@@ -26,6 +26,8 @@ ALLOBJS		= $(CMDS) $(CMDS_DEMO)
 
 all:	$(ALLOBJS)
 
+include $(NITROS9DIR)/language-rules.mak
+
 pwd:	pd.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DPWD=1
 

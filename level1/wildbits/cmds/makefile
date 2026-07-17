@@ -33,6 +33,8 @@ ALLOBJS		= $(CMDS)
 
 all:	$(DEPENDS) $(ALLOBJS)
 
+include $(NITROS9DIR)/language-rules.mak
+
 # Some commands depend on net.o
 $(NOSLIB)/net.o:
 	cd $(NOSLIB); make

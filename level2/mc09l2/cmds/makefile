@@ -32,11 +32,7 @@ UTILPAK1	= attr build copy del deldir dir display list makdir mdir \
 # Files not compilable by os9asm: config
 all:	$(CMDS) $(CMDS_D2) $(CMDS_DW) shell utilpak1 $(DEPENDS)
 
-runb:	runb.asm
-	$(AS) $(AFLAGS) $< $(ASOUT)$@
-	$(MERGE) $@ $(SUBS)>$@.tmp
-	$(RM) $@
-	$(MOVE) $@.tmp $@
+include $(NITROS9DIR)/language-rules.mak
 
 tmode:	xmode.asm
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DTMODE=1
