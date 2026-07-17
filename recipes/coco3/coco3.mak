@@ -178,6 +178,9 @@ $(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1)) | $(MODDIR)
 $(MODDIR)/boot_1773_6ms: boot_1773.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DSTEP=0
 
+$(MODDIR)/boot_dw_becker: boot_dw.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DBECKER=1
+
 $(MODDIR)/sysgo_dd: sysgo.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDD=1
 
@@ -223,6 +226,9 @@ $(MODDIR)/d2_80d.dd: rb1773desc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD80) -DDNum=2
 
 # DriveWire RBF descriptors
+$(MODDIR)/dwio_becker.sb: dwio.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DBECKER=1
+
 $(MODDIR)/ddx0.dd: dwdesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDD=1 -DDNum=0
 
