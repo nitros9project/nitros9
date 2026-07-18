@@ -77,10 +77,12 @@ KERNELFILE = kerneltrack
 STARTUP ?= $(NITROS9DIR)/level2/$(PORT)/startup
 
 SYSDIR      ?= $(L2PD)/sys
-SYSBIN      ?= $(shell make -C $(SYSDIR) --no-print-directory showbinobjs)
-SYSTEXT     ?= $(shell make -C $(SYSDIR) --no-print-directory showtextobjs)
+SYS_RECIPE  ?= $(NITROS9DIR)/recipes/support/coco3-system.mak
+SYSBIN      ?= $(shell make -C $(SYSDIR) -f $(SYS_RECIPE) --no-print-directory showbinobjs)
+SYSTEXT     ?= $(shell make -C $(SYSDIR) -f $(SYS_RECIPE) --no-print-directory showtextobjs)
 PORTDEFSDIR ?= $(L2PD)/defs
-PORTDEFS    ?= $(shell make -C $(PORTDEFSDIR) --no-print-directory showobjs)
+PORTDEFS_RECIPE ?= $(NITROS9DIR)/recipes/support/coco3-defs.mak
+PORTDEFS    ?= $(shell make -C $(PORTDEFSDIR) -f $(PORTDEFS_RECIPE) --no-print-directory showobjs)
 
 BOOTMODS ?= krnp2 ioman init \
 	$(RBF) \
@@ -118,7 +120,7 @@ $(DSKIMAGE): libs kernelfile bootfile $(MODDIR)/sysgo_dd $(addprefix $(MODDIR)/,
 	$(MAKDIR) $@,CMDS
 ifneq ($(SYSDIR),)
 	$(MAKDIR) $@,SYS
-	$(MAKE) -C $(SYSDIR) --no-print-directory
+	$(MAKE) -C $(SYSDIR) -f $(SYS_RECIPE) --no-print-directory
 	$(CD) $(SYSDIR); $(OS9COPY) $(SYSBIN) $(CURDIR)/$@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(SYSBIN),$@,SYS/$(file))
 	$(CD) $(SYSDIR); $(CPL) $(SYSTEXT) $(CURDIR)/$@,SYS
@@ -126,7 +128,7 @@ ifneq ($(SYSDIR),)
 endif
 ifneq ($(PORTDEFSDIR),)
 	$(MAKDIR) $@,DEFS
-	$(MAKE) -C $(PORTDEFSDIR) --no-print-directory
+	$(MAKE) -C $(PORTDEFSDIR) -f $(PORTDEFS_RECIPE) --no-print-directory
 	$(CD) $(PORTDEFSDIR); $(CPL) $(PORTDEFS) $(CURDIR)/$@,DEFS
 	$(OS9ATTR_TEXT) $(foreach file,$(PORTDEFS),$@,DEFS/$(file))
 endif

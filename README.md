@@ -25,20 +25,17 @@ To build NitrOS-9, you need the following:
 - [lwtools](http://lwtools.projects.l-w.ca). This package contains the required 6809 assembler and linker.
 - [ToolShed](https://github.com/n6il/toolshed). ToolShed provides file system tools for creating disk images, copying files to and from those disk images, and more.
 
-Once downloaded and installed, you can build the entire project:
+Once downloaded and installed, select a build recipe under `recipes`. For
+example, to build the CoCo 3 Level 2 floppy image:
 
-```
+```sh
 export NITROS9DIR=$HOME/nitros9
-make
+make -C recipes/coco3/floppy
 ```
 
-Then to build all of the disk images:
-
-```
-make dsk
-```
-
-The result is a number of disk images (ending in .dsk) that can be used on real floppy drives, emulators, and DriveWire.
+Each recipe produces its disk image in its own directory. See
+[`recipes/README.md`](recipes/README.md) for the available platforms and links
+to their build instructions.
 
 # Contributing
 
