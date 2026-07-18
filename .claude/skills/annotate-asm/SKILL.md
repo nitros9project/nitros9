@@ -1,270 +1,196 @@
 ---
 name: 6809-annotate
-description: Annotate disassembled 6809/6309 source: rename generic labels (L0047, u0100) to meaningful names and add inline comments explaining each instruction's purpose. Invoke with a file path argument.
+description: Turn a raw disassembled 6809/6309 OS-9 module into legible, byte-identical source. Renames generic labels (L0047, u0100) to meaningful names, adds an inline comment to every instruction, fixes the disassembler's failures (code left as fcb data, data decoded as code, per-instruction address labels, direct-page globals resolved to code labels, addresses symbolized as immediates), and formats to the project style. Scales to huge modules by fanning out reader agents. Every step is verified byte-identical to the original binary. Invoke with a file path argument.
 argument-hint: <path/to/file.asm>
-allowed-tools: [Read, Edit, Bash, Grep]
+allowed-tools: [Read, Edit, Write, Bash, Grep, Workflow]
 ---
 
-# 6809 Assembly Annotator
+# 6809 / OS-9 Disassembly Annotator
 
-You are an expert in Motorola 6809/Hitachi 6309 assembly language and the NitrOS-9 real-time operating system for the TRS-80 Color Computer. Your task is to replace generic disassembled labels with meaningful, descriptive names, and to add a short inline comment to every instruction line explaining its purpose.
+You are an expert in Motorola 6809 / Hitachi 6309 assembly and the NitrOS-9 / Microware OS-9 operating system. Your job: take a raw disassembly (RML Disasm, os9dis, etc.) and make it read like hand-written source — **without changing a single assembled byte**.
 
-## Invocation
+The user invoked this skill with: `$ARGUMENTS` (a path to a `.asm` file). If none was given, ask for one.
 
-The user invoked this skill with: $ARGUMENTS
+## The one rule that governs everything: the byte-oracle
 
-If no file path was given, ask the user to provide one. If a path was given, operate on that file.
+Every change you make is cosmetic and MUST re-assemble to the exact same module. Before touching anything, capture a baseline binary + CRC; after every batch of edits, re-assemble and compare. If the bytes differ, stop and fix/revert before continuing. This is what lets you refactor aggressively with confidence.
 
-## Label Patterns to Rename
+## Pipeline overview
 
-Disassemblers produce labels in these forms — rename ALL of them:
+Run these phases in order. Small modules (< ~1500 lines) can do Phase 1 by hand; large ones fan out agents (Phase 1, parallel path).
+
+| Phase | What |
+|-------|------|
+| 0 | Byte-oracle baseline (assemble command, CRC) |
+| 1 | Rename labels + comment every instruction |
+| 2 | Whitespace / project formatting + block separation |
+| 3 | Fix failed disassembly (code-as-fcb, data-as-code) |
+| 4 | Remove unreferenced per-instruction labels |
+| 5 | Fix DP-global / immediate mislabels |
+| 6 | Final verify + header note + report |
+
+Worked examples: `c.prep.asm` (4.7k lines, mostly sequential) and `c.comp.asm` (20k lines, parallelized across 44 agents) in `3rdparty/packages/ccompiler/`.
+
+---
+
+## Phase 0 — Byte-oracle baseline (ALWAYS FIRST)
+
+1. **Find the assemble command.** Look for a `Makefile`/`makefile` in the file's dir; `make -n <target>` (target = basename without `.asm`) prints the exact `lwasm` line. NitrOS-9 modules typically use:
+   ```
+   lwasm --no-warn=ifp1 --6309 --format=os9 \
+     --pragma=pcaspcr,nosymbolcase,condundefzero,undefextern,dollarnotlocal,noforwardrefmax \
+     --includedir=$NITROS9DIR/defs -DNOS9VER= -DNOS9MAJ= -DNOS9MIN= <file>.asm -o<file>
+   ```
+2. **Assemble the unmodified source** to `$SP/<name>.baseline` (use a scratch dir, e.g. `$CLAUDE_JOB_DIR/tmp` or the session scratchpad). If it fails, stop and report — do not annotate a source that doesn't assemble.
+3. **Record the CRC:** `os9 ident $SP/<name>.baseline | grep CRC` (e.g. `Module CRC : $4B70BB (Good)`).
+4. **Define the checkpoint** you will run after every phase:
+   ```bash
+   lwasm <flags> <file>.asm -o$SP/chk 2>&1 | head
+   cmp -s $SP/chk $SP/<name>.baseline && echo "✓ BYTE-IDENTICAL" || echo "✗ DIFFERS"
+   ```
+   Never advance past a `✗`.
+
+> lwasm on a 20k-line file can take >1 min; run big assemblies in their own Bash call so the 2-minute limit doesn't cut off a checkpoint.
+
+---
+
+## Phase 1 — Rename labels + comment every instruction
+
+### Label patterns to rename
+Disassemblers emit generic labels in these forms — rename **all** of them:
 
 | Pattern | Meaning |
 |---------|---------|
-| `L` followed by 4 hex digits (e.g. `L0047`, `L01B5`) | Code label (branch target, subroutine entry) |
-| `u` followed by 4 hex digits (e.g. `u0100`, `u000C`) | Direct page / U-register relative data variable |
-| `D` followed by 4 hex digits | Data label |
+| `L` + 4 hex (`L0047`, `L01B5`) | Code label (branch target, subroutine entry) |
+| `u` / `U` + 4 hex (`u000C`, `U0053`) | Direct-page / U-register-relative data variable |
+| `Y` + 4 hex (`Y0106`, `Y0116`) | Y-register-relative data variable (a module's static-data base is often in Y) |
+| `D` + 4 hex | Data label |
 
-Labels that are already meaningful (e.g. `Exit`, `MainLoop`, `skipspc`) must NOT be renamed.
+The `U####` / `Y####` **data globals are the ones most easily left behind** — they sit in an `rmb` block and look like they might be constants, so a rename pass focused on `L####` code labels skips them (this happened on `c_asm.asm`). Rename them too, using the same intent your comments record. If a data global's purpose is genuinely ambiguous — or it is mis-disassembled filler — keep it by address rather than invent a misleading name. Leave already-meaningful names alone. Never rename OS-9 system constants (`I$Open`, `F$Exit`, `C$CR`, `E$EOF`, …).
 
-## Procedure
+### Naming heuristics (UpperCamelCase, 2–4 words)
+- **Subroutine** (target of `bsr`/`jsr`/`lbsr`): verb phrase — `ParseExpr`, `SkipSpaces`, `EmitByte`, `LookupSym`.
+- **Loop top** (branched back to): suffix `Loop`. **Error/exit**: suffix `Err`/`Fail` / `Ok`/`Done`.
+- **Condition target** (after `cmpa #C$CR` etc.): name the condition — `GotCR`, `IsDelim`, `NotFound`.
+- **Variable** (`u`/`U`/`Y` prefix): infer type from `rmb` size (1=flag/char, 2=pointer/word, N=buffer) and use — `CurChar`, `LineNum`, `InPtr`, `MacroTbl`.
+- Recognize OS-9 idioms: `I$Open`→`OpenFailed` on the `bcs`; `I$Read`/`I$Write`→read/write helpers; `F$Exit`→exit point; `F$Mem`→alloc; `cmpa #C$CR`→CR check; `tfr s,u`/`leau ,s`→frame pointer.
+- Distinguish repeats with qualifiers (`ReadLoop1`/`ReadLoop2`); never reuse a name already in the file.
 
-### Step 1 — Read the file
+### Comment rules
+One short phrase (≤8 words) on **every instruction line**, explaining WHY not the mechanics (a 6809 reader knows what `lda ,x+` does; they want to know why). Exception: note a genuinely tricky idiom briefly (`puls pc,b` combined restore+return, `coma` to make $FF, `tfr s,u` frame pointer). Match the file's comment column (scan the file; usually 41). Don't comment pseudo-ops (`rmb equ fcb fdb fcc fcs mod emod end use set ifp1 endc org`), blank lines, `*` comment lines, or `os9 XXX` lines (self-documenting unless context needs it).
 
-Read the entire assembly source file provided.
-
-### Step 2 — Map every disassembled label
-
-Produce an internal table (do not show it to the user unless asked). For each label record:
-- Where it is defined (the line it appears as a label)
-- Every place it is referenced (branches, calls, loads, stores)
-- The instruction(s) immediately at or after its definition
-- The context: what operation surrounds its use
-
-### Step 3 — Name each label
-
-Apply these naming heuristics in priority order:
-
-#### U-relative / direct-page data labels (`u` prefix)
-
-These are memory offsets from the U (or direct page) register — they are data fields, not code.
-
-- Look at how the location is used: `lda`, `sta`, `ldb`, `stb`, `clr`, `inc`, `dec`, `tst`, `leax ...,u` → it's a variable.
-- Look at what value is stored/tested and in what context.
-- Use `rmb` size to infer type: 1 byte = flag/char/byte value; 2 bytes = pointer/word; N bytes = buffer/array.
-- Examples of good names: `pathDesc`, `retryCount`, `inputBuf`, `errorCode`, `devNum`, `curPos`, `screenRow`, `byteCount`.
-
-#### Code labels (`L` prefix)
-
-These are branch targets or subroutine entry points.
-
-- If the label is the target of a `bsr` or `jsr` → it's a subroutine. Name it as a verb phrase: `readByte`, `skipSpaces`, `parseArg`, `writeOutput`, `openPath`.
-- If the label immediately follows a `bcs`, `bne`, `beq`, `bhi`, `blo`, `blt`, etc. error branch → it's likely an error handler or exit point: `errorExit`, `notFound`, `eofReached`.
-- If the label is jumped to from multiple places and leads to `os9 F$Exit` or `rts` → `exitOk`, `exitErr`, `returnOk`.
-- If the label is the top of a loop (branched back to) → `loopTop`, `retryLoop`, `scanLoop`, `mainLoop` (qualified by context).
-- If the label is at a conditional test or comparison → `checkXxx` where Xxx describes what is being tested.
-- If the label is jumped to on a specific condition (e.g. after `cmpa #C$CR`) → name it for that condition: `gotCR`, `isCR`, `notDelim`.
-
-#### NitrOS-9 / OS-9 specific patterns
-
-Recognize these OS9/NitrOS-9 idioms and name accordingly:
-
-- `os9 I$Open` followed by a `bcs` branch → the `bcs` target is `openFailed` or `openError`.
-- `os9 I$Read` / `I$ReadLn` → nearby labels relate to `read`, `readLine`, `readData`.
-- `os9 I$Write` / `I$WritLn` → `writeMsg`, `writeLine`, `printStr`.
-- `os9 I$Close` → `closePath`, `closeFile`.
-- `os9 F$Exit` → the enclosing label is the exit point; name it `exitOk` or `exitErr`.
-- `os9 F$Mem` → memory allocation/deallocation context.
-- `os9 F$Fork` / `F$Chain` → process management.
-- `os9 F$STime` / `F$GTime` → time-related labels.
-- `os9 I$GetStt` / `I$SetStt` → status/option operations; context determines name.
-- `os9 SS$ComSt` / `SS$Opt` → comm-status or option set; `setComStat`, `setOpts`.
-- After `ldd #size` + `os9 F$Mem` → `allocMem`, `getMemBlock`.
-- `tfr s,u` or `leau ,s` at the start of a subroutine → this is frame-pointer setup; the label is the subroutine entry.
-
-#### Module header labels
-
-NitrOS-9 modules begin with a fixed header. If labels appear in the header region:
-- First `fdb` → `modSize` or part of the module preamble.
-- `fcb edition` → edition byte.
-- Labels at `mod` macro or early `fdb`/`fcb` sequences → leave alone if they look intentional, otherwise name for their structural role.
-
-#### Naming style rules
-
-- Use **UpperCamelCase** (PascalCase) for all new names — every word starts with a capital letter, including the first.
-- Keep names short but descriptive (2–4 words max).
-- Prefix loop-top labels with `Loop` and subroutine labels with a capitalized verb.
-- Suffix error-path labels with `Err` or `Fail`.
-- Suffix success-path / clean-exit labels with `Ok` or `Done`.
-- When the same logical concept appears multiple times (e.g. two different read loops), distinguish with a qualifier: `ReadLoop1` / `ReadLoop2` or context-specific names.
-- Never use a name already present in the file as a different label.
-
-### Step 4 — Establish assembly baseline
-
-Before making any edits, confirm the source assembles cleanly and record the reference binary output. This baseline is used to verify every subsequent edit preserves the exact machine code.
-
-#### 4a — Locate the original binary
-
-The assembled binary typically lives adjacent to the source or in an `OBJS/` subdirectory. Search:
-
-```bash
-# Common NitrOS-9 output locations relative to the source
-find "$(dirname <source>)" -maxdepth 3 \( -name "$(basename <source> .asm)" -o -name "*.dr" -o -name "*.dd" -o -name "*.mn" \) 2>/dev/null
+### Small modules — do it inline
+Read the whole file, build the rename map, apply renames one at a time with `replace_all: true` (checkpoint every ~5), then add comments in batches (checkpoint after each batch). A fast batch-rename is a word-boundary sub:
+```python
+s = re.sub(r'(?<![A-Za-z0-9_.$@])'+re.escape(old)+r'(?![A-Za-z0-9_.$@])', new, s)
 ```
 
-If a binary is found, record its path as `ORIG_BIN`.
+### Large modules — fan out reader agents (the scalable path)
+Do the analysis in parallel, apply centrally. Agents are **read-only**; only the main loop mutates the file, so no agent can change a byte without a checkpoint catching it.
 
-#### 4b — Capture baseline ident output
+1. **Partition** lines `[codeStart..end]` into ~330–460-line chunks.
+2. **`Workflow`**: one agent per chunk. Each agent:
+   - Reads ONLY its slice (`Read` with offset/limit) and uses `grep -n <label> <file>` for cross-references — do NOT have every agent read the whole 20k-line file.
+   - Returns `renames` for labels **defined in its range only** (each label is defined once, so its owner names it) and `comments` (`{lineNo: text}` for instruction lines).
+   - **Writes a JSON file** `chunk_<i>.json` and returns the path.
+   - **Hardcode the output dir in the workflow script** — passing it via `args` has bound to `undefined` in practice, scattering files into a literal `undefined/` dir.
+   - JSON shape: `{ "renames":[{"old":"L1A7C","new":"ParseExpr","why":"..."}], "comments":{"461":"..."} }`
+   - Add one whole-file "variables" agent when there are many `u`/`U`/`Y` labels — DP and Y-relative globals are referenced everywhere, so a single owner names them coherently.
+3. **Apply centrally** with `scripts/apply_annot.py` (in this skill dir), byte-checkpointing between phases:
+   ```bash
+   python3 scripts/apply_annot.py --file <f>.asm --out <jsonDir> --phase renames   # then checkpoint
+   python3 scripts/apply_annot.py --file <f>.asm --out <jsonDir> --phase comments  # then checkpoint
+   ```
+   It dedups rename collisions, only renames labels actually defined in the file, keys comments by **line number** (stable — renames and comments never add or remove lines), reformats + comments only *bare* instruction lines (so operand/comment splitting is unambiguous), and skips lines ≤ `--skip` (default 0; use it to protect a hand-done section).
+4. **Clean up** afterwards:
+   - **Stragglers**: labels at chunk boundaries no agent owned — find remaining `^[uUYL][0-9A-F]{4}` defs, name by context (dedup against existing names).
+   - **Stale comment refs**: comments are applied *after* renames, so an agent's comment may still cite an old `Lxxxx` name — re-apply the rename map over the whole file (only comment mentions remain as `[uUYL]XXXX` tokens; they get updated).
 
-Run `os9 ident` on the original binary and save the output:
+Agent inference quality is high: on ccompiler they correctly identified macro tables, if/else compilation, free lists, and frame layouts.
 
-```bash
-os9 ident "$ORIG_BIN"
+---
+
+## Phase 2 — Whitespace / project formatting (byte-neutral)
+
+1. **Run the project formatter** — the same one the pre-commit hook uses:
+   ```bash
+   python3 $NITROS9DIR/scripts/asmprettyprint.py <f>.asm > $SP/fmt && mv $SP/fmt <f>.asm   # then checkpoint
+   ```
+   It aligns label/opcode/operand/comment columns. Confirm it's the upstream version (a local edit once had it lowercasing opcodes — that would still be byte-identical but is not the house style).
+2. **Blank line after every unconditional branch** (`bra`/`lbra`/`jmp`) — NOT after calls (`bsr`/`lbsr`/`jsr`/`swi`), so subroutines read as delimited blocks. Insert only where not already blank; checkpoint.
+3. **Blank line after `puls pc[,...]`** returns (same idea). Checkpoint.
+
+Detect the opcode as the first token, or the 2nd if the line has a leading label; for `puls`, check `pc` is in the register list.
+
+---
+
+## Phase 3 — Fix failed disassembly
+
+Disassemblers get code/data boundaries wrong in both directions. Run all detectors, then fix.
+
+### Detectors
+1. **Data labels reached by control flow** — a label on an `fcb`/`fdb`/`fcc` line that is a `bsr`/`jsr`/branch/`jmp` target. That "data" is really code. (`CopyStr` in c.prep: `fcb $A6,$A0,$A7,$C0,$30,$1F,$26,$F8,$39` = `lda ,y+ / sta ,u+ / leax -1,x / bne / rts`.)
+2. **`fcb` blocks reached by fall-through** — the instruction before an `fcb` run is not a terminator (`rts`/`rti`/`bra`/`lbra`/`jmp`/`puls pc`). Code-as-data — UNLESS it's the legit **inline-data-after-`bsr`** idiom (routine reads params after its own call; usually flagged "call past inline data").
+3. **Short `fcb` runs ending in `$39`/`$3B`** (rts/rti) that decode as a valid instruction stream.
+4. **Strings/tables decoded as instructions** — the reverse, with no `fcb` to warn you, so run it every pass. Signals: (a) an agent names a label `Msg…`/`…Banner` but it sits on an *instruction* line; (b) an **ASCII-as-code cluster** — `$2A`(`*`)→`bpl`, `$20`(space)→`bra` — a run of `bpl`/`lsrb`/`coma`/`rorb`/`clra` with stray `fcb $4x`/`$5x`; (c) the region is reached **only** by `leax LABEL,pcr` feeding `I$Write`/`I$WritLn` (a string pointer — not a code callback, which gets `jsr ,x`). Find clusters: `grep -nE "^\s+(lsrb|lsra|coma|comb|rorb|rora|asrb|rolb)\s*$" f.asm`. (`MsgStackOverflow` in c.link.)
+
+### Fix
+Get the bytes from a listing (`lwasm <flags> --list=$SP/x.lst <f>.asm -o/dev/null`); replace code-left-as-`fcb` with instructions, or a decoded string with `fcc /.../` + `fcb` control bytes (`MsgStackOverflow fcc /**** STACK OVERFLOW ****/` + `fcb $0D`) — the reconstructed span must end exactly where the next real label's address begins. **Checkpoint** — lwasm must re-emit identical bytes. Then **re-run Phase 4**: deleting the fake instructions orphans any label whose only reference was one of them (`WriteBanner`/`StackUsed`/… in c.link).
+
+---
+
+## Phase 4 — Remove unreferenced per-instruction labels
+
+Disassemblers often put an address label on **every** instruction (especially relocation/init preambles). A label that appears **exactly once** (only at its own definition) is unreferenced clutter. Remove it — blank the leading label token, keep the instruction and its column. Byte-neutral; checkpoint.
+
+```python
+toks = Counter(re.findall(r'(?<![A-Za-z0-9_.$@])([A-Za-z_][A-Za-z0-9_]*)(?![A-Za-z0-9_.$@])', src))
+unref = {lbl for lbl in code_defs if toks[lbl] == 1}   # code_defs = labels defined on instruction lines
+# for each match at column 0: line = ' '*len(lbl) + line[len(lbl):]
 ```
 
-Save this as `BASELINE_IDENT`. It will be compared against every assembled output.
+---
 
-#### 4c — Discover assembly command
+## Phase 5 — Fix direct-page-global & immediate mislabels
 
-NitrOS-9 uses `lwasm` from lwtools. Find the include paths and defines the file needs by:
+**Root cause:** the disassembler assumes the direct page is at page `$00`. So a DP global reference `ldd <$1F` (bytes `DC 1F`) gets resolved to the *code* label at the colliding low address `$001F`; and a symbol whose address doubles as a constant (e.g. `_start` = mod exec offset `$001D`) shows up as `#_start`. This bites when DP globals live in an undeclared `rmb` blob. If the disassembly already declared each DP var as its own `rmb` (as c.prep did), it never happens — c.prep was clean; c.comp needed the fix.
 
-1. Looking for a `Makefile` or `*.mak` in the source directory or its parents — grep for `LWASM`, `lwasm`, `--format`, `-I`, `-D` flags near references to this source file.
-2. If a make target exists for this file, run `make -n <target>` (dry run) to capture the exact command.
-3. As a fallback, construct the command manually:
+### Detect
+- **DP globals:** code-line labels referenced **only** by data ops (`ldd`/`std`/`cmpd`/`lda`/`sta`/…), never by a branch/call/`leax`. Confirm via the listing that the reference bytes are direct-page (`DC 1F`, etc.).
+- **Immediates:** defined labels used as `#Label`.
 
-```bash
-lwasm --format=os9 \
-      -I/path/to/nitros9/defs \
-      -I/path/to/nitros9/level1/defs   \   # or level2/defs as appropriate
-      --output=/tmp/wizard_test.bin \
-      <source_file>
-```
+### Fix (byte-identical because you keep the exact value)
+- **DP globals:** define each as `Name equ <exact value>` in a DP-globals block near the top (comment it, noting the DP=$00 collision), repoint the direct-page references to `Name`, blank the colliding code label, and add the equate. Name from the dominant use in the agents' per-site comments — a general-purpose global may serve more than one role.
+  - Detect the globals and repoint them **by their direct-page encoding in the listing** (`DC 1F`, `9E 1F`, …) — only those operands are true direct-page global accesses that should carry the `Name` symbol.
+  - **After blanking a labeled global, its label is now undefined for any *other*-mode reference** that the disassembler happened to symbolize (indexed-indirect `[L001B,y]`, indexed `L001B,y`, extended). Turn those into the **numeric literal** `$00NN`, NOT `Name` — the code base writes Y-relative/indexed accesses as bare numbers (and since `Y` is often the globals base, `[$1B,y]` already reaches the same global), so `Name` belongs only in direct-page operands. Putting the equate name inside `[Name,y]` reads wrong.
+  - A **dual-use** offset (also a real branch/call target — e.g. `copybytes`, a startup convergence label) is the exception: keep its code label and add a *separate* equate, repointing only the direct-page data references so the code references keep resolving to the code label. Note the module's **exec entry `_start`** can be one of these (its address collides with a low global) — it's referenced by the **`mod` directive**, not a branch, so your dual-use test must count a `mod`/pseudo-op operand as a code reference or you'll rename `_start` in the header.
+  - Bare `$00NN` references (never resolved to a label) are already valid numbers — repoint the direct-page ones for legibility; a missed one is harmless.
+- **Immediates:** replace `#Label` with `#$value`.
 
-Save this command as `ASM_CMD`.
+Checkpoint.
 
-#### 4d — Test assembly of original source
+---
 
-Run `ASM_CMD` on the unmodified source. If it fails, report the error to the user and stop — do not proceed with renaming until the source assembles cleanly.
+## Phase 6 — Final verification, header note, report
 
-If it succeeds, run `os9 ident /tmp/wizard_test.bin` and confirm the output matches `BASELINE_IDENT`. If they differ, warn the user before proceeding.
-
-### Step 5 — Plan inline comments
-
-Before editing, build a second internal table mapping every instruction line to a short comment. Do not show this table unless asked.
-
-#### Comment rules
-
-- Write comments in plain English, one short phrase (5–10 words max).
-- Explain the **purpose** of the instruction, not its mechanics — a reader who knows 6809 already knows what `lda ,x+` does; they want to know *why*.
-- Exception: for non-obvious addressing modes or tricky idioms (e.g. `puls pc,b` as a combined return+restore, `coma` to produce $FF, `tfr s,u` for frame pointer), a brief mechanical note is welcome.
-- Do not repeat what the label name already says. If the label is `readLineLoop` and the first instruction is `clra`, write `clear A before I$ReadLn` not `top of read line loop`.
-- If a comment already exists and is good, leave it alone. If it is generic or wrong, replace it.
-- Do not comment pseudo-ops (`rmb`, `equ`, `fdb`, `fcb`, `fcs`, `mod`, `emod`, `end`, `use`, `ifp1`, `endc`, `set`), blank lines, or comment-only lines.
-- Do not comment `os9 XXX` lines — the system call name is self-documenting; only comment if the surrounding context needs explanation.
-- Align all new comments to the same column as existing comments in the file (scan the file for the prevailing comment column; typically column 41 or 49).
-
-#### NitrOS-9 / 6809 idiom glossary for comment writing
-
-Use these translations when you see these patterns:
-
-| Instruction / pattern | What to write |
-|-----------------------|---------------|
-| `coma` then `sta <var>` | `initialize <var> to $FF (invalid/unset)` |
-| `clrb` | `clear error code` or `clear B` depending on context |
-| `pshs u,x,a` | `save registers across system call` |
-| `puls u,x,a` | `restore registers after system call` |
-| `puls pc,b` | `restore B and return` |
-| `lbsr label` | `call <label>` |
-| `bsr label` | `call <label>` |
-| `os9 F$Exit` | (skip — self-documenting) |
-| `leax N,x` | `advance X by N` or `back up X by N` |
-| `leax label,pcr` | `load PC-relative address of <label>` |
-| `leay N,y` | `advance Y by N` |
-| `tfr s,u` | `set U as frame pointer` |
-| `leau ,s` | `set U as frame pointer` |
-| `ldd #size` + `os9 F$Mem` | surrounding context → `allocate N bytes` |
-| `cmpb #E$EOF` | `check for end-of-file error` |
-| `cmpa #PDELIM` | `check for path delimiter (/)` |
-| `cmpa #C$CR` | `check for carriage return` |
-| `cmpa #C$SPAC` | `check for space character` |
-| `cmpa #'-` | `check for option flag (-)` |
-| `bcs label` | `branch if error (carry set)` |
-| `bvs label` | `branch if overflow` |
-| `bmi label` | `branch if negative (high bit set)` |
-| `bpl label` | `branch if non-negative (high bit clear)` |
-| `mul` | `multiply A×B → D` |
-
-### Step 6 — Apply changes with checkpoint verification
-
-Use the Edit tool to rename labels. Rename one label at a time using `replace_all: true` to catch all occurrences in a single pass. Work through the label list from Step 2 in order.
-
-After all label renames are complete and a checkpoint has passed, add inline comments. Work through the file top to bottom, adding or replacing comments on instruction lines. Because comments never affect assembled output, you may add comments in larger batches (up to 20 lines at a time) using multi-line Edit blocks, then run a checkpoint after each batch to confirm the binary is still identical.
-
-#### Checkpoint cadence — labels
-
-After every 5 label renames (or when a logically related group is complete), run a verification checkpoint:
-
-```bash
-# Assemble modified source
-<ASM_CMD substituting source path>
-
-# Compare ident output
-os9 ident /tmp/wizard_test.bin
-```
-
-Compare the `os9 ident` output against `BASELINE_IDENT`:
-- Module name, size, type, language, attributes, and parity/CRC must all match exactly.
-- If ANY field differs, stop immediately, report which label rename caused the mismatch, revert that rename with another `replace_all` Edit, and re-run the checkpoint to confirm recovery before continuing.
-
-For an extra-precise check, also compare the binaries byte-for-byte:
-
-```bash
-cmp "$ORIG_BIN" /tmp/wizard_test.bin && echo "IDENTICAL" || echo "MISMATCH"
-```
-
-A `MISMATCH` here with a passing `os9 ident` is unusual — report it to the user but it is not necessarily a blocker (the module CRC is the authoritative check in NitrOS-9).
-
-### Step 7 — Final verification
-
-After all labels have been renamed and all comments have been added, run one final checkpoint:
-
-```bash
-<ASM_CMD>
-os9 ident /tmp/wizard_test.bin
-cmp "$ORIG_BIN" /tmp/wizard_test.bin && echo "BINARY IDENTICAL" || echo "BINARY DIFFERS"
-```
-
-Report the result to the user. If the binary is identical, the changes were purely cosmetic as expected. If it differs, investigate before reporting success.
-
-### Step 8 — Add annotation header
-
-After the final verification passes, insert a short annotation notice into the file's header comment block (the `*`-prefixed block at the top of the file, below the module description and history). Add it as the last item before the blank line that ends the banner:
-
-```
-* Annotated by /6809-annotate (Claude Code) YYYY-MM-DD:
-*   - Renamed disassembled labels to meaningful names
-*   - Added inline comments to every instruction
-```
-
-Use today's date for `YYYY-MM-DD`. This note is cosmetic and requires no further assembly verification.
-
-### Step 9 — Report
-
-Present the summary table to the user:
-
-| Old Name | New Name | Rationale |
-|----------|----------|-----------|
-| L0047 | ParseArg | Entry point of `bsr` called during argument parsing |
-| u000C | ZeroFlag | Single byte tested/cleared as a boolean flag |
-| ... | ... | ... |
-
-Keep rationale brief (one short phrase). List every renamed label. End with the final assembly verification result.
+1. **Final checkpoint:** assemble, `cmp` to baseline, confirm the CRC is unchanged. Report `✓ BINARY IDENTICAL`.
+2. **Header note** — add to the `*` banner (today's date):
+   ```
+   * Annotated YYYY-MM-DD (Claude Code):
+   *   - renamed disassembled labels to meaningful names
+   *   - added inline comments to every instruction
+   *   - re-disassembled <any code-as-data fixed, if any>
+   *   - verified byte-identical to the original assembly (module CRC $XXXXXX)
+   ```
+3. **Report**: counts (labels renamed, comments added, unreferenced labels dropped, disassembly fixes), the CRC match, and any judgement calls (e.g. a global named for its dominant use). Note the file is uncommitted unless the user asks to commit.
 
 ## What NOT to do
+- Don't add, remove, or reorder instructions (Phase 3 re-disassembly is the sole exception, and it must re-emit identical bytes).
+- Don't rename OS-9 system calls / constants — they're not disassembled labels.
+- Don't guess a name when context is truly ambiguous — use a descriptive placeholder and flag it in the report.
+- Don't skip a checkpoint. A `✗` means revert and diagnose before continuing.
+- Don't commit unless explicitly asked.
 
-- Do not reformat or reorder code — only rename labels and add/replace comments.
-- Do not add or remove instructions.
-- Do not rename OS9 system call names (`I$Open`, `F$Exit`, etc.) — those are constants, not disassembled labels.
-- Do not guess a label name if context is truly ambiguous — use a descriptive placeholder like `branch_L0047` and note it in the summary table as "ambiguous".
-- Do not skip the baseline assembly step even if the original binary cannot be found — assemble the source first and use that as the reference.
-- Do not add comments to pseudo-ops (`rmb`, `equ`, `fcb`, `fdb`, `fcs`, `mod`, `emod`, `end`, `use`, `set`), blank lines, or lines that are already comment-only.
+## Supporting files
+- `scripts/apply_annot.py` — central rename/comment applier for the parallel path (`--phase renames|comments`, `--file`, `--out`, `--skip`).
+- `scripts/dp_globals.py` — Phase 5 DP-globals fix (`<file.asm> <listing.lst> [--apply]`): finds direct-page globals from the listing encoding, builds the equate block, repoints direct-page refs, keeps dual-use code labels (incl. the `mod` exec entry) with a separate equate, and turns non-direct-page symbolized refs into numeric literals. Dry-run first (no `--apply`) to review the DUAL set, then apply and checkpoint.
