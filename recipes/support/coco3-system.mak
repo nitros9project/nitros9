@@ -1,4 +1,4 @@
-include ../port.mak
+include $(NITROS9DIR)/level2/coco3/port.mak
 
 vpath %.hp $(LEVEL2)/sys:$(LEVEL1)/sys
 vpath %.asm $(LEVEL2)/sys

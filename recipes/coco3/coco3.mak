@@ -76,13 +76,19 @@ KERNEL_TRACK ?= $(REL) boot_1773_6ms krn
 KERNELFILE = kerneltrack
 STARTUP ?= $(NITROS9DIR)/level2/$(PORT)/startup
 
-SYSDIR      ?= $(L2PD)/sys
+SYSDIR      ?= .sys
 SYS_RECIPE  ?= $(NITROS9DIR)/recipes/support/coco3-system.mak
-SYSBIN      ?= $(shell make -C $(SYSDIR) -f $(SYS_RECIPE) --no-print-directory showbinobjs)
-SYSTEXT     ?= $(shell make -C $(SYSDIR) -f $(SYS_RECIPE) --no-print-directory showtextobjs)
+SYSBIN      ?= stdfonts stdpats_2 stdpats_4 stdpats_16 stdptrs ibmedcfont isolatin1font
+SYSTEXT     ?= helpmsg errmsg password motd inetd.conf
 PORTDEFSDIR ?= $(L2PD)/defs
 PORTDEFS_RECIPE ?= $(NITROS9DIR)/recipes/support/coco3-defs.mak
-PORTDEFS    ?= $(shell make -C $(PORTDEFSDIR) -f $(PORTDEFS_RECIPE) --no-print-directory showobjs)
+PORTDEFS    ?= os9.d rbf.d scf.d coco.d coco3vtio.d Defsfile
+
+ifneq ($(SYSDIR),)
+CLEAN_DIRS += $(SYSDIR)
+$(SYSDIR):
+	mkdir -p $@
+endif
 
 BOOTMODS ?= krnp2 ioman init \
 	$(RBF) \
@@ -113,7 +119,7 @@ kernelfile: $(addprefix $(MODDIR)/,$(KERNEL_TRACK))
 bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
 
-$(DSKIMAGE): libs kernelfile bootfile $(MODDIR)/sysgo_dd $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(BASIC09_SAMPLES) $(RECIPE_DEPS)
+$(DSKIMAGE): libs kernelfile bootfile $(MODDIR)/sysgo_dd $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(BASIC09_SAMPLES) $(RECIPE_DEPS) | $(SYSDIR)
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9GEN) $@ -b=bootfile -t=$(KERNELFILE)
