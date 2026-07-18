@@ -201,6 +201,10 @@ L0131               fcs       "grfdrv"
 *
 * Initialization routine
 Init                pshs      u,y                 Preserve regs
+                    ldx       >WGlobal+G.HRSEnt   get shared application-screen services
+                    beq       InitNoHiRes         continue when the optional module is absent
+                    jsr       H$Init,x            initialize this device's screen descriptors
+InitNoHiRes         equ       *
                     ldd       >WGlobal+G.GrfEnt   Grfdrv there?
                     lbne      L01DB               Yes, go on
 * Setup window allocation bit map table
@@ -494,6 +498,10 @@ L0282               rts                           Return
 * Entry: U=Static mem ptr
 *        Y=Path dsc. ptr
 Term
+                    ldx       >WGlobal+G.HRSEnt   get shared application-screen services
+                    beq       TermNoHiRes         skip application-screen cleanup when absent
+                    jsr       H$Term,x            release this device's application screens
+TermNoHiRes         equ       *
 * Next two lines added by Boisy on 08/22/2007
 * This test is necessary to prevent a crash in the case that grfdrv cannot be
 * loaded.  If grfdrv isn't properly initialized, then the high bit of BCFFlg will
@@ -2324,7 +2332,14 @@ SetStt              cmpa      #SS.Open            Open window call (for /W)
                     cmpa      #SS.UMBar           Update menu bar
                     lbeq      L13F5
                     ENDC
-                    lbra      L0A96               Unknown SetStat, return with error
+
+SharedScreen        ldx       >WGlobal+G.HRSEnt   get shared application-screen services
+                    beq       MissingHiRes        report that the optional module is unavailable
+                    jmp       H$SetStt,x          process the request in HiRes
+
+MissingHiRes        comb                          return Unknown Service without disturbing VTIO
+                    ldb       #E$UnkSvc
+                    rts
 
 * SS.DfPal entry point
 L0B38               ldx       PD.RGS,y            get register stack pointer
@@ -2601,13 +2616,23 @@ L0CCA               ldu       >WGlobal+G.CurDev   get current device mem pointer
                     bmi       L0CE1               Wasn't an overlay, skip ahead
                     sta       V.WinNum,u          save it as current
 L0CE1               leas      1,s                 purge stack
-                    jmp       [>WGlobal+G.MsInit] initialize mouse & return
+                    ldb       >V.HRBuf,u          application screen selected for this window?
+                    beq       InitMouse           no, keep the normal window screen selected
+                    ldx       >WGlobal+G.HRSEnt   get shared application-screen services
+                    beq       InitMouse           no module means there is no screen to restore
+                    jsr       H$Show,x            replace the normal screen after its palette is set
+                    bcs       L0CF1               return a display error
+InitMouse           jmp       [>WGlobal+G.MsInit] initialize mouse & return
 
 * Update text & mouse cursors
-L0CE7               lbsr      L06A0               verify window table
-                    bcs       L0CF1               not good, return error
+L0CE7               tst       >V.HRBuf,u          is an application screen currently displayed?
+                    bne       AppCursorDone       yes, leave its hardware setup untouched
+                    lbsr      L06A0               verify window table
+                    lbcs      L0CF1               not good, return error
 L0CEC               ldb       #$46                get set window code
                     lbra      L0101               send it to grfdrv
+AppCursorDone       clrb                           return without updating window cursors
+                    rts
 
 * Checks for any overlay windows & framed or scroll barred windows
 * Entry: U=Static mem pointer

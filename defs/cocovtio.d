@@ -389,6 +389,20 @@ S$GetStt            RMB       3                   sound GetStats
 S$SetStt            RMB       3                   sound SetStats
 S$Term              RMB       3                   sound termination
 
+**********************
+* HiRes Entry Points
+                    ORG       0
+H$Init              RMB       3                   initialize per-device application screens
+H$Term              RMB       3                   free per-device application screens
+H$SetStt            RMB       3                   process application-screen SetStat calls
+H$Show              RMB       3                   display selected application screen
+
+HRS.Chg             EQU       $23                 nonzero requests a hardware screen update
+HRS.DGBuf           EQU       $100                selected application screen
+HRS.HiRes           EQU       $101                first screen descriptor
+HRS.NBlk            EQU       1                   block-count offset within a descriptor
+HRS.SType           EQU       2                   screen-type offset within a descriptor
+
 ********************************
 * Window/Menu Bar Data Structure
 *
@@ -585,6 +599,12 @@ V.DWNum             RMB       1                   dwnum from descriptor         
 V.CallCde           RMB       1                   internal comod call code #                   $37
 CC3Parm             RMB       128-.               global parameter area
 ReadBuf             RMB       256-.               read input buffer (keyboard)
+V.HRBuf             RMB       1                   displayed application screen (0=normal)     $100
+V.HiRes             RMB       1                   application screen 1 starting block         $101
+V.HRNBlk            RMB       1                   application screen 1 block count
+V.HRType            RMB       1                   application screen 1 type
+V.HR2               RMB       3                   application screen 2 descriptor
+V.HR3               RMB       3                   application screen 3 descriptor
 CC3DSiz             EQU       .
 
 *****************************************************************************
@@ -618,7 +638,8 @@ G.BelVec            RMB       2                   BELL routine vector
 G.DefPal            RMB       2                   pointer to default palette data in global mem
 G.TnCnt             RMB       1                   SS.Tone duration counter
 G.BelTnF            RMB       1                   BELL tone flag
-g001D               RMB       3
+G.HRSEnt            RMB       2                   HiRes subroutine module entry point ($1D)
+g001F               RMB       1
 G.CurDev            RMB       2                   current device's static memory pointer ($20)
 G.PrWMPt            RMB       2                   previous window static mem pointer $(22)
 G.BCFFlg            RMB       1                   bit coded co-module found flags ($24)

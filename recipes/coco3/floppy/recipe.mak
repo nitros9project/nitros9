@@ -11,7 +11,7 @@ CLEAN_EXTRA += startup.keyrpt startup.minimal
 ifeq ($(MINIMAL),1)
 RECIPE = coco3_minimal
 RBF = rbf.mn rb1773.dr ddd0_$(TRACKS)d.dd
-SCF ?= scf.mn vtio.dr snddrv_cc3.sb joydrv_joy.sb $(TERM_IO) \
+SCF ?= scf.mn vtio.dr co3hires.sb snddrv_cc3.sb joydrv_joy.sb $(TERM_IO) \
 	$(TERM_WIN_DT)
 PIPE =
 CMDS_BASE = shell grfdrv

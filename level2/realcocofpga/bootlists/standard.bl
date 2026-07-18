@@ -147,6 +147,8 @@
 * CoCo 3 I/O sub-drivers
 * Keyboard modules: choose cc3 for CoCo 3 keyboard
 ../MODULES/SCF/vtio.dr
+* Shared high-resolution application screen services
+../MODULES/SCF/co3hires.sb
 ../MODULES/SCF/keydrv_cc3.sb
 * Sound module: CoCo 3 built-in sound generator
 ../MODULES/SCF/snddrv_cc3.sb
