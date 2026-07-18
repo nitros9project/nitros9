@@ -6,6 +6,10 @@
 include ../dw/recipe.mak
 
 RECIPE = coco3_dw_mega
+SCF += scdwp.dr p_scdwp.dd \
+	midi_scdwv.dd \
+	z1_scdwv.dd z2_scdwv.dd z3_scdwv.dd \
+	z4_scdwv.dd z5_scdwv.dd z6_scdwv.dd z7_scdwv.dd
 CLEAN_DIRS += .external
 
 EXTERNAL_DIR ?= .external
@@ -36,6 +40,30 @@ FORTH09_TEST = $(FORTH09_COCO_DIR)/forthtest.4th
 INFOCOM_STORY_DIR ?= $(NITROS9_APPS_DIR)/cpm/software/zork
 INFOCOM_STORIES ?= ZORK1.DAT ZORK2.DAT ZORK3.DAT
 INFOCOM_STORY_FILES = $(addprefix $(INFOCOM_STORY_DIR)/,$(INFOCOM_STORIES))
+
+$(MODDIR)/midi_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=14
+
+$(MODDIR)/z1_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=17
+
+$(MODDIR)/z2_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=18
+
+$(MODDIR)/z3_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=19
+
+$(MODDIR)/z4_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=20
+
+$(MODDIR)/z5_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=21
+
+$(MODDIR)/z6_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=22
+
+$(MODDIR)/z7_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=23
 
 CMDS_EXTRA += forth09 infocom raakatu
 RECIPE_DEPS += $(FORTH09_CMD) $(FORTH09_TEST) $(INFOCOM_CMD) $(RAAKATU_CMD) $(INFOCOM_STORY_FILES)
