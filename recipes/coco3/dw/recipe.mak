@@ -3,9 +3,11 @@
 RECIPE = coco3_dw
 STARTUP = $(NITROS9DIR)/level2/$(PORT)/startup.dw
 OS9FORMAT_CMD = $(OS9FORMAT_DW)
-KERNEL_TRACK = rel_80 boot_dw krn
+DW_BOOT_MODULE ?= boot_dw
+DWIO_MODULE ?= dwio.sb
+KERNEL_TRACK = rel_80 $(DW_BOOT_MODULE) krn
 
-RBF = rbf.mn rbdw.dr dwio.sb ddx0.dd x1.dd x2.dd x3.dd
+RBF = rbf.mn rbdw.dr $(DWIO_MODULE) ddx0.dd x1.dd x2.dd x3.dd
 SCF = scf.mn vtio.dr co3hires.sb snddrv_cc3.sb joydrv_joy.sb cowin.io \
 	term_win80.dt w.dw w1.dw w2.dw w3.dw w4.dw w5.dw w6.dw w7.dw \
 	w8.dw w9.dw w10.dw w11.dw w12.dw w13.dw w14.dw w15.dw \
