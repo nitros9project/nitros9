@@ -104,12 +104,14 @@ BACKGROUNDS = clutbeach clutgrid clutmeadow clutmetal clutspace clutstone clutst
 
 ifeq ($(LEVEL),2)
 SYS_DIR = $(LEVEL2)/wildbits/sys
+SYS_RECIPE = $(NITROS9DIR)/recipes/support/wildbits-level2-system.mak
 SYS_TEXT_FILES = $(LEVEL2)/sys/motd $(LEVEL1)/sys/errmsg $(LEVEL1)/sys/password \
 	$(SYS_DIR)/helpmsg $(SYS_DIR)/inetd.conf
 SYS_BIN_FILES = $(addprefix $(SYS_DIR)/,stdfonts stdpats_2 stdpats_4 stdpats_16 stdptrs \
 	ibmedcfont isolatin1font)
 else
 SYS_DIR = $(LEVEL1)/wildbits/sys
+SYS_RECIPE = $(NITROS9DIR)/recipes/support/level1-system.mak
 SYS_TEXT_FILES = $(LEVEL1)/sys/motd $(LEVEL1)/sys/errmsg $(LEVEL1)/sys/password \
 	$(SYS_DIR)/helpmsg $(SYS_DIR)/inetd.conf
 SYS_BIN_FILES =
@@ -127,9 +129,9 @@ $(MODDIR)/sysgo: $(OBJDIR)/sysgo.o | $(MODDIR)
 $(OBJDIR)/sysgo.o: sysgo.as | $(OBJDIR)
 .PHONY: wildbits-sys-assets
 wildbits-sys-assets:
-	$(MAKE) -C $(SYS_DIR)
-	$(MAKE) -C $(FONT_DIR)
-	$(MAKE) -C $(BACKGROUND_DIR)
+	$(MAKE) -C $(SYS_DIR) -f $(SYS_RECIPE)
+	$(MAKE) -C $(FONT_DIR) -f $(NITROS9DIR)/recipes/support/wildbits-fonts.mak
+	$(MAKE) -C $(BACKGROUND_DIR) -f $(NITROS9DIR)/recipes/support/wildbits-backgrounds.mak
 
 $(FEU_STARTUP): FORCE
 	echo "bootos9 /s0/OS9Boot" >> $@
