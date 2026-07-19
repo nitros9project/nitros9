@@ -23,6 +23,10 @@ You must set:
 
 - `NITROS9DIR` to the root of your NitrOS-9 source tree
 
+Recipes that package BASIC09 expect `nitros9-languages` beside the NitrOS-9
+checkout. Expanded application recipes may also expect `nitros9-apps` there.
+Override `LANGUAGES` or `NITROS9_APPS_DIR` for another checkout layout.
+
 Example:
 
 ```sh
@@ -46,6 +50,7 @@ So when you build from [`wildbits/l1`](wildbits/l1/), [`wildbits/l2`](wildbits/l
 
 - [`rules.mak`](rules.mak): shared compiler/linker/tool definitions and pattern rules
 - [`libs.mak`](libs.mak): shared library targets consumed by port makefiles
+- [`support/`](support/): small reusable generators and compatibility rules
 - `<platform>/`: platform-specific recipes and usage documentation
 
 ## Platform Documentation
