@@ -17,4 +17,13 @@ default.proraw
 buildinfo
 bootfile
 kerneltrack
+os9kernel
+os9kernel_dw
+rel_picothing
+rel_picothing.srec
+helpmsg
 *.dsk
+*.srec
+
+# usim09pt FRAM persistence file (emulator artifact, holds reset vector)
+picothing.fram
