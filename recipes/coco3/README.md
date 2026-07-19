@@ -107,7 +107,8 @@ software and story files fetched from pinned upstream revisions:
   `forth09` command, with its test program in `/FORTH09/forthtest.4th`
 - [`rlucente-retro/infocom-os9-port`](https://github.com/rlucente-retro/infocom-os9-port),
   installed as the `infocom` command
-- the Version 3 Zork I-III story files under `/GAMES/INFOCOM`
+- the Version 3 Zork I-III story files under `/GAMES/INFOCOM`, installed as
+  `zork1.dat`, `zork2.dat`, and `zork3.dat`
 - the Version 3 [`drpitre/raakatu`](https://github.com/drpitre/raakatu) story,
   installed as `/GAMES/INFOCOM/raakatu.z3`
 
@@ -122,7 +123,7 @@ interpreter:
 ```text
 forth09
 forth09 </dd/FORTH09/forthtest.4th
-infocom /dd/GAMES/INFOCOM/ZORK1.DAT
+infocom /dd/GAMES/INFOCOM/zork1.dat
 infocom /dd/GAMES/INFOCOM/raakatu.z3
 ```
 

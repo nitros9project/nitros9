@@ -125,7 +125,12 @@ $(FORTH09_CMD): $(FORTH09_CHECKOUT)
 define RECIPE_INSTALL
 	$(MAKDIR) $(1),GAMES
 	$(MAKDIR) $(1),GAMES/INFOCOM
-	$(OS9COPY) $(INFOCOM_STORY_FILES) $(RAAKATU_STORY) $(1),GAMES/INFOCOM
+	@for story in $(INFOCOM_STORY_FILES); do \
+		story_name=$${story##*/}; \
+		story_name=$$(printf '%s' "$$story_name" | tr '[:upper:]' '[:lower:]'); \
+		$(OS9COPY) "$$story" "$(1),GAMES/INFOCOM/$$story_name"; \
+	done
+	$(OS9COPY) $(RAAKATU_STORY) $(1),GAMES/INFOCOM
 	$(MAKDIR) $(1),FORTH09
 	$(CPL) $(FORTH09_TEST) $(1),FORTH09/forthtest.4th
 	$(OS9ATTR_TEXT) $(1),FORTH09/forthtest.4th
