@@ -135,6 +135,13 @@ Wrk.Baud            rmb       1                   baud work byte (MUST immediate
 Wrk.XTyp            rmb       1                   extended type work byte
 
 regWbuf             rmb       2                   substitute for regW
+                  IFNE    picothing
+* On picothing regWbuf holds Write's pending Tx character across the TxE
+* wait, which sleeps with IRQs enabled.  IRQSvc must not touch regWbuf or
+* a receive interrupt during an echo replaces the pending character
+* (typically with $00, transmitting a NUL), so IRQSvc uses irqWbuf.
+irqWbuf             rmb       2         substitute for regW in IRQ context
+                  ENDC
 RxBufDSz            equ       256-.               default Rx buffer gets remainder of page...
 RxBuff              rmb       RxBufDSz            default Rx buffer
 MemSize             equ       .
@@ -780,7 +787,11 @@ SavRxDat            equ       *
                     else
                     pshs      d
                     ldd       <RxDatLen
+                  IFNE    picothing
+                    std       <irqWbuf
+                  ELSE
                     std       <regWbuf
+                  ENDC
                     cmpd      <RxBufSiz
                     puls      d
                     endc
@@ -805,9 +816,15 @@ SetLayDn            stx       <RxBufPut           set new Rx data laydown pointe
                     cmpw      <RxBufMax           at or past maximum fill point?
                     else
                     pshs      d
+                  IFNE    picothing
+                    ldd       <irqWbuf
+                    addd      #1
+                    std       <irqWbuf
+                  ELSE
                     ldd       <regWbuf
                     addd      #1
                     std       <regWbuf
+                  ENDC
                     std       <RxDatLen
                     cmpd      <RxBufMax
                     puls      d

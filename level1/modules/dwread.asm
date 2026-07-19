@@ -53,7 +53,11 @@
                     use dwread/dwread_bb38400.asm
                     endc
 
-                    ifeq      BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+BAUD38400+wildbits+MEGAMINIMPI
+                  IFNE    picothing
+                    use       dwread/dwread_picothing.asm
+                  ENDC
+
+                  IFEQ    BECKER+JMCPBCK+ARDUINO+BECKERTO+SY6551N+BAUD38400+wildbits+MEGAMINIMPI+picothing
                     ifeq      H6309
                     use dwread/dwread_bb6809.asm
                     else

@@ -27,14 +27,46 @@
 *     4    2005/12/13  Boisy G. Pitre
 * Moved SS.VarSect code into RBSuper for performance
 
+                  IFNE    picothing
+                    nam       llide_pt
+                    ttl       Low-level PATA driver for Pico-Thing
+                  ELSE
                     nam       llide
                     ttl       Low-level IDE driver
+                  ENDC
 
                     ifp1
                     use       defsfile
                     use       rbsuper.d
+                  IFNE    picothing
+                    use       ide_picothing.d
+                  ELSE
                     use       ide.d
                     endc
+                  ENDC
+
+* RdWord - read one data-register word into D (hardware-native byte order).
+* Pico-Thing has a 16-bit data register (no latch); the CoCo IDE reads the
+* low byte from the data register (latching the high byte) then the high
+* byte from the latch.
+RdWord              macro
+                  IFNE    picothing
+                    ldd       DataReg,x read the 16-bit data register (no latch)
+                  ELSE
+                    lda       DataReg,x low byte (latches the high byte)
+                    ldb       Latch,x   high byte from the latch
+                  ENDC
+                    endm
+
+* WrWord - write D to the data register (hardware-native byte order).
+WrWord              macro
+                  IFNE    picothing
+                    std       DataReg,x write the 16-bit data register (no latch)
+                  ELSE
+                    stb       Latch,x   high byte to the latch first
+                    sta       DataReg,x low byte triggers the 16-bit write
+                  ENDC
+                    endm
 
 tylg                set       Sbrtn+Objct
 atrv                set       ReEnt+rev
@@ -93,7 +125,11 @@ V.CurDTbl           rmb       2
 V.ATAVct            rmb       2
 
 
+                  IFNE    picothing
+name                fcs       /llide_pt/
+                  ELSE
 name                fcs       /llide/
+                  ENDC
 
 start               bra       ll_init
                     nop
@@ -116,6 +152,13 @@ start               bra       ll_init
 * IT IS NOT CALLED PER DEVICE!
 *
 ll_init
+                  IFNE    picothing
+                    ldx       V.PORT-UOFFSET,u get hw address
+                    lda       #%00000010 nIEN bit: disable IDE interrupts
+                    sta       AltStatus,x write device control register
+                    clrb
+                    rts
+                  ENDC
 *         clrb
 *         rts
 
@@ -215,8 +258,7 @@ ATAPIDSize
                     ldb       #4
                     pshs      b
                     leay      V.SnsData,u
-read@               lda       DataReg,x
-                    ldb       Latch,x
+read@               RdWord
                     std       ,y++
                     dec       ,s
                     bne       read@
@@ -424,8 +466,7 @@ retry@
                     pshs      a,y
                     leay      V.ATAPICmd,u
 l@                  ldd       ,y++
-                    stb       Latch,x
-                    sta       DataReg,x
+                    WrWord
                     dec       ,s
                     bne       l@
                     puls      a,y
@@ -567,7 +608,12 @@ ATAPIIdent
                     ldb       #$03                ATAPI
                     stb       ,y
 * We flush the ATAPI data but don't reference it
-dread@              ldb       DataReg,x           CRH flush ALL bytes
+dread@
+                  IFNE    picothing
+                    ldd       DataReg,x read the 16-bit word to flush
+                  ELSE
+                    ldb       DataReg,x CRH flush ALL bytes
+                  ENDC
 *         ldb   Latch,x 	but save time by not reading latch
                     lda       Status,x
                     anda      #8
@@ -584,6 +630,56 @@ ATAIdent
                     ldd       #NBUSYDRDY          /BUSY and DRDY
                     lbsr      StatusWait          wait for proper condition
                     bcs       ex@                 branch if error
+                  IFNE    picothing
+* Harvest C/H/S and LBA sector values.
+* Note: ldd DataReg,x gives A=D8-D15 (high), B=D0-D7 (low) [big-endian hardware]
+* std stores A (high) first so no byte swap is needed for the geometry fields.
+                    ldd       DataReg,x ignore word 0
+                    ldd       DataReg,x word 1: cylinders
+                    std       1,y       save cylinders (A=high, B=low, big-endian)
+                    ldd       DataReg,x ignore word 2
+                    ldd       DataReg,x word 3: heads
+                    stb       3,y       save heads (B = low byte D0-D7)
+                    ldd       DataReg,x ignore word 4
+                    ldd       DataReg,x ignore word 5
+                    ldd       DataReg,x word 6: sectors per track
+                    std       4,y       save sectors/track (big-endian)
+* Discard words 7-48 (42 words); ldd clobbers B so use a stack counter.
+                    ldb       #42
+                    pshs      b         save counter on stack
+l@                  ldd       DataReg,x read and discard word
+                    dec       ,s        decrement counter
+                    bne       l@
+                    puls      b         clean stack
+* Read word 49: A=D8-D15 (high byte); LBA capability is bit 9 = bit 1 of A.
+                    ldd       DataReg,x word 49: capabilities
+                    anda      #%00000010 LBA allowed on this drive?
+                    beq       nope@
+                    ldb       #$05      initialized (bit 0) and LBA (bit 2) flags
+                    stb       ,y        save updated status byte
+* Since we are LBA mode, get the number of LBA sectors in words 60-61.
+                    ldb       #10       skip words 50-59
+                    pshs      b         save counter on stack
+more@               ldd       DataReg,x read and discard
+                    dec       ,s        decrement counter
+                    bne       more@
+                    puls      b         clean stack
+                    ldd       DataReg,x word 60: LBA sectors low
+                    std       3,y       save (big-endian)
+                    ldd       DataReg,x word 61: LBA sectors high
+                    std       1,y       save (big-endian)
+                    ldb       #256-62   words remaining to drain
+                    bra       left@     go on
+nope@               ldb       #$01      initialized, CHS mode flag
+                    stb       ,y        save updated status byte
+* Drain remaining words to end of IDENTIFY response.
+                    ldb       #256-50
+left@               pshs      b         save counter on stack
+lft@                ldd       DataReg,x read and discard word
+                    dec       ,s        decrement counter
+                    bne       lft@
+                    puls      b         clean stack
+                  ELSE
 * Harvest C/H/S and LBA sector values.
                     ldb       DataReg,x           ignore bytes 0-1
                     ldb       DataReg,x           bytes 2-3 = no. of cylinders
@@ -629,6 +725,7 @@ nope@               stb       ,y                  save updated status byte
 left@               ldb       DataReg,x
                     deca
                     bne       left@
+                  ENDC
 initdone            ldb       ,y                  get status byte of drive
                     clra                          clear carry
 ex@                 rts
@@ -658,8 +755,7 @@ o@                  pshs      d
                     sta       1,s                 set up our logical sector counter
 inc@                clr       ,s                  set up our byte counter
 wr@                 ldd       ,y++
-                    stb       Latch,x
-                    sta       DataReg,x
+                    WrWord
                     inc       ,s
                     bpl       wr@
                     dec       1,s
@@ -707,8 +803,7 @@ o@                  pshs      d
                     lda       V.Log2Phys,u
                     sta       1,s                 set up our logical sector counter
 inc@                clr       ,s                  set up our byte counter
-read@               lda       DataReg,x
-                    ldb       Latch,x
+read@               RdWord
                     std       ,y++
                     inc       ,s
                     bpl       read@
@@ -813,8 +908,7 @@ w@                  ldd       #NBUSYDRQ           /BUSY and DRQ
                     lda       V.Log2Phys,u
                     sta       1,s                 set up our logical sector counter
 inc@                clr       ,s                  set up our byte counter
-read@               lda       DataReg,x
-                    ldb       Latch,x
+read@               RdWord
                     std       ,y++
                     inc       ,s
                     bpl       read@
@@ -975,8 +1069,7 @@ again@              lda       V.Log2Phys,u
                     sta       1,s                 set up our sector counter
 inc@                clr       ,s                  set up our byte counter
 wr@                 ldd       ,y++
-                    stb       Latch,x
-                    sta       DataReg,x
+                    WrWord
                     inc       ,s
                     bpl       wr@
                     dec       1,s
