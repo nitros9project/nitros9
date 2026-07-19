@@ -46,6 +46,12 @@ FFreehbMulBlkNum    lslb                ; multiply the block number by 2
                     ldx       b,y       ; get the DAT marker for that block
                     cmpx      #DAT.Free ; is it an empty block?
                     bne       FFreehbNumFreeBlks ; no, move to the next block
+                  IFNE    picothing ; begin conditional assembly for picothing
+* On picothing, block 7 is always the kernel block and must never be
+* returned as free.  Safety check in case DAT image entry matches DAT.Free.
+                    cmpb      #(DAT.BlCt-1)*2 ; is this block 7 (the kernel slot)?
+                    beq       FFreehbNumFreeBlks ; yes, treat as occupied
+                  ENDC
                     inca                ; bump up the number blocks free counter
                     cmpa      3,s       ; have we got enough?
                     bne       FFreehbNumberBlocks ; no, keep looking

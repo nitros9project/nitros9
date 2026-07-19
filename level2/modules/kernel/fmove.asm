@@ -79,6 +79,11 @@ FMoveTarget         pshs      d,x,y,u   ; preserve it all
 *            U=Destination pointer
 FMoveJoin           equ       *         ; define assembler symbol FMoveJoin
                   IFNE    H6309   ; begin conditional assembly for H6309
+                  IFNE    picothing ; begin conditional assembly for picothing
+* WARNING: before enabling H6309 native mode on Pico-Thing, this path
+* needs the same KrnBlk fixed-window guard as the 6809 path below —
+* mapping page $FF into slots 5/6 faults NMI (DAT unavailable sentinel).
+                  ENDC
                     ldd       [<6,s]    ; [B]=Block # of source
                     ldw       [<10,s]   ; [A]=Block # of destination
                     tfr       f,a       ; transfer register value f,a
@@ -156,6 +161,26 @@ FMoveBytes2         cmpd      #$0060    ; >96 bytes to copy left?
                     ldd       #$0060    ; yes, force to 96
 FMoveSizeBlock      std       12+2,s    ; save size of current copy block
                     puls      y         ; get source & dest MMU block #'s
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Pico-Thing: page $FF (KrnBlk) is also the DAT "unavailable" sentinel,
+* so it must never be mapped into a consulted slot (the access would
+* fault NMI).  The kernel block's contents are readable in place in the
+* fixed $E000-$FFFF window, so when a side's page is KrnBlk, bias that
+* side's pointer into the fixed window and map a harmless page 0 into
+* the slot instead (nothing references the slot for that side).
+                    pshs      y         ; examine the two page numbers
+                    lda       ,s        ; get the source page (slot 5)
+                    cmpa      #KrnBlk   ; is the source the kernel block?
+                    bne       nsrc@     ; no, map it normally
+                    clr       ,s        ; substitute page 0 for slot 5
+                    leax      >(2*DAT.BlSz),x ; read the source via the fixed window
+nsrc@               lda       1,s       ; get the destination page (slot 6)
+                    cmpa      #KrnBlk   ; is the destination the kernel block?
+                    bne       ndst@     ; no, map it normally
+                    clr       1,s       ; substitute page 0 for slot 6
+                    leau      >DAT.BlSz,u ; write the destination via the fixed window
+ndst@               puls      y         ; reload the (possibly adjusted) pages
+                  ENDC
                     orcc      #IntMasks ; shut IRQ's off
                     stb       <D.IRQTmp+1 ; save copy of current copy block size
                     sty       >DAT.Regs+5 ; swap in source/dest MMU blocks into $A000-$DFFF
@@ -188,6 +213,20 @@ FMoveSystemDAT      ldy       <D.SysDAT ; 6 Get system DAT pointer
                     ldb       $0D,y     ; 5
                     std       >DAT.Regs+5 ; 6 Restore originals
 ***** AND HERE...........
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Undo the fixed-window bias for any side whose page was KrnBlk.  The
+* image pointers have not been bumped yet, so re-reading the entries
+* tells us which sides were biased this pass.  D is reloaded below.
+                    ldd       [10,s]    ; this pass's source image entry
+                    cmpb      #KrnBlk   ; was the source the kernel block?
+                    bne       usrc@     ; no, X is already window-relative
+                    leax      >-(2*DAT.BlSz),x ; bias X back to the slot 5 window
+usrc@               ldd       [6,s]     ; this pass's destination image entry
+                    cmpb      #KrnBlk   ; was the destination the kernel block?
+                    bne       udst@     ; no, U is already window-relative
+                    leau      >-DAT.BlSz,u ; bias U back to the slot 6 window
+udst@               equ       *         ; both pointers window-relative again
+                  ENDC
                     andcc     #^IntMasks ; turn IRQ's back on
                     ldd       14,s      ; get # of bytes left to copy
                     subd      12,s      ; subtract # bytes we copied
