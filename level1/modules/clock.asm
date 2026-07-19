@@ -149,6 +149,13 @@ InitCont
 around@
 
 * Initialize clock hardware
+                  IFNE    picothing
+* Pico-Thing: enable the 50Hz tick timer
+                    pshs      cc        save the interrupt state
+                    orcc      #IntMasks mask interrupts while arming the timer
+                    lda       #$01      bit 0 = enable
+                    sta       >TICK.Ctrl start tick timer
+                  ELSE
                     ifne      wildbits
 * Use the SOF to get a 1/60th or 1/70th interrupt
                     pshs      cc
@@ -275,6 +282,7 @@ ClkEx
                     endc
                     endc
                     endc
+                  ENDC
                     puls      cc,pc
 
 *
@@ -284,6 +292,12 @@ ClkEx
 SvcIRQ
                     clra
                     tfr       a,dp                set direct page to zero
+                  IFNE    picothing
+                    lda       >TICK.Stat read and acknowledge tick timer
+                    bmi       ClearInt  bit 7 set = tick timer fired
+                    jmp       [>D.SvcIRQ] else service other possible IRQ
+ClearInt
+                  ELSE
                     ifne      wildbits
                     lda       INT_PENDING_0
                     bita      #INT_VKY_SOF
@@ -324,6 +338,7 @@ L0032
                     bmi       L0032               branch if sync flag on
                     jmp       [>D.SvcIRQ]         else service other possible IRQ
 L0032               tst       PIA0Base+2          clear interrupt
+                  ENDC
                     endc
                     endc
                     endc
