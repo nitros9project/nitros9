@@ -7,6 +7,9 @@ default.proraw
 .mods/
 .obj/
 .lib/
+.sys/
+recipes/**/cfg/
+level2/coco3/defs/*.d
 
 # Assembler/linker listings and maps
 *.list

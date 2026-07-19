@@ -23,6 +23,10 @@ You must set:
 
 - `NITROS9DIR` to the root of your NitrOS-9 source tree
 
+Recipes that package BASIC09 expect `nitros9-languages` beside the NitrOS-9
+checkout. Expanded application recipes may also expect `nitros9-apps` there.
+Override `LANGUAGES` or `NITROS9_APPS_DIR` for another checkout layout.
+
 Example:
 
 ```sh
