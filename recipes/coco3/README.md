@@ -28,6 +28,9 @@ From the repository root, ensure:
 
 - `NITROS9DIR` is set to your NitrOS-9 source tree
 - toolchain is on `PATH`: `make`, `lwasm`, `lwlink`, `lwar`, `os9`
+- `nitros9-languages` is checked out beside NitrOS-9, or `LANGUAGES` points to it
+- for `dw_mega`, `nitros9-apps` is checked out beside NitrOS-9, or
+  `NITROS9_APPS_DIR` points to it
 
 ## Build Directories
 
@@ -90,7 +93,7 @@ make
 
 Primary output:
 
-- `l2_coco3_mega.dsk`
+- `l2_coco3_dw_mega.dsk`
 
 In addition to the normal recipe prerequisites, this build needs `git`, CMOC,
 and the CMOC OS-9 runtime. By default it expects the usual coco-shelf layout:

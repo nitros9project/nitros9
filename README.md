@@ -24,6 +24,20 @@ To build NitrOS-9, you need the following:
 
 - [lwtools](http://lwtools.projects.l-w.ca). This package contains the required 6809 assembler and linker.
 - [ToolShed](https://github.com/n6il/toolshed). ToolShed provides file system tools for creating disk images, copying files to and from those disk images, and more.
+- A sibling checkout of [nitros9-languages](https://github.com/nitros9project/nitros9-languages), used by recipes that package BASIC09 and its utilities.
+
+Some expanded recipes also use a sibling checkout of
+[nitros9-apps](https://github.com/nitros9project/nitros9-apps). The default
+layout is:
+
+```text
+parent/
+  nitros9/
+  nitros9-apps/
+  nitros9-languages/
+```
+
+Override `NITROS9_APPS_DIR` or `LANGUAGES` when using another layout.
 
 Once downloaded and installed, select a build recipe under `recipes`. For
 example, to build the CoCo 3 Level 2 floppy image:
