@@ -22,10 +22,10 @@ INFOCOM_CHECKOUT = $(INFOCOM_SRC)/.checkout-$(INFOCOM_REF)
 INFOCOM_CMD = $(INFOCOM_SRC)/infocom
 
 RAAKATU_REPO ?= https://github.com/drpitre/raakatu.git
-RAAKATU_REF ?= 9777b7f626ecece7992ac384d3c94ed306417365
+RAAKATU_REF ?= 14f175c3d20ffad71fb960d989a25c7904e3fd7d
 RAAKATU_SRC = $(EXTERNAL_DIR)/raakatu
 RAAKATU_CHECKOUT = $(RAAKATU_SRC)/.checkout-$(RAAKATU_REF)
-RAAKATU_CMD = $(RAAKATU_SRC)/raakatu
+RAAKATU_STORY = $(RAAKATU_SRC)/raakatu.z3
 
 FORTH09_REPO ?= https://github.com/drpitre/forth09.git
 FORTH09_REF ?= c96200c25ee1e9a1091f52d42d5a452d9802c9cb
@@ -65,15 +65,13 @@ $(MODDIR)/z6_scdwv.dd: scdwvdesc.asm | $(MODDIR)
 $(MODDIR)/z7_scdwv.dd: scdwvdesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=23
 
-CMDS_EXTRA += forth09 infocom raakatu
-RECIPE_DEPS += $(FORTH09_CMD) $(FORTH09_TEST) $(INFOCOM_CMD) $(RAAKATU_CMD) $(INFOCOM_STORY_FILES)
+CMDS_EXTRA += forth09 infocom
+RECIPE_DEPS += $(FORTH09_CMD) $(FORTH09_TEST) $(INFOCOM_CMD) \
+	$(INFOCOM_STORY_FILES) $(RAAKATU_STORY)
 
 # The shared image builder copies commands from $(MODDIR). Link the external
 # build products there so they go through the normal copy and attribute path.
 $(MODDIR)/infocom: $(INFOCOM_CMD) | $(MODDIR)
-	ln -sf $(abspath $<) $@
-
-$(MODDIR)/raakatu: $(RAAKATU_CMD) | $(MODDIR)
 	ln -sf $(abspath $<) $@
 
 $(MODDIR)/forth09: $(FORTH09_CMD) | $(MODDIR)
@@ -103,11 +101,8 @@ $(FORTH09_CHECKOUT):
 $(INFOCOM_CMD): $(INFOCOM_CHECKOUT)
 	$(MAKE) -C $(INFOCOM_SRC) --no-print-directory NITROS9DIR=$(NITROS9DIR) infocom
 
-$(RAAKATU_CMD): $(RAAKATU_CHECKOUT)
-	$(MAKE) -C $(RAAKATU_SRC) --no-print-directory os9 \
-		COCO_SHELF=$(COCO_SHELF) \
-		CMOC=$(COCO_SHELF)/bin/cmoc \
-		CMOC_OS9_DIR=$(COCO_SHELF)/cmoc_os9
+$(RAAKATU_STORY): $(RAAKATU_CHECKOUT)
+	@test -f $@
 
 $(FORTH09_CMD): $(FORTH09_CHECKOUT)
 	$(COCO_SHELF)/bin/cmoc --cpp="cpp -Wno-builtin-macro-redefined" \
@@ -130,7 +125,7 @@ $(FORTH09_CMD): $(FORTH09_CHECKOUT)
 define RECIPE_INSTALL
 	$(MAKDIR) $(1),GAMES
 	$(MAKDIR) $(1),GAMES/INFOCOM
-	$(OS9COPY) $(INFOCOM_STORY_FILES) $(1),GAMES/INFOCOM
+	$(OS9COPY) $(INFOCOM_STORY_FILES) $(RAAKATU_STORY) $(1),GAMES/INFOCOM
 	$(MAKDIR) $(1),FORTH09
 	$(CPL) $(FORTH09_TEST) $(1),FORTH09/forthtest.4th
 	$(OS9ATTR_TEXT) $(1),FORTH09/forthtest.4th
