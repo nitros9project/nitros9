@@ -50,6 +50,7 @@ So when you build from [`wildbits/l1`](wildbits/l1/), [`wildbits/l2`](wildbits/l
 
 - [`rules.mak`](rules.mak): shared compiler/linker/tool definitions and pattern rules
 - [`libs.mak`](libs.mak): shared library targets consumed by port makefiles
+- [`support/`](support/): small reusable generators and compatibility rules
 - `<platform>/`: platform-specific recipes and usage documentation
 
 ## Platform Documentation

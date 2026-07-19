@@ -89,7 +89,6 @@ else
 SOFTLINK	= $(LINK) -s
 endif
 ARCHIVE		= zip -D -9 -j
-MKDSKINDEX	= perl $(NITROS9DIR)/scripts/mkdskindex
 DROP_EXTRA_SPACES = fn() { mv "$$1" "$$1.tmp" && sed 's/  */ /g' "$$1.tmp" > "$$1" && rm "$$1.tmp"; }; fn
 
 # Directories
