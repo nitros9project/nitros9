@@ -1,4 +1,0 @@
-PROCEDURE gtime
-DIM hour,min,sec:INTEGER
-RUN WILD("GetTime",hour,min,sec)
-PRINT hour,min,sec

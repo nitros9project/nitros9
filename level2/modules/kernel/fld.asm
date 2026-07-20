@@ -30,6 +30,13 @@ FLdMMUBlockData     lda       1,y       ; get MMU block # to get data from
                     clrb                ; clear B
                     stb       >MMUDAT   ; map block 0 into $0000-$1FFF
                   ELSE
+                  IFNE    picothing ; begin conditional assembly for picothing
+                    cmpa      #KrnBlk   ; kernel page = the DAT "unavailable" sentinel?
+                    bne       mblk@     ; no, safe to map into slot 0
+                    lda       >((DAT.BlCt-1)*DAT.BlSz),x ; read in place from fixed window
+                    puls      pc,cc     ; return, no DAT slot was touched
+mblk@               equ       *         ; remap path for an ordinary block
+                  ENDC
                     sta       >DAT.Regs ; map block into $0000-$1FFF
                     lda       ,x        ; get byte
                     stb       >DAT.Regs ; map block 0 into $0000-$1FFF
@@ -42,6 +49,15 @@ LDAXY               lda       1,y       ; get MMU block #
                     pshs      b,cc      ; save regs
                     clrb                ; clear B
                     orcc      #IntMasks ; shut off interrupts
+                  IFNE    picothing ; begin conditional assembly for picothing
+                    cmpa      #KrnBlk   ; kernel page = the DAT "unavailable" sentinel?
+                    bne       lax@      ; no, safe to map into slot 0
+                    lda       >((DAT.BlCt-1)*DAT.BlSz),x ; read in place from fixed window
+                    leax      1,x       ; advance X to match lda ,x+
+                    puls      b,cc      ; restore regs
+                    bra       AdjBlk0   ; go adjust X and Y for block wrap
+lax@                equ       *         ; remap path for an ordinary block
+                  ENDC
                     sta       >DAT.Regs ; map in MMU block into slot 0
                     lda       ,x+       ; get byte
                     stb       >DAT.Regs ; map MMU block #0 back
@@ -84,6 +100,26 @@ FLdTarget           pshs      u,y,x     ; preserve regs
                     leax      d,x       ; compute d,x into X
                   ENDC
                     bsr       AdjBlk0   ; wrap address around for 1 block
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Picothing DAT RAM is readable SRAM.  Read the actual hardware slot
+* values so we restore exactly what was there (the DAT image may hold
+* DAT.Free for unallocated blocks, which differs from the identity map
+* the hardware was booted with).
+                    lda       1,y       ; get MMU block #0 to map in
+                    ldb       3,y       ; get MMU block #1 to map in
+                    pshs      cc        ; preserve int. status
+                    orcc      #IntMasks ; shut off int.
+                    cmpa      #KrnBlk   ; kernel page = the DAT "unavailable" sentinel?
+                    bne       fldt@     ; no, safe to map into slots 0 and 1
+* The kernel block cannot be mapped into a consulted slot; its module
+* data lives in the fixed $E000-$FFFF window, so read it there in place.
+                    ldd       >((DAT.BlCt-1)*DAT.BlSz),x ; get 2 bytes from fixed window
+                    puls      pc,u,y,x,cc ; restore regs and return
+fldt@               ldu       >DAT.Regs ; save actual hardware slots 0 and 1
+                    std       >DAT.Regs ; map in both blocks
+                    ldd       ,x        ; get 2 bytes
+                    stu       >DAT.Regs ; restore original hardware slots
+                  ELSE
                     ldu       <D.SysDAT ; get sys DAT Image ptr
                     clra                ; system block 0 =0 always
                     ldb       3,u       ; get MMU block #1
@@ -95,4 +131,5 @@ FLdTarget           pshs      u,y,x     ; preserve regs
                     std       >DAT.Regs ; map in both blocks
                     ldd       ,x        ; get 2 bytes
                     stu       >DAT.Regs ; map original blocks in
+                  ENDC
                     puls      pc,u,y,x,cc ; restore regs & return

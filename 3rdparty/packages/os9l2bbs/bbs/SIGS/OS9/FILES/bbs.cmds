@@ -1,9 +1,0 @@
-l dld.list
-s dld.search
-r dld.read
-d bbs.download
-u bbs.upload
-p chd ..
-m chd /dd/bbs
-g ex
-/Your Choice (?=menu):==>

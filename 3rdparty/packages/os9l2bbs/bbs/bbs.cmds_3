@@ -1,7 +1,0 @@
-b chd /d1/main
->00001 m chd mailroom
->00001 s chd /d2/sigs
-u chd utils
->01000 e chd /d1/elite
-g ex
-/Your choice (?=menu):==>

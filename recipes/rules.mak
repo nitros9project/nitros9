@@ -112,11 +112,11 @@ else
 SOFTLINK	= $(LINK) -s
 endif
 ARCHIVE		= zip -D -9 -j
-MKDSKINDEX	= perl $(NITROS9DIR)/scripts/mkdskindex
 DROP_EXTRA_SPACES = fn() { mv "$$1" "$$1.tmp" && sed 's/  */ /g' "$$1.tmp" > "$$1" && rm "$$1.tmp"; }; fn
 
 # Directories
-3RDPARTY	= $(NITROS9DIR)/3rdparty
+NITROS9_APPS_DIR ?= $(abspath $(NITROS9DIR)/../nitros9-apps)
+LANGUAGES	?= $(abspath $(NITROS9DIR)/../nitros9-languages)
 LEVEL1		= $(NITROS9DIR)/level1
 LEVEL2		= $(NITROS9DIR)/level2
 LEVEL3		= $(NITROS9DIR)/level3

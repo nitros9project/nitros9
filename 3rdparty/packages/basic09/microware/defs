@@ -1,6 +1,0 @@
- use B09Type
- ifp1
- use os9.d
- use B09defs
- endc
- use jmpdefs

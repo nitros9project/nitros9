@@ -1,2 +1,0 @@
-[ This program does nothing. ]
-[,.]

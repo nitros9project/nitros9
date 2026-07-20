@@ -1,7 +1,0 @@
-These are the original files from Pascal 2.0 as distributed by Dragon
-Data under license from Microware.
-
-If you want to run it under real OS9 remember to change NL to CR for
-the text files CMDS/PascalErrs, PascalDefs and optionally Dumpreal.
-
-Some of these files are Pascal PCODE and hence can't be disassembled.

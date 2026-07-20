@@ -13,6 +13,7 @@ on:
 env:
   # Path to the solution file relative to the root of the project.
   SOLUTION_FILE_PATH: .
+  LANGUAGES: ${{ github.workspace }}/nitros9-languages
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 permissions:
@@ -37,6 +38,12 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v5
+
+    - name: Checkout NitrOS-9 languages
+      uses: actions/checkout@v5
+      with:
+        repository: nitros9project/nitros9-languages
+        path: nitros9-languages
 
 #
 # Cache LwTools, if no cache key entry exists a new one will be created upon a successful build.
@@ -87,4 +94,3 @@ jobs:
       run: |
         sudo bash ./.github/workflows/nitros9.sh
       
-

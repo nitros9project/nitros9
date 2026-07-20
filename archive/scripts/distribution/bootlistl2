@@ -1,0 +1,224 @@
+***************************************
+* NitrOS-9 Level 2 Bootlist
+*
+* This bootlist is presented as an example for creating custom bootfiles.
+* A module may be excluded from the bootfile if an asterisk (*) is the
+* first character of the line.
+*
+***************************************
+* Kernel/System Section
+*
+* These modules are mandatory.
+$NITROS9DIR/$DISTRO/modules/krnp2
+*$NITROS9DIR/$DISTRO/modules/krnp3_perr
+*$NITROS9DIR/$DISTRO/modules/krnp4_regdump
+$NITROS9DIR/$DISTRO/modules/ioman
+$NITROS9DIR/$DISTRO/modules/init
+*
+***************************************
+* RBF Section
+*
+$NITROS9DIR/$DISTRO/modules/rbf.mn
+*
+* EMUDsk (for emulators)
+*$NITROS9DIR/archive/drivers/emudsk/emudsk.dr
+*$NITROS9DIR/archive/drivers/emudsk/ddh0.dd
+*~/cdf3.mn
+*~/cd.dd
+*
+* DriveWire driver (Cloud-9 product)
+*$CLOUD9DIR/Products/DriveWire/software/$DISTRO/drivewire.dr
+* DriveWire descriptors - select as needed
+*$CLOUD9DIR/Products/DriveWire/software/$DISTRO/ddx0.dd
+*$CLOUD9DIR/Products/DriveWire/software/$DISTRO/x0.dd
+*$CLOUD9DIR/Products/DriveWire/software/$DISTRO/x1.dd
+*$CLOUD9DIR/Products/DriveWire/software/$DISTRO/x2.dd
+*$CLOUD9DIR/Products/DriveWire/software/$DISTRO/x3.dd  
+*
+* SuperDriver Package (Cloud-9 product)
+$CLOUD9DIR/Products/SuperDrivers/software/$DISTRO/rbsuper.dr
+* Select Low level SCSI and/or IDE driver
+*$CLOUD9DIR/Products/SuperDrivers/software/$DISTRO/lltc3.dr
+$CLOUD9DIR/Products/SuperDrivers/software/$DISTRO/llide.dr
+* SuperDriver descriptors - select as needed
+* SCSI descriptors (IDs 0-7)
+*$CLOUD9DIR/Products/SuperDrivers/software/$DISTRO/dd_tc3.dd
+*$CLOUD9DIR/Products/SuperDrivers/software/$DISTRO/s0_tc3.dd
+*$CLOUD9DIR/Products/SuperDrivers/software/$DISTRO/s1_tc3.dd
+*$CLOUD9DIR/Products/SuperDrivers/software/$DISTRO/s2_tc3.dd
+*$CLOUD9DIR/Products/SuperDrivers/software/$DISTRO/s3_tc3.dd
+*$CLOUD9DIR/Products/SuperDrivers/software/$DISTRO/s4_tc3.dd
+*$CLOUD9DIR/Products/SuperDrivers/software/$DISTRO/s5_tc3.dd
+*$CLOUD9DIR/Products/SuperDrivers/software/$DISTRO/s6_tc3.dd
+*$CLOUD9DIR/Products/SuperDrivers/software/$DISTRO/s7_tc3.dd
+* SCSI HDB-DOS descriptor
+*$CLOUD9DIR/Products/SuperDrivers/software/$DISTRO/sh_ide.dd
+* IDE descriptors (master/slave)
+$CLOUD9DIR/Products/SuperDrivers/software/$DISTRO/dd_ide.dd
+*$CLOUD9DIR/Products/SuperDrivers/software/$DISTRO/i0_ide.dd
+$CLOUD9DIR/Products/SuperDrivers/software/$DISTRO/i1_ide.dd
+* IDE HDB-DOS descriptor
+$CLOUD9DIR/Products/SuperDrivers/software/$DISTRO/ih_ide.dd
+*
+* WD1773 floppy support for Tandy and compatible disk controllers
+$NITROS9DIR/$DISTRO/modules/rb1773.dr
+* WD1773 floppy support for Disto Super Controller II
+*$NITROS9DIR/$DISTRO/modules/rb1773_scii_ff74.dr
+*$NITROS9DIR/$DISTRO/modules/rb1773_scii_ff58.dr
+* Floppy device descriptors
+* DD - default device - choose one if needed
+*$NITROS9DIR/$DISTRO/modules/ddd0_35s.dd
+*$NITROS9DIR/$DISTRO/modules/ddd0_40d.dd
+*../MODULES/RBF/ddd0_80d.dd
+* D0 - drive 0 - choose one if needed
+*$NITROS9DIR/$DISTRO/modules/d0_35s.dd
+*$NITROS9DIR/$DISTRO/modules/d0_40d.dd
+$NITROS9DIR/$DISTRO/modules/d0_80d.dd
+* D1 - drive 1 - choose one if needed
+*$NITROS9DIR/$DISTRO/modules/d1_35s.dd
+$NITROS9DIR/$DISTRO/modules/d1_40d.dd
+*$NITROS9DIR/$DISTRO/modules/d1_80d.dd
+* D2 - drive 2 - choose one if needed
+*$NITROS9DIR/$DISTRO/modules/d2_35s.dd
+*$NITROS9DIR/$DISTRO/modules/d2_40d.dd
+*$NITROS9DIR/$DISTRO/modules/d2_80d.dd
+* D3 - drive 3 - choose if needed
+*$NITROS9DIR/$DISTRO/modules/d3_35s.dd
+*
+* RAMDisk driver
+*$NITROS9DIR/$DISTRO/modules/rammer.dr
+* RAMDisk descriptors - select as needed
+*$NITROS9DIR/$DISTRO/modules/ddr0_8k.dd
+*$NITROS9DIR/$DISTRO/modules/ddr0_96k.dd
+*$NITROS9DIR/$DISTRO/modules/ddr0_128k.dd
+*$NITROS9DIR/$DISTRO/modules/ddr0_192k.dd
+*$NITROS9DIR/$DISTRO/modules/r0_8k.dd
+*$NITROS9DIR/$DISTRO/modules/r0_96k.dd
+*$NITROS9DIR/$DISTRO/modules/r0_128k.dd
+*$NITROS9DIR/$DISTRO/modules/r0_192k.dd
+* Memory device descriptor
+*$NITROS9DIR/$DISTRO/modules/md.dd
+* Archived Disto RAMPak driver
+*$NITROS9DIR/archive/drivers/disto/rampak.dr
+*$NITROS9DIR/archive/drivers/disto/r0_512_l2.dd
+***************************************
+* SCF Section
+*
+$NITROS9DIR/$DISTRO/modules/scf.mn
+*
+* CoCo 3 I/O driver
+* Joystick modules: choose Joystick OR
+* (M)icrosoft or (L)ogitech mouse using 6551 or 6552 ACIA
+$NITROS9DIR/$DISTRO/modules/cc3io.dr
+$NITROS9DIR/$DISTRO/modules/keydrv_cc3.sb  
+$NITROS9DIR/$DISTRO/modules/snddrv_cc3.sb
+$NITROS9DIR/$DISTRO/modules/joydrv_joy.sb
+*$NITROS9DIR/$DISTRO/modules/joydrv_6551M.sb
+*$NITROS9DIR/$DISTRO/modules/joydrv_6552M.sb
+*$NITROS9DIR/$DISTRO/modules/joydrv_6551L.sb
+*$NITROS9DIR/$DISTRO/modules/joydrv_6552L.sb
+*
+* GrfInt/WindInt subroutine module
+* Use WindInt with Multi-Vue; use GrfInt
+* for basic text and graphic window support..
+* Select only one.
+$NITROS9DIR/$DISTRO/modules/grfint.io
+*$NITROS9DIR/$DISTRO/modules/windint.io
+*
+* VDGInt I/O subroutine module
+* Select one or both
+*$NITROS9DIR/$DISTRO/modules/vdgint.io
+*$NITROS9DIR/$DISTRO/modules/vdgint_small.io
+*
+* Select only one term descriptor
+*$NITROS9DIR/$DISTRO/modules/term_vdg.dt
+*$NITROS9DIR/$DISTRO/modules/term_win40.dt
+$NITROS9DIR/$DISTRO/modules/term_win80.dt
+*$NITROS9DIR/$DISTRO/modules/term_sio.dt
+*$NITROS9DIR/$DISTRO/modules/term_sc6551.dt
+*
+* Select as many window descriptors as needed
+$NITROS9DIR/$DISTRO/modules/w.dw
+$NITROS9DIR/$DISTRO/modules/w1.dw
+$NITROS9DIR/$DISTRO/modules/w2.dw
+$NITROS9DIR/$DISTRO/modules/w3.dw
+$NITROS9DIR/$DISTRO/modules/w4.dw
+$NITROS9DIR/$DISTRO/modules/w5.dw
+$NITROS9DIR/$DISTRO/modules/w6.dw
+$NITROS9DIR/$DISTRO/modules/w7.dw
+*
+* Select as many VDG window descriptors as needed
+*$NITROS9DIR/$DISTRO/modules/v1.dw
+*$NITROS9DIR/$DISTRO/modules/v2.dw
+*$NITROS9DIR/$DISTRO/modules/v3.dw
+*$NITROS9DIR/$DISTRO/modules/v4.dw
+*$NITROS9DIR/$DISTRO/modules/v5.dw
+*$NITROS9DIR/$DISTRO/modules/v6.dw
+*$NITROS9DIR/$DISTRO/modules/v7.dw
+*
+* Serial port drivers
+* Built-In RS-232 port
+*$NITROS9DIR/$DISTRO/modules/sio.dr
+*$NITROS9DIR/$DISTRO/modules/t1.dd
+* 6551 ACIA
+*$NITROS9DIR/$DISTRO/modules/sc6551.dr
+*$NITROS9DIR/$DISTRO/modules/t2_sc6551.dd
+*$NITROS9DIR/$DISTRO/modules/t3_sc6551.dd
+* Tandy Modem Pak
+*$NITROS9DIR/$DISTRO/modules/modpak.dr
+*$NITROS9DIR/$DISTRO/modules/m1.dd
+*$NITROS9DIR/$DISTRO/modules/m2.dd
+*
+* Printer drivers
+*$NITROS9DIR/$DISTRO/modules/printer.dr
+*$NITROS9DIR/$DISTRO/modules/p.dd
+*
+* VRN is a driver module used by certain games, including King's Quest III,
+* Leisure Suit Larry and Flight Simulator II.  A /nil descriptor is also
+* supported.
+*$NITROS9DIR/$DISTRO/modules/vrn.dr
+*$NITROS9DIR/$DISTRO/modules/vi.dd
+*$NITROS9DIR/$DISTRO/modules/ftdd.dd
+*
+***************************************
+* Pipe Section
+*
+* Pipes are a useful but optional part of a system.
+$NITROS9DIR/$DISTRO/modules/pipeman.mn
+$NITROS9DIR/$DISTRO/modules/piper.dr
+$NITROS9DIR/$DISTRO/modules/pipe.dd
+*
+***************************************
+* Clock Section
+*
+* Select one clock module depending upon your power line frequency
+* (60Hz = USA/Canada; 50Hz = Europe, Australia)
+$NITROS9DIR/$DISTRO/modules/clock_60hz
+*$NITROS9DIR/$DISTRO/modules/clock_50hz
+* Select one clock2 module that supports your real-time clock, if any.
+* Besides support for the internal software clock, the following
+* hardware clocks are supported: Burke & Burke, Disto 2-N-1, Disto 4-N-1,
+* Eliminator, Harris, SmartWatch, Cloud-9, the MESS emulator, Jeff
+* Vavasour's CoCo emulator, and DriveWire.
+$NITROS9DIR/$DISTRO/modules/clock2_soft
+*$NITROS9DIR/$DISTRO/modules/clock2_bnb
+*$NITROS9DIR/$DISTRO/modules/clock2_disto2
+*$NITROS9DIR/$DISTRO/modules/clock2_disto4
+*$NITROS9DIR/$DISTRO/modules/clock2_elim
+*$NITROS9DIR/$DISTRO/modules/clock2_harris
+*$NITROS9DIR/$DISTRO/modules/clock2_smart
+*$NITROS9DIR/$DISTRO/modules/clock2_jvemu
+*$NITROS9DIR/$DISTRO/modules/clock2_messemu
+*$NITROS9DIR/$DISTRO/modules/clock2_cloud9
+*$NITROS9DIR/$DISTRO/modules/clock2_dw
+*
+***************************************
+* System Kick-Start Module
+*
+* Choose which startup module you wish to use. (sysgo_dd is recommended
+* for most configurations.)
+* 
+* Alternatively, this module can reside in the root directory of the
+* boot device, saving precious system RAM.
+*$NITROS9DIR/$DISTRO/modules/sysgo_dd
+*$NITROS9DIR/$DISTRO/modules/sysgo_h0

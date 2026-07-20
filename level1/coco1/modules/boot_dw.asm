@@ -14,6 +14,9 @@
 
                     ifp1
                     use       defsfile
+                    ifne      picothing
+                    use       picothing.d
+                    endc
                     use       drivewire.d
                     endc
 
@@ -127,7 +130,11 @@ ReadEr
 *
 * Filler to get to a total size of $1D0. 3, 2, 1 represent bytes after
 * the filler: the end boilerplate for the module, fdb and fcb respectively.
+* The Pico-Thing pads its boot module to 1024 bytes externally (in the
+* recipe), so this fixed CoCo kernel-track filler must not apply there.
+                    ifeq      picothing
 Filler              fill      $39,$1D0-3-2-1-*
+                    endc
                     endc
 
 Address             fdb       $0000

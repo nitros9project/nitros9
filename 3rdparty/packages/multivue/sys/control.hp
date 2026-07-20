@@ -1,7 +1,0 @@
-@CONTROL
-Syntax: control [-e]
-Usage : Control Panel to set palettes, mouse and 
-        keyboard parameters and monitor type for
-        Multi-Vue. Selectable from desk utilities
-        menu as the Control Panel.
-Opts  : -e = execute the environment file

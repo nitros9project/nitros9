@@ -1,7 +1,0 @@
--x
-display c
-del automsg
-echo Please enter new auto message now
-bbs.build automsg </1
-attr automsg pr pw >>>junk
-del junk
