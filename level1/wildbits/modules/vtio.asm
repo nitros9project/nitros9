@@ -319,7 +319,7 @@ l@                  tfr       d,x                 transfer it to X
                     tfr       y,x                 transfer it to X
  ifne jr+k
                     ldy       #TEXT_LUT_FG        load Y with the LUT foreground
- else        
+ else
                     lda       #TEXT_LUT_BLK       load text LUT block
                     sta       MAPSLOT
                     ldy       #MAPADDR
@@ -329,7 +329,7 @@ l@                  tfr       d,x                 transfer it to X
                     puls      x                   restore Y into X
  ifne jr+k
                     ldy       #TEXT_LUT_BG        load Y with the LUT background
- else        
+ else
                     ldy       #MAPADDR
                     leay      TEXT_LUT_BG,y       load Y with the LUT background
  endc
@@ -982,6 +982,8 @@ OneEffHandler2
                     beq       revon
                     cmpa      #$21
                     beq       revoff
+                    cmpa      #$31
+                    lbeq      DeleteLine
 ResetHandler        leax      DefaultHandler,pcr
                     bra       SetHandler
 revoff              tst       V.Reverse,u         is reverse already off?
@@ -1124,9 +1126,9 @@ ChgForePal
  ifne jr+k
                     ldx       #TEXT_LUT_FG
  else
-                    ldx       #MAPADDR  
+                    ldx       #MAPADDR
                     leax      TEXT_LUT_FG,x
- endc                    
+ endc
 ChgPal              stx       V.EscParms+4,u
                     leax      Do1B60_Param0,pcr
                     lbra      SetHandler
@@ -1193,7 +1195,7 @@ ChgBackPal
  else
                     ldx       #MAPADDR
                     leax      TEXT_LUT_BG,x
- endc                    
+ endc
                     bra       ChgPal
 
 * These do nothing for now.
@@ -2185,6 +2187,63 @@ Blk2Addr            clra                          clear a, block # is in b
                     rola
                     rts
                     endc
+
+DeleteLine
+* Check if cursor is at the bottom row (CurRow + 1 >= WHeight)
+                    lda       V.CurRow,u
+                    inca
+                    cmpa      V.WHeight,u
+                    bhs       dl_clear            * If at/past bottom row, erase line
+
+* Not on bottom line: scroll all lines below the cursor UP by one row
+* Preserve register Y (holds the path descriptor pointer for the active I/O path)
+                    pshs      y
+* Calculate rows to copy: WHeight - (CurRow + 1)
+                    nega
+                    adda      V.WHeight,u
+* Calculate bytes to copy: rows * WWidth
+                    ldb       V.WWidth,u
+                    mul                           * D = rows * WWidth
+                    tfr       d,y                 * Y = bytes to copy (safe to overwrite Y now)
+* Calculate start address offset: CurRow * WWidth
+                    lda       V.CurRow,u
+                    ldb       V.WWidth,u
+                    mul                           * D = offset to CurRow
+                    ldx       #G.ScrStart
+                    leax      d,x                 * X = start address of scroll area
+
+* Block scroll loop: copy characters and attributes 2 bytes at a time
+                    pshs      cc                  * Save CC (interrupt state)
+                    orcc      #IntMasks           * Disable interrupts during mapping
+                    lda       MAPSLOT             * Save original MMU mapping slot
+                    pshs      a
+
+dl_loop             lda       #$C2                * Map text block into MMU slot
+                    sta       MAPSLOT
+                    ldb       V.WWidth,u
+                    ldd       b,x                 * Load 2 chars from row below (X + WWidth)
+                    std       ,x                  * Store 2 chars in current row (X)
+
+                    lda       #$C3                * Map attributes block into MMU slot
+                    sta       MAPSLOT
+                    ldb       V.WWidth,u
+                    ldd       b,x                 * Load 2 attributes from row below (X + WWidth)
+                    std       ,x++                * Store 2 attributes in current row (X), X += 2
+
+                    leay      -2,y                * Decrement byte copy counter by 2
+                    bne       dl_loop             * Loop until all bytes copied
+
+                    puls      a                   * Restore original MMU slot mapping
+                    sta       MAPSLOT
+                    puls      cc                  * Restore interrupts state
+                    puls      y                   * Restore path descriptor register Y
+
+* Erase the bottom row (clears the last line since it shifted up)
+dl_clear            lda       V.WHeight,u
+                    deca                          * A = bottom row index (WHeight - 1)
+                    clrb                          * B = 0 (start at column 0)
+                    lbsr      EraseLineCore       * Call erase helper to fill row with spaces
+                    lbra      ResetHandler        * Reset escape handler to DefaultHandler
 
 
                     emod

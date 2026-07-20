@@ -29,11 +29,21 @@ FLdabxTarget        pshs      cc,a,x,u  ; save cc,a,x,u on the stack
                     ldb       ,x        ; load B from ,x
                     clr       >MMUDAT   ; restore mapping at $0000-$1FFF
                   ELSE
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Pico-Thing: page $FF (KrnBlk) is the DAT "unavailable" sentinel and
+* cannot be mapped into slot 0 (the access would fault NMI).  The kernel
+* block is readable in place in the fixed $E000-$FFFF window.
+                    cmpb      #KrnBlk   ; is the source the kernel block?
+                    bne       lmap@     ; no, map it normally
+                    ldb       >((DAT.BlCt-1)*DAT.BlSz),x ; read in place from the fixed window
+                    bra       ldone@    ; skip the slot mapping
+lmap@               equ       *         ; remap path for an ordinary block
+                  ENDC
                     stb       >DAT.Regs ; map block into $0000-$1FFF
                     ldb       ,x        ; load B from ,x
                     clr       >DAT.Regs ; restore mapping at $0000-$1FFF
                     endif
-                    puls      cc,a,x,u  ; restore cc,a,x,u from the stack
+ldone@              puls      cc,a,x,u  ; restore cc,a,x,u from the stack
 
                     stb       R$A,u     ; save into caller's A & return
                     clrb                ; set to no errors
@@ -85,8 +95,17 @@ FLdabxCarry         andcc     #^Carry   ; clear condition-code bits using #^Carr
                   ELSE
                     lda       1,s       ; load A from 1,s
                     orcc      #IntMasks ; set condition-code bits using #IntMasks
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Pico-Thing: page $FF (KrnBlk) cannot be mapped into slot 0 (NMI);
+* write the kernel block in place via the fixed $E000-$FFFF window.
+                    cmpb      #KrnBlk   ; is the destination the kernel block?
+                    bne       smap@     ; no, map it normally
+                    sta       >((DAT.BlCt-1)*DAT.BlSz),x ; write in place via the fixed window
+                    bra       sdone@    ; skip the slot mapping
+smap@               equ       *         ; remap path for an ordinary block
+                  ENDC
                     stb       >DAT.Regs ; map selected block into $0000-$1FFF
                     sta       ,x        ; store A at ,x
                     clr       >DAT.Regs ; restore mapping at $0000-$1FFF
                     endif
-                    puls      cc,d,x,u,pc ; restore cc,d,x,u,pc from the stack
+sdone@              puls      cc,d,x,u,pc ; restore cc,d,x,u,pc from the stack

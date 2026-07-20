@@ -178,7 +178,11 @@ InstStr             equ       *
                     ifne      wildbits
                     fcc       "Wildbits"
                     else
+                    ifne      picothing
+                    fcc       "Pico-Thing"
+                    else
                     fcc       "Unknown Machine"
+                    endc                          match IFNE picothing
                     endc                          match IFNE wildbits
                     endc                          match IFNE corsham
                     endc                          match IFNE coco3fpga

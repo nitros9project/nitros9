@@ -41,7 +41,14 @@ DNS.HDB             EQU       %00001000
 DNS.TURBO           EQU       %00010000
 
 maxcache            SET       2048
+* DrvCount is the number of drive-table slots = number of distinct PD.DRV
+* values rbsuper supports.  A port that puts several partitions of one
+* physical drive on separate descriptors must give each a unique PD.DRV
+* (else they share a cache/drive-table slot and alias), and set DrvCount
+* high enough to cover them.  Override with -DDrvCount=N at assembly time.
+                    IFNDEF    DrvCount
 DrvCount            EQU       8
+                    ENDC
 llreserve           EQU       64
 
 UOFFSET             EQU       DRVBEG+(DRVMEM*DrvCount)

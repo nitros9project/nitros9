@@ -54,10 +54,14 @@ Revision            set       00        ; module revision
 Edition             set       20        ; module Edition
 
 * The absolute address of where Kernel starts in memory.
+                  IFNE    picothing ; begin conditional assembly for picothing
+Where               equ       $EC00     ; picothing
+                  ELSE
                   IFNE    wildbits ; begin conditional assembly for wildbits
 Where               equ       $EE00     ; wildbits
                   ELSE
 Where               equ       $F000     ; coCo 3
+                  ENDC
                   ENDC
 
                     mod       eom,MName,Systm,ReEnt+Revision,entry,0 ; define OS-9 module header
@@ -113,12 +117,23 @@ R.Flip0             equ       *         ; define assembler symbol R.Flip0
                     lde       <D.TINIT  ; another 2 bytes saved if GrfDrv does: tfr cc,e
                     ste       >DAT.Task ; and we can use A here, instead of E
                   ELSE
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Pico-Thing: D.TINIT holds raw task# (0-31), not CoCo3 GIME INIT0.
+* anda #$FE only clears bit 0, which doesn't give 0 for tasks > 1.
+* Write 0 directly to switch to system task.  D.TINIT is NOT modified
+* so the user's task# is preserved for later restore.
+                    pshs      a         save off A
+                    clra                task 0 = system
+                    sta       >DAT.Task switch to system task
+                    puls      a         recover A
+                  ELSE
                     pshs      a         ; save off A
                     lda       <D.TINIT  ; get the value from the shadow register
                     anda      #$FE      ; force the task register to 0
                     sta       <D.TINIT  ; save it back to the shadow register
                     sta       >DAT.Task ; and to the DAT hardware
                     puls      a         ; recover A
+                  ENDC
                   ENDC
                     clr       <D.SSTskN ; clear the system task number
                     tfr       x,s       ; transfer X to the stack
@@ -155,6 +170,59 @@ loop@               ldd       ,x++      ; get two source bytes
 forever@            bra       forever@  ; simply branch forever
                   ENDC
 *]]] Wildbits PORT
+
+                  IFNE    picothing ; begin conditional assembly for picothing
+* PicoBtBug - boot debug character output to virtual MC6850 ACIA
+*
+* Called via D.BtBug (set up below).  Character to print is in A.
+* Polls TDRE (bit 1 of status register) before transmitting.
+* Masks bit 7 off for printing (OS-9 name terminator) but preserves
+* CC so callers like I.VBlock's name.prt can test N after return.
+PicoBtBug           pshs      cc,a,b    save CC (for callers that test N after return)
+                    anda      #$7F      strip bit 7 so last-char-of-name prints as ASCII
+p@                  ldb       ACIA.Ctrl read ACIA status register
+                    bitb      #%00000010 transmit data register empty?
+                    beq       p@        no, keep polling
+                    sta       ACIA.Data transmit the character
+                    puls      cc,a,b,pc restore CC, A, B and return
+
+* PicoBtHex - print B as two hex digits via D.BtBug
+*
+* Input:  B = byte to print
+* Output: none
+* All registers preserved
+PicoBtHex           pshs      a         save A (B preserved throughout)
+                    tfr       b,a       copy byte
+                    lsra                shift high nibble into low bits
+                    lsra
+                    lsra
+                    lsra
+                    anda      #$0F      mask to nibble
+                    adda      #'0       convert to ASCII digit
+                    cmpa      #'9+1     past '9'?
+                    blo       hi@       no, it is 0-9
+                    adda      #'A-'9-1  yes, shift to A-F
+hi@                 jsr       <D.BtBug  print high nibble character
+                    tfr       b,a       reload original byte
+                    anda      #$0F      mask low nibble
+                    adda      #'0       convert to ASCII digit
+                    cmpa      #'9+1     past '9'?
+                    blo       lo@       no, it is 0-9
+                    adda      #'A-'9-1  yes, shift to A-F
+lo@                 jsr       <D.BtBug  print low nibble character
+                    puls      a,pc      restore A and return
+
+* PicoCrash - crash handler for D.Crash
+*
+* Prints '!' on the ACIA and loops forever.
+PicoCrash           orcc      #IntMasks mask interrupts
+                    lda       #'!       crash marker character
+cr@                 ldb       ACIA.Ctrl read ACIA status register
+                    bitb      #%00000010 transmit data register empty?
+                    beq       cr@       no, keep polling
+                    sta       ACIA.Data transmit the character
+cr2@                bra       cr2@      loop forever
+                  ENDC
 
 * The Kernel entry point.
 entry               equ       *         ; define assembler symbol entry
@@ -214,8 +282,13 @@ done@               ldx       #$0000    ; start clearing at this address
                     std       <D.CCStk  ; set pointer to top of global memory to $2000
                     lda       #$01      ; set task user table to $0100
                   ELSE
+                  IFNE    picothing ; begin conditional assembly for picothing
+                    ldx       #$0000    picothing has no REL to clear page 0
+                    ldy       #$2000    clear all of pages 0 and 1
+                  ELSE
                     ldx       #$100     ; start clearing at this address
                     ldy       #$2000-$100 ; for this many bytes
+                  ENDC
                   ENDC
                   ENDC
 
@@ -243,6 +316,23 @@ l@                  std       ,x++      ; now clear memory 16 bits at a time
                     puls      b         ; recover B from the stack
                   ENDC
 *]]] Wildbits PORT
+
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Enable D.BtBug - boot debug prints on the ACIA console.
+* Change $7E to $39 (RTS) and comment leax/stx to disable.
+                    pshs      b
+                    ldb       #$7E      JMP extended opcode
+                    stb       <D.BtBug  store opcode at D.BtBug
+                    leax      PicoBtBug,pcr address of the ACIA output routine
+                    stx       <D.BtBug+1 store 2-byte target address
+                    ldb       #$7E      JMP opcode for D.Crash (always active)
+                    stb       <D.Crash  store JMP opcode at D.Crash
+                    leax      PicoCrash,pcr address of crash handler
+                    stx       <D.Crash+1 store 2-byte target address
+                    ldb       #$01      protect vector area from stray writes
+                    stb       >WatchCtl arm watchpoint: $FFF0-$FFFF becomes read-only
+                    puls      b
+                  ENDC
 
 * Set up system variables in DP
                     std       <D.Tasks  ; set the task structure pointer to $0100
@@ -310,7 +400,11 @@ l@                  std       ,x++      ; now clear memory 16 bits at a time
                     leay      >DisTable,pcr ; point to the table of absolute vector addresses
                   ELSE
 *]]] Wildbits PORT
+                  IFNE    picothing ; begin conditional assembly for picothing
+                    leay      >DisTable,pcr ; picothing islands push DisTable past 8-bit pcr range
+                  ELSE
                     leay      <DisTable,pcr ; point to the table of absolute vector addresses
+                  ENDC
                   ENDC
                     ldx       #D.Clock  ; and get the address to put it in memory
                   IFNE    H6309   ; begin conditional assembly for H6309
@@ -431,6 +525,26 @@ l@                  stu       ,x++      ; store it
                     inc       ,x        ; mark the 1st entry as used (system)
                     inc       1,x       ; mark the 2nd entry as used (GrfDrv)
 
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Initialize DAT RAM for tasks 1-31: clear slots 0-6, set slot 7 = KrnBlk.
+* The Pico firmware identity-maps task 0 at power-on, but all other tasks
+* have random/identity values.  Without slot 7 = kernel page, any task
+* switch makes the kernel and interrupt stubs invisible -> instant crash.
+                    ldx       #DAT.Regs+8 start at task 1 (skip task 0)
+                    lda       #DAT.TkCt-1 31 tasks to initialize
+                    pshs      a
+pt_dat@             clra
+                    ldb       #DAT.BlCt-1 clear 7 slots
+pt_clr@             sta       ,x+       clear this slot
+                    decb
+                    bne       pt_clr@
+                    lda       #KrnBlk   kernel page for slot 7
+                    sta       ,x+       set slot 7 = kernel page
+                    dec       ,s        count tasks
+                    bne       pt_dat@   next task
+                    puls      a
+                  ENDC
+
 ********************************************************************
 * The system memory map is a data structure that manages the
 * 64KB of CPU address space. D.SysMem points to the start of the
@@ -452,6 +566,17 @@ l@                  stu       ,x++      ; store it
 KrnMarkUsed         inc       ,x+       ; mark it as used
                     decb                ; done?
                     bne       KrnMarkUsed ; no, go back till done
+
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Mark kernel block pages ($E0-$FF) as in-use so FSRqMem doesn't allocate them.
+* On CoCo3, block 7 is ROM/IO and handled by hardware. On picothing, block 7
+* is real RAM holding the kernel and must be reserved in D.SysMem.
+                    leax      $E0-$20,x point to page $E0 in system memory map
+                    ldb       #32       32 pages in block 7
+pt@                 inc       ,x+       mark page as used
+                    decb
+                    bne       pt@
+                  ENDC
 
 *[[[ Wildbits PORT
                   IFNE    wildbits ; begin conditional assembly for wildbits
@@ -502,7 +627,7 @@ l@                  sta       b,x       ; store the flag in the appropriate offs
 * this occurs, because that block needs to be reserved as it's used for
 * global memory.
                     ldx       <D.BlkMap ; get the pointer to 8KB block map
-                    inc       <KrnBlk,x ; mark the block holding kernel as used
+                    inc       KrnBlk,x  ; mark the block holding kernel as used
 
                   IFNE    H6309   ; begin conditional assembly for H6309
                     ldq       #$00080100 ; e=Marker, D=Block # to check
@@ -529,6 +654,17 @@ KrnBlock            aslb                ; B <= 1 (hi bit goes into carry, 0 goes
                     addd      ,s++      ; add X into D and recover the stack
                   ENDC
                     std       <D.BlkMap+2 ; save the newly computed memory block map end pointer
+
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Restore DAT slot 5 after memory sizing loop.  The ghost test exits
+* with B=0 (page 0) mapped into slot 5, creating an alias:
+* virtual $A000-$BFFF -> physical page 0.  D.SysDAT etc. live in
+* page 0, so any later access through slot 5 would corrupt them.
+                    pshs      b         save B (must be 0 for L0170)
+                    ldb       #5
+                    stb       >DAT.Regs+5 restore slot 5 to identity map (page 5)
+                    puls      b         restore B=0
+                  ENDC
 
 ********************************************************************
 * Initial reservation of blocks in the memory block map. Code above
@@ -557,7 +693,11 @@ l@                  sta       ,x+       ; mark them all
 * ASSUME: however we got here, B=0
 Mc09KrnStart
                     ldx       #Bt.Start ; start address of the boot track in memory
+                  IFNE    picothing ; begin conditional assembly for picothing
+                    lda       #22       scan $E800-$FE00 (modules extend past $FA00)
+                  ELSE
                     lda       #18       ; size of the boot track is $1800
+                  ENDC
                   ENDC
 
 * Verify the modules in the boot area and update/build a module index.
@@ -626,7 +766,7 @@ KrnMarkPage         sta       ,x+       ; mark this page
                     decb                ; done?
                     bne       KrnMarkPage ; no, keep going
                     ldx       <D.BlkMap ; get the pointer to the start of the block map
-                    sta       <KrnBlk,x ; mark kernel block as "RAM in use", instead of "Module in block"
+                    sta       KrnBlk,x  ; mark kernel block as "RAM in use", instead of "Module in block"
 S.AltIRQ            rts                 ; return
 
 * Link module pointed to by X
@@ -1026,10 +1166,16 @@ S.SysIRQ
                     clr       <D.SSTskN ; clear out the memory copy (task 0)
                     jsr       [>D.SvcIRQ] ; call the routine (normally Clock calling D.Poll)
                     inc       <D.SSTskN ; save the task number for system state
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Pico-Thing: D.TINIT holds raw task#, just write it to DAT.Task
+                    lda       <D.TINIT  get the user's task number
+                    sta       >DAT.Task switch to user task
+                  ELSE
                     lda       #1        ; get task 1
                     ora       <D.TINIT  ; merge the task bit into the shadow version
                     sta       <D.TINIT  ; update the shadow register
                     sta       >DAT.Task ; save to the DAT as well
+                  ENDC
                     bra       DoneIRQ   ; check for error and exit
 
 FastIRQ             jsr       [>D.SvcIRQ] ; call the orutine (normally Clock calling D.Poll)
@@ -1050,8 +1196,13 @@ KrnSysProcDesc      ldx       <D.SysPrc ; get the system process descriptor poin
                     orcc      #IntMasks ; shut off interrupts
                     sta       <D.SSTskN ; save the task number for system state
                     beq       Fst2      ; if task 0, we're done
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Pico-Thing: D.TINIT holds raw task#, just write it to DAT.Task
+                    lda       <D.TINIT  get the user's task number
+                  ELSE
                     ora       <D.TINIT  ; merge task bit into the shadow register
                     sta       <D.TINIT  ; update the shadow register
+                  ENDC
                     sta       >DAT.Task ; save to the DAT as well
 Fst2                leas      ,u        ; put stack ptr into U
                     rti                 ; return
@@ -1061,6 +1212,13 @@ Fst2                leas      ,u        ; put stack ptr into U
 * Entry: X = The Process descriptor pointer.
 *        U = The stack pointer.
 KrnJoin2            equ       *         ; define assembler symbol KrnJoin2
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Pico-Thing: D.TINIT holds the raw task# (set by KrnWeGngBack); write it
+* straight to the DAT.  The CoCo3 task-1 bit set (ora/oim #$01) corrupts an
+* even task number, so it is wrong for the Pico-Thing's N-task DAT - on both
+* the 6809 and HD6309 builds.
+                    lda       <D.TINIT  get the user's task number
+                  ELSE
                   IFNE    H6309   ; begin conditional assembly for H6309
                     oim       #$01,<D.TINIT ; switch the shadow register to task 1
                     lda       <D.TINIT  ; get the shadow register
@@ -1068,6 +1226,7 @@ KrnJoin2            equ       *         ; define assembler symbol KrnJoin2
                     lda       <D.TINIT  ; get the shadow register
                     ora       #$01      ; set it to task 1
                     sta       <D.TINIT  ; save it back
+                  ENDC
                   ENDC
                     sta       >DAT.Task ; save it to the DAT
                     leas      ,y        ; point to the new stack
@@ -1091,6 +1250,11 @@ MyRTI               rti                 ; return from IRQ
 * Execute routine in task 1 pointed to by U.
 * This comes from user requested SWI vectors.
 KrnJoin3            equ       *         ; define assembler symbol KrnJoin3
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Pico-Thing: D.TINIT holds the raw task#; write it straight to the DAT
+* (the CoCo3 ora/oim #$01 toggle is wrong for the N-task DAT, both CPUs)
+                    ldb       <D.TINIT  get the user's task number
+                  ELSE
                   IFNE    H6309   ; begin conditional assembly for H6309
                     oim       #$01,<D.TINIT ; switch the shadow register to task 1
                     ldb       <D.TINIT  ; get the shadow register
@@ -1099,6 +1263,7 @@ KrnJoin3            equ       *         ; define assembler symbol KrnJoin3
                     orb       #$01      ; set it to task 1
                     stb       <D.TINIT  ; save it back
                   ENDC
+                  ENDC
                     stb       >DAT.Task ; save it to the DAT
                     jmp       ,u        ; jump to the routine
 
@@ -1106,6 +1271,11 @@ KrnJoin3            equ       *         ; define assembler symbol KrnJoin3
 *  by <D.Flip1). All registers are already preserved on stack for the RTI.
 S.Flip1             ldb       #2        ; get the tsk image entry number x2 for Grfdrv (task 1)
                     bsr       KrnWeGngBack ; copy over the DAT image
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Pico-Thing: D.TINIT set by KrnWeGngBack, write directly (GrfDrv not used;
+* the CoCo3 ora/oim #$01 toggle is wrong for the N-task DAT, both CPUs)
+                    lda       <D.TINIT  get the task number
+                  ELSE
                   IFNE    H6309   ; begin conditional assembly for H6309
                     oim       #$01,<D.TINIT ; switch the shadow register to task 1
                     lda       <D.TINIT  ; get a copy of the shadow register
@@ -1114,14 +1284,25 @@ S.Flip1             ldb       #2        ; get the tsk image entry number x2 for 
                     ora       #$01      ; force task register to 1
                     sta       <D.TINIT  ; save it back
                   ENDC
+                  ENDC
                     sta       >DAT.Task ; save it to the DAT
                     inc       <D.SSTskN ; increment the system state task number
                     rti                 ; return
 
 * Set up the MMU in task 1, B=Task # to swap to, shifted left 1 bit.
-KrnWeGngBack        cmpb      <D.Task1N ; are we going back to the same task?
+KrnWeGngBack        equ       *
+                  IFEQ    picothing ; assemble when not picothing
+                    cmpb      <D.Task1N ; are we going back to the same task?
                     beq       KrnReturn2 ; without the DAT image changing?
                     stb       <D.Task1N ; no, save current task in map type 1
+                  ENDC
+                  IFNE    picothing ; begin conditional assembly for picothing
+* hardware DAT registers are persistent per task.
+* TstImg/F$SetTsk already copied if ImgChg was set.
+                    lsrb                raw task number
+                    stb       <D.TINIT  save for DAT.Task write sites
+                    rts
+                  ELSE
 *[[[ Wildbits PORT
                   IFNE    wildbits ; begin conditional assembly for wildbits
                     lda       MMU_MEM_CTRL ; get the memory control register
@@ -1133,13 +1314,31 @@ KrnWeGngBack        cmpb      <D.Task1N ; are we going back to the same task?
                   ELSE
                     ldx       #DAT.Regs+8 ; get the MMU start register for process
                   ENDC
+                  ENDC
+                  IFEQ    picothing ; assemble when not picothing
                     ldu       <D.TskIPt ; get the task image pointer table
                     ldu       b,u       ; and the address of the DAT image
+                  ENDC
 * COME HERE FROM FALLTSK
 * Update 8 MMU mappings.
 * X = address of 1st DAT MMU register to update
 * U = address of DAT image to update into MMU
 KrnActualMMUBlock   leau      1,u       ; point to the actual MMU block
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Pico-Thing DAT uses 1 byte per block register (not 2).
+* 8 single-byte copies replace the 4 double-byte copies used by CoCo3.
+                    lda       #DAT.BlCt loop counter for all 8 blocks
+                    pshs      a         save counter
+PicoT_L             lda       ,u++      get block number (skip high byte of 2-byte entry)
+                    sta       ,x+       store to 1-byte DAT register
+                    dec       ,s        done?
+                    bne       PicoT_L   no, keep going
+* Force slot 7 to kernel page so stubs and vectors are always reachable.
+* Pico-Thing has no constant block; kernel page must always be in slot 7.
+                    lda       #KrnBlk   physical page of the kernel
+                    sta       -1,x      overwrite slot 7 (X points past it after loop)
+                    puls      a,pc      clean stack and return
+                  ELSE
                   IFNE    H6309   ; begin conditional assembly for H6309
                     lde       #4        ; get the number of banks/2 for the task
                   ELSE
@@ -1165,6 +1364,7 @@ KrnBank             lda       ,u++      ; get a bank
                     clr       MMU_MEM_CTRL ; clear the DAT control flags
                   ENDC
 *]]] Wildbits PORT
+                  ENDC
 KrnReturn2          rts                 ; return
 
 *[[[ Wildbits PORT
@@ -1190,6 +1390,12 @@ KrnFasterClrXxxx    clra                ; (faster than CLR >$xxxx)
                     tfr       a,dp      ; aSSUME: A=0 from earlier
                   ENDC
 MapGrf              equ       *         ; come here from elsewhere, too
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Pico-Thing: force task 0 directly (masking bit 0 with anda/aim #$FE does
+* not yield task 0 for tasks > 1).  Applies to both the 6809 and HD6309
+* builds; D.TINIT is preserved here (the task is restored later).
+                    clra                task 0 = system
+                  ELSE
                   IFNE    H6309   ; begin conditional assembly for H6309
                     aim       #$FE,<D.TINIT ; switch the shadow register to system state
                     lda       <D.TINIT  ; set the DAT again just in case timer is used
@@ -1197,6 +1403,7 @@ MapGrf              equ       *         ; come here from elsewhere, too
                     lda       <D.TINIT  ; get the shadow register
                     anda      #$FE      ; clear the task 0 bit
                     sta       <D.TINIT  ; and save it back
+                  ENDC
                   ENDC
 MapT0               sta       >DAT.Task ; come here from elsewhere, too
                     jmp       [,x]      ; execute it
@@ -1215,6 +1422,20 @@ SWI2VCT             orcc      #IntMasks ; disable interrupts
 * It saves about 200 cycles (calls to I.LDABX and L029E) on GrvDrv system
 * and user state system calls.
 SWICall             ldb       [R$PC,s]  ; get the op-code of the system call
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Pico-Thing: D.TINIT holds the process task number and is deliberately
+* not cleared in system state (the task is preserved for later restore),
+* so it cannot distinguish a system-state caller from a user-state
+* caller.  CoCo3's D.TINIT bit 0 tracks the current map and can.  The
+* Pico firmware mirrors task writes into the read register, so read the
+* hardware instead: task 0 means the SWI was issued from system state.
+                    lda       >DAT.Task get the task the SWI was issued from
+                    beq       KrnFasterClrXxxx system state: dispatch on the current stack
+* User-state caller: A = the caller's task number.  Stay in the caller's
+* map and fall through to copy the register frame to SWIStack (the sta
+* below rewrites the same task, harmlessly sharing the common tail).
+* GrfDrv is not used on Pico-Thing, so no D.SSTskN test is needed.
+                  ELSE
 * NOTE: Alan DeKok claims that this is BAD.  It crashed Colin McKay's
 * CoCo 3.  Instead, we should do a clra/sta >DAT.Task.
 *         clr   >DAT.Task       go to map type 1
@@ -1241,6 +1462,7 @@ SWICall             ldb       [R$PC,s]  ; get the op-code of the system call
                     beq       MapT0     ; in map 0; restore the hardware and do system service
                     tst       <D.SSTskN ; get system state 0,1
                     bne       MapGrf    ; if in grfdrv, go to map 0 and do system service
+                  ENDC
 
 * The preceding few lines are necessary, as all SWI's still pass through
 * here before being vectored to the system service routine, which

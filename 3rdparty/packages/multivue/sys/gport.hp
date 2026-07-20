@@ -1,6 +1,0 @@
-@GPORT
-Syntax: gport
-Usage : Serial port configuration utility, allows 
-        setting of baud rates, parity, etc. for the
-        serial devices.  Selectable from the desk 
-        utlities menu as Port Config.

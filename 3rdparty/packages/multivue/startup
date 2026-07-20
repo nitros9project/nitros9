@@ -1,8 +1,0 @@
-* Echo welcome message
-echo *     Welcome to Multi-Vue    *
-echo *   on the Color Computer 3   *
-* Lock shell and std utils into memory
-link shell
-load utilpak1
-* Merge fonts, pointers and patterns
-merge sys/stdfonts sys/stdptrs sys/stdpats_2 sys/stdpats_4 sys/stdpats_16

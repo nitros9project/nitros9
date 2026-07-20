@@ -1,9 +1,0 @@
-c dld.validate sigs/coco/files
-d dld.unvalidate sigs/coco/files
-o dld.validate sigs/os9/files
-u dld.unvalidate sigs/os9/files
-e dld.validate elite/files
-f dld.unvalidate elite/files
-p chm bbs.menu_sys bbs.cmds_sys
-g ex
-/Your Choice (?=menu):==>

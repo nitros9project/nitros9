@@ -1,6 +1,0 @@
-d1 s1 v0 v1 v9
-d2 s1 v0 v2 v11
-d2 s1 v0 v3 v10 v11
-d3 s1 v0 v4 v10
-d3 s1 v0 v5 v11
-d1 s1 v0 v6 v9 v11

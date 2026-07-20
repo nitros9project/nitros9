@@ -7,6 +7,9 @@ default.proraw
 .mods/
 .obj/
 .lib/
+.sys/
+recipes/**/cfg/
+level2/coco3/defs/*.d
 
 # Assembler/linker listings and maps
 *.list
@@ -17,4 +20,13 @@ default.proraw
 buildinfo
 bootfile
 kerneltrack
+os9kernel
+os9kernel_dw
+rel_picothing
+rel_picothing.srec
+helpmsg
 *.dsk
+*.srec
+
+# usim09pt FRAM persistence file (emulator artifact, holds reset vector)
+picothing.fram

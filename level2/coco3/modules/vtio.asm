@@ -228,6 +228,15 @@ Init                ldx       <D.CCMem            get ptr to CC mem
 *         leau  >G.KeyMem,u  point U to keydrv statics
 *         jsr   ,y           call init routine of sub module (K$Init)
 
+                    leax      <HiRes,pcr        point to shared application-screen services
+                    bsr       LinkSub             link the subroutine module
+                    bcs       NoHiRes             continue when the optional module is absent
+                    sty       >G.HRSEnt,u         save its entry point for CoWin and CoVDG
+                    bra       LinkJoy
+NoHiRes             clra                          leave a null entry point when HiRes is unavailable
+                    clrb
+                    std       >G.HRSEnt,u
+LinkJoy             equ       *
                     leax      <JoyDrv,pcr         point to joystick driver sub module name
                     bsr       LinkSys             link to it (restores U to D.CCMem)
                     sty       >G.JoyEnt,u         and save the entry point
@@ -253,8 +262,15 @@ PerWinInit          ldd       #$0078              Default mouse sample rate (0) 
                     lbra      FindCoMod           go find and init co-module
 
 *KeyDrv   fcs   /KeyDrv/     Name of keyboard driver subroutine module
+HiRes             fcs       /co3hires/
 JoyDrv              fcs       /JoyDrv/     Name of joystick driver subroutine module
 SndDrv              fcs       /SndDrv/     Name of sound driver subroutine module
+
+* Link to the shared application-screen subroutine module.
+LinkSub             lda       #Sbrtn+Objct
+                    os9       F$Link
+                    ldu       <D.CCMem            restore the CC global-memory pointer
+                    rts
 
 * Link to subroutine module
 * Entry: X=ptr to module name

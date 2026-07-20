@@ -4,7 +4,7 @@ MODDIR = .mods
 include ../../rules.mak
 -include recipe.mak
 
-vpath %.asm $(3RDPARTY)/packages/basic09
+vpath %.asm $(LANGUAGES)/basic09
 
 ifeq ($(strip $(PLATFORM)),)
   $(info PLATFORM not set; defaulting to jr2)
@@ -27,7 +27,7 @@ AFLAGS += -I$(L2PD)
 AFLAGS += -I$(L2MD)/kernel -I$(L2PMD)
 endif
 AFLAGS += -I$(L1MD)/kernel -I$(L1PMD)
-AFLAGS += -I$(3RDPARTY)/packages/basic09
+AFLAGS += -I$(LANGUAGES)/basic09
 AFLAGS += $(AFLAGS_EXTRA)
 LFLAGS += -L $(LIBDIR) -lwildbitsl$(LEVEL) -lnet -lalib
 LFLAGS += $(LFLAGS_EXTRA)
@@ -71,7 +71,8 @@ BOOTMODS = krn krnp2 ioman init \
 	$(BOOTMODS_EXTRA)
 endif
 
-CMDS += $(STDCMDS) \
+SHELLMODS = shellplus date deiniz echo iniz link load save unlink
+CMDS += $(STDCMDS) shell \
 	bootos9 scfg wbinfo wbreset modem \
 	inetd telnet dw httpd $(BASIC09) $(BF) \
 	$(CMDS_EXTRA)
@@ -86,7 +87,8 @@ CMDS += dmem minted mmap modpatch \
 endif
 
 BASIC09 = basic09 runb inkey syscall wild
-BASIC09_FILES = $(wildcard $(3RDPARTY)/packages/basic09/samples/*.b09)
+BASIC09_FILES = $(wildcard $(LANGUAGES)/basic09/samples/*)
+RUNB_SHA256 = 605c7a9f0fde3fed21f7672f5c634f7c43b440f385f088e593f8acca5fccba31
 STARTUP = $(LEVEL2)/wildbits/startup
 FEU_STARTUP = feu.startup
 SCRIPTS_DIR = $(LEVEL1)/wildbits/scripts
@@ -95,10 +97,11 @@ SCRIPTS = $(notdir $(wildcard $(SCRIPTS_DIR)/*))
 TESTS = $(notdir $(wildcard $(TESTS_DIR)/*))
 FONT_DIR = $(LEVEL1)/wildbits/sys/fonts
 BACKGROUND_DIR = $(LEVEL1)/wildbits/sys/backgrounds
-FONTS = 800yfont applefont bigbluefont boxedfont bannerfont.sb \
-	c256seriffont cbmfont commodedorfont enemigafont f256standardfont \
-	IIishfont jessefont msxbannerfont msxfont petticoatsfont \
-	phoenixegafont.sb quadrotextfont techfont thickefont
+FONTS = 800yfont anglefont applefont bannerfont.sb bigbluefont boldfont boxedfont \
+	c256seriffont cbmfont commodedorfont comicfont emojifont enemigafont f256standardfont \
+	gothicfont IIishfont jessefont msxbannerfont msxfont petticoatsfont \
+	phoenixegafont.sb quadrotextfont retrofont singlefont techfont thickefont \
+    uncialfont versalsfont
 BACKGROUNDS = clutbeach clutgrid clutmeadow clutmetal clutspace clutstone clutstone2 clutwood \
 	pixmapbeach pixmapgrid pixmapmeadow pixmapmetal pixmapspace pixmapstone \
 	pixmapstone2 pixmapwood pixmappaintspl pixmappaint2 clutpaintspl clutpaint2 \
@@ -107,12 +110,14 @@ BACKGROUNDS = clutbeach clutgrid clutmeadow clutmetal clutspace clutstone clutst
 
 ifeq ($(LEVEL),2)
 SYS_DIR = $(LEVEL2)/wildbits/sys
+SYS_RECIPE = $(NITROS9DIR)/recipes/support/wildbits-level2-system.mak
 SYS_TEXT_FILES = $(LEVEL2)/sys/motd $(LEVEL1)/sys/errmsg $(LEVEL1)/sys/password \
 	$(SYS_DIR)/helpmsg $(SYS_DIR)/inetd.conf
 SYS_BIN_FILES = $(addprefix $(SYS_DIR)/,stdfonts stdpats_2 stdpats_4 stdpats_16 stdptrs \
 	ibmedcfont isolatin1font)
 else
 SYS_DIR = $(LEVEL1)/wildbits/sys
+SYS_RECIPE = $(NITROS9DIR)/recipes/support/level1-system.mak
 SYS_TEXT_FILES = $(LEVEL1)/sys/motd $(LEVEL1)/sys/errmsg $(LEVEL1)/sys/password \
 	$(SYS_DIR)/helpmsg $(SYS_DIR)/inetd.conf
 SYS_BIN_FILES =
@@ -130,9 +135,9 @@ $(MODDIR)/sysgo: $(OBJDIR)/sysgo.o | $(MODDIR)
 $(OBJDIR)/sysgo.o: sysgo.as | $(OBJDIR)
 .PHONY: wildbits-sys-assets
 wildbits-sys-assets:
-	$(MAKE) -C $(SYS_DIR)
-	$(MAKE) -C $(FONT_DIR)
-	$(MAKE) -C $(BACKGROUND_DIR)
+	$(MAKE) -C $(SYS_DIR) -f $(SYS_RECIPE)
+	$(MAKE) -C $(FONT_DIR) -f $(NITROS9DIR)/recipes/support/wildbits-fonts.mak
+	$(MAKE) -C $(BACKGROUND_DIR) -f $(NITROS9DIR)/recipes/support/wildbits-backgrounds.mak
 
 $(FEU_STARTUP): FORCE
 	echo "bootos9 /s0/OS9Boot" >> $@
@@ -161,9 +166,11 @@ endif
 	$(MAKDIR) $@,CMDS
 	$(MAKDIR) $@,SYS
 	$(MAKDIR) $@,DEFS
+ifneq ($(filter runb,$(CMDS)),)
+	@printf '%s  %s\n' "$(RUNB_SHA256)" $(MODDIR)/runb | shasum -a 256 -c -
+endif
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
-	$(OS9RENAME) $@,CMDS/shellplus shell
 	$(CPL) $(SYS_TEXT_FILES) $@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYS_TEXT_FILES)),$@,SYS/$(file))
 ifneq ($(strip $(SYS_BIN_FILES)),)
@@ -185,6 +192,9 @@ endif
 	$(CPL) $(FEU_STARTUP) $@,FEU/startup
 
 # Command rules
+$(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
+	$(MERGE) $(addprefix $(MODDIR)/,$(SHELLMODS)) >$@
+
 $(MODDIR)/pwd: pd.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DPWD=1
 
@@ -196,6 +206,10 @@ $(MODDIR)/xmode: xmode.asm | $(MODDIR)
 
 $(MODDIR)/tmode: xmode.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DTMODE=1
+
+$(MODDIR)/runb: runb.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+	@printf '%s  %s\n' "$(RUNB_SHA256)" $@ | shasum -a 256 -c -
 
 ifeq ($(LEVEL),2)
 $(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1_MODS)) | $(MODDIR)
@@ -233,6 +247,9 @@ $(MODDIR)/ddc0: rbmemdesc.asm | $(MODDIR)
 # DriveWire dwio modules
 $(MODDIR)/dwio_wizfi: dwio.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDWIO_WIZFI
+
+$(MODDIR)/wizfidesc: wizfidesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDeviceMode=0 -DConnection=0
 
 $(MODDIR)/dwio_serial: dwio.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDWIO_SERIAL

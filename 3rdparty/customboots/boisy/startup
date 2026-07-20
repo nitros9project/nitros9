@@ -1,6 +1,0 @@
-* Echo welcome message
-echo * Welcome to NitrOS-9 Level 2 *
-echo *   on the Color Computer 3   *
-* Lock shell and std utils into memory
-link shell
-load utilpak1

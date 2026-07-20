@@ -15,7 +15,15 @@ VDG_T1_FLAGS =
 endif
 
 DSKIMAGE ?= l$(LEVEL)_$(RECIPE).dsk
+CLEAN_EXTRA ?=
+TRACKS ?= 40
+ifeq ($(TRACKS),40)
 OS9FORMAT_CMD ?= $(OS9FORMAT_DS40)
+else ifeq ($(TRACKS),80)
+OS9FORMAT_CMD ?= $(OS9FORMAT_DS80)
+else
+$(error Unsupported TRACKS "$(TRACKS)"; use TRACKS=40 or TRACKS=80)
+endif
 STARTUP ?= $(NITROS9DIR)/level1/$(PORT)/startup
 
 AFLAGS += -I.
@@ -29,7 +37,7 @@ SSDD35 = -DCyls=35 -DSides=1 -DSectTrk=18 -DSectTrk0=18 -DInterlv=3 -DSAS=8 -DDe
 DSDD40 = -DCyls=40 -DSides=2 -DSectTrk=18 -DSectTrk0=18 -DInterlv=3 -DSAS=8 -DDensity=1
 DSDD80 = -DCyls=80 -DSides=2 -DSectTrk=18 -DSectTrk0=18 -DInterlv=3 -DSAS=8 -DDensity=1 -DD35
 
-RBF ?= rbf rb1773 ddd0_40d d0_40d d1_40d d2_40d
+RBF ?= rbf rb1773 ddd0_$(TRACKS)d d0_$(TRACKS)d d1_$(TRACKS)d d2_$(TRACKS)d
 SCF ?= scf vtio covdg term_vdg
 PIPE ?= pipeman piper pipe
 CLOCK ?= clock_60hz clock2_soft
@@ -59,7 +67,7 @@ kernelfile: $(addprefix $(MODDIR)/,$(KERNEL_TRACK))
 bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
 
-$(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP)
+$(DSKIMAGE): libs kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP)
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9GEN) $@ -b=bootfile -t=$(KERNELFILE)
@@ -157,7 +165,7 @@ $(MODDIR)/x3: dwdesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=3
 
 clean:
-	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo
+	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo $(CLEAN_EXTRA)
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
 
 .PHONY: all clean libs

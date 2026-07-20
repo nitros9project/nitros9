@@ -1,6 +1,0 @@
-t
-cc2 -qro abort.a stat.a io.a misc.a
-cc2 -qro mod.a dir.a mem.a time.a process.a id.a intercept.a syscall.a
-cc2 -qro syscommon.a profdummy.a cfinish.a tidyup.a
-cc2 -qro -e=2 cstart.a change.a signal.a access.a
-

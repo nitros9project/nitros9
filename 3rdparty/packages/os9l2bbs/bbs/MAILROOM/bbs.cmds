@@ -1,7 +1,0 @@
-S BBS.mail.post
-R BBS.mail.read
-D BBS.mail.delete
-M chd /dd/bbs
-C BBS.mail.check
-G ex
-/Your choice (?=menu):==>

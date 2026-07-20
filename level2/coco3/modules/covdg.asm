@@ -96,6 +96,10 @@ name                fcs       /CoVDG/
 
 * Init VDG screen (allocate memory, etc)
 Init                pshs      u,y,x               save regs
+                    ldx       >WGlobal+G.HRSEnt   get shared application-screen services
+                    beq       InitNoHiRes         continue when the optional module is absent
+                    jsr       H$Init,x            initialize this device's screen descriptors
+InitNoHiRes         equ       *
                     bsr       SetupPal            set up palettes
                     lda       #$AF                Blue VDG char
                     sta       <VD.CColr,u         save as default color cursor
@@ -223,13 +227,10 @@ L012A               fcb       $00,$0A,$03,$0E,$06,$09,$04,$10 0-7
 
 * Terminate device
 Term                pshs      u,y,x
-                    ldb       #$03
-L004E               pshs      b
-                    lbsr      GetScrn             get screen table entry into X
-                    lbsr      FreeBlks            free blocks used by screen
-                    puls      b                   get count
-                    decb                          decrement
-                    bne       L004E               branch until zero
+                    ldx       >WGlobal+G.HRSEnt   get shared application-screen services
+                    beq       TermNoHiRes         skip application-screen cleanup when absent
+                    jsr       H$Term,x            release this device's application screens
+TermNoHiRes         equ       *
                     clr       <VD.Start,u         no screens in use
                     ldd       #512                size of alpha screen
                     ldu       <VD.ScrnA,u         get pointer to alpha screen
@@ -266,8 +267,14 @@ start               lbra      Init                Initialize VDG window
                     tsta                          Select new window to be active?
                     bne       L0035               No, try next function code
 * Select new window to be active
-                    ldb       <VD.DGBuf,u         Yes, get number of currently displayed buffer
-                    lbne      ShowS               Not primary buffer, go handle
+                    ldb       >V.HRBuf,u          yes, get the selected application screen
+                    beq       ShowAlpha           Primary buffer, use the VDG display path
+                    ldx       >WGlobal+G.HRSEnt   get shared application-screen services
+                    lbeq      MissingHiRes        report that the optional module is unavailable
+                    jsr       H$Show,x            display the selected application screen
+                    lbcs      L0440               return any display error
+                    lbra      SetPals             apply this VDG device's palette
+ShowAlpha           equ       *
                     ldd       <VD.TFlg1,u         Primary, get bits to set in $FF22 and VD.Alpha (0=alpha mode)
                     lbra      DispAlfa            Update the hardware
 
@@ -679,7 +686,7 @@ DispAlfa            pshs      x,y,a               Preserve regs (A=video bits to
                     IFNE      COCO2
                     stb       <VD.Alpha,u         0=Alpha mode, else graphics mode
                     ENDC
-                    clr       <VD.DGBuf,u         Clear currently displayed medium res buffer # (inactive)
+                    clr       >V.HRBuf,u          clear the selected application screen
                     lda       >PIA1Base+2         Get current screen mode settings byte from PIA
                     anda      #%00000111          Only keep non-video bits
                     ora       ,s+                 Merge in video bits we saved on stack
@@ -1782,18 +1789,17 @@ SetStat             ldx       PD.RGS,y            Get caller's register stack pt
                     cmpa      #SS.SLGBf
                     beq       Rt.SLGBf
                     ENDC
-                    cmpa      #SS.ScInf           new NitrOS-9 call
-                    lbeq      Rt.ScInf
-                    cmpa      #SS.DScrn
-                    lbeq      Rt.DScrn
-                    cmpa      #SS.PScrn
-                    lbeq      Rt.PScrn
-                    cmpa      #SS.AScrn
-                    lbeq      Rt.AScrn
-                    cmpa      #SS.FScrn
-                    lbeq      Rt.FScrn
-                    comb
+
+SharedScreen        ldx       >WGlobal+G.HRSEnt   get shared application-screen services
+                    beq       MissingHiRes        report that the optional module is unavailable
+                    jmp       H$SetStt,x          process the request in HiRes
+
+MissingHiRes        comb                          return Unknown Service without disturbing VTIO
                     ldb       #E$UnkSvc
+                    rts
+
+IllArg              comb                          return an illegal-argument error
+                    ldb       #E$IllArg
                     rts
 
 * Allow switch between true/inverse lowercase
@@ -1866,259 +1872,14 @@ L0B2B               stb       <VD.DFlag,u
                     rts
                     ENDC
 
-* Display Table
-* 1st entry = display code
-* 2nd entry = # of 8K blocks
-DTabl               fcb       $14,$02             0: 640x192, 2 color, 16K
-                    fcb       $15,$02             1: 320x192, 4 color, 16K
-                    fcb       $16,$02             2: 160x192, 16 color, 16K
-                    fcb       $1D,$04             3: 640x192, 4 color, 32K
-                    fcb       $1E,$04             4: 320x192, 16 color, 32K
-
-* Allocates and maps a hires screen into process address
-* LCB proposals:
-*   1) type 5 to be 160x192x256 color for GIME-X
-*   2) Allow high byte of X to have a bit (default 0), if set, to mean
-*      x200 screen. Maybe even 2 bits and support x225 as well, although
-*      that means adding 1 block to each of the above tables, and will require
-*      more checks for how many screens we can fit in our address space.
-Rt.AScrn            ldd       R$X,x               get screen type from caller's X
-* LCB - add support for 160x192x256 here as type 5 for GIME-X
-                    cmpd      #$0004              screen type 0-4
-                    bhi       IllArg              if higher than legal limit, return error
-                    pshs      y,x,d               else save off regs
-                    ldd       #$0303
-                    leay      <VD.HiRes,u         pointer to screen descriptor
-                    lbsr      L06C7               gets next free screen descriptor
-                    bcs       L05AF               branch if none found
-                    sta       ,s                  save screen descriptor on stack
-                    ldb       $01,s               get screen type
-                    stb       (VD.SType-VD.HiRes),y and store in VD.SType
-                    leax      >DTabl,pcr          point to display table
-                    lslb                          multiply index by 2 (word entries)
-                    abx                           point to display code, #blocks
-                    ldb       $01,x               get number of blocks
-                    stb       (VD.NBlk-VD.HiRes),y VD.NBlk
-                    lda       #$FF                start off with zero screens allocated
-BA010               inca                          count up by one
-                    ldb       (VD.NBlk-VD.HiRes),y get number of blocks
-                    pshs      a                   needed to protect regA; RG.
-                    os9       F$AlHRAM            allocate a screen
-                    puls      a
-                    bcs       DeAll               de-allocate ALL allocated blocks on error
-                    pshs      b                   save starting block number of the screen
-                    andb      #$3F                keep block BL= block MOD 63
-                    pshs      b
-                    addb      (VD.NBlk-VD.HiRes),y add in the block size of the screen
-                    decb                          in case last block is $3F,$7F,$BF,$FF; RG.
-                    andb      #$3F                (BL+S) mod 63 < BL? (overlap 512k bank)
-                    cmpb      ,s+                 is all of it in this bank?
-                    blo       BA010               if not, allocate another screen
-                    puls      b                   restore the block number for this screen
-                    stb       ,y                  VD.HiRes - save starting block number
-                    bsr       DeMost              deallocate all of the other screens
-                    leas      a,s                 move from within DeMost; RG.
-                    ldb       ,y                  Restore the starting block number again
-                    lda       1,x                 number of blocks
-                    lbsr      L06E3
-                    bcs       L05AF
-                    ldx       $02,s
-                    std       R$X,x
-                    ldb       ,s
-                    clra
-                    std       R$Y,x
-L05AF               leas      2,s
-                    puls      pc,y,x
-
-L05B3X              leas      2,s
-IllArg              comb
-                    ldb       #E$IllArg
-                    rts
-
-* De-allocate the screens
-DeAll               bsr       DeMost              de-allocate all of the screens
-                    bra       L05AF               restore stack and exit
-
-DeMost              tsta
-                    beq       DA020               quick exit if zero additional screens
-                    ldb       (VD.NBlk-VD.HiRes),y get # blocks of screen to de-allocate
-                    pshs      a                   save count of blocks for later
-                    pshs      d,y,x               save rest of regs
-                    leay      9,s                 account for d,y,x,a,calling PC
-                    clra
-DA010               ldb       ,y+                 get starting block number
-                    tfr       d,x                 in X
-                    ldb       1,s                 get size of the screen to de-allocate
-                    pshs      a                   needed to protect regA; RG.
-                    os9       F$DelRAM            de-allocate the blocks *** IGNORING ERRORS ***
-                    puls      a
-                    dec       ,s                  count down
-                    bne       DA010
-                    puls      d,y,x               restore registers
-                    puls      a                   and count of extra bytes on the stack
-DA020               rts                           and exit
-
-* Get current screen info for direct writes - added in NitrOS-9
-Rt.ScInf            pshs      x                   save caller's regs ptr
-                    ldd       R$Y,x               get ??? (Y from caller)
-* 6809/6309: This can actually skip one instruction to the ldb R$Y+1,x since X hasn't changed
-                    bmi       L05C8               If high bit set, skip ahead
-                    bsr       L05DE
-                    bcs       L05DC
-                    lbsr      L06FF
-                    bcs       L05DC
-L05C8               ldx       ,s                  get caller's regs ptr from stack
-                    ldb       R$Y+1,x
-                    bmi       L05DB
-                    bsr       L05DE
-                    bcs       L05DC
-                    lbsr      L06E3
-                    bcs       L05DC
-                    ldx       ,s
-                    std       R$X,x               Return in caller's X
-L05DB               clrb
-L05DC               puls      pc,x
-
-L05DE               beq       IllArg
-                    cmpb      #$03
-                    bhi       IllArg
-                    bsr       GetScrn
-                    beq       IllArg
-                    ldb       ,x
-                    beq       IllArg
-                    lda       $01,x
-                    andcc     #^Carry
-                    rts
-
-* Convert screen to a different type
-Rt.PScrn            ldd       R$X,x
-                    cmpd      #$0004
-                    bhi       IllArg
-                    pshs      b,a                 save screen type, and a zero
-                    leax      >DTabl,pcr
-                    lslb
-                    incb
-                    lda       b,x                 get number of blocks the screen requires
-                    sta       ,s                  kill 'A' on the stack
-                    ldx       PD.RGS,y
-                    bsr       L061B
-                    bcs       L05B3X
-                    lda       ,s
-                    cmpa      $01,x
-                    lbhi      L05B3X              if new one takes more blocks than old
-                    lda       $01,s
-                    sta       $02,x
-                    leas      $02,s
-                    bra       L0633
-
-L061B               ldd       R$Y,x
-                    beq       L0633
-                    cmpd      #$0003
-                    lbgt      IllArg
-                    bsr       GetScrn             point X to 3 byte screen descriptor
-                    lbeq      IllArg
-                    clra
-                    rts
-
-* Displays screen
-Rt.DScrn            bsr       L061B
-                    bcs       L063A
-L0633               stb       <VD.DGBuf,u
-                    inc       <VD.DFlag,u
-                    clrb
-L063A               rts
-
-* Entry: B = screen 1-3
-* Exit:  X = ptr to screen entry
-*GetScrn  pshs  b,a
-*         leax  <VD.GBuff,u
-*         lda   #$03
-*         mul
-*         leax  b,x
-*         puls  pc,b,a
-GetScrn             leax      <VD.GBuff,U         point X to screen descriptor table
-                    abx
-                    abx
-                    abx
-                    tst       ,x                  is this screen valid? (0 = not)
-                    rts
-
-* Frees memory of screen allocated by SS.AScrn
-Rt.FScrn            ldd       R$Y,x
-                    lbeq      IllArg
-                    cmpd      #$03
-                    lbhi      IllArg
-                    cmpb      <VD.DGBuf,u
-                    lbeq      IllArg              illegal arg if screen is being displayed
-                    bsr       GetScrn             point to buffer
-                    lbeq      IllArg              error if screen unallocated
-* Entry: X = pointer to screen table entry
-FreeBlks            lda       $01,x               get number of blocks
-                    ldb       ,x                  get starting block
-                    beq       L066D               branch if none
-                    pshs      a                   else save count
-                    clra                          clear A
-                    sta       ,x                  clear block # in entry
-                    tfr       d,x                 put starting block # in X
-                    puls      b                   get block numbers
-                    os9       F$DelRAM            delete
-L066D               rts                           and return
-
-* Entry: B=Which graphics buffer to make active display
-ShowS               cmpb      #$03                no more than 3 graphics buffers
-                    bhi       L066D               Exit if past maximum
-                    bsr       GetScrn             point X to appropriate screen descriptor
-                    beq       L066D               branch if not allocated
-                    ldb       $02,x               VD.SType - screen type 0-4
-* LCB Change to allow for 160x192x256 for GIME-X
-                    cmpb      #$04
-                    bhi       L066D               Not a valid screen type, return
-                    lslb
-                    pshs      x
-                    leax      >DTabl,pcr
-                    lda       b,x                 get proper display code
-                    puls      x
-* LCB - this should be timed HSYNC or VSYNC to cut sparklies (see VDGINT 1.16 source)
-                    clrb
-                    std       >$FF99              set border color, too
-                    std       >D.VIDRS
-                    lda       >D.HINIT
-                    anda      #$7F                make coco 3 only mode
-                    sta       >D.HINIT
-                    sta       >$FF90
-                    lda       >D.VIDMD
-                    ora       #$80                graphics mode
-                    anda      #$F8                1 line/character row
-                    sta       >D.VIDMD
-                    sta       >$FF98
-*         lda   ,x          get block #
-*         lsla
-*         lsla
-*** start of 2MB patch by RG
-                    ldb       ,x                  get block # (2Meg patch)
-                    clra
-                    lslb
-                    rola
-                    lslb
-                    rola
-                    sta       >$FF9B
-                    tfr       b,a
-*** end of 2MB patch by RG
-                    clrb
-                    std       <D.VOFF1            display it
-                    std       >$FF9D
-                    clr       >D.VOFF2
-                    clr       >$FF9C
-                    lbra      SetPals
-
-* Get next free screen descriptor
+* Get next free medium-resolution screen descriptor.
 L06C7               clr       ,-s                 clear an area on the stack
                     inc       ,s                  set to 1
-L06CB               tst       ,y                  check block #
-                    beq       L06D9               if not used yet
-                    leay      b,y                 go to next screen descriptor
-                    inc       ,s                  increment count on stack
-                    deca                          decrement A
+L06CB               tst       ,y                  check block number
+                    beq       L06D9               stop at an unused descriptor
+                    leay      b,y                 advance by the descriptor size
+                    inc       ,s                  increment the one-based result
+                    deca                          count this descriptor
                     bne       L06CB
                     comb
                     ldb       #E$BMode
@@ -2145,15 +1906,6 @@ L06F9               leas      $02,s               destroy D on no error
                     puls      pc,u,x
 
 L06FD               puls      pc,u,x,d            if error, then restore D
-
-L06FF               pshs      y,x,a               deallocate screen
-                    bsr       L0710
-                    bcs       L070E
-                    ldd       #DAT.Free           set memory to unused
-L0708               std       ,x++
-                    dec       ,s
-                    bne       L0708
-L070E               puls      pc,y,x,a
 
 L0710               equ       *
                     IFNE      H6309

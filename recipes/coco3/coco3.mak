@@ -1,10 +1,11 @@
 PORT ?= coco3
 CPU ?= 6809
 MACHINE ?= Tandy Color Computer 3
-include ../../rules.mak
+include $(NITROS9DIR)/recipes/rules.mak
 RECIPE ?= coco3
 -include recipe.mak
 vpath %.asm $(LEVEL1)/coco1/modules
+vpath %.asm $(LANGUAGES)/basic09
 
 ifeq ($(CPU),6309)
 AFLAGS += -DH6309=1
@@ -42,11 +43,20 @@ TERM_ALTCOLOR_FLAGS =
 endif
 
 DSKIMAGE ?= l$(LEVEL)_$(RECIPE).dsk
-DSK_EXTRA_DEPS ?=
-DSK_POST_COPY ?= @:
+CLEAN_EXTRA ?=
+CLEAN_DIRS ?=
+TRACKS ?= 40
+ifeq ($(TRACKS),40)
 OS9FORMAT_CMD ?= $(OS9FORMAT_DS40)
+else ifeq ($(TRACKS),80)
+OS9FORMAT_CMD ?= $(OS9FORMAT_DS80)
+else
+$(error Unsupported TRACKS "$(TRACKS)"; use TRACKS=40 or TRACKS=80)
+endif
 
 AFLAGS += -I.
+AFLAGS += -I$(LANGUAGES)/basic09
+AFLAGS += -I$(L2PD)/defs
 AFLAGS += -I$(L2MD)/kernel -I$(L2PMD)
 AFLAGS += -I$(L1MD)/kernel -I$(L1MD)
 AFLAGS += $(AFLAGS_EXTRA)
@@ -54,9 +64,10 @@ LFLAGS += -L $(LIBDIR) $(COCO3_LFLAG) -lnet -lalib
 LFLAGS += $(LFLAGS_EXTRA)
 
 DSDD40 = -DCyls=40 -DSides=2 -DSectTrk=18 -DSectTrk0=18 -DInterlv=3 -DSAS=8 -DDensity=1
+DSDD80 = -DCyls=80 -DSides=2 -DSectTrk=18 -DSectTrk0=18 -DInterlv=3 -DSAS=8 -DDensity=1
 
-RBF ?= rbf.mn rb1773.dr ddd0_40d.dd d0_40d.dd d1_40d.dd d2_40d.dd
-SCF ?= scf.mn vtio.dr snddrv_cc3.sb joydrv_joy.sb $(TERM_IO) \
+RBF ?= rbf.mn rb1773.dr ddd0_$(TRACKS)d.dd d0_$(TRACKS)d.dd d1_$(TRACKS)d.dd d2_$(TRACKS)d.dd
+SCF ?= scf.mn vtio.dr co3hires.sb snddrv_cc3.sb joydrv_joy.sb $(TERM_IO) \
 	$(TERM_WIN_DT) w.dw w1.dw w2.dw w3.dw w4.dw w5.dw w6.dw w7.dw \
 	w8.dw w9.dw w10.dw w11.dw w12.dw w13.dw w14.dw w15.dw
 PIPE ?= pipeman.mn piper.dr pipe.dd
@@ -65,25 +76,42 @@ KERNEL_TRACK ?= $(REL) boot_1773_6ms krn
 KERNELFILE = kerneltrack
 STARTUP ?= $(NITROS9DIR)/level2/$(PORT)/startup
 
+SYSDIR      ?= .sys
+SYS_RECIPE  ?= $(NITROS9DIR)/recipes/support/coco3-system.mak
+SYSBIN      ?= stdfonts stdpats_2 stdpats_4 stdpats_16 stdptrs ibmedcfont isolatin1font
+SYSTEXT     ?= helpmsg errmsg password motd inetd.conf
+PORTDEFSDIR ?= $(L2PD)/defs
+PORTDEFS_RECIPE ?= $(NITROS9DIR)/recipes/support/coco3-defs.mak
+PORTDEFS    ?= os9.d rbf.d scf.d coco.d coco3vtio.d Defsfile
+
+ifneq ($(SYSDIR),)
+CLEAN_DIRS += $(SYSDIR)
+$(SYSDIR):
+	mkdir -p $@
+endif
+
 BOOTMODS ?= krnp2 ioman init \
 	$(RBF) \
 	$(SCF) \
 	$(PIPE) \
 	$(CLOCK) \
-	sysgo_dd shell_21 \
 	$(BOOTMODS_EXTRA)
+
+$(addprefix $(MODDIR)/,vtio.dr co3hires.sb cowin.io covdg.io covdg_small.io): $(DEFSDIR)/cocovtio.d
 
 SHELLMODS = shellplus date deiniz echo iniz link load save unlink
 UTILPAK1 = attr build copy del deldir dir display list makdir mdir merge mfree procs rename tmode
 
 CMDS_BASE ?= $(STDCMDS) grfdrv shell utilpak1
-CMDS += $(CMDS_BASE) \
+CMDS += $(CMDS_BASE) hirestest \
 	$(CMDS_EXTRA)
+BASIC09_SAMPLES ?=
+RECIPE_DEPS ?=
 
 all: libs $(DSKIMAGE)
 
 LIB_NAMES = $(NOS9_LIB) libnet.a libalib.a $(COCO3_LIB)
-include ../../libs.mak
+include $(NITROS9DIR)/recipes/libs.mak
 
 kernelfile: $(addprefix $(MODDIR)/,$(KERNEL_TRACK))
 	$(MERGE) $(addprefix $(MODDIR)/,$(KERNEL_TRACK))>$(KERNELFILE)
@@ -91,18 +119,37 @@ kernelfile: $(addprefix $(MODDIR)/,$(KERNEL_TRACK))
 bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
 
-$(DSKIMAGE): kernelfile bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(DSK_EXTRA_DEPS)
+$(DSKIMAGE): libs kernelfile bootfile $(MODDIR)/sysgo_dd $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(BASIC09_SAMPLES) $(RECIPE_DEPS) | $(SYSDIR)
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9GEN) $@ -b=bootfile -t=$(KERNELFILE)
 	$(MAKDIR) $@,CMDS
+ifneq ($(SYSDIR),)
 	$(MAKDIR) $@,SYS
+	$(MAKE) -C $(SYSDIR) -f $(SYS_RECIPE) --no-print-directory
+	$(CD) $(SYSDIR); $(OS9COPY) $(SYSBIN) $(CURDIR)/$@,SYS
+	$(OS9ATTR_TEXT) $(foreach file,$(SYSBIN),$@,SYS/$(file))
+	$(CD) $(SYSDIR); $(CPL) $(SYSTEXT) $(CURDIR)/$@,SYS
+	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYSTEXT)),$@,SYS/$(file))
+endif
+ifneq ($(PORTDEFSDIR),)
 	$(MAKDIR) $@,DEFS
+	$(MAKE) -C $(PORTDEFSDIR) -f $(PORTDEFS_RECIPE) --no-print-directory
+	$(CD) $(PORTDEFSDIR); $(CPL) $(PORTDEFS) $(CURDIR)/$@,DEFS
+	$(OS9ATTR_TEXT) $(foreach file,$(PORTDEFS),$@,DEFS/$(file))
+endif
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
+ifneq ($(strip $(BASIC09_SAMPLES)),)
+	$(MAKDIR) $@,BASIC09
+	$(CPL) $(BASIC09_SAMPLES) $@,BASIC09
+	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(BASIC09_SAMPLES)),$@,BASIC09/$(file))
+endif
+	$(OS9COPY) $(MODDIR)/sysgo_dd $@,sysgo
+	$(OS9ATTR_EXEC) $@,sysgo
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
-	$(DSK_POST_COPY)
+	$(call RECIPE_INSTALL,$@)
 
 # /TERM window descriptors — column count and colors controlled by TERM_COLS and TERM_ALTCOLOR
 $(MODDIR)/term_win40.dt: term_win40.asm | $(MODDIR)
@@ -128,6 +175,12 @@ $(MODDIR)/xmode: xmode.asm | $(MODDIR)
 $(MODDIR)/tmode: xmode.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DTMODE=1
 
+$(MODDIR)/runb: $(LANGUAGES)/basic09/runb_$(CPU) | $(MODDIR)
+	$(CP) $< $@
+
+$(LANGUAGES)/basic09/runb_$(CPU):
+	$(MAKE) -C $(LANGUAGES)/basic09 runb_$(CPU)
+
 $(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
 	$(MERGE) $(addprefix $(MODDIR)/,$(SHELLMODS)) >$@
 
@@ -137,6 +190,9 @@ $(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1)) | $(MODDIR)
 # CoCo 3 kernel/booter variants
 $(MODDIR)/boot_1773_6ms: boot_1773.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DSTEP=0
+
+$(MODDIR)/boot_dw_becker: boot_dw.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DBECKER=1
 
 $(MODDIR)/sysgo_dd: sysgo.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDD=1
@@ -170,7 +226,22 @@ $(MODDIR)/d1_40d.dd: rb1773desc.asm | $(MODDIR)
 $(MODDIR)/d2_40d.dd: rb1773desc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD40) -DDNum=2
 
+$(MODDIR)/ddd0_80d.dd: rb1773desc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD80) -DDNum=0 -DDD=1
+
+$(MODDIR)/d0_80d.dd: rb1773desc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD80) -DDNum=0
+
+$(MODDIR)/d1_80d.dd: rb1773desc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD80) -DDNum=1
+
+$(MODDIR)/d2_80d.dd: rb1773desc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DSDD80) -DDNum=2
+
 # DriveWire RBF descriptors
+$(MODDIR)/dwio_becker.sb: dwio.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DBECKER=1
+
 $(MODDIR)/ddx0.dd: dwdesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDD=1 -DDNum=0
 
@@ -209,7 +280,9 @@ $(MODDIR)/n5_scdwv.dd: scdwvdesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=5
 
 clean:
-	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo
-	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
+	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo $(CLEAN_EXTRA)
+	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR) $(CLEAN_DIRS)
 
-.PHONY: all clean libs
+FORCE:
+
+.PHONY: all clean libs FORCE
