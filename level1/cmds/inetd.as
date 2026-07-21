@@ -41,6 +41,7 @@ childnetpath        rmb       1
 netpath             rmb       1
 targetprog          rmb       128
 targetparams        rmb       128
+targetparamlen      rmb       1
 tmodeparamlen       rmb       1
 tmodeparams         rmb       128
                     endsect
@@ -359,22 +360,26 @@ prgloop             lda       ,x+
 sethi               lda       -1,y
                     ora       #$80
                     sta       -1,y
-copypar             clr       tmodeparamlen,u
+copypar             clr       targetparamlen,u
+                    clr       tmodeparamlen,u
                     leay      targetparams,u
 parloop             lda       ,x+
                     sta       ,y+
+                    inc       targetparamlen,u
                     cmpa      #',
                     beq       procopts
                     cmpa      #C$CR
                     beq       gotprocparms
+                    bra       parloop
 
-procopts
+procopts            lda       #C$CR
+                    sta       -1,y
                     leay      tmodeparams,u
 procoptsloop        lda       ,x+
                     sta       ,y+
-                    inc       targetparams,u
+                    inc       tmodeparamlen,u
                     cmpa      #C$CR
-                    beq       procoptsloop
+                    bne       procoptsloop
 
 gotprocparms
                     ifne      DEBUG
@@ -474,10 +479,11 @@ duper
                     beq       forkchild
                     pshs      u
                     leax      tmode,pcr
+                    clra
+                    ldb       tmodeparamlen,u
+                    tfr       d,y
                     leau      tmodeparams,u
                     lda       #Objct
-                    clrb
-                    ldy       #256
                     os9       F$Fork
                     puls      u
                     os9       F$Wait
@@ -486,10 +492,11 @@ duper
 forkchild
                     pshs      u
                     leax      targetprog,u
+                    clra
+                    ldb       targetparamlen,u
+                    tfr       d,y
                     leau      targetparams,u
                     lda       #Objct
-                    clrb
-                    ldy       #256
                     os9       F$Fork
                     puls      u
 * If our F$Fork fails, do not error out...
