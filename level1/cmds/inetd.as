@@ -12,6 +12,10 @@
 *
 *   3      2011/08/07  Boisy G. Pitre
 * Fixed bug where conf file wasn't being processed correctly.
+*
+*   4      2026/07/21  Codex
+* Apply interactive terminal options after installing the network path as
+* standard input, output, and error.
 
                     nam       inetd
                     ttl       internet daemon
@@ -21,7 +25,7 @@ type                equ       Prgrm
 lang                equ       Objct
 attr                equ       ReEnt
 rev                 equ       $00
-edition             equ       3
+edition             equ       4
 stack               equ       200
                     endsect
 
@@ -415,23 +419,9 @@ savechild
                     tfr       x,y
                     lbsr      TCPJoin
                     leas      8,s
-                    bcc       turnonechoalf
+                    bcc       duper
                     os9       I$Close
                     lbra      forkex
-
-turnonechoalf
-                    ifne      DEBUG
-                    pshs      d
-                    lbsr      PRINTS
-                    fcc       /Turning on PD.EKO and PD.ALF/
-                    fcb       C$CR
-                    fcb       $00
-                    puls      d
-                    endc
-                    lbsr      SetEchoOn
-                    lbcs      ret
-                    lbsr      SetAutoLFOn
-                    lbcs      ret
 
 * dup paths
 duper
@@ -474,6 +464,25 @@ duper
                     os9       I$Dup
                     lbcs      errex
 
+* Configure the installed standard input path for interactive line input.
+* Doing this after the dup sequence guarantees that path 0 is the path that
+* the child process will inherit.
+turnonechoalf
+                    clra
+                    lbsr      SetEchoOn
+                    lbcs      restorepaths
+                    clra
+                    lbsr      SetAutoLFOn
+                    lbcs      restorepaths
+                    ifne      DEBUG
+                    pshs      d
+                    lbsr      PRINTS
+                    fcc       /Enabled PD.EKO and PD.ALF on stdin/
+                    fcb       C$CR
+                    fcb       $00
+                    puls      d
+                    endc
+
 * fork tmode process if tmode param length > 0
                     tst       tmodeparamlen,u
                     beq       forkchild
@@ -503,6 +512,7 @@ forkchild
 *              bcs       ret2
 
 * restore orginal paths
+restorepaths
                     clra
                     os9       I$Close
                     inca
