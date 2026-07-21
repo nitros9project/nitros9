@@ -111,6 +111,9 @@ software and story files fetched from pinned upstream revisions:
   `zork1.dat`, `zork2.dat`, and `zork3.dat`
 - the Version 3 [`drpitre/raakatu`](https://github.com/drpitre/raakatu) story,
   installed as `/GAMES/INFOCOM/raakatu.z3`
+- the OS-9 Level 2 BBS from `nitros9-apps/os9l2bbs`, with its commands merged
+  into `/CMDS` and its menus, configuration, and data installed under `/BBS`;
+  `inetd` serves its login on TCP port 6909 by default
 
 The upstream checkouts are kept in `dw_mega/.external` and removed by `make
 clean`. The pinned `FORTH09_REF`, `INFOCOM_REF`, and `RAAKATU_REF` values make
@@ -125,7 +128,14 @@ forth09
 forth09 </dd/FORTH09/forthtest.4th
 infocom /dd/GAMES/INFOCOM/zork1.dat
 infocom /dd/GAMES/INFOCOM/raakatu.z3
+chd /dd/BBS
+runbbs
 ```
+
+From another computer, connect directly to the BBS with a character-at-a-time
+raw TCP terminal, such as Serial on macOS, on port 6909. A Telnet client is not
+suitable because its protocol negotiation interferes with the BBS input. Set
+`BBS_PORT` on the `make` command line to select another port.
 
 `INFOCOM_STORY_DIR` and `INFOCOM_STORIES` may be overridden to package another
 legally obtained Version 3 story-file collection:

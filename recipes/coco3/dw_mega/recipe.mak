@@ -6,11 +6,15 @@
 include ../dw/recipe.mak
 
 RECIPE = coco3_dw_mega
+TELNET_PORT ?= 6809
+HTTPD_PORT ?= 8809
+BBS_PORT ?= 6909
 SCF += scdwp.dr p_scdwp.dd \
 	midi_scdwv.dd \
 	z1_scdwv.dd z2_scdwv.dd z3_scdwv.dd \
 	z4_scdwv.dd z5_scdwv.dd z6_scdwv.dd z7_scdwv.dd
 CLEAN_DIRS += .external
+CLEAN_EXTRA += .inetd.conf
 
 EXTERNAL_DIR ?= .external
 COCO_SHELF ?= $(abspath $(NITROS9DIR)/..)
@@ -34,6 +38,10 @@ FORTH09_CHECKOUT = $(FORTH09_SRC)/.checkout-$(FORTH09_REF)
 FORTH09_COCO_DIR = $(FORTH09_SRC)/coco
 FORTH09_CMD = $(FORTH09_COCO_DIR)/forth09
 FORTH09_TEST = $(FORTH09_COCO_DIR)/forthtest.4th
+
+OS9L2BBS_DIR ?= $(NITROS9_APPS_DIR)/os9l2bbs
+OS9L2BBS_BUILD_DIR = $(OS9L2BBS_DIR)/6809l2
+OS9L2BBS_DSK = $(OS9L2BBS_BUILD_DIR)/OS9L2BBS.dsk
 
 # The interpreter supports Version 3 story files. Override INFOCOM_STORY_DIR
 # and INFOCOM_STORIES to package another legally obtained collection.
@@ -67,7 +75,13 @@ $(MODDIR)/z7_scdwv.dd: scdwvdesc.asm | $(MODDIR)
 
 CMDS_EXTRA += forth09 infocom
 RECIPE_DEPS += $(FORTH09_CMD) $(FORTH09_TEST) $(INFOCOM_CMD) \
-	$(INFOCOM_STORY_FILES) $(RAAKATU_STORY)
+	$(INFOCOM_STORY_FILES) $(RAAKATU_STORY) $(OS9L2BBS_DSK) \
+	bbslogin .inetd.conf
+
+.inetd.conf: inetd.conf
+	@sed -e 's/%TELNET_PORT%/$(TELNET_PORT)/' \
+		-e 's/%HTTPD_PORT%/$(HTTPD_PORT)/' \
+		-e 's/%BBS_PORT%/$(BBS_PORT)/' $< > $@
 
 # The shared image builder copies commands from $(MODDIR). Link the external
 # build products there so they go through the normal copy and attribute path.
@@ -122,7 +136,12 @@ $(FORTH09_CMD): $(FORTH09_CHECKOUT)
 		$(FORTH09_COCO_DIR)/main.o $(FORTH09_COCO_DIR)/dictiona.o \
 		$(FORTH09_COCO_DIR)/basic_fu.o -L$(COCO_SHELF)/cmoc_os9/lib -lc
 
+$(OS9L2BBS_DSK):
+	$(MAKE) -C $(OS9L2BBS_DIR) --no-print-directory NITROS9DIR=$(NITROS9DIR)
+
 define RECIPE_INSTALL
+	$(CPL) .inetd.conf $(1),SYS/inetd.conf -r
+	$(OS9ATTR_TEXT) $(1),SYS/inetd.conf
 	$(MAKDIR) $(1),GAMES
 	$(MAKDIR) $(1),GAMES/INFOCOM
 	@for story in $(INFOCOM_STORY_FILES); do \
@@ -134,4 +153,19 @@ define RECIPE_INSTALL
 	$(MAKDIR) $(1),FORTH09
 	$(CPL) $(FORTH09_TEST) $(1),FORTH09/forthtest.4th
 	$(OS9ATTR_TEXT) $(1),FORTH09/forthtest.4th
+	$(OS9) dsave -e -r $(OS9L2BBS_DSK),CMDS $(1),CMDS
+	@for cmd in $$($(OS9) dir $(OS9L2BBS_DSK),CMDS | tail -n +3); do \
+		$(OS9ATTR_EXEC) "$(1),CMDS/$$cmd"; \
+	done
+	$(MAKDIR) $(1),BBS
+	$(OS9) dsave -e -r $(OS9L2BBS_DIR)/bbs $(1),BBS
+	$(CPL) bbslogin $(1),BBS/bbslogin -r
+	$(OS9ATTR_EXEC) $(1),BBS/bbslogin
+	@find $(OS9L2BBS_DIR)/bbs -type f -print | while IFS= read -r file; do \
+		rel=$${file#$(OS9L2BBS_DIR)/bbs/}; \
+		case "$$rel" in \
+			BBS.userstats|*/BBS.mail.inx|*/bbs.msg.inx|*/DLD.key|*/DLD.lst|*/Quikterm) ;; \
+			*) $(CPL) "$$file" "$(1),BBS/$$rel" -r ;; \
+		esac; \
+	done
 endef
