@@ -47,6 +47,11 @@
 *		   2010/05/28  Aaron Wolfe
 * Added FASTSERWRITE support
 *
+*   3      2026/07/21  Boisy G. Pitre
+* Keep a virtual channel open while another SCF path descriptor still
+* references it.  Temporary reopens such as Shell+ </1 must not reset an
+* active TCP connection when their private path descriptor is released.
+*
                     nam       scdwv
                     ttl       DriveWire Network Driver
 
@@ -57,8 +62,8 @@
 
 tylg                set       Drivr+Objct
 atrv                set       ReEnt+Rev
-rev                 set       $00
-edition             set       2
+rev                 set       $01
+edition             set       3
 
 * Note: driver memory defined in dwdefs.d
                     mod       eom,name,tylg,atrv,start,SCFDrvMemSz
@@ -547,6 +552,11 @@ moveit@             os9       F$Move              move the data from the caller'
 *        Y=Byte count
 *        U=Destination pointer
 isitcomst
+                    cmpa      #SS.Close
+                    bne       AdvertiseSetStat
+                    ldx       <V.PDLHd,u          another SCF path still using this virtual channel?
+                    bne       ex                  yes, keep the server-side connection open
+AdvertiseSetStat
                     ldb       #OP_SERSETSTAT
                     bsr       SendStat
                     cmpa      #SS.ComSt
