@@ -136,7 +136,13 @@ $(FORTH09_CMD): $(FORTH09_CHECKOUT)
 		$(FORTH09_COCO_DIR)/main.o $(FORTH09_COCO_DIR)/dictiona.o \
 		$(FORTH09_COCO_DIR)/basic_fu.o -L$(COCO_SHELF)/cmoc_os9/lib -lc
 
-$(OS9L2BBS_DSK):
+$(OS9L2BBS_DSK): \
+	$(OS9L2BBS_DIR)/6809l2/Makefile \
+	$(OS9L2BBS_DIR)/cmds/BBS.login.asm \
+	$(OS9L2BBS_DIR)/cmds/Menu.asm \
+	$(OS9L2BBS_DIR)/cmds/BBS.mail.readD.asm \
+	$(OS9L2BBS_DIR)/cmds/BBS.form.asm \
+	$(OS9L2BBS_DIR)/cmds/BBS.build.asm
 	$(MAKE) -C $(OS9L2BBS_DIR) --no-print-directory NITROS9DIR=$(NITROS9DIR)
 
 define RECIPE_INSTALL
@@ -168,4 +174,5 @@ define RECIPE_INSTALL
 			*) $(CPL) "$$file" "$(1),BBS/$$rel" -r ;; \
 		esac; \
 	done
+	$(OS9ATTR) -npe -pw -pr -ne -w -r $(1),BBS/BBS.userstats
 endef
