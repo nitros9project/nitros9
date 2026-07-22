@@ -2157,7 +2157,13 @@ L0B1B               pshs      u,y,x,b,a           preserve regs
 L0B1D               ldu       PD.Exten,y          get pointer to path extension
                     lda       PE.Lock,u           get lockout status
                     sta       PE.Req,u            preserve it
-                    lda       ,s                  get
+* A retry from L0B11 arrives with B and X clobbered by the sleep path (B =
+* L1053's P$Signal read, X = F$Sleep/PE.TmOut leftover -- typically both 0).
+* Re-present the caller's full request, saved at L0B1B: X:D = byte count
+* (X = MSW).  A count under 256 otherwise degenerated to the D=X=0 dismiss
+* request, so a woken waiter proceeded with no lock at all: the lost update.
+                    ldd       ,s                  get byte count LSW back
+                    ldx       2,s                 and its MSW: the entry request
                     bsr       L0B9F               lock the record
                     bcc       L0B9D
                     ldu       <D.Proc             get current process pointer
@@ -2209,7 +2215,7 @@ L0B6F               cmpu      PE.Wait,x
                     lbsr      L1053
                     bcs       L0B9A
                     leax      ,x                  X=0?
-                    bne       L0B11               no,
+                    lbne      L0B11               no,
                     ldu       PD.Exten,y          get pointer to extension
                     ldx       PE.TmOut,u          get timeout time
                     lbeq      L0B11               zero, go try again
