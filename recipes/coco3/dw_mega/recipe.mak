@@ -43,6 +43,14 @@ OS9L2BBS_DIR ?= $(NITROS9_APPS_DIR)/os9l2bbs
 OS9L2BBS_BUILD_DIR = $(OS9L2BBS_DIR)/6809l2
 OS9L2BBS_DSK = $(OS9L2BBS_BUILD_DIR)/OS9L2BBS.dsk
 
+CCOMPILER_DIR ?= $(LANGUAGES)/ccompiler
+CCOMPILER_DSK = $(CCOMPILER_DIR)/CCompiler.dsk
+CCOMPILER_INPUTS = $(CCOMPILER_DIR)/Makefile $(CCOMPILER_DIR)/defsfile \
+	$(wildcard $(CCOMPILER_DIR)/*.asm) \
+	$(wildcard $(CCOMPILER_DIR)/defs/*) \
+	$(wildcard $(CCOMPILER_DIR)/lib/*) \
+	$(wildcard $(CCOMPILER_DIR)/sources/*)
+
 # The interpreter supports Version 3 story files. Override INFOCOM_STORY_DIR
 # and INFOCOM_STORIES to package another legally obtained collection.
 INFOCOM_STORY_DIR ?= $(NITROS9_APPS_DIR)/cpm/software/zork
@@ -76,7 +84,7 @@ $(MODDIR)/z7_scdwv.dd: scdwvdesc.asm | $(MODDIR)
 CMDS_EXTRA += forth09 infocom
 RECIPE_DEPS += $(FORTH09_CMD) $(FORTH09_TEST) $(INFOCOM_CMD) \
 	$(INFOCOM_STORY_FILES) $(RAAKATU_STORY) $(OS9L2BBS_DSK) \
-	bbslogin .inetd.conf
+	$(CCOMPILER_DSK) bbslogin .inetd.conf
 
 .inetd.conf: inetd.conf
 	@sed -e 's/%TELNET_PORT%/$(TELNET_PORT)/' \
@@ -145,7 +153,20 @@ $(OS9L2BBS_DSK): \
 	$(OS9L2BBS_DIR)/cmds/BBS.build.asm
 	$(MAKE) -C $(OS9L2BBS_DIR) --no-print-directory NITROS9DIR=$(NITROS9DIR)
 
+$(CCOMPILER_DSK): $(CCOMPILER_INPUTS)
+	$(MAKE) -C $(CCOMPILER_DIR) --no-print-directory \
+		NITROS9DIR=$(NITROS9DIR) CCompiler.dsk
+
 define RECIPE_INSTALL
+	$(OS9) dsave -e -r $(CCOMPILER_DSK),CMDS $(1),CMDS
+	@for cmd in $$($(OS9) dir $(CCOMPILER_DSK),CMDS | tail -n +3); do \
+		$(OS9ATTR_EXEC) "$(1),CMDS/$$cmd"; \
+	done
+	$(MAKDIR) $(1),LIB
+	$(OS9) dsave -e -r $(CCOMPILER_DSK),LIB $(1),LIB
+	$(OS9) dsave -e -r $(CCOMPILER_DSK),DEFS $(1),DEFS
+	$(MAKDIR) $(1),SOURCES
+	$(OS9) dsave -e -r $(CCOMPILER_DSK),SOURCES $(1),SOURCES
 	$(CPL) .inetd.conf $(1),SYS/inetd.conf -r
 	$(OS9ATTR_TEXT) $(1),SYS/inetd.conf
 	$(MAKDIR) $(1),GAMES

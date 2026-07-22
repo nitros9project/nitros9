@@ -114,6 +114,8 @@ software and story files fetched from pinned upstream revisions:
 - the OS-9 Level 2 BBS from `nitros9-apps/os9l2bbs`, with its commands merged
   into `/CMDS` and its menus, configuration, and data installed under `/BBS`;
   `inetd` serves its login on TCP port 6909 by default
+- the native C compiler from `nitros9-languages/ccompiler`, including its
+  commands, libraries, headers, and source distribution
 
 The upstream checkouts are kept in `dw_mega/.external` and removed by `make
 clean`. The pinned `FORTH09_REF`, `INFOCOM_REF`, and `RAAKATU_REF` values make
