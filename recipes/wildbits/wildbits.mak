@@ -30,6 +30,7 @@ AFLAGS += -I$(L1MD)/kernel -I$(L1PMD)
 AFLAGS += -I$(LANGUAGES)/basic09
 AFLAGS += $(AFLAGS_EXTRA)
 LFLAGS += -L $(LIBDIR) -lwildbitsl$(LEVEL) -lnet -lalib
+LFLAGS += -lfuji
 LFLAGS += $(LFLAGS_EXTRA)
 
 BOOT_RBF ?= dds0
@@ -66,9 +67,11 @@ BOOTMODS = krn krnp2 ioman init \
 endif
 
 SHELLMODS = shellplus date deiniz echo iniz link load save unlink
+FUJINET_CMDS = fngetdevfile fnsetdevfile fnlisthosts fngethost fnsethost fnlistdevs fnmount fnstatus
 CMDS += $(STDCMDS) shell \
 	bootos9 scfg wbinfo wbreset modem \
 	inetd telnet dw httpd $(BASIC09) $(BF) \
+	$(FUJINET_CMDS) \
 	$(CMDS_EXTRA)
 
 ifeq ($(LEVEL),2)
@@ -122,7 +125,7 @@ endif
 
 all: libs $(DSKIMAGE)
 
-LIB_NAMES = libwildbitsl$(LEVEL).a libnet.a libalib.a
+LIB_NAMES = libwildbitsl$(LEVEL).a libnet.a libfuji.a libalib.a
 include ../../libs.mak
 
 $(MODDIR)/sysgo: $(OBJDIR)/sysgo.o | $(MODDIR)

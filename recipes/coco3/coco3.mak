@@ -28,6 +28,7 @@ endif
 # (applies to 40- and 80-column window modes only).
 TERM_COLS ?= 80
 TERM_ALTCOLOR ?= 0
+FUJINET ?= 0
 REL = rel_$(TERM_COLS)
 ifeq ($(TERM_COLS),32)
 TERM_WIN_DT = term_vdg.dt
@@ -101,6 +102,12 @@ $(addprefix $(MODDIR)/,vtio.dr co3hires.sb cowin.io covdg.io covdg_small.io): $(
 
 SHELLMODS = shellplus date deiniz echo iniz link load save unlink
 UTILPAK1 = attr build copy del deldir dir display list makdir mdir merge mfree procs rename tmode
+FUJINET_CMDS = fngetdevfile fnsetdevfile fnlisthosts fngethost fnsethost fnlistdevs fnmount fnstatus
+
+ifeq ($(FUJINET),1)
+LFLAGS += -lfuji
+CMDS_EXTRA += $(FUJINET_CMDS)
+endif
 
 CMDS_BASE ?= $(STDCMDS) grfdrv shell utilpak1
 CMDS += $(CMDS_BASE) hirestest \
@@ -111,6 +118,9 @@ RECIPE_DEPS ?=
 all: libs $(DSKIMAGE)
 
 LIB_NAMES = $(NOS9_LIB) libnet.a libalib.a $(COCO3_LIB)
+ifeq ($(FUJINET),1)
+LIB_NAMES += libfuji.a
+endif
 include $(NITROS9DIR)/recipes/libs.mak
 
 kernelfile: $(addprefix $(MODDIR)/,$(KERNEL_TRACK))

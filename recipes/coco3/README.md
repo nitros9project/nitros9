@@ -20,6 +20,7 @@ Only edit `myrecipe/recipe.mak` for common customization:
 - `RECIPE` to change output name
 - `CMDS_EXTRA` to add disk commands
 - `BOOTMODS_EXTRA` to add boot modules
+- `FUJINET=1` to include the FujiNet utility commands
 - `AFLAGS_EXTRA` / `LFLAGS_EXTRA` for extra flags
 
 ## Prerequisites
@@ -66,6 +67,17 @@ which helps faster-than-real-time MAME runs avoid rapid repeated keys. Leave
 `KEYRPT` unset to keep the normal startup file. `MAME=1` is accepted as a
 compatibility alias for `KEYRPT=0`.
 
+Set `FUJINET=1` in `recipe.mak` to include these FujiNet utilities:
+
+- `fngetdevfile`
+- `fnsetdevfile`
+- `fnlisthosts`
+- `fngethost`
+- `fnsethost`
+- `fnlistdevs`
+- `fnmount`
+- `fnstatus`
+
 ## DriveWire Build ([`coco3/dw`](dw/))
 
 ```sh
@@ -83,6 +95,9 @@ This recipe defaults to:
 - DriveWire virtual terminal modules (`scdwv` + `n*` descriptors)
 - `startup.dw`
 - DriveWire disk format settings (`$(OS9FORMAT_DW)`)
+
+Set `FUJINET=1` in `recipe.mak` to include the FujiNet utility commands listed
+above.
 
 ## Mega DriveWire Build ([`coco3/dw_mega`](dw_mega/))
 
