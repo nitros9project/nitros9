@@ -437,9 +437,13 @@ GAMMA_BLK           equ       $C0
 * Text lookup definitions
 *
 TEXT_LUT_BLK	    equ	      $C0
+ ifne jr+k
+TEXT_LUT_FG         equ       $FF00
+TEXT_LUT_BG         equ       $FF40
+ else
 TEXT_LUT_FG         equ       $1700
 TEXT_LUT_BG         equ       $1740
-
+ endc
 ********************************************************************
 * Font definitions
 *
@@ -491,12 +495,28 @@ VKY_TXT_CURSOR_CTRL_REG rmb       1         [0] Enable Text Mode
 VKY_TXT_START_ADD_PTR rmb       1         this is an offset to change the starting address of the text mode Buffer (in X)
 VKY_TXT_CURSOR_CHAR_REG rmb       1
 VKY_TXT_CURSOR_COLR_REG rmb       1
+ ifne jr+k
+VKY_TXT_CURSOR_X_REG_L rmb       1
+VKY_TXT_CURSOR_X_REG_H rmb       1
+VKY_TXT_CURSOR_Y_REG_L rmb       1
+VKY_TXT_CURSOR_Y_REG_H rmb       1
+ else
 VKY_TXT_CURSOR_X_REG_H rmb       1
 VKY_TXT_CURSOR_X_REG_L rmb       1
 VKY_TXT_CURSOR_Y_REG_H rmb       1
 VKY_TXT_CURSOR_Y_REG_L rmb       1
+ endc
 ; Line interrupt
 VKY_LINE_IRQ_CTRL_REG rmb       1         [0] - enable line 0 - write only
+ ifne jr+k
+VKY_LINE_CMP_VALUE_LO rmb       1         write only [7:0]
+VKY_LINE_CMP_VALUE_HI rmb       1         write only [3:0]
+
+VKY_PIXEL_X_POS_LO  equ       VKY_LINE_IRQ_CTRL_REG this is where on the video line is the pixel
+VKY_PIXEL_X_POS_HI  equ       VKY_LINE_CMP_VALUE_LO or what pixel is being displayed when the register is read
+VKY_LINE_Y_POS_LO   equ       VKY_LINE_CMP_VALUE_HI this is the line value of the raster
+VKY_LINE_Y_POS_HI   rmb       1
+ else
 VKY_LINE_CMP_VALUE_HI rmb       1         write only [7:0]
 VKY_LINE_CMP_VALUE_LO rmb       1         write only [3:0]
 
@@ -504,6 +524,7 @@ VKY_PIXEL_X_POS_HI  equ       VKY_LINE_IRQ_CTRL_REG this is where on the video l
 VKY_PIXEL_X_POS_LO  equ       VKY_LINE_CMP_VALUE_LO or what pixel is being displayed when the register is read
 VKY_LINE_Y_POS_HI   equ       VKY_LINE_CMP_VALUE_HI this is the line value of the raster
 VKY_LINE_Y_POS_LO   rmb       1
+ endc
 
 * Text control bit definitions
 Mstr_Ctrl_Text_Mode_En equ       $01       enable the text mode
