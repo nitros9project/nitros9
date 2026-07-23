@@ -340,8 +340,17 @@ Creat131            ldb       ,s                  get p hysical sector # of segm
                     leas      $05,s               purge sector buffer from stack
                     ifgt      Level-1
                     ldx       PD.Exten,y          get path extension pointer
+* Creation is not a license to lock: only a path open for update may assert
+* the eof lock, the same rule as the two acquire sites.  A file created
+* write-only takes none, so a reader stops at the end that exists.  Y is
+* still the path descriptor here; A is dead past Open1CC (clra at Open1CE).
+                    lda       PD.MOD,y            get the open mode
+                    anda      #UPDAT.
+                    cmpa      #UPDAT.             both bits, not just one
+                    bne       CreatNoL            not update: assert no eof lock
                     lda       #EofLock            set the file to EOF lock
                     sta       PE.Lock,x
+CreatNoL            equ       *
                     endc
                     lbra      Open1CC
 * Error on FD write to disk
@@ -2148,7 +2157,13 @@ L0B1B               pshs      u,y,x,b,a           preserve regs
 L0B1D               ldu       PD.Exten,y          get pointer to path extension
                     lda       PE.Lock,u           get lockout status
                     sta       PE.Req,u            preserve it
-                    lda       ,s                  get
+* A retry from L0B11 arrives with B and X clobbered by the sleep path (B =
+* L1053's P$Signal read, X = F$Sleep/PE.TmOut leftover -- typically both 0).
+* Re-present the caller's full request, saved at L0B1B: X:D = byte count
+* (X = MSW).  A count under 256 otherwise degenerated to the D=X=0 dismiss
+* request, so a woken waiter proceeded with no lock at all: the lost update.
+                    ldd       ,s                  get byte count LSW back
+                    ldx       2,s                 and its MSW: the entry request
                     bsr       L0B9F               lock the record
                     bcc       L0B9D
                     ldu       <D.Proc             get current process pointer
@@ -2200,7 +2215,7 @@ L0B6F               cmpu      PE.Wait,x
                     lbsr      L1053
                     bcs       L0B9A
                     leax      ,x                  X=0?
-                    bne       L0B11               no,
+                    lbne      L0B11               no,
                     ldu       PD.Exten,y          get pointer to extension
                     ldx       PE.TmOut,u          get timeout time
                     lbeq      L0B11               zero, go try again
@@ -2222,12 +2237,20 @@ L0BAA               bsr       L0BC2
                     lbcs      L0AFF
                     ifgt      Level-1
                     pshs      u,y,x
+* Only a path open for update may take a record lock.  A read-only path never
+* locks, and a write-only path never locks either -- so a reader is not held
+* off by a plain '>' producer and stops at the end of file that exists.
+* Y is still the path descriptor here; L0BC2 restored U.
+                    lda       PD.MOD,y            get the open mode
+                    anda      #UPDAT.
+                    cmpa      #UPDAT.             both bits, not just one
+                    bne       LokNoRc             not update: claim nothing
                     ldy       PD.Exten,y
                     lda       #$01
                     lbsr      L0AD1
                     ora       PE.Lock,y
                     sta       PE.Lock,y
-                    clrb
+LokNoRc             clrb
                     puls      pc,u,y,x
                     else
                     clrb
@@ -2259,6 +2282,13 @@ L0BE0               std       PE.HiLck,y
                     cmpx      PD.SIZ+2,u
                     bcs       L0BF8
 L0BF0               equ       *
+* Likewise the end-of-file lock: it means "still being written, the end is not
+* yet known, wait".  Only an update path may assert that.  U is the path
+* descriptor here (L0BC2 did leau ,y before switching Y to the extension).
+                    lda       PD.MOD,u            get the open mode
+                    anda      #UPDAT.
+                    cmpa      #UPDAT.             both bits, not just one
+                    bne       L0C01               not update: assert no eof lock
                     ifne      H6309
                     oim       #EofLock,PE.Lock,y
                     else
