@@ -235,3 +235,12 @@ STDCMDS = asm attr backup bawk binex build cmp copy date dcheck debug \
 	padrom park pick printerr procs prompt pwd pxd rename save \
 	setime shellplus shell_21 sleep tee tmode touch tsmon unlink verify \
 	xmode
+
+# Date/time
+# Use SOURCE_DATE_EPOCH when provided for reproducible builds.
+# Otherwise preserve the normal system date behavior.
+ifdef SOURCE_DATE_EPOCH
+  BUILD_DATE = $(shell date -u -d "@$(SOURCE_DATE_EPOCH)" 2>/dev/null || date -u -r "$(SOURCE_DATE_EPOCH)")
+else
+  BUILD_DATE = $(shell date)
+endif

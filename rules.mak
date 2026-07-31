@@ -186,3 +186,12 @@ buildinfo:
 	COMMITHASH="$$(git rev-parse --short HEAD)"; \
 	BRANCHNAME="$$(git branch --show-current)"; \
 	echo " fcc !$${BUILDDATE} ($${COMMITHASH} - $${BRANCHNAME})!" > "$(NITROS9DIR)/defs/buildinfo";
+
+# Date/time
+# Use SOURCE_DATE_EPOCH when provided for reproducible builds.
+# Otherwise preserve the normal system date behavior.
+ifdef SOURCE_DATE_EPOCH
+  BUILD_DATE = $(shell date -u -d "@$(SOURCE_DATE_EPOCH)" 2>/dev/null || date -u -r "$(SOURCE_DATE_EPOCH)")
+else
+  BUILD_DATE = $(shell date)
+endif
