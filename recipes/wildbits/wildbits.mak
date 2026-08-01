@@ -32,6 +32,8 @@ AFLAGS += $(AFLAGS_EXTRA)
 LFLAGS += -L $(LIBDIR) -lwildbitsl$(LEVEL) -lnet -lalib
 LFLAGS += $(LFLAGS_EXTRA)
 
+FUJINET ?= 0
+
 BOOT_RBF ?= dds0
 RBF = rbf rbsuper llwbsd rbmem $(BOOT_RBF) s1 f0 f1 $(RBF_EXTRA)
 SCF = scf vtio $(KEYSUB) term bannerfont palette $(SCF_EXTRA)
@@ -39,7 +41,7 @@ ifeq ($(LEVEL),2)
 SCF += mousedrv_ps2
 endif
 DRIVEWIRE_RBF = rbdw x0 x1 x2 x3
-DRIVEWIRE_SCF = scdwv n1 n2 n3 n4 n5
+DRIVEWIRE_SCF = scdwv n n1 n2 n3 n4 n5
 DRIVEWIRE = dwio_serial $(DRIVEWIRE_RBF) $(DRIVEWIRE_SCF)
 DRIVEWIRE_BOOTMODS = dwio_serial $(PIPE) $(SC16550)
 PIPE = pipeman piper pipe
@@ -66,6 +68,12 @@ BOOTMODS = krn krnp2 ioman init \
 endif
 
 SHELLMODS = shellplus date deiniz echo iniz link load save unlink
+FUJINET_CMDS = fngetdevfile fnsetdevfile fnlisthosts fngethost fnsethost \
+	fnlistdevs fnmount fnmountimg fnstatus
+ifeq ($(FUJINET),1)
+LFLAGS += -lfuji
+CMDS_EXTRA += $(FUJINET_CMDS)
+endif
 CMDS += $(STDCMDS) shell \
 	bootos9 scfg wbinfo wbreset modem \
 	inetd telnet dw httpd $(BASIC09) $(BF) \
@@ -123,6 +131,9 @@ endif
 all: libs $(DSKIMAGE)
 
 LIB_NAMES = libwildbitsl$(LEVEL).a libnet.a libalib.a
+ifeq ($(FUJINET),1)
+LIB_NAMES += libfuji.a
+endif
 include ../../libs.mak
 
 $(MODDIR)/sysgo: $(OBJDIR)/sysgo.o | $(MODDIR)

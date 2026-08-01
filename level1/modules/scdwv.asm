@@ -250,7 +250,7 @@ Write               equ       *
                     pshs      a
                     leax      ,s
                     ldy       #$0002              ; 3 bytes to send.. ugh.  need WRITEM (data mode)
-                    ifgt      Level-1
+Blast               ifgt      Level-1
                     ldu       <D.DWSubAddr
                     else
                     ldu       >D.DWSubAddr
@@ -496,7 +496,7 @@ SetStat
                     ldd       #SS.Open*256+OP_SERSETSTAT
                     bra       SendStat
 isitblkwr           cmpa      #SS.BlkWr
-                    bne       isitcomst
+                    bne       isitfuji
 * This routine moves data from the caller's address space to the system's address space so
 * it can be quickly moved through via DriveWire. This is useful for certain networking
 * protocols like FujiNet which are packet oriented. The alternative is to use the regular
@@ -547,7 +547,132 @@ moveit@             os9       F$Move              move the data from the caller'
                     leas      BlkWrMax,s         else recover stack -- we're done
                     endc
                     rts                          return to the caller
-                    
+
+* SS.Fuji - atomic FujiNet bus transaction
+*
+* The FujiNet firmware buffers each command's reply and sends it back as
+* raw bytes on the wire (not framed as virtual channel data) when the
+* client asks for it with FUJI$GetResponse/FUJI$GetError. Those raw bytes
+* would be stolen by the dwio virtual serial poller (OP_SERREAD, fired
+* from the clock VIRQ) if it ran between our request and our read, so the
+* whole exchange happens here with interrupts masked, the same way rbdw
+* protects sector transfers.
+*
+* R$X = ptr to [response length:2][raw request bytes...]
+* R$Y = length of block at R$X (2 + request length)
+* R$U = ptr to response buffer (unused when response length is 0)
+isitfuji            cmpa      #SS.Fuji
+                    lbne      isitcomst
+                    ldu       PD.RGS,y            caller's register packet
+                    ldd       R$Y,u               parameter block length
+                    subd      #2                  minus the response length prefix
+                    lble      FujiParm            need at least one request byte
+                    cmpd      #FUJI$MaxTran
+                    lbhi      FujiParm
+                    ifgt      Level-1
+* Level 2: stage the exchange through a system buffer, since the user's
+* buffers are not addressable while we hold the wire.
+                    pshs      d                   request length
+                    ldx       R$X,u               user parameter block
+                    ldy       R$U,u               user response buffer
+                    pshs      x,y
+                    ldd       #FUJI$MaxTran
+                    os9       F$SRqMem            grab a system transfer buffer
+                    bcs       FujiNoMem
+                    pshs      u
+* frame: 0,s sysbuf / 2,s parmblk / 4,s respbuf / 6,s reqlen
+                    ldx       <D.Proc
+                    lda       P$Task,x            source task: caller
+                    ldb       <D.SysTsk           destination task: system
+                    ldx       2,s                 user parameter block
+                    ldu       ,s                  system buffer
+                    ldy       6,s
+                    leay      2,y                 include the length prefix
+                    os9       F$Move
+                    ldx       ,s
+                    ldd       ,x                  response length from the prefix
+                    cmpd      #FUJI$MaxTran
+                    bhi       FujiPrm2
+                    pshs      d
+* frame: 0,s resplen / 2,s sysbuf / 4,s parmblk / 6,s respbuf / 8,s reqlen
+                    pshs      cc
+                    orcc      #IntMasks           freeze the wire for the whole exchange
+                    ldx       3,s                 system buffer
+                    leax      2,x                 request bytes follow the prefix
+                    ldy       9,s                 request length
+                    ldu       <D.DWSubAddr
+                    jsr       DW$Write,u          send request
+                    ldy       1,s                 response length
+                    beq       FujiOut2            command wants no reply
+                    ldx       3,s                 reuse the system buffer for the response
+                    jsr       DW$Read,u           read raw response
+                    bcs       FujiIOE2
+                    bne       FujiIOE2
+FujiOut2            puls      cc
+* copy the response out to the caller
+                    ldy       ,s                  response length
+                    beq       FujiFree
+                    ldx       <D.Proc
+                    ldb       P$Task,x            destination task: caller
+                    lda       <D.SysTsk           source task: system
+                    ldx       2,s                 system buffer
+                    ldu       6,s                 user response buffer
+                    os9       F$Move
+FujiFree            ldu       2,s
+                    ldd       #FUJI$MaxTran
+                    os9       F$SRtMem            release the transfer buffer
+                    leas      10,s
+                    clrb
+                    rts
+FujiIOE2            puls      cc
+                    ldu       2,s
+                    ldd       #FUJI$MaxTran
+                    os9       F$SRtMem
+                    leas      10,s
+                    comb
+                    ldb       #E$Read
+                    rts
+FujiPrm2            ldu       ,s
+                    ldd       #FUJI$MaxTran
+                    os9       F$SRtMem
+                    leas      8,s
+                    bra       FujiParm
+FujiNoMem           leas      6,s                 F$SRqMem error (carry set) still in B
+                    rts
+                    else
+* Level 1: the caller's buffers are directly addressable
+                    tfr       d,y                 Y = request length
+                    ldx       R$X,u               X = parameter block
+                    ldd       ,x++                D = response length, X -> request bytes
+                    cmpd      #FUJI$MaxTran
+                    lbhi      FujiParm
+                    ldu       R$U,u               U = caller's response buffer
+                    pshs      d,u                 save response length and buffer
+                    pshs      cc
+                    orcc      #IntMasks           freeze the wire for the whole exchange
+                    ldu       >D.DWSubAddr
+                    jsr       DW$Write,u          send request
+                    ldd       1,s                 response length
+                    beq       FujiOut             command wants no reply
+                    tfr       d,y
+                    ldx       3,s                 response buffer
+                    jsr       DW$Read,u           read raw response
+                    bcs       FujiIOEr
+                    bne       FujiIOEr
+FujiOut             puls      cc
+                    leas      4,s
+                    clrb
+                    rts
+FujiIOEr            puls      cc
+                    leas      4,s
+                    comb
+                    ldb       #E$Read
+                    rts
+                    endc
+FujiParm            comb
+                    ldb       #E$IllArg
+                    rts
+
 * Entry: X=Source pointer
 *        Y=Byte count
 *        U=Destination pointer
@@ -558,7 +683,7 @@ isitcomst
                     bne       ex                  yes, keep the server-side connection open
 AdvertiseSetStat
                     ldb       #OP_SERSETSTAT
-                    bsr       SendStat
+                    lbsr      SendStat
                     cmpa      #SS.ComSt
                     beq       comst
                     cmpa      #SS.Close
