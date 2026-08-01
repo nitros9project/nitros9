@@ -34,6 +34,9 @@ $(LIBDIR)/libnos96309l2.a: $(OBJDIR)/sys6309l2.o | $(LIBDIR)
 $(LIBDIR)/libnet.a: $(OBJDIR)/net.o | $(LIBDIR)
 	$(LWAR) $@ $?
 
+$(LIBDIR)/libfuji.a: $(OBJDIR)/fuji.o | $(LIBDIR)
+	$(LWAR) $@ $?
+
 $(LIBDIR)/libcoco.a: $(OBJDIR)/coco.o | $(LIBDIR)
 	$(LWAR) $@ $?
 
