@@ -62,13 +62,17 @@ jobs:
 # Fetch latest toolshed from the official repo.
 #
     - name: Fetch Toolshed
-      uses: robinraju/release-downloader@v1
-      with:
-        repository: nitros9project/toolshed
-        fileName: toolshed-unix*.tgz
-        latest: true
-        extract: false
-        out-file-path: toolshed
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        mkdir -p toolshed
+        # Find the newest tag that starts with 'v' (ignoring DiskShed-*)
+        TOOLSHED_TAG=$(gh release list -R nitros9project/toolshed --limit 30 \
+          | awk '{print $1}' | grep -E '^v[0-9]' | head -n 1)
+
+        # Download the matching asset from that specific release
+        gh release download "$TOOLSHED_TAG" -R nitros9project/toolshed \
+          -p "toolshed-unix*.tgz" -D toolshed
 
 #
 # Unzip fetched toolshed binaries directly into /usr/local/bin
