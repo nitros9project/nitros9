@@ -21,3 +21,7 @@ make -C recipes/coco/floppy
 make -C recipes/coco/dw
 make -C recipes/coco3/floppy
 make -C recipes/coco3/dw
+make -C recipes/picothing/l1
+make -C recipes/picothing/l1dw
+make -C recipes/picothing/l2
+make -C recipes/picothing/l2dw

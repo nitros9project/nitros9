@@ -5,7 +5,7 @@ source tree.
 
 | Script | Purpose |
 | --- | --- |
-| `asmprettyprint.py` | Applies the repository's canonical assembly formatting |
+| `asmprettyprint.py` | Applies canonical assembly columns and normalizes instruction comments to lowercase `; ...` form |
 | `pre-commit` | Formats staged assembly source before a commit |
 | `dis6809.py` | Disassembles 6809 machine code for reverse-engineering work |
 | `os9dis.py` | Disassembles OS-9 modules and data structures |

@@ -20,6 +20,7 @@ Only edit `myrecipe/recipe.mak` for common customization:
 - `RECIPE` to change output name
 - `CMDS_EXTRA` to add disk commands
 - `BOOTMODS_EXTRA` to add boot modules
+- `FUJINET=1` to include the FujiNet utility commands
 - `AFLAGS_EXTRA` / `LFLAGS_EXTRA` for extra flags
 
 ## Prerequisites
@@ -66,6 +67,19 @@ which helps faster-than-real-time MAME runs avoid rapid repeated keys. Leave
 `KEYRPT` unset to keep the normal startup file. `MAME=1` is accepted as a
 compatibility alias for `KEYRPT=0`.
 
+Optional features:
+
+- add `FUJINET=1` in `recipe.mak` to include:
+  - `fngetdevfile`
+  - `fnsetdevfile`
+  - `fnlisthosts`
+  - `fngethost`
+  - `fnsethost`
+  - `fnlistdevs`
+  - `fnmount`
+  - `fnmountimg`
+  - `fnstatus`
+
 ## DriveWire Build ([`coco3/dw`](dw/))
 
 ```sh
@@ -83,6 +97,10 @@ This recipe defaults to:
 - DriveWire virtual terminal modules (`scdwv` + `n*` descriptors)
 - `startup.dw`
 - DriveWire disk format settings (`$(OS9FORMAT_DW)`)
+
+Optional features:
+
+- add `FUJINET=1` in `recipe.mak` to include the FujiNet utility commands listed above
 
 ## Mega DriveWire Build ([`coco3/dw_mega`](dw_mega/))
 
@@ -111,6 +129,11 @@ software and story files fetched from pinned upstream revisions:
   `zork1.dat`, `zork2.dat`, and `zork3.dat`
 - the Version 3 [`drpitre/raakatu`](https://github.com/drpitre/raakatu) story,
   installed as `/GAMES/INFOCOM/raakatu.z3`
+- the OS-9 Level 2 BBS from `nitros9-apps/os9l2bbs`, with its commands merged
+  into `/CMDS` and its menus, configuration, and data installed under `/BBS`;
+  `inetd` serves its login on TCP port 6909 by default
+- the native C compiler from `nitros9-languages/ccompiler`, including its
+  commands, libraries, headers, and source distribution
 
 The upstream checkouts are kept in `dw_mega/.external` and removed by `make
 clean`. The pinned `FORTH09_REF`, `INFOCOM_REF`, and `RAAKATU_REF` values make
@@ -125,7 +148,14 @@ forth09
 forth09 </dd/FORTH09/forthtest.4th
 infocom /dd/GAMES/INFOCOM/zork1.dat
 infocom /dd/GAMES/INFOCOM/raakatu.z3
+chd /dd/BBS
+runbbs
 ```
+
+From another computer, connect directly to the BBS with a character-at-a-time
+raw TCP terminal, such as Serial on macOS, on port 6909. A Telnet client is not
+suitable because its protocol negotiation interferes with the BBS input. Set
+`BBS_PORT` on the `make` command line to select another port.
 
 `INFOCOM_STORY_DIR` and `INFOCOM_STORIES` may be overridden to package another
 legally obtained Version 3 story-file collection:

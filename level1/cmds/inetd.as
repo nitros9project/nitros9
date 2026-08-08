@@ -12,6 +12,10 @@
 *
 *   3      2011/08/07  Boisy G. Pitre
 * Fixed bug where conf file wasn't being processed correctly.
+*
+*   4      2026/07/21  Codex
+* Apply interactive terminal options after installing the network path as
+* standard input, output, and error.
 
                     nam       inetd
                     ttl       internet daemon
@@ -21,7 +25,7 @@ type                equ       Prgrm
 lang                equ       Objct
 attr                equ       ReEnt
 rev                 equ       $00
-edition             equ       3
+edition             equ       4
 stack               equ       200
                     endsect
 
@@ -41,6 +45,7 @@ childnetpath        rmb       1
 netpath             rmb       1
 targetprog          rmb       128
 targetparams        rmb       128
+targetparamlen      rmb       1
 tmodeparamlen       rmb       1
 tmodeparams         rmb       128
                     endsect
@@ -359,22 +364,26 @@ prgloop             lda       ,x+
 sethi               lda       -1,y
                     ora       #$80
                     sta       -1,y
-copypar             clr       tmodeparamlen,u
+copypar             clr       targetparamlen,u
+                    clr       tmodeparamlen,u
                     leay      targetparams,u
 parloop             lda       ,x+
                     sta       ,y+
+                    inc       targetparamlen,u
                     cmpa      #',
                     beq       procopts
                     cmpa      #C$CR
                     beq       gotprocparms
+                    bra       parloop
 
-procopts
+procopts            lda       #C$CR
+                    sta       -1,y
                     leay      tmodeparams,u
 procoptsloop        lda       ,x+
                     sta       ,y+
-                    inc       targetparams,u
+                    inc       tmodeparamlen,u
                     cmpa      #C$CR
-                    beq       procoptsloop
+                    bne       procoptsloop
 
 gotprocparms
                     ifne      DEBUG
@@ -410,23 +419,9 @@ savechild
                     tfr       x,y
                     lbsr      TCPJoin
                     leas      8,s
-                    bcc       turnonechoalf
+                    bcc       duper
                     os9       I$Close
                     lbra      forkex
-
-turnonechoalf
-                    ifne      DEBUG
-                    pshs      d
-                    lbsr      PRINTS
-                    fcc       /Turning on PD.EKO and PD.ALF/
-                    fcb       C$CR
-                    fcb       $00
-                    puls      d
-                    endc
-                    lbsr      SetEchoOn
-                    lbcs      ret
-                    lbsr      SetAutoLFOn
-                    lbcs      ret
 
 * dup paths
 duper
@@ -469,15 +464,35 @@ duper
                     os9       I$Dup
                     lbcs      errex
 
+* Configure the installed standard input path for interactive line input.
+* Doing this after the dup sequence guarantees that path 0 is the path that
+* the child process will inherit.
+turnonechoalf
+                    clra
+                    lbsr      SetEchoOn
+                    lbcs      restorepaths
+                    clra
+                    lbsr      SetAutoLFOn
+                    lbcs      restorepaths
+                    ifne      DEBUG
+                    pshs      d
+                    lbsr      PRINTS
+                    fcc       /Enabled PD.EKO and PD.ALF on stdin/
+                    fcb       C$CR
+                    fcb       $00
+                    puls      d
+                    endc
+
 * fork tmode process if tmode param length > 0
                     tst       tmodeparamlen,u
                     beq       forkchild
                     pshs      u
                     leax      tmode,pcr
+                    clra
+                    ldb       tmodeparamlen,u
+                    tfr       d,y
                     leau      tmodeparams,u
                     lda       #Objct
-                    clrb
-                    ldy       #256
                     os9       F$Fork
                     puls      u
                     os9       F$Wait
@@ -486,16 +501,18 @@ duper
 forkchild
                     pshs      u
                     leax      targetprog,u
+                    clra
+                    ldb       targetparamlen,u
+                    tfr       d,y
                     leau      targetparams,u
                     lda       #Objct
-                    clrb
-                    ldy       #256
                     os9       F$Fork
                     puls      u
 * If our F$Fork fails, do not error out...
 *              bcs       ret2
 
 * restore orginal paths
+restorepaths
                     clra
                     os9       I$Close
                     inca

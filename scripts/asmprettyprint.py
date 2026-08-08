@@ -1,4 +1,5 @@
 import argparse
+import re
 import sys
 
 # parameters
@@ -35,6 +36,35 @@ pseudoOpcodes = ['ifp1', 'ifgt', 'iflt', 'ifge', 'ifle', 'ifeq', 'ifne',
 opcodesWithOperandsThatCanHaveSpaces = [
     'ttl', 'fcc', 'fcs'
 ]
+
+# Pseudo-ops and data directives are not executable instructions.  Their
+# trailing text may be an ASCII rendering or directive-specific payload, so
+# only true instruction comments receive the canonical ``; lowercase`` form.
+nonExecutableOpcodes = {
+    'align', 'bsz', 'end', 'endc', 'endm', 'endr', 'ends', 'endsection',
+    'else', 'emod', 'equ', 'export', 'external', 'fcb', 'fcc', 'fcs', 'fdb',
+    'fill', 'if', 'ifeq', 'ifge', 'ifgt', 'ifle', 'iflt', 'ifne', 'ifp1',
+    'ifp2', 'include', 'macro', 'mod', 'nam', 'org', 'pag', 'rept', 'rmb',
+    'section', 'set', 'struct', 'ttl', 'use', 'zmb'
+}
+
+def normalizeInstructionComment(opcode, comment):
+    """Return a canonical inline comment for an executable instruction."""
+    if opcode == "" or comment == "" or opcode.lower() in nonExecutableOpcodes:
+        return comment
+
+    normalized = comment.strip()
+    if normalized.startswith(';'):
+        normalized = normalized[1:].lstrip()
+
+    # Lowercase the initial word while leaving later proper nouns and symbols
+    # untouched.  This handles both ordinary prose (Load -> load) and leading
+    # acronyms (SS.Opt -> ss.Opt).
+    match = re.match(r'^([A-Z]+)', normalized)
+    if match:
+        normalized = match.group(1).lower() + normalized[match.end():]
+
+    return '; ' + normalized
 
 def isEmptyLine(l):
     l.strip()
@@ -100,10 +130,10 @@ def processLine(args, l):
                 opcodeWidth -=2
                 operandWidth -= 2
             # if there's a second token AND the first token takes an operand, the second token is an operand
-            if len(tokens) > startIndex + 1 and opcode not in opcodesWithoutOperands:
+            if len(tokens) > startIndex + 1 and opcode.lower() not in opcodesWithoutOperands:
                 operand = tokens[startIndex + 1]
                 if len(tokens) > startIndex + 2:
-                    if opcode in opcodesWithOperandsThatCanHaveSpaces:
+                    if opcode.lower() in opcodesWithOperandsThatCanHaveSpaces:
                         operand = l.split(None, startIndex + 1)[startIndex + 1]
                     else:
                         comment = l.split(None, startIndex + 2)[startIndex + 2]
@@ -113,22 +143,27 @@ def processLine(args, l):
                 if len(tokens) > startIndex + 1:
                     comment = l.split(None, startIndex + 1)[startIndex + 1]
 
+    comment = normalizeInstructionComment(opcode, comment)
     showLine(label, opcode, operand, comment, labelWidth, opcodeWidth, operandWidth, False)
 
-parser = argparse.ArgumentParser(description='Command line parser.')
+def main():
+    parser = argparse.ArgumentParser(description='Command line parser.')
 
-parser.add_argument('filename')           # positional argument
+    parser.add_argument('filename')           # positional argument
 
-parser.add_argument("--labelWidth", type=int, help="Label width", default=20)
+    parser.add_argument("--labelWidth", type=int, help="Label width", default=20)
 
-parser.add_argument("--opcodeWidth", type=int, help="Opcode width", default=10)
+    parser.add_argument("--opcodeWidth", type=int, help="Opcode width", default=10)
 
-parser.add_argument("--operandWidth", type=int, help="Operand width", default=10)
+    parser.add_argument("--operandWidth", type=int, help="Operand width", default=10)
 
-args = parser.parse_args()
+    args = parser.parse_args()
 
-# Using the 'with' statement ensures that the file is properly closed after its suite finishes.
-with open(args.filename, 'r') as file:
-    for line in file:
-        processLine(args, line)
+    # Using the 'with' statement ensures that the file is properly closed after its suite finishes.
+    with open(args.filename, 'r') as file:
+        for line in file:
+            processLine(args, line)
 
+
+if __name__ == '__main__':
+    main()

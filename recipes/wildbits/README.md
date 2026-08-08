@@ -43,6 +43,8 @@ export NITROS9DIR=/Users/boisy/Projects/coco-shelf/nitros9
 - [`l2/`](l2/) builds Wildbits Level 2 disk images
 - [`l1dw/`](l1dw/) builds Wildbits Level 1 DriveWire disk images
 - [`l2dw/`](l2dw/) builds Wildbits Level 2 DriveWire disk images
+- [`l2_mega/`](l2_mega/) builds an expanded Wildbits Level 2 SD image
+- [`l2dw_mega/`](l2dw_mega/) builds an expanded Wildbits Level 2 DriveWire image
 - [`feu/`](feu/) builds FEU artifacts (`bootfile`, `booter`, flash packages)
 
 Each build directory keeps intermediate artifacts local:
@@ -117,6 +119,28 @@ make
 Primary output:
 
 - `l2_wildbits_dwjr2.dsk` (or `l2_wildbits_dwk2.dsk`, etc.)
+
+## Mega Level 2 Builds
+
+```sh
+cd l2_mega
+make
+
+cd ../l2dw_mega
+make
+```
+
+Primary outputs:
+
+- `l2_wildbits_megajr2.dsk` for SD boot
+- `l2_wildbits_dw_megajr2.dsk` for DriveWire boot
+
+Both mega images add the same expanded software collection as
+[`coco3/dw_mega`](../coco3/dw_mega/): the native C compiler, Forth09, the
+Infocom interpreter with Zork I-III and Raaka-Tu, and the OS-9 Level 2 BBS.
+They require `git`, CMOC, the CMOC OS-9 runtime, `nitros9-apps`, and
+`nitros9-languages`; see the CoCo 3 mega recipe documentation for configuration
+and command-line overrides.
 
 ## FEU Build ([`wildbits/feu`](feu/))
 

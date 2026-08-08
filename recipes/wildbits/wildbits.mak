@@ -32,20 +32,21 @@ AFLAGS += $(AFLAGS_EXTRA)
 LFLAGS += -L $(LIBDIR) -lwildbitsl$(LEVEL) -lnet -lalib
 LFLAGS += $(LFLAGS_EXTRA)
 
-SD_RBF = dds0
-ifneq ($(filter $(PLATFORM),jr k),)
-SD_RBF += s0
-else
-SD_RBF += s0 s1
+FUJINET ?= 0
+
+BOOT_RBF ?= dds0
+SD_RBF = s0
+ifeq ($(filter $(PLATFORM),jr k),)
+SD_RBF += s1
 endif
 
-RBF = rbf rbsuper llwbsd rbmem $(SD_RBF) f0 f1 $(RBF_EXTRA)
+RBF = rbf rbsuper llwbsd rbmem $(BOOT_RBF) $(SD_RBF) f0 f1 $(RBF_EXTRA)
 SCF = scf vtio $(KEYSUB) term bannerfont palette $(SCF_EXTRA)
 ifeq ($(LEVEL),2)
 SCF += mousedrv_ps2
 endif
 DRIVEWIRE_RBF = rbdw x0 x1 x2 x3
-DRIVEWIRE_SCF = scdwv n1 n2 n3 n4 n5
+DRIVEWIRE_SCF = scdwv n n1 n2 n3 n4 n5
 DRIVEWIRE = dwio_serial $(DRIVEWIRE_RBF) $(DRIVEWIRE_SCF)
 DRIVEWIRE_BOOTMODS = dwio_serial $(PIPE) $(SC16550)
 PIPE = pipeman piper pipe
@@ -72,6 +73,12 @@ BOOTMODS = krn krnp2 ioman init \
 endif
 
 SHELLMODS = shellplus date deiniz echo iniz link load save unlink
+FUJINET_CMDS = fngetdevfile fnsetdevfile fnlisthosts fngethost fnsethost \
+	fnlistdevs fnmount fnmountimg fnstatus
+ifeq ($(FUJINET),1)
+LFLAGS += -lfuji
+CMDS_EXTRA += $(FUJINET_CMDS)
+endif
 CMDS += $(STDCMDS) shell \
 	bootos9 scfg wbinfo wbreset modem \
 	inetd telnet dw httpd $(BASIC09) $(BF) \
@@ -88,7 +95,9 @@ endif
 
 BASIC09 = basic09 runb inkey syscall wild
 BASIC09_FILES = $(wildcard $(LANGUAGES)/basic09/samples/*)
-RUNB_SHA256 = 605c7a9f0fde3fed21f7672f5c634f7c43b440f385f088e593f8acca5fccba31
+BASIC09_BIN = $(LANGUAGES)/basic09/basic09_6809
+RUNB_BIN = $(LANGUAGES)/basic09/runb_6809
+RUNB_SHA256 = 20ff5a997ec0e55f6aec1e37d92be49062d6c35a66e4b5404d9e680fc0783bbb
 STARTUP = $(LEVEL2)/wildbits/startup
 FEU_STARTUP = feu.startup
 SCRIPTS_DIR = $(LEVEL1)/wildbits/scripts
@@ -109,12 +118,13 @@ BACKGROUNDS = clutbeach clutgrid clutmeadow clutmetal clutspace clutstone clutst
 	testpixmapbm0 testpixmapbm1 testpixmapbm2
 
 ifeq ($(LEVEL),2)
-SYS_DIR = $(LEVEL2)/wildbits/sys
+SYS_DIR = .sys
 SYS_RECIPE = $(NITROS9DIR)/recipes/support/wildbits-level2-system.mak
 SYS_TEXT_FILES = $(LEVEL2)/sys/motd $(LEVEL1)/sys/errmsg $(LEVEL1)/sys/password \
 	$(SYS_DIR)/helpmsg $(SYS_DIR)/inetd.conf
 SYS_BIN_FILES = $(addprefix $(SYS_DIR)/,stdfonts stdpats_2 stdpats_4 stdpats_16 stdptrs \
 	ibmedcfont isolatin1font)
+CLEAN_DIRS += $(SYS_DIR)
 else
 SYS_DIR = $(LEVEL1)/wildbits/sys
 SYS_RECIPE = $(NITROS9DIR)/recipes/support/level1-system.mak
@@ -126,6 +136,9 @@ endif
 all: libs $(DSKIMAGE)
 
 LIB_NAMES = libwildbitsl$(LEVEL).a libnet.a libalib.a
+ifeq ($(FUJINET),1)
+LIB_NAMES += libfuji.a
+endif
 include ../../libs.mak
 
 $(MODDIR)/sysgo: $(OBJDIR)/sysgo.o | $(MODDIR)
@@ -135,6 +148,7 @@ $(MODDIR)/sysgo: $(OBJDIR)/sysgo.o | $(MODDIR)
 $(OBJDIR)/sysgo.o: sysgo.as | $(OBJDIR)
 .PHONY: wildbits-sys-assets
 wildbits-sys-assets:
+	@mkdir -p $(SYS_DIR)
 	$(MAKE) -C $(SYS_DIR) -f $(SYS_RECIPE)
 	$(MAKE) -C $(FONT_DIR) -f $(NITROS9DIR)/recipes/support/wildbits-fonts.mak
 	$(MAKE) -C $(BACKGROUND_DIR) -f $(NITROS9DIR)/recipes/support/wildbits-backgrounds.mak
@@ -152,9 +166,9 @@ bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(PADUP)
 
 ifeq ($(LEVEL),2)
-$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets
+$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS)
 else
-$(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets
+$(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS)
 endif
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
@@ -190,6 +204,7 @@ endif
 	$(foreach file,$(TESTS),$(CPL) $(TESTS_DIR)/$(file) $@,TESTS;)
 	$(MAKDIR) $@,FEU
 	$(CPL) $(FEU_STARTUP) $@,FEU/startup
+	$(call RECIPE_INSTALL,$@)
 
 # Command rules
 $(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
@@ -207,8 +222,11 @@ $(MODDIR)/xmode: xmode.asm | $(MODDIR)
 $(MODDIR)/tmode: xmode.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DTMODE=1
 
-$(MODDIR)/runb: runb.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@
+$(MODDIR)/basic09: $(BASIC09_BIN) | $(MODDIR)
+	$(CP) $< $@
+
+$(MODDIR)/runb: $(RUNB_BIN) | $(MODDIR)
+	$(CP) $< $@
 	@printf '%s  %s\n' "$(RUNB_SHA256)" $@ | shasum -a 256 -c -
 
 ifeq ($(LEVEL),2)
@@ -372,7 +390,7 @@ $(MODDIR)/z14: scdwvdesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=30
 
 clean:
-	$(RM) *.list *.map bootfile *.dsk buildinfo feu.startup
-	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
+	$(RM) *.list *.map bootfile *.dsk buildinfo feu.startup $(CLEAN_EXTRA)
+	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR) $(CLEAN_DIRS)
 
 .PHONY: all clean libs

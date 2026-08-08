@@ -145,6 +145,59 @@ OP_SERSETSTAT       equ       'D+128
 SS.Timer            equ       $81
 SS.EE               equ       $82
 
+* FujiNet opcodes (FujiNet firmware acting as a DriveWire server)
+OP_FUJI             equ       $E2                 FujiNet 'fuji' device command follows
+OP_FUJINET          equ       $E3                 FujiNet network device command follows
+
+* SS.Fuji SetStat (scdwv): atomic FujiNet bus transaction
+* R$X = ptr to [response length:2][raw request bytes...]
+* R$Y = length of the block at R$X (2 + request length)
+* R$U = ptr to response buffer (receives response-length bytes)
+* The driver writes the request and reads the raw response in one
+* IRQ-masked window so the virtual serial poller cannot interleave.
+SS.Fuji             equ       $E2
+FUJI$MaxTran        equ       512                 largest request or response SS.Fuji moves
+
+* FujiNet device commands (byte following OP_FUJI on the wire)
+FUJI$Reset          equ       $FF
+FUJI$GetSSID        equ       $FE
+FUJI$ScanNetworks   equ       $FD
+FUJI$GetScanResult  equ       $FC
+FUJI$SetSSID        equ       $FB
+FUJI$GetWifiStatus  equ       $FA
+FUJI$MountHost      equ       $F9
+FUJI$MountImage     equ       $F8
+FUJI$OpenDir        equ       $F7
+FUJI$ReadDirEntry   equ       $F6
+FUJI$CloseDir       equ       $F5
+FUJI$ReadHostSlots  equ       $F4
+FUJI$WriteHostSlots equ       $F3
+FUJI$ReadDevSlots   equ       $F2
+FUJI$WriteDevSlots  equ       $F1
+FUJI$UnmountImage   equ       $E9
+FUJI$GetAdapterCfg  equ       $E8
+FUJI$NewDisk        equ       $E7
+FUJI$UnmountHost    equ       $E6
+FUJI$SetDevicePath  equ       $E2
+FUJI$GetDevicePath  equ       $DA
+FUJI$MountAll       equ       $D7
+FUJI$Status         equ       $53
+FUJI$GetError       equ       $02                 fetch 1-byte error status of last command
+FUJI$GetResponse    equ       $01                 fetch response data of last command
+FUJI$Ready          equ       $00                 device ready check (1-byte reply, nonzero=ready)
+
+* FUJI$GetError reply values
+FUJI$E.OK           equ       $01                 last command succeeded
+FUJI$E.Err          equ       $90                 general failure
+
+* FujiNet slot geometry (must match firmware fnConfig.h)
+FUJI$HostSlots      equ       8                   number of host slots
+FUJI$HostSlotSz     equ       32                  bytes per host slot
+FUJI$DevSlots       equ       8                   number of device (disk) slots
+FUJI$DevSlotSz      equ       38                  hostSlot,mode,filename[36]
+FUJI$DevFileSz      equ       36                  filename field size
+FUJI$AdpCfgSz       equ       140                 sizeof AdapterConfig
+
 * for dw vfm
 OP_VFM              equ       'V+128
 

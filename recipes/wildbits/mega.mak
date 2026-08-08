@@ -1,23 +1,18 @@
-# CoCo 3 DriveWire "mega" recipe.
+# Shared Wildbits Level 2 "mega" payload.
 #
-# Start with the standard CoCo 3 DriveWire configuration, then fetch and build
-# maintained external OS-9 software at pinned revisions.
+# Leaf recipes select the boot medium, then include this file to fetch, build,
+# and install the same expanded OS-9 software collection as coco3/dw_mega.
 
-include ../dw/recipe.mak
-
-RECIPE = coco3_dw_mega
 TELNET_PORT ?= 6809
 HTTPD_PORT ?= 8809
 BBS_PORT ?= 6909
-SCF += scdwp.dr p_scdwp.dd \
-	midi_scdwv.dd \
-	z1_scdwv.dd z2_scdwv.dd z3_scdwv.dd \
-	z4_scdwv.dd z5_scdwv.dd z6_scdwv.dd z7_scdwv.dd
+SCF_EXTRA += scdwp p_scdwp midi z1 z2 z3 z4 z5 z6 z7
 CLEAN_DIRS += .external
 CLEAN_EXTRA += .inetd.conf
 
 EXTERNAL_DIR ?= .external
 COCO_SHELF ?= $(abspath $(NITROS9DIR)/..)
+WILDBITS_MEGA_DIR = $(NITROS9DIR)/recipes/wildbits
 
 INFOCOM_REPO ?= https://github.com/rlucente-retro/infocom-os9-port.git
 INFOCOM_REF ?= 23c88a7d40f0591c451ca53fbe7887a30f559718
@@ -57,42 +52,18 @@ INFOCOM_STORY_DIR ?= $(NITROS9_APPS_DIR)/cpm/software/zork
 INFOCOM_STORIES ?= ZORK1.DAT ZORK2.DAT ZORK3.DAT
 INFOCOM_STORY_FILES = $(addprefix $(INFOCOM_STORY_DIR)/,$(INFOCOM_STORIES))
 
-$(MODDIR)/midi_scdwv.dd: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=14
-
-$(MODDIR)/z1_scdwv.dd: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=17
-
-$(MODDIR)/z2_scdwv.dd: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=18
-
-$(MODDIR)/z3_scdwv.dd: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=19
-
-$(MODDIR)/z4_scdwv.dd: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=20
-
-$(MODDIR)/z5_scdwv.dd: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=21
-
-$(MODDIR)/z6_scdwv.dd: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=22
-
-$(MODDIR)/z7_scdwv.dd: scdwvdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=23
-
 CMDS_EXTRA += forth09 infocom
 RECIPE_DEPS += $(FORTH09_CMD) $(FORTH09_TEST) $(INFOCOM_CMD) \
 	$(INFOCOM_STORY_FILES) $(RAAKATU_STORY) $(OS9L2BBS_DSK) \
-	$(CCOMPILER_DSK) bbslogin .inetd.conf
+	$(CCOMPILER_DSK) $(WILDBITS_MEGA_DIR)/bbslogin .inetd.conf
 
-.inetd.conf: inetd.conf
+.inetd.conf: $(WILDBITS_MEGA_DIR)/inetd.conf
 	@sed -e 's/%TELNET_PORT%/$(TELNET_PORT)/' \
 		-e 's/%HTTPD_PORT%/$(HTTPD_PORT)/' \
 		-e 's/%BBS_PORT%/$(BBS_PORT)/' $< > $@
 
 # The shared image builder copies commands from $(MODDIR). Link the external
-# build products there so they go through the normal copy and attribute path.
+# build products there so they follow the normal copy and attribute path.
 $(MODDIR)/infocom: $(INFOCOM_CMD) | $(MODDIR)
 	ln -sf $(abspath $<) $@
 
@@ -186,7 +157,7 @@ define RECIPE_INSTALL
 	done
 	$(MAKDIR) $(1),BBS
 	$(OS9) dsave -e -r $(OS9L2BBS_DIR)/bbs $(1),BBS
-	$(CPL) bbslogin $(1),BBS/bbslogin -r
+	$(CPL) $(WILDBITS_MEGA_DIR)/bbslogin $(1),BBS/bbslogin -r
 	$(OS9ATTR_EXEC) $(1),BBS/bbslogin
 	@find $(OS9L2BBS_DIR)/bbs -type f -print | while IFS= read -r file; do \
 		rel=$${file#$(OS9L2BBS_DIR)/bbs/}; \
