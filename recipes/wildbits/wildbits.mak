@@ -33,6 +33,7 @@ LFLAGS += -L $(LIBDIR) -lwildbitsl$(LEVEL) -lnet -lalib
 LFLAGS += $(LFLAGS_EXTRA)
 
 FUJINET ?= 0
+FM ?= 0
 
 BOOT_RBF ?= dds0
 RBF = rbf rbsuper llwbsd rbmem $(BOOT_RBF) s1 f0 f1 $(RBF_EXTRA)
@@ -73,6 +74,11 @@ FUJINET_CMDS = fngetdevfile fnsetdevfile fnlisthosts fngethost fnsethost \
 ifeq ($(FUJINET),1)
 LFLAGS += -lfuji
 CMDS_EXTRA += $(FUJINET_CMDS)
+endif
+FM_CMDS = fm hexed pixview
+ifeq ($(FM),1)
+LFLAGS += -lfm
+CMDS_EXTRA += $(FM_CMDS)
 endif
 CMDS += $(STDCMDS) shell \
 	bootos9 scfg wbinfo wbreset modem \
@@ -134,6 +140,7 @@ LIB_NAMES = libwildbitsl$(LEVEL).a libnet.a libalib.a
 ifeq ($(FUJINET),1)
 LIB_NAMES += libfuji.a
 endif
+
 include ../../libs.mak
 
 $(MODDIR)/sysgo: $(OBJDIR)/sysgo.o | $(MODDIR)
