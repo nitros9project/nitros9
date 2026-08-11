@@ -1062,7 +1062,12 @@ IDelete             pshs      b         ; save delete call selector
                     ldb       #WRITE.   ; delete requires write access
                     bra       AllocCallFMgr ; allocate descriptor and call file manager
 
-IDeletX             ldb       #7        ; delete offset in file manager
+IDeletX
+                  IFEQ    Level-1
+                    ldb       #I$Delete ; raw I/O call code $87 for Level 1
+                  ELSE
+                    ldb       #7        ; delete offset in file manager for Level 2
+                  ENDC
                     pshs      b         ; save file manager delete-entry selector
                     ldb       R$A,u     ; get caller's access mode/path context
                     bra       AllocCallFMgr ; allocate descriptor and dispatch delete
