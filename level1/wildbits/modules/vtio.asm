@@ -573,9 +573,7 @@ Write
                     sta       VKY_TXT_CURSOR_X_REG_L,x
                     lda       V.CurRow,u          get the current row in A
                     sta       VKY_TXT_CURSOR_Y_REG_L,x
-                    lda       V.FBCol,u           set hardware cursor color register
-                    sta       VKY_TXT_CURSOR_COLR_REG,x
-                    ldb       V.WWidth,u          and the current column in B
+                    ldb       V.WWidth,u          and the screen width in B
                     mul                           get the product
                     addb      V.CurCol,u          add it to the current column
                     adca      #0                  add in the carry in A
@@ -607,7 +605,12 @@ RawWrite            pshs      a                   else save the character to wri
                     stb       MAPSLOT             set the MMU block number to the text attributes block
                     lda       V.FBCol,u           get the current foreground/background color
                     sta       ,x                  save it at the same location in the text attributes
-                    lda       ,s+                 recover the initial MMU slot value
+                    ldb       V.CurCol,u          get the current column
+                    incb                          next column on row
+                    cmpb      V.WWidth,u          would write-ahead exceed the current row?
+                    bge       l@                  skip write-ahead if at right margin
+                    sta       1,x                 pre-color next cell on same row for cursor
+l@                  lda       ,s+                 recover the initial MMU slot value
                     sta       MAPSLOT             and restore it
                     puls      cc                  recover CC (this may unmask interrupts)
                     ldd       V.CurRow,u          get the current row and column
