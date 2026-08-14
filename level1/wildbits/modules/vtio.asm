@@ -568,18 +568,21 @@ Write
                     ldx       V.EscVect,u         get the escape vector address
                     jsr       ,x                  branch to it
                     pshs      d                   save D since we modify it here
-                    lda       V.CurCol,u          get the current row in A
+                    lda       V.CurCol,u          get the current column in A
                     ldx       #TXT.Base
                     sta       VKY_TXT_CURSOR_X_REG_L,x
                     lda       V.CurRow,u          get the current row in A
                     sta       VKY_TXT_CURSOR_Y_REG_L,x
+                    lda       V.FBCol,u           set hardware cursor color register
+                    sta       VKY_TXT_CURSOR_COLR_REG,x
                     ldb       V.WWidth,u          and the current column in B
                     mul                           get the product
                     addb      V.CurCol,u          add it to the current column
                     adca      #0                  add in the carry in A
                     ldx       #G.ScrStart         point to the start of the screen
                     leax      d,x                 point X to the current position
-                    puls      d,pc                restore register and return
+                    andcc     #^Carry             clear carry flag (no error)
+                    puls      d,pc                restore registers and return
 
 DefaultHandler      cmpa      #C$SPAC             is the character a space or greater?
                     lbcs      ChkESC              branch if not; go check for escape codes
@@ -604,10 +607,7 @@ RawWrite            pshs      a                   else save the character to wri
                     stb       MAPSLOT             set the MMU block number to the text attributes block
                     lda       V.FBCol,u           get the current foreground/background color
                     sta       ,x                  save it at the same location in the text attributes
-                    cmpx      #G.ScrStart+(80*60)-1 are we at the end of largest possible screen?
-                    bcc       l@                  branch if so
-                    sta       1,x                 and the next location (for the cursor)
-l@                  lda       ,s+                 recover the initial MMU slot value
+                    lda       ,s+                 recover the initial MMU slot value
                     sta       MAPSLOT             and restore it
                     puls      cc                  recover CC (this may unmask interrupts)
                     ldd       V.CurRow,u          get the current row and column
@@ -867,16 +867,16 @@ Do05XX              cmpa      #$20
                     beq       cchar@
                     cmpa      #$23
                     beq       crate@
-                    bra       ResetHandler
+                    lbra      ResetHandler
 crate@              leax      CurRate,pcr
                     bra       c@
 cchar@              leax      CurChar,pcr
                     bra       c@
-                    bne       ResetHandler
+                    lbne      ResetHandler
 hide@               lbsr      CurOff
-                    bra       ResetHandler
+                    lbra      ResetHandler
 show@               lbsr      CurOn
-                    bra       ResetHandler
+                    lbra      ResetHandler
 
 ;;; CurRate
 ;;;
@@ -898,7 +898,7 @@ CurRate             ldx       #TXT.Base
                     pshs      a                   save the value to OR in on the stack
                     orb       ,s+                 OR it in with the contents of the register
                     stb       VKY_TXT_CURSOR_CTRL_REG,x save it to the hardware
-                    bra       ResetHandler        reset the handler
+                    lbra      ResetHandler        reset the handler
 
 ;;; CurChar
 ;;;
@@ -911,7 +911,7 @@ CurRate             ldx       #TXT.Base
 ;;; CHR can be any character from 0 - 255.
 CurChar             ldx       #TXT.Base
                     sta       VKY_TXT_CURSOR_CHAR_REG,x
-                    bra       ResetHandler
+                    lbra      ResetHandler
 
 NoOp
                     rts
@@ -941,8 +941,19 @@ EraseChar           std       V.CurRow,u          save D to the current row and 
                     addb      V.CurCol,u          add in the current column
                     adca      #0                  add in the carry bit
                     ldx       #G.ScrStart         point to the start of the screen
-                    leax      d,x                 advance to the calculated osition
+                    leax      d,x                 advance to the calculated position
+                    pshs      cc                  save caller's CC
+                    orcc      #IntMasks           mask interrupts
+                    lda       MAPSLOT             save map slot value
+                    ldb       #$C2                text MMU block
+                    stb       MAPSLOT
                     clr       1,x                 erase the character
+                    ldb       #$C3                text attributes MMU block
+                    stb       MAPSLOT
+                    ldb       V.FBCol,u
+                    stb       1,x                 restore active attribute at erased position
+                    sta       MAPSLOT             restore map slot value
+                    puls      cc                  restore caller's CC
 leave               rts                           return
 
 CurDown             ldd       V.CurRow,u          get the current row and column
