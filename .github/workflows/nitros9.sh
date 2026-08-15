@@ -25,3 +25,5 @@ make -C recipes/picothing/l1
 make -C recipes/picothing/l1dw
 make -C recipes/picothing/l2
 make -C recipes/picothing/l2dw
+make -C recipes/picothing/l2_mega
+make -C recipes/picothing/l2dw_mega
