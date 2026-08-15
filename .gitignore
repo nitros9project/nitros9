@@ -3,6 +3,9 @@ default.proraw
 # macOS desktop services storage file
 .DS_Store
 
+# JetBrains IDE project files
+.idea/
+
 # Build intermediates
 .mods/
 .obj/
