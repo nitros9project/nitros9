@@ -196,6 +196,7 @@ endif
 	$(OS9COPY) $(addprefix $(FONT_DIR)/,$(FONTS)) $@,SYS/fonts
 	$(MAKDIR) $@,SYS/backgrounds
 	$(OS9COPY) $(addprefix $(BACKGROUND_DIR)/,$(BACKGROUNDS)) $@,SYS/backgrounds
+	$(OS9ATTR_EXEC) $(foreach file,$(BACKGROUNDS),$@,SYS/backgrounds/$(file))
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
