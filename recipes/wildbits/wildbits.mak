@@ -228,15 +228,9 @@ $(MODDIR)/tmode: xmode.asm | $(MODDIR)
 $(MODDIR)/basic09: $(BASIC09_BIN) | $(MODDIR)
 	$(CP) $< $@
 
-$(BASIC09_BIN):
-	$(MAKE) -C $(LANGUAGES)/basic09 basic09_6809
-
 $(MODDIR)/runb: $(RUNB_BIN) | $(MODDIR)
 	$(CP) $< $@
 	@printf '%s  %s\n' "$(RUNB_SHA256)" $@ | shasum -a 256 -c -
-
-$(RUNB_BIN):
-	$(MAKE) -C $(LANGUAGES)/basic09 runb_6809
 
 ifeq ($(LEVEL),2)
 $(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1_MODS)) | $(MODDIR)
