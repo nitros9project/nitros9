@@ -229,14 +229,14 @@ x@                  rts                           Return to the caller
 
 MapRelPicBlk        addb      <bmblock
                     cmpb      <currBlk
-                    beq       exit@               Block is already mapped in
-                    stb       <currBlk
+                    beq       exit@               Assume block is already mapped in
+                    stb       <currBlk            Save new block #
                     pshs      u                   F$ClrBlk will destroy U, so push it
-                    ldu       <mapaddr
-                    cmpu      #-1
-                    beq       n@
-                    ldb       #1
-                    os9       F$ClrBlk
+                    ldu       <mapaddr            Get currently mapped block address
+                    cmpu      #-1                 No block currently mapped in
+                    beq       n@                  If no block is mapped in, no block to clear out
+                    ldb       #1                  Prepare to clear 1 block out of bitmap screen
+                    os9       F$ClrBlk            Clear currently mapped block out
 n@                  puls      u                   Restore U from stack                   
                     ldb       <currBlk
                     clra
@@ -255,7 +255,6 @@ exit@               rts
 
 * Convert PX/PY into relative 8K block #
 * and offset into that block.
-* 
 * Then add PX, divide by 32 to get 8K block of the pixel.
 GetXYBlk            pshs      d
                     clr       <blkadj
@@ -282,8 +281,6 @@ GetXYBlk            pshs      d
                     stb       <blkadj
                     puls      b
 h@                  leas      2,s                 Cleanly pop both CC regs from stack
-*                    puls      cc
-*                    puls      cc
                     tfr       d,x
                     lsra
                     lsra
