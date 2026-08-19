@@ -21,9 +21,7 @@ LFLAGS += -L $(LIBDIR) -lwildbitsl$(LEVEL) -lnet -lalib
 KERNEL = krn krnp2 ioman init
 RBF = rbf rbsuper llwbsd rbmem dds0 s0 s1 f0 f1
 SCF = scf vtio $(KEYSUB) term bannerfont palette
-DRIVEWIRE_RBF = rbdw x0 x1 x2 x3
-DRIVEWIRE_SCF = scdwv n1 n2 n3 n4 n5
-DRIVEWIRE = dwio_serial $(DRIVEWIRE_RBF) $(DRIVEWIRE_SCF)
+DRIVEWIRE = dwio_serial rbdw x0 x1 x2 x3
 PIPE = pipeman piper pipe
 SC16550 = sc16550 t0_sc16550
 CLOCK = clock clock2_wildbits
@@ -40,6 +38,7 @@ $(OBJDIR)/sysgo.o: sysgo.as
 BOOTMODS = $(KERNEL) \
 	$(SCF) \
 	$(RBF) \
+	$(DRIVEWIRE) \
 	$(CLOCK) \
 	sysgo shell_21 \
 	display echo wbreset \
