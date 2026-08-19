@@ -204,7 +204,8 @@ c@                  clr       ,x+
 
 Init2               lda       SYS0_MACHINE_ID
                     cmpa      #$1A                 at this time the Jr2 doesn't have the WizFi Interrupt
-                    beq       InstallTimer0
+                    bra       InstallTimer0
+*                    beq       InstallTimer0
 InstallWizIRQ       lda       >INT_MASK_3          else get the interrupt mask byte
                     anda      #^INT_WIZFI          enable the WizFi interrupt
                     sta       >INT_MASK_3          and save it back
@@ -290,8 +291,8 @@ Term                clrb                          default to no error...
                 *     os9       F$SRtMem
                 *     puls      u                   recover data pointer
 
-                    puls      cc                  recover IRQ/Carry status
-                    puls      dp,pc               restore dummy A, system DP, return
+                    puls      cc,dp                  recover IRQ/Carry status
+                    rts
 
 GetVpPtr            ifgt      Level-1
                     ldx       <D.WZStatTbl
@@ -326,7 +327,8 @@ iService            pshs      cc,dp,x
 
                     lda       SYS0_MACHINE_ID
                     cmpa      #$1A                at this time the Jr2 doesn't have the WizFi Interrupt
-                    beq       ClearTimer0
+                    bra       ClearTimer0
+*                    beq       ClearTimer0
                     lda       #INT_WIZFI          clear pending interrupt
                     sta       >INT_PENDING_3
                     bra       iSendPkt
