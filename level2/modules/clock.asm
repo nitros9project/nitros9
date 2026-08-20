@@ -817,8 +817,12 @@ InitCont
                sta       INT_PENDING_0
                sta       INT_PENDING_1
                sta       INT_MASK_1
-               lda       INT_MASK_0
-               anda      #^INT_VKY_SOF
+* Mask group 0 absolutely, enabling ONLY the SOF tick. The previous
+* read-modify-write inherited stale unmasked bits across soft reboots;
+* an inherited source with no installed handler re-fires forever once
+* DoneIRQ stopped (correctly) masking IRQs after non-clock interrupts.
+* Drivers unmask their own bits when they install their handlers.
+               lda       #^INT_VKY_SOF
                sta       INT_MASK_0
                else
                

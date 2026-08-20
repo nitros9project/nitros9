@@ -68,7 +68,10 @@ BOOTMODS = krn krnp2 ioman init \
 	$(BOOTMODS_EXTRA)
 endif
 
-SHELLMODS = shellplus date deiniz echo iniz link load save unlink
+# date/deiniz must merge AFTER the classic shell pack: with date's module
+# following shellplus in the file, the K2 freezes at keystrokes (hardware
+# A/B 2026-08-20, HYBRID5 vs HYBRID6 — identical bytes, order-only change).
+SHELLMODS = shellplus echo iniz link load save unlink date deiniz
 FUJINET_CMDS = fngetdevfile fnsetdevfile fnlisthosts fngethost fnsethost \
 	fnlistdevs fnmount fnmountimg fnstatus
 ifeq ($(FUJINET),1)

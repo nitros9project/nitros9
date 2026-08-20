@@ -1,0 +1,199 @@
+85b77377b 2025-11-16 Optimize Musica, move to L1/cmds
+7db1420f2 2025-11-17 Enable stereo mode for SIDs in the F256
+f3868ce37 2025-11-21 Speed up View command
+55c7977cf 2025-11-25 Fix bug where sysgo for F256 Level 2 was assembling for Level 1
+af34a6565 2025-11-29 Transplant previous musica.as into old play.as file
+d7be33c9e 2025-11-29 Remove play from l1/f256/cmds/makefile
+d7547dd9d 2025-11-30 Improvements and Optimizations to Play
+e87134399 2025-12-03 Improve experience with Lyra songs in Play command
+7ce6bf3ea 2025-12-08 Add Ultimuse III format to Play
+0dca3d162 2025-12-08 Change references of CUR to DEF in WizNet Connection script
+82034ae67 2025-12-13 Improvements and optimizations to Play
+d98d84984 2025-12-18 A few optimizations to rbmem
+bc7b349b6 2025-12-08 Modify sc16550.asm so that it uses defs from f256.d
+7c8ac2e3e 2025-12-13 Improvements and optimizations to Play
+74de3d274 2025-12-13 Improvements and optimizations to Play as v15
+63fd39f19 2025-12-29 Merge branch 'main' into f256/sc16550
+6d0e6e3cb 2026-01-03 Merge branch 'main' into f256/sc16550
+aa7c099e9 2026-01-04 Add comments from Deek's driver at https://github.com/Deek/MMSerial
+56769ae47 2026-01-05 Add Deek's macro for easy computation of baud rate.
+8951cc27b 2026-01-07 Rename WizFi descriptors to wz0-wz3 and utilize wizfidesc.asm Removed z8-z14 descriptors
+b8094e85e 2026-01-11 Set WizFi echo parameter to $00
+f140427e3 2026-01-09 Rename to Wildbits
+4c10bfb21 2026-01-12 Utilize DeviceMode 0:1 in WizFi descriptor parent
+bb57c7259 2026-01-12 Specify new/correct DeviceMode for each WizFi descriptor
+1c63b4cf4 2026-01-12 Migrate Wildbits sysgo to Level 1 to have one source of truth - Move level2/wildbits/cmds/sysgo.as to level1/wildbits/cmds - Move level2/wildbits/cmds/fcfg.as to level1/wildbits/cmds
+0989b8824 2026-01-18 Updated fcfg for level-1 sysgo
+2be8a7f1f 2026-01-22 revise mousedrv to detect mouse on ps/2 channel
+b5abf8195 2026-01-24 Removed fstatus from level-2 cmds
+f22cf4512 2026-01-24 Added renamed gfxstatus to level-2 cmds
+4f53aa31b 2026-01-24 Added gfxstatus to makefile
+a1c002956 2026-01-24 Removed fcfg from level-1 cmds
+d88f3bf8f 2026-01-24 Added renamed scfg to level-1 cmds
+48d790de1 2026-01-24 Added renamed scfg to makefile
+343affda4 2026-01-24 Updated sysgo for scfg cmd
+bc02bc683 2026-01-20 Make changes to version information - Add a customizable version.mak to root folder of project. - Add a BuildInfo section to init
+52dd276a9 2026-01-25 level1/wildbits/feu/makefile: support parallel build
+62f725ea2 2026-01-18 Adjust wildbits libraries for level 1 and level2.
+604e27c92 2026-01-31 Changes to makefiles to correct build errors
+a9dd77f76 2026-02-01 Updated Wizfitool.b09
+2677f5f8b 2026-02-01 Added bitmap test images
+1d8bf8f9b 2026-02-01 Added bitmap test cluts
+1c9822710 2026-02-01 Updated level2 sys/backgrounds makefile
+ee38ac8a5 2026-01-25 Add use defsfile so sysgo builds for Level 2
+eecc9c890 2026-03-26 recipes: Add build recipe infrastructure; fix .as assemble+link and buildinfo deps
+034cad9ae 2026-03-26 Make init depend on generation of buildinfo Update project-wide .gitignore
+7667502ef 2026-03-28 recipes: Clean up and standardize build recipe makefiles
+7abf86718 2026-01-13 Rename vars to Hungarian Notation
+2534403d5 2026-04-06 Update WizFi Scripts for new Modem command
+20ac69dd3 2026-04-26 wildbits: fix wrong naming in bootfile
+742309196 2026-04-26 wildbits: add basic09 to disk images
+e87c14177 2026-04-26 wildbits: copy startup into disk images
+88742ef0a 2026-04-27 wildbits: keep cursor color in sync after writes
+c0d6cb3e4 2026-04-29 wildbits: clarify vtio block mappings
+eb9e57f24 2026-04-29 wildbits: streamline vtio escape dispatch
+3431af217 2026-04-30 wildbits: build sysgo from platform source
+d8abfb498 2026-04-29 Optimize MMU address calcs
+07dd7d9ac 2026-04-30 wildbits: clarify vtio block mappings
+bf5005ebb 2026-04-30 Cleaned up comments
+5c6d1f100 2026-04-30 wildbits: fix shared recipe command set
+ca5116d2f 2026-05-01 Address issues with including defs files in wild.asm which caused assembler issues
+4ef420ae5 2026-05-01 wildbits: consolidate Level 1 and Level 2 into a single wild.asm
+e2afce63b 2026-05-01 wildbits: copy sys assets into disk images
+84b50ba42 2026-05-01 wildbits: include wild in shared Basic09 command set
+8cdb745e3 2026-05-01 wildbits: copy FEU startup into disk images
+af611a080 2026-05-02 wildbits: include mousedrv in Level 2 boot modules
+d5c00e736 2026-05-02 wildbits: add utilpak1 to shared Level 2 recipe
+f30e9c499 2026-05-08 wildbits: add DriveWire recipes
+5db5bde8b 2026-05-06 fix(wildbits): Correct CurRght column boundary wrap check
+684bd68a8 2026-05-09 Wildbits: View enhancements
+2e75db351 2026-05-30 Added CLUT/Palette Fadein cmd
+a4a394a3d 2026-05-30 Added CLUT/Palette Fadeout cmd
+4a9cb5575 2026-05-31 Added fadeout and fadein to makefile
+fc4ef5ed2 2026-05-31 Added fadein and fadeout to recipes wildbits.mak
+7643338f8 2026-06-08 Added anglefont
+94f491da5 2026-06-08 Added boldfont
+c4e8bd8fa 2026-06-08 Added comicfont
+e127fccdd 2026-06-08 Added comicfont
+f9d01a82e 2026-06-08 Added gothicfont
+fff9951c5 2026-06-08 Added retrofont
+3ccbf9e25 2026-06-08 Added singlefont
+d1e4fc712 2026-06-08 Added uncialfont
+9c21ec0ff 2026-06-08 Added versalsfont
+bbbc89b3f 2026-06-08 Added fonts to makefile
+94c00649d 2026-06-08 Added fonts to wildbits.mak
+82feab3cc 2026-05-29 Prepare modular BASIC09 and RunB source merge
+fcd4b00ab 2026-05-29 Finalize BASIC09 RunB source merge cleanup
+fc026b7d6 2026-06-09 Fix wildbits makefile to depend on basic09 only
+12b899b48 2026-06-09 Add SOL line driver and WizFi modules to wildbits l2 recipe
+53e6e3474 2026-06-09 Fix wizfidesc build and shellplus handling in wildbits recipe
+f1f478f14 2026-06-09 Merge shell utils into shell in wildbits recipe
+a4c579345 2026-06-27 Implement Delete Line ($1F $31) escape sequence in wildbits vtio driver to match CoCo 3 behavior
+360ad0b35 2026-06-29 Address PR reviews: enable Level 1 vtio support, defer Y register preservation, and optimize assembly logic
+9533e9384 2026-07-16 Retire obsolete third-party booters
+3d9e1325b 2026-07-16 Move language packages out of 3rdparty
+41b93645b 2026-07-16 Move game packages to nitros9-games
+94d1ff3e7 2026-07-16 Move application packages to nitros9-apps
+03b3fb548 2026-07-17 Build BASIC09 commands from external sources
+bc3ea4868 2026-07-18 Make recipes the sole build entry points
+621bcb3fd 2026-07-23 Add Wildbits mega SD and DriveWire recipes
+2011bf750 2026-08-01 fujinet: add command-line tools and transaction support
+ddad35968 2026-08-10 Added file manager fm.asm
+619124d02 2026-08-10 Added hex editor hexed.asm
+cb518b080 2026-08-10 Added raw pixmap viewer pixview.asm
+8bf47d7c0 2026-08-10 Updated wildbits.mak added file manager flag FM=1
+f7a9f3d63 2026-08-14 Set exec attributes for pixmap CLUT OS-9 modules
+c19da91a3 2026-08-14 Fix error 127 missing padup256 for l2dw
+05737962a 2026-08-17 Add fallback for wildbits recipe
+a4ae3d030 2026-08-17 Revert "Add fallback for wildbits recipe"
+6e8ed3efa 2026-08-17 Reapply "Add fallback for wildbits recipe"
+fffb23904 2026-05-01 Wildbits Play command clerical tweaks
+126257fba 2026-05-09 Create vtio_dma_scroll.asm
+c503b75bd 2026-08-17 Edit comments in View
+50fc1f8fb 2026-08-17 Temp wildbits.mak fix
+f7a2703ce 2026-08-17 Set WizFi to use timer interrupt on K2
+a79f9acd4 2026-08-19 Add DriveWire block modules to FEU bootfile
+# Step 1: commit 58/115 bf5005ebb 2026-04-30 -> GOOD (boots, no freezes). Bug in 59-115.
+# Step 2: commit 87/115 fc026b7d6 2026-06-09 -> BAD (freezes). Bug in 59-86.
+# Step 3: commit 68/115 5db5bde8b 2026-05-06 -> GOOD (clean). Bug in 69-86.
+# Step 4: commit 78/115 f9d01a82e 2026-06-08 (mid-fonts) -> BISECT_STEP4_JUN08_dwk2.dsk  VERDICT: pending
+# Step 4: VERDICT BAD -> bug in 69-78 window; OS9Boot module diff -> Clock changed by kernel commit 4cdea53a8
+# CONFIRM PAIR: BISECT_CONFIRM_cba089576.dsk (parent, expect GOOD) vs BISECT_CONFIRM_4cdea53a8.dsk (DoPoll carry fix, expect BAD)
+# CONFIRMED 2026-08-20: parent cba089576 clean, 4cdea53a8 freezes. Root cause = DoPoll carry fix exposing uncleared Wildbits IRQ pending source.
+# FIXTEST: HEAD (incl. 4cdea53a8) + absolute INT_MASK_0 fix in clock.asm -> FIXTEST_HEAD_maskfix_dwk2.dsk  VERDICT: pending
+# ===== SESSION STATE 2026-08-20 evening =====
+# A/B results: parent CLEAN | +1nop CLEAN | clrb FREEZE | andcc#$FE FREEZE | orcc#$01 CLEAN (at 4cdea53a8)
+# => poison = carry CLEAR at tick-service exit. orcc fix at HEAD still FREEZES => 2nd regression in 4cdea53a8..HEAD.
+# Suspects: aa0824637 + b8c66829b (Jul 19 Pico-Thing islands). Bisect #2 = fix-anchored.
+# Worktree ~/nitros9-padtest @ a716f7ee2 (aa0824637^) ready; next: apply DoToggle orcc patch, build, test.
+# Disks: CPROBE_carryset (clean), FINALFIX_HEAD_carryset (freezes), earlier steps above.
+# Bisect2-A: a716f7ee2 (pre-islands) + orcc DoToggle fix -> BISECT2_A_preislands_fix_dwk2.dsk  VERDICT: pending
+# Bisect2-B: cf5a5a86e (post-trio) + fix -> CLEAN. 2nd bug in cf5a5a86e..a716f7ee2.
+# Bisect2-C: 9e66c1437 (May30 mid) + fix -> CLEAN. 2nd bug in 9e66c1437..a716f7ee2.
+# Bisect2-D: a4c579345 (Jun27 vtio) + fix -> CLEAN. 2nd bug in a4c579345..a716f7ee2.
+# Bisect2-E: 360ad0b35 (Jun29 vtio Y) + fix -> CLEAN. 2nd bug in 360ad0b35..a716f7ee2 (26).
+# Bisect2-F: 03b3fb548 (Jul17 mid, exodus era) + fix -> BISECT2_F_jul17mid_fix_dwk2.dsk  VERDICT: pending
+# Bisect2-G: 03e6fdbd8 (Jul15 HiRes) + fix -> CLEAN, banner OK. 2nd bug in Jul16-17 exodus window.
+# ===== INTEGRITY AUDIT 2026-08-20 =====
+# HOLLOW DISKS (CMDS=0, SYS=0 -> verdicts VOID): FIXTEST_HEAD_maskfix, LEDPROBE_HEAD, FINALFIX_HEAD_carryset, BISECT2_F.
+# All were recipes-flow builds under the Git-Bash harness; level2-flow disks + BISECT2_A + CPROBE verified complete.
+# => "orcc fix fails at HEAD" is UNPROVEN. Trusted: fix CLEAN through 03e6fdbd8 (Jul15); one trusted FREEZE at a716f7ee2 (Jul19, BISECT2_A, complete disk).
+# NEXT: user builds HEAD+fix disk in their own cygwin flow (tree already has orcc fix) -> trusted HEAD verdict.
+# ===== BOOTLIST ISOLATION (user cygwin builds) =====
+# User recipes bootfile vs clean level2 bootfile: EXTRA = sc16550+t0, scdwv+n..n5, bannerfont+palette; MISSING = wizfi/wz*, SOLdrv/fSOL, c0/c1/s0, sysgo-in-boot.
+# Suspects only ever loaded by freezing disks. Isolate via: make all PLATFORM=k2 SC16550=   (then DRIVEWIRE_SCF=, then SCF banner strip)
+# R1 (user cygwin): SC16550=            -> FREEZES (banner present) => sc16550+t0 EXONERATED
+# R2 pending: SC16550= DRIVEWIRE_SCF=   (strips scdwv n n1..n5; DW disk boot unaffected - rbdw path separate)
+# R2 (user cygwin): SC16550= DRIVEWIRE_SCF=  -> FREEZES => scdwv+n..n5 EXONERATED
+# R3 pending: SC16550= DRIVEWIRE_SCF= SCF="scf vtio keydrv_k2 term"  (strips bannerfont+palette; banner WILL vanish - expected, judge by shell)
+# R3 (user cygwin): SC16550= DRIVEWIRE_SCF= SCF strip -> FREEZES => ALL extra modules EXONERATED
+# 3-way module diff: frozen A(Jul19) has Clock/Krn/RBF/vtio/KrnP2/IOMan/keydrv/SCF BYTE-IDENTICAL to clean G(Jul15); Init functionally identical (version string only).
+# => code modules exonerated for 2nd freeze. Remaining deltas: missing modules (WizFi/wz*/SOL/c0c1s0/mousedrv/sysgo-in-boot) or disk body (startup/CMDS/layout).
+# HYBRID TEST: HYBRID1_cleanbody_frzboot (G body incl. own sysgo + R3 boot) vs HYBRID2_frzbody_cleanboot (R3 body + G boot).
+# H1 freezes => bootfile composition convicted. H1 clean => disk body convicted. H2 = cross-check.
+# HYBRID1 VERDICT: CLEAN => bootfile fully exonerated (incl. HEAD Clock/Krn/RBF/vtio + missing-module theory dead). Freeze is in DISK BODY.
+# startup diff: freezing body has 'modem /wz' (user's uncommitted edit in level2/wildbits/startup, copied by recipes STARTUP var); clean bodies (worktree builds) lack it.
+# => R1-R3 strip exonerations CONFOUNDED (modem line present throughout). BISECT2_A (worktree, no modem line, froze) = outlier, de-weighted (Git-Bash era-harness recipes build).
+# HYBRID3: R3 disk with ONLY the modem /wz line removed -> VERDICT pending. Clean => modem /wz convicted at HEAD.
+# HYBRID3 VERDICT: FREEZES => startup modem line NOT the (sole) body cause. BUT user live-typed 'modem /wz' on running HYBRID1 -> K2 CRASH => modem cmd has real missing-device crash bug (separate defect, confirmed on hardware).
+# Body exec diff: shell pack (HEAD merged +Date+DeIniz; common submods byte-identical) and root sysgo (110/446 bytes differ; recipes builds sysgo via lwasm .o + lwlink libs, old flow direct). utilpak1/iniz SAME.
+# A shell == R3 shell byte-identical => merged shell present on ALL freezing disks incl outlier A. Unification candidate.
+# HYBRID4: H3 + G sysgo + G shell -> VERDICT pending. Clean => culprit in {sysgo,shell}, bisect next. Freeze => rest of CMDS/SYS/geometry.
+# HYBRID4 VERDICT: CLEAN => freezer is sysgo or shell (only 2 files swapped). All else exonerated.
+# HYBRID5: H3 + G sysgo ONLY (R3 merged shell kept) -> pending. Clean => sysgo convicted. Freeze => shell convicted.
+# HYBRID5 VERDICT: FREEZES => SHELL PACK CONVICTED (H4 vs H5 differ only in shell). sysgo exonerated.
+# Dup check: Date/DeIniz/Unlink duplicated shell-pack vs utilpak1 but BYTE-IDENTICAL; Unlink dup exists on clean disks too => dup harmless.
+# HYBRID6: same 9 modules, Date+DeIniz moved to END (clean pack = exact prefix). Clean => position/layout. Freeze => presence of Date/DeIniz semantic.
+# HYBRID6 VERDICT: CLEAN => POSITIONAL BUG CONVICTED. Same 9 modules/7650 bytes; only order differs. Freezing pack: Date follows Shell. Clean: Echo follows Shell (Date/DeIniz last).
+# => Shell (shellplus) behavior depends on bytes past its own module end. Root mechanism = OPEN follow-up (read-past-end in shellplus? kernel? HW pattern sensitivity?). Minimal repro: swap Date<->Echo position.
+# FIX APPLIED (uncommitted): recipes/wildbits/wildbits.mak SHELLMODS reordered to shellplus echo iniz link load save unlink date deiniz.
+# FINAL VERIFY pending: user default cygwin build (orcc fix + SHELLMODS reorder, startup modem line must be removed - modem crashes w/o WizFi).
+# CASE SUMMARY: bug1 = 4cdea53a8 carry-clear at tick exit (orcc #$01 wildbits guard in clock.asm). bug2 = SHELLMODS merge order. bug3 (separate, unfixed) = modem cmd crashes K2 when device absent.
+# FINAL VERIFY 2026-08-20: stock l2dw build (orcc fix + SHELLMODS reorder, no modem line) -> CLEAN on hardware. CASE CLOSED.
+# ===== SD IMAGE / WIZFI GROUP HUNT 2026-08-20 (post freeze-fix branch) =====
+# Stripped SD (SCF_EXTRA=): CLEAN. Full SD (SOLdrv fSOL wizfi wizfidesc): FREEZES in all wizfi modes (Timer0, hw-IRQ revert, hw-IRQ+iThrottle fix).
+# BISECT2_G (Jul15 DW, WizFi aboard, hw-IRQ): was CLEAN => group content not inherently fatal. Only wizfi src change since Jul15 = f7a2703ce (reverted). SOL unchanged.
+# => testing POSITION theory (same mechanism as SHELLMODS bug2): HYBRID7_sd_wizgroup_at_end.dsk = same 25 modules, group moved after Krn; prefix layout == clean stripped bootfile.
+# H7 clean => position sensitivity confirmed as general mechanism. H7 freezes => group init/content interaction on SD path => isolate SOL vs wizfi next.
+# HYBRID7 result: boot loader ERROR 'can't locate the kernel in the bootfile' => SD loader requires Krn as final module. H7 verdict VOID (never booted OS).
+# HYBRID8: group moved to just before Krn (prefix through Clock2 == stripped layout; only Krn shifts +1787). Krn-last constraint honored.
+# HYBRID8 VERDICT: FREEZES. Krn at +1787 in every freezing SD boot; ambiguity = Krn position vs group content.
+# HYBRID9: NO group; inert 1787-byte data module 'xpad' (valid hdr+CRC) before Krn => Krn at freezing offset, zero driver content.
+# H9 freezes => Krn POSITION convicted (content exonerated). H9 clean => group CONTENT convicted => split SOL vs WizFi next.
+# HYBRID9 VERDICT: CLEAN => Krn position exonerated; GROUP CONTENT convicted.
+# HYBRID10_sd: SOLdrv+fSOL real, WizFi+wz replaced by inert xpd2 => freezes = SOL guilty; clean = SOL innocent.
+# HYBRID11_sd: WizFi+wz real, SOLdrv+fSOL replaced by inert xpd3 => freezes = WizFi guilty; clean = WizFi innocent.
+# Matrix: H10 frz/H11 cln = SOL only. H10 cln/H11 frz = WizFi only. both frz = both/either. both cln = interaction of the pair (unlikely).
+# HYBRID12B (carry-clear iExit): FREEZES => driver-side carry theory dead. All wizfi-side fixes exhausted (revert, throttle, carry-clear).
+# HYBRID13: FULL SD bootfile with Jul15 era Krn+Clock+Clock2+virgin WizFi (from G) transplanted, anchor honored.
+# H13 clean => islands pair aa0824637/b8c66829b convicted for non-SOF IRQ handling; split Krn vs Clock next. H13 freezes => era theory dead; test DW+WizFi at HEAD next (SD-vs-DW).
+# HYBRID13 CLEAN => islands neighborhood convicted (Krn/Clock era swap cured with virgin WizFi).
+# HYBRID14_sd: G Krn + HEAD Clock (virgin WizFi). HYBRID15_sd: HEAD Krn + G Clock+Clock2 (virgin WizFi).
+# H14 cln/H15 frz => Krn (aa0824637). H14 frz/H15 cln => Clock (b8c66829b). both frz => pair interaction. both cln => unexpected.
+# H14 FREEZES / H15 CLEAN => CLOCK convicted (b8c66829b innocent per se - see below), Krn exonerated.
+# BINARY DIFF G-Clock vs HEAD-Clock: ONLY semantic delta = DoPoll/DoToggle exit: G = orcc #$01 (era bisect patch, LIVE site) vs HEAD = clrb (4cdea53a8 ending). Plus benign maskfix.
+# ROOT CAUSE (bug 1, real site): non-clock IRQs enter DoPoll directly (NoClock) and return carry to DoneIRQ. HEAD clrb => carry clear => livelock. Only WizFi ever takes that path (sole non-SOF source) => why only WizFi disks froze.
+# Our HEAD orcc transplant sat in the PICOTHING block = dead code; DW disks were clean at HEAD because tick path doesn't expose DoPoll's return carry.
+# FIX: orcc #$01 (ifne wildbits) at live DoToggle exit in clock.asm; dead-code copy removed; wizfi.asm restored to user's revert only (throttle + carry-clear iExit removed - kernel mask-on-carry IS the flow control; H13/H15 prove virgin driver clean).
+# FINAL VERIFY pending: user full SD rebuild + boot; DW image rebuild + boot for regression.
+# FINAL VERIFY 2026-08-20: full SD image AND DriveWire image, complete module set incl WizFi: BOTH CLEAN on hardware. CASE CLOSED.

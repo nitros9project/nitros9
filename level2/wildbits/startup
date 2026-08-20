@@ -1,3 +1,4 @@
 load utilpak1
 link shell
-iniz wz
+*scripts/wizi
+*scripts/wiztime
