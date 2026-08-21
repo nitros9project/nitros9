@@ -68,7 +68,18 @@ BOOTMODS = krn krnp2 ioman init \
 	$(BOOTMODS_EXTRA)
 endif
 
-SHELLMODS = shellplus date deiniz echo iniz link load save unlink
+# CMDS/shell = these modules concatenated into one file; this line sets
+# their physical order in memory. ORDER IS LOAD-BEARING: with date merged
+# right after shellplus (original order below) the K2 dies before shell;
+# with date/deiniz merged LAST it boots. Proven by order-only hardware A/B
+# (2026-08-20 HYBRID5/6: identical bytes, WizFi-free disks; re-confirmed
+# 2026-08-21 on SD). Root mechanism unfixed - something is sensitive to
+# which module header follows shellplus (boundary overrun in shellplus or
+# the kernel). Duplicates vs utilpak1 are byte-identical and ruled out.
+# original (wildbits) ordering doesn't make it to shell:
+#SHELLMODS = shellplus date deiniz echo iniz link load save unlink
+SHELLMODS = shellplus echo iniz link load save unlink date deiniz
+
 FUJINET_CMDS = fngetdevfile fnsetdevfile fnlisthosts fngethost fnsethost \
 	fnlistdevs fnmount fnmountimg fnstatus
 ifeq ($(FUJINET),1)
