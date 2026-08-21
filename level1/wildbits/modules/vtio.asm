@@ -317,15 +317,23 @@ l@                  tfr       d,x                 transfer it to X
                     bcs       installfont         branch if the link failed
                     pshs      y                   save Y
                     tfr       y,x                 transfer it to X
+ ifne jr+k
+                    ldy       #TEXT_LUT_FG        load Y with the LUT foreground
+ else
                     lda       #TEXT_LUT_BLK       load text LUT block
                     sta       MAPSLOT
                     ldy       #MAPADDR
                     leay      TEXT_LUT_FG,y       load Y with the LUT foreground
-                    bsr       copypal             copy the palette data for the foreground
+ endc
+                     bsr       copypal             copy the palette data for the foreground
                     puls      x                   restore Y into X
+ ifne jr+k
+                    ldy       #TEXT_LUT_BG        load Y with the LUT background
+ else
                     ldy       #MAPADDR
                     leay      TEXT_LUT_BG,y       load Y with the LUT background
-                    bsr       copypal             copy the palette data for the background
+ endc
+                     bsr       copypal             copy the palette data for the background
 
 * Install the font.
 installfont         leax      fontmod,pcr         point to the font module
@@ -347,8 +355,13 @@ initcursor          ldx       #TXT.Base
                     sta       VKY_TXT_CURSOR_CTRL_REG,x
                     clra
                     clrb
+ ifne jr+k
+                    std       VKY_TXT_CURSOR_Y_REG_L,x
+                    std       VKY_TXT_CURSOR_X_REG_L,x
+ else
                     std       VKY_TXT_CURSOR_Y_REG_H,x
                     std       VKY_TXT_CURSOR_X_REG_H,x
+ endc
                     lda       #'_
                     sta       VKY_TXT_CURSOR_CHAR_REG,x
 
@@ -1109,8 +1122,13 @@ SetWin80x60         clrb
 ;;; GVA = green component.
 ;;; BVA = blue component.
 ;;; AVA = alpha component.
-ChgForePal          ldx       #MAPADDR  
+ChgForePal
+ ifne jr+k
+                    ldx       #TEXT_LUT_FG
+ else
+                    ldx       #MAPADDR
                     leax      TEXT_LUT_FG,x
+ endc
 ChgPal              stx       V.EscParms+4,u
                     leax      Do1B60_Param0,pcr
                     lbra      SetHandler
@@ -1171,8 +1189,13 @@ Do1B60_Param4       pshs      cc
 ;;; GVA = green component.
 ;;; BVA = blue component.
 ;;; AVA = alpha component.
-ChgBackPal          ldx       #MAPADDR
+ChgBackPal
+ ifne jr+k
+                    ldx       #TEXT_LUT_BG
+ else
+                    ldx       #MAPADDR
                     leax      TEXT_LUT_BG,x
+ endc
                     bra       ChgPal
 
 * These do nothing for now.
@@ -1696,7 +1719,7 @@ storeaddr@          pshs      y                   store font offset on stack [O]
 * s= ADDR|OFFSET|                   
 *                   ****      map block into user dat and store address on stack
                     pshs      x,u                 preserve x,u
-                    ldx       #$C1                map in font block
+                    ldx       #FONT_BLK           map in font block
                     ldb       #$01                map 1 block at address x (x set on entry)
                     os9       F$MapBlk
                     bcc       mapgood@            if success, then continue
@@ -2024,7 +2047,7 @@ SSPalet             pshs      cc
                     orcc      #IntMasks           mask interrupts
                     lda       MAPSLOT
                     pshs      a
-                    lda       #$C0                was TEXT_LUT_BLK - get the MMU Block
+                    lda       #TEXT_LUT_BLK       get the MMU Block for bitmap addresses
                     sta       MAPSLOT             store it in the MMU slot to map it in
 *                   **** Calculate starting address at 1000,1008,1010
                     ldb       R$Y+1,x             ldb with bitmap#
@@ -2056,7 +2079,7 @@ SSPalet             pshs      cc
 SSDfPal             pshs      a,x,y,u
 *                   **** Map in block for CLUT Registers
                     pshs      x
-                    ldx       #$C1
+                    ldx       #TEXT_LUT_BLK
                     lbsr      mapblock
                     puls      x
                     bcs       end@                if error, end and return error code

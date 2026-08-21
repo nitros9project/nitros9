@@ -36,7 +36,12 @@ FUJINET ?= 0
 FM ?= 0
 
 BOOT_RBF ?= dds0
-RBF = rbf rbsuper llwbsd rbmem $(BOOT_RBF) s1 f0 f1 $(RBF_EXTRA)
+SD_RBF = s0
+ifeq ($(filter $(PLATFORM),jr k),)
+SD_RBF += s1
+endif
+
+RBF = rbf rbsuper llwbsd rbmem $(BOOT_RBF) $(SD_RBF) f0 f1 $(RBF_EXTRA)
 SCF = scf vtio $(KEYSUB) term bannerfont palette $(SCF_EXTRA)
 ifeq ($(LEVEL),2)
 SCF += mousedrv_ps2
