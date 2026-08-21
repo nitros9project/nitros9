@@ -172,7 +172,6 @@ WIIRQ_Pckt.Mask     fcb       INT_WIZFI           the mask byte for WizFi Interr
 *        V.PORT.  Zero-default variables are:  CDSigPID, CDSigSig, Wrk.XTyp.
 Init                clrb                          default to no error...
                     pshs      cc,dp               save IRQ/Carry status, system DP
-
                     pshs      y			  save Y so it's last on stack so we can recall it using 0,s
 
                     lbsr      GetDevChan
@@ -202,14 +201,19 @@ c@                  clr       ,x+
                     decb
                     bne       c@
 
+* K2 (machine ID $16) has the WizFi hardware interrupt wired; other
+* machines (Jr2 = $1A) poll via Timer0. NOTE: the interrupt is NOT
+* unmasked here on either path - unmasking before F$IRQ install (or
+* before the ind_* pointers exist) let the first interrupt run iService
+* through null pointers / with no handler: storm, dead before shell
+* (proven by LED probe 2026-08-20). Pending cleared, handler installed,
+* everything initialized, THEN unmask at the end of Init.
 Init2               lda       SYS0_MACHINE_ID
-                    cmpa      #$1A                 at this time the Jr2 doesn't have the WizFi Interrupt
-                    bra       InstallTimer0
-*                    beq       InstallTimer0
-InstallWizIRQ       lda       >INT_MASK_3          else get the interrupt mask byte
-                    anda      #^INT_WIZFI          enable the WizFi interrupt
-                    sta       >INT_MASK_3          and save it back
-                    ldd       #INT_PENDING_3       assume all other machines with WizFi will have the WizFi Interrupt
+                    cmpa      #$16                K2 with hardware WizFi interrupt?
+                    bne       InstallTimer0       no: poll via Timer0
+InstallWizIRQ       lda       #INT_WIZFI
+                    sta       >INT_PENDING_3       clear any stale latched pending
+                    ldd       #INT_PENDING_3       polling address for the packet
                     leax      WIIRQ_Pckt,pcr       point to the IRQ packet
                     bra       Install
 InstallTimer0       ldd       #TRATE
@@ -220,14 +224,17 @@ InstallTimer0       ldd       #TRATE
                     sta       >T0_CTR
                     lda       #%00000010          Timer reloads Value, for continuous run
                     sta       >T0_CMP_CTR
-                    lda       >INT_MASK_0         else get the interrupt mask byte
-                    anda      #^INT_TIMER_0       enable the TIMER_0 interrupt
-                    sta       >INT_MASK_0         and save it back
+                    lda       #INT_TIMER_0
+                    sta       >INT_PENDING_0      clear any pending from the just-started timer
                     ldd       #INT_PENDING_0      get the pending interrupt pending address
                     leax      T0IRQ_Pckt,pcr      point to the IRQ packet
 
 Install             leay      iService,pcr        and the service routine
                     os9       F$IRQ               install the interrupt handler
+* NOTE: interrupt is NOT unmasked here. The ind_* hardware pointers are
+* initialized further down; unmasking before they exist let the first
+* interrupt run iService with NULL pointers (reads via [$0000]). The
+* unmask now happens at the very end of Init, after everything is ready.
 *                    bcc       g@                 branch if success
 *                    os9       F$PErr
                     clr       OutPktLaydown,u
@@ -266,6 +273,18 @@ Install             leay      iService,pcr        and the service routine
 *                    lbcs      InitExit
 *                    stb       MasterRxDBlock,u
 
+* Everything initialized (incl. ind_* pointers): NOW enable the source.
+                    lda       SYS0_MACHINE_ID
+                    cmpa      #$16                K2 with hardware WizFi interrupt?
+                    bne       unmt0@
+                    lda       >INT_MASK_3
+                    anda      #^INT_WIZFI          enable the WizFi interrupt
+                    sta       >INT_MASK_3
+                    bra       unmx@
+unmt0@              lda       >INT_MASK_0
+                    anda      #^INT_TIMER_0       enable the TIMER_0 interrupt
+                    sta       >INT_MASK_0
+unmx@               equ       *
 InitExit            puls      y
                     puls      cc,dp,pc            recover IRQ/Carry status, system DP, return
 
@@ -324,11 +343,9 @@ RxFCheck            ldd       [ind_RxD_WR_CountReg,u]
                     rts
 
 iService            pshs      cc,dp,x
-
                     lda       SYS0_MACHINE_ID
-                    cmpa      #$1A                at this time the Jr2 doesn't have the WizFi Interrupt
-                    bra       ClearTimer0
-*                    beq       ClearTimer0
+                    cmpa      #$16                K2 with hardware WizFi interrupt?
+                    bne       ClearTimer0
                     lda       #INT_WIZFI          clear pending interrupt
                     sta       >INT_PENDING_3
                     bra       iSendPkt
@@ -399,7 +416,7 @@ iRead
                     ldb       DevChan,u           Get the connection/channel # for the current device
                     lbsr      GetVpPtr            Point to associated payload
                     lda       vpr_stat,x          Has the mainline code signaled that it has consumed the last data byte?
-                    lbmi      iExit               No, so just exit.  The hardware FIFO will do it's job in the meantime.
+                    lbmi      iThrottle           No: just exit - the Timer0 poll retries next tick
                     lbsr      RxFCheck            Are there any pending RxD FIFO bytes?
                     lbeq      iExit               Return from ISR, no payload update
 
@@ -473,7 +490,29 @@ iWake               ldb       PacketChannel,u
                     anda      #^Suspend           clear suspend state
                     sta       P$State,x           save state flags
 
-iExit               puls      cc,dp,x,pc          Recover system DP, return...
+* Driver-side flow control, so the driver survives WITHOUT the kernel's
+* DoneIRQ mask-on-carry pacing (i.e. with the mainline clrb DoToggle):
+* the payload buffer holds ONE byte; returning with it full and our
+* interrupt enabled lets the module re-interrupt before the reader can
+* ever consume (boot chatter at 'iniz wz' kills the machine before
+* shell). Mask our source here; Read unmasks after consuming.
+* Timer0 machines are paced by the timer and are left alone.
+* Buffer full: on the hardware-IRQ K2, mask our interrupt until the
+* reader consumes (Read unmasks); Timer0 machines just wait for the
+* next tick - the timer paces the polling.
+iThrottle           lda       SYS0_MACHINE_ID
+                    cmpa      #$16                K2 with hardware WizFi interrupt?
+                    bne       iExit               no: timer paces the polling
+                    lda       >INT_MASK_3
+                    ora       #INT_WIZFI          mask the WizFi interrupt
+                    sta       >INT_MASK_3
+* Return with carry explicitly CLEAR ('interrupt serviced'): the entry
+* CC pushed at iService would otherwise be returned as-is - a random
+* carry handed to the kernel's IRQ tail, which masks IRQs on carry set.
+iExit               lda       ,s                  stacked entry CC
+                    anda      #^Carry             force carry clear: serviced
+                    sta       ,s
+                    puls      cc,dp,x,pc          Recover system DP, return...
 
 ReadSlp             ldb       DevChan,u
                     lbsr      GetVpPtr
@@ -512,6 +551,16 @@ ReadD               orcc      #IntMasks
                     cmpb      DevChan,u
                     bne       ReadSlp
                     lda       vpr_data,x           Get our data
+* Byte consumed: on the hardware-IRQ K2, re-enable the interrupt that
+* iThrottle masked. IRQs are masked here (orcc at ReadD): race-free RMW.
+                    pshs      a
+                    lda       SYS0_MACHINE_ID
+                    cmpa      #$16                K2 with hardware WizFi interrupt?
+                    bne       u@
+                    lda       >INT_MASK_3
+                    anda      #^INT_WIZFI          unmask the WizFi interrupt
+                    sta       >INT_MASK_3
+u@                  puls      a
                     puls      cc,dp,pc            recover IRQ/Carry status, dummy B, system DP, return
 
 
