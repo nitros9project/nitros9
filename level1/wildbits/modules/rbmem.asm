@@ -30,7 +30,7 @@
                     use       defsfile
 
 * If 1, during Init the Flash ID is shown on the Wildbits text screen in the upper right corner.
-fDEBUG              equ       1
+fDEBUG              equ       0
 MAXDRIVES           equ       4
 MMU_SLOT            equ       2
 MMU_WINDOW          equ       $2000*MMU_SLOT
@@ -312,6 +312,14 @@ x@                  puls      d,pc
 
 ReadFlashID         pshs      cc
                     orcc      #IntMasks
+* Save the current work-slot mapping BEFORE any probe. This push must be
+* unconditional: the K2-ID match paths branch straight to s@, and s@
+* pops it. When the save only happened on the Jr2 probe path, a K2 with
+* matching flash ($BFC8/$BFC9) reached s@ one byte short - puls b ate
+* the saved CC and puls cc,pc jumped through half the return address
+* (dir /f0 crash/freeze before the ID could even be displayed).
+                    ldb       >MMU_WORKSLOT
+                    pshs      b
                     clr       IsFlash,u
                     dec       IsFlash,u           Test K2 Flash (isFlash is negative)
                     ldb       #$90
@@ -326,8 +334,6 @@ ReadFlashID         pshs      cc
                     beq       s@
                     clr       IsFlash,u
                     inc       IsFlash,u           Test Jr2 Flash
-                    ldb       >MMU_WORKSLOT
-                    pshs      b
                     ldb       #$90
                     bsr       SendCmd
                     ldd       >MMU_WINDOW         Get ID of Flash Chip (if using MMU_SLOT_2)
@@ -345,7 +351,7 @@ s@                  puls      b
                     stb       >MMU_WORKSLOT
                     puls      cc,pc
 
-ShowFlashID         lda       fDEBUG,u
+ShowFlashID         lda       #fDEBUG
                     beq       x@
                     pshs      cc
                     orcc      #IntMasks
@@ -359,11 +365,11 @@ ShowFlashID         lda       fDEBUG,u
                     lsra
                     lsra
                     bsr       Bin2AscHex
-                    sta       >MMU_WINDOW+160+76
+                    sta       >MMU_WINDOW+(15*80)+76
                     tfr       x,d
                     anda      #$0f
                     bsr       Bin2AscHex
-                    sta       >MMU_WINDOW+160+77
+                    sta       >MMU_WINDOW+(15*80)+77
                     tfr       x,d
                     tfr       b,a
                     lsra                          Do cheap binary to 4-digit HEX ASCII string
@@ -371,12 +377,12 @@ ShowFlashID         lda       fDEBUG,u
                     lsra
                     lsra
                     bsr       Bin2AscHex
-                    sta       >MMU_WINDOW+160+78
+                    sta       >MMU_WINDOW+(15*80)+78
                     tfr       x,d
                     tfr       b,a
                     anda      #$0f
                     bsr       Bin2AscHex
-                    sta       >MMU_WINDOW+160+79
+                    sta       >MMU_WINDOW+(15*80)+79
                     puls      b
                     stb       >MMU_WORKSLOT
                     puls      cc                  Does this restore CPU interrupt masks?
@@ -399,7 +405,9 @@ x@                  rts
 
 AskForCache         ldb       #1                  Flash Write mode needs an 8K swap block of RAM
                     os9       F$AllRAM
-                    rts                           Return with any error, otherwise reg.b = cache block
+*                    bcc       x@
+                    stb       >MMU_WINDOW+(15*80)+79
+x@                  rts                           Return with any error, otherwise reg.b = cache block
 
 Flash2Cache         pshs      u,x,y,d
                     ldx       #MMU_WINDOW
