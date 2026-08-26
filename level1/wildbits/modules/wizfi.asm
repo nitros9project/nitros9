@@ -17,6 +17,31 @@
 *
 *          2025/08/28  Roger Taylor
 * Added new INT_WIZFI interrupt for K2, other non Jr2 machines
+*
+*          2026/08/25-26  Roger Taylor
+* K2 rework, hardware-verified against marginal external SRAM (the RAM
+* clock domain closes timing by ~0.12ns; RAM-resident driver state was
+* observed losing writes/reading stale, eating leading Rx bytes):
+* - Tx: INT_WIZFI_TX drain-complete edge (INT_PENDING_3 bit 5); ring
+*   drain extracted into SendRing; Write drains unconditionally (the
+*   2048-byte hardware TX FIFO paces), so no tail can strand in RAM.
+* - Rx: fully vpr-free on K2. The ISR does nothing for receive; Read
+*   polls RxFCheck and pops the data register directly to the caller
+*   (no RAM intermediary); blocked readers tick-sleep and re-poll with
+*   signal checks. SS.Ready reports the hardware FIFO. Timer machines
+*   (Jr2) keep the original parked-payload path unchanged.
+* - +IPD packet mode preserved on both paths: the state machine lives
+*   in PktByte, run by the timer ISR (Jr2) or the K2 reader loop; a K2
+*   reader receiving another socket's payload hands it off via that
+*   channel's slot (ParkOther) - the only K2 Rx path still touching
+*   the vpr page, exercised by multi-socket flows only.
+* - GetVpPtr uses extended (not direct-page) addressing like every
+*   other system access in this driver.
+* - Term masks its interrupt sources before removing the F$IRQ entry.
+* - Packet-mode CIPSEND handshake made response-driven and bounded: the
+*   "> " prompt wait and the reply purge (pop lines until "SEND OK" or
+*   "ERROR") can no longer wedge the writer - the old fixed 4-LF purge
+*   hung forever under ATE0 with IRQs masked.
 
                     ifp1
                     use       defsfile
@@ -33,7 +58,7 @@ WORK_SLOT	    equ       MMU_SLOT_2
 MMU_WINDOW          equ       $4000
 Mask_SocketDev      equ       %00001000
 IRQ_State_ListenPkt equ       %00000001
-INT_WIZFI           equ       %00000001
+WZ_Stat_TxEmpty     equ       %00001000           CtrlReg readback bit 3: hardware TX FIFO empty
 SYS0_MACHINE_ID     equ       SYS0+7
 
 *============================================================================
@@ -112,6 +137,7 @@ IRQ_State           rmb       1
 IpdLen              rmb       2
 PktReadPos          rmb       1
 IpdLenChar          rmb       1
+
 DeviceMode          rmb       1		          Mode of the device descriptor (0 = no packets)
 DevChan             rmb       1                  Connection # of the device descriptor (0-3)
 PacketChannel       rmb       1
@@ -153,9 +179,12 @@ T0IRQ_Pckt.Flip     fcb       %00000000           the flip byte
 T0IRQ_Pckt.Mask     fcb       INT_TIMER_0         the mask byte for machines without actual WizFi Interrupt
                     fcb       $F1                 the priority byte
 
+* One F$IRQ entry serves BOTH WizFi sources: the mask byte carries the Rx
+* data edge and the Tx drain-complete edge; iService clears and services
+* whichever fired (the send path runs first either way).
 WIIRQ_Pckt          equ       *
 WIIRQ_Pckt.Flip     fcb       %00000000           the flip byte
-WIIRQ_Pckt.Mask     fcb       INT_WIZFI           the mask byte for WizFi Interrupt
+WIIRQ_Pckt.Mask     fcb       INT_WIZFI           the mask byte for the WizFi interrupts
                     fcb       $F1                 the priority byte
 
 
@@ -212,7 +241,7 @@ Init2               lda       SYS0_MACHINE_ID
                     cmpa      #$16                K2 with hardware WizFi interrupt?
                     bne       InstallTimer0       no: poll via Timer0
 InstallWizIRQ       lda       #INT_WIZFI
-                    sta       >INT_PENDING_3       clear any stale latched pending
+                    sta       >INT_PENDING_3       clear any stale latched pendings
                     ldd       #INT_PENDING_3       polling address for the packet
                     leax      WIIRQ_Pckt,pcr       point to the IRQ packet
                     bra       Install
@@ -278,7 +307,7 @@ Install             leay      iService,pcr        and the service routine
                     cmpa      #$16                K2 with hardware WizFi interrupt?
                     bne       unmt0@
                     lda       >INT_MASK_3
-                    anda      #^INT_WIZFI          enable the WizFi interrupt
+                    anda      #^(INT_WIZFI)       enable Rx data + Tx drain edges
                     sta       >INT_MASK_3
                     bra       unmx@
 unmt0@              lda       >INT_MASK_0
@@ -298,7 +327,20 @@ Term                clrb                          default to no error...
                 *     ora       ,s+
                 *     sta       >INT_MASK_0          and save it back
 
-                     ldx       #$0000              remove IRQ table entry
+* Silence our interrupt sources BEFORE removing the handler: a Tx
+* drain-complete (or Rx) edge landing after removal has no handler.
+                     orcc      #IntMasks
+                     lda       SYS0_MACHINE_ID
+                     cmpa      #$16                K2 with hardware WizFi interrupts?
+                     bne       tmt0@
+                     lda       >INT_MASK_3
+                     ora       #INT_WIZFI          mask both WizFi edges
+                     sta       >INT_MASK_3
+                     bra       tmx@
+tmt0@                lda       >INT_MASK_0
+                     ora       #INT_TIMER_0        mask the poll timer
+                     sta       >INT_MASK_0
+tmx@                 ldx       #$0000              remove IRQ table entry
                      os9       F$IRQ
 
                 *     pshs      u                   save data pointer
@@ -313,11 +355,13 @@ Term                clrb                          default to no error...
                     puls      cc,dp                  recover IRQ/Carry status
                     rts
 
-GetVpPtr            ifgt      Level-1
-                    ldx       <D.WZStatTbl
-                    else
-                    ldx       >D.WZStatTbl
-                    endc
+* Extended, NOT direct-page: GetVpPtr runs in the ISR dispatch context,
+* where DP is not guaranteed to be the system page. Every other system
+* access in this driver is already extended (>D.Proc, >INT_PENDING_3).
+* With <D.WZStatTbl, iBroadcast parked arriving bytes through a garbage
+* pointer whenever no reader was active - hardware-verified 2026-08-26:
+* Read-counter deficit matched the missing leading bytes exactly.
+GetVpPtr            ldx       >D.WZStatTbl
                     andb      #3
                     lslb
                     lslb
@@ -342,18 +386,14 @@ RxFCheck            ldd       [ind_RxD_WR_CountReg,u]
                     cmpd      #$0000
                     rts
 
-iService            pshs      cc,dp,x
-                    lda       SYS0_MACHINE_ID
-                    cmpa      #$16                K2 with hardware WizFi interrupt?
-                    bne       ClearTimer0
-                    lda       #INT_WIZFI          clear pending interrupt
-                    sta       >INT_PENDING_3
-                    bra       iSendPkt
-ClearTimer0         lda       #INT_TIMER_0
-                    sta       >INT_PENDING_0
-iSendPkt            ldb       OutPktLaydown,u
+* SendRing - drain the output ring to the WizFi (callable from the ISR
+* and from Write's prime; IRQs MUST be masked at both call sites).
+* Exit: Z set = nothing was queued, Z clear = a burst was sent.
+* Preserves Y (Write's path descriptor); clobbers D,X.
+SendRing            pshs      y
+                    ldb       OutPktLaydown,u
                     subb      OutPktPickup,u
-                    lbeq      iRead
+                    lbeq      sr9@                ring empty: return Z set
                     bpl       n@
                     negb
 n@                  clra
@@ -386,9 +426,14 @@ d@                  lda       ,x+
                     sta       [ind_DataReg,u]
                     lda       #$0a
                     sta       [ind_DataReg,u]
+* Wait (bounded) for the "> " send prompt; Y = payload count, untouched.
+                    ldx       #0                  ~65536 polls, then give up
 wsp@                lbsr      RxFCheck
-                    beq       wsp@
-                    lda       [ind_DataReg,u]
+                    bne       wspb@
+                    leax      -1,x
+                    bne       wsp@
+                    bra       r@                  no prompt: send anyway
+wspb@               lda       [ind_DataReg,u]
                     cmpa      #32
                     bne       wsp@
 r@                  inc       OutPktPickup,u
@@ -401,18 +446,59 @@ r@                  inc       OutPktPickup,u
                     bne       r@
                     ldb       DeviceMode,u
                     beq       xx@
-                    ldy       #4                  Wait for 4 CRLF terminated AT responses
-pl@                 lbsr      RxFCheck            Is there any FIFO data waiting?
-                    beq       pl@                 No, loop forever until there is *** There is no dead loop prevention at this time
-                    lda       [ind_DataReg,u]     Read next FIFO byte
-                    cmpa      #10                 Is it the code for Line Feed?
-                    bne       pl@                 No, loop until
-                    leay      -1,y                Update the string response counter
-                    bne       pl@                 Purge the next string
-xx@                 lbra      iWake
+* Purge the CIPSEND responses by CONTENT, not count: pop lines until one
+* starting with 'S' ("SEND OK") or 'E' ("ERROR") completes. The old
+* fixed 4-LF wait assumed module echo ON; under ATE0 fewer LFs arrive
+* and the writer wedged here forever with IRQs masked (wizlog4: tsmon
+* output never reached the PC). Bounded so a dead link cannot hang us.
+srp0@               clrb                          B = first char of current line
+                    ldx       #0                  bounded wait per line
+srpw@               lbsr      RxFCheck
+                    bne       srpb@               a byte is available
+                    leax      -1,x
+                    bne       srpw@
+                    bra       xx@                 timeout: give up the purge
+srpb@               lda       [ind_DataReg,u]     pop next response byte
+                    cmpa      #13                 CR: ignore
+                    beq       srpw@
+                    cmpa      #10                 LF: line complete
+                    beq       srpe@
+                    tstb                          first printable of this line?
+                    bne       srpw@
+                    tfr       a,b                 latch it
+                    bra       srpw@
+srpe@               cmpb      #'S                 "SEND OK" line?
+                    beq       xx@
+                    cmpb      #'E                 "ERROR" line?
+                    beq       xx@
+                    bra       srp0@               other line: keep purging
+xx@                 andcc     #^Zero              sent a burst: return Z clear
+sr9@                puls      y,pc
+
+iService            pshs      cc,dp,x
+                    lda       SYS0_MACHINE_ID
+                    cmpa      #$16                K2 with hardware WizFi interrupts?
+                    bne       ClearTimer0
+                    lda       #INT_WIZFI          clear whichever fired: Rx data
+                    sta       >INT_PENDING_3      edge and/or Tx drain-complete edge
+                    bra       iSendPkt
+ClearTimer0         lda       #INT_TIMER_0
+                    sta       >INT_PENDING_0
+iSendPkt            lbsr      SendRing            drain any queued output first
+                    lbeq      iRead               nothing was queued: service receive
+                    lbra      iWake               sent a burst: wake any sleeper
 *                    lbra      iExit               Return from ISR, no payload update
 
 iRead
+* K2: the ISR does NOTHING for receive - not even a status read. Every
+* RX defense that consulted the vpr page was poisoned by it (measured:
+* the no-sleeper gate read spurious vpr_wake and popped 5 bytes with no
+* reader). Read polls and pops the hardware FIFO directly; blocked
+* readers tick-sleep on the FIFO count. The marginal-SRAM page is fully
+* out of the K2 receive path. Timer machines keep the parked path.
+                    lda       SYS0_MACHINE_ID
+                    cmpa      #$16                K2 with hardware WizFi interrupts?
+                    lbeq      iExit               yes: RX is reader-driven only
                     ldb       DevChan,u           Get the connection/channel # for the current device
                     lbsr      GetVpPtr            Point to associated payload
                     lda       vpr_stat,x          Has the mainline code signaled that it has consumed the last data byte?
@@ -423,55 +509,8 @@ iRead
                     lda       [ind_DataReg,u]     Pop next FIFO byte
                     ldb       DeviceMode,u        Device descriptor has the Packets bit set
                     lbeq      iBroadcast          Device is using the WizFi360 passthrough/raw mode
-
-                    ldb       IRQ_State,u         Are we currently listening for a packet header?
-                    cmpb      #IRQ_State_ListenPkt
-                    beq       iListenPkt          Yes, keep listening
-
-                    ldx       IpdLen,u            Are we still returning the data portion of a packet?
-                    beq       x@                  No, go back into Listen mode and return
-                    leax      -1,x                Yes, decrement the byte count
-                    stx       IpdLen,u            Update the byte counter
-                    lbra      iBroadcast          Update the payload and return
-x@                  ldb       #IRQ_State_ListenPkt  Go into listen mode
-                    stb       IRQ_State,u
-                    clr       PktReadPos,u        Clear the text matching index
-                    lbeq      iExit               Return from ISR, no payload update
-
-iListenPkt          leax      strIPD,pcr          point to start of IPD string constant
-                    ldb       PktReadPos,u           what character position are we at?  +  P  D  ,   ?  0-3
-                    cmpb      #4
-                    bls       mc@                 go match exact chars "+IPD,"
-                    cmpb      #5
-                    beq       ms@                 go match a digit "0" - "3" for the socket #
-                    cmpb      #6
-                    bls       mc@                 go match exact char ","
-                    cmpa      #58                 match ":" terminator for +IPD string
-                    beq       t@                  terminating character
-                    sta       IpdLenChar,u        match length digits
-                    ldd       IpdLen,u
-                    lbsr      DecBin
-                    std       IpdLen,u
-m@                  inc       PktReadPos,u
-x@                  lbra      iExit               Exit with no data
-strIPD              fcc       "+IPD,$,#####:"
-t@                  clr       PktReadPos,u
-                    clr       IRQ_State,u        Switch to data mode for the next cycle
-                    bra       x@
-mc@                 cmpa      b,x                 Match exact char from RxD FIFO
-                    beq       m@
-                    clr       PktReadPos,u           Match failed, quit parsing the IPD and start again
-                    bra       x@
-ms@                 clr       PacketChannel,u
-                    cmpa      #'0
-                    blo       m@
-                    cmpa      #'3
-                    bhi       m@
-                    suba      #'0                 get connection # in ASCII "0" - "3"
-                    sta       PacketChannel,u
-                    clr       IpdLen,u
-                    clr       IpdLen+1,u
-                    bra       m@
+                    lbsr      PktByte             run byte through the +IPD machine
+                    lbeq      iExit               header/bookkeeping byte: consumed
 iBroadcast          ldb       PacketChannel,u
                     lbsr      GetVpPtr
                     ldb       PacketChannel,u
@@ -514,6 +553,82 @@ iExit               lda       ,s                  stacked entry CC
                     sta       ,s
                     puls      cc,dp,x,pc          Recover system DP, return...
 
+* PktByte - run one received byte (A) through the +IPD packet state
+* machine. Shared by the timer ISR (Jr2) and the K2 reader-context
+* direct-pop loop, so packet mode works identically on both.
+* Exit: Z set   = byte was header/bookkeeping (consumed, keep reading)
+*       Z clear = A is a payload byte for channel PacketChannel
+PktByte             ldb       IRQ_State,u         listening for a header?
+                    cmpb      #IRQ_State_ListenPkt
+                    beq       pkhdr@
+                    ldx       IpdLen,u            data phase: count the byte
+                    beq       pklsn@              count spent: back to listen
+                    leax      -1,x
+                    stx       IpdLen,u
+                    andcc     #^Zero              payload byte: Z clear
+                    rts
+pklsn@              ldb       #IRQ_State_ListenPkt
+                    stb       IRQ_State,u
+                    clr       PktReadPos,u
+pkeat@              orcc      #Zero               consumed: Z set
+                    rts
+pkhdr@              leax      strIPD,pcr          point to start of IPD string constant
+                    ldb       PktReadPos,u        what character position are we at?  +  P  D  ,   ?  0-3
+                    cmpb      #4
+                    bls       pkmc@               go match exact chars "+IPD,"
+                    cmpb      #5
+                    beq       pkms@               go match a digit "0" - "3" for the socket #
+                    cmpb      #6
+                    bls       pkmc@               go match exact char ","
+                    cmpa      #58                 match ":" terminator for +IPD string
+                    beq       pkt@                terminating character
+                    sta       IpdLenChar,u        match length digits
+                    ldd       IpdLen,u
+                    lbsr      DecBin
+                    std       IpdLen,u
+pkm@                inc       PktReadPos,u
+                    bra       pkeat@
+pkt@                clr       PktReadPos,u
+                    clr       IRQ_State,u         switch to data mode for the next cycle
+                    bra       pkeat@
+pkmc@               cmpa      b,x                 match exact char from RxD FIFO
+                    beq       pkm@
+                    clr       PktReadPos,u        match failed: restart the parse
+                    bra       pkeat@
+pkms@               clr       PacketChannel,u
+                    cmpa      #'0
+                    blo       pkm@
+                    cmpa      #'3
+                    bhi       pkm@
+                    suba      #'0                 get connection # in ASCII "0" - "3"
+                    sta       PacketChannel,u
+                    clr       IpdLen,u
+                    clr       IpdLen+1,u
+                    bra       pkm@
+strIPD              fcc       "+IPD,$,#####:"
+
+* ParkOther - K2 reader-context hand-off of a payload byte (A) that
+* belongs to ANOTHER channel: park it in that channel's slot and wake
+* any sleeper there. This is the only K2 receive path that still
+* touches the vpr page (multi-socket flows only). IRQs must be masked.
+ParkOther           pshs      a
+                    ldb       PacketChannel,u
+                    lbsr      GetVpPtr
+                    puls      a
+                    ldb       PacketChannel,u
+                    orb       #$80
+                    stb       vpr_stat,x
+                    sta       vpr_data,x
+                    clrb
+                    lda       vpr_wake,x          sleeper on that channel?
+                    beq       po9@
+                    stb       vpr_wake,x          mark I/O done
+                    tfr       d,x                 process descriptor page
+                    lda       P$State,x
+                    anda      #^Suspend
+                    sta       P$State,x
+po9@                rts
+
 ReadSlp             ldb       DevChan,u
                     lbsr      GetVpPtr
                     ldd       >D.Proc             Level II process descriptor address
@@ -542,20 +657,50 @@ Read                clrb                          default to no errors...
                     pshs      cc,dp               save IRQ/Carry status, system DP
 
 ReadD               orcc      #IntMasks
-                    ldb       DevChan,u
+* K2: fully vpr-free receive - poll and pop the hardware FIFO directly;
+* when empty, tick-sleep and re-poll (signals honored). No parking, no
+* wake handshake, no marginal-SRAM round-trips anywhere in the path.
+                    lda       SYS0_MACHINE_ID
+                    cmpa      #$16                K2 with hardware WizFi interrupts?
+                    bne       rdtmr@              timer machines: parked path as always
+rdk2@               lbsr      RxFCheck            bytes waiting in the hardware FIFO?
+                    beq       rdk2w@              no: tick-sleep and re-poll
+                    lda       [ind_DataReg,u]     pop directly
+                    ldb       DeviceMode,u        packet-mode descriptor?
+                    beq       rdk2d@              raw: deliver as-is
+                    lbsr      PktByte             parse: +IPD headers consumed here
+                    beq       rdk2@               header byte: keep reading
+                    ldb       PacketChannel,u     payload byte: whose channel?
+                    cmpb      DevChan,u
+                    beq       rdk2d@              ours: deliver directly
+                    lbsr      ParkOther           another socket's: hand it off
+                    bra       rdk2@               and keep reading for our own
+rdk2d@              puls      cc,dp,pc            deliver it (entry carry clear)
+* K2 blocked-reader poll: give up the tick, honor signals, re-poll.
+rdk2w@              lbsr      Sleep1
+                    ldx       >D.Proc
+                    ldb       P$Signal,x          pending signal?
+                    beq       rdk2c@
+                    cmpb      #S$Intrpt
+                    lbls      ErrExit
+rdk2c@              ldb       P$State,x
+                    bitb      #Condem
+                    lbne      PrAbtErr
+                    bra       rdk2@
+rdtmr@              ldb       DevChan,u
                     lbsr      GetVpPtr
                     ldb       vpr_stat,x
-                    bpl       ReadSlp
-                    andb      #3
+                    lbpl      ReadSlp             nothing parked: sleep for the tick
+rdgo@               andb      #3
                     stb       vpr_stat,x           Notify the hub that we've taken our data
                     cmpb      DevChan,u
-                    bne       ReadSlp
+                    lbne      ReadSlp
                     lda       vpr_data,x           Get our data
 * Byte consumed: on the hardware-IRQ K2, re-enable the interrupt that
 * iThrottle masked. IRQs are masked here (orcc at ReadD): race-free RMW.
-                    pshs      a
+rdunm@              pshs      a
                     lda       SYS0_MACHINE_ID
-                    cmpa      #$16                K2 with hardware WizFi interrupt?
+                    cmpa      #$16                K2 with hardware WizFi interrupts?
                     bne       u@
                     lda       >INT_MASK_3
                     anda      #^INT_WIZFI          unmask the WizFi interrupt
@@ -624,7 +769,29 @@ WriteD              orcc      #IntMasks
                     abx
                     lda       1,s
                     sta       ,x
-                    puls      cc,a,pc            recover IRQ/Carry status, Tx character, system DP, return
+* Background-send kick (hardware-IRQ machines only). Raw mode drains the
+* ring on EVERY byte; packet mode only on CR/LF so an AT line becomes ONE
+* CIPSEND instead of one per character. The drain is UNCONDITIONAL - the
+* 2048-byte hardware TX FIFO does the pacing. Gating this on "TX FIFO
+* empty" (the old prime) stranded bytes in the ring whenever the FIFO
+* was momentarily busy: with no autonomous TX drain (old bitstreams have
+* no Tx edge) the tail of a command sat in the ring until the NEXT
+* session's first Write pushed it, mangling command boundaries (proven:
+* AT+SLEEP=0 arrived as "AT+SLEEP=" + next-session prefix "0"). On new
+* bitstreams the Tx drain-complete edge is now just a safety net.
+* IRQs are masked above, so there is no race with the ISR.
+                    lda       SYS0_MACHINE_ID
+                    cmpa      #$16                K2 with hardware WizFi interrupts?
+                    bne       WrExit              no: the poll timer paces sending
+                    ldb       DeviceMode,u
+                    beq       WrKick              raw mode: drain on every byte
+                    lda       1,s                 packet mode: flush on end of line
+                    cmpa      #$0d
+                    beq       WrKick
+                    cmpa      #$0a
+                    bne       WrExit
+WrKick              lbsr      SendRing            push the ring into the TX FIFO
+WrExit              puls      cc,a,pc            recover IRQ/Carry status, Tx character, return
 
 GStt                clrb                          default to no error...
                     pshs      cc,dp               save IRQ/Carry status, dummy B, system DP
@@ -638,18 +805,21 @@ GStt                clrb                          default to no error...
                     lbsr      GetVpPtr
                     lda       vpr_stat,x
                     puls      x
-                    clrb                          Convert MSBit of payload status byte into a fake Count value of 0 or 1
-                    lsla
-                    rolb
-                    clra
-                    cmpd      #$0000              Test the available number of bytes
-*                    lbsr      RxCCheck
-                    lbeq      NRdyErr             none, go report error
-
-                    tsta                          more than 255 bytes?
-                    beq       SaveLen             no, keep Rx data available
-                    ldb       #255                yes, just use 255
-SaveLen             stb       R$B,x               set Rx data available in caller's [B]
+                    bmi       Rdy1                payload byte already delivered
+* Payload empty. On the hardware-IRQ K2 the Rx FIFO can hold bytes with
+* NO edge pending (boot chatter predates Init; bursts behind a consumed
+* edge). Count those as ready so the reader calls Read, whose pump
+* actually delivers them - otherwise SS.Ready pollers (modem's listen
+* loop) spin forever on data that is sitting in the FIFO.
+* (Packet mode: FIFO content may be just header chars, so a Read after
+* this can still block briefly until real payload arrives.)
+                    lda       SYS0_MACHINE_ID
+                    cmpa      #$16                K2 with hardware WizFi interrupts?
+                    lbne      NRdyErr             timer machines: next tick delivers
+                    lbsr      RxFCheck            anything in the hardware FIFO?
+                    lbeq      NRdyErr             no: genuinely not ready
+Rdy1                ldb       #1                  at least one byte is available
+                    stb       R$B,x               set Rx data available in caller's [B]
 GSExitOK            puls      cc,dp,pc            restore Carry status, dummy B, system DP, return
 
 GetScSiz            cmpa      #SS.ScSiz
@@ -845,45 +1015,45 @@ L095D               orcc      #Zero
 
 
 * ShowHex             pshs      cc,d
-*                     orcc      #IntMasks
-*                     ldb       >WORK_SLOT
-*                     pshs      b
-*                     ldb       #$C2                Text screen block #
-*                     stb       >WORK_SLOT 
-*                     tfr       x,d
-*                     lsra                          Do cheap binary to 4-digit HEX ASCII string
-*                     lsra
-*                     lsra
-*                     lsra
-*                     bsr       Bin2AscHex
-*                     sta       >MMU_WINDOW+80+76
-*                     tfr       x,d
-*                     anda      #$0f
-*                     bsr       Bin2AscHex
-*                     sta       >MMU_WINDOW+80+77
-*                     tfr       x,d
-*                     tfr       b,a
-*                     lsra                          Do cheap binary to 4-digit HEX ASCII string
-*                     lsra
-*                     lsra
-*                     lsra
-*                     bsr       Bin2AscHex
-*                     sta       >MMU_WINDOW+80+78
-*                     tfr       x,d
-*                     tfr       b,a
-*                     anda      #$0f
-*                     bsr       Bin2AscHex
-*                     sta       >MMU_WINDOW+80+79
-*                     puls      b
-*                     stb       >WORK_SLOT
-*                     puls      cc,d,pc
+*                    orcc      #IntMasks
+*                    ldb       >WORK_SLOT
+*                    pshs      b
+*                    ldb       #$C2                Text screen block #
+*                    stb       >WORK_SLOT
+*                    tfr       x,d
+*                    lsra                          Do cheap binary to 4-digit HEX ASCII string
+*                    lsra
+*                    lsra
+*                    lsra
+*                    bsr       Bin2AscHex
+*                    sta       >MMU_WINDOW+80+76
+*                    tfr       x,d
+*                    anda      #$0f
+*                    bsr       Bin2AscHex
+*                    sta       >MMU_WINDOW+80+77
+*                    tfr       x,d
+*                    tfr       b,a
+*                    lsra                          Do cheap binary to 4-digit HEX ASCII string
+*                    lsra
+*                    lsra
+*                    lsra
+*                    bsr       Bin2AscHex
+*                    sta       >MMU_WINDOW+80+78
+*                    tfr       x,d
+*                    tfr       b,a
+*                    anda      #$0f
+*                    bsr       Bin2AscHex
+*                    sta       >MMU_WINDOW+80+79
+*                    puls      b
+*                    stb       >WORK_SLOT
+*                    puls      cc,d,pc
 
 * Bin2AscHex          anda      #$0f
-*                     cmpa      #9
-*                     bls       d@
-*                     suba      #10
-*                     adda      #'A'
-*                     bra       x@
+*                    cmpa      #9
+*                    bls       d@
+*                    suba      #10
+*                    adda      #'A'
+*                    bra       x@
 * d@                  adda      #'0'
 * x@                  rts
 
