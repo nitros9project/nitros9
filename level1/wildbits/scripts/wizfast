@@ -4,5 +4,9 @@ modem /wz
 echo AT+UART_CUR=921600,8,1,0,0>/wz
 modem /wz
 xmode /wz bau=1
-modem AT>/wz
+xmode /wz0 bau=9
+xmode /wz1 bau=9
+xmode /wz2 bau=9
+xmode /wz3 bau=9
+echo AT>/wz
 modem /wz
