@@ -141,8 +141,8 @@ do.opts2            lbsr      space
                     leax      1,x                 skip over dash
                     lda       ,x+                 get char after dash
                     anda      #$DF                make uppercase
-*                    cmpa      #'L
-*                    beq       do.l
+                    cmpa      #'L
+                    beq       do.l
                     cmpa      #'W
                     beq       do.w
                     cmpa      #'T
@@ -219,6 +219,8 @@ do.delay            mul
 do.readfile         lbsr      space
                     ldb       <d.timeout
                     stb       <timeout
+                    ldb       <d.linestoread      restore: end the dump after N
+                    stb       <linestoread        complete lines (default 1)
                     ldx       <param
                     lda       #READ.
                     os9       I$Open              open the file for reading
@@ -262,7 +264,19 @@ d@                  lda       <path
                     lda       #$01                to STDOUT
                     ldx       <d.ptr              from data buffer
                     os9       I$Write
-                    bcc       do.gather
+                    bcs       read.ex
+* Restored line counting (lost in the 2026/04/12 rework) - but ONLY in
+* wait-forever mode (-t0/-w), whose callers (wizlog1) want the connect
+* banner line and then control back. Timed mode (default/-tN) dumps
+* until quiet with no line limit, as always.
+                    tst       <d.timeout          timed mode?
+                    bne       do.gather           yes: no line limit
+                    lda       ,x                  the byte just displayed (X=d.ptr)
+                    cmpa      #$0A                end of a line?
+                    bne       do.gather
+                    dec       <linestoread        read the requested line count?
+                    bne       do.gather
+                    clrb                          yes: done, no error
 read.ex             rts
 
 chk.err             cmpb      #E$EOF              end of the file?
