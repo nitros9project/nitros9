@@ -55,7 +55,10 @@ l2@                 leax      -1,x
                     bne       l2@
                     deca
                     bne       l1@
-                    
+
+* Mask interrupts before jumping to the kernel.
+                    orcc      #IntMasks
+
 * Jump to the kernel.
                     ldx       #$A000
                     ldy       #$5D00
