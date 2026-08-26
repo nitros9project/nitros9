@@ -245,6 +245,12 @@ IEC_CLK_i           equ       %00000010 IEC clock in
 IEC_ATN_i           equ       %00000100 IEC ATN in
 IEC_SREQ_i          equ       %00001000 IEC SREQ in
 
+* Interrupt group 3 flags
+INT_WIZFI_RX        equ       %00000001 Rx FIFO went non-empty (edge, INT_PENDING_3)
+INT_WIZFI_TX        equ       %00100000 Tx FIFO drained to empty (edge, INT_PENDING_3)
+INT_WIZFI           equ       INT_WIZFI_RX+INT_WIZFI_TX
+
+
 ********************************************************************
 * Keyboard definitions
 *
