@@ -600,25 +600,25 @@ VIRQend        jmp       [>D.Clock]          Jump to kernel's timeslice routine
 *
 * Call [D.Poll] until all interrupts have been handled
 *
-Dopoll
+DoPoll
                ifgt      Level-2
                lda       >$0643              Level 3: get map type
                ldb       >$0645
                pshs      d                   save for later
                endc
-               clrb                          clear serviced count
-Dopoll.i
-               jsr       [>D.Poll]           Call poll routine
-               bcs       DoPoll.d            Done polling when no device found
-               incb                          at least one device serviced
-               bra       Dopoll.i            Check for more
+               clr       ,-s                 Allocate serviced device counter on stack
+DoPollLoop
+               jsr       [>D.Poll]           Poll registered devices for active interrupt
+               bcs       DoPollDone          Done polling when no device needs service
+               inc       ,s                  At least one device serviced
+               bra       DoPollLoop          Check for additional pending interrupts
 
-DoPoll.d       tstb                          any device serviced?
-               bne       DoPoll.s            if >= 1 device serviced, return Carry CLEAR
+DoPollDone     tst       ,s+                 Pop counter and test: any device serviced?
+               bne       DoPollServiced      If >= 1 device serviced, return Carry CLEAR
                orcc      #Carry              0 devices serviced: return Carry SET
-               bra       DoPoll.x
-DoPoll.s       andcc     #^Carry             >= 1 device serviced: return Carry CLEAR
-DoPoll.x
+               bra       DoPollExit
+DoPollServiced andcc     #^Carry             >= 1 device serviced: return Carry CLEAR
+DoPollExit
 
                ifgt      Level-2
                puls      d
@@ -644,6 +644,7 @@ DoToggle
                sta       >IRQEnR             Disable CART
                stb       >IRQEnR             Enable CART
                endc
+               clrb
                rts
 
 
