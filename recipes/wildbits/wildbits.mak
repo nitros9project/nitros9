@@ -276,8 +276,20 @@ $(MODDIR)/ddc0: rbmemdesc.asm | $(MODDIR)
 $(MODDIR)/dwio_wizfi: dwio.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDWIO_WIZFI
 
-$(MODDIR)/wizfidesc: wizfidesc.asm | $(MODDIR)
+$(MODDIR)/wz: wizfidesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDeviceMode=0 -DConnection=0
+
+$(MODDIR)/wz0: wizfidesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDeviceMode=1 -DConnection=0
+
+$(MODDIR)/wz1: wizfidesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDeviceMode=1 -DConnection=1
+
+$(MODDIR)/wz2: wizfidesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDeviceMode=1 -DConnection=2
+
+$(MODDIR)/wz3: wizfidesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDeviceMode=1 -DConnection=3
 
 $(MODDIR)/dwio_serial: dwio.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDWIO_SERIAL
