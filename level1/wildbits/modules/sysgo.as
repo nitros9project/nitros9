@@ -48,7 +48,7 @@ InitScrnL2          equ       *-InitScrn2
 
 ShellPrm            equ       *
                     ifgt      Level-1
-                    fcc       "i=/1"
+                    fcc       "i=/term"
                     endc
 CRtn                fcb       C$CR
 ShellPL             equ       *-ShellPrm
