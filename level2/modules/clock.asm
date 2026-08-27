@@ -499,6 +499,13 @@ virqent        ldx       ,y++
                puls      a                   Get VIRQ status flag: high bit set if VIRQ
                endc
 
+               ifne      wildbits
+               ifgt      Level-2
+               lbsr      DoPoll              On Wildbits, always poll registered devices
+               else
+               bsr       DoPoll
+               endc
+               else
                ora       <D.IRQS             Check to see if other hardware IRQ pending.
                bita      #%10110111          Any V/IRQ interrupts pending?
                beq       toggle
@@ -513,6 +520,7 @@ toggle         equ       *
                lbsr      DoToggle            No, toggle GIME anyway
                else
                bsr       DoToggle            No, toggle GIME anyway
+               endc
                endc
 
 KbdCheck       equ       *
@@ -598,9 +606,19 @@ Dopoll
                ldb       >$0645
                pshs      d                   save for later
                endc
+               clrb                          clear serviced count
 Dopoll.i
                jsr       [>D.Poll]           Call poll routine
-               bcc       DoPoll.i            Until error (error -> no interrupt found)
+               bcs       DoPoll.d            Done polling when no device found
+               incb                          at least one device serviced
+               bra       Dopoll.i            Check for more
+
+DoPoll.d       tstb                          any device serviced?
+               bne       DoPoll.s            if >= 1 device serviced, return Carry CLEAR
+               orcc      #Carry              0 devices serviced: return Carry SET
+               bra       DoPoll.x
+DoPoll.s       andcc     #^Carry             >= 1 device serviced: return Carry CLEAR
+DoPoll.x
 
                ifgt      Level-2
                puls      d
@@ -626,7 +644,6 @@ DoToggle
                sta       >IRQEnR             Disable CART
                stb       >IRQEnR             Enable CART
                endc
-               clrb
                rts
 
 
