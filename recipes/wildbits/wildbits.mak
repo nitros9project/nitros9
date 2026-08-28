@@ -36,7 +36,7 @@ FUJINET ?= 0
 FM ?= 0
 
 BOOT_RBF ?= dds0
-RBF = rbf rbsuper llwbsd rbmem $(BOOT_RBF) s1 f0 f1 $(RBF_EXTRA)
+RBF = rbf rbsuper llwbsd rbmem $(BOOT_RBF) s0 s1 f0 f1 c0 c1 $(RBF_EXTRA)
 SCF = scf vtio $(KEYSUB) term bannerfont palette $(SCF_EXTRA)
 ifeq ($(LEVEL),2)
 SCF += mousedrv_ps2
@@ -83,7 +83,7 @@ endif
 CMDS += $(STDCMDS) shell \
 	bootos9 scfg wbinfo wbreset modem \
 	inetd telnet dw httpd $(BF) \
-	$(CMDS_EXTRA) \
+	$(CMDS_EXTRA) wildspeed \
 #	$(BASIC09)
 
 ifeq ($(LEVEL),2)
@@ -174,7 +174,7 @@ else
 $(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS)
 endif
 	$(RM) $@
-	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
+	$(OS9FORMAT_CMD) -q -e $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(OS9COPY) bootfile $@,OS9Boot
 ifeq ($(LEVEL),2)
 	$(OS9COPY) $(MODDIR)/sysgo $@,sysgo
