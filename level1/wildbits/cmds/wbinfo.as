@@ -122,8 +122,8 @@ ram@                lbsr      PRINTS
                     fcc       / - RAM/
                     fcb       $0
 turbo@              lda       >K2_DIP_SW.Base
-                    bita      #SW_BOOT_MODE0
-                    beq       exit@               if z=0, the Turbo mode DIP switch is not set
+                    bita      #SW_BOOT_MODE0      0=on, 1=off
+                    bne       exit@               if z=1, the Turbo mode DIP switch is OFF
                     lbsr      PRINTS
                     fcc       " - Turbo"
                     fcb       $0
