@@ -82,9 +82,8 @@ CMDS_EXTRA += $(FM_CMDS)
 endif
 CMDS += $(STDCMDS) shell \
 	bootos9 scfg wbinfo wbreset modem \
-	inetd telnet dw httpd $(BF) \
-	$(CMDS_EXTRA) \
-#	$(BASIC09)
+	inetd telnet dw httpd $(BASIC09) $(BF) \
+	$(CMDS_EXTRA)
 
 ifeq ($(LEVEL),2)
 UTILPAK1_MODS = attr copy date del deiniz dir display list makdir mdir \
@@ -97,7 +96,7 @@ endif
 
 BASIC09 = basic09 runb inkey syscall wild
 BASIC09_FILES = $(wildcard $(LANGUAGES)/basic09/samples/*)
-BASIC09_BIN = $(LANGUAGES)/basic09/basic09_6809
+BASIC09_BIN = $(LANGUAGES)/basic09/basic09_wildbits
 RUNB_BIN = $(LANGUAGES)/basic09/runb_6809
 RUNB_SHA256 = 20ff5a997ec0e55f6aec1e37d92be49062d6c35a66e4b5404d9e680fc0783bbb
 STARTUP = $(LEVEL2)/wildbits/startup
@@ -226,18 +225,18 @@ $(MODDIR)/xmode: xmode.asm | $(MODDIR)
 $(MODDIR)/tmode: xmode.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DTMODE=1
 
-#$(MODDIR)/basic09: $(BASIC09_BIN) | $(MODDIR)
-#	$(CP) $< $@
+$(MODDIR)/basic09: $(BASIC09_BIN) | $(MODDIR)
+	$(CP) $< $@
 
-#$(BASIC09_BIN):
-#	$(MAKE) -C $(LANGUAGES)/basic09 basic09_6809
+$(BASIC09_BIN):
+	$(MAKE) -C $(LANGUAGES)/basic09 basic09_wildbits
 
-#$(MODDIR)/runb: $(RUNB_BIN) | $(MODDIR)
-#	$(CP) $< $@
-#	@printf '%s  %s\n' "$(RUNB_SHA256)" $@ | shasum -a 256 -c -
+$(MODDIR)/runb: $(RUNB_BIN) | $(MODDIR)
+	$(CP) $< $@
+	@printf '%s  %s\n' "$(RUNB_SHA256)" $@ | shasum -a 256 -c -
 
-#$(RUNB_BIN):
-#	$(MAKE) -C $(LANGUAGES)/basic09 runb_6809
+$(RUNB_BIN):
+	$(MAKE) -C $(LANGUAGES)/basic09 runb_6809
 
 ifeq ($(LEVEL),2)
 $(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1_MODS)) | $(MODDIR)
