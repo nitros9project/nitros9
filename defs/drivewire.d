@@ -223,6 +223,16 @@ DW.StatCnt          equ       15+16
 DW.StatTbl          rmb       DW.StatCnt          page pointers for terminal device static storage
 DW.VIRQPkt          rmb       Vi.PkSz
 DW.VIRQNOP          rmb       1
+* wildbits (2026-09-07, wb/DriveWireCompatible): link arbitration between the tick poll (dwio IRQSvc)
+* and process-side transactions (rbdw), and the poll state machine (dwio PollStep).
+DW.LinkBusy         rmb       1                   non-zero: a process owns the link, the tick poll keeps off the UART
+DW.PollSt           rmb       1                   0 idle, 1 OP_SERREAD sent (2 bytes owed), 2 OP_SERREADM sent
+DW.PollTk           rmb       1                   firings the response has been owed
+DW.PollHold         rmb       1                   firings still to skip after a stalled server
+DW.PollNeed         rmb       1                   bytes still owed
+DW.PollDst          rmb       2                   where the next owed byte goes
+DW.PollPort         rmb       2                   port statics of the multi-read in progress
+DW.PollResp         rmb       2                   the OP_SERREAD response (status, data)
 
 
 *****************************************
@@ -232,6 +242,7 @@ DW$Init             equ       0
 DW$Read             equ       3
 DW$Write            equ       6
 DW$Term             equ       9
+DW$Settle           equ       12                  wildbits: acquire the link (settle the tick poll, mark it busy)
 
 
 
