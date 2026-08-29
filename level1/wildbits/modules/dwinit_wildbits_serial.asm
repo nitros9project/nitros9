@@ -8,8 +8,20 @@ DWInit
 
                     lda       #0
                     sta       UART_DLH,x
-*               lda       #13                 (25.125Mhz / (16 * 115200)) = 13.65 (internal speed of Devices inside FPGA is 25.175Mhz (not 6Mhz))
-                    lda       #6                  (25.125Mhz / (16 * 230400)) = 6.82 (internal speed of Devices inside FPGA is 25.175Mhz (not 6Mhz))
+* The UART core divides by 16*(divisor+1) - its baud counter is inclusive.
+* On the raw 25.175MHz UART clock no standard rate is reachable closer than
+* -2.4% (divisor 6 = 224,777 real at "230400"), the margin behind the
+* DriveWire E$Read #244 failures under sustained traffic.
+* Cores with the fractional-BAUDCE fix (SuperIO_JR.v, 2026-08-28) run the
+* baud generator at exactly 22.1184MHz, where standard rates are EXACT:
+* 230400 -> 5, 115200 -> 11, 57600 -> 23, 460800 -> 2.
+* PAIRING NOTE: divisor and core must match as a pair - a divisor-5 boot
+* on a pre-fix core yields 262,240 baud (DW dead); divisor 6 on a fixed
+* core yields 197,486 (DW dead). Disks built from this source require the
+* BAUDCE-fixed cores, v8_rc3 (2026-08-28) or later, on BOTH machines.
+* Current cores as of 2026-09-03: K2 v8_rc10, Jr2 v8_rc7; the parity kits
+* ship core and disk together so the pair stays consistent.
+                    lda       #5                  22.1184MHz / (16 * (5+1)) = 230400 exactly (BAUDCE-fixed cores)
                     sta       UART_DLL,x
 
                     lda       UART_LCR,x
