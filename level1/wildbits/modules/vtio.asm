@@ -264,6 +264,27 @@ InitPSG             pshs      cc                save the condition code register
 InitCODEC
                     ldx       #CODEC.Base
 
+* Each machine wires the codec chip differently - keep a fully
+* independent register sequence per platform (no shared writes), so
+* either machine's audio setup can be tuned without touching the
+* other's.
+                    ifne      jr2
+* ------------------- Jr2 InitCODEC -------------------
+* Attenuations tuned by ear 2026-08-29/30 (balanced play command,
+* SID_MAX_VOL=6, Lyra velocities to 127, CC7=127):
+*   - The SAM2695 (.lyr) enters the output mux as ANALOG with no gain
+*     control of its own, so the HEADPHONE master (R00/R01, 1dB/step
+*     below $79=0dB) is the .lyr level knob; the DAC att (R03/R04,
+*     0.5dB/step below $FF=0dB) is the .mus/SID level knob. Move them
+*     in opposite directions to shift one without the other.
+*   - Final: DAC $FD (-1.0dB) + headphones $60 (-25dB). The Jr2's
+*     .lyr runs ~12dB hotter into the mix than the K2's, hence the
+*     deep headphone cut with the DAC nearly open (only 1dB of "make
+*     .mus louder" headroom remains - past that, raise SID_MAX_VOL).
+*   - The Jr2's LINE-OUT tracks the headphone stage (board wiring),
+*     so this one setting balances BOTH jacks - unlike the K2, whose
+*     line-out taps the DAC directly. Tune each machine's block
+*     separately; do not copy values across.
                     ldd       #%0010111000000000                    R23 - Reset chip
                     lbsr      SendToCODEC
                     ldd       #%0001010000000010                    R10 - DAC Interface Control 16-bit i2s
@@ -276,14 +297,50 @@ InitCODEC
                     lbsr      SendToCODEC
                     ldd       #%0001101000000000                    R13 - PWR Down Control, Everything on
                     lbsr      SendToCODEC
-                    ldd       #%0000011111110000                    R03 - Left DAC Attenuation
+                    ldd       #%0000011111111101                    R03 - Left DAC Attenuation ($FD = -1.0dB)
                     lbsr      SendToCODEC
-                    ldd       #%0000100111110000                    R04 - Right DAC Attenuation
+                    ldd       #%0000100111111101                    R04 - Right DAC Attenuation ($FD = -1.0dB)
                     lbsr      SendToCODEC
-                    ldd       #%0000000101101100                    R00 - Left Headphone Attenuation Control
+                    ldd       #%0000000101100000                    R00 - Left Headphone Attenuation ($60 = -25dB)
                     lbsr      SendToCODEC
-                    ldd       #%0000001101101100                    R01 - Right Headphone Attenuation Control
+                    ldd       #%0000001101100000                    R01 - Right Headphone Attenuation ($60 = -25dB)
                     lbsr      SendToCODEC
+
+                    else
+* -------------- K2: independently tunable InitCODEC --------------
+* K2 tuned by ear on the HEADPHONE jack, 2026-09-05 (wmset, .mus vs .lyr):
+*   DAC $D7 (-20dB) + headphones $79 (0dB); was $DF until the play command
+*   moved Lyra volume onto CC11 expression (2026-09-05 pm). The K2's synth reaches the
+*   mix ~15dB lower than the Jr2's, so the DAC is cut to meet it and the
+*   headphone master opened fully. RCA (stereo out) NOT tuned - parked.
+* Background (2026-08-29): the SAM2695 MIDI synth (.lyr) enters
+* the output mux through the Aux/Bypass ANALOG inputs, which have no
+* gain control in the WM8776 - it cannot be boosted directly, so the
+* DAC (SID/PSG) path is cut toward it instead, and the headphone
+* master raised to compensate that output. (DAC att R03/R04:
+* 0.5dB/step below $FF=0dB; headphone att R00/R01: 1dB/step below
+* $79=0dB.)
+                    ldd       #%0010111000000000                    R23 - Reset chip
+                    lbsr      SendToCODEC
+                    ldd       #%0001010000000010                    R10 - DAC Interface Control 16-bit i2s
+                    lbsr      SendToCODEC
+                    ldd       #%0010001100000001                    R17 - ALC Control 2 
+                    lbsr      SendToCODEC
+                    ldd       #%0010101000000011                    R21 - ADC Mux Control   AIN
+                    lbsr      SendToCODEC
+                    ldd       #%0010110000000111                    R22 - Output Mux MX[2:0] = "111" 
+                    lbsr      SendToCODEC
+                    ldd       #%0001101000000000                    R13 - PWR Down Control, Everything on
+                    lbsr      SendToCODEC
+                    ldd       #%0000011111010111                    R03 - Left DAC Attenuation ($D7 = -20dB)
+                    lbsr      SendToCODEC
+                    ldd       #%0000100111010111                    R04 - Right DAC Attenuation ($D7 = -20dB)
+                    lbsr      SendToCODEC
+                    ldd       #%0000000101111001                    R00 - Left Headphone Attenuation ($79 = 0dB)
+                    lbsr      SendToCODEC
+                    ldd       #%0000001101111001                    R01 - Right Headphone Attenuation ($79 = 0dB)
+                    lbsr      SendToCODEC
+                    endc
 *                   ldd       #%0001011000000010                    R11 - ADC Interface Control 
 *                   lbsr      SendToCODEC
 *                   ldd       #%0001100111010101                    R12 - Master Mode Control
