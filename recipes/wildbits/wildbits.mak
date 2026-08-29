@@ -80,10 +80,11 @@ ifeq ($(FM),1)
 LFLAGS += -lfm
 CMDS_EXTRA += $(FM_CMDS)
 endif
+LOADMODS = $(SC16550) wz wz0 wz1 wz2 wz3 dwio_wizfi
 CMDS += $(STDCMDS) shell \
 	bootos9 scfg wbinfo wbreset modem \
 inetd telnet dw httpd $(BASIC09) $(BF) \
-	$(CMDS_EXTRA) wildspeed
+	$(CMDS_EXTRA) wildspeed $(LOADMODS)
 
 ifeq ($(LEVEL),2)
 UTILPAK1_MODS = attr copy date del deiniz dir display list makdir mdir \
