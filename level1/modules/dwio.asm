@@ -45,6 +45,15 @@ PollSpd2            fcb       6
 PollSpd3            fcb       40
 * X pollidle -> drop to next slower rate
 PollIdle            fcb       60
+                    ifne      wildbits
+* Tick-poll state machine (2026-09-07, wb/DriveWireCompatible): the handler never waits for the server.
+POLL_WAIT           equ       240                 LSR polls per owed byte (~0.5 ms; the bytes of one response are 43 us apart)
+POLL_STALL          equ       4                   empty IRQ firings before backing off (reply remains owed)
+POLL_HOLD           equ       3                   firings skipped after a reset (server backoff)
+POLL_DRAIN          equ       2000                LSR polls the reset drains (~4 ms)
+POLL_MAXGRAB        equ       16                  bytes per multi-read: the RX FIFO holds them until the next firing
+SETTLE_TRIES        equ       120                 ticks a process waits for an owed response before resetting the line
+                    endc
 
 
 name                fcs       /dwio/
@@ -58,6 +67,10 @@ start               lbra      Init
                     nop
                     else
                     lbra      Write
+                    endc
+                    ifne      wildbits
+                    lbra      Term                DW$Term = 9
+                    lbra      Settle              DW$Settle = 12: a process acquires the link
                     endc
 
 * Term
@@ -244,6 +257,14 @@ IRQM05              cmpb      RxGrab,u            ; compare b (room left) to gra
                     ;         send                multiread req
 IRQM03              puls      a                   ; port # is on stack
                     ldb       RxGrab,u
+                    ifne      wildbits
+* The bytes are collected at the next firing (PollStep), so the grab must fit the RX FIFO.
+                    cmpb      #POLL_MAXGRAB
+                    bls       IRQM03a
+                    ldb       #POLL_MAXGRAB
+                    stb       RxGrab,u
+IRQM03a
+                    endc
 
                     pshs      u
 
@@ -262,6 +283,32 @@ IRQM03              puls      a                   ; port # is on stack
                     jsr       DW$Write,u          ; call DWrite
 
                     leas      3,s                 ; clean 3 DWsub args from stack
+                    ifne      wildbits
+* wildbits: the bytes are owed now. PollStep reads them at the next firing (or Settle does, for a
+* process that needs the link first) and PollDoneM below finishes the buffer bookkeeping.
+                    puls      u                   ; port statics
+                    ldx       <D.DWStat
+                    lda       #2
+                    sta       DW.PollSt,x
+                    clr       DW.PollTk,x
+                    ldb       RxGrab,u
+                    stb       DW.PollNeed,x
+                    stu       DW.PollPort,x
+                    ldd       RxBufPut,u
+                    std       DW.PollDst,x
+                    lbra      IRQExit
+* PollDoneM - the multi-read bytes are in the port buffer: advance the put pointer, count them and
+* wake the reader.  X = D.DWStat.  Runs in an IRQExit frame and leaves through CkSSig.
+PollDoneM           pshs      cc,dp
+                    orcc      #IntMasks
+                    ldu       DW.PollPort,x
+                    ldb       RxGrab,u
+                    ldx       RxBufPut,u
+                    abx
+                    cmpx      RxBufEnd,u
+                    blo       IRQM04
+                    ldx       RxBufPtr,u
+                    else
 
                     ldx       ,s                  ; pointer to this port's area (from U prior), leave it on stack
                     ldb       RxGrab,x            ; set B to grab bytes
@@ -283,6 +330,7 @@ IRQM03              puls      a                   ; port # is on stack
                     cmpx      RxBufEnd,u          ; end of Rx buffer?
                     blo       IRQM04              ; no, go keep laydown pointer
                     ldx       RxBufPtr,u          ; get Rx buffer start address
+                    endc
 IRQM04              stx       RxBufPut,u          ; set new Rx data laydown pointer
 
                     ;         set                 new RxDatLen
@@ -305,7 +353,11 @@ IRQMulti
                     ;         limit               server bytes to bufsize - datlen
                     ldb       RxBufSiz,u          ; size of buffer
                     subb      RxDatLen,u          ; current bytes in buffer
+                    ifne      wildbits
+                    lbne      IRQMulti3            (the poll code in between put the target out of short range)
+                    else
                     bne       IRQMulti3           ; continue, we have some space in buffer
+                    endc
                     ;         no                  room in buffer
                     tstb
                     lbne      CkSSig              ;had to lbra
@@ -316,6 +368,39 @@ bad
                     lbra      IRQExit2            ; don't reset error count on the way out
 
 ; **** IRQ ENTRY POINT
+                    ifne      wildbits
+* wildbits (2026-09-07): the tick poll is a state machine - nothing in here ever waits for the server.
+* A firing either sends OP_SERREAD (state 1) or collects the response owed from the last one and,
+* once it is complete, processes it and sends the next request.  A process that needs the link
+* calls DW$Settle first; DW.LinkBusy keeps this handler off the UART while it owns the link.
+IRQSvc              equ       *
+                    pshs      cc,dp               ; save system cc,DP
+                    orcc      #IntMasks           ; mask interrupts
+                    lda       Vi.Stat,u           ; VIRQ status register
+                    anda      #^Vi.IFlag          ; clear flag in VIRQ status register
+                    sta       Vi.Stat,u           ; save it...
+                    ldx       <D.DWStat
+                    tst       DW.LinkBusy,x       a process owns the link: not this firing
+                    lbne      IRQExit
+                    tst       DW.PollHold,x       backing off after a stalled server
+                    beq       IRQs1
+                    dec       DW.PollHold,x
+                    lbra      IRQExit
+IRQs1               tst       DW.PollSt,x
+                    bne       IRQs2
+                    lbsr      PollSend            nothing owed: ask
+                    lbra      IRQExit
+IRQs2               lda       #1                  collect what is owed, then ask again
+                    lbsr      PollStep
+                    lbra      IRQExit
+
+* PollProc - D = a complete OP_SERREAD response (A = status, B = data): the original handler from
+* here on, inside an IRQExit frame so that every one of its exits returns to PollStep.
+PollProc            pshs      cc,dp
+                    orcc      #IntMasks
+                    cmpd      #0
+IRQSvc2             bne       IRQGotOp            ; branch if D != 0 (something to do)
+                    else
 IRQSvc              equ       *
                     pshs      cc,dp               ; save system cc,DP
                     orcc      #IntMasks           ; mask interrupts
@@ -352,6 +437,7 @@ IRQSvc              equ       *
 IRQSvc2
                     ldd       ,s++                ; pull returned status byte into A,data into B (set Z if zero, N if multiread)
                     bne       IRQGotOp            ; branch if D != 0 (something to do)
+                    endc
 * this is a NOP response.. do we need to reschedule
                     ifgt      Level-1
                     ldx       <D.DWStat
@@ -450,7 +536,11 @@ IRQCont
 
                     *         multiread/status    flag is in bit 4 of A
                     bita      #$10
+                    ifne      wildbits
+                    lbeq      IRQPutch            (the poll code in between put the target out of short range)
+                    else
                     beq       IRQPutch            ; branch for read1 if multiread not set
+                    endc
 
                     *         all                 0s in port means status, anything else is multiread
 
@@ -469,8 +559,137 @@ dostat              bitb      #$F0                ;mask low bits
                     ldx       >D.DWStat
                     endc
                     lda       b,x
+                    ifne      wildbits
+                    lbne      statcont            (the poll code in between put the target out of short range)
+                    else
                     bne       statcont            ; if A is 0, then this device is not active, so exit
+                    endc
                     lbra      IRQExit
+
+                    ifne      wildbits
+* PollSend - send OP_SERREAD; two bytes are owed from now (state 1).
+PollSend            lda       #OP_SERREAD
+                    pshs      a
+                    leax      ,s
+                    ldy       #1
+                    lbsr      DWWrite
+                    puls      a
+                    ldx       <D.DWStat
+                    lda       #1
+                    sta       DW.PollSt,x
+                    clr       DW.PollTk,x
+                    lda       #2
+                    sta       DW.PollNeed,x
+                    leay      DW.PollResp,x
+                    sty       DW.PollDst,x
+                    rts
+
+* PollGet - collect the owed bytes that have arrived: up to DW.PollNeed of them into DW.PollDst.
+* Each byte may wait POLL_WAIT LSR polls (the bytes of one response arrive back to back).
+* Exit: carry clear = all owed bytes are in, carry set = still owed.  X = D.DWStat.  Interrupts
+* are the caller's business (masked in the handler, masked per call from Settle).
+PollGet             pshs      y,u
+PgNext              tst       DW.PollNeed,x
+                    beq       PgDone
+                    ldy       #POLL_WAIT
+PgWait              lda       UART.Base+UART_LSR
+                    bita      #LSR_DATA_AVAIL
+                    bne       PgByte
+                    leay      -1,y
+                    bne       PgWait
+                    orcc      #Carry              nothing (more) here yet
+                    puls      y,u,pc
+PgByte              lda       UART.Base+UART_TRHB
+                    ldu       DW.PollDst,x
+                    sta       ,u+
+                    stu       DW.PollDst,x
+                    dec       DW.PollNeed,x
+                    bra       PgNext
+PgDone              andcc     #^Carry
+                    puls      y,u,pc
+
+* PollStep - a response is owed: collect it if it is here, process it, and (A non-zero) send the
+* next OP_SERREAD. Keep an incomplete response owed even during IRQ backoff:
+* forgetting it lets late poll bytes become the next sector header/data.
+PollStep            pshs      a
+                    ldx       <D.DWStat
+                    lbsr      PollGet
+                    bcs       PollOwed
+                    lda       DW.PollSt,x
+                    clr       DW.PollSt,x
+                    cmpa      #2
+                    beq       PollDoneM2
+                    ldd       DW.PollResp,x
+                    lbsr      PollProc            may send OP_SERREADM (state 2 again)
+PollNext            ldx       <D.DWStat
+                    tst       DW.PollSt,x
+                    bne       PollX
+                    tst       ,s
+                    beq       PollX
+                    lbsr      PollSend
+PollX               puls      a,pc
+PollDoneM2          lbsr      PollDoneM
+                    bra       PollNext
+PollOwed            tst       ,s                  A=0: Settle owns its timed wait budget
+                    beq       PollX
+                    inc       DW.PollTk,x
+                    lda       DW.PollTk,x
+                    cmpa      #POLL_STALL
+                    blo       PollX
+                    clr       DW.PollTk,x
+                    lda       #POLL_HOLD
+                    sta       DW.PollHold,x       back off WITHOUT discarding the owed reply
+                    bra       PollX
+
+* PollPurge - the RX FIFO reset strobe, a short drain, no response owed, POLL_HOLD firings of quiet.
+PollPurge           lda       #%11000011          FCR: RX FIFO reset (self-clearing); bit 0 keeps the FIFOs on
+                    sta       UART.Base+UART_FCR
+                    ldy       #POLL_DRAIN
+PpLoop              lda       UART.Base+UART_LSR
+                    bita      #LSR_DATA_AVAIL
+                    beq       PpNext
+                    lda       UART.Base+UART_TRHB
+PpNext              leay      -1,y
+                    bne       PpLoop
+                    ldx       <D.DWStat
+                    clr       DW.PollSt,x
+                    clr       DW.PollNeed,x
+                    clr       DW.PollTk,x
+                    lda       #POLL_HOLD
+                    sta       DW.PollHold,x
+                    rts
+
+* Settle (DW$Settle) - a process acquires the link: mark it busy so the tick poll keeps off the
+* UART, then collect any poll response still owed so the first byte the caller reads is its own.
+* Sleeps a tick between looks with interrupts on (the keyboard lives); a server that never answers
+* costs SETTLE_TRIES ticks once, then the line is reset and the poll backs off.
+* Exit: DW.LinkBusy = 1, all registers preserved.  The caller clears DW.LinkBusy when it is done.
+Settle              pshs      d,x,y,u,cc
+                    ldx       <D.DWStat
+                    lda       #1
+                    sta       DW.LinkBusy,x
+                    ldb       #SETTLE_TRIES
+SetLook             tst       DW.PollSt,x
+                    beq       SetDone
+                    pshs      b,cc
+                    orcc      #IntMasks
+                    clra                          no request from here
+                    lbsr      PollStep
+                    puls      b,cc
+                    ldx       <D.DWStat
+                    tst       DW.PollSt,x
+                    beq       SetDone
+                    decb
+                    beq       SetStall
+                    pshs      b
+                    ldx       #2                  one timed tick; X=1 only yields
+                    os9       F$Sleep
+                    puls      b
+                    ldx       <D.DWStat
+                    bra       SetLook
+SetStall            lbsr      PollPurge
+SetDone             puls      d,x,y,u,cc,pc
+                    endc
 
 * IRQ set freq routine
 * sets freq and clears NOP counter
