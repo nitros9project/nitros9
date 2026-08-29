@@ -42,17 +42,24 @@
 *   "> " prompt wait and the reply purge (pop lines until "SEND OK" or
 *   "ERROR") can no longer wedge the writer - the old fixed 4-LF purge
 *   hung forever under ATE0 with IRQs masked.
+*
+*          2026/08/26  Roger Taylor
+* Timer0 machinery removed: the K2 architecture is now the ONLY code
+* path (Jr2 included). Init installs the WizFi F$IRQ packet on all
+* machines; the ISR just clears the edges and drains the output ring;
+* Read direct-pops the FIFO with tick-sleep blocking; WritSlp drains
+* the ring itself and tick-polls instead of suspending on a wake that
+* needed the Tx edge. No interrupt is load-bearing: the driver runs
+* unchanged on bitstreams without the WizFi edges. Interrupt equates
+* moved to wildbits.d (INT_WIZFI = Rx+Tx bits). Known gap: a byte
+* ParkOther hands to another socket's slot is not yet picked up by
+* that socket's direct-pop reader (concurrent multi-socket only).
 
                     ifp1
                     use       defsfile
                     endc
 
 
-* INT_TIMER_0 (25.175Mhz-based timer)
-* 25,175,000 / 11520 Bytes Per Second  = 2185 ticks @ 25.175Mhz (8, 137)
-* 25,175,000 / 92160 Bytes Per Second  =  273 ticks @ 25.175Mhz (1,  17)
-
-TRATE               equ       350                 Tweak for goldilox (300 = quick response) (800 = choppy response)
 D.WZStatTbl         equ       D.SWPage            Borrowed from incompatible SmartWatch variable
 WORK_SLOT	    equ       MMU_SLOT_2
 MMU_WINDOW          equ       $4000
@@ -169,19 +176,11 @@ strConnect          fcc       "0,CONNECT"
 strCipSend          fcc       "AT+CIPSEND="
                     fcb       0
 
-* WizFi requires a high-speed hardware IRQ service.
-* Clock-based VIRQ has never worked out.
 ***********************************************************************************
 * F$IRQ packet.
-*
-T0IRQ_Pckt          equ       *
-T0IRQ_Pckt.Flip     fcb       %00000000           the flip byte
-T0IRQ_Pckt.Mask     fcb       INT_TIMER_0         the mask byte for machines without actual WizFi Interrupt
-                    fcb       $F1                 the priority byte
-
-* One F$IRQ entry serves BOTH WizFi sources: the mask byte carries the Rx
-* data edge and the Tx drain-complete edge; iService clears and services
-* whichever fired (the send path runs first either way).
+* One F$IRQ entry serves BOTH WizFi sources: INT_WIZFI (defs) carries
+* the Rx data edge and the Tx drain-complete edge; iService clears and
+* services whichever fired.
 WIIRQ_Pckt          equ       *
 WIIRQ_Pckt.Flip     fcb       %00000000           the flip byte
 WIIRQ_Pckt.Mask     fcb       INT_WIZFI           the mask byte for the WizFi interrupts
@@ -230,35 +229,22 @@ c@                  clr       ,x+
                     decb
                     bne       c@
 
-* K2 (machine ID $16) has the WizFi hardware interrupt wired; other
-* machines (Jr2 = $1A) poll via Timer0. NOTE: the interrupt is NOT
-* unmasked here on either path - unmasking before F$IRQ install (or
-* before the ind_* pointers exist) let the first interrupt run iService
-* through null pointers / with no handler: storm, dead before shell
-* (proven by LED probe 2026-08-20). Pending cleared, handler installed,
-* everything initialized, THEN unmask at the end of Init.
-Init2               lda       SYS0_MACHINE_ID
-                    cmpa      #$16                K2 with hardware WizFi interrupt?
-                    bne       InstallTimer0       no: poll via Timer0
-InstallWizIRQ       lda       #INT_WIZFI
+* Both machines (K2 $16, Jr2 $1A) use the WizFi hardware edges (defs:
+* INT_WIZFI = Rx-data + Tx-drain bits); the Timer0 polling machinery is
+* gone (2026-08-26 reduction). The ISR is only a latency optimizer -
+* receive is reader-polled and Write drains synchronously - so the
+* driver stays fully functional on bitstreams where the edges never
+* fire. NOTE: the interrupt is NOT unmasked here -
+* unmasking before F$IRQ install (or before the ind_* pointers exist)
+* let the first interrupt run iService through null pointers / with no
+* handler: storm, dead before shell (proven by LED probe 2026-08-20).
+* Pending cleared, handler installed, everything initialized, THEN
+* unmask at the end of Init.
+Init2               lda       #INT_WIZFI
                     sta       >INT_PENDING_3       clear any stale latched pendings
                     ldd       #INT_PENDING_3       polling address for the packet
                     leax      WIIRQ_Pckt,pcr       point to the IRQ packet
-                    bra       Install
-InstallTimer0       ldd       #TRATE
-                    sta       T0_VAL+0            registers are still Little Endian?
-                    stb       T0_VAL+1
-                    clr       T0_VAL+2
-                    lda       #%00000001
-                    sta       >T0_CTR
-                    lda       #%00000010          Timer reloads Value, for continuous run
-                    sta       >T0_CMP_CTR
-                    lda       #INT_TIMER_0
-                    sta       >INT_PENDING_0      clear any pending from the just-started timer
-                    ldd       #INT_PENDING_0      get the pending interrupt pending address
-                    leax      T0IRQ_Pckt,pcr      point to the IRQ packet
-
-Install             leay      iService,pcr        and the service routine
+                    leay      iService,pcr        and the service routine
                     os9       F$IRQ               install the interrupt handler
 * NOTE: interrupt is NOT unmasked here. The ind_* hardware pointers are
 * initialized further down; unmasking before they exist let the first
@@ -303,17 +289,9 @@ Install             leay      iService,pcr        and the service routine
 *                    stb       MasterRxDBlock,u
 
 * Everything initialized (incl. ind_* pointers): NOW enable the source.
-                    lda       SYS0_MACHINE_ID
-                    cmpa      #$16                K2 with hardware WizFi interrupt?
-                    bne       unmt0@
                     lda       >INT_MASK_3
-                    anda      #^(INT_WIZFI)       enable Rx data + Tx drain edges
+                    anda      #^(INT_WIZFI)       enable both WizFi edges
                     sta       >INT_MASK_3
-                    bra       unmx@
-unmt0@              lda       >INT_MASK_0
-                    anda      #^INT_TIMER_0       enable the TIMER_0 interrupt
-                    sta       >INT_MASK_0
-unmx@               equ       *
 InitExit            puls      y
                     puls      cc,dp,pc            recover IRQ/Carry status, system DP, return
 
@@ -327,20 +305,13 @@ Term                clrb                          default to no error...
                 *     ora       ,s+
                 *     sta       >INT_MASK_0          and save it back
 
-* Silence our interrupt sources BEFORE removing the handler: a Tx
-* drain-complete (or Rx) edge landing after removal has no handler.
+* Silence our interrupt sources BEFORE removing the handler: an edge
+* landing after removal has no handler.
                      orcc      #IntMasks
-                     lda       SYS0_MACHINE_ID
-                     cmpa      #$16                K2 with hardware WizFi interrupts?
-                     bne       tmt0@
                      lda       >INT_MASK_3
                      ora       #INT_WIZFI          mask both WizFi edges
                      sta       >INT_MASK_3
-                     bra       tmx@
-tmt0@                lda       >INT_MASK_0
-                     ora       #INT_TIMER_0        mask the poll timer
-                     sta       >INT_MASK_0
-tmx@                 ldx       #$0000              remove IRQ table entry
+                     ldx       #$0000              remove IRQ table entry
                      os9       F$IRQ
 
                 *     pshs      u                   save data pointer
@@ -475,76 +446,16 @@ srpe@               cmpb      #'S                 "SEND OK" line?
 xx@                 andcc     #^Zero              sent a burst: return Z clear
 sr9@                puls      y,pc
 
+* ISR: clear the edge and opportunistically drain the output ring.
+* Receive is entirely reader-driven (Read polls and pops the hardware
+* FIFO); writers never suspend (Write drains synchronously, WritSlp
+* drains and tick-polls) - so the ISR wakes nobody and touches no RAM
+* state. It is a latency optimization, not a dependency: the driver is
+* fully functional even if this never runs.
 iService            pshs      cc,dp,x
-                    lda       SYS0_MACHINE_ID
-                    cmpa      #$16                K2 with hardware WizFi interrupts?
-                    bne       ClearTimer0
-                    lda       #INT_WIZFI          clear whichever fired: Rx data
-                    sta       >INT_PENDING_3      edge and/or Tx drain-complete edge
-                    bra       iSendPkt
-ClearTimer0         lda       #INT_TIMER_0
-                    sta       >INT_PENDING_0
-iSendPkt            lbsr      SendRing            drain any queued output first
-                    lbeq      iRead               nothing was queued: service receive
-                    lbra      iWake               sent a burst: wake any sleeper
-*                    lbra      iExit               Return from ISR, no payload update
-
-iRead
-* K2: the ISR does NOTHING for receive - not even a status read. Every
-* RX defense that consulted the vpr page was poisoned by it (measured:
-* the no-sleeper gate read spurious vpr_wake and popped 5 bytes with no
-* reader). Read polls and pops the hardware FIFO directly; blocked
-* readers tick-sleep on the FIFO count. The marginal-SRAM page is fully
-* out of the K2 receive path. Timer machines keep the parked path.
-                    lda       SYS0_MACHINE_ID
-                    cmpa      #$16                K2 with hardware WizFi interrupts?
-                    lbeq      iExit               yes: RX is reader-driven only
-                    ldb       DevChan,u           Get the connection/channel # for the current device
-                    lbsr      GetVpPtr            Point to associated payload
-                    lda       vpr_stat,x          Has the mainline code signaled that it has consumed the last data byte?
-                    lbmi      iThrottle           No: just exit - the Timer0 poll retries next tick
-                    lbsr      RxFCheck            Are there any pending RxD FIFO bytes?
-                    lbeq      iExit               Return from ISR, no payload update
-
-                    lda       [ind_DataReg,u]     Pop next FIFO byte
-                    ldb       DeviceMode,u        Device descriptor has the Packets bit set
-                    lbeq      iBroadcast          Device is using the WizFi360 passthrough/raw mode
-                    lbsr      PktByte             run byte through the +IPD machine
-                    lbeq      iExit               header/bookkeeping byte: consumed
-iBroadcast          ldb       PacketChannel,u
-                    lbsr      GetVpPtr
-                    ldb       PacketChannel,u
-                    orb       #$80
-                    stb       vpr_stat,x
-                    sta       vpr_data,x
-
-iWake               ldb       PacketChannel,u
-                    lbsr      GetVpPtr
-                    clrb                          clear Carry (for exit) and LSB of process descriptor address
-                    lda       vpr_wake,x          anybody waiting? ([D]=process descriptor address)
-                    beq       iExit               no, go return...
-                    stb       vpr_wake,x          mark I/O done
-                    tfr       d,x                 copy process descriptor pointer
-                    lda       P$State,x           get state flags
-                    anda      #^Suspend           clear suspend state
-                    sta       P$State,x           save state flags
-
-* Driver-side flow control, so the driver survives WITHOUT the kernel's
-* DoneIRQ mask-on-carry pacing (i.e. with the mainline clrb DoToggle):
-* the payload buffer holds ONE byte; returning with it full and our
-* interrupt enabled lets the module re-interrupt before the reader can
-* ever consume (boot chatter at 'iniz wz' kills the machine before
-* shell). Mask our source here; Read unmasks after consuming.
-* Timer0 machines are paced by the timer and are left alone.
-* Buffer full: on the hardware-IRQ K2, mask our interrupt until the
-* reader consumes (Read unmasks); Timer0 machines just wait for the
-* next tick - the timer paces the polling.
-iThrottle           lda       SYS0_MACHINE_ID
-                    cmpa      #$16                K2 with hardware WizFi interrupt?
-                    bne       iExit               no: timer paces the polling
-                    lda       >INT_MASK_3
-                    ora       #INT_WIZFI          mask the WizFi interrupt
-                    sta       >INT_MASK_3
+                    lda       #INT_WIZFI          clear whichever edge fired
+                    sta       >INT_PENDING_3
+                    lbsr      SendRing            drain any queued output
 * Return with carry explicitly CLEAR ('interrupt serviced'): the entry
 * CC pushed at iService would otherwise be returned as-is - a random
 * carry handed to the kernel's IRQ tail, which masks IRQs on carry set.
@@ -629,40 +540,14 @@ ParkOther           pshs      a
                     sta       P$State,x
 po9@                rts
 
-ReadSlp             ldb       DevChan,u
-                    lbsr      GetVpPtr
-                    ldd       >D.Proc             Level II process descriptor address
-                    sta       vpr_wake,x           V.WAKE,u             save MSB for IRQ service routine
-                    tfr       d,x                 copy process descriptor address
-                    ldb       P$State,x
-                    orb       #Suspend
-                    stb       P$State,x
-                    lbsr      Sleep1              go suspend process...
-                    ldx       >D.Proc             process descriptor address
-                    ldb       P$Signal,x          pending signal for this process?
-                    beq       c@                  no, go check process state...
-                    cmpb      #S$Intrpt           do we honor signal?
-                    lbls      ErrExit             yes, go do it...
-c@                  ldb       P$State,x
-                    bitb      #Condem
-                    lbne      PrAbtErr            yes, go do it...
-                    ldb       DevChan,u
-                    lbsr      GetVpPtr
-                    ldb       vpr_wake,x           V.WAKE,u            true interrupt?
-                    beq       ReadD               yes, go read the char.
-                    bra       ReadSlp             no, go suspend the process
-
 * x bits 1..0 is socket #, bit 4 = isPacketChannel	ldd <V.PORT
 Read                clrb                          default to no errors...
                     pshs      cc,dp               save IRQ/Carry status, system DP
 
 ReadD               orcc      #IntMasks
-* K2: fully vpr-free receive - poll and pop the hardware FIFO directly;
-* when empty, tick-sleep and re-poll (signals honored). No parking, no
-* wake handshake, no marginal-SRAM round-trips anywhere in the path.
-                    lda       SYS0_MACHINE_ID
-                    cmpa      #$16                K2 with hardware WizFi interrupts?
-                    bne       rdtmr@              timer machines: parked path as always
+* Both machines: fully vpr-free receive - poll and pop the hardware FIFO
+* directly; when empty, tick-sleep and re-poll (signals honored). No
+* parking, no wake handshake, no marginal-SRAM round-trips in the path.
 rdk2@               lbsr      RxFCheck            bytes waiting in the hardware FIFO?
                     beq       rdk2w@              no: tick-sleep and re-poll
                     lda       [ind_DataReg,u]     pop directly
@@ -687,27 +572,6 @@ rdk2c@              ldb       P$State,x
                     bitb      #Condem
                     lbne      PrAbtErr
                     bra       rdk2@
-rdtmr@              ldb       DevChan,u
-                    lbsr      GetVpPtr
-                    ldb       vpr_stat,x
-                    lbpl      ReadSlp             nothing parked: sleep for the tick
-rdgo@               andb      #3
-                    stb       vpr_stat,x           Notify the hub that we've taken our data
-                    cmpb      DevChan,u
-                    lbne      ReadSlp
-                    lda       vpr_data,x           Get our data
-* Byte consumed: on the hardware-IRQ K2, re-enable the interrupt that
-* iThrottle masked. IRQs are masked here (orcc at ReadD): race-free RMW.
-rdunm@              pshs      a
-                    lda       SYS0_MACHINE_ID
-                    cmpa      #$16                K2 with hardware WizFi interrupts?
-                    bne       u@
-                    lda       >INT_MASK_3
-                    anda      #^INT_WIZFI          unmask the WizFi interrupt
-                    sta       >INT_MASK_3
-u@                  puls      a
-                    puls      cc,dp,pc            recover IRQ/Carry status, dummy B, system DP, return
-
 
 PrAbtErr            ldb       #E$PrcAbt
                     bra       ErrExit
@@ -733,16 +597,14 @@ NRdyErr             ldb       #E$NotRdy
 UnSvcErr            ldb       #E$UnkSvc
                     bra       ErrExit
 
-WritSlp             ldb       DevChan,u
-                    lbsr      GetVpPtr
-                    ldd       >D.Proc             Level II process descriptor address
-                    sta       vpr_wake,x             save MSB for IRQ service routine
-                    tfr       d,x                 copy process descriptor address
-                    ldb       P$State,x
-                    orb       #Suspend
-                    stb       P$State,x
-                    lbsr      Sleep1              go suspend process...
-                    ldx       >D.Proc             process descriptor address
+* Ring full: drain it ourselves (IRQs are masked - no ISR race), give
+* up a tick honoring signals, and retry. No suspend, no wake handshake:
+* the writer never depends on an interrupt to make progress. In packet
+* mode a full ring flushes as one CIPSEND mid-line - acceptable, and
+* only reachable when a single line exceeds the 256-byte ring.
+WritSlp             lbsr      SendRing            push the ring into the TX FIFO
+                    lbsr      Sleep1              breathe, honor signals
+                    ldx       >D.Proc
                     ldb       P$Signal,x          pending signal for this process?
                     beq       c@                  no, go check process state...
                     cmpb      #S$Intrpt           do we honor signal?
@@ -750,11 +612,7 @@ WritSlp             ldb       DevChan,u
 c@                  ldb       P$State,x
                     bitb      #Condem
                     lbne      PrAbtErr            yes, go do it...
-                    ldb       DevChan,u
-                    lbsr      GetVpPtr
-                    ldb       vpr_wake,x            true interrupt?
-                    beq       WriteD               yes, go read the char.
-                    bra       WritSlp             no, go suspend the process
+                    bra       WriteD              ring drained: lay the byte down
 
 Write               clrb                          default to no error...
                     pshs      cc,a                save IRQ/Carry status, Tx character, system DP
@@ -769,20 +627,15 @@ WriteD              orcc      #IntMasks
                     abx
                     lda       1,s
                     sta       ,x
-* Background-send kick (hardware-IRQ machines only). Raw mode drains the
-* ring on EVERY byte; packet mode only on CR/LF so an AT line becomes ONE
+* Synchronous send kick (both machines). Raw mode drains the ring on
+* EVERY byte; packet mode only on CR/LF so an AT line becomes ONE
 * CIPSEND instead of one per character. The drain is UNCONDITIONAL - the
 * 2048-byte hardware TX FIFO does the pacing. Gating this on "TX FIFO
 * empty" (the old prime) stranded bytes in the ring whenever the FIFO
-* was momentarily busy: with no autonomous TX drain (old bitstreams have
-* no Tx edge) the tail of a command sat in the ring until the NEXT
-* session's first Write pushed it, mangling command boundaries (proven:
-* AT+SLEEP=0 arrived as "AT+SLEEP=" + next-session prefix "0"). On new
-* bitstreams the Tx drain-complete edge is now just a safety net.
+* was momentarily busy: the tail of a command sat in the ring until the
+* NEXT session's first Write pushed it, mangling command boundaries
+* (proven: AT+SLEEP=0 arrived as "AT+SLEEP=" + next-session prefix "0").
 * IRQs are masked above, so there is no race with the ISR.
-                    lda       SYS0_MACHINE_ID
-                    cmpa      #$16                K2 with hardware WizFi interrupts?
-                    bne       WrExit              no: the poll timer paces sending
                     ldb       DeviceMode,u
                     beq       WrKick              raw mode: drain on every byte
                     lda       1,s                 packet mode: flush on end of line
@@ -806,16 +659,11 @@ GStt                clrb                          default to no error...
                     lda       vpr_stat,x
                     puls      x
                     bmi       Rdy1                payload byte already delivered
-* Payload empty. On the hardware-IRQ K2 the Rx FIFO can hold bytes with
-* NO edge pending (boot chatter predates Init; bursts behind a consumed
-* edge). Count those as ready so the reader calls Read, whose pump
-* actually delivers them - otherwise SS.Ready pollers (modem's listen
-* loop) spin forever on data that is sitting in the FIFO.
-* (Packet mode: FIFO content may be just header chars, so a Read after
-* this can still block briefly until real payload arrives.)
-                    lda       SYS0_MACHINE_ID
-                    cmpa      #$16                K2 with hardware WizFi interrupts?
-                    lbne      NRdyErr             timer machines: next tick delivers
+* Payload empty: report ready when the hardware FIFO holds bytes so the
+* poller calls Read, whose pump actually delivers them - otherwise
+* SS.Ready pollers (modem's listen loop) spin forever on data that is
+* sitting in the FIFO. (Packet mode: FIFO content may be just header
+* chars, so a Read after this can still block until real payload.)
                     lbsr      RxFCheck            anything in the hardware FIFO?
                     lbeq      NRdyErr             no: genuinely not ready
 Rdy1                ldb       #1                  at least one byte is available

@@ -834,5 +834,15 @@ WizFi_RxD_WR_Cnt    rmb       2
 WizFi_TxD_RD_Cnt    rmb       2
 WizFi_TxD_WR_Cnt    rmb       2
 
+* DIP Switches for Jr/Jr2/K2.. 
+K2_DIP_SW.Base      equ       $FF90
+SW_GAMMA_ON         equ       %10000000
+SW_USER2            equ       %01000000
+SW_USER1            equ       %00100000
+SW_USER0            equ       %00010000
+SW_BOOT_MODE3       equ       %00001000
+SW_BOOT_MODE2       equ       %00000100
+SW_BOOT_MODE1       equ       %00000010
+SW_BOOT_MODE0       equ       %00000001
 
                     ENDC
