@@ -83,7 +83,7 @@ endif
 CMDS += $(STDCMDS) shell \
 	bootos9 scfg wbinfo wbreset modem \
 inetd telnet dw httpd $(BASIC09) $(BF) \
-	$(CMDS_EXTRA) wildspeed w6100eth lcdload
+	$(CMDS_EXTRA) wildspeed w6100eth lcdload wmset
 
 ifeq ($(LEVEL),2)
 UTILPAK1_MODS = attr copy date del deiniz dir display list makdir mdir \
