@@ -65,7 +65,9 @@ FLASH_ID_2MB_K2B    fdb       $BFC9
 FLASH_ID_128K_JR2   fdb       $BFD5               SST brand for Jr2
 FLASH_ID_256K_JR2   fdb       $BFD6               SST brand for Jr2
 FLASH_ID_512K_JR2   fdb       $BFD7               SST brand for Jr2
-ERASE_WAIT          equ       $2800               This value considers a dummy "cmpx #$0000" is in the delay loop
+* ERASE_WAIT retired 2026-08-30: erase completion is now DQ6
+* toggle-polled in Erase4KSector (CPU-speed independent) instead of a
+* cycle-calibrated delay. See the comment there.
 
 
 ModEntry            lbra      Init
@@ -405,8 +407,10 @@ x@                  rts
 
 AskForCache         ldb       #1                  Flash Write mode needs an 8K swap block of RAM
                     os9       F$AllRAM
-*                    bcc       x@
-                    stb       >MMU_WINDOW+(15*80)+79
+* (2026-08-30: removed a leftover fDEBUG-era screen poke here that ran
+* unconditionally - it wrote the block # into offset $4FF of whatever
+* block sat in the work slot at Init, and its commented-out bcc meant
+* an F$AllRAM error code would silently become CacheBlock.)
 x@                  rts                           Return with any error, otherwise reg.b = cache block
 
 Flash2Cache         pshs      u,x,y,d
@@ -469,7 +473,14 @@ w@                  ldb       CacheBlock,u
                     lbsr      SendCmd
                     ldb       FlashBlock,u
                     stb       >MMU_WORKSLOT
-                    ldb       ,x
+* (2026-08-30) was "ldb ,x": that seeded the verify timeout below from
+* an ARBITRARY pre-program flash read - $FF on erased flash gave 255
+* polls, but over dirty content B could start at 1-2 and time out
+* after a couple of polls (spurious #243 independent of CPU speed).
+* clrb gives a deterministic 256-poll bound; the DQ6/DQ7 toggle reads
+* below report true completion, so the count is only a hang guard
+* (256 polls exceeds the 20us max byte-program time at any clock).
+                    clrb
                     sta       ,x+                 REQUIRED: when address changes the data is latched
 v@                  cmpa      -1,x
                     cmpa      -1,x                This is not a mistake
@@ -530,11 +541,23 @@ k2@                 ldb       1,s                 get Flash block num from stack
                     sta       >MMU_WINDOW         place address of 4k block on the address bus
                     bra       d@                  go to the delay routine
 u@                  sta       >MMU_WINDOW+$1000   place address of 4k block on the address bus
-d@                  ldx       #ERASE_WAIT         delay to fully erase Flash sector
-w@                  leax      -1,x
-                    cmpx      #0                  REQUIRED because the wait count of $2800 was
-                    bne       w@                   discovered while 6 padding cycles was included
-                    puls      a,b,x,pc
+* Turbo-proof erase wait (2026-08-30): the old ERASE_WAIT spin was
+* calibrated in CPU cycles (~19ms at the stock 6.29MHz clock) against
+* the SST39's 18ms TYPICAL / 25ms MAXIMUM sector-erase time - slow
+* erases outran it even at stock speed (random #243 during format),
+* and any faster CPU clock (turbo) shrinks the wait further. Poll the
+* chip instead: DQ6 toggles on every read while an erase is running,
+* so two consecutive equal reads mean the erase is truly complete -
+* correct at any CPU speed. X only bounds a hang (65536 polls covers
+* the 25ms max erase with wide margin at any clock this hardware can
+* reach); on timeout the following program-verify reports the error.
+d@                  ldx       #0                  poll bound, not a timer
+w@                  lda       >MMU_WINDOW         DQ6 toggles on every read while erasing
+                    cmpa      >MMU_WINDOW         two equal reads = erase complete
+                    beq       e@
+                    leax      -1,x
+                    bne       w@
+e@                  puls      a,b,x,pc
 
 Wipe                clrb
                     pshs      cc
