@@ -115,20 +115,23 @@ cont@               lbsr      PRINTS
                     cmpa      #$07                is it 7? (meaning this is loaded from RAM)
                     beq       ram@                branch if so
                     lbsr      PRINTS
-                    fcc       / (Flash Mode)/
-                    fcb       C$CR
-                    fcb       C$CR
+                    fcc       / - Flash/
                     fcb       $0
-                    rts
+                    bra       turbo@
 ram@                lbsr      PRINTS
-                    fcc       / (RAM Mode)/
-                    fcb       C$CR
+                    fcc       / - RAM/
+                    fcb       $0
+turbo@              lda       >K2_DIP_SW.Base
+                    bita      #SW_BOOT_MODE0      0=on, 1=off
+                    bne       exit@               if z=1, the Turbo mode DIP switch is OFF
+                    lbsr      PRINTS
+                    fcc       " - Turbo"
+                    fcb       $0
+exit@               lbsr      PRINTS
                     fcb       C$CR
                     fcb       $0
+
                     rts
-                    
-
-
 
 next@               lbsr      PUTS                print it
 
