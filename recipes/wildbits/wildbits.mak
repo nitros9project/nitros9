@@ -47,6 +47,7 @@ DRIVEWIRE = dwio_serial $(DRIVEWIRE_RBF) $(DRIVEWIRE_SCF)
 DRIVEWIRE_BOOTMODS = dwio_serial $(PIPE) $(SC16550)
 PIPE = pipeman piper pipe
 SC16550 = sc16550 t0_sc16550
+WIZFI_MODS = dwio_wizfi wz wz0 wz1 wz2 wz3
 CLOCK = clock clock2_wildbits
 
 # NOTE!!!
@@ -80,11 +81,12 @@ ifeq ($(FM),1)
 LFLAGS += -lfm
 CMDS_EXTRA += $(FM_CMDS)
 endif
-LOADMODS = $(SC16550) wz wz0 wz1 wz2 wz3 dwio_wizfi
 CMDS += $(STDCMDS) shell \
 	bootos9 scfg wbinfo wbreset modem \
-inetd telnet dw httpd $(BASIC09) $(BF) \
-	$(CMDS_EXTRA) wildspeed $(LOADMODS)
+	inetd telnet dw httpd $(BASIC09) $(BF) \
+	wildspeed w6100eth \
+	$(SC16550) $(WIZFI_MODS) \
+	$(CMDS_EXTRA)
 
 ifeq ($(LEVEL),2)
 UTILPAK1_MODS = attr copy date del deiniz dir display list makdir mdir \
@@ -213,6 +215,9 @@ endif
 # Command rules
 $(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
 	$(MERGE) $(addprefix $(MODDIR)/,$(SHELLMODS)) >$@
+
+$(MODDIR)/w6100eth: $(LEVEL1)/wildbits/cmds/w6100eth.as | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 $(MODDIR)/pwd: pd.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DPWD=1
