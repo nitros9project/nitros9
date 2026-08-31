@@ -682,50 +682,74 @@ SPRITE_SIZE0        equ       $20       00 = 32x32 - 01 = 24x24 - 10 = 16x16 - 1
 SPRITE_SIZE1        equ       $40
 
 
+* Sprite attribute records (128 total, 8 bytes each) live in VICKY page
+* $C0 at page offsets $1300-$16FF (record n at $1300+8*n). The SPn_*
+* equates below assume that page mapped in MMU slot 7 ($E000 window,
+* the vtio/system-state convention) -> records at $F300+. Multi-byte
+* fields are BIG-endian (6809 rework, rc7 silicon): +1 = address HIGH,
+* +4 = X HIGH, +6 = Y HIGH - so a 16-bit STD at the _H offset stores
+* X or Y correctly in one instruction. (Pre-rework cores and the
+* official 65C02 documentation were little-endian; equates corrected
+* 2026-08-31.) Generic per-record offsets for indexed access:
+SPR_CTRL            equ       0         control byte (SPRITE_* bits above)
+SPR_ADDY_H          equ       1         pixel data physical address 23:16
+SPR_ADDY_M          equ       2         pixel data physical address 15:8
+SPR_ADDY_L          equ       3         pixel data physical address 7:0
+SPR_X_H             equ       4         X 15:8 (screen left = 32)
+SPR_X_L             equ       5         X 7:0
+SPR_Y_H             equ       6         Y 15:8 (screen top = 32)
+SPR_Y_L             equ       7         Y 7:0
+SPR_REC_SIZE        equ       8         bytes per sprite record
+
+* Where the sprite machinery lives (map these VICKY pages via an MMU slot):
+SPRITE_BLK          equ       $C0       VICKY page holding the 128 sprite records
+SPRITE_REC_OFF      equ       $1300     page offset of record 0 (records at +n*SPR_REC_SIZE)
+GRPH_LUT0_OFF       equ       $1000     graphics LUT0 offset within FONT_BLK ($C1); LUTn at +$400*n, 256 entries x B,G,R,A
+
 SP0_Ctrl            equ       $F300
-SP0_Addy_L          equ       $F301
-SP0_Addy_M          equ       $F302
-SP0_Addy_H          equ       $F303
-SP0_X_L             equ       $F304
-SP0_X_H             equ       $F305
-SP0_Y_L             equ       $F306     in the Jr, only the l is used (200 & 240)
-SP0_Y_H             equ       $F307     always keep @ zero '0' because in Vicky the value is still considered a 16bits value
+SP0_Addy_H          equ       $F301     pixel addr 23:16 (BIG-endian)
+SP0_Addy_M          equ       $F302     pixel addr 15:8
+SP0_Addy_L          equ       $F303     pixel addr 7:0
+SP0_X_H             equ       $F304     X 15:8 - STD here writes X in one op
+SP0_X_L             equ       $F305     X 7:0
+SP0_Y_H             equ       $F306     Y 15:8 - STD here writes Y in one op
+SP0_Y_L             equ       $F307     Y 7:0
 
 SP1_Ctrl            equ       $F308
-SP1_Addy_L          equ       $F309
-SP1_Addy_M          equ       $F30A
-SP1_Addy_H          equ       $F30B
-SP1_X_L             equ       $F30C
-SP1_X_H             equ       $F30D
-SP1_Y_L             equ       $F30E     in the Jr, only the l is used (200 & 240)
-SP1_Y_H             equ       $F30F     always keep @ zero '0' because in Vicky the value is still considered a 16bits value
+SP1_Addy_H          equ       $F309     pixel addr 23:16 (BIG-endian)
+SP1_Addy_M          equ       $F30A     pixel addr 15:8
+SP1_Addy_L          equ       $F30B     pixel addr 7:0
+SP1_X_H             equ       $F30C     X 15:8 - STD here writes X in one op
+SP1_X_L             equ       $F30D     X 7:0
+SP1_Y_H             equ       $F30E     Y 15:8 - STD here writes Y in one op
+SP1_Y_L             equ       $F30F     Y 7:0
 
 SP2_Ctrl            equ       $F310
-SP2_Addy_L          equ       $F311
-SP2_Addy_M          equ       $F312
-SP2_Addy_H          equ       $F313
-SP2_X_L             equ       $F314
-SP2_X_H             equ       $F315
-SP2_Y_L             equ       $F316     in the Jr, only the l is used (200 & 240)
-SP2_Y_H             equ       $F317     always keep @ zero '0' because in Vicky the value is still considered a 16bits value
+SP2_Addy_H          equ       $F311     pixel addr 23:16 (BIG-endian)
+SP2_Addy_M          equ       $F312     pixel addr 15:8
+SP2_Addy_L          equ       $F313     pixel addr 7:0
+SP2_X_H             equ       $F314     X 15:8 - STD here writes X in one op
+SP2_X_L             equ       $F315     X 7:0
+SP2_Y_H             equ       $F316     Y 15:8 - STD here writes Y in one op
+SP2_Y_L             equ       $F317     Y 7:0
 
 SP3_Ctrl            equ       $F318
-SP3_Addy_L          equ       $F319
-SP3_Addy_M          equ       $F31A
-SP3_Addy_H          equ       $F31B
-SP3_X_L             equ       $F31C
-SP3_X_H             equ       $F31D
-SP3_Y_L             equ       $F31E     in the Jr, only the l is used (200 & 240)
-SP3_Y_H             equ       $F31F     always keep @ zero '0' because in Vicky the value is still considered a 16bits value
+SP3_Addy_H          equ       $F319     pixel addr 23:16 (BIG-endian)
+SP3_Addy_M          equ       $F31A     pixel addr 15:8
+SP3_Addy_L          equ       $F31B     pixel addr 7:0
+SP3_X_H             equ       $F31C     X 15:8 - STD here writes X in one op
+SP3_X_L             equ       $F31D     X 7:0
+SP3_Y_H             equ       $F31E     Y 15:8 - STD here writes Y in one op
+SP3_Y_L             equ       $F31F     Y 7:0
 
 SP4_Ctrl            equ       $F320
-SP4_Addy_L          equ       $F321
-SP4_Addy_M          equ       $F322
-SP4_Addy_H          equ       $F323
-SP4_X_L             equ       $F324
-SP4_X_H             equ       $F325
-SP4_Y_L             equ       $F326     in the Jr, only the l is used (200 & 240)
-SP4_Y_H             equ       $F327     always keep @ zero '0' because in Vicky the value is still considered a 16bits value
+SP4_Addy_H          equ       $F321     pixel addr 23:16 (BIG-endian)
+SP4_Addy_M          equ       $F322     pixel addr 15:8
+SP4_Addy_L          equ       $F323     pixel addr 7:0
+SP4_X_H             equ       $F324     X 15:8 - STD here writes X in one op
+SP4_X_L             equ       $F325     X 7:0
+SP4_Y_H             equ       $F326     Y 15:8 - STD here writes Y in one op
+SP4_Y_L             equ       $F327     Y 7:0
 
 
 
