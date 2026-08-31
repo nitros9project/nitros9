@@ -15,7 +15,7 @@ COCO_SHELF ?= $(abspath $(NITROS9DIR)/..)
 WILDBITS_MEGA_DIR = $(NITROS9DIR)/recipes/wildbits
 
 INFOCOM_REPO ?= https://github.com/rlucente-retro/infocom-os9-port.git
-INFOCOM_REF ?= 23c88a7d40f0591c451ca53fbe7887a30f559718
+INFOCOM_REF ?= 998cd4c6c813f327f4e400d374a404d1bc1fd9b9
 INFOCOM_SRC = $(EXTERNAL_DIR)/infocom-os9-port
 INFOCOM_CHECKOUT = $(INFOCOM_SRC)/.checkout-$(INFOCOM_REF)
 INFOCOM_CMD = $(INFOCOM_SRC)/infocom
