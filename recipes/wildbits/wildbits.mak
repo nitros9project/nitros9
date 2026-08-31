@@ -91,7 +91,8 @@ UTILPAK1_MODS = attr copy date del deiniz dir display list makdir mdir \
 CMDS += dmem minted mmap modpatch \
 	proc pmap smap \
 	gfxstatus xtclut drawtest play \
-	shellbg shellbgoff ntptime view utilpak1 fadein fadeout
+	shellbg shellbgoff ntptime view utilpak1 fadein fadeout \
+	sprtest2
 endif
 
 BASIC09 = basic09 runb inkey syscall wild
@@ -231,6 +232,9 @@ $(MODDIR)/w6100eth: $(LEVEL1)/wildbits/cmds/w6100eth.as | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 $(MODDIR)/lcdload: $(LEVEL1)/wildbits/cmds/lcdload.as | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/sprtest2: $(LEVEL1)/wildbits/cmds/sprtest2.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 $(MODDIR)/pwd: pd.asm | $(MODDIR)
