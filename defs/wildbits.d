@@ -213,15 +213,15 @@ INT_POLARITY_1      equ       $FE25
 INT_EDGE_1          equ       $FE29
 INT_MASK_1          equ       $FE2D
 
-INT_PENDING_2       equ       $FE22     not used
-INT_POLARITY_2      equ       $FE26     not used
-INT_EDGE_2          equ       $FE2A     not used
-INT_MASK_2          equ       $FE2E     not used
+INT_PENDING_2       equ       $FE22     IEC bus + module IRQ pins
+INT_POLARITY_2      equ       $FE26
+INT_EDGE_2          equ       $FE2A
+INT_MASK_2          equ       $FE2E
 
-INT_PENDING_3       equ       $FE23     not used
-INT_POLARITY_3      equ       $FE27     not used
-INT_EDGE_3          equ       $FE2B     not used
-INT_MASK_3          equ       $FE2F     not used
+INT_PENDING_3       equ       $FE23     FIFO events: WiFi / K2 keyboard / MIDI / WizNet
+INT_POLARITY_3      equ       $FE27
+INT_EDGE_3          equ       $FE2B
+INT_MASK_3          equ       $FE2F
 
 * Interrupt group 0 flags
 INT_VKY_SOF         equ       %00000001 TinyVicky start of frame interrupt
@@ -245,9 +245,13 @@ IEC_CLK_i           equ       %00000010 IEC clock in
 IEC_ATN_i           equ       %00000100 IEC ATN in
 IEC_SREQ_i          equ       %00001000 IEC SREQ in
 
-* Interrupt group 3 flags
-INT_WIZFI_RX        equ       %00000001 Rx FIFO went non-empty (edge, INT_PENDING_3)
-INT_WIZFI_TX        equ       %00100000 Tx FIFO drained to empty (edge, INT_PENDING_3)
+* Interrupt group 3 flags (per IRQ_Controller_Jr lirq0 bits 24-29)
+INT_WIZFI_RX        equ       %00000001 WiFi Rx FIFO went non-empty (edge, INT_PENDING_3)
+INT_MIDI_RX         equ       %00000010 MIDI Rx FIFO went non-empty
+INT_OPT_KBD         equ       %00000100 K2 optical keyboard FIFO went non-empty (K2 only; Jr2 never wires it)
+INT_WIZNET          equ       %00001000 WizNet FIFO event
+INT_MIDI_VS_RX      equ       %00010000 MIDI synth (VS) Rx FIFO went non-empty
+INT_WIZFI_TX        equ       %00100000 WiFi Tx FIFO drained to empty (edge, INT_PENDING_3)
 INT_WIZFI           equ       INT_WIZFI_RX+INT_WIZFI_TX
 
 
@@ -297,6 +301,11 @@ OKB.Data            rmb       1         keyboard data
 OKB.Stat            rmb       1         bit 7 = 1 (mechanical) or 0 (optical), bit 0 = 1 (FIFO empty) or 0 (FIFO full)
 OKB.CntLo           rmb       1
 OKB.CntHi           rmb       1
+* Hardware typematic (v8_rc8+ K2 cores; older cores ignore writes and read 0,
+* so write-then-readback of OKB.TypDly detects core support)
+OKB.TypDly          rmb       1         initial repeat delay in frames (reset 30)
+OKB.TypPer          rmb       1         repeat period in frames (reset 5)
+OKB.TypCtl          rmb       1         bit 0 = 1 enables hardware key repeat (reset 0)
 
 ********************************************************************
 * Timer definitions
