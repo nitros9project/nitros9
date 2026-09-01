@@ -235,10 +235,27 @@ entry               equ       *         ; define assembler symbol entry
                     sty       $2002     ; stash size of bootfile
                     ldd       #$FF00    ; A = $FF, B = $00
                     tfr       b,dp      ; transfer 0 to direct page
+* Scrub the FPGA interrupt controller - ALL four groups.  The controller
+* registers survive everything short of a hardware reset (wbreset, the
+* reset button, a power cycle), so a software reboot (bootos9, feu
+* re-entry, crash restart) arrives here with the previous session's
+* unmasked bits and stale pending latches intact - and an inherited
+* unmasked source with no handler installed re-fires forever (the
+* wizi-then-reboot interrupt storm).  Kernel cold start is the ONLY
+* safe place for absolute stores: it runs before any driver installs.
+* Anything later (clock Init runs at the first F$STime, after vtio and
+* mousedrv are live) must touch only its own bits, per-bit RMW.
+* Masks first, then pendings: an edge landing mid-sequence latches
+* harmlessly behind the mask.  Drivers clear + unmask their own bits
+* at their own Init.
                     sta       INT_MASK_0 ; A = $FF; mask all set 0 interrupts
                     sta       INT_MASK_1 ; A = $FF; mask all set 1 interrupts
+                    sta       INT_MASK_2 ; A = $FF; mask all set 2 interrupts
+                    sta       INT_MASK_3 ; A = $FF; mask all set 3 interrupts
                     sta       INT_PENDING_0 ; A = $FF; clear any pending set 0 interrupts
                     sta       INT_PENDING_1 ; A = $FF; clear any pending set 1 interrupts
+                    sta       INT_PENDING_2 ; A = $FF; clear any pending set 2 interrupts
+                    sta       INT_PENDING_3 ; A = $FF; clear any pending set 3 interrupts
 * Set up DAT registers. Here, B = 0
                     ldx       #DAT.Regs ; point X to the DAT registers
 loop@               stb       ,x+       ; write 8K bank to DAT to bank register
@@ -1369,7 +1386,7 @@ KrnReturn2          rts                 ; return
 
 *[[[ Wildbits PORT
                   IFNE    wildbits ; begin conditional assembly for wildbits
-CrashDump           fill      255,32
+CrashDump           fill      255,20    ; count shrunk 32->20: pays for the group 2/3 scrub above (krn must stay exactly 4096)
                   ENDC
 *]]] Wildbits PORT
 
