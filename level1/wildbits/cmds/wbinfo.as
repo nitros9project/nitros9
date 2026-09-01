@@ -6,6 +6,9 @@
 * ------------------------------------------------------------------
 *          2024/06/28  Boisy Gene Pitre
 * Started.
+*          2026/08/30  R Taylor
+* Make summary output with turbo mode detection.
+*
 
                     section   bss
 bootpath            rmb       2         the bootfile's absolute path pointer
@@ -49,7 +52,7 @@ __start
                     os9       F$Exit
                     
 * Identity routine
-* Exit: A = $02 (K), $12 (Jr.), $1A (Jr2), $16 (K2)
+* Exit: A = $02 (K), $12 (Jr), $1A (Jr2), $16 (K2)
 MachType            pshs      x
                     ldx       #SYS0
                     lda       7,x
@@ -62,40 +65,44 @@ MachMBType          pshs      x
                     ldd       8,x
                     puls      x,pc
 
-PrintMBoardInfo     bsr       MachType
-                    cmpa      #$02
-                    bne       isItK@
-k@                  lbsr      PRINTS
-                    fcc       "Wildbits/Jr"
-                    fcb       $0
-                    bra       cont@
-isItK@              cmpa      #$12
-                    bne       isitJrJr@
-                    lbsr      PRINTS
-                    fcc       "Wildbits/K"
-                    fcb       $0
-                    bra       cont@
-isitJrJr@           cmpa      #$1A
-                    bne       isitK2@
-                    lbsr      PRINTS
-                    fcc       "Wildbits/Jr2"
-                    fcb       $0
-                    bra       cont@
-isitK2@         cmpa      #$16
-                    bne       cont@
-                    lbsr      PRINTS
-                    fcc       "Wildbits/K2"
-                    fcb       $0
-cont@               lbsr      PRINTS
-                    fcc       " - PCBID "
+PrintMBoardInfo     lbsr      PRINTS
+                    fcc       "PCBID "
                     fcb       $0
                     bsr       MachMBType
                     exg       a,b
                     lbsr      PUTC
                     exg       a,b
                     lbsr      PUTC
+
                     lbsr      PRINTS
-                    fcc       " - TinyVicky "
+                    fcc       " ("
+                    fcb       $0
+                    bsr       MachType
+                    cmpa      #$02
+                    bne       isItK@
+k@                  lbsr      PRINTS
+                    fcc       "Jr"
+                    fcb       $0
+                    bra       cont@
+isItK@              cmpa      #$12
+                    bne       isitJrJr@
+                    lbsr      PRINTS
+                    fcc       "K"
+                    fcb       $0
+                    bra       cont@
+isitJrJr@           cmpa      #$1A
+                    bne       isitK2@
+                    lbsr      PRINTS
+                    fcc       "Jr2"
+                    fcb       $0
+                    bra       cont@
+isitK2@             cmpa      #$16
+                    bne       cont@
+                    lbsr      PRINTS
+                    fcc       "K2"
+                    fcb       $0
+cont@               lbsr      PRINTS
+                    fcc       ") TnyVky "
                     fcb       $0
                     ldx       #SYS0
                     lda       $0F,x
