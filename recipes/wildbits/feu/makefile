@@ -16,6 +16,9 @@ DSKIMAGE = feu_wildbits$(PLATFORM).dsk
 
 AFLAGS += -I.
 AFLAGS += -I$(L1MD)/kernel -I$(L1PMD)
+# FEU builds omit keydrv's group-3 interrupt install (tick-polled keyboard
+# is fine in the boot environment, and the booter must fit its 23,552 pad)
+AFLAGS += -DFEUBUILD=1
 LFLAGS += -L $(LIBDIR) -lwildbitsl$(LEVEL) -lnet -lalib
 
 KERNEL = krn krnp2 ioman init
