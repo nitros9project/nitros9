@@ -235,10 +235,27 @@ entry               equ       *         ; define assembler symbol entry
                     sty       $2002     ; stash size of bootfile
                     ldd       #$FF00    ; A = $FF, B = $00
                     tfr       b,dp      ; transfer 0 to direct page
+* Scrub the FPGA interrupt controller - ALL four groups.  The controller
+* registers survive everything short of a hardware reset (wbreset, the
+* reset button, a power cycle), so a software reboot (bootos9, feu
+* re-entry, crash restart) arrives here with the previous session's
+* unmasked bits and stale pending latches intact - and an inherited
+* unmasked source with no handler installed re-fires forever (the
+* wizi-then-reboot interrupt storm).  Kernel cold start is the ONLY
+* safe place for absolute stores: it runs before any driver installs.
+* Anything later (clock Init runs at the first F$STime, after vtio and
+* mousedrv are live) must touch only its own bits, per-bit RMW.
+* Masks first, then pendings: an edge landing mid-sequence latches
+* harmlessly behind the mask.  Drivers clear + unmask their own bits
+* at their own Init.
                     sta       INT_MASK_0 ; A = $FF; mask all set 0 interrupts
                     sta       INT_MASK_1 ; A = $FF; mask all set 1 interrupts
+                    sta       INT_MASK_2 ; A = $FF; mask all set 2 interrupts
+                    sta       INT_MASK_3 ; A = $FF; mask all set 3 interrupts
                     sta       INT_PENDING_0 ; A = $FF; clear any pending set 0 interrupts
                     sta       INT_PENDING_1 ; A = $FF; clear any pending set 1 interrupts
+                    sta       INT_PENDING_2 ; A = $FF; clear any pending set 2 interrupts
+                    sta       INT_PENDING_3 ; A = $FF; clear any pending set 3 interrupts
 * Set up DAT registers. Here, B = 0
                     ldx       #DAT.Regs ; point X to the DAT registers
 loop@               stb       ,x+       ; write 8K bank to DAT to bank register
@@ -566,6 +583,33 @@ pt_clr@             sta       ,x+       clear this slot
 KrnMarkUsed         inc       ,x+       ; mark it as used
                     decb                ; done?
                     bne       KrnMarkUsed ; no, go back till done
+
+*[[[ Wildbits PORT
+* Reserve MMU slot 2 ($4000-$5FFF, pages $40-$5F) in the system page map.
+* The wildbits device drivers use slot 2 as their temporary map window for
+* VKY, flash and RAM-disk blocks (IRQs masked, slot saved and restored
+* around each window). F$SRqMem allocates system pages from the top of the
+* map DOWNWARD, so under enough load (about 17 pages in use) it grew the
+* system map into this slot and process descriptors - whose second page is
+* the process's SYSTEM STACK - landed inside the window. A driver's pushes
+* and pulls while a VKY or flash block was mapped then hit that block instead
+* of the stack: the slot was restored with junk, live descriptors vanished
+* and the CPU wandered (the 2026-08/09 "one character on screen, then
+* freeze" crash under load and the lost /f0,/f1 (E$Sect 241) incidents, both
+* machines, any speed - proven by RAM dumps over the debug port on
+* 2026-09-02). Marking these 32 pages used keeps the kernel out of slot 2
+* for good, at the cost of 8K of system RAM; the system DAT image entry for
+* slot 2 stays free, so the drivers' window never aliases live kernel
+* memory. 12 bytes, paid from the CrashDump fill.
+                  IFNE    wildbits ; begin conditional assembly for wildbits
+                    ldx       <D.SysMem ; get the system memory map pointer
+                    leax      $40,x     ; page $40 = first page of slot 2
+                    ldb       #$20      ; 32 pages = the whole slot
+KrnRsvSlot2         inc       ,x+       ; mark it as used
+                    decb                ; done?
+                    bne       KrnRsvSlot2 ; no, keep going
+                  ENDC
+*]]] Wildbits PORT
 
                   IFNE    picothing ; begin conditional assembly for picothing
 * Mark kernel block pages ($E0-$FF) as in-use so FSRqMem doesn't allocate them.
@@ -1369,7 +1413,14 @@ KrnReturn2          rts                 ; return
 
 *[[[ Wildbits PORT
                   IFNE    wildbits ; begin conditional assembly for wildbits
-CrashDump           fill      255,32
+* KrnTail: the offset where the constant-page tail (FIRQVCT and everything
+* after it, which must live in the $FDxx page the hardware keeps mapped) has
+* to start. The padding below is computed by lwasm from it, so code added or
+* removed above needs no hand-maintained fill count any more; if the code
+* ever overruns the tail the count goes negative and the assembly FAILS
+* ("Invalid fill length") instead of silently moving the tail.
+KrnTail             equ       $0F7F
+CrashDump           fill      255,KrnTail-*  ; pad up to the tail (computed at assembly time)
                   ENDC
 *]]] Wildbits PORT
 
