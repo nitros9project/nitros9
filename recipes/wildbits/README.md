@@ -153,12 +153,10 @@ Primary outputs:
 
 - `bootfile`
 - `booter`
-- `feu_wildbitsjr2.src.zip` (or `feu_wildbitsk2.src.zip` when `PLATFORM=k2`)
 
 Additional FEU targets:
 
 - `make booter`
-- `make booter.src.zip`
 - `make f0.dsk`
 - `make f0.zip`
 - `make booter.zip`
