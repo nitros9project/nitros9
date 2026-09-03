@@ -1,3 +1,6 @@
+* wizcon - join the WizFi360 to your router (settings persist in the module).
+* Needs: wizi. EDIT the ssid and pass in the AT+CWJAP_DEF line before running.
+* Ends by printing the IP the module got (AT+CIPSTA_CUR?).
 echo * WizFi360 Helper - Connection to Router
 echo ATE1>/wz
 modem /wz
