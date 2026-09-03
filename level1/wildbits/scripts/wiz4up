@@ -1,0 +1,36 @@
+* wiz4up - WizCon4: four-connection packet-mode server with a login on each of
+* /wz0-/wz3. Needs: wizi, wizcon (module on the network). Nothing else running on /wz.
+* Tear down with wiz4down.
+echo * WizCon4 - start 4-connection server with logins on /wz0-/wz3
+echo AT+CIPSTA_CUR?>/wz
+modem /wz
+echo ATE0>/wz
+modem /wz
+echo AT+CIPMODE=0>/wz
+modem /wz
+echo AT+CIPMUX=1>/wz
+modem /wz
+echo AT+CIPSERVERMAXCONN=4>/wz
+modem /wz
+echo AT+CIPSERVER=1,23>/wz
+modem /wz
+echo AT+CIPSTO=0>/wz
+modem /wz
+* (no `modem -t0 /wz` here: -t0 waits FOREVER for the module's next line,
+*  which is the first client's 0,CONNECT - swallowed raw before any listener
+*  exists, and the client's first keystroke with it. 2026-09-02)
+iniz /wz0
+iniz /wz1
+iniz /wz2
+iniz /wz3
+xmode /wz0 eko=1
+xmode /wz1 eko=1
+xmode /wz2 eko=1
+xmode /wz3 eko=1
+tsmon /wz0&
+tsmon /wz1&
+tsmon /wz2&
+tsmon /wz3&
+echo * Up to 4 clients may now connect to port 23.
+echo * NOTE: do not read /wz (raw) while connections are active -
+echo * raw pops bypass the shared packet parser.

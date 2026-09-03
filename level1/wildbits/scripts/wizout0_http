@@ -1,3 +1,6 @@
+* wizout0_http - demo: open an outbound TCP connection (channel 0) to google.com:80.
+* Needs: wizi, wizcon. Puts the module in multi-connection command mode (CIPMUX=1,
+* CIPMODE=0) and leaves channel 0 open; close it with AT+CIPCLOSE=0 when done.
 echo * Connect to Google
 echo AT+CIPMODE=0>/wz
 modem /wz

@@ -1,1 +1,4 @@
+* wiztime - set the system clock from an NTP server through the WizFi (ntptime -s).
+* Needs: wizi, wizcon (the module must be on the network). ntptime opens /wz itself,
+* so do not run it while wiz1up/wiz4up connections are active.
 ntptime </1 -s

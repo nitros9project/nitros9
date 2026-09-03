@@ -1,2 +1,4 @@
+* wizi - initialize the WizFi360 driver on /wz and swallow the module's boot chatter.
+* Run first, once per boot (or put its two lines in startup). Everything else needs it.
 iniz /wz
 modem /wz
