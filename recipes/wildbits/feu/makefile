@@ -4,15 +4,22 @@ MODDIR = .mods
 vpath %.asm $(NITROS9DIR)/level1/$(PORT)/feu
 vpath %.as $(NITROS9DIR)/level1/$(PORT)/feu
 include ../../rules.mak
+export NITROS9DIR
 
-ifeq ($(PLATFORM), jr2)
+ifeq ($(strip $(PLATFORM)),)
+  $(info PLATFORM not set; defaulting to jr2)
+  PLATFORM = jr2
+endif
+
+ifneq ($(filter $(PLATFORM),jr jr2),)
   KEYSUB = keydrv_ps2
 else
   KEYSUB = keydrv_k2
   PLATFORM = k2
 endif
 
-DSKIMAGE = feu_wildbits$(PLATFORM).dsk
+DSKIMAGE ?= feu_wildbits$(PLATFORM).dsk
+SRCZIP ?= $(patsubst %.dsk,%.src.zip,$(DSKIMAGE))
 
 AFLAGS += -I.
 AFLAGS += -I$(L1MD)/kernel -I$(L1PMD)
@@ -62,7 +69,7 @@ F0_CMDS = attr \
 		setime sleep \
 		tmode
 
-all: libs bootfile booter
+all: libs bootfile booter $(SRCZIP)
 
 LIB_NAMES = libwildbitsl$(LEVEL).a libnet.a libalib.a
 include ../../libs.mak
@@ -75,6 +82,19 @@ booter: bootfile
 	$(AS) -DFLASH=1 --output=raw $(LEVEL1)/$(PORT)/feu/trampoline.asm -o$@.tmp
 	cat bootfile $@.tmp > $@
 	$(RM) $@.tmp
+
+$(SRCZIP): booter
+	@echo "Packaging source bundle $@..."
+	@out="$$PWD/$@"; \
+	if [ -d "$(NITROS9DIR)/.git" ]; then \
+		TREE=$$(git -C "$(NITROS9DIR)" stash create); \
+		git -C "$(NITROS9DIR)" archive --format=zip -9 -o "$$out" $${TREE:-HEAD}; \
+	else \
+		(cd "$(NITROS9DIR)" && zip -q -r -9 "$$out" . -x "*.git*" -x "*.dsk" -x "*.src.zip" -x "*/.obj/*" -x "*/.lib/*" -x "*/.mods/*"); \
+	fi
+
+booter.src.zip: $(SRCZIP)
+	cp -f $< $@
 
 flash: flash_booter flash_f0
 
