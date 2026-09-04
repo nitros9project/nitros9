@@ -311,7 +311,7 @@ SetChKBD            ldd	      #KBD_IN
 IRQMSvc             pshs      a,b
                     lda       V.INT_PS2_MOUSE,u      get the PS/2 mouse interrupt flag
                     sta       INT_PENDING_0       clear the interrupt
-* Enable mouse cursor if it has been auto-hid               
+* Enable mouse cursor if it has been auto-hid
                     lda       #$01
                     sta       MS_MEN              show mouse and enable legacy mode
                     clr       V.MSTimer,u         reset the auto-hide timer (wildbits_vtio.d)
