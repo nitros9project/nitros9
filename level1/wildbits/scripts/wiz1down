@@ -1,0 +1,16 @@
+* wiz1down - leave passthrough, close the connection, stop the server. Needs: wiz1up
+* first; kill the tsmon/login/shell on /wz yourself before running (procs, kill <id>).
+echo * WizCon1 - leave passthrough, close the connection, stop the server
+echo * (kill the tsmon / login / shell on /wz yourself first: procs, then kill <id>)
+* "+++" with no CR, alone, with a second of silence on both sides, exits passthrough
+sleep 70
+display 2b 2b 2b>/wz
+sleep 70
+modem /wz
+echo AT+CIPCLOSE>/wz
+modem /wz
+echo AT+CIPMODE=0>/wz
+modem /wz
+echo AT+CIPSERVER=0>/wz
+modem /wz
+echo * Server stopped; /wz is back in command mode.

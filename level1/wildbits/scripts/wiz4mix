@@ -1,0 +1,11 @@
+* wiz4mix - WizCon4 stress test: concurrent output bursts on /wz1-/wz3.
+* Needs: wiz4up with clients connected on those channels.
+echo * WizCon4 stress - concurrent output bursts on /wz1-/wz3
+echo * Run AFTER clients are connected on those channels, while you
+echo * type interactively on the /wz0 session. PASS = every client
+echo * sees only its own clean stream; no cross-channel bleed, no
+echo * AT+CIPSEND text, no lost keystrokes on /wz0.
+dir -e /dd/cmds>/wz1&
+dir -e /dd/cmds>/wz2&
+dir -e /dd/cmds>/wz3&
+echo * Bursts launched in the background.

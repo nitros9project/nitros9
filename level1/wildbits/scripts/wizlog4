@@ -1,3 +1,6 @@
+* wizlog4 - SUPERSEDED by wiz4up (the packet-mode server setup it relied on, wizsv4,
+* is gone). Kept for by-hand use only: waits for the first client, then starts one
+* listener on /wz0. Needs: a CIPMUX=1 packet server already running on port 23.
 echo * WizFi360 Helper - Remote packet connection
 echo * From the remote client connect to port 23 of
 echo * the WizFi's IP address now...
