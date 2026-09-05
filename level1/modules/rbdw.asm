@@ -32,6 +32,21 @@
                     ttl       DriveWire RBF driver
 
 NUMRETRIES          equ       8
+* Cycle-counted windows (2026-09-05): 65536 polls is ~220ms under turbo on the
+* rc11 cores and shrinks with every faster CPU; a DriveWire4 server stall (Java
+* GC) measures ~620ms. Multipliers keep the windows above that with margin at a
+* 2x faster CPU. Proper fix: TIMER0 ($FE30) counts the fixed 25.175MHz IO clock.
+DW_PURGE_MULT       equ       6                   PurgeRX idle window: ~1.3s turbo (~0.7s at 2x)  [+50% 2026-09-05, was 4]
+DW_ABWAIT_MULT      equ       36                  AbWait listen for a stalled server: ~6s turbo (~3s at 2x)  [+50%, was 24]
+
+                    ifne      wildbits
+* COM1 16750 direct-access equates for the receive-purge path (the
+* 16550.d defs are not in this module's include chain).
+DWU.TRHB            equ       $FE60               RX holding register
+DWU.FCR             equ       $FE62               FIFO control register (write-only)
+DWU.LSR             equ       $FE65               line status register
+DWU.RXRDY           equ       $01                 LSR data-available bit
+                    endc
 
                     ifp1
                     use       defsfile
@@ -208,7 +223,11 @@ ReadSect            pshs      cc
                     cmpa      #NumDrvs
                     blo       Read1
                     ldb       #E$Unit
+                    ifne      wildbits
+                    lbra      ReadEr2             long branch - the PurgeRX/ReadAbort block sits in between
+                    else
                     bra       ReadEr2
+                    endc
 Read1               sta       driveno,u
                     lda       #OP_READEX          load A with READ opcode
 
@@ -230,8 +249,20 @@ Read2
                     ldx       PD.BUF,x            get buffer pointer into X
                     ldy       #$0100
                     jsr       DW$Read,u
+                    ifne      wildbits
+* Protocol-completion error path (2026-08-29): on a failed sector read
+* the server has already sent the data and is BLOCKED waiting for our
+* 2-byte checksum. Aborting without it makes the server consume the
+* next command's first bytes as the checksum - server-side frame slip
+* (UNKNOWN OPCODE / garbage-LSN / CRC-fail storms in the DW4 log).
+* Send a deliberately-wrong checksum, collect and discard the status
+* byte, and only then return the error - both parsers stay framed.
+                    bcs       ReadAbort
+                    bne       ReadAbort
+                    else
                     bcs       ReadEr1
                     bne       ReadEr1
+                    endc
                     pshs      y
                     leax      ,s
                     ldy       #$0002
@@ -242,19 +273,138 @@ Read2
                     ldy       #$0001
                     jsr       DW$Read,u
                     puls      d
+                    ifne      wildbits
+* A failed status read here means the server stalled AFTER the data
+* leg (checksum already sent) - the status byte is still owed and
+* would land inside the next transaction. Wait for it, then purge.
+                    lbcs      AbWait
+                    lbne      AbWait
+                    else
                     bcs       ReadEr0             branch if we timed out
                     bne       ReadEr0
+                    endc
                     tfr       a,b                 transfer byte to B (in case of error)
                     tstb                          is it zero?
+                    ifne      wildbits
+                    lbeq      ReadOkChk           OK status - verify the line is actually silent
+                    else
                     beq       ReadEx              if not, exit with error
+                    endc
                     cmpb      #E$CRC
+                    ifne      wildbits
+                    lbne      ReadBadSt
+                    else
                     bne       ReadEr2
-                    ldu       7,s                 get U from stack
+                    endc
+ReadRetry           ldu       7,s                 get U from stack
                     dec       retries,u           decrement retries
+                    ifne      wildbits
+* Resync before EVERY retry (2026-08-29): when the reply stream is
+* lagged (a stale response queued ahead of us), each REREADEX otherwise
+* re-reads the PREVIOUS response, fails the server-side CRC again, and
+* the retry loop sustains the desync forever - the field signature of
+* endless completed-but-CRC-failed reads with no timeouts. Purging
+* here drains the backlog so the retry reads fresh, aligned data.
+                    lbeq      ReadBadSt           out of retries: purge, then honest E$Read
+                    bsr       PurgeRX
+                    lda       #OP_REREADEX        reread opcode
+                    lbra      Read2
+                    else
                     beq       ReadEr1
 
                     lda       #OP_REREADEX        reread opcode
-                    bra       Read2               and try getting sector again
+                    bra       Read2
+                    endc               and try getting sector again
+                    ifne      wildbits
+* Drain the receive path until the line has been idle 10+ character
+* times, so an off-by-N stream from a failed transaction cannot poison
+* the next one. A shifted-but-still-flowing stream never times out
+* inside DWRead (reads complete promptly with wrong bytes), so this
+* must run on EVERY failed transaction, not only on timeouts. Bounded:
+* max 1200 discards, ~0.6ms idle window. IRQs are masked here.
+PurgeRX             pshs      d,x,y
+* Hardware RX FIFO reset first: an overrun (server dumping a sector
+* remainder into a client that stopped listening) can wedge the FIFO
+* pointer state in ways byte-draining never clears.
+                    lda       #%11000010          FCR: RX FIFO reset strobe (self-clearing)
+                    sta       >DWU.FCR
+                    ldy       #1200               max stale bytes to discard
+* Idle window DW_PURGE_MULT x 65536 polls (~1.3s turbo): must outlast a
+* server-side stall (Java GC in DW4, measured ~620ms total) that
+* resumes sending a sector remainder long after our timeouts fired.
+* The window restarts on every discarded byte, so an in-progress
+* remainder is consumed in real time and the wait only runs in full
+* once, after the final straggler.
+pur0@               ldb       #DW_PURGE_MULT      idle window = DW_PURGE_MULT x 65536 polls
+pur0a@              ldx       #0
+pur1@               lda       >DWU.LSR
+                    bita      #DWU.RXRDY
+                    bne       pur2@               byte present - discard, restart window
+                    leax      -1,x
+                    bne       pur1@
+                    decb                          16-bit window wrapped: one outer count down
+                    bne       pur0a@
+                    puls      d,x,y,pc            line idle - resynced
+pur2@               lda       >DWU.TRHB           discard stale byte
+                    leay      -1,y
+                    bne       pur0@
+                    puls      d,x,y,pc            discard cap hit - stop
+
+ReadAbort           ldd       #$FFFF              deliberately-wrong checksum
+                    pshs      d
+                    leax      ,s
+                    ldy       #$0002
+                    jsr       DW$Write,u          complete the checksum leg for the server
+                    leax      ,s
+                    ldy       #$0001
+                    jsr       DW$Read,u           collect (and discard) its status byte
+                    puls      d
+                    bcs       AbWait              nothing came back - server still stalled
+                    bne       AbWait
+AbPurge             bsr       PurgeRX             drain any residue before erroring out
+                    bra       ReadEr1
+* The server never sent a byte: it is deep in a stall (DW4 Java GC,
+* measured 620ms+) and the WHOLE response is still owed. If we purge
+* now the line looks idle, we declare it clean, and the late burst
+* lands inside the NEXT transaction - establishing the one-response
+* lag. Listen up to ~2s for the burst to start; PurgeRX then consumes
+* it in real time. A truly dead server just costs one slow error.
+AbWait              ldb       #DW_ABWAIT_MULT                 DW_ABWAIT_MULT x 65536 polls: ~6s turbo, ~3s at a 2x faster CPU
+abw0@               ldx       #0
+abw1@               lda       >DWU.LSR
+                    bita      #DWU.RXRDY
+                    bne       AbPurge             burst arriving - purge drains it live
+                    leax      -1,x
+                    bne       abw1@
+                    decb
+                    bne       abw0@
+                    bra       AbPurge             still silent - purge anyway, then error
+* Status byte was $00 (OK) - but on a synced line the server sends
+* NOTHING after the status byte, so the line must now be silent. A
+* byte trailing it means we just consumed a STALE response: the "OK"
+* belongs to the PREVIOUS transaction and the sector data is wrong
+* (accepting it is where the #216/garbage-LSN corruption came from).
+* In a lagged, flowing stream the next byte arrives within ~43us at
+* 230400; watch ~200us to be sure, then purge and retry the sector.
+ReadOkChk           pshs      x
+                    ldx       #360                ~600us of LSR polls (was 120; see dwread purge note -
+*                                                 these windows are cycle-counted and shrank when rc10's
+*                                                 fast writes sped the CPU up)
+okc0@               lda       >DWU.LSR
+                    bita      #DWU.RXRDY
+                    bne       okc1@               trailing byte - stale response consumed
+                    leax      -1,x
+                    bne       okc0@
+                    puls      x
+                    lbra      ReadEx              line silent - clean accept
+okc1@               puls      x
+                    lbra      ReadRetry           purge happens inside the retry path
+* A nonzero status byte that is not E$CRC means the reply stream is
+* shifted - we just read a data byte as "status". Purge to resync and
+* report a plain read error instead of passing the garbage byte through
+* as a random error code (the mystery #214/#216 reports).
+ReadBadSt           lbsr      PurgeRX
+                    endc
 ReadEr0
 ReadEr1             ldb       #E$Read             read error
 ReadEr2             lda       9,s
