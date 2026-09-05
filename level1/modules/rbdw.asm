@@ -32,6 +32,12 @@
                     ttl       DriveWire RBF driver
 
 NUMRETRIES          equ       8
+* Cycle-counted windows (2026-09-05): 65536 polls is ~220ms under turbo on the
+* rc11 cores and shrinks with every faster CPU; a DriveWire4 server stall (Java
+* GC) measures ~620ms. Multipliers keep the windows above that with margin at a
+* 2x faster CPU. Proper fix: TIMER0 ($FE30) counts the fixed 25.175MHz IO clock.
+DW_PURGE_MULT       equ       4                   PurgeRX idle window: ~0.9s turbo (~0.45s at 2x)
+DW_ABWAIT_MULT      equ       24                  AbWait listen for a stalled server: ~4s turbo (~2s at 2x)
 
                     ifne      wildbits
 * COM1 16750 direct-access equates for the receive-purge path (the
@@ -323,18 +329,21 @@ PurgeRX             pshs      d,x,y
                     lda       #%11000010          FCR: RX FIFO reset strobe (self-clearing)
                     sta       >DWU.FCR
                     ldy       #1200               max stale bytes to discard
-* Idle window ~65536 polls (roughly 200-350ms): must outlast a
+* Idle window DW_PURGE_MULT x 65536 polls (~0.9s turbo): must outlast a
 * server-side stall (Java GC in DW4, measured ~620ms total) that
 * resumes sending a sector remainder long after our timeouts fired.
 * The window restarts on every discarded byte, so an in-progress
 * remainder is consumed in real time and the wait only runs in full
 * once, after the final straggler.
-pur0@               ldx       #0                  idle window (65536 polls)
+pur0@               ldb       #DW_PURGE_MULT      idle window = DW_PURGE_MULT x 65536 polls
+pur0a@              ldx       #0
 pur1@               lda       >DWU.LSR
                     bita      #DWU.RXRDY
                     bne       pur2@               byte present - discard, restart window
                     leax      -1,x
                     bne       pur1@
+                    decb                          16-bit window wrapped: one outer count down
+                    bne       pur0a@
                     puls      d,x,y,pc            line idle - resynced
 pur2@               lda       >DWU.TRHB           discard stale byte
                     leay      -1,y
@@ -360,7 +369,7 @@ AbPurge             bsr       PurgeRX             drain any residue before error
 * lands inside the NEXT transaction - establishing the one-response
 * lag. Listen up to ~2s for the burst to start; PurgeRX then consumes
 * it in real time. A truly dead server just costs one slow error.
-AbWait              ldb       #12                 12 x 65536 polls, roughly 2s
+AbWait              ldb       #DW_ABWAIT_MULT                 DW_ABWAIT_MULT x 65536 polls: ~4s turbo, ~2s at a 2x faster CPU
 abw0@               ldx       #0
 abw1@               lda       >DWU.LSR
                     bita      #DWU.RXRDY
