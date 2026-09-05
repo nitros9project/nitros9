@@ -2,6 +2,7 @@ PORT ?= wildbits
 RECIPE ?= wildbits
 MODDIR = .mods
 include ../../rules.mak
+export NITROS9DIR
 -include recipe.mak
 
 vpath %.asm $(LANGUAGES)/basic09
@@ -19,6 +20,7 @@ else
 endif
 
 DSKIMAGE ?= l$(LEVEL)_$(RECIPE)$(PLATFORM).dsk
+SRCZIP ?= $(patsubst %.dsk,%.src.zip,$(DSKIMAGE))
 OS9FORMAT_CMD ?= $(OS9FORMAT_SD)
 
 AFLAGS += -D$(PLATFORM) -I.
@@ -135,7 +137,7 @@ SYS_TEXT_FILES = $(LEVEL1)/sys/motd $(LEVEL1)/sys/errmsg $(LEVEL1)/sys/password 
 SYS_BIN_FILES =
 endif
 
-all: libs $(DSKIMAGE)
+all: libs $(DSKIMAGE) $(SRCZIP)
 
 LIB_NAMES = libwildbitsl$(LEVEL).a libnet.a libalib.a
 ifeq ($(FUJINET),1)
@@ -223,6 +225,16 @@ endif
 	$(MAKDIR) $@,FEU
 	$(CPL) $(FEU_STARTUP) $@,FEU/startup
 	$(call RECIPE_INSTALL,$@)
+
+$(SRCZIP): $(DSKIMAGE)
+	@echo "Packaging source bundle $@..."
+	@out="$$PWD/$@"; \
+	if [ -d "$(NITROS9DIR)/.git" ]; then \
+		TREE=$$(git -C "$(NITROS9DIR)" stash create); \
+		git -C "$(NITROS9DIR)" archive --format=zip -9 -o "$$out" $${TREE:-HEAD}; \
+	else \
+		(cd "$(NITROS9DIR)" && zip -q -r -9 "$$out" . -x "*.git*" -x "*.dsk" -x "*.src.zip" -x "*/.obj/*" -x "*/.lib/*" -x "*/.mods/*"); \
+	fi
 
 # Command rules
 $(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
@@ -435,7 +447,7 @@ $(MODDIR)/z14: scdwvdesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=30
 
 clean:
-	$(RM) *.list *.map bootfile *.dsk buildinfo feu.startup $(CLEAN_EXTRA)
+	$(RM) *.list *.map bootfile *.dsk *.src.zip buildinfo feu.startup $(CLEAN_EXTRA)
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR) $(CLEAN_DIRS)
 
 .PHONY: all clean libs
