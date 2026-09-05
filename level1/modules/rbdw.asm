@@ -36,8 +36,8 @@ NUMRETRIES          equ       8
 * rc11 cores and shrinks with every faster CPU; a DriveWire4 server stall (Java
 * GC) measures ~620ms. Multipliers keep the windows above that with margin at a
 * 2x faster CPU. Proper fix: TIMER0 ($FE30) counts the fixed 25.175MHz IO clock.
-DW_PURGE_MULT       equ       4                   PurgeRX idle window: ~0.9s turbo (~0.45s at 2x)
-DW_ABWAIT_MULT      equ       24                  AbWait listen for a stalled server: ~4s turbo (~2s at 2x)
+DW_PURGE_MULT       equ       6                   PurgeRX idle window: ~1.3s turbo (~0.7s at 2x)  [+50% 2026-09-05, was 4]
+DW_ABWAIT_MULT      equ       36                  AbWait listen for a stalled server: ~6s turbo (~3s at 2x)  [+50%, was 24]
 
                     ifne      wildbits
 * COM1 16750 direct-access equates for the receive-purge path (the
@@ -329,7 +329,7 @@ PurgeRX             pshs      d,x,y
                     lda       #%11000010          FCR: RX FIFO reset strobe (self-clearing)
                     sta       >DWU.FCR
                     ldy       #1200               max stale bytes to discard
-* Idle window DW_PURGE_MULT x 65536 polls (~0.9s turbo): must outlast a
+* Idle window DW_PURGE_MULT x 65536 polls (~1.3s turbo): must outlast a
 * server-side stall (Java GC in DW4, measured ~620ms total) that
 * resumes sending a sector remainder long after our timeouts fired.
 * The window restarts on every discarded byte, so an in-progress
@@ -369,7 +369,7 @@ AbPurge             bsr       PurgeRX             drain any residue before error
 * lands inside the NEXT transaction - establishing the one-response
 * lag. Listen up to ~2s for the burst to start; PurgeRX then consumes
 * it in real time. A truly dead server just costs one slow error.
-AbWait              ldb       #DW_ABWAIT_MULT                 DW_ABWAIT_MULT x 65536 polls: ~4s turbo, ~2s at a 2x faster CPU
+AbWait              ldb       #DW_ABWAIT_MULT                 DW_ABWAIT_MULT x 65536 polls: ~6s turbo, ~3s at a 2x faster CPU
 abw0@               ldx       #0
 abw1@               lda       >DWU.LSR
                     bita      #DWU.RXRDY

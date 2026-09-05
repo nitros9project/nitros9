@@ -3,7 +3,7 @@
 * DWRead
 *    Receive a response from the DriveWire server.
 *    Times out if the serial port goes idle for DW_TIMEOUT_MULT x 65536 polls:
-*    ~1.8s under turbo on the rc11 cores, ~2.7s at stock speed (the CoCo
+*    ~2.7s under turbo on the rc11 cores, ~4s at stock speed (the CoCo
 *    original was 1.4/0.7s at 0.89/1.79MHz).
 *    Serial data format:  1-8-N-1
 *
@@ -21,13 +21,13 @@
 * Cycle-counted timeouts (2026-09-05): the 16-bit poll counter wraps after 65536
 * polls, ~335ms at stock speed and ~220ms under turbo - shorter than a DriveWire4
 * server stall (Java GC, measured ~620ms), and it shrinks again with every faster
-* CPU. DW_TIMEOUT_MULT multiplies the window (8 x 65536 polls = ~1.8s under
-* today's turbo, still ~0.9s at a 2x faster CPU). DW_PURGE_IDLE is the
-* post-timeout idle window in polls (2048 = ~3.7ms turbo, ~1.9ms at 2x; 10 char
+* CPU. DW_TIMEOUT_MULT multiplies the window (12 x 65536 polls = ~2.7s under
+* today's turbo, still ~1.4s at a 2x faster CPU). DW_PURGE_IDLE is the
+* post-timeout idle window in polls (3072 = ~5.5ms turbo, ~2.8ms at 2x; 10 char
 * times at 230400 is 434us). Proper fix: time both off TIMER0 ($FE30), which
 * counts the fixed 25.175MHz IO clock and is untouched by turbo.
-DW_TIMEOUT_MULT     equ       8
-DW_PURGE_IDLE       equ       2048
+DW_TIMEOUT_MULT     equ       12                  +50% 2026-09-05 (was 8)
+DW_PURGE_IDLE       equ       3072                +50% 2026-09-05 (was 2048)
 DWRead              clra                          clear carry (no framing error)
                     clrb
                     pshs      u,x,d,cc            preserve registers
@@ -69,7 +69,7 @@ loop2@              lda       UART.Base+UART_LSR  get the LSR register value
 * this purge exists to prevent.  768 restores ~3x margin at any plausible clock.
 * Proper fix is to time this off a hardware timer ($FE30) instead of counting
 * cycles - see the notes in the drivewire kit.
-prg0@               ldx       #DW_PURGE_IDLE      idle window (2048 polls: ~3.7ms turbo, >80 char times at 230400)
+prg0@               ldx       #DW_PURGE_IDLE      idle window (3072 polls: ~5.5ms turbo, >120 char times at 230400)
 prg1@               lda       UART.Base+UART_LSR
                     bita      #LSR_DATA_AVAIL
                     bne       prg2@               late byte - discard it, restart idle window
