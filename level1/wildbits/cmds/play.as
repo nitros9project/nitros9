@@ -107,8 +107,8 @@ FILETYPE_COCOLYRA   equ       3
 FILETYPE_ULTIMUSE   equ       4
 FILETYPE_MIDIPATCH  equ       5
 
-MIDI_StatusReg      equ       SAM2695.Base+MIDI_STATUS
-MIDI_DataReg        equ       SAM2695.Base+MIDI_FIFO_DATA
+MIDI_CtrlReg        equ       SAM2695.Base+MIDI_CTRL
+MIDI_DataReg        equ       SAM2695.Base+MIDI_DATA
 MIDITABENTSIZ       equ       4                   MIDI Note Table entry size in bytes
 MIDITABOCTSIZ       equ       7*MIDITABENTSIZ     MIDI Note Table octave size in bytes
 

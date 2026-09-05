@@ -213,15 +213,15 @@ INT_POLARITY_1      equ       $FE25
 INT_EDGE_1          equ       $FE29
 INT_MASK_1          equ       $FE2D
 
-INT_PENDING_2       equ       $FE22     not used
-INT_POLARITY_2      equ       $FE26     not used
-INT_EDGE_2          equ       $FE2A     not used
-INT_MASK_2          equ       $FE2E     not used
+INT_PENDING_2       equ       $FE22     IEC bus + module IRQ pins
+INT_POLARITY_2      equ       $FE26
+INT_EDGE_2          equ       $FE2A
+INT_MASK_2          equ       $FE2E
 
-INT_PENDING_3       equ       $FE23     not used
-INT_POLARITY_3      equ       $FE27     not used
-INT_EDGE_3          equ       $FE2B     not used
-INT_MASK_3          equ       $FE2F     not used
+INT_PENDING_3       equ       $FE23     FIFO events: WiFi / K2 keyboard / MIDI / WizNet
+INT_POLARITY_3      equ       $FE27
+INT_EDGE_3          equ       $FE2B
+INT_MASK_3          equ       $FE2F
 
 * Interrupt group 0 flags
 INT_VKY_SOF         equ       %00000001 TinyVicky start of frame interrupt
@@ -245,9 +245,13 @@ IEC_CLK_i           equ       %00000010 IEC clock in
 IEC_ATN_i           equ       %00000100 IEC ATN in
 IEC_SREQ_i          equ       %00001000 IEC SREQ in
 
-* Interrupt group 3 flags
-INT_WIZFI_RX        equ       %00000001 Rx FIFO went non-empty (edge, INT_PENDING_3)
-INT_WIZFI_TX        equ       %00100000 Tx FIFO drained to empty (edge, INT_PENDING_3)
+* Interrupt group 3 flags (per IRQ_Controller_Jr lirq0 bits 24-29)
+INT_WIZFI_RX        equ       %00000001 WiFi Rx FIFO went non-empty (edge, INT_PENDING_3)
+INT_MIDI_RX         equ       %00000010 MIDI Rx FIFO went non-empty
+INT_OPT_KBD         equ       %00000100 K2 optical keyboard FIFO went non-empty (K2 only; Jr2 never wires it)
+INT_WIZNET          equ       %00001000 WizNet FIFO event
+INT_MIDI_VS_RX      equ       %00010000 MIDI synth (VS) Rx FIFO went non-empty
+INT_WIZFI_TX        equ       %00100000 WiFi Tx FIFO drained to empty (edge, INT_PENDING_3)
 INT_WIZFI           equ       INT_WIZFI_RX+INT_WIZFI_TX
 
 
@@ -297,6 +301,11 @@ OKB.Data            rmb       1         keyboard data
 OKB.Stat            rmb       1         bit 7 = 1 (mechanical) or 0 (optical), bit 0 = 1 (FIFO empty) or 0 (FIFO full)
 OKB.CntLo           rmb       1
 OKB.CntHi           rmb       1
+* Hardware typematic (v8_rc8+ K2 cores; older cores ignore writes and read 0,
+* so write-then-readback of OKB.TypDly detects core support)
+OKB.TypDly          rmb       1         initial repeat delay in frames (reset 30)
+OKB.TypPer          rmb       1         repeat period in frames (reset 5)
+OKB.TypCtl          rmb       1         bit 0 = 1 enables hardware key repeat (reset 0)
 
 ********************************************************************
 * Timer definitions
@@ -828,35 +837,135 @@ DMA_CTRL_Start_Trf  equ       $80
 DMA_STATUS_TRF_IP   equ       $80       transfer in progress
 
 
-* MIDI Synth Chip
-SAM2695.Base       equ        $FF30
-                   org        $0
-MIDI_STATUS        rmb        1                   Read: Bit[1] = Rx_empty, Bit[2] = Tx_empty
-MIDI_FIFO_DATA     rmb        1                   Read and Write Data Port 
-MIDI_RXD_COUNT_LOW rmb        1                   Rx FIFO Data Count LOW
-MIDI_RXD_COUNT_HI  rmb        1                   Rx FIFO Data Count Hi - Only the 4 first bit are valid
-MIDI_TXD_COUNT_LOW rmb        1                   Tx FIFO Data Count LOW 
-MIDI_TXD_COUNT_HI  rmb        1                   Tx FIFO Data Count Hi - Only the 4 first bit are valid
-
-
-* WizFi360 Registers, 2K x 2 FIFO
-* Wifi_Control_Register:
-* Bit[0] = 0 = 115,200K Mode, 1 = 921,600K Mode
-* Bit[1] = 0 Default, 1 = Reset FIFO (you need to bring it back to 0) This is directly connected to reset line of the FIFO
-* Bit[2] = RX FIFO Empty ( 1 = Empty, 0 = Data Available)
-* Bit[3] = TX FIFO Empty ( 1 = Empty, 0 = Data Available)
-WizFi.Base          equ       $FF20
-WizFi.TxEmpty       equ       %00001000
-WizFi.RxEmpty       equ       %00000100
-WizFi.Reset         equ       %00000010
-WizFi.Rate          equ       %00000001
+* SPLASH FLASH SPI controller
+* Reads the serial flash that holds the splash image.  Shares the WiFi
+* module's SPI bus pins (SCLK/MISO/MOSI) but has its own chip select, and is
+* clocked from 200MHz because the part will take 133MHz.  Present on both
+* machines.  Nothing in NitrOS-9 uses it today.
+*
+* Usage: write the flash command, the 24-bit source address and the transfer
+* size, then set bit 0 of the control register to start.  Poll the control
+* register while it runs and read bytes out of the data port.
+* Control register, on READ:
+* Bit[7] = Busy  ( 1 = transfer in progress )
+* Bit[6] = Read FIFO Empty ( 1 = Empty, 0 = Data Available )
+* Bits[5:0] = the low 6 bits of the control register as written
+* Control register, on WRITE:
+* Bit[0] = 1 starts the transfer (the engine runs while this bit is set)
+* CAUTION: offsets 2 and 3 do NOT read back what was written.  Written they
+* are the transfer size, HIGH byte first; read they are the read-FIFO fill
+* count, LOW byte first, and only the low 4 bits of the high byte are valid.
+SplashSPI.Base      equ       $FF10
+SplashSPI.Busy      equ       %10000000           read only: transfer in progress
+SplashSPI.RxEmpty   equ       %01000000           read only: read FIFO empty
+SplashSPI.Start     equ       %00000001           write: start the transfer
                     org       $0
-WizFi_CtrlReg       rmb       1
-WizFi_DataReg       rmb       1
-WizFi_RxD_RD_Cnt    rmb       2
-WizFi_RxD_WR_Cnt    rmb       2
-WizFi_TxD_RD_Cnt    rmb       2
-WizFi_TxD_WR_Cnt    rmb       2
+SPIF_CTRL           rmb       1                   control (write) / status (read), see above
+SPIF_CMD            rmb       1                   flash command byte
+SPIF_SIZE           rmb       2                   transfer size, high byte first (reads back as FIFO count, low first)
+SPIF_RSVD           rmb       1                   register 4 - not used by the datapath
+SPIF_ADDR           rmb       3                   flash source address, 24 bit, high byte first
+SPIF_DATA           rmb       1                   read FIFO data port (read only)
+
+
+* WizFi360 Registers
+* Two 2K FIFOs, one receive and one transmit - the same FIFO IP that the MIDI
+* port uses.  Each reports BOTH a read count and a write count, which is why
+* there are four counter pairs below - four counters, not four FIFOs.  Bytes
+* waiting in a FIFO = its WR count - its RD count.  Counts are 11 bits, so
+* only bits 10:8 of each high byte are valid.
+* Wifi_Control_Register:
+* Bit[0] = 0 = 115,200K Mode, 1 = 921,600K Mode (sets both directions)
+* Bit[1] = 0 Default, 1 = Reset FIFO (you need to bring it back to 0) This is directly connected to reset line of the FIFO
+* Bit[2] = RX FIFO Empty ( 1 = Empty, 0 = Data Available)  read only
+* Bit[3] = TX FIFO Empty ( 1 = Empty, 0 = Data Available)  read only
+* Unlike the MIDI port, all four bits work on every shipping core, and both
+* directions raise interrupts: INT_WIZFI_RX (group 3, bit 0) when the Rx FIFO
+* goes non-empty, INT_WIZFI_TX (group 3, bit 5) when the Tx FIFO drains empty.
+WizFi.Base          equ       $FF20
+WizFi.TxEmpty       equ       %00001000           Tx FIFO empty (read only)
+WizFi.RxEmpty       equ       %00000100           Rx FIFO empty (read only)
+WizFi.Reset         equ       %00000010           FIFO reset, active high - clears both FIFOs and both serial ends
+WizFi.Rate          equ       %00000001           0 = 115,200 baud, 1 = 921,600 baud
+                    org       $0
+WizFi_CtrlReg       rmb       1                   control register (bits 2 and 3 read back as status)
+WizFi_DataReg       rmb       1                   Rx/Tx FIFO data port (read and write)
+WizFi_RxD_RD_Cnt    rmb       2                   Rx 2K FIFO read count, high byte first
+WizFi_RxD_WR_Cnt    rmb       2                   Rx 2K FIFO write count, high byte first
+WizFi_TxD_RD_Cnt    rmb       2                   Tx 2K FIFO read count, high byte first
+WizFi_TxD_WR_Cnt    rmb       2                   Tx 2K FIFO write count, high byte first
+
+
+* MIDI PORTS bit definitions
+* Two 2K FIFOs, one receive and one transmit.  Each reports BOTH a read
+* count and a write count, which is why there are four counter pairs
+* below - four counters, not four FIFOs.  Bytes waiting in a FIFO =
+* its WR count - its RD count.
+* One MIDI UART serves the back-panel DIN sockets: MIDI_IN_i and MIDI_OUT_o
+* are FPGA pins (K2 F7/F8, Jr2 T15/V15).  The on-board 2695 synthesizer sits
+* on the same outgoing line, so every byte written reaches both; the CPU
+* cannot address the synth separately, and its reset is wired to cold reset.
+* MIDI_Control_Register:
+* Bit[0] = NOT IMPLEMENTED - the serial rate is fixed at MIDI baud in the core
+*          (WizFi uses this bit to pick a rate; the MIDI block does not)
+* Bit[1] = 0 Default, 1 = Reset FIFO (you need to bring it back to 0) This
+*          clears the Rx and Tx FIFOs, the Tx state machine and the receiver
+* Bit[2] = RX FIFO Empty ( 1 = Empty, 0 = Data Available)  read only
+* Bit[3] = TX FIFO Empty ( 1 = Empty, 0 = Data Available)  read only
+* Bits 1-3 need a core built after 2026-09-04.  The shipping v8_rc10 cores
+* read offset 0 back exactly as written and have no FIFO reset, so on those
+* use the counters for FIFO state: bytes waiting = WR count - RD count.
+* Interrupt: INT_MIDI_RX (group 3, bit 1) on the Rx FIFO going non-empty.
+* There is no Tx interrupt - poll MIDI_TXD_WR_CNT before filling the FIFO.
+MIDI.Base           equ        $FF30
+MIDI.TxEmpty        equ        %00001000           Tx FIFO empty (read only)
+MIDI.RxEmpty        equ        %00000100           Rx FIFO empty (read only)
+MIDI.Reset          equ        %00000010           FIFO reset only, active high (does not touch the 2695 synthesizer)
+MIDI.Rate           equ        %00000001           unused - the core has no rate select on the MIDI port
+                    org        $0
+MIDI_CTRL           rmb        1                   control register (reads back what was written)
+MIDI_DATA           rmb        1                   Rx/Tx FIFO data port (read and write) (writes also go to the 2695 MIDI synthesizer)
+MIDI_RXD_RD_CNT     rmb        2                   Rx 2K FIFO read count, high byte first
+MIDI_RXD_WR_CNT     rmb        2                   Rx 2K FIFO write count, high byte first
+MIDI_TXD_RD_CNT     rmb        2                   Tx 2K FIFO read count, high byte first
+MIDI_TXD_WR_CNT     rmb        2                   Tx 2K FIFO write count, high byte first
+
+
+* W6100 ETHERNET bus interface - K2 ONLY
+* The core's 8-bit bus adapter to the WizNet chip.  Only the K2 wires the
+* chip; the Jr2 core decodes $FF40 but has no WizNet pins at all, so reads
+* there are meaningless on that machine.  Nothing in NitrOS-9 uses it yet.
+* Interrupt: INT_WIZNET (group 3, bit 3).
+*
+* Offsets 0-7 are control registers on WRITE.  Any offset with bit 3 set
+* ($FF48-$FF4F) is the FIFO data port: writing pushes the Tx FIFO, reading
+* pops the Rx FIFO.
+* Control register (offset 0), on WRITE:
+* Bit[0] = 1 enables the core
+* Bits[3:1] = operation select (000 = single write of the data byte below)
+* Bit[5] = 1 starts the transfer
+* Control register (offset 0), on READ: bit 7 = Busy, bits 6:0 read back.
+* CAUTION: the address bytes read back SWAPPED.  Written, offset 4 is the
+* high byte and offset 5 the low byte; read, offset 4 returns the low byte
+* and offset 5 the high byte.  The Rx FIFO count is 11 bits (2K) stored high
+* byte first at offsets 6 and 7; the Tx count is the low 8 bits only, at
+* offset 2, and offsets 1 and 3 read the chip's MR and Rx registers rather
+* than what was written there.
+W6100.Base          equ       $FF40
+W6100.Busy          equ       %10000000           read only: transfer in progress
+W6100.Start         equ       %00100000           write: start the transfer
+W6100.Enable        equ       %00000001           write: enable the core
+                    org       $0
+WIZ_CTRL            rmb       1                   control (write) / status (read), see above
+WIZ_MR              rmb       1                   W: mode register to write   R: chip MR
+WIZ_DATA_W          rmb       1                   W: (unused)                 R: Tx FIFO count, low 8 bits
+WIZ_WRVAL           rmb       1                   W: single data byte to write  R: chip Rx register
+WIZ_ADDR_H          rmb       1                   W: address high byte        R: address LOW byte
+WIZ_ADDR_L          rmb       1                   W: address low byte         R: address HIGH byte
+WIZ_RXCNT_H         rmb       1                   R: Rx FIFO count, bits 10:8
+WIZ_RXCNT_L         rmb       1                   R: Rx FIFO count, bits 7:0
+WIZ_FIFO            rmb       1                   $FF48-$FF4F: W = push Tx FIFO, R = pop Rx FIFO
+
 
 * DIP Switches for Jr/Jr2/K2.. 
 K2_DIP_SW.Base      equ       $FF90
