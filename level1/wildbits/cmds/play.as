@@ -78,12 +78,16 @@
 *
 *   16     2026/04/28   R Taylor
 * Tighten up the help message to save space.
+*
+*   17     2026/09/06   R Taylor / Claude Fable 5
+* Improve Lyra playback accuracy, volume handling, and MIDI integration.
+
 
                     nam       music
                     ttl       Music Player
 
  section __os9
-edition = 16
+edition = 17
  endsect
 
 * Here are some tweakable options
