@@ -86,6 +86,9 @@ inetd telnet dw httpd $(BASIC09) $(BF) \
 	$(CMDS_EXTRA) wildspeed wmset
 
 ifeq ($(LEVEL),2)
+# vs: VS1053 test command (wb/vs1053); on its own line so it never collides with edits to the CMDS list above
+CMDS += vs
+
 UTILPAK1_MODS = attr copy date del deiniz dir display list makdir mdir \
 	merge mfree procs rename tmode unlink
 CMDS += dmem minted mmap modpatch \

@@ -967,6 +967,61 @@ WIZ_RXCNT_L         rmb       1                   R: Rx FIFO count, bits 7:0
 WIZ_FIFO            rmb       1                   $FF48-$FF4F: W = push Tx FIFO, R = pop Rx FIFO
 
 
+********************************************************************
+* VS1053 (MP3/OGG/WAV decoder) SPI bridge definitions
+*
+* Fixed I/O, identical on the K2 and Jr2 (core block VS1053_SPI_Interface,
+* CS $FF50-$FF5F; offsets 8-15 mirror 0-7 on read). The bridge runs 32-bit
+* SCI transactions over XCSn and streams a 2 KB byte FIFO to SDI over XDCSn
+* as DREQ permits; the CPU never sees DREQ. 16-bit pairs are BIG-endian
+* (high byte at the lower offset) since the 2026-09-05 core fix - cores
+* built before it have VS_DATA and VS_FIFOCNT the other way round.
+* SCI write: VS_SCIREG=reg, std VS_DATA, VS_CTRL=0, VS_CTRL=VS_START, wait !VS_BUSY
+* SCI read:  VS_SCIREG=reg, VS_CTRL=0, VS_CTRL=VS_START+VS_READ, wait !VS_BUSY, ldd VS_DATA
+* Stream:    while !(VS_FIFOSTAT & VS_FIFO_FULL) store bytes to VS_FIFO
+VS1053.Base         equ       $FF50
+                    org       0
+VS_CTRL             rmb       1         bit0 START (0->1 edge starts an SCI transaction, does not self-clear), bit1 READ, bit2 FAST (rc12), bit3 RESET (rc12), bit7 BUSY (r/o)
+VS_SCIREG           rmb       1         SCI register number in the low nibble (VS_MODE..VS_AICTRL3)
+VS_DATA             equ       .         16-bit SCI data, big-endian: std to send, ldd for the last read result
+VS_DATAHI           rmb       1         high byte
+VS_DATALO           rmb       1         low byte
+VS_FIFOSTAT         rmb       1         bit7 FIFO empty, bit6 FIFO full, bits 2-0 = count bits 10-8; reading it snapshots the count
+VS_FIFOCNTL         rmb       1         count bits 7-0 from that snapshot (ldd VS_FIFOSTAT then anda #VS_FIFO_CNTHI = 11-bit count)
+VS_FIFOCNT          equ       VS_FIFOSTAT 16-bit alias for the ldd
+                    rmb       1         reads $00
+VS_FIFO             rmb       1         SDI stream data write: each byte is sent to the chip as DREQ permits
+* VS_CTRL bits
+VS_START            equ       %00000001
+VS_READ             equ       %00000010
+VS_FAST             equ       %00000100 rc12+: SPI clock IO_Clk/4 = 6.29 MHz, legal only after CLOCKF is raised (SCI reads need CLKI >= 44 MHz);
+*                                       0 (reset default) = IO_Clk/16 = 1.57 MHz, in spec at the chip's boot clock. Pre-rc12 cores ignore the bit.
+VS_RESET            equ       %00001000 rc12+: 1 = hold the chip's XRESET low (bit engine idle, SDI FIFO flushed) - the only way back
+*                                       for a chip stuck with DREQ low, since every SCI command waits for DREQ. Pre-rc12 cores ignore it.
+VS_BUSY             equ       %10000000
+* VS_FIFOSTAT bits
+VS_FIFO_EMPTY       equ       %10000000
+VS_FIFO_FULL        equ       %01000000
+VS_FIFO_CNTHI       equ       %00000111
+* VS1053 SCI register numbers (for VS_SCIREG)
+VS_MODE             equ       $0        mode control
+VS_STATUS           equ       $1        status
+VS_BASS             equ       $2        bass/treble
+VS_CLOCKF           equ       $3        clock frequency + multiplier
+VS_DECODE_TIME      equ       $4        decode time in seconds
+VS_AUDATA           equ       $5        misc. audio data (sample rate, channels)
+VS_WRAM             equ       $6        RAM read/write
+VS_WRAMADDR         equ       $7        RAM address
+VS_HDAT0            equ       $8        stream header data 0 (read only)
+VS_HDAT1            equ       $9        stream header data 1 (read only)
+VS_AIADDR           equ       $A        application start address
+VS_VOL              equ       $B        volume (left/right attenuation, 0.5dB steps)
+VS_AICTRL0          equ       $C        application control 0
+VS_AICTRL1          equ       $D        application control 1
+VS_AICTRL2          equ       $E        application control 2
+VS_AICTRL3          equ       $F        application control 3
+
+
 * DIP Switches for Jr/Jr2/K2.. 
 K2_DIP_SW.Base      equ       $FF90
 SW_GAMMA_ON         equ       %10000000
@@ -977,5 +1032,6 @@ SW_BOOT_MODE3       equ       %00001000
 SW_BOOT_MODE2       equ       %00000100
 SW_BOOT_MODE1       equ       %00000010
 SW_BOOT_MODE0       equ       %00000001
+
 
                     ENDC
