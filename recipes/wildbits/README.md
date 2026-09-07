@@ -137,7 +137,8 @@ Primary outputs:
 
 Both mega images add the same expanded software collection as
 [`coco3/dw_mega`](../coco3/dw_mega/): the native C compiler, Forth09, the
-Infocom interpreter with Zork I-III and Raaka-Tu, and the OS-9 Level 2 BBS.
+Infocom interpreter with Zork I-III from the Masterpiece Collection (or all 21
+titles with `ALL_GAMES=1`) and Raaka-Tu, and the OS-9 Level 2 BBS.
 They require `git`, CMOC, the CMOC OS-9 runtime, `nitros9-apps`, and
 `nitros9-languages`; see the CoCo 3 mega recipe documentation for configuration
 and command-line overrides.
