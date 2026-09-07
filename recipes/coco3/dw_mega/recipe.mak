@@ -20,7 +20,7 @@ EXTERNAL_DIR ?= .external
 COCO_SHELF ?= $(abspath $(NITROS9DIR)/..)
 
 INFOCOM_REPO ?= https://github.com/rlucente-retro/infocom-os9-port.git
-INFOCOM_REF ?= 23c88a7d40f0591c451ca53fbe7887a30f559718
+INFOCOM_REF ?= 8f3bc2b6f67a7897eb426783c52a6cf8cc6c729f
 INFOCOM_SRC = $(EXTERNAL_DIR)/infocom-os9-port
 INFOCOM_CHECKOUT = $(INFOCOM_SRC)/.checkout-$(INFOCOM_REF)
 INFOCOM_CMD = $(INFOCOM_SRC)/infocom
@@ -51,10 +51,20 @@ CCOMPILER_INPUTS = $(CCOMPILER_DIR)/Makefile $(CCOMPILER_DIR)/defsfile \
 	$(wildcard $(CCOMPILER_DIR)/lib/*) \
 	$(wildcard $(CCOMPILER_DIR)/sources/*)
 
-# The interpreter supports Version 3 story files. Override INFOCOM_STORY_DIR
-# and INFOCOM_STORIES to package another legally obtained collection.
-INFOCOM_STORY_DIR ?= $(NITROS9_APPS_DIR)/cpm/software/zork
-INFOCOM_STORIES ?= ZORK1.DAT ZORK2.DAT ZORK3.DAT
+ALL_GAMES ?= 0
+
+# The interpreter supports Version 3 story files from the Masterpiece Collection.
+# Override INFOCOM_STORY_DIR and INFOCOM_STORIES to package custom story files.
+INFOCOM_STORY_DIR ?= $(INFOCOM_SRC)/games
+ifeq ($(ALL_GAMES),1)
+INFOCOM_STORIES ?= ballyhoo.z3 cutthroats.z3 deadline.z3 enchanter.z3 \
+	hollywoodhijinx.z3 infidel.z3 leathergoddesses.z3 moonmist.z3 \
+	planetfall.z3 plunderedhearts.z3 seastalker.z3 sorcerer.z3 \
+	spellbreaker.z3 starcross.z3 stationfall.z3 suspect.z3 \
+	wishbringer.z3 witness.z3 zork1.z3 zork2.z3 zork3.z3
+else
+INFOCOM_STORIES ?= zork1.z3 zork2.z3 zork3.z3
+endif
 INFOCOM_STORY_FILES = $(addprefix $(INFOCOM_STORY_DIR)/,$(INFOCOM_STORIES))
 
 $(MODDIR)/midi_scdwv.dd: scdwvdesc.asm | $(MODDIR)
@@ -122,6 +132,9 @@ $(FORTH09_CHECKOUT):
 
 $(INFOCOM_CMD): $(INFOCOM_CHECKOUT)
 	$(MAKE) -C $(INFOCOM_SRC) --no-print-directory NITROS9DIR=$(NITROS9DIR) infocom
+
+$(INFOCOM_SRC)/games/%: $(INFOCOM_CHECKOUT)
+	$(MAKE) -C $(INFOCOM_SRC) --no-print-directory games/$*
 
 $(RAAKATU_STORY): $(RAAKATU_CHECKOUT)
 	@test -f $@
