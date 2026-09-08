@@ -22,6 +22,10 @@
 *   3      2026/09/07  module edition 12: the -s clock by file type (ClkTab:
 *           mp3 ogg wav $60, aac wma m4a mp4 $70, mid $A0, else $60); -c
 *           still overrides. C0 (4.5x, the CLKI limit) cut an MP3 short.
+*   13      2026/09/08  module edition 13: vs <file> plays without -s: a bare
+*           token that is not all digits is the pathname (play mode unless
+*           -t/-r/-i/-m/-l/-u/-n/-o already chose one); digits alone are
+*           still the seconds count. The help shows vs [-s] <file>.
 *
 
                     nam       vs
@@ -34,7 +38,7 @@
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       12
+edition             set       13
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -51,6 +55,7 @@ pptr                rmb       2                   plugin pointer
 pcnt                rmb       2                   plugin words left
 rcnt                rmb       2                   run length
 fname               rmb       2                   -s: pathname pointer
+tokst               rmb       2                   GetArgs: start of the token being parsed
 bcount              rmb       2                   -s: bytes left in the buffer
 bytes               rmb       2                   -s: bytes sent modulo 1024
 kb                  rmb       2                   -s: KB sent
@@ -248,7 +253,7 @@ HelpTxt             fcc       "vs - VS1053 sound chip player"
                     fcb       C$CR
                     fcc       "vs -t [seconds] sine wave test only (steps 1-6 + SDI sine)"
                     fcb       C$CR
-                    fcc       "vs -s <file>    play a file: mp3, ogg, wav, aac, wma, mid;"
+                    fcc       "vs [-s] <file>  play a file: mp3, ogg, wav, aac, wma, mid;"
                     fcb       C$CR
                     fcc       "                any key stops it; silent unless -d"
                     fcb       C$CR
@@ -296,7 +301,7 @@ HelpTxt             fcc       "vs - VS1053 sound chip player"
                     fcb       C$CR
                     fcc       "vs -?           this help"
                     fcb       C$CR
-                    fcc       "Options combine: vs -v 08 -s /sd/song.mp3"
+                    fcc       "Options combine: vs -v 08 /sd/song.mp3"
                     fcb       C$CR
                     fcc       "Every run resets the chip. Error 246 = chip stopped answering."
                     fcb       C$CR
@@ -1760,10 +1765,15 @@ gsN@                lda       ,x+                 skip the name so more switches
                     cmpa      #C$CR
                     lbne      gsN@
                     lbra      gs9@
-gs2@                cmpa      #'0
-                    blo       gs9@
+gs2@                cmpa      #C$CR
+                    lbeq      gs9@                end of the parameter line
+                    leax      -1,x
+                    stx       tokst,u             where this token starts: a pathname unless all digits
+                    leax      1,x
+gs2d@               cmpa      #'0
+                    blo       gsF@                not a digit: the pathname to play
                     cmpa      #'9
-                    bhi       gs9@
+                    bhi       gsF@
                     suba      #'0
                     sta       tmp+1,u             the digit
                     ldd       secs,u
@@ -1785,7 +1795,19 @@ gs2@                cmpa      #'0
 gs3@                lda       ,x+
                     cmpa      #C$SPAC
                     lbeq      gs1@                more tokens may follow the number
-                    lbra      gs2@
+                    cmpa      #C$CR
+                    lbeq      gs9@                the line ends after the number
+                    lbra      gs2d@               another digit, or (1.mp3) a pathname after all
+gsF@                tst       mode,u              -t/-r/-i/-m/-l/-u/-n/-o/-s already chose: skip a stray token
+                    lbne      gsN@
+                    ldx       tokst,u
+                    stx       fname,u             a bare pathname plays it: vs <file> = vs -s <file>
+                    lda       #2
+                    sta       mode,u
+                    clra
+                    clrb
+                    std       secs,u              digits that were part of the name are not seconds
+                    lbra      gsN@                skip the rest of the name; switches may follow it
 gs9@                ldd       secs,u
                     lbne      gs4@
                     ldd       #5
