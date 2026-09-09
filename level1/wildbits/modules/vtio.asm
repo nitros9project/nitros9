@@ -264,27 +264,18 @@ InitPSG             pshs      cc                save the condition code register
 InitCODEC
                     ldx       #CODEC.Base
 
-* Each machine wires the codec chip differently - keep a fully
-* independent register sequence per platform (no shared writes), so
-* either machine's audio setup can be tuned without touching the
-* other's.
+* The two boards wire the WM8776 differently: one independent register sequence per machine,
+* never share or copy values.  Bits: [15:9] register, [8] update/zero-cross/LRBOTH, [7:0] value.
+* Tune by ear before touching this table: the wmset command writes any register live,
+* usage  wmset R# V#  (both hex, e.g. wmset 0E E7 = R14 to $E7).  A wmset write lasts only
+* until the next boot, when this InitCODEC runs again and rewrites every register below.
                     ifne      jr2
 * ------------------- Jr2 InitCODEC -------------------
-* Attenuations tuned by ear 2026-08-29/30 (balanced play command,
-* SID_MAX_VOL=6, Lyra velocities to 127, CC7=127):
-*   - The SAM2695 (.lyr) enters the output mux as ANALOG with no gain
-*     control of its own, so the HEADPHONE master (R00/R01, 1dB/step
-*     below $79=0dB) is the .lyr level knob; the DAC att (R03/R04,
-*     0.5dB/step below $FF=0dB) is the .mus/SID level knob. Move them
-*     in opposite directions to shift one without the other.
-*   - Final: DAC $FD (-1.0dB) + headphones $60 (-25dB). The Jr2's
-*     .lyr runs ~12dB hotter into the mix than the K2's, hence the
-*     deep headphone cut with the DAC nearly open (only 1dB of "make
-*     .mus louder" headroom remains - past that, raise SID_MAX_VOL).
-*   - The Jr2's LINE-OUT tracks the headphone stage (board wiring),
-*     so this one setting balances BOTH jacks - unlike the K2, whose
-*     line-out taps the DAC directly. Tune each machine's block
-*     separately; do not copy values across.
+* Knobs: DAC att R03/R04 ($FF = 0 dB, 0.5 dB/step) = the .mus/SID path; headphone att
+* R00/R01 ($79 = 0 dB, 1 dB/step) = the whole mix (the SAM2695 enters as analogue with no
+* gain of its own).  Jr2 line-out follows the headphone stage, so one setting serves both
+* jacks.  Tuned by ear 2026-08-29/30: DAC $FD (-1 dB), headphones $60 (-25 dB); this synth
+* runs ~12 dB hotter than the K2 one, hence the deep cut.
                     ldd       #%0010111000000000                    R23 - Reset chip
                     lbsr      SendToCODEC
                     ldd       #%0001010000000010                    R10 - DAC Interface Control 16-bit i2s
@@ -308,18 +299,16 @@ InitCODEC
 
                     else
 * -------------- K2: independently tunable InitCODEC --------------
-* K2 tuned by ear on the HEADPHONE jack, 2026-09-05 (wmset, .mus vs .lyr):
-*   DAC $D7 (-20dB) + headphones $79 (0dB); was $DF until the play command
-*   moved Lyra volume onto CC11 expression (2026-09-05 pm). The K2's synth reaches the
-*   mix ~15dB lower than the Jr2's, so the DAC is cut to meet it and the
-*   headphone master opened fully. RCA (stereo out) NOT tuned - parked.
-* Background (2026-08-29): the SAM2695 MIDI synth (.lyr) enters
-* the output mux through the Aux/Bypass ANALOG inputs, which have no
-* gain control in the WM8776 - it cannot be boosted directly, so the
-* DAC (SID/PSG) path is cut toward it instead, and the headphone
-* master raised to compensate that output. (DAC att R03/R04:
-* 0.5dB/step below $FF=0dB; headphone att R00/R01: 1dB/step below
-* $79=0dB.)
+* Knobs: DAC att R03/R04 = the .mus/SID path only; headphone att R00/R01 = headphone jack
+* only; ADC gain R14/R15 ($CF = 0 dB, 0.5 dB/step, $FF = +24 dB) = every analogue input on
+* BOTH jacks, because AINs reach VOUT (RCA) and the headphone PGA through the bypass (R22 MX
+* bit 2).  Tuned by ear on the headphone jack 2026-09-05: DAC $D7 (-20 dB), headphones $79
+* (0 dB); RCA not tuned.
+* Analogue inputs (R21 AMX bit n = AIN n+1; extend as sources are identified):
+*   AIN1, AIN2  SAM2695 MIDI synth (.lyr)      AIN4  VS1053 (wmset 15 08, 2026-09-07)
+*   AIN3, AIN5  not identified yet
+* The deploy overlay codec_inputs rewrites the R21 line below to $1F (all five in); R21 bit 8
+* = LRBOTH (R14 then serves both channels), bits 7/6 = mutes.
                     ldd       #%0010111000000000                    R23 - Reset chip
                     lbsr      SendToCODEC
                     ldd       #%0001010000000010                    R10 - DAC Interface Control 16-bit i2s
