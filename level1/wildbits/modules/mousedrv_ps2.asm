@@ -326,8 +326,19 @@ getmpacket          ldb       PS2_STAT            read ps/2 status register dete
 		    beq	      byte1@
 byte2		    sta	      V.MSByte2,u
 		    bra	      procpacket
-byte0@  	    sta	      V.MSByte0,u
+byte0@  	    bita      #%00001000          a status byte always carries bit 3 (the PS/2 'always 1' bit)
+		    beq	      resync@             it does not: the packet stream slipped a byte - resynchronise
+		    sta	      V.MSByte0,u
 		    bra	      getmpacket
+* resync@ (2026-09-11): the stream lost or gained a byte (a FIFO overrun while interrupts were masked,
+* a stray ACK), so movement bytes were read as button states and button bytes as movement: the pointer
+* ran into a corner and the button stuck until a reset. Flush the mouse FIFO (MCLR, as the init does),
+* start the packet count over and leave; the next packet raises a fresh interrupt and parses clean.
+resync@		    lda	      V.MCLR,u            flush the mouse FIFO
+		    sta	      PS2_CTRL
+		    clr	      PS2_CTRL
+		    clr	      V.MSByteCnt,u
+		    lbra      IRQMExit
 byte1@              sta	      V.MSByte1,u
 		    bra       getmpacket
 		    
