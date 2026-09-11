@@ -78,12 +78,16 @@
 *
 *   16     2026/04/28   R Taylor
 * Tighten up the help message to save space.
+*
+*   17     2026/09/06   R Taylor / Claude Fable 5
+* Improve Lyra playback accuracy, volume handling, and MIDI integration.
+
 
                     nam       music
                     ttl       Music Player
 
  section __os9
-edition = 16
+edition = 17
  endsect
 
 * Here are some tweakable options
@@ -1537,14 +1541,17 @@ v4@                 std       <freq_psg4
 * or ((pitch * 10129) / 65536) * 10
 * or (pitch * 10129) then take upper 16 bits of 32-bit result and * 10
 
-Mf2SID              std       $FEE0               Put pitch in MULT-A
+* The multiplier is combinational (the IP is built with no pipeline stages), so the
+* product is valid as soon as the operand write has clocked in. No wait is needed here -
+* unlike the divider in Mf2PSG below.
+Mf2SID              std       MATH_MUL_A          Put pitch in MULT-A
                     ldd       #10129              pitch * 10129
-                    std       $FEE2               Put multiplier in MULT-B
-                    ldd       $FEF0               Get upper 16 bits of 32-bit result
-                    std       $FEE0               Put back in MULT-A
+                    std       MATH_MUL_B          Put multiplier in MULT-B
+                    ldd       MATH_MUL_P          Get upper 16 bits of 32-bit result
+                    std       MATH_MUL_A          Put back in MULT-A
                     ldd       #10
-                    std       $FEE2               Put 10 in MULT-B 
-                    ldd       $FEF2               Get lower 16-bit of result
+                    std       MATH_MUL_B          Put 10 in MULT-B
+                    ldd       MATH_MUL_P+2        Get lower 16-bit of result
                     rts
 
 ********************************************************************
@@ -1566,20 +1573,47 @@ Mf2PSG
                     ldd       <iQuotient
                     rts
                 else
-                    std       $FEE6               Store pitch as numerator
+                    std       MATH_DIV_END        Store pitch as numerator
 *                   ldd       #22                 Low octave, grindy
 *                   ldd       #11                 Higher octave, more accurate
                     ldd       #12                 Best sounding, but notes are a bit off scale
-                    std       $FEE4               Denominator
-                    ldd       $FEF4               Get answer
-                    std       $FEE4               Store answer as new denominator
+                    std       MATH_DIV_SOR        Denominator
+                    bsr       MathWait            the quotient is not ready yet - see below
+                    ldd       MATH_DIV_QUOT       Get answer
+                    beq       z@                  pitch under 12 would divide 60250 by ZERO
+                    std       MATH_DIV_SOR        Store answer as new denominator
                     ldd       #60250
-                    std       $FEE6               Numerator
-                    ldd       $FEF4               Quotient
+                    std       MATH_DIV_END        Numerator
+                    bsr       MathWait
+                    ldd       MATH_DIV_QUOT       Quotient
                     cmpd      #1023               Is the result <1024, in PSG tone range?
                     bls       g@
-                    ldd       #1023               Set upper freq limit for PSG
+z@                  ldd       #1023               Set upper freq limit for PSG
 g@                  rts
+
+********************************************************************
+* MathWait - let the hardware divider's pipeline fill before the quotient is read.
+*
+* Div_Unsigned_16_16 is a Radix2 core with a LATENCY OF 12 CLOCKS on the I/O clock, and
+* both of its tvalid inputs are tied high, so it re-divides every clock and the quotient
+* is only correct 12 I/O clocks after the LAST operand write. Nothing in the hardware
+* says when that is - there is no ready bit to poll.
+*
+* Before this existed the code read the quotient in the very next instruction. That
+* worked only by accident of timing: a stock bus cycle is a 32-tick frame of the 200 MHz
+* scheduler, which is 4 ticks of the 25 MHz I/O clock, so two back-to-back instructions
+* cleared the 12 by one or two bus cycles. Turbo cores shorten those frames. Had one
+* shortened far enough, this would have returned the PREVIOUS quotient - wrong notes, no
+* error, and it would have read as a tuning fault rather than a timing one.
+*
+* The call and return alone cost 12 bus cycles; the four nops add 8 more. That holds even
+* if a bus cycle ever shrinks to a single I/O clock, which is the fastest it could
+* physically become.
+MathWait            nop
+                    nop
+                    nop
+                    nop
+                    rts
                 endc
 
 ********************************************************************
