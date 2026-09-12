@@ -495,8 +495,15 @@ BORDER_COLOR_R      rmb       1
 BORDER_X_SIZE       rmb       1         X values: 0 - 32 (default: 32)
 BORDER_Y_SIZE       rmb       1         Y values: 0 - 32 (default: 32)
 VKY_RESERVED_02     rmb       1
-VKY_RESERVED_03     rmb       1
+VKY_GFX_MODE        rmb       1         $FFCB (rc14+): b0 HIRES4 = every bitmap plane 640x240 at 4 bits/dot, b3:1 CLUT group
 VKY_RESERVED_04     rmb       1
+* GFX MODE register bits (rc14+ cores; the byte was VKY_RESERVED_03). In HIRES4 a bitmap byte holds two
+* dots, the high nibble on the left, and the 4-bit value indexes the 16-entry CLUT slice GFX_GROUP picks:
+* colour = group*16 + nibble. Same frame RAM and fetch as 320x240x8; sprites, tiles and text are untouched
+* (their dots stay 320 wide, composited as before). A plane can ask for it alone: BM0_HIRES4 in its control byte.
+GFX_HIRES4          equ       %00000001 640x240, two 4-bit dots per byte, all bitmap planes
+GFX_GROUP           equ       %00001110 which 16-colour CLUT slice the nibbles index (0-7)
+VKY_GFX_MODE_REG    equ       $FFCB     the same register by absolute address (fixed I/O: any task can poke it)
 * Valid in graphics mode only
 BACKGROUND_COLOR_B  rmb       1         when in graphic mode, if a pixel is "0" then the background pixel is chosen
 BACKGROUND_COLOR_G  rmb       1
@@ -553,6 +560,8 @@ TyVKY_BM0_CTRL_REG  equ       $F000
 BM0_Ctrl            equ       $01       enable the BM0
 BM0_LUT0            equ       $02       LUT0
 BM0_LUT1            equ       $04       LUT1
+BM0_HIRES4          equ       $10       rc14+: this plane alone in 640x240 4-bit (OR'd with GFX_HIRES4)
+BM0_GROUP           equ       $E0       rc14+: this plane's CLUT slice (0-7) when it is HIRES4
 TyVKY_BM0_START_ADDY_H equ       $F001
 TyVKY_BM0_START_ADDY_M equ       $F002
 TyVKY_BM0_START_ADDY_L equ       $F003
