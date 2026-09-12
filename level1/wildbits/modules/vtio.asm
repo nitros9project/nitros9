@@ -2207,10 +2207,16 @@ clearblock          pshs      cc
                     std       <D.Proc
                     puls      cc,pc
 
-* Block to Address: Convert block# to high 16 bits in D
-* b = block#, a = 0.  d = high 16 bits of address
-* Try to replace with math coprocessor multiply in Vicky?
-Blk2Addr            clra                          clear a, block # is in b
+* Convert an OS-9 8K MMU block number in B to the bus address written to
+* VICKY's bitmap address registers. Return D = address >> 8, the upper
+* 16 bits of that 24-bit address. This does not describe or depend on where
+* the FPGA places the data in the physical SRAM chips.
+* Every block is block * $2000, the two 1 MB windows included: $A0-$BF at
+* $14_0000-$17_FFFF and $D0-$EF at $1A_0000-$1D_FFFF (cores rc15 and later;
+* the rc14 cores put $D0-$EF at $20_0000 after a mis-edited row of the
+* Revision E sheet, which is why an rc14 core needs the rc14 vtio and an
+* rc15 core this one).
+Blk2Addr            clra                          A:B = block number
                     lslb                          multiply block# by $20 to get top 16 bits x2
                     rola                          of physical address (ex $3F*$20 = $07E0)
                     lslb                          x4
