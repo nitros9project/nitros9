@@ -2210,8 +2210,17 @@ clearblock          pshs      cc
 * Block to Address: Convert block# to high 16 bits in D
 * b = block#, a = 0.  d = high 16 bits of address
 * Try to replace with math coprocessor multiply in Vicky?
-Blk2Addr            clra                          clear a, block # is in b
-                    lslb                          multiply block# by $20 to get top 16 bits x2
+* wb/1mb_ram_upgrade (Foenix memory map Revision E, 2026-03-13): the absolute address of a block is
+* block * $2000 for every block but the second RAM window - LUT entries $D0-$EF sit at absolute
+* $20_0000-$23_FFFF (block + $30), not $1A_0000. $A0-$BF are the identity ($14_0000+). VICKY, DMA and the
+* debug port see the same absolute addresses; where the core puts them on the SRAM is the core's business.
+Blk2Addr            clra                          A:B = block number
+                    cmpb      #$D0
+                    blo       b2afold@            $00-$CF: block * $2000
+                    cmpb      #$EF
+                    bhi       b2afold@            $F0-$FF: undecoded, unchanged
+                    addd      #$0030              $D0-$EF -> $100-$11F: absolute $20_0000 + n * $2000
+b2afold@            lslb                          multiply block# by $20 to get top 16 bits x2
                     rola                          of physical address (ex $3F*$20 = $07E0)
                     lslb                          x4
                     rola                          roll carry into a

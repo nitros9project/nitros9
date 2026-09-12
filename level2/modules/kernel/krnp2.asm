@@ -185,6 +185,35 @@ krnp2               lda       #'2       ; debug: signal that we made it into krn
                     leax      Trap,pc   ; compute Trap,pc into X
                     stx       <D.SWI    ; store X at <D.SWI
                   ENDC
+*[[[ Wildbits PORT
+                  IFNE    wildbits ; begin conditional assembly for wildbits
+* wb/1mb_ram_upgrade: grow the memory block map from krn's 64 entries to all 256 block
+* numbers, as a 2 MB CoCo 3 has it (end = $0300), and mark what is not RAM. Wildbits RAM
+* is not contiguous in block-number space: $00-$3F is the SRAM's first 512K, $A0-$BF and
+* $D0-$EF are the two 256K windows on its upper half (core: TyVKy2K2x1_MMU_Register.v).
+* The gaps are marked NotRAM so every allocator skips them: $40-$9F = flash window +
+* expansion RAM, $C0-$CF = sectored I/O pages + undecoded patterns, $F0-$FF = undecoded.
+* Page $02xx was cleared by krn, so the window entries are already 0 = free. This lives
+* here and not in krn because krn's fixed tail at $0F7F has no room left; nothing has
+* been forked yet, so no process can have taken a block above $3F before this runs.
+                    ldx       <D.BlkMap ; get the pointer to the 8KB block map
+                    leau      >NotRAMTbl,pc ; the gaps: first block, count; count 0 ends it
+blkgap@             ldb       ,u+       ; B = first block of the gap
+                    clra                ; D offset, so $C0 and $F0 stay positive
+                    leay      d,x       ; Y = that block's map entry
+                    ldb       ,u+       ; B = blocks in the gap
+                    beq       blkdone@  ; 0 = end of the table
+                    lda       #NotRAM   ; the "Not RAM" flag
+blkmark@            sta       ,y+       ; mark them all
+                    decb                ; done with this gap?
+                    bne       blkmark@  ; not yet
+                    bra       blkgap@   ; next gap
+blkdone@            clrb                ; 256 blocks (B = 0 is how the CoCo 2 MB case leaves it)
+                    stb       <D.MemSz  ; # of 8KB blocks, for anything that asks
+                    leax      >$0100,x  ; map end = start + 256 entries ($0300)
+                    stx       <D.BlkMap+2 ; save the memory block map end pointer
+                  ENDC
+*]]] Wildbits PORT
 * Change to default directory
 Krnp2InitModule     ldu       <D.Init   ; get init module pointer
                     ldd       SysStr,u  ; get pointer to system device name (usually '/DD')
@@ -420,6 +449,16 @@ IOMan               fcs       /IOMan/
 
                     use       fdebug.asm ; include source file fdebug.asm
 
+*[[[ Wildbits PORT
+                  IFNE    wildbits ; begin conditional assembly for wildbits
+* wb/1mb_ram_upgrade: the block-number gaps that are not RAM (first block, count); see the
+* memory block map extension at the entry. Count 0 ends the table.
+NotRAMTbl           fcb       $40,$60   ; $40-$9F: flash window ($40-$7F) + expansion RAM ($80-$9F)
+                    fcb       $C0,$10   ; $C0-$CF: sectored I/O pages $C0-$C7, no decode $C8-$CF
+                    fcb       $F0,$10   ; $F0-$FF: no decode
+                    fcb       $00,$00   ; end
+                  ENDC
+*]]] Wildbits PORT
                     emod
 eom                 equ       *         ; define assembler symbol eom
                     end
