@@ -19,13 +19,16 @@
 *           CLOCKF into the parameter area instead of the bridge: the name
 *           was overwritten (I$Open error 216) and the chip kept 1.0x.
 *           DefClk now preserves X.
-*   3      2026/09/07  module edition 12: the -s clock by file type (ClkTab:
+*   12      2026/09/07  module edition 12: the -s clock by file type (ClkTab:
 *           mp3 ogg wav $60, aac wma m4a mp4 $70, mid $A0, else $60); -c
 *           still overrides. C0 (4.5x, the CLKI limit) cut an MP3 short.
 *   13      2026/09/08  module edition 13: vs <file> plays without -s: a bare
 *           token that is not all digits is the pathname (play mode unless
 *           -t/-r/-i/-m/-l/-u/-n/-o already chose one); digits alone are
 *           still the seconds count. The help shows vs [-s] <file>.
+*   14      2026/09/12  module edition 14: a file play no longer resets the chip;
+*           vs -n / -o hold from one play to the next and vs -r is the reset.
+*           The chain test, -m and -r still start from a hardware reset.
 *
 
                     nam       vs
@@ -38,7 +41,7 @@
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       13
+edition             set       14
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -299,15 +302,13 @@ HelpTxt             fcc       "vs - VS1053 sound chip player"
                     fcb       C$CR
                     fcc       "                decoder stays even with the GPIO1 strap"
                     fcb       C$CR
-                    fcc       "vs -?           this help"
-                    fcb       C$CR
                     fcc       "Options combine: vs -v 08 /sd/song.mp3"
                     fcb       C$CR
-                    fcc       "Every run resets the chip. Error 246 = chip stopped answering."
+                    fcc       "A play takes the chip as is (vs -n/-o hold); vs -r resets it."
                     fcb       C$CR
-                    fcc       "Plays format 0 MIDI files only."
+                    fcc       "Error 246 = chip stopped answering."
                     fcb       C$CR
-                    fcc       "GPIO1 strap (synth at boot)? vs loads the switcher after every reset."
+                    fcc       "GPIO1 strap (synth at boot)? vs loads the switcher before a play."
                     fcb       C$CR
 HelpEnd             equ       *
 okmsg               fcc       "  OK"
@@ -390,8 +391,17 @@ StartQ              lda       mode,u
                     lbeq      SynthOn             -n: VLSI's start plugin on the chip as it is, no reset
                     cmpa      #10
                     lbeq      SynthOff            -o: the switcher on the chip as it is, no reset
-                    lbsr      HardReset           every run starts from a freshly reset chip
-                    lbsr      AutoSwitch          a GPIO1-strapped chip booted as a synth: switch it now
+* ed.14 (user 2026-09-12: 'auto reset is not really needed'): a file play (-s, or a bare file) takes
+* the chip as it is - MODE, STATUS, CLOCKF and VOL are all written by Stream itself - so the state vs -n
+* or -o left holds from one play to the next. The diagnostics (the chain test, -m, -r) still start
+* from a hardware reset. AutoSwitch stays on every path: it acts only on a GPIO1-strapped chip, which
+* a play cannot use as a synth anyway. A synth switched on by -n on an unstrapped board is left
+* alone: feeding a file to it is the user's choice (vs -o first for the decoder).
+                    lda       mode,u
+                    cmpa      #2
+                    beq       NoReset@            a play: no reset
+                    lbsr      HardReset           the tests start from a freshly reset chip
+NoReset@            lbsr      AutoSwitch          a GPIO1-strapped chip booted as a synth: switch it now
                     lbcs      NoResp
                     lbsr      DefVol              0 dB for -s, $10 for the tests, unless -v said
                     lda       mode,u
