@@ -39,6 +39,12 @@ DWRead              clra                          clear carry (no framing error)
 * machine, so nothing is lost when one runs mid-burst.  rbdw holds the link through DW$Settle, so
 * the tick poll keeps off the UART meanwhile.  A stalled server costs the caller time, never the
 * machine its keyboard.  (The first cut masked from the first byte to the end of the leg.)
+* 2026-09-12 (user: frequent #244s on this branch; 'use the timeout concept from wb/drivewire_hardening'):
+* the burst is read MASKED again, as the hardening branch read the whole leg. Once the first byte of a
+* leg is in, every byte of it follows 43 us later at 230400 and the 256-byte leg is over in 11 ms; a
+* handler that runs longer than the FIFO holds (2.8 ms) in that window loses bytes, and a lost byte
+* is a #244 with a stream to resync. The WAIT for a late byte still opens interrupts after DW_MASKED
+* polls, so a stalled server costs time, never the keyboard - only the data itself is masked.
                     orcc      #IntMasks
                     leau      ,x
                     ldx       #$0000
@@ -95,8 +101,7 @@ prg2@               lda       UART.Base+UART_TRHB discard stale byte
                     bne       prg0@
                     bra       bye@                discard cap hit - stop draining
 getbyte@            leas      1,s                 drop the outer count
-                    lda       ,s                  the burst reads with the caller's interrupts: the 64-byte
-                    tfr       a,cc                FIFO covers 2.8 ms, more than any handler on either machine
+                    orcc      #IntMasks           2026-09-12: the burst is read masked (see above); bye@ restores the caller's CC
                     ldb       UART.Base+UART_TRHB get the data byte
                     stb       ,u+                 save off acquired byte
                     abx                           update checksum
