@@ -187,6 +187,7 @@ krnp2               lda       #'2       ; debug: signal that we made it into krn
                   ENDC
 *[[[ Wildbits PORT
                   IFNE    wildbits ; begin conditional assembly for wildbits
+                  IFNE    k2 ; 2026-09-12: K2 only until the Jr2 core carries the MMU windows (rc14 is K2-only)
 * wb/1mb_ram_upgrade: grow the memory block map from krn's 64 entries to all 256 block
 * numbers, as a 2 MB CoCo 3 has it (end = $0300), and mark what is not RAM. Wildbits RAM
 * is not contiguous in block-number space: $00-$3F is the SRAM's first 512K, $A0-$BF and
@@ -212,6 +213,7 @@ blkdone@            clrb                ; 256 blocks (B = 0 is how the CoCo 2 MB
                     stb       <D.MemSz  ; # of 8KB blocks, for anything that asks
                     leax      >$0100,x  ; map end = start + 256 entries ($0300)
                     stx       <D.BlkMap+2 ; save the memory block map end pointer
+                  ENDC
                   ENDC
 *]]] Wildbits PORT
 * Change to default directory
@@ -451,12 +453,14 @@ IOMan               fcs       /IOMan/
 
 *[[[ Wildbits PORT
                   IFNE    wildbits ; begin conditional assembly for wildbits
+                  IFNE    k2 ; K2 only, like the map extension above
 * wb/1mb_ram_upgrade: the block-number gaps that are not RAM (first block, count); see the
 * memory block map extension at the entry. Count 0 ends the table.
 NotRAMTbl           fcb       $40,$60   ; $40-$9F: flash window ($40-$7F) + expansion RAM ($80-$9F)
                     fcb       $C0,$10   ; $C0-$CF: sectored I/O pages $C0-$C7, no decode $C8-$CF
                     fcb       $F0,$10   ; $F0-$FF: no decode
                     fcb       $00,$00   ; end
+                  ENDC
                   ENDC
 *]]] Wildbits PORT
                     emod
