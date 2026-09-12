@@ -172,6 +172,16 @@ Module fingerprints for `mdir -e` verification: `dwio_serial` = $37A,
 long-listen), $211 (FIFO reset + long purge), $20C (no FIFO reset),
 $1E6 (abort only), $1CF (stock).
 
+## The burst is masked again (2026-09-12)
+
+Field result of the second cut on the K2: frequent #244s. The trim had read the data burst with
+interrupts open, trusting the 64-byte RX FIFO (2.8 ms at 230400) to ride out any handler; a handler
+that runs longer than that in the 11 ms of a 256-byte leg loses bytes, and a lost byte is a #244
+plus a resync. `DWRead` now masks from the first byte of a leg to its end, as `wb/drivewire_hardening`
+read the whole leg, and keeps the trim only where it earns its keep: the WAIT for a late byte still
+opens interrupts after `DW_MASKED` polls, so a stalled server costs the caller time, never the
+machine its keyboard. Timeouts, purge, `PurgeRX`, `AbWait` and the poll state machine are unchanged.
+
 ## Interrupt trim and the poll state machine (2026-09-07, wb/DriveWireCompatible)
 
 **Why.** With the hardening in place every sector transaction still ran from its first byte to
