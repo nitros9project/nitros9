@@ -14,34 +14,6 @@ Usage, from this directory:
 No environment setup is required — no NITROS9DIR/LANGUAGES arguments,
 no SHELLOPTS, no PATH preparation.
 
-## The SHELLMODS ordering bug (proven empirically)
-
-The stock `SHELLMODS` merge order is alphabetical:
-
-    shellplus date deiniz echo iniz link load save unlink
-
-A `shell` module merged in that order **on this host** produces a
-system that freezes before the shell prompt ever appears — proven
-repeatedly during the 2026-08 DriveWire campaign: the same source
-tree, same toolchain, same disk contents, differing only in merge
-order, reproducibly freezes with `date` directly after `shellplus`
-and reliably boots with:
-
-    shellplus echo iniz link load save unlink date deiniz
-
-(`date`/`deiniz` moved to the end). Multiple independent disks
-confirmed both directions across many reboots.
-
-The suspected root cause is shellplus reading past its own module end
-into whatever the merge places next (interacting with how this
-toolshed 2.6 build pads merged modules), but that has NOT been
-confirmed at the code level — only the ordering fix is proven. A
-related unexplained symptom, likely the same defect: a stray
-high-bit character occasionally appears at the shell prompt when a
-sub-shell exits (harmless, backspaces away). Once the real bug is
-found and fixed upstream, the `override SHELLMODS` in `recipe.mak`
-should be dropped.
-
 ## Extra cleaning of level1/wildbits/sys outputs
 
 The `wildbits-sys-assets` target generates font and background

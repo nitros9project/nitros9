@@ -666,20 +666,49 @@ TILE_MAP_ADDY6      equ       $F198
 TILE_MAP_ADDY7      equ       $F19C
 
 
-XYMATH_CTRL_REG     equ       $D300     reserved
-XYMATH_ADDY_H       equ       $D301     w
-XYMATH_ADDY_M       equ       $D302     w
-XYMATH_ADDY_L       equ       $D303     w
-XYMATH_ADDY_POSX_H  equ       $D304     r/w
-XYMATH_ADDY_POSX_L  equ       $D305     r/w
-XYMATH_ADDY_POSY_H  equ       $D306     r/w
-XYMATH_ADDY_POSY_L  equ       $D307     r/w
-XYMATH_BLOCK_OFF_H  equ       $D308     r only - low block offset
-XYMATH_BLOCK_OFF_L  equ       $D309     r only - hi block offset
-XYMATH_MMU_BLOCK    equ       $D30A     r only - which mmu block
-XYMATH_ABS_ADDY_H   equ       $D30B     low absolute results
-XYMATH_ABS_ADDY_M   equ       $D30C     mid absolute results
-XYMATH_ABS_ADDY_L   equ       $D30D     hi absolute results
+* Integer math block - JR_Math_Block.v, $FEE0-$FEFF in the FIXED I/O page, both boards.
+* Big endian, which suits the 6809: a 16-bit std or ldd lands the right way round.
+* WRITE the operands, then READ the result, and write NOTHING at $FEF0 or above: the write
+* decode ignores address bit 4, so storing to a result address lands in an operand.
+* How to drive it and the remainder bug: Wildbits page, Math coprocessor.
+MATH_MUL_A          equ       $FEE0     w/r  unsigned multiply, operand A (16 bit, hi byte first)
+MATH_MUL_B          equ       $FEE2     w/r  unsigned multiply, operand B (16 bit)
+MATH_DIV_SOR        equ       $FEE4     w/r  unsigned divide, divisor (16 bit)
+MATH_DIV_END        equ       $FEE6     w/r  unsigned divide, dividend (16 bit)
+MATH_ADD_A          equ       $FEE8     w/r  32-bit adder, operand A (4 bytes, hi first)
+MATH_ADD_B          equ       $FEEC     w/r  32-bit adder, operand B (4 bytes)
+MATH_MUL_P          equ       $FEF0     r    product, 32 bit; MATH_MUL_P+2 is the low 16 bits
+MATH_DIV_QUOT       equ       $FEF4     r    quotient (16 bit)
+MATH_DIV_REM        equ       $FEF6     r    remainder (16 bit) - SEE THE CAUTION BELOW
+MATH_ADD_RES        equ       $FEF8     r    sum (32 bit)
+* CAUTION: the remainder at MATH_DIV_REM is WIRED WRONG - correct below 256, wrong at 256 and
+* above. Fix belongs in rc14 or later. Details, and the write-decode trap: Wildbits page.
+
+* Floating point unit - FP_Math_Module.v, $FFE0-$FFEF in the FIXED I/O page, both boards.
+* IEEE-754 single precision, big endian, pipelined. Operands are written to the same sixteen
+* bytes the results are read from, so an operand can never be read back.
+* How to drive it, the latencies and the two dead status bits: Wildbits page, Floating-point unit.
+FPMATH_CTRL0        equ       $FFE0     w  b0/b1 take input 0/1 from the fixed-point converter instead of
+*                                          the raw value written; b3 add(0)/subtract(1); b5:4 pick the
+*                                          adder's first input, b7:6 its second (00 input0, 01 input1,
+*                                          10 multiplier output, 11 divider output)
+FPMATH_CTRL1        equ       $FFE1     w  b1:0 what the output mux and the float-to-fixed converter see:
+*                                          00 multiply, 01 divide, 10 add/sub, 11 the constant 1.0
+FPMATH_CTRL2        equ       $FFE2     w  input tvalid strobes: b0 converter A, b1 raw input 0,
+*                                          b2 converter B, b3 raw input 1
+FPMATH_CTRL3        equ       $FFE3     w  spare control byte
+FPMATH_MUL_ST       equ       $FFE4     r  multiply status: b4 tvalid, b3 zero, b2 underflow, b1 overflow,
+*                                          b0 NaN
+FPMATH_DIV_ST       equ       $FFE5     r  divide status: b5 tvalid, b4 divide-by-zero, b3 zero,
+*                                          b2 underflow, b1 overflow, b0 NaN
+FPMATH_ADD_ST       equ       $FFE6     r  add/subtract status: b4 tvalid, b3 zero, b2 underflow,
+*                                          b1 overflow, b0 NaN
+FPMATH_CNV_ST       equ       $FFE7     r  float-to-fixed status: b3 tvalid, b2 underflow, b1 overflow,
+*                                          b0 NaN
+FPMATH_IN0          equ       $FFE8     w  operand 0, 4 bytes, hi first
+FPMATH_OUT          equ       $FFE8     r  the selected result (see FPMATH_CTRL1), 4 bytes
+FPMATH_IN1          equ       $FFEC     w  operand 1, 4 bytes
+FPMATH_FIXED        equ       $FFEC     r  that result converted to 20.12 fixed point, 4 bytes
 
 ; Sprite block0
 SPRITE_Ctrl_Enable  equ       $01
@@ -691,15 +720,11 @@ SPRITE_SIZE0        equ       $20       00 = 32x32 - 01 = 24x24 - 10 = 16x16 - 1
 SPRITE_SIZE1        equ       $40
 
 
-* Sprite attribute records (128 total, 8 bytes each) live in VICKY page
-* $C0 at page offsets $1300-$16FF (record n at $1300+8*n). The SPn_*
-* equates below assume that page mapped in MMU slot 7 ($E000 window,
-* the vtio/system-state convention) -> records at $F300+. Multi-byte
-* fields are BIG-endian (6809 rework, rc7 silicon): +1 = address HIGH,
-* +4 = X HIGH, +6 = Y HIGH - so a 16-bit STD at the _H offset stores
-* X or Y correctly in one instruction. (Pre-rework cores and the
-* official 65C02 documentation were little-endian; equates corrected
-* 2026-08-31.) Generic per-record offsets for indexed access:
+* Sprite attribute records: 128 records of 8 bytes in VICKY page $C0 at offsets $1300-$16FF
+* (record n at $1300+8*n), BIG-endian fields. Full layout and a worked recipe: Wildbits page,
+* sprite chapter. The SPn_* equates further down assume page $C0 is mapped in MMU slot 7
+* ($E000 window, the vtio/system-state convention), which puts record 0 at $F300.
+* Generic per-record offsets for indexed access:
 SPR_CTRL            equ       0         control byte (SPRITE_* bits above)
 SPR_ADDY_H          equ       1         pixel data physical address 23:16
 SPR_ADDY_M          equ       2         pixel data physical address 15:8
@@ -786,51 +811,67 @@ PSGR.Base           equ       SND.Base+$0210
 *
 DMA.Base            equ       $FEC0
 
+* Map corrected 2026-09-09 from the core RTL. THESE ARE THE WRITE ADDRESSES: reads come back
+* permuted, so a read-back-and-verify driver needs the permutation. Big endian.
+* How to drive it, the permutation and the CPU-halt hazard: Wildbits page, DMA engine.
                     org       0
-DMA_CTRL_REG        rmb       1         fec0
-DMA_STATUS_REG      rmb       1         fec1 read only
-DMA_DATA_2_WRITE    equ       DMA_STATUS_REG write only
-DMA_RESERVED_0      rmb       1         fec2
-DMA_RESERVED_1      rmb       1         fec3
-* Source address.
-DMA_SOURCE_ADDR_H   rmb       1         fec4
-DMA_SOURCE_ADDR_M   rmb       1         fec5
-DMA_SOURCE_ADDR_L   rmb       1         fec6
-DMA_RESERVED_2      rmb       1         fec7
-* Destination address.
-DMA_DEST_ADDR_H     rmb       1         fec8
-DMA_DEST_ADDR_M     rmb       1         fec9
-DMA_DEST_ADDR_L     rmb       1         feca
-DMA_RESERVED_3      rmb       1         fecb
-DMA_RESERVED_4      rmb       1         fecc
-* Size in 1D mode.
-DMA_SIZE_1D_H       rmb       1         fecd
-DMA_SIZE_1D_M       rmb       1         fece
-DMA_SIZE_1D_L       rmb       1         fecf
-* Size in 2D mode.
-DMA_SIZE_X_H        rmb       1         fed0
-DMA_SIZE_X_L        rmb       1         fed1
-DMA_SIZE_Y_H        rmb       1         fed2
-DMA_SIZE_Y_L        rmb       1         fed3
-* Stride in 2D mode.
-DMA_SRC_STRIDE_X_H  rmb       1         fed4
-DMA_SRC_STRIDE_X_L  rmb       1         fed5
-DMA_DST_STRIDE_Y_H  rmb       1         fed6
-DMA_DST_STRIDE_Y_L  rmb       1         fed7
-
-DMA_RESERVED_5      rmb       1
-DMA_RESERVED_6      rmb       1
-DMA_RESERVED_7      rmb       1
-DMA_RESERVED_8      rmb       1
+DMA_CTRL_REG        rmb       1         fec0 w/r b0 ENABLE, b1 1D(0)/2D(1), b2 fill, b3 IRQ enable,
+*                                            b5:4 byte-lane mask - EITHER BIT SET DISABLES THAT LANE and
+*                                            the transfer runs to completion writing NOTHING,
+*                                            b6 double speed + 16-bit fill, b7 START
+DMA_STATUS_REG      rmb       1         fec1 r   b7 transfer in progress; b6:0 hardwired 0, so an idle
+*                                            block reads exactly $00
+DMA_FILL_BYTE       equ       DMA_STATUS_REG fec1 w the 8-bit fill value (ctrl b6 clear)
+DMA_DATA_2_WRITE    equ       DMA_STATUS_REG the older name for DMA_FILL_BYTE
+DMA_FILL_WORD_H     rmb       1         fec2 w   16-bit fill, odd/high byte (ctrl b6 SET)
+DMA_FILL_WORD_L     rmb       1         fec3 w   16-bit fill, even/low byte
+DMA_UNUSED_0        rmb       1         fec4     nothing in the engine reads this byte
+* Source address, 24 bit.
+DMA_SOURCE_ADDR_H   rmb       1         fec5 w   source [23:16]
+DMA_SOURCE_ADDR_M   rmb       1         fec6 w   source [15:8]
+DMA_SOURCE_ADDR_L   rmb       1         fec7 w   source [7:0]
+DMA_UNUSED_1        rmb       1         fec8     nothing in the engine reads this byte
+* Destination address, 24 bit.
+DMA_DEST_ADDR_H     rmb       1         fec9 w   destination [23:16]
+DMA_DEST_ADDR_M     rmb       1         feca w   destination [15:8]
+DMA_DEST_ADDR_L     rmb       1         fecb w   destination [7:0]
+* Sizes. In 2D mode X is the row length and Y the row count.
+DMA_SIZE_X_H        rmb       1         fecc w   X size [15:8]
+DMA_SIZE_X_L        rmb       1         fecd w   X size [7:0]
+DMA_SIZE_Y_H        rmb       1         fece w   Y size [15:8] - 2D ONLY, dropped in 1D
+DMA_SIZE_Y_L        rmb       1         fecf w   Y size [7:0]
+* Strides, 2D only.
+DMA_SRC_STRIDE_X_H  rmb       1         fed0 w   source stride [15:8]
+DMA_SRC_STRIDE_X_L  rmb       1         fed1 w   source stride [7:0]
+DMA_DST_STRIDE_Y_H  rmb       1         fed2 w   destination stride [15:8]
+DMA_DST_STRIDE_Y_L  rmb       1         fed3 w   destination stride [7:0]
+* fed4-fed7 read and write as ordinary bytes but drive nothing at all.
+DMA_DEAD_0          rmb       1         fed4
+DMA_DEAD_1          rmb       1         fed5
+DMA_DEAD_2          rmb       1         fed6
+DMA_DEAD_3          rmb       1         fed7
+* fed8-fedf are decoded but the register array is only 24 entries: writes vanish and reads return $FF.
+*
+* THE 1D LENGTH IS NOT A CONTIGUOUS FIELD. Controller:210 builds it as
+*     Count1D = {VDMA_Y_Size[7:0], VDMA_X_Size}
+* so its three bytes are scattered, and DMA_SIZE_Y_H is not part of it. Use these names in 1D mode:
+DMA_SIZE_1D_H       equ       DMA_SIZE_Y_L   fecf  1D count [23:16]
+DMA_SIZE_1D_M       equ       DMA_SIZE_X_H   fecc  1D count [15:8]
+DMA_SIZE_1D_L       equ       DMA_SIZE_X_L   fecd  1D count [7:0]
+* DMA_SIZE_Y_H (fece) must still be written, because it is a live 2D register that a previous transfer
+* may have left dirty - but its value is ignored while ctrl b1 is clear.
 
 * DMA_CTRL_REG bit definitions
 DMA_CTRL_Enable     equ       $01
 DMA_CTRL_1D_2D      equ       $02
 DMA_CTRL_Fill       equ       $04
 DMA_CTRL_Int_En     equ       $08
-DMA_CTRL_NotUsed0   equ       $10
-DMA_CTRL_NotUsed1   equ       $20
-DMA_CTRL_NotUsed2   equ       $40
+DMA_CTRL_MaskLSB    equ       $10       NOT unused - masks the low byte lane (writes nothing)
+DMA_CTRL_MaskMSB    equ       $20       NOT unused - masks the high byte lane
+DMA_CTRL_Dbl_Speed  equ       $40       NOT unused - double speed, and fill takes the 16-bit word
+DMA_CTRL_NotUsed0   equ       DMA_CTRL_MaskLSB  old names, kept so existing code still assembles
+DMA_CTRL_NotUsed1   equ       DMA_CTRL_MaskMSB
+DMA_CTRL_NotUsed2   equ       DMA_CTRL_Dbl_Speed
 DMA_CTRL_Start_Trf  equ       $80
 
 * DMA_STATUS_REG bit definitions
