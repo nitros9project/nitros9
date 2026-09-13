@@ -11,7 +11,7 @@
 *  1       2024/09/13  Matt Massie
 * Started.
 
-               nam       xtclut
+               nam       black
                ttl       XTerm Color CLUT
                
                use       defsfile
@@ -22,7 +22,7 @@ rev            set       $01
 
                mod       eom,name,tylg,atrv,start,0
 
-name           fcs       /xtclut/
+name           fcs       /black/
 
 start
                fcb $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
