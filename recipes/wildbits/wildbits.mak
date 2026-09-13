@@ -75,7 +75,7 @@ ifeq ($(FUJINET),1)
 LFLAGS += -lfuji
 CMDS_EXTRA += $(FUJINET_CMDS)
 endif
-FM_CMDS = fm hexed pixview
+FM_CMDS = fm 
 ifeq ($(FM),1)
 LFLAGS += -lfm
 CMDS_EXTRA += $(FM_CMDS)
@@ -95,7 +95,7 @@ CMDS += dmem minted mmap modpatch \
 	proc pmap smap \
 	gfxstatus xtclut drawtest play \
 	shellbg shellbgoff ntptime view utilpak1 fadein fadeout \
-	lutrd
+	lutrd black hexed pixview
 endif
 # sprites moved OUT of CMDS 2026-09-09 (user): it is a hardware probe, so it
 # lives in TESTS_BIN below and reaches the disk as TESTS/sprites only. Its
