@@ -76,3 +76,5 @@ clean: clean-sys-assets
 clean-sys-assets:
 	-$(MAKE) -C $(FONT_DIR) -f $(NITROS9DIR)/recipes/support/wildbits-fonts.mak clean
 	-$(MAKE) -C $(BACKGROUND_DIR) -f $(NITROS9DIR)/recipes/support/wildbits-backgrounds.mak clean
+
+include ../TESTS.mak

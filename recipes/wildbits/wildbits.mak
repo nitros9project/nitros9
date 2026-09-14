@@ -87,6 +87,8 @@ inetd telnet dw httpd $(BASIC09) $(BF) \
 ifeq ($(LEVEL),2)
 # vs: VS1053 test command (wb/vs1053); on its own line so it never collides with edits to the CMDS list above
 CMDS += vs
+# dmaxfer: the DMA engine transfer/logic-op test, in CMDS on level 2 as well as TESTS (user 2026-09-22)
+CMDS += dmaxfer
 
 UTILPAK1_MODS = attr copy date del deiniz dir display list makdir mdir \
 	merge mfree procs rename tmode unlink
@@ -120,9 +122,9 @@ TESTS = $(notdir $(filter-out %.asm,$(wildcard $(TESTS_DIR)/*)))
 # Executable hardware probes. Their sources are the .asm files in TESTS_DIR that
 # the TESTS line above filters out; each is assembled into MODDIR by its own rule
 # further down, then copied binary into TESTS on the disk with the execute
-# attribute set. They go NOWHERE else - none of these five is in CMDS.
+# attribute set. They go NOWHERE else - none is in CMDS, except dmaxfer on level 2 (above).
 # Run them as tests/<name>, or chx the execution directory to the folder first.
-TESTS_BIN = sprites math fpu dma memtest
+TESTS_BIN = sprites math fpu dma memtest dmaxfer
 FONT_DIR = $(LEVEL1)/wildbits/sys/fonts
 BACKGROUND_DIR = $(LEVEL1)/wildbits/sys/backgrounds
 FONTS = 800yfont anglefont applefont bannerfont.sb bigbluefont boldfont boxedfont \
@@ -292,6 +294,9 @@ $(MODDIR)/dma: $(TESTS_DIR)/dma.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 $(MODDIR)/memtest: $(TESTS_DIR)/memtest.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/dmaxfer: $(TESTS_DIR)/dmaxfer.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 $(MODDIR)/pwd: pd.asm | $(MODDIR)
