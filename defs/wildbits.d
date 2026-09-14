@@ -155,6 +155,8 @@ SYS_L0_MN           equ       %00000001
 *
 MMU_MEM_CTRL        equ       $FFA0
 MMU_IO_CTRL         equ       $FFA1
+FLASHDIS            equ       %00000100 MMU_IO_CTRL b2: 1 = blocks $40-$9F are RAM (rc16+ cores; see the bits below)
+FLASHDIS.OK         equ       %10000000 MMU_IO_CTRL b7: reads 1 on a core that implements FLASHDIS
 MMU_SLOT_BASE       equ       $FFA8
 MMU_SLOT_0          equ       MMU_SLOT_BASE+0 $0000-$1FFF
 MMU_SLOT_1          equ       MMU_SLOT_BASE+1 $2000-$3FFF
@@ -187,7 +189,7 @@ LUT_BANK_6          equ       $000E
 LUT_BANK_7          equ       $000F
 
 * MMU_IO_CTRL bits
-* $FFA1 has 2 bits:
+* $FFA1 has 3 bits (plus one read-only flag):
 *    FFA1[0] =
 *        1 = Enable internal RAM for segment $FD00-$FDFF.
 *        0 = Disable; RAM/FLASH is accessible.
@@ -198,6 +200,19 @@ LUT_BANK_7          equ       $000F
 * When enabled, the areas supersede RAM/flash, but will be disabled by RESET. When the system resets,
 * those regions revert to RAM/flash. Also at RESET, the contents of RAM retain the old values until the
 * system powers off.
+*
+*    FFA1[2] = FLASHDIS (cores rc16 and later)
+*        1 = MMU blocks $40-$9F are RAM: 768K of the SRAM (chip bytes $08_0000-$13_FFFF) that no
+*            block reached before. The kernel sets this once at boot (krnp2) when the core has it.
+*        0 = $40-$7F is the flash and $80-$9F the expansion select, as always. RESET clears the bit,
+*            so the machine always boots from flash and the FEU trampoline (which runs from flash and
+*            stores $00/$02 here) is unaffected.
+*        After boot NOBODY may store an absolute value to $FFA1: clearing bit 2 pulls 768K of live
+*        RAM out from under the kernel. Read-modify-write (lda MMU_IO_CTRL / ora / sta) only.
+*    FFA1[7] = FLASHDIS.OK, read only
+*        Reads 1 on a core that implements FLASHDIS, 0 on older cores (they read back what was
+*        stored, and nothing stores a 1 there). krnp2 tests it before setting bit 2.
+* $FFA1 is readable: a read returns the register.
 
 ********************************************************************
 * Interrupt definitions

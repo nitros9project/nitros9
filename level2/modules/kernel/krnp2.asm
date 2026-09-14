@@ -187,18 +187,16 @@ krnp2               lda       #'2       ; debug: signal that we made it into krn
                   ENDC
 *[[[ Wildbits PORT
                   IFNE    wildbits ; begin conditional assembly for wildbits
-* 2026-09-12: both machines - the K2 and Jr2 rc14 cores carry the MMU windows (the K2-only gate is gone).
-* wb/1mb_ram_upgrade: grow the memory block map from krn's 64 entries to all 256 block
-* numbers, as a 2 MB CoCo 3 has it (end = $0300), and mark what is not RAM. Wildbits RAM
-* is not contiguous in block-number space: $00-$3F is the SRAM's first 512K, $A0-$BF and
-* $D0-$EF are the two 256K windows on its upper half (core: TyVKy2K2x1_MMU_Register.v).
-* The gaps are marked NotRAM so every allocator skips them: $40-$9F = flash window +
-* expansion RAM, $C0-$CF = sectored I/O pages + undecoded patterns, $F0-$FF = undecoded.
-* Page $02xx was cleared by krn, so the window entries are already 0 = free. This lives
-* here and not in krn because krn's fixed tail at $0F7F has no room left; nothing has
-* been forked yet, so no process can have taken a block above $3F before this runs.
-                    ldx       <D.BlkMap ; get the pointer to the 8KB block map
-                    leau      >NotRAMTbl,pc ; the gaps: first block, count; count 0 ends it
+* Grow the memory block map to all 256 blocks (end = $0300) and mark the gaps NotRAM.
+* RAM: $00-$3F, $A0-$BF, $D0-$EF; $40-$9F too when the core has FLASHDIS (MMU_IO_CTRL
+* bit 7 reads 1): set it and skip that gap. Nothing has been forked yet.
+                    leau      >NotRAMTblF,pc ; the gaps incl. $40-$9F: first block, count; count 0 ends it
+                    lda       >MMU_IO_CTRL ; bit 7 = FLASHDIS.OK: this core can turn $40-$9F into RAM
+                    bpl       blkflash@ ; older core: $40-$9F stay flash/expansion, NotRAM
+                    ora       #FLASHDIS ; take the 768K: blocks $40-$9F are RAM from here on
+                    sta       >MMU_IO_CTRL ; (read-modify-write, bits 0/1 kept)
+                    leau      >NotRAMTbl,pc ; the gaps without $40-$9F
+blkflash@           ldx       <D.BlkMap ; get the pointer to the 8KB block map
 blkgap@             ldb       ,u+       ; B = first block of the gap
                     clra                ; D offset, so $C0 and $F0 stay positive
                     leay      d,x       ; Y = that block's map entry
@@ -452,10 +450,9 @@ IOMan               fcs       /IOMan/
 
 *[[[ Wildbits PORT
                   IFNE    wildbits ; begin conditional assembly for wildbits
-* wb/1mb_ram_upgrade: the block-number gaps that are not RAM (first block, count); see the
-* memory block map extension at the entry. Count 0 ends the table.
-NotRAMTbl           fcb       $40,$60   ; $40-$9F: flash window ($40-$7F) + expansion RAM ($80-$9F)
-                    fcb       $C0,$10   ; $C0-$CF: sectored I/O pages $C0-$C7, no decode $C8-$CF
+* NotRAM gaps (first block, count; 0 ends). NotRAMTblF adds $40-$9F for cores without FLASHDIS.
+NotRAMTblF          fcb       $40,$60   ; $40-$9F: flash window ($40-$7F) + expansion RAM ($80-$9F)
+NotRAMTbl           fcb       $C0,$10   ; $C0-$CF: sectored I/O pages $C0-$C7, no decode $C8-$CF
                     fcb       $F0,$10   ; $F0-$FF: no decode
                     fcb       $00,$00   ; end
                   ENDC
