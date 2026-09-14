@@ -96,9 +96,6 @@ CMDS += dmem minted mmap modpatch \
 	shellbg shellbgoff ntptime view utilpak1 fadein fadeout \
 	lutrd black hexed pixview iss
 endif
-# sprites moved OUT of CMDS 2026-09-09 (user): it is a hardware probe, so it
-# lives in TESTS_BIN below and reaches the disk as TESTS/sprites only. Its
-# $(MODDIR)/sprites build rule further down is still what builds it.
 
 BASIC09 = basic09 runb inkey syscall wild
 BASIC09_FILES = $(wildcard $(LANGUAGES)/basic09/samples/*)
@@ -109,20 +106,7 @@ STARTUP = $(LEVEL2)/wildbits/startup
 WIZFITOOL = $(LEVEL2)/wildbits/cmds/wizfitool.b09
 FEU_STARTUP = feu.startup
 SCRIPTS_DIR = $(LEVEL1)/wildbits/scripts
-TESTS_DIR = $(LEVEL1)/wildbits/tests
 SCRIPTS = $(notdir $(wildcard $(SCRIPTS_DIR)/*))
-# TESTS_DIR holds two kinds of file and each takes a different route to the disk.
-# The BASIC09 scripts are copied verbatim as TEXT by the TESTS rule below. The
-# .asm probes are ASSEMBLED (TESTS_BIN, next) and installed as executables, so
-# they must be filtered out here or each one would land on the disk twice, the
-# second time as its own source code.
-TESTS = $(notdir $(filter-out %.asm,$(wildcard $(TESTS_DIR)/*)))
-# Executable hardware probes. Their sources are the .asm files in TESTS_DIR that
-# the TESTS line above filters out; each is assembled into MODDIR by its own rule
-# further down, then copied binary into TESTS on the disk with the execute
-# attribute set. They go NOWHERE else - none of these five is in CMDS.
-# Run them as tests/<name>, or chx the execution directory to the folder first.
-TESTS_BIN = sprites math fpu dma memtest
 FONT_DIR = $(LEVEL1)/wildbits/sys/fonts
 BACKGROUND_DIR = $(LEVEL1)/wildbits/sys/backgrounds
 FONTS = 800yfont anglefont applefont bannerfont.sb bigbluefont boldfont boxedfont \
@@ -206,9 +190,9 @@ ifeq ($(LEVEL),2)
 endif
 
 ifeq ($(LEVEL),2)
-$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(addprefix $(MODDIR)/,$(CMDS)) $(addprefix $(MODDIR)/,$(TESTS_BIN)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS) $(WIZFITOOL)
+$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS) $(WIZFITOOL)
 else
-$(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(addprefix $(MODDIR)/,$(TESTS_BIN)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS)
+$(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS)
 endif
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q -e $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
@@ -245,10 +229,6 @@ endif
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
 	$(MAKDIR) $@,SCRIPTS
 	$(foreach file,$(SCRIPTS),$(CPL) $(SCRIPTS_DIR)/$(file) $@,SCRIPTS;)
-	$(MAKDIR) $@,TESTS
-	$(foreach file,$(TESTS),$(CPL) $(TESTS_DIR)/$(file) $@,TESTS;)
-	$(OS9COPY) $(addprefix $(MODDIR)/,$(TESTS_BIN)) $@,TESTS
-	$(OS9ATTR_EXEC) $(foreach file,$(TESTS_BIN),$@,TESTS/$(file))
 	$(MAKDIR) $@,FEU
 	$(CPL) $(FEU_STARTUP) $@,FEU/startup
 	$(call RECIPE_INSTALL,$@)
@@ -275,23 +255,7 @@ $(MODDIR)/lcdload: $(LEVEL1)/wildbits/cmds/lcdload.as | $(MODDIR)
 $(MODDIR)/sprtest2: $(LEVEL1)/wildbits/cmds/sprtest2.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
-$(MODDIR)/sprites: $(TESTS_DIR)/sprites.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@
-
 $(MODDIR)/lutrd: $(LEVEL1)/wildbits/cmds/lutrd.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@
-
-# hardware probes for TESTS/ on the disk (TESTS_BIN above)
-$(MODDIR)/math: $(TESTS_DIR)/math.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@
-
-$(MODDIR)/fpu: $(TESTS_DIR)/fpu.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@
-
-$(MODDIR)/dma: $(TESTS_DIR)/dma.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@
-
-$(MODDIR)/memtest: $(TESTS_DIR)/memtest.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 $(MODDIR)/pwd: pd.asm | $(MODDIR)
