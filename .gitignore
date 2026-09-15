@@ -9,6 +9,7 @@ default.proraw
 .lib/
 .sys/
 recipes/**/cfg/
+recipes/picothing/build-logs/
 level2/coco3/defs/*.d
 
 # Assembler/linker listings and maps
