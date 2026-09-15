@@ -164,6 +164,13 @@ OS9FORMAT_CMD ?= $(OS9FORMAT_DS80)
 STARTUP ?= $(NITROS9DIR)/level$(LEVEL)/$(PORT)/startup
 DSKIMAGE ?= $(DISTROVER).dsk
 
+# Optional expanded-image hooks (used by the mega recipes).  A recipe.mak
+# may add extra build prerequisites, BASIC09 sample files, and a
+# RECIPE_INSTALL macro that installs additional software onto the disk.
+# All default empty, so the base recipes build unchanged.
+RECIPE_DEPS ?=
+BASIC09_SAMPLES ?=
+
 all: libs $(DSKIMAGE)
 
 include ../../libs.mak
@@ -315,7 +322,7 @@ endif
 
 # ---- disk image ----------------------------------------------------------
 
-DSK_PREREQS = bootfile $(OS9KERNEL) $(REL) helpmsg \
+DSK_PREREQS = bootfile $(OS9KERNEL) $(REL) helpmsg $(RECIPE_DEPS) \
               $(addprefix $(MODDIR)/,$(SYSGO) $(CMDS_DISK) $(LOADMODS))
 
 ifeq ($(LEVEL),2)
@@ -338,6 +345,12 @@ $(DSKIMAGE): $(DSK_PREREQS)
 	$(MAKDIR) $@,Modules
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(LOADMODS)) $@,Modules
 	$(OS9ATTR_EXEC) $(foreach m,$(LOADMODS),$@,Modules/$(m))
+ifneq ($(strip $(BASIC09_SAMPLES)),)
+	$(MAKDIR) $@,BASIC09
+	$(CPL) $(BASIC09_SAMPLES) $@,BASIC09
+	$(OS9ATTR_TEXT) $(foreach f,$(notdir $(BASIC09_SAMPLES)),$@,BASIC09/$(f))
+endif
+	$(call RECIPE_INSTALL,$@)
 else
 $(DSKIMAGE): $(DSK_PREREQS)
 	$(RM) $@
