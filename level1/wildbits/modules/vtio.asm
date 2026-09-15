@@ -314,7 +314,7 @@ InitCODEC
                     lbsr      SendToCODEC
                     ldd       #%0010001100000001                    R17 - ALC Control 2 
                     lbsr      SendToCODEC
-                    ldd       #%0010101000000011                    R21 - ADC Mux Control   AIN
+                    ldd       #%0010101000011111                    R21 - ADC Mux Control   bit 3 = AIN4 (VS1053), bit 2 = AIN3, bit 1 = AIN2, bit 0 = AIN1
                     lbsr      SendToCODEC
                     ldd       #%0010110000000111                    R22 - Output Mux MX[2:0] = "111" 
                     lbsr      SendToCODEC
