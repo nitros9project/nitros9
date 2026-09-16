@@ -1,0 +1,8 @@
+* wiz4stat - WizCon4 connection status (AT+CIPSTATUS). Needs: wiz4up.
+* Reads /wz raw, so run it only while the four channels are quiet.
+echo * WizCon4 - server/connection status (AT+CIPSTATUS)
+echo * WARNING: reads /wz raw - use only while the packet channels
+echo * are QUIET (raw pops bypass the shared parser and can eat an
+echo * in-flight +IPD header).
+echo AT+CIPSTATUS>/wz
+modem /wz

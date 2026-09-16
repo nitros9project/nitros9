@@ -1,0 +1,9 @@
+* wiz4down - close every WizCon4 connection and stop the server. Needs: wiz4up first;
+* kill the tsmon/login/shell processes yourself before running (procs, kill <id>).
+echo * WizCon4 - close all connections and stop the server
+echo * (kill the tsmon processes yourself: procs, then kill <id>)
+echo AT+CIPCLOSE=5>/wz
+modem /wz
+echo AT+CIPSERVER=0>/wz
+modem /wz
+echo * Server stopped.

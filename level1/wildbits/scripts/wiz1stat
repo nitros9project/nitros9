@@ -1,0 +1,8 @@
+* wiz1stat - connection status (AT+CIPSTATUS) for the single-connection server.
+* Needs: wizi. Only valid OUTSIDE passthrough (before the client connects, or after
+* wiz1down); inside passthrough the text would go to the remote client.
+echo * WizCon1 - connection status (AT+CIPSTATUS)
+echo * Only valid OUTSIDE passthrough: before a client connects, or after wiz1down.
+echo * In passthrough mode this text would go to the remote client instead.
+echo AT+CIPSTATUS>/wz
+modem /wz

@@ -1,41 +1,137 @@
-WizFi helper scripts
+WizFi360 helper scripts
+=======================
+Source: level1/wildbits/scripts, copied to /dd/SCRIPTS on the disks.
 
+Every script talks to the WizFi360 module through the /wz raw device
+(AT commands), so nothing here may run while a wiz1up or wiz4up
+connection is active unless the script's own notes say so. Each script
+starts with a comment block that repeats what it needs.
+
+**** HEAR YE, HEAR YE ****
+
+If you're brand new to the Jr2 or K2, or your router changes, do this:
+
+  Edit the wizcon script with your router's SSID and password.
+  Run wizcon
+  Reset or Repower your machine.
+
+Then, always run the wizi script at startup.  If you place wizi in your
+startup script before running wizcon, the WIZFI360 chip itself delays
+before dumping that there was NO IP.  This isn't a freeze or problem
+on WizFi's part.
+
+
+ORDER OF OPERATIONS
+-------------------
+1. wizi - once per boot (or put its two lines in startup)
+2. wizcon - once per module, after editing the ssid/password in it
+3. wizstat - any time, to see the IP / link state
+   wiztime - any time the module is on the network, to set the clock
+4. wizfast - optional, before starting connections
+5. wiz1up or wiz4up - pick ONE remote-shell mode
+6. wiz1stat / wiz4stat / wiz4mix - while that mode is up
+7. wiz1down or wiz4down - to tear it down (kill the tsmon/login/shell
+   processes first)
+8. wizslow - if you used wizfast and want the module back at 115200
+
+SETUP
+-----
 wizi
-Initializes /wz and purges the ready status messages.
-I have these commands directly in my startup file instead of calling scripts/wizi.
-   iniz /wz
-   modem /wz
-
+  Initializes the /wz device (iniz /wz) and swallows the module's boot
+  chatter (modem /wz). Run first, once per boot; everything else
+  assumes it.
 
 wizcon
-Make connection to router which persists between reboots.
-You'll need to edit "ssid" and "password" to match that of your network or router.
-
-wizsv1
-Enable the single-connection server (no packets, direct bytes).
-
-wizlog1
-Wait for a remote system to connect to us via Telnet, then run TSMON to let them log in.
-
-
-wizsv4
-Enable the multiple-connection server (uses packets).
-
-wizlog4
-Wait for a remote system to connect to us via Telnet, then run TSMON over /wz0, /wz1, /wz2, or /wz3
-As of 4-6-2026 OS-9 doesn't have support for running multiple terminals over WizFi, but attempts are being made.
-
-wizfast
-Switch the WizFi360 to use the Fast FIFO mode
-
-wizloginfast
-Wait for a remote system to connect to us via Telnet, then run TSMON over /wz0 (packets)
-As of 4-6-2026 OS-9 doesn't have support for running multiple terminals over WizFi, but attempts are being made.
-
-wizslow
-Switch the WizFi360 to use the Normal FIFO mode
+  Joins the module to your router with DHCP and stores the settings in
+  the module (AT+CWMODE_DEF, AT+CWDHCP_DEF, AT+CWJAP_DEF), then prints
+  the IP it got. Edit the ssid and pass in the AT+CWJAP_DEF line
+  before the first run. Needs wizi.
 
 wizstat
-Show our current IP address and other IP info
+  Prints the module's IP / network status (AT+CIPSTA_CUR?). Needs
+  wizi. Reads /wz raw, so use it only while no wiz1up/wiz4up
+  connection is active.
 
+wiztime
+  Sets the system clock from an NTP server through the WizFi (ntptime
+  -s). Needs wizi and wizcon. ntptime opens /wz itself, so not while
+  connections are up.
 
+SPEED
+-----
+wizfast
+  Switches the module (AT+UART_CUR=921600) and the FPGA UART to 921600
+  baud. The driver side is xmode bau=1 on /wz (control-register speed
+  bit) and bau=9 on /wz0-/wz3 (the same bit plus the packet flag those
+  descriptors must keep). Needs wizi and no active connections. Lost
+  when the module resets.
+
+wizslow
+  Undo wizfast: module back to 115200 and all five devices back (bau=0
+  on /wz, bau=8 on /wz0-/wz3). Needs wizi and no active connections.
+
+SINGLE REMOTE SHELL - raw /wz path, passthrough mode (WizCon1)
+--------------------------------------------------------------
+wiz1up
+  One-connection server on port 23 in passthrough mode
+  (CIPSERVERMAXCONN=1, CIPMUX=1, CIPMODE=1, CIPSTO=0), prints the IP,
+  waits for the client to connect (modem -t0), enters passthrough
+  (AT+CIPSEND), turns echo on and starts a login (tsmon /wz). One
+  client at a time, no packet framing, lowest interactive latency.
+  Needs wizi and wizcon. Nothing else may use /wz while it is up.
+
+wiz1stat
+  AT+CIPSTATUS for the single-connection server. Valid only outside
+  passthrough (before the client connects, or after wiz1down); inside
+  passthrough the text would go to the remote client.
+
+wiz1down
+  Leaves passthrough ("+++" with a second of silence either side),
+  closes the connection (AT+CIPCLOSE), returns to command mode
+  (AT+CIPMODE=0) and stops the server (AT+CIPSERVER=0). Kill the
+  tsmon/login/shell on /wz first (procs, kill).
+
+FOUR REMOTE SHELLS - packet mode on /wz0-/wz3 (WizCon4)
+-------------------------------------------------------
+wiz4up
+  Four-connection packet-mode server on port 23 (ATE0, CIPMODE=0,
+  CIPMUX=1, CIPSERVERMAXCONN=4, CIPSERVER=1,23, CIPSTO=0), then iniz +
+  echo on + tsmon on each of /wz0-/wz3. Up to four clients get their
+  own login. Needs wizi and wizcon. Do not read /wz raw while
+  connections are active (raw pops bypass the shared +IPD parser).
+
+wiz4stat
+  AT+CIPSTATUS while the four channels are quiet (it reads /wz raw).
+
+wiz4mix
+  Stress test: background dir listings to /wz1-/wz3 while you type on
+  /wz0. Pass = each client sees only its own clean stream. Needs
+  clients connected.
+
+wiz4down
+  Closes all connections (AT+CIPCLOSE=5) and stops the server. Kill
+  the tsmon/login/shell processes first (procs, kill).
+
+DEMO
+----
+wizout0_http
+  Opens an outbound TCP connection on channel 0 to google.com:80
+  (CIPMUX=1, CIPMODE=0, AT+CIPSTART). Needs wizi and wizcon. Leaves
+  channel 0 open; close it with AT+CIPCLOSE=0.
+
+SUPERSEDED - kept for by-hand use, their setup companions are gone
+------------------------------------------------------------------
+wizlogin
+  Echo on + tsmon on /wz. Assumes a passthrough server is up and a
+  client is already connected. Use wiz1up instead.
+
+wizmon
+  Enters passthrough (AT+CIPSEND) on an already connected
+  single-connection server and turns echo on without starting a login:
+  the console talks to the remote client directly. Use wiz1up for a
+  login.
+
+wizlog4
+  Waits for the first client (modem -t0), then one listener on /wz0.
+  Assumed a CIPMUX=1 packet server started by hand. Use wiz4up
+  instead.

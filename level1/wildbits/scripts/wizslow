@@ -1,7 +1,15 @@
+* wizslow - switch the module and the FPGA UART back to 115200 baud (undo wizfast).
+* Needs: wizi, no connections active. ALL five devices go back: /wz bau=0 and
+* /wz0-/wz3 bau=8 (packet flag only) - a packet descriptor left at bau=9 would flip
+* the UART to 921600 again at its next open and go deaf against a 115200 module.
 echo ATE1>/wz
 modem /wz
 echo AT+UART_CUR=115200,8,1,0,0>/wz
 modem /wz
 xmode /wz bau=0
+xmode /wz0 bau=8
+xmode /wz1 bau=8
+xmode /wz2 bau=8
+xmode /wz3 bau=8
 echo AT>/wz
 modem /wz

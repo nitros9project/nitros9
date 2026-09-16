@@ -155,6 +155,8 @@ SYS_L0_MN           equ       %00000001
 *
 MMU_MEM_CTRL        equ       $FFA0
 MMU_IO_CTRL         equ       $FFA1
+FLASHDIS            equ       %00000100 MMU_IO_CTRL b2: 1 = blocks $40-$9F are RAM (rc16+ cores; see the bits below)
+FLASHDIS.OK         equ       %10000000 MMU_IO_CTRL b7: reads 1 on a core that implements FLASHDIS
 MMU_SLOT_BASE       equ       $FFA8
 MMU_SLOT_0          equ       MMU_SLOT_BASE+0 $0000-$1FFF
 MMU_SLOT_1          equ       MMU_SLOT_BASE+1 $2000-$3FFF
@@ -187,7 +189,7 @@ LUT_BANK_6          equ       $000E
 LUT_BANK_7          equ       $000F
 
 * MMU_IO_CTRL bits
-* $FFA1 has 2 bits:
+* $FFA1 has 3 bits (plus one read-only flag):
 *    FFA1[0] =
 *        1 = Enable internal RAM for segment $FD00-$FDFF.
 *        0 = Disable; RAM/FLASH is accessible.
@@ -198,6 +200,19 @@ LUT_BANK_7          equ       $000F
 * When enabled, the areas supersede RAM/flash, but will be disabled by RESET. When the system resets,
 * those regions revert to RAM/flash. Also at RESET, the contents of RAM retain the old values until the
 * system powers off.
+*
+*    FFA1[2] = FLASHDIS (cores rc16 and later)
+*        1 = MMU blocks $40-$9F are RAM: 768K of the SRAM (chip bytes $08_0000-$13_FFFF) that no
+*            block reached before. The kernel sets this once at boot (krnp2) when the core has it.
+*        0 = $40-$7F is the flash and $80-$9F the expansion select, as always. RESET clears the bit,
+*            so the machine always boots from flash and the FEU trampoline (which runs from flash and
+*            stores $00/$02 here) is unaffected.
+*        After boot NOBODY may store an absolute value to $FFA1: clearing bit 2 pulls 768K of live
+*        RAM out from under the kernel. Read-modify-write (lda MMU_IO_CTRL / ora / sta) only.
+*    FFA1[7] = FLASHDIS.OK, read only
+*        Reads 1 on a core that implements FLASHDIS, 0 on older cores (they read back what was
+*        stored, and nothing stores a 1 there). krnp2 tests it before setting bit 2.
+* $FFA1 is readable: a read returns the register.
 
 ********************************************************************
 * Interrupt definitions
@@ -213,15 +228,15 @@ INT_POLARITY_1      equ       $FE25
 INT_EDGE_1          equ       $FE29
 INT_MASK_1          equ       $FE2D
 
-INT_PENDING_2       equ       $FE22     not used
-INT_POLARITY_2      equ       $FE26     not used
-INT_EDGE_2          equ       $FE2A     not used
-INT_MASK_2          equ       $FE2E     not used
+INT_PENDING_2       equ       $FE22     IEC bus + module IRQ pins
+INT_POLARITY_2      equ       $FE26
+INT_EDGE_2          equ       $FE2A
+INT_MASK_2          equ       $FE2E
 
-INT_PENDING_3       equ       $FE23     not used
-INT_POLARITY_3      equ       $FE27     not used
-INT_EDGE_3          equ       $FE2B     not used
-INT_MASK_3          equ       $FE2F     not used
+INT_PENDING_3       equ       $FE23     FIFO events: WiFi / K2 keyboard / MIDI / WizNet
+INT_POLARITY_3      equ       $FE27
+INT_EDGE_3          equ       $FE2B
+INT_MASK_3          equ       $FE2F
 
 * Interrupt group 0 flags
 INT_VKY_SOF         equ       %00000001 TinyVicky start of frame interrupt
@@ -245,9 +260,13 @@ IEC_CLK_i           equ       %00000010 IEC clock in
 IEC_ATN_i           equ       %00000100 IEC ATN in
 IEC_SREQ_i          equ       %00001000 IEC SREQ in
 
-* Interrupt group 3 flags
-INT_WIZFI_RX        equ       %00000001 Rx FIFO went non-empty (edge, INT_PENDING_3)
-INT_WIZFI_TX        equ       %00100000 Tx FIFO drained to empty (edge, INT_PENDING_3)
+* Interrupt group 3 flags (per IRQ_Controller_Jr lirq0 bits 24-29)
+INT_WIZFI_RX        equ       %00000001 WiFi Rx FIFO went non-empty (edge, INT_PENDING_3)
+INT_MIDI_RX         equ       %00000010 MIDI Rx FIFO went non-empty
+INT_OPT_KBD         equ       %00000100 K2 optical keyboard FIFO went non-empty (K2 only; Jr2 never wires it)
+INT_WIZNET          equ       %00001000 WizNet FIFO event
+INT_MIDI_VS_RX      equ       %00010000 MIDI synth (VS) Rx FIFO went non-empty
+INT_WIZFI_TX        equ       %00100000 WiFi Tx FIFO drained to empty (edge, INT_PENDING_3)
 INT_WIZFI           equ       INT_WIZFI_RX+INT_WIZFI_TX
 
 
@@ -297,6 +316,11 @@ OKB.Data            rmb       1         keyboard data
 OKB.Stat            rmb       1         bit 7 = 1 (mechanical) or 0 (optical), bit 0 = 1 (FIFO empty) or 0 (FIFO full)
 OKB.CntLo           rmb       1
 OKB.CntHi           rmb       1
+* Hardware typematic (v8_rc8+ K2 cores; older cores ignore writes and read 0,
+* so write-then-readback of OKB.TypDly detects core support)
+OKB.TypDly          rmb       1         initial repeat delay in frames (reset 30)
+OKB.TypPer          rmb       1         repeat period in frames (reset 5)
+OKB.TypCtl          rmb       1         bit 0 = 1 enables hardware key repeat (reset 0)
 
 ********************************************************************
 * Timer definitions
@@ -486,8 +510,15 @@ BORDER_COLOR_R      rmb       1
 BORDER_X_SIZE       rmb       1         X values: 0 - 32 (default: 32)
 BORDER_Y_SIZE       rmb       1         Y values: 0 - 32 (default: 32)
 VKY_RESERVED_02     rmb       1
-VKY_RESERVED_03     rmb       1
+VKY_GFX_MODE        rmb       1         $FFCB (rc14+): b0 HIRES4 = every bitmap plane 640x240 at 4 bits/dot, b3:1 CLUT group
 VKY_RESERVED_04     rmb       1
+* GFX MODE register bits (rc14+ cores; the byte was VKY_RESERVED_03). In HIRES4 a bitmap byte holds two
+* dots, the high nibble on the left, and the 4-bit value indexes the 16-entry CLUT slice GFX_GROUP picks:
+* colour = group*16 + nibble. Same frame RAM and fetch as 320x240x8; sprites, tiles and text are untouched
+* (their dots stay 320 wide, composited as before). A plane can ask for it alone: BM0_HIRES4 in its control byte.
+GFX_HIRES4          equ       %00000001 640x240, two 4-bit dots per byte, all bitmap planes
+GFX_GROUP           equ       %00001110 which 16-colour CLUT slice the nibbles index (0-7)
+VKY_GFX_MODE_REG    equ       $FFCB     the same register by absolute address (fixed I/O: any task can poke it)
 * Valid in graphics mode only
 BACKGROUND_COLOR_B  rmb       1         when in graphic mode, if a pixel is "0" then the background pixel is chosen
 BACKGROUND_COLOR_G  rmb       1
@@ -544,6 +575,8 @@ TyVKY_BM0_CTRL_REG  equ       $F000
 BM0_Ctrl            equ       $01       enable the BM0
 BM0_LUT0            equ       $02       LUT0
 BM0_LUT1            equ       $04       LUT1
+BM0_HIRES4          equ       $10       rc14+: this plane alone in 640x240 4-bit (OR'd with GFX_HIRES4)
+BM0_GROUP           equ       $E0       rc14+: this plane's CLUT slice (0-7) when it is HIRES4
 TyVKY_BM0_START_ADDY_H equ       $F001
 TyVKY_BM0_START_ADDY_M equ       $F002
 TyVKY_BM0_START_ADDY_L equ       $F003
@@ -657,20 +690,49 @@ TILE_MAP_ADDY6      equ       $F198
 TILE_MAP_ADDY7      equ       $F19C
 
 
-XYMATH_CTRL_REG     equ       $D300     reserved
-XYMATH_ADDY_H       equ       $D301     w
-XYMATH_ADDY_M       equ       $D302     w
-XYMATH_ADDY_L       equ       $D303     w
-XYMATH_ADDY_POSX_H  equ       $D304     r/w
-XYMATH_ADDY_POSX_L  equ       $D305     r/w
-XYMATH_ADDY_POSY_H  equ       $D306     r/w
-XYMATH_ADDY_POSY_L  equ       $D307     r/w
-XYMATH_BLOCK_OFF_H  equ       $D308     r only - low block offset
-XYMATH_BLOCK_OFF_L  equ       $D309     r only - hi block offset
-XYMATH_MMU_BLOCK    equ       $D30A     r only - which mmu block
-XYMATH_ABS_ADDY_H   equ       $D30B     low absolute results
-XYMATH_ABS_ADDY_M   equ       $D30C     mid absolute results
-XYMATH_ABS_ADDY_L   equ       $D30D     hi absolute results
+* Integer math block - JR_Math_Block.v, $FEE0-$FEFF in the FIXED I/O page, both boards.
+* Big endian, which suits the 6809: a 16-bit std or ldd lands the right way round.
+* WRITE the operands, then READ the result, and write NOTHING at $FEF0 or above: the write
+* decode ignores address bit 4, so storing to a result address lands in an operand.
+* How to drive it and the remainder bug: Wildbits page, Math coprocessor.
+MATH_MUL_A          equ       $FEE0     w/r  unsigned multiply, operand A (16 bit, hi byte first)
+MATH_MUL_B          equ       $FEE2     w/r  unsigned multiply, operand B (16 bit)
+MATH_DIV_SOR        equ       $FEE4     w/r  unsigned divide, divisor (16 bit)
+MATH_DIV_END        equ       $FEE6     w/r  unsigned divide, dividend (16 bit)
+MATH_ADD_A          equ       $FEE8     w/r  32-bit adder, operand A (4 bytes, hi first)
+MATH_ADD_B          equ       $FEEC     w/r  32-bit adder, operand B (4 bytes)
+MATH_MUL_P          equ       $FEF0     r    product, 32 bit; MATH_MUL_P+2 is the low 16 bits
+MATH_DIV_QUOT       equ       $FEF4     r    quotient (16 bit)
+MATH_DIV_REM        equ       $FEF6     r    remainder (16 bit) - SEE THE CAUTION BELOW
+MATH_ADD_RES        equ       $FEF8     r    sum (32 bit)
+* CAUTION: the remainder at MATH_DIV_REM is WIRED WRONG - correct below 256, wrong at 256 and
+* above. Fix belongs in rc14 or later. Details, and the write-decode trap: Wildbits page.
+
+* Floating point unit - FP_Math_Module.v, $FFE0-$FFEF in the FIXED I/O page, both boards.
+* IEEE-754 single precision, big endian, pipelined. Operands are written to the same sixteen
+* bytes the results are read from, so an operand can never be read back.
+* How to drive it, the latencies and the two dead status bits: Wildbits page, Floating-point unit.
+FPMATH_CTRL0        equ       $FFE0     w  b0/b1 take input 0/1 from the fixed-point converter instead of
+*                                          the raw value written; b3 add(0)/subtract(1); b5:4 pick the
+*                                          adder's first input, b7:6 its second (00 input0, 01 input1,
+*                                          10 multiplier output, 11 divider output)
+FPMATH_CTRL1        equ       $FFE1     w  b1:0 what the output mux and the float-to-fixed converter see:
+*                                          00 multiply, 01 divide, 10 add/sub, 11 the constant 1.0
+FPMATH_CTRL2        equ       $FFE2     w  input tvalid strobes: b0 converter A, b1 raw input 0,
+*                                          b2 converter B, b3 raw input 1
+FPMATH_CTRL3        equ       $FFE3     w  spare control byte
+FPMATH_MUL_ST       equ       $FFE4     r  multiply status: b4 tvalid, b3 zero, b2 underflow, b1 overflow,
+*                                          b0 NaN
+FPMATH_DIV_ST       equ       $FFE5     r  divide status: b5 tvalid, b4 divide-by-zero, b3 zero,
+*                                          b2 underflow, b1 overflow, b0 NaN
+FPMATH_ADD_ST       equ       $FFE6     r  add/subtract status: b4 tvalid, b3 zero, b2 underflow,
+*                                          b1 overflow, b0 NaN
+FPMATH_CNV_ST       equ       $FFE7     r  float-to-fixed status: b3 tvalid, b2 underflow, b1 overflow,
+*                                          b0 NaN
+FPMATH_IN0          equ       $FFE8     w  operand 0, 4 bytes, hi first
+FPMATH_OUT          equ       $FFE8     r  the selected result (see FPMATH_CTRL1), 4 bytes
+FPMATH_IN1          equ       $FFEC     w  operand 1, 4 bytes
+FPMATH_FIXED        equ       $FFEC     r  that result converted to 20.12 fixed point, 4 bytes
 
 ; Sprite block0
 SPRITE_Ctrl_Enable  equ       $01
@@ -682,15 +744,11 @@ SPRITE_SIZE0        equ       $20       00 = 32x32 - 01 = 24x24 - 10 = 16x16 - 1
 SPRITE_SIZE1        equ       $40
 
 
-* Sprite attribute records (128 total, 8 bytes each) live in VICKY page
-* $C0 at page offsets $1300-$16FF (record n at $1300+8*n). The SPn_*
-* equates below assume that page mapped in MMU slot 7 ($E000 window,
-* the vtio/system-state convention) -> records at $F300+. Multi-byte
-* fields are BIG-endian (6809 rework, rc7 silicon): +1 = address HIGH,
-* +4 = X HIGH, +6 = Y HIGH - so a 16-bit STD at the _H offset stores
-* X or Y correctly in one instruction. (Pre-rework cores and the
-* official 65C02 documentation were little-endian; equates corrected
-* 2026-08-31.) Generic per-record offsets for indexed access:
+* Sprite attribute records: 128 records of 8 bytes in VICKY page $C0 at offsets $1300-$16FF
+* (record n at $1300+8*n), BIG-endian fields. Full layout and a worked recipe: Wildbits page,
+* sprite chapter. The SPn_* equates further down assume page $C0 is mapped in MMU slot 7
+* ($E000 window, the vtio/system-state convention), which puts record 0 at $F300.
+* Generic per-record offsets for indexed access:
 SPR_CTRL            equ       0         control byte (SPRITE_* bits above)
 SPR_ADDY_H          equ       1         pixel data physical address 23:16
 SPR_ADDY_M          equ       2         pixel data physical address 15:8
@@ -777,86 +835,257 @@ PSGR.Base           equ       SND.Base+$0210
 *
 DMA.Base            equ       $FEC0
 
+* Map corrected 2026-09-09 from the core RTL. THESE ARE THE WRITE ADDRESSES: reads come back
+* permuted, so a read-back-and-verify driver needs the permutation. Big endian.
+* How to drive it, the permutation and the CPU-halt hazard: Wildbits page, DMA engine.
                     org       0
-DMA_CTRL_REG        rmb       1         fec0
-DMA_STATUS_REG      rmb       1         fec1 read only
-DMA_DATA_2_WRITE    equ       DMA_STATUS_REG write only
-DMA_RESERVED_0      rmb       1         fec2
-DMA_RESERVED_1      rmb       1         fec3
-* Source address.
-DMA_SOURCE_ADDR_H   rmb       1         fec4
-DMA_SOURCE_ADDR_M   rmb       1         fec5
-DMA_SOURCE_ADDR_L   rmb       1         fec6
-DMA_RESERVED_2      rmb       1         fec7
-* Destination address.
-DMA_DEST_ADDR_H     rmb       1         fec8
-DMA_DEST_ADDR_M     rmb       1         fec9
-DMA_DEST_ADDR_L     rmb       1         feca
-DMA_RESERVED_3      rmb       1         fecb
-DMA_RESERVED_4      rmb       1         fecc
-* Size in 1D mode.
-DMA_SIZE_1D_H       rmb       1         fecd
-DMA_SIZE_1D_M       rmb       1         fece
-DMA_SIZE_1D_L       rmb       1         fecf
-* Size in 2D mode.
-DMA_SIZE_X_H        rmb       1         fed0
-DMA_SIZE_X_L        rmb       1         fed1
-DMA_SIZE_Y_H        rmb       1         fed2
-DMA_SIZE_Y_L        rmb       1         fed3
-* Stride in 2D mode.
-DMA_SRC_STRIDE_X_H  rmb       1         fed4
-DMA_SRC_STRIDE_X_L  rmb       1         fed5
-DMA_DST_STRIDE_Y_H  rmb       1         fed6
-DMA_DST_STRIDE_Y_L  rmb       1         fed7
-
-DMA_RESERVED_5      rmb       1
-DMA_RESERVED_6      rmb       1
-DMA_RESERVED_7      rmb       1
-DMA_RESERVED_8      rmb       1
+DMA_CTRL_REG        rmb       1         fec0 w/r b0 ENABLE, b1 1D(0)/2D(1), b2 fill, b3 IRQ enable,
+*                                            b5:4 byte-lane mask - EITHER BIT SET DISABLES THAT LANE and
+*                                            the transfer runs to completion writing NOTHING,
+*                                            b6 double speed + 16-bit fill, b7 START
+DMA_STATUS_REG      rmb       1         fec1 r   b7 transfer in progress; b6:0 hardwired 0, so an idle
+*                                            block reads exactly $00
+DMA_FILL_BYTE       equ       DMA_STATUS_REG fec1 w the 8-bit fill value (ctrl b6 clear)
+DMA_DATA_2_WRITE    equ       DMA_STATUS_REG the older name for DMA_FILL_BYTE
+DMA_FILL_WORD_H     rmb       1         fec2 w   16-bit fill, odd/high byte (ctrl b6 SET)
+DMA_FILL_WORD_L     rmb       1         fec3 w   16-bit fill, even/low byte
+DMA_UNUSED_0        rmb       1         fec4     nothing in the engine reads this byte
+* Source address, 24 bit.
+DMA_SOURCE_ADDR_H   rmb       1         fec5 w   source [23:16]
+DMA_SOURCE_ADDR_M   rmb       1         fec6 w   source [15:8]
+DMA_SOURCE_ADDR_L   rmb       1         fec7 w   source [7:0]
+DMA_UNUSED_1        rmb       1         fec8     nothing in the engine reads this byte
+* Destination address, 24 bit.
+DMA_DEST_ADDR_H     rmb       1         fec9 w   destination [23:16]
+DMA_DEST_ADDR_M     rmb       1         feca w   destination [15:8]
+DMA_DEST_ADDR_L     rmb       1         fecb w   destination [7:0]
+* Sizes. In 2D mode X is the row length and Y the row count.
+DMA_SIZE_X_H        rmb       1         fecc w   X size [15:8]
+DMA_SIZE_X_L        rmb       1         fecd w   X size [7:0]
+DMA_SIZE_Y_H        rmb       1         fece w   Y size [15:8] - 2D ONLY, dropped in 1D
+DMA_SIZE_Y_L        rmb       1         fecf w   Y size [7:0]
+* Strides, 2D only.
+DMA_SRC_STRIDE_X_H  rmb       1         fed0 w   source stride [15:8]
+DMA_SRC_STRIDE_X_L  rmb       1         fed1 w   source stride [7:0]
+DMA_DST_STRIDE_Y_H  rmb       1         fed2 w   destination stride [15:8]
+DMA_DST_STRIDE_Y_L  rmb       1         fed3 w   destination stride [7:0]
+* fed4-fed7 read and write as ordinary bytes but drive nothing at all.
+DMA_DEAD_0          rmb       1         fed4
+DMA_DEAD_1          rmb       1         fed5
+DMA_DEAD_2          rmb       1         fed6
+DMA_DEAD_3          rmb       1         fed7
+* fed8-fedf are decoded but the register array is only 24 entries: writes vanish and reads return $FF.
+*
+* THE 1D LENGTH IS NOT A CONTIGUOUS FIELD. Controller:210 builds it as
+*     Count1D = {VDMA_Y_Size[7:0], VDMA_X_Size}
+* so its three bytes are scattered, and DMA_SIZE_Y_H is not part of it. Use these names in 1D mode:
+DMA_SIZE_1D_H       equ       DMA_SIZE_Y_L   fecf  1D count [23:16]
+DMA_SIZE_1D_M       equ       DMA_SIZE_X_H   fecc  1D count [15:8]
+DMA_SIZE_1D_L       equ       DMA_SIZE_X_L   fecd  1D count [7:0]
+* DMA_SIZE_Y_H (fece) must still be written, because it is a live 2D register that a previous transfer
+* may have left dirty - but its value is ignored while ctrl b1 is clear.
 
 * DMA_CTRL_REG bit definitions
 DMA_CTRL_Enable     equ       $01
 DMA_CTRL_1D_2D      equ       $02
 DMA_CTRL_Fill       equ       $04
 DMA_CTRL_Int_En     equ       $08
-DMA_CTRL_NotUsed0   equ       $10
-DMA_CTRL_NotUsed1   equ       $20
-DMA_CTRL_NotUsed2   equ       $40
+DMA_CTRL_MaskLSB    equ       $10       NOT unused - masks the low byte lane (writes nothing)
+DMA_CTRL_MaskMSB    equ       $20       NOT unused - masks the high byte lane
+DMA_CTRL_Dbl_Speed  equ       $40       NOT unused - double speed, and fill takes the 16-bit word
+DMA_CTRL_NotUsed0   equ       DMA_CTRL_MaskLSB  old names, kept so existing code still assembles
+DMA_CTRL_NotUsed1   equ       DMA_CTRL_MaskMSB
+DMA_CTRL_NotUsed2   equ       DMA_CTRL_Dbl_Speed
 DMA_CTRL_Start_Trf  equ       $80
 
 * DMA_STATUS_REG bit definitions
 DMA_STATUS_TRF_IP   equ       $80       transfer in progress
 
 
-* MIDI Synth Chip
-SAM2695.Base       equ        $FF30
-                   org        $0
-MIDI_STATUS        rmb        1                   Read: Bit[1] = Rx_empty, Bit[2] = Tx_empty
-MIDI_FIFO_DATA     rmb        1                   Read and Write Data Port 
-MIDI_RXD_COUNT_LOW rmb        1                   Rx FIFO Data Count LOW
-MIDI_RXD_COUNT_HI  rmb        1                   Rx FIFO Data Count Hi - Only the 4 first bit are valid
-MIDI_TXD_COUNT_LOW rmb        1                   Tx FIFO Data Count LOW 
-MIDI_TXD_COUNT_HI  rmb        1                   Tx FIFO Data Count Hi - Only the 4 first bit are valid
-
-
-* WizFi360 Registers, 2K x 2 FIFO
-* Wifi_Control_Register:
-* Bit[0] = 0 = 115,200K Mode, 1 = 921,600K Mode
-* Bit[1] = 0 Default, 1 = Reset FIFO (you need to bring it back to 0) This is directly connected to reset line of the FIFO
-* Bit[2] = RX FIFO Empty ( 1 = Empty, 0 = Data Available)
-* Bit[3] = TX FIFO Empty ( 1 = Empty, 0 = Data Available)
-WizFi.Base          equ       $FF20
-WizFi.TxEmpty       equ       %00001000
-WizFi.RxEmpty       equ       %00000100
-WizFi.Reset         equ       %00000010
-WizFi.Rate          equ       %00000001
+* SPLASH FLASH SPI controller
+* Reads the serial flash that holds the splash image.  Shares the WiFi
+* module's SPI bus pins (SCLK/MISO/MOSI) but has its own chip select, and is
+* clocked from 200MHz because the part will take 133MHz.  Present on both
+* machines.  Nothing in NitrOS-9 uses it today.
+*
+* Usage: write the flash command, the 24-bit source address and the transfer
+* size, then set bit 0 of the control register to start.  Poll the control
+* register while it runs and read bytes out of the data port.
+* Control register, on READ:
+* Bit[7] = Busy  ( 1 = transfer in progress )
+* Bit[6] = Read FIFO Empty ( 1 = Empty, 0 = Data Available )
+* Bits[5:0] = the low 6 bits of the control register as written
+* Control register, on WRITE:
+* Bit[0] = 1 starts the transfer (the engine runs while this bit is set)
+* CAUTION: offsets 2 and 3 do NOT read back what was written.  Written they
+* are the transfer size, HIGH byte first; read they are the read-FIFO fill
+* count, LOW byte first, and only the low 4 bits of the high byte are valid.
+SplashSPI.Base      equ       $FF10
+SplashSPI.Busy      equ       %10000000           read only: transfer in progress
+SplashSPI.RxEmpty   equ       %01000000           read only: read FIFO empty
+SplashSPI.Start     equ       %00000001           write: start the transfer
                     org       $0
-WizFi_CtrlReg       rmb       1
-WizFi_DataReg       rmb       1
-WizFi_RxD_RD_Cnt    rmb       2
-WizFi_RxD_WR_Cnt    rmb       2
-WizFi_TxD_RD_Cnt    rmb       2
-WizFi_TxD_WR_Cnt    rmb       2
+SPIF_CTRL           rmb       1                   control (write) / status (read), see above
+SPIF_CMD            rmb       1                   flash command byte
+SPIF_SIZE           rmb       2                   transfer size, high byte first (reads back as FIFO count, low first)
+SPIF_RSVD           rmb       1                   register 4 - not used by the datapath
+SPIF_ADDR           rmb       3                   flash source address, 24 bit, high byte first
+SPIF_DATA           rmb       1                   read FIFO data port (read only)
+
+
+* WizFi360 Registers
+* Two 2K FIFOs, one receive and one transmit - the same FIFO IP that the MIDI
+* port uses.  Each reports BOTH a read count and a write count, which is why
+* there are four counter pairs below - four counters, not four FIFOs.  Bytes
+* waiting in a FIFO = its WR count - its RD count.  Counts are 11 bits, so
+* only bits 10:8 of each high byte are valid.
+* Wifi_Control_Register:
+* Bit[0] = 0 = 115,200K Mode, 1 = 921,600K Mode (sets both directions)
+* Bit[1] = 0 Default, 1 = Reset FIFO (you need to bring it back to 0) This is directly connected to reset line of the FIFO
+* Bit[2] = RX FIFO Empty ( 1 = Empty, 0 = Data Available)  read only
+* Bit[3] = TX FIFO Empty ( 1 = Empty, 0 = Data Available)  read only
+* Unlike the MIDI port, all four bits work on every shipping core, and both
+* directions raise interrupts: INT_WIZFI_RX (group 3, bit 0) when the Rx FIFO
+* goes non-empty, INT_WIZFI_TX (group 3, bit 5) when the Tx FIFO drains empty.
+WizFi.Base          equ       $FF20
+WizFi.TxEmpty       equ       %00001000           Tx FIFO empty (read only)
+WizFi.RxEmpty       equ       %00000100           Rx FIFO empty (read only)
+WizFi.Reset         equ       %00000010           FIFO reset, active high - clears both FIFOs and both serial ends
+WizFi.Rate          equ       %00000001           0 = 115,200 baud, 1 = 921,600 baud
+                    org       $0
+WizFi_CtrlReg       rmb       1                   control register (bits 2 and 3 read back as status)
+WizFi_DataReg       rmb       1                   Rx/Tx FIFO data port (read and write)
+WizFi_RxD_RD_Cnt    rmb       2                   Rx 2K FIFO read count, high byte first
+WizFi_RxD_WR_Cnt    rmb       2                   Rx 2K FIFO write count, high byte first
+WizFi_TxD_RD_Cnt    rmb       2                   Tx 2K FIFO read count, high byte first
+WizFi_TxD_WR_Cnt    rmb       2                   Tx 2K FIFO write count, high byte first
+
+
+* MIDI PORTS bit definitions
+* Two 2K FIFOs, one receive and one transmit.  Each reports BOTH a read
+* count and a write count, which is why there are four counter pairs
+* below - four counters, not four FIFOs.  Bytes waiting in a FIFO =
+* its WR count - its RD count.
+* One MIDI UART serves the back-panel DIN sockets: MIDI_IN_i and MIDI_OUT_o
+* are FPGA pins (K2 F7/F8, Jr2 T15/V15).  The on-board 2695 synthesizer sits
+* on the same outgoing line, so every byte written reaches both; the CPU
+* cannot address the synth separately, and its reset is wired to cold reset.
+* MIDI_Control_Register:
+* Bit[0] = NOT IMPLEMENTED - the serial rate is fixed at MIDI baud in the core
+*          (WizFi uses this bit to pick a rate; the MIDI block does not)
+* Bit[1] = 0 Default, 1 = Reset FIFO (you need to bring it back to 0) This
+*          clears the Rx and Tx FIFOs, the Tx state machine and the receiver
+* Bit[2] = RX FIFO Empty ( 1 = Empty, 0 = Data Available)  read only
+* Bit[3] = TX FIFO Empty ( 1 = Empty, 0 = Data Available)  read only
+* Bits 1-3 need a core built after 2026-09-04.  The shipping v8_rc10 cores
+* read offset 0 back exactly as written and have no FIFO reset, so on those
+* use the counters for FIFO state: bytes waiting = WR count - RD count.
+* Interrupt: INT_MIDI_RX (group 3, bit 1) on the Rx FIFO going non-empty.
+* There is no Tx interrupt - poll MIDI_TXD_WR_CNT before filling the FIFO.
+MIDI.Base           equ        $FF30
+MIDI.TxEmpty        equ        %00001000           Tx FIFO empty (read only)
+MIDI.RxEmpty        equ        %00000100           Rx FIFO empty (read only)
+MIDI.Reset          equ        %00000010           FIFO reset only, active high (does not touch the 2695 synthesizer)
+MIDI.Rate           equ        %00000001           unused - the core has no rate select on the MIDI port
+                    org        $0
+MIDI_CTRL           rmb        1                   control register (reads back what was written)
+MIDI_DATA           rmb        1                   Rx/Tx FIFO data port (read and write) (writes also go to the 2695 MIDI synthesizer)
+MIDI_RXD_RD_CNT     rmb        2                   Rx 2K FIFO read count, high byte first
+MIDI_RXD_WR_CNT     rmb        2                   Rx 2K FIFO write count, high byte first
+MIDI_TXD_RD_CNT     rmb        2                   Tx 2K FIFO read count, high byte first
+MIDI_TXD_WR_CNT     rmb        2                   Tx 2K FIFO write count, high byte first
+
+
+* W6100 ETHERNET bus interface - K2 ONLY
+* The core's 8-bit bus adapter to the WizNet chip.  Only the K2 wires the
+* chip; the Jr2 core decodes $FF40 but has no WizNet pins at all, so reads
+* there are meaningless on that machine.  Nothing in NitrOS-9 uses it yet.
+* Interrupt: INT_WIZNET (group 3, bit 3).
+*
+* Offsets 0-7 are control registers on WRITE.  Any offset with bit 3 set
+* ($FF48-$FF4F) is the FIFO data port: writing pushes the Tx FIFO, reading
+* pops the Rx FIFO.
+* Control register (offset 0), on WRITE:
+* Bit[0] = 1 enables the core
+* Bits[3:1] = operation select (000 = single write of the data byte below)
+* Bit[5] = 1 starts the transfer
+* Control register (offset 0), on READ: bit 7 = Busy, bits 6:0 read back.
+* CAUTION: the address bytes read back SWAPPED.  Written, offset 4 is the
+* high byte and offset 5 the low byte; read, offset 4 returns the low byte
+* and offset 5 the high byte.  The Rx FIFO count is 11 bits (2K) stored high
+* byte first at offsets 6 and 7; the Tx count is the low 8 bits only, at
+* offset 2, and offsets 1 and 3 read the chip's MR and Rx registers rather
+* than what was written there.
+W6100.Base          equ       $FF40
+W6100.Busy          equ       %10000000           read only: transfer in progress
+W6100.Start         equ       %00100000           write: start the transfer
+W6100.Enable        equ       %00000001           write: enable the core
+                    org       $0
+WIZ_CTRL            rmb       1                   control (write) / status (read), see above
+WIZ_MR              rmb       1                   W: mode register to write   R: chip MR
+WIZ_DATA_W          rmb       1                   W: (unused)                 R: Tx FIFO count, low 8 bits
+WIZ_WRVAL           rmb       1                   W: single data byte to write  R: chip Rx register
+WIZ_ADDR_H          rmb       1                   W: address high byte        R: address LOW byte
+WIZ_ADDR_L          rmb       1                   W: address low byte         R: address HIGH byte
+WIZ_RXCNT_H         rmb       1                   R: Rx FIFO count, bits 10:8
+WIZ_RXCNT_L         rmb       1                   R: Rx FIFO count, bits 7:0
+WIZ_FIFO            rmb       1                   $FF48-$FF4F: W = push Tx FIFO, R = pop Rx FIFO
+
+
+********************************************************************
+* VS1053 (MP3/OGG/WAV decoder) SPI bridge definitions
+*
+* Fixed I/O, identical on the K2 and Jr2 (core block VS1053_SPI_Interface,
+* CS $FF50-$FF5F; offsets 8-15 mirror 0-7 on read). The bridge runs 32-bit
+* SCI transactions over XCSn and streams a 2 KB byte FIFO to SDI over XDCSn
+* as DREQ permits; the CPU never sees DREQ. 16-bit pairs are BIG-endian
+* (high byte at the lower offset) since the 2026-09-05 core fix - cores
+* built before it have VS_DATA and VS_FIFOCNT the other way round.
+* SCI write: VS_SCIREG=reg, std VS_DATA, VS_CTRL=0, VS_CTRL=VS_START, wait !VS_BUSY
+* SCI read:  VS_SCIREG=reg, VS_CTRL=0, VS_CTRL=VS_START+VS_READ, wait !VS_BUSY, ldd VS_DATA
+* Stream:    while !(VS_FIFOSTAT & VS_FIFO_FULL) store bytes to VS_FIFO
+VS1053.Base         equ       $FF50
+                    org       0
+VS_CTRL             rmb       1         bit0 START (0->1 edge starts an SCI transaction, does not self-clear), bit1 READ, bit2 FAST (rc12), bit3 RESET (rc12), bit7 BUSY (r/o)
+VS_SCIREG           rmb       1         SCI register number in the low nibble (VS_MODE..VS_AICTRL3)
+VS_DATA             equ       .         16-bit SCI data, big-endian: std to send, ldd for the last read result
+VS_DATAHI           rmb       1         high byte
+VS_DATALO           rmb       1         low byte
+VS_FIFOSTAT         rmb       1         bit7 FIFO empty, bit6 FIFO full, bits 2-0 = count bits 10-8; reading it snapshots the count
+VS_FIFOCNTL         rmb       1         count bits 7-0 from that snapshot (ldd VS_FIFOSTAT then anda #VS_FIFO_CNTHI = 11-bit count)
+VS_FIFOCNT          equ       VS_FIFOSTAT 16-bit alias for the ldd
+                    rmb       1         reads $00
+VS_FIFO             rmb       1         SDI stream data write: each byte is sent to the chip as DREQ permits
+* VS_CTRL bits
+VS_START            equ       %00000001
+VS_READ             equ       %00000010
+VS_FAST             equ       %00000100 rc12+: SPI clock IO_Clk/4 = 6.29 MHz, legal only after CLOCKF is raised (SCI reads need CLKI >= 44 MHz);
+*                                       0 (reset default) = IO_Clk/16 = 1.57 MHz, in spec at the chip's boot clock. Pre-rc12 cores ignore the bit.
+VS_RESET            equ       %00001000 rc12+: 1 = hold the chip's XRESET low (bit engine idle, SDI FIFO flushed) - the only way back
+*                                       for a chip stuck with DREQ low, since every SCI command waits for DREQ. Pre-rc12 cores ignore it.
+VS_BUSY             equ       %10000000
+* VS_FIFOSTAT bits
+VS_FIFO_EMPTY       equ       %10000000
+VS_FIFO_FULL        equ       %01000000
+VS_FIFO_CNTHI       equ       %00000111
+* VS1053 SCI register numbers (for VS_SCIREG)
+VS_MODE             equ       $0        mode control
+VS_STATUS           equ       $1        status
+VS_BASS             equ       $2        bass/treble
+VS_CLOCKF           equ       $3        clock frequency + multiplier
+VS_DECODE_TIME      equ       $4        decode time in seconds
+VS_AUDATA           equ       $5        misc. audio data (sample rate, channels)
+VS_WRAM             equ       $6        RAM read/write
+VS_WRAMADDR         equ       $7        RAM address
+VS_HDAT0            equ       $8        stream header data 0 (read only)
+VS_HDAT1            equ       $9        stream header data 1 (read only)
+VS_AIADDR           equ       $A        application start address
+VS_VOL              equ       $B        volume (left/right attenuation, 0.5dB steps)
+VS_AICTRL0          equ       $C        application control 0
+VS_AICTRL1          equ       $D        application control 1
+VS_AICTRL2          equ       $E        application control 2
+VS_AICTRL3          equ       $F        application control 3
+
 
 * DIP Switches for Jr/Jr2/K2.. 
 K2_DIP_SW.Base      equ       $FF90
@@ -868,5 +1097,6 @@ SW_BOOT_MODE3       equ       %00001000
 SW_BOOT_MODE2       equ       %00000100
 SW_BOOT_MODE1       equ       %00000010
 SW_BOOT_MODE0       equ       %00000001
+
 
                     ENDC

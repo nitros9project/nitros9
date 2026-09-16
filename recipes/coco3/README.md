@@ -125,8 +125,8 @@ software and story files fetched from pinned upstream revisions:
   `forth09` command, with its test program in `/FORTH09/forthtest.4th`
 - [`rlucente-retro/infocom-os9-port`](https://github.com/rlucente-retro/infocom-os9-port),
   installed as the `infocom` command
-- the Version 3 Zork I-III story files under `/GAMES/INFOCOM`, installed as
-  `zork1.dat`, `zork2.dat`, and `zork3.dat`
+- the Version 3 Zork I-III story files from the Masterpiece Collection under
+  `/GAMES/INFOCOM`, installed as `zork1.z3`, `zork2.z3`, and `zork3.z3`
 - the Version 3 [`drpitre/raakatu`](https://github.com/drpitre/raakatu) story,
   installed as `/GAMES/INFOCOM/raakatu.z3`
 - the OS-9 Level 2 BBS from `nitros9-apps/os9l2bbs`, with its commands merged
@@ -146,7 +146,7 @@ interpreter:
 ```text
 forth09
 forth09 </dd/FORTH09/forthtest.4th
-infocom /dd/GAMES/INFOCOM/zork1.dat
+infocom /dd/GAMES/INFOCOM/zork1.z3
 infocom /dd/GAMES/INFOCOM/raakatu.z3
 chd /dd/BBS
 runbbs
@@ -157,12 +157,19 @@ raw TCP terminal, such as Serial on macOS, on port 6909. A Telnet client is not
 suitable because its protocol negotiation interferes with the BBS input. Set
 `BBS_PORT` on the `make` command line to select another port.
 
-`INFOCOM_STORY_DIR` and `INFOCOM_STORIES` may be overridden to package another
+By default, only the open-source Zork trilogy is included. To package all 21
+games from the Masterpiece Collection, pass `ALL_GAMES=1`:
+
+```sh
+make ALL_GAMES=1
+```
+
+`INFOCOM_STORY_DIR` and `INFOCOM_STORIES` may also be overridden to package another
 legally obtained Version 3 story-file collection:
 
 ```sh
 make INFOCOM_STORY_DIR=/path/to/stories \
-  INFOCOM_STORIES="ZORK1.DAT PLANETFALL.DAT WITNESS.DAT"
+  INFOCOM_STORIES="zork1.z3 planetfall.z3 witness.z3"
 ```
 
 ## Notes

@@ -1,0 +1,22 @@
+# /DD/SYS/w6100ipconfig
+# Network configuration for the W6100 tools on the Wildbits K2.
+#
+# One "keyword value" per line. "keyword = value" also works.
+# Lines beginning with '#' or '*' are comments. IP addresses are
+# dotted-decimal; the MAC is six colon- (or dash-) separated hex
+# bytes. Any keyword you leave out keeps the tool's built-in default.
+#
+# Recognised keywords:
+#   ip        this board's IPv4 address
+#   mask      subnet mask            (aliases: subnet, netmask)
+#   gateway   default gateway        (alias: gw)
+#   server    the Python file server's IPv4 address
+#   port      the file server's TCP port
+#   mac       this board's Ethernet MAC address
+
+ip        192.168.1.222
+mask      255.255.255.0
+gateway   192.168.1.254
+server    192.168.8.254
+port      6809
+mac       02:00:00:12:34:56

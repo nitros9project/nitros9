@@ -78,17 +78,21 @@
 *
 *   16     2026/04/28   R Taylor
 * Tighten up the help message to save space.
+*
+*   17     2026/09/06   R Taylor / Claude Fable 5
+* Improve Lyra playback accuracy, volume handling, and MIDI integration.
+
 
                     nam       music
                     ttl       Music Player
 
  section __os9
-edition = 16
+edition = 17
  endsect
 
 * Here are some tweakable options
 DOHELP              set       1                   1 = include help info
-SID_MAX_VOL         equ       15                  (0 = silence, 15 = loud) for all SID Voices
+SID_MAX_VOL         equ       6                   (0 = silence, 15 = loud) for all SID Voices - halved 2026-08-28 to balance against the quieter SAM2695 (.lyr) analog path
 SID_V1_CR1          equ       %00010001           SID Voice 1 Gate
 SID_V2_CR1          equ       %00010001           SID Voice 2 Gate
 SID_V3_CR1          equ       %00010001           SID Voice 3 Gate
@@ -98,7 +102,13 @@ SID_V3_PULSE_DUTY   equ       $800
 SID_V1_ADSR         equ       $00F0
 SID_V2_ADSR         equ       $00F0
 SID_V3_ADSR         equ       $00F0
-MIDIVEL_DEFAULT     equ       80                  0..127 for MIDI velocity
+* MIDI loudness model (2026-09-05). A Lyra $E0 event is a TRACK VOLUME (0-7), not a
+* per-note articulation, so it drives CC11 (expression) on the track's channel via
+* LyraExprConv, and every note goes out at one natural velocity. CC7 stays at 127
+* (mixer at unity, MidiVolAll). Machine-independent: absolute loudness is the codec's job.
+NOTE_VELOCITY       equ       100                 constant note-on velocity (sequencer convention; keeps GM patches off their hard-hit layers)
+LYRA_DEFAULT_LEVEL  equ       6                   Lyra volume assumed for a track that never sets one (mf: -8dB, two 4dB steps below 7)
+LYRA_DEFAULT_EXPR   equ       118                 = LyraExprConv[LYRA_DEFAULT_LEVEL] - keep in step with the table
 PLAYLISTITEM_MAXSTR equ       255
 
 FILETYPE_MUSICA     equ       1
@@ -107,8 +117,8 @@ FILETYPE_COCOLYRA   equ       3
 FILETYPE_ULTIMUSE   equ       4
 FILETYPE_MIDIPATCH  equ       5
 
-MIDI_StatusReg      equ       SAM2695.Base+MIDI_STATUS
-MIDI_DataReg        equ       SAM2695.Base+MIDI_FIFO_DATA
+MIDI_CtrlReg        equ       MIDI.Base+MIDI_CTRL
+MIDI_DataReg        equ       MIDI.Base+MIDI_DATA
 MIDITABENTSIZ       equ       4                   MIDI Note Table entry size in bytes
 MIDITABOCTSIZ       equ       7*MIDITABENTSIZ     MIDI Note Table octave size in bytes
 
@@ -468,16 +478,28 @@ PlaySidR2           leax      SampleBuf,u
                     lda       14+4,x 
                     sta       14+4,y 
 
-                    lda       22,x 
+                    lda       22,x
                     sta       22,y
-                    lda       23,x 
-                    sta       23,y 
-                    lda       24,x 
-                    sta       24,y 
+                    lda       23,x
+                    sta       23,y
+* Register 24 ($18) = filter mode / master volume. Raw dumps usually
+* carry volume 15, which bypasses the SID_MAX_VOL calibration and
+* leaves .rsd ~8dB louder than .mus. Rescale the volume nibble
+* through RsdVolScale; the filter/mode bits pass through untouched.
+* (X is free to clobber here - it is reloaded just below.)
+                    lda       24,x
+                    tfr       a,b
+                    andb      #$F0                keep the dump's filter/mode bits
+                    anda      #$0F                the dump's volume nibble
+                    leax      RsdVolScale,pcr
+                    lda       a,x                 rescale 0-15 -> 0-SID_MAX_VOL
+                    pshs      b
+                    ora       ,s+                 merge the filter bits back in
+                    sta       24,y
 
                     ldx       #$0002
                     os9       F$Sleep
-                    bra       PlaySidR2
+                    lbra      PlaySidR2           long branch - the volume rescale above grew the loop
 
 Load2Local          ldb       #SS.Size
                     lda       <bFilePath
@@ -519,7 +541,7 @@ a@                  ldd       1,s                 Recall address of top of file
                     clra
                     clrb
                     std       TRACK_CYCLES,y
-                    lda       #MIDIVEL_DEFAULT    Reset velocity
+                    lda       #LYRA_DEFAULT_EXPR  Expression (CC11) value in force until a Lyra volume event arrives
                     sta       TRACK_VELOC,y
                     leay      TRACK_ENTRYSIZE,y
                     dec       ,s 
@@ -535,7 +557,9 @@ a@                  ldd       1,s                 Recall address of top of file
                     bne       gm@                 User has applied a patch file
                     lbsr      MidiMuteAll
                     lbsr      SetupInstruments    Auto-sensing instrument translation
-gm@                 ldb       #1                  Enable the sequencer
+gm@                 lbsr      MidiVolAll          CC7 max on all channels - AFTER MidiMuteAll (its GM-reset sysex restores the quiet power-on volume default)
+                    lbsr      MidiExprAll         CC11 = default expression on all channels (the GM reset put it at 127)
+                    ldb       #1                  Enable the sequencer
                     stb       <fDoSequencer
 
 ********************************************************************
@@ -601,13 +625,16 @@ r@                  ldd       ,x                  Get current note
                     beq       c@                  No, it must be a note or rest
 * Process Event Codes
                     anda      #$F0                Mask out non event bits
-                    cmpa      #$E0                Is this velocity control?
+                    cmpa      #$E0                Is this a track volume event?
                     bne       te@                 Assume this is a musical note/rest
-                    andb      #7                  Make safe velocity value
-                    leay      LyraVelocConv,pcr   Point to Lyra-to-MIDI velocity conversion table
-                    lda       b,y                 Convert 0..7 to 0..127
+                    andb      #7                  Lyra volume level 0..7
+                    leay      LyraExprConv,pcr    Point to Lyra-volume-to-CC11 table
+                    lda       b,y                 Convert 0..7 to expression 0..127
                     ldy       <pThisTrack         Restore track pointer
-                    sta       TRACK_VELOC,y       Set new velocity for this channel
+                    cmpa      TRACK_VELOC,y       Same level as before? then spend no MIDI bytes
+                    beq       se@
+                    sta       TRACK_VELOC,y       Remember this track's expression value
+                    lbsr      MidiExpression      CC11 on this track's channel = A
                     bra       se@
 te@                 cmpa      #$A0                Tempo event?
                     bne       se@
@@ -715,7 +742,7 @@ MidiNoteOn          ldb       #MIDICMD_NOTE_ON    Send MIDI Note On
                     stb       >MIDI_DataReg
                     lda       TRACK_MIDIPITCH,y
                     sta       >MIDI_DataReg       The note value to turn on
-                    ldb       TRACK_VELOC,y       Get velocity for this channel
+                    ldb       #NOTE_VELOCITY      One natural velocity - loudness is expression (CC11), not velocity
                     stb       >MIDI_DataReg
                     rts
 
@@ -727,9 +754,57 @@ a@                  orb       TRACK_MIDICHAN,y    Get the target channel
                     lda       TRACK_MIDIPITCH,y
                     sta       >MIDI_DataReg       The note value to turn on
                     ldb       #$00 
-*                    ldb       TRACK_VELOC,y       Get velocity for this channel
+*                    ldb       #NOTE_VELOCITY      One natural velocity - loudness is expression (CC11), not velocity
                     stb       >MIDI_DataReg
                     rts
+
+* Set CC7 (channel volume) to maximum on all 16 MIDI channels.
+* Must run AFTER MidiMuteAll: the GM reset sysex it sends returns
+* every channel volume to the power-on default (~100), which leaves
+* .lyr playback noticeably quiet on the SAM2695.
+MidiVolAll          clr       ,-s                 First MIDI channel #
+a@                  lda       #MIDICMD_CC         Control Change $Bx
+                    ora       ,s                  Mix in the channel (x)
+                    sta       >MIDI_DataReg
+                    ldb       #7                  CC7 = channel volume
+                    stb       >MIDI_DataReg
+                    ldb       #127                maximum
+                    stb       >MIDI_DataReg
+                    inc       ,s
+                    lda       ,s
+                    cmpa      #16
+                    blo       a@
+                    puls      a,pc
+
+* Set CC11 (expression) on all 16 channels to the default Lyra level's value, so
+* tracks that never send a volume event (and .ume files) start at the same loudness
+* as a Lyra track at LYRA_DEFAULT_LEVEL. Run after MidiVolAll (the GM reset sysex
+* in MidiMuteAll leaves expression at 127).
+MidiExprAll         clr       ,-s                 First MIDI channel #
+e@                  lda       #MIDICMD_CC         Control Change $Bx
+                    ora       ,s                  Mix in the channel (x)
+                    sta       >MIDI_DataReg
+                    ldb       #11                 CC11 = expression
+                    stb       >MIDI_DataReg
+                    ldb       #LYRA_DEFAULT_EXPR
+                    stb       >MIDI_DataReg
+                    inc       ,s
+                    lda       ,s
+                    cmpa      #16
+                    blo       e@
+                    puls      a,pc
+
+* Send CC11 (expression) on one track's MIDI channel.
+* Entry: A = expression value 0..127, Y = track.  Preserves D, X, Y.
+MidiExpression      pshs      d
+                    lda       #MIDICMD_CC         Control Change $Bx
+                    ora       TRACK_MIDICHAN,y    on this track's channel
+                    sta       >MIDI_DataReg
+                    lda       #11                 CC11 = expression
+                    sta       >MIDI_DataReg
+                    lda       ,s                  the value
+                    sta       >MIDI_DataReg
+                    puls      d,pc
 
 MidiMuteAll         clr       ,-s                 First MIDI channel #
 a@                  lda       #MIDICMD_CC         Control Change $Bx
@@ -1007,7 +1082,7 @@ UmeMusicN           pshs      a
                     cmpb      #32
                     beq       next@                 Is it a rest?
                     sta       TRACK_MIDIPITCH,y   Set the new pitch
-                    lda       #MIDIVEL_DEFAULT
+                    lda       #LYRA_DEFAULT_EXPR  non-zero = sounding (DebugNotes); the velocity itself is NOTE_VELOCITY
                     sta       TRACK_VELOC,y
                     lbsr      MidiNoteOn
 next@               leax      8,x
@@ -1466,14 +1541,17 @@ v4@                 std       <freq_psg4
 * or ((pitch * 10129) / 65536) * 10
 * or (pitch * 10129) then take upper 16 bits of 32-bit result and * 10
 
-Mf2SID              std       $FEE0               Put pitch in MULT-A
+* The multiplier is combinational (the IP is built with no pipeline stages), so the
+* product is valid as soon as the operand write has clocked in. No wait is needed here -
+* unlike the divider in Mf2PSG below.
+Mf2SID              std       MATH_MUL_A          Put pitch in MULT-A
                     ldd       #10129              pitch * 10129
-                    std       $FEE2               Put multiplier in MULT-B
-                    ldd       $FEF0               Get upper 16 bits of 32-bit result
-                    std       $FEE0               Put back in MULT-A
+                    std       MATH_MUL_B          Put multiplier in MULT-B
+                    ldd       MATH_MUL_P          Get upper 16 bits of 32-bit result
+                    std       MATH_MUL_A          Put back in MULT-A
                     ldd       #10
-                    std       $FEE2               Put 10 in MULT-B 
-                    ldd       $FEF2               Get lower 16-bit of result
+                    std       MATH_MUL_B          Put 10 in MULT-B
+                    ldd       MATH_MUL_P+2        Get lower 16-bit of result
                     rts
 
 ********************************************************************
@@ -1495,20 +1573,47 @@ Mf2PSG
                     ldd       <iQuotient
                     rts
                 else
-                    std       $FEE6               Store pitch as numerator
+                    std       MATH_DIV_END        Store pitch as numerator
 *                   ldd       #22                 Low octave, grindy
 *                   ldd       #11                 Higher octave, more accurate
                     ldd       #12                 Best sounding, but notes are a bit off scale
-                    std       $FEE4               Denominator
-                    ldd       $FEF4               Get answer
-                    std       $FEE4               Store answer as new denominator
+                    std       MATH_DIV_SOR        Denominator
+                    bsr       MathWait            the quotient is not ready yet - see below
+                    ldd       MATH_DIV_QUOT       Get answer
+                    beq       z@                  pitch under 12 would divide 60250 by ZERO
+                    std       MATH_DIV_SOR        Store answer as new denominator
                     ldd       #60250
-                    std       $FEE6               Numerator
-                    ldd       $FEF4               Quotient
+                    std       MATH_DIV_END        Numerator
+                    bsr       MathWait
+                    ldd       MATH_DIV_QUOT       Quotient
                     cmpd      #1023               Is the result <1024, in PSG tone range?
                     bls       g@
-                    ldd       #1023               Set upper freq limit for PSG
+z@                  ldd       #1023               Set upper freq limit for PSG
 g@                  rts
+
+********************************************************************
+* MathWait - let the hardware divider's pipeline fill before the quotient is read.
+*
+* Div_Unsigned_16_16 is a Radix2 core with a LATENCY OF 12 CLOCKS on the I/O clock, and
+* both of its tvalid inputs are tied high, so it re-divides every clock and the quotient
+* is only correct 12 I/O clocks after the LAST operand write. Nothing in the hardware
+* says when that is - there is no ready bit to poll.
+*
+* Before this existed the code read the quotient in the very next instruction. That
+* worked only by accident of timing: a stock bus cycle is a 32-tick frame of the 200 MHz
+* scheduler, which is 4 ticks of the 25 MHz I/O clock, so two back-to-back instructions
+* cleared the 12 by one or two bus cycles. Turbo cores shorten those frames. Had one
+* shortened far enough, this would have returned the PREVIOUS quotient - wrong notes, no
+* error, and it would have read as a tuning fault rather than a timing one.
+*
+* The call and return alone cost 12 bus cycles; the four nops add 8 more. That holds even
+* if a bus cycle ever shrinks to a single I/O clock, which is the fastest it could
+* physically become.
+MathWait            nop
+                    nop
+                    nop
+                    nop
+                    rts
                 endc
 
 ********************************************************************
@@ -1719,9 +1824,9 @@ LOUD_ALL
                     bra       PSG_LOUD
                 endc
 
-PSG_LOUD            ldd       #$B090
+PSG_LOUD            ldd       #$B334
                     lbsr      WritePSG
-                    ldd       #$D0FF
+                    ldd       #$D3FF
                     lbra      WritePSG
 
 QUIET_ALL
@@ -1916,8 +2021,22 @@ TrioLengths         fcb       $00
                     fcb       $02               [2,4,2]
                     fcb       $01               [0,4,0]
 
-* Conversion table for Lyra volume (0-7) into MIDI velocity (0-127)
-LyraVelocConv       fcb       1,70,75,80,85,90,95,105
+* Lyra track volume (0-7) -> MIDI CC11 expression (0-127), 2026-09-05.
+* Lyra's soft levels are still meant to be heard, so levels 1..7 run from
+* 80 to 127 in even 1.33dB steps on the GM volume curve (dB = 40*log10(v/127)):
+*   level 0 = silent, levels 1..7 = -8,-6.7,-5.3,-4,-2.7,-1.3,0 dB.
+*   (A first cut spread 1..7 over -24..0 dB; the low levels vanished.)
+*   Level 6 (118) is assumed for tracks that never send a volume event
+*   (LYRA_DEFAULT_EXPR - keep the equate in step with this table).
+* History: as a VELOCITY table it was 1,70,75,80,85,90,95,105, then
+* 1,90,96,102,108,114,120,127 (2026-08-28) - a 3.5dB spread, so Lyra
+* dynamics barely registered.
+LyraExprConv        fcb       0,80,87,93,101,109,118,127
+
+* .rsd volume-nibble rescale: maps a raw dump's 0-15 SID master
+* volume onto the calibrated range (entry n = n*SID_MAX_VOL/15,
+* nearest). Regenerate this table if SID_MAX_VOL changes from 6.
+RsdVolScale         fcb       0,0,1,1,2,2,2,3,3,4,4,4,5,5,6,6
 
 * Program the MIDI instruments per the Lyra header
 * Lyra has 8 virtual channels, and each one can link to any physical MIDI channel.

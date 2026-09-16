@@ -179,6 +179,7 @@ V.FONTNAME          RMB      33
 *V.SOLTable         RMB      32
                     endc
 
+V.MapSav            RMB       1                   saved MMU map-window slot value (vtio: no stack use inside a mapped window)
 V.InBuf             RMB       KBufSz              the input buffer
 V.KSBuf             RMB       KBufSz
                     RMB       250-.

@@ -76,11 +76,3 @@ clean: clean-sys-assets
 clean-sys-assets:
 	-$(MAKE) -C $(FONT_DIR) -f $(NITROS9DIR)/recipes/support/wildbits-fonts.mak clean
 	-$(MAKE) -C $(BACKGROUND_DIR) -f $(NITROS9DIR)/recipes/support/wildbits-backgrounds.mak clean
-
-# 2) SHELLMODS merge order: with the stock alphabetical order (date
-#    directly after shellplus) the toolshed-2.6-merged shell module
-#    freezes before the prompt on Windows/cygwin64 build hosts.
-#    Merging date/deiniz LAST is the proven clean ordering. Root
-#    cause (suspected read past module end in shellplus) still open;
-#    drop this override once fixed upstream.
-override SHELLMODS = shellplus echo iniz link load save unlink date deiniz

@@ -813,13 +813,24 @@ InitCont
                ifne      wildbits
 * Use the SOF to get a 1/60th or 1/70th interrupt
                orcc      #IntMasks
-               lda       #$FF
-               sta       INT_PENDING_0
-               sta       INT_PENDING_1
-               sta       INT_MASK_1
+* Interrupt-controller ownership model (2026-09-01):
+*   - krn cold start scrubs ALL four groups (masks to $FF, pendings
+*     cleared) on every boot, software reboots included, so no session
+*     inherits another session's controller state.
+*   - every driver clears and unmasks ONLY its own bits at its own Init
+*     (wizfi, SOLdrv, mousedrv_ps2, keydrv_ps2, sc16550 all do).
+*   - clock owns exactly one source: SOF.  So this Init touches exactly
+*     one bit - clear any stale SOF latch (pending is write-1-to-clear,
+*     per-bit), then unmask SOF with a read-modify-write.
+* This Init runs at the FIRST F$STime, which is AFTER vtio/mousedrv have
+* already installed and unmasked their bits.  Absolute mask stores or
+* blanket $FF pending clears here would wipe another driver's arming or
+* eat its latched-but-unserviced event.  Per-bit and RMW only, always.
+               lda       #INT_VKY_SOF
+               sta       INT_PENDING_0       clear only a stale SOF latch: fresh edge for the first tick
                lda       INT_MASK_0
                anda      #^INT_VKY_SOF
-               sta       INT_MASK_0
+               sta       INT_MASK_0          unmask SOF, preserving every other driver's bits
                else
                
 * Note: this code can go away once we have a rel_50hz
