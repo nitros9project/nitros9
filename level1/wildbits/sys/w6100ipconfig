@@ -1,22 +1,31 @@
-# /DD/SYS/w6100ipconfig
-# Network configuration for the W6100 tools on the Wildbits K2.
-#
-# One "keyword value" per line. "keyword = value" also works.
-# Lines beginning with '#' or '*' are comments. IP addresses are
-# dotted-decimal; the MAC is six colon- (or dash-) separated hex
-# bytes. Any keyword you leave out keeps the tool's built-in default.
-#
-# Recognised keywords:
-#   ip        this board's IPv4 address
-#   mask      subnet mask            (aliases: subnet, netmask)
-#   gateway   default gateway        (alias: gw)
-#   server    the Python file server's IPv4 address
-#   port      the file server's TCP port
-#   mac       this board's Ethernet MAC address
+# /DD/SYS/w6100ipconfig - W6100 network settings for the Wildbits K2.
+# Edit the values below. Use "keyword value" or "keyword = value", one
+# per line; '#' or '*' begins a comment. Keep the settings near the top
+# of the file (the tools read the first 512 bytes). A full keyword
+# reference is at the bottom.
 
 ip        192.168.1.222
 mask      255.255.255.0
-gateway   192.168.1.254
-server    192.168.8.254
+gateway   192.168.1.1
+server    192.168.1.181
 port      6809
 mac       02:00:00:12:34:56
+dns       8.8.8.8
+
+# ---------------------------------------------------------------------
+# Keyword reference
+#   ip        this board's IPv4 address
+#   mask      subnet mask                     (aliases: subnet, netmask)
+#   gateway   default gateway                 (alias: gw)
+#   server    file-transfer peer's IPv4 addr  (w6100recv / w6100send)
+#   port      file-transfer TCP port          (w6100recv / w6100send)
+#   mac       this board's Ethernet MAC address
+#   dns       DNS resolver's IPv4 address     (w6100tel)
+#
+# Which tool uses what:
+#   w6100eth   ip/mask/gateway/mac; pings "server" (also accepts the
+#              aliases "target" and "ping" for that address).
+#   w6100recv  connects to server:port and receives a file.
+#   w6100send  connects to server:port and sends a file.
+#   w6100tel   telnet client: "w6100tel <host> [port]". "dns" selects
+#              the resolver for hostnames; server/port are ignored here.
