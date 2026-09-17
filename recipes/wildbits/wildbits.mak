@@ -77,7 +77,6 @@ CMDS_EXTRA += $(FUJINET_CMDS)
 endif
 FM_CMDS = fm 
 ifeq ($(FM),1)
-LFLAGS += -lfm
 CMDS_EXTRA += $(FM_CMDS)
 endif
 CMDS += $(STDCMDS) shell \
@@ -154,7 +153,7 @@ SYS_BIN_FILES =
 endif
 
 ifeq ($(PLATFORM),K2)
-CMDS += w6100eth w6100recv lcdload
+CMDS += w6100eth w6100recv w6100send w6100tel lcdload
 SYS_TEXT_FILES += $(LEVEL1)/wildbits/sys/w6100ipconfig
 endif
 
@@ -257,6 +256,12 @@ $(MODDIR)/w6100eth: $(LEVEL1)/wildbits/cmds/w6100eth.as | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 $(MODDIR)/w6100recv: $(LEVEL1)/wildbits/cmds/w6100recv.as | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/w6100send: $(LEVEL1)/wildbits/cmds/w6100send.as | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/w6100tel: $(LEVEL1)/wildbits/cmds/w6100tel.as | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 $(MODDIR)/lcdload: $(LEVEL1)/wildbits/cmds/lcdload.as | $(MODDIR)
