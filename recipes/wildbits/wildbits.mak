@@ -94,7 +94,7 @@ CMDS += dmem minted mmap modpatch \
 	proc pmap smap \
 	gfxstatus xtclut drawtest play \
 	shellbg shellbgoff ntptime view utilpak1 fadein fadeout \
-	lutrd black hexed pixview
+	lutrd black hexed pixview iss
 endif
 # sprites moved OUT of CMDS 2026-09-09 (user): it is a hardware probe, so it
 # lives in TESTS_BIN below and reaches the disk as TESTS/sprites only. Its
