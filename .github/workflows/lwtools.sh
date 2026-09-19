@@ -9,9 +9,10 @@
 # on the "key:"
 #
 #
+VERSION=4.25
 mkdir -p lwtools
 cd lwtools
-wget http://www.lwtools.ca/releases//lwtools/lwtools-4.24.tar.gz
-tar xvf lwtools-4.24.tar.gz
-cd lwtools-4.24/
+wget http://www.lwtools.ca/releases//lwtools/lwtools-${VERSION}.tar.gz
+tar xvf lwtools-${VERSION}.tar.gz
+cd lwtools-${VERSION}/
 sudo make install
