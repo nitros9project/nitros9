@@ -81,7 +81,18 @@ IDE_PARTS = i0_pt.dd i1_pt.dd i2_pt.dd i3_pt.dd \
             j0_pt.dd j1_pt.dd j2_pt.dd j3_pt.dd \
             j4_pt.dd j5_pt.dd j6_pt.dd j7_pt.dd
 
-RBF_CORE = rbf.mn rbsuper.dr llide_pt.dr ddi0_pt.dd
+# /DD follows the boot transport: DriveWire drive 0 (ddx0.dd, driver rbdw)
+# for DriveWire builds, the PATA master otherwise (ddi0_pt.dd, llide_pt).
+# A DriveWire board with no PATA drive would otherwise hang on the first
+# /DD access (chd /DD at coldstart, chx /dd/cmds in startup) spinning in
+# the IDE driver.  The IDE partition descriptors /I0-/I7 stay in the boot
+# file either way, dormant until an HD is attached.
+ifeq ($(OS9KERNEL),os9kernel_dw)
+DEFAULT_DD = ddx0.dd
+else
+DEFAULT_DD = ddi0_pt.dd
+endif
+RBF_CORE = rbf.mn rbsuper.dr llide_pt.dr $(DEFAULT_DD)
 SCF      = scf.mn sc6850.dr term_pt.dd nil.dr nil.dd zero.dr zero.dd
 PIPE     = pipeman.mn piper.dr pipe.dd
 DW       = rbdw.dr dwio.sb x0.dd x1.dd x2.dd x3.dd
