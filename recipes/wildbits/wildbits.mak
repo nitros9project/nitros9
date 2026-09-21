@@ -77,9 +77,8 @@ ifeq ($(FUJINET),1)
 LFLAGS += -lfuji
 CMDS_EXTRA += $(FUJINET_CMDS)
 endif
-FM_CMDS = fm hexed pixview
+FM_CMDS = fm 
 ifeq ($(FM),1)
-LFLAGS += -lfm
 CMDS_EXTRA += $(FM_CMDS)
 endif
 CMDS += $(STDCMDS) shell \
@@ -97,7 +96,7 @@ CMDS += dmem minted mmap modpatch \
 	proc pmap smap \
 	gfxstatus xtclut drawtest play \
 	shellbg shellbgoff ntptime view utilpak1 fadein fadeout \
-	lutrd
+	lutrd black hexed pixview iss
 endif
 # sprites moved OUT of CMDS 2026-09-09 (user): it is a hardware probe, so it
 # lives in TESTS_BIN below and reaches the disk as TESTS/sprites only. Its
@@ -122,9 +121,9 @@ TESTS = $(notdir $(filter-out %.asm,$(wildcard $(TESTS_DIR)/*)))
 # Executable hardware probes. Their sources are the .asm files in TESTS_DIR that
 # the TESTS line above filters out; each is assembled into MODDIR by its own rule
 # further down, then copied binary into TESTS on the disk with the execute
-# attribute set. They go NOWHERE else - none of these four is in CMDS.
+# attribute set. They go NOWHERE else - none of these five is in CMDS.
 # Run them as tests/<name>, or chx the execution directory to the folder first.
-TESTS_BIN = sprites math fpu dma
+TESTS_BIN = sprites math fpu dma memtest
 FONT_DIR = $(LEVEL1)/wildbits/sys/fonts
 BACKGROUND_DIR = $(LEVEL1)/wildbits/sys/backgrounds
 FONTS = 800yfont anglefont applefont bannerfont.sb bigbluefont boldfont boxedfont \
@@ -136,7 +135,8 @@ BACKGROUNDS = clutbeach clutgrid clutmeadow clutmetal clutspace clutstone clutst
 	pixmapbeach pixmapgrid pixmapmeadow pixmapmetal pixmapspace pixmapstone \
 	pixmapstone2 pixmapwood pixmappaintspl pixmappaint2 clutpaintspl clutpaint2 \
 	pixmapwizfi pixmapwizfi2 clutwizfi clutwizfi2 testclutbm0 testclutbm1 testclutbm2 \
-	testpixmapbm0 testpixmapbm1 testpixmapbm2
+	testpixmapbm0 testpixmapbm1 testpixmapbm2 clutworldmap clutworldmap2 pixmapworldmap \
+    pixmapworldmap2 clutshipwreck pixmapshipwreck iss2 xtclutnomod
 
 ifeq ($(LEVEL),2)
 SYS_DIR = .sys
@@ -155,7 +155,7 @@ SYS_BIN_FILES =
 endif
 
 ifeq ($(PLATFORM),K2)
-CMDS += w6100eth w6100recv lcdload
+CMDS += w6100eth w6100recv w6100send w6100tel lcdload
 SYS_TEXT_FILES += $(LEVEL1)/wildbits/sys/w6100ipconfig
 endif
 
@@ -270,6 +270,12 @@ $(MODDIR)/w6100eth: $(LEVEL1)/wildbits/cmds/w6100eth.as | $(MODDIR)
 $(MODDIR)/w6100recv: $(LEVEL1)/wildbits/cmds/w6100recv.as | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
+$(MODDIR)/w6100send: $(LEVEL1)/wildbits/cmds/w6100send.as | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/w6100tel: $(LEVEL1)/wildbits/cmds/w6100tel.as | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
 $(MODDIR)/lcdload: $(LEVEL1)/wildbits/cmds/lcdload.as | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
@@ -290,6 +296,9 @@ $(MODDIR)/fpu: $(TESTS_DIR)/fpu.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 $(MODDIR)/dma: $(TESTS_DIR)/dma.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/memtest: $(TESTS_DIR)/memtest.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 $(MODDIR)/pwd: pd.asm | $(MODDIR)

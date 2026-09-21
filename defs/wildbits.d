@@ -155,6 +155,8 @@ SYS_L0_MN           equ       %00000001
 *
 MMU_MEM_CTRL        equ       $FFA0
 MMU_IO_CTRL         equ       $FFA1
+FLASHDIS            equ       %00000100 MMU_IO_CTRL b2: 1 = blocks $40-$9F are RAM (rc16+ cores; see the bits below)
+FLASHDIS.OK         equ       %10000000 MMU_IO_CTRL b7: reads 1 on a core that implements FLASHDIS
 MMU_SLOT_BASE       equ       $FFA8
 MMU_SLOT_0          equ       MMU_SLOT_BASE+0 $0000-$1FFF
 MMU_SLOT_1          equ       MMU_SLOT_BASE+1 $2000-$3FFF
@@ -187,7 +189,7 @@ LUT_BANK_6          equ       $000E
 LUT_BANK_7          equ       $000F
 
 * MMU_IO_CTRL bits
-* $FFA1 has 2 bits:
+* $FFA1 has 3 bits (plus one read-only flag):
 *    FFA1[0] =
 *        1 = Enable internal RAM for segment $FD00-$FDFF.
 *        0 = Disable; RAM/FLASH is accessible.
@@ -198,6 +200,19 @@ LUT_BANK_7          equ       $000F
 * When enabled, the areas supersede RAM/flash, but will be disabled by RESET. When the system resets,
 * those regions revert to RAM/flash. Also at RESET, the contents of RAM retain the old values until the
 * system powers off.
+*
+*    FFA1[2] = FLASHDIS (cores rc16 and later)
+*        1 = MMU blocks $40-$9F are RAM: 768K of the SRAM (chip bytes $08_0000-$13_FFFF) that no
+*            block reached before. The kernel sets this once at boot (krnp2) when the core has it.
+*        0 = $40-$7F is the flash and $80-$9F the expansion select, as always. RESET clears the bit,
+*            so the machine always boots from flash and the FEU trampoline (which runs from flash and
+*            stores $00/$02 here) is unaffected.
+*        After boot NOBODY may store an absolute value to $FFA1: clearing bit 2 pulls 768K of live
+*        RAM out from under the kernel. Read-modify-write (lda MMU_IO_CTRL / ora / sta) only.
+*    FFA1[7] = FLASHDIS.OK, read only
+*        Reads 1 on a core that implements FLASHDIS, 0 on older cores (they read back what was
+*        stored, and nothing stores a 1 there). krnp2 tests it before setting bit 2.
+* $FFA1 is readable: a read returns the register.
 
 ********************************************************************
 * Interrupt definitions
@@ -495,8 +510,15 @@ BORDER_COLOR_R      rmb       1
 BORDER_X_SIZE       rmb       1         X values: 0 - 32 (default: 32)
 BORDER_Y_SIZE       rmb       1         Y values: 0 - 32 (default: 32)
 VKY_RESERVED_02     rmb       1
-VKY_RESERVED_03     rmb       1
+VKY_GFX_MODE        rmb       1         $FFCB (rc14+): b0 HIRES4 = every bitmap plane 640x240 at 4 bits/dot, b3:1 CLUT group
 VKY_RESERVED_04     rmb       1
+* GFX MODE register bits (rc14+ cores; the byte was VKY_RESERVED_03). In HIRES4 a bitmap byte holds two
+* dots, the high nibble on the left, and the 4-bit value indexes the 16-entry CLUT slice GFX_GROUP picks:
+* colour = group*16 + nibble. Same frame RAM and fetch as 320x240x8; sprites, tiles and text are untouched
+* (their dots stay 320 wide, composited as before). A plane can ask for it alone: BM0_HIRES4 in its control byte.
+GFX_HIRES4          equ       %00000001 640x240, two 4-bit dots per byte, all bitmap planes
+GFX_GROUP           equ       %00001110 which 16-colour CLUT slice the nibbles index (0-7)
+VKY_GFX_MODE_REG    equ       $FFCB     the same register by absolute address (fixed I/O: any task can poke it)
 * Valid in graphics mode only
 BACKGROUND_COLOR_B  rmb       1         when in graphic mode, if a pixel is "0" then the background pixel is chosen
 BACKGROUND_COLOR_G  rmb       1
@@ -553,6 +575,8 @@ TyVKY_BM0_CTRL_REG  equ       $F000
 BM0_Ctrl            equ       $01       enable the BM0
 BM0_LUT0            equ       $02       LUT0
 BM0_LUT1            equ       $04       LUT1
+BM0_HIRES4          equ       $10       rc14+: this plane alone in 640x240 4-bit (OR'd with GFX_HIRES4)
+BM0_GROUP           equ       $E0       rc14+: this plane's CLUT slice (0-7) when it is HIRES4
 TyVKY_BM0_START_ADDY_H equ       $F001
 TyVKY_BM0_START_ADDY_M equ       $F002
 TyVKY_BM0_START_ADDY_L equ       $F003

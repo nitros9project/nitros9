@@ -106,7 +106,9 @@ HandleKeyboard@     ldx       V.KeyDrvEPtr,u
                     jsr       6,x                        call AltIRQ routine in keydrv
                     ifgt      Level-1
 * Handle Mouse Timer. When timer wraps to zero, turn it off
-* Mouse does not hide correctly, so park it at right side of screen
+* Clearing MS_MEN is a true hide on v8_rc11 and later cores (the pointer pixel
+* is gated on the enable bit there).  On older cores the enable was ignored by
+* the pixel path, so the cursor stays visible, frozen, until the mouse moves.
 * Check if mouse is already off, if it is, then skip timer code
 * Mouse timer reset is in mousedrv_ps2.asm interrupt procedure
 * Mouse timer resets on every mouse interrupt
@@ -116,9 +118,6 @@ HandleMSTimer       tst       MS_MEN             check if mouse cursor already o
                     inc       V.MSTimer,u                increment mouse auto-hide timer
                     bne       HandleSound        if it is not zero, then skip
                     clr       MS_MEN             if timer flips to 0, turn off mouse cursor
-                    ldd       #640               park mouse at right border
-                    sta       MS_XH              turning off cursor doesn't work
-                    stb       MS_XL              correctly at the moment
                     endc
 * Handle sound.
 HandleSound
@@ -315,7 +314,7 @@ InitCODEC
                     lbsr      SendToCODEC
                     ldd       #%0010001100000001                    R17 - ALC Control 2 
                     lbsr      SendToCODEC
-                    ldd       #%0010101000000011                    R21 - ADC Mux Control   AIN
+                    ldd       #%0010101000011111                    R21 - ADC Mux Control   bit 3 = AIN4 (VS1053), bit 2 = AIN3, bit 1 = AIN2, bit 0 = AIN1
                     lbsr      SendToCODEC
                     ldd       #%0010110000000111                    R22 - Output Mux MX[2:0] = "111" 
                     lbsr      SendToCODEC
@@ -2207,10 +2206,16 @@ clearblock          pshs      cc
                     std       <D.Proc
                     puls      cc,pc
 
-* Block to Address: Convert block# to high 16 bits in D
-* b = block#, a = 0.  d = high 16 bits of address
-* Try to replace with math coprocessor multiply in Vicky?
-Blk2Addr            clra                          clear a, block # is in b
+* Convert an OS-9 8K MMU block number in B to the bus address written to
+* VICKY's bitmap address registers. Return D = address >> 8, the upper
+* 16 bits of that 24-bit address. This does not describe or depend on where
+* the FPGA places the data in the physical SRAM chips.
+* Every block is block * $2000, the two 1 MB windows included: $A0-$BF at
+* $14_0000-$17_FFFF and $D0-$EF at $1A_0000-$1D_FFFF (cores rc15 and later;
+* the rc14 cores put $D0-$EF at $20_0000 after a mis-edited row of the
+* Revision E sheet, which is why an rc14 core needs the rc14 vtio and an
+* rc15 core this one).
+Blk2Addr            clra                          A:B = block number
                     lslb                          multiply block# by $20 to get top 16 bits x2
                     rola                          of physical address (ex $3F*$20 = $07E0)
                     lslb                          x4
