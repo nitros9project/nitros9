@@ -106,6 +106,7 @@ BASIC09_BIN = $(LANGUAGES)/basic09/basic09_wildbits
 RUNB_BIN = $(LANGUAGES)/basic09/runb_6809
 RUNB_SHA256 = 20ff5a997ec0e55f6aec1e37d92be49062d6c35a66e4b5404d9e680fc0783bbb
 STARTUP = $(LEVEL2)/wildbits/startup
+WIZFITOOL = $(LEVEL2)/wildbits/cmds/wizfitool.b09
 FEU_STARTUP = feu.startup
 SCRIPTS_DIR = $(LEVEL1)/wildbits/scripts
 TESTS_DIR = $(LEVEL1)/wildbits/tests
@@ -205,7 +206,7 @@ ifeq ($(LEVEL),2)
 endif
 
 ifeq ($(LEVEL),2)
-$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(addprefix $(MODDIR)/,$(CMDS)) $(addprefix $(MODDIR)/,$(TESTS_BIN)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS)
+$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(addprefix $(MODDIR)/,$(CMDS)) $(addprefix $(MODDIR)/,$(TESTS_BIN)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS) $(WIZFITOOL)
 else
 $(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(addprefix $(MODDIR)/,$(TESTS_BIN)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS)
 endif
@@ -224,6 +225,10 @@ ifneq ($(filter runb,$(CMDS)),)
 endif
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
+ifeq ($(LEVEL),2)
+	$(CPL) $(WIZFITOOL) $@,CMDS/wizfitool.b09
+	$(OS9ATTR_TEXT) $@,CMDS/wizfitool.b09
+endif
 	$(CPL) $(SYS_TEXT_FILES) $@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYS_TEXT_FILES)),$@,SYS/$(file))
 ifneq ($(strip $(SYS_BIN_FILES)),)
