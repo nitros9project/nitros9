@@ -90,6 +90,14 @@ CMDS += vs
 # dmaxfer: the DMA engine transfer/logic-op test, in CMDS on level 2 as well as TESTS (user 2026-09-22)
 CMDS += dmaxfer
 
+# These commands live in the Level 2 source tree. Explicit prerequisites also
+# prevent an older Level 1 object from satisfying an incremental build.
+$(MODDIR)/view: $(L2PCD)/view.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(OBJDIR)/play.o: $(L2PCD)/play.as | $(OBJDIR)
+	$(ASM) $(AFLAGS) $< $(ASOUT)$@
+
 UTILPAK1_MODS = attr copy date del deiniz dir display list makdir mdir \
 	merge mfree procs rename tmode unlink
 CMDS += dmem minted mmap modpatch \
