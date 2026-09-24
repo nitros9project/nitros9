@@ -678,7 +678,7 @@ SetLook             tst       DW.PollSt,x
                     decb
                     beq       SetStall
                     pshs      b
-                    ldx       #1
+                    ldx       #2                  one timed tick; X=1 only yields
                     os9       F$Sleep
                     puls      b
                     ldx       <D.DWStat
