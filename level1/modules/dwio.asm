@@ -48,7 +48,7 @@ PollIdle            fcb       60
                     ifne      wildbits
 * Tick-poll state machine (2026-09-07, wb/DriveWireCompatible): the handler never waits for the server.
 POLL_WAIT           equ       240                 LSR polls per owed byte (~0.5 ms; the bytes of one response are 43 us apart)
-POLL_STALL          equ       4                   firings a response may stay owed before the line is reset
+POLL_STALL          equ       4                   empty IRQ firings before backing off (reply remains owed)
 POLL_HOLD           equ       3                   firings skipped after a reset (server backoff)
 POLL_DRAIN          equ       2000                LSR polls the reset drains (~4 ms)
 POLL_MAXGRAB        equ       16                  bytes per multi-read: the RX FIFO holds them until the next firing
@@ -609,8 +609,8 @@ PgDone              andcc     #^Carry
                     puls      y,u,pc
 
 * PollStep - a response is owed: collect it if it is here, process it, and (A non-zero) send the
-* next OP_SERREAD.  A response that is not complete stays owed; after POLL_STALL firings the line
-* is reset and the poll backs off.
+* next OP_SERREAD. Keep an incomplete response owed even during IRQ backoff:
+* forgetting it lets late poll bytes become the next sector header/data.
 PollStep            pshs      a
                     ldx       <D.DWStat
                     lbsr      PollGet
@@ -630,11 +630,15 @@ PollNext            ldx       <D.DWStat
 PollX               puls      a,pc
 PollDoneM2          lbsr      PollDoneM
                     bra       PollNext
-PollOwed            inc       DW.PollTk,x
+PollOwed            tst       ,s                  A=0: Settle owns its timed wait budget
+                    beq       PollX
+                    inc       DW.PollTk,x
                     lda       DW.PollTk,x
                     cmpa      #POLL_STALL
                     blo       PollX
-                    lbsr      PollPurge           the server stalled: reset the line, back off
+                    clr       DW.PollTk,x
+                    lda       #POLL_HOLD
+                    sta       DW.PollHold,x       back off WITHOUT discarding the owed reply
                     bra       PollX
 
 * PollPurge - the RX FIFO reset strobe, a short drain, no response owed, POLL_HOLD firings of quiet.

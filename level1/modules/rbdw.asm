@@ -268,7 +268,9 @@ Read2
 * (UNKNOWN OPCODE / garbage-LSN / CRC-fail storms in the DW4 log).
 * Send a deliberately-wrong checksum, collect and discard the status
 * byte, then drain and retry this sector - both parsers stay framed.
-                    bcs       ReadAbort
+* Z reports completeness independently of the sticky UART error in C.
+* A complete sector can be checked by the server even after a UART warning;
+* send its ACTUAL checksum. FFFF is only for an incomplete sector (no valid sum).
                     bne       ReadAbort
                     else
                     bcs       ReadEr1
