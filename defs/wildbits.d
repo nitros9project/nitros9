@@ -1099,4 +1099,24 @@ SW_BOOT_MODE1       equ       %00000010
 SW_BOOT_MODE0       equ       %00000001
 
 
-                    ENDC
+* K2 RP2040 supervisor mailbox. Needs 16 registers which we find in two groups.
+* CPU counts are big endian; payloads LE.
+RP.Control equ $FE78
+RP.Status equ $FE79
+RP.Command equ $FE7A
+RP.Remote equ $FE7B
+RP.TxCount_H equ $FE7C
+RP.TxCount_L equ $FE7D
+RP.RxCount_H equ $FE7E
+RP.RxCount_L equ $FE7F
+RP.TxData equ $FE88
+RP.RxData equ $FE89
+RP.ADC0 equ $FE8A
+RP.ADC1 equ $FE8B
+RP.ADC2 equ $FE8C
+RP.ADC3 equ $FE8D
+RP.Error equ $FE8E
+RP.FwMajor equ $FE8F
+
+                    endc
+
