@@ -84,6 +84,22 @@ CMDS += $(STDCMDS) shell \
 inetd telnet dw httpd $(BASIC09) $(BF) \
 	$(CMDS_EXTRA) wildspeed wmset
 
+# K2 supervisor mailbox: shared Level 1 sources for both OS levels (rc18+).
+ifeq ($(PLATFORM),k2)
+SCF_EXTRA += rpdrv rp
+CMDS += fpga
+
+$(MODDIR)/rpdrv: $(L1PMD)/rpdrv.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/rp: $(L1PMD)/rp.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/fpga: $(L1PCD)/fpga.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+endif # K2-only RP2040 modules and command
+
 ifeq ($(LEVEL),2)
 # vs: VS1053 test command (wb/vs1053); on its own line so it never collides with edits to the CMDS list above
 CMDS += vs
@@ -110,6 +126,7 @@ WIZFITOOL = $(LEVEL2)/wildbits/cmds/wizfitool.b09
 FEU_STARTUP = feu.startup
 SCRIPTS_DIR = $(LEVEL1)/wildbits/scripts
 TESTS_DIR = $(LEVEL1)/wildbits/tests
+
 SCRIPTS = $(notdir $(wildcard $(SCRIPTS_DIR)/*))
 # TESTS_DIR holds two kinds of file and each takes a different route to the disk.
 # The BASIC09 scripts are copied verbatim as TEXT by the TESTS rule below. The
