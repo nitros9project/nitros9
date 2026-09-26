@@ -15,7 +15,7 @@ fpga flash 3 /dd/cores/core.bin.gz
 fpga abort
 ```
 
-`status` shows local status, last error, firmware major and remote status in hexadecimal, followed by the recorded actual boot context/source/path. The actual boot source may differ from the saved default after fallback. `log` prints the supervisor's retained boot messages. `list` lists context 1 by default; an explicit argument selects physical context 1 through 4.
+`status` prints one line in words - online/offline, idle/busy, reply waiting, no error or the error code in hex, the firmware major in decimal, supervisor ready/not ready and upload in progress - followed by the recorded actual boot context, source name and path (for example "Booted from: context 3, Internal flash, v8_rc18.bin.gz"). The actual boot source may differ from the saved default after fallback. `log` prints the supervisor's retained boot messages. `list` lists context 1 by default; an explicit argument selects physical context 1 through 4.
 
 The list names each source: Automatic (SD, then flash), SD card, Internal flash, or GOLDEN recovery. Labels show [saved boot setting] and [last booted by RP2040] where applicable. File paths and decimal byte sizes appear on the following indented line; Automatic is a policy and has no file size. The booted label reflects the supervisor boot record, which a later JTAG load may not update. Manager-SD paths are not OS-9 paths.
 
