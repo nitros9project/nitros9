@@ -1,4 +1,4 @@
-* Native K2 supervisor client: status, log, list, program, flash, abort.
+* Native K2 supervisor client: status, log, list, program, flash, abort, fwipe, pwipe.
 * /rp wire records: command,length,payload -> length,payload.
                     ifp1
                     use defsfile
@@ -91,9 +91,34 @@ TryFlash            leay FlashWord,pcr
                     lbra ProgramArgs
 TryAbort            leay AbortWord,pcr
                     lbsr Match
-                    lbcs Usage
+                    lbcs TryFwipe
                     lda #4
                     sta Action,u
+                    lbra Tail
+* fwipe N / pwipe N (2026-09-26): erase context N's replaceable slot with no image to follow.
+TryFwipe            leay FwipeWord,pcr
+                    lbsr Match
+                    lbcs TryPwipe
+                    lda #2
+                    lbra WipeArgs
+TryPwipe            leay PwipeWord,pcr
+                    lbsr Match
+                    lbcs Usage
+                    lda #3
+WipeArgs            sta Target,u
+                    lda #5
+                    sta Action,u
+                    lda ,x
+                    cmpa #$20
+                    lbne Usage
+                    lbsr Spaces
+                    lda ,x+
+                    cmpa #'1
+                    lblo Usage
+                    cmpa #'4
+                    lbhi Usage
+                    suba #'1
+                    sta Context,u
                     lbra Tail
 ProgramArgs         sta Target,u
                     lda #3
@@ -212,7 +237,9 @@ Parsed              leax Clock,u
                     lbeq List
                     deca
                     lbeq Program
-                    lbra AbortUpload
+                    deca
+                    lbeq AbortUpload
+                    lbra Wipe
 Usage               leay Line,u
                     leax Help,pcr
                     lbsr Text
@@ -895,6 +922,66 @@ AbortUpload         lda #5
                     lbsr Text
                     lbsr Print
                     lbra Done
+* Wipe: the supervisor has no erase request. Internal flash is erased by IMAGE_BEGIN itself, before the
+* reply (rpdrv waits 7200 ticks for it), so fwipe is IMAGE_BEGIN for the flash slot with a minimal
+* gzip declaration and no data, then IMAGE_ABORT: the slot stays erased, nothing is stored. The SD card
+* has no such path: an SD IMAGE_BEGIN opens a temporary file and the destination is only replaced at
+* IMAGE_END, so pwipe would leave the image untouched; it says so and changes nothing.
+Wipe                lda Target,u
+                    cmpa #2
+                    lbne NoPwipe
+                    lda #1
+                    clrb
+                    lbsr ImageExchange        PING barrier
+                    lbcs Exit
+                    lda Target,u
+                    sta Tx+2,u
+                    lda Context,u
+                    sta Tx+3,u
+                    ldd #18                   the smallest gzip the firmware accepts, little-endian
+                    stb Tx+4,u
+                    clr Tx+5,u
+                    clr Tx+6,u
+                    clr Tx+7,u
+                    clr Tx+8,u                CRC 0: no data will follow
+                    clr Tx+9,u
+                    clr Tx+10,u
+                    clr Tx+11,u
+                    leax WipeName,pcr
+                    ldb ,x+
+                    stb Tx+12,u
+                    leay Tx+13,u
+                    lbsr CopyBytes
+                    lda #2
+                    ldb WipeName,pcr
+                    addb #11
+                    lbsr ImageExchange        IMAGE_BEGIN: the slot is erased before this returns
+                    lbcs Exit
+                    inc UploadStarted,u
+                    tst RxLength,u
+                    lbne BadReply
+                    lda #5
+                    clrb
+                    lbsr ImageExchange        IMAGE_ABORT: nothing stored
+                    lbcs Exit
+                    clr UploadStarted,u
+                    leay Line,u
+                    leax WipedTxt,pcr
+                    lbsr Text
+                    lda Context,u
+                    inca
+                    adda #'0
+                    sta ,y+
+                    leax WipedTail,pcr
+                    lbsr Text
+                    lbsr Print
+                    lbra Done
+NoPwipe             leay Line,u
+                    leax NoPwipeTxt,pcr
+                    lbsr Text
+                    lbsr Print
+                    ldb #E$BMode
+                    lbra Exit
 BadImage            leay Line,u
                     leax ImageError,pcr
                     lbsr Text
@@ -1045,6 +1132,14 @@ Changed             fcc /Image changed or truncated during transfer; not committ
                     fcb 0
 Aborted             fcc /Supervisor upload aborted./
                     fcb 0
+WipeName            fcb 7
+                    fcc /wipe.gz/
+WipedTxt            fcc /Internal flash slot for context /
+                    fcb 0
+WipedTail           fcc / erased; no image stored. Selection and running core unchanged./
+                    fcb 0
+NoPwipeTxt          fcc /pwipe: firmware 1.x has no SD delete request; an SD image is only replaced at IMAGE_END. Nothing changed./
+                    fcb 0
 
 Device              fcc "/rp"
                     fcb C$CR
@@ -1060,7 +1155,11 @@ FlashWord           fcc /flash/
                     fcb 0
 AbortWord           fcc /abort/
                     fcb 0
-Help                fcc /Usage: fpga status|log|list [1..4]|program N file.bin|flash N file.gz|abort/
+FwipeWord           fcc /fwipe/
+                    fcb 0
+PwipeWord           fcc /pwipe/
+                    fcb 0
+Help                fcc /Usage: fpga status|log|list [1..4]|program N file.bin|flash N file.gz|abort|fwipe N|pwipe N/
                     fcb 0
 StatusLabel         fcc /Mailbox: /
                     fcb 0
