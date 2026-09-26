@@ -273,23 +273,53 @@ Status              leay Line,u
                     lbcs StatusFail
                     stx DriverInfo,u
                     sty DriverInfo+2,u
-                    tfr x,d
                     puls y
-                    pshs b
+* Status byte: bit 0 online, bit 3 busy, bit 6 reply waiting, bit 7 error latched.
+                    leax OnlineTxt,pcr
+                    lda DriverInfo,u
+                    bita #1
+                    bne StatOnline
+                    leax OfflineTxt,pcr
+StatOnline          lbsr Text
+                    leax IdleTxt,pcr
+                    lda DriverInfo,u
+                    bita #8
+                    beq StatBusy
+                    leax BusyTxt,pcr
+StatBusy            lbsr Text
+                    lda DriverInfo,u
+                    bita #$40
+                    beq StatError
+                    leax ReplyTxt,pcr
+                    lbsr Text
+StatError           lda DriverInfo+1,u
+                    beq StatNoError
+                    leax ErrorTxt,pcr
+                    lbsr Text
+                    lda DriverInfo+1,u
                     lbsr Hex
-                    lda #' 
-                    sta ,y+
-                    puls a
-                    lbsr Hex
-                    lda #' 
-                    sta ,y+
+                    lbra StatFirmware
+StatNoError         leax NoErrorTxt,pcr
+                    lbsr Text
+StatFirmware        leax FirmwareTxt,pcr
+                    lbsr Text
                     lda DriverInfo+2,u
-                    lbsr Hex
-                    lda #' 
-                    sta ,y+
+                    lbsr DecByte
+* Remote status byte from the supervisor: bit 0 ready, bits 1 and 3 upload in progress.
+                    leax SupervisorTxt,pcr
+                    lbsr Text
+                    leax ReadyTxt,pcr
                     lda DriverInfo+3,u
-                    lbsr Hex
-                    lbsr Print
+                    bita #1
+                    bne StatReady
+                    leax NotReadyTxt,pcr
+StatReady           lbsr Text
+                    lda DriverInfo+3,u
+                    bita #$0A
+                    beq StatPrint1
+                    leax UploadTxt,pcr
+                    lbsr Text
+StatPrint1          lbsr Print
                     lda #$0E
                     ldb #4
                     lbsr Request
@@ -306,16 +336,19 @@ Status              leay Line,u
                     lbsr Text
                     lda Rx+4,u
                     lbeq NoBoot
+                    leax ContextTxt,pcr
+                    lbsr Text
                     lda Rx+5,u
                     inca
                     adda #'0
                     sta ,y+
-                    lda #' 
-                    sta ,y+
+                    leax CommaTxt,pcr
+                    lbsr Text
                     lda Rx+6,u
-                    lbsr Hex
-                    lda #' 
-                    sta ,y+
+                    lbsr SourceName
+                    lbsr Text
+                    leax CommaTxt,pcr
+                    lbsr Text
                     leax Rx+8,u
                     ldb Rx+7,u
                     lbsr Bytes
@@ -429,20 +462,8 @@ ListNext            ldd EntryIndex,u
 * Human-readable catalog: source and roles, then path and decimal byte count.
 CatalogLine         leay Line,u
                     lda Rx+10,u
-                    leax AutoLabel,pcr
-                    tsta
-                    beq CatSource
-                    leax SDLabel,pcr
-                    cmpa #1
-                    beq CatSource
-                    leax FlashLabel,pcr
-                    cmpa #2
-                    beq CatSource
-                    leax GoldenLabel,pcr
-                    cmpa #3
-                    beq CatSource
-                    leax UnknownSource,pcr
-CatSource           lbsr Text
+                    lbsr SourceName
+                    lbsr Text
                     lda Rx+13,u
                     bita #1
                     beq CatBooted
@@ -593,6 +614,43 @@ PutByte             sta ,y+
                     decb
                     lbne ByteNext
                     rts
+* SourceName: A = supervisor boot-source code -> X = its label.
+SourceName          leax AutoLabel,pcr
+                    tsta
+                    beq SourceDone
+                    leax SDLabel,pcr
+                    cmpa #1
+                    beq SourceDone
+                    leax FlashLabel,pcr
+                    cmpa #2
+                    beq SourceDone
+                    leax GoldenLabel,pcr
+                    cmpa #3
+                    beq SourceDone
+                    leax UnknownSource,pcr
+SourceDone          rts
+* DecByte: A = 0..255 -> decimal digits at Y, no leading zeros. Uses DecDigits as the emitted-digit flag.
+DecByte             clr DecDigits,u
+                    ldb #100
+                    lbsr DecDigit
+                    ldb #10
+                    lbsr DecDigit
+                    adda #'0
+                    sta ,y+
+                    rts
+DecDigit            pshs b
+                    ldb #'0-1
+DecLoop             incb
+                    suba ,s
+                    bcc DecLoop
+                    adda ,s
+                    cmpb #'0
+                    bne DecEmit
+                    tst DecDigits,u
+                    beq DecSkip
+DecEmit             stb ,y+
+                    inc DecDigits,u
+DecSkip             puls b,pc
 Hex                 pshs a
                     lsra
                     lsra
@@ -1004,9 +1062,37 @@ AbortWord           fcc /abort/
                     fcb 0
 Help                fcc /Usage: fpga status|log|list [1..4]|program N file.bin|flash N file.gz|abort/
                     fcb 0
-StatusLabel         fcc /Mailbox status error firmware remote (hex): /
+StatusLabel         fcc /Mailbox: /
                     fcb 0
-BootLabel           fcc /Actual boot context source path: /
+OnlineTxt           fcc /online/
+                    fcb 0
+OfflineTxt          fcc /offline/
+                    fcb 0
+IdleTxt             fcc /, idle/
+                    fcb 0
+BusyTxt             fcc /, busy/
+                    fcb 0
+ReplyTxt            fcc /, reply waiting/
+                    fcb 0
+NoErrorTxt          fcc /, no error/
+                    fcb 0
+ErrorTxt            fcc /, error $/
+                    fcb 0
+FirmwareTxt         fcc /, firmware /
+                    fcb 0
+SupervisorTxt       fcc /, supervisor /
+                    fcb 0
+ReadyTxt            fcc /ready/
+                    fcb 0
+NotReadyTxt         fcc /not ready/
+                    fcb 0
+UploadTxt           fcc /, upload in progress/
+                    fcb 0
+BootLabel           fcc /Booted from: /
+                    fcb 0
+ContextTxt          fcc /context /
+                    fcb 0
+CommaTxt            fcc /, /
                     fcb 0
 Unknown             fcc /not recorded/
                     fcb 0
