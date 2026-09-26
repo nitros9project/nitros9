@@ -27,6 +27,8 @@ Both commands read the local file once to compute standard CRC32, rewind, and st
 
 Ctrl-C/Ctrl-E cancellation stops the transfer and attempts IMAGE_ABORT when the mailbox is idle. An ambiguous append is never blindly resent. If a timed-out command remains busy, no abort is queued behind it; after the mailbox becomes idle, `fpga abort` explicitly cancels an unfinished upload before another attempt. It does not undo a completed flash erase or restore a replaced image.
 
+`fwipe N` erases the replaceable internal-flash slot for physical context N (1 through 4) without storing an image. The supervisor has no erase request; the command sends a flash-target IMAGE_BEGIN that declares a minimal gzip (18 bytes, CRC 0), which erases the slot before it replies, then IMAGE_ABORT so nothing is stored. The slot is left invalid until the next `flash N`. `pwipe N` is accepted for symmetry but changes nothing: an SD-target IMAGE_BEGIN only opens a temporary file and the destination is replaced at IMAGE_END, so firmware 1.x offers no way to delete an SD image from OS-9; the command says so and exits with an error.
+
 Changing saved selection, booting a core, downloading images and firmware updating are not CLI options yet.
 
 ## Driver API
