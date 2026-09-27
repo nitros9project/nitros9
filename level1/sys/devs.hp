@@ -1,3 +1,5 @@
 @DEVS
-Syntax: Devs
+Syntax: Devs [<opts>]
 Usage : Display IOMan's device table entries
+Opts  :
+  -a = also list every device descriptor in memory
