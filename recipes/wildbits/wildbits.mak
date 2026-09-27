@@ -88,7 +88,9 @@ CMDS += $(STDCMDS) shell \
 inetd telnet dw httpd $(BASIC09) $(BF) \
 	$(CMDS_EXTRA) wildspeed wmset
 
-# K2 supervisor mailbox: shared Level 1 sources for both OS levels (rc18+).
+# K2 supervisor mailbox: shared Level 1 sources (rc18+). RPDrv + rp are in every K2 bootfile: the FEU's
+# (recipes/wildbits/feu/makefile) and, through SCF_EXTRA, the Level 1 and Level 2 disks' (2026-10-10, Roger:
+# "rpdrv and rp needs to be in both l1 and l2 bootfiles"; l2win's L2BOOT_EXTRA filters out the duplicate).
 ifeq ($(PLATFORM),k2)
 SCF_EXTRA += rpdrv rp
 CMDS += fpga
