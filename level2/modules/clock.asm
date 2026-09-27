@@ -169,7 +169,10 @@ DoPollLp            jsr       [>D.Poll] call poll routine
                     bcs       DoPollDn  no device found, done polling
                     incb                at least one device was serviced
                     bra       DoPollLp  check for more
-DoPollDn            tstb                any device serviced?
+* The last poll left carry set; B=0 must keep it set and B>0 must clear
+* it (tstb does not touch carry), or the kernel treats a serviced IRQ as
+* unclaimed and masks interrupts in the process it interrupted.
+DoPollDn            cmpb      #1        carry set only if nothing was serviced
                     puls      b,pc      return; carry clear if serviced
 
 *
