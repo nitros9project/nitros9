@@ -102,6 +102,17 @@ WatchCtl            EQU       IO.Base+$CA hardware vector watchpoint control
 PTIDEBase           EQU       IO.Base+$00 PATA base address
 
 *
+* Battery-backed RTC — DS12885 in Motorola mode (via GAL at $FF32-$FF33)
+*
+* MC146818-register-compatible.  Index/data pair: write the register
+* number to RTC.Idx, then read or write the value at RTC.Dat.  Each
+* access is two steps and must not be interrupted (mask IRQs around it).
+* 14 clock/control registers plus 114 bytes of NVRAM at $0E-$7F.
+*
+RTC.Idx             EQU       IO.Base+$32 register-select (index) port
+RTC.Dat             EQU       IO.Base+$33 data port
+
+*
 * Boot
 *
                   IFEQ    Level-1

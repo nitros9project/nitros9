@@ -96,7 +96,7 @@ DW_EXTRA = ddx0.dd scdwv.dr term_scdwv.dt n_scdwv.dd \
 KERNEL = krn
 
 ifeq ($(LEVEL),2)
-CLOCK    = clock clock2_soft
+CLOCK    = clock clock2_ds12885
 RAMDISK  = rammer.dr r0.dd
 SHELLBOOT = shell
 # OS9Boot: everything essential to reach the shell.  krnp3_perr installs
@@ -105,7 +105,7 @@ BOOTFILE = krnp2 krnp3_perr init ioman $(RBF_CORE) $(IDE_PARTS) $(SCF) \
            $(CLOCK) $(PIPE) $(RAMDISK) $(DW) $(SYSGO) $(SHELLBOOT) \
            $(BOOTMODS_EXTRA)
 else
-CLOCK    = clock clock2_soft
+CLOCK    = clock clock2_ds12885
 SHELLBOOT = shell_21
 BOOTFILE = ioman $(SYSGO) $(CLOCK) $(SCF) $(RBF_CORE) $(IDE_PARTS) \
            $(DW) $(PIPE) $(SHELLBOOT) $(BOOTMODS_EXTRA)
