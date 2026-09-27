@@ -75,11 +75,16 @@ DISTROVER  = $(DISTRONAME)_$(NITROS9VER)_$(RECIPE)
 # Module groups (bare names, built into $(MODDIR))
 # ---------------------------------------------------------------------------
 
-# PATA IDE partition descriptors: master /I0-/I7, slave /J0-/J7
+# PATA IDE partition descriptors: master /I0-/I7 are always present; the
+# slave /J0-/J7 descriptors are wired in only on the mega images (MEGA=1,
+# set in mega.mak).  Slave IDE is untested on hardware, so the base images
+# leave the eight slave descriptors out of the bootfile.
 IDE_PARTS = i0_pt.dd i1_pt.dd i2_pt.dd i3_pt.dd \
-            i4_pt.dd i5_pt.dd i6_pt.dd i7_pt.dd \
-            j0_pt.dd j1_pt.dd j2_pt.dd j3_pt.dd \
-            j4_pt.dd j5_pt.dd j6_pt.dd j7_pt.dd
+            i4_pt.dd i5_pt.dd i6_pt.dd i7_pt.dd
+ifeq ($(MEGA),1)
+IDE_PARTS += j0_pt.dd j1_pt.dd j2_pt.dd j3_pt.dd \
+             j4_pt.dd j5_pt.dd j6_pt.dd j7_pt.dd
+endif
 
 RBF_CORE = rbf.mn rbsuper.dr llide_pt.dr ddi0_pt.dd
 SCF      = scf.mn sc6850.dr term_pt.dd nil.dr nil.dd zero.dr zero.dd
