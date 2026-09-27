@@ -10,6 +10,7 @@ source tree.
 | `dis6809.py` | Disassembles 6809 machine code for reverse-engineering work |
 | `os9dis.py` | Disassembles OS-9 modules and data structures |
 | `fcb2bin.py` | Converts assembly `fcb` byte declarations to binary data |
+| `mkvidgfx.py` | Generates the committed data tables (`wgfxdat.asm`, `gemtestdat.asm`) for the Pico-Thing video demos `wgfx` and `gemtest`; `--check` reports stale tables |
 | `debug/list2crc.pl` | Converts an `lwasm` listing into CRC-named listing files |
 | `debug/os9.gdb` | Defines GDB helpers that consume CRC-named listings |
 
