@@ -278,9 +278,21 @@ modes, blits, etc.) without breaking GFX2. Each is framed with **zero**
 parameters today; giving one parameters is additive, since no existing count
 moves.
 
-`1B 27  1B 28  1B 37  1B 38  1B 3B  1B 3E  1B 4C  1B 4D  1B 55`
+`1B 28  1B 37  1B 38  1B 3B  1B 3E  1B 4C  1B 4D  1B 55`
 
-(`1B 26` was on this list; it is now `DWShow`.)
+(`1B 26` was on this list; it is now `DWShow`. `1B 27` is now `Tone`.)
+Allocate new commands from the low end, `1B 28` next.
+
+## Sound
+
+| ESC | Name | Params (bytes) | Video-Pico action |
+|-----|------|----------------|--------------------|
+| `1B 27` | Tone | 4: pitch(2), duration, volume | **Pico-Thing addition:** play a square-wave note on the speaker output (GP40, the same one the `07` bell uses). The parameters are the CoCo 3 `SS.Tone` values: `pitch` 1–4095 is CoCo 3 relative pitch, big-endian, sounding at 1789772.5 / (16 × (4096 − pitch)) Hz as on a 1.79 MHz CoCo 3 (4000 ≈ 1165 Hz); `duration` is in 1/60 s ticks, and 0 stops any note now; `volume` is 0–63 (0 silent, higher values clamped). A pitch outside 1–4095, or one above 20 kHz, is silent. The note starts at once, replaces any note or bell already sounding, and does not hold up the byte stream: there is one voice and no queue. |
+
+The window driver answers `SS.Tone` with this command, refusing a pitch
+outside 1–4095 and doing nothing at volume 0 as the CoCo 3 sound driver does,
+and returns when the note has finished, so a BASIC09 program's notes
+(`RUN GFX2("Tone",pitch,duration,volume)`) play one after another.
 
 ---
 
