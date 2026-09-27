@@ -28,8 +28,14 @@ make -C recipes/coco/dw
 make -C recipes/coco3/floppy
 make -C recipes/coco3/dw
 make -C recipes/picothing/l1
+make -C recipes/picothing/l1_6309
 make -C recipes/picothing/l1dw
+make -C recipes/picothing/l1dw_6309
 make -C recipes/picothing/l2
+make -C recipes/picothing/l2_6309
 make -C recipes/picothing/l2dw
+make -C recipes/picothing/l2dw_6309
 make -C recipes/picothing/l2_mega
+make -C recipes/picothing/l2_mega_6309
 make -C recipes/picothing/l2dw_mega
+make -C recipes/picothing/l2dw_mega_6309

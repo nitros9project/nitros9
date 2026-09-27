@@ -9,6 +9,10 @@
 # Unlike the CoCo 3 and Wildbits mega images this recipe deliberately leaves
 # out Forth, the Level 2 BBS, and the Infocom interpreter/stories.
 
+# Mark this as a mega build so the base recipe wires in extras that only
+# fit on the expanded volume (the /J0-/J7 slave IDE descriptors).
+MEGA = 1
+
 # 4 MB solid volume: 16384 * 256-byte sectors.  Replaces the 720K DS80
 # floppy geometry that the base recipe formats.
 OS9FORMAT_CMD = os9 format -e -l16384
