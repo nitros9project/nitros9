@@ -92,7 +92,15 @@ STACK_SIZE          equ       256                 ; reserved stack size
                     ifeq      Level-1
 buffer              rmb       (20*1024-VAR_SIZE)
                     else
+                    ifne      picothing
+* The Pico-Thing maps the kernel's fixed $E000 window into every process,
+* leaving $0000-$DFFF (56K) for code and data: a 54K buffer plus the code
+* does not fit and the fork fails with E$MemFul.  The buffer is only the
+* default - minted sizes its edit space from the memory it is given.
+buffer              rmb       (48*1024-VAR_SIZE)
+                    else
 buffer              rmb       (54*1024-VAR_SIZE)
+                    endc
                     endc
 
 
