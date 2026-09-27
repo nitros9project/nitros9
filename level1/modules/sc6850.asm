@@ -732,14 +732,26 @@ SendSig             pshs      a                   save Rx data
                     os9       F$Send
                     puls      a                   recover Rx data
                     stb       <SigSent            set signal sent flag
+                  IFNE    picothing
+* The signal consumes the key: buffering it too would leave, say, the
+* Ctrl-C that killed a program at the start of the next command line.
+                    lbra      SgnlRxD             skip the save; no data-ready signal
+                  ELSE
                     bra       SavRxDat            go save Rx data...
+                  ENDC
 
 Chk.PChr            cmpa      <V.PCHR             pause?
                     bne       Chk.Flow            no, go on...
                     ldx       <V.DEV2             attached device defined?
                     beq       SavRxDat            no, go save Rx data...
                     sta       V.PAUS,x            yes, pause attached device
+                  IFNE    picothing
+* The pause consumes the key: buffering it too would hand the program a
+* stray Ctrl-W once output resumes.
+                    lbra      ChkTrDCD            skip the save; no data-ready signal
+                  ELSE
                     bra       SavRxDat            go save Rx data...
+                  ENDC
 
 Chk.Flow            equ       *
                     ifne      H6309
