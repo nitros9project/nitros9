@@ -724,10 +724,15 @@ Program             leax ProgramSignal,pcr
                     lda Target,u
                     cmpa #2
                     lbeq CheckGzipSize
+* 2026-09-26 (user): a raw image may carry up to 256 padding bytes past the 9,730,652-byte bitstream - extra
+* configuration clocks for the FPGA's startup phases after the last real word (a slave-mode load that stops
+* clocking at the last byte can leave DONE high but the outputs tri-stated). $947A5C <= size <= $947B5C.
                     cmpx #$0094
                     lbne BadImage
                     cmpy #$7A5C
-                    lbne BadImage
+                    lblo BadImage
+                    cmpy #$7B5C
+                    lbhi BadImage
                     lbra SizeOK
 CheckGzipSize       cmpx #$0020
                     lbhi BadImage
@@ -803,9 +808,13 @@ ScanDone            lbsr ExactSize
                     lbcs Exit
                     cmpy #4
                     lbne BadImage
-                    ldd Tx+2,u
-                    cmpd #$5C7A
-                    lbne BadImage
+* the trailer's ISIZE is little-endian: $947A5C..$947B5C accepted (the padded raw image, see above)
+                    lda Tx+3,u
+                    ldb Tx+2,u
+                    cmpd #$7A5C
+                    lblo BadImage
+                    cmpd #$7B5C
+                    lbhi BadImage
                     ldd Tx+4,u
                     cmpd #$9400
                     lbne BadImage
@@ -1126,7 +1135,7 @@ Accepted            fcc / bytes/
                     fcb 0
 Programmed          fcc /Image stored; size and CRC verified. Selection and running core unchanged./
                     fcb 0
-ImageError          fcc /Invalid image: SD needs a 9730652-byte .bin; flash needs .gz <=2 MiB./
+ImageError          fcc /Invalid image: SD needs a 9730652(+<=256)-byte .bin; flash needs .gz <=2 MiB./
                     fcb 0
 Changed             fcc /Image changed or truncated during transfer; not committed./
                     fcb 0
