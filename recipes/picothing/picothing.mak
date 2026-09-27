@@ -205,6 +205,14 @@ $(MODDIR)/rbsuper.dr: rbsuper.asm | $(MODDIR)
 $(MODDIR)/llide_pt.dr: llide.asm | $(MODDIR)
 	$(AS) $(AFLAGS) -DDrvCount=16 $(ASOUT)$@ $<
 
+# Console terminal descriptor: the shared TNum-parameterized sc6850
+# descriptor.  No TNum gives /Term; HwBASE is the console ACIA ($FFC4);
+# Pauses=0 keeps the no-end-of-page-pause behaviour.  A second port is a
+# one-line rule away: -DTNum=0 for /T0 (this same $FFC4), or -DTNum=1
+# with -DHwBASE=0xFFC6 for /T1 on the auxiliary ACIA.
+$(MODDIR)/term_pt.dd: term_sc6850.asm | $(MODDIR)
+	$(AS) $(AFLAGS) -DHwBASE=0xFFC4 -DPauses=0 $< $(ASOUT)$@
+
 # PATA IDE descriptors: DD = default drive, I0-I7 = master partitions
 # (SOFF1 steps by $20), J0-J7 = slave partitions (DRVID=1).
 $(MODDIR)/ddi0_pt.dd: ptidedesc.asm | $(MODDIR)
