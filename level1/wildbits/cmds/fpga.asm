@@ -95,19 +95,35 @@ TryAbort            leay AbortWord,pcr
                     lda #4
                     sta Action,u
                     lbra Tail
-* fwipe N / pwipe N (2026-09-26): erase context N's replaceable slot with no image to follow.
+* 2026-09-27 (from the fpga-manager 1.16 source): fwipe N = CLEAR_FLASH ($0D), pwipe N path = DELETE_SD_IMAGE ($13),
+* boot N = RECONFIGURE_SELECTED ($0C: the manager reloads the FPGA from context N's saved source, the K2 restarts),
+* restart = RESTART_SUPERVISOR ($15: the RP2040 reboots by watchdog and reruns its whole boot sequence).
 TryFwipe            leay FwipeWord,pcr
                     lbsr Match
                     lbcs TryPwipe
                     lda #2
-                    lbra WipeArgs
+                    sta Target,u
+                    lda #5
+                    lbra ContextArg
 TryPwipe            leay PwipeWord,pcr
                     lbsr Match
-                    lbcs Usage
+                    lbcs TryBoot
                     lda #3
-WipeArgs            sta Target,u
+                    sta Target,u
                     lda #5
+                    lbra ContextArg
+TryBoot             leay BootWord,pcr
+                    lbsr Match
+                    lbcs TryRestart
+                    lda #6
+                    lbra ContextArg
+TryRestart          leay RestartWord,pcr
+                    lbsr Match
+                    lbcs Usage
+                    lda #7
                     sta Action,u
+                    lbra Tail
+ContextArg          sta Action,u
                     lda ,x
                     cmpa #$20
                     lbne Usage
@@ -119,7 +135,33 @@ WipeArgs            sta Target,u
                     lbhi Usage
                     suba #'1
                     sta Context,u
-                    lbra Tail
+                    lda Action,u
+                    cmpa #5
+                    lbne Tail
+                    lda Target,u
+                    cmpa #3
+                    lbne Tail
+* pwipe: the SD image's path as `fpga list` shows it (CNTXn/name.bin or 0:/CNTXn/name.bin), up to 127 bytes
+                    lda ,x
+                    cmpa #$20
+                    lbne Usage
+                    lbsr Spaces
+                    leay RemoteName,u
+                    clr NameLength,u
+PwPath              lda ,x+
+                    cmpa #C$CR
+                    lbeq PwEnd
+                    cmpa #$20
+                    lbeq PwEnd
+                    inc NameLength,u
+                    ldb NameLength,u
+                    cmpb #127
+                    lbhi Usage
+                    sta ,y+
+                    lbra PwPath
+PwEnd               tst NameLength,u
+                    lbeq Usage
+                    lbra Parsed
 ProgramArgs         sta Target,u
                     lda #3
                     sta Action,u
@@ -239,7 +281,11 @@ Parsed              leax Clock,u
                     lbeq Program
                     deca
                     lbeq AbortUpload
-                    lbra Wipe
+                    deca
+                    lbeq Wipe
+                    deca
+                    lbeq Boot
+                    lbra Restart
 Usage               leay Line,u
                     leax Help,pcr
                     lbsr Text
@@ -931,49 +977,21 @@ AbortUpload         lda #5
                     lbsr Text
                     lbsr Print
                     lbra Done
-* Wipe: the supervisor has no erase request. Internal flash is erased by IMAGE_BEGIN itself, before the
-* reply (rpdrv waits 7200 ticks for it), so fwipe is IMAGE_BEGIN for the flash slot with a minimal
-* gzip declaration and no data, then IMAGE_ABORT: the slot stays erased, nothing is stored. The SD card
-* has no such path: an SD IMAGE_BEGIN opens a temporary file and the destination is only replaced at
-* IMAGE_END, so pwipe would leave the image untouched; it says so and changes nothing.
-Wipe                lda Target,u
-                    cmpa #2
-                    lbne NoPwipe
-                    lda #1
-                    clrb
-                    lbsr ImageExchange        PING barrier
-                    lbcs Exit
+* Wipe (2026-09-27): fwipe = CLEAR_FLASH $0D (nonce, context): the manager erases the slot's header sector, verifies it
+* reads erased and clears the slot's metadata - the slot is invalid until the next flash. pwipe = DELETE_SD_IMAGE $13
+* (nonce, context, length, path): the manager unlinks that catalogued SD image (its own SD card) and resets a saved
+* selection that pointed at it to Automatic. Both answer nonce + context.
+Wipe                lda Context,u
+                    sta Tx+6,u
                     lda Target,u
-                    sta Tx+2,u
-                    lda Context,u
-                    sta Tx+3,u
-                    ldd #18                   the smallest gzip the firmware accepts, little-endian
-                    stb Tx+4,u
-                    clr Tx+5,u
-                    clr Tx+6,u
-                    clr Tx+7,u
-                    clr Tx+8,u                CRC 0: no data will follow
-                    clr Tx+9,u
-                    clr Tx+10,u
-                    clr Tx+11,u
-                    leax WipeName,pcr
-                    ldb ,x+
-                    stb Tx+12,u
-                    leay Tx+13,u
-                    lbsr CopyBytes
-                    lda #2
-                    ldb WipeName,pcr
-                    addb #11
-                    lbsr ImageExchange        IMAGE_BEGIN: the slot is erased before this returns
-                    lbcs Exit
-                    inc UploadStarted,u
-                    tst RxLength,u
-                    lbne BadReply
-                    lda #5
-                    clrb
-                    lbsr ImageExchange        IMAGE_ABORT: nothing stored
-                    lbcs Exit
-                    clr UploadStarted,u
+                    cmpa #2
+                    lbne SdWipe
+                    lda #$0D
+                    ldb #5
+                    lbsr Request
+                    lbcs RemoteFail
+                    lbsr ContextReply
+                    lbcs Invalid
                     leay Line,u
                     leax WipedTxt,pcr
                     lbsr Text
@@ -985,11 +1003,89 @@ Wipe                lda Target,u
                     lbsr Text
                     lbsr Print
                     lbra Done
-NoPwipe             leay Line,u
-                    leax NoPwipeTxt,pcr
+SdWipe              ldb NameLength,u
+                    stb Tx+7,u
+                    leax RemoteName,u
+                    leay Tx+8,u
+                    lbsr CopyBytes
+                    lda #$13
+                    ldb NameLength,u
+                    addb #6
+                    lbsr Request
+                    lbcs RemoteFail
+                    lbsr ContextReply
+                    lbcs Invalid
+                    leay Line,u
+                    leax SdWipedTxt,pcr
+                    lbsr Text
+                    leax RemoteName,u
+                    ldb NameLength,u
+                    lbsr Bytes
+                    lbsr Print
+                    lbra Done
+* Boot: RECONFIGURE_SELECTED $0C (nonce, context). The manager only accepts the physical context (the back-panel
+* switches); it acknowledges, then reloads the FPGA from that context's saved source, so the K2 restarts on the
+* new core and this command may never print its last line. Its trace goes to the RP2040's USB console.
+Boot                leay Line,u
+                    leax BootingTxt,pcr
+                    lbsr Text
+                    lda Context,u
+                    inca
+                    adda #'0
+                    sta ,y+
+                    leax BootingTail,pcr
                     lbsr Text
                     lbsr Print
-                    ldb #E$BMode
+                    lda Context,u
+                    sta Tx+6,u
+                    lda #$0C
+                    ldb #5
+                    lbsr Request
+                    lbcs RemoteFail
+                    lbsr ContextReply
+                    lbcs Invalid
+                    lbra Done
+* Restart: RESTART_SUPERVISOR $15 (nonce): the RP2040 reboots by watchdog after acknowledging and reruns its boot
+* sequence, which reloads the FPGA: the K2 restarts.
+Restart             leay Line,u
+                    leax RestartTxt,pcr
+                    lbsr Text
+                    lbsr Print
+                    lda #$15
+                    ldb #4
+                    lbsr Request
+                    lbcs RemoteFail
+                    lbra Done
+* ContextReply: the reply must be nonce + the context we sent (5 bytes). Carry set if not.
+ContextReply        lda RxLength,u
+                    cmpa #5
+                    bne CtxBad
+                    lda Rx+4,u
+                    cmpa Context,u
+                    bne CtxBad
+                    clrb
+                    rts
+CtxBad              comb
+                    rts
+* RemoteFail: a request the manager refused or did not answer as expected. The driver delivers the reply
+* regardless (2026-09-26); the manager's code is in its latched error byte, read through GetStat $C0
+* (X = status:error). Printed as status:error in hex, then the request's own error code is returned.
+RemoteFail          pshs b
+                    leay Line,u
+                    leax RefusedTxt,pcr
+                    lbsr Text
+                    lda Path,u
+                    ldb #$C0
+                    os9 I$GetStt
+                    bcs RfPrint
+                    pshs b
+                    tfr x,d
+                    lbsr Hex
+                    puls b
+                    tfr b,a
+                    lbsr Hex
+RfPrint             lbsr Print
+                    puls b
                     lbra Exit
 BadImage            leay Line,u
                     leax ImageError,pcr
@@ -1141,13 +1237,19 @@ Changed             fcc /Image changed or truncated during transfer; not committ
                     fcb 0
 Aborted             fcc /Supervisor upload aborted./
                     fcb 0
-WipeName            fcb 7
-                    fcc /wipe.gz/
 WipedTxt            fcc /Internal flash slot for context /
                     fcb 0
-WipedTail           fcc / erased; no image stored. Selection and running core unchanged./
+WipedTail           fcc / cleared by the supervisor; no image there until the next flash./
                     fcb 0
-NoPwipeTxt          fcc /pwipe: firmware 1.x has no SD delete request; an SD image is only replaced at IMAGE_END. Nothing changed./
+SdWipedTxt          fcc /Deleted from the RP2040 SD: /
+                    fcb 0
+BootingTxt          fcc /Asking the supervisor to reload the FPGA from context /
+                    fcb 0
+BootingTail         fcc /: the K2 restarts on it; watch the RP2040 console for the loader's verdict./
+                    fcb 0
+RestartTxt          fcc /Asking the supervisor to restart the RP2040: it reruns its boot sequence and the K2 restarts./
+                    fcb 0
+RefusedTxt          fcc /Supervisor refused or answered badly; its status:error = $/
                     fcb 0
 
 Device              fcc "/rp"
@@ -1168,7 +1270,11 @@ FwipeWord           fcc /fwipe/
                     fcb 0
 PwipeWord           fcc /pwipe/
                     fcb 0
-Help                fcc /Usage: fpga status|log|list [1..4]|program N file.bin|flash N file.gz|abort|fwipe N|pwipe N/
+BootWord            fcc /boot/
+                    fcb 0
+RestartWord         fcc /restart/
+                    fcb 0
+Help                fcc /Usage: fpga status|log|list [1..4]|program N f.bin|flash N f.gz|abort|fwipe N|pwipe N path|boot N|restart/
                     fcb 0
 StatusLabel         fcc /Mailbox: /
                     fcb 0

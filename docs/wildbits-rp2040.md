@@ -27,9 +27,13 @@ Both commands read the local file once to compute standard CRC32, rewind, and st
 
 Ctrl-C/Ctrl-E cancellation stops the transfer and attempts IMAGE_ABORT when the mailbox is idle. An ambiguous append is never blindly resent. If a timed-out command remains busy, no abort is queued behind it; after the mailbox becomes idle, `fpga abort` explicitly cancels an unfinished upload before another attempt. It does not undo a completed flash erase or restore a replaced image.
 
-`fwipe N` erases the replaceable internal-flash slot for physical context N (1 through 4) without storing an image. The supervisor has no erase request; the command sends a flash-target IMAGE_BEGIN that declares a minimal gzip (18 bytes, CRC 0), which erases the slot before it replies, then IMAGE_ABORT so nothing is stored. The slot is left invalid until the next `flash N`. `pwipe N` is accepted for symmetry but changes nothing: an SD-target IMAGE_BEGIN only opens a temporary file and the destination is replaced at IMAGE_END, so firmware 1.x offers no way to delete an SD image from OS-9; the command says so and exits with an error.
+`fwipe N` clears the replaceable internal-flash slot for physical context N with the supervisor's CLEAR_FLASH request ($0D): the manager erases the slot's header sector, verifies it reads erased and drops the slot's metadata, so the slot is invalid until the next `flash N`. `pwipe N path` deletes an image from the supervisor's own SD card with DELETE_SD_IMAGE ($13); `path` is the image as `fpga list` prints it (`CNTXn/name.bin`, `0:/CNTXn/name.gz`), it must be catalogued, and a saved selection that pointed at it falls back to Automatic. (Until 2026-09-27 fwipe was an IMAGE_BEGIN/IMAGE_ABORT pair and pwipe a refusal; both came from reading only the OS-9 side.)
 
-Changing saved selection, booting a core, downloading images and firmware updating are not CLI options yet.
+`boot N` sends RECONFIGURE_SELECTED ($0C): the manager reloads the FPGA from context N's saved source, so the K2 restarts on that core. Only the physical context (the back-panel switches) is accepted. `restart` sends RESTART_SUPERVISOR ($15): the RP2040 reboots by watchdog and reruns its boot sequence, which also restarts the K2. Both are the way to make the manager load a core while its USB console is open, since a power cycle loses the console's first seconds; the manager prints the loader's verdict ("FPGA configuration accepted" or a "Reject: ..." reason) there.
+
+A request the manager refuses prints "Supervisor refused or answered badly; its status:error = $ssee" with the mailbox status byte and the manager's latched error code (0x12 bad slot, 0x1a flash verify, 0x1b metadata, 0x22 bad selection, 0x25 delete failed, 0x10 an upload is active; the full list is supervisor_service.cpp in the fpga-manager source).
+
+Changing the saved selection, downloading images from the supervisor and firmware updating are not CLI options yet.
 
 ## Driver API
 
