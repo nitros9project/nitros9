@@ -105,6 +105,39 @@ WatchCtl            EQU       IO.Base+$CA hardware vector watchpoint control
 PTIDEBase           EQU       IO.Base+$00 PATA base address
 
 *
+* Video Pico — second RP2350 graphics/console coprocessor (via GAL at $FF10-$FF11)
+*
+* Two MC6850-shaped registers with separate hardware read and write arrays, so
+* the read and write meanings share an offset.  VID.Data moves one byte each
+* way; VID.Stat carries the flow-control and status bits when read, or takes a
+* control command when written.  All access is polled — there is no interrupt
+* dependency (VID.Stat bit 7 is reserved for a future interrupt flag).
+*
+VID.Data            EQU       IO.Base+$10 read receive byte / write transmit byte
+VID.Stat            EQU       IO.Base+$11 read status / write control
+* VID.Info: read-only panel-geometry info block.  Write any value to home
+* the walk index, then read six bytes: width hi, width lo, height hi,
+* height lo, text columns, text rows (big-endian, pixels first).  The
+* values come from the pico renderer's own geometry, so they never drift
+* from what is drawn; the index wraps, so an over-long read restarts.
+VID.Info            EQU       IO.Base+$13 panel geometry (write=home, read x6)
+
+* VID.Stat status bits (read from VID.Stat)
+VID.RDRF            EQU       %00000001 receive data available
+VID.TDRE            EQU       %00000010 transmit space free
+VID.RDY             EQU       %00000100 video pico alive and initialised
+VID.VerMsk          EQU       %00111000 protocol version mask (bits 5-3)
+* Version 1 in the VID.VerMsk position - the driver's liveness check.  An
+* absent/rebooting pico floats the bus to $FF (version 7) or reads $00
+* (version 0); a live pico reads version 1, so a version mismatch means the
+* device is not present and the rest of the status byte must not be believed.
+VID.Ver1            EQU       %00001000 protocol version 1 (live device)
+
+* VID.Ctl control bits (write to VID.Stat)
+VID.Rset            EQU       %00000001 soft reset: flush the fifos
+VID.Loop            EQU       %00000010 loopback: transmit bytes echo to receive
+
+*
 * Battery-backed RTC — DS12885 in Motorola mode (via GAL at $FF32-$FF33)
 *
 * MC146818-register-compatible.  Index/data pair: write the register
