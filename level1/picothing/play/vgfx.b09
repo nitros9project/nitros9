@@ -1,0 +1,86 @@
+PROCEDURE vgfx
+REM vgfx - a BASIC09 tour of the Pico-Thing video graphics
+REM
+REM Run it on a video window (/V0, or /W1-/W7: F1-F8 switch
+REM between them).  It draws four scenes on the graphics plane,
+REM waiting for Enter after each, then clears up.
+REM
+REM The drawing goes through GFX2, the CoCo 3 graphics package
+REM for BASIC09: RUN GFX2("Line",...) and friends send the CoCo 3
+REM window codes, which the video pico understands.  Coordinates
+REM are panel pixels, 0-1023 across and 0-479 down.
+DIM i,r,x:INTEGER
+
+REM hide the cursor, restore the default palette, blank everything
+RUN GFX2("CurOff")
+RUN GFX2("DefCol")
+RUN blank
+
+REM scene 1: palette registers 1-15 as colour bars, under a
+REM black strip that keeps the white caption readable
+FOR i=1 TO 15
+  RUN GFX2("Color",i)
+  RUN GFX2("Bar",(i-1)*68,48,i*68-1,479)
+NEXT i
+RUN caption(40,1,"palette registers 1 to 15, as they start")
+RUN waitkey
+
+REM scene 2: a target of filled circles
+RUN blank
+FOR r=230 TO 10 STEP -20
+  RUN GFX2("Color",1+MOD(r/20,7))
+  RUN GFX2("FCircle",512,240,r)
+NEXT r
+RUN caption(50,2,"filled circles")
+RUN waitkey
+
+REM scene 3: a fan of lines and a stack of ellipses
+RUN blank
+FOR x=0 TO 1023 STEP 24
+  RUN GFX2("Color",1+MOD(x/24,15))
+  RUN GFX2("Line",0,479,x,0)
+NEXT x
+RUN GFX2("Color",7)
+FOR r=20 TO 200 STEP 30
+  RUN GFX2("Ellipse",700,300,r,r/2)
+NEXT r
+RUN caption(40,2,"lines from one corner, and ellipses")
+RUN waitkey
+
+REM scene 4: nested boxes
+RUN blank
+FOR i=0 TO 11
+  RUN GFX2("Color",1+MOD(i,15))
+  RUN GFX2("Box",i*20,i*10,1023-i*20,479-i*10)
+NEXT i
+RUN caption(54,14,"nested boxes")
+RUN waitkey
+
+REM put things back: blank, default palette and pen, cursor on
+RUN blank
+RUN GFX2("DefCol")
+RUN GFX2("Color",7)
+RUN GFX2("CurOn")
+PRINT "vgfx: done"
+END
+
+PROCEDURE blank
+REM clear the text and paint the whole graphics plane black
+RUN GFX2("Clear")
+RUN GFX2("Color",0)
+RUN GFX2("Bar",0,0,1023,479)
+END
+
+PROCEDURE caption
+REM put some text at a column and row
+PARAM col,row:INTEGER; s:STRING[80]
+RUN GFX2("CurXY",col,row)
+PRINT s;
+END
+
+PROCEDURE waitkey
+REM wait for Enter on the bottom row
+DIM a:STRING[1]
+RUN GFX2("CurXY",0,29)
+INPUT "press Enter ",a
+END
