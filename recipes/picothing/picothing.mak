@@ -89,7 +89,11 @@ endif
 RBF_CORE = rbf.mn rbsuper.dr llide_pt.dr ddi0_pt.dd
 SCF      = scf.mn sc6850.dr term_pt.dd nil.dr nil.dd zero.dr zero.dd
 PIPE     = pipeman.mn piper.dr pipe.dd
-DW       = rbdw.dr dwio.sb x0.dd x1.dd x2.dd x3.dd
+# DriveWire: virtual disks /X0-/X3 and the /P printer.  /P is in the
+# bootfile rather than /Modules because attaching a runtime-loaded SCF
+# device fails with E$NoRAM on Level 2 (F$SLink into the tight system map
+# at I$Attach).
+DW       = rbdw.dr dwio.sb x0.dd x1.dd x2.dd x3.dd scdwp.dr p_scdwp.dd
 SYSGO    = sysgo
 
 # Graphical console (loadable, not in the bootfile)
