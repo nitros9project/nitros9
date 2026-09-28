@@ -1,0 +1,46 @@
+PLAY - a place to experiment
+
+  sample.txt   about 2K of text to read, edit, copy and count
+  wstat.c      a K&R C program that counts the words in a file
+  vgfx.b09     a BASIC09 program that draws on the video screen
+  readme       this file
+
+Try the text:
+
+  list sample.txt
+  minted sample.txt
+  tee <sample.txt >copy.txt
+
+Build and run wstat (Level 2 mega images only: they carry the C
+compiler, with its headers in /dd/DEFS and its library in /dd/LIB):
+
+  chd /dd/play
+  cc2 wstat.c
+  wstat sample.txt
+
+cc2 puts the finished program in your execution directory (/dd/cmds),
+so wstat runs from anywhere, and leaves behind c.com, the command file
+it ran; delete it when you like.
+
+Ideas for changing wstat:
+
+  - Treat an apostrophe as part of a word, so "don't" is one word.
+  - Count the digits as well as the letters.
+  - Print the ten most common words.
+  - Draw the bars sideways, one column per letter.
+
+Run vgfx (Level 2 mega images only: they carry BASIC09 and GFX2).
+Run it on a video window, /V0 or /W1-/W7, not the serial console:
+
+  chd /dd/play
+  basic09
+  load vgfx.b09
+  run vgfx
+  bye
+
+It draws four scenes, waiting for Enter after each.  The drawing goes
+through GFX2, the CoCo 3 graphics package for BASIC09 (in /dd/cmds on
+the mega images): RUN GFX2("Line",x1,y1,x2,y2), "Circle", "Bar",
+"Color", "Palette" and the rest send the CoCo 3 window codes, which the
+video pico understands.  One difference from a CoCo 3: coordinates are
+the panel's own pixels, 0-1023 across and 0-479 down, not scaled.

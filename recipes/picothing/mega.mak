@@ -2,7 +2,8 @@
 #
 # Expands the standard Level 2 image onto a 4 MB solid-state volume and adds
 # the maintained language toolchains from the sibling nitros9-languages
-# checkout: Microware BASIC09 (interpreter + RunB runtime + sample programs)
+# checkout: Microware BASIC09 (interpreter + RunB runtime + the GFX2
+# graphics package + sample programs)
 # and the OS-9 C compiler.  The standard commands cputype and reboot round
 # out the utility set (neither is in the base Level 2 command list).
 #
@@ -34,6 +35,15 @@ $(BASIC09_DIR)/basic09_$(BASIC09_CPU):
 $(BASIC09_DIR)/runb_$(BASIC09_CPU):
 	$(MAKE) -C $(BASIC09_DIR) runb_$(BASIC09_CPU)
 
+# GFX2, the CoCo 3 graphics subroutine package for BASIC09.  It turns
+# RUN GFX2("Line",...) and friends into the CoCo 3 window escape codes,
+# which the Pico-Thing video pico implements, so it works unchanged on
+# the video windows.
+$(MODDIR)/gfx2: $(BASIC09_DIR)/gfx2 | $(MODDIR)
+	$(CP) $< $@
+$(BASIC09_DIR)/gfx2:
+	$(MAKE) -C $(BASIC09_DIR) gfx2
+
 # ---- OS-9 C compiler (from nitros9-languages) ----------------------------
 
 CCOMPILER_DIR ?= $(LANGUAGES)/ccompiler
@@ -50,10 +60,10 @@ $(CCOMPILER_DSK): $(CCOMPILER_INPUTS)
 
 # ---- extra commands and disk install -------------------------------------
 
-# basic09 and runb are copied through the normal $(MODDIR) command path;
+# basic09, runb and gfx2 are copied through the normal $(MODDIR) command path;
 # cputype (level1/cmds) and reboot (level2/cmds) resolve via the shared
 # vpath in rules.mak.
-CMDS_EXTRA += basic09 runb cputype reboot
+CMDS_EXTRA += basic09 runb gfx2 cputype reboot
 
 RECIPE_DEPS += $(CCOMPILER_DSK)
 

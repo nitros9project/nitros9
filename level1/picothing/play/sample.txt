@@ -1,0 +1,41 @@
+The Lighthouse Keeper's Machine
+
+On a small island at the edge of the map there stood a lighthouse, and
+in the lighthouse lived a keeper who loved machines. Every evening,
+when the lamp was lit and the tide had turned, she climbed the narrow
+stair to a room full of wire and solder and patient, humming boxes.
+
+Her favourite was a little computer with an eight-bit heart. It could
+not do very much at once, but it did everything carefully, one step at
+a time, and it never forgot what it had been asked. She taught it to
+count the waves. She taught it to keep the log of passing ships. On
+stormy nights she taught it to play a quiet game of chess, and it lost
+gracefully, which she thought was the mark of a good companion.
+
+The machine spoke through a row of blinking lights and a screen of
+green letters. When she typed, it answered. When she asked it to read
+a long story, it read every word and told her how many there had been,
+which letters it had met most often, and which word was the longest.
+She liked that. It was like asking a friend what they had noticed.
+
+One winter the supply boat was late, and the keeper grew lonely. She
+wrote a program that would greet her each morning with a line of
+verse, chosen from a list she had typed in by hand. Some mornings the
+verse was cheerful, and some mornings it was sad, and once, by an
+error she never quite found, it printed the same line forty times in
+a row. She laughed until the gulls on the railing took fright.
+
+In spring the boat came back with flour and oil and letters from the
+mainland. The captain asked her how she had passed the long dark
+months alone. She thought about the humming boxes, the green letters,
+the chess games lost with such good grace, and the forty identical
+lines of verse.
+
+"I was never really alone," she said. "I had the lamp to tend, the
+sea to watch, and a machine that listened. What more could anyone
+want?"
+
+The captain did not understand, but he nodded politely, and when he
+sailed away that evening the light swept out across the water behind
+him, steady and bright, counted and logged by a small machine that
+had never once lost track of the waves.

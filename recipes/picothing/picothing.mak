@@ -329,9 +329,19 @@ os9kernel_dw: $(MODDIR)/$(KERNEL) $(MODDIR)/krnp2 $(MODDIR)/init $(MODDIR)/boot_
 	$(MERGE) $(MODDIR)/$(KERNEL) $(MODDIR)/krnp2 $(MODDIR)/init $(MODDIR)/boot_dw_pt >$@
 endif
 
+# ---- play directory --------------------------------------------------------
+
+# /DD/PLAY on every image: some text to experiment on, a K&R C program
+# (wstat) to build, run and modify, and a BASIC09 graphics demo (vgfx).
+# Only the mega images carry the C compiler and BASIC09; on the others the
+# files are there to read and edit.
+PLAY_DIR   = $(NITROS9DIR)/level1/$(PORT)/play
+PLAY_FILES = $(PLAY_DIR)/readme $(PLAY_DIR)/sample.txt $(PLAY_DIR)/wstat.c \
+             $(PLAY_DIR)/vgfx.b09
+
 # ---- disk image ----------------------------------------------------------
 
-DSK_PREREQS = bootfile $(OS9KERNEL) $(REL) helpmsg $(RECIPE_DEPS) \
+DSK_PREREQS = bootfile $(OS9KERNEL) $(REL) helpmsg $(RECIPE_DEPS) $(PLAY_FILES) \
               $(addprefix $(MODDIR)/,$(SYSGO) $(CMDS_DISK) $(LOADMODS))
 
 ifeq ($(LEVEL),2)
@@ -351,6 +361,9 @@ $(DSKIMAGE): $(DSK_PREREQS)
 	$(OS9ATTR_TEXT) $(foreach f,$(notdir $(SYS_TEXT_FILES)),$@,SYS/$(f))
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
+	$(MAKDIR) $@,PLAY
+	$(CPL) $(PLAY_FILES) $@,PLAY
+	$(OS9ATTR_TEXT) $(foreach f,$(notdir $(PLAY_FILES)),$@,PLAY/$(f))
 	$(MAKDIR) $@,Modules
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(LOADMODS)) $@,Modules
 	$(OS9ATTR_EXEC) $(foreach m,$(LOADMODS),$@,Modules/$(m))
@@ -376,6 +389,9 @@ $(DSKIMAGE): $(DSK_PREREQS)
 	$(OS9ATTR_TEXT) $(foreach f,$(notdir $(SYS_TEXT_FILES)),$@,SYS/$(f))
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
+	$(MAKDIR) $@,PLAY
+	$(CPL) $(PLAY_FILES) $@,PLAY
+	$(OS9ATTR_TEXT) $(foreach f,$(notdir $(PLAY_FILES)),$@,PLAY/$(f))
 endif
 
 # ---- system support files ------------------------------------------------
