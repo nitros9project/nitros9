@@ -272,6 +272,7 @@ MJScrFre            equ       RAMinUse            as marked by krn
 MJScrUse            equ       ModBlock            any other non-zero value
 MJScrLo             equ       $22
 MJScrHi             equ       $40
+MJBtCurs            equ       $0004               BtDebug cursor after boot: Bt.Block+4..$1FF
 
 * Exit: X=screen address, or carry set and B=error
 MJScrAlc            ldx       <D.SysMem
@@ -290,7 +291,13 @@ MJScrGot            lda       #MJScrUse
                     incb
                     sta       b,x
                     decb
-                    tfr       b,a
+                    cmpb      #MJScrLo            taking over the boot screen?
+                    bne       MJScrAdr
+* From now on send the BtDebug breadcrumbs (and crash codes) to the hidden
+* start of Bt.Block instead of onto this screen.
+                    ldx       #MJBtCurs
+                    stx       >MJScrLo*256-$200+2   BtDebug cursor, at Bt.Block+2
+MJScrAdr            tfr       b,a
                     clrb                          D=screen address, carry clear
                     tfr       d,x
                     rts
@@ -1972,10 +1979,38 @@ L06CB               tst       ,y                  check block number
                     ldb       #E$BMode
 L06D9               puls      pc,a
 
+                    IFNE      cocomemjr
+* Get an 8K graphics screen block. The VDG can only display motherboard RAM,
+* MMU blocks $38-$3F; krn marks $38-$3E NotRAM. A pool block is free while
+* its block map entry is exactly NotRAM; claim it by setting RAMinUse.
+* F$DelRAM (end graphics) clears RAMinUse, which returns it to the pool.
+* Bt.Block holds the text screens and $3E is where DAT.Free maps unused
+* slots, so neither is used.
+* Exit: D=block number, or carry set and B=error. X preserved.
+Get8KHi             pshs      x
+                    ldx       <D.BlkMap
+                    ldb       #$38                first motherboard block
+MJGfxLp             cmpb      #Bt.Block
+                    beq       MJGfxNxt
+                    lda       b,x
+                    cmpa      #NotRAM             reserved and free?
+                    beq       MJGfxGot
+MJGfxNxt            incb
+                    cmpb      #$3E
+                    blo       MJGfxLp
+                    comb
+                    ldb       #E$NoRAM
+                    puls      x,pc
+MJGfxGot            lda       #NotRAM+RAMinUse
+                    sta       b,x
+                    clra                          D=block number, carry clear
+                    puls      x,pc
+                    ELSE
 * Get B 8K blocks from high RAM
 Get8KHi             ldb       #$01                1 8k block needed (semigraphics or medium res
 L06DDX              os9       F$AlHRAM            allocate a screen from end of RAM
                     rts
+                    ENDC
 
 L06E1               lda       #$01                map screen into memory
 L06E3               pshs      u,x,d
