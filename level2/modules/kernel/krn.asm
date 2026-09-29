@@ -90,7 +90,13 @@ MName               fcs       /Krn/
                     fcc       /www.nitros9.org /
                     fcc       /www.nitros9.org /
                   ELSE
+                  IFNE    cocomemjr ; begin conditional assembly for cocomemjr
+* The CocoMEM Jr block reservation is 8 bytes smaller than the 128K code it
+* replaces, so pad by 8 more to keep everything after this at the same address.
+                    fcc       /www.nitros9.org /
+                  ELSE
                     fcc       /www.nitr/
+                  ENDC
                   ENDC
                   ENDC
 
@@ -721,6 +727,18 @@ KrnBlock            aslb                ; B <= 1 (hi bit goes into carry, 0 goes
 * $0240 = 512KB  ( 64 8KB blocks)
 * $0280 = 1024KB (128 8KB blocks)
 * $0300 = 2048KB (256 8KB blocks)
+*[[[ CocoMEM Jr PORT
+* The CocoMEM Jr has at least 512K, so there are no missing blocks to mark.
+* Instead reserve MMU blocks $38-$3E, the CoCo 1/2 motherboard RAM and the
+* only RAM the SAM/VDG can display ($3F holds krn). NotRAM, not RAMinUse, so
+* F$AllRAM/F$AlHRAM skip them and F$DelRAM can't free them; covdg claims a
+* screen block by setting RAMinUse on it. $3E stays reserved as the block
+* DAT.Free maps unused slots to. X=D.BlkMap here.
+                  IFNE    cocomemjr ; begin conditional assembly for cocomemjr
+                    leax      $38,x     ; first motherboard block
+                    ldd       #NotRAM*256+7 ; reserve 7 blocks, $38-$3E
+                  ELSE
+*]]] CocoMEM Jr PORT
                     bitb      #%00110000 ; is the block above 128K-256K?
                     beq       Mc09KrnStart ; yes, no need to mark block map
                     tstb                ; is it 2 meg?
@@ -730,6 +748,7 @@ KrnBlock            aslb                ; B <= 1 (hi bit goes into carry, 0 goes
                     leax      -1,x      ; skip good blocks that are RAM
                     lda       #NotRAM   ; load the "Not RAM" flag
                     subb      #$3F      ; calculate the number of blocks to mark as not RAM
+                  ENDC
 l@                  sta       ,x+       ; mark them all
                     decb                ; are we done?
                     bne       l@        ; not yet
