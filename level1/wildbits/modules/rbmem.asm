@@ -26,6 +26,11 @@
 *
 *   1/3    2025/10/15   R Taylor
 * Optimizations, significant code reduction
+*
+*   1/4    2026/09/29   R Taylor
+* Temporarily expose Flash on FLASHDIS cores only while detecting,
+* reading, erasing or programming the chip.  Preserve every other
+* MMU_IO_CTRL bit and restore the caller's interrupt state.
 
                     use       defsfile
 
@@ -39,7 +44,7 @@ MMU_WORKSLOT        equ       MMU_SLOT_0+MMU_SLOT
 tylg                set       Drivr+Objct
 atrv                set       ReEnt+rev
 rev                 set       $01
-edition             set       3
+edition             set       4
 
                     mod       eom,name,tylg,atrv,ModEntry,size
 
@@ -48,8 +53,12 @@ DrvTab              rmb       MAXDRIVES*DRVMEM       ; Drive tables, 1 per drive
 
 CDrvTab             rmb       2
 SaveMMU             rmb       1
+SaveIO              rmb       1
+SaveCC              rmb       1
 FlashBlock          rmb       1
 CacheBlock          rmb       1
+RejectCount         rmb       1
+CacheError          rmb       1
 IsFlash             rmb       1
 EmptySector         rmb       1
 
@@ -181,7 +190,22 @@ Read                lda       >MMU_WORKSLOT       Save the MMU block number
                     sta       FlashBlock,u
                 endc
                     orcc      #IntMasks
+                ifgt Level-1
+                    lda       FlashBlock,u
+                    cmpa      #$40                $40-$7F is the physical Flash window
+                    blo       readram@
+                    cmpa      #$80
+                    bhs       readram@
+                    lbsr      FlashSector2Cache   copy while Flash is briefly exposed
+                    lda       CacheBlock,u        caller buffer may live in FLASHDIS RAM;
+                    bsr       TfrSect             copy to it only after RAM is restored
+                    bra       readgone@
+readram@
+                endc
                     bsr       TfrSect             Transfer the sector from the RAM drive to PD.BUF
+                ifgt Level-1
+readgone@
+                endc
                     puls      y,x                 Restore the path descriptor & device memory pointers
                     leax      ,x                  Is this LSN0?
                     bne       CleanRWExit         Branch if not
@@ -255,6 +279,27 @@ SetStat             clrb
 
                     ifgt      Level-1
 
+* FLASHDIS is global.  These routines are used only around the individual
+* chip bus phases below.  The driver module, system stack and device static
+* storage are resident in the low boot blocks, which remain RAM in both modes.
+* SaveIO preserves MMU shadow controls and every unrelated MMU_IO_CTRL bit.
+FlashEnter          pshs      a
+                    tfr       cc,a                caller CC
+                    sta       SaveCC,u
+                    orcc      #IntMasks            no IRQ may run while $40-$9F changes identity
+                    lda       >MMU_IO_CTRL
+                    sta       SaveIO,u
+                    anda      #^FLASHDIS
+                    sta       >MMU_IO_CTRL         $40-$7F Flash, $80-$9F expansion
+                    puls      a,pc
+
+FlashLeave          pshs      a
+                    lda       SaveIO,u
+                    sta       >MMU_IO_CTRL         restore RAM/Flash mode and all other bits
+                    lda       SaveCC,u
+                    tfr       a,cc
+                    puls      a,pc
+
 * The SST39LF010/020/040 and SST39VF010/020/040
 * FLASH chips are 128K x8, 256K x8 and 5,124K x8
 *
@@ -314,6 +359,7 @@ x@                  puls      d,pc
 
 ReadFlashID         pshs      cc
                     orcc      #IntMasks
+                    lbsr      FlashEnter
 * Save the current work-slot mapping BEFORE any probe. This push must be
 * unconditional: the K2-ID match paths branch straight to s@, and s@
 * pops it. When the save only happened on the Jr2 probe path, a K2 with
@@ -351,6 +397,7 @@ ReadFlashID         pshs      cc
                     clr       IsFlash,u           No Flash found
 s@                  puls      b
                     stb       >MMU_WORKSLOT
+                    lbsr      FlashLeave
                     puls      cc,pc
 
 ShowFlashID         lda       #fDEBUG
@@ -405,8 +452,46 @@ x@                  rts
 * Exit: destination block stays in MMU slot
 *       all registers restored
 
-AskForCache         ldb       #1                  Flash Write mode needs an 8K swap block of RAM
-                    os9       F$AllRAM
+AskForCache         clr       RejectCount,u
+afcTry@             ldb       #1                  Flash Write mode needs an 8K swap block of RAM
+                    os9       F$AlHRAM             prefer $D0-$EF, then $A0-$BF: visible in both modes
+                    bcs       afcFail@
+                    cmpb      #$40
+                    blo       afcGood@
+                    cmpb      #$A0
+                    blo       afcReject@
+                    cmpb      #$C0
+                    blo       afcGood@
+                    cmpb      #$D0
+                    blo       afcReject@
+                    cmpb      #$F0
+                    blo       afcGood@
+afcReject@
+* Keep each rejected block allocated while asking for another, otherwise
+* F$AlHRAM would return the same highest free block forever.  At most the
+* 96 blocks in $40-$9F are held as one-byte block numbers on the system stack.
+                    pshs      b
+                    inc       RejectCount,u
+                    bra       afcTry@
+afcGood@            stb       CacheBlock,u
+                    clr       CacheError,u
+                    bra       afcRelease@
+afcFail@            stb       CacheError,u        preserve the allocator's error while releasing rejects
+afcRelease@         tst       RejectCount,u
+                    beq       afcReleased@
+afcFree@            puls      b                   most recently rejected block number
+                    clra
+                    tfr       d,x
+                    ldb       #1
+                    os9       F$DelRAM
+                    dec       RejectCount,u
+                    bne       afcFree@
+afcReleased@        ldb       CacheError,u
+                    bne       afcError@
+                    ldb       CacheBlock,u
+                    andcc     #^Carry
+                    rts
+afcError@           orcc      #Carry
 * (2026-08-30: removed a leftover fDEBUG-era screen poke here that ran
 * unconditionally - it wrote the block # into offset $4FF of whatever
 * block sat in the work slot at Init, and its commented-out bcc meant
@@ -426,6 +511,25 @@ c@                  ldb       ,s                  get source block from reg.a po
                     bne       c@
                     puls      d,u,x,y,pc
 
+* Copy one 256-byte Flash sector at X into the same offset of CacheBlock.
+* Only the safe cache and low system stack are touched while Flash is exposed;
+* the caller's PD.BUF is not accessed until FlashLeave restores system RAM.
+FlashSector2Cache   pshs      d,x,y
+                    lbsr      FlashEnter
+                    ldy       #128
+fsc@                ldb       FlashBlock,u
+                    stb       >MMU_WORKSLOT
+                    ldd       ,x
+                    pshs      d
+                    ldb       CacheBlock,u
+                    stb       >MMU_WORKSLOT
+                    puls      d
+                    std       ,x++
+                    leay      -1,y
+                    bne       fsc@
+                    lbsr      FlashLeave
+                    puls      d,x,y,pc
+
 CheckEmpty          pshs      b,y
                     lda       ,y
                     clrb
@@ -443,7 +547,9 @@ a@                  anda      ,y+
 
 TfrFSect            lda       FlashBlock,u        copy from Flash block to Cache block
                     ldb       CacheBlock,u
+                    lbsr      FlashEnter
                     bsr       Flash2Cache
+                    lbsr      FlashLeave
                     bsr       CheckEmpty          is the OS-9 sector that's already on Flash empty?
                     sta       EmptySector,u       save empty status
                     pshs      x,y
@@ -466,7 +572,8 @@ TfrFSect            lda       FlashBlock,u        copy from Flash block to Cache
                     bra       w@                  start writing 4K Sector from 8K Cache to Flash
 c@                  tfr       y,x                 Y = address of OS-9 256-byte sector within the 8K Cache
                     ldy       #256                write only the OS-9 sector to Flash
-w@                  ldb       CacheBlock,u
+w@                  lbsr      FlashEnter
+wloop@              ldb       CacheBlock,u
                     stb       >MMU_WORKSLOT
                     lda       ,x
                     ldb       #$A0
@@ -489,14 +596,16 @@ v@                  cmpa      -1,x
                     bne       v@
                     lda       SaveMMU,u
                     sta       >MMU_WORKSLOT       remap in system block 0
+                    lbsr      FlashLeave
                     ldb       #$F3                CRC ERROR - CRC error on read or write verify
                     andcc     #^IntMasks          turn on interrupts and clear carry to indicate no error
                     orcc      #1
                     rts
 g@                  leay      -1,y
-                    lbne      w@
+                    lbne      wloop@
                     lda       SaveMMU,u
                     sta       >MMU_WORKSLOT       remap in system block 0
+                    lbsr      FlashLeave
                     andcc     #^IntMasks          turn on interrupts and clear carry to indicate no error
                     clrb                          no errors
                     rts
@@ -527,6 +636,7 @@ g@                  leay      -1,y
 * edge of sixth WE# (or CE#) pulse.
 
 Erase4KSector       pshs      x,b,a               reg.b = block num to erase
+                    lbsr      FlashEnter
                     ldb       #$80
                     lbsr      SendCmd
                     lbsr      InitCmd
@@ -557,15 +667,18 @@ w@                  lda       >MMU_WINDOW         DQ6 toggles on every read whil
                     beq       e@
                     leax      -1,x
                     bne       w@
-e@                  puls      a,b,x,pc
+e@                  lbsr      FlashLeave
+                    puls      a,b,x,pc
 
 Wipe                clrb
                     pshs      cc
                     orcc      #IntMasks
+                    lbsr      FlashEnter
                     ldb       #$80
                     lbsr      SendCmd
                     ldb       #$10			Place #$10 (Chip Erase Command) on the data bus
                     lbsr      SendCmd
+                    lbsr      FlashLeave
                     puls      cc
 x@                  rts                           return
 
