@@ -66,7 +66,14 @@ prn3                set       Black.              border color
                     fcb       ModCoVGA            init value for dev ctl reg
                     else
                     ifgt      Level-1
+* Level 2 CoVDG takes bit 0 of this (the parity byte, sent to it with
+* SS.ComSt on every open) as "true lower case": right for a 6847T1 or a
+* GIME, but a plain MC6847 needs 0. Assemble with -DPLAIN6847=1 for that.
+                    ifne      PLAIN6847
+                    fcb       $00                 init value for dev ctl reg
+                    else
                     fcb       $01                 init value for dev ctl reg
+                    endc
                     else
                     ifeq      coco2b+deluxe-1
                     fcb       ModCoVDG+1          init value for dev ctl reg
