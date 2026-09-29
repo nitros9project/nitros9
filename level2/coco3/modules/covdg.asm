@@ -381,6 +381,16 @@ Write               equ       *
                     ENDC
                     tsta                          Non control char; is it a high bit char?
                     bmi       L01BA               Yes, go convert to appropriate VDG char
+                    IFNE      ALLCAPS
+* All caps: show lower case letters as normal upper case (display only,
+* input is unchanged). For CoCo 1/2s whose MC6847 has no lower case.
+                    cmpa      #'a                 lower case letter?
+                    blo       NotLower
+                    cmpa      #'z
+                    bhi       NotLower
+                    suba      #'a-'A              make it upper case
+NotLower            equ       *
+                    ENDC
                     ldb       <VD.CFlag,u         Get true lowercase flag
                     beq       L019A               Uppercase only, skip ahead
 * Special char replacements if true lowercase enabled (either Coco 3 or Coco 2/T1-VDG)
