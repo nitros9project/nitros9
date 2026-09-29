@@ -27,6 +27,13 @@ NOS9_LIB = libnos96809l2.a
 COCO3_LIB = libcoco3.a
 
 MEDIA ?= floppy
+# VDG_T1=1 for a 6847T1 VDG (true lower case, e.g. some CoCo 2B models);
+# the default 0 suits the plain MC6847 in most CoCo 1/2s. Software can't
+# tell them apart.
+# UPPERCASE=1 makes covdg show lower case letters as normal capitals
+# (display only; typed input is unchanged).
+VDG_T1 ?= 0
+UPPERCASE ?= 0
 TRACKS ?= 40
 PwrLnFrq ?= 60
 
@@ -163,7 +170,16 @@ $(MODDIR)/vtio.dr: $(LEVEL2)/coco3/modules/vtio.asm | $(MODDIR)
 # Module variants
 
 $(MODDIR)/covdg.io: covdg.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DCOCO2=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DCOCO2=1 -DALLCAPS=$(UPPERCASE)
+
+# /term: default VDG character set (descriptor parity byte, see term_vdg.asm)
+ifeq ($(VDG_T1),1)
+TERM_VDG_FLAGS =
+else
+TERM_VDG_FLAGS = -DPLAIN6847=1
+endif
+$(MODDIR)/term_vdg.dt: term_vdg.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(TERM_VDG_FLAGS)
 
 $(MODDIR)/rel_32: rel.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DWidth=32

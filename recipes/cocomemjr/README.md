@@ -15,8 +15,15 @@ make -C recipes/cocomemjr/floppy
 make -C recipes/cocomemjr/sdc
 ```
 
-Options: `PwrLnFrq=50` for a 50Hz (PAL) clock, `AFLAGS_EXTRA`, `BOOTMODS_EXTRA`,
-`CMDS_EXTRA`, as in the CoCo 3 recipes (put them in a `recipe.mak`).
+Options (on the make command line or in a `recipe.mak`):
+
+- `VDG_T1=1` for a 6847T1 VDG with true lower case (some CoCo 2B models). The
+  default suits the plain MC6847 in most CoCo 1/2s: lower case is shown as
+  inverse capitals. Software can't tell the two VDGs apart.
+- `UPPERCASE=1` makes CoVDG show lower case letters as normal capitals
+  (display only; typed input is unchanged).
+- `PwrLnFrq=50` for a 50Hz (PAL) clock.
+- `AFLAGS_EXTRA`, `BOOTMODS_EXTRA`, `CMDS_EXTRA`, as in the CoCo 3 recipes.
 
 ## Emulation
 
