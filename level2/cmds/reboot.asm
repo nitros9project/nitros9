@@ -304,7 +304,14 @@ Lp                  sta       8,x                 put into map 1
                     decb                          count down
                     bne       Lp
 
+                    IFNE      cocomemjr
+* CocoMEM Jr: MMU off and the CoCo 1/2 ROM vectors (bit 7 set), so the
+* jump below goes through BASIC's reset vector. This code runs from
+* motherboard $0000 (block $38), which stays put with the MMU off.
+                    lda       #$80                MMU off, ROM vectors
+                    ELSE
                     lda       #$4C                standard DECB mapping
+                    ENDC
                     sta       >$FF90
                     clr       >$FF91              go to map type 0
                     clr       >$FFDE              and to all-ROM mode
