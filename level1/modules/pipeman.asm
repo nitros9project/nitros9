@@ -92,8 +92,12 @@ Seek                clrb                          Seek returns with no error
 GetStt              clrb                          GetStt returns with no error
                     rts
                     nop
-SetStt              clrb                          SetStt returns with no error
-                    rts
+* This anonymous PipeMan does not implement SCF status calls.  Returning
+* success here makes Shell+ mistake a pipe for a keyboard: SS.Relea appears
+* to work, so Shell+ waits on the unimplemented SS.SSig path instead of
+* reading command lines directly.  Report the unsupported service so Shell+
+* takes its non-SCF/script input path.
+SetStt              bra       Unknown
                     nop
 * Fall through to CLOSE here
 Close               lda       PD.CNT,y            Get # of open images
@@ -124,6 +128,7 @@ L00A9               clrb
 MakDir              equ       *
 ChgDir
 Delete
+Unknown
                     comb                          Exit with Unknown Service error
                     ldb       #E$UnkSvc
                     rts
