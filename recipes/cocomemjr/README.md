@@ -22,6 +22,9 @@ Options (on the make command line or in a `recipe.mak`):
   inverse capitals. Software can't tell the two VDGs apart.
 - `UPPERCASE=1` makes CoVDG show lower case letters as normal capitals
   (display only; typed input is unchanged).
+- `VDG_WINDOWS=n` (0-7, default 7) adds `/V1`../`Vn`, extra 32x16 screens.
+  CLEAR and SHIFT-CLEAR switch between the screens that have a path open;
+  start a shell on one with `shell i=/v1&`.
 - `PwrLnFrq=50` for a 50Hz (PAL) clock.
 - `AFLAGS_EXTRA`, `BOOTMODS_EXTRA`, `CMDS_EXTRA`, as in the CoCo 3 recipes.
 
