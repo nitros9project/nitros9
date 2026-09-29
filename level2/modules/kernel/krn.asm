@@ -91,9 +91,10 @@ MName               fcs       /Krn/
                     fcc       /www.nitros9.org /
                   ELSE
                   IFNE    cocomemjr ; begin conditional assembly for cocomemjr
-* The CocoMEM Jr block reservation is 8 bytes smaller than the 128K code it
-* replaces, so pad by 8 more to keep everything after this at the same address.
-                    fcc       /www.nitros9.org /
+* The CocoMEM Jr changes below are net 3 bytes smaller than the code they
+* replace (-8 for the block reservation, +5 for the slot 1 text screen
+* block), so pad by 3 more to keep the tail of krn at the same address.
+                    fcc       /www.nitros9/
                   ELSE
                     fcc       /www.nitr/
                   ENDC
@@ -529,8 +530,19 @@ l@                  stu       ,x++      ; set all IRQ vectors to go to vectors f
                     lda       #$07      ; initialize all rest of the blocks to be free
                   ELSE
 *]]] Wildbits PORT
+*[[[ CocoMEM Jr PORT
+* Slot 1 ($2000-$3FFF) of the system map permanently holds Bt.Block, a
+* motherboard block the VDG can display: covdg keeps its text screens there
+* (the boot screen is its $200-$3FF). Pages $20-$3F are reserved below.
+                  IFNE    cocomemjr ; begin conditional assembly for cocomemjr
+                    ldu       #Bt.Block ; the VDG text screen block
+                    stu       ,x++      ; in slot 1
+                    lda       #$05      ; initialize the other 5 blocks to be free
+                  ELSE
+*]]] CocoMEM Jr PORT
 * Dat.BlCt-ROMCount-RAMCount = 8 - 1 - 1 = 6
                     lda       #$06      ; initialize the rest of the blocks to be free
+                  ENDC
                   ENDC
                     ldu       #DAT.Free ; load the free marker
 l@                  stu       ,x++      ; store it
@@ -580,7 +592,15 @@ pt_clr@             sta       ,x+       clear this slot
 
 * Update the system memory map to reserve the area used for global memory.
                     ldx       <D.SysMem ; get the system memory map pointer
+*[[[ CocoMEM Jr PORT
+* Also reserve pages $20-$3F (system slot 1, the VDG text screen block) so
+* F$SRqMem never hands them out; covdg manages them.
+                  IFNE    cocomemjr ; begin conditional assembly for cocomemjr
+                    ldb       #$40      ; globals ($00-$1F) plus text screens ($20-$3F)
+                  ELSE
+*]]] CocoMEM Jr PORT
                     ldb       <D.CCStk  ; get the MSB of the top of kernel memory
+                  ENDC
 * X indexes the system memory map.
 * B represents the number of 256-byte pages available.
 * Walk through the map, changing the corresponding elements from 0
