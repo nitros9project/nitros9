@@ -1,15 +1,16 @@
 # Pico-Thing shared build recipe (Level 1 and Level 2, 6809 and 6309).
 #
-# The Pico-Thing boots differently from the CoCo ports: a small raw REL
-# loader (rel_picothing) runs at Bt.Start, loads OS9Kernel, then F$Boot
-# pulls in OS9Boot (the merged bootfile).  The disk therefore carries
-# OS9Kernel and OS9Boot as two separate files rather than a single
-# OS9Boot.  The two levels compose those files differently:
+# The Pico-Thing boots the way the Wildbits does: a small raw REL loader
+# (rel_picothing, in the Pico's firmware) finds OS9Boot by name, loads it
+# so that it ends at Bt.End, and jumps to krn with the bootfile's start in
+# X and its size in Y.  The kernel adopts the bootfile in place, so there
+# is no boot module, no F$Boot, no OS9Kernel file and no OS9Gen.  The two
+# levels compose OS9Boot differently:
 #
-#   Level 2  OS9Kernel = boot module padded to 1024 bytes, then krn
-#            OS9Boot   = krnp2 krnp3_perr init ioman + drivers + shell
-#   Level 1  OS9Kernel = krn krnp2 init boot   (plain merge, no pad)
-#            OS9Boot   = ioman sysgo + drivers + shell
+#   Level 2  OS9Boot = krnp2 krnp3_perr init ioman + drivers + shell, padded
+#                      at the start so they end at $E000, then a gap to
+#                      Bt.Start and krn padded to Bt.End-Bt.Start
+#   Level 1  OS9Boot = krn krnp2 init ioman sysgo + drivers + shell
 #
 # Leaf recipes (l1/, l2/, l1dw/, l2dw/, *_6309/) set LEVEL, CPU and any
 # recipe.mak overrides.  PORT stays "picothing" for every variant so all
@@ -92,7 +93,7 @@ endif
 # /DD access (chd /DD at coldstart, chx /dd/cmds in startup) spinning in
 # the IDE driver.  The IDE partition descriptors /I0-/I7 stay in the boot
 # file either way, dormant until an HD is attached.
-ifeq ($(OS9KERNEL),os9kernel_dw)
+ifeq ($(BOOTDEV),dw)
 DEFAULT_DD = ddx0.dd
 else
 DEFAULT_DD = ddi0_pt.dd
@@ -113,8 +114,6 @@ GFX      = vtio_picothing.dr copico term_gfx.dd
 DW_EXTRA = ddx0.dd scdwv.dr term_scdwv.dt n_scdwv.dd \
            n1_scdwv.dd n2_scdwv.dd n3_scdwv.dd n4_scdwv.dd clock2_dw
 
-KERNEL = krn
-
 ifeq ($(LEVEL),2)
 CLOCK    = clock clock2_ds12885
 RAMDISK  = rammer.dr r0.dd
@@ -127,8 +126,8 @@ BOOTFILE = krnp2 krnp3_perr init ioman $(RBF_CORE) $(IDE_PARTS) $(SCF) \
 else
 CLOCK    = clock clock2_ds12885
 SHELLBOOT = shell_21
-BOOTFILE = ioman $(SYSGO) $(CLOCK) $(SCF) $(RBF_CORE) $(IDE_PARTS) \
-           $(DW) $(PIPE) $(SHELLBOOT) $(BOOTMODS_EXTRA)
+BOOTFILE = krn krnp2 init ioman $(SYSGO) $(CLOCK) $(SCF) $(RBF_CORE) \
+           $(IDE_PARTS) $(DW) $(PIPE) $(SHELLBOOT) $(BOOTMODS_EXTRA)
 endif
 
 # Loadable modules placed in /Modules.  The Level 2 base image carries the
@@ -178,8 +177,6 @@ UTILPAK1  = attr copy date del deldir dir display list makdir mdir \
 # ---------------------------------------------------------------------------
 
 REL       = rel_picothing
-BOOT_PAD  = 1024
-OS9KERNEL ?= os9kernel
 OS9FORMAT_CMD ?= $(OS9FORMAT_DS80)
 STARTUP ?= $(NITROS9DIR)/level$(LEVEL)/$(PORT)/startup
 DSKIMAGE ?= $(DISTROVER).dsk
@@ -266,13 +263,8 @@ $(MODDIR)/zero.dr: nzdrv.asm | $(MODDIR)
 $(MODDIR)/zero.dd: nzdesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $(ASOUT)$@ $<
 
-# DriveWire boot module and I/O subroutine use the auxiliary-ACIA transport
+# The DriveWire I/O subroutine uses the auxiliary-ACIA transport
 $(MODDIR)/dwio.sb: dwio.asm | $(MODDIR)
-	$(AS) $(AFLAGS) -Dpicothing=1 $(ASOUT)$@ $<
-# DriveWire boot module: shared with the CoCo1 boot_dw.asm; the Pico-Thing
-# aux-ACIA transport is selected inside the shared dwinit/dwread/dwwrite
-# includes and a -Dpicothing=1 island in boot_dw.asm.
-$(MODDIR)/boot_dw_pt: $(L1D)/coco1/modules/boot_dw.asm | $(MODDIR)
 	$(AS) $(AFLAGS) -Dpicothing=1 $(ASOUT)$@ $<
 
 # DriveWire RBF descriptors
@@ -319,33 +311,61 @@ $(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
 $(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1)) | $(MODDIR)
 	$(MERGE) $(addprefix $(MODDIR)/,$(UTILPAK1)) >$@
 
-# ---- REL loader, bootfile, OS9Kernel -------------------------------------
+# ---- REL loader and bootfile ---------------------------------------------
 
-# REL: raw binary loaded at Bt.Start.  Also emitted as an SREC for
-# usim09pt / firmware loading.
+# REL: raw binary the Pico's firmware loads at $0130.  Also emitted as an
+# SREC for usim09pt / firmware loading.
 $(REL): rel_picothing.asm
 	$(ASROM) $(AFLAGS) $(ASOUT)$@ $<
 $(REL).srec: rel_picothing.asm
 	$(AS) --format=srec $(AFLAGS) $(ASOUT)$@ $<
 
-bootfile: $(addprefix $(MODDIR)/,$(BOOTFILE))
-	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTFILE)) >$@
+# REL loads OS9Boot so that it ends at Bt.End ($FC00, below the Pico's
+# debug monitor), and the kernel needs it to start at or above $4000: the
+# page at $2000 carries REL's hand-over and the kernel's adoption of the
+# bootfile cannot start in block 1.  So it can be at most $BC00 bytes.
+BT_END    = 0xFC00
+BT_MAX    = 0xBC00
 
 ifeq ($(LEVEL),2)
-# Level 2: OS9Kernel = boot module padded to $(BOOT_PAD) bytes, then krn.
-os9kernel: $(MODDIR)/boot_picothing $(MODDIR)/$(KERNEL)
-	dd if=$(MODDIR)/boot_picothing of=$@ bs=$(BOOT_PAD) conv=sync 2>/dev/null
-	cat $(MODDIR)/$(KERNEL) >>$@
-os9kernel_dw: $(MODDIR)/boot_dw_pt $(MODDIR)/$(KERNEL)
-	dd if=$(MODDIR)/boot_dw_pt of=$@ bs=$(BOOT_PAD) conv=sync 2>/dev/null
-	cat $(MODDIR)/$(KERNEL) >>$@
+# Level 2: krn is the last module and must sit at Bt.Start ($EC00), so pad
+# it to exactly Bt.End-Bt.Start.  Every other module must sit below $E000:
+# $E000-$FFFF is the fixed window, one page shared by every task, and a
+# program module there cannot be mapped into a user task (in slots 0-6
+# page $FF means "no RAM").  So pad the other modules at their start to a
+# whole number of pages (as the Wildbits padup256 does) and follow them
+# with a gap that fills the window up to krn.
+KRN_SLOT  = 0x1000
+WIN_GAP   = 0xC00
+
+krnslot: $(MODDIR)/krn
+	@KRN=$$(wc -c <$<) ; \
+	if [ $$KRN -gt $$(($(KRN_SLOT))) ] ; then \
+		echo "krn is $$KRN bytes; it must fit $$(($(KRN_SLOT))) (Bt.Start to Bt.End)" ; \
+		exit 1 ; \
+	fi
+	cp $< $@
+	$(PADROM) $$(($(KRN_SLOT))) $@
+
+bootfile: $(addprefix $(MODDIR)/,$(BOOTFILE)) krnslot
+	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTFILE)) >$@
+	$(PADROM) -b $$(( ($$(wc -c <$@) + 255) / 256 * 256 )) $@
+	$(PADROM) $$(( $$(wc -c <$@) + $(WIN_GAP) )) $@
+	cat krnslot >>$@
+	@SIZE=$$(wc -c <$@) ; \
+	if [ $$SIZE -gt $$(($(BT_MAX))) ] ; then \
+		echo "bootfile is $$SIZE bytes; it must be at most $$(($(BT_MAX)))" ; \
+		rm -f $@ ; exit 1 ; \
+	fi
 else
-# Level 1: OS9Kernel = krn krnp2 init boot, merged (the cold-start scans
-# this blob and F$Links Init and krnp2 before F$Boot runs).
-os9kernel: $(MODDIR)/$(KERNEL) $(MODDIR)/krnp2 $(MODDIR)/init $(MODDIR)/boot_picothing
-	$(MERGE) $(MODDIR)/$(KERNEL) $(MODDIR)/krnp2 $(MODDIR)/init $(MODDIR)/boot_picothing >$@
-os9kernel_dw: $(MODDIR)/$(KERNEL) $(MODDIR)/krnp2 $(MODDIR)/init $(MODDIR)/boot_dw_pt
-	$(MERGE) $(MODDIR)/$(KERNEL) $(MODDIR)/krnp2 $(MODDIR)/init $(MODDIR)/boot_dw_pt >$@
+# Level 1: krn is the first module; REL rounds the start down to a page.
+bootfile: $(addprefix $(MODDIR)/,$(BOOTFILE))
+	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTFILE)) >$@
+	@SIZE=$$(wc -c <$@) ; \
+	if [ $$SIZE -gt $$(($(BT_MAX))) ] ; then \
+		echo "bootfile is $$SIZE bytes; it must be at most $$(($(BT_MAX)))" ; \
+		rm -f $@ ; exit 1 ; \
+	fi
 endif
 
 # ---- play directory --------------------------------------------------------
@@ -360,16 +380,14 @@ PLAY_FILES = $(PLAY_DIR)/readme $(PLAY_DIR)/sample.txt $(PLAY_DIR)/wstat.c \
 
 # ---- disk image ----------------------------------------------------------
 
-DSK_PREREQS = bootfile $(OS9KERNEL) $(REL) helpmsg $(RECIPE_DEPS) $(PLAY_FILES) \
+DSK_PREREQS = bootfile $(REL) helpmsg $(RECIPE_DEPS) $(PLAY_FILES) \
               $(addprefix $(MODDIR)/,$(SYSGO) $(CMDS_DISK) $(LOADMODS))
 
 ifeq ($(LEVEL),2)
 $(DSKIMAGE): $(DSK_PREREQS)
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
-	$(OS9GEN) $@ -b=bootfile
-	$(OS9COPY) $(OS9KERNEL) $@,OS9Kernel
-	$(OS9ATTR_EXEC) $@,OS9Kernel
+	$(OS9COPY) bootfile $@,OS9Boot
 	$(OS9COPY) $(MODDIR)/$(SYSGO) $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
 	$(MAKDIR) $@,CMDS
@@ -396,9 +414,7 @@ else
 $(DSKIMAGE): $(DSK_PREREQS)
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
-	$(OS9GEN) $@ -b=bootfile
-	$(OS9COPY) $(OS9KERNEL) $@,OS9Kernel
-	$(OS9ATTR_EXEC) $@,OS9Kernel
+	$(OS9COPY) bootfile $@,OS9Boot
 	$(MAKDIR) $@,CMDS
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS_DISK)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach f,$(CMDS_DISK),$@,CMDS/$(f))
@@ -449,7 +465,7 @@ helpmsg: $(HELPFILES)
 	$(MERGE) $^ > $@
 
 clean:
-	$(RM) *.list *.map bootfile os9kernel os9kernel_dw $(REL) $(REL).srec
+	$(RM) *.list *.map bootfile krnslot $(REL) $(REL).srec
 	$(RM) *.dsk buildinfo helpmsg
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
 

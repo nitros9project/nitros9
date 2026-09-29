@@ -24,8 +24,7 @@ level2/coco3/defs/*.d
 buildinfo
 bootfile
 kerneltrack
-os9kernel
-os9kernel_dw
+krnslot
 rel_picothing
 rel_picothing.srec
 helpmsg

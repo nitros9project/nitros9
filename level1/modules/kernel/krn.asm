@@ -84,12 +84,15 @@ name                fcs       /Krn/
 **************************
 * Kernel entry point
 *
-* Entry (Wildbits Port):
+* Entry (a port whose loader preloads the bootfile: BtPreld):
 *     X = The starting address of the bootfile.
 *     Y = The size of the bootfile in bytes.
 OS9Cold             equ       *         ; define assembler symbol
                     orcc      #IntMasks ; mask interrupts
                     lds       #$500     ; set the system stack
+                  IFNE    BtPreld ; begin conditional assembly for BtPreld
+                    pshs      x,y       ; save the bootfile pointer and size
+                  ENDC
                   IFNE    wildbits ; begin conditional assembly for wildbits
 *[[[ Wildbits port
 * In RAM mode, the Wildbits memory map looks like this:
@@ -102,7 +105,6 @@ OS9Cold             equ       *         ; define assembler symbol
 *    $C000-$DFFF - RAM at $00C000-$00DFFF
 *    $E000-$FFFF - RAM at $00E000-$00FFFF
 * Wildbits-specific initialization to get the Wildbits to a sane state.
-                    pshs      x,y       ; save the bootfile pointer and size
                     lda       #$FF      ; A = $FF
                     sta       INT_MASK_0 ; mask all set 0 interrupts
                     sta       INT_MASK_1 ; mask all set 1 interrupts
@@ -141,10 +143,8 @@ loop@               std       ,x++      ; save off at X and increment
 * conditionalized.
                   IFNE    CHECK_FOR_VALID_RAM ; begin conditional assembly for CHECK_FOR_VALID_RAM
 *[[[ CHECK_FOR_VALID_RAM
-                  IFNE    wildbits ; begin conditional assembly for wildbits
-*[[[ Wildbits port
+                  IFNE    BtPreld ; begin conditional assembly for BtPreld
                     ldx       ,s        ; get start of bootfile
-*]]] Wildbits port
                   ELSE
 *[[[ NOT(Wildbits port)
 * Check for valid RAM starting at $400
@@ -172,15 +172,14 @@ EndOfRAM@           leax      ,y        ; X = end of RAM
 *]]] CHECK_FOR_VALID_RAM
                   ELSE
 *[[[ NOT(CHECK_FOR_VALID_RAM)
-                  IFNE    wildbits ; begin conditional assembly for wildbits
-*[[[ Wildbits port
-* NOTE: Krn must be the FIRST module in the bootlist.
+                  IFNE    BtPreld ; begin conditional assembly for BtPreld
+* The preloaded bootfile sets the memory limit: everything from its start
+* up is the system's.
                     puls      x         ; get bootfile start
                     tfr       x,d       ; transfer it to D
                     addd      ,s++      ; add the bootfile length to D
                     std       <D.BTHI   ; save as the bootfile high marker
                     stx       <D.BTLO   ; and x as the bootfile low marker
-*]]] Wildbits port
                   ELSE
 *[[[ NOT(Wildbits port)
 * Check for valid RAM starting at $400
@@ -225,10 +224,8 @@ loop@               lda       ,x+       ; get source byte
                     ldy       #Bt.Start+Bt.Size-1 ; load Y from #Bt.Start+Bt.Size-1
 *]]] CORSHAM port
                   ELSE
-                  IFNE    wildbits ; begin conditional assembly for wildbits
-*[[[ Wildbits port
-                    ldy       #MappedIOStart ; stop short of I/O area
-*]]] Wildbits port
+                  IFNE    BtPreld ; begin conditional assembly for BtPreld
+                    ldy       #Bt.End   ; scan the whole bootfile, up to where it ends
                   ELSE
 *[[[ NOT(ATARI LIBER809 port | CORSHAM port | Wildbits port)
                     ldy       #Bt.Start+Bt.Size ; load Y from #Bt.Start+Bt.Size
