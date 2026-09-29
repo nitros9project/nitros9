@@ -44,7 +44,7 @@ MMU_WORKSLOT        equ       MMU_SLOT_0+MMU_SLOT
 tylg                set       Drivr+Objct
 atrv                set       ReEnt+rev
 rev                 set       $01
-edition             set       4
+edition             set       5
 
                     mod       eom,name,tylg,atrv,ModEntry,size
 
@@ -192,9 +192,9 @@ Read                lda       >MMU_WORKSLOT       Save the MMU block number
                     orcc      #IntMasks
                 ifgt Level-1
                     lda       FlashBlock,u
-                    cmpa      #$40                $40-$7F is the physical Flash window
+                    cmpa      #$40                $40-$9F: onboard Flash and cartridge
                     blo       readram@
-                    cmpa      #$80
+                    cmpa      #$A0
                     bhs       readram@
                     lbsr      FlashSector2Cache   copy while Flash is briefly exposed
                     lda       CacheBlock,u        caller buffer may live in FLASHDIS RAM;
