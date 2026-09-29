@@ -34,6 +34,9 @@ MEDIA ?= floppy
 # (display only; typed input is unchanged).
 VDG_T1 ?= 0
 UPPERCASE ?= 0
+# VDG_WINDOWS=n adds /V1../Vn, extra 32x16 screens (CLEAR/SHIFT-CLEAR
+# switch between them; start a shell with "shell i=/v1&"). 0 to 7.
+VDG_WINDOWS ?= 7
 TRACKS ?= 40
 PwrLnFrq ?= 60
 
@@ -81,7 +84,8 @@ REL ?= rel_32
 KERNEL_TRACK ?= $(REL) $(BOOTER) krn
 KERNELFILE = kerneltrack
 
-SCF ?= scf.mn vtio.dr snddrv_cc3.sb joydrv_joy.sb covdg.io term_vdg.dt
+VDGWINS = $(foreach n,$(wordlist 1,$(VDG_WINDOWS),1 2 3 4 5 6 7),v$(n).dw)
+SCF ?= scf.mn vtio.dr snddrv_cc3.sb joydrv_joy.sb covdg.io term_vdg.dt $(VDGWINS)
 PIPE ?= pipeman.mn piper.dr pipe.dd
 CLOCK ?= clock_$(PwrLnFrq)hz clock2_soft
 
@@ -180,6 +184,10 @@ TERM_VDG_FLAGS = -DPLAIN6847=1
 endif
 $(MODDIR)/term_vdg.dt: term_vdg.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(TERM_VDG_FLAGS)
+
+# /V1-/V7 from one source (level2/cocomemjr/modules/vdgwin.asm)
+$(MODDIR)/v%.dw: vdgwin.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(TERM_VDG_FLAGS) -DWNUM=$*
 
 $(MODDIR)/rel_32: rel.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DWidth=32
