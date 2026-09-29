@@ -15,44 +15,41 @@
 *   3. Set up stack at STKADDR ($2000)
 *   4. Clear direct page
 *   5. Enable 6309 native mode (HD63C09) [if H6309]
-*   6. Install D.BtBug (serial debug output via console ACIA)
-*   7. Install D.Crash handler
-*   8. Initialize IDE or DriveWire (per DrvWire flag)
-*   9. Print boot message with device type
-*  10. Load OS9Kernel from disk directly to Bt.Start
-*  11. Compute BRA stub addresses from krn and write hardware vectors
-*  12. Find Krn module and jump to entry point
+*   6. Install the boot debug output and crash handler
+*   7. Initialize IDE or DriveWire (per DrvWire flag)
+*   8. Print boot message with device type
+*   9. Find OS9Boot by name in the root directory and load it,
+*      following its segment list, so that it ends at Bt.End
+*  10. Find Krn in it: at Bt.Start it is a Level 2 bootfile
+*      (krn last), at the start a Level 1 one (krn first)
+*  11. Write the hardware vectors for that level
+*  12. Jump to krn with X = bootfile start, Y = bootfile size
 *
-* The kernel finds boot_picothing (merged into OS9Kernel)
-* and uses it via F$Boot to load OS9Boot from disk.
+* This is the Wildbits boot (bootos9): the kernel adopts the
+* preloaded bootfile in place, so there is no boot module, no
+* F$Boot, no OS9Kernel file and no OS9Gen.  Nothing here
+* depends on the level, so one REL boots both.
 *
 * On entry there is no stack; step 3 sets one up at STKADDR.
-*
-* Shared between Level 1 and Level 2 builds.  Level is set
-* by the defsfile (Level equ 1 or 2).  At Level 1, D.BtBug
-* and D.Crash DP offsets are defined locally since they do
-* not exist in the Level 1 system direct page.  The kernel
-* overwrites these locations after boot so there is no conflict.
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
 *     1    2025       Initial version for Pico-Thing
 *     2    2026/03/14 Unified L1/L2 with conditional assembly
+*     3    2026/09/29 Load the whole bootfile by name, as the Wildbits
+*                     does; choose the level from where Krn sits
 
                   IFP1
                     use       defsfile
                     use       ide_picothing.d
                   ENDC
 
-* Level 1 does not define D.BtBug or D.Crash in os9.d.
-* Define them locally at the same offsets as Level 2.
-* REL owns the direct page at boot time; the kernel will
-* reclaim these bytes later.
-                  IFEQ    Level-1
-D.BtBug             equ       $5E       boot debug vector (3 bytes)
-D.Crash             equ       $6B       crash handler vector (6 bytes)
-                  ENDC
+* REL owns the direct page at boot time, and both kernels clear it
+* before they use it, so REL keeps its debug output and crash vectors
+* at fixed offsets of its own, whatever the level.
+R.BtBug             equ       $5E       boot debug vector (3 bytes)
+R.CrashV            equ       $6B       crash handler vector (6 bytes)
 
 Chunk               equ       $0130     rel load address
                     org       Chunk
@@ -65,7 +62,7 @@ Chunk               equ       $0130     rel load address
 *
 start               bra       start2
 DrvWire             fcb       0         0=ide, 1=drivewire (Chunk+2)
-RELVer              fcb       0,0,3     rel version major.minor.patch (Chunk+3)
+RELVer              fcb       0,1,0     rel version major.minor.patch (Chunk+3)
 start2              orcc      #IntMasks disable all interrupts
                     clra
                     tfr       a,dp      set direct page to $0000
@@ -78,8 +75,8 @@ maploop@            sta       ,x+       slot N = physical page N
                     inca
                     cmpa      #DAT.BlCt-1 done slots 0-6?
                     blo       maploop@
-                    lda       #KrnBlk   kernel page ($07)
-                    sta       ,x        slot 7 = kernel block
+                    lda       #KrnBlk   kernel page ($FF)
+                    sta       ,x        slot 7 = kernel block (fixed in hardware)
                     clr       >DAT.Task select task 0
 
 * Set up stack at top of block 0 (pre-decrements)
@@ -93,17 +90,17 @@ clrdp@              sta       ,x+
                     incb
                     bne       clrdp@
 
-* Install D.BtBug: JMP to our PicoBtBug routine
-* D.BtBug is 3 bytes: opcode + 16-bit address
+* Install R.BtBug: JMP to our PicoBtBug routine
+* R.BtBug is 3 bytes: opcode + 16-bit address
                     lda       #OpJMP
-                    sta       <D.BtBug
+                    sta       <R.BtBug
                     leax      <PicoBtBug,pcr point to debug output routine
-                    stx       <D.BtBug+1 store target address
+                    stx       <R.BtBug+1 store target address
 
-* Install D.Crash handler
-* D.Crash is 6 bytes, copied from R.Crash below
+* Install the crash handler
+* R.CrashV is 6 bytes, copied from R.Crash below
                     leax      R.Crash,pcr source
-                    ldy       #D.Crash  destination
+                    ldy       #R.CrashV destination
                     ldb       #CrashHdl-R.Crash size of crash vector
 cpcrash@            lda       ,x+
                     sta       ,y+
@@ -138,10 +135,10 @@ bootmsg@            lbsr      PHDATA
 * Check if device init failed
                     bcs       InitErr
 
-* Load OS-9 from disk and jump to kernel
-* LOADO9 does not return on success (calls JMPKER).
+* Load OS9Boot from disk and jump to the kernel
+* LOADBT does not return on success.
 * On error it returns here, print message and halt.
-                    lbsr      LOADO9
+                    lbsr      LOADBT
                     leax      <BootFail,pcr
                     bra       BtHalt
 InitErr             leax      <InitFail,pcr
@@ -169,11 +166,7 @@ btbusy@             ldb       >ACIA.Ctrl read ACIA status
 *------------------------------------------------------------
 * Boot message
 *
-                  IFEQ    Level-1
-BootMsg             fcs       "NitrOS9 L1 Boot "
-                  ELSE
 BootMsg             fcs       "NitrOS9 Boot "
-                  ENDC
 MsgIDE              fcs       "(IDE)"
 MsgDW               fcs       "(DriveWire)"
 BootFail            fcs       "Boot failed"
@@ -181,7 +174,7 @@ InitFail            fcs       "Device init failed"
 CrashMsg            fcs       "Crash error $"
 
 *------------------------------------------------------------
-* D.Crash handler (6 bytes, copied to direct page at D.Crash)
+* Crash handler (6 bytes, copied to direct page at R.CrashV)
 *
 * On crash, jump back to our crash display routine.
 * Format: JMP >target  (3 bytes) + 3 bytes for D.CBStrt area
@@ -222,7 +215,11 @@ E_CRC               equ       $F3       crc error code
 OpJMP               equ       $7E       6809 JMP extended opcode
 Stat.TxE            equ       %00000010 acia tx data register empty
 STKADDR             equ       $2000     initial stack (pre-decrements)
-KERADDR             equ       Bt.Start  kernel loaded here (Level-dependent)
+* The bootfile ends at Bt.End, and must start at or above BTLOW: the page
+* at $2000 carries the kernel's copy of X and Y, and the Level 2 kernel's
+* adoption of the bootfile cannot start in block 1.
+BTLOW               equ       $4000     lowest start for the bootfile
+L1VECT              equ       $0100     Level 1 kernel's RAM vector table
 * SWIStack ("REGISTER STACK" + $55) sits between the krn module's emod and
 * the 6 BRA vector stubs; we skip it to find the stubs. The HD6309 kernel
 * widens that text by two bytes ("REGISTER STACK63"), so the stub offset
@@ -234,22 +231,25 @@ SWIStkSz            equ       15        "REGISTER STACK" + $55
                   ENDC
 VCT.Ct              equ       6         number of BRA stubs (SWI3..NMI)
 VCT.Sz              equ       3         bytes per stub (BRA + offset + NOP)
-SECBUF              equ       $B000     256 byte sector buffer
-SEGBUF              equ       $B100     segment list buffer (240 bytes)
+* The buffers sit below the stack, clear of the bootfile, which may
+* occupy anything from BTLOW to Bt.End.
+SECBUF              equ       $1000     256 byte sector buffer
+SEGBUF              equ       $1100     segment list buffer (240 bytes)
 SEG_ENT             equ       5         bytes per segment entry
 
 *------------------------------------------------------------
-* LOADO9 - load os9kernel from disk and jump to kernel
+* LOADBT - load os9boot from disk and jump to the kernel
 *
-* reads lsn 0, finds os9kernel in root directory, loads
-* it directly to KERADDR. os9kernel contains krn
-* and boot_picothing merged together. the kernel uses
-* boot_picothing via F$Boot to load os9boot from disk.
+* reads lsn 0, finds os9boot in the root directory and loads
+* it, following its segment list, so that it ends at Bt.End.
+* the file holds every module, krn included: at Level 2 krn
+* is the last module and lands at Bt.Start, at Level 1 it is
+* the first.  where krn sits tells us the level.
 *
 * entry: called from rel after hardware init
 * exit:  no return if successful
 *
-LOADO9
+LOADBT
 * read lsn 0 and get pointers and format codes
                     clrb                lsn 23-16 = 0
                     ldx       #0        read lsn 0
@@ -269,101 +269,126 @@ LOADO9
                     lbsr      PCRLF
                     leax      DRoot,pcr "root dir: "
                     lbsr      PHDATA
+                    lda       DD.DIR,y  root directory fd lsn, 24 bits
+                    sta       RtDir,pcr
                     ldx       DD.DIR+1,y
-                    stx       RtDir,pcr
+                    stx       RtDir+1,pcr
+                    lbsr      OUT2HX
                     lbsr      OUT4HX
                     lbsr      PCRLF
-* find and load os9kernel file
-                    ldx       RtDir,pcr get root dir fd lsn
-                    lbsr      FINDDT
+* find the os9boot file in the root directory
+                    ldb       RtDir,pcr get root dir fd lsn
+                    ldx       RtDir+1,pcr
+                    lbsr      FINDDT    its segments; b:x = its first sector
                     lbcs      LExit
-                    clrb                lsn 23-16 = 0
                     ldy       #SECBUF   read first dir sector
                     lbsr      READLS
                     lbcs      LExit
                     clr       FFSkip,pcr reset first-sector flag
-                    leax      KerNam,pcr find os9kernel in directory
+                    leax      BtNam,pcr find os9boot in directory
                     lbsr      FINDFL
-                    bcc       gtkr1@
-                    leax      O9KrErr,pcr "os9kernel file not found"
+                    bcc       gtbt1@
+                    leax      NoBtErr,pcr "os9boot file not found"
                     lbra      LError
-gtkr1@              ldx       ModNam,pcr print file name and fd lsn
+gtbt1@              ldx       ModNam,pcr print file name and fd lsn
                     lbsr      PHDATA
                     lbsr      OUT1SP
-                    ldx       ModLSN,pcr
+                    lda       ModLSN,pcr
+                    lbsr      OUT2HX
+                    ldx       ModLSN+1,pcr
                     lbsr      OUT4HX
+                    ldb       ModLSN,pcr
                     lbsr      FINDDT    get segment list and size
                     lbcs      LExit
-                    ldy       #KERADDR
-                    lbsr      READCF    load os9kernel directly to KERADDR
+* the bootfile must fit between BTLOW and Bt.End
+                    ldd       FSizHi,pcr file size bits 31-16
+                    bne       btbig@    64K or more: far too big
+                    tfr       u,d       file size
+                    stu       BtSize,pcr
+                    coma                d = -size - 1
+                    comb
+                    addd      #Bt.End+1 d = Bt.End - size
+                    bcc       btbig@    size above Bt.End
+                    clrb                round down to a page
+                    cmpd      #BTLOW    enough room below it?
+                    bhs       btfit@
+btbig@              leax      BigErr,pcr "os9boot too big"
+                    lbra      LError
+btfit@              std       BtStart,pcr
+                    tfr       d,y
+                    lbsr      READCF    load os9boot at btstart
                     lbcs      LExit
-* verify that kernel module exists at KERADDR
+* find krn in it: its place tells us the level
                     leax      NKrn,pcr
-                    ldy       #KERADDR
+                    ldy       BtStart,pcr
                     lbsr      FIND
-                    lbcs      LExit
-                  IFEQ    Level-1
+                    bcs       nokrn@
+                    cmpy      #Bt.Start at Bt.Start: Level 2
+                    beq       lvl2@
+                    cmpy      BtStart,pcr at the start: Level 1
+                    beq       lvl1@
+                    leax      LayErr,pcr "unknown os9boot layout"
+                    lbsr      PCRLF
+                    lbsr      PHDATA
+                    leax      KrnAt,pcr ": krn at "
+                    lbsr      PHDATA
+                    tfr       y,x       where krn was found
+                    lbsr      OUT4HX
+                    lbra      PCRLF
+nokrn@              leax      KrnErr,pcr "krn not found"
+                    lbra      LError
 * The Level 1 kernel keeps its secondary interrupt vectors in a
-* $0100 (D.XSWI3) RAM jump table - the CoCo convention. Its cold-start
+* $0100 RAM jump table - the CoCo convention. Its cold-start
 * copies VectCode there; on a CoCo the ROM points the 6809 hardware
 * vectors at that table, but the Pico-Thing has no such ROM, so point
 * $FFF2-$FFFC at the matching $0100 entries ourselves.
-                    leax      L1Vects,pcr table of 6 vector addresses
-                    ldy       #$FFF2    first hardware vector slot
+lvl1@               leax      L1Vects,pcr table of 6 vector addresses
+                    ldu       #$FFF2    first hardware vector slot
 l1vec@              ldd       ,x++      next $0100-table entry address
-                    std       ,y++      write it to the hardware vector slot
-                    cmpy      #$FFFE    stop before the reset vector at $FFFE
+                    std       ,u++      write it to the hardware vector slot
+                    cmpu      #$FFFE    stop before the reset vector at $FFFE
                     blo       l1vec@
-                  ELSE
+                    bra       jmpkr@
 * set up hardware vectors from krn BRA stubs
 * krn file layout after emod: [SWIStack 15 bytes] [6 x 3-byte BRA stubs]
 * stubs: SWI3 SWI2 FIRQ IRQ SWI NMI (same order as $FFF2-$FFFC)
-                    leax      ,y        use krn address returned by FIND
+lvl2@               leax      ,y        use krn address returned by FIND
                     ldd       M$Size,x  get krn module size (through emod)
                     leax      d,x       point past emod
                     leax      SWIStkSz,x skip SWIStack
 * x now points to first BRA stub (SWI3)
 * write 6 vector addresses to $FFF2-$FFFD
-                    ldy       #$FFF2
+                    ldu       #$FFF2
                     ldb       #VCT.Ct
-veclp@              stx       ,y++      write stub address to vector slot
+veclp@              stx       ,u++      write stub address to vector slot
                     leax      VCT.Sz,x  advance to next stub
                     decb
                     bne       veclp@
-                  ENDC
-* jump to kernel (it will load os9boot via F$Boot)
-                    lbsr      PCRLF
-                    bra       JMPKER
+* jump to krn with the bootfile start in x and its size in y,
+* as the Wildbits bootos9 does
+jmpkr@              lbsr      PCRLF
+                    clra
+                    tfr       a,dp
+                    ldd       M$Exec,y  get module execution offset
+                    leau      d,y       krn's entry point
+                    ldx       BtStart,pcr bootfile start
+                    ldy       BtSize,pcr bootfile size
+                    jmp       ,u        jump to os-9 kernel
 
-                  IFEQ    Level-1
 * Hardware-vector targets for Level 1, in $FFF2-$FFFC order
 * (SWI3 SWI2 FIRQ IRQ SWI NMI), each pointing into the $0100 VectCode
 * jump table (entry order SWI3 SWI2 SWI NMI IRQ FIRQ, 3 bytes apart).
-L1Vects             fdb       D.XSWI3+0 SWI3 vector goes to $0100
-                    fdb       D.XSWI3+3 SWI2 vector goes to $0103
-                    fdb       D.XSWI3+15 FIRQ vector goes to $010F
-                    fdb       D.XSWI3+12 IRQ vector goes to $010C
-                    fdb       D.XSWI3+6 SWI vector goes to $0106
-                    fdb       D.XSWI3+9 NMI vector goes to $0109
-                  ENDC
+L1Vects             fdb       L1VECT+0  SWI3 vector goes to $0100
+                    fdb       L1VECT+3  SWI2 vector goes to $0103
+                    fdb       L1VECT+15 FIRQ vector goes to $010F
+                    fdb       L1VECT+12 IRQ vector goes to $010C
+                    fdb       L1VECT+6  SWI vector goes to $0106
+                    fdb       L1VECT+9  NMI vector goes to $0109
 * error return
 LError              lbsr      PCRLF
                     lbsr      PHDATA
+                    lbsr      PCRLF
 LExit               rts
-
-*------------------------------------------------------------
-* JMPKER - find kernel entry point and jump
-*
-* entry: kernel already loaded at KERADDR
-* exit:  no return
-*
-JMPKER              clra
-                    tfr       a,dp
-                    ldy       #KERADDR
-                    leax      NKrn,pcr
-                    bsr       FIND
-                    ldd       M$Exec,y  get module execution offset
-                    jmp       d,y       jump to os-9 kernel
 
 *------------------------------------------------------------
 * FIND - find an os-9 module by name
@@ -389,21 +414,12 @@ fpar@               eora      ,y+
                     puls      y
                     cmpa      #$FF
                     bne       fnxt@
-                    pshs      x,y       compare name strings
+                    pshs      y         compare name strings
                     ldd       M$Name,y
                     leay      d,y
-fcmp@               lda       ,x+
-                    anda      #$5F      strip fcs high bit and fold case
-                    pshs      a
-                    lda       ,y+
-                    anda      #$5F
-                    cmpa      ,s+
-                    bne       fno@
-                    tst       -1,x      last char? (hi bit set)
-                    bpl       fcmp@
-                    puls      x,y       match found
-                    bra       ffnd@
-fno@                puls      x,y
+                    lbsr      NAMEQ     the very name?
+                    puls      y
+                    beq       ffnd@     yes
 fnxt@               leay      1,y       try next location
                     bra       FIND
 fnotf@              comb                not found
@@ -412,23 +428,62 @@ ffnd@               clrb                found
 fret@               rts
 
 *------------------------------------------------------------
+* NAMEQ - compare two fcs names, ignoring the case of letters
+*
+* Both must end at the same character (the one with bit 7
+* set), so "Krn" does not match "KrnP2".
+*
+* entry: x = name to find (fcs)
+*        y = candidate name (fcs)
+* exit:  cc z set if they are the same name
+*        all registers preserved
+*
+NAMEQ               pshs      a,x,y
+nq1@                lda       ,y+       candidate character
+                    bsr       UPCASE    fold it, keeping bit 7
+                    pshs      a
+                    lda       ,x+       wanted character
+                    bsr       UPCASE
+                    cmpa      ,s+       same character, same end flag?
+                    bne       nq9@      no, different names
+                    tsta                last character (bit 7 set)?
+                    bpl       nq1@      no, compare the next
+                    clra                same name: set z
+nq9@                puls      a,x,y,pc
+
+* UPCASE - fold a lower case letter in a to upper case,
+* keeping bit 7 (the fcs end flag)
+UPCASE              pshs      a
+                    anda      #$7F      the character without its end flag
+                    cmpa      #'a
+                    blo       uc9@
+                    cmpa      #'z
+                    bhi       uc9@
+                    lda       ,s
+                    suba      #$20      upper case, end flag kept
+                    sta       ,s
+uc9@                puls      a,pc
+
+*------------------------------------------------------------
 * FINDDT - read file descriptor and extract segment list
 *
 * reads the fd sector, copies the segment list to segbuf,
 * and returns the file size and first segment lsn.
 *
-* entry: x = lsn of fd sector
-* exit:  x = first segment lsn (low 16 bits)
+* entry: b:x = 24-bit lsn of fd sector
+* exit:  b:x = first segment lsn (24 bits)
 *        u = file size in bytes (low 16 bits)
+*        FSizHi = file size bits 31-16
 *        segment list copied to segbuf
 *        cc cs on error
 *
-FINDDT              pshs      a,b,y
-                    clrb                lsn 23-16 = 0
+FINDDT              pshs      a,y
                     ldy       #SECBUF
                     lbsr      READLS
                     lbcs      fdt_done@
 * extract file size
+                    ldd       FD.SIZ,y  file size bits 31-16
+                    std       FSizHi,pcr
                     ldu       FD.SIZ+2,y low 16 bits of file size
 * debug: print file size
                     pshs      x,u
@@ -473,10 +528,11 @@ prtseg@             lda       ,x        check for end of list
                     bra       prtseg@
 prtdn@              lbsr      PCRLF
                     puls      x,u
-* return first segment lsn (low 16 bits)
-                    ldx       SEGBUF+1  low 16 bits of first lsn
-                    clrb                success
-fdt_done@           puls      a,b,y,pc
+* return first segment lsn (24 bits)
+                    ldb       SEGBUF    lsn bits 23-16
+                    ldx       SEGBUF+1  lsn bits 15-0
+                    andcc     #^Carry   success
+fdt_done@           puls      a,y,pc
 
 *------------------------------------------------------------
 * FINDFL - find file name in directory
@@ -488,7 +544,7 @@ fdt_done@           puls      a,b,y,pc
 * entry: x = address of name string (fcs format)
 *        y = address of directory sector buffer (first
 *            sector already loaded)
-* exit:  x = lsn of file fd sector
+* exit:  ModLSN = 24-bit lsn of file fd sector
 *        cc cs = not found
 *
 FINDFL              pshs      a,b,x,y,u
@@ -554,24 +610,16 @@ ffl_exit@           puls      a,b,x,y,u,pc
 *
 ffl_scan@           pshs      a,x,y
 ffl_s1@             ldx       FFName,pcr reload name pointer
-                    pshs      x,y
                     sty       ModNam,pcr stash dir entry pointer
-ffl_s2@             lda       ,x+
-                    anda      #$5F      strip fcs high bit and fold case
-                    pshs      a
-                    lda       ,y+
-                    anda      #$5F
-                    cmpa      ,s+
+                    lbsr      NAMEQ     the very name?
                     bne       ffl_s3@   no match
-                    tst       -1,x      last char? (hi bit set)
-                    bpl       ffl_s2@   no, next char
-                    puls      x,y       match found
-                    ldx       DIR.FD+1,y get fd lsn (low 16 bits)
-                    stx       ModLSN,pcr
+                    ldb       DIR.FD,y  get fd lsn (24 bits)
+                    stb       ModLSN,pcr
+                    ldx       DIR.FD+1,y
+                    stx       ModLSN+1,pcr
                     clra                clear carry
                     puls      a,x,y,pc
-ffl_s3@             puls      x,y
-                    leay      DIR.SZ,y  next directory entry
+ffl_s3@             leay      DIR.SZ,y  next directory entry
                     deca
                     bne       ffl_s1@
                     coma                not found
@@ -653,7 +701,7 @@ cpbyte@             lda       ,y+
 cpdn@               stx       RCDest,pcr update destination pointer
 * progress dot
                     lda       #'.
-                    jsr       <D.BtBug
+                    jsr       <R.BtBug
 * check if file fully read
                     cmpu      #0
                     beq       rcdone@
@@ -916,7 +964,7 @@ skip@               ldd       DataReg,y
 *------------------------------------------------------------
 * Serial output routines
 *
-* adapted from st-mon for pico-thing. uses D.BtBug
+* adapted from st-mon for pico-thing. uses R.BtBug
 * (acia polling output) instead of st-2900 duart.
 *
 
@@ -929,7 +977,7 @@ PHDATA              pshs      a,cc,x
 ph01@               lda       ,x+
                     pshs      a
                     anda      #$7F      strip hi bit for output
-                    jsr       <D.BtBug
+                    jsr       <R.BtBug
                     puls      a
                     tsta                hi bit set? (last char)
                     bpl       ph01@
@@ -941,9 +989,9 @@ ph01@               lda       ,x+
 *
 PCRLF               pshs      a
                     lda       #C$CR
-                    jsr       <D.BtBug
+                    jsr       <R.BtBug
                     lda       #C$LF
-                    jsr       <D.BtBug
+                    jsr       <R.BtBug
                     puls      a,pc
 
 * OUT4HX - output 4 hex digits
@@ -984,7 +1032,7 @@ OUT1HX              pshs      a,cc
                     cmpa      #'9
                     ble       oh01@
                     adda      #$07      adjust for a-f
-oh01@               jsr       <D.BtBug
+oh01@               jsr       <R.BtBug
                     puls      a,cc,pc
 
 * OUT1SP - output one space
@@ -993,7 +1041,7 @@ oh01@               jsr       <D.BtBug
 *
 OUT1SP              pshs      a
                     lda       #C$SPAC
-                    jsr       <D.BtBug
+                    jsr       <R.BtBug
                     puls      a,pc
 
 *------------------------------------------------------------
@@ -1002,7 +1050,11 @@ OUT1SP              pshs      a
 DForm               fcs       "Format: "
 DSPT                fcs       "Sectors/Track: "
 DRoot               fcs       "Root dir: "
-O9KrErr             fcs       "OS9Kernel file not found"
+NoBtErr             fcs       "OS9Boot file not found"
+BigErr              fcs       "OS9Boot too big"
+KrnErr              fcs       "Krn not found in OS9Boot"
+LayErr              fcs       "Unknown OS9Boot layout"
+KrnAt               fcs       ": Krn at $"
 DSiz                fcs       " sz="
 DSeg                fcs       " sg:"
 DRdSg               fcs       "rd "
@@ -1010,15 +1062,18 @@ DRdSg               fcs       "rd "
 *------------------------------------------------------------
 * Module name strings (fcs format, hi bit set on last char)
 *
-KerNam              fcs       /OS9Kernel/
+BtNam               fcs       /OS9Boot/
 NKrn                fcs       /Krn/
 
 *------------------------------------------------------------
 * Disk boot variables (pcr-relative)
 *
-RtDir               fdb       0         lsn of root directory
+RtDir               fcb       0,0,0     24-bit lsn of root directory fd
 ModNam              fdb       0         pointer to file name
-ModLSN              fdb       0         lsn of file fd
+ModLSN              fcb       0,0,0     24-bit lsn of file fd
+FSizHi              fdb       0         file size bits 31-16
+BtStart             fdb       0         where os9boot is loaded
+BtSize              fdb       0         os9boot size in bytes
 IDEMode             fcb       0         ide device select byte (lba flag)
 * readcf working variables
 SegPtr              fdb       0         current position in segbuf

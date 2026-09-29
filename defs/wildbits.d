@@ -48,6 +48,16 @@ WILDBITS.D              set       1
 *
 TkPerSec            set       60
 
+********************************************************************
+* Boot features used by the shared kernel.  The loader (bootos9, run by
+* FEU) preloads the whole bootfile, krn included, and passes its start
+* in X and its size in Y; the kernel adopts it in place, so there is no
+* boot module and no F$Boot.
+*
+BtPreld             set       1         the loader preloads the bootfile
+Bt.End              set       $FE00     the bootfile ends here, below I/O
+RAMBlks             set       $40       fixed RAM: 512K in 8K blocks
+
                     ifeq      Level-1
 
 ********************************************************************

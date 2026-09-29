@@ -47,33 +47,40 @@ and `level2/picothing` trees.
 
 ## How the Pico-Thing boots
 
-Unlike the CoCo ports, the Pico-Thing carries **two** boot files on the
-disk rather than a single `OS9Boot`:
+The Pico-Thing boots the way the Wildbits does. The disk carries a single
+boot file, `OS9Boot`, holding every module the system needs to start,
+`krn` included; there is no `OS9Kernel` file, no boot module and no
+OS9Gen, so nothing in LSN 0 (`DD.BT`) has to point at it.
 
-- `OS9Kernel` — the boot module padded to 1024 bytes, immediately followed
-  by `krn`. A small raw REL loader (`rel_picothing`, built alongside as a
-  `.srec` for firmware/`usim09pt` loading) runs at `Bt.Start` ($E800),
-  loads `OS9Kernel`, then hands control to the kernel.
-- `OS9Boot` — the merged bootfile (`krnp2`, `krnp3_perr`, `init`, `ioman`,
-  the RBF/IDE stack, SCF console, clocks, pipes, ramdisk, the DriveWire
-  stack, `sysgo` and the shell). Everything else the port supports is
-  loadable from `/Modules` on the disk (graphical console, extra DriveWire
-  descriptors).
+A small raw REL loader (`rel_picothing`, built alongside as a `.srec` for
+firmware and `usim09pt` loading) runs from the main Pico's firmware. It
+finds `OS9Boot` by name in the root directory, loads it (following its
+segment list, so it may be fragmented) so that it ends at `Bt.End`
+($FC00, below the Pico's debug monitor), and jumps to `krn` with the
+bootfile's start in X and its size in Y. The kernel adopts the bootfile in
+place instead of calling `F$Boot`. Replacing `OS9Boot` with an ordinary
+`copy` is therefore enough to change what boots.
 
-The IDE and DriveWire recipes build the identical module set and bootfile;
-they differ only in which boot module `OS9Kernel` carries —
-`boot_picothing` (PATA IDE) versus `boot_dw_pt` (DriveWire).
+REL works out the level from where it finds `Krn`, so one REL boots both:
 
-The two levels compose those two files differently:
+- **Level 2** `OS9Boot` holds `krnp2 krnp3_perr init ioman`, the driver
+  stack, `sysgo` and a merged shell, padded at the start so they end at
+  $E000, then a gap and `krn` at `Bt.Start` ($EC00). Nothing but `krn` may
+  sit in $E000-$FFFF: that is the fixed window, one page shared by every
+  task, and a program module there could not be mapped into a user task.
+  The base image also carries a `/Modules` directory (graphical console,
+  extra DriveWire descriptors).
+- **Level 1** `OS9Boot` starts with `krn krnp2 init ioman sysgo`, and the
+  standalone `shell_21` module is renamed to `shell` on the disk. Level 1
+  links against `libcoco` rather than the level system library.
 
-- **Level 2** `OS9Kernel` is the boot module padded to 1024 bytes followed
-  by `krn`; `OS9Boot` holds `krnp2 krnp3_perr init ioman`, the driver
-  stack, `sysgo` and a merged shell. The base image also carries a
-  `/Modules` directory (graphical console, extra DriveWire descriptors).
-- **Level 1** `OS9Kernel` is a plain merge of `krn krnp2 init boot` (no
-  pad); `OS9Boot` starts with `ioman sysgo`, and the standalone `shell_21`
-  module is renamed to `shell` on the disk. Level 1 links against
-  `libcoco` rather than the level system library.
+The build fails if `OS9Boot` would start below $4000, which caps it at
+$BC00 bytes.
+
+The IDE and DriveWire recipes build the same modules; they differ only in
+`/DD`, which is the PATA master (`ddi0_pt.dd`) or DriveWire drive 0
+(`ddx0.dd`, selected by `BOOTDEV = dw`). The boot device itself is chosen
+at the Pico's monitor: `nitros9 ide` or `nitros9 drivewire`.
 
 ## Expanded "mega" images
 
@@ -111,7 +118,7 @@ Copy `l2/` (or `l2dw/`) to a new directory and drop in a `recipe.mak` to
 override, for example:
 
 - `RECIPE`         — changes the output disk-image name
-- `OS9KERNEL`      — `os9kernel` (IDE) or `os9kernel_dw` (DriveWire)
+- `BOOTDEV`        — `dw` makes `/DD` the DriveWire drive instead of the PATA master
 - `CMDS_EXTRA`     — extra commands copied into `/CMDS`
 - `BOOTMODS_EXTRA` — extra modules merged into the bootfile
 - `AFLAGS_EXTRA` / `LFLAGS_EXTRA` — extra assembler / linker flags
