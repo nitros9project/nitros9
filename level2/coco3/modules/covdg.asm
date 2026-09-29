@@ -103,6 +103,10 @@ InitNoHiRes         equ       *
                     bsr       SetupPal            set up palettes
                     lda       #$AF                Blue VDG char
                     sta       <VD.CColr,u         save as default color cursor
+                    IFNE      cocomemjr
+                    lbsr      MJScrAlc            get a VDG-visible text screen in X
+                    bcs       L00D6
+                    ELSE
                     pshs      u
                     ldd       #768                gets 1 page on an odd page boundary
                     os9       F$SRqMem            request from top of sys ram
@@ -118,6 +122,7 @@ IsEven              leau      >512,u              we only need 2 pages for the s
 IsOdd               ldd       #256                1 page return
                     os9       F$SRtMem            return system memory
                     puls      u
+                    ENDC
                     stx       <VD.ScrnA,u         save start address of the screen
                     stx       <VD.CrsrA,u         and cursor address
                     leax      >512,x              point to end of screen+1
@@ -232,10 +237,20 @@ Term                pshs      u,y,x
                     jsr       H$Term,x            release this device's application screens
 TermNoHiRes         equ       *
                     clr       <VD.Start,u         no screens in use
+                    IFNE      cocomemjr
+                    ldd       <VD.ScrnA,u         get pointer to alpha screen
+                    beq       ClrStat             branch if none
+                    ldx       <D.SysMem           mark its two pages free for covdg again
+                    ldb       #MJScrFre
+                    stb       a,x
+                    inca
+                    stb       a,x
+                    ELSE
                     ldd       #512                size of alpha screen
                     ldu       <VD.ScrnA,u         get pointer to alpha screen
                     beq       ClrStat             branch if none
                     os9       F$SRtMem            else return memory
+                    ENDC
 
 * 6809/6309 stack blast clear or TFM (vector once installed)
 ClrStat             ldb       #$E1                size of 1 page -$1D (SCF memory requirements)
@@ -245,6 +260,41 @@ L006F               clr       ,x+                 set stored byte to zero
                     bne       L006F               until zero
                     clrb
                     puls      pc,u,y,x
+
+                    IFNE      cocomemjr
+* CocoMEM Jr text screens. The VDG can only display motherboard RAM, so krn
+* keeps Bt.Block (a motherboard block) in slot 1 of the system map and
+* reserves system pages $20-$3F. Text screens are the 512-byte pairs of
+* pages from $22 up ($20-$21 hold the boot screen's BtDebug cursor; $22-$23
+* is the boot screen, so /term takes it over). In the system page map a
+* reserved pair is MJScrFre while free and MJScrUse while a screen.
+MJScrFre            equ       RAMinUse            as marked by krn
+MJScrUse            equ       ModBlock            any other non-zero value
+MJScrLo             equ       $22
+MJScrHi             equ       $40
+
+* Exit: X=screen address, or carry set and B=error
+MJScrAlc            ldx       <D.SysMem
+                    ldb       #MJScrLo
+MJScrLp             lda       b,x
+                    cmpa      #MJScrFre
+                    beq       MJScrGot
+                    addb      #2
+                    cmpb      #MJScrHi
+                    blo       MJScrLp
+                    comb
+                    ldb       #E$MemFul
+                    rts
+MJScrGot            lda       #MJScrUse
+                    sta       b,x
+                    incb
+                    sta       b,x
+                    decb
+                    tfr       b,a
+                    clrb                          D=screen address, carry clear
+                    tfr       d,x
+                    rts
+                    ENDC
 
 * Entry point from VTIO. Eventually, we will want to change the Write routine to
 *  handle buffered writes (will require changing SCF as well, I think) like CoWin/Grf
@@ -717,7 +767,43 @@ L03CB               stb       -6,y                $FFC0
                     stb       -1,y                $FFC5
                     lda       <VD.SBAdd,u         Get address of block screen is in
                     ENDC
-L03D7               lbsr      SetPals             Set palettes
+L03D7
+                    IFNE      cocomemjr
+* No GIME: the VDG shows motherboard RAM at the address in the SAM's F0-F6
+* ($200 units). A=MSB of the screen's system address. Look up the block in
+* its slot of the system DAT image; motherboard blocks are $38-$3F, so the
+* low 3 bits of the block number are motherboard A15-A13.
+                    tfr       a,b                 B=MSB of the system address
+                    lsra                          A=slot*2 (and bit 4)
+                    lsra
+                    lsra
+                    lsra
+                    anda      #$0E                A=slot*2
+                    inca                          low byte of the DAT image entry
+                    ldx       <D.SysDAT
+                    lda       a,x                 A=block number
+                    anda      #$07                motherboard 8K block
+                    lsla                          to A15-A13
+                    lsla
+                    lsla
+                    lsla
+                    lsla
+                    andb      #$1F                offset MSB within the block
+                    pshs      b
+                    ora       ,s+                 A=motherboard address MSB
+                    lsra                          A=address/$200: F0 in bit 0
+                    ldb       #7                  7 SAM F bits, Y=$FFC6 (F0)
+MJSamLp             lsra
+                    bcc       MJSamClr
+                    sta       1,y                 odd address sets the bit
+                    fcb       skip2
+MJSamClr            sta       ,y                  even address clears it
+                    leay      2,y
+                    decb
+                    bne       MJSamLp
+                    bra       L0440
+                    ELSE
+                    lbsr      SetPals             Set palettes
                     ldb       <D.HINIT            Get current GIME Init0 ghost register settings
                     orb       #$80                set CoCo 2 compatible mode
                     stb       <D.HINIT            Save updated ghost copy
@@ -780,6 +866,7 @@ L0430               lsra                          Write to $FFC6+ - 0 bits are e
 L041A               sta       ,y++                rather than additional leax 1,x on next line
                     decb                          Are we done all 7 SAM video address registers?
                     bne       L0430               No, keep doing until done
+                    ENDC
 L0440               clrb                          No error & return
                     puls      pc,y,x
 
