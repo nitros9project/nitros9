@@ -90,8 +90,8 @@ MName               fcs       /Krn/
                     fcc       /www.nitros9.org /
                     fcc       /www.nitros9.org /
                   ELSE
-                  IFNE    cocomemjr ; begin conditional assembly for cocomemjr
-* The CocoMEM Jr changes below are net 3 bytes smaller than the code they
+                  IFNE    immunity ; begin conditional assembly for immunity
+* The i-MMU-nity changes below are net 3 bytes smaller than the code they
 * replace (-8 for the block reservation, +5 for the slot 1 text screen
 * block), so pad by 3 more to keep the tail of krn at the same address.
                     fcc       /www.nitros9/
@@ -530,16 +530,16 @@ l@                  stu       ,x++      ; set all IRQ vectors to go to vectors f
                     lda       #$07      ; initialize all rest of the blocks to be free
                   ELSE
 *]]] Wildbits PORT
-*[[[ CocoMEM Jr PORT
+*[[[ i-MMU-nity PORT
 * Slot 1 ($2000-$3FFF) of the system map permanently holds Bt.Block, a
 * motherboard block the VDG can display: covdg keeps its text screens there
 * (the boot screen is its $200-$3FF). Pages $20-$3F are reserved below.
-                  IFNE    cocomemjr ; begin conditional assembly for cocomemjr
+                  IFNE    immunity ; begin conditional assembly for immunity
                     ldu       #Bt.Block ; the VDG text screen block
                     stu       ,x++      ; in slot 1
                     lda       #$05      ; initialize the other 5 blocks to be free
                   ELSE
-*]]] CocoMEM Jr PORT
+*]]] i-MMU-nity PORT
 * Dat.BlCt-ROMCount-RAMCount = 8 - 1 - 1 = 6
                     lda       #$06      ; initialize the rest of the blocks to be free
                   ENDC
@@ -592,13 +592,13 @@ pt_clr@             sta       ,x+       clear this slot
 
 * Update the system memory map to reserve the area used for global memory.
                     ldx       <D.SysMem ; get the system memory map pointer
-*[[[ CocoMEM Jr PORT
+*[[[ i-MMU-nity PORT
 * Also reserve pages $20-$3F (system slot 1, the VDG text screen block) so
 * F$SRqMem never hands them out; covdg manages them.
-                  IFNE    cocomemjr ; begin conditional assembly for cocomemjr
+                  IFNE    immunity ; begin conditional assembly for immunity
                     ldb       #$40      ; globals ($00-$1F) plus text screens ($20-$3F)
                   ELSE
-*]]] CocoMEM Jr PORT
+*]]] i-MMU-nity PORT
                     ldb       <D.CCStk  ; get the MSB of the top of kernel memory
                   ENDC
 * X indexes the system memory map.
@@ -747,18 +747,18 @@ KrnBlock            aslb                ; B <= 1 (hi bit goes into carry, 0 goes
 * $0240 = 512KB  ( 64 8KB blocks)
 * $0280 = 1024KB (128 8KB blocks)
 * $0300 = 2048KB (256 8KB blocks)
-*[[[ CocoMEM Jr PORT
-* The CocoMEM Jr has at least 512K, so there are no missing blocks to mark.
+*[[[ i-MMU-nity PORT
+* The i-MMU-nity has at least 512K, so there are no missing blocks to mark.
 * Instead reserve MMU blocks $38-$3E, the CoCo 1/2 motherboard RAM and the
 * only RAM the SAM/VDG can display ($3F holds krn). NotRAM, not RAMinUse, so
 * F$AllRAM/F$AlHRAM skip them and F$DelRAM can't free them; covdg claims a
 * screen block by setting RAMinUse on it. $3E stays reserved as the block
 * DAT.Free maps unused slots to. X=D.BlkMap here.
-                  IFNE    cocomemjr ; begin conditional assembly for cocomemjr
+                  IFNE    immunity ; begin conditional assembly for immunity
                     leax      $38,x     ; first motherboard block
                     ldd       #NotRAM*256+7 ; reserve 7 blocks, $38-$3E
                   ELSE
-*]]] CocoMEM Jr PORT
+*]]] i-MMU-nity PORT
                     bitb      #%00110000 ; is the block above 128K-256K?
                     beq       Mc09KrnStart ; yes, no need to mark block map
                     tstb                ; is it 2 meg?

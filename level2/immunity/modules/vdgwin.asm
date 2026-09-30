@@ -1,5 +1,5 @@
 ********************************************************************
-* Vn - VDG window descriptor for the CoCo 1/2 with a CocoMEM Jr
+* Vn - VDG window descriptor for the CoCo 1/2 with an i-MMU-nity
 *
 * One source for /V1 to /V7, extra 32x16 VDG screens that CLEAR and
 * SHIFT-CLEAR switch between. Assemble with -DWNUM=1..7. This is the CoCo 3
@@ -12,7 +12,7 @@
 * Comment
 * ------------------------------------------------------------------
 *          2026/09/29  John Federico / Claude
-* Created from level2/coco3/modules/v1.asm for the CocoMEM Jr port.
+* Created from level2/coco3/modules/v1.asm for the i-MMU-nity port.
 
                     nam       Vn
                     ttl       VDG window descriptor

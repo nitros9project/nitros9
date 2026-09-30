@@ -181,11 +181,11 @@ InstStr             equ       *
                     ifne      picothing
                     fcc       "Pico-Thing"
                     else
-                    ifne      cocomemjr
-                    fcc       "Color Computer 2 + CocoMEM Jr"
+                    ifne      immunity
+                    fcc       "Color Computer 2 + i-MMU-nity"
                     else
                     fcc       "Unknown Machine"
-                    endc                          match IFNE cocomemjr
+                    endc                          match IFNE immunity
                     endc                          match IFNE picothing
                     endc                          match IFNE wildbits
                     endc                          match IFNE corsham

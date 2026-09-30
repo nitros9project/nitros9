@@ -1,19 +1,19 @@
-# CoCo 2 + CocoMEM Jr Build Recipes
+# CoCo 2 + i-MMU-nity Build Recipes
 
-NitrOS-9 Level 2 for a Color Computer 1/2 fitted with a CocoMEM Jr MMU board.
+NitrOS-9 Level 2 for a Color Computer 1/2 fitted with an i-MMU-nity MMU board.
 The console is the 32x16 VDG screen (`covdg.io`). There is no GIME, so the CoCo 3
 window system (CoWin, GrfDrv) is not available.
 
 ## Build Directories
 
-- [`floppy/`](floppy/) builds `l2_cocomemjr_floppy.dsk` (`TRACKS=40` default, or 80)
-- [`sdc/`](sdc/) builds `l2_cocomemjr_sdc.dsk` for the CoCo SDC (the floppy
+- [`floppy/`](floppy/) builds `l2_immunity_floppy.dsk` (`TRACKS=40` default, or 80)
+- [`sdc/`](sdc/) builds `l2_immunity_sdc.dsk` for the CoCo SDC (the floppy
   driver is included as well)
 
 ```sh
 export NITROS9DIR=/path/to/nitros9
-make -C recipes/cocomemjr/floppy
-make -C recipes/cocomemjr/sdc
+make -C recipes/immunity/floppy
+make -C recipes/immunity/sdc
 ```
 
 Boot from Disk BASIC with `DOS`.
@@ -41,7 +41,7 @@ deletes the `.dsk` images in the recipe directory.
 
 ## Emulation
 
-XRoar's `-machine-opt immunity` emulates the CocoMEM Jr MMU. In `floppy/`,
+XRoar's `-machine-opt immunity` emulates the i-MMU-nity MMU. In `floppy/`,
 `make run` boots the image with the XRoar given by `XROAR`, which defaults to
 `$(NITROS9DIR)/../xroar/run-memjr.sh`. Add `-vdg-type 6847` to XRoar for a plain
 MC6847 (its CoCo 2B machine has a 6847T1).
@@ -51,7 +51,7 @@ floppy, allow a minute or so after boot for the startup commands to load.
 
 ## Status
 
-Boots and runs on a real CoCo 2 with a 1MB CocoMEM Jr, from the CoCo SDC:
+Boots and runs on a real CoCo 2 with a 1MB i-MMU-nity, from the CoCo SDC:
 
 - Shell, the clock (PIA VSYNC interrupt), and memory sizing (512K/1M/2M)
 - The VDG text console `/term`, plus up to seven extra screens `/V1`-`/V7`
@@ -65,5 +65,5 @@ Known limitations:
 - On floppy, the clock loses ticks while the drive is busy. This comes from the
   stock rb1773 driver.
 
-See `level2/cocomemjr/modules/README.md` for the hardware differences from the
+See `level2/immunity/modules/README.md` for the hardware differences from the
 CoCo 3 and the memory layout this port uses.
