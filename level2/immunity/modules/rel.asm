@@ -1,15 +1,15 @@
 ********************************************************************
-* REL - Relocation routine for the CoCo 1/2 with a CocoMEM Jr MMU
+* REL - Relocation routine for the CoCo 1/2 with an i-MMU-nity MMU
 *
 * Based on the CoCo 3 Level 2 REL (level1/coco1/modules/rel.asm). The
-* CocoMEM Jr has the CoCo 3 MMU registers ($FF90/$FF91, $FFA0-$FFAF) but no
+* i-MMU-nity has the CoCo 3 MMU registers ($FF90/$FF91, $FFA0-$FFAF) but no
 * GIME, so video comes from the VDG through the SAM, which can only display
 * the 64K motherboard RAM (MMU blocks $38-$3F).
 *
 * Hardware notes:
 * - $FF90 bit 6 enables the MMU and bit 3 (MC3) pins $FExx to block $3F.
 *   Bit 7 is inverted compared with the GIME: 0 enables the alternate vectors
-*   (CPU $FFE0-$FFFF read from MemJr RAM), 1 keeps the CoCo 1/2 ROM vectors.
+*   (CPU $FFE0-$FFFF read from i-MMU-nity RAM), 1 keeps the CoCo 1/2 ROM vectors.
 * - The alternate vector RAM is written by mapping block $3F into any slot
 *   other than 7 and writing the top of that slot ($xFF2-$xFFF).
 * - Never touch $FFD9 (SAM fast mode): on a CoCo 1/2 it stops video and
@@ -30,10 +30,10 @@
 * Comment
 * ------------------------------------------------------------------
 *   5r7    2026/09/29  John Federico / Claude
-* CocoMEM Jr version.
+* i-MMU-nity version.
 
                     nam       REL
-                    ttl       Relocation routine for CocoMEM Jr
+                    ttl       Relocation routine for i-MMU-nity
 
                     IFP1
                     use       defsfile
@@ -42,7 +42,7 @@
 XX.Size             equ       6                   number of bytes before REL actually starts
 Offset              equ       Bt.Start+XX.Size
 
-* CocoMEM Jr registers
+* i-MMU-nity registers
 MJ.Init0            equ       $FF90               INIT0: MMU enable, MC3, alternate vectors
 MJ.Init1            equ       $FF91               INIT1: task select
 MJ.MMU              equ       %01000000           MMU enable
@@ -92,7 +92,7 @@ start               ldb       #$FF                B=$FF: cold start
                     clra
                     tfr       a,dp
 
-* Task 0 and task 1: block 0 (MemJr RAM, system globals) in slot 0, and the
+* Task 0 and task 1: block 0 (i-MMU-nity RAM, system globals) in slot 0, and the
 * motherboard RAM blocks $39-$3F in slots 1-7. We are running at $26xx, which
 * is block $39 in slot 1, so the code keeps running when the MMU comes on.
                     ldx       #DAT.Regs
@@ -108,7 +108,7 @@ DatLoop             sta       1,x
                     clr       >MJ.Init1           task 0
                     lda       #MJ.Boot
                     sta       >MJ.Init0           MMU on, alternate vectors still off
-* Slot 0 is now MemJr block 0: the ROM's stack is gone, so make a new one.
+* Slot 0 is now i-MMU-nity block 0: the ROM's stack is gone, so make a new one.
                     lds       #$1FFF
                     stb       ,-s                 save the boot status
                     beq       Vectors             crash: keep the direct page for post-mortem

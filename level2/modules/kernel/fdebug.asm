@@ -48,8 +48,8 @@ Lp                  sta       8,x       ; put into map 1
                     decb                ; count down
                     bne       Lp        ; branch if zero is clear to Lp
 
-                  IFNE    cocomemjr
-* CocoMEM Jr: MMU off and the CoCo 1/2 ROM vectors (bit 7 set), so the
+                  IFNE    immunity
+* i-MMU-nity: MMU off and the CoCo 1/2 ROM vectors (bit 7 set), so the
 * jump below goes through BASIC's reset vector. This code was copied to
 * motherboard $0000 (block $38), so it keeps running with the MMU off.
                     lda       #$80      ; MMU off, ROM vectors
