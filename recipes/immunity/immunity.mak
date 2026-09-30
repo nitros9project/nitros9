@@ -1,20 +1,20 @@
-# NitrOS-9 Level 2 for the Color Computer 2 with a CocoMEM Jr MMU board.
+# NitrOS-9 Level 2 for the Color Computer 2 with an i-MMU-nity MMU board.
 #
-# The CocoMEM Jr provides a CoCo 3 compatible MMU ($FF90/$FF91, $FFA0-$FFAF)
+# The i-MMU-nity provides a CoCo 3 compatible MMU ($FF90/$FF91, $FFA0-$FFAF)
 # but no GIME, so the console is the VDG (covdg.io, 32x16) and the clock runs
 # from the PIA0 VSYNC interrupt. Port-specific sources live in
-# level2/cocomemjr/modules; everything else is shared with the CoCo 3 port.
+# level2/immunity/modules; everything else is shared with the CoCo 3 port.
 #
 # MEDIA selects the boot device:
 #   floppy  WD1773 floppy (rb1773), 40 or 80 tracks (TRACKS=40|80)
 #   sdc     CoCo SDC (rbsuper + llcocosdc), with the floppy driver as well
 
-PORT := cocomemjr
+PORT := immunity
 CPU := 6809
 LEVEL := 2
-MACHINE := Color Computer 2 with CocoMEM Jr
+MACHINE := Color Computer 2 with i-MMU-nity
 include $(NITROS9DIR)/recipes/rules.mak
-RECIPE ?= cocomemjr
+RECIPE ?= immunity
 -include recipe.mak
 
 # Shared CoCo sources. vpath directories from rules.mak (this port's own
@@ -157,7 +157,7 @@ endif
 	$(OS9ATTR_TEXT) $@,startup
 	$(call RECIPE_INSTALL,$@)
 
-# Run the image in the locally built XRoar with the CocoMEM Jr (iMMUnity) MMU.
+# Run the image in the locally built XRoar with the i-MMU-nity MMU.
 # XRoar has no CoCo SDC emulation, so this only makes sense for MEDIA=floppy.
 XROAR ?= $(NITROS9DIR)/../xroar/run-memjr.sh
 run: $(DSKIMAGE)
@@ -185,7 +185,7 @@ endif
 $(MODDIR)/term_vdg.dt: term_vdg.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(TERM_VDG_FLAGS)
 
-# /V1-/V7 from one source (level2/cocomemjr/modules/vdgwin.asm)
+# /V1-/V7 from one source (level2/immunity/modules/vdgwin.asm)
 $(MODDIR)/v%.dw: vdgwin.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(TERM_VDG_FLAGS) -DWNUM=$*
 

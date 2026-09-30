@@ -1,7 +1,7 @@
-# CocoMEM Jr port-specific modules
+# i-MMU-nity port-specific modules
 
 Sources here override same-named files elsewhere on the recipe vpath
-(`level2/cocomemjr/modules` is searched first when `PORT=cocomemjr`).
+(`level2/immunity/modules` is searched first when `PORT=immunity`).
 
 - `rel.asm`: REL for the CoCo 1/2. It sets up the MMU and the alternate
   vectors, puts up the boot screen and debug output, and copies REL/BOOT/KRN to
@@ -10,22 +10,22 @@ Sources here override same-named files elsewhere on the recipe vpath
   with `-DWNUM=1..7`.
 
 All other modules are shared with the CoCo 3 port. The port-specific parts of
-shared files are inside `IFNE cocomemjr` blocks, in `krn.asm`, `clock.asm`,
+shared files are inside `IFNE immunity` blocks, in `krn.asm`, `clock.asm`,
 `covdg.asm`, `fdebug.asm`, `reboot.asm` and `init.asm`. They are also
 controlled by the `PLAIN6847` flag in `term_vdg.asm` and the `ALLCAPS` flag in
 `covdg.asm`.
 
 ## Hardware
 
-The CocoMEM Jr is an MMU board for the CoCo 1/2. It is register-compatible with
+The i-MMU-nity is an MMU board for the CoCo 1/2. It is register-compatible with
 the CoCo 3 GIME MMU (`$FF90`/`$FF91`, `$FFA0-$FFAF`), with these differences:
 
 - MMU blocks `$38-$3F` are the 64K motherboard RAM: block `$38+n` is the
   8K at motherboard address `n * $2000`. This is the only RAM the SAM/VDG can
-  display. Every other block number is CocoMEM Jr RAM.
+  display. Every other block number is i-MMU-nity RAM.
 - `$FF90` bit 6 enables the MMU and bit 3 (MC3) pins `$FExx` to block `$3F`.
   Bit 7 is inverted compared with the GIME: 0 enables the alternate vectors
-  (CPU `$FFE0-$FFFF` come from CocoMEM Jr RAM), and 1 selects the CoCo 1/2 ROM
+  (CPU `$FFE0-$FFFF` come from i-MMU-nity RAM), and 1 selects the CoCo 1/2 ROM
   vectors. Writing a CoCo 3 value with bit 7 set turns the alternate vectors
   off.
 - With the MMU on, CPU `$FFxx` is always I/O.
@@ -41,8 +41,8 @@ the CoCo 3 GIME MMU (`$FF90`/`$FF91`, `$FFA0-$FFAF`), with these differences:
 
 | MMU block | Physical | Use |
 | --- | --- | --- |
-| `$00` | CocoMEM Jr | system globals (block map `$0200`, page map), as on the CoCo 3 |
-| `$01-$37`, `$40`+ | CocoMEM Jr | OS9Boot and general RAM |
+| `$00` | i-MMU-nity | system globals (block map `$0200`, page map), as on the CoCo 3 |
+| `$01-$37`, `$40`+ | i-MMU-nity | OS9Boot and general RAM |
 | `$38-$3D` | motherboard `$0000-$BFFF` | VDG pool: `NotRAM` in the block map; CoVDG claims graphics screens by setting `RAMinUse` |
 | `$3B` (`Bt.Block`) | motherboard `$6000-$7FFF` | text screens; permanently in system slot 1 (`$2000`), pages `$20-$3F` reserved |
 | `$3E` | motherboard `$C000-$DFFF` | reserved; `DAT.Free` maps unused slots here |
@@ -57,5 +57,5 @@ Block `$3B` is laid out as follows:
   screens in all.
 
 The kernel changes are size-neutral: the 6809 CoCo krn is a fixed `$F00`
-bytes, with only an 8-byte padding string. The CocoMEM Jr changes trade against the
+bytes, with only an 8-byte padding string. The i-MMU-nity changes trade against the
 CoCo 3's 128K-machine code and that padding string. 11 bytes of padding remain.

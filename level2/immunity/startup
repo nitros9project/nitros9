@@ -1,6 +1,6 @@
 * Echo welcome message
 echo * Welcome to NitrOS-9 Level 2 *
-echo *   on the CoCo 2 + MemJr     *
+echo * on the CoCo 2 + i-MMU-nity  *
 * Lock shell and std utils into memory
 link shell
 load utilpak1

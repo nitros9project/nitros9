@@ -103,7 +103,7 @@ InitNoHiRes         equ       *
                     bsr       SetupPal            set up palettes
                     lda       #$AF                Blue VDG char
                     sta       <VD.CColr,u         save as default color cursor
-                    IFNE      cocomemjr
+                    IFNE      immunity
                     lbsr      MJScrAlc            get a VDG-visible text screen in X
                     bcs       L00D6
                     ELSE
@@ -237,7 +237,7 @@ Term                pshs      u,y,x
                     jsr       H$Term,x            release this device's application screens
 TermNoHiRes         equ       *
                     clr       <VD.Start,u         no screens in use
-                    IFNE      cocomemjr
+                    IFNE      immunity
                     ldd       <VD.ScrnA,u         get pointer to alpha screen
                     beq       ClrStat             branch if none
                     ldx       <D.SysMem           mark its two pages free for covdg again
@@ -261,8 +261,8 @@ L006F               clr       ,x+                 set stored byte to zero
                     clrb
                     puls      pc,u,y,x
 
-                    IFNE      cocomemjr
-* CocoMEM Jr text screens. The VDG can only display motherboard RAM, so krn
+                    IFNE      immunity
+* i-MMU-nity text screens. The VDG can only display motherboard RAM, so krn
 * keeps Bt.Block (a motherboard block) in slot 1 of the system map and
 * reserves system pages $20-$3F. Text screens are the 512-byte pairs of
 * pages from $22 up ($20-$21 hold the boot screen's BtDebug cursor; $22-$23
@@ -785,7 +785,7 @@ L03CB               stb       -6,y                $FFC0
                     lda       <VD.SBAdd,u         Get address of block screen is in
                     ENDC
 L03D7
-                    IFNE      cocomemjr
+                    IFNE      immunity
 * No GIME: the VDG shows motherboard RAM at the address in the SAM's F0-F6
 * ($200 units). A=MSB of the screen's system address. Look up the block in
 * its slot of the system DAT image; motherboard blocks are $38-$3F, so the
@@ -1989,7 +1989,7 @@ L06CB               tst       ,y                  check block number
                     ldb       #E$BMode
 L06D9               puls      pc,a
 
-                    IFNE      cocomemjr
+                    IFNE      immunity
 * Get an 8K graphics screen block. The VDG can only display motherboard RAM,
 * MMU blocks $38-$3F; krn marks $38-$3E NotRAM. A pool block is free while
 * its block map entry is exactly NotRAM; claim it by setting RAMinUse.
