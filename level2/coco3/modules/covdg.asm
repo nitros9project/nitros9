@@ -1022,14 +1022,42 @@ Do12                ldx       <VD.SBAdd,u         get address of where 8K block 
                     beq       L051B               None, skip ahead
                     ldd       #$0020              A=0 (deallocate) B=32 (32 system pages (256 bytes each))
                     bsr       L04D9               Deallocate 8K system RAM from system map
+                    IFNE      immunity
+* Unmap the screen from the system DAT image too. F$SRtMem only frees the
+* slots of plain RAMinUse blocks, so this slot would never be reused and
+* each graphics screen would use up one slot of system address space.
+                    tfr       x,d                 A=MSB of the screen's system address
+                    lsra                          A=slot*2
+                    lsra
+                    lsra
+                    lsra
+                    anda      #$0E
+                    ldx       <D.SysDAT
+                    leax      a,x
+                    ldd       #DAT.Free
+                    std       ,x
+                    clra                          no screen mapped (a second $12 is harmless)
+                    clrb
+                    std       <VD.SBAdd,u
+                    ENDC
 L051B               leay      <VD.GBuff,u         point Y to graphics screen block numbers
                     ldb       #$03                number of possible screens allocated starting at VD.GBuff
                     pshs      u,b                 save our static pointer, and counter (3)
 L0522               lda       ,y+                 get next medium res screen block #
                     beq       L052D               unused, continue
+                    IFNE      immunity
+* F$DelRAM wants X = block number; A:B = block:0 would be block*256, past
+* the end of the block map, so nothing was freed and the pool ran dry.
+                    clr       -1,y                forget it (a second $12 is harmless)
+                    tfr       a,b
+                    clra
+                    tfr       d,x
+                    ldb       #1                  1 block to deallocate
+                    ELSE
                     clrb                          Use, move block # to X
                     tfr       d,x
                     incb                          1 block to deallocate
+                    ENDC
                     os9       F$DelRAM            deallocate it from main RAM
 L052D               dec       ,s                  dec # of screens to check
                     bgt       L0522               until all 3 possible medium res screens are done.
