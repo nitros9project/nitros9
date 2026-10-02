@@ -104,6 +104,14 @@ ifeq ($(LEVEL),2)
 # vs: VS1053 test command (wb/vs1053); on its own line so it never collides with edits to the CMDS list above
 CMDS += vs
 
+# These commands live in the Level 2 source tree. Explicit prerequisites also
+# prevent an older Level 1 object from satisfying an incremental build.
+$(MODDIR)/view: $(L2PCD)/view.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(OBJDIR)/play.o: $(L2PCD)/play.as | $(OBJDIR)
+	$(ASM) $(AFLAGS) $< $(ASOUT)$@
+
 UTILPAK1_MODS = attr copy date del deiniz dir display list makdir mdir \
 	merge mfree procs rename tmode unlink
 CMDS += dmem minted mmap modpatch \
