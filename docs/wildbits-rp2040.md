@@ -15,11 +15,11 @@ fpga flash 3 /dd/cores/core.bin.gz
 fpga abort
 ```
 
-`status` shows local status, last error, firmware major and remote status in hexadecimal, followed by the recorded actual boot context/source/path. The actual boot source may differ from the saved default after fallback. `log` prints the supervisor's retained boot messages. `list` lists context 1 by default; an explicit argument selects physical context 1 through 4.
+`status` prints one line in words - online/offline, idle/busy, reply waiting, no error or the error code in hex, the firmware major in decimal, supervisor ready/not ready and upload in progress - followed by the recorded actual boot context, source name and path (for example "Booted from: context 3, Internal flash, v8_rc18.bin.gz"). The actual boot source may differ from the saved default after fallback. `log` prints the supervisor's retained boot messages. `list` lists context 1 by default; an explicit argument selects physical context 1 through 4.
 
 The list names each source: Automatic (SD, then flash), SD card, Internal flash, or GOLDEN recovery. Labels show [saved boot setting] and [last booted by RP2040] where applicable. File paths and decimal byte sizes appear on the following indented line; Automatic is a policy and has no file size. The booted label reflects the supervisor boot record, which a later JTAG load may not update. Manager-SD paths are not OS-9 paths.
 
-`program N LOCAL.bin` uploads a raw 9,730,652-byte FPGA image from OS-9 to the supervisor SD card's `CNTXN` directory, retaining the local basename. For example, `fpga program 3 /dd/cores/core.bin` stores `0:/CNTX3/core.bin` on the supervisor SD. The supervisor writes a temporary file and replaces the destination after checking the transmitted size and CRC. An existing image with that basename is replaced.
+`program N LOCAL.bin` uploads a raw FPGA image of 9,730,652 bytes, or up to 256 bytes more (padding after the bitstream gives the FPGA's startup phases their configuration clocks when the supervisor stops clocking at the last byte; the gzip trailer for `flash` may declare the same padded size) from OS-9 to the supervisor SD card's `CNTXN` directory, retaining the local basename. For example, `fpga program 3 /dd/cores/core.bin` stores `0:/CNTX3/core.bin` on the supervisor SD. The supervisor writes a temporary file and replaces the destination after checking the transmitted size and CRC. An existing image with that basename is replaced.
 
 `flash N LOCAL.gz` programs the replaceable internal-flash slot for physical context N (1 through 4). The supplied firmware requires gzip for internal flash: raw `.bin` is not accepted there. The gzip file must be 18 bytes through 2 MiB, and its trailer must declare a 9,730,652-byte expanded image. The command checks the header/trailer shape; it does not implement a gzip decompressor. Flash preparation erases the selected slot; cancellation or failure can leave that replaceable slot invalid. Embedded GOLDEN recovery is not a programming target.
 
@@ -27,7 +27,13 @@ Both commands read the local file once to compute standard CRC32, rewind, and st
 
 Ctrl-C/Ctrl-E cancellation stops the transfer and attempts IMAGE_ABORT when the mailbox is idle. An ambiguous append is never blindly resent. If a timed-out command remains busy, no abort is queued behind it; after the mailbox becomes idle, `fpga abort` explicitly cancels an unfinished upload before another attempt. It does not undo a completed flash erase or restore a replaced image.
 
-Changing saved selection, booting a core, downloading images and firmware updating are not CLI options yet.
+`fwipe N` clears the replaceable internal-flash slot for physical context N with the supervisor's CLEAR_FLASH request ($0D): the manager erases the slot's header sector, verifies it reads erased and drops the slot's metadata, so the slot is invalid until the next `flash N`. `pwipe N path` deletes an image from the supervisor's own SD card with DELETE_SD_IMAGE ($13); `path` is the image as `fpga list` prints it (`CNTXn/name.bin`, `0:/CNTXn/name.gz`), it must be catalogued, and a saved selection that pointed at it falls back to Automatic. (Until 2026-09-27 fwipe was an IMAGE_BEGIN/IMAGE_ABORT pair and pwipe a refusal; both came from reading only the OS-9 side.)
+
+`boot N` sends RECONFIGURE_SELECTED ($0C): the manager reloads the FPGA from context N's saved source, so the K2 restarts on that core. Only the physical context (the back-panel switches) is accepted. `restart` sends RESTART_SUPERVISOR ($15): the RP2040 reboots by watchdog and reruns its boot sequence, which also restarts the K2. Both are the way to make the manager load a core while its USB console is open, since a power cycle loses the console's first seconds; the manager prints the loader's verdict ("FPGA configuration accepted" or a "Reject: ..." reason) there.
+
+A request the manager refuses prints "Supervisor refused or answered badly; its status:error = $ssee" with the mailbox status byte and the manager's latched error code (0x12 bad slot, 0x1a flash verify, 0x1b metadata, 0x22 bad selection, 0x25 delete failed, 0x10 an upload is active; the full list is supervisor_service.cpp in the fpga-manager source).
+
+Changing the saved selection, downloading images from the supervisor and firmware updating are not CLI options yet.
 
 ## Driver API
 
@@ -35,7 +41,7 @@ Open `/rp` with `UPDAT.` ($03). Do not add `SHARE.`: IOMan requires the requeste
 
 Write one binary request record: command byte, payload-length byte, then 0..240 payload bytes. The last byte submits the command and waits for completion. Read the response-length byte, followed by exactly that many reply bytes. Even a zero-payload reply has a zero-length prefix that must be consumed. The driver refuses another request until the previous reply is drained. Descriptor EOR and auto-LF are zero so SCF does not split CR-containing binary replies or insert LF bytes.
 
-GetStat `$C0`, private to this driver, returns X as status:error and Y as firmware-major:remote-status. SS.Ready returns buffered bytes available in B. The command uses this API rather than accessing hardware registers in user state.
+GetStat `$C0`, private to this driver, returns X as status:error and Y as firmware-major:remote-status. Since 2026-09-26 a non-zero error byte no longer fails the request that carried it: the byte is the supervisor's latched last error, repeated on every frame, and failing on it left every command dead (E$Write 246) after one aborted upload. Commands read it through this GetStat instead. SS.Ready returns buffered bytes available in B. The command uses this API rather than accessing hardware registers in user state.
 
 The driver uses FE78-FE7F and FE88-FE8F. Count registers are high-byte first; payload words/dwords are explicitly little-endian. Edition 2 waits at most 300 elapsed 60 Hz ticks normally, 1800 ticks for IMAGE_END, and 7200 ticks for flash-target IMAGE_BEGIN, sleeping between polls with interrupts enabled. After busy clears it waits one real tick before copying the reply, because the supplied FPGA engine clears busy before completing its RX FIFO copy. This conservative per-packet wait limits bulk throughput; a full raw image takes many minutes. No hardware throughput measurement has been made.
 
