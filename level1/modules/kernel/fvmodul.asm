@@ -182,13 +182,19 @@ errex@              coma                ; set carry
 ChkMHCRC            ldd       ,x        ; get two bytes at start of potential module
                     cmpd      #M$ID12   ; are these module sync bytes?
                     bne       errex@    ; nope, not a module here
+                    ifne      _FF_MODCHECK
                     leay      M$Parity,x ; else point Y to the parity byte in the module
                     bsr       ChkMHPar  ; check header parity
                     bcc       Chk4CRC   ; branch if ok
+                    else
+                    clrb                ; sync bytes matched; skip parity/CRC
+                    rts
+                    endc
 errex@              comb                ; else set carry
                     ldb       #E$BMID   ; and load B with error
                     rts                 ; return to caller
 
+                    ifne      _FF_MODCHECK
 * Check module CRC
 *
 * Entry: X = Address of module to check.
@@ -243,6 +249,7 @@ err@                comb                ; ...else set carry
                     ldb       #E$BMCRC  ; load B with error
 ex@                 puls      pc,y,x    ; return to caller
 
+                    endc
                   ELSE
 
 FVModul             pshs      u         ; preserve register stack pointer
