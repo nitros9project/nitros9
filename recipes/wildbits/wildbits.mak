@@ -86,13 +86,8 @@ inetd telnet dw httpd $(BASIC09) $(BF) \
 
 # K2 supervisor mailbox: shared Level 1 sources for both OS levels (rc18+).
 ifeq ($(PLATFORM),k2)
-# 2026-09-29 (user): the mailbox driver and its descriptor are not in the bootfile - they are merged into ONE file,
-# CMDS/rp2040.dr, so "load rp2040.dr" puts both modules in the same 8K block
-CMDS += rp2040.dr
+SCF_EXTRA += rpdrv rp
 CMDS += fpga
-
-$(MODDIR)/rp2040.dr: $(MODDIR)/rpdrv $(MODDIR)/rp
-	$(MERGE) $^ > $@
 
 $(MODDIR)/rpdrv: $(L1PMD)/rpdrv.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
