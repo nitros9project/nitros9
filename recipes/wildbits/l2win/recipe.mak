@@ -26,9 +26,16 @@ export NITROS9DIR LANGUAGES
 #      that rule changes. (A duplicated -e is harmless.)
 OS9FORMAT_CMD = $(OS9FORMAT_SD) -e
 
-# 0a) padup256 has CRLF line endings; cygwin sh chokes on it unless
-#     igncr is in effect. wildbits.mak's "PADUP ?=" honors this.
-PADUP = bash -o igncr ./padup256 bootfile
+# 0a) The bootfile padder (2026-10-04): smartpad256 pads at the BEGINNING
+#     to whole pages like padup256, then past the page counts the kernel
+#     cannot reserve (31-32, 63-64, 95-96, 127-128 pages: Krn's F$SRqMem
+#     reservation sits two pages above the bootfile and, when the bootfile
+#     starts in the last two pages of an 8K block, F$AllImg maps every slot
+#     above one block low). Ceiling 40,448 bytes ($6000-$FDFF; slot 2 is the
+#     drivers' reserved window). Bootfiles over 32,768 also need the
+#     unsigned copy loop in bootos9/os9boot (same date). igncr: CRLF-safe.
+PADUP = bash -o igncr ./smartpad256 bootfile
+override MAX_BOOTFILE_SIZE = 40448
 
 # 0b) BASIC09 binaries build from the sibling nitros9-languages repo
 #     (LANGUAGES above). Its build invokes python3, which on this box
@@ -38,10 +45,11 @@ PADUP = bash -o igncr ./padup256 bootfile
 #     by RUNB_SHA256 in wildbits.mak.
 
 # 1) DriveWire in the boot: dwio_serial + pipes + rbdw/x0-x3.
-#    sc16550/t0 deliberately NOT included: OS9Boot must stay under
+#    sc16550/t0 deliberately NOT included: OS9Boot had to stay under
 #    32,256 bytes (the booter loads it at $FE00-minus-size; below
-#    $8000 it wedges at "Loading sector.") and /t0 shares the DW
-#    UART at $FE60 anyway.
+#    $8000 it wedged at "Loading sector." - the copy loop's signed
+#    BGT, fixed 2026-10-04; see 0a for the new limits) and /t0 shares
+#    the DW UART at $FE60 anyway.
 ifeq ($(LEVEL),2)
 override BOOTMODS = krnp2 ioman init \
 	$(SCF) \
