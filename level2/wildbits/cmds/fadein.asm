@@ -94,7 +94,7 @@ msghelp3_len equ msghelp3_end-msghelp3
 *---------------------------------------------------
 start
          stx       <cmdline          save command line ptr FIRST
-         ldx       #$C1              page to map
+         ldx       #FONT_BLK              page to map
          pshs      u                 preserve U
          ldb       #$01              need 1 block
          os9       F$MapBlk          map into process address space
@@ -440,7 +440,7 @@ delayloop@
 * Unmap the CLUT page - Free mapped block
 *---------------------------------------------------
          ldu       <mapaddr          get mapped address
-         ldx       #$C1              page to unmap
+         ldx       #FONT_BLK              page to unmap
          ldb       #1                1 block
          os9       F$ClrBlk          remove from DAT image
          clrb
