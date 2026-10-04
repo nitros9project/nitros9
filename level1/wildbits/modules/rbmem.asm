@@ -454,17 +454,13 @@ x@                  rts
 
 AskForCache         clr       RejectCount,u
 afcTry@             ldb       #1                  Flash Write mode needs an 8K swap block of RAM
-                    os9       F$AlHRAM             prefer $D0-$EF, then $A0-$BF: visible in both modes
+                    os9       F$AlHRAM             prefer high SRAM: $A0-$FB visible in both modes
                     bcs       afcFail@
                     cmpb      #$40
                     blo       afcGood@
                     cmpb      #$A0
                     blo       afcReject@
-                    cmpb      #$C0
-                    blo       afcGood@
-                    cmpb      #$D0
-                    blo       afcReject@
-                    cmpb      #$F0
+                    cmpb      #VICKY_BLK       $A0-$FB remain SRAM with FLASHDIS clear
                     blo       afcGood@
 afcReject@
 * Keep each rejected block allocated while asking for another, otherwise
