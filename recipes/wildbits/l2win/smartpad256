@@ -1,0 +1,29 @@
+#!/bin/sh
+# smartpad256 <bootfile> - pad a Level 2 bootfile at its BEGINNING (Krn stays last) to whole 256-byte pages,
+# then further, past any page count the kernel cannot reserve correctly. 2026-10-04.
+#
+# Why: bootos9/os9boot load the bootfile so it ends at $FDFF (start S = $FE00 - size). Krn reserves it with
+# F$SRqMem, which on the Wildbits searches down from page $FF, so the reservation sits two pages above the
+# bootfile. When S is one of the last two pages of an 8K block (page count N with N mod 32 = 31 or 0), the
+# reservation starts in the next block and F$AllImg maps every slot from there up one physical block too
+# low. Those counts (31-32, 63-64, 95-96, 127-128 pages) are padded up to the next safe count.
+# Ceiling: 158 pages (40,448 bytes, S = $6000); below that the bootfile would reach slot 2, the drivers'
+# reserved map window. Larger bootfiles also need the unsigned copy loop in bootos9/os9boot (2026-10-04).
+MAXPAGES=158
+f="$1"
+size=$(stat -c %s "$f" 2>/dev/null || stat -f %z "$f")
+pages=$(( (size + 255) / 256 ))
+safe=$pages
+while [ $(( safe % 32 )) -eq 31 ] || [ $(( safe % 32 )) -eq 0 ]; do
+    safe=$(( safe + 1 ))
+done
+if [ $safe -gt $MAXPAGES ]; then
+    echo "smartpad256: $f is $size bytes ($pages pages); a safe size needs $safe pages, over the $MAXPAGES-page" \
+         "($(( MAXPAGES * 256 )) bytes) ceiling" >&2
+    exit 1
+fi
+if [ $safe -ne $pages ]; then
+    echo "smartpad256: $f is $size bytes; $pages pages is an unsafe count, padded to $safe pages ($(( safe * 256 )) bytes)"
+fi
+os9 padrom -b $(( safe * 256 )) "$f" || exit 1
+echo "smartpad256: bootfile before padding $size bytes, after padding $(stat -c %s "$f" 2>/dev/null || stat -f %z "$f") bytes"
