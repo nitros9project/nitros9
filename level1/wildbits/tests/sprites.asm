@@ -67,7 +67,6 @@
 
 MAPSLOT             equ       MMU_SLOT_5          slot register we borrow
 MAPADDR             equ       (MAPSLOT-MMU_SLOT_0)*$2000 its CPU window
-GRPH_LUT1_OFF       equ       GRPH_LUT0_OFF+$400  graphics LUT1 (LUTn at +$400*n)
 
 NSPR                equ       128                 every record the core has
 SPRSIZE             equ       8                   sprite edge (SPRITE_SIZE0+SPRITE_SIZE1 = 8x8)
