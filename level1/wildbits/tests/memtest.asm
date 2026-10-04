@@ -17,7 +17,7 @@
 *      $1D00, so a block that lands in slot 7 is still safe) and read
 *      straight back. A mismatch = the map calls it RAM but it is not.
 *   2. every block the map knows - free, in use or NotRAM, the I/O
-*      pages $C0-$CF excepted (reads there pop FIFOs) - is read at the
+*      pages $FC-$FF excepted (reads there pop FIFOs) - is read at the
 *      first mark offset. A mark with SOMEONE ELSE'S block number =
 *      this block ghosts that one. A free block's mark turning up in
 *      an in-use or NotRAM block is reported the same way.
@@ -45,8 +45,8 @@
 SIGOFF1             equ       $0000               mark offsets inside a block
 SIGOFF2             equ       $0FF0
 SIGOFF3             equ       $1CF0               below $1D00: safe even in slot 7
-IOFIRST             equ       $C0                 sectored I/O pages: never read
-IOLAST              equ       $CF
+IOFIRST             equ       VICKY_BLK                 sectored I/O pages: never read
+IOLAST              equ       COLOR_RAM_BLK
 
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
