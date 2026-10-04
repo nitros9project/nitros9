@@ -92,14 +92,14 @@ V.V_MCR             RMB       2                   2 bytes for Vicky Control Regi
 V.V_LayerCTL       RMB        2
 
 * BITMAPS
-* Store starting page for bitmaps, and CLUT# and bitmap enable bits.  Must be in first 512K RAM.
-* $01_0000-$07_FFFF (OS9 Memory Blocks $01-$3F)
+* Store starting page for bitmaps, and CLUT# and bitmap enable bits.
+* Longview with FLASHDIS: SRAM $00_0000-$1F_7FFF (blocks $00-$FB).
 * Byte 1 of Bitmap register is CLUT(4 CLUTS:0-3)/Enable
 * | 7 | 6 | 5 | 4 | 3 | 2 | 1 |   0    |
 * |       -----       |  CLUT | ENABLE |
-* Next 3 bytes in register used for physical 19 bit address for bitmap
-* Max address is 07FFFF (must be in 1st 512K), which is 19 bits
-* Store block# and then convert to 19 bit address in driver
+* Next 3 bytes in register hold the physical bitmap byte address.
+* Longview SRAM addresses use 21 bits; allocated bitmap storage must fit RAM.
+* Store block# and convert to the physical byte address: block * $2000.
 
 V.BM0Blk            RMB       1                   bitmap0 block
 V.BM0Cl_En          RMB       1                   bitmap0 |clut|enable|
