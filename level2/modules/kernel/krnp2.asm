@@ -188,17 +188,17 @@ krnp2               lda       #'2       ; debug: signal that we made it into krn
 *[[[ Wildbits PORT
                   IFNE    wildbits ; begin conditional assembly for wildbits
 * Grow the memory block map to all 256 blocks (end = $0300) and mark the gaps NotRAM.
-* RAM: $00-$3F, $A0-$BF, $D0-$EF; $40-$9F too when the core has FLASHDIS (MMU_IO_CTRL
+* Longview RAM: $00-$FB; $FC-$FF are devices. Include $40-$9F when FLASHDIS (MMU_IO_CTRL
 * bit 7 reads 1): set it and skip that gap. Nothing has been forked yet.
                     leau      >NotRAMTblF,pc ; the gaps incl. $40-$9F: first block, count; count 0 ends it
                     lda       >MMU_IO_CTRL ; bit 7 = FLASHDIS.OK: this core can turn $40-$9F into RAM
-                    bpl       blkflash@ ; older core: $40-$9F stay flash/expansion, NotRAM
+                    bpl       blkflash@ ; without FLASHDIS support, keep $40-$9F outside RAM
                     ora       #FLASHDIS ; take the 768K: blocks $40-$9F are RAM from here on
                     sta       >MMU_IO_CTRL ; (read-modify-write, bits 0/1 kept)
                     leau      >NotRAMTbl,pc ; the gaps without $40-$9F
 blkflash@           ldx       <D.BlkMap ; get the pointer to the 8KB block map
 blkgap@             ldb       ,u+       ; B = first block of the gap
-                    clra                ; D offset, so $C0 and $F0 stay positive
+                    clra                ; unsigned block index, including $FC
                     leay      d,x       ; Y = that block's map entry
                     ldb       ,u+       ; B = blocks in the gap
                     beq       blkdone@  ; 0 = end of the table
@@ -452,8 +452,7 @@ IOMan               fcs       /IOMan/
                   IFNE    wildbits ; begin conditional assembly for wildbits
 * NotRAM gaps (first block, count; 0 ends). NotRAMTblF adds $40-$9F for cores without FLASHDIS.
 NotRAMTblF          fcb       $40,$60   ; $40-$9F: flash window ($40-$7F) + expansion RAM ($80-$9F)
-NotRAMTbl           fcb       $C0,$10   ; $C0-$CF: sectored I/O pages $C0-$C7, no decode $C8-$CF
-                    fcb       $F0,$10   ; $F0-$FF: no decode
+NotRAMTbl           fcb       VICKY_BLK,$04 ; Longview: $FC-$FF devices; 252 SRAM blocks
                     fcb       $00,$00   ; end
                   ENDC
 *]]] Wildbits PORT
