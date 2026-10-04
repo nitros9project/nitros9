@@ -275,8 +275,8 @@ loadmapped          ldd       <winbase            page = winbase >> 13
                     rorb
                     lsra
                     rorb                            D = page (B = page, A = 0)
-                    cmpd      #$C5
-                    bhi       lmpmt@              page > $C5: out of range
+                    cmpd      #COLOR_RAM_BLK
+                    bhi       lmpmt@              page > last device block: out of range
                     pshs      u                   preserve data base
                     tfr       d,x                 X = page
                     ldb       #1                  one 8K block
@@ -891,8 +891,8 @@ seput@              lbsr      byte1scrn
 
 ********************************************************************
 * iswritable - is the current view editable? Carry CLEAR = writable
-* (logical memory view, or a mapped page $C0-$C5 which is hardware I/O);
-* carry SET = read-only (file view, or a mapped page below $C0).
+* (logical memory view, or a mapped page $FC-$FF which is hardware I/O);
+* carry SET = read-only (file view, or flash/expansion with FLASHDIS clear).
 *
 iswritable          lda       <viewmode
                     cmpa      #1
@@ -912,8 +912,11 @@ iswritable          lda       <viewmode
                     rorb
                     cmpb      #$40
                     blo       iwyes@             page $00-$3F (512K RAM) -> writable
-                    cmpb      #$C0
-                    blo       iwno@             page $40-$BF (FLASH/CART) -> read-only
+                    cmpb      #$A0
+                    bhs       iwyes@            $A0-$FB SRAM, $FC-$FF devices
+                    lda       MMU_IO_CTRL
+                    bita      #FLASHDIS
+                    beq       iwno@             $40-$9F are flash/expansion when clear
 iwyes@              andcc     #$FE              carry clear = writable
                     rts
 iwno@               orcc      #$01              carry set = read-only
@@ -1038,7 +1041,7 @@ onmapblk            lbsr      getpage             A = page, carry set if cancell
 ********************************************************************
 * refreshblk - Ctrl-F: re-read the current mapped physical page into the
 * 8K window buffer, so edits/hardware changes to a register page (e.g.
-* $C0-$C5) can be re-inspected. Only meaningful in the mapped view.
+* $FC-$FF) can be re-inspected. Only meaningful in the mapped view.
 *
 refreshblk          lda       <viewmode
                     cmpa      #2
@@ -1084,7 +1087,7 @@ getpage             lbsr      blankpath
                     lbsr      hexval
                     bcs       gpbad@
                     ora       <tmppage            combine high|low
-                    cmpa      #$C5
+                    cmpa      #COLOR_RAM_BLK
                     bhi       gpbad@              page out of range
                     andcc     #$FE                clear carry: success
                     rts
@@ -1963,7 +1966,7 @@ TitleLen            equ       *-Title
 TopLine             fcb       TBL,TBL,TBL,TBL,TBL,TBL,TBL,TBL,TBL,TBL,TBL,TBL,TBL,TBL,TBL
                     fcb       TBL,TBL,TBL,TBL,TBL,TBL,TBL,TBL,TBL,TBL,TBL,TBL,TBL,TBL,TBL,TBL
 TopLineLen          equ       *-TopLine
-MMapln              fcc       "$00-$3F-512K RAM  $40-$7F-512K FLASH  $80-$9F-CART  $C0-$C5-Hardware"
+MMapln              fcc       "$00-$FB RAM (FLASHDIS)  $FC-$FF Hardware"
 MMapLen             equ       *-MMapln
 ROStr               fcc       " (read-only)"
 ROStrLen            equ       *-ROStr
