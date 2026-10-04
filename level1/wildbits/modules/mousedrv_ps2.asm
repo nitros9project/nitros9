@@ -405,7 +405,7 @@ MakeMSPointer       pshs      cc,a,x,y,u
                     orcc      #IntMasks
                     lda       MAPSLOT
                     pshs      a
-                    lda       #$C0                get the MMU Block for bitmap addresses
+                    lda       #VICKY_BLK                get the MMU Block for bitmap addresses
                     sta       MAPSLOT             store it in the MMU slot to map it in             
                     ldx       #MAPADDR
                     leax      $C00,x              mouse pointer graphics start at $C00 offset
