@@ -23,7 +23,7 @@ atrv                set       ReEnt+rev
 rev                 set       $00
 edition             set       2
 
-PSG.Base            equ       PSGM.Base
+PSG.Base            equ       PSG_BOTH_PORT
 
                     ifeq      Level-2
 * For Level 2, we use D.Boot (unused in Wildbits kernel) for keyboard statics
@@ -127,13 +127,9 @@ HandleSound
                     bne       ex@                branch not zero; leave the sound on
 sndoff              pshs      cc                 save the condition code register
                     orcc      #IntMasks          mask interrupts
-                    ldb       MAPSLOT            get the MMU slot we'll map to
-                    lda       #$C4               get the sound MMU block
-                    sta       MAPSLOT            store it in the MMU slot to map it in
 * Turn off PSG channel 0
                     lda       #%10011111         set attenuation for channel 0
-                    sta       MAPADDR+PSG.Base
-                    stb       MAPSLOT            restore it in the MMU slot
+                    sta       PSG.Base
 * Wake up process that started sound, if any
                     lda       D.SndPrcID
                     beq       g@                    
@@ -161,15 +157,11 @@ BellTone            tst       D.SndPrcID
                     coma                          complement since attenuation is inverted on the PSG
                     anda      #%00001111          turn off all but attenuation bits for tone 1
                     ora       #%10010000          set latch bit and attenuation control bit for tone 1
-                    tfr       a,b                 B = tone-1 volume byte, computed BEFORE the window (no stack reads inside it)
-                    lda       MAPSLOT             MAPSLOT fix: save the slot in statics (stack may live in the window)
-                    sta       V.MapSav,u
-                    lda       #$C4                get the sound MMU block
+                    tfr       a,b                 B = tone-1 volume byte
                     orcc      #IntMasks           mask interrupts
-                    sta       MAPSLOT             store it in the MMU slot to map it in
 * Turn off attenuation for tones 2, 3, and noise channel.
                     lda       #%10111111          set tone 2 attenuation to 0
-                    ldx       #MAPADDR+PSG.Base
+                    ldx       #PSG.Base
                     sta       ,x
                     lda       #%11011111          set tone 3 attenuation to 0
                     sta       ,x
@@ -199,8 +191,6 @@ BellTone            tst       D.SndPrcID
                     sta       <D.IRQTmp           park bits 7-4 (DP scratch)
                     orb       <D.IRQTmp           OR in with bits 7-4
                     stb       ,x
-                    ldb       V.MapSav,u          MAPSLOT fix: restore the slot from statics, never from a stacked copy
-                    stb       MAPSLOT
                     lda       V.BUSY,u            get active process ID
                     sta       D.SndPrcID
                     ldx       #$0000
@@ -234,22 +224,18 @@ InitSound           clr       D.SndPrcID          clear the process ID of the cu
                     sta       SYS1                and save it back
 
 InitPSG             pshs      cc                save the condition code register
-                    lda       #$C4                get the sound MMU block
                     orcc      #IntMasks           mask interrupts
-                    ldb       MAPSLOT             get the MMU slot we'll map to
-                    sta       MAPSLOT             store it in the MMU slot to map it in
 
 * Silence the PSG's four channels.
                     lda       #%10011111                            set volume of channel to 0
-                    sta       MAPADDR+PSG.Base
+                    sta       PSG.Base
                     lda       #%10111111                            set volume of channel to 1
-                    sta       MAPADDR+PSG.Base
+                    sta       PSG.Base
                     lda       #%11011111                            set volume of channel to 2
-                    sta       MAPADDR+PSG.Base
+                    sta       PSG.Base
                     lda       #%11111111                            set volume of channel to 3
-                    sta       MAPADDR+PSG.Base
+                    sta       PSG.Base
 
-                    stb       MAPSLOT restore it in the MMU slot
                     puls      cc restore interrupts
 
 * WM8776 CODEC chip registers
@@ -411,13 +397,13 @@ initcursor          ldx       #TXT.Base
                     sta       VKY_TXT_CURSOR_CHAR_REG,x
 
 * Set foreground/background character LUT values.
-setforeback         lda       #$C3                get the foreground/background LUT MMU block
+setforeback         lda       #COLOR_RAM_BLK                get the foreground/background LUT MMU block
                     sta       MAPSLOT             store it in the MMU slot to map it in
                     ldd       #$10*256+$10        load D with the LUT values
                     bsr       clr                 call the clear routine
 
 * Clear text screen.
-                    lda       #$C2                get the text MMU block
+                    lda       #TEXT_RAM_BLK                get the text MMU block
                     sta       MAPSLOT             store it in the MMU slot to map it in
                     ldd       #$20*256+$20        load D with the space character
                     bsr       clr                 call the clear routine
@@ -655,10 +641,10 @@ RawWrite            pshs      a                   else save the character to wri
                     orcc      #IntMasks           mask interrupts
                     ldb       MAPSLOT             MAPSLOT fix: save the slot in statics (stack may live in the window)
                     stb       V.MapSav,u
-                    ldb       #$C2                get the text MMU block number
+                    ldb       #TEXT_RAM_BLK                get the text MMU block number
                     stb       MAPSLOT             set the block number to text
                     sta       ,x                  save the character there
-                    ldb       #$C3                get the text attributes MMU block number
+                    ldb       #COLOR_RAM_BLK                get the text attributes MMU block number
                     stb       MAPSLOT             set the MMU block number to the text attributes block
                     lda       V.FBCol,u           get the current foreground/background color
                     sta       ,x                  save it at the same location in the text attributes
@@ -690,12 +676,12 @@ SCROLL              equ       1
                     orcc      #IntMasks           mask interrupts
                     ldb       MAPSLOT             MAPSLOT fix: save the slot in statics (stack may live in the window)
                     stb       V.MapSav,u
-scroll_loop1@       lda       #$C2                get the text block #
+scroll_loop1@       lda       #TEXT_RAM_BLK                get the text block #
                     sta       MAPSLOT             and map it in
                     ldb       V.WWidth,u
                     ldd       b,x
                     std       ,x                  store on this row
-                    lda       #$C3                get the text attributes block #
+                    lda       #COLOR_RAM_BLK                get the text attributes block #
                     sta       MAPSLOT             and map it in
                     ldb       V.WWidth,u          get the bytes at the width
                     ldd       b,x
@@ -788,10 +774,10 @@ EraseLineCore       pshs      b                   save the number of columns
                     orcc      #IntMasks           mask interrupts
                     ldb       MAPSLOT             MAPSLOT fix: save the slot in statics (stack may live in the window)
                     stb       V.MapSav,u
-clrloop@            ldb       #$C2                get the text MMU block
+clrloop@            ldb       #TEXT_RAM_BLK                get the text MMU block
                     stb       MAPSLOT             store it in the MMU slot
                     clr       ,x                  clear the value there
-                    ldb       #$C3                get the text attributes MMU block
+                    ldb       #COLOR_RAM_BLK                get the text attributes MMU block
                     stb       MAPSLOT             store it in the MMU slot
                     ldb       V.FBCol,u           get the curent foreground/background color
                     stb       ,x+                 store it and increment the index register
@@ -1754,7 +1740,7 @@ storeaddr@          pshs      y                   store font offset on stack [O]
 * s= ADDR|OFFSET|                   
 *                   ****      map block into user dat and store address on stack
                     pshs      x,u                 preserve x,u
-                    ldx       #$C1                map in font block
+                    ldx       #FONT_BLK                map in font block
                     ldb       #$01                map 1 block at address x (x set on entry)
                     os9       F$MapBlk
                     bcc       mapgood@            if success, then continue
@@ -2082,7 +2068,7 @@ SSPalet             pshs      cc
                     orcc      #IntMasks           mask interrupts
                     lda       MAPSLOT             MAPSLOT fix: save the slot in statics (stack may live in the window)
                     sta       V.MapSav,u
-                    lda       #$C0                was TEXT_LUT_BLK - get the MMU Block
+                    lda       #VICKY_BLK                was TEXT_LUT_BLK - get the MMU Block
                     sta       MAPSLOT             store it in the MMU slot to map it in
 *                   **** Calculate starting address at 1000,1008,1010
                     ldb       R$Y+1,x             ldb with bitmap#
@@ -2114,7 +2100,7 @@ SSPalet             pshs      cc
 SSDfPal             pshs      a,x,y,u
 *                   **** Map in block for CLUT Registers
                     pshs      x
-                    ldx       #$C1
+                    ldx       #FONT_BLK
                     lbsr      mapblock
                     puls      x
                     bcs       end@                if error, end and return error code
@@ -2259,13 +2245,13 @@ DeleteLine
 
                     lda       MAPSLOT             MAPSLOT fix: save the slot in statics (stack may live in the window)
                     sta       V.MapSav,u
-dl_loop             lda       #$C2                * Map text block into MMU slot
+dl_loop             lda       #TEXT_RAM_BLK                * Map text block into MMU slot
                     sta       MAPSLOT
                     ldb       V.WWidth,u
                     ldd       b,x                 * Load 2 chars from row below (X + WWidth)
                     std       ,x                  * Store 2 chars in current row (X)
 
-                    lda       #$C3                * Map attributes block into MMU slot
+                    lda       #COLOR_RAM_BLK                * Map attributes block into MMU slot
                     sta       MAPSLOT
                     ldb       V.WWidth,u
                     ldd       b,x                 * Load 2 attributes from row below (X + WWidth)
