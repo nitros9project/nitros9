@@ -710,7 +710,7 @@ cont@               leas      >stkdepth,s      eat temporary stack
 SPConfig            cmpb      #6               6 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
                     pshs      a,b,x,y,u        Put the variables on the stack
-                    ldx       #$c0             map page with sprite control reg
+                    ldx       #VICKY_BLK             map page with sprite control reg
                     pshs      u                preserve u
                     ldb       #$01             need 1 block
                     os9       F$MapBlk         map it into process address space
@@ -767,7 +767,7 @@ SPConfig            cmpb      #6               6 parameters?
 * clrblk
                     ldu       <mapaddr,s       get mapped address
                     pshs      u                clear MapBlk from DAT Image
-                    ldx       #$C0             page to unmap
+                    ldx       #VICKY_BLK             page to unmap
                     ldb       #1               clearing 1 block
                     os9       F$ClrBlk         remove block from DAT Image
                     clrb
@@ -787,7 +787,7 @@ SPAssign            cmpb      #3               3 parameters?
                     cmpa      #3               3 bytes?
                     lbne      ParamErr         no, return an error
                     pshs      a,b,x,y,u        Put the variables on the stack
-                    ldx       #$c0             map page with sprite control reg
+                    ldx       #VICKY_BLK             map page with sprite control reg
                     pshs      u                preserve u
                     ldb       #$01             need 1 block
                     os9       F$MapBlk         map it into process address space
@@ -817,7 +817,7 @@ SPAssign            cmpb      #3               3 parameters?
 * clrblk
                     ldu       <mapaddr,s       get mapped address
                     pshs      u                clear MapBlk from DAT Image
-                    ldx       #$C0             page to unmap
+                    ldx       #VICKY_BLK             page to unmap
                     ldb       #1               clearing 1 block
                     os9       F$ClrBlk         remove block from DAT Image
                     clrb
@@ -835,7 +835,7 @@ SPPos               cmpb      #4               3 parameters?
                     lbsr      chk_endian
                     ldd       <endian,s
                     std       $fee0
-                    ldx       #$c0             map page with sprite control reg
+                    ldx       #VICKY_BLK             map page with sprite control reg
                     pshs      u                preserve u
                     ldb       #$01             need 1 block
                     os9       F$MapBlk         map it into process address space
@@ -867,7 +867,7 @@ SPPos               cmpb      #4               3 parameters?
 * clrblk
                     ldu       <mapaddr,s       get mapped address
                     pshs      u                clear MapBlk from DAT Image
-                    ldx       #$C0             page to unmap
+                    ldx       #VICKY_BLK             page to unmap
                     ldb       #1               clearing 1 block
                     os9       F$ClrBlk         remove block from DAT Image
                     clrb
@@ -990,7 +990,7 @@ TSAlloc             cmpb      #4               4 parameters?
                     pshs      a,x,y,u
                     pshs      u
 	                ldb	      #1
-	                ldx	      #$C0
+	                ldx	      #VICKY_BLK
 	                os9	      F$MapBlk
              	    tfr	      u,x
 	                puls      u
@@ -1021,7 +1021,7 @@ cont@               ldd       [<$04,u]         get square
                     stb       ,x               update settings
                     pshs      u                clear MapBlk from DAT Image
                     ldu       <c0addr,s        address
-                    ldx	      #$C0             page
+                    ldx	      #VICKY_BLK             page
                     ldb	      #1               1 block
                     os9       F$ClrBlk         remove block from DAT Image
                     puls      u
@@ -1071,7 +1071,7 @@ TMAlloc             cmpb      #5               5 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
                     pshs      u
 	                ldb	      #1
-	                ldx	      #$C0
+	                ldx	      #VICKY_BLK
 	                os9	      F$MapBlk
              	    tfr	      u,x
 	                puls      u
@@ -1100,7 +1100,7 @@ cont@               ldd       [<$0C,u]         get size
                     stb       ,x
 done@               pshs      u                clear MapBlk from DAT Image
                     ldu       <c0addr          address
-                    ldx	      #$C0             page
+                    ldx	      #VICKY_BLK             page
                     ldb	      #1               1 block
                     os9       F$ClrBlk         remove block from DAT Image
                     puls      u
@@ -1148,7 +1148,7 @@ TMXYScrl            cmpb      #3               3 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
                     pshs      u
 	                ldb	      #1
-	                ldx	      #$C0
+	                ldx	      #VICKY_BLK
 	                os9	      F$MapBlk
              	    tfr	      u,x
 	                puls      u
@@ -1185,7 +1185,7 @@ next@               ldd       [<$04,u]         get SSX
                     stb       ,x               store SSY
                     pshs      u                clear MapBlk from DAT Image
                     ldu       <c0addr          address
-                    ldx	      #$C0             page
+                    ldx	      #VICKY_BLK             page
                     ldb	      #1               1 block
                     os9       F$ClrBlk         remove block from DAT Image
                     puls      u
@@ -1209,7 +1209,7 @@ TMOn                cmpb      #3               3 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
                     pshs      u
 	                ldb	      #1
-	                ldx	      #$C0
+	                ldx	      #VICKY_BLK
 	                os9	      F$MapBlk
              	    tfr	      u,x
 	                puls      u
@@ -1242,7 +1242,7 @@ cont@               ldd       [<$04,u]         get the size
 ** clr
                     pshs      u                clear MapBlk from DAT Image
                     ldu       <c0addr          address
-                    ldx	      #$C0             page
+                    ldx	      #VICKY_BLK             page
                     ldb	      #1               1 block
                     os9       F$ClrBlk         remove block from DAT Image
                     puls      u
@@ -1258,7 +1258,7 @@ TMOff               cmpb      #3               3 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
                     pshs      u
 	                ldb	      #1
-	                ldx	      #$C0
+	                ldx	      #VICKY_BLK
 	                os9	      F$MapBlk
              	    tfr	      u,x
 	                puls      u
@@ -1285,7 +1285,7 @@ cont@               ldd       [<$04,u]         get the size
                     sta       ,x               update settings
                     pshs      u                clear MapBlk from DAT Image
                     ldu       <c0addr          address
-                    ldx	      #$C0             page
+                    ldx	      #VICKY_BLK             page
                     ldb	      #1               1 block
                     os9       F$ClrBlk         remove block from DAT Image
                     puls      u
@@ -2399,7 +2399,7 @@ BMStatus            cmpb      #4               4 parameters?
                     ldu       <mapaddr,s       u is address of mapped block
                     ldb       #$01             clearing 1 block
                     os9       F$ClrBlk         remove block from DAT Image
-                    ldx       #$C0             need to map in BM registers block
+                    ldx       #VICKY_BLK             need to map in BM registers block
                     ldb       #$01
                     os9       F$MapBlk         Map in Bitmap registers
                     lbcs      exiterr
