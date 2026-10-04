@@ -1879,26 +1879,20 @@ no61
 * Set up colors on GIME for newly selected window
                     ldb       St.Brdr,y           Get current border palette #
                     leay      St.Pals,y           Point to palette register data in scrn tbl
-                    IFNE      H6309
-                    ldf       >WGlobal+G.MonTyp   Get monitor type in F for faster translates
-                    ENDC
+                    lda       >WGlobal+G.MonTyp
+                    bne       AppPaletteMode
+                    ldx       >WGlobal+G.CurDev
+                    lda       >HRS.DGBuf,x         application screens use raw GIME palette values
+AppPaletteMode      pshs      a
                     ldb       b,y                 Get border color
                     stb       $0A,u               Save new border color to GIME shadow
-                    IFNE      H6309
-                    tstf                          Need to convert color?
-                    ELSE
-                    tst       >WGlobal+G.MonTyp   Need to convert color?
-                    ENDC
+                    tst       ,s                              effective palette mode
                     bne       DoBord              Nope, use current border color
                     ldx       #GrfStrt+L0884      Point to translation table
                     ldb       b,x                 Get composite version
 DoBord              stb       >$ff9a              Save it on GIME Border register
                     ldu       #$FFB0              U=GIME palette reg. ptr
-                    IFNE      H6309
-                    tstf                          Rest of colors need translation?
-                    ELSE
-                    tst       >WGlobal+G.MonTyp   Rest of colors need translation?
-                    ENDC
+                    tst       ,s+                             effective palette mode, balance stack
                     bne       FstRGB              No, use TFM
 * Composite translate here
 * LCB: MAY NEED HSYNC TRICK HERE (SEE NITROS9 1.15 VDG SAMPLE CODE), BUT THAT MEANS THAT WE HAVE
