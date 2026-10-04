@@ -50,9 +50,24 @@ override MAX_BOOTFILE_SIZE = 40448
 #    $8000 it wedged at "Loading sector." - the copy loop's signed
 #    BGT, fixed 2026-10-04; see 0a for the new limits) and /t0 shares
 #    the DW UART at $FE60 anyway.
+# 1a) With the 40,448-byte ceiling (0a) the Level 2 bootfile also carries
+#     the MIDI and RP2040 drivers (2026-10-04), so none needs a load:
+#       midrv mi     MIDI DIN input: interrupt driver + /mi descriptor
+#       scdwv dwm    DriveWire virtual channel driver + /dwm (channel 14,
+#                    the DriveWire 4 server's MIDI out)
+#       rpdrv rp     RP2040 supervisor mailbox (K2 only; the Jr2 has no
+#                    supervisor). wildbits.mak keeps their module rules.
+#     L2BOOT_EXTRA is its own list (not SCF_EXTRA) so a recipe read later
+#     can empty it.
 ifeq ($(LEVEL),2)
+L2BOOT_EXTRA = midrv mi scdwv dwm
+ifeq ($(PLATFORM),k2)
+# only when $(SCF) does not already list them (main's wildbits.mak does)
+L2BOOT_EXTRA += $(filter-out $(SCF),rpdrv rp)
+endif
 override BOOTMODS = krnp2 ioman init \
 	$(SCF) \
+	$(L2BOOT_EXTRA) \
 	$(RBF) \
 	dwio_serial $(PIPE) $(DRIVEWIRE_RBF) \
 	$(CLOCK) \
