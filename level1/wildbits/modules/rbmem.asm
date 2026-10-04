@@ -406,7 +406,7 @@ ShowFlashID         lda       #fDEBUG
                     orcc      #IntMasks
                     ldb       >MMU_WORKSLOT
                     pshs      b
-                    ldb       #$C2                Text screen block #
+                    ldb       #TEXT_RAM_BLK       Text screen block #
                     stb       >MMU_WORKSLOT 
                     tfr       x,d
                     lsra                          Do cheap binary to 4-digit HEX ASCII string
