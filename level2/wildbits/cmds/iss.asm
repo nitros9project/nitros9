@@ -982,7 +982,7 @@ byte1scrn           leas      -1,s          reserve 1 byte for stack
 *
 * 
 SPPos               pshs      a,b,x,y,u        Put the variables on the stack
-                    ldx       #$C0             map page with sprite control reg
+                    ldx       #VICKY_BLK             map page with sprite control reg
                     pshs      u                preserve u
                     ldb       #$01             need 1 block
                     os9       F$MapBlk         map it into process address space
@@ -1010,7 +1010,7 @@ SPPos               pshs      a,b,x,y,u        Put the variables on the stack
 * clrblk
                     ldu       >mapaddr3,u      get mapped address
                     pshs      u                clear MapBlk from DAT Image
-                    ldx       #$C0             page to unmap
+                    ldx       #VICKY_BLK             page to unmap
                     ldb       #1               clearing 1 block
                     os9       F$ClrBlk         remove block from DAT Image
                     clrb
@@ -1206,7 +1206,7 @@ redottl             lda       #$0C         clear screen
 * ================================================================
 LoadClut            pshs      a,b,x,y,u        save caller registers
 * --- map physical block $C1 into our address space ---
-                    ldx       #$C1             CLUT block to map
+                    ldx       #FONT_BLK             CLUT block to map
                     pshs      u                preserve U (data base)
                     ldb       #$01             need 1 block
                     os9       F$MapBlk         map it in -> U = mapped address
@@ -1230,7 +1230,7 @@ LoadClut            pshs      a,b,x,y,u        save caller registers
                     os9       I$Close
 * --- unmap the block (CLUT data persists in the physical block) ---
 lc.unmap@           ldu       >clutmap,u       mapped address
-                    ldx       #$C1             block to unmap
+                    ldx       #FONT_BLK             block to unmap
                     ldb       #$01             1 block
                     os9       F$ClrBlk         remove from DAT image
                     puls      u,y,x,b,a        restore caller registers
@@ -1281,7 +1281,7 @@ errcl@              puls      u,y,x,a
 *** Example SPCreate 2B - The memory location for MMU page 2B is $05 $60 $00
 *** assing 16x16 size next offset would be $05 $61 $00
 SPAssign            pshs      a,b,x,y,u        Put the variables on the stack
-                    ldx       #$C0             map page with sprite control reg
+                    ldx       #VICKY_BLK             map page with sprite control reg
                     pshs      u                preserve u
                     ldb       #$01             need 1 block
                     os9       F$MapBlk         map it into process address space
@@ -1365,7 +1365,7 @@ SPConfig            pshs      a,b,x,y,u        Put the variables on the stack
 * clrblk
                     ldu       <mapaddr2,u       get mapped address
                     pshs      u                clear MapBlk from DAT Image
-                    ldx       #$C0             page to unmap
+                    ldx       #VICKY_BLK             page to unmap
                     ldb       #1               clearing 1 block
                     os9       F$ClrBlk         remove block from DAT Image
                     clrb
