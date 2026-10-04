@@ -37,7 +37,7 @@ WILDBITS.D              set       1
 * Modified to address new memory map that Stefany created.
 *
 *          2026/09/14  Roger Taylor
-* Updated to Wildbits V8_RC16 memory map.
+* Updated to Wildbits Longview_rc22 memory map.
 *
 *          2026/09/23  Codex
 * Added rc17_line_5 line-drawer registers and packed-pixel semantics.
@@ -172,7 +172,7 @@ MMU_HAS_FLASHDIS    equ       %10000000           read-only rc16 capability
 MMU_ACT_MASK        equ       %00000011           active hardware LUT selection
 MMU_EDIT_MASK       equ       %00110000           edit hardware LUT selection
 * rc16 SRAM blocks: $00-$BF and $D0-$EF with FLASHDIS set.
-* $C0-$CF and $F0-$FF remain outside the CPU RAM pool.
+* $FC-$FF are device pages; FLASHDIS enables a contiguous $00-$FB RAM pool.
 MMU_BLOCK_SIZE      equ       $2000               bytes per block
 MMU_BLOCK_COUNT     equ       $0100               block-number space
 MMU_LUT_COUNT       equ       4                   hardware task maps
@@ -653,7 +653,7 @@ TyVKY_BM2_START_ADDY_L equ    $F013
 
 ********************************************************************
 * Line drawer (shared K2/Jr2 RTL, rc17_line_5; K2 line_fast_1 candidate).
-* Page $C0 offset $1080; addresses below assume page $C0 in slot 7.
+* Page $FC offset $1080; addresses below assume page $FC in slot 7.
 * The eight registers mirror through offsets $1080-$10FF.
 * X writes are big-endian 10-bit values; Y writes are single bytes.
 * 320x240: one 8-bit color per pixel. HIRES4: X=0..639, Y=0..239,
@@ -674,7 +674,7 @@ TyVKY_BM2_START_ADDY_L equ    $F013
 * Jr2 line_5 retains 4096 entries and a zero-extended 13-bit count.
 * Reset b4 clears the FIFO AND generator; clear it before starting.
 TyVKY_LD_BASE       equ       $F080
-TyVKY_LD_OFFSET     equ       $1080               offset within MMU page $C0
+TyVKY_LD_OFFSET     equ       $1080               offset within MMU page $FC
 TyVKY_LD_CTRL       equ       TyVKY_LD_BASE+0     W control; R b7 DONE, b6:0 stored
 TyVKY_LD_COLOR      equ       TyVKY_LD_BASE+1     R/W ink byte; HIRES4 uses b3:0
 TyVKY_LD_X0_H       equ       TyVKY_LD_BASE+2     W X0 bits 9:8; R FIFO count high
@@ -726,7 +726,7 @@ FT_OMIT             equ       %11111111           Setting for SS.DScrn don't cha
 *           1=70 Hz screen (640x400 text, 320x200 graphics)
 * End of vtio screen flags.
 
-* Tile registers: page $C0 in slot 7; big-endian writes, reads $33.
+* Tile registers: page $FC in slot 7; big-endian writes, reads $33.
 TyVKY_TL_CTRL0      equ       $F100
 ; Bit Field Definition for the Control Register
 TILE_Enable         equ       $01
@@ -840,9 +840,9 @@ SPRITE_SIZE0        equ       $20                 00 = 32x32 - 01 = 24x24 - 10 =
 SPRITE_SIZE1        equ       $40
 
 
-* Sprite attribute records: 128 records of 8 bytes in VICKY page $C0 at offsets $1300-$16FF
+* Sprite attribute records: 128 records of 8 bytes in VICKY page $FC at offsets $1300-$16FF
 * (record n at $1300+8*n), BIG-endian fields. Full layout and a worked recipe: Wildbits page,
-* sprite chapter. The SPn_* equates further down assume page $C0 is mapped in MMU slot 7
+* sprite chapter. The SPn_* equates further down assume page $FC is mapped in MMU slot 7
 * ($E000 window, the vtio/system-state convention), which puts record 0 at $F300.
 * Generic per-record offsets for indexed access:
 SPR_CTRL            equ       0                   control byte (SPRITE_* bits above)
@@ -858,7 +858,7 @@ SPR_REC_SIZE        equ       8                   bytes per sprite record
 * Where the sprite machinery lives (map these VICKY pages via an MMU slot):
 SPRITE_BLK          equ       VICKY_BLK                 VICKY page holding the 128 sprite records
 SPRITE_REC_OFF      equ       $1300               page offset of record 0 (records at +n*SPR_REC_SIZE)
-GRPH_LUT0_OFF       equ       $1000               graphics LUT0 offset within FONT_BLK ($C1); LUTn at +$400*n, 256 entries x B,G,R,A
+GRPH_LUT0_OFF       equ       $1000               graphics LUT0 offset within FONT_BLK ($FD); LUTn at +$400*n, 256 entries x B,G,R,A
 GRPH_LUT1_OFF       equ       $1400               graphics LUT1 page offset
 GRPH_LUT2_OFF       equ       $1800               graphics LUT2 page offset
 GRPH_LUT3_OFF       equ       $1C00               graphics LUT3 page offset
@@ -912,18 +912,27 @@ SP4_Y_L             equ       $F327               Y 7:0
 
 
 
-; PAGE $C1
-TyVKY_LUT0          equ       $F000               graphics LUT0, page $C1 in slot 7
-TyVKY_LUT1          equ       $F400               graphics LUT1, page $C1 in slot 7
-TyVKY_LUT2          equ       $F800               graphics LUT2, page $C1 in slot 7
-TyVKY_LUT3          equ       $FC00               graphics LUT3, page $C1 in slot 7
+; PAGE $FD
+TyVKY_LUT0          equ       $F000               graphics LUT0, page $FD in slot 7
+TyVKY_LUT1          equ       $F400               graphics LUT1, page $FD in slot 7
+TyVKY_LUT2          equ       $F800               graphics LUT2, page $FD in slot 7
+TyVKY_LUT3          equ       $FC00               graphics LUT3, page $FD in slot 7
 
 
 ********************************************************************
-* Fixed CPU PSG ports (Longview; no MMU mapping)
+* Fixed CPU sound ports (K2/Jr2 rc18 and Longview; no MMU mapping)
 PSG_LEFT_PORT       equ       $FF91
 PSG_BOTH_PORT       equ       $FF92
 PSG_RIGHT_PORT      equ       $FF93
+OPL3_ADDR0_PORT     equ       $FF94               bank 0 register selector
+OPL3_DATA0_PORT     equ       $FF95               bank 0 data
+OPL3_ADDR1_PORT     equ       $FF96               bank 1 register selector
+OPL3_DATA1_PORT     equ       $FF97               bank 1 data
+SID_SELECT_PORT     equ       $FF98               bits 6:5 chip, bits 4:0 register
+SID_DATA_PORT       equ       $FF99
+SID_SELECT_LEFT     equ       $00
+SID_SELECT_RIGHT    equ       $20
+SID_SELECT_BOTH     equ       $40
 * Legacy sound offsets (former MMU page $C4; not mapped on Longview)
 *
 SND.Base            equ       $0000
