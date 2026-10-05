@@ -84,9 +84,9 @@ CMDS += $(STDCMDS) shell \
 inetd telnet dw httpd $(BASIC09) $(BF) \
 	$(CMDS_EXTRA) wildspeed wmset
 
-# K2 supervisor mailbox: shared Level 1 sources for both OS levels (rc18+).
+# K2 supervisor mailbox: shared Level 1 sources (rc18+). RPDrv + rp are in the FEU bootfile
+# (recipes/wildbits/feu/makefile), not this one.
 ifeq ($(PLATFORM),k2)
-SCF_EXTRA += rpdrv rp
 CMDS += fpga
 
 $(MODDIR)/rpdrv: $(L1PMD)/rpdrv.asm | $(MODDIR)

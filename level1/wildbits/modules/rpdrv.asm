@@ -216,8 +216,11 @@ SettleLoop          lbsr SleepTick
                     lbcs ExecReturn
                     tst TickDelta,u
                     lbeq SettleLoop
-                    lda >RP.Error
-                    lbne ExecError
+* 2026-09-26 (user: every fpga command answered 246 after an aborted flash upload, power cycle included):
+* RP.Error is the supervisor's LATCHED last-error byte, re-latched from every response frame, so failing the
+* request on it turned one sticky supervisor error into a dead command set - not even the abort that would
+* clear it got through. The reply is delivered now; a command reads the code through GetStat $C0 (Info)
+* and decides for itself. A malformed reply (count over 240) still fails.
                     ldd >RP.RxCount_H
                     cmpd #240
                     lbhi ExecError
