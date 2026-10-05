@@ -171,12 +171,11 @@ MMU_FLASHDIS        equ       %00000100           rc16: SRAM instead of flash/ca
 MMU_HAS_FLASHDIS    equ       %10000000           read-only rc16 capability
 MMU_ACT_MASK        equ       %00000011           active hardware LUT selection
 MMU_EDIT_MASK       equ       %00110000           edit hardware LUT selection
-* rc16 SRAM blocks: $00-$BF and $D0-$EF with FLASHDIS set.
 * $FC-$FF are device pages; FLASHDIS enables a contiguous $00-$FB RAM pool.
 MMU_BLOCK_SIZE      equ       $2000               bytes per block
 MMU_BLOCK_COUNT     equ       $0100               block-number space
 MMU_LUT_COUNT       equ       4                   hardware task maps
-MMU_RAM_BLOCKS      equ       224                 FLASHDIS RAM pool before allocations
+MMU_RAM_BLOCKS      equ       252                 FLASHDIS RAM pool before allocations
 MMU_IO_CTRL         equ       $FFA1
 FLASHDIS            equ       %00000100 MMU_IO_CTRL b2: 1 = blocks $40-$9F are RAM (rc16+ cores; see the bits below)
 FLASHDIS.OK         equ       %10000000 MMU_IO_CTRL b7: reads 1 on a core that implements FLASHDIS
@@ -933,20 +932,6 @@ SID_DATA_PORT       equ       $FF99
 SID_SELECT_LEFT     equ       $00
 SID_SELECT_RIGHT    equ       $20
 SID_SELECT_BOTH     equ       $40
-* Legacy sound offsets (former MMU page $C4; not mapped on Longview)
-*
-SND.Base            equ       $0000
-SIDL.Base           equ       SND.Base+$0000
-SIDM.Base           equ       SND.Base+$0080
-SIDR.Base           equ       SND.Base+$0100
-OPL3.Base           equ       SND.Base+$0180      both boards; writes only, no status/IRQ
-OPL3_ADDR0          equ       0                   bank 0 register address
-OPL3_DATA0          equ       1                   bank 0 register data
-OPL3_ADDR1          equ       2                   bank 1 register address
-OPL3_DATA1          equ       3                   bank 1 register data
-PSGL.Base           equ       SND.Base+$0200
-PSGM.Base           equ       SND.Base+$0208
-PSGR.Base           equ       SND.Base+$0210
 
 ********************************************************************
 * Direct Memory Access (DMA) definitions
