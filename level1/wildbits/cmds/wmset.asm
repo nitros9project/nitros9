@@ -6,9 +6,9 @@
 *
 * The codec control port is at CODEC.Base ($FE70) in FIXED I/O, so it
 * needs no MMU mapping and works from any task.  A write is 16 bits:
-*   [6:0] register  [8] UPDATE  [7:0] value
-* i.e. D = (reg<<9) | $100 | value.  The UPDATE bit is always set here,
-* which is what makes an attenuation change take effect immediately.
+*   bits 15..9 = register; bits 8..0 = register-specific data.
+* This command accepts an 8-bit value and sends D = (reg<<9) | value.
+* Data bit 8 stays clear; no register-specific control bits are forced.
 *
 * The two knobs worth turning (see the kit README):
 *   R03/R04  DAC attenuation      $FF = 0dB, 0.5dB per step down
@@ -93,12 +93,11 @@ start               clr       regnum,u
                     stb       regval,u
 
 * Build the 16-bit codec word:
-*   bits 15..9 = register, bit 8 = UPDATE, bits 7..0 = value
-* so the high byte is (reg<<1)|1 and the low byte is the value.
+*   bits 15..9 = register, bit 8 = 0, bits 7..0 = supplied value.
+* The high byte is reg<<1 and the low byte is the unmodified value.
                     lda       regnum,u
                     anda      #$7F                registers are 7 bits
-                    lsla                          reg << 1, leaving bit 0 for UPDATE
-                    ora       #$01                set UPDATE so the change takes effect
+                    lsla                          reg << 1; data bit 8 remains clear
                     ldb       regval,u
                     ldx       #CODEC.Base
                     lbsr      SendToCODEC
