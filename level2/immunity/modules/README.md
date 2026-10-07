@@ -52,7 +52,7 @@ the CoCo 3 GIME MMU (`$FF90`/`$FF91`, `$FFA0-$FFAF`), with these differences:
 | `$00` | i-MMU-nity | system globals (block map `$0200`, page map), as on the CoCo 3 |
 | `$01-$37`, `$40`+ | i-MMU-nity | OS9Boot and general RAM |
 | `$38-$3D` | motherboard `$0000-$BFFF` | VDG pool: `NotRAM` in the block map; CoVDG claims graphics screens by setting `RAMinUse` |
-| `$3B` (`Bt.Block`) | motherboard `$6000-$7FFF` | text screens; permanently in system slot 1 (`$2000`), pages `$20-$3F` reserved |
+| `$3B` (`Bt.Block`) | motherboard `$6000-$7FFF` | text screens; permanently in system slot 1 (`$2000`), pages `$20-$3F` reserved; `RAMinUse` in the block map |
 | `$3E` | motherboard `$C000-$DFFF` | reserved; `DAT.Free` maps unused slots here |
 | `$3F` (`KrnBlk`) | motherboard `$E000-$FFFF` | REL/BOOT/KRN at `$ED00-$FEFF`, as on the CoCo 3 |
 

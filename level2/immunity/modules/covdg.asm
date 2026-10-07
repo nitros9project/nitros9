@@ -1892,8 +1892,9 @@ L06CB               tst       ,y        ; check block number
 L06D9               puls      pc,a
 
 * Get an 8K graphics screen block. The VDG can only display motherboard RAM,
-* MMU blocks $38-$3F; krn marks $38-$3E NotRAM. A pool block is free while
-* its block map entry is exactly NotRAM; claim it by setting RAMinUse.
+* MMU blocks $38-$3F; krn marks $38-$3E NotRAM, then Bt.Block ($3B)
+* RAMinUse. A pool block is free while its block map entry is exactly
+* NotRAM; claim it by setting RAMinUse.
 * F$DelRAM (end graphics) clears RAMinUse, which returns it to the pool.
 * Bt.Block holds the text screens and $3E is where DAT.Free maps unused
 * slots, so neither is used.
