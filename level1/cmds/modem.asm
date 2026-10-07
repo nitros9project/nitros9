@@ -168,13 +168,14 @@ do.l                lbsr      ASC2Int            get # of lines to read 0-255
 do.l1               stb       <d.linestoread
                     bra       do.opts2           update opts pointer and go to next
 
-do.reset            lda       WizFi.Base
-                    ora       #WizFi.Reset
-                    sta       WizFi.Base
+do.reset            lda       WizFi.Base+WizFi_ResetReg
+                    anda      #WizFi.ChipRst|WizFi.FifoRst|WizFi.UartRst
+                    ora       #WizFi.FifoRst
+                    sta       WizFi.Base+WizFi_ResetReg
                     exg       a,a
                     exg       a,a
-                    anda      #^WizFi.Reset
-                    sta       WizFi.Base
+                    anda      #^WizFi.FifoRst
+                    sta       WizFi.Base+WizFi_ResetReg
                     bra       do.opts2           update opts pointer and go to next
 
 do.string           leax      1,x

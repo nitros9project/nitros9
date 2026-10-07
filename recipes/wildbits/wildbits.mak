@@ -86,7 +86,7 @@ endif
 CMDS += $(STDCMDS) shell \
 	bootos9 scfg wbinfo wbreset modem \
 inetd telnet dw httpd $(BASIC09) $(BF) \
-	$(CMDS_EXTRA) wildspeed wmset
+	$(CMDS_EXTRA) wildspeed wmset wizupdate
 
 # K2 supervisor mailbox: shared Level 1 sources (rc18+). RPDrv + rp are in every K2 bootfile: the FEU's
 # (recipes/wildbits/feu/makefile) and, through SCF_EXTRA, the Level 1 and Level 2 disks' (2026-10-10, Roger:

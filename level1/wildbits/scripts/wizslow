@@ -1,15 +1,15 @@
-* wizslow - switch the module and the FPGA UART back to 115200 baud (undo wizfast).
-* Needs: wizi, no connections active. ALL five devices go back: /wz bau=0 and
-* /wz0-/wz3 bau=8 (packet flag only) - a packet descriptor left at bau=9 would flip
-* the UART to 921600 again at its next open and go deaf against a 115200 module.
+* wizslow - module and FPGA UART to 115200 baud. Needs: wizi, no connections active. Sets the module
+* (AT+UART_CUR) first, then the driver: bau=A on all five devices = WizFi rate code 10
+* (WizFi.Baud115200, 2026-10-06 cores; the core runs the W600's actual rate). The setting is lost when
+* the module resets.
 echo ATE1>/wz
 modem /wz
 echo AT+UART_CUR=115200,8,1,0,0>/wz
 modem /wz
-xmode /wz bau=0
-xmode /wz0 bau=8
-xmode /wz1 bau=8
-xmode /wz2 bau=8
-xmode /wz3 bau=8
+xmode /wz bau=A
+xmode /wz0 bau=A
+xmode /wz1 bau=A
+xmode /wz2 bau=A
+xmode /wz3 bau=A
 echo AT>/wz
 modem /wz

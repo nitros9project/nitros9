@@ -42,17 +42,11 @@ Base                set       $FF20
                     fcb       C$BSP               backspace echo character
                     fcb       C$BELL              line overflow character (bell)
                     fcb       PARNONE             parity
-* The packet-device flag lives in BIT 3 of this byte (DeviceMode*8,
-* Mask_SocketDev) - same position as in the port address above. It must
-* NOT land in bit 0: SCF issues SS.ComSt at every open with this byte,
-* and the driver forwards bits 1-0 into the control register at $FF20,
-* whose bit 0 is the UART speed select (0=115200, 1=921600 - the bit
-* `xmode bau=1` sets for wizfast). A bare +DeviceMode here (the *8
-* forgotten) flipped the UART to 921600 at every /wz0-3 open while the
-* WizFi stayed at 115200: both directions deaf (proven: wizlog4 telnet,
-* tsmon never saw the remote's +IPD data). Bit 3 is masked off the
-* hardware write and is harmless.
-                    fcb       STOP1+WORD8+(DeviceMode*8) stop bits/word size/baud rate + packet flag (bit 3)
+* 2026-10-06 cores: this byte is the WizFi rate code, written to $FF20 bits 4-0 at every open (SS.ComSt):
+* WizFi.Baud115200 (10) matches the module's factory default. The packet-device flag is NOT here - the driver
+* takes it from bit 3 of the port address above (DeviceMode); the old copy in bit 3 of this byte would now
+* change the rate.
+                    fcb       WizFi.Baud115200    baud byte = WizFi rate code (xmode bau=, hex)
                     fdb       name                copy of descriptor name address
                     fcb       $00                 acia xon char (not used, maybe future assignment?)
                     fcb       $00                 acia xoff char (not used, maybe future assignment?)
