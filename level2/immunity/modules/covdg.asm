@@ -354,13 +354,23 @@ Write               equ       *
                     tsta                ; non control char; is it a high bit char?
                     bmi       L01BA     ; yes, go convert to appropriate VDG char
                   IFNE    ALLCAPS
-* All caps: show lower case letters as normal upper case (display only,
-* input is unchanged). For CoCo 1/2s whose MC6847 has no lower case.
-                    cmpa      #'a       ; lower case letter?
-                    blo       NotLower
-                    cmpa      #'z
-                    bhi       NotLower
-                    suba      #'a-'A    ; make it upper case
+* All caps: show lower case letters as normal upper case, and the other
+* characters from $60 up as the nearest plain character instead of an
+* inverse one (display only, input is unchanged). For CoCo 1/2s whose
+* MC6847 has no lower case. (Keep this short: bls Dispatch above is near
+* the end of its range.)
+                    cmpa      #$60      ; lower case range ($60-$7F)?
+                    blo       NotLower  ; no, show it as it is
+                    suba      #$20      ; a-z to A-Z, { to [, } to ]
+                    cmpa      #'\       ; was it a pipe?
+                    bne       NotPipe
+                    lda       #'!       ; show it as an exclamation mark
+NotPipe             cmpa      #'^       ; was it a tilde?
+                    bne       NotTilde
+                    lda       #'-       ; show it as a dash
+NotTilde            cmpa      #'@       ; was it a grave accent?
+                    bne       NotLower
+                    lda       #$27      ; show it as an apostrophe
 NotLower            equ       *
                   ENDC
                     ldb       <VD.CFlag,u ; get true lowercase flag
