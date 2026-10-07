@@ -6,14 +6,22 @@ Sources here override same-named files elsewhere on the recipe vpath
 - `rel.asm`: REL for the CoCo 1/2. It sets up the MMU and the alternate
   vectors, puts up the boot screen and debug output, and copies REL/BOOT/KRN to
   `$ED00`. It must stay exactly `$130` bytes, because the boot track is full.
+- `covdg.asm`: CoVDG, the VDG console. A copy of the CoCo 3 port's
+  `level2/coco3/modules/covdg.asm` with the CoCo 2 code always in. Text and
+  graphics screens live in motherboard RAM and are shown through the SAM.
+  `-DALLCAPS=1` shows lower case letters as normal capitals.
+- `term_vdg.asm`: the `/Term` descriptor, the Level 2 VDG case of
+  `level1/coco1/modules/term_vdg.asm`.
 - `vdgwin.asm`: the `/V1`-`/V7` VDG window descriptors, one source assembled
   with `-DWNUM=1..7`.
 
+All the video modules are here except VTIO, which is the CoCo 3 port's. Both
+descriptors take `-DPLAIN6847=1` for a plain MC6847: CoVDG then uses its
+inverse lower case mode instead of 6847T1 true lower case.
+
 All other modules are shared with the CoCo 3 port. The port-specific parts of
 shared files are inside `IFNE immunity` blocks, in `krn.asm`, `clock.asm`,
-`covdg.asm`, `fdebug.asm`, `reboot.asm` and `init.asm`. They are also
-controlled by the `PLAIN6847` flag in `term_vdg.asm` and the `ALLCAPS` flag in
-`covdg.asm`.
+`fdebug.asm`, `reboot.asm` and `init.asm`.
 
 ## Hardware
 

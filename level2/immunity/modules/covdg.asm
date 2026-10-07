@@ -1,6 +1,10 @@
 ********************************************************************
-* CoVDG - CoCo 3 VDG I/O module
+* CoVDG - VDG I/O module for the CoCo 1/2 with an i-MMU-nity
 *
+* The CoCo 3 port's CoVDG (level2/coco3/modules/covdg.asm) with the CoCo 2
+* code always in and the i-MMU-nity changes: text and graphics screens in
+* motherboard RAM shown through the SAM instead of the GIME, and the ALLCAPS
+* option for an MC6847 without lower case.
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
@@ -46,9 +50,14 @@
 * LINE fixed:
 *   1) bad single bit pixel mask table
 *   2) Missing initialization to 0 of a 16 bit number on stack
+*
+*          2026/10/07  John Federico / Claude
+* Copied from level2/coco3/modules/covdg.asm (upstream f470fa52) for the
+* i-MMU-nity port, with its IFNE immunity and IFNE COCO2 code resolved.
+* End graphics ($12) also unmaps the screen's slot and frees the right block.
 
                     nam       CoVDG
-                    ttl       CoCo 3 VDG I/O module
+                    ttl       i-MMU-nity VDG I/O module
 
 * Disassembled 98/09/31 12:15:57 by Disasm v1.6 (C) 1988 by RML
 
@@ -64,7 +73,6 @@ tylg                set       Systm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
 edition             set       2
-COCO2               set       1                   1=Keep Coco 2 instructions
 
 skip2               equ       $8C                 cmpx instruction
 
@@ -103,21 +111,8 @@ InitNoHiRes         equ       *
                     bsr       SetupPal            set up palettes
                     lda       #$AF                Blue VDG char
                     sta       <VD.CColr,u         save as default color cursor
-                    pshs      u
-                    ldd       #768                gets 1 page on an odd page boundary
-                    os9       F$SRqMem            request from top of sys ram
-                    bcs       L00D6               error out of no system mem
-                    tfr       u,d                 U = addr of memory
-                    leax      ,u
-                    bita      #$01                test to see if on even page
-                    beq       IsEven              branch if even
-                    leax      >256,x              else point 100 bytes into mem
-                    bra       IsOdd               and free
-
-IsEven              leau      >512,u              we only need 2 pages for the screen memory
-IsOdd               ldd       #256                1 page return
-                    os9       F$SRtMem            return system memory
-                    puls      u
+                    lbsr      MJScrAlc            get a VDG-visible text screen in X
+                    bcs       L00D6
                     stx       <VD.ScrnA,u         save start address of the screen
                     stx       <VD.CrsrA,u         and cursor address
                     leax      >512,x              point to end of screen+1
@@ -232,10 +227,13 @@ Term                pshs      u,y,x
                     jsr       H$Term,x            release this device's application screens
 TermNoHiRes         equ       *
                     clr       <VD.Start,u         no screens in use
-                    ldd       #512                size of alpha screen
-                    ldu       <VD.ScrnA,u         get pointer to alpha screen
+                    ldd       <VD.ScrnA,u         get pointer to alpha screen
                     beq       ClrStat             branch if none
-                    os9       F$SRtMem            else return memory
+                    ldx       <D.SysMem           mark its two pages free for covdg again
+                    ldb       #MJScrFre
+                    stb       a,x
+                    inca
+                    stb       a,x
 
 * 6809/6309 stack blast clear or TFM (vector once installed)
 ClrStat             ldb       #$E1                size of 1 page -$1D (SCF memory requirements)
@@ -245,6 +243,46 @@ L006F               clr       ,x+                 set stored byte to zero
                     bne       L006F               until zero
                     clrb
                     puls      pc,u,y,x
+
+* i-MMU-nity text screens. The VDG can only display motherboard RAM, so krn
+* keeps Bt.Block (a motherboard block) in slot 1 of the system map and
+* reserves system pages $20-$3F. Text screens are the 512-byte pairs of
+* pages from $22 up ($20-$21 hold the boot screen's BtDebug cursor; $22-$23
+* is the boot screen, so /term takes it over). In the system page map a
+* reserved pair is MJScrFre while free and MJScrUse while a screen.
+MJScrFre            equ       RAMinUse            as marked by krn
+MJScrUse            equ       ModBlock            any other non-zero value
+MJScrLo             equ       $22
+MJScrHi             equ       $40
+MJBtCurs            equ       $0004               BtDebug cursor after boot: Bt.Block+4..$1FF
+
+* Exit: X=screen address, or carry set and B=error
+MJScrAlc            ldx       <D.SysMem
+                    ldb       #MJScrLo
+MJScrLp             lda       b,x
+                    cmpa      #MJScrFre
+                    beq       MJScrGot
+                    addb      #2
+                    cmpb      #MJScrHi
+                    blo       MJScrLp
+                    comb
+                    ldb       #E$MemFul
+                    rts
+MJScrGot            lda       #MJScrUse
+                    sta       b,x
+                    incb
+                    sta       b,x
+                    decb
+                    cmpb      #MJScrLo            taking over the boot screen?
+                    bne       MJScrAdr
+* From now on send the BtDebug breadcrumbs (and crash codes) to the hidden
+* start of Bt.Block instead of onto this screen.
+                    ldx       #MJBtCurs
+                    stx       >MJScrLo*256-$200+2   BtDebug cursor, at Bt.Block+2
+MJScrAdr            tfr       b,a
+                    clrb                          D=screen address, carry clear
+                    tfr       d,x
+                    rts
 
 * Entry point from VTIO. Eventually, we will want to change the Write routine to
 *  handle buffered writes (will require changing SCF as well, I think) like CoWin/Grf
@@ -305,25 +343,26 @@ NoOp                clrb
 * Entry: A = char to write
 *        Y = path desc ptr
 Write               equ       *
-                    IFNE      COCO2
                     cmpa      #$0F                Special control char (including Coco 1/2 graphics commands)
-                    ELSE
-                    cmpa      #$0E                Special control char (not including Coco 1/2 graphics commands)
-                    ENDC
                     bls       Dispatch            Yes, dispatch from table
                     cmpa      #$1B                escape code?
                     lbeq      Escape              yes, do escape immediately
-                    IFNE      COCO2
                     cmpa      #$1E                $10-1E codes (Coco 1/2 graphics commands)?
                     blo       Do1E                Yes, go do
                     cmpa      #$1F                Any other control codes go to dispatch table
                     bls       Dispatch
-                    ELSE
-                    cmpa      #$1F
-                    bls       NoOp                ignore gfx codes if not CoCo 2 compatible
-                    ENDC
                     tsta                          Non control char; is it a high bit char?
                     bmi       L01BA               Yes, go convert to appropriate VDG char
+                    IFNE      ALLCAPS
+* All caps: show lower case letters as normal upper case (display only,
+* input is unchanged). For CoCo 1/2s whose MC6847 has no lower case.
+                    cmpa      #'a                 lower case letter?
+                    blo       NotLower
+                    cmpa      #'z
+                    bhi       NotLower
+                    suba      #'a-'A              make it upper case
+NotLower            equ       *
+                    ENDC
                     ldb       <VD.CFlag,u         Get true lowercase flag
                     beq       L019A               Uppercase only, skip ahead
 * Special char replacements if true lowercase enabled (either Coco 3 or Coco 2/T1-VDG)
@@ -371,11 +410,9 @@ L01BA               ldx       <VD.CrsrA,u         Get address of cursor
                     lbsr      SScrl               Yes, scroll screen
 L01CA               lbra      ShowCrsr            Display cursor in new position, return from theres
 
-                    IFNE      COCO2
 Do1E                lbsr      ChkDvRdy            Is device ready to handle characters?
                     bcc       Dispatch            Yes go process, else return
                     rts
-                    ENDC
 
 * Entry: A=CHR$() code
 Dispatch            leax      <DCodeTbl,pcr       Point to dispatch table
@@ -400,7 +437,6 @@ DCodeTbl            fdb       NoOp-DCodeTbl       $00 - No Operation
                     fdb       Do0E-DCodeTbl       $0E - Display Alpha Screen
 
 * Coco 1/2 graphics mode commands
-                    IFNE      COCO2
                     fdb       Do0F-DCodeTbl       $0F - Display Graphics
                     fdb       Do10-DCodeTbl       $10 - Preset Screen
                     fdb       Do11-DCodeTbl       $11 - Set Color
@@ -418,7 +454,6 @@ DCodeTbl            fdb       NoOp-DCodeTbl       $00 - No Operation
                     fdb       Do1D-DCodeTbl       $1D - Flood Fill
                     fdb       NoOp-DCodeTbl       $1E - No Operation
                     fdb       NoOp-DCodeTbl       $1F - No Operation
-                    ENDC
 
 * $1B does palette changes
 Escape              ldx       <VD.EPlt1,u         now X points to level
@@ -429,7 +464,6 @@ Escape              ldx       <VD.EPlt1,u         now X points to level
                     bra       L026E               And copy to active palette for device (and screen if we are active device)
 
 L0209               cmpa      #$31                change palette?
-                    IFNE      COCO2
                     beq       PalProc             branch if so
                     cmpa      #$21                Select?
                     bne       L0248               No, return without error
@@ -472,9 +506,6 @@ L024A               leax      <P$Path,x           point to path table in process
                     os9       F$Find64            Get ptr to path descriptor for path # in A
                     ldy       PD.DEV,y            Get device table entry ptr for path
                     puls      b,pc
-                    ELSE
-                    bne       NoOp
-                    ENDC
 
 PalProc             leax      <DoPals,pcr         Point to update palette register routine
                     ldb       #$02                Get 2 more chars from input to get palette register # & color #
@@ -683,9 +714,7 @@ Do0E                equ       *
 * Entry: A=video bits to merge into $FF22
 *        B=video type (0=text screen, else medium res graphics)
 DispAlfa            pshs      x,y,a               Preserve regs (A=video bits to merge into $FF22)
-                    IFNE      COCO2
                     stb       <VD.Alpha,u         0=Alpha mode, else graphics mode
-                    ENDC
                     clr       >V.HRBuf,u          clear the selected application screen
                     lda       >PIA1Base+2         Get current screen mode settings byte from PIA
                     anda      #%00000111          Only keep non-video bits
@@ -699,16 +728,13 @@ L03AD               sta       <VD.TFlg1,u         save updated VDG info
                     lbeq      L0440               No, skip ahead
                     sta       >PIA1Base+2         Yes, set lowercase in hardware
                     ldy       #$FFC6              Ok, now set up via old CoCo 2 mode the graphics video mode.
-                    IFNE      COCO2
                     tstb                          Text screen?
                     bne       L03CB               No, set up for graphics
-                    ENDC
 * Set up VDG screen for text
                     stb       -6,y                $FFC0
                     stb       -4,y                $FFC2
                     stb       -2,y                $FFC4
                     lda       <VD.ScrnA,u         Get start screen address MSB (always even $200)
-                    IFNE      COCO2
                     bra       L03D7
 
 * Set up VDG screen for graphics
@@ -716,70 +742,40 @@ L03CB               stb       -6,y                $FFC0
                     stb       -3,y                $FFC3
                     stb       -1,y                $FFC5
                     lda       <VD.SBAdd,u         Get address of block screen is in
-                    ENDC
-L03D7               lbsr      SetPals             Set palettes
-                    ldb       <D.HINIT            Get current GIME Init0 ghost register settings
-                    orb       #$80                set CoCo 2 compatible mode
-                    stb       <D.HINIT            Save updated ghost copy
-                    stb       >$FF90              And to actual GIME
-                    ldb       <D.VIDMD            Get current GIME Video mode ghost register settings
-                    andb      #%01111000          text mode, 1 line per row
-                    stb       >$FF98              Save onto actual GIME
-                    stb       <D.VIDMD            and ghost register copy
-                    pshs      a                   Save MSB of screen address
-                    IFNE      H6309
-                    clrd
-                    ELSE
-                    clra
-                    clrb
-                    ENDC
-                    std       >$FF99              set resolution AND border color (to black)
-                    std       <D.VIDRS            And save ghost copies
-                    puls      a                   Get MSB of screen address back
-                    tfr       a,b                 Dupe into B
-                    anda      #$1F
-                    pshs      a
-                    andb      #$E0                Calc 8K MMU block offset
-                    lsrb
-                    lsrb
-                    lsrb
-                    lsrb
-                    ldx       <D.SysDAT           Get ptr to system process DAT image
-                    abx                           Point to block we will map screen into
-* PATCH START: Mod for >512K systems, Robert Gault
-                    ldb       1,x                 get block number to use
-                    pshs      b
-                    andb      #$F8                keep high bits only
-                    clra
-                    lslb
-                    rola
-                    lslb
-                    rola
-                    sta       >$FF9B              Select 512K video bank for >512K machines
-                    tfr       b,a
-                    clrb
-* PATCH END: Mod for >512K systems, Robert Gault
-                    std       <D.VOFF1            Save ghost copy of vertical offset register
-                    std       >$FF9D              And to actual GIME
-                    ldd       #$0F07              Vertical smooth scroll=$0F, 7 SAM register bit settings to set for screen address
-                    sta       <D.VOFF2            Save ghost copy of vertical smooth scroll setting
-                    sta       >$FF9C              And to actual GIME
-                    puls      a                   Shift out address offset for VDG/SAM registers
-                    asla
-                    asla
-                    asla
-                    asla
-                    asla
-                    ora       ,s+
+L03D7
+* No GIME: the VDG shows motherboard RAM at the address in the SAM's F0-F6
+* ($200 units). A=MSB of the screen's system address. Look up the block in
+* its slot of the system DAT image; motherboard blocks are $38-$3F, so the
+* low 3 bits of the block number are motherboard A15-A13.
+                    tfr       a,b                 B=MSB of the system address
+                    lsra                          A=slot*2 (and bit 4)
                     lsra
-L0430               lsra                          Write to $FFC6+ - 0 bits are even addresses, 1 bits are odd addresses
-                    bcc       L041A               Even, clear SAM bit
-                    leay      1,y                 Odd, set SAM bit
-                    sta       ,y+
-                    fcb       skip2               skip 2 bytes
-L041A               sta       ,y++                rather than additional leax 1,x on next line
-                    decb                          Are we done all 7 SAM video address registers?
-                    bne       L0430               No, keep doing until done
+                    lsra
+                    lsra
+                    anda      #$0E                A=slot*2
+                    inca                          low byte of the DAT image entry
+                    ldx       <D.SysDAT
+                    lda       a,x                 A=block number
+                    anda      #$07                motherboard 8K block
+                    lsla                          to A15-A13
+                    lsla
+                    lsla
+                    lsla
+                    lsla
+                    andb      #$1F                offset MSB within the block
+                    pshs      b
+                    ora       ,s+                 A=motherboard address MSB
+                    lsra                          A=address/$200: F0 in bit 0
+                    ldb       #7                  7 SAM F bits, Y=$FFC6 (F0)
+MJSamLp             lsra
+                    bcc       MJSamClr
+                    sta       1,y                 odd address sets the bit
+                    fcb       skip2
+MJSamClr            sta       ,y                  even address clears it
+                    leay      2,y
+                    decb
+                    bne       MJSamLp
+                    bra       L0440
 L0440               clrb                          No error & return
                     puls      pc,y,x
 
@@ -789,7 +785,6 @@ GChar               stb       <VD.NGChr,u         Save # of parameter bytes need
                     clrb                          No error & return
                     rts
 
-                    IFNE      COCO2
 * $0F - display graphics
 Do0F                leax      <DispGfx,pcr        Point to Display graphics routine
                     ldb       #$02                And we need to 2 more parameter bytes
@@ -918,14 +913,34 @@ Do12                ldx       <VD.SBAdd,u         get address of where 8K block 
                     beq       L051B               None, skip ahead
                     ldd       #$0020              A=0 (deallocate) B=32 (32 system pages (256 bytes each))
                     bsr       L04D9               Deallocate 8K system RAM from system map
+* Unmap the screen from the system DAT image too. F$SRtMem only frees the
+* slots of plain RAMinUse blocks, so this slot would never be reused and
+* each graphics screen would use up one slot of system address space.
+                    tfr       x,d                 A=MSB of the screen's system address
+                    lsra                          A=slot*2
+                    lsra
+                    lsra
+                    lsra
+                    anda      #$0E
+                    ldx       <D.SysDAT
+                    leax      a,x
+                    ldd       #DAT.Free
+                    std       ,x
+                    clra                          no screen mapped (a second $12 is harmless)
+                    clrb
+                    std       <VD.SBAdd,u
 L051B               leay      <VD.GBuff,u         point Y to graphics screen block numbers
                     ldb       #$03                number of possible screens allocated starting at VD.GBuff
                     pshs      u,b                 save our static pointer, and counter (3)
 L0522               lda       ,y+                 get next medium res screen block #
                     beq       L052D               unused, continue
-                    clrb                          Use, move block # to X
+* F$DelRAM wants X = block number; A:B = block:0 would be block*256, past
+* the end of the block map, so nothing was freed and the pool ran dry.
+                    clr       -1,y                forget it (a second $12 is harmless)
+                    tfr       a,b
+                    clra
                     tfr       d,x
-                    incb                          1 block to deallocate
+                    ldb       #1                  1 block to deallocate
                     os9       F$DelRAM            deallocate it from main RAM
 L052D               dec       ,s                  dec # of screens to check
                     bgt       L0522               until all 3 possible medium res screens are done.
@@ -1570,7 +1585,6 @@ L092B               ldd       <VD.FFSPt,u         Get current FFill stack ptr
                     lda       $03,y
                     andcc     #^Carry
                     rts
-                    ENDC
 
 * Entry: Y=Ptr to path descriptor
 *        A=GetStat code
@@ -1581,10 +1595,8 @@ GetStat             ldx       PD.RGS,y            Get ptr to users stack
                     beq       Rt.ScSiz
                     cmpa      #SS.Cursr           Cursor info?
                     beq       Rt.Cursr
-                    IFNE      COCO2
                     cmpa      #SS.DStat           Medium graphics Display Status?
                     lbeq      Rt.DSTAT
-                    ENDC
                     cmpa      #SS.Palet           Get current palette settings?
                     beq       Rt.Palet
                     comb                          Anything else, return with Unknown Service error
@@ -1708,7 +1720,6 @@ L051E               sta       R$A,x               Save ASCII value to caller in 
                     clrb
 L0521               rts
 
-                    IFNE      COCO2
 * SS.DStat (return graphics display status)
 * Exit: A = color code of the pixel at gfx cursor address
 *       X = address of graphics display memory
@@ -1778,17 +1789,14 @@ L0A60               lsra
                     ldx       <VD.MTabl,u         Get pixel mask ptr for our mode
                     lda       a,x                 Get pixel mask for pixel within byte we want
                     puls      pc,y,x              X = offset address, Y = base
-                    ENDC
 
 SetStat             ldx       PD.RGS,y            Get caller's register stack ptr
                     cmpa      #SS.ComSt           Caller changing true lowercase on/off on VDG window?
                     beq       Rt.ComSt
-                    IFNE      COCO2
                     cmpa      #SS.AAGBf
                     beq       Rt.AAGBf
                     cmpa      #SS.SLGBf
                     beq       Rt.SLGBf
-                    ENDC
 
 SharedScreen        ldx       >WGlobal+G.HRSEnt   get shared application-screen services
                     beq       MissingHiRes        report that the optional module is unavailable
@@ -1815,7 +1823,6 @@ L0553               stb       <VD.CFlag,u
                     std       <VD.Col,u           Save screen size
                     rts
 
-                    IFNE      COCO2
 Rt.AAGBf            ldb       <VD.Rdy,u
                     beq       NotReady
                     ldd       #$0201
@@ -1870,7 +1877,6 @@ Rt.SLGBf            ldb       <VD.Rdy,u
 L0B2B               stb       <VD.DFlag,u
                     clrb
                     rts
-                    ENDC
 
 * Get next free medium-resolution screen descriptor.
 L06C7               clr       ,-s                 clear an area on the stack
@@ -1885,10 +1891,31 @@ L06CB               tst       ,y                  check block number
                     ldb       #E$BMode
 L06D9               puls      pc,a
 
-* Get B 8K blocks from high RAM
-Get8KHi             ldb       #$01                1 8k block needed (semigraphics or medium res
-L06DDX              os9       F$AlHRAM            allocate a screen from end of RAM
-                    rts
+* Get an 8K graphics screen block. The VDG can only display motherboard RAM,
+* MMU blocks $38-$3F; krn marks $38-$3E NotRAM. A pool block is free while
+* its block map entry is exactly NotRAM; claim it by setting RAMinUse.
+* F$DelRAM (end graphics) clears RAMinUse, which returns it to the pool.
+* Bt.Block holds the text screens and $3E is where DAT.Free maps unused
+* slots, so neither is used.
+* Exit: D=block number, or carry set and B=error. X preserved.
+Get8KHi             pshs      x
+                    ldx       <D.BlkMap
+                    ldb       #$38                first motherboard block
+MJGfxLp             cmpb      #Bt.Block
+                    beq       MJGfxNxt
+                    lda       b,x
+                    cmpa      #NotRAM             reserved and free?
+                    beq       MJGfxGot
+MJGfxNxt            incb
+                    cmpb      #$3E
+                    blo       MJGfxLp
+                    comb
+                    ldb       #E$NoRAM
+                    puls      x,pc
+MJGfxGot            lda       #NotRAM+RAMinUse
+                    sta       b,x
+                    clra                          D=block number, carry clear
+                    puls      x,pc
 
 L06E1               lda       #$01                map screen into memory
 L06E3               pshs      u,x,d
