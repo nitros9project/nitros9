@@ -91,10 +91,11 @@ MName               fcs       /Krn/
                     fcc       /www.nitros9.org /
                   ELSE
                   IFNE    immunity ; begin conditional assembly for immunity
-* The i-MMU-nity changes below are net 3 bytes smaller than the code they
+* The i-MMU-nity changes below are net 1 byte larger than the code they
 * replace (-8 for the block reservation, +5 for the slot 1 text screen
-* block), so pad by 3 more to keep the tail of krn at the same address.
-                    fcc       /www.nitros9/
+* block, +4 for marking it in use), so pad by 1 less to keep the tail of
+* krn at the same address.
+                    fcc       /www.nit/
                   ELSE
                     fcc       /www.nitr/
                   ENDC
@@ -753,7 +754,8 @@ KrnBlock            aslb                ; B <= 1 (hi bit goes into carry, 0 goes
 * only RAM the SAM/VDG can display ($3F holds krn). NotRAM, not RAMinUse, so
 * F$AllRAM/F$AlHRAM skip them and F$DelRAM can't free them; covdg claims a
 * screen block by setting RAMinUse on it. $3E stays reserved as the block
-* DAT.Free maps unused slots to. X=D.BlkMap here.
+* DAT.Free maps unused slots to. Bt.Block ($3B) is then marked RAMinUse
+* below. X=D.BlkMap here.
                   IFNE    immunity ; begin conditional assembly for immunity
                     leax      $38,x     ; first motherboard block
                     ldd       #NotRAM*256+7 ; reserve 7 blocks, $38-$3E
@@ -772,6 +774,16 @@ KrnBlock            aslb                ; B <= 1 (hi bit goes into carry, 0 goes
 l@                  sta       ,x+       ; mark them all
                     decb                ; are we done?
                     bne       l@        ; not yet
+*[[[ i-MMU-nity PORT
+* Bt.Block is system RAM in use: slot 1 of the system map always holds it.
+* Marked NotRAM, F$AllImg would fail with E$MemFul whenever F$SRqMem asks
+* it for slots 0-1, which it does when a request straddles two slots that
+* are both already mapped.
+                  IFNE    immunity ; begin conditional assembly for immunity
+                    lda       #RAMinUse ; get the RAM in use flag
+                    sta       Bt.Block-$3F,x ; mark Bt.Block (X=D.BlkMap+$3F here)
+                  ENDC
+*]]] i-MMU-nity PORT
 
 * ASSUME: however we got here, B=0
 Mc09KrnStart
