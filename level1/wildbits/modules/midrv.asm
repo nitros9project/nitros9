@@ -1,4 +1,4 @@
-* MIDI DIN input: ONLY the interrupt handler reads the hardware RX FIFO.
+* MIDI DIN in and out through /mi: the interrupt handler alone reads the hardware RX FIFO; Write sends to the TX FIFO.
 * UME reads the captured bytes through /mi; no drawing/output in system IRQ.
                     use       defsfile
                     mod       eom,name,Drivr+Objct,ReEnt+1,start,size
@@ -13,14 +13,15 @@ LastTick            rmb       1
 OldMask             rmb       1
 Lost                rmb       2
 size                equ       .
-* 2026-10-02 (user): a plain SCF serial input like a 6551 /t2 - the IRQ fills the ring, Read pops it - but
-* "midi in is input-only": READ. here and in the mi descriptor (no SHARE.), and Write is refused.
-                    fcb       READ.
+* 2026-10-02 (user): a plain SCF serial port like a 6551 /t2 - the IRQ fills the ring, Read pops it.
+* 2026-10-06 (user, option 1: "output to the /mi device rather than direct writes to the fifo"): /mi is read AND
+* write - Write sends to the MIDI UART's transmit FIFO (DIN MIDI OUT, which also feeds the SAM2695).
+                    fcb       READ.+WRITE.
 name                fcs       /MIDrv/
                     fcb       3
 start               lbra      Init
                     lbra      Read
-                    lbra      Bad
+                    lbra      Write
                     lbra      GetStat
                     lbra      SetStat
                     lbra      Term
@@ -237,6 +238,13 @@ SetStat             cmpa      #SS.ComSt
                     cmpa      #SS.Close
                     bne       Bad
 ssok@               clrb
+                    rts
+* Write: A = a MIDI byte. Waits for the transmit FIFO to drain (MIDI.TxEmpty), then sends it. U = statics, Y = path.
+Write               ldb       >MIDI.Base
+                    bitb      #MIDI.TxEmpty
+                    beq       Write
+                    sta       >MIDI.Base+1
+                    clrb
                     rts
 Bad                 ldb       #E$UnkSvc
                     orcc      #Carry
