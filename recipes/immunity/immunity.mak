@@ -119,7 +119,7 @@ endif
 SHELLMODS = shellplus date deiniz echo iniz link load save unlink
 UTILPAK1 = attr build copy del deldir dir display list makdir mdir merge mfree procs rename tmode
 
-CMDS_BASE ?= $(STDCMDS) shell utilpak1 mmap pmap
+CMDS_BASE ?= $(STDCMDS) shell utilpak1 mmap pmap reboot
 CMDS += $(CMDS_BASE) $(CMDS_EXTRA)
 
 all: libs $(DSKIMAGE)
