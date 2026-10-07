@@ -17,13 +17,16 @@
 *   IO rd   8 x lda >INT_MASK_0      fixed-IO reads (full-length frames)
 *   IO wr   8 x sta >INT_MASK_0      fixed-IO writes (same value back)
 *   RTC rd  8 x lda ,x  (RTC_SEC)    external-bus reads (RDY-stretched)
+*   intern  8 x mul                  internal (dead) cycles: 10 of MUL's 11
+*                                    cycles never touch the bus, so this class
+*                                    approaches the core's internal-cycle rate
 *
 * A stock core runs every bus cycle in a 32-tick frame (6.29 MHz), so all
-* six classes read 6.29. Turbo cores shorten some frame types (coast,
+* seven classes read 6.29. Turbo cores shorten some frame types (coast,
 * pure-RAM read, pure-RAM write) and leave the rest at 32 ticks; the
 * per-class numbers show which. "Perceived" is a weighted blend for a
-* typical instruction mix: fetch 50%, RAM rd 25%, RAM wr 12%, IO rd 6%,
-* IO wr 4%, RTC 3%.
+* typical instruction mix: fetch 45%, RAM rd 25%, RAM wr 12%, IO rd 6%,
+* IO wr 4%, RTC 3%, internal (mul) 5%.
 *
 * IRQs are MASKED for each window, so no tick/driver ISR time pollutes
 * the count - the OS software clock ends ~6*TESTSECS s slow
@@ -38,6 +41,10 @@
 *                      epilogue accounting + IRQ-masked window
 *   3      2026/09/03  per-class benchmark (fetch, RAM r/w, IO r/w,
 *                      RTC) + weighted perceived-speed blend
+*   4      2026/10/07  internal-cycle class (8 x mul), measured like
+*                      the others; not part of the perceived blend
+*   5      2026/10/07  internal class joins the perceived blend at 5%
+*                      (fetch 50% -> 45%)
                 nam       wildspeed
                 ttl       wildspeed
 
@@ -48,10 +55,10 @@
 tylg            set       Prgrm+Objct
 atrv            set       ReEnt+rev
 rev             set       $00
-edition         set       3
+edition         set       5
 
 TESTSECS        equ       3                   RTC seconds per class window
-NCLASS          equ       6
+NCLASS          equ       7
 
 * Epilogue (identical for every class, counted once):
 *   ldd 5 + addd 4 + std 5 + ldx 3 + lda 5 + ora 2 + sta 5 + lda 5
@@ -73,6 +80,9 @@ C_IORD          equ       I_IO*48+4+EPI
 C_IOWR          equ       I_IO*48+9+EPI
 * RTC rd: ldx #RTC_SEC (3) ldy #N (4) | 8 x lda ,x (4) + 8 = 40
 C_RTC           equ       I_RAM*40+7+EPI
+* intern: ldy #N (4) | 8 x mul (11) + leay 5 + bne 3 = 96
+I_MUL           equ       292
+C_MUL           equ       I_MUL*96+4+EPI
 
 * FACTOR = round(65536*C/(TESTSECS*10000)); lwasm evaluates in 32 bits
 F_FET           equ       (65536*C_FET+(TESTSECS*5000))/(TESTSECS*10000)
@@ -80,14 +90,16 @@ F_RAM           equ       (65536*C_RAM+(TESTSECS*5000))/(TESTSECS*10000)
 F_IORD          equ       (65536*C_IORD+(TESTSECS*5000))/(TESTSECS*10000)
 F_IOWR          equ       (65536*C_IOWR+(TESTSECS*5000))/(TESTSECS*10000)
 F_RTC           equ       (65536*C_RTC+(TESTSECS*5000))/(TESTSECS*10000)
+F_MUL           equ       (65536*C_MUL+(TESTSECS*5000))/(TESTSECS*10000)
 
 * perceived-speed weights (sum 100)
-W_FET           equ       50
+W_FET           equ       45
 W_RAMRD         equ       25
 W_RAMWR         equ       12
 W_IORD          equ       6
 W_IOWR          equ       4
 W_RTC           equ       3
+W_MUL           equ       5
 
                 mod     eom,name,tylg,atrv,start,size
 
@@ -303,6 +315,36 @@ inner5@         lda     ,x                  4  (bus-stretched by the RTC RDY)
                 lbsr    Finish
                 std     <Result+10
 
+* ================= class 6: internal (dead) cycles =================
+                lbsr    Align
+chunk6@         ldy     #I_MUL              4
+inner6@         mul                         11
+                mul                         11
+                mul                         11
+                mul                         11
+                mul                         11
+                mul                         11
+                mul                         11
+                mul                         11
+                leay    -1,y                5
+                bne     inner6@             3  => 96/iteration
+                ldd     <Chunks
+                addd    #1
+                std     <Chunks
+                ldx     #$FE40
+                lda     RTC_CTRL,x
+                ora     #(RTC_UTI|RTC_24HR)
+                sta     RTC_CTRL,x
+                lda     RTC_SEC,x
+                ldb     RTC_CTRL,x
+                andb    #^(RTC_UTI)
+                stb     RTC_CTRL,x
+                cmpa    <TargetSec
+                bne     chunk6@
+                ldx     #F_MUL
+                lbsr    Finish
+                std     <Result+12
+
 * ================= report =================
                 leay    L_fet,pcr
                 ldd     <Result+0
@@ -321,6 +363,9 @@ inner5@         lda     ,x                  4  (bus-stretched by the RTC RDY)
                 lbsr    Line
                 leay    L_rtc,pcr
                 ldd     <Result+10
+                lbsr    Line
+                leay    L_mul,pcr
+                ldd     <Result+12
                 lbsr    Line
 
 * perceived = sum(w_i * mhz100_i) / 100, accumulated in 32 bits
@@ -345,6 +390,9 @@ inner5@         lda     ,x                  4  (bus-stretched by the RTC RDY)
                 lbsr    AccMul
                 ldd     <Result+10
                 ldx     #W_RTC
+                lbsr    AccMul
+                ldd     <Result+12
+                ldx     #W_MUL
                 lbsr    AccMul
 * divide the 32-bit Acc by 100 (result < 65536): repeated subtraction, quotient in X
                 ldx     #0
@@ -560,10 +608,12 @@ BDDone  adda    #$30
 
 * =============================================
 * Data
-Banner  fcc     "=== Wildbits 6809 speed meter, ed.3: per bus-cycle class (stock = 6.29 MHz) ==="
+Banner  fcc     "=== Wildbits 6809 speed meter, ed."
+        fcb     '0+edition          the module edition (1-9)
+        fcc     ": per bus-cycle class ==="
         fcb     $0D
 BannerLen equ   *-Banner
-MsgRunning fcc  "Six classes x 3 RTC seconds each, IRQs masked (about 25 s)..."
+MsgRunning fcc  "Seven classes x 3 RTC seconds each, IRQs masked (about 29 s)..."
         fcb     $0D
 MsgRunningLen equ *-MsgRunning
 
@@ -573,8 +623,9 @@ L_ramwr fcs     "RAM write      (8 x sta ,x)       : "
 L_iord  fcs     "IO read        (8 x lda >FE2C)    : "
 L_iowr  fcs     "IO write       (8 x sta >FE2C)    : "
 L_rtc   fcs     "RTC/ext-bus rd (8 x lda RTC_SEC)  : "
-L_perc  fcs     "perceived (50/25/12/6/4/3 blend)  : "
-L_note  fcs     "(software clock is now ~18 s slow: setime or ntptime to resync)"
+L_mul   fcs     "internal       (8 x mul)          : "
+L_perc  fcs     "perceived (45/25/12/6/4/3/5 blend): "
+L_note  fcs     "(software clock is now ~21 s slow: setime or ntptime to resync)"
 mhztxt  fcs     / MHz/
 
 * Store A at next position in output buffer.
