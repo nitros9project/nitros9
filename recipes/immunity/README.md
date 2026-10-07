@@ -25,7 +25,8 @@ Put options on the make command line or in a `recipe.mak`:
 - `VDG_T1=1` selects a 6847T1 VDG with true lower case (some CoCo 2B models).
   The default suits the plain MC6847 in most CoCo 1/2s: lower case is shown as
   inverse capitals. Software can't tell the two VDGs apart.
-- `UPPERCASE=1` makes CoVDG show lower case letters as normal capitals. This is
+- `UPPERCASE=1` makes CoVDG show lower case letters as normal capitals, and
+  `` { } | ~ ` `` as plain `[ ] ! - '` instead of inverse characters. This is
   display only; typed input is unchanged.
 - `VDG_WINDOWS=n` (0-7, default 7) adds `/V1` to `/Vn`, extra 32x16 screens.
   CLEAR and SHIFT-CLEAR switch between the screens that have a path open.
@@ -56,7 +57,10 @@ Boots and runs on a real CoCo 2 with a 1MB i-MMU-nity, from the CoCo SDC:
 - Shell, the clock (PIA VSYNC interrupt), and memory sizing (512K/1M/2M)
 - The VDG text console `/term`, plus up to seven extra screens `/V1`-`/V7`
 - VDG graphics (PMODE screens from the motherboard RAM pool)
-- `reboot` returns to Disk BASIC
+- `reboot` returns to Disk BASIC, and so does the RESET button (it turns the
+  MMU off); type `DOS` to boot again
+
+Besides the CoCo 3 standard commands, `CMDS` has `mmap`, `pmap` and `reboot`.
 
 Known limitations:
 
