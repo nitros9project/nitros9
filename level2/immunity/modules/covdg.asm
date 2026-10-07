@@ -61,37 +61,37 @@
 
 * Disassembled 98/09/31 12:15:57 by Disasm v1.6 (C) 1988 by RML
 
-                    ifp1
+                  IFP1
                     use       defsfile
                     use       cocovtio.d
                     use       vdgdefs
-                    endc
+                  ENDC
 
-FFStSz              equ       512                 flood fill stack size in bytes
+FFStSz              equ       512       flood fill stack size in bytes
 
 tylg                set       Systm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
 edition             set       2
 
-skip2               equ       $8C                 cmpx instruction
+skip2               equ       $8C       cmpx instruction
 
                     mod       eom,name,tylg,atrv,start,size
 
 * Stack offsets for LINE command
                     org       0
-LnPxMsk1            rmb       1                   (0) Pixel mask for byte from current Gfx Cursor X,Y coord of line
-LnPxMsk2            rmb       1                   (1) Pixel mask for byte from caller specified X,Y coord
-LnAddr1             rmb       2                   (2-3) Address on screen for user specified X,Y coord byte
-LnCoords            rmb       2                   (4-5) Inited to $0000
-LnXDir              rmb       1                   (6) X direction/offset (-1 or +1)
-LnYDir              rmb       1                   (7) Y direction/offset (-32 or +32)
-LnXDist             rmb       2                   (8-9) Distance between X coords
-LnYDist             rmb       2                   ($A-$B) Distance between Y coords
-LnX1                rmb       1                   ($C) User specified X coord for start of line
-LnY1                rmb       1                   ($D) User specified Y coord for start of line
-LnUnk3              rmb       1                   ($E) Unknown so far
-LnStkSz             equ       .                   Size of Line temp stack
+LnPxMsk1            rmb       1         (0) Pixel mask for byte from current Gfx Cursor X,Y coord of line
+LnPxMsk2            rmb       1         (1) Pixel mask for byte from caller specified X,Y coord
+LnAddr1             rmb       2         (2-3) Address on screen for user specified X,Y coord byte
+LnCoords            rmb       2         (4-5) Inited to $0000
+LnXDir              rmb       1         (6) X direction/offset (-1 or +1)
+LnYDir              rmb       1         (7) Y direction/offset (-32 or +32)
+LnXDist             rmb       2         (8-9) Distance between X coords
+LnYDist             rmb       2         ($A-$B) Distance between Y coords
+LnX1                rmb       1         ($C) User specified X coord for start of line
+LnY1                rmb       1         ($D) User specified Y coord for start of line
+LnUnk3              rmb       1         ($E) Unknown so far
+LnStkSz             equ       .         Size of Line temp stack
 
 
 u0000               rmb       0
@@ -103,41 +103,41 @@ name                fcs       /CoVDG/
                     fcb       edition
 
 * Init VDG screen (allocate memory, etc)
-Init                pshs      u,y,x               save regs
-                    ldx       >WGlobal+G.HRSEnt   get shared application-screen services
-                    beq       InitNoHiRes         continue when the optional module is absent
-                    jsr       H$Init,x            initialize this device's screen descriptors
+Init                pshs      u,y,x     ; save regs
+                    ldx       >WGlobal+G.HRSEnt ; get shared application-screen services
+                    beq       InitNoHiRes ; continue when the optional module is absent
+                    jsr       H$Init,x  ; initialize this device's screen descriptors
 InitNoHiRes         equ       *
-                    bsr       SetupPal            set up palettes
-                    lda       #$AF                Blue VDG char
-                    sta       <VD.CColr,u         save as default color cursor
-                    lbsr      MJScrAlc            get a VDG-visible text screen in X
+                    bsr       SetupPal  ; set up palettes
+                    lda       #$AF      ; blue VDG char
+                    sta       <VD.CColr,u ; save as default color cursor
+                    lbsr      MJScrAlc  ; get a VDG-visible text screen in X
                     bcs       L00D6
-                    stx       <VD.ScrnA,u         save start address of the screen
-                    stx       <VD.CrsrA,u         and cursor address
-                    leax      >512,x              point to end of screen+1
-                    stx       <VD.ScrnE,u         save it
-                    lda       #$60                get default character (space)
-                    sta       <VD.CChar,u         save as character under the cursor
+                    stx       <VD.ScrnA,u ; save start address of the screen
+                    stx       <VD.CrsrA,u ; and cursor address
+                    leax      >512,x    ; point to end of screen+1
+                    stx       <VD.ScrnE,u ; save it
+                    lda       #$60      ; get default character (space)
+                    sta       <VD.CChar,u ; save as character under the cursor
 * LCB: This should save to VD.CChar instead, and free VD.Chr1 up for some other use
-                    sta       <VD.Chr1,u          only referenced here ??
-                    lbsr      ClrScrn             clear the screen
-                    inc       <VD.Start,u         increment VDG screen in use
-                    ldd       <VD.Strt1,u         seemling useless??
-                    lbsr      L054C               set to true lowercase, screen size
-                    leax      <VD.NChar,u         Point to buffer where extra parameter bytes will be
-                    stx       <VD.EPlt1,u         Save it
+                    sta       <VD.Chr1,u ; only referenced here ??
+                    lbsr      ClrScrn   ; clear the screen
+                    inc       <VD.Start,u ; increment VDG screen in use
+                    ldd       <VD.Strt1,u ; seemling useless??
+                    lbsr      L054C     ; set to true lowercase, screen size
+                    leax      <VD.NChar,u ; point to buffer where extra parameter bytes will be
+                    stx       <VD.EPlt1,u ; save it
 * LCB: Unused, should be able to remove & repurpose the 2 bytes
-                    stx       <VD.EPlt2,u         And a copy
-                    ldu       <D.CCMem            Get ptr to global mem
-                    IFNE      H6309
-                    oim       #$02,<G.BCFFlg,u    Flag VDGINT found
-                    ELSE
+                    stx       <VD.EPlt2,u ; and a copy
+                    ldu       <D.CCMem  ; get ptr to global mem
+                  IFNE    H6309
+                    oim       #$02,<G.BCFFlg,u ; flag VDGINT found
+                  ELSE
                     ldb       <G.BCFFlg,u
-                    orb       #$02                Flag VDGINT found
+                    orb       #$02      ; flag VDGINT found
                     stb       <G.BCFFlg,u
-                    ENDC
-                    clrb                          No error & return
+                  ENDC
+                    clrb                ; no error & return
 L00D6               puls      pc,u,y,x
 
 SetupPal            pshs      u,y,x,d
@@ -146,22 +146,22 @@ SetupPal            pshs      u,y,x,d
 *  palette animation speed?
                     lda       #$08
                     sta       <VD.PlFlg,u
-                    leax      <L011A,pcr          Point to default 16 color palette table
-                    leay      <VD.Palet,u         Point to where to put it for current VDG device (in it's static mem)
-L00E6               leau      <L00F8,pcr          Point to "leave the RGB color alone" routine
-                    IFNE      H6309
-L00EA               tfr       u,w                 Move color conversion routine ptr to W
-                    ELSE
-L00EA               pshs      u                   Save color conversion routine ptr on stack
-                    ENDC
-                    leau      <L012A,pcr          Point to 64 color CMP to RGB conversion table
-                    ldb       #16                 16 palettes to copy/convert
-L00F2               lda       ,x+                 Get color from default
-                    IFNE      H6309
-                    jmp       ,w                  Convert or store, depending if composite or not
-                    ELSE
+                    leax      <L011A,pcr ; point to default 16 color palette table
+                    leay      <VD.Palet,u ; point to where to put it for current VDG device (in it's static mem)
+L00E6               leau      <L00F8,pcr ; point to "leave the RGB color alone" routine
+                  IFNE    H6309
+L00EA               tfr       u,w       ; move color conversion routine ptr to W
+                  ELSE
+L00EA               pshs      u         ; save color conversion routine ptr on stack
+                  ENDC
+                    leau      <L012A,pcr ; point to 64 color CMP to RGB conversion table
+                    ldb       #16       ; 16 palettes to copy/convert
+L00F2               lda       ,x+       ; get color from default
+                  IFNE    H6309
+                    jmp       ,w        ; convert or store, depending if composite or not
+                  ELSE
                     jmp       [,s]
-                    ENDC
+                  ENDC
 
 * NOTE: Depending where this routine came from, Y can be a table for converted palettes in
 *  RAM, or onto the actually GIME palette registers. While this may save a little code space,
@@ -171,31 +171,31 @@ L00F2               lda       ,x+                 Get color from default
 *  HSYNC/SYNC safely to eliminate sparklies (in latter case, GRFDRV can do the same) LCB
 * Cheap and dirty way is to set the HSYNC flag on PIA, and trigger each palette with SYNC
 * instruction (similar to 1.16, but will take 16 syncs to finish, not 2 or 3).
-L00F6               lda       a,u                 Get converted color
-L00F8               sta       ,y+                 and save RGB version
-                    decb                          Are we done all 16?
-                    bne       L00F2               No, keep going until done
-                    IFEQ      H6309
-                    leas      2,s                 clean up stack
-                    ENDC
+L00F6               lda       a,u       ; get converted color
+L00F8               sta       ,y+       ; and save RGB version
+                    decb                ; are we done all 16?
+                    bne       L00F2     ; no, keep going until done
+                  IFEQ    H6309
+                    leas      2,s       ; clean up stack
+                  ENDC
 L00FF               puls      pc,u,y,x,d
 
 * If active screen, update actual palette registers (including RGB/Comp conversion if needed)
-SetPals             pshs      u,y,x,d             puts palette data in.
-                    lda       >WGlobal+G.CrDvFl   Are we on currently displayed screen?
-                    beq       L00FF               0 = not active, exit without updating hardware
-                    leax      <VD.Palet,u         point X to palette table
-                    ldy       #$FFB0              point Y to palette register
-                    lda       >WGlobal+G.MonTyp   Universal RGB/CMP 0 = CMP, 1 = RGB, 2 = MONO
-                    bne       L00E6               if not composite, set U vector to not re-map colors
-                    leau      <L00F6,pcr          else do re-map colors to composite
+SetPals             pshs      u,y,x,d   ; puts palette data in.
+                    lda       >WGlobal+G.CrDvFl ; are we on currently displayed screen?
+                    beq       L00FF     ; 0 = not active, exit without updating hardware
+                    leax      <VD.Palet,u ; point X to palette table
+                    ldy       #$FFB0    ; point Y to palette register
+                    lda       >WGlobal+G.MonTyp ; universal RGB/CMP 0 = CMP, 1 = RGB, 2 = MONO
+                    bne       L00E6     ; if not composite, set U vector to not re-map colors
+                    leau      <L00F6,pcr ; else do re-map colors to composite
                     bra       L00EA
 
 * Default palette data
-L011A               fcb       $12,$36,$09,$24     Green, Yellow, Blue, Red
-                    fcb       $3f,$1b,$2d,$26     Buff, Cyan, Magenta, Orange
-                    fcb       $00,$12,$00,$3f     Black, Green, Black, Buff
-                    fcb       $00,$12,$00,$26     Black, Green, Black, Orange
+L011A               fcb       $12,$36,$09,$24 Green, Yellow, Blue, Red
+                    fcb       $3f,$1b,$2d,$26 Buff, Cyan, Magenta, Orange
+                    fcb       $00,$12,$00,$3f Black, Green, Black, Buff
+                    fcb       $00,$12,$00,$26 Black, Green, Black, Orange
 
 * converts CMP to RGB
 
@@ -222,25 +222,25 @@ L012A               fcb       $00,$0A,$03,$0E,$06,$09,$04,$10 0-7
 
 * Terminate device
 Term                pshs      u,y,x
-                    ldx       >WGlobal+G.HRSEnt   get shared application-screen services
-                    beq       TermNoHiRes         skip application-screen cleanup when absent
-                    jsr       H$Term,x            release this device's application screens
+                    ldx       >WGlobal+G.HRSEnt ; get shared application-screen services
+                    beq       TermNoHiRes ; skip application-screen cleanup when absent
+                    jsr       H$Term,x  ; release this device's application screens
 TermNoHiRes         equ       *
-                    clr       <VD.Start,u         no screens in use
-                    ldd       <VD.ScrnA,u         get pointer to alpha screen
-                    beq       ClrStat             branch if none
-                    ldx       <D.SysMem           mark its two pages free for covdg again
+                    clr       <VD.Start,u ; no screens in use
+                    ldd       <VD.ScrnA,u ; get pointer to alpha screen
+                    beq       ClrStat   ; branch if none
+                    ldx       <D.SysMem ; mark its two pages free for covdg again
                     ldb       #MJScrFre
                     stb       a,x
                     inca
                     stb       a,x
 
 * 6809/6309 stack blast clear or TFM (vector once installed)
-ClrStat             ldb       #$E1                size of 1 page -$1D (SCF memory requirements)
-                    leax      <VD.Strt1,u         point to start of VDG statics
-L006F               clr       ,x+                 set stored byte to zero
-                    decb                          decrement
-                    bne       L006F               until zero
+ClrStat             ldb       #$E1      ; size of 1 page -$1D (SCF memory requirements)
+                    leax      <VD.Strt1,u ; point to start of VDG statics
+L006F               clr       ,x+       ; set stored byte to zero
+                    decb                ; decrement
+                    bne       L006F     ; until zero
                     clrb
                     puls      pc,u,y,x
 
@@ -250,11 +250,11 @@ L006F               clr       ,x+                 set stored byte to zero
 * pages from $22 up ($20-$21 hold the boot screen's BtDebug cursor; $22-$23
 * is the boot screen, so /term takes it over). In the system page map a
 * reserved pair is MJScrFre while free and MJScrUse while a screen.
-MJScrFre            equ       RAMinUse            as marked by krn
-MJScrUse            equ       ModBlock            any other non-zero value
+MJScrFre            equ       RAMinUse  as marked by krn
+MJScrUse            equ       ModBlock  any other non-zero value
 MJScrLo             equ       $22
 MJScrHi             equ       $40
-MJBtCurs            equ       $0004               BtDebug cursor after boot: Bt.Block+4..$1FF
+MJBtCurs            equ       $0004     BtDebug cursor after boot: Bt.Block+4..$1FF
 
 * Exit: X=screen address, or carry set and B=error
 MJScrAlc            ldx       <D.SysMem
@@ -273,27 +273,27 @@ MJScrGot            lda       #MJScrUse
                     incb
                     sta       b,x
                     decb
-                    cmpb      #MJScrLo            taking over the boot screen?
+                    cmpb      #MJScrLo  ; taking over the boot screen?
                     bne       MJScrAdr
 * From now on send the BtDebug breadcrumbs (and crash codes) to the hidden
 * start of Bt.Block instead of onto this screen.
                     ldx       #MJBtCurs
-                    stx       >MJScrLo*256-$200+2   BtDebug cursor, at Bt.Block+2
+                    stx       >MJScrLo*256-$200+2 ; btDebug cursor, at Bt.Block+2
 MJScrAdr            tfr       b,a
-                    clrb                          D=screen address, carry clear
+                    clrb                ; d=screen address, carry clear
                     tfr       d,x
                     rts
 
 * Entry point from VTIO. Eventually, we will want to change the Write routine to
 *  handle buffered writes (will require changing SCF as well, I think) like CoWin/Grf
 *  & grfdrv do). Ultimately by device driver & descriptor
-start               lbra      Init                Initialize VDG window
-                    bra       Write               Write character (also sets up multi-byte parm count/vector)
-                    nop       Can                 use for a constant
-                    lbra      GetStat             Co-module GetStat calls
-                    lbra      SetStat             Co-moudle SetStat calls
+start               lbra      Init      ; initialize VDG window
+                    bra       Write     ; write character (also sets up multi-byte parm count/vector)
+                    nop       Can       ; use for a constant
+                    lbra      GetStat   ; co-module GetStat calls
+                    lbra      SetStat   ; co-moudle SetStat calls
                     bra       Term
-                    nop       Can                 use for a constant
+                    nop       Can       ; use for a constant
 * fall through - CoWinSpc Special processing entry point (special to Level II) - last entry table
 * Called from VTIO
 * Entry:  A = function code
@@ -302,38 +302,38 @@ start               lbra      Init                Initialize VDG window
 *          >1 = only used by CoGrf/CoWin
 *         U = device memory pointer
 *         X = path descriptor pointer
-                    tsta                          Select new window to be active?
-                    bne       L0035               No, try next function code
+                    tsta                ; select new window to be active?
+                    bne       L0035     ; no, try next function code
 * Select new window to be active
-                    ldb       >V.HRBuf,u          yes, get the selected application screen
-                    beq       ShowAlpha           Primary buffer, use the VDG display path
-                    ldx       >WGlobal+G.HRSEnt   get shared application-screen services
-                    lbeq      MissingHiRes        report that the optional module is unavailable
-                    jsr       H$Show,x            display the selected application screen
-                    lbcs      L0440               return any display error
-                    lbra      SetPals             apply this VDG device's palette
+                    ldb       >V.HRBuf,u ; yes, get the selected application screen
+                    beq       ShowAlpha ; primary buffer, use the VDG display path
+                    ldx       >WGlobal+G.HRSEnt ; get shared application-screen services
+                    lbeq      MissingHiRes ; report that the optional module is unavailable
+                    jsr       H$Show,x  ; display the selected application screen
+                    lbcs      L0440     ; return any display error
+                    lbra      SetPals   ; apply this VDG device's palette
 ShowAlpha           equ       *
-                    ldd       <VD.TFlg1,u         Primary, get bits to set in $FF22 and VD.Alpha (0=alpha mode)
-                    lbra      DispAlfa            Update the hardware
+                    ldd       <VD.TFlg1,u ; primary, get bits to set in $FF22 and VD.Alpha (0=alpha mode)
+                    lbra      DispAlfa  ; update the hardware
 
-L0035               deca                          Update mouse packet function code?
-                    beq       L003B               branch if so
-                    clrb                          Nothing CoVDG handles, exit with no errors
+L0035               deca                ; update mouse packet function code?
+                    beq       L003B     ; branch if so
+                    clrb                ; nothing CoVDG handles, exit with no errors
                     rts
 
 * Update mouse packet (basically copies current actual mouse X,Y coords to window relative
 *   versions).
-L003B               ldx       <D.CCMem            pointer to start of CoWin global memory
-                    leax      <G.Mouse+Pt.AcX,x   Point to actual X,Y coord of mouse in mouse packet
-                    IFNE      H6309
-                    ldq       ,x                  get actual mouse X,Y coordinate
-                    stq       Pt.WRX-Pt.AcX,x     ($04,x) copy to window relative mouse X,Y coordinate
-                    ELSE
-                    ldd       ,x                  Get actual mouse X coord
-                    std       Pt.WRX-Pt.AcX,x     ($04,x) Copy to window relative mouse X coord
-                    ldd       Pt.AcY-Pt.AcX,x     ($02,x) Get actual mouse Y coord
-                    std       Pt.WRY-Pt.AcX,x     ($06,x) Copy to window relative mouse Y coord
-                    ENDC
+L003B               ldx       <D.CCMem  ; pointer to start of CoWin global memory
+                    leax      <G.Mouse+Pt.AcX,x ; point to actual X,Y coord of mouse in mouse packet
+                  IFNE    H6309
+                    ldq       ,x        ; get actual mouse X,Y coordinate
+                    stq       Pt.WRX-Pt.AcX,x ; ($04,x) copy to window relative mouse X,Y coordinate
+                  ELSE
+                    ldd       ,x        ; get actual mouse X coord
+                    std       Pt.WRX-Pt.AcX,x ; ($04,x) Copy to window relative mouse X coord
+                    ldd       Pt.AcY-Pt.AcX,x ; ($02,x) Get actual mouse Y coord
+                    std       Pt.WRY-Pt.AcX,x ; ($06,x) Copy to window relative mouse Y coord
+                  ENDC
 NoOp                clrb
                     rts
 
@@ -343,148 +343,148 @@ NoOp                clrb
 * Entry: A = char to write
 *        Y = path desc ptr
 Write               equ       *
-                    cmpa      #$0F                Special control char (including Coco 1/2 graphics commands)
-                    bls       Dispatch            Yes, dispatch from table
-                    cmpa      #$1B                escape code?
-                    lbeq      Escape              yes, do escape immediately
-                    cmpa      #$1E                $10-1E codes (Coco 1/2 graphics commands)?
-                    blo       Do1E                Yes, go do
-                    cmpa      #$1F                Any other control codes go to dispatch table
+                    cmpa      #$0F      ; special control char (including Coco 1/2 graphics commands)
+                    bls       Dispatch  ; yes, dispatch from table
+                    cmpa      #$1B      ; escape code?
+                    lbeq      Escape    ; yes, do escape immediately
+                    cmpa      #$1E      ; $10-1E codes (Coco 1/2 graphics commands)?
+                    blo       Do1E      ; yes, go do
+                    cmpa      #$1F      ; any other control codes go to dispatch table
                     bls       Dispatch
-                    tsta                          Non control char; is it a high bit char?
-                    bmi       L01BA               Yes, go convert to appropriate VDG char
-                    IFNE      ALLCAPS
+                    tsta                ; non control char; is it a high bit char?
+                    bmi       L01BA     ; yes, go convert to appropriate VDG char
+                  IFNE    ALLCAPS
 * All caps: show lower case letters as normal upper case (display only,
 * input is unchanged). For CoCo 1/2s whose MC6847 has no lower case.
-                    cmpa      #'a                 lower case letter?
+                    cmpa      #'a       ; lower case letter?
                     blo       NotLower
                     cmpa      #'z
                     bhi       NotLower
-                    suba      #'a-'A              make it upper case
+                    suba      #'a-'A    ; make it upper case
 NotLower            equ       *
-                    ENDC
-                    ldb       <VD.CFlag,u         Get true lowercase flag
-                    beq       L019A               Uppercase only, skip ahead
+                  ENDC
+                    ldb       <VD.CFlag,u ; get true lowercase flag
+                    beq       L019A     ; uppercase only, skip ahead
 * Special char replacements if true lowercase enabled (either Coco 3 or Coco 2/T1-VDG)
-                    cmpa      #'^                 $5E carat symbol?
-                    bne       L018A               No, check next
-                    clra                          Carat is VDG char 0 (when true lowercase enabled)
-                    bra       L01BA               Put it on screen
+                    cmpa      #'^       ; $5E carat symbol?
+                    bne       L018A     ; no, check next
+                    clra                ; carat is VDG char 0 (when true lowercase enabled)
+                    bra       L01BA     ; put it on screen
 
-L018A               cmpa      #$5F                '_' Underscore char?
-                    bne       L0192               No, check next
-                    lda       #$1F                VDG underscore char (when true lowercase enabled)
+L018A               cmpa      #$5F      ; '_' Underscore char?
+                    bne       L0192     ; no, check next
+                    lda       #$1F      ; vdg underscore char (when true lowercase enabled)
                     bra       L01BA
 
-L0192               cmpa      #$60                ' single quote char?
-                    bne       L01AA               No, check next
-                    lda       #$67                VDG single quote char (when true lowercase enabled)
+L0192               cmpa      #$60      ; ' single quote char?
+                    bne       L01AA     ; no, check next
+                    lda       #$67      ; vdg single quote char (when true lowercase enabled)
                     bra       L01BA
 
 * char replacements for uppercase only/inverse video mode
-L019A               cmpa      #$7C                Pipe '|' char?
-                    bne       L01A2               No, check next
-                    lda       #$21                Inverted exclamation mark char
-                    bra       L01BA               Put on screen
+L019A               cmpa      #$7C      ; pipe '|' char?
+                    bne       L01A2     ; no, check next
+                    lda       #$21      ; inverted exclamation mark char
+                    bra       L01BA     ; put on screen
 
-L01A2               cmpa      #$7E                '~' tilde char?
-                    bne       L01AA               No, all other chars have common conversion between both modes
-                    lda       #$2D                VDG inverted '-' char
-                    bra       L01BA               Put on screen
+L01A2               cmpa      #$7E      ; '~' tilde char?
+                    bne       L01AA     ; no, all other chars have common conversion between both modes
+                    lda       #$2D      ; vdg inverted '-' char
+                    bra       L01BA     ; put on screen
 
 * char replacements for both text modes
-L01AA               cmpa      #$60                Possible alphabetic char?
-                    blo       L01B2               Yes, finish alphabetic check
-                    suba      #$60                Anything higher than CHR$($5F) shifts down $60 for VDG
-                    bra       L01BA               Write that to screen
+L01AA               cmpa      #$60      ; possible alphabetic char?
+                    blo       L01B2     ; yes, finish alphabetic check
+                    suba      #$60      ; anything higher than CHR$($5F) shifts down $60 for VDG
+                    bra       L01BA     ; write that to screen
 
-L01B2               cmpa      #$40                Char below $40?
-                    blo       L01B8               Yes, flip case bit only
-                    suba      #$40                Drop for VDG
-L01B8               eora      #$40                Force to non-inverse chars on regular VDG
-L01BA               ldx       <VD.CrsrA,u         Get address of cursor
-                    sta       ,x+                 Save char to screen at that address
-                    stx       <VD.CrsrA,u         Save updated cursor address
-                    cmpx      <VD.ScrnE,u         Hit end of screen?
-                    blo       L01CA               No, update cursor display on screen & return
-                    lbsr      SScrl               Yes, scroll screen
-L01CA               lbra      ShowCrsr            Display cursor in new position, return from theres
+L01B2               cmpa      #$40      ; char below $40?
+                    blo       L01B8     ; yes, flip case bit only
+                    suba      #$40      ; drop for VDG
+L01B8               eora      #$40      ; force to non-inverse chars on regular VDG
+L01BA               ldx       <VD.CrsrA,u ; get address of cursor
+                    sta       ,x+       ; save char to screen at that address
+                    stx       <VD.CrsrA,u ; save updated cursor address
+                    cmpx      <VD.ScrnE,u ; hit end of screen?
+                    blo       L01CA     ; no, update cursor display on screen & return
+                    lbsr      SScrl     ; yes, scroll screen
+L01CA               lbra      ShowCrsr  ; display cursor in new position, return from theres
 
-Do1E                lbsr      ChkDvRdy            Is device ready to handle characters?
-                    bcc       Dispatch            Yes go process, else return
+Do1E                lbsr      ChkDvRdy  ; is device ready to handle characters?
+                    bcc       Dispatch  ; yes go process, else return
                     rts
 
 * Entry: A=CHR$() code
-Dispatch            leax      <DCodeTbl,pcr       Point to dispatch table
-                    lsla                          2 bytes/entry
-                    ldd       a,x                 Get offset to subroutine we want
-                    jmp       d,x                 And jump to it
+Dispatch            leax      <DCodeTbl,pcr ; point to dispatch table
+                    lsla                ; 2 bytes/entry
+                    ldd       a,x       ; get offset to subroutine we want
+                    jmp       d,x       ; and jump to it
 
-DCodeTbl            fdb       NoOp-DCodeTbl       $00 - No Operation
-                    fdb       CurHome-DCodeTbl    $01 - Home Cursor
-                    fdb       CurXY-DCodeTbl      $02 - Move Cursor
-                    fdb       DelLine-DCodeTbl    $03 - Delete Line
-                    fdb       ErEOLine-DCodeTbl   $04 - Erase to End Of Line
-                    fdb       CrsrSw-DCodeTbl     $05 - Switch Cursor Color
-                    fdb       CurRght-DCodeTbl    $06 - Move Cursor Right
-                    fdb       NoOp-DCodeTbl       $07 - Bell (Handled by VTIO)
-                    fdb       CurLeft-DCodeTbl    $08 - Move Cursor Left
-                    fdb       CurUp-DCodeTbl      $09 - Move Cursor Up
-                    fdb       CurDown-DCodeTbl    $0A - Move Cursor Down
-                    fdb       ErEOScrn-DCodeTbl   $0B - Erase to End Of Screen
-                    fdb       ClrScrn-DCodeTbl    $0C - Clear Screen
-                    fdb       Retrn-DCodeTbl      $0D - Carriage Return
-                    fdb       Do0E-DCodeTbl       $0E - Display Alpha Screen
+DCodeTbl            fdb       NoOp-DCodeTbl $00 - No Operation
+                    fdb       CurHome-DCodeTbl $01 - Home Cursor
+                    fdb       CurXY-DCodeTbl $02 - Move Cursor
+                    fdb       DelLine-DCodeTbl $03 - Delete Line
+                    fdb       ErEOLine-DCodeTbl $04 - Erase to End Of Line
+                    fdb       CrsrSw-DCodeTbl $05 - Switch Cursor Color
+                    fdb       CurRght-DCodeTbl $06 - Move Cursor Right
+                    fdb       NoOp-DCodeTbl $07 - Bell (Handled by VTIO)
+                    fdb       CurLeft-DCodeTbl $08 - Move Cursor Left
+                    fdb       CurUp-DCodeTbl $09 - Move Cursor Up
+                    fdb       CurDown-DCodeTbl $0A - Move Cursor Down
+                    fdb       ErEOScrn-DCodeTbl $0B - Erase to End Of Screen
+                    fdb       ClrScrn-DCodeTbl $0C - Clear Screen
+                    fdb       Retrn-DCodeTbl $0D - Carriage Return
+                    fdb       Do0E-DCodeTbl $0E - Display Alpha Screen
 
 * Coco 1/2 graphics mode commands
-                    fdb       Do0F-DCodeTbl       $0F - Display Graphics
-                    fdb       Do10-DCodeTbl       $10 - Preset Screen
-                    fdb       Do11-DCodeTbl       $11 - Set Color
-                    fdb       Do12-DCodeTbl       $12 - End Graphics
-                    fdb       Do13-DCodeTbl       $13 - Erase Graphics
-                    fdb       Do14-DCodeTbl       $14 - Home Graphics Cursor
-                    fdb       Do15-DCodeTbl       $15 - Set Graphics Cursor
-                    fdb       Do16-DCodeTbl       $16 - Draw Line
-                    fdb       Do17-DCodeTbl       $17 - Erase Line
-                    fdb       Do18-DCodeTbl       $18 - Set Point
-                    fdb       Do19-DCodeTbl       $19 - Erase Point
-                    fdb       Do1A-DCodeTbl       $1A - Draw Circle
-                    fdb       Escape-DCodeTbl     $1B - Escape
-                    fdb       Do1C-DCodeTbl       $1C - Erase Circle
-                    fdb       Do1D-DCodeTbl       $1D - Flood Fill
-                    fdb       NoOp-DCodeTbl       $1E - No Operation
-                    fdb       NoOp-DCodeTbl       $1F - No Operation
+                    fdb       Do0F-DCodeTbl $0F - Display Graphics
+                    fdb       Do10-DCodeTbl $10 - Preset Screen
+                    fdb       Do11-DCodeTbl $11 - Set Color
+                    fdb       Do12-DCodeTbl $12 - End Graphics
+                    fdb       Do13-DCodeTbl $13 - Erase Graphics
+                    fdb       Do14-DCodeTbl $14 - Home Graphics Cursor
+                    fdb       Do15-DCodeTbl $15 - Set Graphics Cursor
+                    fdb       Do16-DCodeTbl $16 - Draw Line
+                    fdb       Do17-DCodeTbl $17 - Erase Line
+                    fdb       Do18-DCodeTbl $18 - Set Point
+                    fdb       Do19-DCodeTbl $19 - Erase Point
+                    fdb       Do1A-DCodeTbl $1A - Draw Circle
+                    fdb       Escape-DCodeTbl $1B - Escape
+                    fdb       Do1C-DCodeTbl $1C - Erase Circle
+                    fdb       Do1D-DCodeTbl $1D - Flood Fill
+                    fdb       NoOp-DCodeTbl $1E - No Operation
+                    fdb       NoOp-DCodeTbl $1F - No Operation
 
 * $1B does palette changes
-Escape              ldx       <VD.EPlt1,u         now X points to level
-                    lda       ,x                  get char following
-                    cmpa      #$30                Set default colors?
-                    bne       L0209               No, check next
-                    lbsr      SetupPal            Yes, reset palettes to default
-                    bra       L026E               And copy to active palette for device (and screen if we are active device)
+Escape              ldx       <VD.EPlt1,u ; now X points to level
+                    lda       ,x        ; get char following
+                    cmpa      #$30      ; set default colors?
+                    bne       L0209     ; no, check next
+                    lbsr      SetupPal  ; yes, reset palettes to default
+                    bra       L026E     ; and copy to active palette for device (and screen if we are active device)
 
-L0209               cmpa      #$31                change palette?
-                    beq       PalProc             branch if so
-                    cmpa      #$21                Select?
-                    bne       L0248               No, return without error
-                    ldx       PD.RGS,y            Yes, get ptr to callers registers
-                    lda       R$A,x               get path
-                    ldx       <D.Proc             get current proc
-                    cmpa      >P$SelP,x           Is selected window path the same as the active processes?
-                    beq       L0249               Yes, nothing to do, so return
-                    ldb       >P$SelP,x           No, Get current processes' active window path
-                    sta       >P$SelP,x           replace with path to selected window
-                    pshs      y                   save our path desc ptr
-                    bsr       L024A               get ptr to device table entry for path into Y
-                    ldy       V$STAT,y            get static mem ptr for that window
-                    ldx       <D.CCMem            get ptr to CoWin global memory
-                    cmpy      <G.CurDev,x         Static mem ptr for new window path same as current viewed window?
-                    puls      y                   restore our path desc ptr
-                    bne       L0248               Not on viewable screen; don't change anything else and return
-                    inc       <VD.DFlag,u         We ARE on viewable screen (different window on screen)
-                    ldy       <G.CurDev,x         get static mem ptr to current device window
-                    sty       <G.PrWMPt,x         Save as "previous" device window
-                    stu       <G.CurDev,x         Save newly selected device window as current viewable device window
+L0209               cmpa      #$31      ; change palette?
+                    beq       PalProc   ; branch if so
+                    cmpa      #$21      ; select?
+                    bne       L0248     ; no, return without error
+                    ldx       PD.RGS,y  ; yes, get ptr to callers registers
+                    lda       R$A,x     ; get path
+                    ldx       <D.Proc   ; get current proc
+                    cmpa      >P$SelP,x ; is selected window path the same as the active processes?
+                    beq       L0249     ; yes, nothing to do, so return
+                    ldb       >P$SelP,x ; no, Get current processes' active window path
+                    sta       >P$SelP,x ; replace with path to selected window
+                    pshs      y         ; save our path desc ptr
+                    bsr       L024A     ; get ptr to device table entry for path into Y
+                    ldy       V$STAT,y  ; get static mem ptr for that window
+                    ldx       <D.CCMem  ; get ptr to CoWin global memory
+                    cmpy      <G.CurDev,x ; static mem ptr for new window path same as current viewed window?
+                    puls      y         ; restore our path desc ptr
+                    bne       L0248     ; not on viewable screen; don't change anything else and return
+                    inc       <VD.DFlag,u ; we ARE on viewable screen (different window on screen)
+                    ldy       <G.CurDev,x ; get static mem ptr to current device window
+                    sty       <G.PrWMPt,x ; save as "previous" device window
+                    stu       <G.CurDev,x ; save newly selected device window as current viewable device window
 * Give system a chance to stabilize. RG
 * LCB - Once we fix up Clock to handle properly setting GIME/VDG registers for new windows, palettes,
 *  etc., then we should be able to eliminate this Sleep call.
@@ -496,31 +496,31 @@ L0249               rts
 * Only called from L0209 above (could embed, shrink code a tiny bit)
 * Entry: A = path to process
 * Exit: Y=ptr to device table entry for requested path
-L024A               leax      <P$Path,x           point to path table in process descriptor
-                    lda       b,x                 get system path number
-                    ldx       <D.PthDBT           point to path descriptor base table
+L024A               leax      <P$Path,x ; point to path table in process descriptor
+                    lda       b,x       ; get system path number
+                    ldx       <D.PthDBT ; point to path descriptor base table
 * protect regB incase of error report. RG
 * LCB - I am confused here - This ends up eating any error code from F$Find64 (although it
 *   will leave carry set).
                     pshs      b
-                    os9       F$Find64            Get ptr to path descriptor for path # in A
-                    ldy       PD.DEV,y            Get device table entry ptr for path
+                    os9       F$Find64  ; get ptr to path descriptor for path # in A
+                    ldy       PD.DEV,y  ; get device table entry ptr for path
                     puls      b,pc
 
-PalProc             leax      <DoPals,pcr         Point to update palette register routine
-                    ldb       #$02                Get 2 more chars from input to get palette register # & color #
-                    lbra      GChar               and go to DoPals when done
+PalProc             leax      <DoPals,pcr ; point to update palette register routine
+                    ldb       #$02      ; get 2 more chars from input to get palette register # & color #
+                    lbra      GChar     ; and go to DoPals when done
 
 * Update palette register (1b 31 rr pp)
-DoPals              ldx       <VD.EPlt1,u         Get ptr to parameter byte(s). hardcode value now, change later when buffering added
-                    ldd       ,x                  Get 2 parameter bytes
-                    cmpa      #16                 Make sure palette # in range
+DoPals              ldx       <VD.EPlt1,u ; get ptr to parameter byte(s). hardcode value now, change later when buffering added
+                    ldd       ,x        ; get 2 parameter bytes
+                    cmpa      #16       ; make sure palette # in range
                     lbhi      IllArg
-                    cmpb      #63                 Make sure color in range
+                    cmpb      #63       ; make sure color in range
                     lbhi      IllArg
-                    leax      <VD.Palet,u         Point to current palette settings
-                    stb       a,x                 save new value
-L026E               lbsr      SetPals             Actually change palette
+                    leax      <VD.Palet,u ; point to current palette settings
+                    stb       a,x       ; save new value
+L026E               lbsr      SetPals   ; actually change palette
                     clrb
                     rts
 
@@ -533,328 +533,328 @@ L026E               lbsr      SetPals             Actually change palette
 *         rts
 
 * Screen scroll.
-SScrl               ldx       <VD.ScrnA,u         Get ptr to 32x16 screen
-                    IFNE      H6309
-                    ldd       #$2060              A=width of line in bytes, B=VDG space char
-                    leay      a,x                 Y=screen address + down one line
-                    ldw       #512-32             Block move 15 of 16 lines
-                    tfm       y+,x+               scroll screen up
-                    stx       <VD.CrsrA,u         save new cursor address (1st char on last line)
-                    ELSE
+SScrl               ldx       <VD.ScrnA,u ; get ptr to 32x16 screen
+                  IFNE    H6309
+                    ldd       #$2060    ; a=width of line in bytes, B=VDG space char
+                    leay      a,x       ; y=screen address + down one line
+                    ldw       #512-32   ; block move 15 of 16 lines
+                    tfm       y+,x+     ; scroll screen up
+                    stx       <VD.CrsrA,u ; save new cursor address (1st char on last line)
+                  ELSE
 * Replace with StkBlCpy vector later for 6809 portion
-                    leax      <32,x               Point to start of 2nd line
-L0279               ldd       ,x++                Grab 2 chars
-                    std       <-34,x              Save on line above
-                    cmpx      <VD.ScrnE,u         Done screen?
-                    blo       L0279               No, keep scrolling
-                    leax      <-32,x              Done, point 1ast char on last line
-                    stx       <VD.CrsrA,u         Save as new cursor position
-                    lda       #32                 # chars to clear on last line
-                    ldb       #$60                VDG char for space
-                    ENDC
+                    leax      <32,x     ; point to start of 2nd line
+L0279               ldd       ,x++      ; grab 2 chars
+                    std       <-34,x    ; save on line above
+                    cmpx      <VD.ScrnE,u ; done screen?
+                    blo       L0279     ; no, keep scrolling
+                    leax      <-32,x    ; done, point 1ast char on last line
+                    stx       <VD.CrsrA,u ; save as new cursor position
+                    lda       #32       ; # chars to clear on last line
+                    ldb       #$60      ; vdg char for space
+                  ENDC
 * 6809 - StkBlClr, 6309 - TFM
-L028D               stb       ,x+                 Clear last line
+L028D               stb       ,x+       ; clear last line
                     deca
                     bne       L028D
                     rts
 
 * $0D - carriage return
-Retrn               bsr       HideCrsr            hide cursor
-                    IFNE      H6309
-                    aim       #$E0,<VD.CrsAL,u    strip out bits 0-4
-                    ELSE
+Retrn               bsr       HideCrsr  ; hide cursor
+                  IFNE    H6309
+                    aim       #$E0,<VD.CrsAL,u ; strip out bits 0-4
+                  ELSE
                     tfr       x,d
-                    andb      #$E0                strip out bits 0-4
-                    stb       <VD.CrsAL,u         save updated cursor address
-                    ENDC
-ShowCrsr            ldx       <VD.CrsrA,u         get cursor address
-                    lda       ,x                  get char at cursor position
-                    sta       <VD.CChar,u         save it
-                    lda       <VD.CColr,u         get cursor character
-                    beq       RtsOk               If none, don't save anything to screen
-L02A9               sta       ,x                  Display cursor on screen
+                    andb      #$E0      ; strip out bits 0-4
+                    stb       <VD.CrsAL,u ; save updated cursor address
+                  ENDC
+ShowCrsr            ldx       <VD.CrsrA,u ; get cursor address
+                    lda       ,x        ; get char at cursor position
+                    sta       <VD.CChar,u ; save it
+                    lda       <VD.CColr,u ; get cursor character
+                    beq       RtsOk     ; if none, don't save anything to screen
+L02A9               sta       ,x        ; display cursor on screen
 RtsOk               clrb
                     rts
 
 * $0A - moves cursor down
-CurDown             bsr       HideCrsr            hide cursor
-                    leax      <32,x               move X down one line
-                    cmpx      <VD.ScrnE,u         at the end of the screen?
-                    bcs       L02C1               branch if not
-                    leax      <-32,x              else go back up one line
-                    pshs      x                   save X
-                    bsr       SScrl               and scroll the screen
-                    puls      x                   and restore pointer
-L02C1               stx       <VD.CrsrA,u         save cursor pointer
-                    bra       ShowCrsr            show cursor
+CurDown             bsr       HideCrsr  ; hide cursor
+                    leax      <32,x     ; move X down one line
+                    cmpx      <VD.ScrnE,u ; at the end of the screen?
+                    bcs       L02C1     ; branch if not
+                    leax      <-32,x    ; else go back up one line
+                    pshs      x         ; save X
+                    bsr       SScrl     ; and scroll the screen
+                    puls      x         ; and restore pointer
+L02C1               stx       <VD.CrsrA,u ; save cursor pointer
+                    bra       ShowCrsr  ; show cursor
 
 * $08 - moves cursor left one
-CurLeft             bsr       HideCrsr            hide cursor
-                    cmpx      <VD.ScrnA,u         compare against start of screen
-                    bls       ShowCrsr            ignore it if at the screen start
-                    leax      -$01,x              else back up one
-                    stx       <VD.CrsrA,u         save updated pointer
-                    bra       ShowCrsr            and show cur
+CurLeft             bsr       HideCrsr  ; hide cursor
+                    cmpx      <VD.ScrnA,u ; compare against start of screen
+                    bls       ShowCrsr  ; ignore it if at the screen start
+                    leax      -$01,x    ; else back up one
+                    stx       <VD.CrsrA,u ; save updated pointer
+                    bra       ShowCrsr  ; and show cur
 
 * $06 - moves cursor right one
-CurRght             bsr       HideCrsr            hide cursor
-                    leax      1,x                 move to the right
-                    cmpx      <VD.ScrnE,u         compare against start of screen
-                    bhs       ShowCrsr            if past end, ignore it
-                    stx       <VD.CrsrA,u         else save updated pointer
-                    bra       ShowCrsr            and show cursor
+CurRght             bsr       HideCrsr  ; hide cursor
+                    leax      1,x       ; move to the right
+                    cmpx      <VD.ScrnE,u ; compare against start of screen
+                    bhs       ShowCrsr  ; if past end, ignore it
+                    stx       <VD.CrsrA,u ; else save updated pointer
+                    bra       ShowCrsr  ; and show cursor
 
 * $0B - erase from current char to end of screen
-ErEOScrn            bsr       HideCrsr            kill the cursor
+ErEOScrn            bsr       HideCrsr  ; kill the cursor
                     fcb       skip2
 * $0C - clear screen & home cursor
-ClrScrn             bsr       CurHome             home cursor (returns X pointing to start of screen)
-                    lda       #$60                get default char
-ClrSLoop            sta       ,x+                 save at location
-                    cmpx      <VD.ScrnE,u         end of screen?
-                    blo       ClrSLoop            branch if not
-                    bra       ShowCrsr            now show cursor
+ClrScrn             bsr       CurHome   ; home cursor (returns X pointing to start of screen)
+                    lda       #$60      ; get default char
+ClrSLoop            sta       ,x+       ; save at location
+                    cmpx      <VD.ScrnE,u ; end of screen?
+                    blo       ClrSLoop  ; branch if not
+                    bra       ShowCrsr  ; now show cursor
 
 * $01 - Homes the cursor
-CurHome             bsr       HideCrsr            hide cursor
-                    ldx       <VD.ScrnA,u         get pointer to screen
-                    stx       <VD.CrsrA,u         save as new cursor position
-                    bra       ShowCrsr            and show it
+CurHome             bsr       HideCrsr  ; hide cursor
+                    ldx       <VD.ScrnA,u ; get pointer to screen
+                    stx       <VD.CrsrA,u ; save as new cursor position
+                    bra       ShowCrsr  ; and show it
 
 * Hides the cursor from the screen
 * Exit: X = address of cursor
-HideCrsr            ldx       <VD.CrsrA,u         get address of cursor in X
-                    lda       <VD.CChar,u         get value of char under cursor
-                    sta       ,x                  put char in place of cursor
-                    clrb                          must be here, in general, for [...] BRA HideCrsr
+HideCrsr            ldx       <VD.CrsrA,u ; get address of cursor in X
+                    lda       <VD.CChar,u ; get value of char under cursor
+                    sta       ,x        ; put char in place of cursor
+                    clrb                ; must be here, in general, for [...] BRA HideCrsr
                     rts
 
 * $05 - turns cursor on/off, color
-CrsrSw              lda       <VD.NChar,u         get next char
-                    suba      #C$SPAC             adjust to 0 & up
-                    bne       L0313               Cursor on, go process
-                    sta       <VD.CColr,u         else save cursor color zero (no cursor)
-                    bra       HideCrsr            and hide cursor
+CrsrSw              lda       <VD.NChar,u ; get next char
+                    suba      #C$SPAC   ; adjust to 0 & up
+                    bne       L0313     ; cursor on, go process
+                    sta       <VD.CColr,u ; else save cursor color zero (no cursor)
+                    bra       HideCrsr  ; and hide cursor
 
-L0313               cmpa      #$0B                greater than $0A (max color allowed)?
-                    bge       RtsOk               yep, just ignore it
-                    cmpa      #$01                is it one (default blue cursor)?
-                    bgt       L031F               No, specific color requested
-                    lda       #$AF                Yes, default blue cursor color
-                    bra       L032F               and save cursor color
+L0313               cmpa      #$0B      ; greater than $0A (max color allowed)?
+                    bge       RtsOk     ; yep, just ignore it
+                    cmpa      #$01      ; is it one (default blue cursor)?
+                    bgt       L031F     ; no, specific color requested
+                    lda       #$AF      ; yes, default blue cursor color
+                    bra       L032F     ; and save cursor color
 
-L031F               cmpa      #$02                is it two (default black cursor)?
-                    bgt       L0327               Yes, specific color requested by user
-                    lda       #$A0                else save  black cursor color
+L031F               cmpa      #$02      ; is it two (default black cursor)?
+                    bgt       L0327     ; yes, specific color requested by user
+                    lda       #$A0      ; else save  black cursor color
                     bra       L032F
 
-L0327               suba      #$03                Adjust for color
-                    lsla                          shift into upper nibble
+L0327               suba      #$03      ; adjust for color
+                    lsla                ; shift into upper nibble
                     lsla
                     lsla
                     lsla
-                    ora       #$8F                merge full 2x2 semigraphics block base character
-L032F               sta       <VD.CColr,u         save new cursor
-                    ldx       <VD.CrsrA,u         get cursor address
-                    lbra      L02A9               branch to save cursor in X
+                    ora       #$8F      ; merge full 2x2 semigraphics block base character
+L032F               sta       <VD.CColr,u ; save new cursor
+                    ldx       <VD.CrsrA,u ; get cursor address
+                    lbra      L02A9     ; branch to save cursor in X
 
 * $02 - moves cursor to X,Y
-CurXY               ldb       #$02                we want to claim the next two chars
-                    leax      <DoCurXY,pcr        point to processing routine
-                    lbra      GChar               get two chars
+CurXY               ldb       #$02      ; we want to claim the next two chars
+                    leax      <DoCurXY,pcr ; point to processing routine
+                    lbra      GChar     ; get two chars
 
-DoCurXY             bsr       HideCrsr            hide cursor
-                    ldb       <VD.NChr2,u         get ASCII Y-pos
-                    subb      #C$SPAC             adjust to base 0
-                    lda       #32                 * 32 chars/line
+DoCurXY             bsr       HideCrsr  ; hide cursor
+                    ldb       <VD.NChr2,u ; get ASCII Y-pos
+                    subb      #C$SPAC   ; adjust to base 0
+                    lda       #32       ; * 32 chars/line
                     mul
-                    addb      <VD.NChar,u         add in X-pos
+                    addb      <VD.NChar,u ; add in X-pos
                     adca      #$00
-                    subd      #C$SPAC             take out another ASCII space
-                    addd      <VD.ScrnA,u         add top of screen address
-                    cmpd      <VD.ScrnE,u         at end of the screen?
-                    lbhs      RtsOk               exit if off the screen
-                    std       <VD.CrsrA,u         otherwise save new cursor address
-                    lbra      ShowCrsr            and show cursor
+                    subd      #C$SPAC   ; take out another ASCII space
+                    addd      <VD.ScrnA,u ; add top of screen address
+                    cmpd      <VD.ScrnE,u ; at end of the screen?
+                    lbhs      RtsOk     ; exit if off the screen
+                    std       <VD.CrsrA,u ; otherwise save new cursor address
+                    lbra      ShowCrsr  ; and show cursor
 
 * $04 - clear characters to end of line
-ErEOLine            bsr       HideCrsr            hide cursor
-                    tfr       x,d                 move current cursor position to D
-                    andb      #$1F                number of characters put on this line
-                    negb                          negative
-                    bra       L0374               and clear one line
+ErEOLine            bsr       HideCrsr  ; hide cursor
+                    tfr       x,d       ; move current cursor position to D
+                    andb      #$1F      ; number of characters put on this line
+                    negb                ; negative
+                    bra       L0374     ; and clear one line
 
 * $03 - erase line cursor is on
-DelLine             lbsr      Retrn               do a carriage return
-L0374               addb      #32                 B = $00 from Retrn
-L0376               lda       #$60                get default VDG space char
-                    ldx       <VD.CrsrA,u         get cursor address
+DelLine             lbsr      Retrn     ; do a carriage return
+L0374               addb      #32       ; b = $00 from Retrn
+L0376               lda       #$60      ; get default VDG space char
+                    ldx       <VD.CrsrA,u ; get cursor address
 * 6809-May be able to use StkBlClr, and 6309 TFM
-L037B               sta       ,x+                 save default char
-                    decb                          decrement
-                    bne       L037B               and branch if not end
-                    lbra      ShowCrsr            else show cursor
+L037B               sta       ,x+       ; save default char
+                    decb                ; decrement
+                    bne       L037B     ; and branch if not end
+                    lbra      ShowCrsr  ; else show cursor
 
 * $09 - moves cursor up one line
-CurUp               lbsr      HideCrsr            hide cursor
-                    leax      <-32,x              move X up one line
-                    cmpx      <VD.ScrnA,u         compare against start of screen
-                    lbcs      ShowCrsr            branch if we went beyond
-                    stx       <VD.CrsrA,u         else store updated X
-L0391               lbra      ShowCrsr            and show cursor
+CurUp               lbsr      HideCrsr  ; hide cursor
+                    leax      <-32,x    ; move X up one line
+                    cmpx      <VD.ScrnA,u ; compare against start of screen
+                    lbcs      ShowCrsr  ; branch if we went beyond
+                    stx       <VD.CrsrA,u ; else store updated X
+L0391               lbra      ShowCrsr  ; and show cursor
 
 * $0E - switches from graphics to alpha mode
 Do0E                equ       *
-                    IFNE      H6309
+                  IFNE    H6309
                     clrd
-                    ELSE
+                  ELSE
                     clra
                     clrb
-                    ENDC
+                  ENDC
 * Entry: A=video bits to merge into $FF22
 *        B=video type (0=text screen, else medium res graphics)
-DispAlfa            pshs      x,y,a               Preserve regs (A=video bits to merge into $FF22)
-                    stb       <VD.Alpha,u         0=Alpha mode, else graphics mode
-                    clr       >V.HRBuf,u          clear the selected application screen
-                    lda       >PIA1Base+2         Get current screen mode settings byte from PIA
-                    anda      #%00000111          Only keep non-video bits
-                    ora       ,s+                 Merge in video bits we saved on stack
-                    tstb                          Are we in text or graphics mode?
-                    bne       L03AD               Graphics, skip ahead
-                    anda      #%11101111          Zero out true lowercase flag
-                    ora       <VD.CFlag,u         merge in current display true lowercase flag
-L03AD               sta       <VD.TFlg1,u         save updated VDG info
-                    tst       >WGlobal+G.CrDvFl   Are we active device?
-                    lbeq      L0440               No, skip ahead
-                    sta       >PIA1Base+2         Yes, set lowercase in hardware
-                    ldy       #$FFC6              Ok, now set up via old CoCo 2 mode the graphics video mode.
-                    tstb                          Text screen?
-                    bne       L03CB               No, set up for graphics
+DispAlfa            pshs      x,y,a     ; preserve regs (A=video bits to merge into $FF22)
+                    stb       <VD.Alpha,u ; 0=Alpha mode, else graphics mode
+                    clr       >V.HRBuf,u ; clear the selected application screen
+                    lda       >PIA1Base+2 ; get current screen mode settings byte from PIA
+                    anda      #%00000111 ; only keep non-video bits
+                    ora       ,s+       ; merge in video bits we saved on stack
+                    tstb                ; are we in text or graphics mode?
+                    bne       L03AD     ; graphics, skip ahead
+                    anda      #%11101111 ; zero out true lowercase flag
+                    ora       <VD.CFlag,u ; merge in current display true lowercase flag
+L03AD               sta       <VD.TFlg1,u ; save updated VDG info
+                    tst       >WGlobal+G.CrDvFl ; are we active device?
+                    lbeq      L0440     ; no, skip ahead
+                    sta       >PIA1Base+2 ; yes, set lowercase in hardware
+                    ldy       #$FFC6    ; ok, now set up via old CoCo 2 mode the graphics video mode.
+                    tstb                ; text screen?
+                    bne       L03CB     ; no, set up for graphics
 * Set up VDG screen for text
-                    stb       -6,y                $FFC0
-                    stb       -4,y                $FFC2
-                    stb       -2,y                $FFC4
-                    lda       <VD.ScrnA,u         Get start screen address MSB (always even $200)
+                    stb       -6,y      ; $FFC0
+                    stb       -4,y      ; $FFC2
+                    stb       -2,y      ; $FFC4
+                    lda       <VD.ScrnA,u ; get start screen address MSB (always even $200)
                     bra       L03D7
 
 * Set up VDG screen for graphics
-L03CB               stb       -6,y                $FFC0
-                    stb       -3,y                $FFC3
-                    stb       -1,y                $FFC5
-                    lda       <VD.SBAdd,u         Get address of block screen is in
+L03CB               stb       -6,y      ; $FFC0
+                    stb       -3,y      ; $FFC3
+                    stb       -1,y      ; $FFC5
+                    lda       <VD.SBAdd,u ; get address of block screen is in
 L03D7
 * No GIME: the VDG shows motherboard RAM at the address in the SAM's F0-F6
 * ($200 units). A=MSB of the screen's system address. Look up the block in
 * its slot of the system DAT image; motherboard blocks are $38-$3F, so the
 * low 3 bits of the block number are motherboard A15-A13.
-                    tfr       a,b                 B=MSB of the system address
-                    lsra                          A=slot*2 (and bit 4)
+                    tfr       a,b       ; b=MSB of the system address
+                    lsra                ; a=slot*2 (and bit 4)
                     lsra
                     lsra
                     lsra
-                    anda      #$0E                A=slot*2
-                    inca                          low byte of the DAT image entry
+                    anda      #$0E      ; a=slot*2
+                    inca                ; low byte of the DAT image entry
                     ldx       <D.SysDAT
-                    lda       a,x                 A=block number
-                    anda      #$07                motherboard 8K block
-                    lsla                          to A15-A13
+                    lda       a,x       ; a=block number
+                    anda      #$07      ; motherboard 8K block
+                    lsla                ; to A15-A13
                     lsla
                     lsla
                     lsla
                     lsla
-                    andb      #$1F                offset MSB within the block
+                    andb      #$1F      ; offset MSB within the block
                     pshs      b
-                    ora       ,s+                 A=motherboard address MSB
-                    lsra                          A=address/$200: F0 in bit 0
-                    ldb       #7                  7 SAM F bits, Y=$FFC6 (F0)
+                    ora       ,s+       ; a=motherboard address MSB
+                    lsra                ; a=address/$200: F0 in bit 0
+                    ldb       #7        ; 7 SAM F bits, Y=$FFC6 (F0)
 MJSamLp             lsra
                     bcc       MJSamClr
-                    sta       1,y                 odd address sets the bit
+                    sta       1,y       ; odd address sets the bit
                     fcb       skip2
-MJSamClr            sta       ,y                  even address clears it
+MJSamClr            sta       ,y        ; even address clears it
                     leay      2,y
                     decb
                     bne       MJSamLp
                     bra       L0440
-L0440               clrb                          No error & return
+L0440               clrb                ; no error & return
                     puls      pc,y,x
 
-GChar1              ldb       #$01                Flag that we need 1 more parameter byte
-GChar               stb       <VD.NGChr,u         Save # of parameter bytes needed for command currently being processed
-                    stx       <VD.RTAdd,u         Save address to go to once we have all parameter bytes
-                    clrb                          No error & return
+GChar1              ldb       #$01      ; flag that we need 1 more parameter byte
+GChar               stb       <VD.NGChr,u ; save # of parameter bytes needed for command currently being processed
+                    stx       <VD.RTAdd,u ; save address to go to once we have all parameter bytes
+                    clrb                ; no error & return
                     rts
 
 * $0F - display graphics
-Do0F                leax      <DispGfx,pcr        Point to Display graphics routine
-                    ldb       #$02                And we need to 2 more parameter bytes
-                    bra       GChar               Go get them, then call routine
+Do0F                leax      <DispGfx,pcr ; point to Display graphics routine
+                    ldb       #$02      ; and we need to 2 more parameter bytes
+                    bra       GChar     ; go get them, then call routine
 
-DispGfx             ldb       <VD.Rdy,u           memory already allocated (and thus ready)?
-                    bne       L0468               Yes, skip ahead
-                    lbsr      Get8KHi             else get an 8k block from high ram
-                    bcs       L0486               branch if error
-                    stb       <VD.GBuff,u         save as start block # if high res graphics
-                    stb       <VD.Blk,u           save starting block number if semigraphics or medium res
+DispGfx             ldb       <VD.Rdy,u ; memory already allocated (and thus ready)?
+                    bne       L0468     ; yes, skip ahead
+                    lbsr      Get8KHi   ; else get an 8k block from high ram
+                    bcs       L0486     ; branch if error
+                    stb       <VD.GBuff,u ; save as start block # if high res graphics
+                    stb       <VD.Blk,u ; save starting block number if semigraphics or medium res
                     tfr       d,x
-                    ldd       <D.Proc             Get current process desc. ptr
-                    pshs      u,d                 Save regs
-                    ldd       <D.SysPrc           get system proc desc
-                    std       <D.Proc             make current
-                    ldb       #$01                one block
-                    os9       F$MapBlk            map it in to our space
-                    leax      ,u                  get address into x
-                    puls      u,d                 restore other regs
-                    std       <D.Proc             restore process pointer
-                    bcs       L0486               exit if error mapping block
-                    stx       <VD.SBAdd,u         else store address of gfx mem
-                    inc       <VD.Rdy,u           Flag that video RAM is ready
-                    ldd       #$0120              A=$01 (mark system pages as used), $20=32 pages to mark (1 full 8K blocks worth)
-                    bsr       L04D9               Go mark that 8K block of system RAM as used
-                    lbsr      Do13                erase gfx screen
-L0468               lda       <VD.NChr2,u         get color set parameter byte
-                    sta       <VD.PMask,u         store color set (0-3)
-                    anda      #$03                mask off pertinent bits
-                    leax      >Mode1Clr,pcr       point to color mask full byte table
-                    lda       a,x                 get color mask full byte for color A
-                    sta       <VD.Msk1,u          save color mask
-                    sta       <VD.Msk2,u          and here
-                    lda       <VD.NChar,u         get mode parameter byte (0=2 color, 1=4 color)
-                    cmpa      #$01                compare against max allowed
-                    bls       L0487               process if valid
+                    ldd       <D.Proc   ; get current process desc. ptr
+                    pshs      u,d       ; save regs
+                    ldd       <D.SysPrc ; get system proc desc
+                    std       <D.Proc   ; make current
+                    ldb       #$01      ; one block
+                    os9       F$MapBlk  ; map it in to our space
+                    leax      ,u        ; get address into x
+                    puls      u,d       ; restore other regs
+                    std       <D.Proc   ; restore process pointer
+                    bcs       L0486     ; exit if error mapping block
+                    stx       <VD.SBAdd,u ; else store address of gfx mem
+                    inc       <VD.Rdy,u ; flag that video RAM is ready
+                    ldd       #$0120    ; a=$01 (mark system pages as used), $20=32 pages to mark (1 full 8K blocks worth)
+                    bsr       L04D9     ; go mark that 8K block of system RAM as used
+                    lbsr      Do13      ; erase gfx screen
+L0468               lda       <VD.NChr2,u ; get color set parameter byte
+                    sta       <VD.PMask,u ; store color set (0-3)
+                    anda      #$03      ; mask off pertinent bits
+                    leax      >Mode1Clr,pcr ; point to color mask full byte table
+                    lda       a,x       ; get color mask full byte for color A
+                    sta       <VD.Msk1,u ; save color mask
+                    sta       <VD.Msk2,u ; and here
+                    lda       <VD.NChar,u ; get mode parameter byte (0=2 color, 1=4 color)
+                    cmpa      #$01      ; compare against max allowed
+                    bls       L0487     ; process if valid
                     comb
-                    ldb       #E$BMode            else exit with Bad Mode error
+                    ldb       #E$BMode  ; else exit with Bad Mode error
 L0486               rts
 
-L0487               tsta                          test user supplied mode byte
-                    beq       L04A7               If 256x192x2, go set up for that
+L0487               tsta                ; test user supplied mode byte
+                    beq       L04A7     ; if 256x192x2, go set up for that
 * 128 x 192 x 4 set up
-                    ldd       #$C003              128x192x4, save first and last pixel in a byte masks
+                    ldd       #$C003    ; 128x192x4, save first and last pixel in a byte masks
                     std       <VD.MCol,u
-                    lda       #$01                Save 128x192x4 mode
+                    lda       #$01      ; save 128x192x4 mode
                     sta       <VD.Mode,u
-                    lda       #$E0                VDG byte base setting for $FF22 defaults to PMODE 3
-                    ldb       <VD.NChr2,u         Get color/color set byte again
-                    andb      #$08                Just keep "pure" graphics mode vs. artificated colors bit
-                    beq       L04A0               If pure mode, keep $E0 VDG setting
-                    lda       #$F0                If artifact, change to $F0 (PMODE 4)
-L04A0               ldb       #%00000011          Mask of bits per pixel
-                    leax      <L04EB,pcr          Point to table of four 4 color pixel masks
+                    lda       #$E0      ; vdg byte base setting for $FF22 defaults to PMODE 3
+                    ldb       <VD.NChr2,u ; get color/color set byte again
+                    andb      #$08      ; just keep "pure" graphics mode vs. artificated colors bit
+                    beq       L04A0     ; if pure mode, keep $E0 VDG setting
+                    lda       #$F0      ; if artifact, change to $F0 (PMODE 4)
+L04A0               ldb       #%00000011 ; mask of bits per pixel
+                    leax      <L04EB,pcr ; point to table of four 4 color pixel masks
                     bra       L04C4
 
 * 256 x 192 x 2 set up
-L04A7               ldd       #$8001              256x192x2, save first and last pixel in a byte masks
+L04A7               ldd       #$8001    ; 256x192x2, save first and last pixel in a byte masks
                     std       <VD.MCol,u
-                    lda       #$FF                Hi bit set=2 color PMODE 4 mode, and full color mask byte (all white/2 color)
-                    tst       <VD.Msk1,u          Is there a mask set up?
-                    beq       L04BA               No, skip ahead
-                    sta       <VD.Msk1,u          Save full byte color mask
-                    sta       <VD.Msk2,u          and again
-L04BA               sta       <VD.Mode,u          256x192 mode (hi bit set to indicate 2 color/256 x 192)
+                    lda       #$FF      ; hi bit set=2 color PMODE 4 mode, and full color mask byte (all white/2 color)
+                    tst       <VD.Msk1,u ; is there a mask set up?
+                    beq       L04BA     ; no, skip ahead
+                    sta       <VD.Msk1,u ; save full byte color mask
+                    sta       <VD.Msk2,u ; and again
+L04BA               sta       <VD.Mode,u ; 256x192 mode (hi bit set to indicate 2 color/256 x 192)
                     ldd       #$F007
-                    leax      <L04EF,pcr          Point to 8 pixel masks for 2 color mode
-L04C4               stb       <VD.PixBt,u         # of pixels per byte (base 0)
-                    stx       <VD.MTabl,u         Save ptr to 2 color mode pixel mask table
+                    leax      <L04EF,pcr ; point to 8 pixel masks for 2 color mode
+L04C4               stb       <VD.PixBt,u ; # of pixels per byte (base 0)
+                    stx       <VD.MTabl,u ; save ptr to 2 color mode pixel mask table
                     ldb       <VD.NChr2,u
                     andb      #$04
                     lslb
@@ -863,22 +863,22 @@ L04C4               stb       <VD.PixBt,u         # of pixels per byte (base 0)
                     ora       ,s+
                     ldb       #$01
 * Indicate screen is current; next line is critical for >512K - Robert Gault
-                    stb       >WGlobal+G.CrDvFl   is this screen currently showing?
+                    stb       >WGlobal+G.CrDvFl ; is this screen currently showing?
                     lbra      DispAlfa
 
 * Entry: X=ptr to screen as mapped into system space
 *        B=# of 256 byte pages to mark
 *        A=mark flag (0=deallocate system pages, 1=allocated system pages)
-L04D9               pshs      x,d                 Save screen ptr & (de)allocate parameters
+L04D9               pshs      x,d       ; save screen ptr & (de)allocate parameters
                     clra
-                    ldb       2,s                 Get high byte of screen ptr
-                    ldx       <D.SysMem           Get ptr to system memory map
-                    leax      d,x                 Point to that MMU block offset
-                    puls      d                   Get allocate flag & number of 256 byte system pages to mark
-L04E4               sta       ,x+                 Mark them
+                    ldb       2,s       ; get high byte of screen ptr
+                    ldx       <D.SysMem ; get ptr to system memory map
+                    leax      d,x       ; point to that MMU block offset
+                    puls      d         ; get allocate flag & number of 256 byte system pages to mark
+L04E4               sta       ,x+       ; mark them
                     decb
                     bne       L04E4
-                    puls      pc,x                Restore X & return
+                    puls      pc,x      ; restore X & return
 
 * 4 color pixel masks
 L04EB               fcb       %11000000
@@ -897,27 +897,27 @@ L04EF               fcb       %10000000
                     fcb       %00000001
 
 * $11 - set color
-Do11                leax      <SetColor,pcr       Point to Set color routine
-                    lbra      GChar1              Get 1 more parameter, then call routine
+Do11                leax      <SetColor,pcr ; point to Set color routine
+                    lbra      GChar1    ; get 1 more parameter, then call routine
 
-SetColor            lda       <VD.NChar,u         get foreground color #
-                    sta       <VD.NChr2,u         save copy
-L0503               clr       <VD.NChar,u         clear original parameter byte
-                    lda       <VD.Mode,u          which mode?
-                    bmi       L050E               if 256x192, leave 1st parameter byte as 0
-                    inc       <VD.NChar,u         If 128x192, change 1st parameter byte to 1
-L050E               lbra      L0468               Set things up
+SetColor            lda       <VD.NChar,u ; get foreground color #
+                    sta       <VD.NChr2,u ; save copy
+L0503               clr       <VD.NChar,u ; clear original parameter byte
+                    lda       <VD.Mode,u ; which mode?
+                    bmi       L050E     ; if 256x192, leave 1st parameter byte as 0
+                    inc       <VD.NChar,u ; if 128x192, change 1st parameter byte to 1
+L050E               lbra      L0468     ; set things up
 
 * $12 - end graphics
-Do12                ldx       <VD.SBAdd,u         get address of where 8K block with graphics screen is
-                    beq       L051B               None, skip ahead
-                    ldd       #$0020              A=0 (deallocate) B=32 (32 system pages (256 bytes each))
-                    bsr       L04D9               Deallocate 8K system RAM from system map
+Do12                ldx       <VD.SBAdd,u ; get address of where 8K block with graphics screen is
+                    beq       L051B     ; none, skip ahead
+                    ldd       #$0020    ; a=0 (deallocate) B=32 (32 system pages (256 bytes each))
+                    bsr       L04D9     ; deallocate 8K system RAM from system map
 * Unmap the screen from the system DAT image too. F$SRtMem only frees the
 * slots of plain RAMinUse blocks, so this slot would never be reused and
 * each graphics screen would use up one slot of system address space.
-                    tfr       x,d                 A=MSB of the screen's system address
-                    lsra                          A=slot*2
+                    tfr       x,d       ; a=MSB of the screen's system address
+                    lsra                ; a=slot*2
                     lsra
                     lsra
                     lsra
@@ -926,77 +926,77 @@ Do12                ldx       <VD.SBAdd,u         get address of where 8K block 
                     leax      a,x
                     ldd       #DAT.Free
                     std       ,x
-                    clra                          no screen mapped (a second $12 is harmless)
+                    clra                ; no screen mapped (a second $12 is harmless)
                     clrb
                     std       <VD.SBAdd,u
-L051B               leay      <VD.GBuff,u         point Y to graphics screen block numbers
-                    ldb       #$03                number of possible screens allocated starting at VD.GBuff
-                    pshs      u,b                 save our static pointer, and counter (3)
-L0522               lda       ,y+                 get next medium res screen block #
-                    beq       L052D               unused, continue
+L051B               leay      <VD.GBuff,u ; point Y to graphics screen block numbers
+                    ldb       #$03      ; number of possible screens allocated starting at VD.GBuff
+                    pshs      u,b       ; save our static pointer, and counter (3)
+L0522               lda       ,y+       ; get next medium res screen block #
+                    beq       L052D     ; unused, continue
 * F$DelRAM wants X = block number; A:B = block:0 would be block*256, past
 * the end of the block map, so nothing was freed and the pool ran dry.
-                    clr       -1,y                forget it (a second $12 is harmless)
+                    clr       -1,y      ; forget it (a second $12 is harmless)
                     tfr       a,b
                     clra
                     tfr       d,x
-                    ldb       #1                  1 block to deallocate
-                    os9       F$DelRAM            deallocate it from main RAM
-L052D               dec       ,s                  dec # of screens to check
-                    bgt       L0522               until all 3 possible medium res screens are done.
-                    ldu       VD.FFMem-VD.HiRes,y Get flood fill stack memory ptr
-                    beq       L053B               No flood fill stack, so skip returning RAM
-                    ldd       #FFStSz             flood fill stack size
-                    os9       F$SRtMem            Return flood fill stack memory to system (512 bytes)
-L053B               puls      u,b                 Restore stack mem ptr & eat counter
-                    clr       <VD.Rdy,u           Flag that device not ready (no screen allocated)
-                    lbra      Do0E                Switch to alpha text screen and return from there
+                    ldb       #1        ; 1 block to deallocate
+                    os9       F$DelRAM  ; deallocate it from main RAM
+L052D               dec       ,s        ; dec # of screens to check
+                    bgt       L0522     ; until all 3 possible medium res screens are done.
+                    ldu       VD.FFMem-VD.HiRes,y ; get flood fill stack memory ptr
+                    beq       L053B     ; no flood fill stack, so skip returning RAM
+                    ldd       #FFStSz   ; flood fill stack size
+                    os9       F$SRtMem  ; return flood fill stack memory to system (512 bytes)
+L053B               puls      u,b       ; restore stack mem ptr & eat counter
+                    clr       <VD.Rdy,u ; flag that device not ready (no screen allocated)
+                    lbra      Do0E      ; switch to alpha text screen and return from there
 
 * $10 - preset screen to a specific color
-Do10                leax      <PrstScrn,pcr       Point to routine to Preset screen
-                    lbra      GChar1              Go get 1 more parameter (preset color)
+Do10                leax      <PrstScrn,pcr ; point to routine to Preset screen
+                    lbra      GChar1    ; go get 1 more parameter (preset color)
 
-PrstScrn            lda       <VD.NChar,u         Get PRESET color
-                    tst       <VD.Mode,u          which mode?
-                    bpl       L0559               branch if 128x192 4 color
-                    ldb       #$FF                assume we will clear with $FF
-                    anda      #$01                mask out all but 1 bit (2 colors)
-                    beq       Do13                erase graphic screen with color $00
-                    bra       L0564               else erase with color $FF
+PrstScrn            lda       <VD.NChar,u ; get PRESET color
+                    tst       <VD.Mode,u ; which mode?
+                    bpl       L0559     ; branch if 128x192 4 color
+                    ldb       #$FF      ; assume we will clear with $FF
+                    anda      #$01      ; mask out all but 1 bit (2 colors)
+                    beq       Do13      ; erase graphic screen with color $00
+                    bra       L0564     ; else erase with color $FF
 
-L0559               anda      #$03                mask out all but 2 bits (4 colors)
-                    leax      >Mode1Clr,pcr       point to color table
-                    ldb       a,x                 get appropriate color mask byte
+L0559               anda      #$03      ; mask out all but 2 bits (4 colors)
+                    leax      >Mode1Clr,pcr ; point to color table
+                    ldb       a,x       ; get appropriate color mask byte
 * 6809/6309 - change to fcb $20 (BRN) to save a byte
-                    bra       L0564               and start the clearing
+                    bra       L0564     ; and start the clearing
 
 * $13 - erase graphics
-Do13                clrb                          Color 0 by default
-L0564               ldx       <VD.SBAdd,u         Get ptr to screen
+Do13                clrb                ; color 0 by default
+L0564               ldx       <VD.SBAdd,u ; get ptr to screen
 * Note: 6309 version clears from top to bottom
 *       6809 version clears from bottom to top
-                    IFNE      H6309
-                    ldw       #$1800              All medium res screens are 6144 bytes (PMODE 3/4)
-                    pshs      b                   Save color byte to clear with
-                    tfm       s,x+                Clear the screen
-                    puls      b                   eat clear value
-                    ELSE
+                  IFNE    H6309
+                    ldw       #$1800    ; all medium res screens are 6144 bytes (PMODE 3/4)
+                    pshs      b         ; save color byte to clear with
+                    tfm       s,x+      ; clear the screen
+                    puls      b         ; eat clear value
+                  ELSE
 * 6809 - change to mini stack blast clear later
-                    leax      >$1801,x            Point to end of screen
-L056B               stb       ,-x                 Clear byte
-                    cmpx      <VD.SBAdd,u         Done whole gfx screen?
-                    bhi       L056B               No, keep going until done
-                    ENDC
+                    leax      >$1801,x  ; point to end of screen
+L056B               stb       ,-x       ; clear byte
+                    cmpx      <VD.SBAdd,u ; done whole gfx screen?
+                    bhi       L056B     ; no, keep going until done
+                  ENDC
 
 * $14 - home graphics cursor
 Do14                equ       *
-                    IFNE      H6309
+                  IFNE    H6309
                     clrd
-                    ELSE
+                  ELSE
                     clra
                     clrb
-                    ENDC
-                    std       <VD.GCrsX,u         Set gfx cursor X,Y coords both to 0
+                  ENDC
+                    std       <VD.GCrsX,u ; set gfx cursor X,Y coords both to 0
                     rts
 
 * 128x192 4 color pixel table
@@ -1005,40 +1005,40 @@ Mode1Clr            fcb       $00,$55,$aa,$ff
 * Fix X/Y coords:
 *  - if Y > 191 then cap it at 191
 *  - adjust X coord if in 128x192 mode
-FixXY               ldd       <VD.NChar,u         get next 2 chars
-                    cmpb      #192                Y greater than max?
-                    blo       L0585               No, use Y coord as is
-                    ldb       #191                Yes, force to 191
-L0585               tst       <VD.Mode,u          which mode?
-                    bmi       L058B               branch if 256x192 (2 color)
-                    lsra                          If 4 color, divide X by 2 (128)
-L058B               std       <VD.NChar,u         and save
+FixXY               ldd       <VD.NChar,u ; get next 2 chars
+                    cmpb      #192      ; y greater than max?
+                    blo       L0585     ; no, use Y coord as is
+                    ldb       #191      ; yes, force to 191
+L0585               tst       <VD.Mode,u ; which mode?
+                    bmi       L058B     ; branch if 256x192 (2 color)
+                    lsra                ; if 4 color, divide X by 2 (128)
+L058B               std       <VD.NChar,u ; and save
                     rts
 
 * $15 - set graphics cursor
-Do15                leax      <SetGC,pcr          Point to SetGC routine to go to once we have all parameters
-GChar2              ldb       #$02                Two parameter bytes required
-                    lbra      GChar               Go get them
+Do15                leax      <SetGC,pcr ; point to SetGC routine to go to once we have all parameters
+GChar2              ldb       #$02      ; two parameter bytes required
+                    lbra      GChar     ; go get them
 
-SetGC               bsr       FixXY               fix X coord based on mode
-                    std       <VD.GCrsX,u         and save new gfx cursor X&Y pos
-                    clrb                          No error & return
+SetGC               bsr       FixXY     ; fix X coord based on mode
+                    std       <VD.GCrsX,u ; and save new gfx cursor X&Y pos
+                    clrb                ; no error & return
                     rts
 
 * $19 - erase point
-Do19                clr       <VD.Msk1,u          Clear color mask byte
+Do19                clr       <VD.Msk1,u ; clear color mask byte
 * $18 - set point
-Do18                leax      <DrawPnt,pcr        Point to Draw Point routine to go to once we have all parameters
-                    bra       GChar2              Get the 2 bytes of parameters
+Do18                leax      <DrawPnt,pcr ; point to Draw Point routine to go to once we have all parameters
+                    bra       GChar2    ; get the 2 bytes of parameters
 
-DrawPnt             bsr       FixXY               fix X coord based on resolution
-                    std       <VD.GCrsX,u         save as new gfx cursor pos
-                    bsr       DrwPt2              Draw the point
-                    lbra      L067C               Copy VD.Msk2 to VD.Msk1 & return without error
+DrawPnt             bsr       FixXY     ; fix X coord based on resolution
+                    std       <VD.GCrsX,u ; save as new gfx cursor pos
+                    bsr       DrwPt2    ; draw the point
+                    lbra      L067C     ; copy VD.Msk2 to VD.Msk1 & return without error
 
 DrwPt2              lbsr      XY2Addr
-L05B3               tfr       a,b                 Dupe pixel mask
-                    comb                          Make background "hole" mask
+L05B3               tfr       a,b       ; dupe pixel mask
+                    comb                ; make background "hole" mask
                     andb      ,x
                     stb       ,x
                     anda      <VD.Msk1,u
@@ -1047,10 +1047,10 @@ L05B3               tfr       a,b                 Dupe pixel mask
                     rts
 
 * $17 - erase line
-Do17                clr       <VD.Msk1,u          Clear pixel mask
+Do17                clr       <VD.Msk1,u ; clear pixel mask
 * $16 - draw line
-Do16                leax      <DrawLine,pcr       Point to Line routine to go to once we have all parameters
-                    bra       GChar2              Get the 2 bytes of parameters
+Do16                leax      <DrawLine,pcr ; point to Line routine to go to once we have all parameters
+                    bra       GChar2    ; get the 2 bytes of parameters
 
 * Temp stack layout:
 * $0,s    - Pixel mask for graphics cursor (source) coord
@@ -1063,160 +1063,160 @@ Do16                leax      <DrawLine,pcr       Point to Line routine to go to
 * $D,s    - resolution adjusted Y coordinate (0-191 (forces to 191 if >191))
 * $E,s    - ???
 
-DrawLine            bsr       FixXY               fix X coords based on resolution
-                    leas      -LnStkSz,s          make room on stack for line vars
-                    std       LnX1,s              save caller supplied (and fixed up) X,Y
-                    lbsr      XY2Addr             Calculate screen ptr and pixel mask to destination coord
-                    stx       LnAddr1,s           save on stack
-                    sta       LnPxMsk2,s          and it's pixel mask too
-                    ldd       <VD.GCrsX,u         Get graphics cursor X value
-                    lbsr      XY2Addr             Calculate screen ptr and pixel mask to gfx cursor coord
-                    sta       ,s                  Save pixel mask for gfx cursor position
+DrawLine            bsr       FixXY     ; fix X coords based on resolution
+                    leas      -LnStkSz,s ; make room on stack for line vars
+                    std       LnX1,s    ; save caller supplied (and fixed up) X,Y
+                    lbsr      XY2Addr   ; calculate screen ptr and pixel mask to destination coord
+                    stx       LnAddr1,s ; save on stack
+                    sta       LnPxMsk2,s ; and it's pixel mask too
+                    ldd       <VD.GCrsX,u ; get graphics cursor X value
+                    lbsr      XY2Addr   ; calculate screen ptr and pixel mask to gfx cursor coord
+                    sta       ,s        ; save pixel mask for gfx cursor position
 * NEXT 3 LINES ARE IN LEVEL 1, NOT IN LEVEL 2!
                     clra
                     clrb
-                    std       LnCoords,s          Init to $0000
+                    std       LnCoords,s ; init to $0000
 * 6809/6309 - ldd #191*256+191, then skip second lda #191 and change 2nd suba/sta
 *   to subb/stb (shorter/faster)
-                    lda       #191                Lo res has Y coord 0 on bottom of screen, not top.
-                    suba      <VD.GCrsY,u         Subtract gfx cursor Y coord
-                    sta       <VD.GCrsY,u         Save flipped version
-                    lda       #191                Lo res has Y coord 0 on bottom of screen, not top.
-                    suba      <VD.NChr2,u         Subtract destination Y coord
-                    sta       <VD.NChr2,u         Save flipped version
-                    lda       #-1                 Init X direction to -1
+                    lda       #191      ; lo res has Y coord 0 on bottom of screen, not top.
+                    suba      <VD.GCrsY,u ; subtract gfx cursor Y coord
+                    sta       <VD.GCrsY,u ; save flipped version
+                    lda       #191      ; lo res has Y coord 0 on bottom of screen, not top.
+                    suba      <VD.NChr2,u ; subtract destination Y coord
+                    sta       <VD.NChr2,u ; save flipped version
+                    lda       #-1       ; init X direction to -1
                     sta       LnXDir,s
-                    clra                          D=graphics cursor X position
+                    clra                ; d=graphics cursor X position
                     ldb       <VD.GCrsX,u
-                    subb      <VD.NChar,u         Subtract destination X coord
+                    subb      <VD.NChar,u ; subtract destination X coord
                     sbca      #$00
-                    bpl       L0608               width of line positive, skip ahead
-                    IFNE      H6309
-                    negd                          was negative, change to positive
-                    ELSE
-                    nega                          was negative, change to positive
+                    bpl       L0608     ; width of line positive, skip ahead
+                  IFNE    H6309
+                    negd                ; was negative, change to positive
+                  ELSE
+                    nega                ; was negative, change to positive
                     negb
                     sbca      #$00
-                    ENDC
-                    neg       LnXDir,s            Flip X direction to +1
-L0608               std       LnXDist,s           Save # pixels between X coords
-                    bne       L0611               Not vertical line (0 distance), skip ahead
-                    ldd       #-1                 If vertical line, change 4,s to $FFFF (-1 / -1)
+                  ENDC
+                    neg       LnXDir,s  ; flip X direction to +1
+L0608               std       LnXDist,s ; save # pixels between X coords
+                    bne       L0611     ; not vertical line (0 distance), skip ahead
+                    ldd       #-1       ; if vertical line, change 4,s to $FFFF (-1 / -1)
                     std       LnCoords,s
-L0611               lda       #-32                Init Y direction/increment to -32 (1 line on screen)
+L0611               lda       #-32      ; init Y direction/increment to -32 (1 line on screen)
                     sta       LnYDir,s
                     clra
-                    ldb       <VD.GCrsY,u         D=Gfx cursor Y coord
-                    subb      <VD.NChr2,u         Subtract (as 16 bit) caller Y coord
+                    ldb       <VD.GCrsY,u ; d=Gfx cursor Y coord
+                    subb      <VD.NChr2,u ; subtract (as 16 bit) caller Y coord
                     sbca      #$00
-                    bpl       L0626               If positive # (callers is below gfx cursor), done
-                    IFNE      H6309
-                    negd                          If negative, flip to positive
-                    ELSE
-                    nega                          If negative, flip to positive
+                    bpl       L0626     ; if positive # (callers is below gfx cursor), done
+                  IFNE    H6309
+                    negd                ; if negative, flip to positive
+                  ELSE
+                    nega                ; if negative, flip to positive
                     negb
                     sbca      #$00
-                    ENDC
-                    neg       LnYDir,s            Change Y direction/offset to +32
-L0626               std       LnYDist,s           Save # pixels between Y coords
+                  ENDC
+                    neg       LnYDir,s  ; change Y direction/offset to +32
+L0626               std       LnYDist,s ; save # pixels between Y coords
 * New routine to halve the error value RG
-                    cmpd      LnXDist,s           is dX>dY
-                    pshs      cc                  save answer
-                    IFNE      H6309
-                    negd                          assume true and negate regD
-                    ELSE
-                    nega                          assume true and negate regD
+                    cmpd      LnXDist,s ; is dX>dY
+                    pshs      cc        ; save answer
+                  IFNE    H6309
+                    negd                ; assume true and negate regD
+                  ELSE
+                    nega                ; assume true and negate regD
                     negb
                     sbca      #0
-                    ENDC
+                  ENDC
                     puls      cc
                     bhs       ch1
-                    ldd       LnXDist,s           get dY
+                    ldd       LnXDist,s ; get dY
 ch1                 equ       *
-                    IFNE      H6309
+                  IFNE    H6309
                     asrd
 * LCB slight 6309 optimization
-                    tstd                          0?
-                    ELSE
+                    tstd                ; 0?
+                  ELSE
                     asra
                     rorb
                     cmpd      #0
-                    ENDC
-                    beq       L0632               error must not be zero
+                  ENDC
+                    beq       L0632     ; error must not be zero
 * End of new routine RG
                     std       LnCoords,s
                     bra       L0632
 
 * Main line drawing loop
-L062A               sta       ,s                  Save new shifted pixel mask
+L062A               sta       ,s        ; save new shifted pixel mask
                     ldd       LnCoords,s
-                    subd      LnYDist,s           Subtract distance between Y coords
-                    std       LnCoords,s          Save updated value
-L0632               lda       ,s                  Get current pixel mask for Gfx Cursor X,Y coord
-                    lbsr      L05B3               Draw point on screen
-                    cmpx      LnAddr1,s           Are we still at same address on screen as we started?
-                    bne       L0641               No, skip ahead
-                    lda       ,s                  Get Gfx Cursor X,Y coord pixel mask back
-                    cmpa      LnPxMsk2,s          Same as pixel mask for caller's X,Y coord?
-                    beq       L0675               Yes, skip ahead
+                    subd      LnYDist,s ; subtract distance between Y coords
+                    std       LnCoords,s ; save updated value
+L0632               lda       ,s        ; get current pixel mask for Gfx Cursor X,Y coord
+                    lbsr      L05B3     ; draw point on screen
+                    cmpx      LnAddr1,s ; are we still at same address on screen as we started?
+                    bne       L0641     ; no, skip ahead
+                    lda       ,s        ; get Gfx Cursor X,Y coord pixel mask back
+                    cmpa      LnPxMsk2,s ; same as pixel mask for caller's X,Y coord?
+                    beq       L0675     ; yes, skip ahead
 L0641               ldd       LnCoords,s
-                    bpl       L064F               If >0, skip ahead
-                    addd      LnXDist,s           Add to distance between X coords
-                    std       LnCoords,s          Save overtop as new value
-                    lda       LnYDir,s            Get Y direction/increment
-                    leax      a,x                 Bump Y coord up or down as appropriate (SIGNED, so can't use abx)
+                    bpl       L064F     ; if >0, skip ahead
+                    addd      LnXDist,s ; add to distance between X coords
+                    std       LnCoords,s ; save overtop as new value
+                    lda       LnYDir,s  ; get Y direction/increment
+                    leax      a,x       ; bump Y coord up or down as appropriate (SIGNED, so can't use abx)
                     bra       L0632
 
-L064F               lda       ,s                  Get current pixel mask for Gfx Cursor X,Y coord
-                    ldb       LnXDir,s            Get X direction/offset
-                    bpl       L0665               If positive, skip ahead
-                    lsla                          If negative, shift pixel mask left 1 bit
-                    ldb       <VD.Mode,u          which mode?
-                    bmi       L065C               If 256x192, that's all we need.
-                    lsla                          4 color mode, shift 2nd time (2 bits/pixel)
-L065C               bcc       L062A               If we didn't hit the end of the byte, do next pixel in this byte
-                    lda       <VD.MCol2,u         Get mask for last pixel in a byte for current mode
-                    leax      -1,x                Bump screen ptr to left by one
-                    bra       L062A               Back to the drawing loop
+L064F               lda       ,s        ; get current pixel mask for Gfx Cursor X,Y coord
+                    ldb       LnXDir,s  ; get X direction/offset
+                    bpl       L0665     ; if positive, skip ahead
+                    lsla                ; if negative, shift pixel mask left 1 bit
+                    ldb       <VD.Mode,u ; which mode?
+                    bmi       L065C     ; if 256x192, that's all we need.
+                    lsla                ; 4 color mode, shift 2nd time (2 bits/pixel)
+L065C               bcc       L062A     ; if we didn't hit the end of the byte, do next pixel in this byte
+                    lda       <VD.MCol2,u ; get mask for last pixel in a byte for current mode
+                    leax      -1,x      ; bump screen ptr to left by one
+                    bra       L062A     ; back to the drawing loop
 
 * X going offset in positive direction
-L0665               lsra                          Shift active pixel mask to right 1 bit
-                    ldb       <VD.Mode,u          which mode?
-                    bmi       L066C               If 2 color, we are done shifting
-                    lsra                          4 color, shift 1 more (2 bits/pixel)
-L066C               bcc       L062A               Still more pixels in current byte, do next pixel
-                    lda       <VD.MCol,u          Get mask for first pixel in a byte for current mode
-                    leax      1,x                 Bump screen ptr to right by one
-                    bra       L062A               Back to drawing loop
+L0665               lsra                ; shift active pixel mask to right 1 bit
+                    ldb       <VD.Mode,u ; which mode?
+                    bmi       L066C     ; if 2 color, we are done shifting
+                    lsra                ; 4 color, shift 1 more (2 bits/pixel)
+L066C               bcc       L062A     ; still more pixels in current byte, do next pixel
+                    lda       <VD.MCol,u ; get mask for first pixel in a byte for current mode
+                    leax      1,x       ; bump screen ptr to right by one
+                    bra       L062A     ; back to drawing loop
 
-L0675               ldd       LnX1,s              Get destination X,Y coords from caller
-                    std       <VD.GCrsX,u         Save them as the new graphics cursor position
-                    leas      LnStkSz,s           Eat temp Line stack
-L067C               lda       <VD.Msk2,u          Get full byte color mask for current foreground color?
-                    sta       <VD.Msk1,u          Save in another mask
-                    clrb                          Return w/o error
+L0675               ldd       LnX1,s    ; get destination X,Y coords from caller
+                    std       <VD.GCrsX,u ; save them as the new graphics cursor position
+                    leas      LnStkSz,s ; eat temp Line stack
+L067C               lda       <VD.Msk2,u ; get full byte color mask for current foreground color?
+                    sta       <VD.Msk1,u ; save in another mask
+                    clrb                ; return w/o error
                     rts
 
 * $1C - erase circle
 Do1C                clr       <VD.Msk1,u
 * $1A - draw circle
-Do1A                leax      <Circle,pcr         Point to Circle routine to go to once we have all parameters
-                    lbra      GChar1              1 parameter byte (radius) to get
+Do1A                leax      <Circle,pcr ; point to Circle routine to go to once we have all parameters
+                    lbra      GChar1    ; 1 parameter byte (radius) to get
 
-Circle              leas      -4,s                Reserve 4 bytes on stack
-                    ldb       <VD.NChar,u         get radius
-                    stb       $01,s               store on stack
+Circle              leas      -4,s      ; reserve 4 bytes on stack
+                    ldb       <VD.NChar,u ; get radius
+                    stb       $01,s     ; store on stack
                     clra
                     sta       ,s
                     addb      $01,s
                     adca      #$00
-                    IFNE      H6309
+                  IFNE    H6309
                     negd
-                    ELSE
+                  ELSE
                     nega
                     negb
                     sbca      #$00
-                    ENDC
+                  ENDC
                     addd      #$0003
                     std       $02,s
 L06AB               lda       ,s
@@ -1228,15 +1228,15 @@ L06AB               lda       ,s
                     ldb       $02,s
                     bpl       L06C5
                     ldb       ,s
-                    IFNE      H6309
+                  IFNE    H6309
                     lsld
                     lsld
-                    ELSE
+                  ELSE
                     lslb
                     rola
                     lslb
                     rola
-                    ENDC
+                  ENDC
                     addd      #$0006
                     bra       L06D5
 
@@ -1245,15 +1245,15 @@ L06C5               dec       $01,s
                     ldb       ,s
                     subb      $01,s
                     sbca      #$00
-                    IFNE      H6309
+                  IFNE    H6309
                     lsld
                     lsld
-                    ELSE
+                  ELSE
                     lslb
                     rola
                     lslb
                     rola
-                    ENDC
+                  ENDC
                     addd      #$000A
 L06D5               addd      $02,s
                     std       $02,s
@@ -1272,24 +1272,24 @@ L06EB               leas      -$08,s
                     sta       ,s
                     clra
                     std       $02,s
-                    IFNE      H6309
+                  IFNE    H6309
                     negd
-                    ELSE
+                  ELSE
                     nega
                     negb
                     sbca      #$00
-                    ENDC
+                  ENDC
                     std       $06,s
                     ldb       ,s
                     clra
                     std       ,s
-                    IFNE      H6309
+                  IFNE    H6309
                     negd
-                    ELSE
+                  ELSE
                     nega
                     negb
                     sbca      #$00
-                    ENDC
+                  ENDC
                     std       $04,s
                     ldx       $06,s
                     bsr       L0734
@@ -1330,14 +1330,14 @@ L0746               puls      pc,d
 
 L0748               ldb       <VD.GCrsX,u
                     clra
-                    tst       <VD.Mode,u          which mode?
-                    bmi       L0753               branch if 256x192
-                    IFNE      H6309
+                    tst       <VD.Mode,u ; which mode?
+                    bmi       L0753     ; branch if 256x192
+                  IFNE    H6309
                     lsld
-                    ELSE
-                    lslb                          else multiply D by 2
+                  ELSE
+                    lslb                ; else multiply D by 2
                     rola
-                    ENDC
+                  ENDC
 L0753               addd      ,s++
                     tsta
                     beq       L0759
@@ -1346,13 +1346,13 @@ L0753               addd      ,s++
 L0759               pshs      b
                     tfr       x,d
                     puls      a
-                    tst       <VD.Mode,u          which mode?
-                    lbmi      DrwPt2              branch if 256x192
-                    lsra                          else divide a by 2 1st
+                    tst       <VD.Mode,u ; which mode?
+                    lbmi      DrwPt2    ; branch if 256x192
+                    lsra                ; else divide a by 2 1st
                     lbra      DrwPt2
 
 * $1D - flood fill
-Do1D                clr       <VD.FF6,u           Clear flag
+Do1D                clr       <VD.FF6,u ; clear flag
                     leas      -$07,s
                     lbsr      L08DD
                     lbcs      L0878
@@ -1362,8 +1362,8 @@ Do1D                clr       <VD.FF6,u           Clear flag
                     lbsr      L0883
                     lda       <VD.FF1,u
                     sta       <VD.FF2,u
-                    tst       <VD.Mode,u          which mode?
-                    bpl       L0793               branch if 128x192
+                    tst       <VD.Mode,u ; which mode?
+                    bpl       L0793     ; branch if 128x192
                     tsta
                     beq       L0799
                     lda       #$FF
@@ -1484,9 +1484,9 @@ L0882               rts
 L0883               pshs      d
                     cmpb      #191
                     bhi       L08B2
-                    tst       <VD.Mode,u          which mode?
-                    bmi       L0892               branch if 256x192
-                    cmpa      #127                Past max X coord for 4 color mode?
+                    tst       <VD.Mode,u ; which mode?
+                    bmi       L0892     ; branch if 256x192
+                    cmpa      #127      ; past max X coord for 4 color mode?
                     bhi       L08B2
 L0892               lbsr      XY2Addr
                     tfr       a,b
@@ -1495,8 +1495,8 @@ L0899               bita      #$01
                     bne       L08A8
                     lsra
                     lsrb
-                    tst       <VD.Mode,u          which mode?
-                    bmi       L0899               branch if 256x192
+                    tst       <VD.Mode,u ; which mode?
+                    bmi       L0899     ; branch if 256x192
                     lsra
                     lsrb
                     bra       L0899
@@ -1519,8 +1519,8 @@ L08B6               pshs      d
                     ldb       <VD.Msk1,u
                     stb       ,x
                     puls      b,a
-                    tst       <VD.Mode,u          which mode?
-                    bmi       L08D5               branch if 256x192
+                    tst       <VD.Mode,u ; which mode?
+                    bmi       L08D5     ; branch if 256x192
                     adda      #$03
                     rts
 
@@ -1530,76 +1530,76 @@ L08D5               adda      #$07
 L08D8               lbsr      L05B3
                     puls      pc,d
 
-L08DD               ldx       <VD.FFSTp,u         get top of flood fill stack
-                    beq       AlcFFStk            if zero, we need to allocate stack
-                    stx       <VD.FFSPt,u         else reset flood fill stack ptr
+L08DD               ldx       <VD.FFSTp,u ; get top of flood fill stack
+                    beq       AlcFFStk  ; if zero, we need to allocate stack
+                    stx       <VD.FFSPt,u ; else reset flood fill stack ptr
 L08E5               clrb
                     rts
 
 * Allocate Flood Fill Stack
-AlcFFStk            pshs      u                   save U for now
-                    ldd       #FFStSz             get 512 bytes
-                    os9       F$SRqMem            from system
-                    bcc       AllocOk             branch if ok
-                    puls      pc,u                else pull out with error
+AlcFFStk            pshs      u         ; save U for now
+                    ldd       #FFStSz   ; get 512 bytes
+                    os9       F$SRqMem  ; from system
+                    bcc       AllocOk   ; branch if ok
+                    puls      pc,u      ; else pull out with error
 
-AllocOk             tfr       u,d                 move pointer to alloced mem to D
-                    puls      u                   get stat pointer we saved earlier
-                    std       <VD.FFMem,u         save pointer to alloc'ed mem
-                    addd      #FFStSz             point D to end of alloc'ed mem
-                    std       <VD.FFSTp,u         and save here as top of fill stack
-                    std       <VD.FFSPt,u         and here
-                    clrb                          Do a clean return
+AllocOk             tfr       u,d       ; move pointer to alloced mem to D
+                    puls      u         ; get stat pointer we saved earlier
+                    std       <VD.FFMem,u ; save pointer to alloc'ed mem
+                    addd      #FFStSz   ; point D to end of alloc'ed mem
+                    std       <VD.FFSTp,u ; and save here as top of fill stack
+                    std       <VD.FFSPt,u ; and here
+                    clrb                ; do a clean return
                     rts
 
 * Add FFill stack entry (4 bytes). Max of 128 entries allowed.
 L0905               pshs      d
-                    ldd       <VD.FFSPt,u         Get current FFill stack ptr
-                    subd      #$0004              Add 4 bytes to it
-                    cmpd      <VD.FFMem,u         Have we filled all 512 bytes?
-                    blo       L0924               Yes, error out
-                    std       <VD.FFSPt,u         No, Save new FFill stack ptr
-                    tfr       d,y                 Move new ptr to indexable register
-                    lda       <VD.FFFlg,u         Get? (direction flag, maybe?)
-                    sta       ,y                  Save on stack
-                    stx       $01,y               Save (mem ptr on screen, I think?)
-                    puls      d                   Get ?? back
-                    sta       $03,y               Save A to FFill stack entry & return
+                    ldd       <VD.FFSPt,u ; get current FFill stack ptr
+                    subd      #$0004    ; add 4 bytes to it
+                    cmpd      <VD.FFMem,u ; have we filled all 512 bytes?
+                    blo       L0924     ; yes, error out
+                    std       <VD.FFSPt,u ; no, Save new FFill stack ptr
+                    tfr       d,y       ; move new ptr to indexable register
+                    lda       <VD.FFFlg,u ; get? (direction flag, maybe?)
+                    sta       ,y        ; save on stack
+                    stx       $01,y     ; save (mem ptr on screen, I think?)
+                    puls      d         ; get ?? back
+                    sta       $03,y     ; save A to FFill stack entry & return
                     rts
 
-L0924               ldb       #E$Write            $F5 Write Error if FFill stack overflows
-                    stb       <VD.FF6,u           Save error code
+L0924               ldb       #E$Write  ; $F5 Write Error if FFill stack overflows
+                    stb       <VD.FF6,u ; save error code
                     puls      pc,d
 
 * Remove FFill stack entry (4 bytes)
-L092B               ldd       <VD.FFSPt,u         Get current FFill stack ptr
-                    cmpd      <VD.FFSTp,u         Have we already emptied stack?
-                    lbhs      L0880               Yes, stack empty, exit with carry set
-                    tfr       d,y                 No, move to indexable register
-                    addd      #$0004              Add 4 to it (eat 4 bytes from stack)
-                    std       <VD.FFSPt,u         Save as new FFill stack ptr
-                    lda       ,y                  Get byte from original FFill stack position
-                    sta       <VD.FFFlg,u         Save it
-                    ldd       $01,y               Get ? (mem ptr on screen, I think?)
-                    tfr       d,x                 Move to indexable register
+L092B               ldd       <VD.FFSPt,u ; get current FFill stack ptr
+                    cmpd      <VD.FFSTp,u ; have we already emptied stack?
+                    lbhs      L0880     ; yes, stack empty, exit with carry set
+                    tfr       d,y       ; no, move to indexable register
+                    addd      #$0004    ; add 4 to it (eat 4 bytes from stack)
+                    std       <VD.FFSPt,u ; save as new FFill stack ptr
+                    lda       ,y        ; get byte from original FFill stack position
+                    sta       <VD.FFFlg,u ; save it
+                    ldd       $01,y     ; get ? (mem ptr on screen, I think?)
+                    tfr       d,x       ; move to indexable register
                     lda       $03,y
                     andcc     #^Carry
                     rts
 
 * Entry: Y=Ptr to path descriptor
 *        A=GetStat code
-GetStat             ldx       PD.RGS,y            Get ptr to users stack
-                    cmpa      #SS.AlfaS           Alfa Display Status?
+GetStat             ldx       PD.RGS,y  ; get ptr to users stack
+                    cmpa      #SS.AlfaS ; alfa Display Status?
                     beq       Rt.AlfaS
-                    cmpa      #SS.ScSiz           Screen size?
+                    cmpa      #SS.ScSiz ; screen size?
                     beq       Rt.ScSiz
-                    cmpa      #SS.Cursr           Cursor info?
+                    cmpa      #SS.Cursr ; cursor info?
                     beq       Rt.Cursr
-                    cmpa      #SS.DStat           Medium graphics Display Status?
+                    cmpa      #SS.DStat ; medium graphics Display Status?
                     lbeq      Rt.DSTAT
-                    cmpa      #SS.Palet           Get current palette settings?
+                    cmpa      #SS.Palet ; get current palette settings?
                     beq       Rt.Palet
-                    comb                          Anything else, return with Unknown Service error
+                    comb                ; anything else, return with Unknown Service error
                     ldb       #E$UnkSvc
                     rts
 
@@ -1608,30 +1608,30 @@ GetStat             ldx       PD.RGS,y            Get ptr to users stack
 * Exit: X = X screen size (32)
 *       Y = Y screen size (16)
 Rt.ScSiz            equ       *
-                    IFNE      H6309
-                    ldq       #$00200010          Always returns 32x16
+                  IFNE    H6309
+                    ldq       #$00200010 ; always returns 32x16
                     stq       R$X,x
-                    ELSE
+                  ELSE
 *         ldb   <VD.Col,u
-                    ldd       #$0020              Always returns 32x16
+                    ldd       #$0020    ; always returns 32x16
                     std       R$X,x
 *         ldb   <VD.Row,u
                     ldb       #$10
                     std       R$Y,x
-                    ENDC
+                  ENDC
                     clrb
                     rts
 
 * Get palette information
 * Exit: 16 byte packet pointed to by X has the 16 current palette register values
 Rt.Palet            pshs      u,y,x
-                    leay      <VD.Palet,u         point to palette data in proc desc
-                    ldu       R$X,x               pointer to 16 byte palette buffer
-                    ldx       <D.Proc             current proc desc
-                    ldb       P$Task,x            destination task number
-                    clra                          from task 0
+                    leay      <VD.Palet,u ; point to palette data in proc desc
+                    ldu       R$X,x     ; pointer to 16 byte palette buffer
+                    ldx       <D.Proc   ; current proc desc
+                    ldb       P$Task,x  ; destination task number
+                    clra                ; from task 0
                     leax      ,y
-                    ldy       #16                 move 16 bytes
+                    ldy       #16       ; move 16 bytes
                     os9       F$Move
                     puls      pc,u,y,x
 
@@ -1639,26 +1639,26 @@ Rt.Palet            pshs      u,y,x
 * Exit: X = address of screen
 *       Y = address of cursor
 *       A = Capslock status
-Rt.AlfaS            ldd       <VD.ScrnA,u         Get screen address
-                    anda      #$E0                keep bits 4-6
+Rt.AlfaS            ldd       <VD.ScrnA,u ; get screen address
+                    anda      #$E0      ; keep bits 4-6
                     lsra
                     lsra
                     lsra
-                    lsra                          move to bits 0-2 (for MMU block #)
-                    ldy       <D.SysDAT           Get system process DAT image ptr
-                    ldd       a,y                 Get MMU block # text screen is in
-                    lbsr      L06E1               map it in the process' memory area
-                    bcs       L0521               If error, return with it
-                    pshs      d                   offset to block address
-                    ldd       <VD.ScrnA,u         Get ptr to text screen again
-                    anda      #$1F                make sure it's within the block
+                    lsra                ; move to bits 0-2 (for MMU block #)
+                    ldy       <D.SysDAT ; get system process DAT image ptr
+                    ldd       a,y       ; get MMU block # text screen is in
+                    lbsr      L06E1     ; map it in the process' memory area
+                    bcs       L0521     ; if error, return with it
+                    pshs      d         ; offset to block address
+                    ldd       <VD.ScrnA,u ; get ptr to text screen again
+                    anda      #$1F      ; make sure it's within the block
                     addd      ,s
-                    std       R$X,x               save start memory address of the screen to caller
-                    ldd       <VD.CrsrA,u         Get current cursor address
+                    std       R$X,x     ; save start memory address of the screen to caller
+                    ldd       <VD.CrsrA,u ; get current cursor address
                     anda      #$1F
                     addd      ,s++
-                    std       R$Y,x               save cursor address to caller
-                    lda       <VD.Caps,u          save caps lock status in A and exit
+                    std       R$Y,x     ; save cursor address to caller
+                    lda       <VD.Caps,u ; save caps lock status in A and exit
                     bra       L051E
 
 * SS.Cursr GetStat
@@ -1672,51 +1672,51 @@ Rt.Cursr            ldd       <VD.CrsrA,u
                     clra
                     andb      #$1F
                     addb      #$20
-                    std       R$X,x               save column position in ASCII
-                    puls      d                   then divide by 32
+                    std       R$X,x     ; save column position in ASCII
+                    puls      d         ; then divide by 32
                     lsra
                     rolb
                     rolb
                     rolb
                     rolb
                     clra
-                    andb      #$0F                only 16 lines to a screen
+                    andb      #$0F      ; only 16 lines to a screen
                     addb      #$20
                     std       R$Y,x
-                    ldb       <VD.CFlag,u         Get true lowercase flag
-                    lda       <VD.CChar,u         Get character that is under cursor
-                    bmi       L051E               If graphic block, return with it
-                    cmpa      #$60                For other chars, adjustments may be needed (from VDG to ASCII)
+                    ldb       <VD.CFlag,u ; get true lowercase flag
+                    lda       <VD.CChar,u ; get character that is under cursor
+                    bmi       L051E     ; if graphic block, return with it
+                    cmpa      #$60      ; for other chars, adjustments may be needed (from VDG to ASCII)
                     bhs       L0509
                     cmpa      #$20
                     bhs       L050D
-                    tstb                          Is true lowercase on?
-                    beq       L0507               No, skip ahead
-                    tsta                          VDG char 0?
-                    bne       L04FF               No, skip ahead
-                    lda       #$5E                Return ^ caret symbol
-                    bra       L051E               save it and exit
+                    tstb                ; is true lowercase on?
+                    beq       L0507     ; no, skip ahead
+                    tsta                ; vdg char 0?
+                    bne       L04FF     ; no, skip ahead
+                    lda       #$5E      ; return ^ caret symbol
+                    bra       L051E     ; save it and exit
 
-L04FF               cmpa      #$1F                VDG $1F?
-                    bne       L0507               No, check next
-                    lda       #$5F                Yes, return underscore _
+L04FF               cmpa      #$1F      ; vdg $1F?
+                    bne       L0507     ; no, check next
+                    lda       #$5F      ; yes, return underscore _
                     bra       L051E
 
-L0507               ora       #$20                turn it into ASCII from VDG codes
+L0507               ora       #$20      ; turn it into ASCII from VDG codes
 L0509               eora      #$40
                     bra       L051E
 
-L050D               tstb                          Is true lowercase on?
-                    bne       L051E               Yes, just return value as ASCII
-                    cmpa      #$21                VDG $21?
-                    bne       L0518               No, check next
-                    lda       #$7C                Yes, return pipe |
+L050D               tstb                ; is true lowercase on?
+                    bne       L051E     ; yes, just return value as ASCII
+                    cmpa      #$21      ; vdg $21?
+                    bne       L0518     ; no, check next
+                    lda       #$7C      ; yes, return pipe |
                     bra       L051E
 
-L0518               cmpa      #$2D                VDG $2D?
-                    bne       L051E               No, return character as is
-                    lda       #$7E                Yes, return tilde ~
-L051E               sta       R$A,x               Save ASCII value to caller in A & return
+L0518               cmpa      #$2D      ; vdg $2D?
+                    bne       L051E     ; no, return character as is
+                    lda       #$7E      ; yes, return tilde ~
+L051E               sta       R$A,x     ; save ASCII value to caller in A & return
                     clrb
 L0521               rts
 
@@ -1734,8 +1734,8 @@ L0A23               bita      #$01
                     bne       L0A32
                     lsra
                     lsrb
-                    tst       <VD.Mode,u          which mode?
-                    bmi       L0A23               branch if 256x192
+                    tst       <VD.Mode,u ; which mode?
+                    bmi       L0A23     ; branch if 256x192
                     lsra
                     lsrb
                     bra       L0A23
@@ -1744,20 +1744,20 @@ L0A32               pshs      b
                     ldb       <VD.PMask,u
                     andb      #%11111100
                     orb       ,s+
-                    ldx       PD.RGS,y            Get callers register stack ptr
-                    stb       R$A,x               Save color of pixel at gfx cursor address
-                    ldd       <VD.GCrsX,u         Get gfx cursor X & Y coords
-                    std       R$Y,x               Save to caller's Y register
-                    ldb       <VD.Blk,u           Get MMU block # of screen
-                    lbsr      L06E1               Figure out address of screen
-                    bcs       L0A4F               Error, exit with it
-                    std       R$X,x               Save address of medium res screen to caller's X
+                    ldx       PD.RGS,y  ; get callers register stack ptr
+                    stb       R$A,x     ; save color of pixel at gfx cursor address
+                    ldd       <VD.GCrsX,u ; get gfx cursor X & Y coords
+                    std       R$Y,x     ; save to caller's Y register
+                    ldb       <VD.Blk,u ; get MMU block # of screen
+                    lbsr      L06E1     ; figure out address of screen
+                    bcs       L0A4F     ; error, exit with it
+                    std       R$X,x     ; save address of medium res screen to caller's X
 L0A4E               clrb
 L0A4F               rts
 
-ChkDvRdy            ldb       <VD.Rdy,u           is device ready (screen RAM allocated, etc.)?
-                    bne       L0A4E               Yes, return w/o error
-                    lbra      NotReady            else return error
+ChkDvRdy            ldb       <VD.Rdy,u ; is device ready (screen RAM allocated, etc.)?
+                    bne       L0A4E     ; yes, return w/o error
+                    lbra      NotReady  ; else return error
 
 * Calc screen address & pixel mask given X,Y coordinates
 * Entry: A = X coord
@@ -1766,61 +1766,61 @@ ChkDvRdy            ldb       <VD.Rdy,u           is device ready (screen RAM al
 * Exit:  A = pixel mask for pixel we wanted
 *        X = ptr to byte on screen where pixel is that we wanted
 *        Y is preserved
-XY2Addr             pshs      y,d                 Make room on stack (and temporarily save X,Y coord)
-                    ldb       <VD.Mode,u          get video mode
-                    bpl       L0A60               branch if 128x192 (divide A by 4)
-                    lsra                          else divide A by 8
+XY2Addr             pshs      y,d       ; make room on stack (and temporarily save X,Y coord)
+                    ldb       <VD.Mode,u ; get video mode
+                    bpl       L0A60     ; branch if 128x192 (divide A by 4)
+                    lsra                ; else divide A by 8
 L0A60               lsra
                     lsra
-                    pshs      a                   Save horizontal byte offset
-                    ldb       #191                get max Y
-                    subb      2,s                 subtract Y on stack
-                    lda       #32                 bytes per line
-                    mul                           Calculate offset to line we want
-                    addb      ,s+                 add X byte offset
+                    pshs      a         ; save horizontal byte offset
+                    ldb       #191      ; get max Y
+                    subb      2,s       ; subtract Y on stack
+                    lda       #32       ; bytes per line
+                    mul                 ; calculate offset to line we want
+                    addb      ,s+       ; add X byte offset
                     adca      #$00
 * 6809/6309 - since we are restoring X,Y from stack anyways, use X instead of Y here
 *  to save space and be slightly faster)
-                    ldy       <VD.SBAdd,u         get screen's base address
-                    leay      d,y                 Point to specific byte on screen we want
-                    lda       ,s                  Get original X coord back
-                    sty       ,s                  Save ptr to byte on screen we are using
-                    anda      <VD.PixBt,u         Mask for pixel within byte
-                    ldx       <VD.MTabl,u         Get pixel mask ptr for our mode
-                    lda       a,x                 Get pixel mask for pixel within byte we want
-                    puls      pc,y,x              X = offset address, Y = base
+                    ldy       <VD.SBAdd,u ; get screen's base address
+                    leay      d,y       ; point to specific byte on screen we want
+                    lda       ,s        ; get original X coord back
+                    sty       ,s        ; save ptr to byte on screen we are using
+                    anda      <VD.PixBt,u ; mask for pixel within byte
+                    ldx       <VD.MTabl,u ; get pixel mask ptr for our mode
+                    lda       a,x       ; get pixel mask for pixel within byte we want
+                    puls      pc,y,x    ; x = offset address, Y = base
 
-SetStat             ldx       PD.RGS,y            Get caller's register stack ptr
-                    cmpa      #SS.ComSt           Caller changing true lowercase on/off on VDG window?
+SetStat             ldx       PD.RGS,y  ; get caller's register stack ptr
+                    cmpa      #SS.ComSt ; caller changing true lowercase on/off on VDG window?
                     beq       Rt.ComSt
                     cmpa      #SS.AAGBf
                     beq       Rt.AAGBf
                     cmpa      #SS.SLGBf
                     beq       Rt.SLGBf
 
-SharedScreen        ldx       >WGlobal+G.HRSEnt   get shared application-screen services
-                    beq       MissingHiRes        report that the optional module is unavailable
-                    jmp       H$SetStt,x          process the request in HiRes
+SharedScreen        ldx       >WGlobal+G.HRSEnt ; get shared application-screen services
+                    beq       MissingHiRes ; report that the optional module is unavailable
+                    jmp       H$SetStt,x ; process the request in HiRes
 
-MissingHiRes        comb                          return Unknown Service without disturbing VTIO
+MissingHiRes        comb                ; return Unknown Service without disturbing VTIO
                     ldb       #E$UnkSvc
                     rts
 
-IllArg              comb                          return an illegal-argument error
+IllArg              comb                ; return an illegal-argument error
                     ldb       #E$IllArg
                     rts
 
 * Allow switch between true/inverse lowercase
 * Entry: Y = least sig bit of MSB: 0=true lowercase, 1=inverse
-Rt.ComSt            lda       R$Y,x               Get MSB of Y (least sig bit is lowercase/inverse flag)
-L054C               ldb       #$10                default to true lowercase
-                    bita      #$01                Y = 0 = true lowercase, Y = 1 = inverse?
-                    bne       L0553               Caller wants true lowercase, skip ahead
-                    clrb                          Inverse video instead
+Rt.ComSt            lda       R$Y,x     ; get MSB of Y (least sig bit is lowercase/inverse flag)
+L054C               ldb       #$10      ; default to true lowercase
+                    bita      #$01      ; y = 0 = true lowercase, Y = 1 = inverse?
+                    bne       L0553     ; caller wants true lowercase, skip ahead
+                    clrb                ; inverse video instead
 L0553               stb       <VD.CFlag,u
-                    ldd       #$2010              32x16
-                    inc       <VD.DFlag,u         Flag that we need to update video hardware
-                    std       <VD.Col,u           Save screen size
+                    ldd       #$2010    ; 32x16
+                    inc       <VD.DFlag,u ; flag that we need to update video hardware
+                    std       <VD.Col,u ; save screen size
                     rts
 
 Rt.AAGBf            ldb       <VD.Rdy,u
@@ -1879,13 +1879,13 @@ L0B2B               stb       <VD.DFlag,u
                     rts
 
 * Get next free medium-resolution screen descriptor.
-L06C7               clr       ,-s                 clear an area on the stack
-                    inc       ,s                  set to 1
-L06CB               tst       ,y                  check block number
-                    beq       L06D9               stop at an unused descriptor
-                    leay      b,y                 advance by the descriptor size
-                    inc       ,s                  increment the one-based result
-                    deca                          count this descriptor
+L06C7               clr       ,-s       ; clear an area on the stack
+                    inc       ,s        ; set to 1
+L06CB               tst       ,y        ; check block number
+                    beq       L06D9     ; stop at an unused descriptor
+                    leay      b,y       ; advance by the descriptor size
+                    inc       ,s        ; increment the one-based result
+                    deca                ; count this descriptor
                     bne       L06CB
                     comb
                     ldb       #E$BMode
@@ -1900,11 +1900,11 @@ L06D9               puls      pc,a
 * Exit: D=block number, or carry set and B=error. X preserved.
 Get8KHi             pshs      x
                     ldx       <D.BlkMap
-                    ldb       #$38                first motherboard block
+                    ldb       #$38      ; first motherboard block
 MJGfxLp             cmpb      #Bt.Block
                     beq       MJGfxNxt
                     lda       b,x
-                    cmpa      #NotRAM             reserved and free?
+                    cmpa      #NotRAM   ; reserved and free?
                     beq       MJGfxGot
 MJGfxNxt            incb
                     cmpb      #$3E
@@ -1914,10 +1914,10 @@ MJGfxNxt            incb
                     puls      x,pc
 MJGfxGot            lda       #NotRAM+RAMinUse
                     sta       b,x
-                    clra                          D=block number, carry clear
+                    clra                ; d=block number, carry clear
                     puls      x,pc
 
-L06E1               lda       #$01                map screen into memory
+L06E1               lda       #$01      ; map screen into memory
 L06E3               pshs      u,x,d
                     bsr       L0710
                     bcc       L06F9
@@ -1926,43 +1926,43 @@ L06E3               pshs      u,x,d
                     tfr       d,x
                     ldb       ,s
                     os9       F$MapBlk
-                    stb       $01,s               save error code if any
+                    stb       $01,s     ; save error code if any
                     tfr       u,d
                     bcs       L06FD
-L06F9               leas      $02,s               destroy D on no error
+L06F9               leas      $02,s     ; destroy D on no error
                     puls      pc,u,x
 
-L06FD               puls      pc,u,x,d            if error, then restore D
+L06FD               puls      pc,u,x,d  ; if error, then restore D
 
 L0710               equ       *
-                    IFNE      H6309
+                  IFNE    H6309
                     pshs      a
                     lde       #$08
-                    ELSE
+                  ELSE
                     pshs      d
-                    lda       #$08                number of blocks to check
+                    lda       #$08      ; number of blocks to check
                     sta       $01,s
-                    ENDC
+                  ENDC
                     ldx       <D.Proc
-                    leax      <P$DATImg+$10,x     to end of CoCo's DAT image map
+                    leax      <P$DATImg+$10,x ; to end of CoCo's DAT image map
                     clra
                     addb      ,s
                     decb
 L071F               cmpd      ,--x
                     beq       L072A
-                    IFNE      H6309
+                  IFNE    H6309
                     dece
-                    ELSE
+                  ELSE
                     dec       $01,s
-                    ENDC
+                  ENDC
                     bne       L071F
                     bra       L0743
 L072A               equ       *
-                    IFNE      H6309
+                  IFNE    H6309
                     dece
-                    ELSE
+                  ELSE
                     dec       $01,s
-                    ENDC
+                  ENDC
                     dec       ,s
                     beq       L0738
                     decb
@@ -1971,29 +1971,29 @@ L072A               equ       *
                     bra       L0743
 
 L0738               equ       *
-                    IFNE      H6309
+                  IFNE    H6309
                     tfr       e,a
-                    ELSE
-                    lda       $01,s               get lowest block number found
-                    ENDC
+                  ELSE
+                    lda       $01,s     ; get lowest block number found
+                  ENDC
                     lsla
                     lsla
                     lsla
                     lsla
-                    lsla                          multiply by 32 (convert to address)
-                    clrb                          clear carry
-                    IFNE      H6309
+                    lsla                ; multiply by 32 (convert to address)
+                    clrb                ; clear carry
+                  IFNE    H6309
                     puls      b,pc
 
 L0743               puls      a
-                    ELSE
+                  ELSE
                     leas      $02,s
                     rts
 
 L0743               puls      d
-                    ENDC
+                  ENDC
                     comb
-                    ldb       #E$BPAddr           bad page address
+                    ldb       #E$BPAddr ; bad page address
                     rts
 
                     emod
