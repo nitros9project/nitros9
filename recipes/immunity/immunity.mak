@@ -3,7 +3,8 @@
 # The i-MMU-nity provides a CoCo 3 compatible MMU ($FF90/$FF91, $FFA0-$FFAF)
 # but no GIME, so the console is the VDG (covdg.io, 32x16) and the clock runs
 # from the PIA0 VSYNC interrupt. Port-specific sources live in
-# level2/immunity/modules; everything else is shared with the CoCo 3 port.
+# level2/immunity/modules (including all the video modules except VTIO);
+# everything else is shared with the CoCo 3 port.
 #
 # MEDIA selects the boot device:
 #   floppy  WD1773 floppy (rb1773), 40 or 80 tracks (TRACKS=40|80)
@@ -174,7 +175,7 @@ $(MODDIR)/vtio.dr: $(LEVEL2)/coco3/modules/vtio.asm | $(MODDIR)
 # Module variants
 
 $(MODDIR)/covdg.io: covdg.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DCOCO2=1 -DALLCAPS=$(UPPERCASE)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DALLCAPS=$(UPPERCASE)
 
 # /term: default VDG character set (descriptor parity byte, see term_vdg.asm)
 ifeq ($(VDG_T1),1)
