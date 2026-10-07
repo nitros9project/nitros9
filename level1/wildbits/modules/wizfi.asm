@@ -509,7 +509,10 @@ RingPtr             pshs      a
 
 GetDevChan          pshs      d,x
                     ldd       Wrk.Type,u           save type/baud in data area
-                    andb      #%00000011
+* 2026-10-06 cores: $FF20 bits 4-0 are the rate code 0-16 (WizFi.Baud*, the W600's actual rates) and the
+* baud byte IS that code (xmode bau=A = 115,200, bau=D = 921,600; hex). Bit 5 is reserved and written 0;
+* the resets live in WizFi_ResetReg (2026-10-07 cores).
+                    andb      #WizFi.RateMask
 * WizCon4n (2026-09-02): ind_CtrlReg is not set until later in Init, so
 * this used to store through a NULL pointer into DP byte $0000 (the
 * kernel DP; on the K2 that is keyboard row-state 0) on every /wzN

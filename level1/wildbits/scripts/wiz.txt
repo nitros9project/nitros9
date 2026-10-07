@@ -61,14 +61,15 @@ SPEED
 -----
 wizfast
   Switches the module (AT+UART_CUR=921600) and the FPGA UART to 921600
-  baud. The driver side is xmode bau=1 on /wz (control-register speed
-  bit) and bau=9 on /wz0-/wz3 (the same bit plus the packet flag those
-  descriptors must keep). Needs wizi and no active connections. Lost
-  when the module resets.
+  baud. The driver side is xmode bau=D on all five devices: the baud byte
+  is the WizFi rate code (13 = 921600; the core runs the W600's actual
+  930,233). Needs wizi and no active connections. Lost when the module
+  resets. Any of the 17 rates: xmode bau=<code, hex> (WizFi.Baud* in
+  wildbits.d) after the matching AT+UART_CUR.
 
 wizslow
-  Undo wizfast: module back to 115200 and all five devices back (bau=0
-  on /wz, bau=8 on /wz0-/wz3). Needs wizi and no active connections.
+  Undo wizfast: module back to 115200 and all five devices back to
+  bau=A (code 10). Needs wizi and no active connections.
 
 SINGLE REMOTE SHELL - raw /wz path, passthrough mode (WizCon1)
 --------------------------------------------------------------

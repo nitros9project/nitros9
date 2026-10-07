@@ -82,7 +82,7 @@ endif
 CMDS += $(STDCMDS) shell \
 	bootos9 scfg wbinfo wbreset modem \
 inetd telnet dw httpd $(BASIC09) $(BF) \
-	$(CMDS_EXTRA) wildspeed wmset
+	$(CMDS_EXTRA) wildspeed wmset wizupdate
 
 # K2 supervisor mailbox: shared Level 1 sources for both OS levels (rc18+).
 ifeq ($(PLATFORM),k2)
