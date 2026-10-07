@@ -35,30 +35,30 @@
                     nam       REL
                     ttl       Relocation routine for i-MMU-nity
 
-                    IFP1
+                  IFP1
                     use       defsfile
-                    ENDC
+                  ENDC
 
-XX.Size             equ       6                   number of bytes before REL actually starts
+XX.Size             equ       6         number of bytes before REL actually starts
 Offset              equ       Bt.Start+XX.Size
 
 * i-MMU-nity registers
-MJ.Init0            equ       $FF90               INIT0: MMU enable, MC3, alternate vectors
-MJ.Init1            equ       $FF91               INIT1: task select
-MJ.MMU              equ       %01000000           MMU enable
-MJ.MC3              equ       %00001000           $FExx constant (block $3F)
-MJ.NoAlt            equ       %10000000           1=ROM vectors, 0=alternate vectors
-MJ.Boot             equ       MJ.MMU+MJ.MC3+MJ.NoAlt   MMU on, alternate vectors off
-MJ.Run              equ       MJ.MMU+MJ.MC3       MMU on, alternate vectors on
+MJ.Init0            equ       $FF90     INIT0: MMU enable, MC3, alternate vectors
+MJ.Init1            equ       $FF91     INIT1: task select
+MJ.MMU              equ       %01000000 MMU enable
+MJ.MC3              equ       %00001000 $FExx constant (block $3F)
+MJ.NoAlt            equ       %10000000 1=ROM vectors, 0=alternate vectors
+MJ.Boot             equ       MJ.MMU+MJ.MC3+MJ.NoAlt MMU on, alternate vectors off
+MJ.Run              equ       MJ.MMU+MJ.MC3 MMU on, alternate vectors on
 
 * Boot screen in Bt.Block. The SAM display address must be a multiple of
 * $200, so the screen starts $200 into the block; the block's first bytes
 * hold the BtDebug cursor.
-ScBlkAdr            equ       (Bt.Block-$38)*$2000   logical = motherboard address of Bt.Block
-ScOff               equ       $0200               screen offset within the block
-ScStart             equ       ScBlkAdr+ScOff      boot screen address while REL runs
+ScBlkAdr            equ       (Bt.Block-$38)*$2000 logical = motherboard address of Bt.Block
+ScOff               equ       $0200     screen offset within the block
+ScStart             equ       ScBlkAdr+ScOff boot screen address while REL runs
 ScSize              equ       32*16
-VdgSpace            equ       $60                 VDG space, normal video
+VdgSpace            equ       $60       VDG space, normal video
 
 tylg                set       Systm+Objct
 atrv                set       ReEnt+rev
@@ -68,27 +68,27 @@ edition             set       5
 ********************************************************************
 * Any changes to the next 3 lines requires changes in XX.Size, above
                     fcc       /OS/                sync bytes
-                    bra       (start+XX.Size+*-2) execution start
-                    fdb       $1205               filler bytes
+                    bra       (start+XX.Size+*-2) ; execution start
+                    fdb       $1205     filler bytes
 
 Begin               mod       eom,name,tylg,atrv,start,size
 
                     org       0
-size                equ       .                   REL doesn't require any memory
+size                equ       .         REL doesn't require any memory
 
 name                fcs       /REL/
                     fcb       edition
 
-crash               lda       #'*                 signal a crash error
+crash               lda       #'*       ; signal a crash error
                     jsr       <D.BtBug
-                    tfr       b,a                 and show the error code
+                    tfr       b,a       ; and show the error code
                     jsr       <D.BtBug
-                    clrb                          B=0: crash
-                    fcb       $8C                 skip the LDB below (CMPX #)
-start               ldb       #$FF                B=$FF: cold start
-                    clr       >$FFDF              SAM all-RAM mode
-                    orcc      #IntMasks           IRQs off
-                    clr       >PIA0Base+3         turn off the VSYNC IRQ
+                    clrb                ; b=0: crash
+                    fcb       $8C       skip the LDB below (CMPX #)
+start               ldb       #$FF      ; b=$FF: cold start
+                    clr       >$FFDF    ; sam all-RAM mode
+                    orcc      #IntMasks ; irqs off
+                    clr       >PIA0Base+3 ; turn off the VSYNC IRQ
                     clra
                     tfr       a,dp
 
@@ -105,15 +105,15 @@ DatLoop             sta       1,x
                     inca
                     cmpa      #$40
                     bne       DatLoop
-                    clr       >MJ.Init1           task 0
+                    clr       >MJ.Init1 ; task 0
                     lda       #MJ.Boot
-                    sta       >MJ.Init0           MMU on, alternate vectors still off
+                    sta       >MJ.Init0 ; mmu on, alternate vectors still off
 * Slot 0 is now i-MMU-nity block 0: the ROM's stack is gone, so make a new one.
                     lds       #$1FFF
-                    stb       ,-s                 save the boot status
-                    beq       Vectors             crash: keep the direct page for post-mortem
+                    stb       ,-s       ; save the boot status
+                    beq       Vectors   ; crash: keep the direct page for post-mortem
                     ldx       #$0000
-DpClr               clr       ,x+                 clear the direct page
+DpClr               clr       ,x+       ; clear the direct page
                     cmpx      #$0100
                     bne       DpClr
 
@@ -123,35 +123,35 @@ DpClr               clr       ,x+                 clear the direct page
 * reset turns the MMU off, so the CPU gets the ROM's reset vector.
 Vectors             lda       #$3F
                     sta       >DAT.Regs+6
-                    ldx       #$FEEE              SWI3 is the first vector
+                    ldx       #$FEEE    ; swi3 is the first vector
                     ldu       #$DFF2
 VecLoop             stx       ,u++
                     leax      3,x
                     cmpu      #$DFFE
                     blo       VecLoop
                     lda       #$3E
-                    sta       >DAT.Regs+6         restore slot 6
+                    sta       >DAT.Regs+6 ; restore slot 6
                     lda       #MJ.Run
-                    sta       >MJ.Init0           alternate vectors on
-                    sta       <D.HINIT            shadow copies for the kernel
+                    sta       >MJ.Init0 ; alternate vectors on
+                    sta       <D.HINIT  ; shadow copies for the kernel
                     clr       <D.TINIT
 
 * VDG text mode showing the boot screen at motherboard ScStart:
 * SAM V0-V2=0 and F0-F6=ScStart/$200. Clearing a SAM bit is a write to the
 * even address, setting it a write to the odd one.
                     lda       >PIA1Base+2
-                    anda      #%00000111          text, CSS=0
+                    anda      #%00000111 ; text, CSS=0
                     sta       >PIA1Base+2
                     ldx       #$FFC0
                     ldb       #ScStart/$200
-                    lda       #10                 3 V bits + 7 F bits
+                    lda       #10       ; 3 V bits + 7 F bits
 SamLoop             cmpa      #7
-                    bhi       SamClr              V0-V2: clear
+                    bhi       SamClr    ; v0-V2: clear
                     lsrb
                     bcc       SamClr
-                    sta       1,x                 odd address sets the bit
-                    fcb       $8C                 skip the STA below (CMPX #)
-SamClr              sta       ,x                  even address clears it
+                    sta       1,x       ; odd address sets the bit
+                    fcb       $8C       skip the STA below (CMPX #)
+SamClr              sta       ,x        ; even address clears it
                     leax      2,x
                     deca
                     bne       SamLoop
@@ -159,7 +159,7 @@ SamClr              sta       ,x                  even address clears it
 * Clear the boot screen, except after a crash
                     tst       ,s
                     beq       Reloc
-                    ldd       #ScOff              BtDebug cursor (with the block in slot 0)
+                    ldd       #ScOff    ; btDebug cursor (with the block in slot 0)
                     std       ScBlkAdr+2
                     ldx       #ScStart
                     lda       #VdgSpace
@@ -168,22 +168,22 @@ ClrLoop             sta       ,x+
                     bne       ClrLoop
 
 * Move REL, BOOT and KRN from $2600 to Bt.Start, once
-Reloc               ldb       ,s+                 check the boot status
-                    beq       Failed              crash
+Reloc               ldb       ,s+       ; check the boot status
+                    beq       Failed    ; crash
                     tfr       pc,d
                     cmpa      #$26
                     bne       InHigh
                     ldu       #$2600
-                    ldx       #$1200              size of the track 34 boot file
+                    ldx       #$1200    ; size of the track 34 boot file
                     ldy       #Bt.Start
                     bsr       CopyLp
                     jmp       >Offset+InHigh
 
-Failed              clr       >$FF40              turn off the disk drives
+Failed              clr       >$FF40    ; turn off the disk drives
 Hang                bra       Hang
 
 * Copy X bytes from U to Y
-Move                clra                          entry: U=ptr to length byte, data
+Move                clra                ; entry: U=ptr to length byte, data
                     ldb       ,u+
                     tfr       d,x
 CopyLp              lda       ,u+
@@ -200,31 +200,31 @@ BtDebug             pshs      cc,d,x
                     orcc      #IntMasks
                     ldb       #Bt.Block
                     stb       >DAT.Regs+0
-                    ldx       >$0002              cursor
+                    ldx       >$0002    ; cursor
                     anda      #$7F
                     cmpa      #$60
                     blo       NotLow
-                    suba      #$20                lower case to upper case
-NotLow              ora       #$40                $20-$3F -> $60-$7F, $40-$5F unchanged
+                    suba      #$20      ; lower case to upper case
+NotLow              ora       #$40      ; $20-$3F -> $60-$7F, $40-$5F unchanged
                     sta       ,x+
                     stx       >$0002
-                    clr       >DAT.Regs+0         block 0 back in slot 0
+                    clr       >DAT.Regs+0 ; block 0 back in slot 0
                     puls      cc,d,x,pc
 
-InHigh              lda       #$7E                JMP
+InHigh              lda       #$7E      ; jmp
                     sta       <D.BtBug
                     leax      <BtDebug,pcr
                     stx       <D.BtBug+1
                     leau      <R.Crash,pcr
                     ldy       #D.Crash
                     bsr       Move
-                    ldx       #$F000              krn is at $F000
+                    ldx       #$F000    ; krn is at $F000
                     ldd       M$Exec,x
                     jmp       d,x
 
 * Copied to D.Crash
-R.Crash             fcb       6                   size of the code
-                    clr       >MJ.Init1           task 0
+R.Crash             fcb       6         size of the code
+                    clr       >MJ.Init1 ; task 0
                     jmp       >Offset+crash
 
 * Pad REL to $130 bytes so BOOT starts at Bt.Start+$130
