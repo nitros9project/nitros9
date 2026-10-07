@@ -745,34 +745,28 @@ L03AD               sta       <VD.TFlg1,u ; save updated VDG info
                     stb       -4,y      ; $FFC2
                     stb       -2,y      ; $FFC4
                     lda       <VD.ScrnA,u ; get start screen address MSB (always even $200)
+                    anda      #$1F      ; offset MSB within Bt.Block (slot 1)
+                    ldb       #Bt.Block ; text screens are in Bt.Block
                     bra       L03D7
 
 * Set up VDG screen for graphics
 L03CB               stb       -6,y      ; $FFC0
                     stb       -3,y      ; $FFC3
                     stb       -1,y      ; $FFC5
-                    lda       <VD.SBAdd,u ; get address of block screen is in
+                    clra                ; graphics start at the top of their block
+                    ldb       <VD.Blk,u ; the graphics screen block
 L03D7
 * No GIME: the VDG shows motherboard RAM at the address in the SAM's F0-F6
-* ($200 units). A=MSB of the screen's system address. Look up the block in
-* its slot of the system DAT image; motherboard blocks are $38-$3F, so the
-* low 3 bits of the block number are motherboard A15-A13.
-                    tfr       a,b       ; b=MSB of the system address
-                    lsra                ; a=slot*2 (and bit 4)
-                    lsra
-                    lsra
-                    lsra
-                    anda      #$0E      ; a=slot*2
-                    inca                ; low byte of the DAT image entry
-                    ldx       <D.SysDAT
-                    lda       a,x       ; a=block number
-                    anda      #$07      ; motherboard 8K block
-                    lsla                ; to A15-A13
-                    lsla
-                    lsla
-                    lsla
-                    lsla
-                    andb      #$1F      ; offset MSB within the block
+* ($200 units). A=offset MSB within the block, B=block. Motherboard blocks
+* are $38-$3F, so the low 3 bits of the block number are motherboard
+* A15-A13. This works from block numbers only, never from what slot 1 holds,
+* because VTIO's interrupt routine calls it to switch screens.
+                    andb      #$07      ; motherboard 8K block
+                    lslb                ; to A15-A13
+                    lslb
+                    lslb
+                    lslb
+                    lslb
                     pshs      b
                     ora       ,s+       ; a=motherboard address MSB
                     lsra                ; a=address/$200: F0 in bit 0
@@ -806,21 +800,10 @@ DispGfx             ldb       <VD.Rdy,u ; memory already allocated (and thus rea
                     bcs       L0486     ; branch if error
                     stb       <VD.GBuff,u ; save as start block # if high res graphics
                     stb       <VD.Blk,u ; save starting block number if semigraphics or medium res
-                    tfr       d,x
-                    ldd       <D.Proc   ; get current process desc. ptr
-                    pshs      u,d       ; save regs
-                    ldd       <D.SysPrc ; get system proc desc
-                    std       <D.Proc   ; make current
-                    ldb       #$01      ; one block
-                    os9       F$MapBlk  ; map it in to our space
-                    leax      ,u        ; get address into x
-                    puls      u,d       ; restore other regs
-                    std       <D.Proc   ; restore process pointer
-                    bcs       L0486     ; exit if error mapping block
-                    stx       <VD.SBAdd,u ; else store address of gfx mem
+                    ldx       #GfxWin   ; drawn through the graphics window
+                    stx       <VD.SBAdd,u ; store address of gfx mem
                     inc       <VD.Rdy,u ; flag that video RAM is ready
-                    ldd       #$0120    ; a=$01 (mark system pages as used), $20=32 pages to mark (1 full 8K blocks worth)
-                    bsr       L04D9     ; go mark that 8K block of system RAM as used
+                    lbsr      MapGfx    ; map it in for the rest of this call
                     lbsr      Do13      ; erase gfx screen
 L0468               lda       <VD.NChr2,u ; get color set parameter byte
                     sta       <VD.PMask,u ; store color set (0-3)
@@ -876,20 +859,6 @@ L04C4               stb       <VD.PixBt,u ; # of pixels per byte (base 0)
                     stb       >WGlobal+G.CrDvFl ; is this screen currently showing?
                     lbra      DispAlfa
 
-* Entry: X=ptr to screen as mapped into system space
-*        B=# of 256 byte pages to mark
-*        A=mark flag (0=deallocate system pages, 1=allocated system pages)
-L04D9               pshs      x,d       ; save screen ptr & (de)allocate parameters
-                    clra
-                    ldb       2,s       ; get high byte of screen ptr
-                    ldx       <D.SysMem ; get ptr to system memory map
-                    leax      d,x       ; point to that MMU block offset
-                    puls      d         ; get allocate flag & number of 256 byte system pages to mark
-L04E4               sta       ,x+       ; mark them
-                    decb
-                    bne       L04E4
-                    puls      pc,x      ; restore X & return
-
 * 4 color pixel masks
 L04EB               fcb       %11000000
                     fcb       %00110000
@@ -919,24 +888,9 @@ L0503               clr       <VD.NChar,u ; clear original parameter byte
 L050E               lbra      L0468     ; set things up
 
 * $12 - end graphics
-Do12                ldx       <VD.SBAdd,u ; get address of where 8K block with graphics screen is
-                    beq       L051B     ; none, skip ahead
-                    ldd       #$0020    ; a=0 (deallocate) B=32 (32 system pages (256 bytes each))
-                    bsr       L04D9     ; deallocate 8K system RAM from system map
-* Unmap the screen from the system DAT image too. F$SRtMem only frees the
-* slots of plain RAMinUse blocks, so this slot would never be reused and
-* each graphics screen would use up one slot of system address space.
-                    tfr       x,d       ; a=MSB of the screen's system address
-                    lsra                ; a=slot*2
-                    lsra
-                    lsra
-                    lsra
-                    anda      #$0E
-                    ldx       <D.SysDAT
-                    leax      a,x
-                    ldd       #DAT.Free
-                    std       ,x
-                    clra                ; no screen mapped (a second $12 is harmless)
+* The screen was only ever mapped through the graphics window, so there is
+* nothing in the system map to undo.
+Do12                clra                ; no screen (a second $12 is harmless)
                     clrb
                     std       <VD.SBAdd,u
 L051B               leay      <VD.GBuff,u ; point Y to graphics screen block numbers
@@ -966,7 +920,8 @@ L053B               puls      u,b       ; restore stack mem ptr & eat counter
 Do10                leax      <PrstScrn,pcr ; point to routine to Preset screen
                     lbra      GChar1    ; go get 1 more parameter (preset color)
 
-PrstScrn            lda       <VD.NChar,u ; get PRESET color
+PrstScrn            lbsr      MapGfx    ; graphics screen in for this call
+                    lda       <VD.NChar,u ; get PRESET color
                     tst       <VD.Mode,u ; which mode?
                     bpl       L0559     ; branch if 128x192 4 color
                     ldb       #$FF      ; assume we will clear with $FF
@@ -981,7 +936,8 @@ L0559               anda      #$03      ; mask out all but 2 bits (4 colors)
                     bra       L0564     ; and start the clearing
 
 * $13 - erase graphics
-Do13                clrb                ; color 0 by default
+Do13                lbsr      MapGfx    ; graphics screen in for this call
+                    clrb                ; color 0 by default
 L0564               ldx       <VD.SBAdd,u ; get ptr to screen
 * Note: 6309 version clears from top to bottom
 *       6809 version clears from bottom to top
@@ -1041,7 +997,8 @@ Do19                clr       <VD.Msk1,u ; clear color mask byte
 Do18                leax      <DrawPnt,pcr ; point to Draw Point routine to go to once we have all parameters
                     bra       GChar2    ; get the 2 bytes of parameters
 
-DrawPnt             bsr       FixXY     ; fix X coord based on resolution
+DrawPnt             lbsr      MapGfx    ; graphics screen in for this call
+                    bsr       FixXY     ; fix X coord based on resolution
                     std       <VD.GCrsX,u ; save as new gfx cursor pos
                     bsr       DrwPt2    ; draw the point
                     lbra      L067C     ; copy VD.Msk2 to VD.Msk1 & return without error
@@ -1073,7 +1030,8 @@ Do16                leax      <DrawLine,pcr ; point to Line routine to go to onc
 * $D,s    - resolution adjusted Y coordinate (0-191 (forces to 191 if >191))
 * $E,s    - ???
 
-DrawLine            bsr       FixXY     ; fix X coords based on resolution
+DrawLine            lbsr      MapGfx    ; graphics screen in for this call
+                    bsr       FixXY     ; fix X coords based on resolution
                     leas      -LnStkSz,s ; make room on stack for line vars
                     std       LnX1,s    ; save caller supplied (and fixed up) X,Y
                     lbsr      XY2Addr   ; calculate screen ptr and pixel mask to destination coord
@@ -1213,7 +1171,8 @@ Do1C                clr       <VD.Msk1,u
 Do1A                leax      <Circle,pcr ; point to Circle routine to go to once we have all parameters
                     lbra      GChar1    ; 1 parameter byte (radius) to get
 
-Circle              leas      -4,s      ; reserve 4 bytes on stack
+Circle              lbsr      MapGfx    ; graphics screen in for this call
+                    leas      -4,s      ; reserve 4 bytes on stack
                     ldb       <VD.NChar,u ; get radius
                     stb       $01,s     ; store on stack
                     clra
@@ -1362,7 +1321,13 @@ L0759               pshs      b
                     lbra      DrwPt2
 
 * $1D - flood fill
-Do1D                clr       <VD.FF6,u ; clear flag
+* Allocate the fill stack (F$SRqMem) before the graphics block goes into the
+* window: no system calls are made while it is in.
+Do1D                lbsr      L08DD     ; get the fill stack
+                    bcc       Do1DGo    ; got it
+                    rts                 ; no memory for it
+Do1DGo              lbsr      MapGfx    ; graphics screen in for this call
+                    clr       <VD.FF6,u ; clear flag
                     leas      -$07,s
                     lbsr      L08DD
                     lbcs      L0878
@@ -1736,6 +1701,7 @@ L0521               rts
 *       Y = graphics cursor position (MSB = X, LSB = Y)
 Rt.DSTAT            bsr       ChkDvRdy
                     bcs       L0A4F
+                    lbsr      MapGfx    ; graphics screen in for this call
                     ldd       <VD.GCrsX,u
                     bsr       XY2Addr
                     tfr       a,b
@@ -1865,22 +1831,7 @@ Rt.SLGBf            ldb       <VD.Rdy,u
                     leay      <VD.GBuff,u
                     ldb       b,y
                     lbeq      IllArg
-                    pshs      x
-                    stb       <VD.Blk,u
-                    lda       <VD.SBAdd,u
-                    anda      #$E0
-                    lsra
-                    lsra
-                    lsra
-                    lsra
-                    ldx       <D.SysPrc
-                    leax      <P$DATImg,x
-                    leax      a,x
-                    clra
-                    std       ,x
-                    ldx       <D.SysPrc
-                    os9       F$SetTsk
-                    puls      x
+                    stb       <VD.Blk,u ; drawn through the graphics window from now on
                     ldd       R$X,x
                     beq       L0B2B
                     ldb       #$01
@@ -1900,6 +1851,44 @@ L06CB               tst       ,y        ; check block number
                     comb
                     ldb       #E$BMode
 L06D9               puls      pc,a
+
+* Graphics window. Slot 1 of the system map ($2000-$3FFF) holds Bt.Block,
+* the text screens. The graphics routines map the graphics screen block
+* (VD.Blk) there while they run and put Bt.Block back when they return, so
+* a graphics screen needs no system slot of its own. Interrupt code never
+* depends on slot 1 (DispAlfa works from block numbers), and no system call
+* that allocates memory is made while the graphics block is in.
+GfxWin              equ       $2000     ; graphics screen address while mapped
+
+* Map the graphics block into slot 1 for the rest of the calling routine;
+* the routine's rts goes through GfxOut, which puts Bt.Block back. Call it
+* before the routine pushes anything. Does nothing if there is no graphics
+* screen or it is already in (a nested call). Preserves all registers.
+MapGfx              leas      -2,s      ; room for one more return address
+                    pshs      cc,d,x
+                    ldx       <D.SysDAT
+                    ldb       <VD.Blk,u ; the graphics screen block
+                    beq       MapNest   ; none: leave Bt.Block in
+                    cmpb      3,x       ; already in slot 1?
+                    beq       MapNest
+                    stb       3,x       ; slot 1 in the system DAT image
+                    stb       >DAT.Regs+1 ; and in the MMU
+                    ldd       7,s       ; where the routine carries on
+                    std       5,s
+                    leax      <GfxOut,pcr ; its rts comes to GfxOut
+                    stx       7,s
+                    puls      cc,d,x,pc ; carry on with the routine
+MapNest             puls      cc,d,x
+                    leas      2,s       ; drop the spare room
+                    rts
+
+* Put Bt.Block back into slot 1. Preserves all registers and CC.
+GfxOut              pshs      cc,b,x
+                    ldb       #Bt.Block
+                    ldx       <D.SysDAT
+                    stb       3,x       ; slot 1 in the system DAT image
+                    stb       >DAT.Regs+1 ; and in the MMU
+                    puls      cc,b,x,pc
 
 * Get an 8K graphics screen block. The VDG can only display motherboard RAM,
 * MMU blocks $38-$3F; krn marks $38-$3E NotRAM, then Bt.Block ($3B)

@@ -9,6 +9,8 @@ Sources here override same-named files elsewhere on the recipe vpath
 - `covdg.asm`: CoVDG, the VDG console. A copy of the CoCo 3 port's
   `level2/coco3/modules/covdg.asm` with the CoCo 2 code always in. Text and
   graphics screens live in motherboard RAM and are shown through the SAM.
+  A graphics screen takes no system slot: each graphics call maps it into
+  slot 1 in place of the text block and puts the text block back on return.
   `-DALLCAPS=1` shows lower case letters as normal capitals.
 - `term_vdg.asm`: the `/Term` descriptor, the Level 2 VDG case of
   `level1/coco1/modules/term_vdg.asm`.
@@ -51,8 +53,8 @@ the CoCo 3 GIME MMU (`$FF90`/`$FF91`, `$FFA0-$FFAF`), with these differences:
 | --- | --- | --- |
 | `$00` | i-MMU-nity | system globals (block map `$0200`, page map), as on the CoCo 3 |
 | `$01-$37`, `$40`+ | i-MMU-nity | OS9Boot and general RAM |
-| `$38-$3D` | motherboard `$0000-$BFFF` | VDG pool: `NotRAM` in the block map; CoVDG claims graphics screens by setting `RAMinUse` |
-| `$3B` (`Bt.Block`) | motherboard `$6000-$7FFF` | text screens; permanently in system slot 1 (`$2000`), pages `$20-$3F` reserved; `RAMinUse` in the block map |
+| `$38-$3D` | motherboard `$0000-$BFFF` | VDG pool: `NotRAM` in the block map; CoVDG claims graphics screens by setting `RAMinUse` and maps one into system slot 1 only while a graphics call runs |
+| `$3B` (`Bt.Block`) | motherboard `$6000-$7FFF` | text screens; in system slot 1 (`$2000`) except while a graphics call runs, pages `$20-$3F` reserved; `RAMinUse` in the block map |
 | `$3E` | motherboard `$C000-$DFFF` | reserved; `DAT.Free` maps unused slots here |
 | `$3F` (`KrnBlk`) | motherboard `$E000-$FFFF` | REL/BOOT/KRN at `$ED00-$FEFF`, as on the CoCo 3 |
 
