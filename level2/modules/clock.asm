@@ -419,6 +419,13 @@ SvcIRQ
                sta       INT_PENDING_0       clear clock interrupt by writing bit back
 
                else
+               ifne      immunity
+* CoCo 1/2 (i-MMU-nity): the clock is the PIA0 CB1 VSYNC interrupt
+               lda       >PIA0Base+3         VSYNC interrupt flag (CRB bit 7)?
+               bpl       NoClock             no, just poll the other IRQ sources
+               lda       >PIA0Base+2         acknowledge it
+
+               else
 
                lda       >IRQEnR             Get GIME IRQ Status and save it.
                ora       <D.IRQS
@@ -427,6 +434,7 @@ SvcIRQ
                beq       NoClock
                anda      #^$08               Drop clock interrupt
                sta       <D.IRQS
+               endc                          immunity
                endc
                ldx       <D.VIRQ             Set VIRQ routine to be executed
                clr       <D.QIRQ             ---x IS clock IRQ
@@ -802,7 +810,7 @@ Init           ldx       <D.Proc             save user proc
                jmp       <D.Crash
 LinkOk         sty       <D.Clock2           save entry point
 InitCont
-               ifne      coco3
+               ifne      coco3+immunity
                ldx       #PIA0Base           point to PIA0
                endc
                clra                          no error for return...
@@ -834,11 +842,14 @@ InitCont
                else
                
 * Note: this code can go away once we have a rel_50hz
+* (CoCo 1/2: 50Hz is the VDG's own frame rate on a PAL machine, no GIME bit)
                ifeq      TkPerSec-50
+               ifeq      immunity
                ldb       <D.VIDMD            get video mode register copy
                orb       #$08                set 50 Hz VSYNC bit
                stb       <D.VIDMD            save video mode register copy
                stb       >$FF98              set 50 Hz VSYNC
+               endc
                endc
 
                sta       1,x                 enable DDRA
@@ -846,7 +857,11 @@ InitCont
                sta       3,x                 enable DDRB
                coma
                sta       2,x                 set port B all outputs
+               ifne      immunity
+               ldd       #$3435              [A]=PIA0 CRA, [B]=PIA0 CRB: VSYNC (CB1) IRQ enabled
+               else
                ldd       #$343C              [A]=PIA0 CRA contents, [B]=PIA0 CRB contents
+               endc
                sta       1,x                 CA2 (MUX0) out low, port A, disable HBORD high-to-low IRQs
                stb       3,x                 CB2 (MUX1) out low, port B, disable VBORD low-to-high IRQs
                sta       $23,x               disable CART +RG Mar 14, 2012
@@ -867,7 +882,7 @@ InitCont
                leay      NewSvc,pcr          insert syscalls
                os9       F$SSvc
                
-               ifne      wildbits
+               ifne      wildbits+immunity
                else
 * H6309 optimization opportunity here using oim
                lda       <D.IRQER            get shadow GIME IRQ enable register

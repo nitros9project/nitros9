@@ -48,7 +48,14 @@ Lp                  sta       8,x       ; put into map 1
                     decb                ; count down
                     bne       Lp        ; branch if zero is clear to Lp
 
+                  IFNE    immunity
+* i-MMU-nity: MMU off and the CoCo 1/2 ROM vectors (bit 7 set), so the
+* jump below goes through BASIC's reset vector. This code was copied to
+* motherboard $0000 (block $38), so it keeps running with the MMU off.
+                    lda       #$80      ; MMU off, ROM vectors
+                  ELSE
                     lda       #$4C      ; standard DECB mapping
+                  ENDC
                     sta       >$FF90    ; store A at >$FF90
                     clr       >DAT.Task ; go to map type 0
                     clr       >$FFDE    ; and to all-ROM mode
