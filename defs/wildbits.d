@@ -131,6 +131,165 @@ SS.FntLoadF         rmb       1
 SS.FntChar          rmb       1
 SS.SOLIRQ           rmb       1
 SS.SOLMUTE          rmb       1
+SS.TermSel          rmb       1                   $C5 R$X = terminal id: show it (vtio/grfdrv)
+SS.LiveKeys         equ       $C6                 GetStat: R$A = live key sense bits, R$X/R$Y/R$U = keys held now; empties the input buffer
+* SS.Joy ($13) modes, in R$X on entry (joust docs/grfdrv256-api.md)
+JOY.Stick0          equ       0                   stick 0, compatibility: R$X/R$Y = 0/128/255, R$A = buttons
+JOY.Stick1          equ       1                   stick 1, compatibility
+JOY.Sticks          equ       2                   R$X = stick 0, R$Y = stick 1, as JY bits
+JOY.NES2            equ       3                   R$X, R$Y = NES pads 0 and 1
+JOY.SNES2           equ       4                   R$X, R$Y = SNES pads 0 and 1
+JOY.NES4            equ       5                   R$Y = 8-byte buffer: NES pads 0-3
+JOY.SNES4           equ       6                   R$Y = 8-byte buffer: SNES pads 0-3
+* The SS.Joy word, 1 = pressed.  The low byte alone is stick-compatible.
+JY.Up               equ       %00000001
+JY.Down             equ       %00000010
+JY.Left             equ       %00000100
+JY.Right            equ       %00001000
+JY.Btn0             equ       %00010000           stick button 0; NES A; SNES B
+JY.Btn1             equ       %00100000           stick button 1; NES B; SNES Y
+JY.Btn2             equ       %01000000           stick button 2; SNES A
+JY.X                equ       %10000000           SNES X
+JY.Select           equ       %00000001           high byte
+JY.Start            equ       %00000010           high byte
+JY.L                equ       %00000100           high byte, SNES
+JY.R                equ       %00001000           high byte, SNES
+SS.WSig             equ       $E1                 SetStat: signal me when this terminal goes background/forward
+
+* Aliases: two codes adopted from the CoCo whose os9.d names describe
+* nothing they do on this hardware.  SS.PScrn is "Polymorph Screen into
+* different screen type" there and sets which source feeds one display
+* layer here; SS.DScrn is "Display a screen allocated by SS.AScrn" there
+* and is the VICKY master control register here, Get and Set.  The
+* originals stay valid and stay in use - level2/coco3 uses both codes
+* with their CoCo meanings - but new Wildbits code should use these.
+* Defined here rather than in os9.d for exactly that reason: coco3
+* modules do not include this file.
+SS.Layer            equ       SS.PScrn            R$X = layer 0-2, R$Y = source: 0-2 bitmap, 4-6 tile map
+SS.MCR              equ       SS.DScrn            R$X = MCR low byte, R$Y = MCR high byte (FX_OMIT/FT_OMIT)
+
+* Signal codes for SS.WSig.  The caller picks its own, but these are the
+* project's defaults and what wsigtst uses.  They are above $80 because
+* the system owns everything at or below it (os9.d: S$Kill $00 ... S$Alarm
+* $05, S$FS2Sig $80; level1/wildbits/modules/SOLdrv.asm: "Signals should
+* be > 128, system defines signals <= 128").  $05 is S$Alarm - the code
+* F$Alarm sends - and must never be used for this.
+S$WinBg             equ       $81                 this terminal went background
+S$WinFg             equ       $82                 this terminal came forward
+
+* Graphics Get/SetStats for bitmaps, CLUTs, sprites, tile sets and tile maps
+* (grfdrv256).  Codes without a handler return E$UnkSvc.  The groups sit in
+* the free holes: $C7-$CB are VRN (os9.d), $D2 is sc16550's SS.DvrID, $E2 is
+* SS.Fuji (drivewire.d).
+* Spare: $D0 (was SS.KyDwn), $D4-$E0 (the sprite codes the registered table
+* made unnecessary) and $FE-$FF.  $E1 is SS.WSig, above.
+* The sprite group is no longer contiguous, and that is the point: a code
+* with no handler is a promise nobody made.  The rest of the groups are
+* still reserved names awaiting the goal 2 trim (docs/driver-work.md).
+* CLUTs
+SS.ClutLoad         equ       $CC                 load a CLUT from a file
+SS.ClutCopy         equ       $CD                 load a whole CLUT from caller memory
+SS.ClutRead         equ       $CE                 GetStat: CLUT entries to a caller buffer
+SS.ClutWrite        equ       $CF                 CLUT entries from a caller buffer
+* Sprites
+* A program that draws sprites REGISTERS its own 128-record table with
+* SS.SprReg and then pushes ranges of it with SS.SprPush; the driver keeps
+* no copy of the records at all and restores the screen from that table on
+* a terminal switch (docs/sprite-registration-plan.md in the joust tree).
+* SS.SprSet ($D3, records from a caller buffer) is GONE: it was a second
+* writer the driver could not reproduce on a switch.
+SS.SprPush          equ       $D1                 R$Y = first record, R$U = count: that range of the registered table to the screen
+SS.SprReg           equ       $D3                 R$X = the table (auto: R$Y = 0), R$Y = blocks (manual), R$U = records 1-128, 0 = give it up
+* $D4-$E0 were thirteen more sprite codes - SprAlloc, SprACfg, SprCfg,
+* SprXY, SprOn, SprOff, SprLayer, SprClut, SprLoad, SprSave, SprSLoad,
+* SprSSave, SprKill - reserved in 2026-03 for a per-sprite API that the
+* registered table made unnecessary: a program moves, shows, hides and
+* re-images a sprite by writing its own record and pushing the range.
+* None of them ever had a handler.  They are free, except $D4/$D5 which the
+* graphics allocator below now uses (user, 2026-09-20).
+* Graphics memory.  NOT bitmap-specific: one allocator serves bitmaps, tile
+* sets and tile maps alike, which is why it is here rather than in any of
+* the three groups.  It exists at all because F$AlHRAM is registered
+* F$AlHRAM+SysState in krnp2.asm's svctab, so an application cannot call it
+* and the driver can - and the convention says graphics allocate from the
+* top of the block map down.  The blocks it returns belong to the PROGRAM,
+* which frees them with SS.GfxFree; contrast SS.BmAlloc below, whose blocks
+* belong to the driver.  Blocks are physically consecutive, so an object may
+* run past the end of one.
+SS.GfxAlloc         equ       $D4                 R$X = block count; returns R$X = first block
+SS.GfxFree          equ       $D5                 R$X = first block, R$U = count
+* Bitmaps.  Two ways in, and the difference is who owns the memory:
+*   SS.BmDef   - the program allocated the blocks (SS.GfxAlloc or F$AllRAM)
+*                and says where the bitmap is.  The driver never frees them.
+*   SS.BmAlloc - the driver allocates AND defines in one call, and owns the
+*                blocks: SS.BmKill and a terminal close free them.  This is
+*                what lets shellbg put up a wallpaper and exit.
+* Whoever allocated, frees.  The driver records which it was, so no caller
+* has to pass a flag.
+* NEITHER ENABLES THE BITMAP.  Visibility needs three independent things -
+* the enable bit (SS.BmCfg), a layer pointing at it (SS.Layer), and FX_BM in
+* the MCR - and newly allocated blocks hold whatever was there before, so
+* enabling on allocate means showing garbage.  SS.AScrn, the compatibility
+* shim, supplies the enable to keep its old contract.
+* SS.BmClear and SS.BmLine are BUILT (2026-09-20) and are the two calls
+* that exist because only the driver can reach the hardware behind them:
+* the DMA engine and the line engine both live at addresses outside a
+* Level 2 process's address space.  SS.BmClear is ASYNCHRONOUS - its
+* GetStat says when the fill has finished - and SS.BmLine takes a BATCH,
+* because a line is 3.2 us of hardware behind a 474 us call.  Both are
+* documented in docs/bitmap-api.md in the joust tree.
+SS.BmAlloc          equ       $E3                 R$Y = bitmap #, R$X = screen type; returns R$X = first block
+SS.BmBlk            equ       $E4                 GetStat: bitmap first block and control byte
+SS.BmClear          equ       $E5                 R$Y = bitmap #, R$X low = fill value; GetStat: R$X = 1 while a fill is outstanding
+SS.BmDef            equ       $E6                 R$Y = mode/bitmap #, R$X = block (0 = clear), R$U = offset
+SS.BmLine           equ       $E7                 R$Y = bitmap #, R$X = 8-byte records, R$U = count in / drawn out; GetStat: R$X = pixels queued
+SS.BmKill           equ       $EA                 R$Y = bitmap #: undefine, and free if the driver allocated
+SS.BmCfg            equ       $ED                 R$Y = bitmap #, R$X = enable/CLUT, R$U = HIRES4/GROUP
+* $E8, $E9, $EB and $EC are free (user, 2026-09-20).  They were SS.BmOn,
+* SS.BmOff, SS.BmLoad and SS.BmSave, and none ever had a handler.  On and
+* Off are two fields of SS.BmCfg, which can also leave every other field
+* alone, so a hide is one call and costs no more than a dedicated one would.
+* Load and Save the architecture forbids outright - "no file I/O in
+* grfdrv256" - and a program does them with I$Open/I$Read into the blocks
+* SS.BmBlk reports, which is what pixview and shellbg already do.
+* $E6 was SS.BmLayer, a THIRD name for SS.PScrn/SS.Layer, and $E7 was
+* SS.BmClut, a second name for SS.Palet's SetStat whose GetStat means
+* something unrelated.  Both are now better served by SS.BmCfg and SS.Layer,
+* so the numbers went to SS.BmDef and to the line engine.
+* Tile sets and tile maps.  A program owns the tile pixels and the map
+* cells, in its own F$AllRAM blocks, and the hardware reads them there:
+* the address in the register record IS the registration, so there is
+* nothing else to tell the driver.  What the driver keeps per terminal is
+* only the register image (V.TMn, V.TSn), which PullBuf reprograms on a
+* terminal switch.  See docs/tile-api.md in the joust tree for the
+* interface and docs/tile-plan.md for why these are the only codes left.
+* Tile sets
+SS.TsSet            equ       $EE                 R$X = 4-byte record, R$Y = tile set #
+SS.TsAlloc          equ       $F0                 allocate tile set memory (reserved, no handler)
+SS.TsKill           equ       $F3                 clear a tile set and free its memory (reserved, no handler)
+* Tile maps
+SS.TmSet            equ       $F4                 R$X = 12-byte record, R$Y = tile map #
+SS.TmAlloc          equ       $F6                 allocate a tile map (reserved, no handler)
+SS.TmScrl           equ       $F8                 R$Y = tile map #, R$X = X scroll, R$U = Y scroll
+SS.TmKill           equ       $FD                 clear a tile map and free its memory (reserved, no handler)
+* $EF, $F1, $F2, $F5, $F7, $F9-$FC are FREE (user, 2026-09-20).  They were
+* TsAddr, TsLoad, TsSave, TmAddr, TmCell, TmOn, TmOff, TmLoad and TmSave -
+* nine codes reserved in 2026-03 that never had a handler and that nothing
+* in either tree ever referenced.  A program does each of them without a
+* call: it keeps the block and offset it registered rather than reading an
+* address back; it loads and saves with ordinary I$Read/I$Write, because
+* grfdrv256 does no file I/O; it maps the map block and stores the 2-byte
+* cell itself, which is what Joust's gfx.a TmRemove/TmClrBr already do; and
+* it turns a map on or off with bit 0 of the CTRL byte in a record it
+* already holds.  The four Alloc/Kill codes above stay reserved because
+* asset allocation is meant to move into the driver - only it can reach
+* F$AlHRAM, which is registered F$AlHRAM+SysState.  SS.TmScrl is
+* implemented (2026-09-20): scrolling is the one tile operation with no
+* program-owned buffer behind it, because the scroll position lives only in
+* these registers.
+* The four tile maps in the rc16 registers are NOT four usable layers: the
+* core enables tile maps 0-2 only, and there is no scan address for a
+* fourth, so SS.TmSet's limit of 2 matches the hardware.
 
 ********************************************************************
 * System control definitions
@@ -554,6 +713,8 @@ VKY_RESERVED_02     rmb       1
 VKY_DRAWLINE_CTRL   equ       VKY_RESERVED_02     b0 drawing-line enable
 VKY_DRAWLINE_REG    equ       $FFCA               fixed-address alias of TXT.Base+VKY_DRAWLINE_CTRL
 VKY_DRAWLINE_EN     equ       $01                 permits queued line pixels to reach SRAM
+VKY_MCR2            equ       VKY_DRAWLINE_CTRL   grfdrv256's name for it
+VKY_MCR2_LineDraw   equ       VKY_DRAWLINE_EN
 VKY_GFX_MODE        rmb       1                   $FFCB (rc14+): b0 HIRES4 = every bitmap plane 640x240 at 4 bits/dot, b3:1 CLUT group
 VKY_RESERVED_04     rmb       1
 * HIRES4: high nibble is the left dot; group selects a 16-color slice.
@@ -697,6 +858,28 @@ TyVKY_LD_XMAX8      equ       319
 TyVKY_LD_XMAX4      equ       639
 TyVKY_LD_YMAX       equ       239
 TyVKY_LD_STRIDE     equ       320
+
+* grfdrv256's names for the line engine.  LD.* are offsets from LD.Base, so
+* the driver can index one pointer; the others are its software limits.
+LD.Base             equ       TyVKY_LD_BASE
+LD.Ctrl             equ       0
+LD.Color            equ       1
+LD.X0H              equ       2
+LD.X0L              equ       3
+LD.X1H              equ       4
+LD.X1L              equ       5
+LD.Y0               equ       6
+LD.Y1               equ       7
+LD.FifoH            equ       2                   read: FIFO count high
+LD.FifoL            equ       3                   read: FIFO count low
+LD_CTRL_Go          equ       TyVKY_LD_GO         a LEVEL, not a pulse
+LD.Depth            equ       8192                FIFO entries (K2 line_fast_1; the Jr2 line_5 core has 4096)
+LD.Room             equ       LD.Depth-320        stop enqueueing above this
+LD.Room4            equ       LD.Depth-640        the same for a 640-pixel HIRES4 line
+LD.MaxX             equ       TyVKY_LD_XMAX8      an endpoint outside 0..319 is clipped by the driver
+LD.MaxX4            equ       TyVKY_LD_XMAX4      the same on a HIRES4 (640x240 4bpp) plane
+LD.MaxY             equ       TyVKY_LD_YMAX
+LD.Poll             equ       200                 COMPLETE poll limit
 
 * Compatibility names for vtio screen flags; retained for callers.
 ********************************************************************
@@ -1036,6 +1219,42 @@ DMA_OP_MASK         equ       $04                 per nibble: a source nibble of
 DMA_OP_NOT          equ       $08                 invert the result (with OR/AND/XOR: NOR/NAND/XNOR)
 DMA_OP_Implemented  equ       $80                 read-only: 1 = this core has the ops
 
+* grfdrv256's names for registers defined above.
+DMA_FILL_16_H       equ       DMA_FILL_WORD_H
+DMA_FILL_16_L       equ       DMA_FILL_WORD_L
+DMA_CTRL_16Bit      equ       DMA_CTRL_Dbl_Speed
+* The destination address reads back rotated: the byte written as H comes
+* back at feca, M at fec9 and L at fec8.  Diagnostic only.
+DMA_DEST_RD_H       equ       DMA_DEST_ADDR_M
+DMA_DEST_RD_M       equ       DMA_DEST_ADDR_H
+DMA_DEST_RD_L       equ       DMA_UNUSED_1
+
+* SS.BmClear wait modes: a number in bits 6:4 of R$X's high byte.  Mode 0
+* arms the fill and returns; mode 7 polls DMA_STATUS_REG until it is done.
+* Modes 1-6 are diagnostics from bringing up the DMA engine.  Bits 7 and
+* 3-1 must be zero (E$BadMod), so a caller using the old bitmask fails loudly.
+DmaSyncs            equ       1                   SYNC parks per call (mode 3)
+DmaCwChk            equ       8                   CWAI-and-check parks before giving up (mode 2)
+DmaDly7             equ       35714               register-only loop, 7 cycles a pass
+DmaDly12            equ       20833               the data-reading loops, 12 a pass
+DmaWt.Shift         equ       4                   shift R$X high right this far
+DmaWt.Mask          equ       7                   then keep this much
+DmaWt.Rsvd          equ       $8E                 bits 7 and 3-1: must all be zero
+DmaWt.None          equ       0                   arm and return
+DmaWt.Cwai          equ       1                   park in CWAI
+DmaWt.CwChk         equ       2                   park, re-check the status, park again
+DmaWt.Sync          equ       3                   park in SYNC
+DmaWt.Reg           equ       4                   a register-only loop
+DmaWt.Io            equ       5                   that loop reading $FE20
+DmaWt.Ram           equ       6                   that loop reading RAM
+DmaWt.Poll          equ       7                   poll DMA_STATUS_REG until done
+* SS.BmClear's R$Y high byte: 0 = arm at once, 1-255 = wait for that raster
+* line first (a measurement aid).  DMA_ArmLine is the earliest safe line;
+* the other two bound the raster spins so a stuck read-back cannot hang.
+DMA_ArmLine         equ       48
+DMA_ArmSpin         equ       1000
+DMA_ArmWrap         equ       20000
+
 
 * SPLASH FLASH SPI controller
 * Reads the serial flash that holds the splash image.  Shares the WiFi
@@ -1203,6 +1422,24 @@ VS_AICTRL1          equ       $D                  application control 1
 VS_AICTRL2          equ       $E                  application control 2
 VS_AICTRL3          equ       $F                  application control 3
 
+
+******************************************************************
+* NES/SNES pad port (the FNX4N4S connector; core block TinyVKY_NES_SNES,
+* CPU fixed decode $FF80-$FF8F, identical on the K2 and Jr2).  Four pads,
+* all NES or all SNES (one MODE bit for the port).  Write NES_TRIG to
+* shift a reading in; NES_DONE is set when it is complete and cleared by
+* the next trigger.  The pad registers shift in place, so read them only
+* while NES_DONE is set.  Data reads 0 = pressed.  Pad n at NES_PAD0+2n:
+* NES mode, the first byte = A B Select Start Up Down Left Right (bit 7
+* first); SNES mode, the first byte = B Y Select Start Up Down Left Right
+* and the second byte's low nibble = A X L R.
+NES.Base            equ       $FF80
+NES_CTRL            equ       0         write: EN, MODE, TRIG; read: the same with DONE in bit 6
+NES_PAD0            equ       4
+NES_EN              equ       %00000001 port on
+NES_MODE            equ       %00000100 1 = SNES (12 bits), 0 = NES (8 bits)
+NES_DONE            equ       %01000000 read only: a reading is complete
+NES_TRIG            equ       %10000000 start a reading; the core clears it when it latches
 
 * DIP Switches for Jr/Jr2/K2.. 
 K2_DIP_SW.Base      equ       $FF90
