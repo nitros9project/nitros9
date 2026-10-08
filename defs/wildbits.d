@@ -873,7 +873,7 @@ LD.Y1               equ       7
 LD.FifoH            equ       2                   read: FIFO count high
 LD.FifoL            equ       3                   read: FIFO count low
 LD_CTRL_Go          equ       TyVKY_LD_GO         a LEVEL, not a pulse
-LD.Depth            equ       8192                FIFO entries (K2 line_fast_1; the Jr2 line_5 core has 4096)
+LD.Depth            equ       8192                FIFO entries, K2 and Jr2 (confirmed with the core developer for rc23)
 LD.Room             equ       LD.Depth-320        stop enqueueing above this
 LD.Room4            equ       LD.Depth-640        the same for a 640-pixel HIRES4 line
 LD.MaxX             equ       TyVKY_LD_XMAX8      an endpoint outside 0..319 is clipped by the driver
