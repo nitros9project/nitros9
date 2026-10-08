@@ -115,8 +115,8 @@ CMDS += dmem minted mmap modpatch \
 	gfxstatus xtclut drawtest play \
 	shellbg shellbgoff ntptime view utilpak1 fadein fadeout \
 	lutrd black hexed pixview iss
-# grfdrv256 is loaded by the Level 2 vtio
-CMDS += grfdrv256
+# grfdrv256 is loaded by the Level 2 vtio; assetload loads files into RAM blocks
+CMDS += grfdrv256 assetload
 endif
 # sprites moved OUT of CMDS 2026-09-09 (user): it is a hardware probe, so it
 # lives in TESTS_BIN below and reaches the disk as TESTS/sprites only. Its
