@@ -51,7 +51,7 @@ start               lbra      Init
 
 * The 'font' and 'palette' data modules used to be F$Linked here by
 * InitDisplayMem and installed by GF.InitDisp.  Both are gone: the FPGA
-* preloads the font into $C1 and the text palettes into $C0 at reset.
+* preloads the font into FONT_BLK and the text palettes into VICKY_BLK at reset.
 keydrvmod           fcs       /keydrv/
 msdrvmod            fcs       /mousedrv/             mouse driver module
 llpath              fcc       "/dd/CMDS/"
@@ -124,7 +124,7 @@ nobg@               lda       >gr.SigFgID
 nofg@               puls      x,y,u
 AltISRCont
 
-* Handle sound. PSG $C4 via GF.Write LUT 1. AltISR cannot F$Sleep, so
+* Handle sound. PSG (PSG_BOTH_PORT) via GF.Write. AltISR cannot F$Sleep, so
 * skip Flip1 when gr.Busy and retry next tick (do not put WaitWrite
 * inside CallGrfDrvNoPD).
 HandleSound
@@ -197,7 +197,7 @@ swx@                rts
 *    CC = carry set on error
 *    B  = error code
 *
-* First INIZ (/term): hardware + InitTerm (IT.WND=0). Old Write still owns $C2.
+* First INIZ (/term): hardware + InitTerm (IT.WND=0). Old Write still owns TEXT_RAM_BLK.
 * Later named INIZ (/vtN): skip hardware, InitTerm only.
 * Factory INIZ (/vt, IT.WND=$FF): skip hardware and InitTerm; SS.Open binds.
 * GF.TermNew's log (read by the MAME dump): $12F5=active $12F6=cnt $12F7=K/E $12F8=err
@@ -690,7 +690,7 @@ SetWDest            lda       V.TermLive,u
                     clr       >gr.b4              WD.Buf - the 16K terminal buffer
                     rts
 SWVicky             lda       #WD.Vicky
-                    sta       >gr.b4              WD.Vicky - the live $C2/$C3 planes
+                    sta       >gr.b4              WD.Vicky - the live TEXT_RAM_BLK/COLOR_RAM_BLK planes
                     lda       V.TermBufBlk,u
                     beq       SWDestX
                     sta       >gr.TermBlk         keep SetBlkC2C3 off block 0
@@ -1945,7 +1945,7 @@ storeaddr@          pshs      y                   store font offset on stack [O]
 * s= ADDR|OFFSET|                   
 *                   ****      map block into user dat and store address on stack
                     pshs      x,u                 preserve x,u
-                    ldx       #FONT_BLK           map in $C1
+                    ldx       #FONT_BLK           map in FONT_BLK
                     ldb       #$01                map 1 block at address x (x set on entry)
                     os9       F$MapBlk
                     bcc       mapgood@            if success, then continue

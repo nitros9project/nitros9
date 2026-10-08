@@ -376,22 +376,22 @@ PushBuf             lbsr      PushCore
 * PushCore - GF.PushBuf's body, also called by GFSwitch.  Exit U = gr.U5.
 PushCore            lbsr      SetBlkC2C3
                     pshs      y,u
-                    ldy       #$6000+T.TXT copy text from $C2
+                    ldy       #$6000+T.TXT copy text from TEXT_RAM_BLK
                     ldu       #$2000
                     ldd       #4800
                     lbsr      CpyBlk
-                    ldy       #$6000+T.TXTCOLOR copy color from $C3
+                    ldy       #$6000+T.TXTCOLOR copy color from COLOR_RAM_BLK
                     ldu       #$4000
                     ldd       #4800
                     lbsr      CpyBlk
                     lbsr      SetBlkC0C1
 * The four copies below READ Vicky memory back.  Each is gated on its own
 * switch so they can be re-enabled one at a time on real hardware - see
-* the TermSave* table in defs/wildbits_vtio.d.  SetBlkC0C1 maps $C0 at
-* $2000 and $C1 at $4000.
+* the TermSave* table in defs/wildbits_vtio.d.  SetBlkC0C1 maps VICKY_BLK at
+* $2000 and FONT_BLK at $4000.
                     ifne      TermSaveTextLUT
                     ldy       #$6000+T.FLUT   text LUT fg+bg, 2 x 64 bytes
-                    ldu       #$2000+TEXT_LUT_FG  $C0+$1700, NOT $C1
+                    ldu       #$2000+TEXT_LUT_FG  VICKY_BLK+$1700, NOT FONT_BLK
                     ldd       #128
                     lbsr      CpyBlk
                     endc
@@ -402,13 +402,13 @@ PushCore            lbsr      SetBlkC2C3
 * outgoing terminal's records are simply left alone until then.
                     ifne      TermSaveFont0
                     ldy       #$6000+T.FONT0  font memory bank 0
-                    ldu       #$4000+FONT_0_OFFSET   $C1+$0000
+                    ldu       #$4000+FONT_0_OFFSET   FONT_BLK+$0000
                     ldd       #$800
                     lbsr      CpyBlk
                     endc
-* CLUTs 0-3 are GRPH_LUT0_OFF ($1000) within FONT_BLK ($C1), which
-* SetBlkC0C1 maps at $4000 - so $5000, not $2800.  $2800 is $C0+$0800,
-* and 4096 bytes from there runs to $C0+$17FF: on Revision E that is
+* CLUTs 0-3 are GRPH_LUT0_OFF ($1000) within FONT_BLK (FONT_BLK), which
+* SetBlkC0C1 maps at $4000 - so $5000, not $2800.  $2800 is VICKY_BLK+$0800,
+* and 4096 bytes from there runs to VICKY_BLK+$17FF: on Revision E that is
 * gamma R, the mouse graphics, the BITMAP and TILE control registers,
 * the memtext registers, all four sprite banks and the text LUTs.  A
 * push/pull round trip was self-consistent, which is why nothing showed,
@@ -416,7 +416,7 @@ PushCore            lbsr      SetBlkC2C3
 * whatever had been captured.
                     ifne      TermSaveCLUT
                     ldy       #$6000+T.CLUT0  graphics LUT0-3, $400 each
-                    ldu       #$4000+GRPH_LUT0_OFF   $C1+$1000
+                    ldu       #$4000+GRPH_LUT0_OFF   FONT_BLK+$1000
                     ldd       #$1000
                     lbsr      CpyBlk
                     endc
@@ -427,7 +427,7 @@ PushCore            lbsr      SetBlkC2C3
 * and authoritative - while reading a Vicky register back is not
 * something the hardware owes us.  PullBuf still programs them from the
 * mirror; it is only the capture that is gone.
-* The bitmap registers ($C0+$1000) and the tile map / tile set registers
+* The bitmap registers (VICKY_BLK+$1000) and the tile map / tile set registers
 * ($1100 / $1180) are NOT read back here any more either, for the same
 * reason $FFC0-$FFCF no longer are.  This block used to capture all three
 * bitmaps' control byte and physical address and hand them to PullBuf,
@@ -435,13 +435,13 @@ PushCore            lbsr      SetBlkC2C3
 * /vt1 displayed correctly, survived being switched away from, and came
 * back as pure static - PushBuf had overwritten V.BM2Blk with whatever
 * reading $3011 produced and PullBuf pointed the display at it.  MAME
-* models the whole $C0 page as plain RAM, so the round trip is perfect
+* models the whole VICKY_BLK page as plain RAM, so the round trip is perfect
 * there and the failure never appears.
 *
 * vtio owns these values now: SS.AScrn and SS.Palet write V.BMxCl_En /
 * V.BMxBlk, SS.FScrn clears them, GF.TermNew zeroes the whole
 * bitmap+tile mirror for a new terminal, and PullBuf below programs the
-* registers from it.  A program that poked $C0+$1000 behind the driver's
+* registers from it.  A program that poked VICKY_BLK+$1000 behind the driver's
 * back would no longer have its bitmap carried per terminal - nothing
 * does; SS.AScrn is the only way in.
 *
@@ -500,7 +500,7 @@ BmGetAddr           lsla                          two bytes per bitmap in each
 *******************************************************************
 * BmRegAddr - write a bitmap's 24-bit address into its registers.
 *   Entry: A = block, X = offset (0-$1FFF), Y = the register base
-*          ($3000, $3008 or $3010 with $C0 in slot 1).
+*          ($3000, $3008 or $3010 with VICKY_BLK in slot 1).
 *   Writes bits 23:16 at 1,y and bits 15:0 at 2,y.  Clobbers D and X.
 *
 * The address is block*$2000 + offset.  Blk2Addr gives bits 23:8 of the
@@ -529,11 +529,11 @@ PullBuf             lbsr      PullCore
 * PullCore - GF.PullBuf's body, also called by GFSwitch.  Exit U = gr.U5.
 PullCore            lbsr      SetBlkC2C3
                     pshs      y,u
-                    ldu       #$6000+T.TXT restore text to $C2
+                    ldu       #$6000+T.TXT restore text to TEXT_RAM_BLK
                     ldy       #$2000
                     ldd       #4800
                     lbsr      CpyBlk
-                    ldu       #$6000+T.TXTCOLOR restore color to $C3
+                    ldu       #$6000+T.TXTCOLOR restore color to COLOR_RAM_BLK
                     ldy       #$4000
                     ldd       #4800
                     lbsr      CpyBlk
@@ -545,7 +545,7 @@ PullCore            lbsr      SetBlkC2C3
 * read out of Vicky.
                     ifne      TermSaveTextLUT
                     ldu       #$6000+T.FLUT   text LUT fg+bg
-                    ldy       #$2000+TEXT_LUT_FG  $C0+$1700, NOT $C1
+                    ldy       #$2000+TEXT_LUT_FG  VICKY_BLK+$1700, NOT FONT_BLK
                     ldd       #128
                     lbsr      CpyBlk
                     endc
@@ -554,7 +554,7 @@ PullCore            lbsr      SetBlkC2C3
 * the 16K buffer is finished with and slots 3/4 are free.
                     ifne      TermSaveFont0
                     ldu       #$6000+T.FONT0  font memory bank 0
-                    ldy       #$4000+FONT_0_OFFSET   $C1+$0000
+                    ldy       #$4000+FONT_0_OFFSET   FONT_BLK+$0000
                     ldd       #$800
                     lbsr      CpyBlk
                     endc
@@ -563,7 +563,7 @@ PullCore            lbsr      SetBlkC2C3
 * SS.DfPal maintains and nothing ever reads out of Vicky.
                     ifne      TermRestCLUT
                     ldu       #$6000+T.CLUT0  graphics LUT0-3
-                    ldy       #$4000+GRPH_LUT0_OFF   $C1+$1000, not $2800
+                    ldy       #$4000+GRPH_LUT0_OFF   FONT_BLK+$1000, not $2800
                     ldd       #$1000
                     lbsr      CpyBlk
                     endc
@@ -608,7 +608,7 @@ PullCore            lbsr      SetBlkC2C3
                     lbsr      CpyBlk
                     puls      y,u
 * The sprite registers last: SprRestore takes slots 3 and 4, which the 16K
-* buffer had until now, and it needs $C0 where SetBlkC0C1 left it.
+* buffer had until now, and it needs VICKY_BLK where SetBlkC0C1 left it.
                     lbsr      SprRestore
 end@                clrb
                     rts
@@ -1084,11 +1084,11 @@ GSCPZero            clra
 *   and gr.PDAT the caller's DAT image.
 * The 1K goes to T.CLUTn in the terminal's 16K switch buffer - offset
 * $1000+n*$400 of the SECOND block of the pair, the same offsets the
-* CLUTs have in $C1 - and, when the terminal is live or has no buffer
-* yet, to the live CLUT in $C1.
+* CLUTs have in FONT_BLK - and, when the terminal is live or has no buffer
+* yet, to the live CLUT in FONT_BLK.
 *   slot 1  the caller's block holding R$Y (source $2000 + R$Y&$1FFF)
 *   slot 2  the caller's next block, only when the 1K crosses into it
-*   slot 3  $C1              slot 4  second buffer block (SetBlkC2C3)
+*   slot 3  FONT_BLK              slot 4  second buffer block (SetBlkC2C3)
 * Exit: B = 0, or carry + E$IllArg (CLUT # above 3, or the 1K runs off
 *   the top of the caller's map).
 *******************************************************************
@@ -2651,7 +2651,7 @@ BmLnLo
                     ora       #VKY_MCR2_LineDraw
                     sta       V.V_MCR2,u
                     sta       TXT.Base+VKY_MCR2
-* The caller's array through slots 1 and 2, then $C0 through slot 3.
+* The caller's array through slots 1 and 2, then VICKY_BLK through slot 3.
 BmLnOn              ldb       1,s                 records left
                     lda       #8
                     mul                           D = the array's length in bytes
@@ -2758,12 +2758,12 @@ BmLnArg             clra
                     lbra      BmBad
 
 *******************************************************************
-* LineMapC0 - $C0 through slot 3, so the line drawing registers are at
+* LineMapC0 - VICKY_BLK through slot 3, so the line drawing registers are at
 *   $7080: $6000 for the slot, $1000 for the bitmap register page inside
 *   the block, $80 for the line half of it.  SLOTS 1 AND 2 ARE LEFT
 *   ALONE, because SS.BmLine needs them for the caller's array -
-*   SetBlkC0C1 wants slot 1 for $C0 and so cannot be used here.  GFDfPal
-*   already reaches $C1 through slot 3 exactly this way.
+*   SetBlkC0C1 wants slot 1 for VICKY_BLK and so cannot be used here.  GFDfPal
+*   already reaches FONT_BLK through slot 3 exactly this way.
 *   Exit: X = $7080.  Every other register is kept.
 *******************************************************************
 LineMapC0           pshs      cc,d
@@ -2948,7 +2948,7 @@ seed@               lda       ,x+
                     sta       VKY_TXT_CURSOR_CHAR_REG,x
 * Every sprite record off, once, so gr.SprDirty's "they are all clear" is
 * true from the start rather than a guess about what the core left behind.
-                    lbsr      SprMapC0            $C0 in slot 1
+                    lbsr      SprMapC0            VICKY_BLK in slot 1
                     ldx       #$2000+SPRITE_REC_OFF
                     clrb
                     lbsr      SprClrFrom
@@ -3357,7 +3357,7 @@ PSGOff              lda       #%10011111
 *******************************************************************
 * GF.Cell (b16) - write one cell.
 *   b2 = glyph          b3 = colour attr        d1 = cell offset
-*   b4 = WD.Buf (16K terminal buffer) / WD.Vicky (live $C2/$C3)
+*   b4 = WD.Buf (16K terminal buffer) / WD.Vicky (live TEXT_RAM_BLK/COLOR_RAM_BLK)
 *******************************************************************
 GFCell              lbsr      SetBlkC2C3
                     ldx       >gr.d1              cell offset
@@ -3435,17 +3435,17 @@ GFBlkC              stb       ,x+
 *******************************************************************
 * GF.Pal (b19) - one 4-byte text-LUT entry.
 *   b2 = palette register # (0-15)
-*   b4 = WD.Vicky -> live $C1 / WD.Buf -> 16K T.FLUT/T.BLUT
+*   b4 = WD.Vicky -> live FONT_BLK / WD.Buf -> 16K T.FLUT/T.BLUT
 *   b5 = 0 foreground LUT, 1 background LUT
 *   d1 = LUT bytes 0-1 (blue, green)   d2 = LUT bytes 2-3 (red, alpha)
 *******************************************************************
-GFPal               tst       >gr.b4              live $C1 or 16K buffer?
+GFPal               tst       >gr.b4              live FONT_BLK or 16K buffer?
                     beq       GFPalBuf
                     lbsr      SetBlkC0C1
-                    ldx       #$2000+TEXT_LUT_FG  $C0, not $C1
+                    ldx       #$2000+TEXT_LUT_FG  VICKY_BLK, not FONT_BLK
                     tst       >gr.b5              0 = FG LUT, 1 = BG LUT
                     beq       GFPalIdx
-                    ldx       #$2000+TEXT_LUT_BG  $C0, not $C1
+                    ldx       #$2000+TEXT_LUT_BG  VICKY_BLK, not FONT_BLK
                     bra       GFPalIdx
 GFPalBuf            lbsr      SetBlkC2C3
                     ldx       #$6000+T.FLUT
@@ -3468,7 +3468,7 @@ GFPalIdx            ldb       >gr.b2              palette register #
 
 *******************************************************************
 * GF.BmEnable (b20) / GF.BmFree (b21) / GF.BmPalet (b22)
-* Poke the bitmap registers at $3000 + b2*8 on $C0.  b2 = bitmap # (0-2).
+* Poke the bitmap registers at $3000 + b2*8 on VICKY_BLK.  b2 = bitmap # (0-2).
 *   Enable: b3 = control byte -> ctrl, d1 = phys addr -> 1,x, clr 3,x
 *   Free  : zero all four bytes
 *   Palet : b3 = CLUT# rolled with the enable bit -> ctrl
@@ -3502,7 +3502,7 @@ GFBmPalet           bsr       GFBmX
                     sta       ,x
                     clrb
                     jmp       >GrfMod+SysRet
-* GFBmX - map $C0/$C1, return X = $3000 + b2*8 (b2 = bitmap #).
+* GFBmX - map VICKY_BLK/FONT_BLK, return X = $3000 + b2*8 (b2 = bitmap #).
 GFBmX               lbsr      SetBlkC0C1
                     ldb       >gr.b2              bitmap # 0-2
                     lda       #8
@@ -3638,12 +3638,12 @@ bad@                comb
 * reproduce, so a switch away and back silently undid it.
 *
 * One mapping convention throughout, so the same base serves every path:
-*   slot 1  $C0, records at $2000+SPRITE_REC_OFF (PullCore's SetBlkC0C1
-*           already leaves $C0 there; SprMapC0 puts it there otherwise)
+*   slot 1  VICKY_BLK, records at $2000+SPRITE_REC_OFF (PullCore's SetBlkC0C1
+*           already leaves VICKY_BLK there; SprMapC0 puts it there otherwise)
 *   slots 3, 4  the registered table, at $6000 - consecutive, so a table
 *           that crosses a block boundary is still one straight copy
 * Both pairs are scratch in the paths that use them: a SetStat handler has
-* finished with $C2/$C3 and the 16K buffer, and PullCore has finished with
+* finished with TEXT_RAM_BLK/COLOR_RAM_BLK and the 16K buffer, and PullCore has finished with
 * the buffer by the time the sprites are restored.
 *
 * SetStat SS.SprReg - register this terminal's record table, or give it up.
@@ -3731,7 +3731,7 @@ SRStore             stb       SB.Flags,y
 * does not keep its sprites on screen.
                     tst       V.TermLive,u
                     beq       SROK
-                    lbsr      SprMapC0            $C0 in slot 1
+                    lbsr      SprMapC0            VICKY_BLK in slot 1
                     lbsr      SprRow
                     ldx       #$2000+SPRITE_REC_OFF
                     ldb       SB.Cnt,y
@@ -3744,7 +3744,7 @@ SRDereg             lbsr      SprRow              Y = this terminal's row
                     clr       SB.Flags,y
                     tst       V.TermLive,u
                     beq       SROK
-                    lbsr      SprMapC0            $C0 in slot 1
+                    lbsr      SprMapC0            VICKY_BLK in slot 1
                     ldx       #$2000+SPRITE_REC_OFF
                     clrb                          every record off
                     lbsr      SprClrFrom
@@ -3799,7 +3799,7 @@ SSSprPush           lbsr      SprRow              Y = this terminal's row
                     lbsr      SprMapTbl           slots 3/4 = the table, U = record 0
                     puls      d
                     leau      d,u                 U = the first record to send
-                    lbsr      SprMapC0            $C0 in slot 1
+                    lbsr      SprMapC0            VICKY_BLK in slot 1
                     puls      d
                     addd      #$2000+SPRITE_REC_OFF
                     tfr       d,y                 Y = where it lands in Vicky
@@ -3829,7 +3829,7 @@ SPNone              comb
 *   table does not cover are turned off.  A terminal with no registration
 *   has every record turned off - and nothing done at all when
 *   gr.SprDirty says they are already clear.
-* Entry: U = the incoming terminal's statics, $C0 at $2000 (PullCore's
+* Entry: U = the incoming terminal's statics, VICKY_BLK at $2000 (PullCore's
 *   SetBlkC0C1 leaves it there).
 * Exit: U as it was.  D, X and Y are destroyed.
 *******************************************************************
@@ -3896,7 +3896,7 @@ SprMapTbl           pshs      cc,d,x
                     puls      cc,d,x,pc
 
 *******************************************************************
-* SprMapC0 - $C0 in slot 1, so the sprite records are at
+* SprMapC0 - VICKY_BLK in slot 1, so the sprite records are at
 *   $2000+SPRITE_REC_OFF - where SetBlkC0C1 leaves them, so the restore
 *   and the push share one base.  Every register is kept.
 *******************************************************************
@@ -3946,7 +3946,7 @@ SCFX                puls      cc,d,x,pc
 *   offset - so this is the only place the conversion happens.  The
 *   V.TSn mirror keeps the four bytes in REGISTER order (CFG, ADDR
 *   hi/mid/lo) so PullBuf's straight copy is unchanged; the registers at
-*   $C0 $1180+4*n are written only when live.  See docs/tile-api.md.
+*   VICKY_BLK $1180+4*n are written only when live.  See docs/tile-api.md.
 *******************************************************************
 SSTsSet             ldb       R$Y+1,x             tile set #
                     cmpb      #7
@@ -3995,7 +3995,7 @@ tsad@               tfr       b,a
 tslv@               ldu       >gr.U5
                     tst       V.TermLive,u
                     beq       done@
-                    lbsr      SetBlkC0C1          $C0 at $2000
+                    lbsr      SetBlkC0C1          VICKY_BLK at $2000
                     ldu       >gr.U5
                     leau      V.TS0AddrH,u
                     ldb       ,s
@@ -4022,7 +4022,7 @@ TsBad               comb
 *   the REGISTER order (its MapX/RSRV/MapY/RESRV names predate it), so
 *   PullBuf's straight copy is unchanged.  SIZE_X/Y are 10-bit fields,
 *   up to 1024 tiles.  See docs/tile-api.md.
-* The mirror (V.TMn, same order) always; the registers at $C0 $1100+12*n
+* The mirror (V.TMn, same order) always; the registers at VICKY_BLK $1100+12*n
 *   only when live.  PullBuf reprograms the
 *   tile map registers from the mirror on a switch.
 *******************************************************************
@@ -4074,7 +4074,7 @@ tmz@                clr       -11,y
 tmlv@               ldu       >gr.U5
                     tst       V.TermLive,u
                     beq       done@
-                    lbsr      SetBlkC0C1          $C0 at $2000
+                    lbsr      SetBlkC0C1          VICKY_BLK at $2000
                     lda       #12
                     ldb       ,s
                     mul                           B = 12*n
@@ -4106,7 +4106,7 @@ TmBad               comb
 *   re-send the whole 12-byte SS.TmSet record through MapCallBuf, 60
 *   times a second, to change two bytes.  tmtest2 in the joust tree
 *   measured that at about 660 us a frame for three layers.
-* The mirror (V.TMnScrlX/Y) always; the registers at $C0 $1108+12*n
+* The mirror (V.TMnScrlX/Y) always; the registers at VICKY_BLK $1108+12*n
 *   only when live.  PullBuf reprograms the whole 36-byte tile map
 *   image from the mirror on a switch, so the scroll comes back with
 *   everything else and nothing extra is needed there.
@@ -4128,7 +4128,7 @@ SSTmScrl            ldd       R$Y,x               tile map #
                     ldu       >gr.U5
                     tst       V.TermLive,u
                     beq       tscx@
-                    lbsr      SetBlkC0C1          $C0 at $2000
+                    lbsr      SetBlkC0C1          VICKY_BLK at $2000
                     ldu       >gr.U5
                     leau      V.TM0ScrlX,u
                     ldb       ,s
@@ -4148,7 +4148,7 @@ tscx@               leas      1,s
 *   R$U = count 1-256, first+count <= 256
 * The SS.DfPal targets: T.CLUTn in the terminal's 16K switch buffer
 *   (slot 4, which PullBuf restores on a switch) when it has one, and the
-*   live CLUT at $C1 $1000+$400*n (in slot 3) when the terminal is live or
+*   live CLUT at FONT_BLK $1000+$400*n (in slot 3) when the terminal is live or
 *   has no buffer yet.  The entries come in through slots 1-2 (MapCallBuf).
 *******************************************************************
 SSClutWrite         lda       R$Y,x               CLUT #
@@ -4204,7 +4204,7 @@ ClutLive            pshs      cc
                     sta       MMU_MEM_CTRL
                     clra
                     ldb       #FONT_BLK
-                    stb       MMU_SLOT_3          $C1 at $6000
+                    stb       MMU_SLOT_3          FONT_BLK at $6000
                     std       >gr.DATImg+6
                     puls      cc
                     ldd       2,s
