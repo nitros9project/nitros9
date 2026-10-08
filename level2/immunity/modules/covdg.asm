@@ -227,6 +227,7 @@ Term                pshs      u,y,x
                     jsr       H$Term,x  ; release this device's application screens
 TermNoHiRes         equ       *
                     clr       <VD.Start,u ; no screens in use
+                    lbsr      GfxFree   ; release any graphics screens and fill stack
                     ldd       <VD.ScrnA,u ; get pointer to alpha screen
                     beq       ClrStat   ; branch if none
                     ldx       <D.SysMem ; mark its two pages free for covdg again
@@ -888,19 +889,26 @@ L0503               clr       <VD.NChar,u ; clear original parameter byte
 L050E               lbra      L0468     ; set things up
 
 * $12 - end graphics
-* The screen was only ever mapped through the graphics window, so there is
-* nothing in the system map to undo.
-Do12                clra                ; no screen (a second $12 is harmless)
+Do12                bsr       GfxFree   ; release the screens and the fill stack
+                    lbra      Do0E      ; switch to alpha text screen and return from there
+
+* Release this device's graphics: the screen blocks and the flood fill
+* stack. Used by end graphics ($12) and by Term, so closing a device that is
+* still in graphics returns its blocks to the 5-block pool. Calling it again
+* is harmless. The screens were only ever mapped through the graphics
+* window, so there is nothing in the system map to undo.
+* Entry: U=static mem ptr
+GfxFree             clra                ; no screen
                     clrb
                     std       <VD.SBAdd,u
-L051B               leay      <VD.GBuff,u ; point Y to graphics screen block numbers
+                    leay      <VD.GBuff,u ; point Y to graphics screen block numbers
                     ldb       #$03      ; number of possible screens allocated starting at VD.GBuff
                     pshs      u,b       ; save our static pointer, and counter (3)
 L0522               lda       ,y+       ; get next medium res screen block #
                     beq       L052D     ; unused, continue
 * F$DelRAM wants X = block number; A:B = block:0 would be block*256, past
 * the end of the block map, so nothing was freed and the pool ran dry.
-                    clr       -1,y      ; forget it (a second $12 is harmless)
+                    clr       -1,y      ; forget it
                     tfr       a,b
                     clra
                     tfr       d,x
@@ -913,8 +921,15 @@ L052D               dec       ,s        ; dec # of screens to check
                     ldd       #FFStSz   ; flood fill stack size
                     os9       F$SRtMem  ; return flood fill stack memory to system (512 bytes)
 L053B               puls      u,b       ; restore stack mem ptr & eat counter
+* Forget the fill stack too, or the next fill would reuse the freed pages
+* (L08DD only allocates while VD.FFSTp is zero).
+                    clra
+                    clrb
+                    std       <VD.FFMem,u
+                    std       <VD.FFSPt,u
+                    std       <VD.FFSTp,u
                     clr       <VD.Rdy,u ; flag that device not ready (no screen allocated)
-                    lbra      Do0E      ; switch to alpha text screen and return from there
+                    rts
 
 * $10 - preset screen to a specific color
 Do10                leax      <PrstScrn,pcr ; point to routine to Preset screen
