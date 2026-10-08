@@ -40,6 +40,10 @@ RBF = rbf rbsuper llwbsd rbmem $(BOOT_RBF) s0 s1 f0 f1 c0 c1 $(RBF_EXTRA)
 SCF = scf vtio $(KEYSUB) term bannerfont palette $(SCF_EXTRA)
 ifeq ($(LEVEL),2)
 SCF += mousedrv_ps2
+# Level 2 multiterminal: /vt is the factory descriptor the vt command clones,
+# /vt1-/vt8 the extra terminals.  vtio, term and keydrv come from
+# level2/wildbits/modules, which the Level 2 search path tries first.
+SCF += vt vt1 vt2 vt3 vt4 vt5 vt6 vt7 vt8
 endif
 DRIVEWIRE_RBF = rbdw x0 x1 x2 x3
 DRIVEWIRE_SCF = scdwv n n1 n2 n3 n4 n5
@@ -111,6 +115,8 @@ CMDS += dmem minted mmap modpatch \
 	gfxstatus xtclut drawtest play \
 	shellbg shellbgoff ntptime view utilpak1 fadein fadeout \
 	lutrd black hexed pixview iss
+# grfdrv256 is loaded by the Level 2 vtio
+CMDS += grfdrv256
 endif
 # sprites moved OUT of CMDS 2026-09-09 (user): it is a hardware probe, so it
 # lives in TESTS_BIN below and reaches the disk as TESTS/sprites only. Its
@@ -223,7 +229,7 @@ ifeq ($(LEVEL),2)
 endif
 
 ifeq ($(LEVEL),2)
-$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(addprefix $(MODDIR)/,$(CMDS)) $(addprefix $(MODDIR)/,$(TESTS_BIN)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS) $(WIZFITOOL)
+$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(MODDIR)/vtcmd $(addprefix $(MODDIR)/,$(CMDS)) $(addprefix $(MODDIR)/,$(TESTS_BIN)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS) $(WIZFITOOL)
 else
 $(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(addprefix $(MODDIR)/,$(TESTS_BIN)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS)
 endif
@@ -245,6 +251,9 @@ endif
 ifeq ($(LEVEL),2)
 	$(CPL) $(WIZFITOOL) $@,CMDS/wizfitool.b09
 	$(OS9ATTR_TEXT) $@,CMDS/wizfitool.b09
+# the vt command's source is vtcmd.asm, because .mods/vt is the /vt descriptor
+	$(OS9COPY) $(MODDIR)/vtcmd $@,CMDS/vt
+	$(OS9ATTR_EXEC) $@,CMDS/vt
 endif
 	$(CPL) $(SYS_TEXT_FILES) $@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYS_TEXT_FILES)),$@,SYS/$(file))
@@ -288,6 +297,13 @@ $(MODDIR)/w6100tel: $(LEVEL1)/wildbits/cmds/w6100tel.as | $(MODDIR)
 
 $(MODDIR)/lcdload: $(LEVEL1)/wildbits/cmds/lcdload.as | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+ifeq ($(LEVEL),2)
+# The Level 2 terminal modules are laid out by defs/wildbits_vtio.d and
+# defs/wildbits.d, and no generic rule makes a module depend on a defs file,
+# so without this an edit there silently leaves a stale module behind.
+$(MODDIR)/vtio $(MODDIR)/grfdrv256 $(MODDIR)/vtcmd $(MODDIR)/term $(MODDIR)/$(KEYSUB): $(DEFSDIR)/wildbits_vtio.d $(DEFSDIR)/wildbits.d
+endif
 
 $(MODDIR)/sprtest2: $(LEVEL1)/wildbits/cmds/sprtest2.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
