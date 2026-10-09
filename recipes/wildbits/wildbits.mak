@@ -109,6 +109,11 @@ CMDS += vs
 $(MODDIR)/view: $(L2PCD)/view.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
+# linetest: the line-drawing engine's missing-pixel probe (level2/wildbits/tests), installed as CMDS/linetest.
+CMDS += linetest
+$(MODDIR)/linetest: $(LEVEL2)/wildbits/tests/linetest.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
 $(OBJDIR)/play.o: $(L2PCD)/play.as | $(OBJDIR)
 	$(ASM) $(AFLAGS) $< $(ASOUT)$@
 
