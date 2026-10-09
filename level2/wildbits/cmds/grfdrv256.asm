@@ -779,8 +779,7 @@ GSGoto              lda       >gr.SwitchTerm
 GSPrev              deca
                     subb      #gr.TermSz
                     bpl       GSChkPrev
-                    lda       #G.TermMax-1
-                    ldb       #(G.TermMax-1)*gr.TermSz
+                    ldd       #(G.TermMax-1)*256+(G.TermMax-1)*gr.TermSz
 GSChkPrev           cmpa      >gr.LiveTerm
                     lbeq      GSDone
                     ldx       #gr.TermTbl
@@ -826,8 +825,7 @@ GSFound             pshs      d                   0,s = new id, 1,s = new offset
                     beq       wsbg@
                     ldb       V.WSigBg,u
                     beq       wsbg@
-                    sta       >gr.SigBgID
-                    stb       >gr.SigBgCode
+                    std       >gr.SigBgID
 wsbg@               puls      d
                     lbsr      GSEnter             then bring in the new one
 GSDone              clr       >gr.SwitchReq
@@ -1031,8 +1029,7 @@ GSEnter             pshs      a
                     beq       wsfg@
                     ldb       V.WSigFg,u
                     beq       wsfg@
-                    sta       >gr.SigFgID
-                    stb       >gr.SigFgCode
+                    std       >gr.SigFgID
 wsfg@               puls      b
                     puls      a
                     sta       >gr.LiveTerm
@@ -1099,8 +1096,7 @@ GFDfPal             ldd       >gr.PDRGS+R$X       CLUT #
                     lslb                          B = high byte of n*$400
                     pshs      b
                     lbsr      SetBlkC2C3          U = this terminal's statics
-                    lda       V.TermLive,u
-                    ldb       V.TermBufBlk,u
+                    ldd       V.TermLive,u
                     pshs      d                   ,s = live  1,s = buffer blk  2,s = n*4
                     ldd       >gr.PDRGS+R$Y       source address in the caller
                     anda      #$1F
@@ -1466,11 +1462,9 @@ GSDScrn             clra
                     bra       StatOK
 
 * GetStat SS.Mouse - R$X/R$Y = position, R$A = buttons
-GSMouse             lda       MS_XH
-                    ldb       MS_XL
+GSMouse             ldd       MS_XH
                     std       R$X,x
-                    lda       MS_YH
-                    ldb       MS_YL
+                    ldd       MS_YH
                     std       R$Y,x
                     lda       V.MSButtons,u
                     bra       RetA
@@ -2666,8 +2660,7 @@ BmLnOn              ldb       1,s                 records left
 BmLnLp              tst       1,s
                     beq       BmLnOK              all of them drawn
 * Room in the FIFO?  Stop rather than lose pixels silently.
-                    lda       LD.FifoH,x
-                    ldb       LD.FifoL,x
+                    ldd       LD.FifoH,x
                     cmpd      >gr.d2
                     bhs       BmLnOK              short: R$U tells the caller
 * Range-check the record.  An endpoint outside 0-319 (0-639 on a HIRES4
@@ -2692,11 +2685,9 @@ BmLnLp              tst       1,s
                     lda       6,u                 colour
                     sta       LD.Color,x
                     ldd       ,u
-                    sta       LD.X0H,x
-                    stb       LD.X0L,x
+                    std       LD.X0H,x
                     ldd       2,u
-                    sta       LD.X1H,x
-                    stb       LD.X1L,x
+                    std       LD.X1H,x
                     lda       4,u
                     sta       LD.Y0,x
                     lda       5,u
@@ -3707,8 +3698,7 @@ SRAuto1             sta       SB.Blk1,y
                     bra       SRSpan
 SRMan               tsta                          block 0 is the system block
                     beq       SRBad1
-                    sta       SB.Blk0,y
-                    stb       SB.Blk1,y
+                    std       SB.Blk0,y
                     ldd       R$X,x               the offset within the first block
                     cmpd      #$2000
                     bhs       SRBad1
@@ -4180,8 +4170,7 @@ SSClutWrite         lda       R$Y,x               CLUT #
                     rola                          D = 4*first
                     adda      ,s+                 D = n*$400 + 4*first
                     pshs      d                   ,s = entry offset  2,s = length
-                    lda       V.TermLive,u
-                    ldb       V.TermBufBlk,u
+                    ldd       V.TermLive,u
                     pshs      d                   ,s = live  1,s = buffer blk  2,s = offset  4,s = length
                     ldd       R$X,x               entries in the caller's map
                     ldy       4,s
@@ -4293,8 +4282,7 @@ GSBmClrX            std       R$X,x
 *   piece of hardware shared by every terminal, so this answers for the
 *   machine and not for this terminal.
 GSBmLine            lbsr      LineMapC0           X = the line registers
-                    lda       LD.FifoH,x
-                    ldb       LD.FifoL,x
+                    ldd       LD.FifoH,x
                     std       >gr.PDRGS+R$X
                     lbra      StatOK
 
