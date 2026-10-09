@@ -1,4 +1,3 @@
 load utilpak1
-load vt
 link shell
 wbinfo
