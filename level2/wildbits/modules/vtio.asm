@@ -95,8 +95,7 @@ HandleMSTimer       tst       MS_MEN             check if mouse cursor already o
                     bne       HandleKeySwtchTrm  timer not wrapped: still check switch
                     clr       MS_MEN             if timer flips to 0, turn off mouse cursor
                     ldd       #640               park mouse at right border
-                    sta       MS_XH              turning off cursor doesn't work
-                    stb       MS_XL              correctly at the moment
+                    std       MS_XH     turning off cursor doesn't work correctly at the moment
 
 * Handle Terminal Switching
 HandleKeySwtchTrm   lda       >gr.SwitchReq
@@ -1116,8 +1115,7 @@ CCPzero             clra
 *** Preserves D.
 ***
 SetScreenSize       pshs      d
-                    lda       V.WWidth,u
-                    ldb       V.WHeight,u
+                    ldd       V.WWidth,u
                     mul
                     std       V.ScreenSize,u
                     puls      d,pc
@@ -1902,8 +1900,7 @@ reg@                lda       V.WSigID,u
                     ldb       #E$DevBsy           yes - it is not ours to take
                     rts
 take@               ldd       R$X,x
-                    sta       V.WSigBg,u
-                    stb       V.WSigFg,u
+                    std       V.WSigBg,u
                     lda       PD.CPR,y            the calling process
                     sta       V.WSigID,u
                     clrb
