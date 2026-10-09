@@ -1,26 +1,23 @@
 ********************************************************************
-* vt - open, switch to and list Wildbits virtual terminals
+* vtm - virtual terminal manager: open, switch to and list Wildbits
+* virtual terminals
 *
-*   vt        new terminal with a shell (shell i=/vt&), then show it
-*   vt n      show terminal n (0 = /term); start it with a shell first
+*   vtm       new terminal with a shell (shell i=/vt&), then show it
+*   vtm n     show terminal n (0 = /term); start it with a shell first
 *             if it is not open
-*   vt -l     list the open terminals, * marks the one on screen
+*   vtm -l    list the open terminals, * marks the one on screen
 *
-* The module is named vt but the source is vtcmd.asm: modules/vt.asm is
-* the /vt factory descriptor, which owns .mods/vt and comes first in the
-* vpath.  The recipe copies .mods/vtcmd to CMDS/vt.  The two modules
-* coexist because every kernel lookup matches type, but Shell+ links a
-* typed command name with any type first, so with only the descriptor in
-* memory "vt" fails with E$NEMod.  level2/wildbits/startup does "load vt"
-* so it is in memory, after the descriptor, from boot on.
+* Not named vt: /vt is the terminal factory descriptor (modules/vt.asm),
+* and Shell+ links a typed command name with any module type first, so a
+* command called vt would find the descriptor and fail with E$NEMod.
 *
 * A terminal lives only while a path holds it open, so a new one is put
 * on this process's paths 0-2 before the shell is forked: F$Fork gives
 * the child its own copies inside the call, and the terminal survives
 * this process closing its path and exiting.  Switching is SetStat
-* SS.TermSel on vt's own path, never I/O on the target: SCF queues a
+* SS.TermSel on vtm's own path, never I/O on the target: SCF queues a
 * write, SetStat, open or close to a terminal behind a program that holds
-* it busy while reading (BASIC09 at its prompt), and vt would hang there.
+* it busy while reading (BASIC09 at its prompt), and vtm would hang there.
 * The terminal table is read with F$CpyMem out of system block 0
 * (gr.LiveTerm, gr.TermTbl in defs/wildbits_vtio.d).
 *
@@ -29,8 +26,10 @@
 * ------------------------------------------------------------------
 *   1      2026/09/14  jfed6000
 * Started.
+*   2      2026/10/09  jfed6000
+* Renamed vt -> vtm, so it no longer shares a name with the /vt descriptor.
 
-                    nam       vt
+                    nam       vtm
                     ttl       Virtual terminal command
 
                     ifp1
@@ -41,7 +40,7 @@
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       1
+edition             set       2
 
 * gr.LiveTerm and the whole of gr.TermTbl, which follows it
 TblLen              equ       gr.TermTbl-gr.LiveTerm+G.TermMax*gr.TermSz
@@ -59,7 +58,7 @@ vParm               rmb       12                  "i=/vtN" CR - the pathlist sta
                     rmb       250                 stack
 size                equ       .
 
-name                fcs       /vt/
+name                fcs       /vtm/
                     fcb       edition
 
 start               leay      vDAT,u              every DAT slot is block 0
@@ -71,7 +70,7 @@ skipsp@             lda       ,x+
                     cmpa      #C$SPAC
                     beq       skipsp@
                     cmpa      #C$CR
-                    beq       NewTerm             bare vt
+                    beq       NewTerm             bare vtm
                     cmpa      #'-
                     beq       Option
                     suba      #'0
@@ -101,7 +100,7 @@ ul@                 ldy       #80
                     ldb       #E$IllArg
                     lbra      Exit
 
-* vt - the /vt factory binds the lowest free id 1-8 in SS.Open and swaps
+* vtm - the /vt factory binds the lowest free id 1-8 in SS.Open and swaps
 * in /vtN's descriptor, so SS.DevNm names the terminal it gave us.
 NewTerm             leax      VtName,pcr
                     lda       #UPDAT.
@@ -127,7 +126,7 @@ opened@             sta       <vPath
                     lbsr      MakeParm
                     bra       Shell
 
-* vt n - an open terminal is only selected, never opened: opening or
+* vtm n - an open terminal is only selected, never opened: opening or
 * writing to it can wait behind its reader.  Otherwise open /vtN, which
 * creates it, and start a shell.
 DoNum               lbsr      ReadTbl
@@ -178,7 +177,7 @@ Exit                os9       F$Exit
 SelOnly             lbsr      SelTerm             B = 0 or the error
                     bra       Exit
 
-* vt -l
+* vtm -l
 List                bsr       ReadTbl
                     bcs       Exit
                     clrb
@@ -296,13 +295,13 @@ VtName              fcc       "/vt"
                     fcb       C$CR
 ShellNm             fcc       /shell/
                     fcb       C$CR
-NoTermTx            fcc       /vt: no more terminals available/
+NoTermTx            fcc       /vtm: no more terminals available/
                     fcb       C$CR
-UsageTx             fcc       /Use: vt       new terminal + shell/
+UsageTx             fcc       /Use: vtm      new terminal + shell/
                     fcb       C$CR
-                    fcc       /     vt n     go to terminal n (0-8)/
+                    fcc       /     vtm n    go to terminal n (0-8)/
                     fcb       C$CR
-                    fcc       /     vt -l    list terminals (*=shown)/
+                    fcc       /     vtm -l   list terminals (*=shown)/
                     fcb       C$CR
                     fcb       0
 
