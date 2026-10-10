@@ -52,16 +52,20 @@ PADUP = bash -o igncr ../smartpad256 bootfile
 #    BGT, fixed 2026-10-04; see 0a for the new limits) and /t0 shares
 #    the DW UART at $FE60 anyway.
 # 1a) With the 40,448-byte ceiling (0a) the Level 2 bootfile also carries
-#     the MIDI and RP2040 drivers (2026-10-04), so none needs a load:
+#     the MIDI and RP2040 drivers (2026-10-04), so none needs a load.
+#     It needs the 40,448-byte ceiling of wb/bootfile_improvements to fit:
 #       midrv mi     MIDI DIN input: interrupt driver + /mi descriptor
-#       scdwv dwm    DriveWire virtual channel driver + /dwm (channel 14,
-#                    the DriveWire 4 server's MIDI out)
+#       scdwv midi   DriveWire virtual channel driver + /MIDI (channel 14,
+#                    the DriveWire 4 server's MIDI out); n n1 /N and its channel
 #       rpdrv rp     RP2040 supervisor mailbox (K2 only; the Jr2 has no
 #                    supervisor). wildbits.mak keeps their module rules.
 #     L2BOOT_EXTRA is its own list (not SCF_EXTRA) so a recipe read later
 #     can empty it.
 ifeq ($(LEVEL),2)
-L2BOOT_EXTRA = midrv mi scdwv dwm
+# midi n n1 replace dwm (user 2026-10-09: "we use /mi and /midi now", "/n should work"): /MIDI is channel 14 by
+# the repo's own name, and the wildcard /N only opens when a numbered descriptor (N1, N2, ...) is in memory for
+# scdwv to link.
+L2BOOT_EXTRA = midrv mi scdwv midi n n1
 ifeq ($(PLATFORM),k2)
 # only when $(SCF) does not already list them (main's wildbits.mak does)
 L2BOOT_EXTRA += $(filter-out $(SCF),rpdrv rp)
