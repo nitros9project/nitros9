@@ -100,6 +100,21 @@ $(MODDIR)/fpga: $(L1PCD)/fpga.asm | $(MODDIR)
 
 endif # K2-only RP2040 modules and command
 
+# diag: Level 1 hardware diagnostics (level1/wildbits/cmds/diag.asm + diag_hw.asm, 2026-10-09). It carries its own
+# CP437 font and text palette, copied in at build time from sys/fonts/phoenixegafont.asm and modules/palette.asm
+# (the fcb rows only, labels dropped) so its frame looks right whatever font or palette the tested system has.
+ifeq ($(LEVEL),1)
+CMDS += diag
+endif
+$(MODDIR)/diag: $(L1PCD)/diag.asm $(L1PCD)/diag_hw.asm diagfont.inc diagpal.inc | $(MODDIR)
+	$(AS) $(AFLAGS) -I$(L1PCD) $< $(ASOUT)$@
+
+diagfont.inc: $(LEVEL1)/wildbits/sys/fonts/phoenixegafont.asm
+	sed -n '/^start/,/emod/p' $< | grep -E '^[A-Za-z0-9_]*[[:space:]]+fcb' | sed -E 's/^[A-Za-z0-9_]+//' > $@
+
+diagpal.inc: $(L1PMD)/palette.asm
+	sed -n '/^start/,/emod/p' $< | grep -E '^[A-Za-z0-9_]*[[:space:]]+fcb' | sed -E 's/^[A-Za-z0-9_]+//' > $@
+
 ifeq ($(LEVEL),2)
 # vs: VS1053 test command (wb/vs1053); on its own line so it never collides with edits to the CMDS list above
 CMDS += vs
