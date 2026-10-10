@@ -48,9 +48,9 @@
                     nam       assetload
                     ttl       load a file into physical memory blocks
 
-                    IFP1
+                  IFP1
                     use       defsfile
-                    ENDC
+                  ENDC
 
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
@@ -67,15 +67,15 @@ WINBLKS             equ       6
 *---------------------------------------------------
 * Data area / direct page
 *---------------------------------------------------
-cmdptr              rmb       2                   command line pointer
-pathnum             rmb       1                   open path number
-startblk            rmb       2                   first physical block
-maxblks             rmb       1                   blocks we are allowed to write
-blksdone            rmb       1                   blocks written so far
-curwin              rmb       1                   blocks mapped this pass
-mapaddr             rmb       2                   base of the mapped window
-hdrbuf              rmb       2                   two-byte header scratch
-inoff               rmb       2                   offset into the first block
+cmdptr              rmb       2         command line pointer
+pathnum             rmb       1         open path number
+startblk            rmb       2         first physical block
+maxblks             rmb       1         blocks we are allowed to write
+blksdone            rmb       1         blocks written so far
+curwin              rmb       1         blocks mapped this pass
+mapaddr             rmb       2         base of the mapped window
+hdrbuf              rmb       2         two-byte header scratch
+inoff               rmb       2         offset into the first block
 * F$Chain carves the register stack and the parameter area out of this
 * same allocation (fchain.asm:95-97 subtracts R$Size and the parameter
 * size, and fails the fork with E$IForkP if that underflows), so both
@@ -94,20 +94,20 @@ name                fcs       /assetload/
 * U/DP = data area base, X = SP = parameter area,
 * Y    = top of memory, D = parameter size
 *---------------------------------------------------
-start               stx       <cmdptr             save the command line
+start               stx       <cmdptr   ; save the command line
                     clr       <blksdone
                     clr       <inoff
                     clr       <inoff+1
-                    lda       #1                  default to a single block, so a
-                    sta       <maxblks            big file cannot overrun a small
+                    lda       #1        ; default to a single block, so a
+                    sta       <maxblks  ; big file cannot overrun a small
 *                                                 allocation
                     lbsr      ParseCmd
-                    bcs       Die                 malformed command line
+                    bcs       Die       ; malformed command line
 
 * Open the file.  I$Open parses the pathlist itself and stops at the
 * space or CR that follows it, so the pointer into the command line can
 * be handed over as-is - no need to copy the name out first.
-                    ldx       <cmdptr             X -> path text
+                    ldx       <cmdptr   ; x -> path text
                     lda       #READ.
                     os9       I$Open
                     bcs       Die
@@ -118,7 +118,7 @@ start               stx       <cmdptr             save the command line
                     bcs       Finish
                     lbsr      LoadLoop
 
-Finish              pshs      b                   keep the real status
+Finish              pshs      b         ; keep the real status
                     lda       <pathnum
                     os9       I$Close
                     puls      b
@@ -139,10 +139,10 @@ Die                 os9       F$Exit
 * I$Seek wants the low half of the position in U, but U is this
 * process's data area base and Read2 addresses hdrbuf through it, so
 * every seek has to hand U back afterwards.
-SeekData            lbsr      Read2               fetch the sync bytes
+SeekData            lbsr      Read2     ; fetch the sync bytes
                     bcs       sd_ex
                     ldx       <hdrbuf
-                    cmpx      #M$ID12             an OS-9 module?
+                    cmpx      #M$ID12   ; an OS-9 module?
                     beq       sd_mod
 * Raw file - rewind to the start.
                     ldx       #0
@@ -164,7 +164,7 @@ sd_mod              ldx       #0
                     bcs       sd_ex
                     ldx       #0
                     pshs      u
-                    ldu       <hdrbuf             U = execution offset
+                    ldu       <hdrbuf   ; u = execution offset
                     lda       <pathnum
                     os9       I$Seek
                     puls      u
@@ -193,15 +193,15 @@ Read2               lda       <pathnum
 *
 * Exit: carry set = error, B = code
 *---------------------------------------------------
-LoadLoop            pshs      u                   MapWindow/F$ClrBlk reuse U
+LoadLoop            pshs      u         ; mapWindow/F$ClrBlk reuse U
 ll_top              lda       <maxblks
-                    suba      <blksdone           blocks still allowed
-                    beq       ll_done             allowance used up - stop
+                    suba      <blksdone ; blocks still allowed
+                    beq       ll_done   ; allowance used up - stop
                     cmpa      #WINBLKS
                     bls       ll_win
                     lda       #WINBLKS
 ll_win              sta       <curwin
-                    lbsr      MapWindow           may shrink curwin
+                    lbsr      MapWindow ; may shrink curwin
                     bcs       ll_ex
                     stu       <mapaddr
 * One read across the whole window.  curwin * $2000 is curwin shifted
@@ -213,14 +213,14 @@ ll_win              sta       <curwin
                     lsla
                     lsla
                     clrb
-                    subd      <inoff              the offset eats into this pass
-                    tfr       d,y                 Y = bytes to request
-                    pshs      y                   remember what we asked for
+                    subd      <inoff    ; the offset eats into this pass
+                    tfr       d,y       ; y = bytes to request
+                    pshs      y         ; remember what we asked for
                     ldd       <mapaddr
                     addd      <inoff
-                    tfr       d,x                 X = where the data lands
+                    tfr       d,x       ; x = where the data lands
                     lda       <pathnum
-                    os9       I$Read              Y = bytes actually read
+                    os9       I$Read    ; y = bytes actually read
 * Unmap before anything else, carrying the read's status and its count
 * past the F$ClrBlk.
                     pshs      cc,b
@@ -228,9 +228,9 @@ ll_win              sta       <curwin
                     ldu       <mapaddr
                     ldb       <curwin
                     os9       F$ClrBlk
-                    puls      y                   Y = bytes read
-                    puls      cc,b                restore the read's status
-                    clr       <inoff              first pass only
+                    puls      y         ; y = bytes read
+                    puls      cc,b      ; restore the read's status
+                    clr       <inoff    ; first pass only
                     clr       <inoff+1
                     bcs       ll_eof
 * The window is accounted for whether or not it filled.  A short read
@@ -238,16 +238,16 @@ ll_win              sta       <curwin
                     lda       <curwin
                     adda      <blksdone
                     sta       <blksdone
-                    cmpy      ,s++                got vs requested
-                    blo       ll_done             short read - end of file
+                    cmpy      ,s++      ; got vs requested
+                    blo       ll_done   ; short read - end of file
                     bra       ll_top
 * E$EOF here is the ordinary end of a file whose length is an exact
 * multiple of the window.  The original reported that as a failure.
-ll_eof              leas      2,s                 drop the requested count
+ll_eof              leas      2,s       ; drop the requested count
                     cmpb      #E$EOF
                     bne       ll_ex
-                    tst       <blksdone           did anything actually land?
-                    beq       ll_ex               no - report the E$EOF
+                    tst       <blksdone ; did anything actually land?
+                    beq       ll_ex     ; no - report the E$EOF
 ll_done             clrb
                     andcc     #^Carry
 ll_ex               puls      u,pc
@@ -268,10 +268,10 @@ mw_try              ldb       <curwin
                     os9       F$MapBlk
                     bcc       mw_ok
                     lda       <curwin
-                    deca                          no room - try a smaller window
+                    deca                ; no room - try a smaller window
                     beq       mw_fail
                     sta       <curwin
-                    bsr       mw_blk              F$MapBlk clobbered X
+                    bsr       mw_blk    ; f$MapBlk clobbered X
                     bra       mw_try
 mw_ok               andcc     #^Carry
                     rts
@@ -296,17 +296,17 @@ mw_blk              ldd       <startblk
 *---------------------------------------------------
 ParseCmd            ldx       <cmdptr
                     bsr       SkipSpace
-                    stx       <cmdptr             X -> path
-                    cmpa      #C$CR               nothing on the line?
+                    stx       <cmdptr   ; x -> path
+                    cmpa      #C$CR     ; nothing on the line?
                     beq       pc_bad
 * Step over the path to the blank that follows it.
 pc_skip             lda       ,x+
                     cmpa      #C$CR
-                    beq       pc_bad              no block number given
+                    beq       pc_bad    ; no block number given
                     cmpa      #C$SPAC
                     bne       pc_skip
                     bsr       SkipSpace
-                    bsr       ParseHex            start block
+                    bsr       ParseHex  ; start block
                     bcs       pc_bad
                     std       <startblk
 * The block count is optional; without it maxblks stays at 1.
@@ -314,16 +314,16 @@ pc_skip             lda       ,x+
                     cmpa      #C$CR
                     beq       pc_ok
                     bsr       ParseHex
-                    bcs       pc_ok               unreadable - keep the default
-                    tstb                          a count of zero would load
-                    beq       pc_blk              nothing, so ignore it
+                    bcs       pc_ok     ; unreadable - keep the default
+                    tstb                ; a count of zero would load
+                    beq       pc_blk    ; nothing, so ignore it
                     stb       <maxblks
 * The in-block offset is optional too.
 pc_blk              bsr       SkipSpace
                     cmpa      #C$CR
                     beq       pc_ok
                     bsr       ParseHex
-                    bcs       pc_ok               unreadable - keep zero
+                    bcs       pc_ok     ; unreadable - keep zero
                     std       <inoff
 pc_ok               andcc     #^Carry
                     rts
@@ -347,23 +347,23 @@ ss_ex               rts
 * Exit: D = value, X past the digits, carry set if there were none
 *---------------------------------------------------
 ParseHex            pshs      y
-                    ldy       #0                  Y accumulates the value
-                    clr       ,-s                 digit counter
+                    ldy       #0        ; y accumulates the value
+                    clr       ,-s       ; digit counter
 ph_lp               lda       ,x
-                    cmpa      #$30                below '0'?
+                    cmpa      #$30      ; below '0'?
                     blo       ph_end
-                    cmpa      #$39                '0'-'9'?
+                    cmpa      #$39      ; '0'-'9'?
                     bhi       ph_af
                     suba      #$30
                     bra       ph_dig
-ph_af               anda      #$DF                fold lower case up
-                    cmpa      #$41                below 'A'?
+ph_af               anda      #$DF      ; fold lower case up
+                    cmpa      #$41      ; below 'A'?
                     blo       ph_end
-                    cmpa      #$46                above 'F'?
+                    cmpa      #$46      ; above 'F'?
                     bhi       ph_end
-                    suba      #$37                'A' -> 10
+                    suba      #$37      ; 'A' -> 10
 ph_dig              pshs      a
-                    tfr       y,d                 value = value * 16
+                    tfr       y,d       ; value = value * 16
                     lslb
                     rola
                     lslb
@@ -372,13 +372,13 @@ ph_dig              pshs      a
                     rola
                     lslb
                     rola
-                    addb      ,s+                 + this digit
+                    addb      ,s+       ; + this digit
                     adca      #0
                     tfr       d,y
-                    inc       ,s                  count it
+                    inc       ,s        ; count it
                     leax      1,x
                     bra       ph_lp
-ph_end              tst       ,s+                 saw at least one digit?
+ph_end              tst       ,s+       ; saw at least one digit?
                     beq       ph_bad
                     tfr       y,d
                     puls      y

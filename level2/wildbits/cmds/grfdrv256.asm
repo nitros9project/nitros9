@@ -36,7 +36,7 @@ entry               equ       *
 *                    tfr       a,dp
 *                    puls      a
                     tfr       0,dp
-                    lda       #EDIT_LUT_1+ACT_LUT_1 Make sure we can edit grfdrv LUT
+                    lda       #EDIT_LUT_1+ACT_LUT_1 ; make sure we can edit grfdrv LUT
                     sta       MMU_MEM_CTRL
 
 *Where did this come from, and then where is the stack for GrfDrv?
@@ -45,7 +45,7 @@ entry               equ       *
 *                   lds       >gr.Stack
 * Dispatch to function
                     leay      FuncTbl,pcr
-                    aslb                ; B*2 for word table
+                    aslb                ; b*2 for word table
                     jmp       [b,y]
 
 
@@ -66,7 +66,7 @@ entry               equ       *
 * themselves - otherwise the stb MMU_SLOT_n below (and the fast-path
 * check) hit LUT 0 and corrupt the SYSTEM task's memory map.
 WriteCharLive       pshs      cc,d,y
-                    orcc      #IntMasks           IRQ return clears EDIT_LUT: select, read and remap masked
+                    orcc      #IntMasks ; irq return clears EDIT_LUT: select, read and remap masked
                     lda       #EDIT_LUT_1+ACT_LUT_1
                     sta       MMU_MEM_CTRL
                     ldx       MMU_SLOT_1
@@ -75,37 +75,37 @@ WriteCharLive       pshs      cc,d,y
                     clra
                     ldx       #gr.DATImg+2
                     ldb       #TEXT_RAM_BLK
-                    stb       MMU_SLOT_1 $2000
+                    stb       MMU_SLOT_1 ; $2000
                     std       ,x++
                     ldb       #COLOR_RAM_BLK
-                    stb       MMU_SLOT_2 $4000
+                    stb       MMU_SLOT_2 ; $4000
                     std       ,x++
 mapped@             puls      cc,d,y
                     leax      $2000,y
-		    sta	      ,x
-		    leax      $4000,y
-		    stb	      ,x
-         	    clrb
+                    sta       ,x
+                    leax      $4000,y
+                    stb       ,x
+                    clrb
                     jmp       >GrfMod+SysRet
 
-WriteCharShadow	    pshs      cc,a,b,y
+WriteCharShadow     pshs      cc,a,b,y
                     orcc      #IntMasks
-                    lda	      #EDIT_LUT_1+ACT_LUT_1   select LUT 1 (direct call skips 'entry')
-                    sta	      MMU_MEM_CTRL
+                    lda       #EDIT_LUT_1+ACT_LUT_1 ; select LUT 1 (direct call skips 'entry')
+                    sta       MMU_MEM_CTRL
                     clra
                     ldx       #gr.DATImg+6
                     ldb       >gr.TermBlk
-                    stb       MMU_SLOT_3 $6000
+                    stb       MMU_SLOT_3 ; $6000
                     std       ,x++
                     incb
-                    stb       MMU_SLOT_4 $8000
+                    stb       MMU_SLOT_4 ; $8000
                     std       ,x++
-		    puls      cc,a,b,y
-	    	    leax      $6000,y
-		    sta	      ,x
-		    leax      T.TXTCOLOR,x
-		    stb	      ,x	    
-         	    clrb
+                    puls      cc,a,b,y
+                    leax      $6000,y
+                    sta       ,x
+                    leax      T.TXTCOLOR,x
+                    stb       ,x
+                    clrb
                     jmp       >GrfMod+SysRet
 
 ******************************************************************
@@ -129,7 +129,7 @@ WriteCharShadow	    pshs      cc,a,b,y
 *
 *******************************************************************
 ScrollLive          pshs      cc,a
-                    orcc      #IntMasks           IRQ return clears EDIT_LUT: select, read and remap masked
+                    orcc      #IntMasks ; irq return clears EDIT_LUT: select, read and remap masked
                     lda       #EDIT_LUT_1+ACT_LUT_1
                     sta       MMU_MEM_CTRL
                     ldx       MMU_SLOT_1
@@ -138,26 +138,26 @@ ScrollLive          pshs      cc,a
                     clra
                     ldx       #gr.DATImg+2
                     ldb       #TEXT_RAM_BLK
-                    stb       MMU_SLOT_1 $2000
+                    stb       MMU_SLOT_1 ; $2000
                     std       ,x++
                     ldb       #COLOR_RAM_BLK
-                    stb       MMU_SLOT_2 $4000
+                    stb       MMU_SLOT_2 ; $4000
                     std       ,x++
 mapped@             puls      cc,a
-                    pshs      a                   ,s = width
-                    ldd       >gr.d2              end offset
-                    subd      >gr.d1              - start offset
-                    subb      ,s                  - one row
+                    pshs      a         ; ,s = width
+                    ldd       >gr.d2    ; end offset
+                    subd      >gr.d1    ; - start offset
+                    subb      ,s        ; - one row
                     sbca      #0
-                    pshs      d                   ,s = count, 2,s = width
-                    ldy       #$2000              text plane
+                    pshs      d         ; ,s = count, 2,s = width
+                    ldy       #$2000    ; text plane
                     bsr       ScrollPlane
-                    lda       2,s                 Y = start of last row
+                    lda       2,s       ; y = start of last row
                     ldb       #$20
-loop@               stb       ,y+                 blank the last row's glyphs
+loop@               stb       ,y+       ; blank the last row's glyphs
                     deca
                     bne       loop@
-                    ldy       #$4000              colour plane
+                    ldy       #$4000    ; colour plane
                     bsr       ScrollPlane
                     leas      3,s
                     clrb
@@ -166,33 +166,33 @@ loop@               stb       ,y+                 blank the last row's glyphs
 
 
 
-ScrollShadow	    pshs      cc,a,b,y
+ScrollShadow        pshs      cc,a,b,y
                     orcc      #IntMasks
-                    lda	      #EDIT_LUT_1+ACT_LUT_1   select LUT 1 (direct call skips 'entry')
-                    sta	      MMU_MEM_CTRL
+                    lda       #EDIT_LUT_1+ACT_LUT_1 ; select LUT 1 (direct call skips 'entry')
+                    sta       MMU_MEM_CTRL
                     clra
                     ldx       #gr.DATImg+6
                     ldb       >gr.TermBlk
-                    stb       MMU_SLOT_3 $6000
+                    stb       MMU_SLOT_3 ; $6000
                     std       ,x++
                     incb
-                    stb       MMU_SLOT_4 $8000
+                    stb       MMU_SLOT_4 ; $8000
                     std       ,x++
-		    puls      cc,a,b,y
-                    pshs      a                   ,s = width
-                    ldd       >gr.d2              end offset
-                    subd      >gr.d1              - start offset
-                    subb      ,s                  - one row
+                    puls      cc,a,b,y
+                    pshs      a         ; ,s = width
+                    ldd       >gr.d2    ; end offset
+                    subd      >gr.d1    ; - start offset
+                    subb      ,s        ; - one row
                     sbca      #0
-                    pshs      d                   ,s = count, 2,s = width
-                    ldy       #$6000              text plane
+                    pshs      d         ; ,s = count, 2,s = width
+                    ldy       #$6000    ; text plane
                     bsr       ScrollPlane
-                    lda       2,s                 Y = start of last row
+                    lda       2,s       ; y = start of last row
                     ldb       #$20
-loop@               stb       ,y+                 blank the last row's glyphs
+loop@               stb       ,y+       ; blank the last row's glyphs
                     deca
                     bne       loop@
-                    ldy       #$6000+T.TXTCOLOR   colour plane
+                    ldy       #$6000+T.TXTCOLOR ; colour plane
                     bsr       ScrollPlane
                     leas      3,s
                     clrb
@@ -202,49 +202,49 @@ loop@               stb       ,y+                 blank the last row's glyphs
 * Entry: Y = plane base.  2,s = count, 4,s = width (the caller's frame)
 * Exit:  Y = base + d1 + count = start of the last row
 ScrollPlane         tfr       y,d
-                    addd      >gr.d1              dest = base + start
+                    addd      >gr.d1    ; dest = base + start
                     tfr       d,y
-                    ldb       4,s                 width
+                    ldb       4,s       ; width
                     clra
-                    leau      d,y                 source = dest + one row
-                    ldd       2,s                 count
-                    lbra      CpyBlk              CpyBlk returns to our caller
+                    leau      d,y       ; source = dest + one row
+                    ldd       2,s       ; count
+                    lbra      CpyBlk    ; cpyBlk returns to our caller
 
 *******************************************************************
 * Function Dispatch Table
 *******************************************************************
 FuncTbl
-                    fdb       GrfMod+Init         ; B=0
-                    fdb       GrfMod+Term         ; B=1
-                    fdb       GrfMod+StatUnk      ; B=2  was GSMouse (read back)
-                    fdb       GrfMod+StatUnk      ; B=3  was GSDScrn (read back)
-                    fdb       GrfMod+GSFntChar    ; B=4
-                    fdb       GrfMod+SSFntChar    ; B=5
-                    fdb       GrfMod+StatUnk      ; B=6  was SSDScrn (no mirror)
-                    fdb       GrfMod+PushBuf      ; B=7
-                    fdb       GrfMod+PullBuf      ; B=8
-		    fdb	      GrfMod+EraseLine	  ; b=9
-		    fdb	      GrfMod+ErEOLine	  ; b=10
-		    fdb	      GrfMod+ErEOScrn	  ; b=11
-		    fdb	      GrfMod+PSGInit	  ; b=12
-		    fdb	      GrfMod+PSGBell      ; b=13
-		    fdb	      GrfMod+PSGOff	  ; b=14
-		    fdb	      GrfMod+GFCell	  ; b=15
-		    fdb	      GrfMod+GFClrScrn	  ; b=16
-		    fdb	      GrfMod+GFBlank	  ; b=17
-		    fdb	      GrfMod+GFPal	  ; b=18
-		    fdb	      GrfMod+GFBmEnable	  ; b=19
-		    fdb	      GrfMod+GFBmFree	  ; b=20
-		    fdb	      GrfMod+GFBmPalet	  ; b=21
-                    fdb       GrfMod+GFInsLine    ; b=22
-                    fdb       GrfMod+GFSwitch     ; b=23
-                    fdb       GrfMod+GFTermGone   ; b=24
-                    fdb       GrfMod+GFDfPal      ; b=25
-                    fdb       GrfMod+GFAScrn      ; b=26
-                    fdb       GrfMod+GFGetStt     ; b=27
-                    fdb       GrfMod+GFSetStt     ; b=28
-                    fdb       GrfMod+GFInitDisp   ; b=29
-                    fdb       GrfMod+GFTermNew    ; b=30
+                    fdb       GrfMod+Init ; B=0
+                    fdb       GrfMod+Term ; B=1
+                    fdb       GrfMod+StatUnk ; B=2  was GSMouse (read back)
+                    fdb       GrfMod+StatUnk ; B=3  was GSDScrn (read back)
+                    fdb       GrfMod+GSFntChar ; B=4
+                    fdb       GrfMod+SSFntChar ; B=5
+                    fdb       GrfMod+StatUnk ; B=6  was SSDScrn (no mirror)
+                    fdb       GrfMod+PushBuf ; B=7
+                    fdb       GrfMod+PullBuf ; B=8
+                    fdb       GrfMod+EraseLine ; b=9
+                    fdb       GrfMod+ErEOLine ; b=10
+                    fdb       GrfMod+ErEOScrn ; b=11
+                    fdb       GrfMod+PSGInit ; b=12
+                    fdb       GrfMod+PSGBell ; b=13
+                    fdb       GrfMod+PSGOff ; b=14
+                    fdb       GrfMod+GFCell ; b=15
+                    fdb       GrfMod+GFClrScrn ; b=16
+                    fdb       GrfMod+GFBlank ; b=17
+                    fdb       GrfMod+GFPal ; b=18
+                    fdb       GrfMod+GFBmEnable ; b=19
+                    fdb       GrfMod+GFBmFree ; b=20
+                    fdb       GrfMod+GFBmPalet ; b=21
+                    fdb       GrfMod+GFInsLine ; b=22
+                    fdb       GrfMod+GFSwitch ; b=23
+                    fdb       GrfMod+GFTermGone ; b=24
+                    fdb       GrfMod+GFDfPal ; b=25
+                    fdb       GrfMod+GFAScrn ; b=26
+                    fdb       GrfMod+GFGetStt ; b=27
+                    fdb       GrfMod+GFSetStt ; b=28
+                    fdb       GrfMod+GFInitDisp ; b=29
+                    fdb       GrfMod+GFTermNew ; b=30
 
 
 *******************************************************************
@@ -260,16 +260,16 @@ Init
 *   bsr   InitHardware
 *   bsr   SetupDefaultScreen
 *                    andcc	#^Carry
-		    ldd  #GrfMod+WriteCharLive
-                    std  gr.WriteCharLive
-  		    ldd  #GrfMod+WriteCharShadow
-  		    std  gr.WriteCharShadow
-		    ldd	 #GrfMod+ScrollLive
-		    std	 gr.ScrollLive
-		    ldd  #GrfMod+ScrollShadow
-		    std	 gr.ScrollShadow
-                    clrb                ; No error
-                    lbra      SysRet    ; Return to caller
+                    ldd       #GrfMod+WriteCharLive
+                    std       gr.WriteCharLive
+                    ldd       #GrfMod+WriteCharShadow
+                    std       gr.WriteCharShadow
+                    ldd       #GrfMod+ScrollLive
+                    std       gr.ScrollLive
+                    ldd       #GrfMod+ScrollShadow
+                    std       gr.ScrollShadow
+                    clrb                ; no error
+                    lbra      SysRet    ; return to caller
 
 *******************************************************************
 * Term - Terminate graphics driver
@@ -311,17 +311,17 @@ Term
 GSFntChar           lda       #0
                     bra       DoFontGetSet
 SSFntChar           lda       #1
-DoFontGetSet        pshs      a         store get/set state on stack
+DoFontGetSet        pshs      a         ; store get/set state on stack
                     pshs      cc
                     orcc      #IntMasks
                     lda       #EDIT_LUT_1+ACT_LUT_1
                     sta       MMU_MEM_CTRL
-                    lda       #FONT_BLK map in font block
+                    lda       #FONT_BLK ; map in font block
                     sta       MMU_SLOT_2
                     clr       gr.DATImg+4
                     sta       gr.DATImg+5
-                    ldx       #gr.PDRGS load x with PDREGS to get shadow stack regs
-                    ldx       R$X,x     setfont: source is x
+                    ldx       #gr.PDRGS ; load x with PDREGS to get shadow stack regs
+                    ldx       R$X,x     ; setfont: source is x
                     ldy       #gr.PDAT
                     lbsr      GMapAddr2Blk
                     lda       #1
@@ -329,39 +329,39 @@ DoFontGetSet        pshs      a         store get/set state on stack
 *		    ldy	      #$0104
 *		    sty	      MMU_SLOT_3
                     ldx       #gr.PDRGS
-                    ldd       R$Y,x     get the char# and mulitply by 8
-                    lslb                because 8 bytes per character
+                    ldd       R$Y,x     ; get the char# and mulitply by 8
+                    lslb                ; because 8 bytes per character
                     rola
                     lslb
                     rola
                     lslb
-                    rola                d now has the font character offset from 0
-                    tfr       d,y       transfer result to y
+                    rola                ; d now has the font character offset from 0
+                    tfr       d,y       ; transfer result to y
 *		    lbra      end@
-                    lda       R$A,x     test for font bank 0 or 1
-                    beq       font0@    and add appropriate offset
-font1@              leay      FONT_1_OFFSET,y add offset for font 1
+                    lda       R$A,x     ; test for font bank 0 or 1
+                    beq       font0@    ; and add appropriate offset
+font1@              leay      FONT_1_OFFSET,y ; add offset for font 1
                     bra       cont@
-font0@              leay      FONT_0_OFFSET,y add offset for font 0
+font0@              leay      FONT_0_OFFSET,y ; add offset for font 0
 cont@               leay      $4000,y
-                    pshs      y         push character offset on stack
+                    pshs      y         ; push character offset on stack
 mapgood@            ldd       R$X,x
                     anda      #%00011111
                     tfr       d,x
                     tst       3,s
                     beq       getfont@
                     puls      y
-                    leax      $2000,x   x=process memory
+                    leax      $2000,x   ; x=process memory
                     bra       contfont@
 getfont@            leay      $2000,x
                     puls      x
-contfont@           ldb       #4        copy 8 bytes
+contfont@           ldb       #4        ; copy 8 bytes
                     pshs      u
 copy@               ldu       ,x++
                     stu       ,y++
                     decb
                     bne       copy@
-end@                puls      u         pull blk addr and getset flag
+end@                puls      u         ; pull blk addr and getset flag
                     puls      cc
                     puls      a
 debugend@           jmp       >GrfMod+SysRet
@@ -376,11 +376,11 @@ PushBuf             lbsr      PushCore
 * PushCore - GF.PushBuf's body, also called by GFSwitch.  Exit U = gr.U5.
 PushCore            lbsr      SetBlkC2C3
                     pshs      y,u
-                    ldy       #$6000+T.TXT copy text from TEXT_RAM_BLK
+                    ldy       #$6000+T.TXT ; copy text from TEXT_RAM_BLK
                     ldu       #$2000
                     ldd       #4800
                     lbsr      CpyBlk
-                    ldy       #$6000+T.TXTCOLOR copy color from COLOR_RAM_BLK
+                    ldy       #$6000+T.TXTCOLOR ; copy color from COLOR_RAM_BLK
                     ldu       #$4000
                     ldd       #4800
                     lbsr      CpyBlk
@@ -389,23 +389,23 @@ PushCore            lbsr      SetBlkC2C3
 * switch so they can be re-enabled one at a time on real hardware - see
 * the TermSave* table in defs/wildbits_vtio.d.  SetBlkC0C1 maps VICKY_BLK at
 * $2000 and FONT_BLK at $4000.
-                    ifne      TermSaveTextLUT
-                    ldy       #$6000+T.FLUT   text LUT fg+bg, 2 x 64 bytes
-                    ldu       #$2000+TEXT_LUT_FG  VICKY_BLK+$1700, NOT FONT_BLK
+                  IFNE    TermSaveTextLUT
+                    ldy       #$6000+T.FLUT ; text LUT fg+bg, 2 x 64 bytes
+                    ldu       #$2000+TEXT_LUT_FG ; vicky_BLK+$1700, NOT FONT_BLK
                     ldd       #128
                     lbsr      CpyBlk
-                    endc
+                  ENDC
 * Sprite records are NOT captured here, and nothing replaces the capture:
 * the program that draws them holds the only copy and has registered where
 * it is (gr.SprTbl), so the terminal coming forward fills the registers
 * from its own table and clears what that table does not cover.  The
 * outgoing terminal's records are simply left alone until then.
-                    ifne      TermSaveFont0
-                    ldy       #$6000+T.FONT0  font memory bank 0
-                    ldu       #$4000+FONT_0_OFFSET   FONT_BLK+$0000
+                  IFNE    TermSaveFont0
+                    ldy       #$6000+T.FONT0 ; font memory bank 0
+                    ldu       #$4000+FONT_0_OFFSET ; font_BLK+$0000
                     ldd       #$800
                     lbsr      CpyBlk
-                    endc
+                  ENDC
 * CLUTs 0-3 are GRPH_LUT0_OFF ($1000) within FONT_BLK (FONT_BLK), which
 * SetBlkC0C1 maps at $4000 - so $5000, not $2800.  $2800 is VICKY_BLK+$0800,
 * and 4096 bytes from there runs to VICKY_BLK+$17FF: on Revision E that is
@@ -414,12 +414,12 @@ PushCore            lbsr      SetBlkC2C3
 * push/pull round trip was self-consistent, which is why nothing showed,
 * but PullBuf was programming the bitmap and tile registers with
 * whatever had been captured.
-                    ifne      TermSaveCLUT
-                    ldy       #$6000+T.CLUT0  graphics LUT0-3, $400 each
-                    ldu       #$4000+GRPH_LUT0_OFF   FONT_BLK+$1000
+                  IFNE    TermSaveCLUT
+                    ldy       #$6000+T.CLUT0 ; graphics LUT0-3, $400 each
+                    ldu       #$4000+GRPH_LUT0_OFF ; font_BLK+$1000
                     ldd       #$1000
                     lbsr      CpyBlk
-                    endc
+                  ENDC
 * The 16 main display registers ($FFC0-$FFCF) are NOT read back here any
 * more.  V.V_MCR / V.V_LayerCTL / V.BordBack are seeded by vtio's
 * GF.InitDisp, inherited by GF.TermNew and updated by every writer
@@ -489,11 +489,11 @@ Blk2Addr            lsra
 *   Entry: A = bitmap # (0-2), U = the statics.
 *   Exit:  A = its block, X = its offset within that block.  B clobbered.
 *******************************************************************
-BmGetAddr           lsla                          two bytes per bitmap in each
+BmGetAddr           lsla                ; two bytes per bitmap in each
                     leax      V.BM0Blk,u
-                    ldb       a,x                 its block
+                    ldb       a,x       ; its block
                     leax      V.BM0Off,u
-                    ldx       a,x                 its offset
+                    ldx       a,x       ; its offset
                     tfr       b,a
                     rts
 
@@ -510,14 +510,14 @@ BmGetAddr           lsla                          two bytes per bitmap in each
 * from the block's low three bits, so the most it can reach is $FFFF.
 *******************************************************************
 BmRegAddr           clrb
-                    lbsr      Blk2Addr            D = address bits 23:8
-                    pshs      a                   bits 23:16
+                    lbsr      Blk2Addr  ; d = address bits 23:8
+                    pshs      a         ; bits 23:16
                     tfr       b,a
-                    clrb                          D = bits 15:0, low 13 clear
-                    leax      d,x                 X = that plus the offset
+                    clrb                ; d = bits 15:0, low 13 clear
+                    leax      d,x       ; x = that plus the offset
                     puls      a
-                    sta       1,y                 bits 23:16
-                    stx       2,y                 bits 15:8 and 7:0
+                    sta       1,y       ; bits 23:16
+                    stx       2,y       ; bits 15:8 and 7:0
                     rts
 ;;; Pulluf
 ;;; Push Registers to Screen Backup Buffer
@@ -529,11 +529,11 @@ PullBuf             lbsr      PullCore
 * PullCore - GF.PullBuf's body, also called by GFSwitch.  Exit U = gr.U5.
 PullCore            lbsr      SetBlkC2C3
                     pshs      y,u
-                    ldu       #$6000+T.TXT restore text to TEXT_RAM_BLK
+                    ldu       #$6000+T.TXT ; restore text to TEXT_RAM_BLK
                     ldy       #$2000
                     ldd       #4800
                     lbsr      CpyBlk
-                    ldu       #$6000+T.TXTCOLOR restore color to COLOR_RAM_BLK
+                    ldu       #$6000+T.TXTCOLOR ; restore color to COLOR_RAM_BLK
                     ldy       #$4000
                     ldd       #4800
                     lbsr      CpyBlk
@@ -543,33 +543,33 @@ PullCore            lbsr      SetBlkC2C3
 * leaves alone.  This is the block that blacked the screen on real
 * hardware with all four on - it programs whatever PushBuf managed to
 * read out of Vicky.
-                    ifne      TermSaveTextLUT
-                    ldu       #$6000+T.FLUT   text LUT fg+bg
-                    ldy       #$2000+TEXT_LUT_FG  VICKY_BLK+$1700, NOT FONT_BLK
+                  IFNE    TermSaveTextLUT
+                    ldu       #$6000+T.FLUT ; text LUT fg+bg
+                    ldy       #$2000+TEXT_LUT_FG ; vicky_BLK+$1700, NOT FONT_BLK
                     ldd       #128
                     lbsr      CpyBlk
-                    endc
+                  ENDC
 * The sprite registers are filled from this terminal's REGISTERED table,
 * not from a shadow - see SprRestore, called at the end of PullCore where
 * the 16K buffer is finished with and slots 3/4 are free.
-                    ifne      TermSaveFont0
-                    ldu       #$6000+T.FONT0  font memory bank 0
-                    ldy       #$4000+FONT_0_OFFSET   FONT_BLK+$0000
+                  IFNE    TermSaveFont0
+                    ldu       #$6000+T.FONT0 ; font memory bank 0
+                    ldy       #$4000+FONT_0_OFFSET ; font_BLK+$0000
                     ldd       #$800
                     lbsr      CpyBlk
-                    endc
+                  ENDC
 * Restore is gated separately from PushBuf's capture: with TermSaveCLUT 0
 * and TermRestCLUT 1, T.CLUT0-3 is a write-only mirror that vtio's
 * SS.DfPal maintains and nothing ever reads out of Vicky.
-                    ifne      TermRestCLUT
-                    ldu       #$6000+T.CLUT0  graphics LUT0-3
-                    ldy       #$4000+GRPH_LUT0_OFF   FONT_BLK+$1000, not $2800
+                  IFNE    TermRestCLUT
+                    ldu       #$6000+T.CLUT0 ; graphics LUT0-3
+                    ldy       #$4000+GRPH_LUT0_OFF ; font_BLK+$1000, not $2800
                     ldd       #$1000
                     lbsr      CpyBlk
-                    endc
+                  ENDC
 * restore display registers
                     ldu       >gr.U5
-                    leau      V.V_MCR,u  copy VICKY_MCR Regs, Layer, Backgroun
+                    leau      V.V_MCR,u ; copy VICKY_MCR Regs, Layer, Backgroun
                     ldy       #$FFC0
                     ldd       #16
                     lbsr      CpyBlk
@@ -582,7 +582,7 @@ PullCore            lbsr      SetBlkC2C3
                     lda       V.BM0Cl_En,u
                     sta       $3000
                     ldy       #$3000
-                    clra                          bitmap 0
+                    clra                ; bitmap 0
                     lbsr      BmGetAddr
                     lbsr      BmRegAddr
                     lda       V.BM1Cl_En,u
@@ -598,7 +598,7 @@ PullCore            lbsr      SetBlkC2C3
                     lbsr      BmGetAddr
                     lbsr      BmRegAddr
                     ldy       #$3100
-                    leau      V.TM0,u   Copy Tile Map Regs
+                    leau      V.TM0,u   ; copy Tile Map Regs
                     ldd       #36
                     lbsr      CpyBlk
                     ldu       >gr.U5
@@ -614,67 +614,67 @@ end@                clrb
                     rts
 
 
-EraseLine	    lbsr      SetBlkC2C3
-	            clrb                          start erasing at column 0
-                    lda       V.CurRow,u          of the current row
-		    bsr       EraseLineCore
+EraseLine           lbsr      SetBlkC2C3
+                    clrb                ; start erasing at column 0
+                    lda       V.CurRow,u ; of the current row
+                    bsr       EraseLineCore
                     jmp       >GrfMod+SysRet
 * Entry:  A = The row to erase.
 *         B = The column to start erasing on.
 EraseLineCore       pshs      u
-		    pshs      b                   save the start column
+                    pshs      b         ; save the start column
                     ldb       V.WWidth,u
-                    mul                           get the product
-                    addb      ,s                  add the column to start erasing from
-                    adca      #0                  consider the carry
-                    tfr       d,x                 X = cell offset
-                    lda       V.WWidth,u          get the number of columns
-                    suba      ,s+                 A = cells to erase
+                    mul                 ; get the product
+                    addb      ,s        ; add the column to start erasing from
+                    adca      #0        ; consider the carry
+                    tfr       d,x       ; x = cell offset
+                    lda       V.WWidth,u ; get the number of columns
+                    suba      ,s+       ; a = cells to erase
                     tfr       a,b
                     clra
-                    tfr       d,y                 Y = fill count
-		    cmpy      #0
-		    beq       elcexit
-                    lda       #C$SPAC		  A=glyph, X=cell offset, Y=count
+                    tfr       d,y       ; y = fill count
+                    cmpy      #0
+                    beq       elcexit
+                    lda       #C$SPAC   ; a=glyph, X=cell offset, Y=count
 * b3 is scratch here, not a parameter: U is about to be reused as the
 * colour-plane pointer, so V.FBCol has to be spilled somewhere first.
 * Callers must not hold a live b3 across GF.EraseLine/ErEOLine/ErEOScrn.
-		    ldb	      V.FBCol,u
-		    stb	      >gr.b3               spill V.FBCol (colour attr)
-                    ldb	      V.TermLive,u
-		    beq	      EraseLineShadow
-		    leau      $4000,x
-		    leax      $2000,x
-		    bra	      FillChars
-EraseLineShadow	    leau      $6000+T.TXTCOLOR,x
-		    leax      $6000,x
-FillChars	    ldb	      >gr.b3               recover the colour attr
-loop@		    sta	      ,x+
-		    stb	      ,u+
-		    leay      -1,y
-		    bne	      loop@
-elcexit		    puls      u
-		    rts
+                    ldb       V.FBCol,u
+                    stb       >gr.b3    ; spill V.FBCol (colour attr)
+                    ldb       V.TermLive,u
+                    beq       EraseLineShadow
+                    leau      $4000,x
+                    leax      $2000,x
+                    bra       FillChars
+EraseLineShadow     leau      $6000+T.TXTCOLOR,x
+                    leax      $6000,x
+FillChars           ldb       >gr.b3    ; recover the colour attr
+loop@               sta       ,x+
+                    stb       ,u+
+                    leay      -1,y
+                    bne       loop@
+elcexit             puls      u
+                    rts
 
 
-ErEOLine	    lbsr      SetBlkC2C3
-ErEOLine2           ldd       >V.CurRow,u         get the current row and column
-                    bsr       EraseLineCore       go erase from that point to the end of line
-                    jmp       >GrfMod+SysRet		    
+ErEOLine            lbsr      SetBlkC2C3
+ErEOLine2           ldd       >V.CurRow,u ; get the current row and column
+                    bsr       EraseLineCore ; go erase from that point to the end of line
+                    jmp       >GrfMod+SysRet
 
-ErEOScrn	    lbsr      SetBlkC2C3
-		    ldd	      >V.CurRow,u
-		    bsr	      EraseLineCore
-                    lda       V.CurRow,u          get the current row
-l@                  clrb                          clear the column
-                    inca                          increment row
-                    cmpa      V.WHeight,u         are we at the end?
-                    bge       ex@                 branch if so
-                    pshs      a                   save our row counter
-                    bsr       EraseLineCore       go erase the line
-                    puls      a                   recover our row counter
-                    bra       l@                  go erase more
-ex@                 jmp       >GrfMod+SysRet      return		    
+ErEOScrn            lbsr      SetBlkC2C3
+                    ldd       >V.CurRow,u
+                    bsr       EraseLineCore
+                    lda       V.CurRow,u ; get the current row
+l@                  clrb                ; clear the column
+                    inca                ; increment row
+                    cmpa      V.WHeight,u ; are we at the end?
+                    bge       ex@       ; branch if so
+                    pshs      a         ; save our row counter
+                    bsr       EraseLineCore ; go erase the line
+                    puls      a         ; recover our row counter
+                    bra       l@        ; go erase more
+ex@                 jmp       >GrfMod+SysRet ; return
 
 *******************************************************************
 * GF.InsLine (22) - 1F 30 Insert Line at V.CurRow.
@@ -683,34 +683,34 @@ ex@                 jmp       >GrfMod+SysRet      return
 * DSS through U like EraseLine.  vtio clamps V.CurRow below V.WHeight
 * and refuses a zero width or height before calling.
 *******************************************************************
-GFInsLine           lbsr      SetBlkC2C3          U = this terminal's statics
+GFInsLine           lbsr      SetBlkC2C3 ; u = this terminal's statics
                     lda       V.WHeight,u
                     deca
-                    suba      V.CurRow,u          rows to move
+                    suba      V.CurRow,u ; rows to move
                     ldb       V.WWidth,u
-                    mul                           D = bytes to move per plane
-                    beq       ilblank@            inserting at the last row
-                    pshs      d,u                 count, statics
+                    mul                 ; d = bytes to move per plane
+                    beq       ilblank@  ; inserting at the last row
+                    pshs      d,u       ; count, statics
                     ldb       V.WWidth,u
                     clra
-                    pshs      d                   ,s = width, 2,s = count, 4,s = statics
-                    ldx       V.ScreenSize,u      X = dest end offset
+                    pshs      d         ; ,s = width, 2,s = count, 4,s = statics
+                    ldx       V.ScreenSize,u ; x = dest end offset
                     tst       V.TermLive,u
                     beq       ilshad@
-                    ldd       #$2000              live text plane
+                    ldd       #$2000    ; live text plane
                     bsr       InsPlane
-                    ldd       #$4000              live colour plane
+                    ldd       #$4000    ; live colour plane
                     bsr       InsPlane
                     bra       ildone@
-ilshad@             ldd       #$6000              shadow text plane
+ilshad@             ldd       #$6000    ; shadow text plane
                     bsr       InsPlane
-                    ldd       #$6000+T.TXTCOLOR   shadow colour plane
+                    ldd       #$6000+T.TXTCOLOR ; shadow colour plane
                     bsr       InsPlane
-ildone@             leas      4,s                 drop width, count
-                    puls      u                   statics back
+ildone@             leas      4,s       ; drop width, count
+                    puls      u         ; statics back
 ilblank@            lda       V.CurRow,u
-                    clrb                          from column 0
-                    lbsr      EraseLineCore       row CurRow -> spaces, V.FBCol
+                    clrb                ; from column 0
+                    lbsr      EraseLineCore ; row CurRow -> spaces, V.FBCol
                     jmp       >GrfMod+SysRet
 
 * InsPlane - move one plane's rows down one row, copying end to start
@@ -718,12 +718,12 @@ ilblank@            lda       V.CurRow,u
 * Entry: D = plane base, X = dest end offset (V.ScreenSize)
 *        2,s = width, 4,s = count (the caller's frame)
 * Preserves X.
-InsPlane            pshs      x                   now 4,s = width, 6,s = count
-                    leay      d,x                 Y = dest end
+InsPlane            pshs      x         ; now 4,s = width, 6,s = count
+                    leay      d,x       ; y = dest end
                     tfr       y,d
-                    subd      4,s                 source end = dest end - one row
+                    subd      4,s       ; source end = dest end - one row
                     tfr       d,u
-                    ldx       6,s                 count (never 0 - caller checks)
+                    ldx       6,s       ; count (never 0 - caller checks)
 iplp@               lda       ,-u
                     sta       ,-y
                     leax      -1,x
@@ -754,7 +754,7 @@ GFSwitch            pshs      cc
                     tfr       a,b
                     lslb
                     lslb
-                    lslb                          B = ID * gr.TermSz
+                    lslb                ; b = ID * gr.TermSz
                     tst       >gr.SwitchReq
                     bmi       GSPrev
                     bra       GSNext
@@ -806,18 +806,18 @@ GSChkNext           cmpa      >gr.LiveTerm
                     puls      a
                     beq       GSNext
 * A = new id, B = its table offset.  Save the live terminal first.
-GSFound             pshs      d                   0,s = new id, 1,s = new offset
+GSFound             pshs      d         ; 0,s = new id, 1,s = new offset
                     ldb       >gr.LiveTerm
                     lslb
                     lslb
                     lslb
                     ldx       #gr.TermTbl
-                    abx                           X = old entry
+                    abx                 ; x = old entry
                     lda       T.Flags,x
                     anda      #^T.Live
                     sta       T.Flags,x
                     lbsr      GSTermPtrs
-                    lbsr      PushCore            exits U = old statics (slot 5)
+                    lbsr      PushCore  ; exits U = old statics (slot 5)
                     clr       V.TermLive,u
 * SS.WSig: stage "your terminal went background" for vtio's AltISR to send.
 * D is already on the stack here, so A and B are scratch.
@@ -827,7 +827,7 @@ GSFound             pshs      d                   0,s = new id, 1,s = new offset
                     beq       wsbg@
                     std       >gr.SigBgID
 wsbg@               puls      d
-                    lbsr      GSEnter             then bring in the new one
+                    lbsr      GSEnter   ; then bring in the new one
 GSDone              clr       >gr.SwitchReq
                     puls      cc
                     clrb
@@ -854,18 +854,18 @@ GFTermGone          pshs      cc
                     ldb       #gr.TermSz
                     mul
                     ldx       #gr.TermTbl
-                    abx                           X = closing entry
+                    abx                 ; x = closing entry
                     ldd       T.StatPtr,x
                     cmpd      >gr.d1
-                    bne       GTDone              not this static's terminal
-                    ldb       T.Flags,x           B = its flags, read once
+                    bne       GTDone    ; not this static's terminal
+                    ldb       T.Flags,x ; b = its flags, read once
                     bitb      #T.Init
-                    beq       GTDone              not open - nothing to do
-                    clr       T.Flags,x           no switch can pick it now
-                    pshs      x                   the closing entry, for the free
+                    beq       GTDone    ; not open - nothing to do
+                    clr       T.Flags,x ; no switch can pick it now
+                    pshs      x         ; the closing entry, for the free
                     bitb      #T.Live
-                    beq       GTFree              was not on screen
-                    clra                          A = id, B = offset, from 0
+                    beq       GTFree    ; was not on screen
+                    clra                ; a = id, B = offset, from 0
                     clrb
 GTFind              ldx       #gr.TermTbl
                     abx
@@ -880,7 +880,7 @@ GTSkip              inca
                     addb      #gr.TermSz
                     cmpa      #G.TermMax
                     blo       GTFind
-                    lda       #$FF                none left open
+                    lda       #$FF      ; none left open
                     sta       >gr.LiveTerm
                     clra
                     clrb
@@ -889,12 +889,12 @@ GTSkip              inca
 * switch can pick it, and gr.Busy keeps the AltISR out of grfdrv anyway.
 GTFree              puls      x
                     puls      cc
-                    lbsr      GTFreeBms           bitmaps the driver owns die with it
+                    lbsr      GTFreeBms ; bitmaps the driver owns die with it
                     ldb       T.Block,x
                     beq       GTClear
                     pshs      x
                     clra
-                    tfr       d,x                 X = first block of the 16K
+                    tfr       d,x       ; x = first block of the 16K
                     ldb       #2
                     os9       F$DelRAM
                     puls      x
@@ -952,31 +952,31 @@ GTFreeBms           pshs      x
                     pshs      d
                     lda       >gr.VBlk
                     pshs      a
-                    ldx       3,s                 the closing entry back
-                    lda       T.VBlk,x            aim slot 5 at the CLOSING
-                    sta       >gr.VBlk            terminal's statics
+                    ldx       3,s       ; the closing entry back
+                    lda       T.VBlk,x  ; aim slot 5 at the CLOSING
+                    sta       >gr.VBlk  ; terminal's statics
                     ldd       T.grU5,x
                     std       >gr.U5
-                    clra                          bitmap # 0
-GTFBlp              lbsr      SetBlkC2C3          U = its statics (keeps D and X)
-                    pshs      a                   ,s = bitmap #
-                    lbsr      BmFlagMask          A = BM.Small << bitmap #
-                    pshs      a                   ,s = size bit, 1,s = bitmap #
+                    clra                ; bitmap # 0
+GTFBlp              lbsr      SetBlkC2C3 ; u = its statics (keeps D and X)
+                    pshs      a         ; ,s = bitmap #
+                    lbsr      BmFlagMask ; a = BM.Small << bitmap #
+                    pshs      a         ; ,s = size bit, 1,s = bitmap #
                     lsla
                     lsla
                     lsla
-                    lsla                          A = its ownership bit
+                    lsla                ; a = its ownership bit
                     anda      V.BMFlags,u
-                    beq       GTFBnx              a program's blocks: not ours to free
-                    lda       1,s                 bitmap #
-                    lsla                          two mirror bytes each
+                    beq       GTFBnx    ; a program's blocks: not ours to free
+                    lda       1,s       ; bitmap #
+                    lsla                ; two mirror bytes each
                     leay      V.BM0Cl_En,u
-                    leay      a,y                 Y -> V.BMxCl_En, block at 1,y
+                    leay      a,y       ; y -> V.BMxCl_En, block at 1,y
                     clra
                     ldb       1,y
-                    beq       GTFBnx              nothing allocated
-                    tfr       d,x                 X = first block
-                    ldb       ,s                  its size bit
+                    beq       GTFBnx    ; nothing allocated
+                    tfr       d,x       ; x = first block
+                    ldb       ,s        ; its size bit
                     andb      V.BMFlags,u
                     beq       GTFBten
                     ldb       #BmBlk200
@@ -987,14 +987,14 @@ GTFBten             ldb       #BmBlk240
 GTFBdel             clr       ,y
                     clr       1,y
                     os9       F$DelRAM
-GTFBnx              leas      1,s                 drop the size bit
-                    puls      a                   bitmap #
+GTFBnx              leas      1,s       ; drop the size bit
+                    puls      a         ; bitmap #
                     inca
                     cmpa      #3
                     blo       GTFBlp
-                    puls      a                   gr.VBlk and gr.U5 back, so the
-                    sta       >gr.VBlk            terminal GSEnter just brought in
-                    puls      d                   is still what slot 5 reaches
+                    puls      a         ; gr.VBlk and gr.U5 back, so the
+                    sta       >gr.VBlk  ; terminal GSEnter just brought in
+                    puls      d         ; is still what slot 5 reaches
                     std       >gr.U5
                     lbsr      SetBlkC2C3
                     puls      x,pc
@@ -1005,7 +1005,7 @@ GTFBnx              leas      1,s                 drop the size bit
 * statics (slot 5).
 GSEnter             pshs      a
                     ldx       #gr.TermTbl
-                    abx                           X = new entry
+                    abx                 ; x = new entry
                     lda       T.Flags,x
                     ora       #T.Live
                     sta       T.Flags,x
@@ -1014,7 +1014,7 @@ GSEnter             pshs      a
 * map's slot-5 alias (keys go nowhere).
                     ldd       T.StatPtr,x
                     std       >D.KbdSta
-                    lbsr      PullCore            exits U = new statics (slot 5)
+                    lbsr      PullCore  ; exits U = new statics (slot 5)
 * Drop any key repeat this terminal was left holding.  Repeat state is per
 * terminal but keydrv only services the live one, so a key pressed here
 * and released after a switch away never cleared it, and it fired on the
@@ -1056,7 +1056,7 @@ GSTermPtrs          ldb       T.Block,x
 * GSCalcPos - vtio's CalcCurPos: clamp V.CurRow to V.WHeight-1, then
 * V.CurPos = V.CurRow * V.WWidth + V.CurCol.  Entry U = statics.
 GSCalcPos           lda       V.WHeight,u
-                    beq       GSCPZero            degenerate window - cell 0
+                    beq       GSCPZero  ; degenerate window - cell 0
                     cmpa      V.CurRow,u
                     bhi       GSCPRow
                     deca
@@ -1089,67 +1089,67 @@ GSCPZero            clra
 * Exit: B = 0, or carry + E$IllArg (CLUT # above 3, or the 1K runs off
 *   the top of the caller's map).
 *******************************************************************
-GFDfPal             ldd       >gr.PDRGS+R$X       CLUT #
+GFDfPal             ldd       >gr.PDRGS+R$X ; clut #
                     cmpd      #3
                     lbhi      DfPalBad
                     lslb
-                    lslb                          B = high byte of n*$400
+                    lslb                ; b = high byte of n*$400
                     pshs      b
-                    lbsr      SetBlkC2C3          U = this terminal's statics
+                    lbsr      SetBlkC2C3 ; u = this terminal's statics
                     ldd       V.TermLive,u
-                    pshs      d                   ,s = live  1,s = buffer blk  2,s = n*4
-                    ldd       >gr.PDRGS+R$Y       source address in the caller
+                    pshs      d         ; ,s = live  1,s = buffer blk  2,s = n*4
+                    ldd       >gr.PDRGS+R$Y ; source address in the caller
                     anda      #$1F
                     addd      #$2000
-                    tfr       d,u                 U = source as seen through slot 1
+                    tfr       d,u       ; u = source as seen through slot 1
                     ldb       >gr.PDRGS+R$Y
                     lsrb
                     lsrb
                     lsrb
                     lsrb
-                    lsrb                          B = caller slot 0-7
+                    lsrb                ; b = caller slot 0-7
                     lslb
-                    ldx       #gr.PDAT+1          low byte of each 2-byte entry
-                    abx                           X -> caller's block for that slot
+                    ldx       #gr.PDAT+1 ; low byte of each 2-byte entry
+                    abx                 ; x -> caller's block for that slot
                     pshs      cc
                     orcc      #IntMasks
                     lda       #EDIT_LUT_1+ACT_LUT_1
                     sta       MMU_MEM_CTRL
                     clra
                     ldb       ,x
-                    stb       MMU_SLOT_1 $2000
+                    stb       MMU_SLOT_1 ; $2000
                     std       >gr.DATImg+2
-                    cmpu      #$4000-$400         does the 1K end inside slot 1?
+                    cmpu      #$4000-$400 ; does the 1K end inside slot 1?
                     bls       DfPalMapped
-                    cmpx      #gr.PDAT+15         slot 7 has no next block
+                    cmpx      #gr.PDAT+15 ; slot 7 has no next block
                     beq       DfPalOff
                     ldb       2,x
-                    stb       MMU_SLOT_2 $4000
+                    stb       MMU_SLOT_2 ; $4000
                     std       >gr.DATImg+4
 DfPalMapped         puls      cc
                     tst       1,s
-                    beq       DfPalLive           no buffer yet: live CLUT only
+                    beq       DfPalLive ; no buffer yet: live CLUT only
                     lda       2,s
-                    adda      #$90                $8000 + $1000 + n*$400
+                    adda      #$90      ; $8000 + $1000 + n*$400
                     clrb
                     tfr       d,y
                     pshs      u
                     ldd       #$400
                     lbsr      CpyBlk
                     puls      u
-                    tst       ,s                  live?
-                    beq       DfPalDone           no - PullBuf programs it on the switch
+                    tst       ,s        ; live?
+                    beq       DfPalDone ; no - PullBuf programs it on the switch
 DfPalLive           pshs      cc
                     orcc      #IntMasks
                     lda       #EDIT_LUT_1+ACT_LUT_1
                     sta       MMU_MEM_CTRL
                     clra
                     ldb       #FONT_BLK
-                    stb       MMU_SLOT_3 $6000
+                    stb       MMU_SLOT_3 ; $6000
                     std       >gr.DATImg+6
                     puls      cc
                     lda       2,s
-                    adda      #$70                $6000 + $1000 + n*$400
+                    adda      #$70      ; $6000 + $1000 + n*$400
                     clrb
                     tfr       d,y
                     ldd       #$400
@@ -1189,22 +1189,22 @@ DfPalBad            comb
 * SS.BmAlloc leaves the bitmap DEFINED BUT OFF on purpose.  The blocks
 * hold whatever was in them, so enabling as a side effect of allocating
 * means showing garbage; and visibility needs a layer and FX_BM anyway.
-GFAScrn             lda       #%00000001          enable, CLUT 0
+GFAScrn             lda       #%00000001 ; enable, CLUT 0
                     bra       BmAllocGo
-SSBmAlloc           clra                          defined, but not enabled
-BmAllocGo           sta       >gr.b3              the control byte to leave
-                    ldd       >gr.PDRGS+R$Y       bitmap #
+SSBmAlloc           clra                ; defined, but not enabled
+BmAllocGo           sta       >gr.b3    ; the control byte to leave
+                    ldd       >gr.PDRGS+R$Y ; bitmap #
                     cmpd      #2
                     bhi       AScrnBad
-                    lbsr      SetBlkC2C3          U = this terminal's statics
-                    stb       >gr.b2              bitmap #, for the helpers below
+                    lbsr      SetBlkC2C3 ; u = this terminal's statics
+                    stb       >gr.b2    ; bitmap #, for the helpers below
                     lslb
                     leax      V.BM0Cl_En,u
-                    abx                           X -> V.BMxCl_En, V.BMxBlk at 1,x
+                    abx                 ; x -> V.BMxCl_En, V.BMxBlk at 1,x
                     ldb       1,x
                     beq       AScrnNew
                     clra
-                    std       >gr.PDRGS+R$X       return the existing block
+                    std       >gr.PDRGS+R$X ; return the existing block
                     ldb       #E$WADef
                     bra       AScrnErr
 * ALWAYS TEN BLOCKS (user, 2026-09-20).  R$X's screen type is still
@@ -1230,24 +1230,24 @@ AScrnNew            ldb       #BmBlk240
 * 1,s = the mirror pointer.  PULS does not touch CC, and SetBlkC2C3 keeps
 * it, so the carry from F$AlHRAM survives to the test below.
 alloc@              pshs      b,x
-                    os9       F$AlHRAM            D = first block
-                    lbsr      SetBlkC2C3          remap slot 5 and reload U (keeps D, X, CC)
+                    os9       F$AlHRAM  ; d = first block
+                    lbsr      SetBlkC2C3 ; remap slot 5 and reload U (keeps D, X, CC)
                     bcc       got@
                     leas      3,s
                     ldb       #E$MFull
                     bra       AScrnErr
-got@                ldx       1,s                 the mirror pointer back
+got@                ldx       1,s       ; the mirror pointer back
                     clra
-                    std       >gr.PDRGS+R$X       return the block
-                    stb       1,x                 V.BMxBlk
-                    lbsr      BmClrOff            a driver-allocated bitmap starts
-                    lda       >gr.b3              at offset 0 of its first block
-                    sta       ,x                  V.BMxCl_En
-                    lbsr      AScrnRec            record the size and the ownership
-                    leas      3,s                 done with the count and the pointer
+                    std       >gr.PDRGS+R$X ; return the block
+                    stb       1,x       ; v.BMxBlk
+                    lbsr      BmClrOff  ; a driver-allocated bitmap starts
+                    lda       >gr.b3    ; at offset 0 of its first block
+                    sta       ,x        ; v.BMxCl_En
+                    lbsr      AScrnRec  ; record the size and the ownership
+                    leas      3,s       ; done with the count and the pointer
                     tst       V.TermLive,u
-                    beq       ok@                 shadow: PullBuf programs it on the switch
-                    lbsr      BmEnCore            gr.b3 and the mirror's address
+                    beq       ok@       ; shadow: PullBuf programs it on the switch
+                    lbsr      BmEnCore  ; gr.b3 and the mirror's address
 ok@                 clrb
                     jmp       >GrfMod+SysRet
 AScrnBad            ldb       #E$IllArg
@@ -1267,23 +1267,23 @@ AScrnErr            coma
 *   is about to put in gr.b3 and B is the first block it feeds Blk2Addr.
 *******************************************************************
 AScrnRec            pshs      d
-                    lda       >gr.b2              bitmap #
-                    lbsr      BmFlagMask          A = its size bit
-                    tfr       a,b                 keep the size bit in B
+                    lda       >gr.b2    ; bitmap #
+                    lbsr      BmFlagMask ; a = its size bit
+                    tfr       a,b       ; keep the size bit in B
                     lsla
                     lsla
                     lsla
-                    lsla                          A = its ownership bit
+                    lsla                ; a = its ownership bit
                     ora       V.BMFlags,u
-                    sta       V.BMFlags,u         the driver owns these blocks
-                    lda       4,s                 the block count asked for
+                    sta       V.BMFlags,u ; the driver owns these blocks
+                    lda       4,s       ; the block count asked for
                     cmpa      #BmBlk200
                     beq       ARsml@
-                    comb                          the 10-block size: bit clear
+                    comb                ; the 10-block size: bit clear
                     andb      V.BMFlags,u
                     stb       V.BMFlags,u
                     puls      d,pc
-ARsml@              orb       V.BMFlags,u         the 8-block size: bit set
+ARsml@              orb       V.BMFlags,u ; the 8-block size: bit set
                     stb       V.BMFlags,u
                     puls      d,pc
 
@@ -1303,10 +1303,10 @@ ARsml@              orb       V.BMFlags,u         the 8-block size: bit set
 GFGetStt            leay      GetSttTbl,pcr
                     bra       StatDisp
 GFSetStt            leay      SetSttTbl,pcr
-StatDisp            lbsr      SetBlkC2C3          U = this terminal's statics
+StatDisp            lbsr      SetBlkC2C3 ; u = this terminal's statics
                     ldx       #gr.PDRGS
-                    lda       >gr.b1              status code
-sdlp@               tst       ,y                  0 ends the table (SS.Opt is 0)
+                    lda       >gr.b1    ; status code
+sdlp@               tst       ,y        ; 0 ends the table (SS.Opt is 0)
                     beq       StatUnk
                     cmpa      ,y+
                     beq       sdhit@
@@ -1425,11 +1425,11 @@ RetA                sta       R$A,x
 * moves only the head, so a key that lands in between simply stays queued.
 * SS.KySns stays as it is: it is buffered with each character, and fm and
 * hexed rely on that.  Y is free: StatDisp dispatched here with jmp [,y].
-GSLiveKeys          lda       V.IBufH,u           empty the input buffer
+GSLiveKeys          lda       V.IBufH,u ; empty the input buffer
                     sta       V.IBufT,u
                     tst       V.TermLive,u
                     bne       lklive@
-                    clra                          not live: nothing held
+                    clra                ; not live: nothing held
                     clrb
                     std       R$X,x
                     std       R$Y,x
@@ -1483,42 +1483,42 @@ GSMouse             ldd       MS_XH
 * already the JY.* order, so a coma and a mask.  A terminal that is not
 * live reads nothing held (modes 0 and 1: centered) and leaves the pad
 * port alone.  Y is free: StatDisp dispatched here with jmp [,y].
-GSJoy               ldd       R$X,x               the mode
+GSJoy               ldd       R$X,x     ; the mode
                     cmpd      #JOY.SNES4
                     lbhi      joyerr
                     cmpb      #JOY.Sticks
                     lbhs      JoyNew
-                    lda       #$FF                not live: all switches open
+                    lda       #$FF      ; not live: all switches open
                     tst       V.TermLive,u
                     beq       j1@
-                    lda       VIA0.Base+VIA_ORB_IRB header 0
+                    lda       VIA0.Base+VIA_ORB_IRB ; header 0
                     tstb
                     beq       j1@
-                    lda       VIA0.Base+VIA_ORA_IRA header 1
-j1@                 coma                          1 = closed
-                    ldb       #128                vertical
+                    lda       VIA0.Base+VIA_ORA_IRA ; header 1
+j1@                 coma                ; 1 = closed
+                    ldb       #128      ; vertical
                     bita      #%00000001
                     beq       j2@
-                    clrb                          up
+                    clrb                ; up
 j2@                 bita      #%00000010
                     beq       j3@
-                    ldb       #255                down
+                    ldb       #255      ; down
 j3@                 clr       R$Y,x
                     stb       R$Y+1,x
-                    ldb       #128                horizontal
+                    ldb       #128      ; horizontal
                     bita      #%00000100
                     beq       j4@
-                    clrb                          left
+                    clrb                ; left
 j4@                 bita      #%00001000
                     beq       j5@
-                    ldb       #255                right
+                    ldb       #255      ; right
 j5@                 clr       R$X,x
                     stb       R$X+1,x
                     lsra
                     lsra
                     lsra
                     lsra
-                    anda      #%00000111          buttons 0-2
+                    anda      #%00000111 ; buttons 0-2
                     lbra      RetA
 joyerr              comb
                     ldb       #E$IllArg
@@ -1526,7 +1526,7 @@ joyerr              comb
 
 * Modes 2-6.  The words are built in an 8-byte frame, zero unless live,
 *   then go to R$X/R$Y or the caller's buffer.  B = the mode.
-JoyNew              leas      -8,s                ,s = the four words
+JoyNew              leas      -8,s      ; ,s = the four words
                     clra
                     sta       ,s
                     sta       1,s
@@ -1537,32 +1537,32 @@ JoyNew              leas      -8,s                ,s = the four words
                     sta       6,s
                     sta       7,s
                     tst       V.TermLive,u
-                    beq       jnout@              not live: nothing held, the port untouched
+                    beq       jnout@    ; not live: nothing held, the port untouched
                     cmpb      #JOY.Sticks
                     bne       jnpad@
-                    lda       VIA0.Base+VIA_ORB_IRB stick 0
+                    lda       VIA0.Base+VIA_ORB_IRB ; stick 0
                     coma
                     anda      #%01111111
                     sta       1,s
-                    lda       VIA0.Base+VIA_ORA_IRA stick 1
+                    lda       VIA0.Base+VIA_ORA_IRA ; stick 1
                     coma
                     anda      #%01111111
                     sta       3,s
                     bra       jnout@
 jnpad@              pshs      b
-                    lbsr      PadRead             the words at 1,s
+                    lbsr      PadRead   ; the words at 1,s
                     puls      b
 jnout@              cmpb      #JOY.NES4
                     bhs       jnbuf@
-                    ldd       ,s                  modes 2-4: registers
+                    ldd       ,s        ; modes 2-4: registers
                     std       R$X,x
                     ldd       2,s
                     std       R$Y,x
                     leas      8,s
                     lbra      StatOK
-jnbuf@              ldd       R$Y,x               modes 5 and 6: the caller's buffer
+jnbuf@              ldd       R$Y,x     ; modes 5 and 6: the caller's buffer
                     ldy       #8
-                    lbsr      MapCallBuf          U = the buffer through slot 1
+                    lbsr      MapCallBuf ; u = the buffer through slot 1
                     bcs       jnbad@
                     tfr       u,y
                     tfr       s,u
@@ -1582,36 +1582,36 @@ jnbad@              leas      8,s
 *   callers faster than that), then the next reading is triggered, so no
 *   call waits for its own.  Uses A, B, Y, U.
 PadRead             lda       #NES_EN
-                    andb      #1                  3, 5 odd = NES; 4, 6 even = SNES
+                    andb      #1        ; 3, 5 odd = NES; 4, 6 even = SNES
                     bne       nes@
                     ora       #NES_MODE
-nes@                pshs      a                   ,s = the control byte wanted
+nes@                pshs      a         ; ,s = the control byte wanted
                     lda       NES.Base+NES_CTRL
                     anda      #NES_EN+NES_MODE
                     cmpa      ,s
-                    bne       trig@               off or the wrong type
-                    ldy       #256                about 600 us at most
+                    bne       trig@     ; off or the wrong type
+                    ldy       #256      ; about 600 us at most
 wait@               lda       NES.Base+NES_CTRL
                     bita      #NES_DONE
                     bne       done@
                     leay      -1,y
                     bne       wait@
-                    bra       trig@               no reading: leave them zero
+                    bra       trig@     ; no reading: leave them zero
 done@               ldu       #NES.Base+NES_PAD0
-                    leay      4,s                 Y = the frame (4,s under ,s and the return)
+                    leay      4,s       ; y = the frame (4,s under ,s and the return)
                     lda       #4
-                    pshs      a,y                 ,s = pads left, 1,s = the frame
-pad@                lda       ,u                  the first byte
-                    coma                          1 = pressed
-                    ldb       1,u                 SNES: A X L R in the low nibble
+                    pshs      a,y       ; ,s = pads left, 1,s = the frame
+pad@                lda       ,u        ; the first byte
+                    coma                ; 1 = pressed
+                    ldb       1,u       ; snes: A X L R in the low nibble
                     comb
                     andb      #%00001111
                     pshs      a
-                    lda       4,s                 the control byte wanted
+                    lda       4,s       ; the control byte wanted
                     bita      #NES_MODE
                     puls      a
                     bne       snes@
-                    clrb                          NES: the second byte is not a pad's
+                    clrb                ; nes: the second byte is not a pad's
 snes@               bsr       PadWord
                     ldy       1,s
                     std       ,y++
@@ -1621,7 +1621,7 @@ snes@               bsr       PadWord
                     bne       pad@
                     leas      3,s
 trig@               puls      a
-                    ora       #NES_TRIG           start the next reading
+                    ora       #NES_TRIG ; start the next reading
                     sta       NES.Base+NES_CTRL
                     rts
 
@@ -1634,31 +1634,31 @@ trig@               puls      a
 *   rev(A >> 4) = button 0, button 1, Select, Start in bits 0-3
 *   rev(A & $F) = up, down, left, right
 *   rev(B)      = SNES A, X, L, R
-PadWord             pshs      d                   ,s = first byte, 1,s = nibble
+PadWord             pshs      d         ; ,s = first byte, 1,s = nibble
                     leay      Rev4,pcr
                     lsra
                     lsra
                     lsra
                     lsra
-                    lda       a,y                 buttons 0, 1, Select, Start
+                    lda       a,y       ; buttons 0, 1, Select, Start
                     tfr       a,b
                     lsrb
-                    lsrb                          B = Select, Start: high byte bits 0-1
+                    lsrb                ; b = Select, Start: high byte bits 0-1
                     anda      #%00000011
                     lsla
                     lsla
                     lsla
-                    lsla                          buttons 0, 1: bits 4-5
-                    pshs      a                   ,s = low byte so far
+                    lsla                ; buttons 0, 1: bits 4-5
+                    pshs      a         ; ,s = low byte so far
                     lda       1,s
                     anda      #%00001111
-                    lda       a,y                 up, down, left, right: bits 0-3
+                    lda       a,y       ; up, down, left, right: bits 0-3
                     ora       ,s
                     sta       ,s
                     lda       2,s
-                    lda       a,y                 SNES A, X, L, R in bits 0-3
+                    lda       a,y       ; snes A, X, L, R in bits 0-3
                     pshs      a
-                    anda      #%00000011          A, X: low byte bits 6-7
+                    anda      #%00000011 ; a, X: low byte bits 6-7
                     lsla
                     lsla
                     lsla
@@ -1668,10 +1668,10 @@ PadWord             pshs      d                   ,s = first byte, 1,s = nibble
                     ora       1,s
                     sta       1,s
                     puls      a
-                    anda      #%00001100          L, R: already high byte bits 2-3
+                    anda      #%00001100 ; l, R: already high byte bits 2-3
                     pshs      b
                     ora       ,s+
-                    ldb       ,s                  the low byte
+                    ldb       ,s        ; the low byte
                     leas      3,s
                     rts
 
@@ -1717,7 +1717,7 @@ SSPScrn             ldy       R$X,x
                     lda       V.V_LayerCTL,u
                     cmpy      #0
                     bne       l1@
-                    anda      #%11111000          layer 0: bits 2:0
+                    anda      #%11111000 ; layer 0: bits 2:0
                     pshs      a
                     lda       R$Y+1,x
                     anda      #%00000111
@@ -1725,7 +1725,7 @@ SSPScrn             ldy       R$X,x
                     bra       st0@
 l1@                 cmpy      #1
                     bne       l2@
-                    anda      #%10001111          layer 1: bits 6:4
+                    anda      #%10001111 ; layer 1: bits 6:4
                     pshs      a
                     lda       R$Y+1,x
                     anda      #%00000111
@@ -1741,7 +1741,7 @@ st0@                sta       V.V_LayerCTL,u
 l2@                 cmpy      #2
                     bne       ok@
                     lda       V.V_LayerCTL+1,u
-                    anda      #%11111000          layer 2: bits 2:0
+                    anda      #%11111000 ; layer 2: bits 2:0
                     ldb       R$Y+1,x
                     andb      #%00000111
                     pshs      a
@@ -1759,14 +1759,14 @@ ok@                 lbra      StatOK
 SSPalet             ldd       R$Y,x
                     cmpd      #2
                     bhi       BmBad
-                    stb       >gr.b2              bitmap # 0-2
-                    lslb                          two mirror bytes per bitmap
+                    stb       >gr.b2    ; bitmap # 0-2
+                    lslb                ; two mirror bytes per bitmap
                     leay      V.BM0Cl_En,u
                     leay      b,y
-                    ldb       R$X+1,x             CLUT #
+                    ldb       R$X+1,x   ; clut #
                     orcc      #Carry
-                    rolb                          CLUT# | enable
-                    andb      #%00001111          enable and CLUT only
+                    rolb                ; clut# | enable
+                    andb      #%00001111 ; enable and CLUT only
 * Keep HIRES4 and GROUP.  This used to rewrite the WHOLE control byte, so
 * once those bits meant something, assigning a CLUT would have silently
 * dropped a bitmap out of 640x240 4bpp mode.  It still forces the enable
@@ -1778,9 +1778,9 @@ SSPalet             ldd       R$Y,x
                     pshs      a
                     orb       ,s+
                     stb       >gr.b3
-                    stb       ,y                  V.BMxCl_En
+                    stb       ,y        ; v.BMxCl_En
                     tst       V.TermLive,u
-                    lbne      GFBmPalet           live: program it now
+                    lbne      GFBmPalet ; live: program it now
                     lbra      StatOK
 BmBad               comb
                     ldb       #E$IllArg
@@ -1813,44 +1813,44 @@ SSFScrn
 SSBmKill            ldd       R$Y,x
                     cmpd      #2
                     bhi       BmBad
-                    stb       >gr.b2              bitmap # 0-2
+                    stb       >gr.b2    ; bitmap # 0-2
                     lslb
                     leay      V.BM0Cl_En,u
-                    leay      b,y                 Y -> V.BMxCl_En, V.BMxBlk at 1,y
+                    leay      b,y       ; y -> V.BMxCl_En, V.BMxBlk at 1,y
                     ldb       1,y
                     bne       defd@
-                    ldb       #E$WUndef           no bitmap defined
+                    ldb       #E$WUndef ; no bitmap defined
                     coma
                     jmp       >GrfMod+SysRet
-defd@               lda       >gr.b2              bitmap #
-                    lbsr      BmFlagMask          A = its bit in V.BMFlags
-                    pshs      a                   ,s = its size bit
+defd@               lda       >gr.b2    ; bitmap #
+                    lbsr      BmFlagMask ; a = its bit in V.BMFlags
+                    pshs      a         ; ,s = its size bit
                     lsla
                     lsla
                     lsla
-                    lsla                          A = its ownership bit
+                    lsla                ; a = its ownership bit
                     anda      V.BMFlags,u
-                    beq       undef@              the program's blocks: not ours
+                    beq       undef@    ; the program's blocks: not ours
                     clra
-                    ldb       1,y                 its first block
-                    tfr       d,x                 X = first block
-                    ldb       ,s                  its size bit
+                    ldb       1,y       ; its first block
+                    tfr       d,x       ; x = first block
+                    ldb       ,s        ; its size bit
                     andb      V.BMFlags,u
-                    beq       ten@                clear = the 10-block size
+                    beq       ten@      ; clear = the 10-block size
                     ldb       #BmBlk200
                     bra       del@
 ten@                ldb       #BmBlk240
 del@                pshs      y
                     os9       F$DelRAM
-                    lbsr      SetBlkC2C3          remap slot 5 and reload U
+                    lbsr      SetBlkC2C3 ; remap slot 5 and reload U
                     puls      y
-undef@              leas      1,s                 drop the size bit
-                    clr       ,y                  both mirror bytes, or PullBuf
-                    clr       1,y                 re-enables a freed bitmap
-                    lbsr      BmFlagClr           no longer owned, no longer small
-                    lbsr      BmClrOff            and no longer at any offset
+undef@              leas      1,s       ; drop the size bit
+                    clr       ,y        ; both mirror bytes, or PullBuf
+                    clr       1,y       ; re-enables a freed bitmap
+                    lbsr      BmFlagClr ; no longer owned, no longer small
+                    lbsr      BmClrOff  ; and no longer at any offset
                     tst       V.TermLive,u
-                    lbne      GFBmFree            live: zero the registers
+                    lbne      GFBmFree  ; live: zero the registers
                     lbra      StatOK
 
 *******************************************************************
@@ -1879,14 +1879,14 @@ undef@              leas      1,s                 drop the size bit
 * the enable bit here, a layer pointing at the bitmap (SS.Layer), and
 * FX_BM in the master control register (SS.MCR).
 *******************************************************************
-SSBmCfg             ldd       R$Y,x               bitmap #
+SSBmCfg             ldd       R$Y,x     ; bitmap #
                     cmpd      #2
                     lbhi      BmBad
                     stb       >gr.b2
                     lslb
                     leay      V.BM0Cl_En,u
-                    leay      b,y                 Y -> V.BMxCl_En
-                    lda       ,y                  the control byte as it stands
+                    leay      b,y       ; y -> V.BMxCl_En
+                    lda       ,y        ; the control byte as it stands
 * Enable, bit 0.
                     ldb       R$X,x
                     cmpb      #$FF
@@ -1895,7 +1895,7 @@ SSBmCfg             ldd       R$Y,x               bitmap #
                     tstb
                     beq       bcclut@
                     ora       #%00000001
-bcclut@             ldb       R$X+1,x             CLUT #, bits 3:1
+bcclut@             ldb       R$X+1,x   ; clut #, bits 3:1
                     cmpb      #$FF
                     beq       bchi@
                     cmpb      #3
@@ -1904,14 +1904,14 @@ bcclut@             ldb       R$X+1,x             CLUT #, bits 3:1
                     lslb
                     pshs      b
                     ora       ,s+
-bchi@               ldb       R$U,x               HIRES4, bit 4
+bchi@               ldb       R$U,x     ; hires4, bit 4
                     cmpb      #$FF
                     beq       bcgrp@
                     anda      #%11101111
                     tstb
                     beq       bcgrp@
                     ora       #%00010000
-bcgrp@              ldb       R$U+1,x             palette GROUP, bits 7:5
+bcgrp@              ldb       R$U+1,x   ; palette GROUP, bits 7:5
                     cmpb      #$FF
                     beq       bcset@
                     cmpb      #7
@@ -1924,11 +1924,11 @@ bcgrp@              ldb       R$U+1,x             palette GROUP, bits 7:5
                     lslb
                     pshs      b
                     ora       ,s+
-bcset@              sta       ,y                  the mirror always
+bcset@              sta       ,y        ; the mirror always
                     tst       V.TermLive,u
-                    lbeq      StatOK              a shadow: PullBuf programs it
+                    lbeq      StatOK    ; a shadow: PullBuf programs it
                     sta       >gr.b3
-                    lbsr      BmEnCore            live: control byte and address
+                    lbsr      BmEnCore  ; live: control byte and address
                     lbra      StatOK
 
 *******************************************************************
@@ -1953,16 +1953,16 @@ bcset@              sta       ,y                  the mirror always
 * It does NOT touch the enable or CLUT bits, so pointing a bitmap at new
 * pixels never makes it appear by itself - that is SS.BmCfg's job.
 *******************************************************************
-SSBmDef             ldd       R$Y,x               A = mode, B = bitmap #
+SSBmDef             ldd       R$Y,x     ; a = mode, B = bitmap #
                     cmpb      #2
                     lbhi      BmBad
                     stb       >gr.b2
-                    ldd       R$U,x               offset within the block
+                    ldd       R$U,x     ; offset within the block
                     cmpd      #$1FFF
                     lbhi      BmBad
-                    ldd       R$X,x               block
+                    ldd       R$X,x     ; block
                     tsta
-                    lbne      BmBad               a block number is one byte
+                    lbne      BmBad     ; a block number is one byte
 * Refuse to re-point a bitmap whose blocks the DRIVER allocated: nothing
 * would ever free them again.  SS.BmKill first.
                     lda       >gr.b2
@@ -1970,41 +1970,41 @@ SSBmDef             ldd       R$Y,x               A = mode, B = bitmap #
                     lsla
                     lsla
                     lsla
-                    lsla                          A = its ownership bit
+                    lsla                ; a = its ownership bit
                     anda      V.BMFlags,u
                     beq       bdset@
-                    ldb       #E$WADef            the driver's - kill it first
+                    ldb       #E$WADef  ; the driver's - kill it first
                     coma
                     jmp       >GrfMod+SysRet
 bdset@              lda       >gr.b2
-                    lsla                          two offset bytes per bitmap
+                    lsla                ; two offset bytes per bitmap
                     leay      V.BM0Off,u
                     leay      a,y
                     ldd       R$U,x
-                    std       ,y                  its offset
+                    std       ,y        ; its offset
                     lda       >gr.b2
-                    lsla                          two mirror bytes per bitmap
+                    lsla                ; two mirror bytes per bitmap
                     leay      V.BM0Cl_En,u
-                    leay      a,y                 Y -> V.BMxCl_En, block at 1,y
-                    ldb       R$X+1,x             its block
+                    leay      a,y       ; y -> V.BMxCl_En, block at 1,y
+                    ldb       R$X+1,x   ; its block
                     stb       1,y
                     bne       bdmode@
-                    clr       ,y                  block 0 clears the bitmap outright
+                    clr       ,y        ; block 0 clears the bitmap outright
                     bra       bdlive@
-bdmode@             lda       R$Y,x               mode
+bdmode@             lda       R$Y,x     ; mode
                     anda      #%00001111
                     lsla
                     lsla
                     lsla
-                    lsla                          HIRES4 to bit 4, GROUP to 7:5
+                    lsla                ; hires4 to bit 4, GROUP to 7:5
                     ldb       ,y
-                    andb      #%00001111          keep the enable and CLUT bits
+                    andb      #%00001111 ; keep the enable and CLUT bits
                     stb       ,y
                     ora       ,y
                     sta       ,y
 bdlive@             tst       V.TermLive,u
-                    lbeq      StatOK              a shadow: PullBuf programs it
-                    lda       ,y                  the control byte
+                    lbeq      StatOK    ; a shadow: PullBuf programs it
+                    lda       ,y        ; the control byte
                     sta       >gr.b3
                     lbsr      BmEnCore
                     lbra      StatOK
@@ -2116,27 +2116,27 @@ bdlive@             tst       V.TermLive,u
 * the mirror, not from the live registers.  SS.BmLine cannot, and that
 * difference is exactly why.
 *******************************************************************
-SSBmClear           ldd       R$Y,x               A = arming line, B = bitmap # 0-2
+SSBmClear           ldd       R$Y,x     ; a = arming line, B = bitmap # 0-2
                     cmpb      #2
                     lbhi      BmBad
                     stb       >gr.b2
 * The arming line rides in gr.d2, which no part of this call uses, until
 * the parameter block exists to put it in.
                     sta       >gr.d2
-                    ldd       R$X,x               A = flags, B = the fill value
-                    bita      #DmaWt.Rsvd         bit 0 is the width; 6-4 the wait mode
+                    ldd       R$X,x     ; a = flags, B = the fill value
+                    bita      #DmaWt.Rsvd ; bit 0 is the width; 6-4 the wait mode
                     lbne      BmBad
-                    sta       >gr.d1              the width flag
+                    sta       >gr.d1    ; the width flag
                     stb       >gr.b3
 * The first row and the row count, and the band they describe has to fit
 * inside the bitmap.
-                    ldd       R$U,x               A = first row, B = row count
+                    ldd       R$U,x     ; a = first row, B = row count
                     cmpa      #BmPixels/320-1
-                    lbhi      BmBad               a first row past the last one
+                    lbhi      BmBad     ; a first row past the last one
                     sta       >gr.b5
                     tstb
                     bne       bcrow@
-                    ldb       #BmPixels/320       0 = to the end of the bitmap
+                    ldb       #BmPixels/320 ; 0 = to the end of the bitmap
                     subb      >gr.b5
                     bra       bcrow2@
 * first + count must not run off the end, and that sum reaches 494, so it
@@ -2147,24 +2147,24 @@ bcrow@              pshs      b
                     addb      ,s
                     adca      #0
                     cmpd      #BmPixels/320
-                    puls      b                   PULS leaves the flags alone
+                    puls      b         ; puls leaves the flags alone
                     lbhi      BmBad
-bcrow2@             stb       >gr.b4              the row count
+bcrow2@             stb       >gr.b4    ; the row count
                     lda       DMA.Base+DMA_STATUS_REG
-                    lbmi      BmClrBsy            a fill is still outstanding
+                    lbmi      BmClrBsy  ; a fill is still outstanding
                     lda       >gr.b2
-                    lbsr      BmGetAddr           A = block, X = offset
+                    lbsr      BmGetAddr ; a = block, X = offset
                     tsta
-                    lbeq      BmClrUnd            no blocks: nothing to fill
+                    lbeq      BmClrUnd  ; no blocks: nothing to fill
 * Build DmaFill's parameter block.  X stopped being the caller's register
 * image at BmGetAddr, which is why nothing below uses it.
                     leas      -12,s
                     ldb       >gr.b3
-                    stb       6,s                 the fill value
+                    stb       6,s       ; the fill value
                     ldb       >gr.d1
-                    stb       7,s                 the width flag
+                    stb       7,s       ; the width flag
                     ldb       >gr.d2
-                    stb       11,s                the arming line, 0 = free-running
+                    stb       11,s      ; the arming line, 0 = free-running
 * THE DESTINATION FIRST, while A is still the block BmGetAddr returned.
 * The row arithmetic below uses MUL, and MUL DESTROYS A - putting it
 * first cost a hardware run: the block $E2 became the $3A that rows*64
@@ -2174,32 +2174,32 @@ bcrow2@             stb       >gr.b4              the row count
 * block*$2000 + offset - the same arithmetic as BmRegAddr, and the same
 * argument that it cannot carry out of the high byte.
                     clrb
-                    lbsr      Blk2Addr            D = address bits 23:8
-                    sta       ,s                  destination bits 23:16
+                    lbsr      Blk2Addr  ; d = address bits 23:8
+                    sta       ,s        ; destination bits 23:16
                     tfr       b,a
-                    clrb                          D = bits 15:0, low 13 clear
-                    leax      d,x                 X = that plus the offset
-                    stx       1,s                 destination bits 15:8 and 7:0
+                    clrb                ; d = bits 15:0, low 13 clear
+                    leax      d,x       ; x = that plus the offset
+                    stx       1,s       ; destination bits 15:8 and 7:0
 * THE FIRST ROW'S OFFSET, built in 7,8,9 and added in 24 bits.  This is
 * the one place a carry out of the middle byte is real: the argument that
 * a bitmap offset cannot carry rests on the block part's low 13 bits
 * being zero, and firstrow*320 reaches $12AC0, which is far larger than
 * an offset ever is.
-                    lda       >gr.b5              the first row
+                    lda       >gr.b5    ; the first row
                     leax      8,s
                     lbsr      Rows2Byt
                     ldd       1,s
                     addd      9,s
-                    std       1,s                 STD leaves the carry alone
+                    std       1,s       ; std leaves the carry alone
                     lda       ,s
                     adca      8,s
                     sta       ,s
 * NOW the count, because from here A is expendable.
-                    lda       >gr.b4              rows
+                    lda       >gr.b4    ; rows
                     leax      3,s
                     lbsr      Rows2Byt
                     leax      ,s
-                    lbsr      DmaFill             armed; it runs in the next vblank
+                    lbsr      DmaFill   ; armed; it runs in the next vblank
 * HAND BACK THE LINE IT ACTUALLY ARMED ON, not the one that was asked
 * for.  An interrupt during the spin costs several lines, so the two are
 * different numbers and only the second one is a measurement.  X stopped
@@ -2235,7 +2235,7 @@ bcrow2@             stb       >gr.b4              the row count
                     lsra
                     lsra
                     anda      #DmaWt.Mask
-                    lbeq      bcnod@              0: ARM AND RETURN, the default
+                    lbeq      bcnod@    ; 0: ARM AND RETURN, the default
                     cmpa      #DmaWt.Cwai
                     lbeq      bccwai@
                     cmpa      #DmaWt.CwChk
@@ -2248,7 +2248,7 @@ bcrow2@             stb       >gr.b4              the row count
                     lbeq      bcdio@
                     cmpa      #DmaWt.Ram
                     lbeq      bcdram@
-                    lbra      bcpoll@             7: poll the status register
+                    lbra      bcpoll@   ; 7: poll the status register
 * THE DEFAULT, AND WHY THIS CALL IS SYNCHRONOUS: park the CPU until the
 * transfer has run.  CWAI puts it at $FFFF with rAVMA = 0 - NO VALID BUS
 * CYCLES - and waits for an interrupt.  The 60 Hz tick fires at line 0,
@@ -2285,7 +2285,7 @@ bccwai@             cwai      #^IntMasks
 bccwck@             ldy       #DmaCwChk
 bccwc2@             cwai      #^IntMasks
                     lda       DMA.Base+DMA_STATUS_REG
-                    bpl       bcnod@              done
+                    bpl       bcnod@    ; done
                     leay      -1,y
                     bne       bccwc2@
                     bra       bcnod@
@@ -2373,10 +2373,10 @@ bcsync@             sync
 * that never clears returns E$DevBsy rather than a false success.
 bcpoll@             ldy       #DmaDly12
 bcpol2@             lda       DMA.Base+DMA_STATUS_REG
-                    lbpl      bcnod@              done - it cleared
+                    lbpl      bcnod@    ; done - it cleared
                     leay      -1,y
                     bne       bcpol2@
-                    lbra      BmClrBsy            never cleared: the engine is dead
+                    lbra      BmClrBsy  ; never cleared: the engine is dead
 bcnod@              lbra      StatOK
 BmClrBsy            comb
                     ldb       #E$DevBsy
@@ -2397,10 +2397,10 @@ BmClrUnd            comb
 *******************************************************************
 Rows2Byt            pshs      a
                     ldb       #64
-                    mul                           D = rows*64
+                    mul                 ; d = rows*64
                     std       1,x
                     clr       ,x
-                    ldb       ,s                  + rows*256: add rows to the M byte
+                    ldb       ,s        ; + rows*256: add rows to the M byte
                     addb      1,x
                     stb       1,x
                     bcc       r2b@
@@ -2462,11 +2462,11 @@ r2b@                puls      a,pc
 * changed between the core the reference ran on and this one, and only
 * the SEQUENCE is being copied from it, not the addresses.
 *******************************************************************
-DmaFill             clr       DMA.Base+DMA_CTRL_REG   start from a known-idle register
+DmaFill             clr       DMA.Base+DMA_CTRL_REG ; start from a known-idle register
                     ldb       #DMA_CTRL_Enable+DMA_CTRL_Fill
-                    lda       7,x                 the width flag
+                    lda       7,x       ; the width flag
                     bita      #1
-                    beq       dfmode@             8-bit, the reference's own mode
+                    beq       dfmode@   ; 8-bit, the reference's own mode
 * 16-bit masks address bit 0, so an odd destination would take the byte
 * BEFORE the bitmap with it - and SS.BmDef allows any offset, so that is
 * reachable.  An odd destination is quietly done 8-bit rather than
@@ -2475,10 +2475,10 @@ DmaFill             clr       DMA.Base+DMA_CTRL_REG   start from a known-idle re
                     bita      #1
                     bne       dfmode@
                     orb       #DMA_CTRL_16Bit
-dfmode@             stb       DMA.Base+DMA_CTRL_REG   the mode, start bit clear
+dfmode@             stb       DMA.Base+DMA_CTRL_REG ; the mode, start bit clear
                     bitb      #DMA_CTRL_16Bit
                     beq       df8@
-                    lda       6,x                 16-bit: the value in BOTH halves
+                    lda       6,x       ; 16-bit: the value in BOTH halves
                     sta       DMA.Base+DMA_FILL_16_H
                     sta       DMA.Base+DMA_FILL_16_L
                     bra       dfadr@
@@ -2504,14 +2504,14 @@ dfadr@              lda       ,x
 * turns.
                     lda       11,x
                     beq       dfgo@
-                    pshs      b                   the control byte, start bit still clear
+                    pshs      b         ; the control byte, start bit still clear
                     clra
                     ldb       11,x
-                    pshs      d                   ,s = the requested line, 16-bit
+                    pshs      d         ; ,s = the requested line, 16-bit
                     ldy       #DMA_ArmWrap
 dfbef@              lbsr      DmaLine
                     cmpd      ,s
-                    blo       dfat@               before the target: now wait for it
+                    blo       dfat@     ; before the target: now wait for it
                     leay      -1,y
                     bne       dfbef@
                     bra       dfarm@
@@ -2521,13 +2521,13 @@ dfat2@              lbsr      DmaLine
                     bhs       dfarm@
                     leay      -1,y
                     bne       dfat2@
-dfarm@              leas      2,s                 drop the requested line
-                    puls      b                   the control byte again
+dfarm@              leas      2,s       ; drop the requested line
+                    puls      b         ; the control byte again
 * READ THE LINE AS LATE AS IT CAN BE READ - the next thing written is the
 * start bit - and leave it in 11,x for the caller.  A line past 255 comes
 * back as $FF: the scale this is reported on is one byte, and every line
 * the window question is about is far below 255.
-dfgo@               pshs      b                   the control byte
+dfgo@               pshs      b         ; the control byte
                     lbsr      DmaLine
                     tsta
                     beq       dfrec@
@@ -2536,7 +2536,7 @@ dfrec@              stb       11,x
                     puls      b
                     orb       #DMA_CTRL_Start_Trf
                     stb       DMA.Base+DMA_CTRL_REG
-                    clrb                          and CLRB clears the carry
+                    clrb                ; and CLRB clears the carry
                     rts
 
 *******************************************************************
@@ -2593,26 +2593,26 @@ DmaLine             lda       TXT.Base+VKY_LINE_Y_POS_HI
 * R$U IS SET ON EVERY PATH, errors included, so a caller that got
 * E$IllArg knows which record was bad without a second call.
 *******************************************************************
-SSBmLine            ldd       R$Y,x               bitmap # 0-2
+SSBmLine            ldd       R$Y,x     ; bitmap # 0-2
                     cmpd      #2
                     lbhi      BmLnArg
                     stb       >gr.b2
                     lslb
-                    lslb                          the plane select, bits 3:2
+                    lslb                ; the plane select, bits 3:2
                     stb       >gr.b3
-                    ldd       R$U,x               the record count
+                    ldd       R$U,x     ; the record count
                     tsta
                     lbne      BmLnArg
                     tstb
-                    lbeq      BmLnArg             a count of 0 is an error
-                    pshs      b                   1,s = records left
-                    clr       ,-s                 ,s = records drawn
+                    lbeq      BmLnArg   ; a count of 0 is an error
+                    pshs      b         ; 1,s = records left
+                    clr       ,-s       ; ,s = records drawn
 * The bitmap must have blocks, and this terminal must be on screen.
                     lda       >gr.b2
-                    lsla                          two mirror bytes per bitmap
+                    lsla                ; two mirror bytes per bitmap
                     leay      V.BM0Cl_En,u
                     leay      a,y
-                    tst       1,y                 its block
+                    tst       1,y       ; its block
                     lbeq      BmLnUnd
                     tst       V.TermLive,u
                     lbeq      BmLnNRdy
@@ -2625,7 +2625,7 @@ SSBmLine            ldd       R$Y,x               bitmap # 0-2
                     std       >gr.d1
                     ldd       #LD.Room
                     std       >gr.d2
-                    lda       ,y                  the control byte
+                    lda       ,y        ; the control byte
                     bita      #%00010000
                     beq       BmLnLo
                     ldd       #LD.MaxX4
@@ -2646,43 +2646,43 @@ BmLnLo
                     sta       V.V_MCR2,u
                     sta       TXT.Base+VKY_MCR2
 * The caller's array through slots 1 and 2, then VICKY_BLK through slot 3.
-BmLnOn              ldb       1,s                 records left
+BmLnOn              ldb       1,s       ; records left
                     lda       #8
-                    mul                           D = the array's length in bytes
+                    mul                 ; d = the array's length in bytes
                     tfr       d,y
-                    ldd       R$X,x               the array, in the caller
-                    lbsr      MapCallBuf          U = it, through slot 1
-                    bcs       BmLnMap             it runs off the top of the map
-                    lbsr      LineMapC0           X = $7080, the line registers
+                    ldd       R$X,x     ; the array, in the caller
+                    lbsr      MapCallBuf ; u = it, through slot 1
+                    bcs       BmLnMap   ; it runs off the top of the map
+                    lbsr      LineMapC0 ; x = $7080, the line registers
 * The record loop.  ,s = drawn, 1,s = left, U = this record, X = the
 * registers.  U stopped being the statics at MapCallBuf and X stopped
 * being the register image at LineMapC0; the exits use gr.PDRGS directly.
 BmLnLp              tst       1,s
-                    beq       BmLnOK              all of them drawn
+                    beq       BmLnOK    ; all of them drawn
 * Room in the FIFO?  Stop rather than lose pixels silently.
                     ldd       LD.FifoH,x
                     cmpd      >gr.d2
-                    bhs       BmLnOK              short: R$U tells the caller
+                    bhs       BmLnOK    ; short: R$U tells the caller
 * Range-check the record.  An endpoint outside 0-319 (0-639 on a HIRES4
 * plane) / 0-239 means the engine NEVER STARTS and never signals
 * complete, so this check is what stands between the poll below and a
 * hang.
-                    ldd       ,u                  X0
+                    ldd       ,u        ; x0
                     cmpd      >gr.d1
                     bhi       BmLnRng
-                    ldd       2,u                 X1
+                    ldd       2,u       ; x1
                     cmpd      >gr.d1
                     bhi       BmLnRng
-                    lda       4,u                 Y0
+                    lda       4,u       ; y0
                     cmpa      #LD.MaxY
                     bhi       BmLnRng
-                    lda       5,u                 Y1
+                    lda       5,u       ; y1
                     cmpa      #LD.MaxY
                     bhi       BmLnRng
 * The endpoints, and then GO in a store of its own: the endpoint
 * registers are NOT resynchronised into the engine's 100 MHz clock
 * domain, so they have to be stable before GO rises.
-                    lda       6,u                 colour
+                    lda       6,u       ; colour
                     sta       LD.Color,x
                     ldd       ,u
                     std       LD.X0H,x
@@ -2692,7 +2692,7 @@ BmLnLp              tst       1,s
                     sta       LD.Y0,x
                     lda       5,u
                     sta       LD.Y1,x
-                    lda       >gr.b3              the plane bits
+                    lda       >gr.b3    ; the plane bits
                     ora       #LD_CTRL_Go
                     sta       LD.Ctrl,x
 * COMPLETE means the Bresenham WALK finished, not that a pixel reached
@@ -2714,10 +2714,10 @@ BmLnPoll            lda       LD.Ctrl,x
                     ldb       #E$DevBsy
                     bra       BmLnX
 BmLnGot             lda       >gr.b3
-                    sta       LD.Ctrl,x           GO down: DONE -> IDLE
-                    inc       ,s                  one more drawn
+                    sta       LD.Ctrl,x ; go down: DONE -> IDLE
+                    inc       ,s        ; one more drawn
                     dec       1,s
-                    leau      8,u                 the next record
+                    leau      8,u       ; the next record
                     bra       BmLnLp
 * Exits.  B = the error code, 0 = none; ,s = drawn, 1,s = left.
 BmLnRng             ldb       #E$IllArg
@@ -2729,11 +2729,11 @@ BmLnUnd             ldb       #E$WUndef
 BmLnNRdy            ldb       #E$NotRdy
                     bra       BmLnX
 BmLnOK              clrb
-BmLnX               pshs      b                   ,s = err, 1,s = drawn
+BmLnX               pshs      b         ; ,s = err, 1,s = drawn
                     ldb       1,s
                     clra
-                    std       >gr.PDRGS+R$U       the records actually drawn
-                    puls      b                   PULS does not touch CC
+                    std       >gr.PDRGS+R$U ; the records actually drawn
+                    puls      b         ; puls does not touch CC
                     leas      2,s
                     tstb
                     bne       BmLnErr
@@ -2763,7 +2763,7 @@ LineMapC0           pshs      cc,d
                     sta       MMU_MEM_CTRL
                     clra
                     ldb       #VICKY_BLK
-                    stb       MMU_SLOT_3          $6000
+                    stb       MMU_SLOT_3 ; $6000
                     std       >gr.DATImg+6
                     ldx       #$7080
                     puls      cc,d,pc
@@ -2790,21 +2790,21 @@ LineMapC0           pshs      cc,d
 * The blocks are physically consecutive, so an object may run past the end
 * of one - which is how a 76,800-byte bitmap fits in ten of them.
 *******************************************************************
-SSGfxAlloc          ldd       R$X,x               block count
+SSGfxAlloc          ldd       R$X,x     ; block count
                     tsta
-                    lbne      BmBad               more than 255 blocks
+                    lbne      BmBad     ; more than 255 blocks
                     tstb
-                    lbeq      BmBad               none
-                    pshs      x                   os9 may clobber it
-                    os9       F$AlHRAM            D = first block
-                    lbsr      SetBlkC2C3          remap slot 5, reload U (keeps D, X, CC)
+                    lbeq      BmBad     ; none
+                    pshs      x         ; os9 may clobber it
+                    os9       F$AlHRAM  ; d = first block
+                    lbsr      SetBlkC2C3 ; remap slot 5, reload U (keeps D, X, CC)
                     puls      x
                     bcc       gaok@
                     ldb       #E$MFull
                     coma
                     jmp       >GrfMod+SysRet
 gaok@               clra
-                    std       R$X,x               the first block back
+                    std       R$X,x     ; the first block back
                     lbra      StatOK
 
 *******************************************************************
@@ -2816,28 +2816,28 @@ gaok@               clra
 * freed the blocks SS.BmBlk reported would otherwise double-free them the
 * moment the terminal closed.  E$IllArg, and nothing is freed.
 *******************************************************************
-SSGfxFree           ldd       R$U,x               count
+SSGfxFree           ldd       R$U,x     ; count
                     tsta
                     lbne      BmBad
                     tstb
                     lbeq      BmBad
-                    pshs      b                   ,s = the count
-                    ldd       R$X,x               first block
+                    pshs      b         ; ,s = the count
+                    ldd       R$X,x     ; first block
                     tsta
-                    bne       gfbad@              a block number is one byte
+                    bne       gfbad@    ; a block number is one byte
                     tstb
-                    beq       gfbad@              block 0 is the system block
-                    lda       ,s                  the count
-                    exg       a,b                 A = first block, B = count
+                    beq       gfbad@    ; block 0 is the system block
+                    lda       ,s        ; the count
+                    exg       a,b       ; a = first block, B = count
                     lbsr      GfxChkOwn
-                    bcs       gfbad@              overlaps a bitmap we own
-                    ldx       #gr.PDRGS           GfxChkOwn clobbers X
+                    bcs       gfbad@    ; overlaps a bitmap we own
+                    ldx       #gr.PDRGS ; gfxChkOwn clobbers X
                     clra
-                    ldb       R$X+1,x             first block
-                    tfr       d,x                 X = first block
-                    puls      b                   the count
+                    ldb       R$X+1,x   ; first block
+                    tfr       d,x       ; x = first block
+                    puls      b         ; the count
                     os9       F$DelRAM
-                    lbsr      SetBlkC2C3          remap slot 5 and reload U
+                    lbsr      SetBlkC2C3 ; remap slot 5 and reload U
                     bcs       gferr@
                     lbra      StatOK
 gferr@              coma
@@ -2854,23 +2854,23 @@ gfbad@              leas      1,s
 * either the bitmap's first block falls inside the request, or the
 * request's first block falls inside the bitmap.
 *******************************************************************
-GfxChkOwn           pshs      d                   ,s = first block, 1,s = count
-                    clra                          bitmap # 0
-gco1@               pshs      a                   ,s = bitmap #
+GfxChkOwn           pshs      d         ; ,s = first block, 1,s = count
+                    clra                ; bitmap # 0
+gco1@               pshs      a         ; ,s = bitmap #
                     lbsr      BmFlagMask
-                    pshs      a                   ,s = its size bit
+                    pshs      a         ; ,s = its size bit
                     lsla
                     lsla
                     lsla
-                    lsla                          A = its ownership bit
+                    lsla                ; a = its ownership bit
                     anda      V.BMFlags,u
-                    beq       gco8@               a program's, or undefined
-                    lda       1,s                 bitmap #
+                    beq       gco8@     ; a program's, or undefined
+                    lda       1,s       ; bitmap #
                     lsla
                     leay      V.BM0Blk,u
-                    lda       a,y                 A = its first block
-                    beq       gco8@               not defined
-                    ldb       ,s                  its size bit
+                    lda       a,y       ; a = its first block
+                    beq       gco8@     ; not defined
+                    ldb       ,s        ; its size bit
                     andb      V.BMFlags,u
                     beq       gco2@
                     ldb       #BmBlk200
@@ -2879,28 +2879,28 @@ gco2@               ldb       #BmBlk240
 * After the push: ,s = the bitmap's first block, 1,s = its length,
 * 2,s = its size bit, 3,s = the bitmap #, 4,s = the request's first block,
 * 5,s = the request's count.
-gco3@               pshs      d                   ,s = bm block, 1,s = bm length
-                    lda       ,s                  bitmap start
-                    suba      4,s                 minus the request's start
-                    bcs       gco4@               below it - try the other way
-                    cmpa      5,s                 inside the request's length?
-                    blo       gco7@               yes: they overlap
-gco4@               lda       4,s                 the request's start
-                    suba      ,s                  minus the bitmap's
-                    bcs       gco6@               below it - no overlap
-                    cmpa      1,s                 inside the bitmap's length?
-                    blo       gco7@               yes: they overlap
-gco6@               leas      2,s                 drop the bitmap's block/length
+gco3@               pshs      d         ; ,s = bm block, 1,s = bm length
+                    lda       ,s        ; bitmap start
+                    suba      4,s       ; minus the request's start
+                    bcs       gco4@     ; below it - try the other way
+                    cmpa      5,s       ; inside the request's length?
+                    blo       gco7@     ; yes: they overlap
+gco4@               lda       4,s       ; the request's start
+                    suba      ,s        ; minus the bitmap's
+                    bcs       gco6@     ; below it - no overlap
+                    cmpa      1,s       ; inside the bitmap's length?
+                    blo       gco7@     ; yes: they overlap
+gco6@               leas      2,s       ; drop the bitmap's block/length
                     bra       gco8@
-gco7@               leas      6,s                 drop everything: block, length,
-                    orcc      #Carry              size bit, bitmap #, and the
-                    rts                           request's own two bytes
-gco8@               leas      1,s                 drop the size bit
-                    puls      a                   bitmap #
+gco7@               leas      6,s       ; drop everything: block, length,
+                    orcc      #Carry    ; size bit, bitmap #, and the
+                    rts                 ; request's own two bytes
+gco8@               leas      1,s       ; drop the size bit
+                    puls      a         ; bitmap #
                     inca
                     cmpa      #3
                     blo       gco1@
-                    leas      2,s                 drop the request
+                    leas      2,s       ; drop the request
                     andcc     #^Carry
                     rts
 
@@ -2918,14 +2918,14 @@ gco8@               leas      1,s                 drop the size bit
 * mirror from the live console in GF.TermNew.
 * Then the text cursor: enabled, flashing, '_' at 0,0.
 *******************************************************************
-GFInitDisp          lbsr      SetBlkC2C3          U = this terminal's statics
+GFInitDisp          lbsr      SetBlkC2C3 ; u = this terminal's statics
                     leax      DispRegs,pcr
                     leay      V.V_MCR,u
                     ldu       #TXT.Base
                     ldb       #16
 seed@               lda       ,x+
-                    sta       ,y+                 mirror
-                    sta       ,u+                 register
+                    sta       ,y+       ; mirror
+                    sta       ,u+       ; register
                     decb
                     bne       seed@
                     ldx       #TXT.Base
@@ -2939,7 +2939,7 @@ seed@               lda       ,x+
                     sta       VKY_TXT_CURSOR_CHAR_REG,x
 * Every sprite record off, once, so gr.SprDirty's "they are all clear" is
 * true from the start rather than a guess about what the core left behind.
-                    lbsr      SprMapC0            VICKY_BLK in slot 1
+                    lbsr      SprMapC0  ; vicky_BLK in slot 1
                     ldx       #$2000+SPRITE_REC_OFF
                     clrb
                     lbsr      SprClrFrom
@@ -3006,13 +3006,13 @@ GFTermNew           lda       >gr.b1
                     ldb       #gr.TermSz
                     mul
                     ldx       #gr.TermTbl
-                    abx                           X = this terminal's entry
+                    abx                 ; x = this terminal's entry
                     lda       T.Flags,x
                     bita      #T.Init
                     lbne      TNBusy
                     pshs      x
                     ldd       #2
-                    os9       F$AlHRAM            D = first block of the 16K buffer
+                    os9       F$AlHRAM  ; d = first block of the 16K buffer
                     puls      x
                     lbcs      TNErr
                     stb       T.Block,x
@@ -3020,20 +3020,20 @@ GFTermNew           lda       >gr.b1
                     std       T.StatPtr,x
                     anda      #$1F
                     ora       #$A0
-                    std       T.grU5,x            the static through slot 5
+                    std       T.grU5,x  ; the static through slot 5
                     lda       >gr.d1
                     lsra
                     lsra
                     lsra
                     lsra
-                    lsra                          A = system slot (U >> 13)
+                    lsra                ; a = system slot (U >> 13)
                     lsla
-                    inca                          -> block-number byte of that DAT entry
+                    inca                ; -> block-number byte of that DAT entry
                     ldy       >D.SysDAT
                     lda       a,y
-                    sta       T.VBlk,x            block holding the static
-                    lbsr      GSTermPtrs          aim gr.TermBlk/VStaStorU/VBlk/U5 (keeps X)
-                    lbsr      SetBlkC2C3          U = the new statics, slots 3/4 = its buffer
+                    sta       T.VBlk,x  ; block holding the static
+                    lbsr      GSTermPtrs ; aim gr.TermBlk/VStaStorU/VBlk/U5 (keeps X)
+                    lbsr      SetBlkC2C3 ; u = the new statics, slots 3/4 = its buffer
                     ldb       T.Block,x
                     stb       V.TermBufBlk,u
 * It has registered no sprite table.  A row is never inherited: it names
@@ -3045,13 +3045,13 @@ GFTermNew           lda       >gr.b1
                     leay      d,y
                     clr       SB.Flags,y
 * Defaults.  80x60 is also what GF.InitDisp's DispRegs program.
-                    clr       V.WriteState,u      escape collector idle
+                    clr       V.WriteState,u ; escape collector idle
                     ldb       #$10
                     stb       V.FBCol,u
                     ldd       #80*256+60
                     std       V.WWidth,u
                     ldd       #80*60
-                    std       V.ScreenSize,u      SetScreenSize's product
+                    std       V.ScreenSize,u ; setScreenSize's product
 * V.CurPos is the cached V.CurRow*V.WWidth+V.CurCol that PutGlyph paints
 * at; clearing row/col without it leaves a stale cell offset behind.
                     clr       V.CurRow,u
@@ -3092,29 +3092,29 @@ TNInherit           clr       V.TermLive,u
                     pshs      x
                     ldb       >gr.LiveTerm
                     cmpb      #G.TermMax
-                    bhs       TNPush              no live terminal to copy from
+                    bhs       TNPush    ; no live terminal to copy from
                     lda       #gr.TermSz
                     mul
                     ldx       #gr.TermTbl
-                    abx                           X = the live terminal's entry
+                    abx                 ; x = the live terminal's entry
                     ldb       T.VBlk,x
                     ldx       T.grU5,x
-                    leax      -$8000,x            X = its statics through slot 1
+                    leax      -$8000,x  ; x = its statics through slot 1
                     pshs      cc
                     orcc      #IntMasks
                     lda       #EDIT_LUT_1+ACT_LUT_1
                     sta       MMU_MEM_CTRL
                     clra
-                    stb       MMU_SLOT_1 $2000
+                    stb       MMU_SLOT_1 ; $2000
                     std       >gr.DATImg+2
                     leay      InhRuns,pcr
-inhrun@             ldb       ,y+                 field offset, 0 ends the table
+inhrun@             ldb       ,y+       ; field offset, 0 ends the table
                     beq       inhdone@
                     pshs      x,u
-                    abx                           X -> the live field
+                    abx                 ; x -> the live field
                     clra
-                    leau      d,u                 U -> the new field
-                    lda       ,y+                 length
+                    leau      d,u       ; u -> the new field
+                    lda       ,y+       ; length
 inhcp@              ldb       ,x+
                     stb       ,u+
                     deca
@@ -3136,12 +3136,12 @@ TNPush              lbsr      PushCore
                     ldx       ,s
                     ldb       T.Block,x
                     stb       $12EC
-                    lda       #C$SPAC             fill glyph
-                    ldb       V.FBCol,u           fill colour, as inherited
+                    lda       #C$SPAC   ; fill glyph
+                    ldb       V.FBCol,u ; fill colour, as inherited
                     lbsr      BlankCore
                     puls      x
                     lda       #T.Init
-                    sta       T.Flags,x           open: switchable from here on
+                    sta       T.Flags,x ; open: switchable from here on
                     inc       >gr.TermCnt
                     bsr       TNLog
                     clrb
@@ -3157,12 +3157,12 @@ TNBusy              ldb       #E$DevBsy
 TNErr               stb       $12F8
                     lda       #'E
                     sta       $12F7
-                    coma                          carry: the error in B
+                    coma                ; carry: the error in B
                     jmp       >GrfMod+SysRet
 * Runs inherited from the live terminal's statics: offset, length.
-InhRuns             fcb       V.WWidth,V.MouseVect-V.WWidth   size, V.ScreenSize, colours, keydrv/mouse ptrs
-                    fcb       V.KeyDrvStat,8                  keydrv state
-                    fcb       V.ST,V.BordBack+12-V.ST         V.ST and the $FFC0-$FFCF mirror
+InhRuns             fcb       V.WWidth,V.MouseVect-V.WWidth size, V.ScreenSize, colours, keydrv/mouse ptrs
+                    fcb       V.KeyDrvStat,8 keydrv state
+                    fcb       V.ST,V.BordBack+12-V.ST V.ST and the $FFC0-$FFCF mirror
                     fcb       0
 
 
@@ -3179,10 +3179,10 @@ InhRuns             fcb       V.WWidth,V.MouseVect-V.WWidth   size, V.ScreenSize
 * R22 = [0010110][MUX]                       MUX  Bypass,Aux,DAC (bits 2,1,0)
 * R23 = Write anything to Reset WM8776
 
-PSGInit             lda       SYS1                get the byte at SYS1
+PSGInit             lda       SYS1      ; get the byte at SYS1
 *                    anda      #^SYS_PSG_ST clear the stereo flag
                     ora       #SYS_PSG_ST|SYS_SID_ST
-                    sta       SYS1                and save it back
+                    sta       SYS1      ; and save it back
                     ldx       #CODEC.Base
 
 * The two boards wire the WM8776 differently: one independent register sequence per machine,
@@ -3191,7 +3191,7 @@ PSGInit             lda       SYS1                get the byte at SYS1
 * Tune by ear before touching this table: the wmset command writes any register live,
 * usage  wmset R# V#  (both hex, e.g. wmset 0E E7 = R14 to $E7).  A wmset write lasts only
 * until the next boot, when this runs again and rewrites every register below.
-                    ifne      jr2
+                  IFNE    jr2
 * ------------------- Jr2 InitCODEC -------------------
 * This is the sequence that is KNOWN GOOD on the Jr2 (bell audible, keyboard fine), with one
 * deliberate experiment in it: R21 (below).  History, all on Jr2 hardware 2026-09-18:
@@ -3217,28 +3217,28 @@ PSGInit             lda       SYS1                get the byte at SYS1
 * the PCM could never be heard whatever R21 held.
 * Knobs, tuned by ear 2026-08-29/30: DAC $FD (-1 dB), headphones $60 (-25 dB); this synth
 * runs ~12 dB hotter than the K2 one, hence the deep cut.
-                    ldd       #%0010111000000000                    R23 - Reset chip
+                    ldd       #%0010111000000000 ; r23 - Reset chip
                     lbsr      SendToCODEC
-                    ldd       #%0001010000000010                    R10 - DAC Interface Control 16-bit i2s
+                    ldd       #%0001010000000010 ; r10 - DAC Interface Control 16-bit i2s
                     lbsr      SendToCODEC
-                    ldd       #%0010001100000001                    R17 - ALC Control 2
+                    ldd       #%0010001100000001 ; r17 - ALC Control 2
                     lbsr      SendToCODEC
-                    ldd       #%0010101000001011                    R21 - ADC Mux Control   AIN1+AIN2+AIN4
+                    ldd       #%0010101000001011 ; r21 - ADC Mux Control   AIN1+AIN2+AIN4
                     lbsr      SendToCODEC
-                    ldd       #%0010110000000111                    R22 - Output Mux MX[2:0] = "111"
+                    ldd       #%0010110000000111 ; r22 - Output Mux MX[2:0] = "111"
                     lbsr      SendToCODEC
-                    ldd       #%0001101000000000                    R13 - PWR Down Control, Everything on
+                    ldd       #%0001101000000000 ; r13 - PWR Down Control, Everything on
                     lbsr      SendToCODEC
-                    ldd       #%0000011111111101                    R03 - Left DAC Attenuation ($FD = -1.0dB)
+                    ldd       #%0000011111111101 ; r03 - Left DAC Attenuation ($FD = -1.0dB)
                     lbsr      SendToCODEC
-                    ldd       #%0000100111111101                    R04 - Right DAC Attenuation ($FD = -1.0dB)
+                    ldd       #%0000100111111101 ; r04 - Right DAC Attenuation ($FD = -1.0dB)
                     lbsr      SendToCODEC
-                    ldd       #%0000000101100000                    R00 - Left Headphone Attenuation ($60 = -25dB)
+                    ldd       #%0000000101100000 ; r00 - Left Headphone Attenuation ($60 = -25dB)
                     lbsr      SendToCODEC
-                    ldd       #%0000001101100000                    R01 - Right Headphone Attenuation ($60 = -25dB)
+                    ldd       #%0000001101100000 ; r01 - Right Headphone Attenuation ($60 = -25dB)
                     lbsr      SendToCODEC
 
-                    else
+                  ELSE
 * -------------- K2: independently tunable InitCODEC --------------
 * Knobs: DAC att R03/R04 = the .mus/SID path only; headphone att R00/R01 = headphone jack
 * only; ADC gain R14/R15 ($CF = 0 dB, 0.5 dB/step, $FF = +24 dB) = every analogue input on
@@ -3251,27 +3251,27 @@ PSGInit             lda       SYS1                get the byte at SYS1
 * R21 = $1F (all five in), the value the Level 1 deploy overlay codec_inputs writes: this tree
 * has no overlay, and without AIN4 the VS1053 is silent.  R21 bit 8 = LRBOTH (R14 then serves
 * both channels), bits 7/6 = mutes.
-                    ldd       #%0010111000000000                    R23 - Reset chip
+                    ldd       #%0010111000000000 ; r23 - Reset chip
                     lbsr      SendToCODEC
-                    ldd       #%0001010000000010                    R10 - DAC Interface Control 16-bit i2s
+                    ldd       #%0001010000000010 ; r10 - DAC Interface Control 16-bit i2s
                     lbsr      SendToCODEC
-                    ldd       #%0010001100000001                    R17 - ALC Control 2
+                    ldd       #%0010001100000001 ; r17 - ALC Control 2
                     lbsr      SendToCODEC
-                    ldd       #%0010101000011111                    R21 - ADC Mux Control   AIN1-AIN5
+                    ldd       #%0010101000011111 ; r21 - ADC Mux Control   AIN1-AIN5
                     lbsr      SendToCODEC
-                    ldd       #%0010110000000111                    R22 - Output Mux MX[2:0] = "111"
+                    ldd       #%0010110000000111 ; r22 - Output Mux MX[2:0] = "111"
                     lbsr      SendToCODEC
-                    ldd       #%0001101000000000                    R13 - PWR Down Control, Everything on
+                    ldd       #%0001101000000000 ; r13 - PWR Down Control, Everything on
                     lbsr      SendToCODEC
-                    ldd       #%0000011111010111                    R03 - Left DAC Attenuation ($D7 = -20dB)
+                    ldd       #%0000011111010111 ; r03 - Left DAC Attenuation ($D7 = -20dB)
                     lbsr      SendToCODEC
-                    ldd       #%0000100111010111                    R04 - Right DAC Attenuation ($D7 = -20dB)
+                    ldd       #%0000100111010111 ; r04 - Right DAC Attenuation ($D7 = -20dB)
                     lbsr      SendToCODEC
-                    ldd       #%0000000101111001                    R00 - Left Headphone Attenuation ($79 = 0dB)
+                    ldd       #%0000000101111001 ; r00 - Left Headphone Attenuation ($79 = 0dB)
                     lbsr      SendToCODEC
-                    ldd       #%0000001101111001                    R01 - Right Headphone Attenuation ($79 = 0dB)
+                    ldd       #%0000001101111001 ; r01 - Right Headphone Attenuation ($79 = 0dB)
                     lbsr      SendToCODEC
-                    endc
+                  ENDC
 *                   ldd       #%0001011000000010                    R11 - ADC Interface Control
 *                   lbsr      SendToCODEC
 *                   ldd       #%0001100111010101                    R12 - Master Mode Control
@@ -3314,12 +3314,12 @@ PSGBell             ldx       #PSG_BOTH_PORT
                     sta       ,x
                     lda       #%11111111
                     sta       ,x
-                    lda       >gr.b3              volume 0-15
+                    lda       >gr.b3    ; volume 0-15
                     coma
                     anda      #%00001111
                     ora       #%10010000
                     sta       ,x
-                    ldd       >gr.d1              frequency
+                    ldd       >gr.d1    ; frequency
                     coma
                     comb
                     pshs      d
@@ -3351,18 +3351,18 @@ PSGOff              lda       #%10011111
 *   b4 = WD.Buf (16K terminal buffer) / WD.Vicky (live TEXT_RAM_BLK/COLOR_RAM_BLK)
 *******************************************************************
 GFCell              lbsr      SetBlkC2C3
-                    ldx       >gr.d1              cell offset
-                    tst       >gr.b4              live or 16K buffer?
+                    ldx       >gr.d1    ; cell offset
+                    tst       >gr.b4    ; live or 16K buffer?
                     beq       GFCellBuf
-                    lda       >gr.b2              glyph
+                    lda       >gr.b2    ; glyph
                     sta       $2000,x
-                    lda       >gr.b3              colour attr
+                    lda       >gr.b3    ; colour attr
                     sta       $4000,x
                     bra       GWRet
-GFCellBuf           lda       >gr.b2              glyph
-                    sta       $6000,x            T.TXT origin 0
+GFCellBuf           lda       >gr.b2    ; glyph
+                    sta       $6000,x   ; t.TXT origin 0
                     leax      T.TXTCOLOR,x
-                    lda       >gr.b3              colour attr
+                    lda       >gr.b3    ; colour attr
                     sta       $6000,x
 GWRet               clrb
                     jmp       >GrfMod+SysRet
@@ -3380,10 +3380,10 @@ GFClrScrn           lbsr      SetBlkC2C3
                     cmpd      #4800
                     bls       GFCSok
                     ldd       #4800
-GFCSok              tfr       d,y               Y = cell count
+GFCSok              tfr       d,y       ; y = cell count
 * b3 is scratch here, not a parameter - same spill as EraseLineCore.
-                    lda       V.FBCol,u         grab colour before U is reused
-                    sta       >gr.b3            spill V.FBCol (colour attr)
+                    lda       V.FBCol,u ; grab colour before U is reused
+                    sta       >gr.b3    ; spill V.FBCol (colour attr)
                     ldb       V.TermLive,u
                     beq       GFCSbuf
                     ldx       #$2000
@@ -3392,7 +3392,7 @@ GFCSok              tfr       d,y               Y = cell count
 GFCSbuf             ldx       #$6000
                     ldu       #$6000+T.TXTCOLOR
 GFCSgo              lda       #C$SPAC
-                    ldb       >gr.b3            recover the colour attr
+                    ldb       >gr.b3    ; recover the colour attr
 GFCSlp              sta       ,x+
                     stb       ,u+
                     leay      -1,y
@@ -3430,30 +3430,30 @@ GFBlkC              stb       ,x+
 *   b5 = 0 foreground LUT, 1 background LUT
 *   d1 = LUT bytes 0-1 (blue, green)   d2 = LUT bytes 2-3 (red, alpha)
 *******************************************************************
-GFPal               tst       >gr.b4              live FONT_BLK or 16K buffer?
+GFPal               tst       >gr.b4    ; live FONT_BLK or 16K buffer?
                     beq       GFPalBuf
                     lbsr      SetBlkC0C1
-                    ldx       #$2000+TEXT_LUT_FG  VICKY_BLK, not FONT_BLK
-                    tst       >gr.b5              0 = FG LUT, 1 = BG LUT
+                    ldx       #$2000+TEXT_LUT_FG ; vicky_BLK, not FONT_BLK
+                    tst       >gr.b5    ; 0 = FG LUT, 1 = BG LUT
                     beq       GFPalIdx
-                    ldx       #$2000+TEXT_LUT_BG  VICKY_BLK, not FONT_BLK
+                    ldx       #$2000+TEXT_LUT_BG ; vicky_BLK, not FONT_BLK
                     bra       GFPalIdx
 GFPalBuf            lbsr      SetBlkC2C3
                     ldx       #$6000+T.FLUT
-                    tst       >gr.b5              0 = FG LUT, 1 = BG LUT
+                    tst       >gr.b5    ; 0 = FG LUT, 1 = BG LUT
                     beq       GFPalIdx
                     ldx       #$6000+T.BLUT
-GFPalIdx            ldb       >gr.b2              palette register #
-                    lslb                          4 bytes per entry
+GFPalIdx            ldb       >gr.b2    ; palette register #
+                    lslb                ; 4 bytes per entry
                     lslb
                     abx
-                    lda       >gr.d1              blue
+                    lda       >gr.d1    ; blue
                     sta       ,x
-                    lda       >gr.d1+1            green
+                    lda       >gr.d1+1  ; green
                     sta       1,x
-                    lda       >gr.d2              red
+                    lda       >gr.d2    ; red
                     sta       2,x
-                    lda       >gr.d2+1            alpha
+                    lda       >gr.d2+1  ; alpha
                     sta       3,x
                     jmp       >GrfMod+SysRet
 
@@ -3473,13 +3473,13 @@ GFBmEnable          bsr       BmEnCore
 *   Every writer keeps V.BMxBlk / V.BMxOff right and this reads them, so
 *   the registers cannot disagree with the mirror PullBuf restores from.
 *   SetBlkC0C1 touches only slots 1 and 2, so U still reaches the statics.
-BmEnCore            bsr       GFBmX               X = $3000 + bitmap*8
-                    lda       >gr.b3              control byte
+BmEnCore            bsr       GFBmX     ; x = $3000 + bitmap*8
+                    lda       >gr.b3    ; control byte
                     sta       ,x
-                    tfr       x,y                 Y = the register base
-                    lda       >gr.b2              bitmap #
-                    lbsr      BmGetAddr           A = block, X = offset
-                    lbsr      BmRegAddr           bits 23:0 at 1,y and 2,y
+                    tfr       x,y       ; y = the register base
+                    lda       >gr.b2    ; bitmap #
+                    lbsr      BmGetAddr ; a = block, X = offset
+                    lbsr      BmRegAddr ; bits 23:0 at 1,y and 2,y
                     rts
 GFBmFree            bsr       GFBmX
                     clr       ,x
@@ -3489,13 +3489,13 @@ GFBmFree            bsr       GFBmX
                     clrb
                     jmp       >GrfMod+SysRet
 GFBmPalet           bsr       GFBmX
-                    lda       >gr.b3              CLUT# | enable
+                    lda       >gr.b3    ; clut# | enable
                     sta       ,x
                     clrb
                     jmp       >GrfMod+SysRet
 * GFBmX - map VICKY_BLK/FONT_BLK, return X = $3000 + b2*8 (b2 = bitmap #).
 GFBmX               lbsr      SetBlkC0C1
-                    ldb       >gr.b2              bitmap # 0-2
+                    ldb       >gr.b2    ; bitmap # 0-2
                     lda       #8
                     mul
                     addd      #$3000
@@ -3524,8 +3524,8 @@ bfmx@               tfr       b,a
 * BmClrOff - zero bitmap gr.b2's offset, so a bitmap that is allocated,
 *   freed and allocated again does not inherit the last one's.  U = the
 *   statics.  Clobbers A and Y; X is left alone because GFAScrn needs it.
-BmClrOff            lda       >gr.b2              bitmap #
-                    lsla                          two offset bytes each
+BmClrOff            lda       >gr.b2    ; bitmap #
+                    lsla                ; two offset bytes each
                     leay      V.BM0Off,u
                     leay      a,y
                     clr       ,y
@@ -3534,15 +3534,15 @@ BmClrOff            lda       >gr.b2              bitmap #
 
 * BmFlagClr - clear BOTH of bitmap gr.b2's bits, so a freed bitmap is
 *   neither owned nor remembered as the small size.  U = the statics.
-BmFlagClr           lda       >gr.b2              bitmap #
-                    bsr       BmFlagMask          A = its size bit
+BmFlagClr           lda       >gr.b2    ; bitmap #
+                    bsr       BmFlagMask ; a = its size bit
                     tfr       a,b
                     lsla
                     lsla
                     lsla
-                    lsla                          A = its ownership bit
+                    lsla                ; a = its ownership bit
                     pshs      a
-                    orb       ,s+                 B = both bits
+                    orb       ,s+       ; b = both bits
                     comb
                     andb      V.BMFlags,u
                     stb       V.BMFlags,u
@@ -3550,40 +3550,40 @@ BmFlagClr           lda       >gr.b2              bitmap #
 
 SetBlkC0C1          pshs      cc
                     orcc      #IntMasks
-		    lda	      #EDIT_LUT_1+ACT_LUT_1
-		    sta	      MMU_MEM_CTRL
+                    lda       #EDIT_LUT_1+ACT_LUT_1
+                    sta       MMU_MEM_CTRL
                     clra
                     ldx       #gr.DATImg+2
                     ldb       #VICKY_BLK
-                    stb       MMU_SLOT_1 $2000
+                    stb       MMU_SLOT_1 ; $2000
                     std       ,x++
                     ldb       #FONT_BLK
-                    stb       MMU_SLOT_2 $4000
+                    stb       MMU_SLOT_2 ; $4000
                     std       ,x
                     puls      cc,pc
 
 SetBlkC2C3          pshs      cc,d,x
                     orcc      #IntMasks
-		    lda	      #EDIT_LUT_1+ACT_LUT_1
-		    sta	      MMU_MEM_CTRL
+                    lda       #EDIT_LUT_1+ACT_LUT_1
+                    sta       MMU_MEM_CTRL
                     clra
                     ldx       #gr.DATImg+2
                     ldb       #TEXT_RAM_BLK
-                    stb       MMU_SLOT_1 $2000
+                    stb       MMU_SLOT_1 ; $2000
                     std       ,x++
                     ldb       #COLOR_RAM_BLK
-                    stb       MMU_SLOT_2 $4000
+                    stb       MMU_SLOT_2 ; $4000
                     std       ,x++
                     ldb       >gr.TermBlk
-                    stb       MMU_SLOT_3 $6000
+                    stb       MMU_SLOT_3 ; $6000
                     std       ,x++
                     incb
-                    stb       MMU_SLOT_4 $8000
+                    stb       MMU_SLOT_4 ; $8000
                     std       ,x++
                     ldb       >gr.VBlk
-                    stb       MMU_SLOT_5 $A000
+                    stb       MMU_SLOT_5 ; $A000
                     std       ,x
-		    ldu	      >gr.U5
+                    ldu       >gr.U5
                     puls      cc,d,x,pc
 
 
@@ -3600,16 +3600,16 @@ SetBlkC2C3          pshs      cc,d,x
 SSTermSel           ldd       R$X,x
                     cmpd      #G.TermMax
                     bhs       bad@
-                    pshs      b                   the id
+                    pshs      b         ; the id
                     lda       #gr.TermSz
                     mul
                     ldx       #gr.TermTbl
-                    abx                           X = its entry
+                    abx                 ; x = its entry
                     puls      b
                     lda       T.Flags,x
                     bita      #T.Init
                     beq       bad@
-                    cmpb      >gr.LiveTerm        already on screen?
+                    cmpb      >gr.LiveTerm ; already on screen?
                     beq       ok@
                     stb       >gr.SwitchTerm
                     lda       #SW.Goto
@@ -3667,52 +3667,52 @@ bad@                comb
 *   past $1FFF or first block 0; or a table that crosses into a block the
 *   call did not name - slot 7 in auto, a zero low byte in manual).
 *******************************************************************
-SSSprReg            ldd       R$U,x               records, 0 = give the table up
+SSSprReg            ldd       R$U,x     ; records, 0 = give the table up
                     lbeq      SRDereg
                     cmpd      #SPR.Max
                     lbhi      SRBad
-                    pshs      b                   ,s = the count
-                    lbsr      SprRow              Y = this terminal's row
-                    ldd       R$Y,x               0 = auto, otherwise the blocks
+                    pshs      b         ; ,s = the count
+                    lbsr      SprRow    ; y = this terminal's row
+                    ldd       R$Y,x     ; 0 = auto, otherwise the blocks
                     bne       SRMan
-                    ldd       R$X,x               auto: the table's address
-                    pshs      d                   ,s = the address  2,s = the count
+                    ldd       R$X,x     ; auto: the table's address
+                    pshs      d         ; ,s = the address  2,s = the count
                     lsra
                     lsra
                     lsra
                     lsra
-                    lsra                          A = the caller's slot 0-7
+                    lsra                ; a = the caller's slot 0-7
                     lsla
-                    ldx       #gr.PDAT+1          low byte of each 2-byte entry
-                    leax      a,x                 X -> its block for that slot
+                    ldx       #gr.PDAT+1 ; low byte of each 2-byte entry
+                    leax      a,x       ; x -> its block for that slot
                     lda       ,x
                     sta       SB.Blk0,y
-                    clra                          slot 7 has no next block
+                    clra                ; slot 7 has no next block
                     cmpx      #gr.PDAT+15
                     beq       SRAuto1
                     lda       2,x
 SRAuto1             sta       SB.Blk1,y
-                    puls      d                   the address again
+                    puls      d         ; the address again
                     anda      #$1F
-                    std       SB.Off,y            the offset within that block
+                    std       SB.Off,y  ; the offset within that block
                     bra       SRSpan
-SRMan               tsta                          block 0 is the system block
+SRMan               tsta                ; block 0 is the system block
                     beq       SRBad1
                     std       SB.Blk0,y
-                    ldd       R$X,x               the offset within the first block
+                    ldd       R$X,x     ; the offset within the first block
                     cmpd      #$2000
                     bhs       SRBad1
                     std       SB.Off,y
 SRSpan              ldb       ,s
-                    stb       SB.Cnt,y            the count
+                    stb       SB.Cnt,y  ; the count
                     lda       #SPR.RecL
                     mul
-                    addd      SB.Off,y            D = where the table ends
+                    addd      SB.Off,y  ; d = where the table ends
                     ldb       #SB.Reg
                     cmpd      #$2000
-                    bls       SRStore             it ends inside the one block
+                    bls       SRStore   ; it ends inside the one block
                     tst       SB.Blk1,y
-                    beq       SRBad1              it crosses into a block we were not given
+                    beq       SRBad1    ; it crosses into a block we were not given
                     ldb       #SB.Reg+SB.Span
 SRStore             stb       SB.Flags,y
                     leas      1,s
@@ -3721,7 +3721,7 @@ SRStore             stb       SB.Flags,y
 * does not keep its sprites on screen.
                     tst       V.TermLive,u
                     beq       SROK
-                    lbsr      SprMapC0            VICKY_BLK in slot 1
+                    lbsr      SprMapC0  ; vicky_BLK in slot 1
                     lbsr      SprRow
                     ldx       #$2000+SPRITE_REC_OFF
                     ldb       SB.Cnt,y
@@ -3730,13 +3730,13 @@ SRStore             stb       SB.Flags,y
                     sta       >gr.SprDirty
 SROK                clrb
                     jmp       >GrfMod+SysRet
-SRDereg             lbsr      SprRow              Y = this terminal's row
+SRDereg             lbsr      SprRow    ; y = this terminal's row
                     clr       SB.Flags,y
                     tst       V.TermLive,u
                     beq       SROK
-                    lbsr      SprMapC0            VICKY_BLK in slot 1
+                    lbsr      SprMapC0  ; vicky_BLK in slot 1
                     ldx       #$2000+SPRITE_REC_OFF
-                    clrb                          every record off
+                    clrb                ; every record off
                     lbsr      SprClrFrom
                     clr       >gr.SprDirty
                     clrb
@@ -3755,44 +3755,44 @@ SRBad               comb
 * Exit: B = 0, or carry + E$NotRdy (nothing registered) / E$IllArg (a
 *   range outside the registered count).
 *******************************************************************
-SSSprPush           lbsr      SprRow              Y = this terminal's row
+SSSprPush           lbsr      SprRow    ; y = this terminal's row
                     lda       SB.Flags,y
                     bita      #SB.Reg
                     beq       SPNone
 * Both ends are checked before they are added: a first or a count large
 * enough to wrap the addition would otherwise pass a check on the sum and
 * copy from somewhere else entirely.
-                    ldd       R$Y,x               first record
+                    ldd       R$Y,x     ; first record
                     cmpd      #SPR.Max-1
                     bhi       SPBad
-                    ldd       R$U,x               the count
+                    ldd       R$U,x     ; the count
                     beq       SPBad
                     cmpd      #SPR.Max
                     bhi       SPBad
-                    addd      R$Y,x               first + count, which cannot wrap now
+                    addd      R$Y,x     ; first + count, which cannot wrap now
                     pshs      d
                     clra
                     ldb       SB.Cnt,y
-                    cmpd      ,s++                past the end of the table?
+                    cmpd      ,s++      ; past the end of the table?
                     blo       SPBad
                     tst       V.TermLive,u
-                    beq       SPOK                not on screen: the table is the truth
-                    ldd       R$Y,x               first record
+                    beq       SPOK      ; not on screen: the table is the truth
+                    ldd       R$Y,x     ; first record
                     lslb
                     rola
                     lslb
                     rola
                     lslb
-                    rola                          D = 8 * first
-                    pshs      d                   ,s = it, twice over
+                    rola                ; d = 8 * first
+                    pshs      d         ; ,s = it, twice over
                     pshs      d
-                    lbsr      SprMapTbl           slots 3/4 = the table, U = record 0
+                    lbsr      SprMapTbl ; slots 3/4 = the table, U = record 0
                     puls      d
-                    leau      d,u                 U = the first record to send
-                    lbsr      SprMapC0            VICKY_BLK in slot 1
+                    leau      d,u       ; u = the first record to send
+                    lbsr      SprMapC0  ; vicky_BLK in slot 1
                     puls      d
                     addd      #$2000+SPRITE_REC_OFF
-                    tfr       d,y                 Y = where it lands in Vicky
+                    tfr       d,y       ; y = where it lands in Vicky
                     ldx       #gr.PDRGS
                     ldd       R$U,x
                     lslb
@@ -3800,7 +3800,7 @@ SSSprPush           lbsr      SprRow              Y = this terminal's row
                     lslb
                     rola
                     lslb
-                    rola                          D = 8 * count
+                    rola                ; d = 8 * count
                     lbsr      CpyBlk
                     lda       #1
                     sta       >gr.SprDirty
@@ -3823,29 +3823,29 @@ SPNone              comb
 *   SetBlkC0C1 leaves it there).
 * Exit: U as it was.  D, X and Y are destroyed.
 *******************************************************************
-SprRestore          pshs      u                   the statics, for the exit
-                    lbsr      SprRow              Y = its row
+SprRestore          pshs      u         ; the statics, for the exit
+                    lbsr      SprRow    ; y = its row
                     lda       SB.Flags,y
                     bita      #SB.Reg
                     bne       SRSTbl
-                    tst       >gr.SprDirty        nothing registered
-                    beq       SRSX                and nothing on screen either
+                    tst       >gr.SprDirty ; nothing registered
+                    beq       SRSX      ; and nothing on screen either
                     ldx       #$2000+SPRITE_REC_OFF
-                    clrb                          every record off
+                    clrb                ; every record off
                     lbsr      SprClrFrom
                     clr       >gr.SprDirty
 SRSX                puls      u,pc
 SRSTbl              ldb       SB.Cnt,y
-                    pshs      b                   ,s = the count  1,s = the statics
-                    lbsr      SprMapTbl           slots 3/4 = the table, U = record 0
+                    pshs      b         ; ,s = the count  1,s = the statics
+                    lbsr      SprMapTbl ; slots 3/4 = the table, U = record 0
                     ldb       ,s
                     lda       #SPR.RecL
-                    mul                           D = the table's length
+                    mul                 ; d = the table's length
                     ldy       #$2000+SPRITE_REC_OFF
                     lbsr      CpyBlk
                     ldx       #$2000+SPRITE_REC_OFF
                     ldb       ,s+
-                    lbsr      SprClrFrom          the records it does not cover, off
+                    lbsr      SprClrFrom ; the records it does not cover, off
                     lda       #1
                     sta       >gr.SprDirty
                     puls      u,pc
@@ -3875,14 +3875,14 @@ SprMapTbl           pshs      cc,d,x
                     ldx       #gr.DATImg+6
                     clra
                     ldb       SB.Blk0,y
-                    stb       MMU_SLOT_3          $6000
+                    stb       MMU_SLOT_3 ; $6000
                     std       ,x++
                     ldb       SB.Blk1,y
-                    stb       MMU_SLOT_4          $8000
+                    stb       MMU_SLOT_4 ; $8000
                     std       ,x
                     ldd       SB.Off,y
                     addd      #$6000
-                    tfr       d,u                 U = the table through slot 3
+                    tfr       d,u       ; u = the table through slot 3
                     puls      cc,d,x,pc
 
 *******************************************************************
@@ -3896,7 +3896,7 @@ SprMapC0            pshs      cc,d
                     sta       MMU_MEM_CTRL
                     clra
                     ldb       #VICKY_BLK
-                    stb       MMU_SLOT_1          $2000
+                    stb       MMU_SLOT_1 ; $2000
                     std       >gr.DATImg+2
                     puls      cc,d,pc
 
@@ -3910,12 +3910,12 @@ SprMapC0            pshs      cc,d
 SprClrFrom          pshs      cc,d,x
                     cmpb      #SPR.Max
                     bhs       SCFX
-                    pshs      b                   the first record
+                    pshs      b         ; the first record
                     lda       #SPR.RecL
-                    mul                           D = 8 * first
-                    leax      d,x                 X = its control byte
+                    mul                 ; d = 8 * first
+                    leax      d,x       ; x = its control byte
                     ldb       #SPR.Max
-                    subb      ,s+                 B = records left
+                    subb      ,s+       ; b = records left
 SCF1                clr       ,x
                     leax      SPR.RecL,x
                     decb
@@ -3938,27 +3938,27 @@ SCFX                puls      cc,d,x,pc
 *   hi/mid/lo) so PullBuf's straight copy is unchanged; the registers at
 *   VICKY_BLK $1180+4*n are written only when live.  See docs/tile-api.md.
 *******************************************************************
-SSTsSet             ldb       R$Y+1,x             tile set #
+SSTsSet             ldb       R$Y+1,x   ; tile set #
                     cmpb      #7
                     bhi       TsBad
                     lslb
-                    lslb                          B = 4*n
-                    pshs      b                   ,s = 4*n
-                    ldd       R$U,x               the offset
+                    lslb                ; b = 4*n
+                    pshs      b         ; ,s = 4*n
+                    ldd       R$U,x     ; the offset
                     cmpd      #$1FFF
                     bhi       TsOff
-                    ldd       R$X,x               the block
+                    ldd       R$X,x     ; the block
                     cmpd      #$FF
                     bhi       TsOff
-                    ldy       >gr.U5              this terminal's statics (slot 5)
+                    ldy       >gr.U5    ; this terminal's statics (slot 5)
                     leay      V.TS0AddrH,y
                     ldb       ,s
-                    leay      b,y                 Y -> V.TSn
-                    lda       R$Y,x               CFG
+                    leay      b,y       ; y -> V.TSn
+                    lda       R$Y,x     ; cfg
                     sta       ,y
-                    ldb       R$X+1,x             B = block
+                    ldb       R$X+1,x   ; b = block
                     bne       tsad@
-                    clr       1,y                 block 0 clears the set
+                    clr       1,y       ; block 0 clears the set
                     clr       2,y
                     clr       3,y
                     bra       tslv@
@@ -3968,24 +3968,24 @@ SSTsSet             ldb       R$Y+1,x             tile set #
 tsad@               tfr       b,a
                     lsra
                     lsra
-                    lsra                          A = block >> 3
-                    sta       1,y                 ADDR hi
+                    lsra                ; a = block >> 3
+                    sta       1,y       ; addr hi
                     andb      #7
                     lslb
                     lslb
                     lslb
                     lslb
-                    lslb                          B = (block & 7) << 5
-                    lda       R$U,x               the offset's high byte
+                    lslb                ; b = (block & 7) << 5
+                    lda       R$U,x     ; the offset's high byte
                     pshs      a
                     orb       ,s+
-                    stb       2,y                 ADDR mid
+                    stb       2,y       ; addr mid
                     lda       R$U+1,x
-                    sta       3,y                 ADDR lo
+                    sta       3,y       ; addr lo
 tslv@               ldu       >gr.U5
                     tst       V.TermLive,u
                     beq       done@
-                    lbsr      SetBlkC0C1          VICKY_BLK at $2000
+                    lbsr      SetBlkC0C1 ; vicky_BLK at $2000
                     ldu       >gr.U5
                     leau      V.TS0AddrH,u
                     ldb       ,s
@@ -4016,20 +4016,20 @@ TsBad               comb
 *   only when live.  PullBuf reprograms the
 *   tile map registers from the mirror on a switch.
 *******************************************************************
-SSTmSet             ldd       R$Y,x               tile map #
+SSTmSet             ldd       R$Y,x     ; tile map #
                     cmpd      #2
                     bhi       TmBad
-                    pshs      b                   ,s = n
+                    pshs      b         ; ,s = n
                     ldd       R$X,x
                     ldy       #12
-                    lbsr      MapCallBuf          U = record through slot 1
+                    lbsr      MapCallBuf ; u = record through slot 1
                     bcs       TmOff
-                    ldy       >gr.U5              this terminal's statics (slot 5)
+                    ldy       >gr.U5    ; this terminal's statics (slot 5)
                     leay      V.TM0,y
                     lda       #12
                     ldb       ,s
-                    mul                           B = 12*n
-                    leay      b,y                 Y -> V.TMn
+                    mul                 ; b = 12*n
+                    leay      b,y       ; y -> V.TMn
                     ldb       #12
 loop@               lda       ,u+
                     sta       ,y+
@@ -4038,23 +4038,23 @@ loop@               lda       ,u+
 * Y is now past V.TMn+12.  Bytes 1-3 arrived as block, offset hi, offset
 * lo; turn them into the address the hardware wants.  ADDR lo needs no
 * work - the offset's low byte IS the address's low byte.
-                    ldd       -10,y               the offset
+                    ldd       -10,y     ; the offset
                     cmpd      #$1FFF
                     bhi       TmOff
-                    ldb       -11,y               B = block
+                    ldb       -11,y     ; b = block
                     beq       tmz@
                     tfr       b,a
                     lsra
                     lsra
-                    lsra                          A = block >> 3
+                    lsra                ; a = block >> 3
                     andb      #7
                     lslb
                     lslb
                     lslb
                     lslb
-                    lslb                          B = (block & 7) << 5
-                    orb       -10,y               in the offset's high byte
-                    std       -11,y               ADDR hi and ADDR mid
+                    lslb                ; b = (block & 7) << 5
+                    orb       -10,y     ; in the offset's high byte
+                    std       -11,y     ; addr hi and ADDR mid
                     bra       tmlv@
 * Block 0 is address 0.  A record of twelve zeroes is how a program turns
 * a map off, so this must not be an error.
@@ -4064,10 +4064,10 @@ tmz@                clr       -11,y
 tmlv@               ldu       >gr.U5
                     tst       V.TermLive,u
                     beq       done@
-                    lbsr      SetBlkC0C1          VICKY_BLK at $2000
+                    lbsr      SetBlkC0C1 ; vicky_BLK at $2000
                     lda       #12
                     ldb       ,s
-                    mul                           B = 12*n
+                    mul                 ; b = 12*n
                     ldu       >gr.U5
                     leau      V.TM0,u
                     leau      b,u
@@ -4101,24 +4101,24 @@ TmBad               comb
 *   image from the mirror on a switch, so the scroll comes back with
 *   everything else and nothing extra is needed there.
 *******************************************************************
-SSTmScrl            ldd       R$Y,x               tile map #
+SSTmScrl            ldd       R$Y,x     ; tile map #
                     cmpd      #2
                     bhi       TmBad
                     lda       #12
-                    mul                           B = 12*n, n is 0-2
-                    pshs      b                   ,s = 12*n
-                    ldy       >gr.U5              this terminal's statics
+                    mul                 ; b = 12*n, n is 0-2
+                    pshs      b         ; ,s = 12*n
+                    ldy       >gr.U5    ; this terminal's statics
                     leay      V.TM0ScrlX,y
                     ldb       ,s
-                    leay      b,y                 Y -> V.TMnScrlX
-                    ldd       R$X,x               X scroll
+                    leay      b,y       ; y -> V.TMnScrlX
+                    ldd       R$X,x     ; x scroll
                     std       ,y
-                    ldd       R$U,x               Y scroll
+                    ldd       R$U,x     ; y scroll
                     std       2,y
                     ldu       >gr.U5
                     tst       V.TermLive,u
                     beq       tscx@
-                    lbsr      SetBlkC0C1          VICKY_BLK at $2000
+                    lbsr      SetBlkC0C1 ; vicky_BLK at $2000
                     ldu       >gr.U5
                     leau      V.TM0ScrlX,u
                     ldb       ,s
@@ -4141,65 +4141,65 @@ tscx@               leas      1,s
 *   live CLUT at FONT_BLK $1000+$400*n (in slot 3) when the terminal is live or
 *   has no buffer yet.  The entries come in through slots 1-2 (MapCallBuf).
 *******************************************************************
-SSClutWrite         lda       R$Y,x               CLUT #
+SSClutWrite         lda       R$Y,x     ; clut #
                     cmpa      #3
                     lbhi      ClutBad
-                    ldd       R$U,x               count
+                    ldd       R$U,x     ; count
                     lbeq      ClutBad
                     cmpd      #256
                     lbhi      ClutBad
                     addb      R$Y+1,x
-                    adca      #0                  D = first + count
+                    adca      #0        ; d = first + count
                     cmpd      #256
                     lbhi      ClutBad
                     ldd       R$U,x
                     lslb
                     rola
                     lslb
-                    rola                          D = 4*count
-                    pshs      d                   ,s = length
+                    rola                ; d = 4*count
+                    pshs      d         ; ,s = length
                     lda       R$Y,x
                     lsla
-                    lsla                          A = high byte of n*$400
+                    lsla                ; a = high byte of n*$400
                     pshs      a
                     clra
                     ldb       R$Y+1,x
                     lslb
                     rola
                     lslb
-                    rola                          D = 4*first
-                    adda      ,s+                 D = n*$400 + 4*first
-                    pshs      d                   ,s = entry offset  2,s = length
+                    rola                ; d = 4*first
+                    adda      ,s+       ; d = n*$400 + 4*first
+                    pshs      d         ; ,s = entry offset  2,s = length
                     ldd       V.TermLive,u
-                    pshs      d                   ,s = live  1,s = buffer blk  2,s = offset  4,s = length
-                    ldd       R$X,x               entries in the caller's map
+                    pshs      d         ; ,s = live  1,s = buffer blk  2,s = offset  4,s = length
+                    ldd       R$X,x     ; entries in the caller's map
                     ldy       4,s
-                    lbsr      MapCallBuf          U = entries through slot 1
+                    lbsr      MapCallBuf ; u = entries through slot 1
                     bcs       ClutOff
                     tst       1,s
-                    beq       ClutLive            no buffer yet: live CLUT only
+                    beq       ClutLive  ; no buffer yet: live CLUT only
                     ldd       2,s
-                    addd      #$6000+T.CLUT0      T.CLUTn entry in the buffer
+                    addd      #$6000+T.CLUT0 ; t.CLUTn entry in the buffer
                     tfr       d,y
                     pshs      u
-                    ldd       6,s                 length
+                    ldd       6,s       ; length
                     lbsr      CpyBlk
                     puls      u
-                    tst       ,s                  live?
-                    beq       ClutDone            no - PullBuf programs it on the switch
+                    tst       ,s        ; live?
+                    beq       ClutDone  ; no - PullBuf programs it on the switch
 ClutLive            pshs      cc
                     orcc      #IntMasks
                     lda       #EDIT_LUT_1+ACT_LUT_1
                     sta       MMU_MEM_CTRL
                     clra
                     ldb       #FONT_BLK
-                    stb       MMU_SLOT_3          FONT_BLK at $6000
+                    stb       MMU_SLOT_3 ; font_BLK at $6000
                     std       >gr.DATImg+6
                     puls      cc
                     ldd       2,s
                     addd      #$6000+GRPH_LUT0_OFF
                     tfr       d,y
-                    ldd       4,s                 length
+                    ldd       4,s       ; length
                     lbsr      CpyBlk
 ClutDone            leas      6,s
                     clrb
@@ -4239,12 +4239,12 @@ ClutBad             comb
 * the per-line stride is a hard-wired 320 - so the mode costs no extra
 * memory and is a display attribute, not an allocation parameter.
 *******************************************************************
-GSBmBlk             ldd       R$Y,x               bitmap #
+GSBmBlk             ldd       R$Y,x     ; bitmap #
                     cmpd      #2
                     lbhi      BmBad
-                    lslb                          two mirror bytes per bitmap
+                    lslb                ; two mirror bytes per bitmap
                     leay      V.BM0Cl_En,u
-                    leay      b,y                 Y -> V.BMxCl_En, V.BMxBlk at 1,y
+                    leay      b,y       ; y -> V.BMxCl_En, V.BMxBlk at 1,y
                     lda       ,y
                     sta       R$A,x
                     clra
@@ -4281,7 +4281,7 @@ GSBmClrX            std       R$X,x
 *   across frames than be told its batch came up short.  The FIFO is one
 *   piece of hardware shared by every terminal, so this answers for the
 *   machine and not for this terminal.
-GSBmLine            lbsr      LineMapC0           X = the line registers
+GSBmLine            lbsr      LineMapC0 ; x = the line registers
                     ldd       LD.FifoH,x
                     std       >gr.PDRGS+R$X
                     lbra      StatOK
@@ -4292,10 +4292,10 @@ GSBmLine            lbsr      LineMapC0           X = the line registers
 * Call this instead of jmp [>D.Flip0]
 *******************************************************************
 SysRet
-                    tfr       cc,a      ; Save CC status
-                    orcc      #IntMasks ; Disable interrupts
-                    ldx       >gr.Stack ; Get saved system stack
-                    clr       >gr.Busy  ; Clear busy flag
+                    tfr       cc,a      ; save CC status
+                    orcc      #IntMasks ; disable interrupts
+                    ldx       >gr.Stack ; get saved system stack
+                    clr       >gr.Busy  ; clear busy flag
 
 * Reset DP to 0 for system
                     pshs      a
@@ -4303,7 +4303,7 @@ SysRet
                     tfr       a,dp
                     puls      a
 
-                    jmp       [>D.Flip0] ; Return to system
+                    jmp       [>D.Flip0] ; return to system
 
 
 *******************************************************************
@@ -4315,7 +4315,7 @@ SysRet
 ;;; y=DAT Image Address
 ;;; x=logical address in process
 ;;; find the block where x is and map it into Slot 1
-GMapAddr2Blk        pshs      cc,d,x    x=address in process;y=Process DAT
+GMapAddr2Blk        pshs      cc,d,x    ; x=address in process;y=Process DAT
                     tfr       x,d
                     lsra
                     lsra
@@ -4324,7 +4324,7 @@ GMapAddr2Blk        pshs      cc,d,x    x=address in process;y=Process DAT
                     anda      #%0001110
                     inca
                     lda       a,y
-                    orcc      #IntMasks IRQ return clears EDIT_LUT: select and write masked
+                    orcc      #IntMasks ; irq return clears EDIT_LUT: select and write masked
                     ldb       #EDIT_LUT_1+ACT_LUT_1
                     stb       MMU_MEM_CTRL
                     sta       MMU_SLOT_1
@@ -4345,34 +4345,34 @@ GMapAddr2Blk        pshs      cc,d,x    x=address in process;y=Process DAT
 MapCallBuf          pshs      d,x
                     anda      #$1F
                     addd      #$2000
-                    tfr       d,u                 U = buffer through slot 1
-                    ldb       ,s                  caller address high byte
+                    tfr       d,u       ; u = buffer through slot 1
+                    ldb       ,s        ; caller address high byte
                     lsrb
                     lsrb
                     lsrb
                     lsrb
-                    lsrb                          B = caller slot 0-7
+                    lsrb                ; b = caller slot 0-7
                     lslb
-                    ldx       #gr.PDAT+1          low byte of each 2-byte entry
-                    abx                           X -> caller's block for that slot
+                    ldx       #gr.PDAT+1 ; low byte of each 2-byte entry
+                    abx                 ; x -> caller's block for that slot
                     pshs      cc
                     orcc      #IntMasks
                     lda       #EDIT_LUT_1+ACT_LUT_1
                     sta       MMU_MEM_CTRL
                     clra
                     ldb       ,x
-                    stb       MMU_SLOT_1          $2000
+                    stb       MMU_SLOT_1 ; $2000
                     std       >gr.DATImg+2
-                    tfr       y,d                 D = length
+                    tfr       y,d       ; d = length
                     pshs      u
-                    addd      ,s++                D = end of buffer + 1
+                    addd      ,s++      ; d = end of buffer + 1
                     cmpd      #$4000
-                    bls       mapped@             ends inside slot 1
-                    cmpx      #gr.PDAT+15         slot 7 has no next block
+                    bls       mapped@   ; ends inside slot 1
+                    cmpx      #gr.PDAT+15 ; slot 7 has no next block
                     beq       off@
                     clra
                     ldb       2,x
-                    stb       MMU_SLOT_2          $4000
+                    stb       MMU_SLOT_2 ; $4000
                     std       >gr.DATImg+4
 mapped@             puls      cc
                     andcc     #^Carry
@@ -4391,23 +4391,23 @@ off@                puls      cc
 *  Exit: U=Ptr to end of source copy+1
 *        Y=Ptr to end of dest copy+1
 *        D=NOTE: NEW CODE WILL HAVE D AS END ADDRESS OF SOURCE OF COPY
-CpyBlk              leax      d,u       Calculate source end address
-                    pshs      x         Save on stack to compare with so we know when to stop
-                    andb      #$03      Check if we have odd bytes leftover (1-3)
-                    beq       CpyLpSt   No, skip to check if copy is done, and stack blast 4 byte chunks if yes
-CpyLp2              lda       ,u+       (6) Copy extra 1-3 bytes
-                    sta       ,y+       (6)
-                    decb                (2)
-                    bne       CpyLp2    (3)
-                    bra       CpyLpSt   Start with cmpu to end of copy (if copy was only 1-3 bytes, we are done already)
+CpyBlk              leax      d,u       ; calculate source end address
+                    pshs      x         ; save on stack to compare with so we know when to stop
+                    andb      #$03      ; check if we have odd bytes leftover (1-3)
+                    beq       CpyLpSt   ; no, skip to check if copy is done, and stack blast 4 byte chunks if yes
+CpyLp2              lda       ,u+       ; (6) Copy extra 1-3 bytes
+                    sta       ,y+       ; (6)
+                    decb                ; (2)
+                    bne       CpyLp2    ; (3)
+                    bra       CpyLpSt   ; start with cmpu to end of copy (if copy was only 1-3 bytes, we are done already)
 
 * Now, copy all 4 byte chunks. End address remains the same, so we can eliminate some stuff we had before
-CpyLp               pulu      d,x       Get 4 bytes from source (ascending order)
-                    std       ,y++      Copy to destination
+CpyLp               pulu      d,x       ; get 4 bytes from source (ascending order)
+                    std       ,y++      ; copy to destination
                     stx       ,y++
-CpyLpSt             cmpu      ,s        Done 4 byte blast copy?
-                    blo       CpyLp     No, keep doing until done
-                    puls      pc,d      Get end address of source copy and return
+CpyLpSt             cmpu      ,s        ; done 4 byte blast copy?
+                    blo       CpyLp     ; no, keep doing until done
+                    puls      pc,d      ; get end address of source copy and return
 
 
                     emod
