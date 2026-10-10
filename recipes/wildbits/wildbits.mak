@@ -104,6 +104,22 @@ $(MODDIR)/fpga: $(L1PCD)/fpga.asm | $(MODDIR)
 
 endif # K2-only RP2040 modules and command
 
+# diag: hardware diagnostics (level1/wildbits/cmds/diag.asm + diag_hw.asm, 2026-10-09), built for Level 1 and
+# Level 2 alike (2026-10-10) - the source is shared and assembles to the same bytes under either. It carries its own
+# CP437 font and text palette, copied in at build time from sys/fonts/phoenixegafont.asm and modules/palette.asm
+# (the fcb rows only, labels dropped) so its frame looks right whatever font or palette the tested system has.
+# The two generated files go in $(OBJDIR), not the recipe folder (2026-10-11): as bare names they were written
+# into the source tree on every make and left there; "make clean" removes $(OBJDIR) with them.
+CMDS += diag
+$(MODDIR)/diag: $(L1PCD)/diag.asm $(L1PCD)/diag_hw.asm $(OBJDIR)/diagfont.inc $(OBJDIR)/diagpal.inc | $(MODDIR)
+	$(AS) $(AFLAGS) -I$(OBJDIR) -I$(L1PCD) $< $(ASOUT)$@
+
+$(OBJDIR)/diagfont.inc: $(LEVEL1)/wildbits/sys/fonts/phoenixegafont.asm | $(OBJDIR)
+	sed -n '/^start/,/emod/p' $< | grep -E '^[A-Za-z0-9_]*[[:space:]]+fcb' | sed -E 's/^[A-Za-z0-9_]+//' > $@
+
+$(OBJDIR)/diagpal.inc: $(L1PMD)/palette.asm | $(OBJDIR)
+	sed -n '/^start/,/emod/p' $< | grep -E '^[A-Za-z0-9_]*[[:space:]]+fcb' | sed -E 's/^[A-Za-z0-9_]+//' > $@
+
 ifeq ($(LEVEL),2)
 # vs: VS1053 test command (wb/vs1053); on its own line so it never collides with edits to the CMDS list above
 CMDS += vs

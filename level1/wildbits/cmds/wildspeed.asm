@@ -14,8 +14,8 @@
 *   fetch   nop/nop/leay/bne         opcode fetches + internal cycles
 *   RAM rd  8 x lda ,x               RAM data reads (plus fetches)
 *   RAM wr  8 x sta ,x               RAM data writes (plus fetches)
-*   IO rd   8 x lda >INT_MASK_0      fixed-IO reads (full-length frames)
-*   IO wr   8 x sta >INT_MASK_0      fixed-IO writes (same value back)
+*   IO rd   8 x lda >MATH_MUL_A      fixed-IO reads (full-length frames)
+*   IO wr   8 x sta >MATH_MUL_A      fixed-IO writes (same value back)
 *   RTC rd  8 x lda ,x  (RTC_SEC)    external-bus reads (RDY-stretched)
 *   intern  8 x mul                  internal (dead) cycles: 10 of MUL's 11
 *                                    cycles never touch the bus, so this class
@@ -31,8 +31,13 @@
 * IRQs are MASKED for each window, so no tick/driver ISR time pollutes
 * the count - the OS software clock ends ~6*TESTSECS s slow
 * (setime/ntptime to resync). Remaining error: one-chunk edge
-* quantization (~0.2%) plus the RTC crystal itself. The IO-write class
-* writes the INT_MASK_0 value back to itself (idempotent, IRQs masked).
+* quantization (~0.2%) plus the RTC crystal itself. The IO classes read
+* and write MATH_MUL_A (the multiplier's operand, no side effect).
+* Edition 6 (2026-10-10): they used the interrupt mask, but the interrupt
+* controller drops any event in the clock of a write to $FE20-$FE2F
+* (IRQ_Controller_Jr.v), and the Jr2 PS/2 keyboard interrupt is one
+* pulse per FIFO empty->non-empty: a lost one left the keyboard out of
+* sync after the run. The K2's keyboard interrupt is a level and recovers.
 *
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
@@ -55,7 +60,7 @@
 tylg            set       Prgrm+Objct
 atrv            set       ReEnt+rev
 rev             set       $00
-edition         set       5
+edition         set       6
 
 TESTSECS        equ       3                   RTC seconds per class window
 NCLASS          equ       7
@@ -226,14 +231,14 @@ inner2@         sta     ,x                  4
 * ================= class 3: fixed-IO read =================
                 lbsr    Align
 chunk3@         ldy     #I_IO               4
-inner3@         lda     >INT_MASK_0         5
-                lda     >INT_MASK_0         5
-                lda     >INT_MASK_0         5
-                lda     >INT_MASK_0         5
-                lda     >INT_MASK_0         5
-                lda     >INT_MASK_0         5
-                lda     >INT_MASK_0         5
-                lda     >INT_MASK_0         5
+inner3@         lda     >MATH_MUL_A         5
+                lda     >MATH_MUL_A         5
+                lda     >MATH_MUL_A         5
+                lda     >MATH_MUL_A         5
+                lda     >MATH_MUL_A         5
+                lda     >MATH_MUL_A         5
+                lda     >MATH_MUL_A         5
+                lda     >MATH_MUL_A         5
                 leay    -1,y                5
                 bne     inner3@             3  => 48/iteration
                 ldd     <Chunks
@@ -253,18 +258,18 @@ inner3@         lda     >INT_MASK_0         5
                 lbsr    Finish
                 std     <Result+6
 
-* ================= class 4: fixed-IO write (same mask value back) =================
+* ================= class 4: fixed-IO write (MATH_MUL_A, its own value back) =================
                 lbsr    Align
-chunk4@         lda     >INT_MASK_0         5  current mask (IRQs are masked anyway)
+chunk4@         lda     >MATH_MUL_A         5  its current value
                 ldy     #I_IO               4
-inner4@         sta     >INT_MASK_0         5
-                sta     >INT_MASK_0         5
-                sta     >INT_MASK_0         5
-                sta     >INT_MASK_0         5
-                sta     >INT_MASK_0         5
-                sta     >INT_MASK_0         5
-                sta     >INT_MASK_0         5
-                sta     >INT_MASK_0         5
+inner4@         sta     >MATH_MUL_A         5
+                sta     >MATH_MUL_A         5
+                sta     >MATH_MUL_A         5
+                sta     >MATH_MUL_A         5
+                sta     >MATH_MUL_A         5
+                sta     >MATH_MUL_A         5
+                sta     >MATH_MUL_A         5
+                sta     >MATH_MUL_A         5
                 leay    -1,y                5
                 bne     inner4@             3  => 48/iteration
                 ldd     <Chunks
@@ -620,8 +625,8 @@ MsgRunningLen equ *-MsgRunning
 L_fet   fcs     "fetch/internal (nop,nop,leay,bne) : "
 L_ramrd fcs     "RAM read       (8 x lda ,x)       : "
 L_ramwr fcs     "RAM write      (8 x sta ,x)       : "
-L_iord  fcs     "IO read        (8 x lda >FE2C)    : "
-L_iowr  fcs     "IO write       (8 x sta >FE2C)    : "
+L_iord  fcs     "IO read        (8 x lda >FEE0)    : "
+L_iowr  fcs     "IO write       (8 x sta >FEE0)    : "
 L_rtc   fcs     "RTC/ext-bus rd (8 x lda RTC_SEC)  : "
 L_mul   fcs     "internal       (8 x mul)          : "
 L_perc  fcs     "perceived (45/25/12/6/4/3/5 blend): "
