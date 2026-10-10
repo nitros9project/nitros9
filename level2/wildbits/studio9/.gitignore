@@ -1,0 +1,7 @@
+# Studio-9 (level2/wildbits/studio9): build output and tool caches.
+# 2026-10-10: the UltiMusE originals are archived (wildbits-buildkit/archive/ultimuse-originals-20261010.zip),
+# so their entries (ultimuse3.dsk, origbin/, /tools/) are gone; port/ is folded into this folder.
+.mods/
+*.lst
+*.bak
+__pycache__/
