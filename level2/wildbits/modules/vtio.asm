@@ -68,20 +68,20 @@ llnam               fcs       "grfdrv256"
 *   - updating graphics cursors if needed (when that time comes)
 *   - checking for mouse update (when that time comes)
 
-AltISR              
+AltISR
                     ldu       D.KbdSta
 * Handle keyboard (if available)
-                    ldx       V.KeyDrvEPtr,u             Computer have polling keybard?
+                    ldx       V.KeyDrvEPtr,u ; computer have polling keybard?
                     cmpx      #$0000
-                    beq       HandleMSTimer		 No, just handle mouse
-                    lda       V.LastCh,u                 if LastCh=0, skip keyrepeat handling
-                    beq       HandleKeyboard@            
-                    dec       V.KRTimer,u                decrement repeat timer
-                    bne       HandleKeyboard@            if not 0, then don't repeat yet
-                    ldx       V.KeyDrvEPtr,u             
-                    jsr       9,x                        else jmp to keyrepeat routine
-HandleKeyboard@     ldx       V.KeyDrvEPtr,u                
-                    jsr       6,x                        call AltIRQ routine in keydrv
+                    beq       HandleMSTimer ; no, just handle mouse
+                    lda       V.LastCh,u ; if LastCh=0, skip keyrepeat handling
+                    beq       HandleKeyboard@
+                    dec       V.KRTimer,u ; decrement repeat timer
+                    bne       HandleKeyboard@ ; if not 0, then don't repeat yet
+                    ldx       V.KeyDrvEPtr,u
+                    jsr       9,x       ; else jmp to keyrepeat routine
+HandleKeyboard@     ldx       V.KeyDrvEPtr,u
+                    jsr       6,x       ; call AltIRQ routine in keydrv
 
 * Handle Mouse Timer. When timer wraps to zero, turn it off
 * Mouse does not hide correctly, so park it at right side of screen
@@ -89,13 +89,13 @@ HandleKeyboard@     ldx       V.KeyDrvEPtr,u
 * Mouse timer reset is in mousedrv_ps2.asm interrupt procedure
 * Mouse timer resets on every mouse interrupt
 * This should hide the mouse after 4 to 5 seconds of inactivity
-HandleMSTimer       tst       MS_MEN             check if mouse cursor already off
-                    beq       HandleKeySwtchTrm  mouse off: still check switch (glue #10)
-                    inc       V.MSTimer,u                increment mouse auto-hide timer
-                    bne       HandleKeySwtchTrm  timer not wrapped: still check switch
-                    clr       MS_MEN             if timer flips to 0, turn off mouse cursor
-                    ldd       #640               park mouse at right border
-                    std       MS_XH     turning off cursor doesn't work correctly at the moment
+HandleMSTimer       tst       MS_MEN    ; check if mouse cursor already off
+                    beq       HandleKeySwtchTrm ; mouse off: still check switch (glue #10)
+                    inc       V.MSTimer,u ; increment mouse auto-hide timer
+                    bne       HandleKeySwtchTrm ; timer not wrapped: still check switch
+                    clr       MS_MEN    ; if timer flips to 0, turn off mouse cursor
+                    ldd       #640      ; park mouse at right border
+                    std       MS_XH     ; turning off cursor doesn't work correctly at the moment
 
 * Handle Terminal Switching
 HandleKeySwtchTrm   lda       >gr.SwitchReq
@@ -109,7 +109,7 @@ HandleKeySwtchTrm   lda       >gr.SwitchReq
 * no OS-9 calls).  Send them here, where S$Wake for sound is already sent.
 * Each id is cleared BEFORE the send, so a failing F$Send - a process that
 * has exited - cannot leave the request pending for ever.
-                    pshs      x,y,u               F$Send's register use is not documented
+                    pshs      x,y,u     ; f$Send's register use is not documented
                     lda       >gr.SigBgID
                     beq       nobg@
                     ldb       >gr.SigBgCode
@@ -127,12 +127,12 @@ AltISRCont
 * skip Flip1 when gr.Busy and retry next tick (do not put WaitWrite
 * inside CallGrfDrvNoPD).
 HandleSound
-                    tst       D.TnCnt            get the tone counter
-                    beq       AltSndEx           branch if zero
-                    dec       D.TnCnt            else decrement the counter
-                    bne       AltSndEx           branch not zero; leave the sound on
-sndoff              pshs      cc                 save the condition code register
-                    orcc      #IntMasks          mask interrupts
+                    tst       D.TnCnt   ; get the tone counter
+                    beq       AltSndEx  ; branch if zero
+                    dec       D.TnCnt   ; else decrement the counter
+                    bne       AltSndEx  ; branch not zero; leave the sound on
+sndoff              pshs      cc        ; save the condition code register
+                    orcc      #IntMasks ; mask interrupts
                     tst       >gr.Busy
                     bne       AltSndBusy
                     ldb       #GF.PSGOff
@@ -144,9 +144,9 @@ sndoff              pshs      cc                 save the condition code registe
                     clr       D.SndPrcID
 AltSndWake          puls      cc
                     jmp       [D.OrgAlt]
-AltSndBusy          inc       D.TnCnt            Flip1 held; retry next 1/60s
+AltSndBusy          inc       D.TnCnt   ; flip1 held; retry next 1/60s
                     puls      cc
-AltSndEx            jmp       [D.OrgAlt]         branch to the original alternate IRQ routine
+AltSndEx            jmp       [D.OrgAlt] ; branch to the original alternate IRQ routine
 
 ********************************************************************
 * SendWSig - send signal B to process A for SS.WSig.
@@ -171,22 +171,22 @@ AltSndEx            jmp       [D.OrgAlt]         branch to the original alternat
 *
 * Exit: A, B, X, Y, U preserved; CC clobbered.
 ********************************************************************
-SendWSig            tstb                          signal 0 would abort, not notify
+SendWSig            tstb                ; signal 0 would abort, not notify
                     beq       swx@
                     pshs      a,x
-                    ldx       <D.PrcDBT           process descriptor table
-                    lda       a,x                 the page its descriptor lives on
-                    tsta                          0 = that process is gone
-                    puls      a,x                 (PULS does not touch CC)
+                    ldx       <D.PrcDBT ; process descriptor table
+                    lda       a,x       ; the page its descriptor lives on
+                    tsta                ; 0 = that process is gone
+                    puls      a,x       ; (PULS does not touch CC)
                     beq       swx@
                     os9       F$Send
 swx@                rts
 
 
-           
+
 
 *********************************************************************************
-* Init              
+* Init
 *
 * Entry:
 *    Y  = address of device descriptor
@@ -205,25 +205,25 @@ Init
                     lda       >gr.FirstInitDone
                     cmpa      #$FF
                     beq       SkipHwInit
-                    stu       >D.KbdSta pointer to this device's static
-		    lbsr      ClrGrfMem
+                    stu       >D.KbdSta ; pointer to this device's static
+                    lbsr      ClrGrfMem
                     clr       >gr.SwitchReq
-                    bsr       InitSound initialize the sound
-                    bsr       InitKeyboard initialize the keyboad
+                    bsr       InitSound ; initialize the sound
+                    bsr       InitKeyboard ; initialize the keyboad
                     bsr       InitMouse
                     lbsr      InitGrfDrv
-                    bsr       InitPSG             PSG silence
-                    ldx       >D.AltIRQ get the current alternate IRQ vector
-                    stx       >D.OrgAlt save it off in the original vector
-                    leax      AltISR,pcr get our alternate interrupt service routine
-                    stx       >D.AltIRQ and place it in the global vector
+                    bsr       InitPSG   ; psg silence
+                    ldx       >D.AltIRQ ; get the current alternate IRQ vector
+                    stx       >D.OrgAlt ; save it off in the original vector
+                    leax      AltISR,pcr ; get our alternate interrupt service routine
+                    stx       >D.AltIRQ ; and place it in the global vector
                     lda       #$FF
-                    sta       >gr.FirstInitDone	         Hardware init done, don't do this on later terminals
+                    sta       >gr.FirstInitDone ; hardware init done, don't do this on later terminals
 
 SkipHwInit
                     puls      y
 HaveIdStart
-                    ldb       IT.WND,y  Y is the device descriptor (IOMAN Attach)
+                    ldb       IT.WND,y  ; y is the device descriptor (IOMAN Attach)
                     bpl       HaveId
 * IT.WND=$FF is the /vt factory. Do not InitTerm,
 * never pass $FF into id*4. Slot is bound later by SS.Open.
@@ -232,79 +232,79 @@ HaveId
                     lbsr      InitTerm
                     bcs       InitFail
 InitOk
-                    clrb                clear the carry and error code
-                    rts                 return to the caller
+                    clrb                ; clear the carry and error code
+                    rts                 ; return to the caller
 InitFail
-                    rts                 carry and B already set
+                    rts                 ; carry and B already set
 
 
 * Initialize the sound state.  SYS1 and the CODEC are programmed by
 * grfdrv256's GF.PSGInit (InitPSG, after InitGrfDrv).
-InitSound           clr       D.SndPrcID          clear the process ID of the current sound emitter (none)
+InitSound           clr       D.SndPrcID ; clear the process ID of the current sound emitter (none)
 
-InitBELL            leax      Bell,pcr point to the bell emission code
-                    stx       >D.Bell   save it in the system global's bell vector
+InitBELL            leax      Bell,pcr  ; point to the bell emission code
+                    stx       >D.Bell   ; save it in the system global's bell vector
                     rts
 
 * SYS1, CODEC and PSG silence via GF.PSGInit. Call after InitGrfDrv. Never system MAPSLOT.
 InitPSG             ldb       #GF.PSGInit
-		    lbsr      CallGrfDrvNoPD
-		    rts
-                    
-* Keyboard initialization  
+                    lbsr      CallGrfDrvNoPD
+                    rts
+
+* Keyboard initialization
 * NOTE: If we fail to find the 'keydrv' module, carry is returned set, but
 * the caller can chose to ignore the error condition.
 InitKeyboard        clr       D.KySns
                     clr       V.KySns,u
                     clr       V.IBufH,u
                     clr       V.IBufT,u
-                    clr       V.LastCh,u          clear LastCh so no keyrepeat
-                    leax      keydrvmod,pcr       point to the keydrv module name
-                    lda       #Systm+Objct        it's a system module
-                    pshs      u                   save U on the stack
-                    os9       F$Link              link to it
-                    tfr       u,x                 move the module address to X
-                    puls      u                   restore U from the stack
-                    bcs       ex@                 branch if the link failed
-                    stx       V.KeyDrvMPtr,u      save the module pointer
-                    sty       V.KeyDrvEPtr,u      save the entry pointer
-                    jsr       ,y                  call the subroutine's Init entry point
-                    rts                           return to the caller
-ex@                 ldd       #0                  set D to 0
-                    std       V.KeyDrvMPtr,u      clear the module pointer
-                    std       V.KeyDrvEPtr,u      clear the entry pointer
-                    rts                           return to the caller
+                    clr       V.LastCh,u ; clear LastCh so no keyrepeat
+                    leax      keydrvmod,pcr ; point to the keydrv module name
+                    lda       #Systm+Objct ; it's a system module
+                    pshs      u         ; save U on the stack
+                    os9       F$Link    ; link to it
+                    tfr       u,x       ; move the module address to X
+                    puls      u         ; restore U from the stack
+                    bcs       ex@       ; branch if the link failed
+                    stx       V.KeyDrvMPtr,u ; save the module pointer
+                    sty       V.KeyDrvEPtr,u ; save the entry pointer
+                    jsr       ,y        ; call the subroutine's Init entry point
+                    rts                 ; return to the caller
+ex@                 ldd       #0        ; set D to 0
+                    std       V.KeyDrvMPtr,u ; clear the module pointer
+                    std       V.KeyDrvEPtr,u ; clear the entry pointer
+                    rts                 ; return to the caller
 
-                    ifgt      Level-1
-* Mouse initialization  
+                  IFGT    Level-1
+* Mouse initialization
 * NOTE: If we fail to find the 'msdrv' module, carry is returned set, but
 * the caller can chose to ignore the error condition.
-InitMouse           leax      msdrvmod,pcr        point to the keydrv module name
-                    lda       #Systm+Objct        it's a system module
-                    pshs      u                   save U on the stack
-                    os9       F$Link              link to it
-                    tfr       u,x                 move the module address to X
-                    puls      u                   restore U from the stack
-                    bcs       ex@                 branch if the link failed
-                    stx       V.MSDrvMPtr,u       save the module pointer
-                    sty       V.MSDrvEPtr,u       save the entry pointer
-                    jsr       ,y                  call the subroutine's Init entry point
-                    rts                           return to the caller
-ex@                 ldd       #0                  set D to 0
-                    std       V.MSDrvMPtr,u       clear the module pointer
-                    std       V.MSDrvEPtr,u       clear the entry pointer
-                    rts                           return to the caller
-                    endc
+InitMouse           leax      msdrvmod,pcr ; point to the keydrv module name
+                    lda       #Systm+Objct ; it's a system module
+                    pshs      u         ; save U on the stack
+                    os9       F$Link    ; link to it
+                    tfr       u,x       ; move the module address to X
+                    puls      u         ; restore U from the stack
+                    bcs       ex@       ; branch if the link failed
+                    stx       V.MSDrvMPtr,u ; save the module pointer
+                    sty       V.MSDrvEPtr,u ; save the entry pointer
+                    jsr       ,y        ; call the subroutine's Init entry point
+                    rts                 ; return to the caller
+ex@                 ldd       #0        ; set D to 0
+                    std       V.MSDrvMPtr,u ; clear the module pointer
+                    std       V.MSDrvEPtr,u ; clear the entry pointer
+                    rts                 ; return to the caller
+                  ENDC
 
 ****************************************************************
 ******             Start GrfDrv Init Routines             ******
 ****************************************************************
-ClrGrfMem           ldx       #GrfMem   point to GrfMem
-                    ldy       #512      Size
+ClrGrfMem           ldx       #GrfMem   ; point to GrfMem
+                    ldy       #512      ; size
 clrgrf              clr       ,x+
                     leay      -1,y
                     bne       clrgrf
-		    rts
+                    rts
 
 
 ****************************************************************
@@ -313,8 +313,8 @@ clrgrf              clr       ,x+
 * and before InitTerm. Task 1 / LUT 1; not system-task $6000.
 ****************************************************************
 InitGrfDrv          pshs      u,y
-                    leas      -2,s      buffer for process swap
-                    lbsr      tosysproc swap to system process
+                    leas      -2,s      ; buffer for process swap
+                    lbsr      tosysproc ; swap to system process
                     lda       #Systm+Objct
                     leax      llnam,pcr
                     os9       F$NMLink
@@ -330,7 +330,7 @@ InitGrfDrv          pshs      u,y
                     os9       F$NMLoad
                     lbsr      toproc
                     lbcs      initerr
-setupgrfdrv         leas      2,s       clean process buffer
+setupgrfdrv         leas      2,s       ; clean process buffer
                     pshs      a
                     lda       #GrfMem/256
                     tfr       a,dp
@@ -361,7 +361,7 @@ setupgrfdrv         leas      2,s       clean process buffer
                     ldd       2,y
                     bne       has2
                     clra
-		    ldb	      #7
+                    ldb       #7
                     bra       store7
 has2
                     clra
@@ -383,7 +383,7 @@ store7
                     std       >gr.Entry
                     lda       #$FF
                     sta       gr.LiveTerm
-                    ldb       #GF.Init           populate gr.WriteCharLive/Shadow + gr.ScrollLive/Shadow
+                    ldb       #GF.Init  ; populate gr.WriteCharLive/Shadow + gr.ScrollLive/Shadow
                     bsr       CallGrfDrvNoPD
                     bcs       initerr3
                     clrb
@@ -417,15 +417,15 @@ toproc
 * CallGrfDrvRet - CallGrfDrv, then copies the caller's registers back
 * CallGrfDrvNoPD - B = GF.*  no PD (ISR / switch)
 *******************************************************************
-CallWriteCharLive   ldx	     gr.WriteCharLive
-		    bra	     CallGrfDrv2
-CallWriteCharShadow ldx	     gr.WriteCharShadow
-		    bra	     CallGrfDrv2
-CallScrollLive      ldx	     gr.ScrollLive
-		    bra	     CallGrfDrv2
-CallScrollShadow    ldx	     gr.ScrollShadow
-		    bra	     CallGrfDrv2
-		    
+CallWriteCharLive   ldx       gr.WriteCharLive
+                    bra       CallGrfDrv2
+CallWriteCharShadow ldx       gr.WriteCharShadow
+                    bra       CallGrfDrv2
+CallScrollLive      ldx       gr.ScrollLive
+                    bra       CallGrfDrv2
+CallScrollShadow    ldx       gr.ScrollShadow
+                    bra       CallGrfDrv2
+
 * CallGrfDrvRet - CallGrfDrv, then copy the caller's R$A..R$U back from
 * gr.PDRGS so a grfdrv op can return values in the caller's registers.
 * Entry as CallGrfDrv (B = GF.* op, Y = path descriptor).  B and carry
@@ -526,10 +526,10 @@ gbusy               comb
 * to SetTermGrfPts
 *******************************************************************
 SetThisTermGrfPtrs  lda       V.TermID,u
-		    ldb	      #gr.TermSz
-		    mul
-		    ldx       #gr.TermTbl
-		    leax      d,x
+                    ldb       #gr.TermSz
+                    mul
+                    ldx       #gr.TermTbl
+                    leax      d,x
 *******************************************************************
 * SetTermGrfPtrs — copied from wildbits vtio. Do not rewrite.
 * Entry: X = gr.TermTbl entry
@@ -540,10 +540,10 @@ SetTermGrfPtrs      pshs      d,x,y,u
                     stb       >gr.TermBlk
                     ldu       T.StatPtr,x
                     stu       >gr.VStaStorU
-		    lda	      T.VBlk,x
+                    lda       T.VBlk,x
                     sta       >gr.VBlk
-		    ldd	      T.grU5,x
-		    std	      >gr.U5
+                    ldd       T.grU5,x
+                    std       >gr.U5
                     puls      d,x,y,u,pc
 
 *******************************************************************
@@ -564,8 +564,8 @@ SetTermGrfPtrs      pshs      d,x,y,u
 *******************************************************************
 InitTerm            stb       V.TermID,u
                     lda       #GF.TermNew
-TermCall            stb       >gr.b1              terminal id
-                    stu       >gr.d1              this static, as a system address
+TermCall            stb       >gr.b1    ; terminal id
+                    stu       >gr.d1    ; this static, as a system address
                     tfr       a,b
                     bra       CallGrfDrvNoPD
 TermTerm            ldb       V.TermID,u
@@ -635,46 +635,46 @@ TermEx              clrb
 Read
 * Check to see if there is a signal-on-data-ready set for this path.
 * If so, we return E$NotRdy.
-read1               lda       <V.SSigID,u         data ready signal trap set up?
-                    lbne      NotReady            yes, exit with not ready error
-                    leax      V.InBuf,u           point X to the input buffer
-                    ldb       V.IBufT,u           get the buffer tail pointer
-                    orcc      #IRQMask            mask interrupts
-                    cmpb      V.IBufH,u           is the tail pointer the same as the head pointer?
-                    beq       nitenite@           if so, the buffer is empty, so put the reader to sleep
-                    abx                           X now points to the current character to fetch from the buffer
-                    lda       ,x                  get that character now
-                    pshs      a,x                 store character
-                    leax      V.KSBuf,u           update V.KySns
+read1               lda       <V.SSigID,u ; data ready signal trap set up?
+                    lbne      NotReady  ; yes, exit with not ready error
+                    leax      V.InBuf,u ; point X to the input buffer
+                    ldb       V.IBufT,u ; get the buffer tail pointer
+                    orcc      #IRQMask  ; mask interrupts
+                    cmpb      V.IBufH,u ; is the tail pointer the same as the head pointer?
+                    beq       nitenite@ ; if so, the buffer is empty, so put the reader to sleep
+                    abx                 ; x now points to the current character to fetch from the buffer
+                    lda       ,x        ; get that character now
+                    pshs      a,x       ; store character
+                    leax      V.KSBuf,u ; update V.KySns
                     abx
                     lda       ,x
                     sta       V.KySns,u
                     puls      a,x
-                    bsr       IncNCheck           check for tail wrap
-                    stb       V.IBufT,u           store the updated tail
-                    andcc     #^(IRQMask+Carry)   unmask interrupts
-                    rts                           and return to the caller
+                    bsr       IncNCheck ; check for tail wrap
+                    stb       V.IBufT,u ; store the updated tail
+                    andcc     #^(IRQMask+Carry) ; unmask interrupts
+                    rts                 ; and return to the caller
 * Here, the calling process gets put to sleep waiting for input.
-nitenite@           lda       V.BUSY,u            get the calling process ID
-                    sta       V.WAKE,u            store it in V.WAKE
-                    andcc     #^IRQMask           clear interrupts
-                    ldx       #$0000              we want to..
-                    os9       F$Sleep             sleep forever (until we get a wakup signal)
-                    clr       V.WAKE,u            we're awake... clear our process ID
-                    ldx       <D.Proc             get the current process descriptor
-                    ldb       <P$Signal,x         and the signal we received
-                    beq       Read                branch if there was no signal
-                    cmpb      #S$Window           was it the window signal?
-                    bcc       Read                branch if that, or higher
-                    coma                          set the carry
-                    rts                           and return to the caller
+nitenite@           lda       V.BUSY,u  ; get the calling process ID
+                    sta       V.WAKE,u  ; store it in V.WAKE
+                    andcc     #^IRQMask ; clear interrupts
+                    ldx       #$0000    ; we want to..
+                    os9       F$Sleep   ; sleep forever (until we get a wakup signal)
+                    clr       V.WAKE,u  ; we're awake... clear our process ID
+                    ldx       <D.Proc   ; get the current process descriptor
+                    ldb       <P$Signal,x ; and the signal we received
+                    beq       Read      ; branch if there was no signal
+                    cmpb      #S$Window ; was it the window signal?
+                    bcc       Read      ; branch if that, or higher
+                    coma                ; set the carry
+                    rts                 ; and return to the caller
 
 * Check if we need to wrap around tail pointer to zero.
-IncNCheck           incb                          increment the next character pointer
-                    cmpb      #KBufSz-1           are we pointing to the end of the buffer?
-                    bls       ex@                 branch if not
-                    clrb                          else clear the pointer (wraps to head)
-ex@                 rts                           return
+IncNCheck           incb                ; increment the next character pointer
+                    cmpb      #KBufSz-1 ; are we pointing to the end of the buffer?
+                    bls       ex@       ; branch if not
+                    clrb                ; else clear the pointer (wraps to head)
+ex@                 rts                 ; return
 
 
 *******************************************************************
@@ -686,13 +686,13 @@ SetWDest            lda       V.TermLive,u
                     lda       V.TermBufBlk,u
                     beq       SWVicky
                     sta       >gr.TermBlk
-                    clr       >gr.b4              WD.Buf - the 16K terminal buffer
+                    clr       >gr.b4    ; wd.Buf - the 16K terminal buffer
                     rts
 SWVicky             lda       #WD.Vicky
-                    sta       >gr.b4              WD.Vicky - the live TEXT_RAM_BLK/COLOR_RAM_BLK planes
+                    sta       >gr.b4    ; wd.Vicky - the live TEXT_RAM_BLK/COLOR_RAM_BLK planes
                     lda       V.TermBufBlk,u
                     beq       SWDestX
-                    sta       >gr.TermBlk         keep SetBlkC2C3 off block 0
+                    sta       >gr.TermBlk ; keep SetBlkC2C3 off block 0
 SWDestX             rts
 
 *******************************************************************
@@ -728,8 +728,8 @@ SSBlkX              puls      a,pc
 *******************************************************************
 DoScroll            tst       V.TermLive,u
                     bne       dslive@
-                    bsr       SetShadowBlk        aim at THIS term's 16K buffer (keeps A)
-                    beq       dsx@                no buffer: nothing to scroll
+                    bsr       SetShadowBlk ; aim at THIS term's 16K buffer (keeps A)
+                    beq       dsx@      ; no buffer: nothing to scroll
                     lbra      CallScrollShadow
 dslive@             lbra      CallScrollLive
 dsx@                rts
@@ -740,11 +740,11 @@ dsx@                rts
 *   -> b2 glyph, b3 colour attr, d1 cell offset, b4 dest
 *******************************************************************
 PutCell             pshs      d,x
-                    sta       >gr.b2              glyph
-                    stx       >gr.d1              cell offset
+                    sta       >gr.b2    ; glyph
+                    stx       >gr.d1    ; cell offset
                     lda       V.FBCol,u
-                    sta       >gr.b3              colour attr
-                    bsr       SetWDest            sets b4
+                    sta       >gr.b3    ; colour attr
+                    bsr       SetWDest  ; sets b4
                     ldb       #GF.Cell
                     lbsr      CallGrfDrvNoPD
                     puls      d,x,pc
@@ -761,44 +761,44 @@ PutCell             pshs      d,x
 *    B  = error code
 *
 Write
-	            tst       V.WriteState,u		      
-                    beq	      DefaultState
-		    ldb	      V.EscCount,u
-		    leax      V.EscParms,u
-		    sta	      b,x
-		    inc	      V.EscCount,u
-		    dec	      V.EscNeed,u
-		    lbeq      EscCodeComplete
-		    bra	      UpdateLiveCursor
+                    tst       V.WriteState,u
+                    beq       DefaultState
+                    ldb       V.EscCount,u
+                    leax      V.EscParms,u
+                    sta       b,x
+                    inc       V.EscCount,u
+                    dec       V.EscNeed,u
+                    lbeq      EscCodeComplete
+                    bra       UpdateLiveCursor
 
-DefaultState	    cmpa      #C$SPAC             is the character a space or greater?
-                    lbcs      ChkESC              branch if not; go check for escape codes
+DefaultState        cmpa      #C$SPAC   ; is the character a space or greater?
+                    lbcs      ChkESC    ; branch if not; go check for escape codes
 * PutGlyph - paint A at the cursor and advance (bypasses the control-code
 * check).  Entry from Do1C for the $1C "write next byte literally" code.
-PutGlyph	    ldy	      V.CurPos,u
-		    ldb	      V.FBCol,u
-		    tst	      V.TermLive,u
-		    bne	      writelive
-		    bsr       SetShadowBlk          aim at THIS term's 16K buffer
-		    beq	      cont@                 no buffer: drop the glyph
-		    lbsr      CallWriteCharShadow
-		    bra	      cont@
-writelive	    lbsr      CallWriteCharLive
+PutGlyph            ldy       V.CurPos,u
+                    ldb       V.FBCol,u
+                    tst       V.TermLive,u
+                    bne       writelive
+                    bsr       SetShadowBlk ; aim at THIS term's 16K buffer
+                    beq       cont@     ; no buffer: drop the glyph
+                    lbsr      CallWriteCharShadow
+                    bra       cont@
+writelive           lbsr      CallWriteCharLive
 * BUG FIX: V.CurPos is a 2-byte field; `inc V.CurPos,u` only touched the
 * high byte (6809 words are big-endian), adding 256 - not 1 - per char.
 * That desynced it from V.CurRow/V.CurCol (advanced correctly below),
 * so each glyph landed WWidth-dependent rows/cols away from the last.
-cont@		    ldd	      V.CurPos,u
-		    addd      #1
-		    std	      V.CurPos,u            increment cursor poisition in text map
-                    ldd       V.CurRow,u          get the current row and column (xy coordinates)
-                    incb                          increment the column
-                    cmpb      V.WWidth,u          compare it against the number of columns
-                    blt       savecursor                  branch if we're less than
-                    clrb                          else the column goes to 0
-incrow              inca                          and we increment the row
-                    cmpa      V.WHeight,u         compare it against the number of rows
-                    blt       savecursor         branch if we're less than (don't clear the new line we're on)
+cont@               ldd       V.CurPos,u
+                    addd      #1
+                    std       V.CurPos,u ; increment cursor poisition in text map
+                    ldd       V.CurRow,u ; get the current row and column (xy coordinates)
+                    incb                ; increment the column
+                    cmpb      V.WWidth,u ; compare it against the number of columns
+                    blt       savecursor ; branch if we're less than
+                    clrb                ; else the column goes to 0
+incrow              inca                ; and we increment the row
+                    cmpa      V.WHeight,u ; compare it against the number of rows
+                    blt       savecursor ; branch if we're less than (don't clear the new line we're on)
 
 * Always land on the last row of THIS term. CurRow can be 50 on a
 * 80x30 after DWSet 80x60. Height 0 would decb to $FF and CpyBlk
@@ -809,7 +809,7 @@ incrow              inca                          and we increment the row
                     lda       V.WHeight,u
                     lbeq      CurHome
                     deca
-                    pshs      d                   last row, column from B
+                    pshs      d         ; last row, column from B
 * B = height, which the two guards that follow need.  There used to be a
 * 'sta >gr.b5' here feeding the old GF.Write WO.Scroll op; ScrollLive/
 * ScrollShadow never read it, so it is gone.
@@ -820,19 +820,19 @@ incrow              inca                          and we increment the row
                     beq       noscroll
                     clra
                     clrb
-                    std       >gr.d1              start: row 0
+                    std       >gr.d1    ; start: row 0
                     ldd       V.ScreenSize,u
-                    std       >gr.d2              end: bottom of screen
-                    lda       V.WWidth,u          A = width
+                    std       >gr.d2    ; end: bottom of screen
+                    lda       V.WWidth,u ; a = width
                     lbsr      DoScroll
 noscroll            puls      d
 
 * clear line
-clrline             std       V.CurRow,u          save the current row/column value
-                    lbsr      CalcCurPos          resync V.CurPos (scroll moved us)
-                    lbsr      EraseLine           erase the line
-                    bra	      UpdateLiveCursor   and return to the caller
-savecursor          std       V.CurRow,u          save the current row/column value
+clrline             std       V.CurRow,u ; save the current row/column value
+                    lbsr      CalcCurPos ; resync V.CurPos (scroll moved us)
+                    lbsr      EraseLine ; erase the line
+                    bra       UpdateLiveCursor ; and return to the caller
+savecursor          std       V.CurRow,u ; save the current row/column value
 
 UpdateLiveCursor    tst       V.TermLive,u
                     beq       WrNoCur
@@ -844,7 +844,7 @@ UpdateLiveCursor    tst       V.TermLive,u
                     sta       VKY_TXT_CURSOR_Y_REG_L,x
                     puls      d
 * 6809 TST/STD leave C dirty; SCF Write does bcs after D$WRIT.
-WrNoCur		    andcc     #^Carry
+WrNoCur             andcc     #^Carry
                     rts
 
 **************************************************************************
@@ -852,102 +852,102 @@ WrNoCur		    andcc     #^Carry
 * and the two parameterised single-byte codes ($02/$05, via DCodeTbl) arm
 * the escape-parameter collector (V.WriteState / V.EscNeed / V.EscHandler);
 * everything else runs immediately.  Returns to SCF with carry clear, B=0.
-ChkESC              cmpa      #$1B                is the character ESC?
-                    lbeq      Arm1B              if so, gather the sub-code
-                    cmpa      #$1C               literal-write next byte?
+ChkESC              cmpa      #$1B      ; is the character ESC?
+                    lbeq      Arm1B     ; if so, gather the sub-code
+                    cmpa      #$1C      ; literal-write next byte?
                     lbeq      Arm1C
-                    cmpa      #$1F               display-attribute prefix?
+                    cmpa      #$1F      ; display-attribute prefix?
                     lbeq      Arm1F
-                    cmpa      #C$CR              is it a carriage return?
-                    bhi       ChkRet            $0E..$1A / $1D / $1E - ignore
-                    leax      <DCodeTbl,pcr     else deal with screen codes
-                    lsla                          adjust A for the table entry size
-                    ldd       a,x                 get the address offset in D
+                    cmpa      #C$CR     ; is it a carriage return?
+                    bhi       ChkRet    ; $0E..$1A / $1D / $1E - ignore
+                    leax      <DCodeTbl,pcr ; else deal with screen codes
+                    lsla                ; adjust A for the table entry size
+                    ldd       a,x       ; get the address offset in D
 * jsr, not jmp: the handler must come back so the hardware cursor gets
 * refreshed.  A bare jmp rts'd straight to SCF, so CurHome/CurRght/
 * CurLeft/CurUp/Retrn/ClrScrn/the erase codes all moved V.CurRow/V.CurCol
 * without ever touching VKY_TXT_CURSOR_X/Y and the cursor lagged the text.
 * UpdateLiveCursor ends andcc #^Carry / rts, which also scrubs the dirty
 * carry CurRght's bye@ path used to hand back to SCF.
-                    jsr       d,x                 run the handler...
+                    jsr       d,x       ; run the handler...
                     clrb
-                    bra       UpdateLiveCursor   ...then refresh the hw cursor and rts
+                    bra       UpdateLiveCursor ; ...then refresh the hw cursor and rts
 ChkRet              clrb
                     andcc     #^Carry
                     rts
 
 * Display functions dispatch table.
-DCodeTbl            fdb       NoOp-DCodeTbl       $00:no-op (null)
-                    fdb       CurHome-DCodeTbl    $01:HOME cursor
-                    fdb       Arm02-DCodeTbl      $02:CURSOR XY (2 params)
-                    fdb       EraseLine-DCodeTbl  $03:ERASE LINE
-                    fdb       ErEOLine-DCodeTbl   $04:CLEAR TO EOL
-                    fdb       Arm05-DCodeTbl      $05:CURSOR CONTROL (sub-code)
-                    fdb       CurRght-DCodeTbl    $06:CURSOR RIGHT
-                    fdb       Bell-DCodeTbl       $07:Bell
-                    fdb       CurLeft-DCodeTbl    $08:CURSOR LEFT
-                    fdb       CurUp-DCodeTbl      $09:CURSOR UP
-                    fdb       CurDown-DCodeTbl    $0A:CURSOR DOWN
-                    fdb       ErEOScrn-DCodeTbl   $0B:ERASE TO EOS
-                    fdb       ClrScrn-DCodeTbl    $0C:CLEAR SCREEN
-                    fdb       Retrn-DCodeTbl      $0D:RETURN
+DCodeTbl            fdb       NoOp-DCodeTbl $00:no-op (null)
+                    fdb       CurHome-DCodeTbl $01:HOME cursor
+                    fdb       Arm02-DCodeTbl $02:CURSOR XY (2 params)
+                    fdb       EraseLine-DCodeTbl $03:ERASE LINE
+                    fdb       ErEOLine-DCodeTbl $04:CLEAR TO EOL
+                    fdb       Arm05-DCodeTbl $05:CURSOR CONTROL (sub-code)
+                    fdb       CurRght-DCodeTbl $06:CURSOR RIGHT
+                    fdb       Bell-DCodeTbl $07:Bell
+                    fdb       CurLeft-DCodeTbl $08:CURSOR LEFT
+                    fdb       CurUp-DCodeTbl $09:CURSOR UP
+                    fdb       CurDown-DCodeTbl $0A:CURSOR DOWN
+                    fdb       ErEOScrn-DCodeTbl $0B:ERASE TO EOS
+                    fdb       ClrScrn-DCodeTbl $0C:CLEAR SCREEN
+                    fdb       Retrn-DCodeTbl $0D:RETURN
 
 **********************************************************************
 * Sub-code tables.  {fcb matchbyte, fcb nparm, fdb handler-<table>}
 * nparm = parameter bytes that follow the sub-code.  fcb $00 ends.
 **********************************************************************
 Esc1BTbl            fcb       $20,8
-                    fdb       DWSet-Esc1BTbl     DWSet STY CPX CPY SZX SZY FG BG BDR
+                    fdb       DWSet-Esc1BTbl DWSet STY CPX CPY SZX SZY FG BG BDR
                     fcb       $21,0
-                    fdb       DWSelect-Esc1BTbl  select this terminal
+                    fdb       DWSelect-Esc1BTbl select this terminal
                     fcb       $24,0
-                    fdb       DWEnd-Esc1BTbl     end device window (no-op)
+                    fdb       DWEnd-Esc1BTbl end device window (no-op)
                     fcb       $30,0
-                    fdb       DefColr-Esc1BTbl   default palette (no-op)
+                    fdb       DefColr-Esc1BTbl default palette (no-op)
                     fcb       $32,1
-                    fdb       FColor-Esc1BTbl    foreground colour slot
+                    fdb       FColor-Esc1BTbl foreground colour slot
                     fcb       $33,1
-                    fdb       BColor-Esc1BTbl    background colour slot
+                    fdb       BColor-Esc1BTbl background colour slot
                     fcb       $34,1
-                    fdb       Border-Esc1BTbl    border colour slot
+                    fdb       Border-Esc1BTbl border colour slot
                     fcb       $3D,1
-                    fdb       BoldSw-Esc1BTbl    bold on/off (consumes 1, no-op)
+                    fdb       BoldSw-Esc1BTbl bold on/off (consumes 1, no-op)
                     fcb       $60,5
                     fdb       ChgForePal-Esc1BTbl fg palette  PRN R G B A
                     fcb       $61,5
                     fdb       ChgBackPal-Esc1BTbl bg palette  PRN R G B A
                     fcb       $62,0
-                    fdb       ChgFont0-Esc1BTbl   select font set 0
+                    fdb       ChgFont0-Esc1BTbl select font set 0
                     fcb       $63,0
-                    fdb       ChgFont1-Esc1BTbl   select font set 1
+                    fdb       ChgFont1-Esc1BTbl select font set 1
                     fcb       $00
 
 Esc05Tbl            fcb       $20,0
-                    fdb       CurOff-Esc05Tbl     cursor hide
+                    fdb       CurOff-Esc05Tbl cursor hide
                     fcb       $21,0
-                    fdb       CurOn-Esc05Tbl      cursor show
+                    fdb       CurOn-Esc05Tbl cursor show
                     fcb       $22,1
-                    fdb       CurChar-Esc05Tbl    set cursor character
+                    fdb       CurChar-Esc05Tbl set cursor character
                     fcb       $23,1
-                    fdb       CurRate-Esc05Tbl    set cursor flash rate
+                    fdb       CurRate-Esc05Tbl set cursor flash rate
                     fcb       $00
 
 Esc1FTbl            fcb       $20,0
-                    fdb       RevOn-Esc1FTbl      reverse video on
+                    fdb       RevOn-Esc1FTbl reverse video on
                     fcb       $21,0
-                    fdb       RevOff-Esc1FTbl     reverse video off
+                    fdb       RevOff-Esc1FTbl reverse video off
                     fcb       $22,0
-                    fdb       ULOn-Esc1FTbl       underline on (stub)
+                    fdb       ULOn-Esc1FTbl underline on (stub)
                     fcb       $23,0
-                    fdb       ULOff-Esc1FTbl      underline off (stub)
+                    fdb       ULOff-Esc1FTbl underline off (stub)
                     fcb       $24,0
-                    fdb       BlkOn-Esc1FTbl      blink on (stub)
+                    fdb       BlkOn-Esc1FTbl blink on (stub)
                     fcb       $25,0
-                    fdb       BlkOff-Esc1FTbl     blink off (stub)
+                    fdb       BlkOff-Esc1FTbl blink off (stub)
                     fcb       $30,0
-                    fdb       InsLine-Esc1FTbl    insert line
+                    fdb       InsLine-Esc1FTbl insert line
                     fcb       $31,0
-                    fdb       DelLine-Esc1FTbl    delete line
+                    fdb       DelLine-Esc1FTbl delete line
                     fcb       $00
 
 
@@ -985,14 +985,14 @@ EscArm              tstb
                     clrb
                     andcc     #^Carry
                     rts
-EscRun              jmp       ,x                  0 params: run handler, rts to SCF
+EscRun              jmp       ,x        ; 0 params: run handler, rts to SCF
 
 * EscCodeComplete - all parameter bytes gathered (from the Write front end).
 * Params sit at V.EscParms+0..  A sub-dispatcher may re-arm the collector.
-EscCodeComplete     clr       V.WriteState,u     disarm first
+EscCodeComplete     clr       V.WriteState,u ; disarm first
                     ldx       V.EscHandler,u
-                    jsr       ,x                  run the completion handler
-                    lbsr      UpdateLiveCursor   refresh the hardware cursor
+                    jsr       ,x        ; run the completion handler
+                    lbsr      UpdateLiveCursor ; refresh the hardware cursor
                     clrb
                     andcc     #^Carry
                     rts
@@ -1003,24 +1003,24 @@ EscCodeComplete     clr       V.WriteState,u     disarm first
 *            terminated by fcb $00
 * Exit : carry set  = not found
 *        carry clear = B = nparm, X = absolute handler address
-EscScan             pshs      x                   ,s = table base
-escsl@              ldb       ,x                  entry match byte
-                    beq       escsnf@             $00 sentinel - not found
+EscScan             pshs      x         ; ,s = table base
+escsl@              ldb       ,x        ; entry match byte
+                    beq       escsnf@   ; $00 sentinel - not found
                     pshs      b
-                    cmpa      ,s+                 A = sub-code?  (pops the byte)
+                    cmpa      ,s+       ; a = sub-code?  (pops the byte)
                     beq       escsh@
-                    leax      4,x                 next entry
+                    leax      4,x       ; next entry
                     bra       escsl@
-escsh@              ldb       1,x                 B = nparm
+escsh@              ldb       1,x       ; b = nparm
                     pshs      b
-                    ldd       2,x                 D = handler offset
-                    addd      1,s                 + table base
-                    tfr       d,x                 X = absolute handler
-                    puls      b                   B = nparm
-                    leas      2,s                 drop saved base
+                    ldd       2,x       ; d = handler offset
+                    addd      1,s       ; + table base
+                    tfr       d,x       ; x = absolute handler
+                    puls      b         ; b = nparm
+                    leas      2,s       ; drop saved base
                     andcc     #^Carry
                     rts
-escsnf@             leas      2,s                 drop saved base
+escsnf@             leas      2,s       ; drop saved base
                     orcc      #Carry
                     rts
 
@@ -1032,12 +1032,12 @@ Disp1B              leax      Esc1BTbl,pcr
 Disp05              leax      Esc05Tbl,pcr
                     bra       DispCom
 Disp1F              leax      Esc1FTbl,pcr
-DispCom             lda       V.EscParms,u       the sub-code byte
+DispCom             lda       V.EscParms,u ; the sub-code byte
                     bsr       EscScan
-                    bcs       DispNF             unknown sub-code - ignore
-                    tstb                          leaf needs parameter bytes?
-                    beq       EscRun             no - run it now (X = handler)
-                    stb       V.EscNeed,u        yes - re-arm for the leaf
+                    bcs       DispNF    ; unknown sub-code - ignore
+                    tstb                ; leaf needs parameter bytes?
+                    beq       EscRun    ; no - run it now (X = handler)
+                    stb       V.EscNeed,u ; yes - re-arm for the leaf
                     clr       V.EscCount,u
                     lda       #1
                     sta       V.WriteState,u
@@ -1071,7 +1071,7 @@ CurHome             clr       V.CurCol,u
                     clr       V.CurPos,u
                     clr       V.CurPos+1,u
                     rts
-		    
+
 ***********************************************************************
 *** Cursor Utility Function Used by 02, 06, 08. 09, 0A, 0D, and Write
 ************************************************************************
@@ -1086,10 +1086,10 @@ CurHome             clr       V.CurCol,u
 *** handler already routes through.
 ***
 CalcCurPos          lda       V.WHeight,u
-                    beq       CCPzero             degenerate window - cell 0
+                    beq       CCPzero   ; degenerate window - cell 0
                     cmpa      V.CurRow,u
-                    bhi       CCProw              CurRow < WHeight, fine
-                    deca                          else clamp to the last row
+                    bhi       CCProw    ; curRow < WHeight, fine
+                    deca                ; else clamp to the last row
                     sta       V.CurRow,u
 CCProw              lda       V.CurRow,u
                     ldb       V.WWidth,u
@@ -1127,22 +1127,22 @@ SetScreenSize       pshs      d
 * V.EscParms+1 (LCY) = desired row + 32.
 * EscCodeComplete calls UpdateLiveCursor after us.
 *
-CurXY               lda       V.EscParms,u        LCX
+CurXY               lda       V.EscParms,u ; lcx
                     suba      #$20
                     bpl       CXYcol@
-                    clra                          malformed (<32) -> column 0
+                    clra                ; malformed (<32) -> column 0
 CXYcol@             cmpa      V.WWidth,u
                     blo       CXYcolok@
-                    lda       V.WWidth,u          clamp to last column
+                    lda       V.WWidth,u ; clamp to last column
                     deca
 CXYcolok@           sta       V.CurCol,u
-                    lda       V.EscParms+1,u      LCY
+                    lda       V.EscParms+1,u ; lcy
                     suba      #$20
                     bpl       CXYrow@
                     clra
 CXYrow@             cmpa      V.WHeight,u
                     blo       CXYrowok@
-                    lda       V.WHeight,u         clamp to last row
+                    lda       V.WHeight,u ; clamp to last row
                     deca
 CXYrowok@           sta       V.CurRow,u
                     bra       CalcCurPos
@@ -1152,18 +1152,18 @@ CXYrowok@           sta       V.CurRow,u
 * 03 - Erase Line - Erase the current line
 *
 EraseLine           lbsr      SetThisTermGrfPtrs
-		    ldb	      #GF.EraseLine
-		    lbsr      CallGrfDrvNoPD
-		    rts
-		    
+                    ldb       #GF.EraseLine
+                    lbsr      CallGrfDrvNoPD
+                    rts
+
 **********************************************************************
 * 04 - Clear to EOL
 * Erase from the current cursor position to the end of the line.
 *
-ErEOLine	    lbsr      SetThisTermGrfPtrs
-		    ldb	      #GF.ErEOLine
-		    lbsr      CallGrfDrvNoPD
-		    rts
+ErEOLine            lbsr      SetThisTermGrfPtrs
+                    ldb       #GF.ErEOLine
+                    lbsr      CallGrfDrvNoPD
+                    rts
 
 ***********************************************************************
 * 05 - Cursor Control
@@ -1203,10 +1203,10 @@ CurOnX              rts
 CurChar             tst       V.TermLive,u
                     beq       CurCharX
                     ldx       #TXT.Base
-		    lda       V.EscParms,u
+                    lda       V.EscParms,u
                     sta       VKY_TXT_CURSOR_CHAR_REG,x
 CurCharX            rts
-		    
+
 ************************************************************************
 *** 05 23 - Set Cursor Flash Rate
 ***
@@ -1225,11 +1225,11 @@ CurRate             tst       V.TermLive,u
                     beq       CurRateX
                     ldx       #TXT.Base
                     ldb       VKY_TXT_CURSOR_CTRL_REG,x
-                    andb      #$01                preserve the cursor enable bit
-                    lsla                          shift bits to the left
-                    pshs      a                   save the value to OR in on the stack
-                    orb       ,s+                 OR it in with the contents of the register
-                    stb       VKY_TXT_CURSOR_CTRL_REG,x save it to the hardware
+                    andb      #$01      ; preserve the cursor enable bit
+                    lsla                ; shift bits to the left
+                    pshs      a         ; save the value to OR in on the stack
+                    orb       ,s+       ; or it in with the contents of the register
+                    stb       VKY_TXT_CURSOR_CTRL_REG,x ; save it to the hardware
 CurRateX            rts
 
 **********************************************************************
@@ -1238,10 +1238,10 @@ CurRateX            rts
 * If the cursor is at the last column of the last line, it stays there
 *
 CurRght             ldd       V.CurRow,u
-                    incb                          increment the column
+                    incb                ; increment the column
 * bhs, not bgt: at the last column incb makes B = WWidth, which bgt let
 * through and stored as V.CurCol - one cell off the end of the row.
-                    cmpb      V.WWidth,u          is it >= the number of columns?
+                    cmpb      V.WWidth,u ; is it >= the number of columns?
                     bhs       nextrow@
 ex@                 std       V.CurRow,u
                     lbsr      CalcCurPos
@@ -1249,18 +1249,18 @@ bye@                rts
 nextrow@            ldb       V.WHeight,u
                     decb
                     pshs      b
-                    cmpa      ,s+                 are we at the last row?
-                    bhs       bye@                yep, nothing to change.
-                    clrb                          else clear the column
-                    inca                          increment the row
-                    bra       ex@                 save and return
+                    cmpa      ,s+       ; are we at the last row?
+                    bhs       bye@      ; yep, nothing to change.
+                    clrb                ; else clear the column
+                    inca                ; increment the row
+                    bra       ex@       ; save and return
 
 **********************************************************************
 * 07 - Bell
 * Bell ($07) (called via Bell vector D.Bell):
 *
-Bell                ldd       #$0F1F              A = start volume (15), B = duration counter
-                    ldy       #%0000000100000011              bell frequency
+Bell                ldd       #$0F1F    ; a = start volume (15), B = duration counter
+                    ldy       #%0000000100000011 ; bell frequency
 
 * Common SS.Tone and Bell routine
 *
@@ -1269,36 +1269,36 @@ Bell                ldd       #$0F1F              A = start volume (15), B = dur
 *        Y = Frequency.
 BellTone            tst       D.SndPrcID
                     bne       BellBusy
-                    stb       D.TnCnt             store the duration counter in the global
-                    sta       >gr.b3              volume 0-15; LUT 1 inverts
-                    sty       >gr.d1              frequency
-                    ldb	      #GF.PSGBell
-		    lbsr      CallGrfDrvNoPD
+                    stb       D.TnCnt   ; store the duration counter in the global
+                    sta       >gr.b3    ; volume 0-15; LUT 1 inverts
+                    sty       >gr.d1    ; frequency
+                    ldb       #GF.PSGBell
+                    lbsr      CallGrfDrvNoPD
 BellBusy            clrb
                     rts
-	    
+
 **********************************************************************
 * 08 - Cursor Left
 * If the cursor is at the first column, it moves to the last column of the previous line.
 *
-CurLeft             ldd       V.CurRow,u          get the current row and column values
-                    beq       leave               branch if they're zero
-                    decb                          decrement the column value
-                    bpl       EraseChar           erase the character
-                    ldb       V.WWidth,u          get the number of columns
-                    decb                          minus 1
-                    deca                          decrement the counter
-                    bpl       EraseChar           branch until done
-                    clra                          clear A
+CurLeft             ldd       V.CurRow,u ; get the current row and column values
+                    beq       leave     ; branch if they're zero
+                    decb                ; decrement the column value
+                    bpl       EraseChar ; erase the character
+                    ldb       V.WWidth,u ; get the number of columns
+                    decb                ; minus 1
+                    deca                ; decrement the counter
+                    bpl       EraseChar ; branch until done
+                    clra                ; clear A
 
 * Entry:  A = The row of the character to erase.
 *         B = The column of the character to erase.
-EraseChar           std       V.CurRow,u          save D to the current row and column
-                    lbsr      CalcCurPos          resync (and row-clamp) V.CurPos
-                    ldx       V.CurPos,u          X = cell offset
+EraseChar           std       V.CurRow,u ; save D to the current row and column
+                    lbsr      CalcCurPos ; resync (and row-clamp) V.CurPos
+                    ldx       V.CurPos,u ; x = cell offset
                     lda       #C$SPAC
-                    lbsr      PutCell             erase the one cell
-leave               rts                           return
+                    lbsr      PutCell   ; erase the one cell
+leave               rts                 ; return
 
 **********************************************************************
 * 09 - Cursor Up
@@ -1315,11 +1315,11 @@ ex@                 rts
 **********************************************************************
 * 0A - Cursor Down
 *
-CurDown             ldd       V.CurRow,u          get the current row and column
-                    inca                          try to move down one row
+CurDown             ldd       V.CurRow,u ; get the current row and column
+                    inca                ; try to move down one row
                     cmpa      V.WHeight,u
-                    blt       CDmv@               room below - just move
-                    ldd       V.CurRow,u          at bottom - scroll (shared path)
+                    blt       CDmv@     ; room below - just move
+                    ldd       V.CurRow,u ; at bottom - scroll (shared path)
                     lbra      incrow
 * ChkESC's jsr dispatch refreshes the hardware cursor on the way out now.
 CDmv@               sta       V.CurRow,u
@@ -1331,11 +1331,11 @@ CDmv@               sta       V.CurRow,u
 * 0B - Erase to EOS
 * Erase from the current cursor position to the end of the screen.
 *
-ErEOScrn	    lbsr      SetThisTermGrfPtrs
-		    ldb	      #GF.ErEOScrn
-		    lbsr      CallGrfDrvNoPD
-		    rts
-		    
+ErEOScrn            lbsr      SetThisTermGrfPtrs
+                    ldb       #GF.ErEOScrn
+                    lbsr      CallGrfDrvNoPD
+                    rts
+
 
 **********************************************************************
 * 0C - Clear Screen
@@ -1348,8 +1348,8 @@ ClrScrn             lbsr      SetThisTermGrfPtrs
 **********************************************************************
 * 0D - Return
 *
-Retrn               clr       V.CurCol,u          clear the current column
-                    lbra      CalcCurPos          resync V.CurPos, then rts
+Retrn               clr       V.CurCol,u ; clear the current column
+                    lbra      CalcCurPos ; resync V.CurPos, then rts
 
 **********************************************************************
 * 1B - Window Settings, FG, BG, Palette, Font, Border
@@ -1369,7 +1369,7 @@ Retrn               clr       V.CurCol,u          clear the current column
 ***
 DWSet               lda       V.DWType,u
                     sta       V.ScTyp,u
-                    cmpa      #$01                40x30?
+                    cmpa      #$01      ; 40x30?
                     bne       IsIt80x30
                     bsr       SetWin40x30
                     bra       setcols@
@@ -1381,7 +1381,7 @@ IsIt40x60           cmpa      #$03
                     bne       IsIt80x60
                     bsr       SetWin40x60
                     bra       setcols@
-IsIt80x60           bsr       SetWin80x60                    
+IsIt80x60           bsr       SetWin80x60
 setcols@            lda       V.DWFore,u
                     bsr       FColor
                     lda       V.DWBack,u
@@ -1436,14 +1436,14 @@ SetWin80x60         clrb
 *** P$SelP is recorded as CoWin does, but not acted on (no Nobel rule).
 *** Y survives from SCF's D$WRIT to here, so PD.RGS,y is the caller's
 *** register stack; R$A is still the local path (S2UPath never writes it).
-DWSelect            ldx       PD.RGS,y            caller's registers
-                    lda       R$A,x               local path the 1B 21 came in on
+DWSelect            ldx       PD.RGS,y  ; caller's registers
+                    lda       R$A,x     ; local path the 1B 21 came in on
                     ldx       >D.Proc
-                    sta       P$SelP,x            this process's selected window
-                    tst       V.TermLive,u        already on screen?
+                    sta       P$SelP,x  ; this process's selected window
+                    tst       V.TermLive,u ; already on screen?
                     bne       selx@
                     lda       V.TermID,u
-                    sta       >gr.SwitchTerm      target first, then the request
+                    sta       >gr.SwitchTerm ; target first, then the request
                     lda       #SW.Goto
                     sta       >gr.SwitchReq
 selx@               clrb
@@ -1459,24 +1459,24 @@ DefColr             rts
 ************************************************************************
 *** 1B 32 - Foreground Color Slot
 ***
-FColor		    lsla                          A = A / 2
-                    lsla                          A = A / 2
-                    lsla                          A = A / 2
-                    lsla                          A = A / 2
-                    pshs      a                   save the register
-                    ldb       V.FBCol,u           load the foreground/background color
-                    andb      #$0F                mask out the upper 4 bits
-FGCUpdate           orb       ,s+                 OR in the foreground color bits
-                    stb       V.FBCol,u           save the updated color
-                    rts                           return
+FColor              lsla                ; a = A / 2
+                    lsla                ; a = A / 2
+                    lsla                ; a = A / 2
+                    lsla                ; a = A / 2
+                    pshs      a         ; save the register
+                    ldb       V.FBCol,u ; load the foreground/background color
+                    andb      #$0F      ; mask out the upper 4 bits
+FGCUpdate           orb       ,s+       ; or in the foreground color bits
+                    stb       V.FBCol,u ; save the updated color
+                    rts                 ; return
 ************************************************************************
 *** 1B 33 - Background Color Slot
 ***
-BColor              anda      #$0F                mask out the upper 4 bits
-                    pshs      a                   save the register
-                    ldb       V.FBCol,u           load the foreground/background color
-                    andb      #$F0                mask out the lower 4 bits
-                    bra       FGCUpdate           and do the OR (in FColor)
+BColor              anda      #$0F      ; mask out the upper 4 bits
+                    pshs      a         ; save the register
+                    ldb       V.FBCol,u ; load the foreground/background color
+                    andb      #$F0      ; mask out the lower 4 bits
+                    bra       FGCUpdate ; and do the OR (in FColor)
 
 ************************************************************************
 *** 1B 34 - Border color Slot
@@ -1486,7 +1486,7 @@ Border              rts
 ************************************************************************
 *** 1B 3D - Bold On/Off (No Bold available in TextMap)
 ***
-BoldSw	            rts
+BoldSw              rts
 
 ************************************************************************
 *** 1B 60 - Foreground Palette  PRN R G B A
@@ -1497,22 +1497,22 @@ BoldSw	            rts
 ***
 *** -> b2 palette reg #, b4 dest, b5 FG/BG select,
 ***    d1 LUT bytes 0-1 (blue, green), d2 LUT bytes 2-3 (red, alpha).
-ChgForePal	    clrb                          0 = foreground LUT
+ChgForePal          clrb                ; 0 = foreground LUT
                     bra       ChgPal
-ChgBackPal          ldb       #1                  1 = background LUT
+ChgBackPal          ldb       #1        ; 1 = background LUT
 ChgPal              pshs      d,x
-                    stb       >gr.b5              FG/BG LUT select
-                    lda       V.EscParms+0,u      PRN
-                    sta       >gr.b2              palette register #
+                    stb       >gr.b5    ; fg/BG LUT select
+                    lda       V.EscParms+0,u ; prn
+                    sta       >gr.b2    ; palette register #
                     lda       V.EscParms+3,u
-                    sta       >gr.d1              blue     (LUT byte 0)
+                    sta       >gr.d1    ; blue     (LUT byte 0)
                     lda       V.EscParms+2,u
-                    sta       >gr.d1+1            green    (LUT byte 1)
+                    sta       >gr.d1+1  ; green    (LUT byte 1)
                     lda       V.EscParms+1,u
-                    sta       >gr.d2              red      (LUT byte 2)
+                    sta       >gr.d2    ; red      (LUT byte 2)
                     lda       V.EscParms+4,u
-                    sta       >gr.d2+1            alpha    (LUT byte 3)
-                    lbsr      SetWDest            sets b4
+                    sta       >gr.d2+1  ; alpha    (LUT byte 3)
+                    lbsr      SetWDest  ; sets b4
                     ldb       #GF.Pal
                     lbsr      CallGrfDrvNoPD
                     puls      d,x
@@ -1522,12 +1522,12 @@ ChgPal              pshs      d,x
 ************************************************************************
 *** 1B 62 - Select Font Set 0
 ***
-ChgFont0            clrb                          FT_FSET clear = font set 0
+ChgFont0            clrb                ; ft_FSET clear = font set 0
                     bra       ChgFont
 ************************************************************************
 *** 1B 63 - Select Font Set 1
 ***
-ChgFont1            ldb       #FT_FSET            FT_FSET set = font set 1
+ChgFont1            ldb       #FT_FSET  ; ft_FSET set = font set 1
 * The font set is a bit in MASTER_CTRL_REG_H, which belongs to THIS
 * terminal, not to the hardware: V.V_MCR mirrors $FFC0-$FFC1 and PullBuf
 * writes it back on a switch.  Both entries used to poke the live
@@ -1538,8 +1538,8 @@ ChgFont1            ldb       #FT_FSET            FT_FSET set = font set 1
 * SetWin's split: live updates the register and the mirror, shadow
 * updates only the mirror, and the change lands when the terminal is
 * switched in.  tst (not lda) so A survives for the escape dispatcher.
-ChgFont             pshs      b                   requested font-set bit
-                    ldb       V.V_MCR+1,u         the mirror, never the register
+ChgFont             pshs      b         ; requested font-set bit
+                    ldb       V.V_MCR+1,u ; the mirror, never the register
                     andb      #~(FT_FSET)
                     orb       ,s
                     stb       V.V_MCR+1,u
@@ -1556,32 +1556,32 @@ ChgFontSt           puls      b,pc
 ************************************************************************
 *** 1F 20 - Reverse Video On
 ***
-RevOn               tst       V.Reverse,u         is reverse already on?
-                    bne       revend              branch if so
+RevOn               tst       V.Reverse,u ; is reverse already on?
+                    bne       revend    ; branch if so
                     com       V.Reverse,u
 DoReverse
 * swap foreground and background color bits
-                    lda       V.FBCol,u           else get the fore/background color
-                    lsra                          shift all...
-                    lsra                          of the foreground..
-                    lsra                          color bits into the...
-                    lsra                          lower nibble
+                    lda       V.FBCol,u ; else get the fore/background color
+                    lsra                ; shift all...
+                    lsra                ; of the foreground..
+                    lsra                ; color bits into the...
+                    lsra                ; lower nibble
                     pshs      a
                     lda       V.FBCol,u
-                    lsla                          shift all...
-                    lsla                          of the background...
-                    lsla                          color bits into the...
-                    lsla                          upper nibble
+                    lsla                ; shift all...
+                    lsla                ; of the background...
+                    lsla                ; color bits into the...
+                    lsla                ; upper nibble
                     ora       ,s+
                     sta       V.FBCol,u
 revend              rts
 ************************************************************************
 *** 1F 21 - Reverse Video Off
 ***
-RevOff              tst       V.Reverse,u         is reverse already off?
+RevOff              tst       V.Reverse,u ; is reverse already off?
                     beq       revend
                     com       V.Reverse,u
-                    bra       DoReverse	          Do Reverse is in RevOn
+                    bra       DoReverse ; do Reverse is in RevOn
 
 ************************************************************************
 *** 1F 22 - Underline On
@@ -1611,13 +1611,13 @@ BlkOff              rts
 *** from the DSS, so this only guards, clamps and aims gr.* at this term.
 ***
 InsLine             lda       V.WHeight,u
-                    beq       ilx@                no rows
+                    beq       ilx@      ; no rows
                     ldb       V.WWidth,u
-                    beq       ilx@                no columns
-                    lbsr      CalcCurPos          clamps V.CurRow below V.WHeight
-                    lbsr      SetThisTermGrfPtrs  gr.TermBlk/VBlk/U5 for THIS term
+                    beq       ilx@      ; no columns
+                    lbsr      CalcCurPos ; clamps V.CurRow below V.WHeight
+                    lbsr      SetThisTermGrfPtrs ; gr.TermBlk/VBlk/U5 for THIS term
                     ldb       #GF.InsLine
-                    lbsr      CallGrfDrvNoPD      preserves U
+                    lbsr      CallGrfDrvNoPD ; preserves U
 ilx@                rts
 
 ************************************************************************
@@ -1627,17 +1627,17 @@ ilx@                rts
 *** rewrite).  The cursor does not move.
 ***
 DelLine             lda       V.WHeight,u
-                    beq       dlx@                no rows
+                    beq       dlx@      ; no rows
                     ldb       V.WWidth,u
-                    beq       dlx@                no columns (blank loop would run 256)
-                    lbsr      CalcCurPos          clamps V.CurRow below V.WHeight
+                    beq       dlx@      ; no columns (blank loop would run 256)
+                    lbsr      CalcCurPos ; clamps V.CurRow below V.WHeight
                     lda       V.CurRow,u
                     ldb       V.WWidth,u
                     mul
-                    std       >gr.d1              start: CurRow,0
+                    std       >gr.d1    ; start: CurRow,0
                     ldd       V.ScreenSize,u
-                    std       >gr.d2              end: bottom of screen
-                    lda       V.WWidth,u          A = width
+                    std       >gr.d2    ; end: bottom of screen
+                    lda       V.WWidth,u ; a = width
                     lbsr      DoScroll
 dlx@                rts
 
@@ -1667,18 +1667,18 @@ dlx@                rts
 * Get status entry point
 * Entry: A=Function call #
 *
-GetStat             cmpa      #SS.EOF             is this the EOF call?
-                    beq       SSEOF               yes, exit without error
-                    ldx       PD.RGS,y            else get the pointer to caller's registers (all other calls require this)
-                    cmpa      #SS.Ready           is this the data ready call? (keyboard buffer)
-                    beq       SSReady             branch if so
+GetStat             cmpa      #SS.EOF   ; is this the EOF call?
+                    beq       SSEOF     ; yes, exit without error
+                    ldx       PD.RGS,y  ; else get the pointer to caller's registers (all other calls require this)
+                    cmpa      #SS.Ready ; is this the data ready call? (keyboard buffer)
+                    beq       SSReady   ; branch if so
 * The rest are grfdrv's: GF.GetStt dispatches on the code in gr.b1 and
 * leaves its results in gr.PDRGS, which CallGrfDrvRet copies back.
                     ldb       #GF.GetStt
                     bra       StatFwd
 
 **********************************************************************
-* SS.EOF    $06	
+* SS.EOF    $06
 * SS.Ready  $01
 *
 * Tests for data available on SCF-supported devices.
@@ -1692,15 +1692,15 @@ GetStat             cmpa      #SS.EOF             is this the EOF call?
 * Error:  B = E$NotRdy if there are no bytes ready to read.
 *        CC = Carry flag set to indicate error.
 *
-SSReady             lda       V.IBufH,u           else get get the buffer tail ptr
-                    suba      V.IBufT,u           A = the number of characters ready to read
-                    sta       R$B,x               save in the caller's B
-                    beq       NotReady            if there's no data in keyboard buffer, return the "not ready" error
-SSEOF               clrb                          clear the error code and carry
-                    rts                           return
-NotReady            comb                          set the carry
-                    ldb       #E$NotRdy           load the "not ready" error
-                    rts                           return
+SSReady             lda       V.IBufH,u ; else get get the buffer tail ptr
+                    suba      V.IBufT,u ; a = the number of characters ready to read
+                    sta       R$B,x     ; save in the caller's B
+                    beq       NotReady  ; if there's no data in keyboard buffer, return the "not ready" error
+SSEOF               clrb                ; clear the error code and carry
+                    rts                 ; return
+NotReady            comb                ; set the carry
+                    ldb       #E$NotRdy ; load the "not ready" error
+                    rts                 ; return
 
 
 *
@@ -1715,31 +1715,31 @@ NotReady            comb                          set the carry
 *    CC = carry set on error
 *    B  = error code
 *
-SetStat             ldx       PD.RGS,y            get caller's registers in X
+SetStat             ldx       PD.RGS,y  ; get caller's registers in X
                   IFGT    Level-1
-                    cmpa      #SS.Open            path open (SCF); /vt factory here
+                    cmpa      #SS.Open  ; path open (SCF); /vt factory here
                     beq       SSOpen
                   ENDC
-                    cmpa      #SS.SSig            send signal on data ready?
-                    lbeq      SSSig               yes, go process
-                    cmpa      #SS.Relea           release signal on data ready?
-                    lbeq      SSRelea             yes, go process
-                    cmpa      #SS.WSig            signal on a visibility change?
-                    lbeq      SSWSig              yes, go process
+                    cmpa      #SS.SSig  ; send signal on data ready?
+                    lbeq      SSSig     ; yes, go process
+                    cmpa      #SS.Relea ; release signal on data ready?
+                    lbeq      SSRelea   ; yes, go process
+                    cmpa      #SS.WSig  ; signal on a visibility change?
+                    lbeq      SSWSig    ; yes, go process
                     cmpa      #SS.Tone
                     lbeq      SSTone
-                    cmpa      #SS.FntLoadF        blocks on file I/O, so not grfdrv's
+                    cmpa      #SS.FntLoadF ; blocks on file I/O, so not grfdrv's
                     lbeq      SSFntLoadF
 * Everything else goes to grfdrv's GF.SetStt, and GetStat's remainder
 * joins here with GF.GetStt.  The code travels in gr.b1, not R$B: SCF's
 * own calls (SS.ComSt from CallComStatus) do not put it in the caller's
 * B.  SetThisTermGrfPtrs clobbers D, so the op number waits on the stack.
                     ldb       #GF.SetStt
-StatFwd             sta       >gr.b1              status code
-                    pshs      b                   GF.GetStt or GF.SetStt
+StatFwd             sta       >gr.b1    ; status code
+                    pshs      b         ; gf.GetStt or GF.SetStt
                     lbsr      SetThisTermGrfPtrs
                     puls      b
-                    lbra      CallGrfDrvRet       results, B and carry back to the caller
+                    lbra      CallGrfDrvRet ; results, B and carry back to the caller
 
                   IFGT    Level-1
 * SS.Open — SCF calls this on every I$Open.
@@ -1767,7 +1767,7 @@ SSOpenFind          cmpb      #G.TermMax
                     beq       SSOpenGot
                     incb
                     bra       SSOpenFind
-SSOpenNone          comb                          set carry first: comb after ldb turned 221 into 34
+SSOpenNone          comb                ; set carry first: comb after ldb turned 221 into 34
                     ldb       #E$MNF
                     puls      x,y,u,pc
 SSOpenGot           lda       #'v
@@ -1818,37 +1818,37 @@ SSOpenNamed         clrb
                     rts
                   ENDC
 
-SSTone              ldy       R$Y,x               check for 0-1023 range
+SSTone              ldy       R$Y,x     ; check for 0-1023 range
                     cmpy      #1023
                     bgt       BadArgs
-                    ldd       R$X,x               get vol, duration
+                    ldd       R$X,x     ; get vol, duration
                     cmpa      #15
                     bgt       BadArgs
-                    lbra      BellTone            do it
- 
-BadArgs             comb                          Exit with Illegal Argument error
+                    lbra      BellTone  ; do it
+
+BadArgs             comb                ; exit with Illegal Argument error
                     ldb       #E$IllArg
                     rts
 
 * SS.SSig - send signal on data ready
-SSSig               pshs      cc                  save interrupt status
-                    lda       V.IBufH,u           get get the buffer tail ptr
-                    suba      V.IBufT,u           A = the number of characters ready to read
-                    pshs      a                   save it temporarily
-                    bsr       GetCPR              get current process ID
-                    tst       ,s+                 anything in buffer?
-                    bne       SendSig             yes, go send the signal
-                    std       <V.SSigID,u         save process ID & signal
-                    puls      pc,cc               restore interrupts & return
+SSSig               pshs      cc        ; save interrupt status
+                    lda       V.IBufH,u ; get get the buffer tail ptr
+                    suba      V.IBufT,u ; a = the number of characters ready to read
+                    pshs      a         ; save it temporarily
+                    bsr       GetCPR    ; get current process ID
+                    tst       ,s+       ; anything in buffer?
+                    bne       SendSig   ; yes, go send the signal
+                    std       <V.SSigID,u ; save process ID & signal
+                    puls      pc,cc     ; restore interrupts & return
 
-GetCPR              orcc      #IntMasks           disable interrupts
-                    lda       PD.CPR,y            get curr proc #
-                    ldb       R$X+1,x             get user signal code
-                    rts                           return
+GetCPR              orcc      #IntMasks ; disable interrupts
+                    lda       PD.CPR,y  ; get curr proc #
+                    ldb       R$X+1,x   ; get user signal code
+                    rts                 ; return
 
-SendSig             puls      cc                  restore interrupts
-                    os9       F$Send              send the signal
-                    rts                           return
+SendSig             puls      cc        ; restore interrupts
+                    os9       F$Send    ; send the signal
+                    rts                 ; return
 
 * SS.WSig ($E1) - signal me when this terminal's visibility changes.
 *
@@ -1864,8 +1864,8 @@ SendSig             puls      cc                  restore interrupts
 * A code below S$Window ($04) is accepted but is a poor choice - both
 * vtios abort a blocked read on anything lower, so a game asleep in a
 * read would be killed by its own notification.
-SSWSig              ldd       R$X,x               A = background code, B = forward code
-                    tsta                          both codes 0 = deregister
+SSWSig              ldd       R$X,x     ; a = background code, B = forward code
+                    tsta                ; both codes 0 = deregister
                     bne       reg@
                     tstb
                     bne       reg@
@@ -1887,40 +1887,40 @@ wsok@               clrb
 * terminal - D.PrcDBT[id] reads 0 once a process is gone, and its slot is
 * taken over.
 reg@                lda       V.WSigID,u
-                    beq       take@               nobody holds it
-                    cmpa      PD.CPR,y            ours already?  re-registering is fine
+                    beq       take@     ; nobody holds it
+                    cmpa      PD.CPR,y  ; ours already?  re-registering is fine
                     beq       take@
                     pshs      a,x
-                    ldx       <D.PrcDBT           is that process still alive?
+                    ldx       <D.PrcDBT ; is that process still alive?
                     lda       a,x
                     tsta
-                    puls      a,x                 (PULS does not touch CC)
-                    beq       take@               no - the slot is free after all
+                    puls      a,x       ; (PULS does not touch CC)
+                    beq       take@     ; no - the slot is free after all
                     comb
-                    ldb       #E$DevBsy           yes - it is not ours to take
+                    ldb       #E$DevBsy ; yes - it is not ours to take
                     rts
 take@               ldd       R$X,x
                     std       V.WSigBg,u
-                    lda       PD.CPR,y            the calling process
+                    lda       PD.CPR,y  ; the calling process
                     sta       V.WSigID,u
                     clrb
                     rts
 
 * SS.Relea - release a path from SS.SSig and from SS.WSig
-SSRelea             lda       PD.CPR,y            get the current process ID
-                    cmpa      V.WSigID,u         is it the visibility registrant?
-                    bne       ckss@               branch if not
-                    clr       V.WSigID,u         else clear the process ID
-ckss@               cmpa      <V.SSigID,u         is it the same as the keyboard?
-                    bne       ex@                 branch if not
-                    clr       <V.SSigID,u         else clear process the ID
+SSRelea             lda       PD.CPR,y  ; get the current process ID
+                    cmpa      V.WSigID,u ; is it the visibility registrant?
+                    bne       ckss@     ; branch if not
+                    clr       V.WSigID,u ; else clear the process ID
+ckss@               cmpa      <V.SSigID,u ; is it the same as the keyboard?
+                    bne       ex@       ; branch if not
+                    clr       <V.SSigID,u ; else clear process the ID
 * cmpa leaves the carry set whenever A is below the stored id, which SCF
 * reads as an error with a junk code.  Nothing ever noticed because the
 * call is rare, but the exit has to be deliberate.
 ex@                 clrb
                     rts
 
-                    ifgt      Level-1
+                  IFGT    Level-1
 ;;; SS.FntLoadF
 ;;;
 ;;; Load a font from a file.  File should be full path.
@@ -1934,85 +1934,85 @@ ex@                 clrb
 
 SSFntLoadF          ldy       R$Y,x
                     beq       font0@
-font1@              ldy       #$800               FONT_1_OFFSET   $0800
+font1@              ldy       #$800     ; font_1_OFFSET   $0800
                     bra       storeaddr@
-font0@              ldy       #FONT_0_OFFSET      $0000
-storeaddr@          pshs      y                   store font offset on stack [O]      
-                    leas      -2,s                reserve 2 bytes on stack for mapped addr [MO]
-* s= ADDR|OFFSET|                   
+font0@              ldy       #FONT_0_OFFSET ; $0000
+storeaddr@          pshs      y         ; store font offset on stack [O]
+                    leas      -2,s      ; reserve 2 bytes on stack for mapped addr [MO]
+* s= ADDR|OFFSET|
 *                   ****      map block into user dat and store address on stack
-                    pshs      x,u                 preserve x,u
-                    ldx       #FONT_BLK           map in FONT_BLK
-                    ldb       #$01                map 1 block at address x (x set on entry)
+                    pshs      x,u       ; preserve x,u
+                    ldx       #FONT_BLK ; map in FONT_BLK
+                    ldb       #$01      ; map 1 block at address x (x set on entry)
                     os9       F$MapBlk
-                    bcc       mapgood@            if success, then continue
-                    puls      x,u                 else: error
+                    bcc       mapgood@  ; if success, then continue
+                    puls      x,u       ; else: error
                     bra       error@
-mapgood@            stu       4,s                 store mapped address on stack [XUMO]
-                    puls      x,u                 restore x,u [MO]
-*                   ****      open file to read             
-endcopy@            ldx       R$X,x               pointer to file name in caller memory
-                    lda       #READ.              READ access mode
-                    os9       I$Open              
+mapgood@            stu       4,s       ; store mapped address on stack [XUMO]
+                    puls      x,u       ; restore x,u [MO]
+*                   ****      open file to read
+endcopy@            ldx       R$X,x     ; pointer to file name in caller memory
+                    lda       #READ.    ; read access mode
+                    os9       I$Open
                     bcc       modulecheck@
                     bra       errormap@
 * Verify that file is module.
 * Load file's first two bytes onto the stack to verify and check for $87DC
-modulecheck@        leas      -2,s                 add space to stack to store 2 bytes [DMO]
-                    leax      ,s                   load x with stack address
+modulecheck@        leas      -2,s      ; add space to stack to store 2 bytes [DMO]
+                    leax      ,s        ; load x with stack address
                     bsr       Rd2B2Mem
-                    puls      x                    load x with the data [MO]
-                    cmpx      #$87CD               check if module
-                    bcc       getstart@            if module, get start of data
+                    puls      x         ; load x with the data [MO]
+                    cmpx      #$87CD    ; check if module
+                    bcc       getstart@ ; if module, get start of data
                     ldb       #3
-                    bra       errorclose@          else, error
+                    bra       errorclose@ ; else, error
 * Module header byte $09-0A = Execution Offset.
 * This is the start of the data in a data module
-getstart@           pshs      u                    seek to data start address in file [UMO]
-                    ldx       #$00                 set high byte addr
-                    ldu       #$09                 set low byte
+getstart@           pshs      u         ; seek to data start address in file [UMO]
+                    ldx       #$00      ; set high byte addr
+                    ldu       #$09      ; set low byte
                     os9       I$Seek
-                    bcc       readaddr@            if success, read font
-                    puls      u                    else error  [MO]
+                    bcc       readaddr@ ; if success, read font
+                    puls      u         ; else error  [MO]
                     ldb       #4
                     bra       errorclose@
-* s= u|addr|offset                  
-readaddr@           leas      -2,s                 add 2 bytes stack storage [DUMO]
-                    leax      ,s                   use the 2 bytes in stack to store addr
-                    bsr       Rd2B2Mem             read 2 bytes from file
-                    bcc       seekaddr@            if success, seek to data address
-                    leas      4,s                  else: clean stack and error [MO]
-                    bra       errorclose@
-* s= addr|u|addr|offset             
-seekaddr@           puls      u                    load u with low byte addr [UMO]
 * s= u|addr|offset
-                    ldx       #0                   load x high byte
+readaddr@           leas      -2,s      ; add 2 bytes stack storage [DUMO]
+                    leax      ,s        ; use the 2 bytes in stack to store addr
+                    bsr       Rd2B2Mem  ; read 2 bytes from file
+                    bcc       seekaddr@ ; if success, seek to data address
+                    leas      4,s       ; else: clean stack and error [MO]
+                    bra       errorclose@
+* s= addr|u|addr|offset
+seekaddr@           puls      u         ; load u with low byte addr [UMO]
+* s= u|addr|offset
+                    ldx       #0        ; load x high byte
                     os9       I$Seek
-                    puls      u                    restore u [MO]
-* s=addr|offset             
+                    puls      u         ; restore u [MO]
+* s=addr|offset
 *                   ldx       ,s                   ldx with mapblock address
-                    pshs      a                    store path# on stack [AMO]
-                    ldd       1,s                  put offset in d
+                    pshs      a         ; store path# on stack [AMO]
+                    ldd       1,s       ; put offset in d
                     addd      3,s
                     tfr       d,x
 *                   leax      d,x                  add offset to x
-                    puls      a                    restore path# [MO]
-                    ldy       #$800                read 2K of font data into it
-                    os9       I$Read               a=path x=addr y=#bytes
-errorclose@         pshs      b                    [BMO]
-                    os9       I$Close              close the file
-                    puls      b                    [MO]
+                    puls      a         ; restore path# [MO]
+                    ldy       #$800     ; read 2K of font data into it
+                    os9       I$Read    ; a=path x=addr y=#bytes
+errorclose@         pshs      b         ; [BMO]
+                    os9       I$Close   ; close the file
+                    puls      b         ; [MO]
 errormap@           ldu       ,s
                     pshs      b
                     ldb       #$01
-                    os9       F$ClrBlk             Clear block from user space
+                    os9       F$ClrBlk  ; clear block from user space
                     puls      b
-error@              leas      4,s                  clear stack
+error@              leas      4,s       ; clear stack
                     tstb
                     beq       quit@
                     coma
 quit@               rts
-                    
+
 
 ;;; Rd2B2Mem
 ;;; Read 2 bytes to addr
@@ -2029,24 +2029,24 @@ quit@               rts
 ;;; Make sure to mask interrupts so processes don't switch while
 ;;; the change is happening
 ;;;
-Rd2B2Mem            pshs      cc                  push cc and mask interrupts
+Rd2B2Mem            pshs      cc        ; push cc and mask interrupts
                     orcc      #IntMasks
-                    ldy       <D.Proc             ldy with current process descriptor
-                    pshs      y                   store current proc descriptor on stack
-                    ldy       <D.SysPrc           copy system proc descriptor to current
+                    ldy       <D.Proc   ; ldy with current process descriptor
+                    pshs      y         ; store current proc descriptor on stack
+                    ldy       <D.SysPrc ; copy system proc descriptor to current
                     sty       <D.Proc
-                    ldy       #$02                read 2 bytes from file 
+                    ldy       #$02      ; read 2 bytes from file
                     os9       I$Read
-                    puls      y                   pull current proc descriptor from stack
-                    sty       <D.Proc             and save it back
-                    bcs       errnomap@           if I$Read error, then handle error
-                    puls      cc,pc               if no error, pull cc and return
-errnomap@           puls      cc                  if error, pull cc
-                    coma                          set carry bit
-                    rts                           and return
+                    puls      y         ; pull current proc descriptor from stack
+                    sty       <D.Proc   ; and save it back
+                    bcs       errnomap@ ; if I$Read error, then handle error
+                    puls      cc,pc     ; if no error, pull cc and return
+errnomap@           puls      cc        ; if error, pull cc
+                    coma                ; set carry bit
+                    rts                 ; and return
 
-                    
-                    endc
+
+                  ENDC
 
 
                     emod

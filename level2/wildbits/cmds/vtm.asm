@@ -32,10 +32,10 @@
                     nam       vtm
                     ttl       Virtual terminal command
 
-                    ifp1
+                  IFP1
                     use       defsfile
                     use       wildbits_vtio.d
-                    endc
+                  ENDC
 
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
@@ -48,20 +48,20 @@ TblLen              equ       gr.TermTbl-gr.LiveTerm+G.TermMax*gr.TermSz
                     mod       eom,name,tylg,atrv,start,size
 
                     org       0
-vPath               rmb       1                   path to the terminal
-vTermId             rmb       1                   terminal id 0-8
-vPLen               rmb       1                   length of vParm through its CR
-vDAT                rmb       16                  DAT image for F$CpyMem: all block 0
-vTbl                rmb       TblLen              gr.LiveTerm, then gr.TermTbl
-vName               rmb       32                  SS.DevNm result
-vParm               rmb       12                  "i=/vtN" CR - the pathlist starts at +2
-                    rmb       250                 stack
+vPath               rmb       1         path to the terminal
+vTermId             rmb       1         terminal id 0-8
+vPLen               rmb       1         length of vParm through its CR
+vDAT                rmb       16        DAT image for F$CpyMem: all block 0
+vTbl                rmb       TblLen    gr.LiveTerm, then gr.TermTbl
+vName               rmb       32        SS.DevNm result
+vParm               rmb       12        "i=/vtN" CR - the pathlist starts at +2
+                    rmb       250       stack
 size                equ       .
 
 name                fcs       /vtm/
                     fcb       edition
 
-start               leay      vDAT,u              every DAT slot is block 0
+start               leay      vDAT,u    ; every DAT slot is block 0
                     ldb       #16
 clrdat@             clr       ,y+
                     decb
@@ -70,18 +70,18 @@ skipsp@             lda       ,x+
                     cmpa      #C$SPAC
                     beq       skipsp@
                     cmpa      #C$CR
-                    beq       NewTerm             bare vtm
+                    beq       NewTerm   ; bare vtm
                     cmpa      #'-
                     beq       Option
                     suba      #'0
-                    cmpa      #G.TermMax          below '0' wraps high, so one test
+                    cmpa      #G.TermMax ; below '0' wraps high, so one test
                     bhs       Usage
                     sta       <vTermId
                     lbsr      EndArg
-                    bne       Usage               more than one digit
+                    bne       Usage     ; more than one digit
                     bra       DoNum
 Option              lda       ,x+
-                    anda      #$DF                fold to upper case
+                    anda      #$DF      ; fold to upper case
                     cmpa      #'L
                     bne       Usage
                     lbsr      EndArg
@@ -90,8 +90,8 @@ Option              lda       ,x+
 
 Usage               leax      UsageTx,pcr
 ul@                 ldy       #80
-                    lda       #2                  stderr
-                    os9       I$WritLn            one line, up to its CR
+                    lda       #2        ; stderr
+                    os9       I$WritLn  ; one line, up to its CR
                     lbcs      Exit
                     tfr       y,d
                     leax      d,x
@@ -106,11 +106,11 @@ NewTerm             leax      VtName,pcr
                     lda       #UPDAT.
                     os9       I$Open
                     bcc       opened@
-                    cmpb      #E$MNF              all eight are open?
+                    cmpb      #E$MNF    ; all eight are open?
                     lbne      Exit
-                    leax      NoTermTx,pcr        say so, keep the error status
+                    leax      NoTermTx,pcr ; say so, keep the error status
                     ldy       #80
-                    lda       #2                  stderr
+                    lda       #2        ; stderr
                     os9       I$WritLn
                     ldb       #E$MNF
                     lbra      Exit
@@ -119,7 +119,7 @@ opened@             sta       <vPath
                     leax      vName,u
                     os9       I$GetStt
                     bcs       Exit
-                    lda       vName+2,u           "vtN", N with the fcs high bit
+                    lda       vName+2,u ; "vtN", N with the fcs high bit
                     anda      #$7F
                     suba      #'0
                     sta       <vTermId
@@ -135,11 +135,11 @@ DoNum               lbsr      ReadTbl
                     lbsr      EntryX
                     lda       T.Flags,x
                     bita      #T.Init
-                    lbne      SelOnly             already open (/term always is)
+                    lbne      SelOnly   ; already open (/term always is)
                     lbsr      MakeParm
-                    leax      vParm+2,u           "/vtN"
+                    leax      vParm+2,u ; "/vtN"
                     lda       #UPDAT.
-                    os9       I$Open              creates the terminal
+                    os9       I$Open    ; creates the terminal
                     lbcs      Exit
                     sta       <vPath
 
@@ -148,8 +148,8 @@ Shell               clra
 dup@                pshs      a
                     os9       I$Close
                     lda       <vPath
-                    os9       I$Dup               lowest free path: the one just closed
-                    puls      a                   (CC is I$Dup's)
+                    os9       I$Dup     ; lowest free path: the one just closed
+                    puls      a         ; (CC is I$Dup's)
                     bcs       Exit
                     inca
                     cmpa      #3
@@ -157,12 +157,12 @@ dup@                pshs      a
                     pshs      u
                     ldb       <vPLen
                     clra
-                    tfr       d,y                 parameter size
+                    tfr       d,y       ; parameter size
                     leax      ShellNm,pcr
-                    leau      vParm,u             "i=/vtN" CR
+                    leau      vParm,u   ; "i=/vtN" CR
                     lda       #Prgrm+Objct
-                    clrb                          shell's own data size
-                    os9       F$Fork              no F$Wait: like &
+                    clrb                ; shell's own data size
+                    os9       F$Fork    ; no F$Wait: like &
                     puls      u
                     bcs       Exit
 
@@ -174,7 +174,7 @@ Select              lbsr      SelTerm
                     clrb
 Exit                os9       F$Exit
 
-SelOnly             lbsr      SelTerm             B = 0 or the error
+SelOnly             lbsr      SelTerm   ; b = 0 or the error
                     bra       Exit
 
 * vtm -l
@@ -190,23 +190,23 @@ lp@                 pshs      b
                     stb       <vTermId
                     bsr       MakeParm
                     ldb       ,s
-                    cmpb      <vTbl               gr.LiveTerm
+                    cmpb      <vTbl     ; gr.LiveTerm
                     bne       wr@
                     leax      vParm,u
                     ldb       <vPLen
-                    abx                           just past the CR
-                    ldd       #$202A              " *" over the CR
+                    abx                 ; just past the CR
+                    ldd       #$202A    ; " *" over the CR
                     std       -1,x
                     lda       #C$CR
                     sta       1,x
                     inc       <vPLen
                     inc       <vPLen
-wr@                 leax      vParm+2,u           the pathlist, without "i="
+wr@                 leax      vParm+2,u ; the pathlist, without "i="
                     ldb       <vPLen
                     subb      #2
                     clra
                     tfr       d,y
-                    lda       #1                  stdout
+                    lda       #1        ; stdout
                     os9       I$WritLn
                     bcs       er@
 nx@                 puls      b
@@ -222,19 +222,19 @@ er@                 leas      1,s
 * paths 0-2 that takes it (one may be redirected to a file or pipe).
 * Exit: carry clear, B = 0; or carry set, B = the last error.
 SelTerm             clra
-sl@                 pshs      a                   path to try
+sl@                 pshs      a         ; path to try
                     ldb       <vTermId
                     clra
-                    tfr       d,x                 X = terminal id
+                    tfr       d,x       ; x = terminal id
                     lda       ,s
                     ldb       #SS.TermSel
                     os9       I$SetStt
-                    puls      a                   (CC is I$SetStt's)
+                    puls      a         ; (CC is I$SetStt's)
                     bcc       ok@
                     inca
                     cmpa      #3
                     blo       sl@
-                    coma                          set carry, B = last error
+                    coma                ; set carry, B = last error
                     rts
 ok@                 clrb
                     rts
@@ -250,7 +250,7 @@ ex@                 rts
 ReadTbl             pshs      u
                     leay      vDAT,u
                     leau      vTbl,u
-                    tfr       y,d                 D = DAT image
+                    tfr       y,d       ; d = DAT image
                     ldx       #gr.LiveTerm
                     ldy       #TblLen
                     os9       F$CpyMem
@@ -266,18 +266,18 @@ EntryX              lda       #gr.TermSz
 * MakeParm - vParm = "i=/term" or "i=/vtN" and a CR for vTermId, and
 * vPLen = its length.
 MakeParm            leay      vParm,u
-                    ldd       #$693D              "i="
+                    ldd       #$693D    ; "i="
                     std       ,y++
                     lda       #'/
                     sta       ,y+
                     ldb       <vTermId
                     bne       vtn@
-                    ldd       #$7465              "te"
+                    ldd       #$7465    ; "te"
                     std       ,y++
-                    ldd       #$726D              "rm"
+                    ldd       #$726D    ; "rm"
                     std       ,y++
                     bra       cr@
-vtn@                ldd       #$7674              "vt"
+vtn@                ldd       #$7674    ; "vt"
                     std       ,y++
                     ldb       <vTermId
                     addb      #'0
