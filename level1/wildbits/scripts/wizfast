@@ -1,17 +1,16 @@
-* wizfast - switch the module and the FPGA UART to 921600 baud.
-* Needs: wizi, no connections active. Sets the module (AT+UART_CUR) first, then the
-* driver: bau=1 on /wz sets the speed bit in the control register; bau=9 on /wz0-/wz3
-* is the same bit plus the packet flag (bit 3) those descriptors must keep.
-* Undo with wizslow. The setting is lost when the module resets.
+* wizfast - module and FPGA UART to 921600 baud. Needs: wizi, no connections active. Sets the module
+* (AT+UART_CUR) first, then the driver: bau=D on all five devices = WizFi rate code 13
+* (WizFi.Baud921600, 2026-10-06 cores; the core runs the W600's actual rate). The setting is lost when
+* the module resets.
 echo * WizFi360 Helper - Fast mode
 echo ATE1>/wz
 modem /wz
 echo AT+UART_CUR=921600,8,1,0,0>/wz
 modem /wz
-xmode /wz bau=1
-xmode /wz0 bau=9
-xmode /wz1 bau=9
-xmode /wz2 bau=9
-xmode /wz3 bau=9
+xmode /wz bau=D
+xmode /wz0 bau=D
+xmode /wz1 bau=D
+xmode /wz2 bau=D
+xmode /wz3 bau=D
 echo AT>/wz
 modem /wz

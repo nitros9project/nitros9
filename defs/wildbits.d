@@ -1293,21 +1293,46 @@ SPIF_DATA           rmb       1                   read FIFO data port (read only
 * there are four counter pairs below - four counters, not four FIFOs.  Bytes
 * waiting in a FIFO = its WR count - its RD count.  Counts are 11 bits, so
 * only bits 10:8 of each high byte are valid.
-* Wifi_Control_Register:
-* Bit[0]: 0 = 115,200 baud; 1 = 921,600 baud (both directions).
-* Bit[1] = 0 Default, 1 = Reset FIFO (you need to bring it back to 0) This is directly connected to reset line of the FIFO
-* Bit[2] = RX FIFO Empty ( 1 = Empty, 0 = Data Available)  read only
-* Bit[3] = TX FIFO Empty ( 1 = Empty, 0 = Data Available)  read only
-* Unlike the MIDI port, all four bits work on every shipping core, and both
-* directions raise interrupts: INT_WIZFI_RX (group 3, bit 0) when the Rx FIFO
+* Wifi_Control_Register (2026-10-06 cores; the rc22-and-earlier layout was bit 0 speed, bit 1 reset,
+* bits 2-3 status):
+* Bit[4:0] = rate code 0-16: the WizFi360's (W600's) ACTUAL rates, 40 MHz / floor(40,000,000 / requested);
+*            reset value 10 = 115,200, the module's factory default. Codes 17-31 run as 10.
+* Bit[5]   = 0, reserved (2026-10-07: the FIFO reset moved to the reset register)
+* Bit[6]   = RX FIFO Empty ( 1 = Empty, 0 = Data Available)  read only
+* Bit[7]   = TX FIFO Empty ( 1 = Empty, 0 = Data Available)  read only
+* Only a write to offset 0 changes the register.
+* Wifi_Reset_Register (offset 1, 2026-10-07 cores; reset value $80). Each bit holds its reset for as long as
+* it is set; write it back to 0 to release. Bit 7 reads 1 (older cores read $55 = data at offset 1).
+* Both directions raise interrupts: INT_WIZFI_RX (group 3, bit 0) when the Rx FIFO
 * goes non-empty, INT_WIZFI_TX (group 3, bit 5) when the Tx FIFO drains empty.
 WizFi.Base          equ       $FF20
-WizFi.TxEmpty       equ       %00001000           Tx FIFO empty (read only)
-WizFi.RxEmpty       equ       %00000100           Rx FIFO empty (read only)
-WizFi.Reset         equ       %00000010           FIFO reset, active high - clears both FIFOs and both serial ends
-WizFi.Rate          equ       %00000001           0 = 115,200 baud, 1 = 921,600 baud
+WizFi.TxEmpty       equ       %10000000           Tx FIFO empty (read only)
+WizFi.RxEmpty       equ       %01000000           Rx FIFO empty (read only)
+WizFi.RateMask      equ       %00011111           rate code (names below: requested rate; the core runs the W600's actual one)
+WizFi.Baud600       equ       0                   600.006
+WizFi.Baud1200      equ       1                   1,200.01
+WizFi.Baud1800      equ       2                   1,800.02
+WizFi.Baud2400      equ       3                   2,400.1
+WizFi.Baud4800      equ       4                   4,800.2
+WizFi.Baud9600      equ       5                   9,601.5
+WizFi.Baud14400     equ       6                   14,404.0
+WizFi.Baud19200     equ       7                   19,203.1
+WizFi.Baud38400     equ       8                   38,424.6
+WizFi.Baud57600     equ       9                   57,636.9
+WizFi.Baud115200    equ       10                  115,273.8 (reset default)
+WizFi.Baud230400    equ       11                  231,213.9
+WizFi.Baud460800    equ       12                  465,116.3
+WizFi.Baud921600    equ       13                  930,232.6
+WizFi.Baud1000000   equ       14                  1,000,000
+WizFi.Baud1500000   equ       15                  1,538,461.5
+WizFi.Baud2000000   equ       16                  2,000,000
+WizFi.HasReset      equ       %10000000           reset register present (read only)
+WizFi.UartRst       equ       %00000100           hold the Tx and Rx serial ends in reset
+WizFi.FifoRst       equ       %00000010           hold the Tx and Rx FIFOs clear
+WizFi.ChipRst       equ       %00000001           hold the WizFi360 chip in reset
                     org       $0
-WizFi_CtrlReg       rmb       1                   control register (bits 2 and 3 read back as status)
+WizFi_CtrlReg       rmb       1                   control register (bits 7 and 6 read back as status)
+WizFi_ResetReg      rmb       1                   reset register (WizFi.ChipRst/FifoRst/UartRst, WizFi.HasReset)
 WizFi_DataReg       rmb       1                   Rx/Tx FIFO data port (read and write)
 WizFi_RxD_RD_Cnt    rmb       2                   RX occupancy, read clock domain; big-endian
 WizFi_RxD_WR_Cnt    rmb       2                   RX occupancy, write clock domain; big-endian
