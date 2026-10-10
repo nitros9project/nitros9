@@ -11,7 +11,7 @@ rev                 set       $07
 
                     mod       eom,name,tylg,atrv,mgrnam,drvnam
 
-                    fcb       READ.               mode byte: input only (SHARE.+READ. before 2026-10-02)
+                    fcb       READ.+WRITE.        mode byte: read and write (2026-10-06; input only 2026-10-02, SHARE.+READ. before)
                     fcb       HW.Page             extended controller address
                     fdb       $FF30          physical MIDI UART address
                     fcb       initsize-*-1        initialization table size

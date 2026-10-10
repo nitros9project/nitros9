@@ -6,9 +6,11 @@
 *
 * The codec control port is at CODEC.Base ($FE70) in FIXED I/O, so it
 * needs no MMU mapping and works from any task.  A write is 16 bits:
-*   [6:0] register  [8] UPDATE  [7:0] value
-* i.e. D = (reg<<9) | $100 | value.  The UPDATE bit is always set here,
-* which is what makes an attenuation change take effect immediately.
+*   bits 15..9 = register; bits 8..0 = register-specific data.
+* This command accepts an 8-bit value and sends D = (reg<<9) | value.
+* R00-R05 (headphone and DAC attenuation) also get data bit 8 = UPDATE,
+* or the new level only waits in the codec's holding latch; every other
+* register is sent with bit 8 clear.
 *
 * The two knobs worth turning (see the kit README):
 *   R03/R04  DAC attenuation      $FF = 0dB, 0.5dB per step down
@@ -52,6 +54,7 @@
 * Edt/Rev  YYYY/MM/DD  Modified by
 * ------------------------------------------------------------------
 *   1      2026/09/05  assembled for the wm8776-balance kit
+*   2      2026/10/08  UPDATE (bit 8) on R00-R05 only
 
                     ifp1
                     use       defsfile
@@ -60,7 +63,7 @@
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       1
+edition             set       2
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -93,13 +96,16 @@ start               clr       regnum,u
                     stb       regval,u
 
 * Build the 16-bit codec word:
-*   bits 15..9 = register, bit 8 = UPDATE, bits 7..0 = value
-* so the high byte is (reg<<1)|1 and the low byte is the value.
+*   bits 15..9 = register, bit 8 = UPDATE on R00-R05 only, bits 7..0 = supplied value.
+* The high byte is reg<<1 (| 1 for R00-R05) and the low byte is the unmodified value.
                     lda       regnum,u
                     anda      #$7F                registers are 7 bits
-                    lsla                          reg << 1, leaving bit 0 for UPDATE
-                    ora       #$01                set UPDATE so the change takes effect
-                    ldb       regval,u
+                    lsla                          reg << 1
+                    ldb       regnum,u
+                    cmpb      #$05
+                    bhi       WmNoUpdate          not an attenuation register: bit 8 clear
+                    ora       #$01                R00-R05: UPDATE, so the new level is heard now
+WmNoUpdate          ldb       regval,u
                     ldx       #CODEC.Base
                     lbsr      SendToCODEC
                     clrb

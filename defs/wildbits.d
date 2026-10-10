@@ -139,6 +139,11 @@ SYS0                equ       $FE00
 SYS1                equ       $FE01
 RST0                equ       $FE02
 RST1                equ       $FE03
+SYS_MID             equ       SYS0+7              read: the machine ID (2026-10-09, named for diag; wbinfo reads it too)
+MID_JR              equ       $02                 F256Jr
+MID_K               equ       $12                 F256K
+MID_K2              equ       $16                 WildBits K2
+MID_JR2             equ       $1A                 WildBits Jr2
 
 SYS_RESET           equ       %10000000
 SYS_CAP_EN          equ       %00100000
@@ -171,12 +176,11 @@ MMU_FLASHDIS        equ       %00000100           rc16: SRAM instead of flash/ca
 MMU_HAS_FLASHDIS    equ       %10000000           read-only rc16 capability
 MMU_ACT_MASK        equ       %00000011           active hardware LUT selection
 MMU_EDIT_MASK       equ       %00110000           edit hardware LUT selection
-* rc16 SRAM blocks: $00-$BF and $D0-$EF with FLASHDIS set.
 * $FC-$FF are device pages; FLASHDIS enables a contiguous $00-$FB RAM pool.
 MMU_BLOCK_SIZE      equ       $2000               bytes per block
 MMU_BLOCK_COUNT     equ       $0100               block-number space
 MMU_LUT_COUNT       equ       4                   hardware task maps
-MMU_RAM_BLOCKS      equ       224                 FLASHDIS RAM pool before allocations
+MMU_RAM_BLOCKS      equ       252                 FLASHDIS RAM pool before allocations
 MMU_IO_CTRL         equ       $FFA1
 FLASHDIS            equ       %00000100 MMU_IO_CTRL b2: 1 = blocks $40-$9F are RAM (rc16+ cores; see the bits below)
 FLASHDIS.OK         equ       %10000000 MMU_IO_CTRL b7: reads 1 on a core that implements FLASHDIS
@@ -514,6 +518,39 @@ FONT_BLK            equ       $FD
 FONT_0_OFFSET       equ       $0000
 FONT_1_OFFSET       equ       $0800
 FONT_BANK_SIZE      equ       $0800               bytes per font bank
+* The text palette's sixteen entries as the core sets them at power-up (mif/Text_LUT_OS9_palette.coe, the same
+* table as modules/palette.asm): the color numbers for the console's foreground/background (2026-10-09, named for diag)
+TXT_BLACK           equ       0
+TXT_WHITE           equ       1
+TXT_RED             equ       2
+TXT_CYAN            equ       3
+TXT_PURPLE          equ       4
+TXT_GREEN           equ       5
+TXT_BLUE            equ       6                   $0000AA
+TXT_YELLOW          equ       7
+TXT_ORANGE          equ       8
+TXT_BROWN           equ       9
+TXT_LTRED           equ       10
+TXT_DKGRAY          equ       11
+TXT_GRAY            equ       12
+TXT_LTGREEN         equ       13
+TXT_LTBLUE          equ       14
+TXT_LTGRAY          equ       15
+TXT_LUT_SIZE        equ       64                  one text LUT: sixteen B,G,R,A entries
+* vtio console sequences (level1/wildbits/modules/vtio.asm): VT_ESC then a code and its parameters
+VT_ESC              equ       $1B
+VT_DWSET            equ       $20                 window: type, x, y, width, height, foreground, background, border
+VT_80X60            equ       $04                 VT_DWSET type: 80 columns x 60 rows
+VT_FCOLOR           equ       $32                 foreground color number
+VT_BCOLOR           equ       $33                 background color number
+VT_CURSOR           equ       $05                 cursor control, then VT_CURSOR_OFF / VT_CURSOR_ON
+VT_CURSOR_OFF       equ       $20
+VT_CURSOR_ON        equ       $21
+VT_GOTOXY           equ       $02                 then column+$20, row+$20
+* Keys as the console delivers them (keydrv_k2 / keydrv_ps2)
+KEY_ESC             equ       $1B
+KEY_TAB             equ       $09                 on the K2 the right arrow sends the same byte
+KEY_RUNSTOP         equ       $05                 the K2's RUN/STOP (keydrv_k2 BREAK; scf.d C$QUIT)
 TEXT_RAM_BLK        equ       $FE                 text character page
 COLOR_RAM_BLK       equ       $FF                 text attribute page
 TEXT_RAM_SIZE       equ       $12C0               4800 bytes per text/attribute page
@@ -933,20 +970,6 @@ SID_DATA_PORT       equ       $FF99
 SID_SELECT_LEFT     equ       $00
 SID_SELECT_RIGHT    equ       $20
 SID_SELECT_BOTH     equ       $40
-* Legacy sound offsets (former MMU page $C4; not mapped on Longview)
-*
-SND.Base            equ       $0000
-SIDL.Base           equ       SND.Base+$0000
-SIDM.Base           equ       SND.Base+$0080
-SIDR.Base           equ       SND.Base+$0100
-OPL3.Base           equ       SND.Base+$0180      both boards; writes only, no status/IRQ
-OPL3_ADDR0          equ       0                   bank 0 register address
-OPL3_DATA0          equ       1                   bank 0 register data
-OPL3_ADDR1          equ       2                   bank 1 register address
-OPL3_DATA1          equ       3                   bank 1 register data
-PSGL.Base           equ       SND.Base+$0200
-PSGM.Base           equ       SND.Base+$0208
-PSGR.Base           equ       SND.Base+$0210
 
 ********************************************************************
 * Direct Memory Access (DMA) definitions
@@ -1147,6 +1170,91 @@ WIZ_ADDR_L          rmb       1                   W: address low byte R: address
 WIZ_RXCNT_H         rmb       1                   R: Rx FIFO count, bits 10:8
 WIZ_RXCNT_L         rmb       1                   R: Rx FIFO count, bits 7:0
 WIZ_FIFO            rmb       1                   $FF48-$FF4F: W = push Tx FIFO, R = pop Rx FIFO
+
+* Control register operation select, bits 3:1 (2026-10-09, from w6100eth.as and the bus adapter RTL).
+* Every transfer: write WIZ_CTRL = W6100.Enable + selects with Start clear, then again with W6100.Start
+* set (the 0->1 edge starts it), then wait for W6100.Busy to clear.
+W6100.SelBurst      equ       %00000010           bit 1: burst (FIFO) rather than a single byte
+W6100.SelARH        equ       %00000100           bits 3:1 = x10: the chip's IDM_ARH (the address high byte) through WIZ_MR
+W6100.SelRead       equ       %00001000           bit 3: read (clear = write)
+W6100.FIFOReset     equ       %00010000           bit 4: reset both FIFOs
+W6100.FIFOIrq       equ       %01000000           bit 6: FIFO empty/full interrupt enable
+* A chip register access: its high address byte goes to IDM_ARH (WIZ_MR, W6100.SelARH transfer), its block
+* to IDM_BSR (WIZ_ADDR_H) and its low byte to IDM_ARL (WIZ_ADDR_L); then a single transfer moves WIZ_WRVAL
+* (write) or returns the byte in WIZ_WRVAL (read).
+W61_BLK_COMMON      equ       $00                 IDM_BSR: the common register block
+
+* W6100 common registers (WIZnet W6100 datasheet v1.0.5, section 4.1; 16-bit offsets)
+W61_CIDR0           equ       $0000               chip ID, reads W61_CIDR0_ID
+W61_CIDR1           equ       $0001               reads W61_CIDR1_ID
+W61_VER0            equ       $0002               chip version, reads W61_VER0_ID
+W61_VER1            equ       $0003               reads W61_VER1_ID
+W61_SYSR            equ       $2000               system status (RO)
+W61_SLIR            equ       $2102               SOCKET-less interrupt flags (RO)
+W61_SLIRCLR         equ       $2128               SOCKET-less interrupt clear (W1)
+W61_SLCR            equ       $2130               SOCKET-less command
+W61_PHYSR           equ       $3000               PHY status (RO)
+W61_SHAR            equ       $4120               source MAC, 6 bytes (NETLCKR-locked)
+W61_GAR             equ       $4130               gateway IPv4, 4 bytes (locked)
+W61_SUBR            equ       $4134               subnet mask, 4 bytes (locked)
+W61_SIPR            equ       $4138               source IPv4, 4 bytes (locked)
+W61_SLDIPR          equ       $418C               SOCKET-less destination IPv4, 4 bytes
+W61_PINGIDR0        equ       $4198               PING ID, 2 bytes, R/W, reset $0000
+W61_PINGIDR1        equ       $4199
+W61_PINGSEQR0       equ       $419C               PING sequence number, 2 bytes, R/W, reset $0000
+W61_PINGSEQR1       equ       $419D
+W61_NETLCKR         equ       $41F5               network lock: write W61_NETLCKR_UNLOCK
+W61_SLRTR           equ       $4208               SOCKET-less retransmission time (100us units), R/W, reset $07D0
+W61_SLRCR           equ       $420C               SOCKET-less retransmission count, R/W
+W61_SLRTR_RESET     equ       $07D0               SLRTR's reset value: 200 ms
+W61_SLRCR_RESET     equ       $00                 SLRCR's reset value: no retransmission
+W61_CIDR0_ID        equ       $61
+W61_CIDR1_ID        equ       $00
+W61_VER0_ID         equ       $46
+W61_VER1_ID         equ       $61
+W61_NETLCKR_UNLOCK  equ       $3A
+* SYSR bits
+W61_SYSR_CHPL       equ       %10000000           chip configuration locked
+W61_SYSR_NETL       equ       %01000000           network configuration locked
+W61_SYSR_PHYL       equ       %00100000           PHY configuration locked
+W61_SYSR_IND        equ       %00000010           parallel (indirect) bus interface - the K2's
+W61_SYSR_SPI        equ       %00000001           SPI interface
+* PHYSR bits
+W61_PHYSR_CAB       equ       %10000000           1 = cable unplugged
+W61_PHYSR_DPX       equ       %00000100           1 = half duplex (link up)
+W61_PHYSR_SPD       equ       %00000010           1 = 10 Mbps, 0 = 100 Mbps (link up)
+W61_PHYSR_LNK       equ       %00000001           1 = link up
+* SLCR / SLIR bits
+W61_SLCR_PING4      equ       %00100000           send an IPv4 PING (SLCR) / reply received (SLIR)
+W61_SLIR_TOUT       equ       %10000000           SOCKET-less command timed out
+W61_SLIR_PING4      equ       W61_SLCR_PING4      PING4 reply received
+W61_SLIR_ALL        equ       $FF                 every SLIR flag, through SLIRCLR
+* Socket blocks and registers (datasheet v1.0.5 section 4.2; 2026-10-10, diag's DNS lookup as w6100tel)
+W61_BLK_S0REG       equ       $08                 IDM_BSR: socket 0 registers; socket n (4n+1)<<3
+W61_BLK_S0TX        equ       $10                 socket 0 TX buffer; (4n+2)<<3
+W61_BLK_S0RX        equ       $18                 socket 0 RX buffer; (4n+3)<<3
+W61_Sn_MR           equ       $0000               socket mode
+W61_Sn_CR           equ       $0010               socket command; reads 0 once accepted
+W61_Sn_IR           equ       $0020               socket interrupt flags
+W61_Sn_IRCLR        equ       $0028               socket interrupt clear (W1)
+W61_Sn_SR           equ       $0030               socket status
+W61_Sn_PORTR        equ       $0114               source port, 2 bytes
+W61_Sn_DIPR         equ       $0120               destination IPv4, 4 bytes
+W61_Sn_DPORTR       equ       $0140               destination port, 2 bytes
+W61_Sn_TX_FSR       equ       $0204               TX free size, 2 bytes
+W61_Sn_TX_WR        equ       $020C               TX write pointer, 2 bytes
+W61_Sn_RX_RSR       equ       $0224               RX received size, 2 bytes
+W61_Sn_RX_RD        equ       $0228               RX read pointer, 2 bytes
+W61_Sn_MR_UDP4      equ       $02                 Sn_MR: UDP over IPv4
+W61_Sn_CR_OPEN      equ       $01
+W61_Sn_CR_CLOSE     equ       $10
+W61_Sn_CR_SEND      equ       $20
+W61_Sn_CR_RECV      equ       $40
+W61_Sn_SR_UDP       equ       $22                 SOCK_UDP: open in UDP mode
+W61_Sn_IR_SENDOK    equ       %00010000
+W61_Sn_IR_TIMEOUT   equ       %00001000
+W61_UDP4_HDR        equ       8                   UDP RX packet: info (2, length in bits 10:0), peer IPv4 (4), port (2)
+W61_UDP4_LENH       equ       %00000111           the length's high bits in the info's first byte
 
 
 ********************************************************************

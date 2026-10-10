@@ -100,9 +100,37 @@ $(MODDIR)/fpga: $(L1PCD)/fpga.asm | $(MODDIR)
 
 endif # K2-only RP2040 modules and command
 
+# diag: Level 1 hardware diagnostics (level1/wildbits/cmds/diag.asm + diag_hw.asm, 2026-10-09). It carries its own
+# CP437 font and text palette, copied in at build time from sys/fonts/phoenixegafont.asm and modules/palette.asm
+# (the fcb rows only, labels dropped) so its frame looks right whatever font or palette the tested system has.
+ifeq ($(LEVEL),1)
+CMDS += diag
+endif
+$(MODDIR)/diag: $(L1PCD)/diag.asm $(L1PCD)/diag_hw.asm diagfont.inc diagpal.inc | $(MODDIR)
+	$(AS) $(AFLAGS) -I$(L1PCD) $< $(ASOUT)$@
+
+diagfont.inc: $(LEVEL1)/wildbits/sys/fonts/phoenixegafont.asm
+	sed -n '/^start/,/emod/p' $< | grep -E '^[A-Za-z0-9_]*[[:space:]]+fcb' | sed -E 's/^[A-Za-z0-9_]+//' > $@
+
+diagpal.inc: $(L1PMD)/palette.asm
+	sed -n '/^start/,/emod/p' $< | grep -E '^[A-Za-z0-9_]*[[:space:]]+fcb' | sed -E 's/^[A-Za-z0-9_]+//' > $@
+
 ifeq ($(LEVEL),2)
 # vs: VS1053 test command (wb/vs1053); on its own line so it never collides with edits to the CMDS list above
 CMDS += vs
+
+# These commands live in the Level 2 source tree. Explicit prerequisites also
+# prevent an older Level 1 object from satisfying an incremental build.
+$(MODDIR)/view: $(L2PCD)/view.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+# linetest: the line-drawing engine's missing-pixel probe (level2/wildbits/tests), installed as CMDS/linetest.
+CMDS += linetest
+$(MODDIR)/linetest: $(LEVEL2)/wildbits/tests/linetest.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(OBJDIR)/play.o: $(L2PCD)/play.as | $(OBJDIR)
+	$(ASM) $(AFLAGS) $< $(ASOUT)$@
 
 UTILPAK1_MODS = attr copy date del deiniz dir display list makdir mdir \
 	merge mfree procs rename tmode unlink
