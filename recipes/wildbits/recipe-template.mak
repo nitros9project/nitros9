@@ -20,5 +20,5 @@ RECIPE ?= wildbits
 # CMDS_EXTRA += mycmd
 
 # Optional bootfile post-process command.
-# For level 2, default is: ./padup256 bootfile
+# For level 2, default is: sh ../smartpad256 bootfile
 # PADUP =
