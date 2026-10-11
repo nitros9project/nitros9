@@ -33,9 +33,10 @@ OS9FORMAT_CMD = $(OS9FORMAT_SD) -e
 #     starts in the last two pages of an 8K block, F$AllImg maps every slot
 #     above one block low). Ceiling 40,448 bytes ($6000-$FDFF; slot 2 is the
 #     drivers' reserved window). Bootfiles over 32,768 also need the
-#     unsigned copy loop in bootos9/os9boot (same date). igncr: CRLF-safe.
-PADUP = bash -o igncr ./smartpad256 bootfile
-override MAX_BOOTFILE_SIZE = 40448
+#     unsigned copy loop in bootos9/os9boot (same date). Both are now
+#     wildbits.mak's defaults; smartpad256 moved to recipes/wildbits.
+#     Kept here only to run it through bash -o igncr (CRLF-safe).
+PADUP = bash -o igncr ../smartpad256 bootfile
 
 # 0b) BASIC09 binaries build from the sibling nitros9-languages repo
 #     (LANGUAGES above). Its build invokes python3, which on this box

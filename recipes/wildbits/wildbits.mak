@@ -237,14 +237,17 @@ $(FEU_STARTUP): FORCE
 
 FORCE: ;
 
-# Level 2 bootfile must not exceed 32,256 bytes ($7E00), which is the
-# available window from $8000 to $FDFF (below $FE00 hardware I/O). Exceeding
-# 32,256 bytes causes the bootfile to spill into physical Block 3, corrupting
-# DAT slot mappings during early kernel initialization.
-MAX_BOOTFILE_SIZE = 32256
+# Level 2 bootfile must not exceed 40,448 bytes ($9E00): the loaders place it
+# to end at $FDFF (below $FE00 hardware I/O), and starting below $6000 would
+# reach slot 2, the drivers' reserved map window. Bootfiles over 32,768 bytes
+# need the unsigned copy loop in bootos9 and the FEU os9boot (2026-10-04); an
+# older FEU in flash stops after the first sector.
+MAX_BOOTFILE_SIZE = 40448
 
+# smartpad256 pads at the beginning to whole pages, like padup256, and past
+# the page counts Krn maps one block too low (31-32, 63-64, 95-96, 127-128).
 ifeq ($(LEVEL),2)
-  PADUP ?= ./padup256 bootfile
+  PADUP ?= sh ../smartpad256 bootfile
 endif
 bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
@@ -252,8 +255,8 @@ bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 ifeq ($(LEVEL),2)
 	@size=$$(wc -c < $@ | tr -d ' '); \
 	if [ "$$size" -gt $(MAX_BOOTFILE_SIZE) ]; then \
-		echo "Error: $@ size ($$size bytes) exceeds the 32,256 byte threshold by $$((size - $(MAX_BOOTFILE_SIZE))) bytes!" >&2; \
-		echo "Level 2 bootfile must be <= 32,256 bytes (\$$7E00) to avoid DAT slot mapping corruption during early kernel initialization." >&2; \
+		echo "Error: $@ size ($$size bytes) exceeds the $(MAX_BOOTFILE_SIZE) byte limit by $$((size - $(MAX_BOOTFILE_SIZE))) bytes!" >&2; \
+		echo "Level 2 bootfile must be <= $(MAX_BOOTFILE_SIZE) bytes (see MAX_BOOTFILE_SIZE in wildbits.mak)." >&2; \
 		exit 1; \
 	fi
 endif
