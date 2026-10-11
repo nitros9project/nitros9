@@ -1,44 +1,51 @@
 * Included in diag; all mutable state is indexed from U.
-dispatch            fdb dmatest-dispatch,mathstart-dispatch,fpustart-dispatch
+dispatch            fdb speedstart-dispatch,mmustart-dispatch,mathstart-dispatch,fpustart-dispatch
                     fdb psgstart-dispatch,sidstart-dispatch,oplstart-dispatch
                     fdb midistart-dispatch,pcmstart-dispatch,spritestart-dispatch,memtest-dispatch
                     fdb irqstart-dispatch,linestart-dispatch
-                    fdb bitmaptest-dispatch,ethstart-dispatch,rtcstart-dispatch
-                    fdb wifistart-dispatch,speedstart-dispatch,inputstart-dispatch,mousestart-dispatch
+                    fdb bitmaptest-dispatch,dmatest-dispatch,tilestart-dispatch,gpustart-dispatch,ethstart-dispatch
+                    fdb wifistart-dispatch
+                    fdb rtcstart-dispatch,inputstart-dispatch,mousestart-dispatch
                     fdb inputstart-dispatch     K: N/A (gray, key ignored) off the K2, so no machine check here
-descriptions        fdb dmahelp-descriptions,mathhelp-descriptions,fpuhelp-descriptions
+                    fdb flashstart-dispatch,cartfstart-dispatch,cartrstart-dispatch
+descriptions        fdb speedhelp-descriptions,mmuhelp-descriptions,mathhelp-descriptions,fpuhelp-descriptions
                     fdb soundhelp-descriptions,soundhelp-descriptions,soundhelp-descriptions
                     fdb midihelp-descriptions,pcmhelp-descriptions,spritehelp-descriptions,memhelp-descriptions
                     fdb irqhelp-descriptions,linehelp-descriptions
-                    fdb bitmaphelp-descriptions,ethhelp-descriptions,rtchelp-descriptions
-                    fdb wifihelp-descriptions,speedhelp-descriptions,keyhelp-descriptions,mousehelp-descriptions
+                    fdb bitmaphelp-descriptions,dmahelp-descriptions,tilehelp-descriptions,gpuhelp-descriptions
+                    fdb ethhelp-descriptions
+                    fdb wifihelp-descriptions,rtchelp-descriptions,ps2help-descriptions,mousehelp-descriptions
                     fdb keyhelp-descriptions
-dmahelp             fcc "DMA: fill, copy, OR, AND, XOR, MASK in owned memory; readback."
+                    fdb flashhelp-descriptions,cartfhelp-descriptions,cartrhelp-descriptions
+dmahelp             fcc "DMA: 13 transfers checked, fill show. 5 s."
                     fcb 0
-mathhelp            fcc "Integer math: changing operands, hardware vs CPU reference."
+mathhelp            fcc "Math: hardware vs CPU reference, live."
                     fcb 0
-fpuhelp             fcc "FPU: multiply 2x3, divide 6/4, add 1.5+2.25; exact IEEE results."
+fpuhelp             fcc "FPU: 2x3, 6/4, 1.5+2.25 vs exact IEEE."
                     fcb 0
-soundhelp           fcc "Write-only tone output for 2 s, then silenced. Confirm by ear."
+soundhelp           fcc "Tone for 2 s, then silenced. Listen."
                     fcb 0
-midihelp            fcc "Channel 1 piano chord: MIDI OUT + SAM2695 for 2 s, then Note Off."
+midihelp            fcc "MIDI: piano chord, OUT + SAM2695, 2 s."
                     fcb 0
 soundlive1          fcc "Sound on: it stops by itself after 2 s."
                     fcb 0
 soundlive2          fcc "Sound stopped after 2 s."
                     fcb 0
-keyhelp             fcc "Keys: each key as the OS delivers it, no PS/2 register read. Esc stops."
+keyhelp             fcc "Keys: as the OS delivers them. Esc stops."
                     fcb 0
-mousehelp           fcc "OS mouse (SS.Mouse or VICKY X/Y), read only; the PS/2 port is not touched."
+ps2help             fcc "PS/2: K2 port scan codes, else OS keys."
                     fcb 0
-spritehelp          fcc "32 colored 8x8 sprites bounce in the live view for 5 s, as sprites.asm."
+mousehelp           fcc "Mouse: OS position and buttons, read only."
                     fcb 0
-memhelp             fcc "Owned 8K RAM walking bits/address patterns, not a full L2 map."
+spritehelp          fcc "Sprites: 32 bounce in the live view, 5 s."
                     fcb 0
-linehelp            fcc "Lines: bitmap 0 cleared, a fan of engine lines over the text. Esc ends."
+memhelp             fcc "Memory: owned 8K, walking bits, addresses."
                     fcb 0
-bitmaphelp          fcc "Pattern readback in owned RAM, then the Wildbits logo in bitmap 0. Esc ends."
+linehelp            fcc "Lines: engine line fan in bitmap 0. 5 s."
                     fcb 0
+bitmaphelp          fcc "Bitmap: RAM readback, then the logo. 5 s."
+                    fcb 0
+MathBarW            equ ViewW-1                 the integer test's bar
 settle              pshs x
                     ldx #256
 settleloop          leax -1,x
@@ -97,7 +104,7 @@ mathlive            inc operand+1,u
                     ldd >MATH_MUL_P
                     lbne mathbad
                     lda vbase,u
-                    ldb #3
+                    ldb #ViewCol
                     lbsr at
                     leax mathlabel,pcr
                     lbsr putz
@@ -105,14 +112,17 @@ mathlive            inc operand+1,u
                     lbsr hex16
                     ldd result+2,u
                     lbsr hex16
-                    lda operand+1,u
-                    anda #63
-                    sta col,u
+                    lda operand+1,u         the bar's length: the operand's low byte, modulo MathBarW
+mb_mod              cmpa #MathBarW
+                    blo mb_len
+                    suba #MathBarW
+                    bra mb_mod
+mb_len              sta col,u
                     lda vbase,u
                     adda #2
-                    ldb #3
+                    ldb #ViewCol
                     lbsr at
-                    ldb #64
+                    ldb #MathBarW
 mathbar             lda #' '
                     tst col,u
                     beq mathbarout
@@ -160,7 +170,7 @@ fpulive             clr >FPMATH_CTRL2
                     std result+2,u
                     bne fpubad
                     lda vbase,u
-                    ldb #3
+                    ldb #ViewCol
                     lbsr at
                     leax fpulabel,pcr
                     lbsr putz
@@ -341,7 +351,7 @@ mt_go1              ldb ,y
                     bra mt_go1
 mt_go8              clr glyphsok,u
 mt_go9              puls d,x,y,pc
-glyphtab            fcb BoxV2,BoxTR,BoxBR,BoxTeeR,0
+glyphtab            fcb BoxV2,BoxTR,BoxBR,BoxTeeR,MmCell,0
 * palesc (2026-10-11, multiterminal): the text palette through the console - X = 16 foreground entries, Y = 16
 * background entries (B, G, R, A each) as 1B 60 / 1B 61 n R G B A, which Level 2 vtio keeps per terminal (GF.Pal:
 * the live LUT, or the terminal's buffer when it is in the background)
@@ -393,138 +403,514 @@ diagpal
 diagfont
                     use diagfont.inc
                     use diaglogo.asm
-* Readback expectations are calculated independently of the DMA destination.
+                    use diagflower.asm
+*                   use diagspeech.asm      J commented out (2026-10-12)
+* D (DIAG 1.2, 2026-10-11, user: "use dmashow.asm test in diag's DMA test but use the logic operations"; "factor in
+* tltest.asm and dmaxfer.asm and dmashow.asm"). First dmaxfer's transfers (ed.4), each into diag's own 256-byte
+* destination and read back against what the CPU works out, one line each: 1D fill and copy, the logic ops of
+* DMA_OP_REG on copies and fills (skipped on a core whose $FED4 reads b7 = 0), a 2D copy and fill with strides, the
+* 16-bit fill (DMA_FILL_WORD_H on odd addresses, _L on even) and a copy across the byte lanes. dmaxfer's walk of
+* the free SRAM is left out: diag writes only memory it owns. Every transfer is programmed and started with IRQs
+* masked, so no other process reaches the engine in between, and its status is polled, never slept on (a CPU in
+* cwai never acknowledges the engine's halt). Then dmashow's picture, drawn with the logic ops in bitmap 0 inside
+* the live view: five overlapping 2D fills - COPY, OR, XOR, AND, MASK - and a box that bounces, drawn and erased by
+* XOR fills so nothing under it is repainted, until the test stops.
+DmaStepLen          equ 13                  a dmasteptab entry
 dmatest             lda >DMA.Base+DMA_STATUS_REG
                     lbmi engineblocked
-                    clr dmaop,u
-                    leax source,u
+                    clr chkerrs,u
+                    clr chkfail,u
+                    clr chkfail+1,u
+                    clr dmashow,u
+                    leax source,u           the source: 0, 1 ... 255
                     clrb
-srcinit             stb ,x+
+dt_src              stb ,x+
                     incb
-                    bne srcinit
-dmaeach             leax destination,u
-                    lda #$55
-                    clrb
-dstinit             sta ,x+
-                    decb
-                    bne dstinit
-                    clr >DMA.Base+DMA_CTRL_REG
+                    bne dt_src
+                    clr dmaop,u             the step
+dt_step             lbsr dmastep
+                    bcs dt_stuck
+                    inc dmaop,u
                     lda dmaop,u
-                    cmpa #4
-                    bhi dmafill
-                    sta >DMA.Base+DMA_OP_REG
-                    leax source,u
-                    lbsr physicaladdr
-                    lda phys,u
-                    sta >DMA.Base+DMA_SOURCE_ADDR_H
-                    ldd phys+1,u
-                    std >DMA.Base+DMA_SOURCE_ADDR_M
-                    lda #DMA_CTRL_Enable
-                    bra dmaset
-dmafill             clr >DMA.Base+DMA_OP_REG
-                    lda #$5A
-                    sta >DMA.Base+DMA_FILL_BYTE
-                    lda #DMA_CTRL_Enable+DMA_CTRL_Fill
-dmaset              sta sndvalue,u
-                    leax destination,u
-                    lbsr physicaladdr
-                    lda phys,u
-                    sta >DMA.Base+DMA_DEST_ADDR_H
-                    ldd phys+1,u
-                    std >DMA.Base+DMA_DEST_ADDR_M
-                    ldd #256
-                    std >DMA.Base+DMA_SIZE_X_H
-                    clr >DMA.Base+DMA_SIZE_Y_H
-                    clr >DMA.Base+DMA_SIZE_Y_L
-                    lda sndvalue,u
-                    sta >DMA.Base+DMA_CTRL_REG
-* no completion interrupt (2026-10-10, user: "did you leave it in a state where IRQS were pending"): the status
-* is polled, and an INT_DMA that nothing acknowledged stayed pending after diag (keyboard off the rails on the
-* Jr2, warm restarts that froze)
-                    ora #DMA_CTRL_Start_Trf
-                    sta >DMA.Base+DMA_CTRL_REG
-                    ldd #120
-                    std waitcount,u
-                    ldx #2
-                    os9 F$Sleep
-dmawait             lda >DMA.Base+DMA_STATUS_REG
-                    bpl dmacompare
-                    lbsr tick
-                    ldd waitcount,u
-                    subd #1
-                    std waitcount,u
-                    bne dmawait
+                    cmpa #DmaSteps
+                    blo dt_step
+                    lbsr dmapreview
+                    tst chkerrs,u
+                    beq dt_pass
+                    lbsr setfail
+                    leax dmabad,pcr
+                    lbsr failsum
+                    lbra dmashowstart
+dt_pass             lbsr setpass
+                    lbra dmashowstart
+dt_stuck            clr >DMA.Base+DMA_OP_REG
                     lbsr setfail
                     lbra engineblocked
-* No write to the IRQ controller (2026-10-10): DMA interrupts are never enabled, so INT_DMA is left as it is
-dmacompare          clr >DMA.Base+DMA_CTRL_REG
-                    leax source,u
-                    leay destination,u
-                    clr mismatch,u
-                    clr mismatch+1,u
+* dmastep: step dmaop of dmasteptab - the destination set to $55, the transfer programmed and run, the destination
+* read back; its line written. Carry: the engine never finished.
+dmastep             ldb dmaop,u
+                    lda #DmaStepLen
+                    mul
+                    leay dmasteptab,pcr
+                    leay d,y
+                    sty dmaent,u
+                    ldd ,y                  its label
+                    leax dmasteptab,pcr
+                    leax d,x
+                    lda vbase,u
+                    adda dmaop,u
+                    lbsr chkline
+                    ldy dmaent,u
+                    lda 2,y                 a logic op on a core without them: skipped
+                    beq ds_go
+                    lda >DMA.Base+DMA_OP_REG
+                    bmi ds_go
+                    leax dmanoops,pcr
+                    lbsr putz
+                    leax ethvskip,pcr
+                    lbsr putz
+                    andcc #^1
+                    rts
+ds_go               leax destination,u      the destination: $55
+                    lda #$55
                     clrb
-dmacmpbyte          lda ,x+
-                    pshs b                  stack +0: byte counter
-                    ldb dmaop,u
-                    beq dmaexpect
-                    cmpb #1
-                    beq dmaor
-                    cmpb #2
-                    beq dmaand
-                    cmpb #3
-                    beq dmaxor
-                    cmpb #4
-                    beq dmamask
-                    lda #$5A
-                    bra dmaexpect
-dmaor               ora #$55
-                    bra dmaexpect
-dmaand              anda #$55
-                    bra dmaexpect
-dmaxor              eora #$55
-                    bra dmaexpect
-dmamask             sta memgot,u
-                    anda #$F0
-                    bne masklow
-                    lda memgot,u
-                    ora #$50
-                    sta memgot,u
-masklow             lda memgot,u
-                    anda #$0F
-                    bne maskdone
-                    lda memgot,u
-                    ora #5
-                    sta memgot,u
-maskdone            lda memgot,u
-dmaexpect           cmpa ,y+
-                    beq dmanextbyte
+ds_d1               sta ,x+
+                    decb
+                    bne ds_d1
+                    lbsr dmalock            IRQs masked until the start
+                    lda 2,y                 the op, the fill byte and word
+                    sta >DMA.Base+DMA_OP_REG
+                    lda 4,y
+                    sta >DMA.Base+DMA_FILL_BYTE
+                    ldd #$A55A
+                    std >DMA.Base+DMA_FILL_WORD_H
+                    leax source,u           the source, its entry's offset on
+                    lbsr physicaladdr
+                    ldd phys+1,u
+                    addb 5,y
+                    adca #0
+                    std >DMA.Base+DMA_SOURCE_ADDR_M
+                    lda phys,u
+                    adca #0
+                    sta >DMA.Base+DMA_SOURCE_ADDR_H
+                    leax destination,u      the destination the same
+                    lbsr physicaladdr
+                    ldd phys+1,u
+                    addb 6,y
+                    adca #0
+                    std >DMA.Base+DMA_DEST_ADDR_M
+                    stb dmadpar,u
+                    lda phys,u
+                    adca #0
+                    sta >DMA.Base+DMA_DEST_ADDR_H
+                    ldd 7,y                 the sizes: X (the 1D count), Y (0 for 1D: count bits 23:16)
+                    std >DMA.Base+DMA_SIZE_X_H
+                    clr >DMA.Base+DMA_SIZE_Y_H
+                    lda 9,y
+                    sta >DMA.Base+DMA_SIZE_Y_L
+                    clra                    the strides
+                    ldb 10,y
+                    std >DMA.Base+DMA_SRC_STRIDE_X_H
+                    ldb 11,y
+                    std >DMA.Base+DMA_DST_STRIDE_Y_H
+                    lda 3,y
+                    lbsr dmago
+                    bcs ds_x
+                    clr >DMA.Base+DMA_OP_REG
+                    clr mismatch,u          read back
+                    clr mismatch+1,u
+                    leax destination,u
+                    clrb
+ds_c1               lbsr dmaexp             A = the byte expected at B
+                    cmpa ,x+
+                    beq ds_c2
+                    pshs b
                     ldd mismatch,u
                     addd #1
                     std mismatch,u
-dmanextbyte         puls b
-                    decb
-                    bne dmacmpbyte
-                    lda vbase,u
-                    adda dmaop,u
-                    ldb #3
-                    lbsr at
-                    leax dmalabel,pcr
+                    puls b
+ds_c2               incb
+                    bne ds_c1
+                    leax dmabadmsg,pcr
                     lbsr putz
-                    lda dmaop,u
-                    lbsr hex8
                     ldd mismatch,u
                     lbsr hex16
                     ldd mismatch,u
-                    bne dmabad
-                    inc dmaop,u
-                    lda dmaop,u
-                    cmpa #6
-                    lblo dmaeach
+                    beq ds_v
+                    inc chkerrs,u
+ds_v                lbsr chkverdict
+                    andcc #^1
+ds_x                rts
+* dmaexp: B = a destination byte's index -> A = what the step should have left there (its kind, entry byte 12;
+* the source holds its own index). Keeps B and X.
+dmaexp              pshs b,x
+                    ldx dmaent,u
+                    lda 12,x
+                    lsla
+                    leax dmaexptab,pcr
+                    ldd a,x
+                    jmp d,x
+dmaexptab           fdb de_k0-dmaexptab,de_k1-dmaexptab,de_k2-dmaexptab,de_k3-dmaexptab,de_k4-dmaexptab
+                    fdb de_k5-dmaexptab,de_k6-dmaexptab,de_k7-dmaexptab,de_k8-dmaexptab,de_k9-dmaexptab
+                    fdb de_k10-dmaexptab,de_k11-dmaexptab,de_k12-dmaexptab
+de_k0               lda #$5A                1D fill
+                    puls b,x,pc
+de_k1               lda ,s                  1D copy
+                    puls b,x,pc
+de_k2               lda ,s                  OR
+                    ora #$55
+                    puls b,x,pc
+de_k3               lda ,s                  AND
+                    anda #$55
+                    puls b,x,pc
+de_k4               lda ,s                  XOR
+                    eora #$55
+                    puls b,x,pc
+de_k5               lda ,s                  MASK: a source nibble of 0 keeps the destination's
+                    tfr a,b
+                    andb #$F0
+                    bne de_k5a
+                    ora #$50
+de_k5a              tfr a,b
+                    andb #$0F
+                    bne de_k5b
+                    ora #$05
+de_k5b              puls b,x,pc
+de_k6               lda ,s                  NOT copy
+                    coma
+                    puls b,x,pc
+de_k7               lda #$AA                XOR fill $FF over $55
+                    puls b,x,pc
+de_k8               lda #$A0                NOR fill: ~($0F | $55)
+                    puls b,x,pc
+de_k9               lda ,s                  2D copy: rows of 16 from a stride of 32, packed; the rest untouched
+                    bmi de_k9b
+                    tfr a,b
+                    andb #$0F
+                    anda #$70
+                    lsla
+                    pshs b
+                    ora ,s+
+                    puls b,x,pc
+de_k9b              lda #$55
+                    puls b,x,pc
+de_k10              lda ,s                  2D fill: 16 of every 32 bytes
+                    bita #$10
+                    bne de_k9b
+                    lda #$77
+                    puls b,x,pc
+de_k11              lda ,s                  16-bit fill: $A5 on odd addresses, $5A on even
+                    adda dmadpar,u
+                    bita #1
+                    bne de_k11b
+                    lda #$5A
+                    puls b,x,pc
+de_k11b             lda #$A5
+                    puls b,x,pc
+de_k12              lda ,s                  byte lanes: source+1 into destination+2
+                    cmpa #2
+                    blo de_k9b
+                    deca
+                    puls b,x,pc
+* dmasteptab: label (from dmasteptab), op, control, fill byte, source and destination offsets, X size (the 1D count),
+* Y size (0 for 1D), source and destination strides, kind (dmaexp)
+DmaE                equ DMA_CTRL_Enable
+DmaF                equ DMA_CTRL_Enable+DMA_CTRL_Fill
+dmasteptab            fdb dsl1-dmasteptab
+                    fcb DMA_OP_COPY,DmaF,$5A,0,0
+                    fdb 256
+                    fcb 0,0,0,0
+                    fdb dsl2-dmasteptab
+                    fcb DMA_OP_COPY,DmaE,0,0,0
+                    fdb 256
+                    fcb 0,0,0,1
+                    fdb dsl3-dmasteptab
+                    fcb DMA_OP_OR,DmaE,0,0,0
+                    fdb 256
+                    fcb 0,0,0,2
+                    fdb dsl4-dmasteptab
+                    fcb DMA_OP_AND,DmaE,0,0,0
+                    fdb 256
+                    fcb 0,0,0,3
+                    fdb dsl5-dmasteptab
+                    fcb DMA_OP_XOR,DmaE,0,0,0
+                    fdb 256
+                    fcb 0,0,0,4
+                    fdb dsl6-dmasteptab
+                    fcb DMA_OP_MASK,DmaE,0,0,0
+                    fdb 256
+                    fcb 0,0,0,5
+                    fdb dsl7-dmasteptab
+                    fcb DMA_OP_NOT,DmaE,0,0,0
+                    fdb 256
+                    fcb 0,0,0,6
+                    fdb dsl8-dmasteptab
+                    fcb DMA_OP_XOR,DmaF,$FF,0,0
+                    fdb 256
+                    fcb 0,0,0,7
+                    fdb dsl9-dmasteptab
+                    fcb DMA_OP_OR+DMA_OP_NOT,DmaF,$0F,0,0
+                    fdb 256
+                    fcb 0,0,0,8
+                    fdb dsl10-dmasteptab
+                    fcb DMA_OP_COPY,DmaE+DMA_CTRL_1D_2D,0,0,0
+                    fdb 16
+                    fcb 8,32,16,9
+                    fdb dsl11-dmasteptab
+                    fcb DMA_OP_COPY,DmaF+DMA_CTRL_1D_2D,$77,0,0
+                    fdb 16
+                    fcb 8,0,32,10
+                    fdb dsl12-dmasteptab
+                    fcb DMA_OP_COPY,DmaF+DMA_CTRL_Dbl_Speed,0,0,0
+                    fdb 256
+                    fcb 0,0,0,11
+                    fdb dsl13-dmasteptab
+                    fcb DMA_OP_COPY,DmaE,0,1,2
+                    fdb 254
+                    fcb 0,0,0,12
+dsl1                fcc "1D fill     "
+                    fcb 0
+dsl2                fcc "1D copy     "
+                    fcb 0
+dsl3                fcc "OR copy     "
+                    fcb 0
+dsl4                fcc "AND copy    "
+                    fcb 0
+dsl5                fcc "XOR copy    "
+                    fcb 0
+dsl6                fcc "MASK copy   "
+                    fcb 0
+dsl7                fcc "NOT copy    "
+                    fcb 0
+dsl8                fcc "XOR fill    "
+                    fcb 0
+dsl9                fcc "NOR fill    "
+                    fcb 0
+dsl10               fcc "2D copy     "
+                    fcb 0
+dsl11               fcc "2D fill     "
+                    fcb 0
+dsl12               fcc "16-bit fill "
+                    fcb 0
+dsl13               fcc "Byte lanes  "
+                    fcb 0
+dmabadmsg           fcc "bad bytes $"
+                    fcb 0
+dmanoops            fcc "core has no logic ops"
+                    fcb 0
+dmabad              fcc "DMA: FAIL - "
+                    fcb 0
+dsmsg               fcc "DMA show: COPY OR XOR AND MASK, XOR box. 5 s."
+                    fcb 0
+dsstuck             fcc "DMA show: the engine did not finish a fill."
+                    fcb 0
+* dmalock: IRQs masked while a transfer is programmed (CC kept in dmacc, dmago puts it back). Keeps D, X and Y.
+dmalock             pshs a
+                    tfr cc,a
+                    sta dmacc,u
+                    puls a
+                    orcc #IntMasks
+                    rts
+* dmago: A = the control byte: the transfer started - control with start clear, then set (the engine fires on the
+* edge) - and IRQs back as dmalock found them; the status polled until busy rises (a few clocks) and falls. Control
+* cleared after. Carry: still busy after about 0.3 s at 20 Mhz. Keeps X and Y.
+dmago               sta >DMA.Base+DMA_CTRL_REG
+                    ora #DMA_CTRL_Start_Trf
+                    sta >DMA.Base+DMA_CTRL_REG
+                    lda dmacc,u
+                    tfr a,cc
+                    pshs x
+                    ldx #255                busy rising
+dg_0                tst >DMA.Base+DMA_STATUS_REG
+                    bmi dg_1a
+                    leax -1,x
+                    bne dg_0
+dg_1a               lda #6                  and falling
+                    sta dmaspin,u
+dg_1                ldx #0
+dg_2                tst >DMA.Base+DMA_STATUS_REG
+                    bpl dg_3
+                    leax -1,x
+                    bne dg_2
+                    dec dmaspin,u
+                    bne dg_1
+                    puls x
+                    orcc #1
+                    rts
+dg_3                clr >DMA.Base+DMA_CTRL_REG
+                    puls x
+                    andcc #^1
+                    rts
+* dmashowstart: dmashow's picture in bitmap 0 (bgbitmap: diag's colors, cleared; on Level 2 on layer 0), graphics
+* and the text over it on, the five fills drawn a few ticks apart and the box put down; dmalive moves it until
+* the test stops (restoregraphics takes the picture down)
+DsX0                equ LineX0              the live view in bitmap pixels
+DsY0                equ LineY0
+DsWide                 equ LineX1+1-LineX0
+DsHigh                 equ LineY1+1-LineY0
+DsBoxSz               equ 16                  the box
+DsRectW             equ 64                  the five fills
+DsRectH             equ 40
+DsBoxColor          equ TXT_LTGRAY          XORed in: every color under it changes, and back
+dmashowstart        lbsr bgbitmap
+                    bcc dss_1
+                    lbsr message            X = why
+                    lbra restoregraphics
+dss_1               lda gfxmcr,u
+                    ora #Mstr_Ctrl_Text_Mode_En+Mstr_Ctrl_Text_Overlay+Mstr_Ctrl_Graph_Mode_En+Mstr_Ctrl_Bitmap_En
+                    ldb gfxmcr+1,u
+                    lbsr gfxmcrset
+                    lbsr bgset
+                    lda #DsRectW
+                    sta dsw,u
+                    lda #DsRectH
+                    sta dsh,u
+                    leay dsrects,pcr
+dss_2               ldx ,y
+                    beq dss_3
+                    lda 2,y
+                    sta dsrow,u
+                    lda 4,y                 the color
+                    ldb 3,y                 the op
+                    lbsr dmarect
+                    bcs dss_9
+                    ldx #8                  a pause between them, as dmashow's
+                    os9 F$Sleep
+                    leay 5,y
+                    bra dss_2
+dss_3               ldd #DsX0+DsWide/2-DsBoxSz/2 the box: the middle of the view, two right and one down a pass
+                    std dsx,u
+                    ldd #DsY0+DsHigh/2-DsBoxSz/2
+                    std dsy,u
+                    ldd #$0201
+                    std dsdx,u
+                    lbsr dsbox
+                    bcs dss_9
+                    lda #1
+                    sta dmashow,u
+                    sta running,u
+                    leax dsmsg,pcr
+                    lbra message
+dss_9               leax dsstuck,pcr
+                    lbsr message
+                    lbra restoregraphics
+* dsrects: left pixel, top row, op, color - each overlaps the one before, so the op shows where they meet
+dsrects             fdb DsX0+8
+                    fcb DsY0+8,DMA_OP_COPY,TXT_RED
+                    fdb DsX0+8+24
+                    fcb DsY0+8+20,DMA_OP_OR,TXT_GREEN
+                    fdb DsX0+8+48
+                    fcb DsY0+8+40,DMA_OP_XOR,TXT_LTGRAY
+                    fdb DsX0+8+72
+                    fcb DsY0+8+60,DMA_OP_AND,TXT_LTBLUE
+                    fdb DsX0+8+96
+                    fcb DsY0+8+80,DMA_OP_MASK,TXT_CYAN
+                    fdb 0
+* dmalive: the box erased (XORed again where it is), moved - bouncing off the view's sides - and drawn there
+dmalive             tst dmashow,u
+                    beq dl_9
+                    bsr dsbox
+                    bcs dl_x
+                    ldb dsdx,u
+                    sex
+                    addd dsx,u
+                    cmpd #DsX0
+                    bge dl_1
+                    ldd #DsX0
+                    neg dsdx,u
+dl_1                cmpd #DsX0+DsWide-DsBoxSz
+                    ble dl_2
+                    ldd #DsX0+DsWide-DsBoxSz
+                    neg dsdx,u
+dl_2                std dsx,u
+                    ldb dsdy,u
+                    sex
+                    addd dsy,u
+                    cmpd #DsY0
+                    bge dl_3
+                    ldd #DsY0
+                    neg dsdy,u
+dl_3                cmpd #DsY0+DsHigh-DsBoxSz
+                    ble dl_4
+                    ldd #DsY0+DsHigh-DsBoxSz
+                    neg dsdy,u
+dl_4                std dsy,u
+                    bsr dsbox
+                    bcs dl_x
+dl_9                rts
+dl_x                clr dmashow,u
+                    leax dsstuck,pcr
+                    lbra message
+* dsbox: the box XORed into bitmap 0 at (dsx, dsy). Carry: the engine never finished.
+dsbox               lda #DsBoxSz
+                    sta dsw,u
+                    sta dsh,u
+                    lda dsy+1,u
+                    sta dsrow,u
+                    ldx dsx,u
+                    lda #DsBoxColor
+                    ldb #DMA_OP_XOR
+* dmarect: X = the left pixel, dsrow = the top row, dsw x dsh the size, A = the fill byte, B = the DMA op: a 2D
+* fill of bitmap 0 (gfxblk, 320 bytes a row), programmed with IRQs masked, run and waited for; the op cleared
+* after. Carry: the engine was busy, or never finished.
+dmarect             pshs d,x,y
+                    lda >DMA.Base+DMA_STATUS_REG
+                    bmi dr_x
+                    clr dmahi,u             the offset: row x 320 + the left pixel
+                    lda dsrow,u
+                    ldb #64
+                    mul
+                    std dmatmp,u
+                    lda dsrow,u
+                    clrb
+                    addd dmatmp,u
+                    bcc dr_1
+                    inc dmahi,u
+dr_1                addd 2,s
+                    bcc dr_2
+                    inc dmahi,u
+dr_2                std dmatmp,u
+                    ldb gfxblk+1,u          plus the bitmap's address: its block x $2000
+                    andb #7
+                    lslb
+                    lslb
+                    lslb
+                    lslb
+                    lslb
+                    addb dmatmp,u
+                    bcc dr_3
+                    inc dmahi,u
+dr_3                stb dmatmp,u
+                    ldb gfxblk+1,u
+                    lsrb
+                    lsrb
+                    lsrb
+                    addb dmahi,u
+                    stb dmahi,u
+                    lbsr dmalock
+                    lda dmahi,u
+                    sta >DMA.Base+DMA_DEST_ADDR_H
+                    ldd dmatmp,u
+                    std >DMA.Base+DMA_DEST_ADDR_M
+                    ldd ,s
+                    sta >DMA.Base+DMA_FILL_BYTE
+                    stb >DMA.Base+DMA_OP_REG
+                    clra
+                    ldb dsw,u
+                    std >DMA.Base+DMA_SIZE_X_H
+                    ldb dsh,u
+                    std >DMA.Base+DMA_SIZE_Y_H
+                    ldd #320
+                    std >DMA.Base+DMA_DST_STRIDE_Y_H
+                    lda #DMA_CTRL_Enable+DMA_CTRL_1D_2D+DMA_CTRL_Fill
+                    lbsr dmago
+                    bcs dr_x
                     clr >DMA.Base+DMA_OP_REG
-                    lbsr setpass
-                    lbra dmapreview
-dmabad              clr >DMA.Base+DMA_OP_REG
-                    lbra setfail
+                    andcc #^1
+                    puls d,x,y,pc
+dr_x                clr >DMA.Base+DMA_OP_REG
+                    orcc #1
+                    puls d,x,y,pc
 engineblocked       leax enginebusy,pcr
                     lbra message
 dmapreview          leax destination,u
@@ -534,16 +920,19 @@ dmapreview          leax destination,u
                     ldb #4
 dmapreviewrow       pshs b,x
                     lda row,u
-                    ldb #3
+                    ldb #ViewCol
                     lbsr at
                     puls b,x
                     pshs b
                     ldb #16
-dmapreviewbyte      lda ,x+
+dmapreviewbyte      lda ,x+                 16 bytes, a space after every four (2026-10-11: the view is 45 wide)
                     lbsr hex8
+                    decb
+                    bitb #3
+                    bne dmapb1
                     lda #' '
                     lbsr putchar
-                    decb
+dmapb1              tstb
                     bne dmapreviewbyte
                     inc row,u
                     puls b
@@ -622,8 +1011,10 @@ oplwrite            sta >OPL3_ADDR0_PORT
                     stb >OPL3_DATA0_PORT
                     lbsr settle
                     rts
-* U PCM (2026-10-10, user: "add a stereo PCM tone test to diag"): the rc25 stereo PCM output - a tone on the left,
-* then the right, then both, about two seconds in all, then silence. Software timed (a counted delay per half
+* U PCM (2026-10-10, user: "add a stereo PCM tone test to diag"; 2026-10-11: "make the pcm test a siren containing low
+* and high freq"; "short siren, 2 seconds max"): the rc25 stereo PCM output - a two-tone siren, low and high an octave
+* apart, about a sixth of a second each: twice on the left, twice on the right, twice on both (pcmsiren), under two
+* seconds, then silence. Software timed (a counted delay per half
 * wave), so the pitch follows the CPU speed; Ready ($FF9E bit 0) is polled before every sample. A core without the
 * registers never shows Ready and the test says so. The names are local: wildbits.d has no PCM entries yet.
 PcmLeftH            equ $FF9A               left sample, high byte (staged)
@@ -631,12 +1022,10 @@ PcmRightH           equ $FF9C               right sample, high byte; each low by
 PcmStatus           equ $FF9E               bit 0: Ready
 PcmReady            equ %00000001
 PcmAmp              equ $2000               a quarter of full scale
-PcmHalfL            equ 900                 delay loops per half wave: left (the lower tone)
-PcmHalfR            equ 600                 right
-PcmHalfB            equ 750                 both
-PcmCountL           equ 700                 half waves per tone
-PcmCountR           equ 1050
-PcmCountB           equ 840
+PcmLow              equ 900                 delay loops per half wave: the siren's low tone
+PcmHigh             equ 450                 and its high tone, an octave up
+PcmSegLow           equ 160                 half waves of each: about a sixth of a second, so the twelve make under 2 s
+PcmSegHigh          equ 320                 (2026-10-11, user: "short siren, 2 seconds max")
 pcmstart            ldb #100
 pcm_pcs1            lda >PcmStatus          Ready within 100 polls?
                     bita #PcmReady
@@ -646,19 +1035,17 @@ pcm_pcs1            lda >PcmStatus          Ready within 100 polls?
                     lbsr setfail
                     leax pcmabsent,pcr
                     lbra message
-pcm_pcs2            lda #1                  left
-                    ldx #PcmHalfL
-                    ldy #PcmCountL
+pcm_pcs2            leay pcmsiren,pcr       the siren: channels, half-wave delay, half waves; 0 ends
+pcm_s1              lda ,y
+                    beq pcm_s2
+                    pshs y
+                    ldx 1,y
+                    ldy 3,y
                     lbsr pcmtone
-                    lda #2                  right
-                    ldx #PcmHalfR
-                    ldy #PcmCountR
-                    lbsr pcmtone
-                    lda #3                  both
-                    ldx #PcmHalfB
-                    ldy #PcmCountB
-                    lbsr pcmtone
-                    clra
+                    puls y
+                    leay 5,y
+                    bra pcm_s1
+pcm_s2              clra
                     clrb
                     lbsr pcmboth            silence
                     lda #4                  LISTEN
@@ -706,11 +1093,37 @@ pcm_pp1             lda >PcmStatus
                     sta ,x
                     stb 1,x
                     rts
-pcmhelp             fcc "PCM stereo (rc25): left tone, right tone, both, then silence. Listen."
+pcmhelp             fcc "PCM: low-high siren left, right, both."
                     fcb 0
-pcmabsent           fcc "PCM: no Ready at $FF9E - this core has no PCM output (rc25+)."
+* pcmsiren: low, high, low, high on the left (1), the right (2), then both (3)
+pcmsiren            fcb 1
+                    fdb PcmLow,PcmSegLow
+                    fcb 1
+                    fdb PcmHigh,PcmSegHigh
+                    fcb 1
+                    fdb PcmLow,PcmSegLow
+                    fcb 1
+                    fdb PcmHigh,PcmSegHigh
+                    fcb 2
+                    fdb PcmLow,PcmSegLow
+                    fcb 2
+                    fdb PcmHigh,PcmSegHigh
+                    fcb 2
+                    fdb PcmLow,PcmSegLow
+                    fcb 2
+                    fdb PcmHigh,PcmSegHigh
+                    fcb 3
+                    fdb PcmLow,PcmSegLow
+                    fcb 3
+                    fdb PcmHigh,PcmSegHigh
+                    fcb 3
+                    fdb PcmLow,PcmSegLow
+                    fcb 3
+                    fdb PcmHigh,PcmSegHigh
                     fcb 0
-pcmplayed           fcc "PCM: left, right and both tones played - confirm by ear."
+pcmabsent           fcc "PCM: no Ready at $FF9E (needs rc25+)."
+                    fcb 0
+pcmplayed           fcc "PCM: siren played - confirm by ear."
                     fcb 0
 midistart           leax midion,pcr
                     lbsr sendmidi
@@ -743,12 +1156,12 @@ midibyte            lda ,x+
                     rts
 stopsound           tst soundon,u
                     beq soundoffret
-                    lda soundchoice,u
-                    cmpa #3
+                    lda soundchoice,u       the test that started it, by name (2026-10-11, user: "either the psg or sid isn't
+                    cmpa #TestPsg           stopping" - the literal rows 3, 4, 5 went stale when C and X moved above)
                     beq psgstop
-                    cmpa #4
+                    cmpa #TestPsg+1         V, the SID
                     beq sidstop
-                    cmpa #5
+                    cmpa #TestPsg+2         O, the OPL3
                     beq oplstop
                     leax midioff,pcr
                     lbsr sendmidi
@@ -772,19 +1185,94 @@ soundoffret         rts
 * P and K (2026-10-10, user: "ps/2 keyboard test should do the same" as M): the keys come through the OS alone
 * (the main loop's I$Read); diag reads no PS/2 register. A line is drawn when a key arrives, not every pass. K
 * adds the K2 optical keyboard controller's status and count (its own registers, not PS/2).
-inputstart          lda keycount,u          the first pass draws
+inputstart          clr ps2hw,u
+                    lda selection,u         P on the K2: the port itself
+                    cmpa #TestPS2
+                    bne ins1@
+                    lda board,u
+                    cmpa #MID_K2
+                    lbeq ps2start
+ins1@               lda keycount,u          the first pass draws
                     deca
                     sta kdrawn,u
                     lda #1
                     sta running,u
                     lda #3
                     lbra setstatus
-inputlive           lda keycount,u
+* P on the K2 (2026-10-11, user: "the k2 ps/2 keyboard test is picking up the optical keyboard presses"): the K2's
+* console keys are the optical keyboard's (keydrv_k2 is its only keyboard driver; no OS driver reads the PS/2
+* keyboard port), so P reads the port's own FIFO: each byte is a scan code as the keyboard sent it (set 2). The
+* channel is diag's to read only while its IRQ is masked - mousedrv_ps2 takes it, unmasked, when the mouse is
+* plugged into it, and then P leaves it alone. Bytes already waiting are dropped first.
+ps2start            lda >INT_MASK_0
+                    bita #INT_PS2_KBD
+                    bne ps1@
+                    leax ps2mouse,pcr
+                    lbra message
+ps1@                lbsr ps2read            the stale bytes
+                    bcc ps1@
+                    clr ps2count,u
+                    lda #1
+                    sta ps2hw,u
+                    sta running,u
+                    lda vbase,u
+                    lbsr clearrow
+                    leax ps2wait,pcr
+                    lbsr putz
+                    lda #3
+                    lbra setstatus
+* ps2read: carry clear and A = the next byte from the PS/2 keyboard FIFO; carry set when it is empty
+ps2read             lda >PS2_STAT
+                    bita #KEMP
+                    bne ps2r1@
+                    lda >KBD_IN
+                    andcc #^1
+                    rts
+ps2r1@              orcc #1
+                    rts
+* ps2poll: the FIFO's bytes counted; the line redrawn when any came
+ps2poll             lbsr ps2read
+                    bcs ps2p9@
+                    bsr ps2byte
+ps2p1@              lbsr ps2read            the rest of the burst
+                    bcs ps2p2@
+                    bsr ps2byte
+                    bra ps2p1@
+ps2p2@              lda vbase,u
+                    ldb #ViewCol
+                    lbsr at
+                    leax ps2label,pcr
+                    lbsr putz
+                    lda ps2last,u
+                    lbsr hex8
+                    leax ps2bytes,pcr
+                    lbsr putz
+                    lda ps2count,u
+                    lbsr hex8
+ps2p9@              rts
+* ps2byte: A = a byte from the port, counted and kept. Esc's make code - not after the $F0 that starts a release -
+* stops the test as Esc on the console does (2026-10-11, user: "k2's ps/2 keyboard test has no way to exit from
+* it": the port's keys never reach the console): sigcode, which the main loop takes as Esc.
+Ps2Esc              equ $76                 Esc in scan code set 2
+Ps2Break            equ $F0                 a release's prefix
+ps2byte             cmpa #Ps2Esc
+                    bne pb_1
+                    ldb ps2last,u
+                    cmpb #Ps2Break
+                    beq pb_1
+                    ldb #1
+                    stb sigcode,u
+pb_1                sta ps2last,u
+                    inc ps2count,u
+                    rts
+inputlive           tst ps2hw,u
+                    bne ps2poll
+                    lda keycount,u
                     cmpa kdrawn,u
                     beq inputret            no new key: nothing drawn
                     sta kdrawn,u
                     lda vbase,u
-                    ldb #3
+                    ldb #ViewCol
                     lbsr at
                     leax inputlabel,pcr
                     lbsr putz
@@ -1063,31 +1551,31 @@ via0stop            ldx #VIA0.Base
                     ora #ViaSetBit
                     sta VIA_IER,x
 vs9@                rts
-irqhelp             fcc "Each masked IRQ source fired once: timers, DMA, RTC, VIA0; then restored."
+irqhelp             fcc "IRQ: fire each masked source once, restore."
                     fcb 0
-irqlt0              fcc "Timer 0 (I/O clock)  "
+irqlt0              fcc "Timer 0     "
                     fcb 0
-irqlt1              fcc "Timer 1 (frames)     "
+irqlt1              fcc "Timer 1     "
                     fcb 0
-irqldma             fcc "DMA completion       "
+irqldma             fcc "DMA done    "
                     fcb 0
-irqlrtc             fcc "RTC periodic         "
+irqlrtc             fcc "RTC period  "
                     fcb 0
-irqlvia             fcc "VIA0 timer 1         "
+irqlvia             fcc "VIA0 T1     "
                     fcb 0
-irqgmsg             fcc "group "
+irqgmsg             fcc "G"
                     fcb 0
-irqdollar           fcc " bit $"
+irqdollar           fcc " $"
                     fcb 0
-irqosmsg            fcc "unmasked: the OS's own, not fired"
+irqosmsg            fcc "OS's own, not fired"
                     fcb 0
-irqstuck            fcc "stuck: still pending after a clear "
+irqstuck            fcc "stuck pending "
                     fcb 0
 irqfired            fcc "fired, cleared "
                     fcb 0
 irqnever            fcc "never fired "
                     fcb 0
-irqok               fcc "IRQ: every masked source fired once and was put back."
+irqok               fcc "IRQ: every masked source fired, restored."
                     fcb 0
 irqbad              fcc "IRQ: FAIL - "
                     fcb 0
@@ -1190,9 +1678,9 @@ mouseread           tst mouseosok,u
                     clr mouseosok,u         SS.Mouse stopped answering: VICKY from now on
                     bra mousevicky
 mr9@                rts
-MouseCols           equ 64                  the grid: 64 x 20 cells over the 640 x 480 screen
-MouseRows           equ 20
-MouseXDiv           equ 640/MouseCols
+MouseCols           equ 43                  the grid: 43 x 30 cells over the 640 x 480 screen (2026-10-11, user: "3 chars
+MouseRows           equ 30                  wider"; 15 x 16 pixels each, the last column the right edge's 10)
+MouseXDiv           equ (640+MouseCols-1)/MouseCols
 MouseYDiv           equ 480/MouseRows
 mousestart          clr result,u
                     clr mouseosok,u
@@ -1233,7 +1721,7 @@ ml1@                lbsr mousestat
 * mousestat: the status line (the position in grid cells, the buttons)
 mousestat           pshs d,x
                     lda vbase,u
-                    ldb #3
+                    ldb #ViewCol
                     lbsr at
                     leax mousestatus,pcr
                     lbsr putz
@@ -1263,7 +1751,7 @@ mrw1@               sta ,x+
 mrw2@               lda ,s
                     adda vbase,u
                     adda #MouseGridOff
-                    ldb #3
+                    ldb #ViewCol
                     lbsr at
                     leax linebuf,u
                     ldy #MouseCols
@@ -1272,7 +1760,9 @@ mrw2@               lda ,s
 * restoregraphics: L's display put back through the OS - the engine stopped, the line-write enable as found, the
 * master control as found (SS.DScrn), bitmap 0's CLUT as found (SS.Palet), bitmap 0 freed (SS.FScrn) if L
 * allocated it. The layers are never touched.
-restoregraphics     tst gfxowned,u
+restoregraphics     lbsr gpurestore         J's GPU first (2026-10-16)
+                    lbsr restoretiles       H's tile map (2026-10-11)
+                    tst gfxowned,u
                     lbeq gfxrestret
                     tst lvl2,u              Level 2: the driver owns the engine and its enable
                     bne rg_l2
@@ -1342,7 +1832,42 @@ gfxmcrset           pshs d,x,y,u
                     lda #1
                     ldb #SS.DScrn
                     os9 I$SetStt
-                    puls d,x,y,u,pc
+* the text over graphics turned on or off (2026-10-11, user: "the highlighted test name turns to black text"): the
+* overlaid text's background is not drawn, so the bar's text changes color with it (testcolors) and its row is
+* drawn again
+                    lda ,s
+                    anda #Mstr_Ctrl_Text_Overlay
+                    cmpa overlay,u
+                    beq gms_9
+                    sta overlay,u
+                    lbsr barredraw
+gms_9               puls d,x,y,u,pc
+* clut3load: diag's 16 colors and the logo's into CLUT 3 through the OS (SS.DfPal; a 1 KB table built in pixraw,
+* the entries past them black)
+clut3load           ldx pixbase,u
+                    leay diagpal,pcr
+                    ldb #TXT_LUT_SIZE
+ln_lsc1             lda ,y+
+                    sta ,x+
+                    decb
+                    bne ln_lsc1
+                    leay logopal,pcr        the logo's colors from entry LogoBase (2026-10-11)
+                    ldb #LogoColors*4
+ln_lsc3             lda ,y+
+                    sta ,x+
+                    decb
+                    bne ln_lsc3
+                    ldd #1024-TXT_LUT_SIZE-LogoColors*4
+ln_lsc2             clr ,x+
+                    subd #1
+                    bne ln_lsc2
+                    pshs u
+                    ldx #LineClut
+                    ldy pixbase,u
+                    lda #1
+                    ldb #SS.DfPal
+                    os9 I$SetStt
+                    puls u,pc
 lineidle            lda #BITMAP_BLK
                     lbsr mapio
                     lda TyVKY_LD_OFFSET,x
@@ -1374,11 +1899,11 @@ lineisidle          andcc #$FE
 LineBM              equ 0                   the bitmap L draws in
 LineClut            equ 3                   its CLUT
 LineLines           equ 16                  lines in the fan
-LineX0              equ 8                   the fan's corner: column 2 of the text, the view's first row
+LineX0              equ ViewL*4             the fan's corner: the view's first column and row
 LineY0              equ ViewTop*4
 LineY1              equ ViewBot*4+3         the view's last row (a text row is 4 bitmap lines)
-LineXStep           equ 20                  the fan's ends, 20 pixels apart
-LineX1              equ 77*4+3              the view's last dot: column 77's last (the border's right side)
+LineXStep           equ 12                  the fan's ends, 12 pixels apart
+LineX1              equ FrameRight*4-1      the view's last dot: column FrameRight-1's last
 LineBorder          equ 4                   white border lines after the fan (linetab)
 linestart           tst lvl2,u
                     bne ln_ls1
@@ -1440,30 +1965,9 @@ ln_l1a              lda #BITMAP_BLK         bitmap 0's control byte as found (re
                     sta oldline,u
 ln_l1b              equ *
                     inc gfxowned,u          from here on restoregraphics puts it all back
-* diag's 16 colors into CLUT 3 (a 1 KB table built in pixraw; entries 16-255 black) and bitmap 0 onto it
-                    ldx pixbase,u
-                    leay diagpal,pcr
-                    ldb #TXT_LUT_SIZE
-ln_lsc1             lda ,y+
-                    sta ,x+
-                    decb
-                    bne ln_lsc1
-                    leay logopal,pcr        the logo's colors from entry LogoBase (2026-10-11)
-                    ldb #LogoColors*4
-ln_lsc3             lda ,y+
-                    sta ,x+
-                    decb
-                    bne ln_lsc3
-                    ldd #1024-TXT_LUT_SIZE-LogoColors*4
-ln_lsc2             clr ,x+
-                    subd #1
-                    bne ln_lsc2
+* diag's 16 colors into CLUT 3 (clut3load) and bitmap 0 onto it
+                    lbsr clut3load
                     pshs u
-                    ldx #LineClut
-                    ldy pixbase,u
-                    lda #1
-                    ldb #SS.DfPal
-                    os9 I$SetStt
                     ldx #LineClut
                     ldy #LineBM
                     lda #1
@@ -1773,6 +2277,976 @@ ln_lo4              lda #BITMAP_BLK         the engine rearmed (GO clear)
                     lbsr unmap
                     andcc #^1
                     rts
+* J SP0250 speech - COMMENTED OUT (2026-10-12, user: "comment out the J test and don't allow it's key to invoke
+* the test"; "automatic mode skips over it, too"): no row, no key, not in the Z run; the code is kept as comments.
+* J SP0250 speech (DIAG 1.2, 2026-10-11, user: "add a speech test to diag that speaks 'Wild bits diagnostics 1 point
+* 2'"): the K2 rc26 core's GI SP0250 LPC speech chip at $FF9F - a write is one byte of a 15-byte frame, accepted while
+* bit 0 (Ready: the chip's DRQ, the last byte delivered) reads 1; bit 7 reads 1 when the chip is there (the rc25
+* core reads 0 at $FF9F, older ones $FF, so bits 6-1 must read 0 as well). The phrase is diagspeech.asm, "Hello" in
+* 25 frames from speech2sp0250.py, the last silent (the chip keeps running its last frame) - the whole phrase, 150
+* frames, made diag too big for a free 8K slot (user 2026-10-11: "reduce speech to Hello"). The frames are fed from
+* here, a byte each time Ready reads 1 - about half a second - and the result is LISTEN: only an ear can judge it.
+* SpeechReg           equ $FF9F
+* SpeechReady         equ %00000001
+* SpeechPresent       equ %10000000
+* SpeechOuter         equ 4                   Ready polls allowed per byte, in 65,536s (a frame lasts about 20 ms)
+* speechstart         lda >SpeechReg          the chip: bit 7 set, bits 6-1 clear
+*                     bita #%01111110
+*                     bne sp_none
+*                     bita #SpeechPresent
+*                     beq sp_none
+*                     lda #4                  LISTEN
+*                     lbsr setstatus
+*                     leax speechdata,pcr
+*                     ldd #SpeechFrames*15
+*                     std spleft,u
+* sp_1                lda #SpeechOuter        a byte: Ready awaited, then written
+*                     sta spouter,u
+* sp_2                ldy #0
+* sp_3                lda >SpeechReg
+*                     bita #SpeechReady
+*                     bne sp_4
+*                     leay -1,y
+*                     bne sp_3
+*                     dec spouter,u
+*                     bne sp_2
+*                     lbsr setfail            Ready never came
+*                     leax spstuck,pcr
+*                     lbra message
+* sp_4                lda ,x+
+*                     sta >SpeechReg
+*                     ldd spleft,u
+*                     subd #1
+*                     std spleft,u
+*                     bne sp_1
+*                     leax spdone,pcr
+*                     lbra message
+* sp_none             leax spnone,pcr
+*                     lbra message
+* speechhelp          fcc /Speech (K2 rc26 SP0250): says "Hello"./
+*                     fcb 0
+* spdone              fcc "Speech: the phrase was sent - confirm by ear."
+*                     fcb 0
+* spnone              fcc "Speech: no SP0250 at $FF9F (K2 rc26+)."
+*                     fcb 0
+* spstuck             fcc "Speech: FAIL - chip stopped taking bytes."
+*                     fcb 0
+banner              lda #TXT_YELLOW
+                    ldb #ColBack
+                    lbsr setcolors
+                    leax bannertxt,pcr
+bn_1                tst ,x                  each line in turn (message leaves X past it); a 0 ends them
+                    beq bn_9
+                    lbsr message
+                    bra bn_1
+bn_9                lda #ColText
+                    ldb #ColBack
+                    lbra setcolors
+bannertxt           fcc "              _ _     _ _     _ _"
+                    fcb 0
+                    fcc "             (_) |   | | |   (_) |"
+                    fcb 0
+                    fcc "    __      ___| | __| | |__  _| |_ ___"
+                    fcb 0
+                    fcc "    \ \ /\ / / | |/ _` | '_ \| | __/ __|"
+                    fcb 0
+                    fcc "     \ V  V /| | | (_| | |_) | | |_\__ \"
+                    fcb 0
+                    fcc "      \_/\_/ |_|_|\__,_|_.__/|_|\__|___/"
+                    fcb 0
+                    fcc " "
+                    fcb 0
+                    fcb 0
+* X MMU map (DIAG 1.2, 2026-10-11, user: "add an MMU test after CPU test, should check the l2 mmap and show a nicer
+* version of the output, graphical without the U, M, _ and . chars which do not tell the story"): the kernel's
+* block map (F$GBlkMp, Level 2 only) as a picture - a row per 16 blocks (128K), each block two solid cells in the
+* color of its state: in use, holding modules, free, not RAM - and the blocks of diag's own process (its DAT image,
+* F$GPrDsc; unused slots are DAT.Free) in purple, and VICKY's blocks $FC-$FF in white. Each row is only its first block's number and the kernel's states:
+* the map holds no flash and no regions (2026-10-11, user: "no flash should be in the map anyway, flash access
+* doesn't use the kernel map"), so nothing from the hardware's memory map is added. A legend and the counts follow. Level 1 has no block map: the test says so and runs nothing.
+MmCell              equ $DB                 CP437 full block
+MmColUsed              equ TXT_LTRED
+MmColMod               equ TXT_YELLOW
+MmColFree              equ TXT_LTGREEN
+MmColNone              equ TXT_DKGRAY
+MmColDiag              equ TXT_PURPLE          (2026-10-11, user: cyan was too close to the free blocks' green)
+MmColVicky             equ TXT_WHITE           $FC-$FF: VICKY's blocks (2026-10-11, user: \"$FC-$FF should be marked Vicky\")
+MmVicky                equ $FC                 the first of them
+MmDiagF             equ $40                 in diag's copy of the map: one of diag's blocks (the kernel uses bits 7, 1, 0)
+PDatImg             equ $40                 P$DATImg in a Level 2 process descriptor: past $20 of fields, P$DIO (16) and
+*                                            P$Path (16) - os9.d defines it for Level 2 only (2026-10-11: 1 was wrong, and
+*                                            the descriptor's own bytes turned free blocks cyan)
+MmDatFree           equ $333E               DAT.Free: an unused slot (wildbits.d, Level 2 only)
+MmModBlk            equ %00000010           ModBlock: the block holds modules (os9.d, Level 2 only)
+mmustart            tst lvl2,u
+                    bne mm_1
+                    leax mmnol2,pcr
+                    lbra message
+mm_1                ldx pixbase,u           the block map, into pixraw
+                    os9 $19                 F$GBlkMp (Level 2; Level 1's defs do not name it): Y = its entries
+                    bcc mm_2
+                    lbsr setfail
+                    leax mmerr,pcr
+                    lbra message
+mm_2                os9 F$ID                diag's process descriptor after it, in pixraw + 256
+                    ldx pixbase,u
+                    leax 256,x
+                    os9 $18                 F$GPrDsc
+                    bcs mm_4
+                    leay PDatImg,x          its eight slots' blocks marked in the map copy
+                    ldb #8
+mm_3                pshs b
+                    ldd ,y++
+                    cmpd #MmDatFree
+                    beq mm_3b
+                    ldx pixbase,u
+                    abx
+                    lda ,x
+                    ora #MmDiagF
+                    sta ,x
+mm_3b               puls b
+                    decb
+                    bne mm_3
+mm_4                lda vbase,u             a blank line, then the column offsets over the cells (2026-10-11, user)
+                    inca
+                    lbsr clearrow
+                    leax mmhead,pcr
+                    lbsr putz
+                    clr mmused,u
+                    clr mmmod,u
+                    clr mmfree,u
+                    clr mmnone,u
+                    clr mmdiag,u
+                    clr mmrow,u
+mm_r                lda vbase,u             a row: "$R0" and its sixteen blocks
+                    adda mmrow,u
+                    adda #2
+                    lbsr clearrow
+                    leax rowbuf,u
+                    lda #'$
+                    sta ,x+
+                    leay hexchars,pcr
+                    ldb mmrow,u
+                    lda b,y
+                    sta ,x+
+                    lda #'0
+                    sta ,x+
+                    lda #' '
+                    sta ,x+
+                    lda #$FF                the first cell always sets its color
+                    sta rattr,u
+                    lda mmrow,u
+                    ldb #16
+                    mul
+                    ldy pixbase,u
+                    leay d,y
+                    lda #16
+                    sta mmcol,u
+mm_c                lda ,y+
+                    pshs a                  VICKY's blocks ($FC-$FF): their own color, whatever the map says
+                    lda mmrow,u
+                    ldb #16
+                    mul
+                    addb #16
+                    subb mmcol,u            B = the block number
+                    cmpb #MmVicky
+                    puls a
+                    blo mm_c0
+                    subb #MmVicky           their label in their cells instead (2026-10-11, user: "print the word
+                    lslb                    Vicky (4) centered in the white blocks themselves"): two characters a
+                    bne mm_cv               block, black on white
+                    lda #VT_ESC
+                    sta ,x+
+                    lda #VT_FCOLOR
+                    sta ,x+
+                    lda #TXT_BLACK
+                    sta ,x+
+                    lda #VT_ESC
+                    sta ,x+
+                    lda #VT_BCOLOR
+                    sta ,x+
+                    lda #MmColVicky
+                    sta ,x+
+                    lda #TXT_BLACK
+                    sta rattr,u
+mm_cv               pshs y
+                    leay mmvklabel,pcr
+                    lda b,y
+                    sta ,x+
+                    incb
+                    lda b,y
+                    sta ,x+
+                    puls y
+                    bra mm_c3
+mm_c0               lbsr mmclass            A = its color, the counts kept
+mm_c1               equ *
+                    cmpa rattr,u
+                    beq mm_c2
+                    sta rattr,u
+                    ldb #VT_ESC
+                    stb ,x+
+                    ldb #VT_FCOLOR
+                    stb ,x+
+                    sta ,x+
+mm_c2               lda #MmCell
+                    sta ,x+
+                    sta ,x+
+mm_c3               dec mmcol,u
+                    bne mm_c
+                    lda #VT_ESC             the colors back for the next line
+                    sta ,x+
+                    lda #VT_FCOLOR
+                    sta ,x+
+                    lda #ColText
+                    sta ,x+
+                    lda #VT_ESC
+                    sta ,x+
+                    lda #VT_BCOLOR
+                    sta ,x+
+                    lda #ColBack
+                    sta ,x+
+mm_n2               lbsr mmout
+                    inc mmrow,u
+                    lda mmrow,u
+                    cmpa #16
+                    lblo mm_r
+                    lda vbase,u             a blank line, then the legend (2026-10-11, user)
+                    adda #19
+                    lbsr clearrow
+                    leax rowbuf,u
+                    leay mmlegend,pcr
+mm_l                lda ,y+                 color, then its name; 0 ends
+                    beq mm_l3
+                    ldb #VT_ESC
+                    stb ,x+
+                    ldb #VT_FCOLOR
+                    stb ,x+
+                    sta ,x+
+                    lda #MmCell
+                    sta ,x+
+                    sta ,x+
+                    lda #VT_ESC
+                    sta ,x+
+                    lda #VT_FCOLOR
+                    sta ,x+
+                    lda #ColText
+                    sta ,x+
+mm_l2               lda ,y+
+                    beq mm_l
+                    sta ,x+
+                    bra mm_l2
+mm_l3               lbsr mmout
+                    lda ,y                  a second legend line follows the first's end (two zeros)
+                    beq mm_l4
+                    lda vbase,u
+                    adda #20
+                    lbsr clearrow
+                    leax rowbuf,u
+                    bra mm_l
+mm_l4               equ *
+                    lda vbase,u             the counts, each under its legend word (2026-10-11, user: "do not repeat the
+                    adda #20                ... text, just put the # of blocks under the 1st word")
+                    lbsr clearrow
+                    leay mmcounts,pcr
+mm_k                ldb ,y+                 the word's column, then the count's offset in the data area (2 bytes); 0 ends
+                    beq mm_k9
+                    lda vbase,u
+                    adda #20
+                    addb #ViewCol
+                    lbsr at
+                    ldd ,y++
+                    lda d,u
+                    lbsr netdec
+                    bra mm_k
+mm_k9               lbra setpass
+* mmcounts: under "used", "module", "free" and "diag" (their columns in the legend, from ViewCol)
+mmcounts            fcb 3
+                    fdb mmused
+                    fcb 11
+                    fdb mmmod
+                    fcb 21
+                    fdb mmfree
+                    fcb 29
+                    fdb mmdiag
+                    fcb 0
+mmvklabel           fcc "Vicky(4)"              in VICKY's four blocks, two characters each
+* mmout: rowbuf up to X written to the console. Keeps Y (2026-10-11: it was the length after, so the legend's
+* second line - diag and Vicky - was never drawn)
+mmout               pshs y
+                    tfr x,d
+                    leax rowbuf,u
+                    pshs x
+                    subd ,s++
+                    tfr d,y
+                    lbsr conwrite
+                    puls y,pc
+* mmclass: A = a block's map entry -> A = its color; its count kept. Keeps B, X and Y.
+mmclass             bita #MmDiagF
+                    beq mmk_1
+                    inc mmdiag,u            one of diag's
+                    lda #MmColDiag
+                    rts
+mmk_1               tsta
+                    bne mmk_2
+                    inc mmfree,u
+                    lda #MmColFree
+                    rts
+mmk_2               bpl mmk_3
+                    inc mmnone,u
+                    lda #MmColNone
+                    rts
+mmk_3               bita #MmModBlk
+                    beq mmk_4
+                    inc mmmod,u
+                    lda #MmColMod
+                    rts
+mmk_4               inc mmused,u
+                    lda #MmColUsed
+                    rts
+mmhead              fcb VT_ESC,VT_FCOLOR,ColKey
+                    fcc "     0 1 2 3 4 5 6 7 8 9 A B C D E F"   one more space: each digit over its cell's second half
+                    fcb VT_ESC,VT_FCOLOR,ColText,0
+mmlegend            fcb MmColUsed
+                    fcc " used "
+                    fcb 0,MmColMod
+                    fcc " module "
+                    fcb 0,MmColFree
+                    fcc " free "
+                    fcb 0,MmColDiag
+                    fcc " diag"
+                    fcb 0,0,0               the line ends, and the legend (no RAM's gray is not in it - user 2026-10-11)
+mmnol2              fcc "MMU map: Level 2 only (F$GBlkMp)."
+                    fcb 0
+mmerr               fcc "MMU map: F$GBlkMp refused."
+                    fcb 0
+mmuhelp             fcc "MMU map: the kernel's block map."
+                    fcb 0
+* 1, 2 and 3 (DIAG 1.2, 2026-10-11, user: "add tests for onboard flash using first byte of the flash device
+* (essentially /f1's first byte), read byte #0 then write it back, add cart flash, cart ram tests - for cart use last
+* byte of the flash"; "it won't hurt to alter and change back a byte at offset $0000"; "the flash test will not
+* directly reference /f1, or /c0"). The chips themselves, no device: 1 the onboard flash's byte $0000 (block $40,
+* where /f1 starts), 2 the cartridge flash's last byte (block $9F, offset $1FFF), 3 the cartridge's last byte as
+* RAM. Each byte is complemented, read back, then put back and read back. Flash is driven as rbmem drives it: the
+* chip's ID (the K2's SST39VF168x command set first, then the SST39VF0x0's - a cartridge's is the latter), the 4K
+* sector holding the byte copied to pixraw, erased, and programmed again from the copy with the byte changed - so
+* the rest of the sector is kept. Each chip phase runs with IRQs masked and FLASHDIS clear ($40-$9F as Flash and
+* the cartridge), MMU_IO_CTRL's other bits kept and restored after (fenter, fleave). No chip ID: FAIL, no write
+* (an empty cartridge slot). 3 has no chip commands: a flash cartridge or an empty slot ignores the writes and fails.
+FcSector            equ 4096                the flash's erase sector
+flashstart          clra                    the onboard flash: chip $40, byte $0000
+                    ldb #$40
+                    ldx #0
+                    bra fcstart
+cartfstart          lda #1                  the cartridge flash: chip $80, its last byte
+                    bra fc_cart
+cartrstart          lda #2                  the cartridge as RAM: its last byte
+fc_cart             ldb #$80
+                    ldx #$1FFF
+fcstart             sta fcmode,u
+                    stb fcchip,u
+                    stx fcoff,u
+                    lda fcchip,u            onboard: the chip's first block; the cartridge: its last ($9F)
+                    tst fcmode,u
+                    beq fcs_1
+                    adda #$1F
+fcs_1               sta fcblk,u
+                    clr chkerrs,u
+                    clr chkfail,u
+                    clr chkfail+1,u
+                    lda vbase,u             line 1: the chip's ID (flash), the byte and its address
+                    leax fcl1,pcr
+                    lda fcmode,u
+                    cmpa #2
+                    bne fcs_2
+                    leax fcl0,pcr
+fcs_2               lda vbase,u
+                    lbsr chkline
+                    lda fcmode,u
+                    cmpa #2
+                    beq fcs_4
+                    lbsr fenter
+                    lbsr fdetect
+                    lbsr fleave
+                    lda #'$
+                    lbsr putchar
+                    ldd fcid,u
+                    lbsr hex16
+                    tst fckind,u
+                    bne fcs_3
+                    leax fcnone,pcr         no chip: nothing is written
+                    lbsr putz
+                    inc chkerrs,u
+                    lbsr chkverdict
+                    lbra fc_tally
+fcs_3               leax fcbytemsg,pcr
+                    lbsr putz
+fcs_4               lbsr fenter             the byte as found
+                    lbsr fpeek
+                    sta fcbyte,u
+                    lbsr fleave
+                    lda #'$
+                    lbsr putchar
+                    lda fcbyte,u
+                    lbsr hex8
+                    leax fcat,pcr
+                    lbsr putz
+                    lda fcblk,u             its address: block x $2000 + offset
+                    lsra
+                    lsra
+                    lsra
+                    lbsr hex8
+                    lda fcblk,u
+                    anda #7
+                    lsla
+                    lsla
+                    lsla
+                    lsla
+                    lsla
+                    ora fcoff,u
+                    lbsr hex8
+                    lda fcoff+1,u
+                    lbsr hex8
+                    lda fcmode,u
+                    cmpa #2
+                    beq fcs_5
+                    lbsr chkverdict
+fcs_5               lda vbase,u             line 2: its complement
+                    inca
+                    leax fcl3,pcr
+                    lbsr chkline
+                    lda fcbyte,u
+                    coma
+                    lbsr fcverify
+                    lda vbase,u             line 3: the byte as found again
+                    adda #2
+                    leax fcl4,pcr
+                    lbsr chkline
+                    lda fcbyte,u
+                    lbsr fcverify
+fc_tally            tst chkerrs,u
+                    bne fc_fail
+                    lbra setpass
+fc_fail             lbsr setfail
+                    leax fcfailf,pcr        the summary names the test and its first BAD line
+                    lda fcmode,u
+                    beq fcf_1
+                    leax fcfailc,pcr
+                    deca
+                    beq fcf_1
+                    leax fcfailr,pcr
+fcf_1               lbra failsum
+* fcverify: A = a byte: written (flash: the sector erased and programmed again with it), read back - "wrote $xx,
+* read $yy" and the verdict
+fcverify            sta fcwant,u
+                    lbsr fenter
+                    lda fcmode,u
+                    cmpa #2
+                    beq fcv_r
+                    lbsr fsector            flash: the sector rewritten with the byte changed
+                    bra fcv_2
+fcv_r               lbsr fmapb              RAM: written in place
+                    ldd fcoff,u
+                    leax d,x
+                    lda fcwant,u
+                    sta ,x
+fcv_2               lbsr fpeek
+                    sta fcbad,u             the read-back
+                    lbsr fleave
+                    leax fcwrote,pcr
+                    lbsr putz
+                    lda fcwant,u
+                    lbsr hex8
+                    leax fcread1,pcr
+                    lbsr putz
+                    lda fcbad,u
+                    lbsr hex8
+                    lda fcbad,u
+                    cmpa fcwant,u
+                    beq fcv_3
+                    inc chkerrs,u
+fcv_3               lbra chkverdict
+* fenter: IRQs masked, the edit map = the active one, diag's window slot noted, FLASHDIS cleared ($40-$7F Flash,
+* $80-$9F the cartridge) with MMU_IO_CTRL's other bits kept. fleave puts all of it back.
+fenter              tfr cc,a
+                    sta fccc,u
+                    orcc #IntMasks
+                    lda >MMU_MEM_CTRL
+                    sta savedmap,u
+                    lbsr editactive
+                    ldx mapreg,u
+                    lda ,x
+                    sta savedslot,u
+                    lda >MMU_IO_CTRL
+                    sta fcsave,u
+                    anda #^FLASHDIS
+                    sta >MMU_IO_CTRL
+                    rts
+fleave              lda fcsave,u
+                    sta >MMU_IO_CTRL
+                    ldx mapreg,u
+                    lda savedslot,u
+                    sta ,x
+                    lda savedmap,u
+                    sta >MMU_MEM_CTRL
+                    lda fccc,u
+                    tfr a,cc
+                    rts
+* fmap: A = a block, put in diag's window slot -> X = the window. Keeps D. fmapb: the byte's block.
+fmapb               lda fcblk,u
+fmap                ldx mapreg,u
+                    sta ,x
+                    ldx mapbase,u
+                    rts
+* fpeek: A = the byte (fcblk, fcoff) as the chip or RAM gives it now
+fpeek               bsr fmapb
+                    ldd fcoff,u
+                    leax d,x
+                    lda ,x
+                    rts
+* funlock: the chip's two unlock writes - K2: $AA to $0AAA, $55 to $0555; SST39VF0x0: $AA to $5555, $55 to $2AAA
+* (chip blocks 2 and 1). fcmd: B = a command, after them (K2: to $0AAA; SST39VF0x0: to $5555).
+funlock             pshs b
+                    tst fckind,u
+                    bpl ful_1
+                    lda fcchip,u
+                    bsr fmap
+                    lda #$AA
+                    sta $0AAA,x
+                    lda #$55
+                    sta $0555,x
+                    puls b,pc
+ful_1               lda fcchip,u
+                    adda #2
+                    bsr fmap
+                    lda #$AA
+                    sta $1555,x
+                    lda fcchip,u
+                    inca
+                    bsr fmap
+                    lda #$55
+                    sta $0AAA,x
+                    puls b,pc
+fcmd                bsr funlock
+                    lda fcchip,u
+                    tst fckind,u
+                    bpl fcm_1
+                    bsr fmap
+                    stb $0AAA,x
+                    rts
+fcm_1               adda #2
+                    bsr fmap
+                    stb $1555,x
+                    rts
+* fid: fcid = the chip's ID (ID mode, the first word, then reset) in the command set fckind names
+fid                 ldb #$90
+                    bsr fcmd
+                    lda fcchip,u
+                    bsr fmap
+                    ldd ,x
+                    std fcid,u
+                    ldb #$F0
+                    bra fcmd
+* fdetect: fckind = the chip's command set, by its ID - the K2's first, then the SST39VF0x0's (rbmem's order)
+fdetect             lda #$FF
+                    sta fckind,u
+                    bsr fid
+                    ldd fcid,u
+                    cmpd #$BFC8
+                    beq fdt_9
+                    cmpd #$BFC9
+                    beq fdt_9
+                    lda #1
+                    sta fckind,u
+                    bsr fid
+                    ldd fcid,u
+                    cmpd #$BFD5
+                    beq fdt_9
+                    cmpd #$BFD6
+                    beq fdt_9
+                    cmpd #$BFD7
+                    beq fdt_9
+                    clr fckind,u
+fdt_9               rts
+* fsector: the 4K sector holding the byte copied to pixraw, the byte changed to fcwant there, the sector erased
+* (K2 $50, SST39VF0x0 $30, at its address; DQ6 polled until two reads agree) and programmed again from the copy,
+* a byte at a time ($A0; each polled until it reads back). Bytes of $FF are left erased.
+fsector             lbsr fmapb               the copy
+                    ldd fcoff,u
+                    anda #$10               the sector: offset bit 12
+                    clrb
+                    leax d,x
+                    ldy pixbase,u
+                    ldd #FcSector/2
+                    std fcidx,u
+fsc_1               ldd ,x++
+                    std ,y++
+                    ldd fcidx,u
+                    subd #1
+                    std fcidx,u
+                    bne fsc_1
+                    ldd fcoff,u             the byte changed in it
+                    anda #$0F
+                    ldx pixbase,u
+                    leax d,x
+                    lda fcwant,u
+                    sta ,x
+                    ldb #$80                the erase
+                    lbsr fcmd
+                    lbsr funlock
+                    lbsr fmapb
+                    ldd fcoff,u
+                    anda #$10
+                    clrb
+                    leax d,x
+                    lda #$50
+                    tst fckind,u
+                    bmi fsc_2
+                    lda #$30
+fsc_2               sta ,x
+                    ldy #0
+fsc_3               lda ,x
+                    cmpa ,x
+                    beq fsc_4
+                    leay -1,y
+                    bne fsc_3
+fsc_4               clr fcidx,u             the program, from the copy
+                    clr fcidx+1,u
+fsc_5               ldx pixbase,u
+                    ldd fcidx,u
+                    lda d,x
+                    cmpa #$FF
+                    beq fsc_7
+                    pshs a
+                    ldb #$A0
+                    lbsr fcmd
+                    lbsr fmapb
+                    ldd fcoff,u
+                    anda #$10
+                    clrb
+                    addd fcidx,u
+                    leax d,x
+                    puls a
+                    sta ,x
+                    clrb                    polled until it reads back (256 reads: a hang guard)
+fsc_6               cmpa ,x
+                    cmpa ,x
+                    beq fsc_7
+                    decb
+                    bne fsc_6
+fsc_7               ldd fcidx,u
+                    addd #1
+                    std fcidx,u
+                    cmpd #FcSector
+                    blo fsc_5
+                    rts
+fcl0                fcc "Read        "
+                    fcb 0
+fcl1                fcc "Chip ID     "
+                    fcb 0
+fcl3                fcc "Complement  "
+                    fcb 0
+fcl4                fcc "Restore     "
+                    fcb 0
+fcnone              fcc " - no flash"
+                    fcb 0
+fcbytemsg           fcc ", byte "
+                    fcb 0
+fcat                fcc " at $"
+                    fcb 0
+fcwrote             fcc "wrote $"
+                    fcb 0
+fcread1             fcc ", read $"
+                    fcb 0
+fcfailf             fcc "Onboard flash: FAIL - "
+                    fcb 0
+fcfailc             fcc "Cart flash: FAIL - "
+                    fcb 0
+fcfailr             fcc "Cart RAM: FAIL - "
+                    fcb 0
+flashhelp           fcc "Flash: chip ID, byte $0000 flipped, restored."
+                    fcb 0
+cartfhelp           fcc "Cart flash: ID, last byte flipped, restored."
+                    fcb 0
+cartrhelp           fcc "Cart RAM: last byte flipped and restored."
+                    fcb 0
+* H tile map (DIAG 1.2, 2026-10-11, user: "factor in tltest.asm", "reduce the tltest to be reasonable within diag's
+* space"; "the tilemap test is ugly"): tltest's scrolling tile map with the Wildbits flower (diagflower.asm, from the
+* logo) scattered on diag's blue - every fourth cell, the rows offset by two - so the text over it stays readable.
+* Tile map 0 is 24 x 17 cells of a tile set of three 16 x 16 tiles (0 transparent, 1 the flower, 2 blue), on
+* layer 0 under the text, scrolled diagonally a pixel a main-loop pass until the test stops. The map is a little
+* larger than the 320 x 240 screen and the scroll wraps at the pattern's period (64 across, 32 down), so it is
+* seamless and never runs past the map. The tiles and the map are built in pixraw (one 8K block: physically
+* contiguous); the colors are CLUT 3's (diag's 16 and the logo's), the map's LUT select. Level 2 goes through
+* grfdrv256 (SS.TsSet, SS.TmSet, SS.TmScrl, SS.PScrn), which keeps it all per terminal; Level 1 writes the tile
+* registers (the $C0 block at $1100 and $1180, saved first and put back) and the layer register.
+TileMapW            equ 24                  20 + the across period's 4
+TileMapH            equ 17                  15 + the down period's 2
+TilePix             equ 16
+TileWrapX           equ 4*TilePix           the scroll wraps at the pattern's period
+TileWrapY           equ 2*TilePix
+TileMapOff          equ 3*TilePix*TilePix   the map after tiles 0-2 in pixraw
+TileCtrl            equ TILE_Enable+LineClut*2   enabled, 16 x 16 tiles, LUT 3 (bits 3:1)
+tilestart           lbsr clut3load          diag's and the logo's colors on CLUT 3 (through pixraw, before the tiles)
+                    ldx pixbase,u           tile 0: transparent
+                    clrb
+tl_0                clr ,x+
+                    decb
+                    bne tl_0
+                    leay tileflower,pcr     tile 1: the flower
+tl_1                lda ,y+
+                    sta ,x+
+                    decb
+                    bne tl_1
+                    lda #ColBack            tile 2: blue
+tl_2                sta ,x+
+                    decb
+                    bne tl_2
+                    clr tlrow,u             the map: a flower in every fourth cell, odd rows two cells on; tile set 0
+tl_mr               clrb
+tl_mc               lda tlrow,u
+                    anda #1
+                    lsla
+                    pshs b
+                    adda ,s+
+                    anda #3
+                    beq tl_mf
+                    lda #2
+                    fcb $8C                 cmpx #: skips the next two bytes
+tl_mf               lda #1
+                    sta ,x+
+                    lda #LineClut*8         its attributes: tile set 0, LUT 3 in bits 13:11 (TyVKY_TileMap_SM.v takes the
+                    sta ,x+                 LUT from each cell; 0 drew the flower from LUT 0, black - user 2026-10-11)
+                    incb
+                    cmpb #TileMapW
+                    blo tl_mc
+                    inc tlrow,u
+                    lda tlrow,u
+                    cmpa #TileMapH
+                    blo tl_mr
+                    lda physical+1,u        pixraw as a block and an offset
+                    lsra
+                    lsra
+                    lsra
+                    lsra
+                    lsra
+                    pshs a
+                    lda physical,u
+                    lsla
+                    lsla
+                    lsla
+                    ora ,s+
+                    sta tlblk,u
+                    ldd physical+1,u
+                    anda #$1F
+                    std tloff,u
+                    lbsr gfxmcrget          the master control and the layers as found
+                    std tlmcr,u
+                    lda >VKY_LAYER_CTRL_0
+                    sta tllay,u
+                    clra
+                    clrb
+                    std tlx,u
+                    std tly,u
+                    tst lvl2,u
+                    lbeq tl_l1
+                    ldb tlblk,u             Level 2: tile set 0 at pixraw
+                    clra
+                    tfr d,x
+                    ldy #0
+                    pshs u
+                    ldu tloff,u
+                    lda #1
+                    ldb #SS.TsSet
+                    os9 I$SetStt
+                    puls u
+                    lbcs tl_fail
+                    inc tlowned,u
+                    leax linebuf,u          tile map 0: its record
+                    lda #TileCtrl
+                    sta ,x
+                    lda tlblk,u
+                    sta 1,x
+                    ldd tloff,u
+                    addd #TileMapOff
+                    std 2,x
+                    ldd #TileMapW
+                    std 4,x
+                    ldd #TileMapH
+                    std 6,x
+                    clra
+                    clrb
+                    std 8,x
+                    std 10,x
+                    pshs u
+                    ldy #0
+                    lda #1
+                    ldb #SS.TmSet
+                    os9 I$SetStt
+                    puls u
+                    lbcs tl_fail
+                    pshs u                  layer 0: tile map 0 (source 4)
+                    ldx #0
+                    ldy #4
+                    lda #1
+                    ldb #SS.PScrn
+                    os9 I$SetStt
+                    puls u
+                    bra tl_on
+tl_l1               lda #SPRITE_BLK         Level 1: the registers, saved first
+                    lbsr mapio
+                    leax $1100,x
+                    leay tlsave,u
+                    ldb #12
+tl_s1               lda ,x+
+                    sta ,y+
+                    decb
+                    bne tl_s1
+                    leax $1180-$110C,x
+                    ldb #4
+tl_s2               lda ,x+
+                    sta ,y+
+                    decb
+                    bne tl_s2
+                    leax -$1184,x
+                    clr $1180,x             tile set 0: pixraw
+                    lda physical,u
+                    sta $1181,x
+                    ldd physical+1,u
+                    std $1182,x
+                    ldd physical+1,u        tile map 0: the map after the tiles, then enabled
+                    addd #TileMapOff
+                    std $1102,x
+                    lda physical,u
+                    adca #0
+                    sta $1101,x
+                    ldd #TileMapW
+                    std $1104,x
+                    ldd #TileMapH
+                    std $1106,x
+                    clra
+                    clrb
+                    std $1108,x
+                    std $110A,x
+                    lda #TileCtrl
+                    sta $1100,x
+                    lbsr unmap
+                    inc tlowned,u
+                    lda tllay,u             layer 0: tile map 0
+                    anda #$F0
+                    ora #4
+                    sta >VKY_LAYER_CTRL_0
+tl_on               lda tlmcr,u             graphics, tile maps and the text over them
+                    ora #Mstr_Ctrl_Text_Mode_En+Mstr_Ctrl_Text_Overlay+Mstr_Ctrl_Graph_Mode_En+Mstr_Ctrl_TileMap_En
+                    ldb tlmcr+1,u
+                    lbsr gfxmcrset
+                    lda #1
+                    sta running,u
+                    lda vbase,u
+                    lbsr clearrow
+                    leax tileline,pcr
+                    lbsr putz
+                    lda #3
+                    lbra setstatus
+tl_fail             lbsr setfail
+                    leax tilefail,pcr
+                    lbsr message
+                    lbra restoretiles
+* tilelive: tile map 0 scrolled a pixel right and down, wrapping at the pattern's period
+tilelive            ldd tlx,u
+                    addd #1
+                    cmpd #TileWrapX
+                    blo tlv_1
+                    clra
+                    clrb
+tlv_1               std tlx,u
+                    ldd tly,u
+                    addd #1
+                    cmpd #TileWrapY
+                    blo tlv_2
+                    clra
+                    clrb
+tlv_2               std tly,u
+                    tst lvl2,u
+                    beq tlv_l1
+                    pshs u                  Level 2: SS.TmScrl
+                    ldx tlx,u
+                    ldy #0
+                    ldu tly,u
+                    lda #1
+                    ldb #SS.TmScrl
+                    os9 I$SetStt
+                    puls u,pc
+tlv_l1              lda #SPRITE_BLK         Level 1: the scroll registers (big-endian)
+                    lbsr mapio
+                    ldd tlx,u
+                    std $1108,x
+                    ldd tly,u
+                    std $110A,x
+                    lbra unmap
+* restoretiles: when H put tile map 0 up - the map off (Level 2: a record of zeros; tile set 0 cleared, block 0),
+* or Level 1's registers as found; layer 0 and the master control as found
+restoretiles        tst tlowned,u
+                    lbeq rt_9
+                    tst lvl2,u
+                    beq rt_l1
+                    leax linebuf,u
+                    ldb #12
+rt_1                clr ,x+
+                    decb
+                    bne rt_1
+                    pshs u
+                    leax linebuf,u
+                    ldy #0
+                    lda #1
+                    ldb #SS.TmSet
+                    os9 I$SetStt
+                    ldx #0
+                    ldy #0
+                    ldu #0
+                    lda #1
+                    ldb #SS.TsSet
+                    os9 I$SetStt
+                    puls u
+                    pshs u
+                    ldb tllay,u
+                    andb #7
+                    clra
+                    tfr d,y
+                    ldx #0
+                    lda #1
+                    ldb #SS.PScrn
+                    os9 I$SetStt
+                    puls u
+                    bra rt_2
+rt_l1               lda #SPRITE_BLK
+                    lbsr mapio
+                    clr $1100,x             the map off, then its registers and the set's as found
+                    leax $1100,x
+                    leay tlsave,u
+                    ldb #12
+rt_s1               lda ,y+
+                    sta ,x+
+                    decb
+                    bne rt_s1
+                    leax $1180-$110C,x
+                    ldb #4
+rt_s2               lda ,y+
+                    sta ,x+
+                    decb
+                    bne rt_s2
+                    lbsr unmap
+                    lda tllay,u
+                    sta >VKY_LAYER_CTRL_0
+rt_2                ldd tlmcr,u
+                    lbsr gfxmcrset
+                    clr tlowned,u
+rt_9                rts
+tilehelp            fcc "Tile map: flowers scroll on tile map 0. 5 s."
+                    fcb 0
+tileline            fcc "Tile map 0: 24 x 17 cells of 16 x 16, LUT 3"
+                    fcb 0
+tilefail            fcc "Tile map: driver refused SS.TsSet/SS.TmSet."
+                    fcb 0
 bitmaptest          clr mode,u
                     clr mismatch,u
                     clr mismatch+1,u
@@ -1823,7 +3297,7 @@ bm_fail             lbsr setfail            X = why: no bitmap, its clear, or a 
 * logodraw: the logo's rows decoded into pixraw, one at a time, and written into bitmap 0 (gfxblk) from
 * (LogoX0, LogoY0); transparent pixels are skipped, so the bitmap's own fill shows through. Carry: X = why.
 LogoBase            equ TXT_LUT_SIZE/4      CLUT 3 entry of the logo's color 1, after diag's 16
-LogoX0              equ 4+(ViewIn*4-LogoW)/2   centered in the live view: x 4-315 inside the borders
+LogoX0              equ ViewL*4+(ViewIn*4-LogoW)/2   centered in the live view: x ViewL*4-315 inside the borders
 LogoY0              equ ViewTop*4+(ViewRows*4-LogoH)/2   and its rows
 logodraw            leay logodata,pcr
                     sty logoptr,u
@@ -1955,7 +3429,7 @@ lsg_2               leax 1,x
 * the OS (SS.DScrn). The record's LUT field is bits 2:1, so LUT 1 is SPRITE_LUT0 alone. Like sprites.asm (ed.6)
 * LUT1 is not restored: the graphics LUTs did not read back on the bench.
 SprCount            equ 32
-SprTicks            equ 300                 main-loop passes: about 5 s
+SprTicks            equ 1200                main-loop passes: only a backstop - the OS clock stops S at 5 s (GfxSecs)
 SprXMin             equ 32+LineX0           sprite X/Y count from 32 off screen: the view's left column
 SprXMax             equ 32+LineX1+1-8       its rightmost whole sprite
 SprYMin             equ 32+LineY0           the view's first row
@@ -1986,7 +3460,7 @@ spr_px2             sta ,x+
                     clrb
 spr_st1             pshs b
                     andb #7                 column 0-7
-                    lda #36
+                    lda #21
                     mul
                     addd #SprXMin+4
                     std ,x
@@ -2195,9 +3669,9 @@ spr_h2              equ *
                     lbsr bgrestore
                     clr spriteon,u
 spriterestret       rts
-spritedone          fcc "Sprites: 32 bounced for 5 s - confirm by eye. Hidden again."
+spritedone          fcc "Sprites: done - confirm by eye."
                     fcb 0
-spritenot           fcc "Sprites: the driver refused the sprite table or LUT (Level 2)."
+spritenot           fcc "Sprites: driver refused the table or LUT."
                     fcb 0
 * sprfail: a Level 2 sprite call failed - nothing is shown; the test fails
 sprfail             lbsr restoregraphics
@@ -2298,43 +3772,49 @@ oplinit             fcb $20,$01,$23,$01,$40,$3F,$43,$00,$60,$F0,$63,$F0
                     fcb $80,$77,$83,$77,$C0,$31,$A0,$98,$B0,$31,$FF
 midion              fcb 11,$C0,0,$90,60,80,64,80,67,80,72,80
 midioff             fcb 9,$80,60,0,64,0,67,0,72,0
-badmath             fcc "FAIL: integer result differs from CPU reference."
+badmath             fcc "FAIL: integer result differs from CPU's."
                     fcb 0
-badfpu              fcc "FAIL: FPU output differs from exact IEEE reference."
+badfpu              fcc "FAIL: FPU result differs from IEEE."
                     fcb 0
-midibusy            fcc "MIDI TX did not drain within the bounded wait; chord not sent."
+midibusy            fcc "MIDI: TX never drained; chord not sent."
                     fcb 0
-mathlabel           fcc "Multiply operand / result (hex): $"
+mathlabel           fcc "Operand / product (hex): $"
                     fcb 0
 fpulabel            fcc "FPU case / IEEE result (hex): $"
                     fcb 0
-dmalabel            fcc "DMA operation / mismatched bytes (hex): $"
+ps2mouse            fcc "PS/2: channel owned by the mouse driver."
                     fcb 0
-inputlabel          fcc "Console key $"
+ps2wait             fcc "PS/2 port: waiting for a key"
+                    fcb 0
+ps2label            fcc "PS/2 scan code $"
+                    fcb 0
+ps2bytes            fcc ", bytes $"
+                    fcb 0
+inputlabel          fcc "Key $"
                     fcb 0
 inputcount          fcc ", keys $"
                     fcb 0
-inputk2             fcc ", K2 keyboard status/count $"
+inputk2             fcc ", K2 stat/count $"
                     fcb 0
-mousestatus         fcc "Mouse X / Y / buttons (hex): $"
+mousestatus         fcc "Mouse X/Y/buttons (hex): $"
                     fcb 0
-memok               fcc "PASS: 8192 owned bytes passed 17 patterns. System RAM untouched."
+memok               fcc "PASS: 8K owned RAM, 17 patterns."
                     fcb 0
-memfailmsg          fcc "FAIL: owned RAM readback differs from written pattern."
+memfailmsg          fcc "FAIL: owned RAM readback mismatch."
                     fcb 0
 linenobm            fcc "Lines: SS.AScrn gave no bitmap 0."
                     fcb 0
-lineclrbad          fcc "Lines: the DMA clear of bitmap 0 did not finish."
+lineclrbad          fcc "Lines: bitmap 0's DMA clear never ended."
                     fcb 0
-bmlogo              fcc "Bitmap: readback OK; the Wildbits logo in bitmap 0. Esc ends."
+bmlogo              fcc "Bitmap: readback OK; logo shown. 5 s."
                     fcb 0
-bmlogobad           fcc "Bitmap: readback FAILED; the Wildbits logo in bitmap 0. Esc ends."
+bmlogobad           fcc "Bitmap: readback FAILED; logo shown. 5 s."
                     fcb 0
-logonomap           fcc "Bitmap: a block of bitmap 0 could not be mapped (F$MapBlk)."
+logonomap           fcc "Bitmap: a bitmap block would not map."
                     fcb 0
-linenotlive         fcc "Lines: this terminal is not on screen (SS.BmLine: E$NotRdy)."
+linenotlive         fcc "Lines: terminal not on screen (E$NotRdy)."
                     fcb 0
-linedone            fcc "Lines: 16-line fan and white border in bitmap 0. Esc ends."
+linedone            fcc "Lines: fan and border in bitmap 0. 5 s."
                     fcb 0
 linelabel0          fcc "Horizontal line pixels $"
                     fcb 0
@@ -2611,21 +4091,21 @@ rtccentury          fcb $00,$99
 rtcshow             fcb '-',RTC_MONTH,'-',RTC_DAY,' ',RTC_HRS,':',RTC_MIN,':',RTC_SEC,0
 ossep               fcc "-- ::"
                     fcb 0
-rtchelp             fcc "RTC: date/time BCD ranges, RTC_CTRL, OS clock, two 1 s ticks. Read-only."
+rtchelp             fcc "RTC: BCD ranges, control, OS clock, 1 s tick."
                     fcb 0
-rtcok               fcc "RTC: registers valid and the seconds advance one at a time."
+rtcok               fcc "RTC: registers valid, seconds advance."
                     fcb 0
 rtcbad              fcc "RTC: FAIL - "
                     fcb 0
-rtcl1               fcc "Clock registers      "
+rtcl1               fcc "Clock regs  "
                     fcb 0
-rtcl2               fcc "RTC_CTRL             "
+rtcl2               fcc "RTC_CTRL    "
                     fcb 0
-rtcl3               fcc "OS clock (F$Time)    "
+rtcl3               fcc "OS clock    "
                     fcb 0
-rtcl4               fcc "Seconds tick         "
+rtcl4               fcc "1 s tick    "
                     fcb 0
-rtcdow              fcc "  day of week "
+rtcdow              fcc " dow "
                     fcb 0
 rtc24h              fcc " 24-hour"
                     fcb 0
@@ -2639,9 +4119,9 @@ rtcarrow            fcc " -> "
                     fcb 0
 rtccomma            fcc ", "
                     fcb 0
-rtcticksl           fcc " OS ticks for 1 s "
+rtcticksl           fcc " ticks/s "
                     fcb 0
-rtcstop             fcc "stopped: the second never changed "
+rtcstop             fcc "second never changed "
                     fcb 0
 * W WizFi360 (2026-10-10, user: "add WizFi test which should reset the chip and purge/show it's "ready" message
 * until 5 seconds of silence"; "run ntptime over wizfi ... then use the results to set the rtc, so diag might set
@@ -2883,7 +4363,7 @@ wffailed            lbsr setfail
 wfbootrow           pshs d,x
                     lda vbase,u
                     adda #2
-                    ldb #3+21
+                    ldb #ChkValCol
                     lbsr at
                     ldd wfbytes,u
                     lbsr wfdec16
@@ -3136,55 +4616,55 @@ wfd2@               puls a
                     lbsr putchar
                     bra wfd2@
 wfd3@               puls d,x,y,pc
-wifihelp            fcc "WizFi360: chip reset, boot text to 5 s quiet (ready), Wi-Fi, SNTP -> RTC."
+wifihelp            fcc "WizFi360: reset, boot, Wi-Fi, SNTP -> RTC."
                     fcb 0
-wfl1                fcc "WizFi registers      "
+wfl1                fcc "Registers   "
                     fcb 0
-wfl2                fcc "Chip reset           "
+wfl2                fcc "Chip reset  "
                     fcb 0
-wfl3                fcc "Boot text            "
+wfl3                fcc "Boot text   "
                     fcb 0
-wfl4                fcc "Wi-Fi                "
+wfl4                fcc "Wi-Fi       "
                     fcb 0
-wfl5                fcc "SNTP time            "
+wfl5                fcc "SNTP time   "
                     fcb 0
-wfl6                fcc "RTC and OS clock     "
+wfl6                fcc "RTC, OS clk "
                     fcb 0
-wfctlmsg            fcc "control $"
+wfctlmsg            fcc "ctl $"
                     fcb 0
-wfrstmsg            fcc ", reset $"
+wfrstmsg            fcc ", rst $"
                     fcb 0
-wfnoreset           fcc ": no reset register "
+wfnoreset           fcc " no reset bit"
                     fcb 0
-wfheld              fcc "held 100 ms, released at 115,200 baud "
+wfheld              fcc "held 100 ms, 115,200 baud "
                     fcb 0
 wfbytesmsg          fcc " bytes"
                     fcb 0
-wfquietmsg          fcc ", 5 s quiet"
+wfquietmsg          fcc ", quiet"
                     fcb 0
-wfsilent            fcc ", never a byte"
+wfsilent            fcc ", silent"
                     fcb 0
-wfendless           fcc ", not quiet in 30 s"
+wfendless           fcc ", endless"
                     fcb 0
-wfreadymsg          fcc ", ready "
+wfreadymsg          fcc ", ready"
                     fcb 0
-wfnoready           fcc ", no ready "
+wfnoready           fcc ", unready"
                     fcb 0
 wfgotip             fcc "WIFI GOT IP "
                     fcb 0
-wfnoip              fcc "no WIFI GOT IP: not on a network "
+wfnoip              fcc "no WIFI GOT IP "
                     fcb 0
-wfnocfg             fcc "AT+CIPSNTPCFG not answered OK "
+wfnocfg             fcc "CIPSNTPCFG not OK "
                     fcb 0
-wfnosync            fcc "the module's clock never left 1970 "
+wfnosync            fcc "clock still 1970 "
                     fcb 0
 wfset               fcc "set "
                     fcb 0
 wfnotset            fcc "not set: no time"
                     fcb 0
-wfok                fcc "WizFi: reset, ready, on the network, SNTP time; RTC set."
+wfok                fcc "WizFi: on the network, SNTP time; RTC set."
                     fcb 0
-wfoknt              fcc "WizFi: reset, ready, on the network; no SNTP time (SKIP) - T checks the RTC."
+wfoknt              fcc "WizFi: on the network; no SNTP time (SKIP)."
                     fcb 0
 wfbad               fcc "WizFi: FAIL - "
                     fcb 0
@@ -3226,6 +4706,7 @@ ethstart            clr ethbusy,u
                     clr chkfail+1,u
                     lda #W61_BLK_COMMON
                     sta ethblk,u
+                    lbsr ethreset           the adapter's FIFOs and the chip reset before anything is checked
                     lbsr ethbridge
                     lbsr ethchipid
                     lbsr ethsysr
@@ -3256,7 +4737,8 @@ failsum             lbsr message
                     beq fs1@
                     lbra putz
 fs1@                rts
-* chkline: A = the row, X = its label: positioned at column 3, label printed, the error count noted for chkverdict
+* chkline: A = the row, X = its label (ChkValCol-ViewCol wide): positioned at ViewCol, label printed, the error count
+* noted for chkverdict
 chkline             lbsr clearrow
                     stx chklabel,u
                     lbsr putz
@@ -3573,7 +5055,7 @@ EthScanTries        equ 1                       DNS tries through a scanned gate
 EthCmdWait          equ $4000                   polls for a socket command to be accepted
 EthScanRtr          equ 500                     SLRTR while scanning: 50 ms (100 us units), no retries
 EthScanLast         equ 254                     the scan's last host
-EthValCol           equ 24                      the result column of a live-view line
+EthValCol           equ ChkValCol                   the result column of a live-view line
 EthDnsPort          equ 53
 EthDnsSrc           equ $C002                   UDP source port for DNS (w6100tel's)
 EthNtpPort          equ 123
@@ -3614,9 +5096,18 @@ NetKeyEnd           equ $FF
 NetTab              equ $09
 NetLower            equ $20                     ASCII: the lower-case bit
 NetCfgRead          equ 512                     the w6100 tools read the file's first 512 bytes
-* the chip reset first (2026-10-10, user: "why is the ethernet test in diag failing on get IP"): no socket or setting
-* left by an earlier run or another program carries into this one; the PHY renegotiates within the link wait
-ethnet              lda #W61_BLK_COMMON
+* ethreset (2026-10-10, user: "why is the ethernet test in diag failing on get IP"; moved to the start of E
+* 2026-10-11, user: "the ethernet test seems to fail after many hours, are you resetting the chip prior?"): the K2
+* adapter's two FIFOs reset (W6100.FIFOReset), then the chip's software reset (CHPLCKR unlocked, SYCR0 RST = 0 - the
+* adapter has no hardware reset line), so no socket, setting or byte left by an earlier run or another program
+* carries into this one; the chip answering again (its ID) within EthResetWait ticks, then EthSettle ticks more
+* before anything is written. The PHY renegotiates within the link wait.
+EthSettle           equ 6                       ticks after the chip answers again (100 ms)
+ethreset            lda #W6100.Enable+W6100.FIFOReset
+                    sta >W6100.Base+WIZ_CTRL
+                    lda #W6100.Enable
+                    sta >W6100.Base+WIZ_CTRL
+                    lda #W61_BLK_COMMON
                     sta ethblk,u
                     ldx #W61_CHPLCKR
                     ldb #W61_CHPLCKR_UNLOCK
@@ -3624,18 +5115,25 @@ ethnet              lda #W61_BLK_COMMON
                     ldx #W61_SYCR0
                     clrb                        RST = 0: reset
                     lbsr ethwrite
-                    ldd #EthResetWait           the chip answering again (its ID) within EthResetWait ticks
+                    ldd #EthResetWait
                     std netwait,u
-ethr1@              lbsr tick
+er_1                lbsr tick
                     ldx #W61_CIDR0
                     lbsr ethread
                     cmpb #W61_CIDR0_ID
-                    beq ethr2@
+                    beq er_2
                     ldd netwait,u
                     subd #1
                     std netwait,u
-                    bne ethr1@
-ethr2@              lda vbase,u
+                    bne er_1
+er_2                ldb #EthSettle
+er_3                lbsr tick
+                    decb
+                    bne er_3
+                    rts
+ethnet              lda #W61_BLK_COMMON
+                    sta ethblk,u
+                    lda vbase,u
                     adda #7
                     leax ethl9,pcr
                     lbsr chkline
@@ -3703,18 +5201,14 @@ gi4@                tst ,x+
                     bne gi4@
                     bra gi3@
 gi5@                lbsr putz
-                    lda #W61_BLK_S0REG          and the socket's status
-                    sta ethblk,u
-                    ldx #W61_Sn_SR
-                    lbsr ethread
-                    tfr b,a
+                    leax dhcpsrmsg,pcr          the socket's status when DHCP gave up, and the datagrams received
+                    lbsr putz
+                    lda dhcpsr,u
                     lbsr hex8
-                    leax ethnsemi,pcr
+                    leax dhcprxmsg,pcr
                     lbsr putz
-                    leax netip,u
-                    lbsr netpip
-                    ldx netsrcmsg,u
-                    lbsr putz
+                    lda dhcprx,u
+                    lbsr netdec
 gi2@                lda #W61_BLK_COMMON
                     sta ethblk,u
                     leax netgw,u
@@ -3845,7 +5339,9 @@ ethnbad             lbsr putz
 * netdhcp: DISCOVER, OFFER, REQUEST, ACK (RFC 2131) from 0.0.0.0:68 to 255.255.255.255:67 on socket 0, the
 * broadcast flag set so the server answers by broadcast; the ACK's address, mask, router and DNS server go into
 * netcfg (an option the server leaves out keeps its setting). Carry: no lease in DhcpTries rounds.
-netdhcp             lda #DhcpStOpen
+netdhcp             clr dhcprx,u
+                    clr dhcpsr,u
+                    lda #DhcpStOpen
                     sta dhcpstage,u
                     ldd #DhcpClientPort
                     leax netbcast,pcr
@@ -3882,9 +5378,24 @@ dh1@                lda #DhcpStDiscover
                     bcc dh8@
 dh2@                dec nettry,u
                     bne dh1@
+                    bsr dhcpsrget           the socket's status before the close (it reads $00 after)
                     ldb #W61_Sn_CR_CLOSE
                     lbsr netsockcmd
-dh9@                orcc #1
+                    orcc #1
+                    rts
+dh9@                bsr dhcpsrget
+                    orcc #1
+                    rts
+* dhcpsrget: dhcpsr = socket 0's status register. Keeps ethblk.
+dhcpsrget           lda ethblk,u
+                    pshs a
+                    lda #W61_BLK_S0REG
+                    sta ethblk,u
+                    ldx #W61_Sn_SR
+                    lbsr ethread
+                    stb dhcpsr,u
+                    puls a
+                    sta ethblk,u
                     rts
 dh8@                ldb #W61_Sn_CR_CLOSE
                     lbsr netsockcmd
@@ -3964,6 +5475,7 @@ dw1@                lbsr netwaitrx
                     lbcs dw9@
                     lbsr netrecv
                     lbcs dw7@
+                    inc dhcprx,u            a datagram came in (counted for the failure line)
                     leax netbuf+W61_UDP4_HDR,u
                     stx dhcpbase,u
                     tfr x,d
@@ -5225,17 +6737,17 @@ netkeys             fcb NetTypeMAC
                     fcc "tz"
                     fcb 0
                     fcb NetKeyEnd
-ethl9               fcc "Link                 "
+ethl9               fcc "Link        "
                     fcb 0
-ethl10              fcc "Get IP               "
+ethl10              fcc "Get IP      "
                     fcb 0
-ethl11              fcc "Gateway              "
+ethl11              fcc "Gateway     "
                     fcb 0
-ethl12              fcc "google.com (DNS)     "
+ethl12              fcc "google.com  "
                     fcb 0
-ethl13              fcc "Ping server          "
+ethl13              fcc "Ping        "
                     fcb 0
-ethl14              fcc "NTP -> RTC, OS clock "
+ethl14              fcc "NTP -> RTC  "
                     fcb 0
 ethnup              fcc "up "
                     fcb 0
@@ -5247,61 +6759,63 @@ ethndhcp            fcc "(DHCP) "
                     fcb 0
 ethnodhcp           fcc "no DHCP "
                     fcb 0
-* dhcpsteps: by DhcpStOpen..DhcpStAck, each followed by the socket status in hex
-dhcpsteps           fcc "open, SR $"
+dhcpsrmsg           fcc " SR $"
                     fcb 0
-                    fcc "DISCOVER, SR $"
+dhcprxmsg           fcc " rx "
                     fcb 0
-                    fcc "OFFER, SR $"
+* dhcpsteps: by DhcpStOpen..DhcpStAck: the step DHCP stopped at
+dhcpsteps           fcc "open"
                     fcb 0
-                    fcc "REQUEST, SR $"
+                    fcc "DISCOVER"
                     fcb 0
-                    fcc "ACK, SR $"
+                    fcc "OFFER"
                     fcb 0
-ethnsemi            fcc "; "
+                    fcc "REQUEST"
+                    fcb 0
+                    fcc "ACK"
                     fcb 0
 ethndefs            fcc "(default) "
                     fcb 0
 ethnscan            fcc "scan "
                     fcb 0
-ethnfound           fcc "found by scan   "
+ethnfound           fcc "(scan) "
                     fcb 0
-ethnnogw            fcc "none of .1-.254 reaches the DNS server "
+ethnnogw            fcc "scan: no gateway found "
                     fcb 0
-ethnreply           fcc "reply "
+ethnreply           fcc "reply"
                     fcb 0
-ethnoreply          fcc "no reply "
+ethnoreply          fcc "no reply"
                     fcb 0
 ethnontp            fcc "no answer from pool.ntp.org "
                     fcb 0
-ethngwtag           fcc "(gateway) "
+ethngwtag           fcc "(gw) "
                     fcb 0
 ethnutc             fcc " UTC"
                     fcb 0
 ethids              fcb W61_CIDR0_ID,W61_CIDR1_ID,W61_VER0_ID,W61_VER1_ID
-ethhelp             fcc "K2 W6100: chip, link, DHCP, gateway, DNS, PING4 server/gateway, NTP->RTC."
+ethhelp             fcc "W6100: chip, link, DHCP, DNS, ping, NTP->RTC."
                     fcb 0
-ethok               fcc "Ethernet: chip, link, DHCP, gateway, DNS, ping and NTP all pass; RTC set."
+ethok               fcc "Ethernet: all checks pass; RTC set."
                     fcb 0
-ethoknt             fcc "Ethernet: chip, link, DHCP, gateway, DNS and ping pass; no NTP (SKIP)."
+ethoknt             fcc "Ethernet: all pass but NTP (SKIP)."
                     fcb 0
 ethbad              fcc "Ethernet: FAIL - "
                     fcb 0
-ethl1               fcc "Adapter latches      "
+ethl1               fcc "Latches     "
                     fcb 0
-ethl2               fcc "Chip ID/version      "
+ethl2               fcc "Chip ID     "
                     fcb 0
-ethl3               fcc "SYSR bus mode        "
+ethl3               fcc "SYSR mode   "
                     fcb 0
-ethl4               fcc "IDM_ARH round trip   "
+ethl4               fcc "IDM_ARH     "
                     fcb 0
-ethl5               fcc "PINGSEQR0 walk 1s/0s "
+ethl5               fcc "PINGSEQR0   "
                     fcb 0
-ethl6               fcc "PINGIDR0/1 apart     "
+ethl6               fcc "PINGIDR0/1  "
                     fcb 0
-ethl7               fcc "PHYSR                "
+ethl7               fcc "PHYSR       "
                     fcb 0
-ethl8               fcc "An adapter transfer never finished (busy stuck)"
+ethl8               fcc "Adapter transfer never finished (busy)"
                     fcb 0
 ethlocks            fcc "SYSR "
                     fcb 0
@@ -5313,21 +6827,21 @@ ethvbad             fcc " BAD"
                     fcb 0
 ethvskip            fcc " SKIP"
                     fcb 0
-ethcabin            fcc " cable in,"
+ethcabin            fcc " cable,"
                     fcb 0
-ethcabout           fcc " cable OUT,"
+ethcabout           fcc " no cable,"
                     fcb 0
-ethlinkup           fcc " link up,"
+ethlinkup           fcc " up,"
                     fcb 0
-ethlinkdn           fcc " link down"
+ethlinkdn           fcc " down"
                     fcb 0
-eth100              fcc " 100 Mbps,"
+eth100              fcc " 100M"
                     fcb 0
-eth10               fcc " 10 Mbps,"
+eth10               fcc " 10M"
                     fcb 0
-ethfull             fcc " full duplex"
+ethfull             fcc " full"
                     fcb 0
-ethhalf             fcc " half duplex"
+ethhalf             fcc " half"
                     fcb 0
 * C CPU speed (2026-10-09, user: 'add cpu speed test (wildspeed) to the diag as "S" option'): wildspeed edition 5's
 * measurement (level1/wildbits/cmds/wildspeed.asm), unchanged: for each bus-cycle class, align on an RTC second
@@ -5368,7 +6882,7 @@ WsWIoWr             equ 4
 WsWRtc              equ 3
 WsWMul              equ 5
 WsEdgeOuter         equ 16                      wsalign: passes of 65,536 RTC reads before giving up
-WsValCol            equ 43                      where "measuring..." starts; the value's two spaces cover it
+WsValCol            equ ViewCol+32                  where "  measuring" starts; the value covers it exactly
 * Every class loop ends each chunk with the same epilogue (53 cycles, WsEpi): chunk + 1, then the RTC second against
 * the target. It is written out in each loop, as wildspeed has it, so the counted cycles stay exact.
 speedstart          tfr cc,a                CC as found (interrupts on), put back at both ends (2026-10-10)
@@ -5752,8 +7266,8 @@ wsaccmul            lbsr wsmul16
                     adca <wsacc
                     sta <wsacc
                     rts
-* wsshowx: A = the row, X = MHz*100: shown as "  nn.nn Mhz" from column WsValCol, the two spaces over the "me"
-* of "measuring..." (2026-10-10, user)
+* wsshowx: A = the row, X = MHz*100: shown as "  nn.nn Mhz" from column WsValCol, over "  measuring" (2026-10-10,
+* user; 11 columns since 1.2)
 wsshowx             ldb #WsValCol
                     lbsr at
                     lda #' '
@@ -5879,29 +7393,611 @@ wsbt2@              adda #'0'
                     sta <wsdec
                     rts
 wsweights           fdb WsWFet,WsWRamRd,WsWRamWr,WsWIoRd,WsWIoWr,WsWRtc,WsWMul
-speedhelp           fcc "CPU speed: 7 bus-cycle classes x 3 RTC s, IRQs masked (~28 s)."
+speedhelp           fcc "CPU: 7 cycle classes x 3 s, IRQs off ~28 s."
                     fcb 0
-speedok             fcc "CPU speed measured. Software clock ~21 s slow: setime or ntptime."
+speedok             fcc "CPU speed measured; OS clock ~21 s behind."
                     fcb 0
-wsl0                fcc "Fetch/internal       nop,nop,leay,bne "
+wsl0                fcc "Fetch/internal nop,nop,leay,bne "
                     fcb 0
-wsl1                fcc "RAM read             8 x lda ,x       "
+wsl1                fcc "RAM read       8 x lda ,x       "
                     fcb 0
-wsl2                fcc "RAM write            8 x sta ,x       "
+wsl2                fcc "RAM write      8 x sta ,x       "
                     fcb 0
-wsl3                fcc "IO read              8 x lda >FEE0    "
+wsl3                fcc "IO read        8 x lda >FEE0    "
                     fcb 0
-wsl4                fcc "IO write             8 x sta >FEE0    "
+wsl4                fcc "IO write       8 x sta >FEE0    "
                     fcb 0
-wsl5                fcc "RTC/ext-bus rd       8 x lda RTC_SEC  "
+wsl5                fcc "RTC/ext-bus rd 8 x lda RTC_SEC  "
                     fcb 0
-wsl6                fcc "Internal             8 x mul          "
+wsl6                fcc "Internal       8 x mul          "
                     fcb 0
-wsl7                fcc "Perceived            45/25/12/6/4/3/5 "
+wsl7                fcc "Perceived      45/25/12/6/4/3/5 "
                     fcb 0
-wsmeas              fcc "    measuring...      "
+wsmeas              fcc "  measuring"
                     fcb 0
-wsnortc             fcc "CPU: the RTC second never changed (no timebase). Run T; E or W sets it."
+wsnortc             fcc "CPU: no RTC timebase - set the RTC (E or W)."
                     fcb 0
-wsmhz               fcc " Mhz        "
+wsmhz               fcc " Mhz"
+                    fcb 0
+
+********************************************************************
+* J GPU (2026-10-16, user: "add a GPU test", "gpu test will rotate a colored cube, all sides unique color", "along
+* with what level of gpu or what functions the core has"): the stages a core has - 1 the point pipeline ($FEDE),
+* 2 the SceneEngine (VICKY $1782), 3 the layer-3 GPU (VICKY block $FC, offset
+* $1800; wildbits-buildkit/notes/rc26-gpu-layer3-spec.md). Checked: GPU_ID $34; after RESET the status idle, the
+* FIFO empty, 512 records free; VIEW_ROW0, VIEW_ROWS, GPU_LUT, CLEAR_COLOR and UP_ADDR written, read back and put
+* back; one FENCE record retired (FENCE_COUNT + 1) with no bad record or overflow. The SceneEngine's and the point
+* pipeline's status are read (shown, not judged). Then the GPU on layer 0 behind the text draws a cube turning,
+* its six faces in six of diag's colors (CLUT 3): polygons with direct color and the GPU's own back-face culling,
+* the perspective in 6809 integers (the frames match the GPU's reference model, fpga/sim/gpu3/gpu3_ref.py), one
+* frame a SWAP, the GPU clearing to diag's blue. Stops after GfxSecs like the other pictures; gpurestore turns
+* the GPU off and puts layer 0 and the master control back.
+GpuReg              equ $1800               the GPU's registers in the VICKY block
+GpuRec              equ $40                 its record window, from GpuReg: bytes 0-6 latch, byte 7 pushes the unit
+GpuLines            equ 7                   J's lines: ID, reset, registers, FENCE, SceneEngine, pipeline, cube
+GpuS                equ 48                  the cube's half size
+GpuCX16             equ 448*16              its center: dot 448, GPU row 160 (text row 40), in 1/16
+GpuCY16             equ 160*16
+gpustart            clr chkerrs,u
+                    clr chkfail,u
+                    clr chkfail+1,u
+                    lda #VICKY_BLK          the readings, with the block mapped (IRQs masked) briefly
+                    lbsr mapio
+                    leax GpuReg,x
+                    lda $1F,x
+                    sta gpuid,u
+                    cmpa #$34
+                    bne gs_rd9
+                    lda #$10                RESET
+                    sta ,x
+                    ldb #100
+gs_w1               decb
+                    bne gs_w1
+                    lda 1,x
+                    sta gpust,u
+                    lda 2,x                 (reading $1802 latches $1803)
+                    ldb 3,x
+                    std gpufree,u
+                    clr gpubad,u
+                    leay gpuregtab,pcr      offset, pattern, mask, the value put back
+gs_r1               ldb ,y+
+                    cmpb #$FF
+                    beq gs_r3
+                    lda ,y+
+                    sta b,x
+                    lda b,x
+                    anda ,y+
+                    cmpa -2,y
+                    beq gs_r2
+                    inc gpubad,u
+gs_r2               lda ,y+
+                    sta b,x
+                    bra gs_r1
+gs_r3               lda 5,x                 FENCE_COUNT, then one FENCE through the record window
+                    sta gpuf0,u
+                    lda #$01                EN
+                    sta ,x
+                    lda #$09                FENCE
+                    lbsr gpuzu
+                    ldb #200
+gs_w2               lda 5,x
+                    cmpa gpuf0,u
+                    bne gs_w3
+                    decb
+                    bne gs_w2
+gs_w3               lda 5,x
+                    sta gpuf1,u
+                    lda 1,x
+                    sta gpust2,u
+                    clr ,x                  off again
+gs_rd9              lda $1782-GpuReg,x      the SceneEngine's STATUS (VICKY $1782)
+                    sta gpuse,u
+                    lbsr unmap
+                    lda >$FEDE              the point pipeline's STATUS
+                    sta gpupp,u
+* the lines: GPU stages 1-3 found or not; stage 3's checks
+                    lda vbase,u
+                    leax gpulpp,pcr
+                    lbsr chkline
+                    lda gpupp,u
+                    pshs a
+                    lbsr hex8               (hex8 leaves A as the character printed)
+                    puls a
+                    anda #7
+                    cmpa #5
+                    lbsr gs_found
+                    lda vbase,u
+                    inca
+                    leax gpulse,pcr
+                    lbsr chkline
+                    lda gpuse,u
+                    pshs a
+                    lbsr hex8
+                    puls a
+                    anda #7
+                    cmpa #3
+                    lbsr gs_found
+                    lda vbase,u
+                    adda #2
+                    leax gpulid,pcr
+                    lbsr chkline
+                    lda gpuid,u
+                    pshs a
+                    lbsr hex8
+                    puls a
+                    cmpa #$34
+                    beq gs_l1
+                    leax gpuno,pcr
+                    lbsr putz
+                    lbsr setpass            no stage 3: nothing more to check
+                    leax gpunot3,pcr
+                    lbra message
+gs_l1               leax gpulevel,pcr
+                    lbsr putz
+                    lda vbase,u
+                    adda #3
+                    leax gpulrst,pcr
+                    lbsr chkline
+                    lda gpust,u
+                    pshs a
+                    lbsr hex8
+                    puls a
+                    anda #$D8               not busy, no swap pending, FIFO empty, idle
+                    cmpa #$18
+                    beq gs_l2
+                    inc chkerrs,u
+gs_l2               leax gpufreem,pcr
+                    lbsr putz
+                    ldd gpufree,u
+                    lbsr hex8
+                    tfr b,a
+                    lbsr hex8
+                    ldd gpufree,u
+                    cmpd #512
+                    beq gs_l3
+                    inc chkerrs,u
+gs_l3               lbsr chkverdict
+                    lda vbase,u
+                    adda #4
+                    leax gpulreg,pcr
+                    lbsr chkline
+                    lda gpubad,u
+                    pshs a
+                    lbsr hex8
+                    puls a
+                    tsta
+                    beq gs_l4
+                    inc chkerrs,u
+gs_l4               leax gpuwrong,pcr
+                    lbsr putz
+                    lbsr chkverdict
+                    lda vbase,u
+                    adda #5
+                    leax gpulfen,pcr
+                    lbsr chkline
+                    lda gpuf0,u
+                    lbsr hex8
+                    leax gpuarrow,pcr
+                    lbsr putz
+                    lda gpuf1,u
+                    pshs a
+                    lbsr hex8
+                    puls a
+                    suba gpuf0,u
+                    cmpa #1
+                    beq gs_l5
+                    inc chkerrs,u
+gs_l5               lda gpust2,u
+                    bita #3                 bad record, overflow
+                    beq gs_l6
+                    inc chkerrs,u
+gs_l6               lbsr chkverdict
+                    tst chkerrs,u
+                    bne gs_fail
+                    lbsr setpass
+                    lbsr gpushow
+                    leax gpuok,pcr
+                    lbra message
+gs_fail             lbsr setfail
+                    leax gpubadm,pcr
+                    lbra failsum
+gs_found            beq gs_f0               Z: found (LEAX would set Z itself, so the branch comes first)
+                    leax gpuno,pcr
+                    lbra putz
+gs_f0               leax gpuyes,pcr
+                    lbra putz
+* gpushow: the GPU on layer 0 behind the text: diag's colors on CLUT 3 (GPU_LUT 3), clear color diag's blue,
+* EN + AUTOCLEAR, two empty frames (both buffers cleared); layer 0 = source 3; graphics and the text overlay on.
+gpushow             lbsr gfxmcrget
+                    sta gfxmcr,u
+                    stb gfxmcr+1,u
+                    lda >VKY_LAYER_CTRL_0
+                    sta gpulay,u
+                    lbsr clut3load
+                    lda #1
+                    sta gpuowned,u
+                    clr gpufrm,u
+                    clr gpufrm+1,u
+                    lda #VICKY_BLK
+                    lbsr mapio
+                    leax GpuReg,x
+                    lda #$10                RESET
+                    sta ,x
+                    lda #ColBack
+                    sta 9,x
+                    lda #3                  LUT 3
+                    sta 8,x
+                    lda #$21                EN, AUTOCLEAR (640 x 240, 4 bpp)
+                    sta ,x
+                    lda #$08                two SWAPs (the latch's bytes 4-6 stay 0 from here on)
+                    lbsr gpuzu
+                    lda #$08
+                    lbsr gpuzu
+                    lda 4,x
+                    deca                    the first frame goes on the next pass
+                    sta gpuswap,u
+                    lbsr unmap
+                    tst lvl2,u
+                    beq gh_l1
+                    pshs u                  Level 2: layer 0 = the GPU (source 3), as FS puts it on layer 1
+                    ldx #0
+                    ldy #3
+                    lda #1
+                    ldb #SS.PScrn
+                    os9 I$SetStt
+                    puls u
+                    bra gh_mc
+gh_l1               lda >VKY_LAYER_CTRL_0
+                    anda #$F8
+                    ora #3
+                    sta >VKY_LAYER_CTRL_0
+gh_mc               lda gfxmcr,u
+                    ora #Mstr_Ctrl_Text_Mode_En+Mstr_Ctrl_Text_Overlay+Mstr_Ctrl_Graph_Mode_En+Mstr_Ctrl_Bitmap_En
+                    ldb gfxmcr+1,u
+                    lbsr gfxmcrset
+                    lda #1
+                    sta running,u
+                    rts
+* gpurestore: the GPU off, layer 0 and the master control as found (only after gpushow)
+gpurestore          tst gpuowned,u
+                    beq gr_9
+                    clr gpuowned,u
+                    lda #VICKY_BLK
+                    lbsr mapio
+                    clr GpuReg,x
+                    lbsr unmap
+                    tst lvl2,u
+                    beq gr_l1
+                    pshs u
+                    lda gpulay,u
+                    anda #7
+                    tfr a,b
+                    clra
+                    tfr d,y
+                    ldx #0
+                    lda #1
+                    ldb #SS.PScrn
+                    os9 I$SetStt
+                    puls u
+                    bra gr_mc
+gr_l1               lda gpulay,u
+                    sta >VKY_LAYER_CTRL_0
+gr_mc               lda gfxmcr,u
+                    ldb gfxmcr+1,u
+                    lbsr gfxmcrset
+gr_9                rts
+* gpulive: a frame when the last one has been shown (SWAP_COUNT moved): the 8 points, the 6 faces, SWAP; the
+* angles on; every 32nd frame the count on the cube's line
+gpulive             lda #VICKY_BLK
+                    lbsr mapio
+                    ldb GpuReg+4,x
+                    lbsr unmap
+                    cmpb gpuswap,u
+                    lbeq gl_9
+                    stb gpuswap,u
+                    lbsr gpupoints
+                    lda #VICKY_BLK
+                    lbsr mapio
+                    leax GpuReg+GpuRec,x
+                    leay gpufaces,pcr       a face: its color, its 4 points
+                    lda #6
+                    sta gpui,u
+gl_1                lda #$60                F_DIRECT + F_CULL
+                    sta ,x
+                    lda ,y+
+                    sta 1,x
+                    clr 2,x
+                    lda #4
+                    sta 3,x
+                    lda #$10                POLY (bytes 4-6 0)
+                    sta 7,x
+                    ldb #4
+gl_2                pshs b
+                    clra
+                    ldb ,y+
+                    lslb
+                    lslb
+                    addd #gpuv
+                    pshs d
+                    ldd d,u
+                    std ,x                  X16
+                    puls d
+                    addd #2
+                    ldd d,u
+                    std 2,x                 Y16 (bytes 4-6 0: Q, shade)
+                    lda #$FE                CONT
+                    sta 7,x
+                    puls b
+                    decb
+                    bne gl_2
+                    dec gpui,u
+                    bne gl_1
+                    leax -GpuRec,x
+                    lda #$08                SWAP
+                    lbsr gpuzu
+                    lbsr unmap
+                    inc gpuax,u
+                    lda gpuay,u
+                    adda #2
+                    sta gpuay,u
+                    ldd gpufrm,u
+                    addd #1
+                    std gpufrm,u
+                    andb #31
+                    bne gl_9
+                    lda vbase,u
+                    adda #6
+                    leax gpulcube,pcr
+                    lbsr chkline
+                    ldd gpufrm,u
+                    lbsr hex8
+                    tfr b,a
+                    lbsr hex8
+gl_9                rts
+* gpupoints: the cube's 8 points, turned by gpuay about y then gpuax about x, in perspective: X16, Y16 to gpuv.
+* Point i: x = +GpuS when i & 1, y when i & 2, z (toward the eye) when i & 4. All Q7 sines, 8 x 8 products.
+gpupoints           lda gpuay,u
+                    lbsr gpusin
+                    stb gpusy,u
+                    lda gpuay,u
+                    adda #64
+                    lbsr gpusin
+                    stb gpucy,u
+                    lda gpuax,u
+                    lbsr gpusin
+                    stb gpusx,u
+                    lda gpuax,u
+                    adda #64
+                    lbsr gpusin
+                    stb gpucx,u
+                    clr gpui,u
+gp_1                ldb gpui,u
+                    lda #-GpuS
+                    bitb #1
+                    beq gp_x
+                    lda #GpuS
+gp_x                sta gpux,u
+                    lda #-GpuS
+                    bitb #2
+                    beq gp_y
+                    lda #GpuS
+gp_y                sta gpuy,u
+                    lda #-GpuS
+                    bitb #4
+                    beq gp_z
+                    lda #GpuS
+gp_z                sta gpuz,u
+                    lda gpux,u              x1 = (x cy + z sy) >> 7
+                    ldb gpucy,u
+                    lbsr gpusmul
+                    std gput,u
+                    lda gpuz,u
+                    ldb gpusy,u
+                    lbsr gpusmul
+                    addd gput,u
+                    lbsr gpuq7
+                    stb gpux1,u
+                    lda gpux,u              z1 = (z cy - x sy) >> 7
+                    ldb gpusy,u
+                    lbsr gpusmul
+                    std gput,u
+                    lda gpuz,u
+                    ldb gpucy,u
+                    lbsr gpusmul
+                    subd gput,u
+                    lbsr gpuq7
+                    stb gpuz1,u
+                    lda gpuz1,u             y2 = (y cx - z1 sx) >> 7
+                    ldb gpusx,u
+                    lbsr gpusmul
+                    std gput,u
+                    lda gpuy,u
+                    ldb gpucx,u
+                    lbsr gpusmul
+                    subd gput,u
+                    lbsr gpuq7
+                    stb gpuy2,u
+                    lda gpuy,u              z2 = (y sx + z1 cx) >> 7
+                    ldb gpusx,u
+                    lbsr gpusmul
+                    std gput,u
+                    lda gpuz1,u
+                    ldb gpucx,u
+                    lbsr gpusmul
+                    addd gput,u
+                    lbsr gpuq7              B = z2, -84..84
+                    sex                     k = 32768 / (256 - z2), by subtraction (96-190)
+                    coma
+                    comb
+                    addd #257
+                    std gput,u
+                    ldd #$8000
+                    clr gpuk,u
+gp_k                subd gput,u
+                    bcs gp_k9
+                    inc gpuk,u
+                    bra gp_k
+gp_k9               equ *
+                    lda gpux1,u             X16 = center + ((x1 k) >> 5) x 5
+                    lbsr gpuumul
+                    lbsr gpuasr5
+                    lbsr gpux5
+                    addd #GpuCX16
+                    pshs d
+                    ldb gpui,u
+                    lslb
+                    lslb
+                    leax gpuv,u
+                    abx
+                    puls d
+                    std ,x
+                    lda gpuy2,u             Y16 = center - ((y2 k) >> 6) x 5
+                    ldb gpuk,u
+                    lbsr gpuumul
+                    lbsr gpuasr5
+                    asra
+                    rorb
+                    lbsr gpux5
+                    pshs d
+                    ldd #GpuCY16
+                    subd ,s++
+                    std 2,x
+                    inc gpui,u
+                    lda gpui,u
+                    cmpa #8
+                    lblo gp_1
+                    rts
+* gpuzu: a unit with bytes 0-6 zero and tag A, through the record window (X = the GPU's registers). Keeps X.
+gpuzu               pshs a
+                    clra
+                    clrb
+                    std GpuRec,x
+                    std GpuRec+2,x
+                    std GpuRec+4,x
+                    sta GpuRec+6,x
+                    puls a
+                    sta GpuRec+7,x
+                    rts
+* gpusin: B = the sine of angle A (256 a turn), Q7. Quarters 1 and 3 read the table backwards, 2 and 3 negate.
+gpusin              tfr a,b
+                    andb #63
+                    bita #$40
+                    beq gn_1
+                    negb
+                    addb #64
+gn_1                pshs x
+                    leax gpusintab,pcr
+                    ldb b,x
+                    puls x
+                    tsta
+                    bpl gn_2
+                    negb
+gn_2                rts
+* gpusmul: D = A x B, both signed. gpuumul: D = A (signed) x gpuk (unsigned).
+gpusmul             pshs d
+                    eora 1,s
+                    pshs a                  ,s: the product's sign in bit 7
+                    lda 1,s
+                    bpl gm_1
+                    nega
+gm_1                ldb 2,s
+                    bpl gm_2
+                    negb
+gm_2                mul
+                    tst ,s+
+                    bpl gm_3
+                    coma
+                    comb
+                    addd #1
+gm_3                leas 2,s
+                    rts
+gpuumul             ldb gpuk,u
+                    tsta
+                    bpl gu_1
+                    nega
+                    mul
+                    coma
+                    comb
+                    addd #1
+                    rts
+gu_1                mul
+                    rts
+* gpuq7: B = D >> 7 (arithmetic; the result fits a byte). gpuasr5: D >> 5. gpux5: D x 5.
+gpuq7               lslb
+                    rola
+                    tfr a,b
+                    rts
+gpuasr5             asra
+                    rorb
+                    asra
+                    rorb
+                    asra
+                    rorb
+                    asra
+                    rorb
+                    asra
+                    rorb
+                    rts
+gpux5               pshs d
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    addd ,s++
+                    rts
+gpuregtab           fcb $06,$55,$FF,$00     VIEW_ROW0
+                    fcb $07,$AA,$FF,240     VIEW_ROWS
+                    fcb $08,$35,$77,$00     GPU_LUT (b2:0, b6:4)
+                    fcb $09,$5A,$FF,$00     CLEAR_COLOR
+                    fcb $0B,$A5,$FF,$00     UP_ADDR (middle byte)
+                    fcb $FF
+* the faces: a color (diag's: red, green, yellow, cyan, purple, orange), then 4 points, wound so the GPU's culling
+* keeps the faces turned to the eye
+gpufaces            equ *
+                    fcb 2,5,7,3,1
+                    fcb 5,2,6,4,0
+                    fcb 7,3,7,6,2
+                    fcb 3,4,5,1,0
+                    fcb 4,6,7,5,4
+                    fcb 8,1,3,2,0
+* gpusintab: sin(2 pi i / 256) x 127, i = 0-64
+gpusintab           equ *
+                    fcb $00,$03,$06,$09,$0C,$10,$13,$16,$19,$1C,$1F,$22,$25,$28,$2B,$2E
+                    fcb $31,$33,$36,$39,$3C,$3F,$41,$44,$47,$49,$4C,$4E,$51,$53,$55,$58
+                    fcb $5A,$5C,$5E,$60,$62,$64,$66,$68,$6A,$6B,$6D,$6F,$70,$71,$73,$74
+                    fcb $75,$76,$78,$79,$7A,$7A,$7B,$7C,$7D,$7D,$7E,$7E,$7E,$7F,$7F,$7F
+                    fcb $7F
+gpuhelp             fcc "GPU stages; with 3, a cube. 5 s."
+                    fcb 0
+gpulid              fcc "3 GPU       "
+                    fcb 0
+gpulrst             fcc "Reset       "
+                    fcb 0
+gpulreg             fcc "Registers   "
+                    fcb 0
+gpulfen             fcc "FENCE       "
+                    fcb 0
+gpulse              fcc "2 Scene     "
+                    fcb 0
+gpulpp              fcc "1 Points    "
+                    fcb 0
+gpulcube            fcc "Cube frames "
+                    fcb 0
+gpulevel            fcc " 2D,POLY,Z,shade,tex,mesh"
+                    fcb 0
+gpufreem            fcc " free $"
+                    fcb 0
+gpuwrong            fcc " wrong "
+                    fcb 0
+gpuarrow            fcc "->"
+                    fcb 0
+gpuyes              fcc " found"
+                    fcb 0
+gpuno               fcc " none"
+                    fcb 0
+gpunot3             fcc "GPU: no stage 3."
+                    fcb 0
+gpuok               fcc "GPU: stage 3 OK, cube."
+                    fcb 0
+gpubadm             fcc "GPU: check failed."
                     fcb 0
