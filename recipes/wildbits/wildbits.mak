@@ -124,6 +124,22 @@ ifeq ($(LEVEL),2)
 # vs: VS1053 test command (wb/vs1053); on its own line so it never collides with edits to the CMDS list above
 CMDS += vs
 
+# Astro: launcher in CMDS, original data at root, private sound under astro/.
+ASTRO_DIR = $(LEVEL2)/wildbits/astroblaster/port
+CMDS += astro
+RECIPE_DEPS += $(ASTRO_DIR)/astro.dat $(ASTRO_DIR)/astro.snd $(MODDIR)/astrosnd
+$(MODDIR)/astro: $(ASTRO_DIR)/astro.asm $(wildcard $(ASTRO_DIR)/*.asm) $(L2PD)/defsfile $(DEFSDIR)/wildbits_vtio.d $(DEFSDIR)/wildbits.d | $(MODDIR)
+	$(AS) $(AFLAGS) --6809 -I$(L2PD) -I$(ASTRO_DIR) $< $(ASOUT)$@
+	python3 -c 'import pathlib,sys; m=pathlib.Path(sys.argv[1]).read_bytes(); n=(len(m)+8191)//8192+(int.from_bytes(m[11:13],"big")+8191)//8192+1; assert n<=7, "Astro exceeds process slots 0-6"' $@
+
+$(MODDIR)/astrosnd.module: $(ASTRO_DIR)/astrosnd.asm $(ASTRO_DIR)/sound_defs.asm $(ASTRO_DIR)/sound_assets.asm $(L2PD)/defsfile $(DEFSDIR)/wildbits.d | $(MODDIR)
+	$(AS) $(AFLAGS) --6809 -I$(L2PD) -I$(ASTRO_DIR) $< $(ASOUT)$@
+$(MODDIR)/asnd.module: $(ASTRO_DIR)/asnd.asm $(L2PD)/defsfile | $(MODDIR)
+	$(AS) $(AFLAGS) --6809 -I$(L2PD) -I$(ASTRO_DIR) $< $(ASOUT)$@
+$(MODDIR)/astrosnd: $(MODDIR)/astrosnd.module $(MODDIR)/asnd.module
+	cat $^ > $@
+	python3 -c 'import pathlib,sys; assert pathlib.Path(sys.argv[1]).stat().st_size<=8192, "Astro sound bundle exceeds one map slot"' $@
+
 # These commands live in the Level 2 source tree. Explicit prerequisites also
 # prevent an older Level 1 object from satisfying an incremental build.
 $(MODDIR)/view: $(L2PCD)/view.asm | $(MODDIR)
@@ -286,6 +302,13 @@ endif
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 ifeq ($(LEVEL),2)
+	$(MAKDIR) $@,astro
+	$(OS9COPY) $(ASTRO_DIR)/astro.dat $@,astro/astro.dat
+	$(OS9ATTR_TEXT) $@,astro/astro.dat
+	$(OS9COPY) $(MODDIR)/astrosnd $@,astro/astrosnd
+	$(OS9ATTR_EXEC) $@,astro/astrosnd
+	$(OS9COPY) $(ASTRO_DIR)/astro.snd $@,astro/astro.snd
+	$(OS9ATTR_TEXT) $@,astro/astro.snd
 	$(CPL) $(WIZFITOOL) $@,CMDS/wizfitool.b09
 	$(OS9ATTR_TEXT) $@,CMDS/wizfitool.b09
 endif
