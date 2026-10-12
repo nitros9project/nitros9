@@ -320,6 +320,13 @@ endif
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 ifeq ($(LEVEL),2)
+	$(MAKDIR) $@,astro
+	$(OS9COPY) $(ASTRO_DIR)/astro.dat $@,astro/astro.dat
+	$(OS9ATTR_TEXT) $@,astro/astro.dat
+	$(OS9COPY) $(MODDIR)/astrosnd $@,astro/astrosnd
+	$(OS9ATTR_EXEC) $@,astro/astrosnd
+	$(OS9COPY) $(ASTRO_DIR)/astro.snd $@,astro/astro.snd
+	$(OS9ATTR_TEXT) $@,astro/astro.snd
 	$(CPL) $(WIZFITOOL) $@,CMDS/wizfitool.b09
 	$(OS9ATTR_TEXT) $@,CMDS/wizfitool.b09
 	$(OS9COPY) $(BASIC09_L2_HLP) $@,SYS
