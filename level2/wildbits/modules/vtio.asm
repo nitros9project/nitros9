@@ -84,7 +84,9 @@ HandleKeyboard@     ldx       V.KeyDrvEPtr,u
                     jsr       6,x       ; call AltIRQ routine in keydrv
 
 * Handle Mouse Timer. When timer wraps to zero, turn it off
-* Mouse does not hide correctly, so park it at right side of screen
+* Clearing MS_MEN is a true hide on v8_rc11 and later cores (the pointer pixel
+* is gated on the enable bit there).  On older cores the enable was ignored by
+* the pixel path, so the cursor stays visible, frozen, until the mouse moves.
 * Check if mouse is already off, if it is, then skip timer code
 * Mouse timer reset is in mousedrv_ps2.asm interrupt procedure
 * Mouse timer resets on every mouse interrupt
@@ -94,8 +96,6 @@ HandleMSTimer       tst       MS_MEN    ; check if mouse cursor already off
                     inc       V.MSTimer,u ; increment mouse auto-hide timer
                     bne       HandleKeySwtchTrm ; timer not wrapped: still check switch
                     clr       MS_MEN    ; if timer flips to 0, turn off mouse cursor
-                    ldd       #640      ; park mouse at right border
-                    std       MS_XH     ; turning off cursor doesn't work correctly at the moment
 
 * Handle Terminal Switching
 HandleKeySwtchTrm   lda       >gr.SwitchReq
