@@ -133,6 +133,8 @@ SS.SOLIRQ           rmb       1
 SS.SOLMUTE          rmb       1
 SS.TermSel          rmb       1                   $C5 R$X = terminal id: show it (vtio/grfdrv)
 SS.LiveKeys         equ       $C6                 GetStat: R$A = live key sense bits, R$X/R$Y/R$U = keys held now; empties the input buffer
+SS.MsCfg            equ       $C7                 Get/SetStat: R$X = this terminal's mouse configuration bits (MC.*)
+MC.On               equ       %00000001           pointer always on (no auto-hide) while this terminal is live; 0 = auto-hide
 * SS.Joy ($13) modes, in R$X on entry (joust docs/grfdrv256-api.md)
 JOY.Stick0          equ       0                   stick 0, compatibility: R$X/R$Y = 0/128/255, R$A = buttons
 JOY.Stick1          equ       1                   stick 1, compatibility

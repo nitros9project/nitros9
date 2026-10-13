@@ -91,9 +91,40 @@ HandleKeyboard@     ldx       V.KeyDrvEPtr,u
 * Mouse timer reset is in mousedrv_ps2.asm interrupt procedure
 * Mouse timer resets on every mouse interrupt
 * This should hide the mouse after 4 to 5 seconds of inactivity
-HandleMSTimer       tst       MS_MEN    ; check if mouse cursor already off
+* The timer and the found flag are mousedrv's (gr.MsDrv), one per machine.
+* SS.MsCfg MC.On in the live terminal's gr.MsTbl row skips the timer and
+* shows the pointer (when a mouse was found) while the process that set it
+* is alive; once it has exited (D.PrcDBT[id] reads 0) the row goes back to
+* the defaults.  gr.LiveTerm is $FF when no terminal is open.
+HandleMSTimer       ldb       >gr.LiveTerm
+                    cmpb      #G.TermMax
+                    bhs       autohide@ ; no live terminal
+                    lslb                ; b = id * 8, the row
+                    lslb
+                    lslb
+                    ldx       #gr.MsTbl
+                    abx
+                    lda       MT.Cfg,x  ; always on for this terminal?
+                    bita      #MC.On
+                    beq       autohide@ ; no, auto-hide
+                    clra                ; d = owner id, unsigned
+                    ldb       MT.CfgID,x ; is the process that set it alive?
+                    ldy       <D.PrcDBT
+                    leay      d,y
+                    tst       ,y
+                    beq       expire@   ; no, back to the defaults
+                    tst       MS_MEN    ; pointer already on?
+                    bne       HandleKeySwtchTrm
+                    tst       >gr.MSFound ; mouse found?
+                    beq       HandleKeySwtchTrm ; no: no pointer to show
+                    lda       #$01
+                    sta       MS_MEN    ; show mouse, mode 0 (as mousedrv)
+                    bra       HandleKeySwtchTrm
+expire@             clr       MT.Cfg,x
+                    clr       MT.CfgID,x
+autohide@           tst       MS_MEN    ; check if mouse cursor already off
                     beq       HandleKeySwtchTrm ; mouse off: still check switch (glue #10)
-                    inc       V.MSTimer,u ; increment mouse auto-hide timer
+                    inc       >gr.MSTimer ; increment mouse auto-hide timer
                     bne       HandleKeySwtchTrm ; timer not wrapped: still check switch
                     clr       MS_MEN    ; if timer flips to 0, turn off mouse cursor
 
@@ -605,6 +636,7 @@ NoUnlink
                     ldx       V.MSDrvEPtr,u
                     cmpx      #0000
                     beq       NoMouse
+                    jsr       3,x       ; mousedrv Term: remove its IRQ, hide the pointer
                     ldd       #0
                     std       V.MSDrvEPtr,u
                     pshs      u
@@ -1737,6 +1769,8 @@ SetStat             ldx       PD.RGS,y  ; get caller's registers in X
                     ldb       #GF.SetStt
 StatFwd             sta       >gr.b1    ; status code
                     pshs      b         ; gf.GetStt or GF.SetStt
+                    lda       PD.CPR,y  ; the calling process, for SS.MsCfg
+                    sta       >gr.b2    ; (grfdrv cannot see the path)
                     lbsr      SetThisTermGrfPtrs
                     puls      b
                     lbra      CallGrfDrvRet ; results, B and carry back to the caller
