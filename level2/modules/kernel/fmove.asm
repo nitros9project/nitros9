@@ -79,14 +79,26 @@ FMoveTarget         pshs      d,x,y,u   ; preserve it all
 *            U=Destination pointer
 FMoveJoin           equ       *         ; define assembler symbol FMoveJoin
                   IFNE    H6309   ; begin conditional assembly for H6309
-                  IFNE    picothing ; begin conditional assembly for picothing
-* WARNING: before enabling H6309 native mode on Pico-Thing, this path
-* needs the same KrnBlk fixed-window guard as the 6809 path below —
-* mapping page $FF into slots 5/6 faults NMI (DAT unavailable sentinel).
-                  ENDC
                     ldd       [<6,s]    ; [B]=Block # of source
                     ldw       [<10,s]   ; [A]=Block # of destination
                     tfr       f,a       ; transfer register value f,a
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Pico-Thing: page $FF (KrnBlk) is also the DAT "unavailable" sentinel,
+* so it must never be mapped into a consulted slot (the access would
+* fault NMI).  As in the 6809 path below, when a side's page is KrnBlk,
+* bias that side's pointer into the fixed $E000-$FFFF window and map a
+* harmless page 0 into the slot instead.  A = source page (slot 5),
+* B = destination page (slot 6); W is free until the count below.
+                    cmpa      #KrnBlk   ; is the source the kernel block?
+                    bne       nsrc@     ; no, map it normally
+                    clra                ; substitute page 0 for slot 5
+                    leax      >(2*DAT.BlSz),x ; read the source via the fixed window
+nsrc@               cmpb      #KrnBlk   ; is the destination the kernel block?
+                    bne       ndst@     ; no, map it normally
+                    clrb                ; substitute page 0 for slot 6
+                    leau      >DAT.BlSz,u ; write the destination via the fixed window
+ndst@               equ       *         ; both pages are now safe to map
+                  ENDC
 * Calculate move length for this pass
                     ldw       14,s      ; get full byte count
                     cmpw      ,s        ; we gonna overlap source?
@@ -103,6 +115,20 @@ FMoveCount          stw       12,s      ; save count
                     std       >DAT.Regs+5 ; map in the blocks
                     tfm       x+,u+     ; copy up to 256 bytes (max 774 cycles)
                     sty       >DAT.Regs+5 ; restore system blocks 5&6 to normal
+                  IFNE    picothing ; begin conditional assembly for picothing
+* Undo the fixed-window bias for any side whose page was KrnBlk.  The
+* image pointers have not been bumped yet, so re-reading the entries
+* tells us which sides were biased this pass.  D is reloaded below.
+                    ldd       [10,s]    ; this pass's source image entry
+                    cmpb      #KrnBlk   ; was the source the kernel block?
+                    bne       usrc@     ; no, X is already window-relative
+                    leax      >-(2*DAT.BlSz),x ; bias X back to the slot 5 window
+usrc@               ldd       [6,s]     ; this pass's destination image entry
+                    cmpb      #KrnBlk   ; was the destination the kernel block?
+                    bne       udst@     ; no, U is already window-relative
+                    leau      >-DAT.BlSz,u ; bias U back to the slot 6 window
+udst@               equ       *         ; both pointers window-relative again
+                  ENDC
                     andcc     #^IntMasks ; clear condition-code bits using #^IntMasks
                     ldd       14,s      ; get full count
                     subd      12,s      ; done?
@@ -124,7 +150,7 @@ FMoveUpdSrcOff      std       ,s        ; save updated source offset in block
                     inc       7,s       ; add 2 to destination DAT pointer
                     inc       7,s       ; increment 7,s
 FMoveUpdDstOff      std       2,s       ; save updated destination offset in block
-                    bra       FMoveJoin ; go do next block
+                    lbra      FMoveJoin ; go do next block
 
 * Block move done, return
 FMovePurge          leas      16,s      ; purge stack
