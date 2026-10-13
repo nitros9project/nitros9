@@ -383,7 +383,7 @@ F256Gfx             equ       $1200     ; F256-specific graphics data (256 bytes
 * screen as sprite records.
 *******************************************************************
                     org       F256Gfx
-gr.SprTbl           rmb       G.TermMax*8   ; one row per terminal, below
+gr.SprTbl           rmb       72        ; G.TermMax*8: one row per terminal, below (written out: see gr.MsTbl)
 gr.SprDirty         rmb       1         ; 0 = every sprite control byte is known clear
 * Row layout (org 0, like the terminal table's T.*)
                     org       0
@@ -568,9 +568,9 @@ E$Param             equ       $05
 * Terminal Management Constants
 *******************************************************************
 G.TermMax           equ       9         ; Maximum terminals (0-8)
-* gr.MsTbl's rmb 72 (GrfMem, above) must cover a row per terminal.
+* gr.SprTbl's and gr.MsTbl's rmb 72 (above) must cover a row per terminal.
                     ifne      G.TermMax*8-72
-                    error     gr.MsTbl is not G.TermMax rows of 8
+                    error     gr.SprTbl and gr.MsTbl are not G.TermMax rows of 8
                     endc
 
 *******************************************************************
