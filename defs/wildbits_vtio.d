@@ -397,6 +397,13 @@ SB.Size             equ       8
 
 SB.Reg              equ       %00000001 ; this terminal has registered a table
 SB.Span             equ       %00000010 ; it crosses into SB.Blk1
+* gr.MsTbl row layout
+                    org       0
+MT.Cfg              rmb       1         ; SS.MsCfg bits (MC.*), 0 = defaults
+MT.CfgID            rmb       1         ; process that set MT.Cfg, 0 = none
+MT.LastX            rmb       2         ; X/Y this terminal's last SS.Mouse got while live
+MT.LastY            rmb       2
+                    rmb       2         ; spare, keeps the row at 8
 SPR.Max             equ       128       ; hardware sprite records
 SPR.RecL            equ       8         ; bytes each
 GrfMod              equ       $C000     ; Logical location of module in task 1
@@ -404,6 +411,28 @@ GrfMod              equ       $C000     ; Logical location of module in task 1
 *******************************************************************
 * GrfMem Offsets - Corrected for 8-byte DAT
 *******************************************************************
+*******************************************************************
+* The mouse driver's block (gr.MsDrv), one per machine: there is one
+* mouse.  mousedrv_ps2 registers F$IRQ with U = gr.MsDrv, so its
+* interrupt gets this block as U, owns no terminal's static and has an
+* F$IRQ entry of its own to remove (IOMan removes by U).  vtio's AltISR
+* and grfdrv read the buttons, timer and found flag directly.
+*******************************************************************
+                    org       0
+MD.Buttons          rmb       1         ; buttons 2=middle 1=right 0=left, the last packet's
+MD.Timer            rmb       1         ; auto-hide timer: mousedrv clears it, AltISR counts it
+MD.Found            rmb       1         ; non-zero = a mouse was found and its IRQ installed
+MD.MEMP             rmb       1         ; PS2_STAT empty bit of the mouse's channel
+MD.MS_IN            rmb       2         ; input register of the mouse's channel
+MD.M_WR             rmb       1         ; PS2_CTRL write bit of the mouse's channel
+MD.MCLR             rmb       1         ; PS2_CTRL FIFO clear bit of the mouse's channel
+MD.IntBit           rmb       1         ; INT_*_0 bit of the mouse's channel
+MD.Byte0            rmb       1         ; packet byte 0 (buttons, signs)
+MD.Byte1            rmb       1         ; packet byte 1 (X movement)
+MD.Byte2            rmb       1         ; packet byte 2 (Y movement)
+MD.ByteCnt          rmb       1         ; packet bytes received
+MD.Size             equ       .
+
                     org       $1100
 gr.DATImg           RMB       16        ; GrfDrv DAT image (16 BYTES)
 gr.Stack            RMB       2         ; GrfDrv Stack pointer (2 bytes)
@@ -499,6 +528,20 @@ gr.d2               rmb       2         ; GF.Pal LUT bytes 2-3 / scroll end offs
 gr.b3               rmb       1         ; colour attr / PSG volume / BM ctrl byte
 gr.b4               rmb       1         ; WD.Buf (16K backup) / WD.Vicky ($C2/$C3)
 gr.b5               rmb       1         ; GF.Pal 0=FG 1=BG LUT select
+gr.MsDrv            rmb       MD.Size   ; mousedrv's block (MD.*, above)
+gr.MSButtons        equ       gr.MsDrv+MD.Buttons
+gr.MSTimer          equ       gr.MsDrv+MD.Timer
+gr.MSFound          equ       gr.MsDrv+MD.Found
+* The mouse table: one 8-byte row per terminal (id * 8, as gr.TermTbl and
+* gr.SprTbl), MT.* below.  SS.MsCfg's setting and the X/Y a background
+* SS.Mouse returns.  vtio's AltISR reads the live terminal's row
+* (gr.LiveTerm); GF.TermNew clears a terminal's row.  72 = G.TermMax*8,
+* written out as gr.TermTbl's is: G.TermMax is defined further down, so
+* an rmb on it reserves nothing on pass 1 (checked where G.TermMax is).
+gr.MsTbl            rmb       72
+                    ifgt      .-F256Gfx
+                    error     GrfMem past $11FF - runs into F256Gfx
+                    endc
                     org       0
 T.Flags             rmb       1         ; Acrive Flag - only one screen should be active
 T.Block             rmb       1
@@ -525,6 +568,10 @@ E$Param             equ       $05
 * Terminal Management Constants
 *******************************************************************
 G.TermMax           equ       9         ; Maximum terminals (0-8)
+* gr.MsTbl's rmb 72 (GrfMem, above) must cover a row per terminal.
+                    ifne      G.TermMax*8-72
+                    error     gr.MsTbl is not G.TermMax rows of 8
+                    endc
 
 *******************************************************************
 * GrfDrv Function Codes

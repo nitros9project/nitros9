@@ -1347,6 +1347,8 @@ GetSttTbl           fcb       SS.ScSiz
                     fdb       GrfMod+GSBmClear
                     fcb       SS.BmLine
                     fdb       GrfMod+GSBmLine
+                    fcb       SS.MsCfg
+                    fdb       GrfMod+GSMsCfg
                     fcb       0
 * The bitmap calls go first: StatDisp searches this table linearly, and a
 * game's set-up walks all of them.
@@ -1394,6 +1396,8 @@ SetSttTbl           fcb       SS.AScrn
                     fdb       GrfMod+SSTmScrl
                     fcb       SS.ClutWrite
                     fdb       GrfMod+SSClutWrite
+                    fcb       SS.MsCfg
+                    fdb       GrfMod+SSMsCfg
                     fcb       0
 
 * GetStat SS.ScSiz - R$X = columns, R$Y = rows
@@ -1461,12 +1465,27 @@ GSDScrn             clra
                     std       R$Y,x
                     bra       StatOK
 
-* GetStat SS.Mouse - R$X/R$Y = position, R$A = buttons
-GSMouse             ldd       MS_XH
+* GetStat SS.Mouse - R$X/R$Y = position, R$A = buttons.  Live terminal:
+*   the pointer's position, kept in this terminal's gr.MsTbl row, and
+*   mousedrv's buttons.  Not live: the position its last SS.Mouse got and no
+*   buttons, so a background program sees nothing the user does on another
+*   terminal.  Y is free: StatDisp dispatched here with jmp [,y].
+GSMouse             lbsr      MsRow     ; y = this terminal's gr.MsTbl row
+                    tst       V.TermLive,u
+                    beq       msbg@
+                    ldd       MS_XH
+                    std       MT.LastX,y
                     std       R$X,x
                     ldd       MS_YH
+                    std       MT.LastY,y
                     std       R$Y,x
-                    lda       V.MSButtons,u
+                    lda       >gr.MSButtons
+                    bra       RetA
+msbg@               ldd       MT.LastX,y
+                    std       R$X,x
+                    ldd       MT.LastY,y
+                    std       R$Y,x
+                    clra                ; no buttons
                     bra       RetA
 
 * GetStat SS.Joy - R$X = the mode (JY.* modes, wildbits.d; spec in joust
@@ -3003,6 +3022,17 @@ DispRegs            fcb       Mstr_Ctrl_Text_Mode_En,$00
 GFTermNew           lda       >gr.b1
                     cmpa      #G.TermMax
                     lbhs      TNBusy
+* A new terminal's mouse row starts at the defaults: an id is reused after
+* GF.TermGone, and its old SS.MsCfg owner may not have exited yet.
+                    ldb       #8
+                    mul                 ; d = id * 8
+                    ldy       #gr.MsTbl
+                    leay      d,y
+                    ldb       #8
+tnms@               clr       ,y+
+                    decb
+                    bne       tnms@
+                    lda       >gr.b1
                     ldb       #gr.TermSz
                     mul
                     ldx       #gr.TermTbl
@@ -3619,6 +3649,52 @@ ok@                 clrb
 bad@                comb
                     ldb       #E$IllArg
                     jmp       >GrfMod+SysRet
+
+* GetStat SS.MsCfg - R$X = this terminal's mouse configuration (MC.* bits).
+GSMsCfg             bsr       MsRow
+                    clra
+                    ldb       MT.Cfg,y
+                    std       R$X,x
+                    clrb
+                    jmp       >GrfMod+SysRet
+
+* SetStat SS.MsCfg - R$X = this terminal's mouse configuration (MC.* bits):
+*   MC.On = the pointer stays on while this terminal is live; 0 = the
+*   defaults (auto-hide after 4-5 s without movement).  Bits not defined yet
+*   are E$IllArg.  Kept in the terminal's gr.MsTbl row; vtio's AltISR acts
+*   on it, and puts the defaults back once the calling process (vtio's
+*   StatFwd hands it over in gr.b2) has exited, so a program that dies
+*   without setting 0 does not leave the pointer on.  The owner is stored
+*   before the bits and the bits cleared before the owner, so the AltISR
+*   never sees MC.On with no owner.
+SSMsCfg             bsr       MsRow
+                    ldd       R$X,x
+                    tsta
+                    bne       bad@
+                    cmpb      #MC.On    ; highest defined combination
+                    bhi       bad@
+                    tstb
+                    beq       def@
+                    lda       >gr.b2    ; the calling process
+                    sta       MT.CfgID,y
+                    stb       MT.Cfg,y
+                    bra       ok@
+def@                clr       MT.Cfg,y
+                    clr       MT.CfgID,y
+ok@                 clrb
+                    jmp       >GrfMod+SysRet
+bad@                comb
+                    ldb       #E$IllArg
+                    jmp       >GrfMod+SysRet
+
+* MsRow - Y = this terminal's gr.MsTbl row (V.TermID * 8).  A, X, U kept.
+MsRow               ldb       V.TermID,u
+                    lslb
+                    lslb
+                    lslb
+                    ldy       #gr.MsTbl
+                    leay      b,y       ; b <= 64: positive as a signed offset
+                    rts
 
 *******************************************************************
 * The sprite calls.  A program keeps the ONLY copy of its records and
