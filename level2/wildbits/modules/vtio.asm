@@ -723,7 +723,7 @@ SWDestX             rts
 * gr.b*/gr.d* block entirely and take A/B/Y in registers, so gr.TermBlk
 * is their ONLY parameter out of GrfMem.  Nothing else on the PutGlyph
 * path refreshes it - the last writer could have been another terminal's
-* EraseLine (SetThisTermGrfPtrs) or PutCell/ChgPal (SetWDest) - so
+* EraseLine (SetThisTermGrfPtrs) or ChgPal (SetWDest) - so
 * without this a shadow glyph lands in the wrong terminal's backup
 * buffer.  With one terminal it could never be wrong; with two it is
 * wrong most of the time.
@@ -754,21 +754,6 @@ DoScroll            tst       V.TermLive,u
                     lbra      CallScrollShadow
 dslive@             lbra      CallScrollLive
 dsx@                rts
-
-*******************************************************************
-* PutCell - A = glyph, X = cell offset.  Snapshot + GF.Cell.
-* Colour = V.FBCol; dest via SetWDest.  Used by EraseChar.
-*   -> b2 glyph, b3 colour attr, d1 cell offset, b4 dest
-*******************************************************************
-PutCell             pshs      d,x
-                    sta       >gr.b2    ; glyph
-                    stx       >gr.d1    ; cell offset
-                    lda       V.FBCol,u
-                    sta       >gr.b3    ; colour attr
-                    bsr       SetWDest  ; sets b4
-                    ldb       #GF.Cell
-                    lbsr      CallGrfDrvNoPD
-                    puls      d,x,pc
 
 * Write — glyph paint is GF.Write (LUT 1). Cursor I/O stays here.
 *
@@ -1301,24 +1286,22 @@ BellBusy            clrb
 **********************************************************************
 * 08 - Cursor Left
 * If the cursor is at the first column, it moves to the last column of the previous line.
+* It only moves the cursor, as the CoCo's co80 and a VT100 do: SCF erases a
+* typed character itself with BS, space, BS (the descriptors' backspace
+* option is 1), and Shell+ writes a recalled history line and then BSs back
+* over it, which an erasing BS wiped out as it was drawn.
 *
 CurLeft             ldd       V.CurRow,u ; get the current row and column values
                     beq       leave     ; branch if they're zero
                     decb                ; decrement the column value
-                    bpl       EraseChar ; erase the character
+                    bpl       setpos@   ; still on this row
                     ldb       V.WWidth,u ; get the number of columns
                     decb                ; minus 1
-                    deca                ; decrement the counter
-                    bpl       EraseChar ; branch until done
+                    deca                ; up a row
+                    bpl       setpos@
                     clra                ; clear A
-
-* Entry:  A = The row of the character to erase.
-*         B = The column of the character to erase.
-EraseChar           std       V.CurRow,u ; save D to the current row and column
+setpos@             std       V.CurRow,u ; save D to the current row and column
                     lbsr      CalcCurPos ; resync (and row-clamp) V.CurPos
-                    ldx       V.CurPos,u ; x = cell offset
-                    lda       #C$SPAC
-                    lbsr      PutCell   ; erase the one cell
 leave               rts                 ; return
 
 **********************************************************************

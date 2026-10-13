@@ -949,29 +949,22 @@ NoOp
 ;;;
 ;;; Moves the cursor to the left.
 ;;;
-;;; Code: 09
+;;; Code: 08
 ;;;
 ;;; If the cursor is at the first column, it moves to the last column of the previous line.
+;;; It only moves the cursor, as the CoCo's co80 and a VT100 do: SCF erases a
+;;; typed character itself with BS, space, BS (the descriptor's backspace
+;;; option is 1).
 CurLeft             ldd       V.CurRow,u          get the current row and column values
                     beq       leave               branch if they're zero
                     decb                          decrement the column value
-                    bpl       EraseChar           erase the character
+                    bpl       setpos@             still on this row
                     ldb       V.WWidth,u          get the number of columns
                     decb                          minus 1
-                    deca                          decrement the counter
-                    bpl       EraseChar           branch until done
+                    deca                          up a row
+                    bpl       setpos@
                     clra                          clear A
-
-* Entry:  A = The row of the character to erase.
-*         B = The column of the character to erase.
-EraseChar           std       V.CurRow,u          save D to the current row and column
-                    ldb       V.WWidth,u          get the number of columns
-                    mul                           calculate the product
-                    addb      V.CurCol,u          add in the current column
-                    adca      #0                  add in the carry bit
-                    ldx       #G.ScrStart         point to the start of the screen
-                    leax      d,x                 advance to the calculated osition
-                    clr       1,x                 erase the character
+setpos@             std       V.CurRow,u          save D to the current row and column
 leave               rts                           return
 
 CurDown             ldd       V.CurRow,u          get the current row and column
