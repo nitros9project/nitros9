@@ -130,7 +130,7 @@ CMDS += astro
 RECIPE_DEPS += $(ASTRO_DIR)/astro.dat $(ASTRO_DIR)/astro.snd $(MODDIR)/astrosnd
 $(MODDIR)/astro: $(ASTRO_DIR)/astro.asm $(wildcard $(ASTRO_DIR)/*.asm) $(L2PD)/defsfile $(DEFSDIR)/wildbits_vtio.d $(DEFSDIR)/wildbits.d | $(MODDIR)
 	$(AS) $(AFLAGS) --6809 -I$(L2PD) -I$(ASTRO_DIR) $< $(ASOUT)$@
-	python3 -c 'import pathlib,sys; m=pathlib.Path(sys.argv[1]).read_bytes(); n=(len(m)+8191)//8192+(int.from_bytes(m[11:13],"big")+8191)//8192+1; assert n<=7, "Astro exceeds process slots 0-6"' $@
+	m=$$(wc -c < $@); d=$$(od -An -tu1 -j11 -N2 $@ | awk '{print $$1*256+$$2}'); test $$(( (m+8191)/8192 + (d+8191)/8192 + 1 )) -le 7 || { echo "Astro exceeds process slots 0-6"; exit 1; }
 
 $(MODDIR)/astrosnd.module: $(ASTRO_DIR)/astrosnd.asm $(ASTRO_DIR)/sound_defs.asm $(ASTRO_DIR)/sound_assets.asm $(L2PD)/defsfile $(DEFSDIR)/wildbits.d | $(MODDIR)
 	$(AS) $(AFLAGS) --6809 -I$(L2PD) -I$(ASTRO_DIR) $< $(ASOUT)$@
@@ -138,7 +138,7 @@ $(MODDIR)/asnd.module: $(ASTRO_DIR)/asnd.asm $(L2PD)/defsfile | $(MODDIR)
 	$(AS) $(AFLAGS) --6809 -I$(L2PD) -I$(ASTRO_DIR) $< $(ASOUT)$@
 $(MODDIR)/astrosnd: $(MODDIR)/astrosnd.module $(MODDIR)/asnd.module
 	cat $^ > $@
-	python3 -c 'import pathlib,sys; assert pathlib.Path(sys.argv[1]).stat().st_size<=8192, "Astro sound bundle exceeds one map slot"' $@
+	test $$(wc -c < $@) -le 8192 || { echo "Astro sound bundle exceeds one map slot"; exit 1; }
 
 # These commands live in the Level 2 source tree. Explicit prerequisites also
 # prevent an older Level 1 object from satisfying an incremental build.
