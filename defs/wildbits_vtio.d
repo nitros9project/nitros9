@@ -700,11 +700,14 @@ WD.Vicky            equ       1         ; live $C2/$C3 at LUT1 $2000/$4000
 * read-back (shadow copies)": the core keeps TEXT_FG_Shadow / TEXT_BG_Shadow
 * and returns them for $18_1700-$18_177F.  So this CAN go to 1 now, subject
 * to which bitstream is actually flashed - the same open question as the DMA
-* halt.  LEFT AT 0 DELIBERATELY: flipping it is a behaviour change to the
-* terminal switch path and wants a hardware run of its own.  See the open
-* item in docs/status.md.
+* halt.
+*
+* ON SINCE 2026-10-13: each terminal keeps its own text foreground and
+* background palettes across a switch.  Older cores, whose text LUT does not
+* read back, are not supported (upgrade the core): on those the capture
+* reads a dead palette and the screen goes black on black.
 TermSaveFont0       equ       1         font bank 0     - CONFIRMED works
-TermSaveTextLUT     equ       0         text LUT fg/bg  - BROKEN before the FPGA fix
+TermSaveTextLUT     equ       1         text LUT fg/bg  - needs a core with text LUT read-back
 * TermSaveSprite0 is gone with T.SPRITE0: PushBuf no longer reads the
 * sprite registers back, and PullBuf fills them from the incoming
 * terminal's registered table.
