@@ -173,9 +173,13 @@ TESTS = $(notdir $(filter-out %.asm,$(wildcard $(TESTS_DIR)/*)))
 # Executable hardware probes. Their sources are the .asm files in TESTS_DIR that
 # the TESTS line above filters out; each is assembled into MODDIR by its own rule
 # further down, then copied binary into TESTS on the disk with the execute
-# attribute set. They go NOWHERE else - none of these five is in CMDS.
+# attribute set. They go NOWHERE else - none of these is in CMDS.
 # Run them as tests/<name>, or chx the execution directory to the folder first.
-TESTS_BIN = sprites math fpu dma memtest
+TESTS_BIN = sprites math fpu dma
+ifeq ($(LEVEL),2)
+# memtest uses the Level 2 block calls (F$MapBlk, F$ClrBlk, F$GBlkMp).
+TESTS_BIN += memtest
+endif
 FONT_DIR = $(LEVEL1)/wildbits/sys/fonts
 BACKGROUND_DIR = $(LEVEL1)/wildbits/sys/backgrounds
 FONTS = 800yfont anglefont applefont bannerfont.sb bigbluefont boldfont boxedfont \
