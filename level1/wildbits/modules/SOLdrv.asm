@@ -410,7 +410,8 @@ cont@               leay      V.SOLTable,u
                     leay      b,y                 load next line value
                     ldd       2,y
                     std       $FFD9               write to SOL register
-end@                rts
+end@                andcc     #^Carry             handled (IOMan reads carry set as "not mine")
+                    rts
 
 
 ***********************************************************************************
