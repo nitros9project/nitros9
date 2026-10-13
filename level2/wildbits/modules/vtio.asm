@@ -62,7 +62,6 @@ llnam               fcs       "grfdrv256"
 * VTIO Alternate IRQ routine - Entered from Clock every 1/60th of a second
 *
 * The interrupt service routine is responsible for:
-*   - handling the K keyboard (if available)
 *   - decrementing the tone counter
 *   - select the new active window if needed (when that time comes)
 *   - updating graphics cursors if needed (when that time comes)
@@ -70,18 +69,8 @@ llnam               fcs       "grfdrv256"
 
 AltISR
                     ldu       D.KbdSta
-* Handle keyboard (if available)
-                    ldx       V.KeyDrvEPtr,u ; computer have polling keybard?
-                    cmpx      #$0000
-                    beq       HandleMSTimer ; no, just handle mouse
-                    lda       V.LastCh,u ; if LastCh=0, skip keyrepeat handling
-                    beq       HandleKeyboard@
-                    dec       V.KRTimer,u ; decrement repeat timer
-                    bne       HandleKeyboard@ ; if not 0, then don't repeat yet
-                    ldx       V.KeyDrvEPtr,u
-                    jsr       9,x       ; else jmp to keyrepeat routine
-HandleKeyboard@     ldx       V.KeyDrvEPtr,u
-                    jsr       6,x       ; call AltIRQ routine in keydrv
+* The keyboard is not handled here: keydrv services it from its own
+* interrupt and the core paces key repeat.
 
 * Handle Mouse Timer. When timer wraps to zero, turn it off
 * Clearing MS_MEN is a true hide on v8_rc11 and later cores (the pointer pixel
