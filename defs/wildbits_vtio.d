@@ -401,9 +401,12 @@ SB.Span             equ       %00000010 ; it crosses into SB.Blk1
                     org       0
 MT.Cfg              rmb       1         ; SS.MsCfg bits (MC.*), 0 = defaults
 MT.CfgID            rmb       1         ; process that set MT.Cfg, 0 = none
-MT.LastX            rmb       2         ; X/Y this terminal's last SS.Mouse got while live
+MT.LastX            rmb       2         ; pointer X/Y when this terminal last went background
 MT.LastY            rmb       2
-                    rmb       2         ; spare, keeps the row at 8
+MT.Flags            rmb       1         ; MF.*
+                    rmb       1         ; spare, keeps the row at 8
+MF.Saved            equ       %00000001 ; MT.LastX/Y hold a position: restore it on coming forward
+MF.Shown            equ       %00000010 ; the pointer was showing when it went background
 SPR.Max             equ       128       ; hardware sprite records
 SPR.RecL            equ       8         ; bytes each
 GrfMod              equ       $C000     ; Logical location of module in task 1
@@ -533,9 +536,12 @@ gr.MSButtons        equ       gr.MsDrv+MD.Buttons
 gr.MSTimer          equ       gr.MsDrv+MD.Timer
 gr.MSFound          equ       gr.MsDrv+MD.Found
 * The mouse table: one 8-byte row per terminal (id * 8, as gr.TermTbl and
-* gr.SprTbl), MT.* below.  SS.MsCfg's setting and the X/Y a background
-* SS.Mouse returns.  vtio's AltISR reads the live terminal's row
-* (gr.LiveTerm); GF.TermNew clears a terminal's row.  72 = G.TermMax*8,
+* gr.SprTbl), MT.* below.  SS.MsCfg's setting, and the pointer position and
+* shown/hidden state a switch saves when the terminal goes background and
+* puts back when it comes forward (the position is also what a background
+* SS.Mouse returns).  vtio's AltISR
+* reads the live terminal's row (gr.LiveTerm); GF.TermNew clears a
+* terminal's row.  72 = G.TermMax*8,
 * written out as gr.TermTbl's is: G.TermMax is defined further down, so
 * an rmb on it reserves nothing on pass 1 (checked where G.TermMax is).
 gr.MsTbl            rmb       72

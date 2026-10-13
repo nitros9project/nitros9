@@ -813,6 +813,22 @@ GSFound             pshs      d         ; 0,s = new id, 1,s = new offset
                     lslb
                     ldx       #gr.TermTbl
                     abx                 ; x = old entry
+* Its pointer position and whether the pointer is showing, for a
+* background SS.Mouse and for putting back when it comes forward
+* (GSEnter).  Interrupts are masked: mousedrv cannot move or show the
+* pointer in between.
+                    ldy       #gr.MsTbl
+                    leay      b,y       ; y = its mouse row (b <= 64)
+                    ldd       MS_XH
+                    std       MT.LastX,y
+                    ldd       MS_YH
+                    std       MT.LastY,y
+                    lda       #MF.Saved
+                    ldb       MS_MEN
+                    bitb      #%00000001 ; pointer enable
+                    beq       mshid@
+                    ora       #MF.Shown
+mshid@              sta       MT.Flags,y
                     lda       T.Flags,x
                     anda      #^T.Live
                     sta       T.Flags,x
@@ -1006,6 +1022,30 @@ GTFBnx              leas      1,s       ; drop the size bit
 GSEnter             pshs      a
                     ldx       #gr.TermTbl
                     abx                 ; x = new entry
+* The pointer goes back where it was, shown or hidden, when this terminal
+* went background (GFSwitch saved both).  A terminal that has never been
+* background has nothing saved, and the pointer stays as it is.  mousedrv
+* reads the position back from the registers, so it carries on from there.
+* The auto-hide timer starts again, so a pointer that comes back showing
+* gets its full 4-5 s.
+                    pshs      b
+                    clr       >gr.MSTimer
+                    ldy       #gr.MsTbl
+                    leay      b,y       ; y = its mouse row (b <= 64)
+                    lda       MT.Flags,y
+                    bita      #MF.Saved
+                    beq       nomspos@
+                    ldd       MT.LastX,y
+                    std       MS_XH
+                    ldd       MT.LastY,y
+                    std       MS_YH
+                    clrb                ; hidden
+                    lda       MT.Flags,y
+                    bita      #MF.Shown
+                    beq       msen@
+                    incb                ; shown, mode 0 (as mousedrv)
+msen@               stb       MS_MEN
+nomspos@            puls      b
                     lda       T.Flags,x
                     ora       #T.Live
                     sta       T.Flags,x
@@ -1466,18 +1506,17 @@ GSDScrn             clra
                     bra       StatOK
 
 * GetStat SS.Mouse - R$X/R$Y = position, R$A = buttons.  Live terminal:
-*   the pointer's position, kept in this terminal's gr.MsTbl row, and
-*   mousedrv's buttons.  Not live: the position its last SS.Mouse got and no
-*   buttons, so a background program sees nothing the user does on another
-*   terminal.  Y is free: StatDisp dispatched here with jmp [,y].
+*   the pointer's position and mousedrv's buttons.  Not live: where the
+*   pointer was when it went background (its gr.MsTbl row, saved by
+*   GFSwitch) and no buttons, so a background program sees nothing the user
+*   does on another terminal.  Y is free: StatDisp dispatched here with
+*   jmp [,y].
 GSMouse             lbsr      MsRow     ; y = this terminal's gr.MsTbl row
                     tst       V.TermLive,u
                     beq       msbg@
                     ldd       MS_XH
-                    std       MT.LastX,y
                     std       R$X,x
                     ldd       MS_YH
-                    std       MT.LastY,y
                     std       R$Y,x
                     lda       >gr.MSButtons
                     bra       RetA
