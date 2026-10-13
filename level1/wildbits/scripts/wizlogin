@@ -1,3 +1,6 @@
+* wizlogin - SUPERSEDED by wiz1up, which does the whole sequence (server, wait,
+* passthrough, login). Kept for by-hand use: run it only after a passthrough server
+* is up and a client is connected; it just switches echo on and starts tsmon on /wz.
 echo * WizFi360 Helper - Remote login over /wz
 echo ATE0>/wz
 modem /wz

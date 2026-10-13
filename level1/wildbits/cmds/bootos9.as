@@ -174,8 +174,10 @@ skip@               leay      256,y     move Y up to the next location
                     sty       2,s       and save it back on the stack
                     puls      d,y       recover the registers
                     subd      #256      decrement the counter
-                    cmpd      #$0000    are we at the end?
-                    bgt       l@        no, continue
+* Unsigned test on SUBD's own flags (2026-10-04): BGT after CMPD #0 read a count of $8000 or more as
+* negative, so a bootfile of 33,024 bytes or more stopped after its first sector. BHI continues while
+* the subtraction neither borrowed nor reached zero; a final partial sector still ends the loop.
+                    bhi       l@        more to read, continue
                     ldx       bootaddr,u copying is done; get the bootfile starting address
                     lbsr      DetermineKernel and determine what kind of kernel (if any)
                     lbcs      print_and_bye if carry set, no kernel was found, so return

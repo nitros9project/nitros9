@@ -131,6 +131,29 @@ FLinkModule         ldd       MD$MPtr,x ; get module pointer
                     ldy       MD$MPDAT,x ; get module DAT image pointer
                     ldd       MD$MBSiz,x ; get block size
                     addd      #$1FFF    ; round it up
+                  IFNE    wildbits
+* wildbits (2026-09-06): the core keeps THREE pages fixed at the top of every map ($FD00-$FFFF:
+* the kernel's shadow-RAM tail and two I/O pages), not the CoCo3's two ($FE00-$FFFF), so the
+* start-slot count A must allow for $300 bytes instead of $200; B stays the run length.  A module
+* whose last block is used past offset $1D00 then starts the top-down search one slot lower and
+* never sits in slot 7, where those bytes would be hidden (a 7470-byte vs hung both machines;
+* 7212 bytes worked).  Written with MUL instead of the CoCo3 shift chain below:
+*   ldb #8 / mul puts hi >> 5 (the block count) in A in one instruction, and leaves
+*   (hi & $1F) << 3 in B - the low five bits of hi, which cross into another block with three
+*   more pages exactly when they are 29 or more, i.e. B >= $E8.  No add, so no overflow case.
+* Why MUL is fine here: this is a cold path, run once per link of a module into a process map
+*   (a few times per command launch, never per interrupt or per byte), and the whole sequence is
+*   still cheaper than the chain it replaces - 26 cycles (ldb 2 + mul 11 + cmpb 2 + tfr 6 + bcs 3
+*   + inca 2) against 30 (tfr 6 + 5 lsrb 10 + inca 2 + lsra 2 + inca 2 + 4 lsra 8) - and 4 bytes
+*   smaller (10 against 14), which matters in Krn, whose code must end below the constant tail.
+                    ldb       #8        ; hi * 8: the block count lands in A
+                    mul                 ; A = hi >> 5 (blocks), B = (hi & $1F) << 3
+                    cmpb      #$E8      ; low five bits >= 29: the three-page allowance needs a block more
+                    tfr       a,b       ; B = block count (the run length); CC untouched
+                    bcs       FLinkWbNoBump ; below 29: slot 7 may hold it
+                    inca                ; A = block count + 1: start the search one slot lower
+FLinkWbNoBump       equ       *
+                  ELSE
                     tfr       a,b       ; transfer register value a,b
                     lsrb                ; shift or rotate and update condition codes
                     lsrb                ; shift or rotate and update condition codes
@@ -144,6 +167,7 @@ FLinkModule         ldd       MD$MPtr,x ; get module pointer
                     lsra                ; shift or rotate and update condition codes
                     lsra                ; shift or rotate and update condition codes
                     lsra                ; shift or rotate and update condition codes
+                  ENDC
                     pshs      a         ; save a on the stack
                     leau      ,y        ; point to module DAT image
                     bsr       FLinkProcess ; is it already linked in process space?

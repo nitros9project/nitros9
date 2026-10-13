@@ -78,17 +78,26 @@
 *
 *   16     2026/04/28   R Taylor
 * Tighten up the help message to save space.
+*
+*   17     2026/09/06   R Taylor / Claude Fable 5
+* Improve Lyra playback accuracy, volume handling, and MIDI integration.
+*
+*   18     2026/09/23   R Taylor / Astra 6
+* Fix timing and tempo in Lyra and Ultimuse playback.
+*
+*   19     2026/09/24
+* Use fixed rc18 sound ports; no mapped sound block.
 
                     nam       music
                     ttl       Music Player
 
  section __os9
-edition = 16
+edition = 19
  endsect
 
 * Here are some tweakable options
 DOHELP              set       1                   1 = include help info
-SID_MAX_VOL         equ       15                  (0 = silence, 15 = loud) for all SID Voices
+SID_MAX_VOL         equ       6                   (0 = silence, 15 = loud) for all SID Voices - halved 2026-08-28 to balance against the quieter SAM2695 (.lyr) analog path
 SID_V1_CR1          equ       %00010001           SID Voice 1 Gate
 SID_V2_CR1          equ       %00010001           SID Voice 2 Gate
 SID_V3_CR1          equ       %00010001           SID Voice 3 Gate
@@ -98,7 +107,13 @@ SID_V3_PULSE_DUTY   equ       $800
 SID_V1_ADSR         equ       $00F0
 SID_V2_ADSR         equ       $00F0
 SID_V3_ADSR         equ       $00F0
-MIDIVEL_DEFAULT     equ       80                  0..127 for MIDI velocity
+* MIDI loudness model (2026-09-05). A Lyra $E0 event is a TRACK VOLUME (0-7), not a
+* per-note articulation, so it drives CC11 (expression) on the track's channel via
+* LyraExprConv, and every note goes out at one natural velocity. CC7 stays at 127
+* (mixer at unity, MidiVolAll). Machine-independent: absolute loudness is the codec's job.
+NOTE_VELOCITY       equ       100                 constant note-on velocity (sequencer convention; keeps GM patches off their hard-hit layers)
+LYRA_DEFAULT_LEVEL  equ       6                   Lyra volume assumed for a track that never sets one (mf: -8dB, two 4dB steps below 7)
+LYRA_DEFAULT_EXPR   equ       118                 = LyraExprConv[LYRA_DEFAULT_LEVEL] - keep in step with the table
 PLAYLISTITEM_MAXSTR equ       255
 
 FILETYPE_MUSICA     equ       1
@@ -107,8 +122,10 @@ FILETYPE_COCOLYRA   equ       3
 FILETYPE_ULTIMUSE   equ       4
 FILETYPE_MIDIPATCH  equ       5
 
-MIDI_StatusReg      equ       SAM2695.Base+MIDI_STATUS
-MIDI_DataReg        equ       SAM2695.Base+MIDI_FIFO_DATA
+* Fixed sound ports and SID chip selectors come from wildbits.d.
+
+MIDI_CtrlReg        equ       MIDI.Base+MIDI_CTRL
+MIDI_DataReg        equ       MIDI.Base+MIDI_DATA
 MIDITABENTSIZ       equ       4                   MIDI Note Table entry size in bytes
 MIDITABOCTSIZ       equ       7*MIDITABENTSIZ     MIDI Note Table octave size in bytes
 
@@ -164,9 +181,9 @@ psg_out             rmb       2
 psg_left            rmb       2
 psg_both            rmb       2
 psg_right           rmb       2
-sid_left            rmb       2
-sid_both            rmb       2
-sid_right           rmb       2
+sid_left            rmb       2                   SID chip selector, loaded into Y
+sid_both            rmb       2                   SID chip selector, loaded into Y
+sid_right           rmb       2                   SID chip selector, loaded into Y
 freq_sid1           rmb       2
 freq_sid2           rmb       2
 freq_sid3           rmb       2
@@ -175,7 +192,6 @@ freq_psg1           rmb       2
 freq_psg2           rmb       2
 freq_psg3           rmb       2
 freq_psg4           rmb       2
-WBSoundBlk          rmb       2                   The platform has some HW in high RAM
 ScoreStart	    rmb       2
 ScoreCurrent	    rmb       2
 NoteCycles	    rmb       2                   Musica carries a chord for 1 duration
@@ -207,6 +223,20 @@ UMEPartClefs        rmb       16                  Table of clef #'s for each num
 UMEClefTable        rmb       2*8                 Table of 8 Ultimuse clef type pointers
 SectionList         rmb       9*2
 ScoreTracks         rmb       16*TRACK_ENTRYSIZE
+* Lyra clock state is outside DP; access through U, preserving existing DP offsets.
+ClockRate           rmb       4                   elapsed-frame debit in current clock units
+UmeTempo            rmb       2
+UmeSecMin           rmb       2
+UmeNumer            rmb       2
+UmeDenom            rmb       2
+ClockDivisor        rmb       4
+ClockRemainder      rmb       4
+LyraMaster          rmb       2
+LyraMarker          rmb       1
+LyraUnit            rmb       4
+LyraCost            rmb       5                   step time in CPU cycles * 60
+LyraDebt            rmb       5                   signed remaining time; carries fractional credit
+LyraLastTick        rmb       2
 PlaylistItemStr     rmb       PLAYLISTITEM_MAXSTR
 HexStrDat           rmb       6
 SampleBuf           rmb       25
@@ -444,7 +474,7 @@ PlaySidR2           leax      SampleBuf,u
                     ldd       5,x 
                     lbsr      WriteSIDV1A
                     lda       4,x 
-                    sta       4,y 
+                    lbsr      WriteSIDV1G
 
                     ldd       7,x 
                     exg       a,b
@@ -455,7 +485,7 @@ PlaySidR2           leax      SampleBuf,u
                     ldd       7+5,x 
                     lbsr      WriteSIDV2A
                     lda       7+4,x 
-                    sta       7+4,y 
+                    lbsr      WriteSIDV2G
 
                     ldd       14,x 
                     exg       a,b
@@ -466,18 +496,32 @@ PlaySidR2           leax      SampleBuf,u
                     ldd       14+5,x 
                     lbsr      WriteSIDV3A
                     lda       14+4,x 
-                    sta       14+4,y 
+                    lbsr      WriteSIDV3G
 
-                    lda       22,x 
-                    sta       22,y
-                    lda       23,x 
-                    sta       23,y 
-                    lda       24,x 
-                    sta       24,y 
+                    lda       22,x
+                    ldb       #22
+                    lbsr      WriteSIDByte
+                    lda       23,x
+                    ldb       #23
+                    lbsr      WriteSIDByte
+* Register 24 ($18) = filter mode / master volume. Raw dumps usually
+* carry volume 15, which bypasses the SID_MAX_VOL calibration and
+* leaves .rsd ~8dB louder than .mus. Rescale the volume nibble
+* through RsdVolScale; the filter/mode bits pass through untouched.
+* (X is free to clobber here - it is reloaded just below.)
+                    lda       24,x
+                    tfr       a,b
+                    andb      #$F0                keep the dump's filter/mode bits
+                    anda      #$0F                the dump's volume nibble
+                    leax      RsdVolScale,pcr
+                    lda       a,x                 rescale 0-15 -> 0-SID_MAX_VOL
+                    pshs      b
+                    ora       ,s+                 merge the filter bits back in
+                    lbsr      WriteSIDVol
 
                     ldx       #$0002
                     os9       F$Sleep
-                    bra       PlaySidR2
+                    lbra      PlaySidR2           long branch - the volume rescale above grew the loop
 
 Load2Local          ldb       #SS.Size
                     lda       <bFilePath
@@ -519,7 +563,7 @@ a@                  ldd       1,s                 Recall address of top of file
                     clra
                     clrb
                     std       TRACK_CYCLES,y
-                    lda       #MIDIVEL_DEFAULT    Reset velocity
+                    lda       #LYRA_DEFAULT_EXPR  Expression (CC11) value in force until a Lyra volume event arrives
                     sta       TRACK_VELOC,y
                     leay      TRACK_ENTRYSIZE,y
                     dec       ,s 
@@ -529,13 +573,20 @@ a@                  ldd       1,s                 Recall address of top of file
                     ldx       <pFileTop
                     leay      $121,x              Point to Lyra channel map (8 entries)
                     sty       <MIDIChanMap
-                    ldb       $0007,x             Only use LSB of 16-bit tempo 
-                    stb       <bTempo
+                    ldd       $0006,x             full Lyra master tempo
+                    bne       lmaster@
+                    ldd       #32                 malformed zero: use original default
+lmaster@            std       LyraMaster,u
+                    ldb       #40                 original initial tempo marker
+                    lbsr      LyraSetTempo
                     tst       <fUseMapFile        Check if instrument map file was loaded
                     bne       gm@                 User has applied a patch file
                     lbsr      MidiMuteAll
                     lbsr      SetupInstruments    Auto-sensing instrument translation
-gm@                 ldb       #1                  Enable the sequencer
+gm@                 lbsr      MidiVolAll          CC7 max on all channels - AFTER MidiMuteAll (its GM-reset sysex restores the quiet power-on volume default)
+                    lbsr      MidiExprAll         CC11 = default expression on all channels (the GM reset put it at 127)
+                    lbsr      LyraClockInit
+                    ldb       #1                  Enable the sequencer
                     stb       <fDoSequencer
 
 ********************************************************************
@@ -584,8 +635,7 @@ s@                  ldy       <pThisTrack
                     ldb       <bDebugMode
                     beq       ve@
                     lbsr      DebugNotes
-ve@                 ldx       #$0002
-                    os9       F$Sleep
+ve@                 lbsr      LyraWait
                     bra       LyraLooper
 
 ********************************************************************
@@ -601,17 +651,20 @@ r@                  ldd       ,x                  Get current note
                     beq       c@                  No, it must be a note or rest
 * Process Event Codes
                     anda      #$F0                Mask out non event bits
-                    cmpa      #$E0                Is this velocity control?
+                    cmpa      #$E0                Is this a track volume event?
                     bne       te@                 Assume this is a musical note/rest
-                    andb      #7                  Make safe velocity value
-                    leay      LyraVelocConv,pcr   Point to Lyra-to-MIDI velocity conversion table
-                    lda       b,y                 Convert 0..7 to 0..127
+                    andb      #7                  Lyra volume level 0..7
+                    leay      LyraExprConv,pcr    Point to Lyra-volume-to-CC11 table
+                    lda       b,y                 Convert 0..7 to expression 0..127
                     ldy       <pThisTrack         Restore track pointer
-                    sta       TRACK_VELOC,y       Set new velocity for this channel
+                    cmpa      TRACK_VELOC,y       Same level as before? then spend no MIDI bytes
+                    beq       se@
+                    sta       TRACK_VELOC,y       Remember this track's expression value
+                    lbsr      MidiExpression      CC11 on this track's channel = A
                     bra       se@
 te@                 cmpa      #$A0                Tempo event?
                     bne       se@
-                    stb       <bTempo
+                    lbsr      LyraSetTempo
                     bra       se@
 ie@                 cmpa      #$90                Instrument event?
                     bne       se@
@@ -710,12 +763,15 @@ nxn@                leax      2,x                 Point to the next note
                     clrb
 LyraMusSeqExt       rts                           Return to sequencer
 
+
+
+
 MidiNoteOn          ldb       #MIDICMD_NOTE_ON    Send MIDI Note On
                     orb       TRACK_MIDICHAN,y    Get the target channel
                     stb       >MIDI_DataReg
                     lda       TRACK_MIDIPITCH,y
                     sta       >MIDI_DataReg       The note value to turn on
-                    ldb       TRACK_VELOC,y       Get velocity for this channel
+                    ldb       #NOTE_VELOCITY      One natural velocity - loudness is expression (CC11), not velocity
                     stb       >MIDI_DataReg
                     rts
 
@@ -727,9 +783,57 @@ a@                  orb       TRACK_MIDICHAN,y    Get the target channel
                     lda       TRACK_MIDIPITCH,y
                     sta       >MIDI_DataReg       The note value to turn on
                     ldb       #$00 
-*                    ldb       TRACK_VELOC,y       Get velocity for this channel
+*                    ldb       #NOTE_VELOCITY      One natural velocity - loudness is expression (CC11), not velocity
                     stb       >MIDI_DataReg
                     rts
+
+* Set CC7 (channel volume) to maximum on all 16 MIDI channels.
+* Must run AFTER MidiMuteAll: the GM reset sysex it sends returns
+* every channel volume to the power-on default (~100), which leaves
+* .lyr playback noticeably quiet on the SAM2695.
+MidiVolAll          clr       ,-s                 First MIDI channel #
+a@                  lda       #MIDICMD_CC         Control Change $Bx
+                    ora       ,s                  Mix in the channel (x)
+                    sta       >MIDI_DataReg
+                    ldb       #7                  CC7 = channel volume
+                    stb       >MIDI_DataReg
+                    ldb       #127                maximum
+                    stb       >MIDI_DataReg
+                    inc       ,s
+                    lda       ,s
+                    cmpa      #16
+                    blo       a@
+                    puls      a,pc
+
+* Set CC11 (expression) on all 16 channels to the default Lyra level's value, so
+* tracks that never send a volume event (and .ume files) start at the same loudness
+* as a Lyra track at LYRA_DEFAULT_LEVEL. Run after MidiVolAll (the GM reset sysex
+* in MidiMuteAll leaves expression at 127).
+MidiExprAll         clr       ,-s                 First MIDI channel #
+e@                  lda       #MIDICMD_CC         Control Change $Bx
+                    ora       ,s                  Mix in the channel (x)
+                    sta       >MIDI_DataReg
+                    ldb       #11                 CC11 = expression
+                    stb       >MIDI_DataReg
+                    ldb       #LYRA_DEFAULT_EXPR
+                    stb       >MIDI_DataReg
+                    inc       ,s
+                    lda       ,s
+                    cmpa      #16
+                    blo       e@
+                    puls      a,pc
+
+* Send CC11 (expression) on one track's MIDI channel.
+* Entry: A = expression value 0..127, Y = track.  Preserves D, X, Y.
+MidiExpression      pshs      d
+                    lda       #MIDICMD_CC         Control Change $Bx
+                    ora       TRACK_MIDICHAN,y    on this track's channel
+                    sta       >MIDI_DataReg
+                    lda       #11                 CC11 = expression
+                    sta       >MIDI_DataReg
+                    lda       ,s                  the value
+                    sta       >MIDI_DataReg
+                    puls      d,pc
 
 MidiMuteAll         clr       ,-s                 First MIDI channel #
 a@                  lda       #MIDICMD_CC         Control Change $Bx
@@ -779,6 +883,139 @@ MultYxB             pshs      b,y
 *******************************************************************
 * Ultimuse III format (originally Tandy Color Computer)
 *
+* Lyra clock: original slow-NTSC unit = marker*(8*master+12)+296 cycles.
+* Existing Play counters take 24 steps/quarter (48 original units). Each step
+* costs 120*unit in cycles*60; each elapsed 60Hz frame pays 894886. Carry credit
+* across steps and tempo changes. No per-step division or triplet changes.
+* All routines preserve X/Y/U and balance S. Timer1 counts SOF frames, as in UME.
+LyraSetTempo        pshs      d,x,y
+                    tstb
+                    bne       lstvalid@
+                    ldb       #1                  zero marker cannot stop the clock
+lstvalid@           stb       LyraMarker,u
+                    ldd       #$000D
+                    std       ClockRate,u
+                    ldd       #$A7A6
+                    std       ClockRate+2,u
+                    ldd       LyraMaster,u
+                    std       LyraUnit+2,u
+                    clr       LyraUnit,u
+                    clr       LyraUnit+1,u
+                    ldb       #3
+lstshift@           lsl       LyraUnit+3,u
+                    rol       LyraUnit+2,u
+                    rol       LyraUnit+1,u
+                    rol       LyraUnit,u
+                    decb
+                    bne       lstshift@
+                    ldd       LyraUnit+2,u
+                    addd      #12
+                    std       LyraUnit+2,u
+                    ldd       LyraUnit,u
+                    adcb      #0
+                    adca      #0
+                    std       LyraUnit,u
+                    leax      LyraCost,u
+                    ldb       #5
+lstclear@           clr       ,x+
+                    decb
+                    bne       lstclear@
+                    ldb       LyraMarker,u
+                    clra
+                    tfr       d,y
+lstmul@             lbsr      LyraAddUnit
+                    leay      -1,y
+                    bne       lstmul@
+                    ldd       LyraCost+3,u
+                    addd      #296
+                    std       LyraUnit+2,u
+                    ldd       LyraCost+1,u
+                    adcb      #0
+                    adca      #0
+                    std       LyraUnit,u
+                    leax      LyraCost,u
+                    ldb       #5
+lstclr2@            clr       ,x+
+                    decb
+                    bne       lstclr2@
+                    ldy       #120
+lstscale@           lbsr      LyraAddUnit
+                    leay      -1,y
+                    bne       lstscale@
+                    puls      d,x,y,pc
+LyraAddUnit         ldd       LyraCost+3,u
+                    addd      LyraUnit+2,u
+                    std       LyraCost+3,u
+                    ldd       LyraCost+1,u
+                    adcb      LyraUnit+1,u
+                    adca      LyraUnit,u
+                    std       LyraCost+1,u
+                    lda       LyraCost,u
+                    adca      #0
+                    sta       LyraCost,u
+                    rts
+LyraReadTick        lda       >T1_VAL+1
+                    ldb       >T1_VAL+2
+                    cmpa      >T1_VAL+1
+                    bne       LyraReadTick
+                    rts
+LyraClockInit       pshs      d,x
+                    clr       >T1_CMP_CTR         free-running, no compare reload
+                    lda       #9                  enable, count up; do not reset the count
+                    sta       >T1_CTR
+                    leax      LyraDebt,u
+                    ldb       #5
+lclclear@           clr       ,x+
+                    decb
+                    bne       lclclear@
+                    bsr       LyraReadTick
+                    std       LyraLastTick,u
+                    puls      d,x,pc
+LyraWait            pshs      d,x,y
+                    ldd       LyraDebt+3,u
+                    addd      LyraCost+3,u
+                    std       LyraDebt+3,u
+                    ldd       LyraDebt+1,u
+                    adcb      LyraCost+2,u
+                    adca      LyraCost+1,u
+                    std       LyraDebt+1,u
+                    lda       LyraDebt,u
+                    adca      LyraCost,u
+                    sta       LyraDebt,u
+lwcheck@            lbsr      LyraReadTick
+                    tfr       d,y
+                    subd      LyraLastTick,u
+                    sty       LyraLastTick,u
+                    tfr       d,x                 modulo16bit elapsed frames
+                    cmpx      #0                  STY changed Z; test the elapsed count itself
+                    beq       lwpaid@
+lwcharge@           ldd       LyraDebt+3,u
+                    subd      ClockRate+2,u
+                    std       LyraDebt+3,u
+                    ldd       LyraDebt+1,u
+                    sbcb      ClockRate+1,u
+                    sbca      ClockRate,u
+                    std       LyraDebt+1,u
+                    lda       LyraDebt,u
+                    sbca      #0
+                    sta       LyraDebt,u
+                    leax      -1,x
+                    bne       lwcharge@
+lwpaid@             tst       <fDoAbort
+                    bne       lwexit@
+                    tst       LyraDebt,u
+                    bmi       lwexit@
+                    lda       LyraDebt,u
+                    ora       LyraDebt+1,u
+                    ora       LyraDebt+2,u
+                    ora       LyraDebt+3,u
+                    ora       LyraDebt+4,u
+                    beq       lwexit@
+                    ldx       #1
+                    os9       F$Sleep
+                    bra       lwcheck@
+lwexit@             puls      d,x,y,pc
+
 PlayUltimuse        lbsr      Load2Local
                     lbcs      err                 Something went wrong, exit
                     clr       <UMETranspose
@@ -786,7 +1023,9 @@ PlayUltimuse        lbsr      Load2Local
                     lda       ,x                  Get UME version
 *                    sta       <UMEVersion
                     ldd       4,x                 Top time, numer
+                    std       UmeNumer,u
                     ldd       6,x                 Bottom time, denom, 4/4, 8/8, etc.
+                    std       UmeDenom,u
                     ldd       8,x                 Get number of score events
                     std       <UMEEventTot        Save total event count
                     leay      $0A,x               Skip over first 10 control bytes in file
@@ -810,8 +1049,10 @@ PlayUltimuse        lbsr      Load2Local
                     addd      <UMEScoreStart
                     std       <UMEEndOfScore
                     tfr       d,y
+                    ldd       #120                native initial tempo; event $19 overrides
+                    std       UmeTempo,u
                     ldd       ,y
-                    stb       <bTempo
+                    std       UmeSecMin,u
                     leay      2,y                 secmin            2     /* Speed scale factor in "seconds per minute" */
                     ldb       ,x                  Get UME level
                     cmpb      #7
@@ -896,7 +1137,9 @@ n@                  inc       ,s
                     blo       a@
                     leas      1,s
 
-UmeStart            ldx       <UMEScoreStart
+UmeStart            lbsr      UmeSetTempo
+                    lbsr      LyraClockInit
+                    ldx       <UMEScoreStart
                     clra
                     clrb
                     std       <UMETicks
@@ -920,19 +1163,16 @@ trns1@              ldb       <bDebugMode
                     lbsr      DebugNotes
 trns@               ldd       <UMETicks
                     cmpd      1,x                 Compare to this event's clock
-                    beq       ev@
-                    pshs      x
-                    ldx       #$0002
-                    os9       F$Sleep
-                    puls      x
+                    bhs       ev@                 overdue and odd-tick events must not hang
+                    lbsr      LyraWait
                     ldd       <UMETicks
-                    addd      #2                  Increment the music clock
+                    addd      #1                  Increment the music clock
                     std       <UMETicks
                     bra       UmeLooper           Keep looping
 * Translate Ume event into our event
 ev@
                     ldb       ,x                  Get event channel #1-16
-                    lbeq      next@               Skip to next event
+                    lbeq      UmeGlobal           tempo and meter are global events
                     decb                          Adjust event # to base 0
                     cmpb      <ScorePartsTot        Is channel between 0..15?
                     lbhs      next@               Out of range, skip
@@ -1007,9 +1247,10 @@ UmeMusicN           pshs      a
                     cmpb      #32
                     beq       next@                 Is it a rest?
                     sta       TRACK_MIDIPITCH,y   Set the new pitch
-                    lda       #MIDIVEL_DEFAULT
+                    lda       #LYRA_DEFAULT_EXPR  non-zero = sounding (DebugNotes); the velocity itself is NOTE_VELOCITY
                     sta       TRACK_VELOC,y
                     lbsr      MidiNoteOn
+UmeNext
 next@               leax      8,x
                     ldd       <UMEEventCntr
                     addd      #1
@@ -1017,6 +1258,132 @@ next@               leax      8,x
                     cmpd      <UMEEventTot
                     lblo      trns@
                     lbra      CloseAndNext
+
+* UME global timing events. X = event; preserve it across clock setup.
+UmeGlobal           ldb       5,x
+                    cmpb      #$19
+                    beq       ugtempo@
+                    cmpb      #$0A
+                    bne       ugdone@
+                    clra
+                    ldb       6,x
+                    std       UmeNumer,u
+                    ldb       7,x
+                    std       UmeDenom,u
+                    bra       ugscale@
+ugtempo@            clra
+                    ldb       3,x
+                    ldy       6,x
+                    cmpy      #$4C59              imported Lyra wide tempo
+                    bne       ugbyte@
+                    lda       4,x
+ugbyte@             std       UmeTempo,u
+ugscale@            lbsr      UmeSetTempo
+ugdone@             lbra      UmeNext
+
+* Q16 OS ticks per score tick = secmin*denominator*5*4096 / tempo.
+* Native score has 192 ticks/whole; compound meter uses dotted beats (x3).
+* A 40/32 unsigned division keeps fractions without overflowing wide tempos.
+* All inputs/outputs are private BSS; X/Y/U and stack preserved.
+UmeSetTempo         pshs      d,x,y
+                    ldd       #1
+                    std       ClockRate,u
+                    clra
+                    clrb
+                    std       ClockRate+2,u        one frame = 65536 units
+                    std       ClockDivisor,u
+                    ldd       UmeTempo,u
+                    bne       ustempo@
+                    ldd       #120
+ustempo@            std       ClockDivisor+2,u
+                    ldd       UmeDenom,u
+                    beq       usden@
+                    cmpd      #32
+                    bls       usdenok@
+usden@              ldd       #4
+                    std       UmeDenom,u
+usdenok@            cmpd      #8
+                    blo       usplain@
+                    ldd       UmeNumer,u
+                    cmpd      #6
+                    blo       usplain@
+usmod@              subd      #3
+                    bhi       usmod@
+                    bne       usplain@
+                    ldd       ClockDivisor+2,u
+                    pshs      d
+                    addd      ,s
+                    std       ClockDivisor+2,u
+                    rol       ClockDivisor+1,u
+                    addd      ,s++
+                    std       ClockDivisor+2,u
+                    lda       ClockDivisor+1,u
+                    adca      #0
+                    sta       ClockDivisor+1,u
+usplain@            ldd       UmeSecMin,u
+                    bne       ussec@
+                    ldd       #60
+ussec@              std       LyraUnit+2,u
+                    clr       LyraUnit,u
+                    clr       LyraUnit+1,u
+                    leax      LyraCost,u
+                    ldb       #5
+usclear@            clr       ,x+
+                    decb
+                    bne       usclear@
+                    ldd       UmeDenom,u
+                    tfr       d,y
+                    ldb       #5
+                    pshs      b
+usouter@            pshs      y
+usmul@              lbsr      LyraAddUnit
+                    leay      -1,y
+                    bne       usmul@
+                    puls      y
+                    dec       ,s
+                    bne       usouter@
+                    leas      1,s
+                    ldb       #12
+usshift@            lsl       LyraCost+4,u
+                    rol       LyraCost+3,u
+                    rol       LyraCost+2,u
+                    rol       LyraCost+1,u
+                    rol       LyraCost,u
+                    decb
+                    bne       usshift@
+                    clra
+                    clrb
+                    std       ClockRemainder,u
+                    std       ClockRemainder+2,u
+                    ldy       #40
+usdivide@           lsl       LyraCost+4,u
+                    rol       LyraCost+3,u
+                    rol       LyraCost+2,u
+                    rol       LyraCost+1,u
+                    rol       LyraCost,u
+                    rol       ClockRemainder+3,u
+                    rol       ClockRemainder+2,u
+                    rol       ClockRemainder+1,u
+                    rol       ClockRemainder,u
+                    ldd       ClockRemainder,u
+                    cmpd      ClockDivisor,u
+                    bhi       ussubtract@
+                    blo       usnext@
+                    ldd       ClockRemainder+2,u
+                    cmpd      ClockDivisor+2,u
+                    blo       usnext@
+ussubtract@         ldd       ClockRemainder+2,u
+                    subd      ClockDivisor+2,u
+                    std       ClockRemainder+2,u
+                    ldd       ClockRemainder,u
+                    sbcb      ClockDivisor+1,u
+                    sbca      ClockDivisor,u
+                    std       ClockRemainder,u
+                    inc       LyraCost+4,u         shifted low bit is zero
+usnext@             leay      -1,y
+                    bne       usdivide@
+                    puls      d,x,y,pc
+
 
 * Translate MIDI note value into named note (including sharps/flats)
 DebugNotes          pshs      d,x,y
@@ -1048,10 +1415,16 @@ p@                  pshs      y
                     dec       ,s
                     bne       l@
                     leas      1,s
-                    lbsr      PrintCR
+                    bsr       PrintCR
                     puls      d,x,y,pc
-SpecNotes           fcc       "--  "
-NoteNames           fcc       "C   C#  D   D#  E   F   F#  G   G#  A   A#  B   "
+
+PrintCR             pshs      cc,d,x,y
+                    lda       #0
+                    ldy       #1
+                    leax      CRStr,pcr
+                    os9       I$WritLn
+                    puls      cc,d,x,y,pc
+CRStr               fcb       13,0
 
 *******************************************************************
 * Print a row containing all the Parts' clefs used in the score
@@ -1067,8 +1440,11 @@ a@                  ldb       ,y+
                     ldb       ,s
                     cmpb      <ScorePartsTot
                     blo       a@
-                    lbsr      PrintCR
+                    bsr       PrintCR
 x@                  puls      d,y,pc
+
+SpecNotes           fcc       "--  "
+NoteNames           fcc       "C   C#  D   D#  E   F   F#  G   G#  A   A#  B   "
 
 *******************************************************************
 * Build a 16-byte table that contains each part's clef #
@@ -1312,9 +1688,6 @@ err                 pshs      d,u
                     os9       I$Close
                     clr       <fDoSequencer
       	            lbsr      QUIET_ALL
-*                   ldu       <WBSoundBlk
-*                   ldb       #$01                Return 1 block
-*                   os9       F$ClrBlk            Return to OS-9 but is this needed if we're exiting a program?
                     puls      d,u
 exit                os9       F$Exit
 
@@ -1466,14 +1839,17 @@ v4@                 std       <freq_psg4
 * or ((pitch * 10129) / 65536) * 10
 * or (pitch * 10129) then take upper 16 bits of 32-bit result and * 10
 
-Mf2SID              std       $FEE0               Put pitch in MULT-A
+* The multiplier is combinational (the IP is built with no pipeline stages), so the
+* product is valid as soon as the operand write has clocked in. No wait is needed here -
+* unlike the divider in Mf2PSG below.
+Mf2SID              std       MATH_MUL_A          Put pitch in MULT-A
                     ldd       #10129              pitch * 10129
-                    std       $FEE2               Put multiplier in MULT-B
-                    ldd       $FEF0               Get upper 16 bits of 32-bit result
-                    std       $FEE0               Put back in MULT-A
+                    std       MATH_MUL_B          Put multiplier in MULT-B
+                    ldd       MATH_MUL_P          Get upper 16 bits of 32-bit result
+                    std       MATH_MUL_A          Put back in MULT-A
                     ldd       #10
-                    std       $FEE2               Put 10 in MULT-B 
-                    ldd       $FEF2               Get lower 16-bit of result
+                    std       MATH_MUL_B          Put 10 in MULT-B
+                    ldd       MATH_MUL_P+2        Get lower 16-bit of result
                     rts
 
 ********************************************************************
@@ -1495,20 +1871,47 @@ Mf2PSG
                     ldd       <iQuotient
                     rts
                 else
-                    std       $FEE6               Store pitch as numerator
+                    std       MATH_DIV_END        Store pitch as numerator
 *                   ldd       #22                 Low octave, grindy
 *                   ldd       #11                 Higher octave, more accurate
                     ldd       #12                 Best sounding, but notes are a bit off scale
-                    std       $FEE4               Denominator
-                    ldd       $FEF4               Get answer
-                    std       $FEE4               Store answer as new denominator
+                    std       MATH_DIV_SOR        Denominator
+                    bsr       MathWait            the quotient is not ready yet - see below
+                    ldd       MATH_DIV_QUOT       Get answer
+                    beq       z@                  pitch under 12 would divide 60250 by ZERO
+                    std       MATH_DIV_SOR        Store answer as new denominator
                     ldd       #60250
-                    std       $FEE6               Numerator
-                    ldd       $FEF4               Quotient
+                    std       MATH_DIV_END        Numerator
+                    bsr       MathWait
+                    ldd       MATH_DIV_QUOT       Quotient
                     cmpd      #1023               Is the result <1024, in PSG tone range?
                     bls       g@
-                    ldd       #1023               Set upper freq limit for PSG
+z@                  ldd       #1023               Set upper freq limit for PSG
 g@                  rts
+
+********************************************************************
+* MathWait - let the hardware divider's pipeline fill before the quotient is read.
+*
+* Div_Unsigned_16_16 is a Radix2 core with a LATENCY OF 12 CLOCKS on the I/O clock, and
+* both of its tvalid inputs are tied high, so it re-divides every clock and the quotient
+* is only correct 12 I/O clocks after the LAST operand write. Nothing in the hardware
+* says when that is - there is no ready bit to poll.
+*
+* Before this existed the code read the quotient in the very next instruction. That
+* worked only by accident of timing: a stock bus cycle is a 32-tick frame of the 200 MHz
+* scheduler, which is 4 ticks of the 25 MHz I/O clock, so two back-to-back instructions
+* cleared the 12 by one or two bus cycles. Turbo cores shorten those frames. Had one
+* shortened far enough, this would have returned the PREVIOUS quotient - wrong notes, no
+* error, and it would have read as a tuning fault rather than a timing one.
+*
+* The call and return alone cost 12 bus cycles; the four nops add 8 more. That holds even
+* if a bus cycle ever shrinks to a single I/O clock, which is the fastest it could
+* physically become.
+MathWait            nop
+                    nop
+                    nop
+                    nop
+                    rts
                 endc
 
 ********************************************************************
@@ -1517,34 +1920,34 @@ g@                  rts
 
 PlaySIDChord        ldy       <sid_right
                     ldd       <freq_sid1
-                    bsr       WriteSIDV1F
+                    lbsr      WriteSIDV1F
                     lda       #SID_V1_CR1
-                    bsr       WriteSIDV1G         Gate this tone
+                    lbsr      WriteSIDV1G         Gate this tone
 
                     ldy       <sid_right
                     ldd       <freq_sid2
-                    bsr       WriteSIDV2F
+                    lbsr      WriteSIDV2F
                     lda       #SID_V2_CR1
-                    bsr       WriteSIDV2G         Gate this tone
+                    lbsr      WriteSIDV2G         Gate this tone
 
                     ldy       <sid_right
                     ldd       <freq_sid3
-                    bsr       WriteSIDV3F
+                    lbsr      WriteSIDV3F
                     lda       #SID_V3_CR1
                     ldy       <sid_right
-                    bsr       WriteSIDV3G         Gate this tone
+                    lbsr      WriteSIDV3G         Gate this tone
 
                     ldy       <sid_left
                     ldd       <freq_sid4
-                    bsr       WriteSIDV3F
+                    lbsr      WriteSIDV3F
                     lda       #SID_V3_CR1
-                    bsr       WriteSIDV3G         Gate this tone
+                    lbsr      WriteSIDV3G         Gate this tone
 
                     ldy       <sid_left
                     ldd       <freq_sid2
-                    bsr       WriteSIDV2F
+                    lbsr      WriteSIDV2F
                     lda       #SID_V2_CR1
-                    bsr       WriteSIDV2G         Gate this tone
+                    lbsr      WriteSIDV2G         Gate this tone
 
                     ldy       <sid_left
                     ldd       <freq_sid1
@@ -1553,39 +1956,72 @@ PlaySIDChord        ldy       <sid_right
                     lbsr      WriteSIDV1G         Gate this tone
                     rts
 
-WriteSIDV1F         sta       1,y 
-                    stb       ,y 
-                    rts
-WriteSIDV2F         sta       7+1,y 
-                    stb       7,y 
-                    rts
-WriteSIDV3F         sta       14+1,y 
-                    stb       14,y 
-                    rts
+WriteSIDV1F         pshs      d
+                    ldb       #1
+                    bra       sidpairdown
+WriteSIDV2F         pshs      d
+                    ldb       #8
+                    bra       sidpairdown
+WriteSIDV3F         pshs      d
+                    ldb       #15
+                    bra       sidpairdown
+WriteSIDV1W         pshs      d
+                    ldb       #3
+                    bra       sidpairdown
+WriteSIDV2W         pshs      d
+                    ldb       #10
+                    bra       sidpairdown
+WriteSIDV3W         pshs      d
+                    ldb       #17
+                    bra       sidpairdown
+WriteSIDV1A         pshs      d
+                    ldb       #5
+                    bra       sidpairup
+WriteSIDV2A         pshs      d
+                    ldb       #12
+                    bra       sidpairup
+WriteSIDV3A         pshs      d
+                    ldb       #19
+                    bra       sidpairup
 
-WriteSIDV1W         sta       3,y 
-                    stb       2,y 
-                    rts
-WriteSIDV2W         sta       7+3,y 
-                    stb       7+2,y 
-                    rts
-WriteSIDV3W         sta       14+3,y 
-                    stb       14+2,y 
-                    rts
+* D contains two register bytes; the saved low byte is at 1,S.
+sidpairdown         lbsr      WriteSIDByte
+                    lda       1,s
+                    decb
+                    lbsr      WriteSIDByte
+                    puls      d,pc
+sidpairup           lbsr      WriteSIDByte
+                    lda       1,s
+                    incb
+                    lbsr      WriteSIDByte
+                    puls      d,pc
 
-WriteSIDV1A         std       5,y
-                    rts
-WriteSIDV2A         std       7+5,y
-                    rts
-WriteSIDV3A         std       14+5,y
-                    rts
+WriteSIDV1G         pshs      b
+                    ldb       #4
+                    lbsr      WriteSIDByte
+                    puls      b,pc
+WriteSIDV2G         pshs      b
+                    ldb       #11
+                    lbsr      WriteSIDByte
+                    puls      b,pc
+WriteSIDV3G         pshs      b
+                    ldb       #18
+                    lbsr      WriteSIDByte
+                    puls      b,pc
+WriteSIDVol         pshs      b
+                    ldb       #24
+                    lbsr      WriteSIDByte
+                    puls      b,pc
 
-WriteSIDV1G         sta       4,y
-                    rts
-WriteSIDV2G         sta       7+4,y
-                    rts
-WriteSIDV3G         sta       14+4,y
-                    rts
+* A=data, B=register, Y=chip selector. Preserve registers and caller CC.
+* Stack after push: CC, B, Y high, Y low, return address.
+* Keep selector/data atomic against IRQ/FIRQ users of the same ports.
+WriteSIDByte        pshs      cc,b,y
+                    orcc      #IntMasks
+                    orb       3,s                 add chip bits from Y low
+                    stb       >SID_SELECT_PORT
+                    sta       >SID_DATA_PORT
+                    puls      cc,b,y,pc
 
 ********************************************************************
 * This section outputs the 4 translated pitches into a stereo chord for the SN76489 chip(s).
@@ -1685,7 +2121,7 @@ SIDINIT             pshs      a                   Save volume on stack
                     bsr       SidInz
                     ldy       <sid_left
                     lda       ,s+                 Use same volume for both channels
-SidInz              sta       24,y                Set max vol
+SidInz              lbsr      WriteSIDVol         Set max vol
                     lda       #$00
                     lbsr      WriteSIDV1G
                     lda       #$00
@@ -1719,9 +2155,9 @@ LOUD_ALL
                     bra       PSG_LOUD
                 endc
 
-PSG_LOUD            ldd       #$B090
+PSG_LOUD            ldd       #$B334
                     lbsr      WritePSG
-                    ldd       #$D0FF
+                    ldd       #$D3FF
                     lbra      WritePSG
 
 QUIET_ALL
@@ -1756,33 +2192,18 @@ PSG_QUIET           ldd       #$9FBF
 SET_SOUND_REGS      pshs      u,cc
                     tfr       u,y
                 ifne      wildbits
-                    orcc      #IntMasks
-                    ldx       #$C4
-                    ldb       #$01                Ask for 1 block
-                    os9       F$MapBlk            Map it into process address space
-                    stu       <WBSoundBlk
-                    leau      $200,u              Compute address of PSG Left channel
+                    ldu       #PSG_LEFT_PORT
                     stu       <psg_left,y
-                    leau      $08,u               Compute address of PSG Dual channel
+                    ldu       #PSG_BOTH_PORT
                     stu       <psg_both,y
-                    leau      $08,u               Compute address of PSG Right channel
+                    ldu       #PSG_RIGHT_PORT
                     stu       <psg_right,y
-                    ldu       <WBSoundBlk
-                    stu       <sid_left,y         Compute address of SID Left channel
-                    leau      $80,u
-                    stu       <sid_both,y         Compute address of SID Dual channel
-                    leau      $80,u
-                    stu       <sid_right,y        Compute address of SID Right channel
-                    ldu       <WBSoundBlk
-                    cmpu      #$C000              Give a noncritical mem warning
-                    beq       x@
-                    lda       #0
-                    leax      memerr,pcr
-                    ldy       #255
-                    os9       I$WritLn
-                    bra       x@
-memerr              fcc       "MapBlk should have returned $C000"
-                    fcb       C$LF,0
+                    ldu       #SID_SELECT_LEFT
+                    stu       <sid_left,y
+                    ldu       #SID_SELECT_BOTH
+                    stu       <sid_both,y
+                    ldu       #SID_SELECT_RIGHT
+                    stu       <sid_right,y
                 else
                     ldu       #$ff00            CoCo HW base
                     lda       $7f,u		Read current MPI slot Selection
@@ -1866,16 +2287,6 @@ a@                  clra
                     stu       <file_block_end
                     puls      cc,d,x,u,pc
 
-WritePSG1           pshs      a,b,x,y,u           preserve u
-                    ldx       #$C4
-                    ldb       #$01                need 1 block
-                    os9       F$MapBlk            map it into process address space
-                    lda       ,s                  Get byte to write
-                    sta       $200,u
-                    sta       $210,u
-                    ldb       #1
-                    os9       F$ClrBlk
-                    puls      a,b,x,y,u,pc
 
 * Subtract 48 from ASCII HEX digit
 ASCIIHEX            fcb       0,1,2,3,4,5,6,7,8,9,0,0,0,0,0,0,0,10,11,12,13,14,15
@@ -1916,8 +2327,22 @@ TrioLengths         fcb       $00
                     fcb       $02               [2,4,2]
                     fcb       $01               [0,4,0]
 
-* Conversion table for Lyra volume (0-7) into MIDI velocity (0-127)
-LyraVelocConv       fcb       1,70,75,80,85,90,95,105
+* Lyra track volume (0-7) -> MIDI CC11 expression (0-127), 2026-09-05.
+* Lyra's soft levels are still meant to be heard, so levels 1..7 run from
+* 80 to 127 in even 1.33dB steps on the GM volume curve (dB = 40*log10(v/127)):
+*   level 0 = silent, levels 1..7 = -8,-6.7,-5.3,-4,-2.7,-1.3,0 dB.
+*   (A first cut spread 1..7 over -24..0 dB; the low levels vanished.)
+*   Level 6 (118) is assumed for tracks that never send a volume event
+*   (LYRA_DEFAULT_EXPR - keep the equate in step with this table).
+* History: as a VELOCITY table it was 1,70,75,80,85,90,95,105, then
+* 1,90,96,102,108,114,120,127 (2026-08-28) - a 3.5dB spread, so Lyra
+* dynamics barely registered.
+LyraExprConv        fcb       0,80,87,93,101,109,118,127
+
+* .rsd volume-nibble rescale: maps a raw dump's 0-15 SID master
+* volume onto the calibrated range (entry n = n*SID_MAX_VOL/15,
+* nearest). Regenerate this table if SID_MAX_VOL changes from 6.
+RsdVolScale         fcb       0,0,1,1,2,2,2,3,3,4,4,4,5,5,6,6
 
 * Program the MIDI instruments per the Lyra header
 * Lyra has 8 virtual channels, and each one can link to any physical MIDI channel.
@@ -2362,87 +2787,5 @@ FILETYPES           fcc       ".rsd"
                     fcc       ".map"
                     fcb       FILETYPE_MIDIPATCH
                     fcb       0                   Mark end of table
-
-
-PrintCR             pshs      cc,d,x,y
-                    lda       #0
-                    ldy       #1
-                    leax      CRStr,pcr
-                    os9       I$WritLn
-                    puls      cc,d,x,y,pc
-CRStr               fcb       13,0
-
-PrintSPC            pshs      cc,d,x,y
-                    lda       #0
-                    ldy       #1
-                    leax      SPCStr,pcr
-                    os9       I$WritLn
-                    puls      cc,d,x,y,pc
-SPCStr              fcb       C$SPAC,0
-
-PrintHex16          pshs      y,x,b,a,cc
-                    leax      HexStrDat,u
-
-                    lda       1,s
-                    lsra
-                    lsra
-                    lsra
-                    lsra
-                    bsr       Bin2AscHex
-                    sta       ,x+
-                    lda       1,s
-                    anda      #$F
-                    bsr       Bin2AscHex
-                    sta       ,x+
-
-                    lda       2,s
-                    lsra
-                    lsra
-                    lsra
-                    lsra
-                    bsr       Bin2AscHex
-                    sta       ,x+
-                    lda       2,s
-                    anda      #$F
-                    bsr       Bin2AscHex
-                    sta       ,x+
-
-                    lda       #0
-                    ldy       #4
-                    leax      HexStrDat,u
-                    os9       I$WritLn
- lbsr PrintSPC
-                    puls      cc,d,x,y,pc
-
-PrintHex8           pshs      y,x,b,a,cc
-                    leax      HexStrDat,u
-
-                    lda       2,s
-                    lsra
-                    lsra
-                    lsra
-                    lsra
-                    bsr       Bin2AscHex
-                    sta       ,x+
-                    lda       2,s
-                    anda      #$F
-                    bsr       Bin2AscHex
-                    sta       ,x+
-
-                    lda       #0
-                    ldy       #2
-                    leax      HexStrDat,u
-                    os9       I$WritLn
- lbsr PrintSPC
-                    puls      cc,d,x,y,pc
-
-Bin2AscHex          anda      #$0f
-                    cmpa      #9
-                    bls       d@
-                    suba      #10
-                    adda      #'A'
-                    bra       x@
-d@                  adda      #'0'
-x@                  rts
 
                     endsect

@@ -98,7 +98,7 @@ BOOTMODS ?= krnp2 ioman init \
 	$(CLOCK) \
 	$(BOOTMODS_EXTRA)
 
-$(addprefix $(MODDIR)/,vtio.dr co3hires.sb cowin.io covdg.io covdg_small.io): $(DEFSDIR)/cocovtio.d
+$(addprefix $(MODDIR)/,vtio.dr co3hires.sb cowin.io covdg.io): $(DEFSDIR)/cocovtio.d
 
 SHELLMODS = shellplus date deiniz echo iniz link load save unlink
 UTILPAK1 = attr build copy del deldir dir display list makdir mdir merge mfree procs rename tmode

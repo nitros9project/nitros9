@@ -1,5 +1,4 @@
 ********************************************************************
-**** Important: REQUIRES Wildbits K2 core V8_rc5 or later **********
 * 
 * W6100 Ethernet - hardware bring-up / PING test
 * 
@@ -99,7 +98,7 @@
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       1
+edition             set       2
 
 *-----------------------------------------------------------
 * K2 <-> W6100 bridge registers
@@ -168,6 +167,13 @@ CTL.GO.RDMR         equ       %00001101 mode 110: read IDM_ARH + enable
 
 BSR.COMMON          equ       $00       IDM_BSR value for the Common Register block
 
+* --- constants for the /DD/SYS/w6100ipconfig parser ---
+CHR.SP              equ       $20
+CHR.CR              equ       $0D
+T.IP4               equ       1         config value type: dotted-decimal IPv4
+T.MAC               equ       2         config value type: colon/dash hex MAC
+T.PORT              equ       3         config value type: decimal 16-bit port
+
 *-----------------------------------------------------------
 * W6100 Common Register offsets used by this test
 * (see W6100 datasheet section 3.1/4.1)
@@ -185,10 +191,6 @@ GAR0                equ       $4130     Gateway IPv4 address (4 bytes)
 SUBR0               equ       $4134     Subnet mask (4 bytes)
 SIPR0               equ       $4138     Source (this board's) IPv4 (4 bytes)
 SLDIPR0             equ       $418C     SOCKET-less dest IPv4, PING target
-PINGIDR0            equ       $4198     PING ID (2 bytes)
-PINGSEQR0           equ       $419C     PING sequence number (2 bytes)
-SLRTR0              equ       $4208     SOCKET-less retry timeout (2 bytes, 100us units)
-SLRCR               equ       $420C     SOCKET-less retry count
 NETLCKR             equ       $41F5     Network Lock Register
 NETLCKR.UNLOCK      equ       $3A       magic value that unlocks SHAR/GAR/SUBR/SIPR/...
 
@@ -213,21 +215,51 @@ RegHi                rmb       1         scratch: target reg addr, high byte
 RegLo                rmb       1         scratch: target reg addr, low byte
 RegData              rmb       1         scratch: data byte being written
 BusyTO              rmb       1         set non-zero if a busy-wait ever times out
+* --- config parser scratch ---
+cfptr               rmb       2
+cfend               rmb       2
+kwptr               rmb       2
+destp               rmb       2
+ptype               rmb       1
+acc                 rmb       2
+octet               rmb       1
+cfpn                rmb       1
+* --- decimal-print scratch (for ShowCfg) ---
+Num                 rmb       4
+digcnt              rmb       1
+* --- live network config (defaults copied in, then file overrides) ---
+* keep these six contiguous & in this order (CopyDefaults block-copies)
+CfgMAC              rmb       6
+CfgIP               rmb       4
+CfgMask             rmb       4
+CfgGW               rmb       4
+CfgSrv              rmb       4         remote host: ping target (= file server)
+CfgPort             rmb       2         parsed but unused by this test
 OutBuf              rmb       48        hex/decimal print scratch
-                    rmb       32        stack space
+* --- config file read buffer (U-relative access only) ---
+ConfBuf             rmb       512
+                    rmb       300       stack space
 size                equ       .
 
 name                fcs       /w6100eth/
                     fcb       edition
 
 *=====================================================================
-* EDIT THESE FOR YOUR NETWORK before running
+* Network settings now come from /DD/SYS/w6100ipconfig at run time
+* (see LoadConfig / the parser below). These Def* values are only the
+* fallback used when that file is missing or unreadable. Keep the 24
+* bytes contiguous & ordered MAC,IP,MASK,GW,SRV,PORT to match Cfg*.
 *=====================================================================
-MyMAC               fcb       $02,$00,$00,$12,$34,$56    locally-admin MAC
-MyIP                fcb       192,168,1,222               this board's IP
-MyGW                fcb       192,168,1,254               gateway (taylo LAN, verified 2026-08-29)
-MySubnet            fcb       255,255,255,0                subnet mask
-PingTarget          fcb       192,168,1,254                ping the gateway - always answers ICMP
+DefMAC              fcb       $02,$00,$00,$12,$34,$56    locally-admin MAC
+DefIP               fcb       192,168,1,222              this board's IP
+DefMask             fcb       255,255,255,0              subnet mask
+DefGW               fcb       192,168,1,254              gateway
+DefSrv              fcb       192,168,8,254              ping target (= file server)
+DefPort             fdb       6809                       (unused by this test)
+
+* config file pathlist (edit to relocate the config file)
+CfgPath             fcc       "/DD/SYS/w6100ipconfig"
+                    fcb       $0D
 *=====================================================================
 
 *=====================================================================
@@ -320,6 +352,10 @@ LinkDown            leax       MsgDown,pcr
 LinkPr              lbsr      PrStr
                     lbsr      PrCRLF
 
+* --- Step 2b: load network settings from /DD/SYS/w6100ipconfig ---
+* (or fall back to the built-in Def* values), then show them.
+                    lbsr      LoadConfig
+
 * --- Step 3: unlock the network config registers, then load them ---
 * SHAR/GAR/SUBR/SIPR writes are silently ignored while SYSR[NETL]
 * is locked (the reset default), unless NETLCKR is unlocked first.
@@ -329,27 +365,27 @@ LinkPr              lbsr      PrStr
                     ldb       #NETLCKR.UNLOCK
                     lbsr      WRegWr
 
-                    leax      MyMAC,pcr
+                    leax      CfgMAC,u
                     ldy       #SHAR0
                     ldb       #6
                     lbsr      WBlkWr
 
-                    leax      MyGW,pcr
+                    leax      CfgGW,u
                     ldy       #GAR0
                     ldb       #4
                     lbsr      WBlkWr
 
-                    leax      MySubnet,pcr
+                    leax      CfgMask,u
                     ldy       #SUBR0
                     ldb       #4
                     lbsr      WBlkWr
 
-                    leax      MyIP,pcr
+                    leax      CfgIP,u
                     ldy       #SIPR0
                     ldb       #4
                     lbsr      WBlkWr
 
-                    leax       PingTarget,pcr
+                    leax      CfgSrv,u
                     ldy       #SLDIPR0
                     ldb       #4
                     lbsr      WBlkWr
@@ -358,34 +394,7 @@ LinkPr              lbsr      PrStr
                     lbsr      PrStr
                     lbsr      PrCRLF
 
-* --- Step 4: SOCKET-less command setup, then fire PING4 ---
-* The io6Library setup sequence for PING4 is: SLDIP4R (done above),
-* SLRTR (retry timeout), SLRCR (retry count), PINGIDR, PINGSEQR,
-* then SLCR. SLRCR in particular must be nonzero - with no retries
-* configured the internal ARP/PING machinery can give up silently
-* with neither the PING4 nor the TOUT flag ever set.
-                    ldx       #SLRTR0
-                    ldb       #$07               retry timeout $07D0 = 2000 x 100us = 200ms
-                    lbsr      WRegWr
-                    ldx       #SLRTR0+1
-                    ldb       #$D0
-                    lbsr      WRegWr
-                    ldx       #SLRCR
-                    ldb       #3                 3 retries
-                    lbsr      WRegWr
-                    ldx       #PINGIDR0
-                    ldb       #$12               PING ID $1234
-                    lbsr      WRegWr
-                    ldx       #PINGIDR0+1
-                    ldb       #$34
-                    lbsr      WRegWr
-                    ldx       #PINGSEQR0
-                    ldb       #0                 sequence number 1
-                    lbsr      WRegWr
-                    ldx       #PINGSEQR0+1
-                    ldb       #1
-                    lbsr      WRegWr
-
+* --- Step 4: clear old SOCKET-less flags, then fire PING4 ---
                     ldx       #SLIRCLR
                     ldb       #SLIR.ALL
                     lbsr      WRegWr
@@ -420,17 +429,6 @@ PingOK              leax       MsgPingOK,pcr
 
 PingTO              leax       MsgPingTO,pcr
                     lbsr      PrStr
-                    lbsr      PrCRLF
-* Print the raw SLIR byte so a failure is diagnosable: $80 = chip
-* reported timeout (sent but no reply), $00 = command never
-* completed at all, anything else = unexpected flag.
-                    ldx       #SLIR
-                    lbsr      WRegRd
-                    stb       <tmp
-                    leax      MsgSLIR,pcr
-                    lbsr      PrStr
-                    ldb       <tmp
-                    lbsr      PrHexByte
                     lbsr      PrCRLF
                     bra       AllDone
 
@@ -606,7 +604,7 @@ PrNibble            pshs      x,y,a
                     addb      #'0
                     bra       PrNibble.pr
 PrNibble.af         addb      #'A-10
-PrNibble.pr         stb       OutBuf,u            U-relative - data offsets are not absolute addresses
+PrNibble.pr         stb       OutBuf,u
                     leax      OutBuf,u
                     lda       #1
                     ldy       #1
@@ -622,10 +620,518 @@ PrBanner            pshs      x
                     lbsr      PrCRLF
                     puls      x,pc
 
+*=====================================================================
+* LoadConfig - copy Def* -> Cfg*, then apply /DD/SYS/w6100ipconfig
+*              if present, then display the resulting settings.
+* This block (LoadConfig..HexNib + PrIP4..D10s + KwTab) is identical
+* to the one in w6100recv, so both tools read the same file the same
+* way. w6100eth simply uses CfgSrv as the ping target and ignores
+* CfgPort; "target" and "ping" are accepted as aliases for "server".
+*=====================================================================
+LoadConfig          lbsr      CopyDefaults
+                    leax      CfgPath,pcr
+                    lda       #READ.
+                    os9       I$Open
+                    bcs       LC.def
+                    sta       <cfpn
+                    lda       <cfpn
+                    leax      ConfBuf,u
+                    ldy       #512
+                    os9       I$Read
+                    bcs       LC.rderr
+                    leax      ConfBuf,u
+                    stx       <cfptr
+                    tfr       x,d
+                    pshs      y
+                    addd      ,s++            D = ConfBuf + bytes read
+                    std       <cfend
+                    lda       <cfpn
+                    os9       I$Close
+                    lbsr      ParseConfig
+                    leax      MsgCfgF,pcr
+                    lbsr      PrStr
+                    lbsr      PrCRLF
+                    bra       LC.show
+LC.rderr            lda       <cfpn
+                    os9       I$Close
+LC.def              leax      MsgCfgD,pcr
+                    lbsr      PrStr
+                    lbsr      PrCRLF
+LC.show             lbsr      ShowCfg
+                    rts
+
+* CopyDefaults - Def* (ROM) -> Cfg* (RAM), 24 contiguous bytes
+CopyDefaults        leax      DefMAC,pcr
+                    leay      CfgMAC,u
+                    ldb       #24
+CD.lp               lda       ,x+
+                    sta       ,y+
+                    decb
+                    bne       CD.lp
+                    rts
+
+* ShowCfg - print the active IP/GW/mask and ping target
+ShowCfg             leax      MsgLip,pcr
+                    lbsr      PrStr
+                    leax      CfgIP,u
+                    lbsr      PrIP4
+                    leax      MsgLgw,pcr
+                    lbsr      PrStr
+                    leax      CfgGW,u
+                    lbsr      PrIP4
+                    leax      MsgLmask,pcr
+                    lbsr      PrStr
+                    leax      CfgMask,u
+                    lbsr      PrIP4
+                    lbsr      PrCRLF
+                    leax      MsgLtgt,pcr
+                    lbsr      PrStr
+                    leax      CfgSrv,u
+                    lbsr      PrIP4
+                    lbsr      PrCRLF
+                    rts
+
+*=====================================================================
+* ParseConfig - parse ConfBuf[cfptr..cfend) into Cfg* fields
+*=====================================================================
+ParseConfig
+NextLine            ldd       <cfptr
+                    cmpd      <cfend
+                    lbhs      PC.done
+                    lbsr      SkipBlanks
+                    ldx       <cfptr
+                    cmpx      <cfend
+                    bhs       PC.done
+                    lda       ,x
+                    cmpa      #'#
+                    beq       SkipLine
+                    cmpa      #'*
+                    beq       SkipLine
+                    cmpa      #CHR.CR
+                    beq       SkipLine
+                    cmpa      #$0A
+                    beq       SkipLine
+                    lbsr      MatchKw
+                    bcs       SkipLine
+                    lda       <ptype
+                    cmpa      #T.IP4
+                    beq       DoIP4
+                    cmpa      #T.MAC
+                    beq       DoMAC
+                    cmpa      #T.PORT
+                    beq       DoPort
+                    bra       SkipLine
+DoIP4               lbsr      ParseIP4
+                    bra       SkipLine
+DoMAC               lbsr      ParseMAC
+                    bra       SkipLine
+DoPort              lbsr      ParsePort
+                    bra       SkipLine
+SkipLine            lbsr      ToNextLine
+                    bra       NextLine
+PC.done             rts
+
+SkipBlanks          ldx       <cfptr
+SB.lp               cmpx      <cfend
+                    bhs       SB.dn
+                    lda       ,x
+                    cmpa      #CHR.SP
+                    beq       SB.adv
+                    cmpa      #$09
+                    beq       SB.adv
+                    bra       SB.dn
+SB.adv              leax      1,x
+                    bra       SB.lp
+SB.dn               stx       <cfptr
+                    rts
+
+ToNextLine          ldx       <cfptr
+TN.lp               cmpx      <cfend
+                    bhs       TN.dn
+                    lda       ,x+
+                    cmpa      #CHR.CR
+                    beq       TN.eol
+                    cmpa      #$0A
+                    beq       TN.eol
+                    bra       TN.lp
+TN.eol              cmpx      <cfend
+                    bhs       TN.dn
+                    ldb       ,x
+                    cmpb      #$0A
+                    beq       TN.skip
+                    cmpb      #CHR.CR
+                    beq       TN.skip
+                    bra       TN.dn
+TN.skip             leax      1,x
+TN.dn               stx       <cfptr
+                    rts
+
+MatchKw             leax      KwTab,pcr
+                    stx       <kwptr
+MK.entry            ldx       <kwptr
+                    ldb       ,x
+                    cmpb      #$FF
+                    beq       MK.nomatch
+                    stb       <ptype
+                    ldd       1,x
+                    leay      d,u
+                    sty       <destp
+                    leax      3,x
+                    ldy       <cfptr
+MK.cmp              lda       ,x+
+                    beq       MK.kwend
+                    ldb       ,y+
+                    cmpb      #'A
+                    blo       MK.nolc
+                    cmpb      #'Z
+                    bhi       MK.nolc
+                    addb      #$20
+MK.nolc             pshs      a
+                    cmpb      ,s+
+                    beq       MK.cmp
+                    bra       MK.next
+MK.kwend            cmpy      <cfend
+                    bhs       MK.matched
+                    lda       ,y
+                    cmpa      #CHR.SP
+                    beq       MK.matched
+                    cmpa      #$09
+                    beq       MK.matched
+                    cmpa      #'=
+                    beq       MK.matched
+                    cmpa      #CHR.CR
+                    beq       MK.matched
+                    cmpa      #$0A
+                    beq       MK.matched
+                    bra       MK.next
+MK.matched          sty       <cfptr
+                    lbsr      SkipToValue
+                    andcc     #$FE
+                    rts
+MK.next             ldx       <kwptr
+                    leax      3,x
+MK.skn              lda       ,x+
+                    bne       MK.skn
+                    stx       <kwptr
+                    bra       MK.entry
+MK.nomatch          orcc      #$01
+                    rts
+
+SkipToValue         ldx       <cfptr
+STV.lp              cmpx      <cfend
+                    bhs       STV.dn
+                    lda       ,x
+                    cmpa      #CHR.SP
+                    beq       STV.adv
+                    cmpa      #$09
+                    beq       STV.adv
+                    cmpa      #'=
+                    beq       STV.adv
+                    bra       STV.dn
+STV.adv             leax      1,x
+                    bra       STV.lp
+STV.dn              stx       <cfptr
+                    rts
+
+ParseIP4            ldy       <destp
+                    clr       <octet
+PI.lp               lbsr      ParseDecByte
+                    bcs       PI.dn
+                    stb       ,y+
+                    inc       <octet
+                    lda       <octet
+                    cmpa      #4
+                    beq       PI.dn
+                    ldx       <cfptr
+                    cmpx      <cfend
+                    bhs       PI.dn
+                    lda       ,x
+                    cmpa      #'.
+                    bne       PI.dn
+                    leax      1,x
+                    stx       <cfptr
+                    bra       PI.lp
+PI.dn               rts
+
+ParsePort           lbsr      ParseDecByte
+                    bcs       PP.dn
+                    ldy       <destp
+                    ldd       <acc
+                    std       ,y
+PP.dn               rts
+
+ParseDecByte        ldx       <cfptr
+                    clra
+                    clrb
+                    std       <acc
+                    ldb       ,x
+                    subb      #'0
+                    bcs       PDB.nd
+                    cmpb      #9
+                    bhi       PDB.nd
+PDB.lp              ldb       ,x
+                    subb      #'0
+                    bcs       PDB.end
+                    cmpb      #9
+                    bhi       PDB.end
+                    lbsr      Acc10Add
+                    leax      1,x
+                    bra       PDB.lp
+PDB.end             stx       <cfptr
+                    ldb       <acc+1
+                    andcc     #$FE
+                    rts
+PDB.nd              stx       <cfptr
+                    orcc      #$01
+                    rts
+
+Acc10Add            pshs      b
+                    ldd       <acc
+                    aslb
+                    rola
+                    std       <tmpw
+                    ldd       <acc
+                    aslb
+                    rola
+                    aslb
+                    rola
+                    aslb
+                    rola
+                    addd      <tmpw
+                    addb      ,s+
+                    adca      #0
+                    std       <acc
+                    rts
+
+ParseMAC            ldy       <destp
+                    clr       <octet
+PM.lp               lbsr      ParseHexByte
+                    bcs       PM.dn
+                    stb       ,y+
+                    inc       <octet
+                    lda       <octet
+                    cmpa      #6
+                    beq       PM.dn
+                    ldx       <cfptr
+                    cmpx      <cfend
+                    bhs       PM.dn
+                    lda       ,x
+                    cmpa      #':
+                    beq       PM.sep
+                    cmpa      #'-
+                    beq       PM.sep
+                    bra       PM.dn
+PM.sep              leax      1,x
+                    stx       <cfptr
+                    bra       PM.lp
+PM.dn               rts
+
+ParseHexByte        ldx       <cfptr
+                    lda       ,x
+                    lbsr      HexNib
+                    bcs       PHB.nd
+                    aslb
+                    aslb
+                    aslb
+                    aslb
+                    stb       <tmp
+                    leax      1,x
+                    lda       ,x
+                    lbsr      HexNib
+                    bcs       PHB.one
+                    pshs      b
+                    ldb       <tmp
+                    orb       ,s+
+                    leax      1,x
+                    stx       <cfptr
+                    andcc     #$FE
+                    rts
+PHB.one             ldb       <tmp
+                    lsrb
+                    lsrb
+                    lsrb
+                    lsrb
+                    stx       <cfptr
+                    andcc     #$FE
+                    rts
+PHB.nd              stx       <cfptr
+                    orcc      #$01
+                    rts
+
+HexNib              cmpa      #'0
+                    blo       HN.bad
+                    cmpa      #'9
+                    bhi       HN.af
+                    tfr       a,b
+                    subb      #'0
+                    andcc     #$FE
+                    rts
+HN.af               anda      #$DF
+                    cmpa      #'A
+                    blo       HN.bad
+                    cmpa      #'F
+                    bhi       HN.bad
+                    tfr       a,b
+                    subb      #'A-10
+                    andcc     #$FE
+                    rts
+HN.bad              orcc      #$01
+                    rts
+
+*=====================================================================
+* PrIP4 - print 4 bytes at X as dotted decimal
+*=====================================================================
+PrIP4               ldb       ,x+
+                    pshs      x
+                    lbsr      PrOctet
+                    puls      x
+                    lbsr      PrDot
+                    ldb       ,x+
+                    pshs      x
+                    lbsr      PrOctet
+                    puls      x
+                    lbsr      PrDot
+                    ldb       ,x+
+                    pshs      x
+                    lbsr      PrOctet
+                    puls      x
+                    lbsr      PrDot
+                    ldb       ,x+
+                    pshs      x
+                    lbsr      PrOctet
+                    puls      x
+                    rts
+PrOctet             pshs      b
+                    clra
+                    clrb
+                    std       <Num
+                    std       <Num+2
+                    puls      b
+                    stb       <Num+3
+                    lbsr      PrDec32
+                    rts
+PrDot               pshs      x,y,a
+                    lda       #'.
+                    sta       OutBuf,u
+                    leax      OutBuf,u
+                    lda       #1
+                    ldy       #1
+                    os9       I$Write
+                    puls      a,y,x,pc
+
+* PrDec32 - print the 32-bit value in <Num as unsigned decimal
+PrDec32             clr       <digcnt
+PD.lp               lbsr      Div10Num
+                    addb      #'0
+                    pshs      b
+                    inc       <digcnt
+                    lda       <Num
+                    ora       <Num+1
+                    ora       <Num+2
+                    ora       <Num+3
+                    bne       PD.lp
+PD.pr               puls      b
+                    stb       OutBuf,u
+                    leax      OutBuf,u
+                    lda       #1
+                    ldy       #1
+                    os9       I$Write
+                    dec       <digcnt
+                    bne       PD.pr
+                    rts
+
+Div10Num            clra
+                    ldb       <Num
+                    bsr       D10s
+                    stb       <Num
+                    ldb       <Num+1
+                    bsr       D10s
+                    stb       <Num+1
+                    ldb       <Num+2
+                    bsr       D10s
+                    stb       <Num+2
+                    ldb       <Num+3
+                    bsr       D10s
+                    stb       <Num+3
+                    tfr       a,b
+                    rts
+D10s                ldx       #0
+D10s.lp             cmpd      #10
+                    blo       D10s.dn
+                    subd      #10
+                    leax      1,x
+                    bra       D10s.lp
+D10s.dn             stx       <tmpw
+                    tfr       b,a
+                    ldb       <tmpw+1
+                    rts
+
+*=====================================================================
+* keyword table: fcb type ; fdb Cfg-offset ; fcc name ; fcb 0 ; $FF end
+* ("server", "target" and "ping" all set the ping target CfgSrv)
+*=====================================================================
+KwTab               fcb       T.MAC
+                    fdb       CfgMAC
+                    fcc       /mac/
+                    fcb       0
+                    fcb       T.IP4
+                    fdb       CfgIP
+                    fcc       /ip/
+                    fcb       0
+                    fcb       T.IP4
+                    fdb       CfgMask
+                    fcc       /mask/
+                    fcb       0
+                    fcb       T.IP4
+                    fdb       CfgMask
+                    fcc       /netmask/
+                    fcb       0
+                    fcb       T.IP4
+                    fdb       CfgMask
+                    fcc       /subnet/
+                    fcb       0
+                    fcb       T.IP4
+                    fdb       CfgGW
+                    fcc       /gateway/
+                    fcb       0
+                    fcb       T.IP4
+                    fdb       CfgGW
+                    fcc       /gw/
+                    fcb       0
+                    fcb       T.IP4
+                    fdb       CfgSrv
+                    fcc       /server/
+                    fcb       0
+                    fcb       T.IP4
+                    fdb       CfgSrv
+                    fcc       /target/
+                    fcb       0
+                    fcb       T.IP4
+                    fdb       CfgSrv
+                    fcc       /ping/
+                    fcb       0
+                    fcb       T.PORT
+                    fdb       CfgPort
+                    fcc       /port/
+                    fcb       0
+                    fcb       $FF
+
 *-----------------------------------------------------------
 * Messages
 *-----------------------------------------------------------
 MsgBanner           fcc       /W6100 Ethernet hardware test/
+                    fcb       0
+MsgCfgF             fcc       "Config: /DD/SYS/w6100ipconfig"
+                    fcb       0
+MsgCfgD             fcc       "Config: built-in defaults (no /DD/SYS/w6100ipconfig)"
+                    fcb       0
+MsgLip              fcc       /  ip /
+                    fcb       0
+MsgLgw              fcc       /  gw /
+                    fcb       0
+MsgLmask            fcc       /  mask /
+                    fcb       0
+MsgLtgt             fcc       /  ping target /
                     fcb       0
 MsgCIDR             fcc       /CIDR0 = $/
                     fcb       0
@@ -656,8 +1162,6 @@ MsgPinging          fcc       /Sending SOCKET-less PING4.../
 MsgPingOK           fcc       /PING reply received - link to host is alive/
                     fcb       0
 MsgPingTO           fcc       "No PING reply (timeout) - check IP config/cabling/host"
-                    fcb       0
-MsgSLIR             fcc       /SLIR  = $/
                     fcb       0
 CRLF                fcb       $0D,$0A
 

@@ -96,6 +96,7 @@ FFork               ldx       <D.PrcDBT ; get the pointer to the process descrip
                     ldb       #SysState ; get system state flag into B
                     stb       P$State,y ; set the System State flag in the child process descriptor
                     sty       <D.Proc   ; make the child process the current process
+                    ifne      _FF_UNIFIED_IO
 **** I/O related process descriptor setup
                     ldd       <P$NIO,x  ; get the parent process' Net I/O pointer
                     std       <P$NIO,y  ; save it in the child process descriptor
@@ -122,6 +123,7 @@ dupok@              sta       ,y+       ; store it in the child process descript
                     decb                ; decrement the counter
                     bne       duploop@  ; and branch back if not done
 **** I/O related process descriptor setup
+                    endc
                     bsr       SetupPrc  ; set up process
                     bcs       ex@       ; branch if an error occured
                     puls      y         ; get the parent process descriptor

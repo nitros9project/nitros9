@@ -26,9 +26,17 @@ export NITROS9DIR LANGUAGES
 #      that rule changes. (A duplicated -e is harmless.)
 OS9FORMAT_CMD = $(OS9FORMAT_SD) -e
 
-# 0a) padup256 has CRLF line endings; cygwin sh chokes on it unless
-#     igncr is in effect. wildbits.mak's "PADUP ?=" honors this.
-PADUP = bash -o igncr ./padup256 bootfile
+# 0a) The bootfile padder (2026-10-04): smartpad256 pads at the BEGINNING
+#     to whole pages like padup256, then past the page counts the kernel
+#     cannot reserve (31-32, 63-64, 95-96, 127-128 pages: Krn's F$SRqMem
+#     reservation sits two pages above the bootfile and, when the bootfile
+#     starts in the last two pages of an 8K block, F$AllImg maps every slot
+#     above one block low). Ceiling 40,448 bytes ($6000-$FDFF; slot 2 is the
+#     drivers' reserved window). Bootfiles over 32,768 also need the
+#     unsigned copy loop in bootos9/os9boot (same date). Both are now
+#     wildbits.mak's defaults; smartpad256 moved to recipes/wildbits.
+#     Kept here only to run it through bash -o igncr (CRLF-safe).
+PADUP = bash -o igncr ../smartpad256 bootfile
 
 # 0b) BASIC09 binaries build from the sibling nitros9-languages repo
 #     (LANGUAGES above). Its build invokes python3, which on this box
@@ -38,13 +46,29 @@ PADUP = bash -o igncr ./padup256 bootfile
 #     by RUNB_SHA256 in wildbits.mak.
 
 # 1) DriveWire in the boot: dwio_serial + pipes + rbdw/x0-x3.
-#    sc16550/t0 deliberately NOT included: OS9Boot must stay under
+#    sc16550/t0 deliberately NOT included: OS9Boot had to stay under
 #    32,256 bytes (the booter loads it at $FE00-minus-size; below
-#    $8000 it wedges at "Loading sector.") and /t0 shares the DW
-#    UART at $FE60 anyway.
+#    $8000 it wedged at "Loading sector." - the copy loop's signed
+#    BGT, fixed 2026-10-04; see 0a for the new limits) and /t0 shares
+#    the DW UART at $FE60 anyway.
+# 1a) With the 40,448-byte ceiling (0a) the Level 2 bootfile also carries
+#     the MIDI and RP2040 drivers (2026-10-04), so none needs a load:
+#       midrv mi     MIDI DIN input: interrupt driver + /mi descriptor
+#       scdwv dwm    DriveWire virtual channel driver + /dwm (channel 14,
+#                    the DriveWire 4 server's MIDI out)
+#       rpdrv rp     RP2040 supervisor mailbox (K2 only; the Jr2 has no
+#                    supervisor). wildbits.mak keeps their module rules.
+#     L2BOOT_EXTRA is its own list (not SCF_EXTRA) so a recipe read later
+#     can empty it.
 ifeq ($(LEVEL),2)
+L2BOOT_EXTRA = midrv mi scdwv dwm
+ifeq ($(PLATFORM),k2)
+# only when $(SCF) does not already list them (main's wildbits.mak does)
+L2BOOT_EXTRA += $(filter-out $(SCF),rpdrv rp)
+endif
 override BOOTMODS = krnp2 ioman init \
 	$(SCF) \
+	$(L2BOOT_EXTRA) \
 	$(RBF) \
 	dwio_serial $(PIPE) $(DRIVEWIRE_RBF) \
 	$(CLOCK) \
@@ -76,11 +100,3 @@ clean: clean-sys-assets
 clean-sys-assets:
 	-$(MAKE) -C $(FONT_DIR) -f $(NITROS9DIR)/recipes/support/wildbits-fonts.mak clean
 	-$(MAKE) -C $(BACKGROUND_DIR) -f $(NITROS9DIR)/recipes/support/wildbits-backgrounds.mak clean
-
-# 2) SHELLMODS merge order: with the stock alphabetical order (date
-#    directly after shellplus) the toolshed-2.6-merged shell module
-#    freezes before the prompt on Windows/cygwin64 build hosts.
-#    Merging date/deiniz LAST is the proven clean ordering. Root
-#    cause (suspected read past module end in shellplus) still open;
-#    drop this override once fixed upstream.
-override SHELLMODS = shellplus echo iniz link load save unlink date deiniz

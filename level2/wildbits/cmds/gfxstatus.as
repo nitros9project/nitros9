@@ -49,7 +49,7 @@ __start             leax      linebuf,u           get line buffer address
                     
 * Map in CLUT 0 and Bitmap bank
                     pshs      u                   preserve u
-                    ldx       #$C1                Block $C1 has clut data
+                    ldx       #FONT_BLK                Block $C1 has clut data
                     ldb       #$01                need 1 block
                     os9       F$MapBlk            map it into process address space
                     lbcs      exiterr
@@ -75,7 +75,7 @@ clutloop2           lda       ,x+                 Copy clut data to buffer
                     ldu       <MAPADDR            u is address of mapped block
                     ldb       #$01                clearing 1 block
                     os9       F$ClrBlk            remove block from DAT Image
-                    ldx       #$C0                need to map in BM registers block
+                    ldx       #VICKY_BLK                need to map in BM registers block
                     ldb       #$01
                     os9       F$MapBlk            Map in Bitmap registers
                     lbcs      exiterr

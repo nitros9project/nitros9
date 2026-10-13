@@ -1,3 +1,6 @@
+* wizstat - show the module's IP / network status (AT+CIPSTA_CUR?).
+* Needs: wizi (and wizcon at some point in the past). Reads /wz raw: use only
+* while no wiz1up/wiz4up connection is active.
 echo * Show WizFi360 Connection Status
 echo AT+CIPSTA_CUR?>/wz
 modem /wz

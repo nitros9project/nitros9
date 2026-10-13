@@ -20,6 +20,7 @@
 FExit               ldx       <D.Proc   ; get pointer to current process descriptor
                     ldb       R$B,u     ; get exit code
                     stb       P$Signal,x ; save it as the process' signal
+                    ifne      _FF_UNIFIED_IO
 * Close all open paths that this process has
                     ldb       #NumPaths ; get the number pf paths
                     leay      P$PATH,x  ; point Y to the base of the path table in the process descriptor
@@ -30,6 +31,7 @@ loop@               lda       ,y+       ; get a path
                     puls      b         ; recover the counter
 empty@              decb                ; decrement
                     bne       loop@     ; branch if more paths to close
+                    endc
 * Free any allocated memory associated with this process
                     lda       P$ADDR,x  ; get 256 byte page number of allocated memory
                     tfr       d,u       ; transfer to D to U

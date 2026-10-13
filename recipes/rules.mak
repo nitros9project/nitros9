@@ -220,7 +220,7 @@ default: all
 
 .PHONY: buildinfo
 
-.mods/init: buildinfo
+$(MODDIR)/init: buildinfo
 
 buildinfo:
 	@BUILDDATE="$$(git log -1 --format=%as)"; \

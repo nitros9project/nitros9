@@ -5,10 +5,14 @@ IOCall
                     ldu       <D.Init   ; get pointer to the init module
                     bsr       link@     ; link to IOMan
                     bcc       callit@   ; jump into IOMan if it exists
+                    ifne      _FF_BOOTING
                     bsr       LoadBoot  ; else attempt to load the bootfile
                     bcs       ex@       ; problem booting... return w/ error
                     bsr       link@     ; ok, NOW link to IOMan
                     bcs       ex@       ; still a problem...
+                    else
+                    bra       ex@       ; IOMan must already be resident
+                    endc
 callit@             jsr       ,y        ; call into IOMan
                     puls      u,y,x,b,a ; restore registers
                     ldx       -2,y      ; get the location to jump

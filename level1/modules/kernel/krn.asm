@@ -67,6 +67,7 @@
                     ttl       NitrOS-9 Level 1 Kernel
 
                     use       defsfile  ; include source file defsfile
+                    use       features.d
 
 tylg                set       Systm+Objct ; define assembler symbol
 atrv                set       ReEnt+rev ; define assembler symbol
@@ -343,10 +344,12 @@ copy@               ldd       ,y++      ; get vector bytes
                     os9       F$Link    ; link to it
                     lbcs      OS9Cold   ; if error, restart kernel
                     stu       <D.Init   ; else store it in system globals
+                    ifne      _FF_MODCHECK
                     lda       Feature1,u ; get feature byte 1
                     bita      #CRCOn    ; is CRC checking on?
                     beq       continue@ ; branch if not (already cleared earlier)
                     inc       <D.CRC    ; else turn on CRC checking
+                    endc
 continue@
 
 * Jump into krnp2 here
@@ -393,21 +396,26 @@ URtoSs              clra                ; clear A
                     sta       P$State,x ; store it
                     jmp       ,y        ; jump to the polling routine
 
-DoIRQPoll           jsr       [>D.Poll] ; call the interrupt polling routine
+DoIRQPoll           equ       *
+                    ifne      _FF_IRQ_POLL
+                    jsr       [>D.Poll] ; call the interrupt polling routine
                     bcc       go@       ; branch if carry clear
                     ldb       ,s        ; get the CC on the stack
                     orb       #IRQMask  ; mask IRQs
                     stb       ,s        ; and save it back
+                    endc
 go@                 lbra      ActivateProc ; go activate the process
 
 * System state interrupt service routine entry
 SysIRQ              clra                ; clear A
                     tfr       a,dp      ; and transfer it to the direct page
+                    ifne      _FF_IRQ_POLL
                     jsr       [>D.Poll] ; call the vectored IRQ polling routine
                     bcc       ex@       ; branch if carry is clear
                     ldb       ,s        ; get the CC on the stack
                     orb       #IRQMask  ; mask IRQs
                     stb       ,s        ; and save it back
+                    endc
 ex@                 rti                 ; return from interrupt
 
 * This is the default interrupt polling routine -- it does nothing.
@@ -495,10 +503,14 @@ DoSysCall           pshs      u         ; save off caller's register pointer
                     stx       R$PC,u    ; restore updated PC
                     lslb                ; high bit set?
                     bcc       nonio@    ; branch if not (non I/O call)
+                    ifne      _FF_UNIFIED_IO
                     rorb                ; else restore B (its an I/O call)
                     ldx       -2,y      ; grab IOMan vector
                     beq       callexit@ ; just exit if IOMan vector is empty
                     bra       execcall@ ; make system call
+                    else
+                    bra       callerr@  ; I/O is not included in this build
+                    endc
 nonio@              cmpb      #$37*2    ; non-IO call; are we in safe are?
                     bcc       callerr@  ; branch if not (unknown service)
                     ldx       b,y       ; X = address of system call
@@ -522,7 +534,9 @@ callerr@            comb                ; set carry for error state
                     use       fnproc.asm ; include source file fnproc.asm
                     use       flink.asm ; include source file flink.asm
                     use       fvmodul.asm ; include source file fvmodul.asm
+                    ifne      _FF_MODCHECK
                     use       fcrc.asm  ; include source file fcrc.asm
+                    endc
                     use       ffork.asm ; include source file ffork.asm
                     use       fchain.asm ; include source file fchain.asm
                     use       fsrqmem.asm ; include source file fsrqmem.asm
@@ -588,8 +602,10 @@ SysTbl              fcb       F$Link    ; define byte value(s) F$Link
                     fdb       FAllBit-*-2 ; define word value(s) FAllBit-*-2
                     fcb       F$DelBit  ; define byte value(s) F$DelBit
                     fdb       FDelBit-*-2 ; define word value(s) FDelBit-*-2
+                    ifne      _FF_MODCHECK
                     fcb       F$CRC     ; define byte value(s) F$CRC
                     fdb       FCRC-*-2  ; define word value(s) FCRC-*-2
+                    endc
                     fcb       F$SRqMem+SysState ; define byte value(s) F$SRqMem+SysState
                     fdb       FSRqMem-*-2 ; define word value(s) FSRqMem-*-2
                     fcb       F$SRtMem+SysState ; define byte value(s) F$SRtMem+SysState

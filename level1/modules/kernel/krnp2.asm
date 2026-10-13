@@ -11,6 +11,7 @@
                     ttl       NitrOS-9 Level 1 Kernel Part 2
 
                     use       defsfile  ; include source file defsfile
+                    use       features.d
 
 tylg                set       Systm+Objct ; define assembler symbol
 atrv                set       ReEnt+rev ; define assembler symbol
@@ -24,8 +25,11 @@ size                equ       .         ; define assembler symbol
 name                fcs       /KrnP2/
                     fcb       edition   ; define byte value(s) edition
 
-SvcTbl              fcb       $7F       ; define byte value(s) $7F
+SvcTbl              equ       *
+                    ifne      _FF_UNIFIED_IO
+                    fcb       $7F       ; define byte value(s) $7F
                     fdb       IOCall-*-2 ; define word value(s) IOCall-*-2
+                    endc
                     fcb       F$Unlink  ; define byte value(s) F$Unlink
                     fdb       FUnlink-*-2 ; define word value(s) FUnlink-*-2
                     fcb       F$Wait    ; define byte value(s) F$Wait
@@ -40,12 +44,18 @@ SvcTbl              fcb       $7F       ; define byte value(s) $7F
                     fdb       FSleep-*-2 ; define word value(s) FSleep-*-2
                     fcb       F$Icpt    ; define byte value(s) F$Icpt
                     fdb       FIcpt-*-2 ; define word value(s) FIcpt-*-2
+                    ifne      _FF_ID
                     fcb       F$ID      ; define byte value(s) F$ID
                     fdb       FID-*-2   ; define word value(s) FID-*-2
+                    endc
+                    ifne      _FF_SPRIOR
                     fcb       F$SPrior  ; define byte value(s) F$SPrior
                     fdb       FSPrior-*-2 ; define word value(s) FSPrior-*-2
+                    endc
+                    ifne      _FF_SSWI
                     fcb       F$SSwi    ; define byte value(s) F$SSwi
                     fdb       FSSwi-*-2 ; define word value(s) FSSwi-*-2
+                    endc
                     fcb       F$STime   ; define byte value(s) F$STime
                     fdb       FSTime-*-2 ; define word value(s) FSTime-*-2
                     fcb       F$Find64+$80 ; define byte value(s) F$Find64+$80
@@ -79,26 +89,32 @@ start               equ       *         ; define assembler symbol
                     sta       P$State,y ; set the state in the process descriptor
                     ldu       <D.Init   ; get init module address in U
 
+                    ifne      _FF_UNIFIED_IO
 * ChdDir should identify system device, result in a call to IOCall which links and
 * initializes IOMan. This could fail if IOMan is not loaded.
                     bsr       ChdDir    ; attempt to change directories
                     bcc       open@     ; success
 * Maybe we failed because we didn't have all the modules we needed? Load and
 * validate the boot file and then try again.
+                    ifne      _FF_BOOTING
                     lbsr      LoadBoot  ; else attempt to load bootfile
+                    endc
                     bsr       ChdDir    ; then try to change directories again
 open@               bsr       OpenCons  ; try to open the console
                     bcc       ChainProg ; branch if successful
 
 * Maybe we were able to get this far without needing anything from the boot file, but now
 * we need it for the console device.
+                    ifne      _FF_BOOTING
                     lbsr      LoadBoot  ; else attempt to load bootfile
+                    endc
                     bsr       OpenCons  ; try to open the console again
                     bcc       ChainProg ; branch if carry is clear to ChainProg
 forever@            bra       forever@  ; branch unconditionally to forever@
 
 * Hmm. No check for success. Probably should "bcs fatalerr" here?
 
+                    endc
 ChainProg           ldd       InitStr,u ; get the offset to the 'GO' program from the Init module
                     leax      d,u       ; point X to the address of the name
                     lda       #Objct    ; object code
@@ -107,6 +123,7 @@ ChainProg           ldd       InitStr,u ; get the offset to the 'GO' program fro
                     os9       F$Chain   ; chain to it
 FatalErr            jmp       [$FFFE]   ; jump to the RESET vector
 
+                    ifne      _FF_UNIFIED_IO
 * Change the directory.
 * Entry: U = The address of the Init module.
 ChdDir              clrb                ; clear carry
@@ -134,6 +151,7 @@ OpenCons            clrb                ; clear B
 ex@                 rts                 ; return to the caller
 
 
+                    endc
                     use       funlink.asm ; include source file funlink.asm
                     use       fwait.asm ; include source file fwait.asm
                     use       fexit.asm ; include source file fexit.asm
@@ -141,16 +159,25 @@ ex@                 rts                 ; return to the caller
                     use       fsend.asm ; include source file fsend.asm
                     use       fsleep.asm ; include source file fsleep.asm
                     use       ficpt.asm ; include source file ficpt.asm
+                    ifne      _FF_SPRIOR
                     use       fsprior.asm ; include source file fsprior.asm
+                    endc
+                    ifne      _FF_ID
                     use       fid.asm   ; include source file fid.asm
+                    endc
+                    ifne      _FF_SSWI
                     use       fsswi.asm ; include source file fsswi.asm
+                    endc
                     use       fstime.asm ; include source file fstime.asm
                     use       ffind64.asm ; include source file ffind64.asm
                     use       fall64.asm ; include source file fall64.asm
                     use       fret64.asm ; include source file fret64.asm
+                    ifne      _FF_UNIFIED_IO
                     use       iocall.asm ; include source file iocall.asm
+                    endc
 
 
+                    ifne      _FF_BOOTING
 * Attempt to load bootfile and validate the modules it contains.
 *
 * Entry: U = The address of the Init module.
@@ -192,6 +219,7 @@ ValBoot2            cmpx      <D.BTHI   ; are we less that the high mark of the 
 JmpBtEr             puls      pc,u      ; retore register and return to caller
 
 
+                    endc
                   IFNE    UseFDebug ; begin conditional assembly for UseFDebug
                     use       fdebug.asm ; include source file fdebug.asm
                   ENDC

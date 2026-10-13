@@ -7,7 +7,7 @@ nega                rmb       1
 MAPSLOT             equ       MMU_SLOT_1
 MAPADDR             equ       (MAPSLOT-MMU_SLOT_0)*$2000
 
-PSG.Base            equ        PSGL.Base
+PSG.Base            equ        PSG_LEFT_PORT
 
                     section   .text
 
@@ -30,22 +30,18 @@ InitSound           clr       D.SndPrcID          clear the process ID of the cu
                     sta       SYS1                and save it back
 
 InitPSG             pshs      cc                save the condition code register
-                    lda       #$C4                get the sound MMU block
                     orcc      #IntMasks           mask interrupts
-                    ldb       MAPSLOT             get the MMU slot we'll map to
-                    sta       MAPSLOT             store it in the MMU slot to map it in
 
 * Silence the PSG's four channels.
                     lda       #%10011111                            set volume of channel to 0
-                    sta       MAPADDR+PSG.Base
+                    sta       PSG.Base
                     lda       #%10111111                            set volume of channel to 1
-                    sta       MAPADDR+PSG.Base
+                    sta       PSG.Base
                     lda       #%11011111                            set volume of channel to 2
-                    sta       MAPADDR+PSG.Base
+                    sta       PSG.Base
                     lda       #%11111111                            set volume of channel to 3
-                    sta       MAPADDR+PSG.Base
+                    sta       PSG.Base
                     
-                    stb       MAPSLOT restore it in the MMU slot
                     puls      cc restore interrupts
 
 InitCODEC           ldx       #CODEC.Base
@@ -87,13 +83,8 @@ l@                  cmpa      CODECCtrl,x
 ;;;
 ;;; All registers (except CC) are preserved.
 PSG_WRITE:          pshs      cc,d
-                    lda       #$C4
                     orcc      #IntMasks
-                    ldb       MAPSLOT
-                    sta       MAPSLOT
-                    lda       2,s
-                    sta       MAPADDR+PSG.Base
-                    stb       MAPSLOT
+                    sta       PSG.Base
                     puls      cc,d,pc
 
                     endsect

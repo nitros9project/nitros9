@@ -23,7 +23,7 @@ atrv                set       ReEnt+rev
 rev                 set       $00
 edition             set       2
 
-PSG.Base            equ       PSGM.Base
+PSG.Base            equ       PSG_BOTH_PORT
 
                     ifeq      Level-2
 * For Level 2, we use D.Boot (unused in Wildbits kernel) for keyboard statics
@@ -36,6 +36,19 @@ D.KbdSta            equ       D.Boot
 MAPSLOT             equ       MMU_SLOT_7
                     else
 MAPSLOT             equ       MMU_SLOT_2
+* MAPSLOT FIX (2026-09-02): the Level 2 kernel allocates system pages from
+* the top of the map downward, so under enough load the system map grows
+* into slot 2 ($4000-$5FFF) - the very slot these routines borrow as their
+* temporary map window. A process descriptor's second page is that
+* process's SYSTEM STACK, so a caller's stack could then sit inside the
+* window. Parking the saved slot value on that stack and pulling it back
+* while a VKY block was mapped read VKY memory instead of the stack,
+* restored junk into system slot 2, hid live descriptors and sent the CPU
+* wandering ("one character on screen, then freeze"; both machines, any
+* speed). Every window now parks the saved slot value in the driver statics
+* (V.MapSav) instead of on the stack and keeps NO stack traffic that crosses
+* a block change inside the window. Works at Level 1 (slot 7) and Level 2
+* (slot 2) alike. The kernel additionally reserves slot 2 (see krn.asm).
                     endc
 MAPADDR             equ       (MAPSLOT-MMU_SLOT_0)*$2000
 G.ScrStart          equ       MAPADDR
@@ -93,7 +106,9 @@ HandleKeyboard@     ldx       V.KeyDrvEPtr,u
                     jsr       6,x                        call AltIRQ routine in keydrv
                     ifgt      Level-1
 * Handle Mouse Timer. When timer wraps to zero, turn it off
-* Mouse does not hide correctly, so park it at right side of screen
+* Clearing MS_MEN is a true hide on v8_rc11 and later cores (the pointer pixel
+* is gated on the enable bit there).  On older cores the enable was ignored by
+* the pixel path, so the cursor stays visible, frozen, until the mouse moves.
 * Check if mouse is already off, if it is, then skip timer code
 * Mouse timer reset is in mousedrv_ps2.asm interrupt procedure
 * Mouse timer resets on every mouse interrupt
@@ -103,9 +118,6 @@ HandleMSTimer       tst       MS_MEN             check if mouse cursor already o
                     inc       V.MSTimer,u                increment mouse auto-hide timer
                     bne       HandleSound        if it is not zero, then skip
                     clr       MS_MEN             if timer flips to 0, turn off mouse cursor
-                    ldd       #640               park mouse at right border
-                    sta       MS_XH              turning off cursor doesn't work
-                    stb       MS_XL              correctly at the moment
                     endc
 * Handle sound.
 HandleSound
@@ -115,13 +127,9 @@ HandleSound
                     bne       ex@                branch not zero; leave the sound on
 sndoff              pshs      cc                 save the condition code register
                     orcc      #IntMasks          mask interrupts
-                    ldb       MAPSLOT            get the MMU slot we'll map to
-                    lda       #$C4               get the sound MMU block
-                    sta       MAPSLOT            store it in the MMU slot to map it in
 * Turn off PSG channel 0
                     lda       #%10011111         set attenuation for channel 0
-                    sta       MAPADDR+PSG.Base
-                    stb       MAPSLOT            restore it in the MMU slot
+                    sta       PSG.Base
 * Wake up process that started sound, if any
                     lda       D.SndPrcID
                     beq       g@                    
@@ -146,35 +154,31 @@ BellTone            tst       D.SndPrcID
                     bne       exit
                     stb       D.TnCnt             store the duration counter in the global
                     pshs      cc,a
-                    lda       #$C4                get the sound MMU block
+                    coma                          complement since attenuation is inverted on the PSG
+                    anda      #%00001111          turn off all but attenuation bits for tone 1
+                    ora       #%10010000          set latch bit and attenuation control bit for tone 1
+                    tfr       a,b                 B = tone-1 volume byte
                     orcc      #IntMasks           mask interrupts
-                    ldb       MAPSLOT             get the MMU slot we'll map to
-                    sta       MAPSLOT             store it in the MMU slot to map it in
 * Turn off attenuation for tones 2, 3, and noise channel.
                     lda       #%10111111          set tone 2 attenuation to 0
-                    ldx       #MAPADDR+PSG.Base
+                    ldx       #PSG.Base
                     sta       ,x
                     lda       #%11011111          set tone 3 attenuation to 0
                     sta       ,x
                     lda       #%11111111          set noise attenuation to 0
                     sta       ,x
 * Turn on PSG.
-                    lda       1,s                 get the volume byte from the stack
-                    coma                          complement since attenuation is inverted on the PSG
-                    anda      #%00001111          turn off all but attenuation bits for tone 1
-                    ora       #%10010000          set latch bit and attenuation control bit for tone 1
-                    sta       ,x                  store in PSG hardware
+                    stb       ,x                  store the tone-1 volume byte in PSG hardware
 
 * Set frequency of tone
-                    pshs      b                   save original MAP slot value                    
                     tfr       y,d                 transfer frequency over
                     coma
                     comb
-                    pshs      d                   only 10 bits are significant
+                    std       <D.IRQTmp           only 10 bits are significant (IRQs masked: DP scratch, not the stack)
                     andb      #%00001111          clear all but bits 0-3
-                    orb       #%10000000          set the latch to 1 for tone 1         
+                    orb       #%10000000          set the latch to 1 for tone 1
                     stb       ,x                  send it to the hardware
-                    puls      d                   obtain the value again
+                    ldd       <D.IRQTmp           obtain the value again
                     lsrb                          shift the...
                     lsrb                          first four...
                     lsrb                          bits out...
@@ -184,11 +188,9 @@ BellTone            tst       D.SndPrcID
                     lsla                          up to...
                     lsla                          the upper nibble
                     anda      #%00110000          clear all other bits
-                    pshs      a                   save on the stack
-                    orb       ,s+                 OR in with bits 7-4
+                    sta       <D.IRQTmp           park bits 7-4 (DP scratch)
+                    orb       <D.IRQTmp           OR in with bits 7-4
                     stb       ,x
-                    puls      b                   get the original MAP slot value
-                    stb       MAPSLOT             restore it to the hardware
                     lda       V.BUSY,u            get active process ID
                     sta       D.SndPrcID
                     ldx       #$0000
@@ -222,22 +224,18 @@ InitSound           clr       D.SndPrcID          clear the process ID of the cu
                     sta       SYS1                and save it back
 
 InitPSG             pshs      cc                save the condition code register
-                    lda       #$C4                get the sound MMU block
                     orcc      #IntMasks           mask interrupts
-                    ldb       MAPSLOT             get the MMU slot we'll map to
-                    sta       MAPSLOT             store it in the MMU slot to map it in
 
 * Silence the PSG's four channels.
                     lda       #%10011111                            set volume of channel to 0
-                    sta       MAPADDR+PSG.Base
+                    sta       PSG.Base
                     lda       #%10111111                            set volume of channel to 1
-                    sta       MAPADDR+PSG.Base
+                    sta       PSG.Base
                     lda       #%11011111                            set volume of channel to 2
-                    sta       MAPADDR+PSG.Base
+                    sta       PSG.Base
                     lda       #%11111111                            set volume of channel to 3
-                    sta       MAPADDR+PSG.Base
+                    sta       PSG.Base
 
-                    stb       MAPSLOT restore it in the MMU slot
                     puls      cc restore interrupts
 
 * WM8776 CODEC chip registers
@@ -251,6 +249,18 @@ InitPSG             pshs      cc                save the condition code register
 InitCODEC
                     ldx       #CODEC.Base
 
+* The two boards wire the WM8776 differently: one independent register sequence per machine,
+* never share or copy values.  Bits: [15:9] register, [8] update/zero-cross/LRBOTH, [7:0] value.
+* Tune by ear before touching this table: the wmset command writes any register live,
+* usage  wmset R# V#  (both hex, e.g. wmset 0E E7 = R14 to $E7).  A wmset write lasts only
+* until the next boot, when this InitCODEC runs again and rewrites every register below.
+                    ifne      jr2
+* ------------------- Jr2 InitCODEC -------------------
+* Knobs: DAC att R03/R04 ($FF = 0 dB, 0.5 dB/step) = the .mus/SID path; headphone att
+* R00/R01 ($79 = 0 dB, 1 dB/step) = the whole mix (the SAM2695 enters as analogue with no
+* gain of its own).  Jr2 line-out follows the headphone stage, so one setting serves both
+* jacks.  Tuned by ear 2026-08-29/30: DAC $FD (-1 dB), headphones $60 (-25 dB); this synth
+* runs ~12 dB hotter than the K2 one, hence the deep cut.
                     ldd       #%0010111000000000                    R23 - Reset chip
                     lbsr      SendToCODEC
                     ldd       #%0001010000000010                    R10 - DAC Interface Control 16-bit i2s
@@ -263,14 +273,48 @@ InitCODEC
                     lbsr      SendToCODEC
                     ldd       #%0001101000000000                    R13 - PWR Down Control, Everything on
                     lbsr      SendToCODEC
-                    ldd       #%0000011111110000                    R03 - Left DAC Attenuation
+                    ldd       #%0000011111111101                    R03 - Left DAC Attenuation ($FD = -1.0dB)
                     lbsr      SendToCODEC
-                    ldd       #%0000100111110000                    R04 - Right DAC Attenuation
+                    ldd       #%0000100111111101                    R04 - Right DAC Attenuation ($FD = -1.0dB)
                     lbsr      SendToCODEC
-                    ldd       #%0000000101101100                    R00 - Left Headphone Attenuation Control
+                    ldd       #%0000000101100000                    R00 - Left Headphone Attenuation ($60 = -25dB)
                     lbsr      SendToCODEC
-                    ldd       #%0000001101101100                    R01 - Right Headphone Attenuation Control
+                    ldd       #%0000001101100000                    R01 - Right Headphone Attenuation ($60 = -25dB)
                     lbsr      SendToCODEC
+
+                    else
+* -------------- K2: independently tunable InitCODEC --------------
+* Knobs: DAC att R03/R04 = the .mus/SID path only; headphone att R00/R01 = headphone jack
+* only; ADC gain R14/R15 ($CF = 0 dB, 0.5 dB/step, $FF = +24 dB) = every analogue input on
+* BOTH jacks, because AINs reach VOUT (RCA) and the headphone PGA through the bypass (R22 MX
+* bit 2).  Tuned by ear on the headphone jack 2026-09-05: DAC $D7 (-20 dB), headphones $79
+* (0 dB); RCA not tuned.
+* Analogue inputs (R21 AMX bit n = AIN n+1; extend as sources are identified):
+*   AIN1, AIN2  SAM2695 MIDI synth (.lyr)      AIN4  VS1053 (wmset 15 08, 2026-09-07)
+*   AIN3, AIN5  not identified yet
+* The deploy overlay codec_inputs rewrites the R21 line below to $1F (all five in); R21 bit 8
+* = LRBOTH (R14 then serves both channels), bits 7/6 = mutes.
+                    ldd       #%0010111000000000                    R23 - Reset chip
+                    lbsr      SendToCODEC
+                    ldd       #%0001010000000010                    R10 - DAC Interface Control 16-bit i2s
+                    lbsr      SendToCODEC
+                    ldd       #%0010001100000001                    R17 - ALC Control 2 
+                    lbsr      SendToCODEC
+                    ldd       #%0010101000011111                    R21 - ADC Mux Control   bit 3 = AIN4 (VS1053), bit 2 = AIN3, bit 1 = AIN2, bit 0 = AIN1
+                    lbsr      SendToCODEC
+                    ldd       #%0010110000000111                    R22 - Output Mux MX[2:0] = "111" 
+                    lbsr      SendToCODEC
+                    ldd       #%0001101000000000                    R13 - PWR Down Control, Everything on
+                    lbsr      SendToCODEC
+                    ldd       #%0000011111010111                    R03 - Left DAC Attenuation ($D7 = -20dB)
+                    lbsr      SendToCODEC
+                    ldd       #%0000100111010111                    R04 - Right DAC Attenuation ($D7 = -20dB)
+                    lbsr      SendToCODEC
+                    ldd       #%0000000101111001                    R00 - Left Headphone Attenuation ($79 = 0dB)
+                    lbsr      SendToCODEC
+                    ldd       #%0000001101111001                    R01 - Right Headphone Attenuation ($79 = 0dB)
+                    lbsr      SendToCODEC
+                    endc
 *                   ldd       #%0001011000000010                    R11 - ADC Interface Control 
 *                   lbsr      SendToCODEC
 *                   ldd       #%0001100111010101                    R12 - Master Mode Control
@@ -353,13 +397,13 @@ initcursor          ldx       #TXT.Base
                     sta       VKY_TXT_CURSOR_CHAR_REG,x
 
 * Set foreground/background character LUT values.
-setforeback         lda       #$C3                get the foreground/background LUT MMU block
+setforeback         lda       #COLOR_RAM_BLK                get the foreground/background LUT MMU block
                     sta       MAPSLOT             store it in the MMU slot to map it in
                     ldd       #$10*256+$10        load D with the LUT values
                     bsr       clr                 call the clear routine
 
 * Clear text screen.
-                    lda       #$C2                get the text MMU block
+                    lda       #TEXT_RAM_BLK                get the text MMU block
                     sta       MAPSLOT             store it in the MMU slot to map it in
                     ldd       #$20*256+$20        load D with the space character
                     bsr       clr                 call the clear routine
@@ -595,20 +639,20 @@ RawWrite            pshs      a                   else save the character to wri
                     puls      a                   get the character to write
                     pshs      cc                  save CC
                     orcc      #IntMasks           mask interrupts
-                    ldb       MAPSLOT             get the MMU block number for the slot
-                    pshs      b                   save it
-                    ldb       #$C2                get the text MMU block number
+                    ldb       MAPSLOT             MAPSLOT fix: save the slot in statics (stack may live in the window)
+                    stb       V.MapSav,u
+                    ldb       #TEXT_RAM_BLK                get the text MMU block number
                     stb       MAPSLOT             set the block number to text
                     sta       ,x                  save the character there
-                    ldb       #$C3                get the text attributes MMU block number
+                    ldb       #COLOR_RAM_BLK                get the text attributes MMU block number
                     stb       MAPSLOT             set the MMU block number to the text attributes block
                     lda       V.FBCol,u           get the current foreground/background color
                     sta       ,x                  save it at the same location in the text attributes
                     cmpx      #G.ScrStart+(80*60)-1 are we at the end of largest possible screen?
                     bcc       l@                  branch if so
                     sta       1,x                 and the next location (for the cursor)
-l@                  lda       ,s+                 recover the initial MMU slot value
-                    sta       MAPSLOT             and restore it
+l@                  ldb       V.MapSav,u          MAPSLOT fix: restore the slot from statics, never from a stacked copy
+                    stb       MAPSLOT
                     puls      cc                  recover CC (this may unmask interrupts)
                     ldd       V.CurRow,u          get the current row and column
                     incb                          increment the column
@@ -630,22 +674,22 @@ SCROLL              equ       1
                     puls      d                   restore D
                     pshs      cc,d                save off the row/column and CC
                     orcc      #IntMasks           mask interrupts
-                    lda       MAPSLOT             get the current MMU slot
-                    pshs      a                   save it on the stack
-scroll_loop1@       lda       #$C2                get the text block #
+                    ldb       MAPSLOT             MAPSLOT fix: save the slot in statics (stack may live in the window)
+                    stb       V.MapSav,u
+scroll_loop1@       lda       #TEXT_RAM_BLK                get the text block #
                     sta       MAPSLOT             and map it in
                     ldb       V.WWidth,u
                     ldd       b,x
                     std       ,x                  store on this row
-                    lda       #$C3                get the text attributes block #
+                    lda       #COLOR_RAM_BLK                get the text attributes block #
                     sta       MAPSLOT             and map it in
                     ldb       V.WWidth,u          get the bytes at the width
                     ldd       b,x
                     std       ,x++                and store it
                     leay      -2,y                decrement Y
                     bne       scroll_loop1@       branch if not 0
-                    puls      a                   recover the original slot
-                    sta       MAPSLOT             and restore it
+                    ldb       V.MapSav,u          MAPSLOT fix: restore the slot from statics, never from a stacked copy
+                    stb       MAPSLOT
                     puls      cc,d                recover CC and the row/column
                     else
                     clra                          just clear the row (goes to top)
@@ -728,19 +772,19 @@ EraseLineCore       pshs      b                   save the number of columns
                     suba      ,s+                 subtract the column to start erasing from
                     pshs      cc                  save CC
                     orcc      #IntMasks           mask interrupts
-                    ldb       MAPSLOT             get the MMU slot value
-                    pshs      b                   save it
-clrloop@            ldb       #$C2                get the text MMU block
+                    ldb       MAPSLOT             MAPSLOT fix: save the slot in statics (stack may live in the window)
+                    stb       V.MapSav,u
+clrloop@            ldb       #TEXT_RAM_BLK                get the text MMU block
                     stb       MAPSLOT             store it in the MMU slot
                     clr       ,x                  clear the value there
-                    ldb       #$C3                get the text attributes MMU block
+                    ldb       #COLOR_RAM_BLK                get the text attributes MMU block
                     stb       MAPSLOT             store it in the MMU slot
                     ldb       V.FBCol,u           get the curent foreground/background color
                     stb       ,x+                 store it and increment the index register
                     deca                          decrement the loop value
                     bne       clrloop@            branch if not done
-                    puls      b                   restore the MMU slot value
-                    stb       MAPSLOT             into the hardware
+                    ldb       V.MapSav,u          MAPSLOT fix: restore the slot from statics, never from a stacked copy
+                    stb       MAPSLOT
                     puls      cc,pc               restore CC and return
 
 ;;; ClrScrn
@@ -1137,8 +1181,8 @@ Do1B60_Param3
 
 Do1B60_Param4       pshs      cc
                     orcc      #IntMasks
-                    ldb       MAPSLOT
-                    pshs      b
+                    ldb       MAPSLOT             MAPSLOT fix: save the slot in statics (stack may live in the window)
+                    stb       V.MapSav,u
                     ldb       #TEXT_LUT_BLK
                     stb       MAPSLOT
                     ldx       V.EscParms+4,u
@@ -1153,7 +1197,7 @@ Do1B60_Param4       pshs      cc
                     sta       1,x
                     lda       V.EscParms+1,u get red component
                     sta       2,x
-                    puls      b
+                    ldb       V.MapSav,u          MAPSLOT fix: restore the slot from statics, never from a stacked copy
                     stb       MAPSLOT
                     puls      cc
                     lbra      ResetHandler
@@ -1696,7 +1740,7 @@ storeaddr@          pshs      y                   store font offset on stack [O]
 * s= ADDR|OFFSET|                   
 *                   ****      map block into user dat and store address on stack
                     pshs      x,u                 preserve x,u
-                    ldx       #$C1                map in font block
+                    ldx       #FONT_BLK                map in font block
                     ldb       #$01                map 1 block at address x (x set on entry)
                     os9       F$MapBlk
                     bcc       mapgood@            if success, then continue
@@ -1838,12 +1882,12 @@ map@                lda       R$Y+1,x             load bitmap@
 *                   **** Store physical address of bitmap in TinyVicky BM0, BM1 or BM2
                     pshs      cc
                     orcc      #IntMasks           mask interrupts
-                    lda       MAPSLOT
-                    pshs      a
+                    lda       MAPSLOT             MAPSLOT fix: save the slot in statics (stack may live in the window)
+                    sta       V.MapSav,u
                     lda       #BITMAP_BLK         get the MMU Block for bitmap addresses
                     sta       MAPSLOT             store it in the MMU slot to map it in
 *                   **** Calculate starting address at 1000,1008,1010
-                    pshs      b                   push block# to stack
+                    stb       <D.IRQTmp           park block# (IRQs masked: DP scratch, not the stack)
                     ldb       R$Y+1,x             ldb with bitmap#
                     lslb                          multiply by 8
                     lslb
@@ -1851,19 +1895,19 @@ map@                lda       R$Y+1,x             load bitmap@
                     lda       #(MAPADDR+$1000)/256
                     tfr       d,y                 y is address of BM(0-2) registers
 *                   **** Convert b from block number to physical address
-                    ldb       ,s                  load b with block# from stack
+                    ldb       <D.IRQTmp           load b with block#
                     lbsr      Blk2Addr            convert blk# to high 16 bits of address in d
 *                   **** Load Bitmap start block physical address into Vicky BM0, BM1 or BM2
-                    pshs      a                   push high byte of bitmap address
+                    sta       <D.IRQTmp+1         park high byte of bitmap address
                     lda       #%00000001          enable bitmapX with CLUT 0
                     sta       ,y+                 enable bitmap with CLUT 0
-                    puls      a                   
+                    lda       <D.IRQTmp+1
                     std       ,y++
                     lda       #$0
                     sta       ,y+                 clear AD7-AD0
-                    puls      b,a
-                    sta       MAPSLOT
-noerror@            puls      cc,pc     
+                    ldb       V.MapSav,u          MAPSLOT fix: restore the slot from statics, never from a stacked copy
+                    stb       MAPSLOT
+noerror@            puls      cc,pc
 error@              coma                          set carry bit on error
 end@                rts             
 
@@ -1987,8 +2031,8 @@ clr_bmvar@          leay      V.BM0Blk,u           clear the bitmap storage
                     sta       ,y
 clr_bmReg@          pshs      cc                   clear the bitmap registers,disable bitmap
                     orcc      #IntMasks            mask interrupts
-                    lda       MAPSLOT
-                    pshs      a                    preserve current mmu block
+                    lda       MAPSLOT             MAPSLOT fix: save the slot in statics (stack may live in the window)
+                    sta       V.MapSav,u
                     lda       #BITMAP_BLK          get the MMU Block for bitmap addresses
                     sta       MAPSLOT              store it in the MMU slot to map it in
 * Calculate starting address at 1000,1008,1010
@@ -2004,8 +2048,8 @@ clr_bmReg@          pshs      cc                   clear the bitmap registers,di
                     sta       ,y+                  clear AD7-AD0
                     sta       ,y+                  clear AD15-AD8
                     sta       ,y                   clear AD18-AD16
-                    puls      a
-                    sta       MAPSLOT
+                    ldb       V.MapSav,u          MAPSLOT fix: restore the slot from statics, never from a stacked copy
+                    stb       MAPSLOT
                     puls      cc
 end@                rts
 
@@ -2022,9 +2066,9 @@ end@                rts
 ;;;
 SSPalet             pshs      cc
                     orcc      #IntMasks           mask interrupts
-                    lda       MAPSLOT
-                    pshs      a
-                    lda       #$C0                was TEXT_LUT_BLK - get the MMU Block
+                    lda       MAPSLOT             MAPSLOT fix: save the slot in statics (stack may live in the window)
+                    sta       V.MapSav,u
+                    lda       #VICKY_BLK                was TEXT_LUT_BLK - get the MMU Block
                     sta       MAPSLOT             store it in the MMU slot to map it in
 *                   **** Calculate starting address at 1000,1008,1010
                     ldb       R$Y+1,x             ldb with bitmap#
@@ -2038,8 +2082,8 @@ SSPalet             pshs      cc
                     rolb                          shift B, and rotate in enable it
 *                   **** Load Bitmap start block physical address into Vicky BM0, BM1 or BM2
                     stb       ,y                  enable bitmap with CLUT R$X
-                    puls      a
-                    sta       MAPSLOT
+                    ldb       V.MapSav,u          MAPSLOT fix: restore the slot from statics, never from a stacked copy
+                    stb       MAPSLOT
                     puls      cc,pc
 
 
@@ -2056,7 +2100,7 @@ SSPalet             pshs      cc
 SSDfPal             pshs      a,x,y,u
 *                   **** Map in block for CLUT Registers
                     pshs      x
-                    ldx       #$C1
+                    ldx       #FONT_BLK
                     lbsr      mapblock
                     puls      x
                     bcs       end@                if error, end and return error code
@@ -2148,10 +2192,16 @@ clearblock          pshs      cc
                     std       <D.Proc
                     puls      cc,pc
 
-* Block to Address: Convert block# to high 16 bits in D
-* b = block#, a = 0.  d = high 16 bits of address
-* Try to replace with math coprocessor multiply in Vicky?
-Blk2Addr            clra                          clear a, block # is in b
+* Convert an OS-9 8K MMU block number in B to the bus address written to
+* VICKY's bitmap address registers. Return D = address >> 8, the upper
+* 16 bits of that 24-bit address. This does not describe or depend on where
+* the FPGA places the data in the physical SRAM chips.
+* Every block is block * $2000, the two 1 MB windows included: $A0-$BF at
+* $14_0000-$17_FFFF and $D0-$EF at $1A_0000-$1D_FFFF (cores rc15 and later;
+* the rc14 cores put $D0-$EF at $20_0000 after a mis-edited row of the
+* Revision E sheet, which is why an rc14 core needs the rc14 vtio and an
+* rc15 core this one).
+Blk2Addr            clra                          A:B = block number
                     lslb                          multiply block# by $20 to get top 16 bits x2
                     rola                          of physical address (ex $3F*$20 = $07E0)
                     lslb                          x4
@@ -2192,16 +2242,16 @@ DeleteLine
 * Block scroll loop: copy characters and attributes 2 bytes at a time
                     pshs      cc                  * Save CC (interrupt state)
                     orcc      #IntMasks           * Disable interrupts during mapping
-                    lda       MAPSLOT             * Save original MMU mapping slot
-                    pshs      a
 
-dl_loop             lda       #$C2                * Map text block into MMU slot
+                    lda       MAPSLOT             MAPSLOT fix: save the slot in statics (stack may live in the window)
+                    sta       V.MapSav,u
+dl_loop             lda       #TEXT_RAM_BLK                * Map text block into MMU slot
                     sta       MAPSLOT
                     ldb       V.WWidth,u
                     ldd       b,x                 * Load 2 chars from row below (X + WWidth)
                     std       ,x                  * Store 2 chars in current row (X)
 
-                    lda       #$C3                * Map attributes block into MMU slot
+                    lda       #COLOR_RAM_BLK                * Map attributes block into MMU slot
                     sta       MAPSLOT
                     ldb       V.WWidth,u
                     ldd       b,x                 * Load 2 attributes from row below (X + WWidth)
@@ -2210,8 +2260,8 @@ dl_loop             lda       #$C2                * Map text block into MMU slot
                     leay      -2,y                * Decrement byte copy counter by 2
                     bne       dl_loop             * Loop until all bytes copied
 
-                    puls      a                   * Restore original MMU slot mapping
-                    sta       MAPSLOT
+                    ldb       V.MapSav,u          MAPSLOT fix: restore the slot from statics, never from a stacked copy
+                    stb       MAPSLOT
                     puls      cc                  * Restore interrupts state
                     puls      y                   * Restore path descriptor register Y
 

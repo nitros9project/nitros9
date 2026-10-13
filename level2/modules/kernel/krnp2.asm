@@ -185,6 +185,34 @@ krnp2               lda       #'2       ; debug: signal that we made it into krn
                     leax      Trap,pc   ; compute Trap,pc into X
                     stx       <D.SWI    ; store X at <D.SWI
                   ENDC
+*[[[ Wildbits PORT
+                  IFNE    wildbits ; begin conditional assembly for wildbits
+* Grow the memory block map to all 256 blocks (end = $0300) and mark the gaps NotRAM.
+* Longview RAM: $00-$FB; $FC-$FF are devices. Include $40-$9F when FLASHDIS (MMU_IO_CTRL
+* bit 7 reads 1): set it and skip that gap. Nothing has been forked yet.
+                    leau      >NotRAMTblF,pc ; the gaps incl. $40-$9F: first block, count; count 0 ends it
+                    lda       >MMU_IO_CTRL ; bit 7 = FLASHDIS.OK: this core can turn $40-$9F into RAM
+                    bpl       blkflash@ ; without FLASHDIS support, keep $40-$9F outside RAM
+                    ora       #FLASHDIS ; take the 768K: blocks $40-$9F are RAM from here on
+                    sta       >MMU_IO_CTRL ; (read-modify-write, bits 0/1 kept)
+                    leau      >NotRAMTbl,pc ; the gaps without $40-$9F
+blkflash@           ldx       <D.BlkMap ; get the pointer to the 8KB block map
+blkgap@             ldb       ,u+       ; B = first block of the gap
+                    clra                ; unsigned block index, including $FC
+                    leay      d,x       ; Y = that block's map entry
+                    ldb       ,u+       ; B = blocks in the gap
+                    beq       blkdone@  ; 0 = end of the table
+                    lda       #NotRAM   ; the "Not RAM" flag
+blkmark@            sta       ,y+       ; mark them all
+                    decb                ; done with this gap?
+                    bne       blkmark@  ; not yet
+                    bra       blkgap@   ; next gap
+blkdone@            clrb                ; 256 blocks (B = 0 is how the CoCo 2 MB case leaves it)
+                    stb       <D.MemSz  ; # of 8KB blocks, for anything that asks
+                    leax      >$0100,x  ; map end = start + 256 entries ($0300)
+                    stx       <D.BlkMap+2 ; save the memory block map end pointer
+                  ENDC
+*]]] Wildbits PORT
 * Change to default directory
 Krnp2InitModule     ldu       <D.Init   ; get init module pointer
                     ldd       SysStr,u  ; get pointer to system device name (usually '/DD')
@@ -420,6 +448,14 @@ IOMan               fcs       /IOMan/
 
                     use       fdebug.asm ; include source file fdebug.asm
 
+*[[[ Wildbits PORT
+                  IFNE    wildbits ; begin conditional assembly for wildbits
+* NotRAM gaps (first block, count; 0 ends). NotRAMTblF adds $40-$9F for cores without FLASHDIS.
+NotRAMTblF          fcb       $40,$60   ; $40-$9F: flash window ($40-$7F) + expansion RAM ($80-$9F)
+NotRAMTbl           fcb       VICKY_BLK,$04 ; Longview: $FC-$FF devices; 252 SRAM blocks
+                    fcb       $00,$00   ; end
+                  ENDC
+*]]] Wildbits PORT
                     emod
 eom                 equ       *         ; define assembler symbol eom
                     end

@@ -88,6 +88,12 @@ start
            lda   #7     default foreground font color
            sta   fg,u
            clr   dobanner,u
+           lda   #1     current screen type 1-4 (SS.ScTyp): SignOn keys the banner off scsz, and only
+           ldb   #SS.ScTyp  the settings file used to set it - with no file it read garbage, so a
+           os9   I$GetStt   random boot got the plain 40-column banner (fix 2026-09-07)
+           bcc   ScszOK
+           lda   #2     no answer: assume 80 columns
+ScszOK     sta   scsz,u
            pshs  x
 	       lda	 #0			load current fg and bd colors
 	       ldb	 #SS.FBRgs	initialize old and new fg and bg to current colors

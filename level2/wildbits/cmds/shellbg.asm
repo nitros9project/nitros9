@@ -114,9 +114,7 @@ setlayer
                     lda       #1                  Path # 
                     ldb       #SS.PScrn           Position Bitmap # on Layer #
                     os9       I$SetStt
-
-                    lda       #$36                First BMBlock
-                    sta       <bmblock
+                    lda       <bmblock
                     ldb       <notheme
                     beq       ldtheme@
                     leax      pixmap4,pcr         no theme load default bg

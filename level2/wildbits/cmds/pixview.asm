@@ -161,7 +161,7 @@ ispix@              lda       #PIXMAPLEN         own marker length to skip (6)
 pixshow@            lbsr      GOn
                     lda       <optmode
                     cmpa      #1                  -on: leave the image up, no name,
-                    beq       rdone               no pause - exit right away
+                    beq       rdone.on            no pause - exit, returning bmblock
 * print the file name over the image (pixfn = start of the name within
 * finalpath, which is $0D-terminated, so I$WritLn stops at the terminator),
 * then the prompt. Only the plain "pixview <clut*|pixmap*>" form reaches
@@ -180,6 +180,14 @@ dbgpau@             lbsr      Inkey
 * Standalone program: terminate with F$Exit - a forked process must never
 * RTS. The parent (File Manager) sits in F$Wait and redraws its own screen
 * when we exit, exactly like te / hexed / basic09.
+*
+* -on exit: the bitmap is left allocated for the parent to draw into, so we
+* hand the first bitmap page number back in B. F$Wait delivers it to the
+* forking process (see iss.asm DoPixV). Every other exit path leaves the
+* bitmap freed (or never allocated) and returns B=0, so a shell-launched
+* "pixview <file>" still exits cleanly with no bogus error status.
+rdone.on            ldb       <bmblock            return first bitmap page to parent
+                    os9       F$Exit
 rdone               clrb                          B = 0: no error
                     os9       F$Exit
 
@@ -385,8 +393,8 @@ pixmapload          pshs      a,u
                     os9       I$Open
                     lbcs      loaderror
                     sta       <currPath
-                    lda       #$36                First BMBlock for Bitmap 0
-                    sta       <bmblock
+                    ;lda       #$36                First BMBlock for Bitmap 0
+                    ;sta       <bmblock
                     ldb       <bmblock
                     clra
                     std       <currBlk

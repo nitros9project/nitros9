@@ -10,7 +10,8 @@ BACKGROUNDS	= clutbeach clutgrid clutmeadow clutmetal clutspace clutstone clutst
 	          pixmapbeach pixmapgrid pixmapmeadow pixmapmetal pixmapspace pixmapstone \
 	          pixmapstone2 pixmapwood pixmappaintspl pixmappaint2 clutpaintspl clutpaint2 \
               pixmapwizfi pixmapwizfi2 clutwizfi clutwizfi2 testclutbm0 testclutbm1 testclutbm2 \
-              testpixmapbm0 testpixmapbm1 testpixmapbm2
+              testpixmapbm0 testpixmapbm1 testpixmapbm2 clutworldmap clutworldmap2 pixmapworldmap \
+              pixmapworldmap2 clutshipwreck pixmapshipwreck iss2 xtclutnomod
 
 ALLOBJS		= $(BACKGROUNDS)
 

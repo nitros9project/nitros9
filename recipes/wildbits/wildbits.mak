@@ -40,6 +40,10 @@ RBF = rbf rbsuper llwbsd rbmem $(BOOT_RBF) s0 s1 f0 f1 c0 c1 $(RBF_EXTRA)
 SCF = scf vtio $(KEYSUB) term bannerfont palette $(SCF_EXTRA)
 ifeq ($(LEVEL),2)
 SCF += mousedrv_ps2
+# Level 2 multiterminal: /vt is the factory descriptor vtm opens new terminals on,
+# /vt1-/vt8 the extra terminals.  vtio, term and keydrv come from
+# level2/wildbits/modules, which the Level 2 search path tries first.
+SCF += vt vt1 vt2 vt3 vt4 vt5 vt6 vt7 vt8
 endif
 DRIVEWIRE_RBF = rbdw x0 x1 x2 x3
 DRIVEWIRE_SCF = scdwv n n1 n2 n3 n4 n5
@@ -75,25 +79,78 @@ ifeq ($(FUJINET),1)
 LFLAGS += -lfuji
 CMDS_EXTRA += $(FUJINET_CMDS)
 endif
-FM_CMDS = fm hexed pixview
+FM_CMDS = fm 
 ifeq ($(FM),1)
-LFLAGS += -lfm
 CMDS_EXTRA += $(FM_CMDS)
 endif
 CMDS += $(STDCMDS) shell \
 	bootos9 scfg wbinfo wbreset modem \
 inetd telnet dw httpd $(BASIC09) $(BF) \
-	$(CMDS_EXTRA) wildspeed w6100eth lcdload
+	$(CMDS_EXTRA) wildspeed wmset
+
+# K2 supervisor mailbox: shared Level 1 sources for both OS levels (rc18+).
+ifeq ($(PLATFORM),k2)
+SCF_EXTRA += rpdrv rp
+CMDS += fpga
+
+$(MODDIR)/rpdrv: $(L1PMD)/rpdrv.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/rp: $(L1PMD)/rp.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/fpga: $(L1PCD)/fpga.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+endif # K2-only RP2040 modules and command
+
+# diag: hardware diagnostics (level1/wildbits/cmds/diag.asm + diag_hw.asm, 2026-10-09), built for Level 1 and
+# Level 2 alike (2026-10-10) - the source is shared and assembles to the same bytes under either. It carries its own
+# CP437 font and text palette, copied in at build time from sys/fonts/phoenixegafont.asm and modules/palette.asm
+# (the fcb rows only, labels dropped) so its frame looks right whatever font or palette the tested system has.
+# The two generated files go in $(OBJDIR), not the recipe folder (2026-10-11): as bare names they were written
+# into the source tree on every make and left there; "make clean" removes $(OBJDIR) with them.
+CMDS += diag
+$(MODDIR)/diag: $(L1PCD)/diag.asm $(L1PCD)/diag_hw.asm $(OBJDIR)/diagfont.inc $(OBJDIR)/diagpal.inc | $(MODDIR)
+	$(AS) $(AFLAGS) -I$(OBJDIR) -I$(L1PCD) $< $(ASOUT)$@
+
+$(OBJDIR)/diagfont.inc: $(LEVEL1)/wildbits/sys/fonts/phoenixegafont.asm | $(OBJDIR)
+	sed -n '/^start/,/emod/p' $< | grep -E '^[A-Za-z0-9_]*[[:space:]]+fcb' | sed -E 's/^[A-Za-z0-9_]+//' > $@
+
+$(OBJDIR)/diagpal.inc: $(L1PMD)/palette.asm | $(OBJDIR)
+	sed -n '/^start/,/emod/p' $< | grep -E '^[A-Za-z0-9_]*[[:space:]]+fcb' | sed -E 's/^[A-Za-z0-9_]+//' > $@
 
 ifeq ($(LEVEL),2)
+# vs: VS1053 test command (wb/vs1053); on its own line so it never collides with edits to the CMDS list above
+CMDS += vs
+
+# These commands live in the Level 2 source tree. Explicit prerequisites also
+# prevent an older Level 1 object from satisfying an incremental build.
+$(MODDIR)/view: $(L2PCD)/view.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+# linetest: the line-drawing engine's missing-pixel probe (level2/wildbits/tests), installed as CMDS/linetest.
+CMDS += linetest
+$(MODDIR)/linetest: $(LEVEL2)/wildbits/tests/linetest.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(OBJDIR)/play.o: $(L2PCD)/play.as | $(OBJDIR)
+	$(ASM) $(AFLAGS) $< $(ASOUT)$@
+
 UTILPAK1_MODS = attr copy date del deiniz dir display list makdir mdir \
 	merge mfree procs rename tmode unlink
 CMDS += dmem minted mmap modpatch \
 	proc pmap smap \
 	gfxstatus xtclut drawtest play \
 	shellbg shellbgoff ntptime view utilpak1 fadein fadeout \
-	sprtest2
+	lutrd black hexed pixview iss
+# grfdrv256 is loaded by the Level 2 vtio; vtm manages the virtual terminals;
+# assetload loads files into RAM blocks
+CMDS += grfdrv256 vtm assetload
 endif
+# sprites moved OUT of CMDS 2026-09-09 (user): it is a hardware probe, so it
+# lives in TESTS_BIN below and reaches the disk as TESTS/sprites only. Its
+# $(MODDIR)/sprites build rule further down is still what builds it.
 
 BASIC09 = basic09 runb inkey syscall wild
 BASIC09_FILES = $(wildcard $(LANGUAGES)/basic09/samples/*)
@@ -101,11 +158,24 @@ BASIC09_BIN = $(LANGUAGES)/basic09/basic09_wildbits
 RUNB_BIN = $(LANGUAGES)/basic09/runb_6809
 RUNB_SHA256 = 20ff5a997ec0e55f6aec1e37d92be49062d6c35a66e4b5404d9e680fc0783bbb
 STARTUP = $(LEVEL2)/wildbits/startup
+WIZFITOOL = $(LEVEL2)/wildbits/cmds/wizfitool.b09
 FEU_STARTUP = feu.startup
 SCRIPTS_DIR = $(LEVEL1)/wildbits/scripts
 TESTS_DIR = $(LEVEL1)/wildbits/tests
+
 SCRIPTS = $(notdir $(wildcard $(SCRIPTS_DIR)/*))
-TESTS = $(notdir $(wildcard $(TESTS_DIR)/*))
+# TESTS_DIR holds two kinds of file and each takes a different route to the disk.
+# The BASIC09 scripts are copied verbatim as TEXT by the TESTS rule below. The
+# .asm probes are ASSEMBLED (TESTS_BIN, next) and installed as executables, so
+# they must be filtered out here or each one would land on the disk twice, the
+# second time as its own source code.
+TESTS = $(notdir $(filter-out %.asm,$(wildcard $(TESTS_DIR)/*)))
+# Executable hardware probes. Their sources are the .asm files in TESTS_DIR that
+# the TESTS line above filters out; each is assembled into MODDIR by its own rule
+# further down, then copied binary into TESTS on the disk with the execute
+# attribute set. They go NOWHERE else - none of these five is in CMDS.
+# Run them as tests/<name>, or chx the execution directory to the folder first.
+TESTS_BIN = sprites math fpu dma memtest
 FONT_DIR = $(LEVEL1)/wildbits/sys/fonts
 BACKGROUND_DIR = $(LEVEL1)/wildbits/sys/backgrounds
 FONTS = 800yfont anglefont applefont bannerfont.sb bigbluefont boldfont boxedfont \
@@ -117,7 +187,8 @@ BACKGROUNDS = clutbeach clutgrid clutmeadow clutmetal clutspace clutstone clutst
 	pixmapbeach pixmapgrid pixmapmeadow pixmapmetal pixmapspace pixmapstone \
 	pixmapstone2 pixmapwood pixmappaintspl pixmappaint2 clutpaintspl clutpaint2 \
 	pixmapwizfi pixmapwizfi2 clutwizfi clutwizfi2 testclutbm0 testclutbm1 testclutbm2 \
-	testpixmapbm0 testpixmapbm1 testpixmapbm2
+	testpixmapbm0 testpixmapbm1 testpixmapbm2 clutworldmap clutworldmap2 pixmapworldmap \
+    pixmapworldmap2 clutshipwreck pixmapshipwreck iss2 xtclutnomod
 
 ifeq ($(LEVEL),2)
 SYS_DIR = .sys
@@ -133,6 +204,11 @@ SYS_RECIPE = $(NITROS9DIR)/recipes/support/level1-system.mak
 SYS_TEXT_FILES = $(LEVEL1)/sys/motd $(LEVEL1)/sys/errmsg $(LEVEL1)/sys/password \
 	$(SYS_DIR)/helpmsg $(SYS_DIR)/inetd.conf
 SYS_BIN_FILES =
+endif
+
+ifeq ($(PLATFORM),K2)
+CMDS += w6100eth w6100recv w6100send w6100tel lcdload
+SYS_TEXT_FILES += $(LEVEL1)/wildbits/sys/w6100ipconfig
 endif
 
 all: libs $(DSKIMAGE)
@@ -161,14 +237,17 @@ $(FEU_STARTUP): FORCE
 
 FORCE: ;
 
-# Level 2 bootfile must not exceed 32,256 bytes ($7E00), which is the
-# available window from $8000 to $FDFF (below $FE00 hardware I/O). Exceeding
-# 32,256 bytes causes the bootfile to spill into physical Block 3, corrupting
-# DAT slot mappings during early kernel initialization.
-MAX_BOOTFILE_SIZE = 32256
+# Level 2 bootfile must not exceed 40,448 bytes ($9E00): the loaders place it
+# to end at $FDFF (below $FE00 hardware I/O), and starting below $6000 would
+# reach slot 2, the drivers' reserved map window. Bootfiles over 32,768 bytes
+# need the unsigned copy loop in bootos9 and the FEU os9boot (2026-10-04); an
+# older FEU in flash stops after the first sector.
+MAX_BOOTFILE_SIZE = 40448
 
+# smartpad256 pads at the beginning to whole pages, like padup256, and past
+# the page counts Krn maps one block too low (31-32, 63-64, 95-96, 127-128).
 ifeq ($(LEVEL),2)
-  PADUP ?= ./padup256 bootfile
+  PADUP ?= sh ../smartpad256 bootfile
 endif
 bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
@@ -176,16 +255,16 @@ bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 ifeq ($(LEVEL),2)
 	@size=$$(wc -c < $@ | tr -d ' '); \
 	if [ "$$size" -gt $(MAX_BOOTFILE_SIZE) ]; then \
-		echo "Error: $@ size ($$size bytes) exceeds the 32,256 byte threshold by $$((size - $(MAX_BOOTFILE_SIZE))) bytes!" >&2; \
-		echo "Level 2 bootfile must be <= 32,256 bytes (\$$7E00) to avoid DAT slot mapping corruption during early kernel initialization." >&2; \
+		echo "Error: $@ size ($$size bytes) exceeds the $(MAX_BOOTFILE_SIZE) byte limit by $$((size - $(MAX_BOOTFILE_SIZE))) bytes!" >&2; \
+		echo "Level 2 bootfile must be <= $(MAX_BOOTFILE_SIZE) bytes (see MAX_BOOTFILE_SIZE in wildbits.mak)." >&2; \
 		exit 1; \
 	fi
 endif
 
 ifeq ($(LEVEL),2)
-$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS)
+$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(addprefix $(MODDIR)/,$(CMDS)) $(addprefix $(MODDIR)/,$(TESTS_BIN)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS) $(WIZFITOOL)
 else
-$(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS)
+$(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(addprefix $(MODDIR)/,$(TESTS_BIN)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS)
 endif
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q -e $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
@@ -202,6 +281,10 @@ ifneq ($(filter runb,$(CMDS)),)
 endif
 	$(OS9COPY) $(addprefix $(MODDIR)/,$(CMDS)) $@,CMDS
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
+ifeq ($(LEVEL),2)
+	$(CPL) $(WIZFITOOL) $@,CMDS/wizfitool.b09
+	$(OS9ATTR_TEXT) $@,CMDS/wizfitool.b09
+endif
 	$(CPL) $(SYS_TEXT_FILES) $@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYS_TEXT_FILES)),$@,SYS/$(file))
 ifneq ($(strip $(SYS_BIN_FILES)),)
@@ -220,6 +303,8 @@ endif
 	$(foreach file,$(SCRIPTS),$(CPL) $(SCRIPTS_DIR)/$(file) $@,SCRIPTS;)
 	$(MAKDIR) $@,TESTS
 	$(foreach file,$(TESTS),$(CPL) $(TESTS_DIR)/$(file) $@,TESTS;)
+	$(OS9COPY) $(addprefix $(MODDIR)/,$(TESTS_BIN)) $@,TESTS
+	$(OS9ATTR_EXEC) $(foreach file,$(TESTS_BIN),$@,TESTS/$(file))
 	$(MAKDIR) $@,FEU
 	$(CPL) $(FEU_STARTUP) $@,FEU/startup
 	$(call RECIPE_INSTALL,$@)
@@ -231,10 +316,45 @@ $(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
 $(MODDIR)/w6100eth: $(LEVEL1)/wildbits/cmds/w6100eth.as | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
+$(MODDIR)/w6100recv: $(LEVEL1)/wildbits/cmds/w6100recv.as | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/w6100send: $(LEVEL1)/wildbits/cmds/w6100send.as | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/w6100tel: $(LEVEL1)/wildbits/cmds/w6100tel.as | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
 $(MODDIR)/lcdload: $(LEVEL1)/wildbits/cmds/lcdload.as | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
+ifeq ($(LEVEL),2)
+# The Level 2 terminal modules are laid out by defs/wildbits_vtio.d and
+# defs/wildbits.d, and no generic rule makes a module depend on a defs file,
+# so without this an edit there silently leaves a stale module behind.
+$(MODDIR)/vtio $(MODDIR)/grfdrv256 $(MODDIR)/vtm $(MODDIR)/term $(MODDIR)/$(KEYSUB): $(DEFSDIR)/wildbits_vtio.d $(DEFSDIR)/wildbits.d
+endif
+
 $(MODDIR)/sprtest2: $(LEVEL1)/wildbits/cmds/sprtest2.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/sprites: $(TESTS_DIR)/sprites.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/lutrd: $(LEVEL1)/wildbits/cmds/lutrd.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+# hardware probes for TESTS/ on the disk (TESTS_BIN above)
+$(MODDIR)/math: $(TESTS_DIR)/math.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/fpu: $(TESTS_DIR)/fpu.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/dma: $(TESTS_DIR)/dma.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/memtest: $(TESTS_DIR)/memtest.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
 $(MODDIR)/pwd: pd.asm | $(MODDIR)

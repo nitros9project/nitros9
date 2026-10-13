@@ -9,6 +9,14 @@
 *  1       2024/08/26 John Federico
 * Started.
 *
+*  4       2026/10/12 John Federico
+* State in GrfMem (gr.MsDrv) instead of the first terminal's static: F$IRQ
+* gets U = gr.MsDrv, so the buttons and the auto-hide timer are one copy
+* every terminal reads, the IRQ entry is the driver's own (IOMan removes
+* by U, and the keyboard was registered with the same static), and closing
+* the first terminal no longer frees memory the IRQ still uses.  Term
+* removes the IRQ, masks it and hides the pointer.
+*
 
                     use       defsfile
                     use       wildbits_vtio.d
@@ -16,7 +24,7 @@
 tylg                set       Systm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       3
+edition             set       4
 
 MAPSLOT             equ       MMU_SLOT_2
 MAPADDR             equ       (MAPSLOT-MMU_SLOT_0)*$2000
@@ -33,6 +41,8 @@ name                fcs       /mousedrv/
 * - Init                  
 * - Term
 * - AltISR (called by VTIO at the 60Hz interval)  
+* vtio calls Init and Term with U = its device static; the driver uses
+* gr.MsDrv (wildbits_vtio.d) instead, and so does its IRQ.
 start               lbra      Init
                     lbra      Term
                     lbra      AltISR
@@ -50,7 +60,12 @@ AltISR              rts
 *    CC = carry set on error
 *    B  = error code
 *
-Init                
+Init                pshs      u                   vtio's static: not ours
+                    ldu       #gr.MsDrv           the driver's block (MD.*)
+                    bsr       MsInit
+                    puls      u,pc                CC and B from MsInit
+
+MsInit
 * Wildbitgs/Jr PS/2 mouse  initialization                    
 * Initialize the registers and send the right codes to the mouse
 * $FF - Mouse Reset (should return self test successful $AA and id $00)
@@ -62,7 +77,7 @@ Init
 * Mouse responds to every command with $FA acknowledge byte
 * SendMCode handles receipt of $FA byte
 *
-* IRQ routine writes X,Y to mouse pointer registers, buttons stored in V.MSButtons
+* IRQ routine writes X,Y to mouse pointer registers, buttons stored in MD.Buttons
 * MS_MEN is the mouse enable Bit1 Mode:1-hardware,0-setxy Bit0:1-show cursor,0-hide cursor
 *
 * PS/2 Registers are $FE50. Mouse relevant registers are: (defined in wildbits.d)
@@ -80,7 +95,7 @@ Init
 * |MS_YH      | Y15 | Y14 | Y13 | Y12 | Y11 | Y10 | Y9  | Y8  | $FEA4
 * |MS_YL      | Y7  | Y6  | Y5  | Y4  | Y3  | Y2  | Y1  | Y0  | $FEA5
 * 
-                    clr       V.MSButtons,u       clear buttons
+                    clr       MD.Buttons,u       clear buttons
 
 * Mode 0 and disable mouse cursor in case there is no mouse connected       
                     lda       #$00
@@ -106,9 +121,9 @@ MouseInit           lda       #$F3                set sample rate code
                     lda       #$E6                set scaling at 1:1
                     lbsr      SendMCode
 *Set up mouse handler, this gets skipped if no mouse is detected                    
-                    leax      MSHandler,pcr       get the PS/2 mouse handler routine
-                    stx       V.MouseVect,u       and store it as the current handler address
-		    lda	      V.MCLR,u            load the right packet depending on whether
+                    lda       #1
+                    sta       MD.Found,u          a mouse: vtio may show the pointer (SS.MsCfg)
+		    lda	      MD.MCLR,u            load the right packet depending on whether
 		    cmpa      #MCLR               the mouse is on mouse or kbd channel
 		    beq	      mousepacket
                     leax      IRQKPckt,pcr        point to the IRQ packet
@@ -118,7 +133,7 @@ cont@               ldd       #INT_PENDING_0      get the pending interrupt pend
                     leay      IRQMSvc,pcr         and the service routine
                     os9       F$IRQ               install the interrupt handler
                     bcs       ErrExit             branch if we have an issue
-		    ldb	      V.INT_PS2_MOUSE,u
+		    ldb	      MD.IntBit,u
 		    comb
 		    pshs      b
                     lda       INT_MASK_0          else get the interrupt mask byte
@@ -126,14 +141,14 @@ cont@               ldd       #INT_PENDING_0      get the pending interrupt pend
 store@              sta       INT_MASK_0          and save it back
 		    leas      1,s
                     lbsr      MakeMSPointer       add pointer graphics for mouse
-		    clr	      V.MSByteCnt,u	  clear mouse packet byte counter
+		    clr	      MD.ByteCnt,u	  clear mouse packet byte counter
 * Enable mouse cursor and legacy mode               
                     lda       #$01
                     sta       MS_MEN              show mouse and enable XY mode             
 * Enable mouse stream
                     lda       #$F4                enable mouse stream
                     lbsr      SendMCode
-		    lda       V.MCLR,u            clear fifo mouse buffer
+		    lda       MD.MCLR,u            clear fifo mouse buffer
                     sta       PS2_CTRL
                     clr       PS2_CTRL
 nomouse             andcc     #$FE                clear the carry flag
@@ -169,10 +184,19 @@ Pkt.KMask           fcb       INT_PS2_KBD         the mask byte
 Term
 * Mouse termination
 *                    
-                   
+                    pshs      u                   vtio's static: not ours
+                    ldu       #gr.MsDrv           F$IRQ removes the entry registered with this U
+                    tst       MD.Found,u
+                    beq       noirq@              no mouse: nothing was installed
+                    lda       INT_MASK_0          mask the mouse's interrupt again
+                    ora       MD.IntBit,u
+                    sta       INT_MASK_0
+                    clr       MS_MEN              hide the pointer
+                    clr       MD.Found,u
                     ldx       #$0000              we want to remove the IRQ table entry
                     leay      IRQMSvc,pcr         point to the interrupt service routine
                     os9       F$IRQ               call to remove it
+noirq@              puls      u
                     ldx       >D.OrgAlt           get the original alternate IRQ vector
                     stx       <D.AltIRQ           save it back to the D.AltIRQ address
                     clrb                          clear the carry
@@ -186,7 +210,7 @@ Term
 * then clear the control register
 SendMPS2            clr       PS2_CTRL            clear control register
                     sta       PS2_OUT             send the byte out to the mouse
-                    lda       V.M_WR,u             load the "write" bit
+                    lda       MD.M_WR,u             load the "write" bit
                     sta       PS2_CTRL            send it to the control register
                     clr       PS2_CTRL            then clear the bit in the control register
                     rts
@@ -203,9 +227,9 @@ timerstart          ldx       #$3000              wait up to $1000 cycles to rea
 timeloop@           leax      -1,x                decrement counter
                     beq       time1out@           timout at 0, give up - no data to read
                     lda       PS2_STAT            read ps/2 status register detect empty fifo
-                    anda      V.MEMP,u          
+                    anda      MD.MEMP,u          
                     bne       timeloop@           branch to timeloop if fifo empty
-                    lda       [V.MS_IN,u]         load a byte from the mouse
+                    lda       [MD.MS_IN,u]         load a byte from the mouse
                     andcc     #$FE                clear carry bit
                     bra       exit@
 timeout@            comb                          set carry bit
@@ -245,7 +269,7 @@ exit@               puls      a,x,pc
 * Mouse Exists?
 * Check to see if mouse exists, return error if no mouse found 
 * Clear Mouse FIFO
-MouseExists         lda       V.MCLR,u           clear FIFO
+MouseExists         lda       MD.MCLR,u           clear FIFO
                     sta       PS2_CTRL
                     clr       PS2_CTRL
 * Initialize Mouse                  
@@ -267,30 +291,30 @@ mFound		    rts
 * Set Mouse to be on the Mouse Channel
 * Want to set the channel to PS/2 channel 2 
 SetChMS	            ldd	      #MS_IN
-		    std	      V.MS_IN,u
+		    std	      MD.MS_IN,u
 		    lda	      #MEMP
-		    sta	      V.MEMP,u
+		    sta	      MD.MEMP,u
 		    lda	      #M_WR
-		    sta	      V.M_WR,u
+		    sta	      MD.M_WR,u
 		    lda	      #MCLR
-		    sta	      V.MCLR,u
+		    sta	      MD.MCLR,u
 		    lda	      #INT_PS2_MOUSE
-		    sta	      V.INT_PS2_MOUSE,u
+		    sta	      MD.IntBit,u
 		    rts
 
 ***********************************************************************************
 * Set Mouse to be on the Mouse Channel
 * Want to set the channel to PS/2 channel 2 
 SetChKBD            ldd	      #KBD_IN
-		    std	      V.MS_IN,u
+		    std	      MD.MS_IN,u
 		    lda	      #KEMP
-		    sta	      V.MEMP,u
+		    sta	      MD.MEMP,u
 		    lda	      #K_WR
-		    sta	      V.M_WR,u
+		    sta	      MD.M_WR,u
 		    lda	      #KCLR
-		    sta	      V.MCLR,u
+		    sta	      MD.MCLR,u
 		    lda	      #INT_PS2_KBD
-		    sta	      V.INT_PS2_MOUSE,u
+		    sta	      MD.IntBit,u
 		    rts
 
 		    
@@ -300,41 +324,41 @@ SetChKBD            ldd	      #KBD_IN
 * Mouse should be reading fifo in series of 3 bytes = 1 packet
 * Mouse is on 640x480 grid. Limit coordinates to grid.
 * Read in current XY values and adjust for offsets, then write XY back
-* Button information is stored in V.MSButtons 4=middle,2=right,1=left (bits 2,1,0)
-* V.MSButtons defined in wildbits_vtio.d
+* Button information is stored in MD.Buttons 4=middle,2=right,1=left (bits 2,1,0)
+* MD.Buttons defined in wildbits_vtio.d
 * Use getstat to get X,Y and Buttons in a program
 * There is an auto-hide timer that has corresponding code in ALTISR in vtio.asm
-* Auto-hide timer var is V.MSTimer and is incremented in 1/60 sec increments
+* Auto-hide timer var is MD.Timer and is incremented in 1/60 sec increments
 * Auto-hides when timer var wraps around to 0 in vtio.asm
 * NOTE: Interrupt can trigger before there is a byte in the FIFO to read
 *       ALWAYS CHECK if there is a byte to read first
 IRQMSvc             pshs      a,b
-                    lda       V.INT_PS2_MOUSE,u      get the PS/2 mouse interrupt flag
+                    lda       MD.IntBit,u      get the PS/2 mouse interrupt flag
                     sta       INT_PENDING_0       clear the interrupt
 * Enable mouse cursor if it has been auto-hid               
                     lda       #$01
                     sta       MS_MEN              show mouse and enable legacy mode
-                    clr       V.MSTimer,u         reset the auto-hide timer (wildbits_vtio.d)
+                    clr       MD.Timer,u         reset the auto-hide timer (wildbits_vtio.d)
 getmpacket          ldb       PS2_STAT            read ps/2 status register detect empty fifo
-                    andb      V.MEMP,u            check byte ready in fifo
+                    andb      MD.MEMP,u            check byte ready in fifo
                     lbne      IRQMExit            exit if empty
-		    inc	      V.MSByteCnt,u
-                    lda       [V.MS_IN,u]         load byte#0 - buttons, + or -, overflow
-		    ldb	      V.MSByteCnt,u	  load the byte counter
+		    inc	      MD.ByteCnt,u
+                    lda       [MD.MS_IN,u]         load byte#0 - buttons, + or -, overflow
+		    ldb	      MD.ByteCnt,u	  load the byte counter
 		    cmpb      #2		  compare to see which byte we are reading in
 		    blo	      byte0@
 		    beq	      byte1@
-byte2		    sta	      V.MSByte2,u
+byte2		    sta	      MD.Byte2,u
 		    bra	      procpacket
-byte0@  	    sta	      V.MSByte0,u
+byte0@  	    sta	      MD.Byte0,u
 		    bra	      getmpacket
-byte1@              sta	      V.MSByte1,u
+byte1@              sta	      MD.Byte1,u
 		    bra       getmpacket
 		    
-procpacket          lda	      V.MSByte0,u
+procpacket          lda	      MD.Byte0,u
 	            pshs      a                   push a to store +- for xy
                     anda      #%00000111          just get button information
-                    sta       V.MSButtons,u       store new button flags
+                    sta       MD.Buttons,u       store new button flags
 * Compute new X value and store in registers                
 computex            lda       ,s
                     anda      #%00010000          check the X sign bit for + or - offset
@@ -342,7 +366,7 @@ computex            lda       ,s
 negxvalue           lda       #$FF                if neg, set high bit for 2's complement
                     bra       contx@              neg value is 2's complement
 posxvalue           clra                    
-contx@              ldb       V.MSByte1,u         load byte#1 - x offet
+contx@              ldb       MD.Byte1,u         load byte#1 - x offet
                     beq       computey            if 0, then skip comps and jump straight to y
                     pshs      d                   not 0, push offset
                     ldd       MS_XH               load current X value
@@ -364,7 +388,7 @@ computey            lda       ,s
 negyvalue           lda       #$FF                if neg, set high bit for 2's complement
                     bra       conty@              neg value is 2's complement
 posyvalue           clra                    
-conty@              ldb       V.MSByte2,u         load byte#2 - y offet
+conty@              ldb       MD.Byte2,u         load byte#2 - y offet
                     beq       finish@             if 0, then skip comps and jump to end
                     pshs      d                   not 0, push offset
                     ldd       MS_YH               load current Y value
@@ -380,18 +404,12 @@ y480                ldd       #480                handle 480 limiter
 storey              std       MS_YH               store new y value
                     puls      d  
 finish@             puls      a
-		    clr	      V.MSByteCnt,u
+		    clr	      MD.ByteCnt,u
 		    lbra      getmpacket	  done, go check fifo for more data
 IRQMExit            puls      a,b 
 ex@                 clrb                          clear error (do we need to clear carry bit?)
 ex2@                rts                           return
 
-***********************************************************************************\
-* MSHandler
-* Not sure we need a mouse handler routine at this point
-MSHandler           andcc     #$FE
-                    rts
-                    
 ***********************************************************************************
 * MakeMSPointer
 * This draws the mouse pointer in black and white lines
@@ -405,7 +423,7 @@ MakeMSPointer       pshs      cc,a,x,y,u
                     orcc      #IntMasks
                     lda       MAPSLOT
                     pshs      a
-                    lda       #$C0                get the MMU Block for bitmap addresses
+                    lda       #VICKY_BLK                get the MMU Block for bitmap addresses
                     sta       MAPSLOT             store it in the MMU slot to map it in             
                     ldx       #MAPADDR
                     leax      $C00,x              mouse pointer graphics start at $C00 offset

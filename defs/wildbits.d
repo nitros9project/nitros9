@@ -35,13 +35,20 @@ WILDBITS.D              set       1
 *
 *          2023/08/16  Boisy G. Pitre
 * Modified to address new memory map that Stefany created.
+*
+*          2026/09/14  Roger Taylor
+* Updated to Wildbits Longview_rc22 memory map.
+*
+*          2026/09/23  Codex
+* Added rc17_line_5 line-drawer registers and packed-pixel semantics.
+
 
 ********************************************************************
 * Ticks per second.
 *
 TkPerSec            set       60
 
-                  IFEQ    Level-1
+                    ifeq      Level-1
 
 ********************************************************************
 *
@@ -55,12 +62,12 @@ TkPerSec            set       60
 * These definitions are not strictly for 'Boot', but are for booting the
 * system.
 *
-HW.Page             set       $FF       device descriptor hardware page
+HW.Page             set       $FF                 device descriptor hardware page
 
-                  ELSE
+                    else
 
-HW.Page             set       $07       device descriptor hardware page
-Bt.Start            set       $EE00     start address of where KRN is in memory
+HW.Page             set       $07                 device descriptor hardware page
+Bt.Start            set       $EE00               start address of where KRN is in memory
 
 *************************************************
 *
@@ -71,59 +78,220 @@ Bt.Start            set       $EE00     start address of where KRN is in memory
 ****************************************
 * Dynamic Address Translator Definitions
 *
-DAT.BlCt            EQU       8         DAT blocks/address space
-DAT.BlSz            EQU       (256/DAT.BlCt)*256 DAT block size
-DAT.ImSz            EQU       DAT.BlCt*2 DAT image size
-DAT.Addr            EQU       -(DAT.BlSz/256) DAT MSB address bits
-DAT.Task            EQU       $FFA0     task register address
-DAT.TkCt            EQU       32        number of DAT tasks
-DAT.Regs            EQU       $FFA8     DAT block registers base address
-DAT.Free            EQU       $333E     free block number
-DAT.BlMx            EQU       $3F       maximum block number
-DAT.BMSz            EQU       $40       memory block map size
-DAT.WrPr            EQU       0         no write protect
-DAT.WrEn            EQU       0         no write enable
-SysTask             EQU       0         CoCo system task number
-IOBlock             EQU       $3F
-ROMBlock            EQU       $3F
-IOAddr              EQU       $7F
-ROMCount            EQU       1         number of blocks of ROM (high RAM block)
-RAMCount            EQU       1         initial blocks of RAM
-MoveBlks            EQU       DAT.BlCt-ROMCount-2 block numbers used for copies
-BlockTyp            EQU       1         check only first bytes of RAM block
-ByteType            EQU       2         check entire block of RAM
-Limited             EQU       1         check only upper memory for ROM modules
-UnLimitd            EQU       2         check all NotRAM for modules
+DAT.BlCt            equ       8                   DAT blocks/address space
+DAT.BlSz            equ       (256/DAT.BlCt)*256  DAT block size
+DAT.ImSz            equ       DAT.BlCt*2          DAT image size
+DAT.Addr            equ       -(DAT.BlSz/256)     DAT MSB address bits
+DAT.Task            equ       $FFA0               task register address
+DAT.TkCt            equ       32                  kernel task-table count, not hardware LUT count
+DAT.Regs            equ       $FFA8               DAT block registers base address
+DAT.Free            equ       $333E               free block number
+DAT.BlMx            equ       $3F                 boot-time maximum; krnp2 extends the map
+DAT.BMSz            equ       $40                 boot-time map size; not rc16 RAM capacity
+DAT.WrPr            equ       0                   no write protect
+DAT.WrEn            equ       0                   no write enable
+SysTask             equ       0                   system task number
+IOBlock             equ       $3F
+ROMBlock            equ       $3F
+IOAddr              equ       $7F
+ROMCount            equ       1                   number of blocks of ROM (high RAM block)
+RAMCount            equ       1                   initial blocks of RAM
+MoveBlks            equ       DAT.BlCt-ROMCount-2 block numbers used for copies
+BlockTyp            equ       1                   check only first bytes of RAM block
+ByteType            equ       2                   check entire block of RAM
+Limited             equ       1                   check only upper memory for ROM modules
+UnLimitd            equ       2                   check all NotRAM for modules
 * NOTE: this check assumes any NotRAM with a module will
 *       always start with $87CD in first two bytes of block
-RAMCheck            EQU       BlockTyp  check only beg bytes of block
-ROMCheck            EQU       Limited   check only upper few blocks for ROM
-LastRAM             EQU       IOBlock   maximum RAM block number
+RAMCheck            equ       BlockTyp            check only beg bytes of block
+ROMCheck            equ       Limited             check only upper few blocks for ROM
+LastRAM             equ       IOBlock             maximum RAM block number
 
-HW.Page             SET       $7        device descriptor hardware page
+HW.Page             set       $7                  device descriptor hardware page
 
 * KrnBlk defines the block number of the 8K RAM block that is mapped to
 * the top of CPU address space ($E000-$FFFF) for the system process, and
 * which holds the Kernel. The top 3 pages of this CPU address space ($FD00-
 * $FFFF) have two special properties. First, $FE00-$FFFF contains the I/O space.
-* Second, $FD00-$FDFFF isn't affected by the DAT mappings but, instead,
+* Second, $FD00-$FDFF isn't affected by the DAT mappings but, instead,
 * remains constant regardless of what block is mapped in at slot 7.
 * When a user process is mapped in, and requests enough memory, it will end up
 * with its own block assigned for CPU address space $E000-
 * $FFFF but $FD00-$FFFF is unusable by the user process.
-KrnBlk              SET       $7
+KrnBlk              set       $7
 
-                  ENDC
+                    endc
 
 ********************************************************************
 * Custom SetStats
 *
-		    org	      $C0
-SS.FntLoadM	    rmb	      1
-SS.FntLoadF         rmb	      1
-SS.FntChar	    rmb	      1
-SS.SOLIRQ	    rmb	      1
-SS.SOLMUTE	    rmb	      1
+                    org       $C0
+SS.FntLoadM         rmb       1
+SS.FntLoadF         rmb       1
+SS.FntChar          rmb       1
+SS.SOLIRQ           rmb       1
+SS.SOLMUTE          rmb       1
+SS.TermSel          rmb       1                   $C5 R$X = terminal id: show it (vtio/grfdrv)
+SS.LiveKeys         equ       $C6                 GetStat: R$A = live key sense bits, R$X/R$Y/R$U = keys held now; empties the input buffer
+SS.MsCfg            equ       $C7                 Get/SetStat: R$X = this terminal's mouse configuration bits (MC.*)
+MC.On               equ       %00000001           pointer always on (no auto-hide) while this terminal is live; 0 = auto-hide
+* SS.Joy ($13) modes, in R$X on entry (joust docs/grfdrv256-api.md)
+JOY.Stick0          equ       0                   stick 0, compatibility: R$X/R$Y = 0/128/255, R$A = buttons
+JOY.Stick1          equ       1                   stick 1, compatibility
+JOY.Sticks          equ       2                   R$X = stick 0, R$Y = stick 1, as JY bits
+JOY.NES2            equ       3                   R$X, R$Y = NES pads 0 and 1
+JOY.SNES2           equ       4                   R$X, R$Y = SNES pads 0 and 1
+JOY.NES4            equ       5                   R$Y = 8-byte buffer: NES pads 0-3
+JOY.SNES4           equ       6                   R$Y = 8-byte buffer: SNES pads 0-3
+* The SS.Joy word, 1 = pressed.  The low byte alone is stick-compatible.
+JY.Up               equ       %00000001
+JY.Down             equ       %00000010
+JY.Left             equ       %00000100
+JY.Right            equ       %00001000
+JY.Btn0             equ       %00010000           stick button 0; NES A; SNES B
+JY.Btn1             equ       %00100000           stick button 1; NES B; SNES Y
+JY.Btn2             equ       %01000000           stick button 2; SNES A
+JY.X                equ       %10000000           SNES X
+JY.Select           equ       %00000001           high byte
+JY.Start            equ       %00000010           high byte
+JY.L                equ       %00000100           high byte, SNES
+JY.R                equ       %00001000           high byte, SNES
+SS.WSig             equ       $E1                 SetStat: signal me when this terminal goes background/forward
+
+* Aliases: two codes adopted from the CoCo whose os9.d names describe
+* nothing they do on this hardware.  SS.PScrn is "Polymorph Screen into
+* different screen type" there and sets which source feeds one display
+* layer here; SS.DScrn is "Display a screen allocated by SS.AScrn" there
+* and is the VICKY master control register here, Get and Set.  The
+* originals stay valid and stay in use - level2/coco3 uses both codes
+* with their CoCo meanings - but new Wildbits code should use these.
+* Defined here rather than in os9.d for exactly that reason: coco3
+* modules do not include this file.
+SS.Layer            equ       SS.PScrn            R$X = layer 0-2, R$Y = source: 0-2 bitmap, 4-6 tile map
+SS.MCR              equ       SS.DScrn            R$X = MCR low byte, R$Y = MCR high byte (FX_OMIT/FT_OMIT)
+
+* Signal codes for SS.WSig.  The caller picks its own, but these are the
+* project's defaults and what wsigtst uses.  They are above $80 because
+* the system owns everything at or below it (os9.d: S$Kill $00 ... S$Alarm
+* $05, S$FS2Sig $80; level1/wildbits/modules/SOLdrv.asm: "Signals should
+* be > 128, system defines signals <= 128").  $05 is S$Alarm - the code
+* F$Alarm sends - and must never be used for this.
+S$WinBg             equ       $81                 this terminal went background
+S$WinFg             equ       $82                 this terminal came forward
+
+* Graphics Get/SetStats for bitmaps, CLUTs, sprites, tile sets and tile maps
+* (grfdrv256).  Codes without a handler return E$UnkSvc.  The groups sit in
+* the free holes: $C7-$CB are VRN (os9.d), $D2 is sc16550's SS.DvrID, $E2 is
+* SS.Fuji (drivewire.d).
+* Spare: $D0 (was SS.KyDwn), $D4-$E0 (the sprite codes the registered table
+* made unnecessary) and $FE-$FF.  $E1 is SS.WSig, above.
+* The sprite group is no longer contiguous, and that is the point: a code
+* with no handler is a promise nobody made.  The rest of the groups are
+* still reserved names awaiting the goal 2 trim (docs/driver-work.md).
+* CLUTs
+SS.ClutLoad         equ       $CC                 load a CLUT from a file
+SS.ClutCopy         equ       $CD                 load a whole CLUT from caller memory
+SS.ClutRead         equ       $CE                 GetStat: CLUT entries to a caller buffer
+SS.ClutWrite        equ       $CF                 CLUT entries from a caller buffer
+* Sprites
+* A program that draws sprites REGISTERS its own 128-record table with
+* SS.SprReg and then pushes ranges of it with SS.SprPush; the driver keeps
+* no copy of the records at all and restores the screen from that table on
+* a terminal switch (docs/sprite-registration-plan.md in the joust tree).
+* SS.SprSet ($D3, records from a caller buffer) is GONE: it was a second
+* writer the driver could not reproduce on a switch.
+SS.SprPush          equ       $D1                 R$Y = first record, R$U = count: that range of the registered table to the screen
+SS.SprReg           equ       $D3                 R$X = the table (auto: R$Y = 0), R$Y = blocks (manual), R$U = records 1-128, 0 = give it up
+* $D4-$E0 were thirteen more sprite codes - SprAlloc, SprACfg, SprCfg,
+* SprXY, SprOn, SprOff, SprLayer, SprClut, SprLoad, SprSave, SprSLoad,
+* SprSSave, SprKill - reserved in 2026-03 for a per-sprite API that the
+* registered table made unnecessary: a program moves, shows, hides and
+* re-images a sprite by writing its own record and pushing the range.
+* None of them ever had a handler.  They are free, except $D4/$D5 which the
+* graphics allocator below now uses (user, 2026-09-20).
+* Graphics memory.  NOT bitmap-specific: one allocator serves bitmaps, tile
+* sets and tile maps alike, which is why it is here rather than in any of
+* the three groups.  It exists at all because F$AlHRAM is registered
+* F$AlHRAM+SysState in krnp2.asm's svctab, so an application cannot call it
+* and the driver can - and the convention says graphics allocate from the
+* top of the block map down.  The blocks it returns belong to the PROGRAM,
+* which frees them with SS.GfxFree; contrast SS.BmAlloc below, whose blocks
+* belong to the driver.  Blocks are physically consecutive, so an object may
+* run past the end of one.
+SS.GfxAlloc         equ       $D4                 R$X = block count; returns R$X = first block
+SS.GfxFree          equ       $D5                 R$X = first block, R$U = count
+* Bitmaps.  Two ways in, and the difference is who owns the memory:
+*   SS.BmDef   - the program allocated the blocks (SS.GfxAlloc or F$AllRAM)
+*                and says where the bitmap is.  The driver never frees them.
+*   SS.BmAlloc - the driver allocates AND defines in one call, and owns the
+*                blocks: SS.BmKill and a terminal close free them.  This is
+*                what lets shellbg put up a wallpaper and exit.
+* Whoever allocated, frees.  The driver records which it was, so no caller
+* has to pass a flag.
+* NEITHER ENABLES THE BITMAP.  Visibility needs three independent things -
+* the enable bit (SS.BmCfg), a layer pointing at it (SS.Layer), and FX_BM in
+* the MCR - and newly allocated blocks hold whatever was there before, so
+* enabling on allocate means showing garbage.  SS.AScrn, the compatibility
+* shim, supplies the enable to keep its old contract.
+* SS.BmClear and SS.BmLine are BUILT (2026-09-20) and are the two calls
+* that exist because only the driver can reach the hardware behind them:
+* the DMA engine and the line engine both live at addresses outside a
+* Level 2 process's address space.  SS.BmClear is ASYNCHRONOUS - its
+* GetStat says when the fill has finished - and SS.BmLine takes a BATCH,
+* because a line is 3.2 us of hardware behind a 474 us call.  Both are
+* documented in docs/bitmap-api.md in the joust tree.
+SS.BmAlloc          equ       $E3                 R$Y = bitmap #, R$X = screen type; returns R$X = first block
+SS.BmBlk            equ       $E4                 GetStat: bitmap first block and control byte
+SS.BmClear          equ       $E5                 R$Y = bitmap #, R$X low = fill value; GetStat: R$X = 1 while a fill is outstanding
+SS.BmDef            equ       $E6                 R$Y = mode/bitmap #, R$X = block (0 = clear), R$U = offset
+SS.BmLine           equ       $E7                 R$Y = bitmap #, R$X = 8-byte records, R$U = count in / drawn out; GetStat: R$X = pixels queued
+SS.BmKill           equ       $EA                 R$Y = bitmap #: undefine, and free if the driver allocated
+SS.BmCfg            equ       $ED                 R$Y = bitmap #, R$X = enable/CLUT, R$U = HIRES4/GROUP
+* $E8, $E9, $EB and $EC are free (user, 2026-09-20).  They were SS.BmOn,
+* SS.BmOff, SS.BmLoad and SS.BmSave, and none ever had a handler.  On and
+* Off are two fields of SS.BmCfg, which can also leave every other field
+* alone, so a hide is one call and costs no more than a dedicated one would.
+* Load and Save the architecture forbids outright - "no file I/O in
+* grfdrv256" - and a program does them with I$Open/I$Read into the blocks
+* SS.BmBlk reports, which is what pixview and shellbg already do.
+* $E6 was SS.BmLayer, a THIRD name for SS.PScrn/SS.Layer, and $E7 was
+* SS.BmClut, a second name for SS.Palet's SetStat whose GetStat means
+* something unrelated.  Both are now better served by SS.BmCfg and SS.Layer,
+* so the numbers went to SS.BmDef and to the line engine.
+* Tile sets and tile maps.  A program owns the tile pixels and the map
+* cells, in its own F$AllRAM blocks, and the hardware reads them there:
+* the address in the register record IS the registration, so there is
+* nothing else to tell the driver.  What the driver keeps per terminal is
+* only the register image (V.TMn, V.TSn), which PullBuf reprograms on a
+* terminal switch.  See docs/tile-api.md in the joust tree for the
+* interface and docs/tile-plan.md for why these are the only codes left.
+* Tile sets
+SS.TsSet            equ       $EE                 R$X = 4-byte record, R$Y = tile set #
+SS.TsAlloc          equ       $F0                 allocate tile set memory (reserved, no handler)
+SS.TsKill           equ       $F3                 clear a tile set and free its memory (reserved, no handler)
+* Tile maps
+SS.TmSet            equ       $F4                 R$X = 12-byte record, R$Y = tile map #
+SS.TmAlloc          equ       $F6                 allocate a tile map (reserved, no handler)
+SS.TmScrl           equ       $F8                 R$Y = tile map #, R$X = X scroll, R$U = Y scroll
+SS.TmKill           equ       $FD                 clear a tile map and free its memory (reserved, no handler)
+* $EF, $F1, $F2, $F5, $F7, $F9-$FC are FREE (user, 2026-09-20).  They were
+* TsAddr, TsLoad, TsSave, TmAddr, TmCell, TmOn, TmOff, TmLoad and TmSave -
+* nine codes reserved in 2026-03 that never had a handler and that nothing
+* in either tree ever referenced.  A program does each of them without a
+* call: it keeps the block and offset it registered rather than reading an
+* address back; it loads and saves with ordinary I$Read/I$Write, because
+* grfdrv256 does no file I/O; it maps the map block and stores the 2-byte
+* cell itself, which is what Joust's gfx.a TmRemove/TmClrBr already do; and
+* it turns a map on or off with bit 0 of the CTRL byte in a record it
+* already holds.  The four Alloc/Kill codes above stay reserved because
+* asset allocation is meant to move into the driver - only it can reach
+* F$AlHRAM, which is registered F$AlHRAM+SysState.  SS.TmScrl is
+* implemented (2026-09-20): scrolling is the one tile operation with no
+* program-owned buffer behind it, because the scroll position lives only in
+* these registers.
+* The four tile maps in the rc16 registers are NOT four usable layers: the
+* core enables tile maps 0-2 only, and there is no scan address for a
+* fourth, so SS.TmSet's limit of 2 matches the hardware.
 
 ********************************************************************
 * System control definitions
@@ -132,6 +300,11 @@ SYS0                equ       $FE00
 SYS1                equ       $FE01
 RST0                equ       $FE02
 RST1                equ       $FE03
+SYS_MID             equ       SYS0+7              read: the machine ID (2026-10-09, named for diag; wbinfo reads it too)
+MID_JR              equ       $02                 F256Jr
+MID_K               equ       $12                 F256K
+MID_K2              equ       $16                 WildBits K2
+MID_JR2             equ       $1A                 WildBits Jr2
 
 SYS_RESET           equ       %10000000
 SYS_CAP_EN          equ       %00100000
@@ -154,16 +327,33 @@ SYS_L0_MN           equ       %00000001
 * MMU definitions
 *
 MMU_MEM_CTRL        equ       $FFA0
+
+* MMU_IO_CTRL: b0 fixed $FD00 RAM; b1 fixed $FFF0 vector RAM.
+* rc16: b2 FLASHDIS maps $40-$9F to SRAM; read b7 = support flag.
+* Reset clears b0-b6. Preserve other bits when changing this register.
+MMU_FD_RAM          equ       %00000001           enable fixed $FD00-$FDFF RAM
+MMU_VEC_RAM         equ       %00000010           enable fixed $FFF0-$FFFF RAM
+MMU_FLASHDIS        equ       %00000100           rc16: SRAM instead of flash/cartridge
+MMU_HAS_FLASHDIS    equ       %10000000           read-only rc16 capability
+MMU_ACT_MASK        equ       %00000011           active hardware LUT selection
+MMU_EDIT_MASK       equ       %00110000           edit hardware LUT selection
+* $FC-$FF are device pages; FLASHDIS enables a contiguous $00-$FB RAM pool.
+MMU_BLOCK_SIZE      equ       $2000               bytes per block
+MMU_BLOCK_COUNT     equ       $0100               block-number space
+MMU_LUT_COUNT       equ       4                   hardware task maps
+MMU_RAM_BLOCKS      equ       252                 FLASHDIS RAM pool before allocations
 MMU_IO_CTRL         equ       $FFA1
+FLASHDIS            equ       %00000100 MMU_IO_CTRL b2: 1 = blocks $40-$9F are RAM (rc16+ cores; see the bits below)
+FLASHDIS.OK         equ       %10000000 MMU_IO_CTRL b7: reads 1 on a core that implements FLASHDIS
 MMU_SLOT_BASE       equ       $FFA8
-MMU_SLOT_0          equ       MMU_SLOT_BASE+0 $0000-$1FFF
-MMU_SLOT_1          equ       MMU_SLOT_BASE+1 $2000-$3FFF
-MMU_SLOT_2          equ       MMU_SLOT_BASE+2 $4000-$5FFF
-MMU_SLOT_3          equ       MMU_SLOT_BASE+3 $6000-$7FFF
-MMU_SLOT_4          equ       MMU_SLOT_BASE+4 $8000-$9FFF
-MMU_SLOT_5          equ       MMU_SLOT_BASE+5 $A000-$BFFF
-MMU_SLOT_6          equ       MMU_SLOT_BASE+6 $C000-$DFFF
-MMU_SLOT_7          equ       MMU_SLOT_BASE+7 $E000-$FFFF
+MMU_SLOT_0          equ       MMU_SLOT_BASE+0     $0000-$1FFF
+MMU_SLOT_1          equ       MMU_SLOT_BASE+1     $2000-$3FFF
+MMU_SLOT_2          equ       MMU_SLOT_BASE+2     $4000-$5FFF
+MMU_SLOT_3          equ       MMU_SLOT_BASE+3     $6000-$7FFF
+MMU_SLOT_4          equ       MMU_SLOT_BASE+4     $8000-$9FFF
+MMU_SLOT_5          equ       MMU_SLOT_BASE+5     $A000-$BFFF
+MMU_SLOT_6          equ       MMU_SLOT_BASE+6     $C000-$DFFF
+MMU_SLOT_7          equ       MMU_SLOT_BASE+7     $E000-$FFFF
 
 * MMU_MEM_CTRL bits
 EDIT_LUT            equ       %00110000
@@ -187,7 +377,7 @@ LUT_BANK_6          equ       $000E
 LUT_BANK_7          equ       $000F
 
 * MMU_IO_CTRL bits
-* $FFA1 has 2 bits:
+* $FFA1 has 3 bits (plus one read-only flag):
 *    FFA1[0] =
 *        1 = Enable internal RAM for segment $FD00-$FDFF.
 *        0 = Disable; RAM/FLASH is accessible.
@@ -198,6 +388,19 @@ LUT_BANK_7          equ       $000F
 * When enabled, the areas supersede RAM/flash, but will be disabled by RESET. When the system resets,
 * those regions revert to RAM/flash. Also at RESET, the contents of RAM retain the old values until the
 * system powers off.
+*
+*    FFA1[2] = FLASHDIS (cores rc16 and later)
+*        1 = MMU blocks $40-$9F are RAM: 768K of the SRAM (chip bytes $08_0000-$13_FFFF) that no
+*            block reached before. The kernel sets this once at boot (krnp2) when the core has it.
+*        0 = $40-$7F is the flash and $80-$9F the expansion select, as always. RESET clears the bit,
+*            so the machine always boots from flash and the FEU trampoline (which runs from flash and
+*            stores $00/$02 here) is unaffected.
+*        After boot NOBODY may store an absolute value to $FFA1: clearing bit 2 pulls 768K of live
+*        RAM out from under the kernel. Read-modify-write (lda MMU_IO_CTRL / ora / sta) only.
+*    FFA1[7] = FLASHDIS.OK, read only
+*        Reads 1 on a core that implements FLASHDIS, 0 on older cores (they read back what was
+*        stored, and nothing stores a 1 there). krnp2 tests it before setting bit 2.
+* $FFA1 is readable: a read returns the register.
 
 ********************************************************************
 * Interrupt definitions
@@ -213,41 +416,50 @@ INT_POLARITY_1      equ       $FE25
 INT_EDGE_1          equ       $FE29
 INT_MASK_1          equ       $FE2D
 
-INT_PENDING_2       equ       $FE22     not used
-INT_POLARITY_2      equ       $FE26     not used
-INT_EDGE_2          equ       $FE2A     not used
-INT_MASK_2          equ       $FE2E     not used
+INT_PENDING_2       equ       $FE22               IEC bus + module IRQ pins
+INT_POLARITY_2      equ       $FE26
+INT_EDGE_2          equ       $FE2A
+INT_MASK_2          equ       $FE2E
 
-INT_PENDING_3       equ       $FE23     not used
-INT_POLARITY_3      equ       $FE27     not used
-INT_EDGE_3          equ       $FE2B     not used
-INT_MASK_3          equ       $FE2F     not used
+INT_PENDING_3       equ       $FE23               FIFO events: WiFi / K2 keyboard / MIDI / WizNet
+INT_POLARITY_3      equ       $FE27
+INT_EDGE_3          equ       $FE2B
+INT_MASK_3          equ       $FE2F
 
 * Interrupt group 0 flags
-INT_VKY_SOF         equ       %00000001 TinyVicky start of frame interrupt
-INT_VKY_SOL         equ       %00000010 TinyVicky start of line interrupt
-INT_PS2_KBD         equ       %00000100 PS/2 keyboard event
-INT_PS2_MOUSE       equ       %00001000 PS/2 mouse event
-INT_TIMER_0         equ       %00010000 TIMER0 has reached its target value
-INT_TIMER_1         equ       %00100000 TIMER1 has reached its target value
-INT_CARTRIDGE       equ       %10000000 Interrupt asserted by the cartridge
+INT_VKY_SOF         equ       %00000001           TinyVicky start of frame interrupt
+INT_VKY_SOL         equ       %00000010           TinyVicky start of line interrupt
+INT_PS2_KBD         equ       %00000100           PS/2 keyboard event
+INT_PS2_MOUSE       equ       %00001000           PS/2 mouse event
+INT_TIMER_0         equ       %00010000           TIMER0 has reached its target value
+INT_TIMER_1         equ       %00100000           TIMER1 has reached its target value
+INT_DMA             equ       %01000000           DMA completion; group 0 b6, gated by DMA_CTRL_Int_En
+INT_CARTRIDGE       equ       %10000000           Interrupt asserted by the cartridge
 
 * Interrupt group 1 flags
-INT_UART            equ       %00000001 UART is ready to receive or send data
-INT_RTC             equ       %00010000 event from the real time clock chip
-INT_VIA0            equ       %00100000 event from the 65C22 VIA chip
-INT_VIA1            equ       %01000000 K Only: local keyboard
-INT_SDC_INS         equ       %01000000 user has inserted an SD card
+INT_UART            equ       %00000001           UART is ready to receive or send data
+INT_RTC             equ       %00010000           event from the real time clock chip
+INT_VIA0            equ       %00100000           VIA0 interrupt
+INT_VIA1            equ       %01000000           K2 VIA1 mechanical-keyboard adapter
+INT_SDC_INS         equ       %10000000           SD-card insertion event
 
 * Interrupt group 2 flags
-IEC_DATA_i          equ       %00000001 IEC data in
-IEC_CLK_i           equ       %00000010 IEC clock in
-IEC_ATN_i           equ       %00000100 IEC ATN in
-IEC_SREQ_i          equ       %00001000 IEC SREQ in
+IEC_DATA_i          equ       %00000001           IEC data in
+IEC_CLK_i           equ       %00000010           IEC clock in
+IEC_ATN_i           equ       %00000100           IEC ATN in
+IEC_SREQ_i          equ       %00001000           IEC SREQ in
+INT_NET_PIN         equ       %00010000           network module IRQ pin
+INT_WIFI_PIN        equ       %00100000           WiFi module IRQ pin
+INT_HDMI_PIN        equ       %01000000           HDMI IRQ pin
+* Group 2 bit 7 and group 3 bits 6-7 are not wired.
 
-* Interrupt group 3 flags
-INT_WIZFI_RX        equ       %00000001 Rx FIFO went non-empty (edge, INT_PENDING_3)
-INT_WIZFI_TX        equ       %00100000 Tx FIFO drained to empty (edge, INT_PENDING_3)
+* Interrupt group 3 flags (per IRQ_Controller_Jr lirq0 bits 24-29)
+INT_WIZFI_RX        equ       %00000001           WiFi Rx FIFO went non-empty (edge, INT_PENDING_3)
+INT_MIDI_RX         equ       %00000010           MIDI Rx FIFO went non-empty
+INT_OPT_KBD         equ       %00000100           K2 optical keyboard FIFO went non-empty (K2 only; Jr2 never wires it)
+INT_WIZNET          equ       %00001000           WizNet FIFO event
+INT_MIDI_VS_RX      equ       %00010000           MIDI synth (VS) Rx FIFO went non-empty
+INT_WIZFI_TX        equ       %00100000           WiFi Tx FIFO drained to empty (edge, INT_PENDING_3)
 INT_WIZFI           equ       INT_WIZFI_RX+INT_WIZFI_TX
 
 
@@ -275,67 +487,77 @@ KEMP                equ       %00000001
 ********************************************************************
 * Mouse definitions
 * $FEA0-$FEAF
-* Mouse Mode is bit 1 of MS_MEM (Mouse Mode-Enable)
-* 0=System handles x/y  1=harware interprets PS/2 packets
+* Mouse Mode is bit 1 of MS_MEN (Mouse Mode-Enable)
+* 0=System handles x/y  1=hardware interprets supplied PS/2 bytes
 * Enable is bit 0.  1=show mouse pointer 0 = hide mouse pointer
-MS_MEN		    equ	      $FEA0     mouse mode-enable
-MS_XH		    equ	      $FEA2	mouse x low byte
-MS_XL		    equ	      $FEA3	mouse x high byte	    
-MS_YH		    equ	      $FEA4	mouse y low byte
-MS_YL		    equ	      $FEA5	mouse y high byte
-MS_PS2B0	    equ	      $FEA6	mouse PS/2 Byte 0
-MS_PS2B1	    equ	      $FEA7	mouse PS/2 Byte 1
-MS_PS2B2	    equ	      $FEA8	mouse PS/2 Byte 2
-MS_SRATE	    equ	      $28	mouse sample rate $A,$14,$28,$3C,$50,$64,$C8
+MS_MEN              equ       $FEA0               mouse mode-enable
+MS_ENABLE           equ       %00000001           show pointer
+MS_PACKET_MODE      equ       %00000010           hardware interprets supplied PS/2 bytes
+MS_XH               equ       $FEA2               mouse X bits 11:8
+MS_XL               equ       $FEA3               mouse X bits 7:0
+MS_YH               equ       $FEA4               mouse Y bits 11:8
+MS_YL               equ       $FEA5               mouse Y bits 7:0
+MS_PS2B0            equ       $FEA6               mouse PS/2 Byte 0
+MS_PS2B1            equ       $FEA7               mouse PS/2 Byte 1
+MS_PS2B2            equ       $FEA8               mouse PS/2 Byte 2
+MS_SRATE            equ       $28                 mouse sample rate $A,$14,$28,$3C,$50,$64,$C8
 
 ********************************************************************
 * K2 optical keyboard definitions
 *
 OKB.Base            equ       $FE10
                     org       0
-OKB.Data            rmb       1         keyboard data
-OKB.Stat            rmb       1         bit 7 = 1 (mechanical) or 0 (optical), bit 0 = 1 (FIFO empty) or 0 (FIFO full)
-OKB.CntLo           rmb       1
-OKB.CntHi           rmb       1
+OKB.Data            rmb       1                   keyboard data
+OKB.Stat            rmb       1                   b7 mechanical; b0 FIFO empty (0 = data available)
+OKB.CntLo           rmb       1                   FIFO byte count bits 7:0
+OKB.CntHi           rmb       1                   FIFO byte count bits 11:8
+* Hardware typematic (v8_rc8+ K2 cores; older cores ignore writes and read 0,
+* so write-then-readback of OKB.TypDly detects core support)
+OKB.TypDly          rmb       1                   initial repeat delay in frames (reset 30)
+OKB.TypPer          rmb       1                   repeat period in frames (reset 5)
+OKB.TypCtl          rmb       1                   bit 0 = 1 enables hardware key repeat (reset 0)
 
 ********************************************************************
 * Timer definitions
 *
 * Timer addresses
-T0_CTR              equ       $FE30     timer 0 counter (write)
-T0_STAT             equ       $FE30     timer 0 status (read)
-T0_VAL              equ       $FE31     timer 0 value (read/write)
-T0_CMP_CTR          equ       $FE34     timer 0 compare counter (read/write)
-T0_CMP              equ       $FE35     timer 0 compare value (read/write)
-T1_CTR              equ       $FE38     timer 1 counter (write)
-T1_STAT             equ       $FE38     timer 1 status (read)
-T1_VAL              equ       $FE39     timer 1 value (read/write)
-T1_CMP_CTR          equ       $FE3C     timer 1 compare counter (read/write)
-T1_CMP              equ       $FE3D     timer 1 compare value (read/write)
+T0_CTR              equ       $FE30               timer 0 counter (write)
+T0_STAT             equ       $FE30               timer 0 status (read)
+T0_VAL              equ       $FE31               timer 0 value (read/write)
+T0_CMP_CTR          equ       $FE34               timer 0 compare counter (read/write)
+T0_CMP              equ       $FE35               timer 0 compare value (read/write)
+T1_CTR              equ       $FE38               timer 1 counter (write)
+T1_STAT             equ       $FE38               timer 1 status (read)
+T1_VAL              equ       $FE39               timer 1 value (read/write)
+T1_CMP_CTR          equ       $FE3C               timer 1 compare counter (read/write)
+T1_CMP              equ       $FE3D               timer 1 compare value (read/write)
 
 ********************************************************************
-* VIA (W65C22S) definitions
+* VIA (FPGA via6522) definitions
 *
-* VIA addresses
+* K2 via6522 adapters: VIA0 joystick PA=J1, PB=J0; PB7=PB_i[8].
+* VIA1 mechanical keyboard: PA_io rows, PB_i[7:0] columns.
+* OpticalKeyboardScanner shares the pins; its registers use OKB.Base.
+* VIA_* offsets apply to either adapter; A/B are ports, not VIA numbers.
 VIA0.Base           equ       $FEB0
 VIA1.Base           equ       $FFB0
                     org       0
-VIA_ORB_IRB         rmb       1         port b data
-VIA_ORA_IRA         rmb       1         port a data
-VIA_DDRB            rmb       1         port b data direction register
-VIA_DDRA            rmb       1         port a data direction register
-VIA_T1CL            rmb       1         timer 1 counter low
-VIA_T1CH            rmb       1         timer 1 counter high
-VIA_T1LL            rmb       1         timer 1 latch low
-VIA_T1LH            rmb       1         timer 1 latch high
-VIA_T2CL            rmb       1         timer 2 counter low
-VIA_T2CH            rmb       1         timer 2 counter high
-VIA_SR              rmb       1         serial data register
-VIA_ACR             rmb       1         auxiliary control register
-VIA_PCR             rmb       1         peripheral control register
-VIA_IFR             rmb       1         interrupt flag register
-VIA_IER             rmb       1         interrupt enable register
-VIA_ORA_IRA_AUX     rmb       1         port a data (no handshake)
+VIA_ORB_IRB         rmb       1                   port b data
+VIA_ORA_IRA         rmb       1                   port a data
+VIA_DDRB            rmb       1                   port b data direction register
+VIA_DDRA            rmb       1                   port a data direction register
+VIA_T1CL            rmb       1                   timer 1 counter low
+VIA_T1CH            rmb       1                   timer 1 counter high
+VIA_T1LL            rmb       1                   timer 1 latch low
+VIA_T1LH            rmb       1                   timer 1 latch high
+VIA_T2CL            rmb       1                   timer 2 counter low
+VIA_T2CH            rmb       1                   timer 2 counter high
+VIA_SR              rmb       1                   serial data register
+VIA_ACR             rmb       1                   auxiliary control register
+VIA_PCR             rmb       1                   peripheral control register
+VIA_IFR             rmb       1                   interrupt flag register
+VIA_IER             rmb       1                   interrupt enable register
+VIA_ORA_IRA_AUX     rmb       1                   port a data (no handshake)
 
 * ACR control register values
 T1_CTRL             equ       %11000000
@@ -373,59 +595,62 @@ CA2E                equ       %00000001
 ********************************************************************
 * Real-time clock definitions
 *
-RTC.Base            equ       0xFE40
+RTC.Base            equ       $FE40
                     org       0
-RTC_SEC             rmb       1         seconds register
-RTC_SEC_ALARM       rmb       1         seconds alarm register
-RTC_MIN             rmb       1         minutes register
-RTC_MIN_ALARM       rmb       1         minutes alarm register
-RTC_HRS             rmb       1         hours register
-RTC_HRS_ALARM       rmb       1         hours alarm register
-RTC_DAY             rmb       1         day register
-RTC_DAY_ALARM       rmb       1         day alarm register
-RTC_DOW             rmb       1         day of week register
-RTC_MONTH           rmb       1         month register
-RTC_YEAR            rmb       1         year register
-RTC_RATES           rmb       1         rates register
-RTC_ENABLE          rmb       1         enables register
-RTC_FLAGS           rmb       1         flags register
-RTC_CTRL            rmb       1         control register
-RTC_CENTURY         rmb       1         century register
+RTC_SEC             rmb       1                   seconds register
+RTC_SEC_ALARM       rmb       1                   seconds alarm register
+RTC_MIN             rmb       1                   minutes register
+RTC_MIN_ALARM       rmb       1                   minutes alarm register
+RTC_HRS             rmb       1                   hours register
+RTC_HRS_ALARM       rmb       1                   hours alarm register
+RTC_DAY             rmb       1                   day register
+RTC_DAY_ALARM       rmb       1                   day alarm register
+RTC_DOW             rmb       1                   day of week register
+RTC_MONTH           rmb       1                   month register
+RTC_YEAR            rmb       1                   year register
+RTC_RATES           rmb       1                   rates register
+RTC_ENABLE          rmb       1                   enables register
+RTC_FLAGS           rmb       1                   flags register
+RTC_CTRL            rmb       1                   control register
+RTC_CENTURY         rmb       1                   century register
 
-RTC_24HR            equ       $02       12/24 hour flag (1 = 24 Hr, 0 = 12 Hr)
-RTC_STOP            equ       $04       0 = STOP when power off, 1 = run from battery when power off
-RTC_UTI             equ       $08       update transfer inhibit
+RTC_24HR            equ       $02                 12/24 hour flag (1 = 24 Hr, 0 = 12 Hr)
+RTC_STOP            equ       $04                 0 = STOP when power off, 1 = run from battery when power off
+RTC_UTI             equ       $08                 update transfer inhibit
 
 ********************************************************************
 * Joystick port definitions
 *
 
 * Port A (Joystick Port 1)
-JOYA_UP             equ       0x01
-JOYA_DWN            equ       0x02
-JOYA_LFT            equ       0x04
-JOTA_RGT            equ       0x08
-JOTA_BUT0           equ       0x10
-JOYA_BUT1           equ       0x20
-JOYA_BUT2           equ       0x40
+JOYA_UP             equ       $01
+JOYA_DWN            equ       $02
+JOYA_LFT            equ       $04
+JOTA_RGT            equ       $08
+JOYA_RGT            equ       JOTA_RGT            correctly spelled alias
+JOTA_BUT0           equ       $10
+JOYA_BUT0           equ       JOTA_BUT0           correctly spelled alias
+JOYA_BUT1           equ       $20                 legacy mask; not wired as a K2 joystick button
+JOYA_BUT2           equ       $40                 legacy mask; not wired as a K2 joystick button
 
 * Port B (Joystick Port 0)
-JOYB_UP             equ       0x01
-JOYB_DWN            equ       0x02
-JOYB_LFT            equ       0x04
-JOTB_RGT            equ       0x08
-JOTB_BUT0           equ       0x10
-JOYB_BUT1           equ       0x20
-JOYB_BUT2           equ       0x40
+JOYB_UP             equ       $01
+JOYB_DWN            equ       $02
+JOYB_LFT            equ       $04
+JOTB_RGT            equ       $08
+JOYB_RGT            equ       JOTB_RGT            correctly spelled alias
+JOTB_BUT0           equ       $10
+JOYB_BUT0           equ       JOTB_BUT0           correctly spelled alias
+JOYB_BUT1           equ       $20                 legacy mask; not wired as a K2 joystick button
+JOYB_BUT2           equ       $40                 legacy mask; not wired as a K2 joystick button
 
 ********************************************************************
 * UART definition
 *
-UART.Base           equ       0xFE60
+UART.Base           equ       $FE60
 
 ********************************************************************
-* CODEC definitions
-*
+* WM8776 codec bridge definitions
 CODEC.Base          equ       $FE70
                     org       0
 CODECCmdLo          rmb       1
@@ -437,21 +662,59 @@ CODECCtrl           equ       CODECStat
 ******************************************************************
 * Bitmap definitions
 *
-GAMMA_BLK           equ       $C0
+VICKY_BLK           equ       $FC                 Longview VICKY register page
+GAMMA_BLK           equ       VICKY_BLK
 
 ******************************************************************
 * Text lookup definitions
 *
-TEXT_LUT_BLK	    equ	      $C0
+TEXT_LUT_BLK        equ       VICKY_BLK
 TEXT_LUT_FG         equ       $1700
 TEXT_LUT_BG         equ       $1740
 
 ********************************************************************
 * Font definitions
 *
-FONT_BLK            equ	      $C1
-FONT_0_OFFSET	    equ	      $0000
-FONT_1_OFFSET	    equ	      $0800
+FONT_BLK            equ       $FD
+FONT_0_OFFSET       equ       $0000
+FONT_1_OFFSET       equ       $0800
+FONT_BANK_SIZE      equ       $0800               bytes per font bank
+* The text palette's sixteen entries as the core sets them at power-up (mif/Text_LUT_OS9_palette.coe, the same
+* table as modules/palette.asm): the color numbers for the console's foreground/background (2026-10-09, named for diag)
+TXT_BLACK           equ       0
+TXT_WHITE           equ       1
+TXT_RED             equ       2
+TXT_CYAN            equ       3
+TXT_PURPLE          equ       4
+TXT_GREEN           equ       5
+TXT_BLUE            equ       6                   $0000AA
+TXT_YELLOW          equ       7
+TXT_ORANGE          equ       8
+TXT_BROWN           equ       9
+TXT_LTRED           equ       10
+TXT_DKGRAY          equ       11
+TXT_GRAY            equ       12
+TXT_LTGREEN         equ       13
+TXT_LTBLUE          equ       14
+TXT_LTGRAY          equ       15
+TXT_LUT_SIZE        equ       64                  one text LUT: sixteen B,G,R,A entries
+* vtio console sequences (level1/wildbits/modules/vtio.asm): VT_ESC then a code and its parameters
+VT_ESC              equ       $1B
+VT_DWSET            equ       $20                 window: type, x, y, width, height, foreground, background, border
+VT_80X60            equ       $04                 VT_DWSET type: 80 columns x 60 rows
+VT_FCOLOR           equ       $32                 foreground color number
+VT_BCOLOR           equ       $33                 background color number
+VT_CURSOR           equ       $05                 cursor control, then VT_CURSOR_OFF / VT_CURSOR_ON
+VT_CURSOR_OFF       equ       $20
+VT_CURSOR_ON        equ       $21
+VT_GOTOXY           equ       $02                 then column+$20, row+$20
+* Keys as the console delivers them (keydrv_k2 / keydrv_ps2)
+KEY_ESC             equ       $1B
+KEY_TAB             equ       $09                 on the K2 the right arrow sends the same byte
+KEY_RUNSTOP         equ       $05                 the K2's RUN/STOP (keydrv_k2 BREAK; scf.d C$QUIT)
+TEXT_RAM_BLK        equ       $FE                 text character page
+COLOR_RAM_BLK       equ       $FF                 text attribute page
+TEXT_RAM_SIZE       equ       $12C0               4800 bytes per text/attribute page
 
 ********************************************************************
 * SD card interface definitions
@@ -471,63 +734,80 @@ CS_EN               equ       %00000001
 * Text screen definitions
 *
 TXT.Base            equ       $FFC0
-VKY_LAYER_CTRL_0    equ	      $FFC2
+VKY_LAYER_CTRL_0    equ       $FFC2
 VKY_LAYER_CTRL_1    equ       $FFC3
-* The following are registers indicies based on TXT.Base
+* The following are register offsets based on TXT.Base
                     org       0
 MASTER_CTRL_REG_L   rmb       1
 MASTER_CTRL_REG_H   rmb       1
 VKY_LAYER_CTRL_L    rmb       1
 VKY_LAYER_CTRL_H    rmb       1
-BORDER_CTRL_REG     rmb       1         bit[0] - enable (1 by default)  bit[4..6]: X scroll offset (will scroll left) (acceptable values: 0..7)
+BORDER_CTRL_REG     rmb       1                   bit[0] - enable (1 by default) bit[4..6]: X scroll offset (will scroll left) (acceptable values: 0..7)
 BORDER_COLOR_B      rmb       1
 BORDER_COLOR_G      rmb       1
 BORDER_COLOR_R      rmb       1
-BORDER_X_SIZE       rmb       1         X values: 0 - 32 (default: 32)
-BORDER_Y_SIZE       rmb       1         Y values: 0 - 32 (default: 32)
+BORDER_X_SIZE       rmb       1                   6-bit border width; reset 16
+BORDER_Y_SIZE       rmb       1                   6-bit border height; reset 16
 VKY_RESERVED_02     rmb       1
-VKY_RESERVED_03     rmb       1
+VKY_DRAWLINE_CTRL   equ       VKY_RESERVED_02     b0 drawing-line enable
+VKY_DRAWLINE_REG    equ       $FFCA               fixed-address alias of TXT.Base+VKY_DRAWLINE_CTRL
+VKY_DRAWLINE_EN     equ       $01                 permits queued line pixels to reach SRAM
+VKY_MCR2            equ       VKY_DRAWLINE_CTRL   grfdrv256's name for it
+VKY_MCR2_LineDraw   equ       VKY_DRAWLINE_EN
+VKY_GFX_MODE        rmb       1                   $FFCB (rc14+): b0 HIRES4 = every bitmap plane 640x240 at 4 bits/dot, b3:1 CLUT group
 VKY_RESERVED_04     rmb       1
+* HIRES4: high nibble is the left dot; group selects a 16-color slice.
+* Global and per-plane HIRES4 enables are ORed; tiles/sprites stay 320-wide.
+GFX_HIRES4          equ       %00000001           640x240, two 4-bit dots per byte, all bitmap planes
+GFX_GROUP           equ       %00001110           global 16-color CLUT group, bits 3:1
+VKY_GFX_MODE_REG    equ       $FFCB               fixed-address alias of TXT.Base+VKY_GFX_MODE
 * Valid in graphics mode only
-BACKGROUND_COLOR_B  rmb       1         when in graphic mode, if a pixel is "0" then the background pixel is chosen
+BACKGROUND_COLOR_B  rmb       1                   when in graphic mode, if a pixel is "0" then the background pixel is chosen
 BACKGROUND_COLOR_G  rmb       1
 BACKGROUND_COLOR_R  rmb       1
 * Cursor registers
-VKY_TXT_CURSOR_CTRL_REG rmb       1         [0] Enable Text Mode
-VKY_TXT_START_ADD_PTR rmb       1         this is an offset to change the starting address of the text mode Buffer (in X)
-VKY_TXT_CURSOR_CHAR_REG rmb       1
-VKY_TXT_CURSOR_COLR_REG rmb       1
-VKY_TXT_CURSOR_X_REG_H rmb       1
-VKY_TXT_CURSOR_X_REG_L rmb       1
-VKY_TXT_CURSOR_Y_REG_H rmb       1
-VKY_TXT_CURSOR_Y_REG_L rmb       1
+VKY_TXT_CURSOR_CTRL_REG rmb   1                   cursor control; Vky_Cursor_* bits
+VKY_TXT_START_ADD_PTR rmb     1                   legacy name; reserved in rc16
+VKY_TXT_CURSOR_CHAR_REG rmb   1
+VKY_TXT_CURSOR_COLR_REG rmb   1
+VKY_TXT_CURSOR_X_REG_H rmb    1
+VKY_TXT_CURSOR_X_REG_L rmb    1
+VKY_TXT_CURSOR_Y_REG_H rmb    1
+VKY_TXT_CURSOR_Y_REG_L rmb    1
 ; Line interrupt
-VKY_LINE_IRQ_CTRL_REG rmb       1         [0] - enable line 0 - write only
-VKY_LINE_CMP_VALUE_HI rmb       1         write only [7:0]
-VKY_LINE_CMP_VALUE_LO rmb       1         write only [3:0]
+VKY_LINE_IRQ_CTRL_REG rmb     1                   [0] - enable line 0 - write only
+VKY_LINE_CMP_VALUE_HI rmb     1                   write: compare bits 11:8
+VKY_LINE_CMP_VALUE_LO rmb     1                   write: compare bits 7:0
 
-VKY_PIXEL_X_POS_HI  equ       VKY_LINE_IRQ_CTRL_REG this is where on the video line is the pixel
-VKY_PIXEL_X_POS_LO  equ       VKY_LINE_CMP_VALUE_LO or what pixel is being displayed when the register is read
-VKY_LINE_Y_POS_HI   equ       VKY_LINE_CMP_VALUE_HI this is the line value of the raster
-VKY_LINE_Y_POS_LO   rmb       1
+VKY_PIXEL_X_POS_HI  equ       VKY_LINE_IRQ_CTRL_REG read: raster X bits 11:8
+VKY_PIXEL_X_POS_LO  equ       VKY_LINE_CMP_VALUE_HI read: raster X bits 7:0
+VKY_LINE_Y_POS_HI   equ       VKY_LINE_CMP_VALUE_LO read: raster Y bits 11:8
+VKY_LINE_Y_POS_LO   rmb       1                   read: raster Y bits 7:0
+VKY_VERSION_LO      equ       $1C                 read: core version low byte
+VKY_VERSION_HI      equ       $1D                 read: core version high byte
+VKY_SUBVER_LO       equ       $1E                 read: core subversion low byte
+VKY_SUBVER_HI       equ       $1F                 read: core subversion high byte
+* Cursor X/Y writes are big-endian; readback swaps each byte pair.
 
 * Text control bit definitions
-Mstr_Ctrl_Text_Mode_En equ       $01       enable the text mode
-Mstr_Ctrl_Text_Overlay equ       $02       enable the overlay of the text mode on top of graphic mode (the background color is ignored)
-Mstr_Ctrl_Graph_Mode_En equ       $04       enable the graphic mode
-Mstr_Ctrl_Bitmap_En equ       $08       enable the bitmap module in Vicky
-Mstr_Ctrl_TileMap_En equ       $10       enable the tile module in Vicky
-Mstr_Ctrl_Sprite_En equ       $20       enable the sprite module in Vicky
-Mstr_Ctrl_GAMMA_En  equ       $40       this enables the gamma correction - the analog and DVI have different color values; the gamma is great to correct the difference
-Mstr_Ctrl_Disable_Vid equ       $80       this will disable the scanning of the video hence giving 100% bandwidth to the CPU
+Mstr_Ctrl_Text_Mode_En equ    $01                 enable the text mode
+Mstr_Ctrl_Text_Overlay equ    $02                 enable the overlay of the text mode on top of graphic mode (the background color is ignored)
+Mstr_Ctrl_Graph_Mode_En equ   $04                 enable the graphic mode
+Mstr_Ctrl_Bitmap_En equ       $08                 enable the bitmap module in Vicky
+Mstr_Ctrl_TileMap_En equ      $10                 enable the tile module in Vicky
+Mstr_Ctrl_Sprite_En equ       $20                 enable the sprite module in Vicky
+Mstr_Ctrl_GAMMA_En  equ       $40                 this enables the gamma correction - the analog and DVI have different color values; the gamma is great to correct the difference
+Mstr_Ctrl_Disable_Vid equ     $80                 this will disable the scanning of the video hence giving 100% bandwidth to the CPU
 
 * Cursor control bit definitions
 Vky_Cursor_Enable   equ       $01
-Vky_Cursor_Flash_Rate0 equ       $02
-Vky_Cursor_Flash_Rate1 equ       $04
-Vky_Cursor_Flash_Disable equ       $08
+Vky_Cursor_Flash_Rate0 equ    $02
+Vky_Cursor_Flash_Rate1 equ    $04
+Vky_Cursor_Flash_Disable equ  $08
 
 FON_SET             equ       %00100000
+MEMTEXT_EN          equ       %01000000           memory-text engine enable
+MEMTEXT_BG          equ       %10000000           memory-text background enable
 FON_OVLY            equ       %00010000
 MON_SLP             equ       %00001000
 DBL_Y               equ       %00000100
@@ -537,117 +817,193 @@ CLK_70              equ       %00000001
 * Border control bit definitions
 Border_Ctrl_Enable  equ       $01
 
-BITMAP_BLK            equ	      $C0
+BITMAP_BLK          equ       VICKY_BLK
 ; Bitmap
 ;BM0
 TyVKY_BM0_CTRL_REG  equ       $F000
-BM0_Ctrl            equ       $01       enable the BM0
-BM0_LUT0            equ       $02       LUT0
-BM0_LUT1            equ       $04       LUT1
-TyVKY_BM0_START_ADDY_H equ       $F001
-TyVKY_BM0_START_ADDY_M equ       $F002
-TyVKY_BM0_START_ADDY_L equ       $F003
+BM0_Ctrl            equ       $01                 enable the BM0
+BM0_LUT0            equ       $02                 LUT0
+BM0_LUT1            equ       $04                 LUT1
+BM0_HIRES4          equ       $10                 rc14+: this plane alone in 640x240 4-bit (OR'd with GFX_HIRES4)
+BM0_GROUP           equ       $E0                 rc14+: this plane's CLUT slice (0-7) when it is HIRES4
+TyVKY_BM0_START_ADDY_H equ    $F001
+TyVKY_BM0_START_ADDY_M equ    $F002
+TyVKY_BM0_START_ADDY_L equ    $F003
 ;BM1
 TyVKY_BM1_CTRL_REG  equ       $F008
-BM1_Ctrl            equ       $01       enable the BM0
-BM1_LUT0            equ       $02       LUT0
-BM1_LUT1            equ       $04       LUT1
-TyVKY_BM1_START_ADDY_H equ       $F009
-TyVKY_BM1_START_ADDY_M equ       $F00A
-TyVKY_BM1_START_ADDY_L equ       $F00B
+BM1_Ctrl            equ       $01                 enable bitmap plane 1
+BM1_LUT0            equ       $02                 LUT0
+BM1_LUT1            equ       $04                 LUT1
+BM1_HIRES4          equ       BM0_HIRES4          plane HIRES4 enable
+BM1_GROUP           equ       BM0_GROUP           plane CLUT group mask
+TyVKY_BM1_START_ADDY_H equ    $F009
+TyVKY_BM1_START_ADDY_M equ    $F00A
+TyVKY_BM1_START_ADDY_L equ    $F00B
 ;BM2
 TyVKY_BM2_CTRL_REG  equ       $F010
-BM2_Ctrl            equ       $01       enable the BM0
-BM2_LUT0            equ       $02       LUT0
-BM2_LUT1            equ       $04       LUT1
-BM2_LUT2            equ       $08       LUT2
-TyVKY_BM2_START_ADDY_H equ       $F011
-TyVKY_BM2_START_ADDY_M equ       $F012
-TyVKY_BM2_START_ADDY_L equ       $F013
+BM2_Ctrl            equ       $01                 enable bitmap plane 2
+BM2_LUT0            equ       $02                 LUT0
+BM2_LUT1            equ       $04                 LUT1
+BM2_HIRES4          equ       BM0_HIRES4          plane HIRES4 enable
+BM2_GROUP           equ       BM0_GROUP           plane CLUT group mask
+BM2_LUT2            equ       $08                 LUT2
+TyVKY_BM2_START_ADDY_H equ    $F011
+TyVKY_BM2_START_ADDY_M equ    $F012
+TyVKY_BM2_START_ADDY_L equ    $F013
 
-**  THESE ARE DUPLICATES, RECONCILE THIS LATER
+********************************************************************
+* Line drawer (shared K2/Jr2 RTL, rc17_line_5; K2 line_fast_1 candidate).
+* Page $FC offset $1080; addresses below assume page $FC in slot 7.
+* The eight registers mirror through offsets $1080-$10FF.
+* X writes are big-endian 10-bit values; Y writes are single bytes.
+* 320x240: one 8-bit color per pixel. HIRES4: X=0..639, Y=0..239,
+* low color nibble only, even X in the high nibble; neighbor preserved.
+* Both modes have a 320-byte row stride. HIRES4 is selected by the
+* global GFX_HIRES4 OR the chosen bitmap's BM0/1/2_HIRES4 bit.
+* Endpoints, base, color and mode latch at GO. Invalid endpoints do not
+* start a line; both valid endpoints are included. No clipping.
+* Set VKY_DRAWLINE_EN at $FFCA to drain pixels. Control b0 is retained
+* for compatibility but does not gate the current linedraw state machine.
+* Hold GO until DONE=1, then clear GO to rearm for another command.
+* More lines may be queued while earlier pixels drain; a full FIFO stalls
+* generation without dropping pixels. Wait for DONE=1 AND FIFO=0 before
+* consuming the completed bitmap. DONE alone does not mean writes landed.
+* K2 line_fast_1 doubles the FIFO to 8192 entries and widens its count to
+* 14 bits. X-major HIRES4 lines may combine two same-byte pixels in one
+* entry: the count measures queued writes, not necessarily pixel count.
+* Jr2 line_5 retains 4096 entries and a zero-extended 13-bit count.
+* Reset b4 clears the FIFO AND generator; clear it before starting.
+TyVKY_LD_BASE       equ       $F080
+TyVKY_LD_OFFSET     equ       $1080               offset within MMU page $FC
+TyVKY_LD_CTRL       equ       TyVKY_LD_BASE+0     W control; R b7 DONE, b6:0 stored
+TyVKY_LD_COLOR      equ       TyVKY_LD_BASE+1     R/W ink byte; HIRES4 uses b3:0
+TyVKY_LD_X0_H       equ       TyVKY_LD_BASE+2     W X0 bits 9:8; R FIFO count high
+TyVKY_LD_X0_L       equ       TyVKY_LD_BASE+3     W X0 bits 7:0; R FIFO count low
+TyVKY_LD_X1_H       equ       TyVKY_LD_BASE+4     W X1 bits 9:8; R X1 LOW byte
+TyVKY_LD_X1_L       equ       TyVKY_LD_BASE+5     W X1 bits 7:0; R X1 HIGH byte
+TyVKY_LD_Y0         equ       TyVKY_LD_BASE+6     W Y0; R Y1
+TyVKY_LD_Y1         equ       TyVKY_LD_BASE+7     W Y1; R Y0
+TyVKY_LD_COUNT_H    equ       TyVKY_LD_BASE+2     R FIFO count bits 13:8 (b13 K2 line_fast_1)
+TyVKY_LD_COUNT_L    equ       TyVKY_LD_BASE+3     R FIFO count bits 7:0
+TyVKY_LD_ENABLE     equ       $01                 legacy bit; use $FFCA b0 to enable writes
+TyVKY_LD_GO         equ       $02                 start; clear to rearm after completion
+TyVKY_LD_BM_MASK    equ       $0C                 destination bitmap selection
+TyVKY_LD_BM0        equ       $00
+TyVKY_LD_BM1        equ       $04
+TyVKY_LD_BM2        equ       $08                 selection $0C uses fallback base $001000
+TyVKY_LD_RESET      equ       $10                 FIFO/generator reset, active high
+TyVKY_LD_DONE       equ       $80                 read-only generator done, NOT busy
+TyVKY_LD_XMAX8      equ       319
+TyVKY_LD_XMAX4      equ       639
+TyVKY_LD_YMAX       equ       239
+TyVKY_LD_STRIDE     equ       320
+
+* grfdrv256's names for the line engine.  LD.* are offsets from LD.Base, so
+* the driver can index one pointer; the others are its software limits.
+LD.Base             equ       TyVKY_LD_BASE
+LD.Ctrl             equ       0
+LD.Color            equ       1
+LD.X0H              equ       2
+LD.X0L              equ       3
+LD.X1H              equ       4
+LD.X1L              equ       5
+LD.Y0               equ       6
+LD.Y1               equ       7
+LD.FifoH            equ       2                   read: FIFO count high
+LD.FifoL            equ       3                   read: FIFO count low
+LD_CTRL_Go          equ       TyVKY_LD_GO         a LEVEL, not a pulse
+LD.Depth            equ       8192                FIFO entries, K2 and Jr2 (confirmed with the core developer for rc23)
+LD.Room             equ       LD.Depth-320        stop enqueueing above this
+LD.Room4            equ       LD.Depth-640        the same for a 640-pixel HIRES4 line
+LD.MaxX             equ       TyVKY_LD_XMAX8      an endpoint outside 0..319 is clipped by the driver
+LD.MaxX4            equ       TyVKY_LD_XMAX4      the same on a HIRES4 (640x240 4bpp) plane
+LD.MaxY             equ       TyVKY_LD_YMAX
+LD.Poll             equ       200                 COMPLETE poll limit
+
+* Compatibility names for vtio screen flags; retained for callers.
 ********************************************************************
 * vtio graphics constants
 ********************************************************************
 * Constants used in SS.DScrn to set the display screen type
 
-FX_GAM             equ       %01000000              Gamma Correction On
-FX_SPR             equ       %00100000              Sprites On
-FX_TIL             equ       %00010000              Tile Maps On
-FX_BM              equ       %00001000              Bitmaps On
-FX_GRF             equ       %00000100              Graphics Mode On
-FX_OVR             equ       %00000010              Overlay Text on Graphics
-FX_TXT             equ       %00000001              Text Mode On
-FT_FSET            equ       %00100000              Font Set 1 On (0=Font Set 0)
-FT_FOVR            equ       %00010000              FG and BG colors displayed when overlay text 0=transparent
-FT_MON             equ       %00001000              Turn off monitor sync and sleep monitor
-FT_DBX             equ       %00000100              Double-wide text mode characters
-FT_DBY             equ       %00000010              Double-high text mode characters
-FT_CLK70           equ       %00000001              70 Hz screen (640x400 txt,320x200 grf)
-FX_OMIT            equ       %11111111              Setting for SS.DScrn don't change first byte in MCR
-FT_OMIT            equ       %11111111              Setting for SS.DScrn don't change second byte in MCR
+FX_GAM              equ       %01000000           Gamma Correction On
+FX_SPR              equ       %00100000           Sprites On
+FX_TIL              equ       %00010000           Tile Maps On
+FX_BM               equ       %00001000           Bitmaps On
+FX_GRF              equ       %00000100           Graphics Mode On
+FX_OVR              equ       %00000010           Overlay Text on Graphics
+FX_TXT              equ       %00000001           Text Mode On
+FT_FSET             equ       %00100000           Font Set 1 On (0=Font Set 0)
+FT_FOVR             equ       %00010000           FG and BG colors displayed when overlay text 0=transparent
+FT_MON              equ       %00001000           Turn off monitor sync and sleep monitor
+FT_DBX              equ       DBL_X               double-width text
+FT_DBY              equ       DBL_Y               double-height text
+FT_CLK70            equ       %00000001           70 Hz screen (640x400 txt,320x200 grf)
+FX_OMIT             equ       %11111111           Setting for SS.DScrn don't change first byte in MCR
+FT_OMIT             equ       %11111111           Setting for SS.DScrn don't change second byte in MCR
 
 * FT_FOVR:  0=display only FG color, all others transparent
 *           1=display FG & BG color, only BG color 0 is transparent
 * CLK_70:   0=60 Hz screen (640x480 txt, 320x240 grf)
-*           0=70 Hz screen (640x400 txt, 32
-**  END OF DUPLICATE CONSTANTS
+*           1=70 Hz screen (640x400 text, 320x200 graphics)
+* End of vtio screen flags.
 
-; Tile map
+* Tile registers: page $FC in slot 7; big-endian writes, reads $33.
 TyVKY_TL_CTRL0      equ       $F100
 ; Bit Field Definition for the Control Register
 TILE_Enable         equ       $01
 TILE_LUT0           equ       $02
 TILE_LUT1           equ       $04
 TILE_LUT2           equ       $08
-TILE_SIZE           equ       $10       0 -> 16x16, 0 -> 8x8
+TILE_SIZE           equ       $10                 0 = 16x16; 1 = 8x8 tiles
 
 ;
 ;Tile map layer 0 registers
-TL0_CONTROL_REG     equ       $F100     bit[0] - enable, bit[3:1] - LUT select
-TL0_START_ADDY_L    equ       $F101     not used right now - starting address to where is the map
-TL0_START_ADDY_M    equ       $F102
-TL0_START_ADDY_H    equ       $F103
-TL0_MAP_X_SIZE_L    equ       $F104     the size X of the map
-TL0_MAP_X_SIZE_H    equ       $F105
-TL0_MAP_Y_SIZE_L    equ       $F106     the size Y of the map
-TL0_MAP_Y_SIZE_H    equ       $F107
-TL0_MAP_X_POS_L     equ       $F108     the position X of the map
-TL0_MAP_X_POS_H     equ       $F109
-TL0_MAP_Y_POS_L     equ       $F10A     the position Y of the map
-TL0_MAP_Y_POS_H     equ       $F10B
+TL0_CONTROL_REG     equ       $F100               bit[0] - enable, bit[3:1] - LUT select
+TL0_START_ADDY_H    equ       $F101               physical map address 23:16
+TL0_START_ADDY_M    equ       $F102               physical map address 15:8
+TL0_START_ADDY_L    equ       $F103               physical map address 7:0
+TL0_MAP_X_SIZE_H    equ       $F104               high byte
+TL0_MAP_X_SIZE_L    equ       $F105               low byte
+TL0_MAP_Y_SIZE_H    equ       $F106               high byte
+TL0_MAP_Y_SIZE_L    equ       $F107               low byte
+TL0_MAP_X_POS_H     equ       $F108               high byte
+TL0_MAP_X_POS_L     equ       $F109               low byte
+TL0_MAP_Y_POS_H     equ       $F10A               high byte
+TL0_MAP_Y_POS_L     equ       $F10B               low byte
 ;Tile MAP Layer 1 Registers
-TL1_CONTROL_REG     equ       $F10C     bit[0] - enable, bit[3:1] - LUT select
-TL1_START_ADDY_L    equ       $F10D     not used right now - starting address to where is the map
-TL1_START_ADDY_M    equ       $F10E
-TL1_START_ADDY_H    equ       $F10F
-TL1_MAP_X_SIZE_L    equ       $F110     the size X of the map
-TL1_MAP_X_SIZE_H    equ       $F111
-TL1_MAP_Y_SIZE_L    equ       $F112     the size Y of the map
-TL1_MAP_Y_SIZE_H    equ       $F113
-TL1_MAP_X_POS_L     equ       $F114     the position X of the map
-TL1_MAP_X_POS_H     equ       $F115
-TL1_MAP_Y_POS_L     equ       $F116     the position Y of the map
-TL1_MAP_Y_POS_H     equ       $F117
+TL1_CONTROL_REG     equ       $F10C               bit[0] - enable, bit[3:1] - LUT select
+TL1_START_ADDY_H    equ       $F10D               physical map address 23:16
+TL1_START_ADDY_M    equ       $F10E               physical map address 15:8
+TL1_START_ADDY_L    equ       $F10F               physical map address 7:0
+TL1_MAP_X_SIZE_H    equ       $F110               high byte
+TL1_MAP_X_SIZE_L    equ       $F111               low byte
+TL1_MAP_Y_SIZE_H    equ       $F112               high byte
+TL1_MAP_Y_SIZE_L    equ       $F113               low byte
+TL1_MAP_X_POS_H     equ       $F114               high byte
+TL1_MAP_X_POS_L     equ       $F115               low byte
+TL1_MAP_Y_POS_H     equ       $F116               high byte
+TL1_MAP_Y_POS_L     equ       $F117               low byte
 ;Tile MAP Layer 2 Registers
-TL2_CONTROL_REG     equ       $F118     bit[0] - enable, bit[3:1] - LUT select,
-TL2_START_ADDY_L    equ       $F119     not used right now - starting address to where is the map
-TL2_START_ADDY_M    equ       $F11A
-TL2_START_ADDY_H    equ       $F11B
-TL2_MAP_X_SIZE_L    equ       $F11C     the size X of the map
-TL2_MAP_X_SIZE_H    equ       $F11D
-TL2_MAP_Y_SIZE_L    equ       $F11E     the size Y of the map
-TL2_MAP_Y_SIZE_H    equ       $F11F
-TL2_MAP_X_POS_L     equ       $F120     the position X of the map
-TL2_MAP_X_POS_H     equ       $F121
-TL2_MAP_Y_POS_L     equ       $F122     the position Y of the map
-TL2_MAP_Y_POS_H     equ       $F123
+TL2_CONTROL_REG     equ       $F118               bit[0] - enable, bit[3:1] - LUT select,
+TL2_START_ADDY_H    equ       $F119               physical map address 23:16
+TL2_START_ADDY_M    equ       $F11A               physical map address 15:8
+TL2_START_ADDY_L    equ       $F11B               physical map address 7:0
+TL2_MAP_X_SIZE_H    equ       $F11C               high byte
+TL2_MAP_X_SIZE_L    equ       $F11D               low byte
+TL2_MAP_Y_SIZE_H    equ       $F11E               high byte
+TL2_MAP_Y_SIZE_L    equ       $F11F               low byte
+TL2_MAP_X_POS_H     equ       $F120               high byte
+TL2_MAP_X_POS_L     equ       $F121               low byte
+TL2_MAP_Y_POS_H     equ       $F122               high byte
+TL2_MAP_Y_POS_L     equ       $F123               low byte
+* Window position: bits 13:4 = tile index; low nibble = pixel scroll.
 
 
-TILE_MAP_ADDY0_L    equ       $F180
-TILE_MAP_ADDY0_M    equ       $F181
-TILE_MAP_ADDY0_H    equ       $F182
-TILE_MAP_ADDY0_CFG  equ       $F183
+TILE_MAP_ADDY0_CFG  equ       $F180               tileset configuration, low nibble
+TILE_MAP_ADDY0_H    equ       $F181               tileset physical address byte
+TILE_MAP_ADDY0_M    equ       $F182               tileset physical address byte
+TILE_MAP_ADDY0_L    equ       $F183               tileset physical address byte
 TILE_MAP_ADDY1      equ       $F184
 TILE_MAP_ADDY2      equ       $F188
 TILE_MAP_ADDY3      equ       $F18C
@@ -657,209 +1013,551 @@ TILE_MAP_ADDY6      equ       $F198
 TILE_MAP_ADDY7      equ       $F19C
 
 
-XYMATH_CTRL_REG     equ       $D300     reserved
-XYMATH_ADDY_H       equ       $D301     w
-XYMATH_ADDY_M       equ       $D302     w
-XYMATH_ADDY_L       equ       $D303     w
-XYMATH_ADDY_POSX_H  equ       $D304     r/w
-XYMATH_ADDY_POSX_L  equ       $D305     r/w
-XYMATH_ADDY_POSY_H  equ       $D306     r/w
-XYMATH_ADDY_POSY_L  equ       $D307     r/w
-XYMATH_BLOCK_OFF_H  equ       $D308     r only - low block offset
-XYMATH_BLOCK_OFF_L  equ       $D309     r only - hi block offset
-XYMATH_MMU_BLOCK    equ       $D30A     r only - which mmu block
-XYMATH_ABS_ADDY_H   equ       $D30B     low absolute results
-XYMATH_ABS_ADDY_M   equ       $D30C     mid absolute results
-XYMATH_ABS_ADDY_L   equ       $D30D     hi absolute results
+* Integer math: fixed $FEE0-$FEFF, big-endian operands/results.
+* Writes ignore A4: do not write result addresses $FEF0-$FEFF.
+MATH_MUL_A          equ       $FEE0               w/r unsigned multiply, operand A (16 bit, hi byte first)
+MATH_MUL_B          equ       $FEE2               w/r unsigned multiply, operand B (16 bit)
+MATH_DIV_SOR        equ       $FEE4               w/r unsigned divide, divisor (16 bit)
+MATH_DIV_END        equ       $FEE6               w/r unsigned divide, dividend (16 bit)
+MATH_ADD_A          equ       $FEE8               w/r 32-bit adder, operand A (4 bytes, hi first)
+MATH_ADD_B          equ       $FEEC               w/r 32-bit adder, operand B (4 bytes)
+MATH_MUL_P          equ       $FEF0               r product, 32 bit; MATH_MUL_P+2 is the low 16 bits
+MATH_DIV_QUOT       equ       $FEF4               r quotient (16 bit)
+MATH_DIV_REM        equ       $FEF6               read: 16-bit remainder; corrected in rc14
+MATH_ADD_RES        equ       $FEF8               r sum (32 bit)
+* Remainder byte wiring is correct in rc16.
+* Floating point unit - FP_Math_Module.v, $FFE0-$FFEF in the FIXED I/O page, both boards.
+* IEEE-754 single precision, big endian, pipelined. Operands are written to the same sixteen
+* bytes the results are read from, so an operand can never be read back.
+* How to drive it, the latencies and the two dead status bits: Wildbits page, Floating-point unit.
+FPMATH_CTRL0        equ       $FFE0               w b0/b1 take input 0/1 from the fixed-point converter instead of
+*                                          the raw value written; b3 add(0)/subtract(1); b5:4 pick the
+*                                          adder's first input, b7:6 its second (00 input0, 01 input1,
+*                                          10 multiplier output, 11 divider output)
+FPMATH_CTRL1        equ       $FFE1               w b1:0 what the output mux and the float-to-fixed converter see:
+*                                          00 multiply, 01 divide, 10 add/sub, 11 the constant 1.0
+FPMATH_CTRL2        equ       $FFE2               w input tvalid strobes: b0 converter A, b1 raw input 0,
+*                                          b2 converter B, b3 raw input 1
+FPMATH_CTRL3        equ       $FFE3               w spare control byte
+FPMATH_MUL_ST       equ       $FFE4               r multiply status: b4 tvalid, b3 zero, b2 underflow, b1 overflow,
+*                                          b0 NaN
+FPMATH_DIV_ST       equ       $FFE5               r divide status: b5 tvalid, b4 divide-by-zero, b3 zero,
+*                                          b2 underflow, b1 overflow, b0 NaN
+FPMATH_ADD_ST       equ       $FFE6               r add/subtract status: b4 tvalid, b3 zero, b2 underflow,
+*                                          b1 overflow, b0 NaN
+FPMATH_CNV_ST       equ       $FFE7               r float-to-fixed status: b3 tvalid, b2 underflow, b1 overflow,
+*                                          b0 NaN
+FPMATH_IN0          equ       $FFE8               w operand 0, 4 bytes, hi first
+FPMATH_OUT          equ       $FFE8               r the selected result (see FPMATH_CTRL1), 4 bytes
+FPMATH_IN1          equ       $FFEC               w operand 1, 4 bytes
+FPMATH_FIXED        equ       $FFEC               r that result converted to 20.12 fixed point, 4 bytes
 
 ; Sprite block0
 SPRITE_Ctrl_Enable  equ       $01
 SPRITE_LUT0         equ       $02
 SPRITE_LUT1         equ       $04
-SPRITE_DEPTH0       equ       $08       00 = total front - 01 = in between l0 and l1, 10 = in between l1 and l2, 11 = total back
+SPRITE_DEPTH0       equ       $08                 00 = total front - 01 = in between l0 and l1, 10 = in between l1 and l2, 11 = total back
 SPRITE_DEPTH1       equ       $10
-SPRITE_SIZE0        equ       $20       00 = 32x32 - 01 = 24x24 - 10 = 16x16 - 11 = 8x8
+SPRITE_SIZE0        equ       $20                 00 = 32x32 - 01 = 24x24 - 10 = 16x16 - 11 = 8x8
 SPRITE_SIZE1        equ       $40
 
 
-* Sprite attribute records (128 total, 8 bytes each) live in VICKY page
-* $C0 at page offsets $1300-$16FF (record n at $1300+8*n). The SPn_*
-* equates below assume that page mapped in MMU slot 7 ($E000 window,
-* the vtio/system-state convention) -> records at $F300+. Multi-byte
-* fields are BIG-endian (6809 rework, rc7 silicon): +1 = address HIGH,
-* +4 = X HIGH, +6 = Y HIGH - so a 16-bit STD at the _H offset stores
-* X or Y correctly in one instruction. (Pre-rework cores and the
-* official 65C02 documentation were little-endian; equates corrected
-* 2026-08-31.) Generic per-record offsets for indexed access:
-SPR_CTRL            equ       0         control byte (SPRITE_* bits above)
-SPR_ADDY_H          equ       1         pixel data physical address 23:16
-SPR_ADDY_M          equ       2         pixel data physical address 15:8
-SPR_ADDY_L          equ       3         pixel data physical address 7:0
-SPR_X_H             equ       4         X 15:8 (screen left = 32)
-SPR_X_L             equ       5         X 7:0
-SPR_Y_H             equ       6         Y 15:8 (screen top = 32)
-SPR_Y_L             equ       7         Y 7:0
-SPR_REC_SIZE        equ       8         bytes per sprite record
+* Sprite attribute records: 128 records of 8 bytes in VICKY page $FC at offsets $1300-$16FF
+* (record n at $1300+8*n), BIG-endian fields. Full layout and a worked recipe: Wildbits page,
+* sprite chapter. The SPn_* equates further down assume page $FC is mapped in MMU slot 7
+* ($E000 window, the vtio/system-state convention), which puts record 0 at $F300.
+* Generic per-record offsets for indexed access:
+SPR_CTRL            equ       0                   control byte (SPRITE_* bits above)
+SPR_ADDY_H          equ       1                   pixel data physical address 23:16
+SPR_ADDY_M          equ       2                   pixel data physical address 15:8
+SPR_ADDY_L          equ       3                   pixel data physical address 7:0
+SPR_X_H             equ       4                   X 15:8 (screen left = 32)
+SPR_X_L             equ       5                   X 7:0
+SPR_Y_H             equ       6                   Y 15:8 (screen top = 32)
+SPR_Y_L             equ       7                   Y 7:0
+SPR_REC_SIZE        equ       8                   bytes per sprite record
 
 * Where the sprite machinery lives (map these VICKY pages via an MMU slot):
-SPRITE_BLK          equ       $C0       VICKY page holding the 128 sprite records
-SPRITE_REC_OFF      equ       $1300     page offset of record 0 (records at +n*SPR_REC_SIZE)
-GRPH_LUT0_OFF       equ       $1000     graphics LUT0 offset within FONT_BLK ($C1); LUTn at +$400*n, 256 entries x B,G,R,A
+SPRITE_BLK          equ       VICKY_BLK                 VICKY page holding the 128 sprite records
+SPRITE_REC_OFF      equ       $1300               page offset of record 0 (records at +n*SPR_REC_SIZE)
+GRPH_LUT0_OFF       equ       $1000               graphics LUT0 offset within FONT_BLK ($FD); LUTn at +$400*n, 256 entries x B,G,R,A
+GRPH_LUT1_OFF       equ       $1400               graphics LUT1 page offset
+GRPH_LUT2_OFF       equ       $1800               graphics LUT2 page offset
+GRPH_LUT3_OFF       equ       $1C00               graphics LUT3 page offset
+GRPH_LUT_SIZE       equ       $0400               256 BGRA entries
 
 SP0_Ctrl            equ       $F300
-SP0_Addy_H          equ       $F301     pixel addr 23:16 (BIG-endian)
-SP0_Addy_M          equ       $F302     pixel addr 15:8
-SP0_Addy_L          equ       $F303     pixel addr 7:0
-SP0_X_H             equ       $F304     X 15:8 - STD here writes X in one op
-SP0_X_L             equ       $F305     X 7:0
-SP0_Y_H             equ       $F306     Y 15:8 - STD here writes Y in one op
-SP0_Y_L             equ       $F307     Y 7:0
+SP0_Addy_H          equ       $F301               pixel addr 23:16 (BIG-endian)
+SP0_Addy_M          equ       $F302               pixel addr 15:8
+SP0_Addy_L          equ       $F303               pixel addr 7:0
+SP0_X_H             equ       $F304               X 15:8 - STD here writes X in one op
+SP0_X_L             equ       $F305               X 7:0
+SP0_Y_H             equ       $F306               Y 15:8 - STD here writes Y in one op
+SP0_Y_L             equ       $F307               Y 7:0
 
 SP1_Ctrl            equ       $F308
-SP1_Addy_H          equ       $F309     pixel addr 23:16 (BIG-endian)
-SP1_Addy_M          equ       $F30A     pixel addr 15:8
-SP1_Addy_L          equ       $F30B     pixel addr 7:0
-SP1_X_H             equ       $F30C     X 15:8 - STD here writes X in one op
-SP1_X_L             equ       $F30D     X 7:0
-SP1_Y_H             equ       $F30E     Y 15:8 - STD here writes Y in one op
-SP1_Y_L             equ       $F30F     Y 7:0
+SP1_Addy_H          equ       $F309               pixel addr 23:16 (BIG-endian)
+SP1_Addy_M          equ       $F30A               pixel addr 15:8
+SP1_Addy_L          equ       $F30B               pixel addr 7:0
+SP1_X_H             equ       $F30C               X 15:8 - STD here writes X in one op
+SP1_X_L             equ       $F30D               X 7:0
+SP1_Y_H             equ       $F30E               Y 15:8 - STD here writes Y in one op
+SP1_Y_L             equ       $F30F               Y 7:0
 
 SP2_Ctrl            equ       $F310
-SP2_Addy_H          equ       $F311     pixel addr 23:16 (BIG-endian)
-SP2_Addy_M          equ       $F312     pixel addr 15:8
-SP2_Addy_L          equ       $F313     pixel addr 7:0
-SP2_X_H             equ       $F314     X 15:8 - STD here writes X in one op
-SP2_X_L             equ       $F315     X 7:0
-SP2_Y_H             equ       $F316     Y 15:8 - STD here writes Y in one op
-SP2_Y_L             equ       $F317     Y 7:0
+SP2_Addy_H          equ       $F311               pixel addr 23:16 (BIG-endian)
+SP2_Addy_M          equ       $F312               pixel addr 15:8
+SP2_Addy_L          equ       $F313               pixel addr 7:0
+SP2_X_H             equ       $F314               X 15:8 - STD here writes X in one op
+SP2_X_L             equ       $F315               X 7:0
+SP2_Y_H             equ       $F316               Y 15:8 - STD here writes Y in one op
+SP2_Y_L             equ       $F317               Y 7:0
 
 SP3_Ctrl            equ       $F318
-SP3_Addy_H          equ       $F319     pixel addr 23:16 (BIG-endian)
-SP3_Addy_M          equ       $F31A     pixel addr 15:8
-SP3_Addy_L          equ       $F31B     pixel addr 7:0
-SP3_X_H             equ       $F31C     X 15:8 - STD here writes X in one op
-SP3_X_L             equ       $F31D     X 7:0
-SP3_Y_H             equ       $F31E     Y 15:8 - STD here writes Y in one op
-SP3_Y_L             equ       $F31F     Y 7:0
+SP3_Addy_H          equ       $F319               pixel addr 23:16 (BIG-endian)
+SP3_Addy_M          equ       $F31A               pixel addr 15:8
+SP3_Addy_L          equ       $F31B               pixel addr 7:0
+SP3_X_H             equ       $F31C               X 15:8 - STD here writes X in one op
+SP3_X_L             equ       $F31D               X 7:0
+SP3_Y_H             equ       $F31E               Y 15:8 - STD here writes Y in one op
+SP3_Y_L             equ       $F31F               Y 7:0
 
 SP4_Ctrl            equ       $F320
-SP4_Addy_H          equ       $F321     pixel addr 23:16 (BIG-endian)
-SP4_Addy_M          equ       $F322     pixel addr 15:8
-SP4_Addy_L          equ       $F323     pixel addr 7:0
-SP4_X_H             equ       $F324     X 15:8 - STD here writes X in one op
-SP4_X_L             equ       $F325     X 7:0
-SP4_Y_H             equ       $F326     Y 15:8 - STD here writes Y in one op
-SP4_Y_L             equ       $F327     Y 7:0
+SP4_Addy_H          equ       $F321               pixel addr 23:16 (BIG-endian)
+SP4_Addy_M          equ       $F322               pixel addr 15:8
+SP4_Addy_L          equ       $F323               pixel addr 7:0
+SP4_X_H             equ       $F324               X 15:8 - STD here writes X in one op
+SP4_X_L             equ       $F325               X 7:0
+SP4_Y_H             equ       $F326               Y 15:8 - STD here writes Y in one op
+SP4_Y_L             equ       $F327               Y 7:0
 
 
 
 
-; PAGE $C1
-TyVKY_LUT0          equ       $E800     -$d000 - $d3ff
-TyVKY_LUT1          equ       $EC00     -$d400 - $d7ff
-TyVKY_LUT2          equ       $F000     -$d800 - $dbff
-TyVKY_LUT3          equ       $F400     -$dc00 - $dfff
+; PAGE $FD
+TyVKY_LUT0          equ       $F000               graphics LUT0, page $FD in slot 7
+TyVKY_LUT1          equ       $F400               graphics LUT1, page $FD in slot 7
+TyVKY_LUT2          equ       $F800               graphics LUT2, page $FD in slot 7
+TyVKY_LUT3          equ       $FC00               graphics LUT3, page $FD in slot 7
 
 
 ********************************************************************
-* Sound definitions (MMU Page $C4)
-*
-SND.Base            equ       $0000
-SIDL.Base           equ       SND.Base+$0000
-SIDM.Base           equ       SND.Base+$0080
-SIDR.Base           equ       SND.Base+$0100
-PSGL.Base           equ       SND.Base+$0200
-PSGM.Base           equ       SND.Base+$0208
-PSGR.Base           equ       SND.Base+$0210
+* Fixed CPU sound ports (K2/Jr2 rc18 and Longview; no MMU mapping)
+PSG_LEFT_PORT       equ       $FF91
+PSG_BOTH_PORT       equ       $FF92
+PSG_RIGHT_PORT      equ       $FF93
+OPL3_ADDR0_PORT     equ       $FF94               bank 0 register selector
+OPL3_DATA0_PORT     equ       $FF95               bank 0 data
+OPL3_ADDR1_PORT     equ       $FF96               bank 1 register selector
+OPL3_DATA1_PORT     equ       $FF97               bank 1 data
+SID_SELECT_PORT     equ       $FF98               bits 6:5 chip, bits 4:0 register
+SID_DATA_PORT       equ       $FF99
+SID_SELECT_LEFT     equ       $00
+SID_SELECT_RIGHT    equ       $20
+SID_SELECT_BOTH     equ       $40
 
 ********************************************************************
 * Direct Memory Access (DMA) definitions
 *
 DMA.Base            equ       $FEC0
 
+* Map corrected 2026-09-09 from the core RTL. THESE ARE THE WRITE ADDRESSES: reads come back
+* permuted, so a read-back-and-verify driver needs the permutation. Big endian.
+* rc17_dmahandshake fixes CPU HALT/bus handoff; no new control bit.
+* Completion IRQ is INT_DMA (INT_PENDING_0 b6) on both K2 and Jr2,
+* enabled by DMA_CTRL_Int_En; INT_MASK_0 b6 must also be unmasked.
+* How to drive it and the read permutation: Wildbits page, DMA engine.
                     org       0
-DMA_CTRL_REG        rmb       1         fec0
-DMA_STATUS_REG      rmb       1         fec1 read only
-DMA_DATA_2_WRITE    equ       DMA_STATUS_REG write only
-DMA_RESERVED_0      rmb       1         fec2
-DMA_RESERVED_1      rmb       1         fec3
-* Source address.
-DMA_SOURCE_ADDR_H   rmb       1         fec4
-DMA_SOURCE_ADDR_M   rmb       1         fec5
-DMA_SOURCE_ADDR_L   rmb       1         fec6
-DMA_RESERVED_2      rmb       1         fec7
-* Destination address.
-DMA_DEST_ADDR_H     rmb       1         fec8
-DMA_DEST_ADDR_M     rmb       1         fec9
-DMA_DEST_ADDR_L     rmb       1         feca
-DMA_RESERVED_3      rmb       1         fecb
-DMA_RESERVED_4      rmb       1         fecc
-* Size in 1D mode.
-DMA_SIZE_1D_H       rmb       1         fecd
-DMA_SIZE_1D_M       rmb       1         fece
-DMA_SIZE_1D_L       rmb       1         fecf
-* Size in 2D mode.
-DMA_SIZE_X_H        rmb       1         fed0
-DMA_SIZE_X_L        rmb       1         fed1
-DMA_SIZE_Y_H        rmb       1         fed2
-DMA_SIZE_Y_L        rmb       1         fed3
-* Stride in 2D mode.
-DMA_SRC_STRIDE_X_H  rmb       1         fed4
-DMA_SRC_STRIDE_X_L  rmb       1         fed5
-DMA_DST_STRIDE_Y_H  rmb       1         fed6
-DMA_DST_STRIDE_Y_L  rmb       1         fed7
-
-DMA_RESERVED_5      rmb       1
-DMA_RESERVED_6      rmb       1
-DMA_RESERVED_7      rmb       1
-DMA_RESERVED_8      rmb       1
+DMA_CTRL_REG        rmb       1                   fec0 w/r b0 ENABLE, b1 1D(0)/2D(1), b2 fill, b3 IRQ enable,
+*                                            b5:4 byte-lane mask - EITHER BIT SET DISABLES THAT LANE and
+*                                            the transfer runs to completion writing NOTHING,
+*                                            b6 double speed + 16-bit fill, b7 START
+DMA_STATUS_REG      rmb       1                   fec1 r b7 transfer in progress; b6:0 hardwired 0, so an idle
+*                                            block reads exactly $00
+DMA_FILL_BYTE       equ       DMA_STATUS_REG      fec1 w the 8-bit fill value (ctrl b6 clear)
+DMA_DATA_2_WRITE    equ       DMA_STATUS_REG      the older name for DMA_FILL_BYTE
+DMA_FILL_WORD_H     rmb       1                   fec2 w 16-bit fill, odd/high byte (ctrl b6 SET)
+DMA_FILL_WORD_L     rmb       1                   fec3 w 16-bit fill, even/low byte
+DMA_UNUSED_0        rmb       1                   fec4 nothing in the engine reads this byte
+* Source address, 24 bit.
+DMA_SOURCE_ADDR_H   rmb       1                   fec5 w source [23:16]
+DMA_SOURCE_ADDR_M   rmb       1                   fec6 w source [15:8]
+DMA_SOURCE_ADDR_L   rmb       1                   fec7 w source [7:0]
+DMA_UNUSED_1        rmb       1                   fec8 nothing in the engine reads this byte
+* Destination address, 24 bit.
+DMA_DEST_ADDR_H     rmb       1                   fec9 w destination [23:16]
+DMA_DEST_ADDR_M     rmb       1                   feca w destination [15:8]
+DMA_DEST_ADDR_L     rmb       1                   fecb w destination [7:0]
+* Sizes. In 2D mode X is the row length and Y the row count.
+DMA_SIZE_X_H        rmb       1                   fecc w X size [15:8]
+DMA_SIZE_X_L        rmb       1                   fecd w X size [7:0]
+DMA_SIZE_Y_H        rmb       1                   fece w Y size [15:8] - 2D ONLY, dropped in 1D
+DMA_SIZE_Y_L        rmb       1                   fecf w Y size [7:0]
+* Strides, 2D only.
+DMA_SRC_STRIDE_X_H  rmb       1                   fed0 w source stride [15:8]
+DMA_SRC_STRIDE_X_L  rmb       1                   fed1 w source stride [7:0]
+DMA_DST_STRIDE_Y_H  rmb       1                   fed2 w destination stride [15:8]
+DMA_DST_STRIDE_Y_L  rmb       1                   fed3 w destination stride [7:0]
+* fed4 is the LOGIC OP register on cores from rc17_dmaplus_fastervideo (2026-09-22); before that it was a
+* dead byte. Read b7 first: 1 = the ops exist, 0 = an older core (the byte then just stores what was written).
+DMA_OP_REG          rmb       1                   fed4 w b2:0 op, b3 NOT; r b7 = 1 ops implemented
+DMA_DEAD_0          equ       DMA_OP_REG          the old name
+* fed5-fed7 read and write as ordinary bytes but drive nothing at all.
+DMA_DEAD_1          rmb       1                   fed5
+DMA_DEAD_2          rmb       1                   fed6
+DMA_DEAD_3          rmb       1                   fed7
+* fed8-fedf are decoded but the register array is only 24 entries: writes vanish and reads return $FF.
+*
+* THE 1D LENGTH IS NOT A CONTIGUOUS FIELD. Controller:210 builds it as
+*     Count1D = {VDMA_Y_Size[7:0], VDMA_X_Size}
+* so its three bytes are scattered, and DMA_SIZE_Y_H is not part of it. Use these names in 1D mode:
+DMA_SIZE_1D_H       equ       DMA_SIZE_Y_L        fecf 1D count [23:16]
+DMA_SIZE_1D_M       equ       DMA_SIZE_X_H        fecc 1D count [15:8]
+DMA_SIZE_1D_L       equ       DMA_SIZE_X_L        fecd 1D count [7:0]
+* DMA_SIZE_Y_H (fece) must still be written, because it is a live 2D register that a previous transfer
+* may have left dirty - but its value is ignored while ctrl b1 is clear.
 
 * DMA_CTRL_REG bit definitions
 DMA_CTRL_Enable     equ       $01
 DMA_CTRL_1D_2D      equ       $02
 DMA_CTRL_Fill       equ       $04
 DMA_CTRL_Int_En     equ       $08
-DMA_CTRL_NotUsed0   equ       $10
-DMA_CTRL_NotUsed1   equ       $20
-DMA_CTRL_NotUsed2   equ       $40
+DMA_CTRL_MaskLSB    equ       $10                 NOT unused - masks the low byte lane (writes nothing)
+DMA_CTRL_MaskMSB    equ       $20                 NOT unused - masks the high byte lane
+DMA_CTRL_Dbl_Speed  equ       $40                 NOT unused - double speed, and fill takes the 16-bit word
+DMA_CTRL_NotUsed0   equ       DMA_CTRL_MaskLSB    old names, kept so existing code still assembles
+DMA_CTRL_NotUsed1   equ       DMA_CTRL_MaskMSB
+DMA_CTRL_NotUsed2   equ       DMA_CTRL_Dbl_Speed
 DMA_CTRL_Start_Trf  equ       $80
 
 * DMA_STATUS_REG bit definitions
-DMA_STATUS_TRF_IP   equ       $80       transfer in progress
+DMA_STATUS_TRF_IP   equ       $80                 transfer in progress
+
+* DMA_OP_REG bit definitions (rc17_dmaplus_fastervideo). S = the source byte (a copy) or the fill byte (a fill),
+* D = the destination byte before the write. 0 = the plain copy/fill of every earlier core. An op runs
+* three bus slots a byte instead of two (S read, D read, write). The lane mask (ctrl b5:4) applies on top.
+DMA_OP_COPY         equ       $00                 D = S
+DMA_OP_OR           equ       $01                 D = S | D
+DMA_OP_AND          equ       $02                 D = S & D
+DMA_OP_XOR          equ       $03                 D = S ^ D
+DMA_OP_MASK         equ       $04                 per nibble: a source nibble of 0 keeps D's (color 0 = paper)
+DMA_OP_NOT          equ       $08                 invert the result (with OR/AND/XOR: NOR/NAND/XNOR)
+DMA_OP_Implemented  equ       $80                 read-only: 1 = this core has the ops
+
+* grfdrv256's names for registers defined above.
+DMA_FILL_16_H       equ       DMA_FILL_WORD_H
+DMA_FILL_16_L       equ       DMA_FILL_WORD_L
+DMA_CTRL_16Bit      equ       DMA_CTRL_Dbl_Speed
+* The destination address reads back rotated: the byte written as H comes
+* back at feca, M at fec9 and L at fec8.  Diagnostic only.
+DMA_DEST_RD_H       equ       DMA_DEST_ADDR_M
+DMA_DEST_RD_M       equ       DMA_DEST_ADDR_H
+DMA_DEST_RD_L       equ       DMA_UNUSED_1
+
+* SS.BmClear wait modes: a number in bits 6:4 of R$X's high byte.  Mode 0
+* arms the fill and returns; mode 7 polls DMA_STATUS_REG until it is done.
+* Modes 1-6 are diagnostics from bringing up the DMA engine.  Bits 7 and
+* 3-1 must be zero (E$BadMod), so a caller using the old bitmask fails loudly.
+DmaSyncs            equ       1                   SYNC parks per call (mode 3)
+DmaCwChk            equ       8                   CWAI-and-check parks before giving up (mode 2)
+DmaDly7             equ       35714               register-only loop, 7 cycles a pass
+DmaDly12            equ       20833               the data-reading loops, 12 a pass
+DmaWt.Shift         equ       4                   shift R$X high right this far
+DmaWt.Mask          equ       7                   then keep this much
+DmaWt.Rsvd          equ       $8E                 bits 7 and 3-1: must all be zero
+DmaWt.None          equ       0                   arm and return
+DmaWt.Cwai          equ       1                   park in CWAI
+DmaWt.CwChk         equ       2                   park, re-check the status, park again
+DmaWt.Sync          equ       3                   park in SYNC
+DmaWt.Reg           equ       4                   a register-only loop
+DmaWt.Io            equ       5                   that loop reading $FE20
+DmaWt.Ram           equ       6                   that loop reading RAM
+DmaWt.Poll          equ       7                   poll DMA_STATUS_REG until done
+* SS.BmClear's R$Y high byte: 0 = arm at once, 1-255 = wait for that raster
+* line first (a measurement aid).  DMA_ArmLine is the earliest safe line;
+* the other two bound the raster spins so a stuck read-back cannot hang.
+DMA_ArmLine         equ       48
+DMA_ArmSpin         equ       1000
+DMA_ArmWrap         equ       20000
 
 
-* MIDI Synth Chip
-SAM2695.Base       equ        $FF30
-                   org        $0
-MIDI_STATUS        rmb        1                   Read: Bit[1] = Rx_empty, Bit[2] = Tx_empty
-MIDI_FIFO_DATA     rmb        1                   Read and Write Data Port 
-MIDI_RXD_COUNT_LOW rmb        1                   Rx FIFO Data Count LOW
-MIDI_RXD_COUNT_HI  rmb        1                   Rx FIFO Data Count Hi - Only the 4 first bit are valid
-MIDI_TXD_COUNT_LOW rmb        1                   Tx FIFO Data Count LOW 
-MIDI_TXD_COUNT_HI  rmb        1                   Tx FIFO Data Count Hi - Only the 4 first bit are valid
-
-
-* WizFi360 Registers, 2K x 2 FIFO
-* Wifi_Control_Register:
-* Bit[0] = 0 = 115,200K Mode, 1 = 921,600K Mode
-* Bit[1] = 0 Default, 1 = Reset FIFO (you need to bring it back to 0) This is directly connected to reset line of the FIFO
-* Bit[2] = RX FIFO Empty ( 1 = Empty, 0 = Data Available)
-* Bit[3] = TX FIFO Empty ( 1 = Empty, 0 = Data Available)
-WizFi.Base          equ       $FF20
-WizFi.TxEmpty       equ       %00001000
-WizFi.RxEmpty       equ       %00000100
-WizFi.Reset         equ       %00000010
-WizFi.Rate          equ       %00000001
+* SPLASH FLASH SPI controller
+* Reads the serial flash that holds the splash image.  Shares the WiFi
+* module's SPI bus pins (SCLK/MISO/MOSI) but has its own chip select, and is
+* clocked from 200MHz because the part will take 133MHz.  Present on both
+* machines.  Nothing in NitrOS-9 uses it today.
+*
+* Usage: write the flash command, the 24-bit source address and the transfer
+* size, then set bit 0 of the control register to start.  Poll the control
+* register while it runs and read bytes out of the data port.
+* Control register, on READ:
+* Bit[7] = Busy  ( 1 = transfer in progress )
+* Bit[6] = Read FIFO Empty ( 1 = Empty, 0 = Data Available )
+* Bits[5:0] = the low 6 bits of the control register as written
+* Control register, on WRITE:
+* Bit[0] = 1 starts the transfer (the engine runs while this bit is set)
+* CAUTION: offsets 2 and 3 do NOT read back what was written.  Written they
+* are the transfer size, HIGH byte first; read they are the read-FIFO fill
+* count, LOW byte first, and only the low 4 bits of the high byte are valid.
+SplashSPI.Base      equ       $FF10
+SplashSPI.Busy      equ       %10000000           read only: transfer in progress
+SplashSPI.RxEmpty   equ       %01000000           read only: read FIFO empty
+SplashSPI.Start     equ       %00000001           write: start the transfer
                     org       $0
-WizFi_CtrlReg       rmb       1
-WizFi_DataReg       rmb       1
-WizFi_RxD_RD_Cnt    rmb       2
-WizFi_RxD_WR_Cnt    rmb       2
-WizFi_TxD_RD_Cnt    rmb       2
-WizFi_TxD_WR_Cnt    rmb       2
+SPIF_CTRL           rmb       1                   control (write) / status (read), see above
+SPIF_CMD            rmb       1                   flash command byte
+SPIF_SIZE           rmb       2                   transfer size, high byte first (reads back as FIFO count, low first)
+SPIF_RSVD           rmb       1                   register 4 - not used by the datapath
+SPIF_ADDR           rmb       3                   flash source address, 24 bit, high byte first
+SPIF_DATA           rmb       1                   read FIFO data port (read only)
+
+
+* WizFi360 Registers
+* Two 2K FIFOs, one receive and one transmit - the same FIFO IP that the MIDI
+* port uses.  Each reports BOTH a read count and a write count, which is why
+* there are four counter pairs below - four counters, not four FIFOs.  Bytes
+* waiting in a FIFO = its WR count - its RD count.  Counts are 11 bits, so
+* only bits 10:8 of each high byte are valid.
+* Wifi_Control_Register:
+* Bit[0]: 0 = 115,200 baud; 1 = 921,600 baud (both directions).
+* Bit[1] = 0 Default, 1 = Reset FIFO (you need to bring it back to 0) This is directly connected to reset line of the FIFO
+* Bit[2] = RX FIFO Empty ( 1 = Empty, 0 = Data Available)  read only
+* Bit[3] = TX FIFO Empty ( 1 = Empty, 0 = Data Available)  read only
+* Unlike the MIDI port, all four bits work on every shipping core, and both
+* directions raise interrupts: INT_WIZFI_RX (group 3, bit 0) when the Rx FIFO
+* goes non-empty, INT_WIZFI_TX (group 3, bit 5) when the Tx FIFO drains empty.
+WizFi.Base          equ       $FF20
+WizFi.TxEmpty       equ       %00001000           Tx FIFO empty (read only)
+WizFi.RxEmpty       equ       %00000100           Rx FIFO empty (read only)
+WizFi.Reset         equ       %00000010           FIFO reset, active high - clears both FIFOs and both serial ends
+WizFi.Rate          equ       %00000001           0 = 115,200 baud, 1 = 921,600 baud
+                    org       $0
+WizFi_CtrlReg       rmb       1                   control register (bits 2 and 3 read back as status)
+WizFi_DataReg       rmb       1                   Rx/Tx FIFO data port (read and write)
+WizFi_RxD_RD_Cnt    rmb       2                   RX occupancy, read clock domain; big-endian
+WizFi_RxD_WR_Cnt    rmb       2                   RX occupancy, write clock domain; big-endian
+WizFi_TxD_RD_Cnt    rmb       2                   TX occupancy, read clock domain; big-endian
+WizFi_TxD_WR_Cnt    rmb       2                   TX occupancy, write clock domain; big-endian
+
+
+* MIDI UART: fixed 31,250 baud; one 2 KB FIFO per direction.
+* RD/WR counts are FIFO occupancy in each clock domain, not pointers.
+* Control: b1 reset (clear after use), b2 RX empty, b3 TX empty.
+* FIFO flags/reset work in rc11+; b0 rate selection is unused.
+* RX interrupt is INT_MIDI_RX; TX has no interrupt.
+MIDI.Base           equ       $FF30
+MIDI.TxEmpty        equ       %00001000           Tx FIFO empty (read only)
+MIDI.RxEmpty        equ       %00000100           Rx FIFO empty (read only)
+MIDI.Reset          equ       %00000010           FIFO reset only, active high (does not touch the 2695 synthesizer)
+MIDI.Rate           equ       %00000001           unused - the core has no rate select on the MIDI port
+                    org       $0
+MIDI_CTRL           rmb       1                   write control; read includes RX/TX empty flags
+MIDI_DATA           rmb       1                   Rx/Tx FIFO data port (read and write) (writes also go to the 2695 MIDI synthesizer)
+MIDI_RXD_RD_CNT     rmb       2                   RX occupancy, read clock domain; big-endian
+MIDI_RXD_WR_CNT     rmb       2                   RX occupancy, write clock domain; big-endian
+MIDI_TXD_RD_CNT     rmb       2                   TX occupancy, read clock domain; big-endian
+MIDI_TXD_WR_CNT     rmb       2                   TX occupancy, write clock domain; big-endian
+
+
+* W6100 ETHERNET bus interface - K2 ONLY
+* K2 W6100 bus adapter; the Jr2 does not decode this device.
+* Interrupt: INT_WIZNET (group 3, bit 3).
+*
+* Offsets 0-7 are control registers on WRITE.  Any offset with bit 3 set
+* ($FF48-$FF4F) is the FIFO data port: writing pushes the Tx FIFO, reading
+* pops the Rx FIFO.
+* Control register (offset 0), on WRITE:
+* Bit[0] = 1 enables the core
+* Bits[3:1] = operation select (000 = single write of the data byte below)
+* Bit[5] = 1 starts the transfer
+* Control register (offset 0), on READ: bit 7 = Busy, bits 6:0 read back.
+* CAUTION: the address bytes read back SWAPPED.  Written, offset 4 is the
+* high byte and offset 5 the low byte; read, offset 4 returns the low byte
+* and offset 5 the high byte.  The Rx FIFO count is 11 bits (2K) stored high
+* byte first at offsets 6 and 7; the Tx count is the low 8 bits only, at
+* offset 2, and offsets 1 and 3 read the chip's MR and Rx registers rather
+* than what was written there.
+W6100.Base          equ       $FF40
+W6100.Busy          equ       %10000000           read only: transfer in progress
+W6100.Start         equ       %00100000           write: start the transfer
+W6100.Enable        equ       %00000001           write: enable the core
+                    org       $0
+WIZ_CTRL            rmb       1                   control (write) / status (read), see above
+WIZ_MR              rmb       1                   W: mode register to write R: chip MR
+WIZ_DATA_W          rmb       1                   W: (unused) R: Tx FIFO count, low 8 bits
+WIZ_WRVAL           rmb       1                   W: single data byte to write R: chip Rx register
+WIZ_ADDR_H          rmb       1                   W: address high byte R: address LOW byte
+WIZ_ADDR_L          rmb       1                   W: address low byte R: address HIGH byte
+WIZ_RXCNT_H         rmb       1                   R: Rx FIFO count, bits 10:8
+WIZ_RXCNT_L         rmb       1                   R: Rx FIFO count, bits 7:0
+WIZ_FIFO            rmb       1                   $FF48-$FF4F: W = push Tx FIFO, R = pop Rx FIFO
+
+* Control register operation select, bits 3:1 (2026-10-09, from w6100eth.as and the bus adapter RTL).
+* Every transfer: write WIZ_CTRL = W6100.Enable + selects with Start clear, then again with W6100.Start
+* set (the 0->1 edge starts it), then wait for W6100.Busy to clear.
+W6100.SelBurst      equ       %00000010           bit 1: burst (FIFO) rather than a single byte
+W6100.SelARH        equ       %00000100           bits 3:1 = x10: the chip's IDM_ARH (the address high byte) through WIZ_MR
+W6100.SelRead       equ       %00001000           bit 3: read (clear = write)
+W6100.FIFOReset     equ       %00010000           bit 4: reset both FIFOs
+W6100.FIFOIrq       equ       %01000000           bit 6: FIFO empty/full interrupt enable
+* A chip register access: its high address byte goes to IDM_ARH (WIZ_MR, W6100.SelARH transfer), its block
+* to IDM_BSR (WIZ_ADDR_H) and its low byte to IDM_ARL (WIZ_ADDR_L); then a single transfer moves WIZ_WRVAL
+* (write) or returns the byte in WIZ_WRVAL (read).
+W61_BLK_COMMON      equ       $00                 IDM_BSR: the common register block
+
+* W6100 common registers (WIZnet W6100 datasheet v1.0.5, section 4.1; 16-bit offsets)
+W61_CIDR0           equ       $0000               chip ID, reads W61_CIDR0_ID
+W61_CIDR1           equ       $0001               reads W61_CIDR1_ID
+W61_VER0            equ       $0002               chip version, reads W61_VER0_ID
+W61_VER1            equ       $0003               reads W61_VER1_ID
+W61_SYSR            equ       $2000               system status (RO)
+W61_SLIR            equ       $2102               SOCKET-less interrupt flags (RO)
+W61_SLIRCLR         equ       $2128               SOCKET-less interrupt clear (W1)
+W61_SLCR            equ       $2130               SOCKET-less command
+W61_PHYSR           equ       $3000               PHY status (RO)
+W61_SHAR            equ       $4120               source MAC, 6 bytes (NETLCKR-locked)
+W61_GAR             equ       $4130               gateway IPv4, 4 bytes (locked)
+W61_SUBR            equ       $4134               subnet mask, 4 bytes (locked)
+W61_SIPR            equ       $4138               source IPv4, 4 bytes (locked)
+W61_SLDIPR          equ       $418C               SOCKET-less destination IPv4, 4 bytes
+W61_PINGIDR0        equ       $4198               PING ID, 2 bytes, R/W, reset $0000
+W61_PINGIDR1        equ       $4199
+W61_PINGSEQR0       equ       $419C               PING sequence number, 2 bytes, R/W, reset $0000
+W61_PINGSEQR1       equ       $419D
+W61_NETLCKR         equ       $41F5               network lock: write W61_NETLCKR_UNLOCK
+W61_CHPLCKR         equ       $41F4               chip lock: write W61_CHPLCKR_UNLOCK before SYCR0 (datasheet 4.1.59)
+W61_SYCR0           equ       $2004               system config 0 (WO): bit 7 RST - 0 resets the chip, 1 = normal (4.1.4)
+W61_SLRTR           equ       $4208               SOCKET-less retransmission time (100us units), R/W, reset $07D0
+W61_SLRCR           equ       $420C               SOCKET-less retransmission count, R/W
+W61_SLRTR_RESET     equ       $07D0               SLRTR's reset value: 200 ms
+W61_SLRCR_RESET     equ       $00                 SLRCR's reset value: no retransmission
+W61_CIDR0_ID        equ       $61
+W61_CIDR1_ID        equ       $00
+W61_VER0_ID         equ       $46
+W61_VER1_ID         equ       $61
+W61_NETLCKR_UNLOCK  equ       $3A
+W61_CHPLCKR_UNLOCK  equ       $CE
+W61_Sn_SR_CLOSED    equ       $00                 SOCK_CLOSED
+* SYSR bits
+W61_SYSR_CHPL       equ       %10000000           chip configuration locked
+W61_SYSR_NETL       equ       %01000000           network configuration locked
+W61_SYSR_PHYL       equ       %00100000           PHY configuration locked
+W61_SYSR_IND        equ       %00000010           parallel (indirect) bus interface - the K2's
+W61_SYSR_SPI        equ       %00000001           SPI interface
+* PHYSR bits
+W61_PHYSR_CAB       equ       %10000000           1 = cable unplugged
+W61_PHYSR_DPX       equ       %00000100           1 = half duplex (link up)
+W61_PHYSR_SPD       equ       %00000010           1 = 10 Mbps, 0 = 100 Mbps (link up)
+W61_PHYSR_LNK       equ       %00000001           1 = link up
+* SLCR / SLIR bits
+W61_SLCR_PING4      equ       %00100000           send an IPv4 PING (SLCR) / reply received (SLIR)
+W61_SLIR_TOUT       equ       %10000000           SOCKET-less command timed out
+W61_SLIR_PING4      equ       W61_SLCR_PING4      PING4 reply received
+W61_SLIR_ALL        equ       $FF                 every SLIR flag, through SLIRCLR
+* Socket blocks and registers (datasheet v1.0.5 section 4.2; 2026-10-10, diag's DNS lookup as w6100tel)
+W61_BLK_S0REG       equ       $08                 IDM_BSR: socket 0 registers; socket n (4n+1)<<3
+W61_BLK_S0TX        equ       $10                 socket 0 TX buffer; (4n+2)<<3
+W61_BLK_S0RX        equ       $18                 socket 0 RX buffer; (4n+3)<<3
+W61_Sn_MR           equ       $0000               socket mode
+W61_Sn_CR           equ       $0010               socket command; reads 0 once accepted
+W61_Sn_IR           equ       $0020               socket interrupt flags
+W61_Sn_IRCLR        equ       $0028               socket interrupt clear (W1)
+W61_Sn_SR           equ       $0030               socket status
+W61_Sn_PORTR        equ       $0114               source port, 2 bytes
+W61_Sn_DIPR         equ       $0120               destination IPv4, 4 bytes
+W61_Sn_DPORTR       equ       $0140               destination port, 2 bytes
+W61_Sn_TX_FSR       equ       $0204               TX free size, 2 bytes
+W61_Sn_TX_WR        equ       $020C               TX write pointer, 2 bytes
+W61_Sn_RX_RSR       equ       $0224               RX received size, 2 bytes
+W61_Sn_RX_RD        equ       $0228               RX read pointer, 2 bytes
+W61_Sn_MR_UDP4      equ       $02                 Sn_MR: UDP over IPv4
+W61_Sn_CR_OPEN      equ       $01
+W61_Sn_CR_CLOSE     equ       $10
+W61_Sn_CR_SEND      equ       $20
+W61_Sn_CR_RECV      equ       $40
+W61_Sn_SR_UDP       equ       $22                 SOCK_UDP: open in UDP mode
+W61_Sn_IR_SENDOK    equ       %00010000
+W61_Sn_IR_TIMEOUT   equ       %00001000
+W61_UDP4_HDR        equ       8                   UDP RX packet: info (2, length in bits 10:0), peer IPv4 (4), port (2)
+W61_UDP4_LENH       equ       %00000111           the length's high bits in the info's first byte
+
+
+********************************************************************
+* VS1053b audio decoder SPI bridge definitions
+*
+* Fixed I/O, identical on the K2 and Jr2 (core block VS1053_SPI_Interface,
+* CS $FF50-$FF5F; offsets 8-15 mirror 0-7 on read). The bridge runs 32-bit
+* SCI transactions over XCSn and streams a 2 KB byte FIFO to SDI over XDCSn
+* as DREQ permits; the CPU never sees DREQ. 16-bit pairs are BIG-endian
+* (high byte at the lower offset) since the 2026-09-05 core fix - cores
+* built before it have VS_DATA and VS_FIFOCNT the other way round.
+* SCI write: VS_SCIREG=reg, std VS_DATA, VS_CTRL=0, VS_CTRL=VS_START, wait !VS_BUSY
+* SCI read:  VS_SCIREG=reg, VS_CTRL=0, VS_CTRL=VS_START+VS_READ, wait !VS_BUSY, ldd VS_DATA
+* Stream:    while !(VS_FIFOSTAT & VS_FIFO_FULL) store bytes to VS_FIFO
+VS1053.Base         equ       $FF50
+                    org       0
+VS_CTRL             rmb       1                   bit0 START (0->1 edge starts an SCI transaction, does not self-clear), bit1 READ, bit2 FAST (rc12), bit3 RESET (rc12), bit7 BUSY (r/o)
+VS_SCIREG           rmb       1                   SCI register number in the low nibble (VS_MODE..VS_AICTRL3)
+VS_DATA             equ       .                   16-bit SCI data, big-endian: std to send, ldd for the last read result
+VS_DATAHI           rmb       1                   high byte
+VS_DATALO           rmb       1                   low byte
+VS_FIFOSTAT         rmb       1                   bit7 FIFO empty, bit6 FIFO full, bits 2-0 = count bits 10-8; reading it snapshots the count
+VS_FIFOCNTL         rmb       1                   count bits 7-0 from that snapshot (ldd VS_FIFOSTAT then anda #VS_FIFO_CNTHI = 11-bit count)
+VS_FIFOCNT          equ       VS_FIFOSTAT         16-bit alias for the ldd
+                    rmb       1                   reads $00
+VS_FIFO             rmb       1                   SDI stream data write: each byte is sent to the chip as DREQ permits
+* VS_CTRL bits
+VS_START            equ       %00000001
+VS_READ             equ       %00000010
+VS_FAST             equ       %00000100           rc12+: SPI clock IO_Clk/4 = 6.29 MHz, legal only after CLOCKF is raised (SCI reads need CLKI >= 44 MHz);
+*                                       0 (reset default) = IO_Clk/16 = 1.57 MHz, in spec at the chip's boot clock. Pre-rc12 cores ignore the bit.
+VS_RESET            equ       %00001000           rc12+: 1 = hold the chip's XRESET low (bit engine idle, SDI FIFO flushed) - the only way back
+*                                       for a chip stuck with DREQ low, since every SCI command waits for DREQ. Pre-rc12 cores ignore it.
+VS_BUSY             equ       %10000000
+* VS_FIFOSTAT bits
+VS_FIFO_EMPTY       equ       %10000000
+VS_FIFO_FULL        equ       %01000000
+VS_FIFO_CNTHI       equ       %00000111
+* VS1053b SCI register numbers (for VS_SCIREG)
+VS_MODE             equ       $0                  mode control
+VS_STATUS           equ       $1                  status
+VS_BASS             equ       $2                  bass/treble
+VS_CLOCKF           equ       $3                  clock frequency + multiplier
+VS_DECODE_TIME      equ       $4                  decode time in seconds
+VS_AUDATA           equ       $5                  misc. audio data (sample rate, channels)
+VS_WRAM             equ       $6                  RAM read/write
+VS_WRAMADDR         equ       $7                  RAM address
+VS_HDAT0            equ       $8                  stream header data 0 (read only)
+VS_HDAT1            equ       $9                  stream header data 1 (read only)
+VS_AIADDR           equ       $A                  application start address
+VS_VOL              equ       $B                  volume (left/right attenuation, 0.5dB steps)
+VS_AICTRL0          equ       $C                  application control 0
+VS_AICTRL1          equ       $D                  application control 1
+VS_AICTRL2          equ       $E                  application control 2
+VS_AICTRL3          equ       $F                  application control 3
+
+
+******************************************************************
+* NES/SNES pad port (the FNX4N4S connector; core block TinyVKY_NES_SNES,
+* CPU fixed decode $FF80-$FF8F, identical on the K2 and Jr2).  Four pads,
+* all NES or all SNES (one MODE bit for the port).  Write NES_TRIG to
+* shift a reading in; NES_DONE is set when it is complete and cleared by
+* the next trigger.  The pad registers shift in place, so read them only
+* while NES_DONE is set.  Data reads 0 = pressed.  Pad n at NES_PAD0+2n:
+* NES mode, the first byte = A B Select Start Up Down Left Right (bit 7
+* first); SNES mode, the first byte = B Y Select Start Up Down Left Right
+* and the second byte's low nibble = A X L R.
+NES.Base            equ       $FF80
+NES_CTRL            equ       0         write: EN, MODE, TRIG; read: the same with DONE in bit 6
+NES_PAD0            equ       4
+NES_EN              equ       %00000001 port on
+NES_MODE            equ       %00000100 1 = SNES (12 bits), 0 = NES (8 bits)
+NES_DONE            equ       %01000000 read only: a reading is complete
+NES_TRIG            equ       %10000000 start a reading; the core clears it when it latches
 
 * DIP Switches for Jr/Jr2/K2.. 
 K2_DIP_SW.Base      equ       $FF90
+DIP_SW.Base         equ       K2_DIP_SW.Base      shared K2/Jr2 address
 SW_GAMMA_ON         equ       %10000000
 SW_USER2            equ       %01000000
 SW_USER1            equ       %00100000
@@ -869,4 +1567,24 @@ SW_BOOT_MODE2       equ       %00000100
 SW_BOOT_MODE1       equ       %00000010
 SW_BOOT_MODE0       equ       %00000001
 
-                    ENDC
+
+* K2 RP2040 supervisor mailbox. Needs 16 registers which we find in two groups.
+* CPU counts are big endian; payloads LE.
+RP.Control equ $FE78
+RP.Status equ $FE79
+RP.Command equ $FE7A
+RP.Remote equ $FE7B
+RP.TxCount_H equ $FE7C
+RP.TxCount_L equ $FE7D
+RP.RxCount_H equ $FE7E
+RP.RxCount_L equ $FE7F
+RP.TxData equ $FE88
+RP.RxData equ $FE89
+RP.ADC0 equ $FE8A
+RP.ADC1 equ $FE8B
+RP.ADC2 equ $FE8C
+RP.ADC3 equ $FE8D
+RP.Error equ $FE8E
+RP.FwMajor equ $FE8F
+
+                    endc
