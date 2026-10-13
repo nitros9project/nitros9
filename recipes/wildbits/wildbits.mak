@@ -129,6 +129,22 @@ ifeq ($(LEVEL),2)
 # vs: VS1053 test command (wb/vs1053); on its own line so it never collides with edits to the CMDS list above
 CMDS += vs
 
+# Astro: launcher in CMDS, original data at root, private sound under astro/.
+ASTRO_DIR = $(LEVEL2)/wildbits/astroblaster/port
+CMDS += astro
+RECIPE_DEPS += $(ASTRO_DIR)/astro.dat $(ASTRO_DIR)/astro.snd $(MODDIR)/astrosnd
+$(MODDIR)/astro: $(ASTRO_DIR)/astro.asm $(wildcard $(ASTRO_DIR)/*.asm) $(L2PD)/defsfile $(DEFSDIR)/wildbits_vtio.d $(DEFSDIR)/wildbits.d | $(MODDIR)
+	$(AS) $(AFLAGS) --6809 -I$(L2PD) -I$(ASTRO_DIR) $< $(ASOUT)$@
+	m=$$(wc -c < $@); d=$$(od -An -tu1 -j11 -N2 $@ | awk '{print $$1*256+$$2}'); test $$(( (m+8191)/8192 + (d+8191)/8192 + 1 )) -le 7 || { echo "Astro exceeds process slots 0-6"; exit 1; }
+
+$(MODDIR)/astrosnd.module: $(ASTRO_DIR)/astrosnd.asm $(ASTRO_DIR)/sound_defs.asm $(ASTRO_DIR)/sound_assets.asm $(L2PD)/defsfile $(DEFSDIR)/wildbits.d | $(MODDIR)
+	$(AS) $(AFLAGS) --6809 -I$(L2PD) -I$(ASTRO_DIR) $< $(ASOUT)$@
+$(MODDIR)/asnd.module: $(ASTRO_DIR)/asnd.asm $(L2PD)/defsfile | $(MODDIR)
+	$(AS) $(AFLAGS) --6809 -I$(L2PD) -I$(ASTRO_DIR) $< $(ASOUT)$@
+$(MODDIR)/astrosnd: $(MODDIR)/astrosnd.module $(MODDIR)/asnd.module
+	cat $^ > $@
+	test $$(wc -c < $@) -le 8192 || { echo "Astro sound bundle exceeds one map slot"; exit 1; }
+
 # These commands live in the Level 2 source tree. Explicit prerequisites also
 # prevent an older Level 1 object from satisfying an incremental build.
 $(MODDIR)/view: $(L2PCD)/view.asm | $(MODDIR)
