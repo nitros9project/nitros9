@@ -434,6 +434,8 @@ MD.Byte0            rmb       1         ; packet byte 0 (buttons, signs)
 MD.Byte1            rmb       1         ; packet byte 1 (X movement)
 MD.Byte2            rmb       1         ; packet byte 2 (Y movement)
 MD.ByteCnt          rmb       1         ; packet bytes received
+MD.PktLen           rmb       1         ; bytes per packet: 3, or 4 for a wheel mouse (IntelliMouse ID 3)
+MD.Wheel            rmb       1         ; wheel steps since the last live SS.Mouse, signed, held at -128/+127
 MD.Size             equ       .
 
                     org       $1100
@@ -535,6 +537,7 @@ gr.MsDrv            rmb       MD.Size   ; mousedrv's block (MD.*, above)
 gr.MSButtons        equ       gr.MsDrv+MD.Buttons
 gr.MSTimer          equ       gr.MsDrv+MD.Timer
 gr.MSFound          equ       gr.MsDrv+MD.Found
+gr.MSWheel          equ       gr.MsDrv+MD.Wheel
 * The mouse table: one 8-byte row per terminal (id * 8, as gr.TermTbl and
 * gr.SprTbl), MT.* below.  SS.MsCfg's setting, and the pointer position and
 * shown/hidden state a switch saves when the terminal goes background and
