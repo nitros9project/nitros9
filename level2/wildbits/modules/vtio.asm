@@ -26,7 +26,7 @@ edition             set       3
 PSG.Base            equ       PSG_BOTH_PORT
 
 * Level 2 VTIO. Level 1 is vtio_l1.asm (MAPSLOT 7, no grfdrv256).
-* Do not alias 1-byte D.Boot. D.KbdSta is the 2-byte overlay at $18
+* Do not alias 1-byte D.Boot. D.KbdSta is the 2-byte overlay at $1A
 * from wildbits_vtio.d.
 
 * System LUT 0 slot 2 home is SRAM $03. Glyph/erase/scroll/blank,
