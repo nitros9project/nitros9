@@ -26,8 +26,6 @@ atrv                set       ReEnt+rev
 rev                 set       $00
 edition             set       4
 
-MAPSLOT             equ       MMU_SLOT_2
-MAPADDR             equ       (MAPSLOT-MMU_SLOT_0)*$2000
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -102,13 +100,15 @@ MsInit
                     lda       #$00
                     sta       MS_MEN              mode=0,en=0
 * Check if mouse exists on port 1 or port 2
-  	   	    lbsr      SetChMS	          check if mouse is on mouse channel
+                    leax      ChMouse,pcr         check if mouse is on mouse channel
+                    lbsr      SetCh
 		    lbsr      MouseExists	  
 		    bcc	      MouseInit		  no error=found mouse, init mouse
 		    lda	      INT_MASK_0	  load the interrupt mask
 		    anda      #INT_PS2_KBD	  and it with the ps/2 kbd bit
 		    lbeq      nomouse		  if it is zero, interrupt in use for kbd
-		    lbsr      SetChKBD		  else check if mouse on kbd channel
+                    leax      ChKbd,pcr           else check if mouse on kbd channel
+                    lbsr      SetCh
 		    lbsr      MouseExists
 		    lbcs      nomouse             if not there end else if found init mouse
 * Wheel: the IntelliMouse knock - sample rates 200, 100, 80 - asks for the
@@ -163,11 +163,10 @@ cont@               ldd       #INT_PENDING_0      get the pending interrupt pend
 		    anda      ,s
 store@              sta       INT_MASK_0          and save it back
 		    leas      1,s
-                    lbsr      MakeMSPointer       add pointer graphics for mouse
+* The pointer's image and its first showing are grfdrv256's (GF.InitDisp):
+* grfdrv is not loaded yet, and until the image is drawn the pointer stays
+* hidden.
 		    clr	      MD.ByteCnt,u	  clear mouse packet byte counter
-* Enable mouse cursor and legacy mode               
-                    lda       #$01
-                    sta       MS_MEN              show mouse and enable XY mode             
 * Enable mouse stream
                     lda       #$F4                enable mouse stream
                     lbsr      SendMCode
@@ -222,9 +221,7 @@ Term
                     ldx       #$0000              we want to remove the IRQ table entry
                     leay      IRQMSvc,pcr         point to the interrupt service routine
                     os9       F$IRQ               call to remove it
-noirq@              puls      u
-                    ldx       >D.OrgAlt           get the original alternate IRQ vector
-                    stx       <D.AltIRQ           save it back to the D.AltIRQ address
+noirq@              puls      u                   (vtio's Term puts D.AltIRQ back)
                     clrb                          clear the carry
                     rts                           return to the caller
 
@@ -314,36 +311,25 @@ mFound		    rts
 		    
 
 ***********************************************************************************
-* Set Mouse to be on the Mouse Channel
-* Want to set the channel to PS/2 channel 2 
-SetChMS	            ldd	      #MS_IN
-		    std	      MD.MS_IN,u
-		    lda	      #MEMP
-		    sta	      MD.MEMP,u
-		    lda	      #M_WR
-		    sta	      MD.M_WR,u
-		    lda	      #MCLR
-		    sta	      MD.MCLR,u
-		    lda	      #INT_PS2_MOUSE
-		    sta	      MD.IntBit,u
-		    rts
-
-***********************************************************************************
-* Set Mouse to be on the Mouse Channel
-* Want to set the channel to PS/2 channel 2 
-SetChKBD            ldd	      #KBD_IN
-		    std	      MD.MS_IN,u
-		    lda	      #KEMP
-		    sta	      MD.MEMP,u
-		    lda	      #K_WR
-		    sta	      MD.M_WR,u
-		    lda	      #KCLR
-		    sta	      MD.MCLR,u
-		    lda	      #INT_PS2_KBD
-		    sta	      MD.IntBit,u
-		    rts
-
-		    
+* SetCh - point the driver at a PS/2 channel: copy its 6 bytes from the
+* table at X into MD.MEMP, MD.MS_IN, MD.M_WR, MD.MCLR and MD.IntBit (in
+* that order in wildbits_vtio.d).  ChMouse is channel 2, ChKbd channel 1.
+                    ifne      MD.IntBit-MD.MEMP-5
+                    error     SetCh: MD.MEMP..MD.IntBit are not 6 bytes in a row
+                    endc
+SetCh               leay      MD.MEMP,u
+                    ldb       #6
+sc@                 lda       ,x+
+                    sta       ,y+
+                    decb
+                    bne       sc@
+                    rts
+ChMouse             fcb       MEMP
+                    fdb       MS_IN
+                    fcb       M_WR,MCLR,INT_PS2_MOUSE
+ChKbd               fcb       KEMP
+                    fdb       KBD_IN
+                    fcb       K_WR,KCLR,INT_PS2_KBD
 
 ***********************************************************************************
 * IRQ Mouse Service
@@ -397,50 +383,29 @@ procpacket          lda	      MD.Byte0,u
 	            pshs      a                   push a to store +- for xy
                     anda      #%00000111          just get button information
                     sta       MD.Buttons,u       store new button flags
-* Compute new X value and store in registers                
-computex            lda       ,s
-                    anda      #%00010000          check the X sign bit for + or - offset
-                    beq       posxvalue           branch if positive
-negxvalue           lda       #$FF                if neg, set high bit for 2's complement
-                    bra       contx@              neg value is 2's complement
-posxvalue           clra                    
-contx@              ldb       MD.Byte1,u         load byte#1 - x offet
-                    beq       computey            if 0, then skip comps and jump straight to y
-                    pshs      d                   not 0, push offset
-                    ldd       MS_XH               load current X value
-                    addd      ,s                  add offset
-                    cmpd      #0                  if <0, handle 0 limiter
-                    blt       xzero
-                    cmpd      #640                check for 640 limit
-                    bgt       x640                if >640, handle 640 limiter
-                    bra       storex              if not, then branch to store
-xzero               ldd       #0                  handle 0 limiter
-                    bra       storex
-x640                ldd       #640                handle 640 limiter  
-storex              std       MS_XH               store new x value
-                    puls      d
-* Compute new Y value and store in registers
-computey            lda       ,s
-                    anda      #%00100000          check the Y sign bit for + or - offser
-                    beq       posyvalue           branch if positive
-negyvalue           lda       #$FF                if neg, set high bit for 2's complement
-                    bra       conty@              neg value is 2's complement
-posyvalue           clra                    
-conty@              ldb       MD.Byte2,u         load byte#2 - y offet
-                    beq       finish@             if 0, then skip comps and jump to end
-                    pshs      d                   not 0, push offset
-                    ldd       MS_YH               load current Y value
-                    subd      ,s                  subtract offset (backwards b/c Y=0 at top of screen)
-                    cmpd      #0                  if <0, handle 0 limiter
-                    blt       yzero
-                    cmpd      #480                if >480, handle 480 limiter
-                    bgt       y480
-                    bra       storey              if not, branch to store
-yzero               ldd       #0                  handle 0 limiter
-                    bra       storey
-y480                ldd       #480                handle 480 limiter  
-storey              std       MS_YH               store new y value
-                    puls      d  
+* X: byte 1, sign in bit 4 of byte 0, added.
+                    ldb       MD.Byte1,u
+                    beq       computey            no X movement
+                    lda       ,s
+                    anda      #%00010000          the X sign bit
+                    beq       xpos@
+                    lda       #$FF                negative: D = $FFxx
+xpos@               ldx       #MS_XH
+                    ldy       #640
+                    bsr       MsMove
+* Y: byte 2, sign in bit 5, subtracted (Y = 0 at the top of the screen).
+computey            ldb       MD.Byte2,u
+                    beq       finish@             no Y movement
+                    lda       ,s
+                    anda      #%00100000          the Y sign bit
+                    beq       ypos@
+                    lda       #$FF
+ypos@               coma                          negate D
+                    comb
+                    addd      #1
+                    ldx       #MS_YH
+                    ldy       #480
+                    bsr       MsMove
 finish@             puls      a
 		    clr	      MD.ByteCnt,u
 		    lbra      getmpacket	  done, go check fifo for more data
@@ -448,55 +413,18 @@ IRQMExit            puls      a,b
 ex@                 clrb                          clear error (do we need to clear carry bit?)
 ex2@                rts                           return
 
-***********************************************************************************
-* MakeMSPointer
-* This draws the mouse pointer in black and white lines
-* The loop specifies the px color in a, and then length in b
-* The data in mspointer data is stored as color,length with a
-* terminating word of $0000
-* Map in block $C0, then $C00 offset
-* Mouse pointer is 16x16 at $18_0C00 which is block $C0 at $0C00
-MakeMSPointer       pshs      cc,a,x,y,u
-*                   **** map in $C0 for Mouse Graphics Registers
-                    orcc      #IntMasks
-                    lda       MAPSLOT
-                    pshs      a
-                    lda       #VICKY_BLK                get the MMU Block for bitmap addresses
-                    sta       MAPSLOT             store it in the MMU slot to map it in             
-                    ldx       #MAPADDR
-                    leax      $C00,x              mouse pointer graphics start at $C00 offset
-*                   ****      draw mouse pixels
-                    leay      mspointerdata,pcr   load mousedata pointer
-mouseloop@          ldd       ,y++                load color,length from data
-                    beq       mswritedone@        if d=$0000, then done
-                    bsr       mswritepx           write the pixel data
-                    bra       mouseloop@          loop if more data
-mswritedone@        puls      a
-                    sta       MAPSLOT
-                    puls      cc,u,y,x,a,pc                 
-
-* a=color,b=length
-mswritepx           sta       ,x+
-                    decb
-                    bne       mswritepx
+* MsMove - add D (signed) to the 16-bit pointer register at X, held to
+* 0..Y.  X and Y clobbered.
+MsMove              addd      ,x
+                    bpl       mm1@
+                    clra                          below 0: 0
+                    clrb
+mm1@                pshs      y
+                    cmpd      ,s++
+                    ble       mm2@
+                    tfr       y,d                 past the edge: the edge
+mm2@                std       ,x
                     rts
-
-mspointerdata       fcb       255,2,0,14
-                    fcb       255,1,1,1,255,1,0,13
-                    fcb       255,1,1,2,255,1,0,12
-                    fcb       255,1,1,3,255,1,0,11
-                    fcb       255,1,1,4,255,1,0,10
-                    fcb       255,1,1,5,255,1,0,9
-                    fcb       255,1,1,6,255,1,0,8
-                    fcb       255,1,1,7,255,1,0,7
-                    fcb       255,1,1,8,255,1,0,6
-                    fcb       255,1,1,9,255,1,0,5
-                    fcb       255,1,1,10,255,1,0,4
-                    fcb       255,1,1,6,255,5,0,4
-                    fcb       255,1,1,3,255,1,1,3,255,1,0,7
-                    fcb       255,1,1,2,255,3,1,2,255,1,0,7
-                    fcb       255,1,1,1,255,4,1,2,255,1,0,7
-                    fcb       255,2,0,4,255,3,0,7,0,0
 
                     emod
 eom                 equ       *
