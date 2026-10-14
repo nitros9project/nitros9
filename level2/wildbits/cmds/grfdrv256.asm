@@ -3735,9 +3735,10 @@ bad@                comb
                     ldb       #E$IllArg
                     jmp       >GrfMod+SysRet
 
-* GetStat SS.MsCfg - R$X = this terminal's mouse configuration (MC.* bits).
+* GetStat SS.MsCfg - R$X = this terminal's mouse configuration (MC.* bits),
+*   high byte the mouse speed (1-8, 0 = no mouse).
 GSMsCfg             bsr       MsRow
-                    clra
+                    lda       >gr.MsSpeed
                     ldb       MT.Cfg,y
                     std       R$X,x
                     clrb
@@ -3755,7 +3756,7 @@ GSMsCfg             bsr       MsRow
 SSMsCfg             bsr       MsRow
                     ldd       R$X,x
                     tsta
-                    bne       bad@
+                    bne       speed@    ; high byte: the mouse speed
                     cmpb      #MC.On    ; highest defined combination
                     bhi       bad@
                     tstb
@@ -3771,6 +3772,18 @@ ok@                 clrb
 bad@                comb
                     ldb       #E$IllArg
                     jmp       >GrfMod+SysRet
+* High byte 1-MS.SpdMax: the speed, for the whole machine and kept until it
+* is set again; the low byte is ignored, so setting the speed does not touch
+* this terminal's setting or its owner.
+speed@              cmpa      #MS.SpdMax
+                    bhi       bad@
+                    tst       >gr.MSFound
+                    beq       nomouse@
+                    bsr       MsSetSpd
+                    bcc       ok@
+nomouse@            comb
+                    ldb       #E$NotRdy
+                    jmp       >GrfMod+SysRet
 
 * MsRow - Y = this terminal's gr.MsTbl row (V.TermID * 8).  A, X, U kept.
 MsRow               ldb       V.TermID,u
@@ -3780,6 +3793,95 @@ MsRow               ldb       V.TermID,u
                     ldy       #gr.MsTbl
                     leay      b,y       ; b <= 64: positive as a signed offset
                     rts
+
+* MsSetSpd - A = speed 1-8: resolution (A-1)/2 (1, 2, 4, 8 counts/mm), 2:1
+*   scaling when A is even.  The mouse's interrupt is masked so its $FA
+*   acknowledgements come here instead of to mousedrv; the stream is paused
+*   ($F5) and restarted ($F4), and the packet count reset so mousedrv starts
+*   on a whole packet.  Carry set = the mouse stopped answering (the stream
+*   is restarted anyway).  X and Y are kept.
+MsSetSpd            pshs      a,x,y
+                    ldx       #gr.MsDrv
+                    pshs      cc
+                    orcc      #IntMasks
+                    lda       INT_MASK_0
+                    ora       MD.IntBit,x
+                    sta       INT_MASK_0 ; read-modify-write: shared with SOF, SOL, the PS/2 keyboard
+                    puls      cc
+                    lda       MD.MCLR,x ; drop any packet bytes already waiting
+                    sta       PS2_CTRL
+                    clr       PS2_CTRL
+                    lda       #$F5      ; stop the stream
+                    bsr       MsCmd
+                    bcs       restart@
+                    lda       MD.MCLR,x ; and anything that came before the stop
+                    sta       PS2_CTRL
+                    clr       PS2_CTRL
+                    lda       #$E8      ; resolution
+                    bsr       MsCmd
+                    bcs       restart@
+                    lda       ,s
+                    deca
+                    lsra                ; 0-3
+                    bsr       MsCmd
+                    bcs       restart@
+                    lda       ,s
+                    anda      #1        ; odd: 1:1 ($E6), even: 2:1 ($E7)
+                    eora      #$E7
+                    bsr       MsCmd
+                    bcs       restart@
+                    lda       ,s
+                    sta       >gr.MsSpeed
+restart@            pshs      cc        ; the carry so far
+                    lda       #$F4      ; the stream on again
+                    bsr       MsCmd
+                    bcc       on@
+                    lda       #Carry    ; it did not answer: fail as well
+                    ora       ,s
+                    sta       ,s
+on@                 orcc      #IntMasks
+                    clr       MD.ByteCnt,x ; the next byte starts a packet
+                    lda       MD.IntBit,x
+                    sta       INT_PENDING_0 ; drop an edge latched meanwhile (write 1 to clear)
+                    coma
+                    anda      INT_MASK_0
+                    sta       INT_MASK_0 ; unmask the mouse again
+                    puls      cc        ; the interrupts as they were, and the carry
+                    puls      a,x,y,pc
+
+* MsCmd - send A to the mouse and wait for its $FA (3 tries).  X = gr.MsDrv.
+*   Carry set = no answer.  A and B clobbered.
+MsCmd               pshs      a
+                    ldb       #3
+mc1@                lda       ,s
+                    clr       PS2_CTRL
+                    sta       PS2_OUT
+                    lda       MD.M_WR,x
+                    sta       PS2_CTRL
+                    clr       PS2_CTRL
+                    bsr       MsRead
+                    bcs       mcx@
+                    cmpa      #$FA
+                    beq       mcx@      ; acknowledged (cmpa equal: carry clear)
+                    decb
+                    bne       mc1@
+                    orcc      #Carry
+mcx@                puls      a,pc
+
+* MsRead - A = the next byte from the mouse's channel; carry set if none
+*   came (about 0.1 s).  X = gr.MsDrv.
+MsRead              pshs      y
+                    ldy       #0        ; 65536 tries
+mr1@                lda       PS2_STAT
+                    anda      MD.MEMP,x ; set = the channel's FIFO is empty
+                    beq       mr2@
+                    leay      -1,y
+                    bne       mr1@
+                    orcc      #Carry
+                    puls      y,pc
+mr2@                lda       [MD.MS_IN,x]
+                    andcc     #^Carry
+                    puls      y,pc
 
 *******************************************************************
 * The sprite calls.  A program keeps the ONLY copy of its records and

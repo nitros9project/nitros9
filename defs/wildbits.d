@@ -135,6 +135,10 @@ SS.TermSel          rmb       1                   $C5 R$X = terminal id: show it
 SS.LiveKeys         equ       $C6                 GetStat: R$A = live key sense bits, R$X/R$Y/R$U = keys held now; empties the input buffer
 SS.MsCfg            equ       $C7                 Get/SetStat: R$X = this terminal's mouse configuration bits (MC.*)
 MC.On               equ       %00000001           pointer always on (no auto-hide) while this terminal is live; 0 = auto-hide
+* SS.MsCfg R$X high byte = the mouse speed, for the whole machine: 0 = leave it (R$X low byte = MC.* as above),
+* 1-8 = set it (the low byte is then ignored).  GetStat: high byte = the speed, 0 = no mouse.
+MS.SpdMax           equ       8                   1-8: resolution 1,1,2,2,4,4,8,8 counts/mm, even = 2:1 scaling (acceleration)
+MS.SpdDef           equ       5                   what mousedrv sets at boot: 4 counts/mm, 1:1
 * SS.Joy ($13) modes, in R$X on entry (joust docs/grfdrv256-api.md)
 JOY.Stick0          equ       0                   stick 0, compatibility: R$X/R$Y = 0/128/255, R$A = buttons
 JOY.Stick1          equ       1                   stick 1, compatibility

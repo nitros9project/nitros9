@@ -143,6 +143,8 @@ nowheel@            lda       #$F3                set sample rate code
                     lbsr      SendMCode
                     lda       #$E6                set scaling at 1:1
                     lbsr      SendMCode
+                    lda       #MS.SpdDef          which is speed 5 (SS.MsCfg high byte)
+                    sta       >gr.MsSpeed
 *Set up mouse handler, this gets skipped if no mouse is detected                    
                     lda       #1
                     sta       MD.Found,u          a mouse: vtio may show the pointer (SS.MsCfg)

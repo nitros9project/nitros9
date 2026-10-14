@@ -548,6 +548,7 @@ gr.MSWheel          equ       gr.MsDrv+MD.Wheel
 * written out as gr.TermTbl's is: G.TermMax is defined further down, so
 * an rmb on it reserves nothing on pass 1 (checked where G.TermMax is).
 gr.MsTbl            rmb       72
+gr.MsSpeed          rmb       1         ; mouse speed 1-MS.SpdMax (SS.MsCfg high byte), 0 = no mouse
                     ifgt      .-F256Gfx
                     error     GrfMem past $11FF - runs into F256Gfx
                     endc
