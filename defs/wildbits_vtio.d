@@ -334,7 +334,10 @@ V.WSigFg            RMB       1         signal code for coming forward
 V.Last              EQU       .
 
 * Borrow DP after D.IRQTmp; stays below $20 so it does not hit Level 2 D.Tasks.
-                    org       D.IRQTmp
+* D.IRQTmp itself is the kernel's: F$Move (fmove.asm) uses both bytes as
+* scratch, so the borrowed block starts after it (it used to start AT it,
+* and every F$Move overwrote D.Bell).
+                    org       D.IRQTmp+2
 D.Bell              rmb       2
 D.TnCnt             rmb       1
 D.OrgAlt            rmb       2
@@ -346,6 +349,9 @@ D.KySns             rmb       1
 * Level 1 already has D.KbdSta at $6D in os9.d.
 D.KbdSta            rmb       2
                   ENDC
+                    ifgt      .-$20
+                    error     the borrowed DP block runs past $1F into the Level 1/2 DP variables
+                    endc
 
 * K-specific section
 * Borrow 9 bytes from "CoCo" specific area of system globals for platform use.
