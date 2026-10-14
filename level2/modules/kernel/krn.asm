@@ -90,7 +90,15 @@ MName               fcs       /Krn/
                     fcc       /www.nitros9.org /
                     fcc       /www.nitros9.org /
                   ELSE
+                  IFNE    immunity ; begin conditional assembly for immunity
+* The i-MMU-nity changes below are net 1 byte larger than the code they
+* replace (-8 for the block reservation, +5 for the slot 1 text screen
+* block, +4 for marking it in use), so pad by 1 less to keep the tail of
+* krn at the same address.
+                    fcc       /www.nit/
+                  ELSE
                     fcc       /www.nitr/
+                  ENDC
                   ENDC
                   ENDC
 
@@ -523,8 +531,19 @@ l@                  stu       ,x++      ; set all IRQ vectors to go to vectors f
                     lda       #$07      ; initialize all rest of the blocks to be free
                   ELSE
 *]]] Wildbits PORT
+*[[[ i-MMU-nity PORT
+* Slot 1 ($2000-$3FFF) of the system map permanently holds Bt.Block, a
+* motherboard block the VDG can display: covdg keeps its text screens there
+* (the boot screen is its $200-$3FF). Pages $20-$3F are reserved below.
+                  IFNE    immunity ; begin conditional assembly for immunity
+                    ldu       #Bt.Block ; the VDG text screen block
+                    stu       ,x++      ; in slot 1
+                    lda       #$05      ; initialize the other 5 blocks to be free
+                  ELSE
+*]]] i-MMU-nity PORT
 * Dat.BlCt-ROMCount-RAMCount = 8 - 1 - 1 = 6
                     lda       #$06      ; initialize the rest of the blocks to be free
+                  ENDC
                   ENDC
                     ldu       #DAT.Free ; load the free marker
 l@                  stu       ,x++      ; store it
@@ -574,7 +593,15 @@ pt_clr@             sta       ,x+       clear this slot
 
 * Update the system memory map to reserve the area used for global memory.
                     ldx       <D.SysMem ; get the system memory map pointer
+*[[[ i-MMU-nity PORT
+* Also reserve pages $20-$3F (system slot 1, the VDG text screen block) so
+* F$SRqMem never hands them out; covdg manages them.
+                  IFNE    immunity ; begin conditional assembly for immunity
+                    ldb       #$40      ; globals ($00-$1F) plus text screens ($20-$3F)
+                  ELSE
+*]]] i-MMU-nity PORT
                     ldb       <D.CCStk  ; get the MSB of the top of kernel memory
+                  ENDC
 * X indexes the system memory map.
 * B represents the number of 256-byte pages available.
 * Walk through the map, changing the corresponding elements from 0
@@ -721,6 +748,19 @@ KrnBlock            aslb                ; B <= 1 (hi bit goes into carry, 0 goes
 * $0240 = 512KB  ( 64 8KB blocks)
 * $0280 = 1024KB (128 8KB blocks)
 * $0300 = 2048KB (256 8KB blocks)
+*[[[ i-MMU-nity PORT
+* The i-MMU-nity has at least 512K, so there are no missing blocks to mark.
+* Instead reserve MMU blocks $38-$3E, the CoCo 1/2 motherboard RAM and the
+* only RAM the SAM/VDG can display ($3F holds krn). NotRAM, not RAMinUse, so
+* F$AllRAM/F$AlHRAM skip them and F$DelRAM can't free them; covdg claims a
+* screen block by setting RAMinUse on it. $3E stays reserved as the block
+* DAT.Free maps unused slots to. Bt.Block ($3B) is then marked RAMinUse
+* below. X=D.BlkMap here.
+                  IFNE    immunity ; begin conditional assembly for immunity
+                    leax      $38,x     ; first motherboard block
+                    ldd       #NotRAM*256+7 ; reserve 7 blocks, $38-$3E
+                  ELSE
+*]]] i-MMU-nity PORT
                     bitb      #%00110000 ; is the block above 128K-256K?
                     beq       Mc09KrnStart ; yes, no need to mark block map
                     tstb                ; is it 2 meg?
@@ -730,9 +770,20 @@ KrnBlock            aslb                ; B <= 1 (hi bit goes into carry, 0 goes
                     leax      -1,x      ; skip good blocks that are RAM
                     lda       #NotRAM   ; load the "Not RAM" flag
                     subb      #$3F      ; calculate the number of blocks to mark as not RAM
+                  ENDC
 l@                  sta       ,x+       ; mark them all
                     decb                ; are we done?
                     bne       l@        ; not yet
+*[[[ i-MMU-nity PORT
+* Bt.Block is system RAM in use: slot 1 of the system map always holds it.
+* Marked NotRAM, F$AllImg would fail with E$MemFul whenever F$SRqMem asks
+* it for slots 0-1, which it does when a request straddles two slots that
+* are both already mapped.
+                  IFNE    immunity ; begin conditional assembly for immunity
+                    lda       #RAMinUse ; get the RAM in use flag
+                    sta       Bt.Block-$3F,x ; mark Bt.Block (X=D.BlkMap+$3F here)
+                  ENDC
+*]]] i-MMU-nity PORT
 
 * ASSUME: however we got here, B=0
 Mc09KrnStart
