@@ -96,6 +96,7 @@ MsInit
 * |MS_YL      | Y7  | Y6  | Y5  | Y4  | Y3  | Y2  | Y1  | Y0  | $FEA5
 * 
                     clr       MD.Buttons,u       clear buttons
+                    clr       MD.Wheel,u         no wheel steps yet
 
 * Mode 0 and disable mouse cursor in case there is no mouse connected       
                     lda       #$00
@@ -106,11 +107,33 @@ MsInit
 		    bcc	      MouseInit		  no error=found mouse, init mouse
 		    lda	      INT_MASK_0	  load the interrupt mask
 		    anda      #INT_PS2_KBD	  and it with the ps/2 kbd bit
-		    beq	      nomouse		  if it is zero, interrupt in use for kbd
+		    lbeq      nomouse		  if it is zero, interrupt in use for kbd
 		    lbsr      SetChKBD		  else check if mouse on kbd channel
 		    lbsr      MouseExists
-		    bcs	      nomouse             if not there end else if found init mouse
-MouseInit           lda       #$F3                set sample rate code
+		    lbcs      nomouse             if not there end else if found init mouse
+* Wheel: the IntelliMouse knock - sample rates 200, 100, 80 - asks for the
+* wheel; a mouse that has one then identifies as 3 and sends 4-byte packets,
+* the 4th byte the wheel movement (signed).  Any other ID: 3-byte packets.
+* The sample rate is set for real below, after the knock.
+MouseInit           lda       #3
+                    sta       MD.PktLen,u
+                    leax      WheelKnock,pcr
+                    ldb       #6                  three F3 commands, each with its rate
+knock@              lda       ,x+
+                    lbsr      SendMCode           (keeps A and X; B only on failure)
+                    bcs       nowheel@
+                    decb
+                    bne       knock@
+                    lda       #$F2                identify
+                    lbsr      SendMCode
+                    bcs       nowheel@
+                    lbsr      ReadMPS2            A = the ID
+                    bcs       nowheel@
+                    cmpa      #3                  IntelliMouse: has a wheel
+                    bne       nowheel@
+                    lda       #4
+                    sta       MD.PktLen,u
+nowheel@            lda       #$F3                set sample rate code
                     lbsr      SendMCode
                     lda       #MS_SRATE           MS_SRATE defined as 40 in wildbits.d
                     lbsr      SendMCode
@@ -156,6 +179,9 @@ ex@                 rts                           return to the caller
                     
 ErrExit             orcc      #Carry              set the carry flag
                     rts                           return to the caller
+
+* the IntelliMouse knock: set sample rate 200, 100, 80
+WheelKnock          fcb       $F3,200,$F3,100,$F3,80
 
 ***********************************************************************************
 * The F$IRQ packet for the mouse channel.
@@ -348,8 +374,20 @@ getmpacket          ldb       PS2_STAT            read ps/2 status register dete
 		    cmpb      #2		  compare to see which byte we are reading in
 		    blo	      byte0@
 		    beq	      byte1@
+		    cmpb      #3
+		    bhi       byte3@              the 4th byte: the wheel
 byte2		    sta	      MD.Byte2,u
+		    cmpb      MD.PktLen,u         a wheel mouse has one more byte to come
+		    blo       getmpacket
 		    bra	      procpacket
+byte3@              adda      MD.Wheel,u          add the step to the count
+		    bvc       wheel@
+		    lda       #$7F                past the end: hold at +127 ...
+		    tst       MD.Wheel,u
+		    bpl       wheel@
+		    lda       #$80                ... or -128
+wheel@              sta       MD.Wheel,u
+		    bra       procpacket
 byte0@  	    sta	      MD.Byte0,u
 		    bra	      getmpacket
 byte1@              sta	      MD.Byte1,u

@@ -1030,6 +1030,7 @@ GSEnter             pshs      a
 * gets its full 4-5 s.
                     pshs      b
                     clr       >gr.MSTimer
+                    clr       >gr.MSWheel ; wheel steps made on the terminal we left are not this one's
                     ldy       #gr.MsTbl
                     leay      b,y       ; y = its mouse row (b <= 64)
                     lda       MT.Flags,y
@@ -1505,8 +1506,10 @@ GSDScrn             clra
                     std       R$Y,x
                     bra       StatOK
 
-* GetStat SS.Mouse - R$X/R$Y = position, R$A = buttons.  Live terminal:
-*   the pointer's position and mousedrv's buttons.  Not live: where the
+* GetStat SS.Mouse - R$X/R$Y = position, R$A = buttons, R$U = wheel steps
+*   since the last call (signed; 0 without a wheel mouse).  Live terminal:
+*   the pointer's position, mousedrv's buttons and wheel count (read and
+*   cleared together, interrupts masked).  Not live: where the
 *   pointer was when it went background (its gr.MsTbl row, saved by
 *   GFSwitch) and no buttons, so a background program sees nothing the user
 *   does on another terminal.  Y is free: StatDisp dispatched here with
@@ -1518,13 +1521,22 @@ GSMouse             lbsr      MsRow     ; y = this terminal's gr.MsTbl row
                     std       R$X,x
                     ldd       MS_YH
                     std       R$Y,x
+                    pshs      cc
+                    orcc      #IntMasks ; mousedrv adds to it from its interrupt
+                    ldb       >gr.MSWheel
+                    clr       >gr.MSWheel
+                    puls      cc
+                    sex
+                    std       R$U,x
                     lda       >gr.MSButtons
                     bra       RetA
 msbg@               ldd       MT.LastX,y
                     std       R$X,x
                     ldd       MT.LastY,y
                     std       R$Y,x
-                    clra                ; no buttons
+                    clra                ; no buttons, no wheel
+                    clrb
+                    std       R$U,x
                     bra       RetA
 
 * GetStat SS.Joy - R$X = the mode (JY.* modes, wildbits.d; spec in joust
