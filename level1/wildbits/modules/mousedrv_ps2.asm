@@ -406,9 +406,24 @@ procpacket          lda	      MD.Byte0,u
                     ldb       MD.Byte1,u          or any movement?
                     orb       MD.Byte2,u
                     beq       quiet@
-active@             ldb       #$01
+active@             clr       MD.Timer,u          restart the auto-hide timer
+* Show the pointer - unless the live terminal has SS.MsCfg MC.Off (its
+* gr.MsTbl row), which keeps it hidden.  A holds the new buttons.
+                    ldb       >gr.LiveTerm
+                    cmpb      #G.TermMax
+                    bhs       show@               no live terminal
+                    lslb                          b = id * 8, the row
+                    lslb
+                    lslb
+                    pshs      x
+                    ldx       #gr.MsTbl
+                    abx
+                    ldb       MT.Cfg,x
+                    puls      x
+                    bitb      #MC.Off
+                    bne       quiet@
+show@               ldb       #$01
                     stb       MS_MEN              show mouse and enable legacy mode
-                    clr       MD.Timer,u          restart the auto-hide timer
 quiet@              sta       MD.Buttons,u       store new button flags
 * X: byte 1, sign in bit 4 of byte 0, added.
                     ldb       MD.Byte1,u
