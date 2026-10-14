@@ -2986,7 +2986,8 @@ gco8@               leas      1,s       ; drop the size bit
 * are not guaranteed readable.  Every writer must keep the mirror in
 * step; every reader must use the mirror.  Later terminals inherit the
 * mirror from the live console in GF.TermNew.
-* Then the text cursor: enabled, flashing, '_' at 0,0.
+* Then the text cursor: enabled, flashing, '_' at 0,0, and the mouse
+* pointer's image (mousedrv used to draw it from the bootfile).
 *******************************************************************
 GFInitDisp          lbsr      SetBlkC2C3 ; u = this terminal's statics
                     leax      DispRegs,pcr
@@ -3014,8 +3015,41 @@ seed@               lda       ,x+
                     clrb
                     lbsr      SprClrFrom
                     clr       >gr.SprDirty
-                    clrb
+* The mouse pointer: 16x16 at VICKY_BLK+$0C00, from runs of colour,length
+* ($00 transparent, $01 black, $FF white), ended by 0,0.  mousedrv found
+* the mouse before grfdrv was loaded but leaves it hidden until the image
+* is here; show it now if there is one.
+                    ldx       #$2000+$0C00 ; the pointer image, through slot 1
+                    leay      MsPtrData,pcr
+msrun@              ldd       ,y++      ; colour, length
+                    beq       msdone@
+msdot@              sta       ,x+
+                    decb
+                    bne       msdot@
+                    bra       msrun@
+msdone@             tst       >gr.MSFound
+                    beq       msx@
+                    lda       #$01      ; shown, mode 0 (as mousedrv)
+                    sta       MS_MEN
+msx@                clrb
                     jmp       >GrfMod+SysRet
+
+MsPtrData           fcb       255,2,0,14
+                    fcb       255,1,1,1,255,1,0,13
+                    fcb       255,1,1,2,255,1,0,12
+                    fcb       255,1,1,3,255,1,0,11
+                    fcb       255,1,1,4,255,1,0,10
+                    fcb       255,1,1,5,255,1,0,9
+                    fcb       255,1,1,6,255,1,0,8
+                    fcb       255,1,1,7,255,1,0,7
+                    fcb       255,1,1,8,255,1,0,6
+                    fcb       255,1,1,9,255,1,0,5
+                    fcb       255,1,1,10,255,1,0,4
+                    fcb       255,1,1,6,255,5,0,4
+                    fcb       255,1,1,3,255,1,1,3,255,1,0,7
+                    fcb       255,1,1,2,255,3,1,2,255,1,0,7
+                    fcb       255,1,1,1,255,4,1,2,255,1,0,7
+                    fcb       255,2,0,4,255,3,0,7,0,0
 
 * The 16 bytes of $FFC0-$FFCF, in register order: MASTER_CTRL_REG_L/H,
 * VKY_LAYER_CTRL_L/H, BORDER_CTRL_REG, BORDER_COLOR_B/G/R,
