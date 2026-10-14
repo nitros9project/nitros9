@@ -135,6 +135,7 @@ SS.TermSel          rmb       1                   $C5 R$X = terminal id: show it
 SS.LiveKeys         equ       $C6                 GetStat: R$A = live key sense bits, R$X/R$Y/R$U = keys held now; empties the input buffer
 SS.MsCfg            equ       $C7                 Get/SetStat: R$X = this terminal's mouse configuration bits (MC.*)
 MC.On               equ       %00000001           pointer always on (no auto-hide) while this terminal is live; 0 = auto-hide
+MC.Off              equ       %00000010           pointer always off while this terminal is live (MC.On+MC.Off = E$IllArg)
 * SS.MsCfg R$X high byte = the mouse speed, for the whole machine: 0 = leave it (R$X low byte = MC.* as above),
 * 1-8 = set it (the low byte is then ignored).  GetStat: high byte = the speed, 0 = no mouse.
 MS.SpdMax           equ       8                   1-8: resolution 1,1,2,2,4,4,8,8 counts/mm, even = 2:1 scaling (acceleration)

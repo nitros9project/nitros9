@@ -1041,6 +1041,9 @@ GSEnter             pshs      a
                     ldd       MT.LastY,y
                     std       MS_YH
                     clrb                ; hidden
+                    lda       MT.Cfg,y  ; set to always off (SS.MsCfg)?
+                    bita      #MC.Off
+                    bne       msen@     ; yes: it comes forward hidden
                     lda       MT.Flags,y
                     bita      #MF.Shown
                     beq       msen@
@@ -3745,10 +3748,10 @@ GSMsCfg             bsr       MsRow
                     jmp       >GrfMod+SysRet
 
 * SetStat SS.MsCfg - R$X = this terminal's mouse configuration (MC.* bits):
-*   MC.On = the pointer stays on while this terminal is live; 0 = the
-*   defaults (auto-hide after 4-5 s without movement).  Bits not defined yet
-*   are E$IllArg.  Kept in the terminal's gr.MsTbl row; vtio's AltISR acts
-*   on it, and puts the defaults back once the calling process (vtio's
+*   MC.On (1) = the pointer stays on while this terminal is live, MC.Off (2)
+*   = it stays off; 0 = the defaults (auto-hide after 4-5 s without
+*   movement).  Both bits, and bits not defined yet, are E$IllArg.  Kept
+*   in the terminal's gr.MsTbl row; vtio's AltISR acts on it, and puts the defaults back once the calling process (vtio's
 *   StatFwd hands it over in gr.b2) has exited, so a program that dies
 *   without setting 0 does not leave the pointer on.  The owner is stored
 *   before the bits and the bits cleared before the owner, so the AltISR
@@ -3757,7 +3760,7 @@ SSMsCfg             bsr       MsRow
                     ldd       R$X,x
                     tsta
                     bne       speed@    ; high byte: the mouse speed
-                    cmpb      #MC.On    ; highest defined combination
+                    cmpb      #MC.Off   ; highest defined value (MC.On+MC.Off is not one)
                     bhi       bad@
                     tstb
                     beq       def@

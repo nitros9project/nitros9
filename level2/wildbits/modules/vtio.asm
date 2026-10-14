@@ -81,9 +81,10 @@ AltISR
 * Mouse timer resets on every mouse interrupt
 * This should hide the mouse after 4 to 5 seconds of inactivity
 * The timer and the found flag are mousedrv's (gr.MsDrv), one per machine.
-* SS.MsCfg MC.On in the live terminal's gr.MsTbl row skips the timer and
-* shows the pointer (when a mouse was found) while the process that set it
-* is alive; once it has exited (D.PrcDBT[id] reads 0) the row goes back to
+* SS.MsCfg in the live terminal's gr.MsTbl row skips the timer while the
+* process that set it is alive: MC.On shows the pointer (when a mouse was
+* found), MC.Off hides it (mousedrv does not show it on movement either).
+* Once that process has exited (D.PrcDBT[id] reads 0) the row goes back to
 * the defaults.  gr.LiveTerm is $FF when no terminal is open.
 HandleMSTimer       ldb       >gr.LiveTerm
                     cmpb      #G.TermMax
@@ -93,8 +94,7 @@ HandleMSTimer       ldb       >gr.LiveTerm
                     lslb
                     ldx       #gr.MsTbl
                     abx
-                    lda       MT.Cfg,x  ; always on for this terminal?
-                    bita      #MC.On
+                    tst       MT.Cfg,x  ; a setting for this terminal?
                     beq       autohide@ ; no, auto-hide
                     clra                ; d = owner id, unsigned
                     ldb       MT.CfgID,x ; is the process that set it alive?
@@ -102,7 +102,12 @@ HandleMSTimer       ldb       >gr.LiveTerm
                     leay      d,y
                     tst       ,y
                     beq       expire@   ; no, back to the defaults
-                    tst       MS_MEN    ; pointer already on?
+                    lda       MT.Cfg,x
+                    bita      #MC.Off   ; always off?
+                    beq       on@
+                    clr       MS_MEN    ; hide it
+                    bra       HandleKeySwtchTrm
+on@                 tst       MS_MEN    ; pointer already on?
                     bne       HandleKeySwtchTrm
                     tst       >gr.MSFound ; mouse found?
                     beq       HandleKeySwtchTrm ; no: no pointer to show
