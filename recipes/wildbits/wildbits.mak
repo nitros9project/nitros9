@@ -146,7 +146,7 @@ CMDS += dmem minted mmap modpatch \
 	lutrd black hexed pixview iss
 # grfdrv256 is loaded by the Level 2 vtio; vtm manages the virtual terminals;
 # assetload loads files into RAM blocks
-CMDS += grfdrv256 vtm assetload
+CMDS += grfdrv256 vtm assetload msspeed
 endif
 # sprites moved OUT of CMDS 2026-09-09 (user): it is a hardware probe, so it
 # lives in TESTS_BIN below and reaches the disk as TESTS/sprites only. Its
@@ -336,7 +336,7 @@ ifeq ($(LEVEL),2)
 # The Level 2 terminal modules are laid out by defs/wildbits_vtio.d and
 # defs/wildbits.d, and no generic rule makes a module depend on a defs file,
 # so without this an edit there silently leaves a stale module behind.
-$(MODDIR)/vtio $(MODDIR)/grfdrv256 $(MODDIR)/vtm $(MODDIR)/term $(MODDIR)/$(KEYSUB): $(DEFSDIR)/wildbits_vtio.d $(DEFSDIR)/wildbits.d
+$(MODDIR)/vtio $(MODDIR)/grfdrv256 $(MODDIR)/vtm $(MODDIR)/msspeed $(MODDIR)/term $(MODDIR)/$(KEYSUB): $(DEFSDIR)/wildbits_vtio.d $(DEFSDIR)/wildbits.d
 endif
 
 $(MODDIR)/sprtest2: $(LEVEL1)/wildbits/cmds/sprtest2.asm | $(MODDIR)
