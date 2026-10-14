@@ -1705,6 +1705,7 @@ GetStat             cmpa      #SS.EOF   ; is this the EOF call?
 *
 SSReady             lda       V.IBufH,u ; else get get the buffer tail ptr
                     suba      V.IBufT,u ; a = the number of characters ready to read
+                    anda      #KBufSz-1 ; modulo the buffer size: the head may have wrapped past the tail
                     sta       R$B,x     ; save in the caller's B
                     beq       NotReady  ; if there's no data in keyboard buffer, return the "not ready" error
 SSEOF               clrb                ; clear the error code and carry
