@@ -9,6 +9,10 @@ WILDBITS_VTIO.D     SET       1
 
 * Constant definitions.
 KBufSz              EQU       8         the circular buffer size
+* SS.Ready counts head - tail modulo KBufSz with an AND, so it must be a power of two.
+                    ifne      KBufSz&(KBufSz-1)
+                    error     KBufSz must be a power of two
+                    endc
 
 * Driver static memory.
                     ORG       V.SCF
