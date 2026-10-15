@@ -67,7 +67,7 @@ MsInit
 * Wildbitgs/Jr PS/2 mouse  initialization                    
 * Initialize the registers and send the right codes to the mouse
 * $FF - Mouse Reset (should return self test successful $AA and id $00)
-* $F3 - sample rate (10,20,40,80,100,200) - use 40 times/sec for Wildbits
+* $F3 - sample rate (10,20,40,60,80,100,200) - use 100 times/sec for Wildbits
 *       sample rate defined in MS_SRATE in wildbits.d
 * $E8 - Set Resolution $00=1/mm.$01=2/mm.$03=4/mm,$04=8/mm
 * $E6 - Scaling 1:1 ($E7=2:1 scaling)
@@ -135,7 +135,7 @@ knock@              lda       ,x+
                     sta       MD.PktLen,u
 nowheel@            lda       #$F3                set sample rate code
                     lbsr      SendMCode
-                    lda       #MS_SRATE           MS_SRATE defined as 40 in wildbits.d
+                    lda       #MS_SRATE           MS_SRATE defined as 100 in wildbits.d
                     lbsr      SendMCode
                     lda       #$E8                set resolution
                     lbsr      SendMCode
