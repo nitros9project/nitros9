@@ -349,10 +349,9 @@ ChKbd               fcb       KEMP
 IRQMSvc             pshs      a,b
                     lda       MD.IntBit,u      get the PS/2 mouse interrupt flag
                     sta       INT_PENDING_0       clear the interrupt
-* Enable mouse cursor if it has been auto-hid               
-                    lda       #$01
-                    sta       MS_MEN              show mouse and enable legacy mode
-                    clr       MD.Timer,u         reset the auto-hide timer (wildbits_vtio.d)
+* The pointer is shown and the auto-hide timer restarted in procpacket, only
+* for a packet that moves or changes a button: an interrupt or a packet
+* with neither (some mice send them) must not keep the pointer up.
 getmpacket          ldb       PS2_STAT            read ps/2 status register detect empty fifo
                     andb      MD.MEMP,u            check byte ready in fifo
                     lbne      IRQMExit            exit if empty
@@ -393,7 +392,15 @@ byte1@              sta	      MD.Byte1,u
 procpacket          lda	      MD.Byte0,u
 	            pshs      a                   push a to store +- for xy
                     anda      #%00000111          just get button information
-                    sta       MD.Buttons,u       store new button flags
+                    cmpa      MD.Buttons,u        a button changed?
+                    bne       active@
+                    ldb       MD.Byte1,u          or any movement?
+                    orb       MD.Byte2,u
+                    beq       quiet@
+active@             ldb       #$01
+                    stb       MS_MEN              show mouse and enable legacy mode
+                    clr       MD.Timer,u          restart the auto-hide timer
+quiet@              sta       MD.Buttons,u       store new button flags
 * X: byte 1, sign in bit 4 of byte 0, added.
                     ldb       MD.Byte1,u
                     beq       computey            no X movement
