@@ -376,8 +376,17 @@ byte3@              adda      MD.Wheel,u          add the step to the count
 		    lda       #$80                ... or -128
 wheel@              sta       MD.Wheel,u
 		    bra       procpacket
-byte0@  	    sta	      MD.Byte0,u
+* A packet's first byte (buttons and signs) always has bit 3 set.  A first
+* byte without it means the stream slipped - a byte lost or one extra - so
+* drop it and wait for one that starts a packet; counting blindly would read
+* movement as buttons for good.  (rc25's framer applies the same rule, but
+* only to 3-byte packets, so it cannot serve a wheel mouse.)
+byte0@              bita      #%00001000
+		    beq       resync@
+		    sta	      MD.Byte0,u
 		    bra	      getmpacket
+resync@             clr       MD.ByteCnt,u        not a first byte: drop it
+		    bra       getmpacket
 byte1@              sta	      MD.Byte1,u
 		    bra       getmpacket
 		    
