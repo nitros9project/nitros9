@@ -504,7 +504,7 @@ MS_YL               equ       $FEA5               mouse Y bits 7:0
 MS_PS2B0            equ       $FEA6               mouse PS/2 Byte 0
 MS_PS2B1            equ       $FEA7               mouse PS/2 Byte 1
 MS_PS2B2            equ       $FEA8               mouse PS/2 Byte 2
-MS_SRATE            equ       $28                 mouse sample rate $A,$14,$28,$3C,$50,$64,$C8
+MS_SRATE            equ       $64                 mouse sample rate $A,$14,$28,$3C,$50,$64,$C8 (100/s, as on a PC; was 40)
 
 ********************************************************************
 * K2 optical keyboard definitions
