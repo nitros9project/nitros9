@@ -319,8 +319,10 @@ ex@                 ldd       #0        ; set D to 0
 ****************************************************************
 ******             Start GrfDrv Init Routines             ******
 ****************************************************************
-ClrGrfMem           ldx       #GrfMem   ; point to GrfMem
-                    ldy       #512      ; size
+* GrfMem and F256Gfx ($1100-$12FF), and the mouse globals below them
+* ($1080 up, defs/wildbits_vtio.d) - one range, nothing else is in it.
+ClrGrfMem           ldx       #gr.MsDrv ; the mouse globals, then GrfMem
+                    ldy       #GrfMem+512-gr.MsDrv ; up to $12FF
 clrgrf              clr       ,x+
                     leay      -1,y
                     bne       clrgrf
