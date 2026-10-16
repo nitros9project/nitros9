@@ -97,6 +97,9 @@
 
                     ifp1
                     use       defsfile
+                    ifgt      Level-1
+                    use       dragondisk.d
+                    endc
                     endc
 
                     ifne      dalpha
@@ -240,7 +243,11 @@ Init
                     endc
 
                     clra
+                    ifeq      Level-1
                     sta       >D.DskTmr           ; Zero motor timer
+                    else
+                    sta       >D.MotOn            ; Zero motor timer
+                    endc
 
                     ifne      dalpha              ; Turn off all drives
                     lbsr      AlphaDskCtl
@@ -269,9 +276,13 @@ InitDriveData
                     bne       InitDriveData
 
                     leax      >NMIService,pcr     ; Setup NMI handler
+                    ifeq      Level-1
                     stx       >D.XNMI+1
                     lda       #$7E                ; $7E = JMP
                     sta       >D.XNMI
+                    else
+                    stx       >D.NMI              ; Level 2: krn jumps through D.NMI
+                    endc
 
                     clr       VIRQInstalled,u     ;flag not installed yet
 
@@ -556,6 +567,10 @@ WriteDataReady
 
 NMIService
                     leas      R$Size,s            ; Drop regs from stack
+                    ifgt      Level-1
+                    lda       #$FF                ; krn's NMI path set DP=0; the
+                    tfr       a,dp                ; code below addresses I/O via DP
+                    endc
                     bsr       RestoreSavedIO      ; Restore saved IO states
                     puls      y,dp,cc
                     ldb       >CmdReg
@@ -896,8 +911,10 @@ SetStat
 
                     cmpb      #SS.Reset           ; Restore to track 0.
                     beq       ResetTrack0
+                    ifeq      Level-1
                     cmpb      #SS.Wtrk            ; Write (format) a track
                     beq       DoWriteTrack
+                    endc                          ; Level 2: no format yet (user buffer)
                     comb
                     ldb       #E$UnkSvc
 SetStatEnd
@@ -951,7 +968,11 @@ ResetTrack0Loop
 
 StartMotor
                     pshs      x,b,a
+                    ifeq      Level-1
                     lda       >D.DskTmr           ; if timer <> 0 then skip as motor already on
+                    else
+                    lda       >D.MotOn            ; if <> 0 then motor already on
+                    endc
                     bne       MotorsRunning
                     lda       #MotorOn            ; else spin up
 

@@ -1867,6 +1867,9 @@ EvalMatrix
                     deca                          ie. lda #%11111110
                     sta       $02,x               strobe one column
 KL006E              lda       ,x                  read PIA #0 row states
+                    ifne      (tano+d64+dalpha+dplus)
+                    lbsr      DragonToCoCo        Dragon keyboard rows to CoCo order
+                    endc
                     coma                          invert bits so 1=key pressed
                     anda      #$7F                keep only keys, bit 0=off 1=on
                     beq       KL0082              no keys pressed, try next column
@@ -2110,6 +2113,34 @@ KL01DC              fcb       $40,$60,$00         '@,'`,null
                     fcb       $05,$03,$1b         BREAK key (ENQ,ETX,ESC)
                     fcb       $31,$33,$35         F1 key (converts to $B1,$B3,$B5)
                     fcb       $32,$34,$36         F2 key (converts to $B2,$B4,$B6)
+
+                    ifne      (tano+d64+dalpha+dplus)
+* Convert Dragon keyboard rows to the CoCo layout (from level1 vtio.asm).
+* Entry: A=Dragon PIA0 row byte
+* Exit:  A=CoCo row byte (bit 6 and bit 7 unchanged)
+DragonToCoCo        pshs      b
+                    sta       ,-s                 Dragon row byte
+                    tfr       a,b
+                    ifne      H6309
+                    andd      #%0100000000000011
+                    else
+                    anda      #%01000000          top row same on both machines
+                    andb      #%00000011          bottom 2 rows up 4 places
+                    endc
+                    lslb
+                    lslb
+                    lslb
+                    lslb
+                    pshs      b
+                    ora       ,s+
+                    ldb       ,s
+                    andb      #%00111100          middle 4 rows down 2 places
+                    lsrb
+                    lsrb
+                    stb       ,s
+                    ora       ,s+
+                    puls      b,pc
+                    endc
 
                     emod
 eom                 equ       *

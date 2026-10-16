@@ -106,8 +106,28 @@ RBF ?= rbf.mn rbsuper.dr llcocosdc.dr ddsd0_cocosdc.dd sd0_cocosdc.dd \
 	sd1_cocosdc.dd $(FLOPPY)
 # 1024 tracks x 18 sectors x 256 bytes = 4.5MB, the size used on the SDC so far
 OS9FORMAT_CMD ?= $(OS9FORMAT) -t1024 -ss -dd
+else ifeq ($(MEDIA),dragon)
+# Dragon 64: DragonDOS controller (ddisk), Dragon keyboard rows in VTIO,
+# stage-0 loader in the DragonDOS boot area (LSN 2-17) that loads the
+# normal kernel track from track 34.
+AFLAGS += -Dd64=1
+vpath %.asm $(LEVEL1)/d64/modules
+BOOTER ?= boot_d64
+RBF ?= rbf.mn ddisk.dr ddd0_dg$(TRACKS).dd d0_dg$(TRACKS).dd \
+	d1_dg$(TRACKS).dd d2_dg$(TRACKS).dd
+ifeq ($(TRACKS),40)
+OS9FORMAT_CMD ?= $(OS9FORMAT_DS40) -dr
+else ifeq ($(TRACKS),80)
+OS9FORMAT_CMD ?= $(OS9FORMAT_DS80) -dr
 else
-$(error Unsupported MEDIA "$(MEDIA)"; use MEDIA=floppy or MEDIA=sdc)
+$(error Unsupported TRACKS "$(TRACKS)"; use TRACKS=40 or TRACKS=80)
+endif
+GEN_DEPS = $(MODDIR)/stage0_d64
+GEN_PRE = $(OS9GEN) $@ -d -t=$(MODDIR)/stage0_d64
+XROAR_RUN = -machine dragon64 -machine-opt immunity -cart dragondos \
+	-load-fd0 $(DSKIMAGE) -type 'BOOT\r'
+else
+$(error Unsupported MEDIA "$(MEDIA)"; use MEDIA=floppy, sdc or dragon)
 endif
 
 # ---------------------------------------------------------------------------
@@ -164,9 +184,10 @@ kernelfile: $(addprefix $(MODDIR)/,$(KERNEL_TRACK))
 bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
 
-$(DSKIMAGE): libs kernelfile bootfile $(MODDIR)/sysgo_dd $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) | $(SYSDIR)
+$(DSKIMAGE): libs kernelfile bootfile $(MODDIR)/sysgo_dd $(GEN_DEPS) $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) | $(SYSDIR)
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
+	$(GEN_PRE)
 	$(OS9GEN) $@ -b=bootfile -t=$(KERNELFILE)
 	$(MAKDIR) $@,CMDS
 ifneq ($(SYSDIR),)
@@ -192,8 +213,9 @@ endif
 # Run the image in the locally built XRoar with the i-MMU-nity MMU.
 # XRoar has no CoCo SDC emulation, so this only makes sense for MEDIA=floppy.
 XROAR ?= $(NITROS9DIR)/../xroar/run-memjr.sh
+XROAR_RUN ?= -load-fd0 $(DSKIMAGE) -type 'DOS\r'
 run: $(DSKIMAGE)
-	$(XROAR) -load-fd0 $(DSKIMAGE) -type 'DOS\r'
+	$(XROAR) $(XROAR_RUN)
 
 # ---------------------------------------------------------------------------
 # Rules for sources that exist in more than one vpath directory
@@ -238,6 +260,28 @@ $(MODDIR)/boot_1773_6ms: boot_1773.asm | $(MODDIR)
 
 $(MODDIR)/boot_sdc: boot_sdc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(SDFLAGS)
+
+# Dragon 64 (MEDIA=dragon)
+$(MODDIR)/boot_d64: boot_d64.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=0 -DSTEP=0
+
+$(MODDIR)/stage0_d64: stage0_d64.asm | $(MODDIR)
+	$(ASROM) $< $(ASOUT)$@
+
+DGDS40 = -DCyls=40 -DSides=2 -DSectTrk=18 -DSectTrk0=18 -DInterlv=2 -DSAS=8 -DDensity=1
+DGDS80 = -DCyls=80 -DSides=2 -DSectTrk=18 -DSectTrk0=18 -DInterlv=2 -DSAS=8 -DDensity=1 -DD35
+
+$(MODDIR)/ddd0_dg%.dd: ddiskdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DGDS$*) -DDNum=0 -DDD=1
+
+$(MODDIR)/d0_dg%.dd: ddiskdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DGDS$*) -DDNum=0
+
+$(MODDIR)/d1_dg%.dd: ddiskdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DGDS$*) -DDNum=1
+
+$(MODDIR)/d2_dg%.dd: ddiskdesc.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(DGDS$*) -DDNum=2
 
 $(MODDIR)/sysgo_dd: sysgo.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDD=1

@@ -47,6 +47,9 @@
 
                     ifp1
                     use       defsfile
+                    ifgt      Level-1
+                    use       dragondisk.d
+                    endc
                     endc
 
                     ifne      dalpha
@@ -186,9 +189,13 @@ HWInit              clra
                     lda       #$FF
                     sta       CurrentTrack,u
                     leax      >NMIService,pcr     Setup NMI Handler.
+                    ifeq      Level-1
                     stx       >D.XNMI+1
                     lda       #$7E                $7E=JMP
                     sta       >D.XNMI
+                    else
+                    stx       >D.NMI              Level 2: krn jumps through D.NMI
+                    endc
 
                     lda       #MotorOn            Turn on motor
                     ora       WhichDrv,pcr        OR in selected drive
@@ -308,8 +315,11 @@ ReadDataNow
 *
 
 NMIService
-
                     leas      R$Size,s            Drop saved Regs from stack
+                    ifgt      Level-1
+                    lda       #$FF                krn's NMI path set DP=0; the
+                    tfr       a,dp                code below addresses I/O via DP
+                    endc
                     lda       #MotorOn
 
                     ifne      dalpha
@@ -459,6 +469,12 @@ MotorRunning
 
                     puls      x,A,B,CC
                     rts
+                    endc
+
+                    ifgt      Level-1
+* Level 2 kernel track: rel $130 + boot $1D0 + krn, so pad to $1D0 (see
+* boot_1773.asm). A negative fill count means the booter is too big.
+Filler              fill      $39,$1D0-3-2-1-*
                     endc
 
 Address             fdb       DPort
