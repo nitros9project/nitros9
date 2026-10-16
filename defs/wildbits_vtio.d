@@ -533,7 +533,20 @@ gr.d2               rmb       2         ; GF.Pal LUT bytes 2-3 / scroll end offs
 gr.b3               rmb       1         ; colour attr / PSG volume / BM ctrl byte
 gr.b4               rmb       1         ; WD.Buf (16K backup) / WD.Vicky ($C2/$C3)
 gr.b5               rmb       1         ; GF.Pal 0=FG 1=BG LUT select
-gr.MsDrv            rmb       MD.Size   ; mousedrv's block (MD.*, above)
+                    ifgt      .-F256Gfx
+                    error     GrfMem past $11FF - runs into F256Gfx
+                    endc
+
+*******************************************************************
+* The mouse globals live in the free part of the $1000 page (D.CCMem, the
+* CoCo's WGlobal), not in GrfMem.  The shared modules still use parts of
+* that page at the CoCo's offsets - scf G.GfBusy $1002 and G.GrfStk
+* $1007-$1008, clock/krnp2 G.AlPckt and G.AlPID $100F-$1015, clock
+* G.BelVec $1017-$1018, scf/init G.GrfEnt $106E-$106F - so these start at
+* $1080, and the checks below keep them inside $1080-$10FF.
+*******************************************************************
+                    org       $1080
+gr.MsDrv            rmb       MD.Size   ; mousedrv's block (MD.*, above); F$IRQ U for mousedrv
 gr.MSButtons        equ       gr.MsDrv+MD.Buttons
 gr.MSTimer          equ       gr.MsDrv+MD.Timer
 gr.MSFound          equ       gr.MsDrv+MD.Found
@@ -549,8 +562,11 @@ gr.MSWheel          equ       gr.MsDrv+MD.Wheel
 * an rmb on it reserves nothing on pass 1 (checked where G.TermMax is).
 gr.MsTbl            rmb       72
 gr.MsSpeed          rmb       1         ; mouse speed 1-MS.SpdMax (SS.MsCfg high byte), 0 = no mouse
-                    ifgt      .-F256Gfx
-                    error     GrfMem past $11FF - runs into F256Gfx
+                    ifgt      .-$1100
+                    error     the mouse globals run past $10FF into GrfMem
+                    endc
+                    iflt      gr.MsDrv-$1080
+                    error     the mouse globals start below $1080, on the shared modules' WGlobal offsets
                     endc
                     org       0
 T.Flags             rmb       1         ; Acrive Flag - only one screen should be active
