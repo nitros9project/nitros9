@@ -89,6 +89,9 @@ start               ldb       #$FF      ; b=$FF: cold start
                     clr       >$FFDF    ; sam all-RAM mode
                     orcc      #IntMasks ; irqs off
                     clr       >PIA0Base+3 ; turn off the VSYNC IRQ
+                    IFNE      d64
+                    clr       >PIA0Base+1 ; and HSYNC: the Dragon ROM leaves it on
+                    ENDC
                     clra
                     tfr       a,dp
 
@@ -179,7 +182,12 @@ Reloc               ldb       ,s+       ; check the boot status
                     bsr       CopyLp
                     jmp       >Offset+InHigh
 
-Failed              clr       >$FF40    ; turn off the disk drives
+Failed
+                    IFNE      d64
+                    clr       >$FF48    ; Dragon drive latch ($FF40 is the WD command)
+                    ELSE
+                    clr       >$FF40    ; turn off the disk drives
+                    ENDC
 Hang                bra       Hang
 
 * Copy X bytes from U to Y
