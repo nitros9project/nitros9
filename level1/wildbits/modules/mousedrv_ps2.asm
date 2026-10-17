@@ -24,7 +24,9 @@
 * Only a packet that moves or changes a button shows the pointer and
 * restarts auto-hide.  The pointer image moves to grfdrv256 (GF.InitDisp),
 * one MsMove routine clamps X and Y, SetCh fills the channel from a table,
-* and the state moves to $1080 (gr.MsDrv).  732 -> 590 bytes, wheel included.
+* and the state moves to $1080 (gr.MsDrv).  SS.MsCfg MC.Off: a terminal
+* set to always off is not shown on movement.  732 -> 614 bytes, wheel
+* included.
 *
 
                     use       defsfile
