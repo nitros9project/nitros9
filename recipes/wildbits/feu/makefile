@@ -20,7 +20,18 @@ LFLAGS += -L $(LIBDIR) -lwildbitsl$(LEVEL) -lnet -lalib
 
 KERNEL = krn krnp2 ioman init
 RBF = rbf rbsuper llwbsd rbmem dds0 s0 s1 f0 f1
-SCF = scf vtio $(KEYSUB) term bannerfont palette
+# font and palette are not in the FEU bootfile: the K2 RP2040 mailbox needs the room (23,552 bytes).
+SCF = scf vtio $(KEYSUB) term
+# K2 supervisor mailbox: RPDrv + rp live in the FEU bootfile, not the Level 2 one.
+ifeq ($(PLATFORM),k2)
+SCF += rpdrv rp
+endif
+
+$(MODDIR)/rpdrv: $(L1PMD)/rpdrv.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+$(MODDIR)/rp: $(L1PMD)/rp.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
 DRIVEWIRE = dwio_serial rbdw x0 x1 x2 x3
 PIPE = pipeman piper pipe
 SC16550 = sc16550 t0_sc16550

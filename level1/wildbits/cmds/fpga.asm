@@ -1,4 +1,4 @@
-* Native K2 supervisor client: status, log, list, program, flash, abort.
+* Native K2 supervisor client: status, log, list, program, flash, abort, fwipe, pwipe.
 * /rp wire records: command,length,payload -> length,payload.
                     ifp1
                     use defsfile
@@ -91,10 +91,77 @@ TryFlash            leay FlashWord,pcr
                     lbra ProgramArgs
 TryAbort            leay AbortWord,pcr
                     lbsr Match
-                    lbcs Usage
+                    lbcs TryFwipe
                     lda #4
                     sta Action,u
                     lbra Tail
+* 2026-09-27 (from the fpga-manager 1.16 source): fwipe N = CLEAR_FLASH ($0D), pwipe N path = DELETE_SD_IMAGE ($13),
+* boot N = RECONFIGURE_SELECTED ($0C: the manager reloads the FPGA from context N's saved source, the K2 restarts),
+* restart = RESTART_SUPERVISOR ($15: the RP2040 reboots by watchdog and reruns its whole boot sequence).
+TryFwipe            leay FwipeWord,pcr
+                    lbsr Match
+                    lbcs TryPwipe
+                    lda #2
+                    sta Target,u
+                    lda #5
+                    lbra ContextArg
+TryPwipe            leay PwipeWord,pcr
+                    lbsr Match
+                    lbcs TryBoot
+                    lda #3
+                    sta Target,u
+                    lda #5
+                    lbra ContextArg
+TryBoot             leay BootWord,pcr
+                    lbsr Match
+                    lbcs TryRestart
+                    lda #6
+                    lbra ContextArg
+TryRestart          leay RestartWord,pcr
+                    lbsr Match
+                    lbcs Usage
+                    lda #7
+                    sta Action,u
+                    lbra Tail
+ContextArg          sta Action,u
+                    lda ,x
+                    cmpa #$20
+                    lbne Usage
+                    lbsr Spaces
+                    lda ,x+
+                    cmpa #'1
+                    lblo Usage
+                    cmpa #'4
+                    lbhi Usage
+                    suba #'1
+                    sta Context,u
+                    lda Action,u
+                    cmpa #5
+                    lbne Tail
+                    lda Target,u
+                    cmpa #3
+                    lbne Tail
+* pwipe: the SD image's path as `fpga list` shows it (CNTXn/name.bin or 0:/CNTXn/name.bin), up to 127 bytes
+                    lda ,x
+                    cmpa #$20
+                    lbne Usage
+                    lbsr Spaces
+                    leay RemoteName,u
+                    clr NameLength,u
+PwPath              lda ,x+
+                    cmpa #C$CR
+                    lbeq PwEnd
+                    cmpa #$20
+                    lbeq PwEnd
+                    inc NameLength,u
+                    ldb NameLength,u
+                    cmpb #127
+                    lbhi Usage
+                    sta ,y+
+                    lbra PwPath
+PwEnd               tst NameLength,u
+                    lbeq Usage
+                    lbra Parsed
 ProgramArgs         sta Target,u
                     lda #3
                     sta Action,u
@@ -212,7 +279,13 @@ Parsed              leax Clock,u
                     lbeq List
                     deca
                     lbeq Program
-                    lbra AbortUpload
+                    deca
+                    lbeq AbortUpload
+                    deca
+                    lbeq Wipe
+                    deca
+                    lbeq Boot
+                    lbra Restart
 Usage               leay Line,u
                     leax Help,pcr
                     lbsr Text
@@ -273,23 +346,53 @@ Status              leay Line,u
                     lbcs StatusFail
                     stx DriverInfo,u
                     sty DriverInfo+2,u
-                    tfr x,d
                     puls y
-                    pshs b
+* Status byte: bit 0 online, bit 3 busy, bit 6 reply waiting, bit 7 error latched.
+                    leax OnlineTxt,pcr
+                    lda DriverInfo,u
+                    bita #1
+                    bne StatOnline
+                    leax OfflineTxt,pcr
+StatOnline          lbsr Text
+                    leax IdleTxt,pcr
+                    lda DriverInfo,u
+                    bita #8
+                    beq StatBusy
+                    leax BusyTxt,pcr
+StatBusy            lbsr Text
+                    lda DriverInfo,u
+                    bita #$40
+                    beq StatError
+                    leax ReplyTxt,pcr
+                    lbsr Text
+StatError           lda DriverInfo+1,u
+                    beq StatNoError
+                    leax ErrorTxt,pcr
+                    lbsr Text
+                    lda DriverInfo+1,u
                     lbsr Hex
-                    lda #' 
-                    sta ,y+
-                    puls a
-                    lbsr Hex
-                    lda #' 
-                    sta ,y+
+                    lbra StatFirmware
+StatNoError         leax NoErrorTxt,pcr
+                    lbsr Text
+StatFirmware        leax FirmwareTxt,pcr
+                    lbsr Text
                     lda DriverInfo+2,u
-                    lbsr Hex
-                    lda #' 
-                    sta ,y+
+                    lbsr DecByte
+* Remote status byte from the supervisor: bit 0 ready, bits 1 and 3 upload in progress.
+                    leax SupervisorTxt,pcr
+                    lbsr Text
+                    leax ReadyTxt,pcr
                     lda DriverInfo+3,u
-                    lbsr Hex
-                    lbsr Print
+                    bita #1
+                    bne StatReady
+                    leax NotReadyTxt,pcr
+StatReady           lbsr Text
+                    lda DriverInfo+3,u
+                    bita #$0A
+                    beq StatPrint1
+                    leax UploadTxt,pcr
+                    lbsr Text
+StatPrint1          lbsr Print
                     lda #$0E
                     ldb #4
                     lbsr Request
@@ -306,16 +409,19 @@ Status              leay Line,u
                     lbsr Text
                     lda Rx+4,u
                     lbeq NoBoot
+                    leax ContextTxt,pcr
+                    lbsr Text
                     lda Rx+5,u
                     inca
                     adda #'0
                     sta ,y+
-                    lda #' 
-                    sta ,y+
+                    leax CommaTxt,pcr
+                    lbsr Text
                     lda Rx+6,u
-                    lbsr Hex
-                    lda #' 
-                    sta ,y+
+                    lbsr SourceName
+                    lbsr Text
+                    leax CommaTxt,pcr
+                    lbsr Text
                     leax Rx+8,u
                     ldb Rx+7,u
                     lbsr Bytes
@@ -429,20 +535,8 @@ ListNext            ldd EntryIndex,u
 * Human-readable catalog: source and roles, then path and decimal byte count.
 CatalogLine         leay Line,u
                     lda Rx+10,u
-                    leax AutoLabel,pcr
-                    tsta
-                    beq CatSource
-                    leax SDLabel,pcr
-                    cmpa #1
-                    beq CatSource
-                    leax FlashLabel,pcr
-                    cmpa #2
-                    beq CatSource
-                    leax GoldenLabel,pcr
-                    cmpa #3
-                    beq CatSource
-                    leax UnknownSource,pcr
-CatSource           lbsr Text
+                    lbsr SourceName
+                    lbsr Text
                     lda Rx+13,u
                     bita #1
                     beq CatBooted
@@ -593,6 +687,43 @@ PutByte             sta ,y+
                     decb
                     lbne ByteNext
                     rts
+* SourceName: A = supervisor boot-source code -> X = its label.
+SourceName          leax AutoLabel,pcr
+                    tsta
+                    beq SourceDone
+                    leax SDLabel,pcr
+                    cmpa #1
+                    beq SourceDone
+                    leax FlashLabel,pcr
+                    cmpa #2
+                    beq SourceDone
+                    leax GoldenLabel,pcr
+                    cmpa #3
+                    beq SourceDone
+                    leax UnknownSource,pcr
+SourceDone          rts
+* DecByte: A = 0..255 -> decimal digits at Y, no leading zeros. Uses DecDigits as the emitted-digit flag.
+DecByte             clr DecDigits,u
+                    ldb #100
+                    lbsr DecDigit
+                    ldb #10
+                    lbsr DecDigit
+                    adda #'0
+                    sta ,y+
+                    rts
+DecDigit            pshs b
+                    ldb #'0-1
+DecLoop             incb
+                    suba ,s
+                    bcc DecLoop
+                    adda ,s
+                    cmpb #'0
+                    bne DecEmit
+                    tst DecDigits,u
+                    beq DecSkip
+DecEmit             stb ,y+
+                    inc DecDigits,u
+DecSkip             puls b,pc
 Hex                 pshs a
                     lsra
                     lsra
@@ -639,10 +770,15 @@ Program             leax ProgramSignal,pcr
                     lda Target,u
                     cmpa #2
                     lbeq CheckGzipSize
+* 2026-09-26 (user): a raw image may carry up to 256 padding bytes past the 9,730,652-byte bitstream - extra
+* configuration clocks for the FPGA's startup phases after the last real word (a slave-mode load that stops
+* clocking at the last byte can leave DONE high but the outputs tri-stated). $947A5C <= size <= $947B5C.
                     cmpx #$0094
                     lbne BadImage
                     cmpy #$7A5C
-                    lbne BadImage
+                    lblo BadImage
+                    cmpy #$7B5C
+                    lbhi BadImage
                     lbra SizeOK
 CheckGzipSize       cmpx #$0020
                     lbhi BadImage
@@ -718,9 +854,13 @@ ScanDone            lbsr ExactSize
                     lbcs Exit
                     cmpy #4
                     lbne BadImage
-                    ldd Tx+2,u
-                    cmpd #$5C7A
-                    lbne BadImage
+* the trailer's ISIZE is little-endian: $947A5C..$947B5C accepted (the padded raw image, see above)
+                    lda Tx+3,u
+                    ldb Tx+2,u
+                    cmpd #$7A5C
+                    lblo BadImage
+                    cmpd #$7B5C
+                    lbhi BadImage
                     ldd Tx+4,u
                     cmpd #$9400
                     lbne BadImage
@@ -837,6 +977,116 @@ AbortUpload         lda #5
                     lbsr Text
                     lbsr Print
                     lbra Done
+* Wipe (2026-09-27): fwipe = CLEAR_FLASH $0D (nonce, context): the manager erases the slot's header sector, verifies it
+* reads erased and clears the slot's metadata - the slot is invalid until the next flash. pwipe = DELETE_SD_IMAGE $13
+* (nonce, context, length, path): the manager unlinks that catalogued SD image (its own SD card) and resets a saved
+* selection that pointed at it to Automatic. Both answer nonce + context.
+Wipe                lda Context,u
+                    sta Tx+6,u
+                    lda Target,u
+                    cmpa #2
+                    lbne SdWipe
+                    lda #$0D
+                    ldb #5
+                    lbsr Request
+                    lbcs RemoteFail
+                    lbsr ContextReply
+                    lbcs Invalid
+                    leay Line,u
+                    leax WipedTxt,pcr
+                    lbsr Text
+                    lda Context,u
+                    inca
+                    adda #'0
+                    sta ,y+
+                    leax WipedTail,pcr
+                    lbsr Text
+                    lbsr Print
+                    lbra Done
+SdWipe              ldb NameLength,u
+                    stb Tx+7,u
+                    leax RemoteName,u
+                    leay Tx+8,u
+                    lbsr CopyBytes
+                    lda #$13
+                    ldb NameLength,u
+                    addb #6
+                    lbsr Request
+                    lbcs RemoteFail
+                    lbsr ContextReply
+                    lbcs Invalid
+                    leay Line,u
+                    leax SdWipedTxt,pcr
+                    lbsr Text
+                    leax RemoteName,u
+                    ldb NameLength,u
+                    lbsr Bytes
+                    lbsr Print
+                    lbra Done
+* Boot: RECONFIGURE_SELECTED $0C (nonce, context). The manager only accepts the physical context (the back-panel
+* switches); it acknowledges, then reloads the FPGA from that context's saved source, so the K2 restarts on the
+* new core and this command may never print its last line. Its trace goes to the RP2040's USB console.
+Boot                leay Line,u
+                    leax BootingTxt,pcr
+                    lbsr Text
+                    lda Context,u
+                    inca
+                    adda #'0
+                    sta ,y+
+                    leax BootingTail,pcr
+                    lbsr Text
+                    lbsr Print
+                    lda Context,u
+                    sta Tx+6,u
+                    lda #$0C
+                    ldb #5
+                    lbsr Request
+                    lbcs RemoteFail
+                    lbsr ContextReply
+                    lbcs Invalid
+                    lbra Done
+* Restart: RESTART_SUPERVISOR $15 (nonce): the RP2040 reboots by watchdog after acknowledging and reruns its boot
+* sequence, which reloads the FPGA: the K2 restarts.
+Restart             leay Line,u
+                    leax RestartTxt,pcr
+                    lbsr Text
+                    lbsr Print
+                    lda #$15
+                    ldb #4
+                    lbsr Request
+                    lbcs RemoteFail
+                    lbra Done
+* ContextReply: the reply must be nonce + the context we sent (5 bytes). Carry set if not.
+ContextReply        lda RxLength,u
+                    cmpa #5
+                    bne CtxBad
+                    lda Rx+4,u
+                    cmpa Context,u
+                    bne CtxBad
+                    clrb
+                    rts
+CtxBad              comb
+                    rts
+* RemoteFail: a request the manager refused or did not answer as expected. The driver delivers the reply
+* regardless (2026-09-26); the manager's code is in its latched error byte, read through GetStat $C0
+* (X = status:error). Printed as status:error in hex, then the request's own error code is returned.
+RemoteFail          pshs b
+                    leay Line,u
+                    leax RefusedTxt,pcr
+                    lbsr Text
+                    lda Path,u
+                    ldb #$C0
+                    os9 I$GetStt
+                    bcs RfPrint
+                    pshs b
+                    tfr x,d
+                    lbsr Hex
+                    puls b
+                    tfr b,a
+                    lbsr Hex
+RfPrint             lbsr Print
+                    puls b
+                    lbra Exit
 BadImage            leay Line,u
                     leax ImageError,pcr
                     lbsr Text
@@ -981,11 +1231,25 @@ Accepted            fcc / bytes/
                     fcb 0
 Programmed          fcc /Image stored; size and CRC verified. Selection and running core unchanged./
                     fcb 0
-ImageError          fcc /Invalid image: SD needs a 9730652-byte .bin; flash needs .gz <=2 MiB./
+ImageError          fcc /Invalid image: SD needs a 9730652(+<=256)-byte .bin; flash needs .gz <=2 MiB./
                     fcb 0
 Changed             fcc /Image changed or truncated during transfer; not committed./
                     fcb 0
 Aborted             fcc /Supervisor upload aborted./
+                    fcb 0
+WipedTxt            fcc /Internal flash slot for context /
+                    fcb 0
+WipedTail           fcc / cleared by the supervisor; no image there until the next flash./
+                    fcb 0
+SdWipedTxt          fcc /Deleted from the RP2040 SD: /
+                    fcb 0
+BootingTxt          fcc /Asking the supervisor to reload the FPGA from context /
+                    fcb 0
+BootingTail         fcc /: the K2 restarts on it; watch the RP2040 console for the loader's verdict./
+                    fcb 0
+RestartTxt          fcc /Asking the supervisor to restart the RP2040: it reruns its boot sequence and the K2 restarts./
+                    fcb 0
+RefusedTxt          fcc /Supervisor refused or answered badly; its status:error = $/
                     fcb 0
 
 Device              fcc "/rp"
@@ -1002,11 +1266,47 @@ FlashWord           fcc /flash/
                     fcb 0
 AbortWord           fcc /abort/
                     fcb 0
-Help                fcc /Usage: fpga status|log|list [1..4]|program N file.bin|flash N file.gz|abort/
+FwipeWord           fcc /fwipe/
                     fcb 0
-StatusLabel         fcc /Mailbox status error firmware remote (hex): /
+PwipeWord           fcc /pwipe/
                     fcb 0
-BootLabel           fcc /Actual boot context source path: /
+BootWord            fcc /boot/
+                    fcb 0
+RestartWord         fcc /restart/
+                    fcb 0
+Help                fcc /Usage: fpga status|log|list [1..4]|program N f.bin|flash N f.gz|abort|fwipe N|pwipe N path|boot N|restart/
+                    fcb 0
+StatusLabel         fcc /Mailbox: /
+                    fcb 0
+OnlineTxt           fcc /online/
+                    fcb 0
+OfflineTxt          fcc /offline/
+                    fcb 0
+IdleTxt             fcc /, idle/
+                    fcb 0
+BusyTxt             fcc /, busy/
+                    fcb 0
+ReplyTxt            fcc /, reply waiting/
+                    fcb 0
+NoErrorTxt          fcc /, no error/
+                    fcb 0
+ErrorTxt            fcc /, error $/
+                    fcb 0
+FirmwareTxt         fcc /, firmware /
+                    fcb 0
+SupervisorTxt       fcc /, supervisor /
+                    fcb 0
+ReadyTxt            fcc /ready/
+                    fcb 0
+NotReadyTxt         fcc /not ready/
+                    fcb 0
+UploadTxt           fcc /, upload in progress/
+                    fcb 0
+BootLabel           fcc /Booted from: /
+                    fcb 0
+ContextTxt          fcc /context /
+                    fcb 0
+CommaTxt            fcc /, /
                     fcb 0
 Unknown             fcc /not recorded/
                     fcb 0
