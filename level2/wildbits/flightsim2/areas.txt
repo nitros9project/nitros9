@@ -1,0 +1,21 @@
+Places in sf.wildbits (the Atari ST scenery plus O’Hare). Enter North and East in the editor, or fly there: the scenery for that place loads by itself.
+In the San Francisco Bay the scenery loads in parts as you move (Oakland, San Francisco and the Golden Gate, the East Bay, the South Bay); you see the part for where you are.
+
+Place	North	East	Ground altitude	What you see
+Chicago, O'Hare (the start, runway 32L, facing 321)	17235	16578	206 m (676 ft)	full-scale 1987 O'Hare: 7 runways, terminals, tower, hangars, cargo, fire stations, fuel farm
+Chicago, Meigs Field	17188	16671	180 m (592 ft)	downtown Chicago, the lakefront
+Champaign	16601	16511	190-267 m (623-876 ft)	Champaign area
+New York, JFK	17034	21065	3 m (10 ft)	New York City and its airports
+New York, LaGuardia	17090	21025	3 m (10 ft)	
+New York, east (Long Island)	17565	21749	3-213 m (10-699 ft)	
+Los Angeles, north	15384	5858	7-308 m (23-1010 ft)	Los Angeles area
+Los Angeles, south	15098	5966	5-488 m (16-1601 ft)	
+Seattle, north	21404	6581	5-184 m (16-604 ft)	Seattle area
+Seattle, south	21232	6979	6-184 m (20-604 ft)	
+San Francisco Bay, Oakland International (runway 27R)	17361	5128	2 m (7 ft)	Oakland airport and the central bay
+San Francisco, Golden Gate Bridge	17430	5054	1-3 m (3-10 ft)	San Francisco, the Golden Gate, Alcatraz, Marin
+San Francisco, Alcatraz	17427	5074	1-3 m (3-10 ft)	
+San Francisco, downtown	17413	5075	1-3 m (3-10 ft)	
+East Bay	17298	5253	2-121 m (7-397 ft)	East Bay and its hills
+South Bay, SFO	17250	5125	1-2 m (3-7 ft)	South Bay and SFO
+WWI War Game	17404	7417	125 m (410 ft)	the WWI area
