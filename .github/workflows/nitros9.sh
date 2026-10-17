@@ -4,6 +4,12 @@
 #
 ls -al
 export NITROS9DIR="$(pwd)"
+# The workflow checks nitros9-languages out inside the workspace, but this
+# script runs under sudo, which drops the workflow's LANGUAGES setting, and
+# the recipes otherwise look for the checkout beside NITROS9DIR.
+if [ -d "$NITROS9DIR/nitros9-languages" ]; then
+    export LANGUAGES="$NITROS9DIR/nitros9-languages"
+fi
 
 # Catch unresolved merges and makefile parse failures in every recipe, including
 # optional recipes that are too expensive or dependency-heavy for routine CI.
