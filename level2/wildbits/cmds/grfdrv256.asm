@@ -1375,6 +1375,8 @@ GetSttTbl           fcb       SS.ScSiz
                     fdb       GrfMod+GSJoy
                     fcb       SS.Mouse
                     fdb       GrfMod+GSMouse
+                    fcb       SS.MsWheel
+                    fdb       GrfMod+GSMsWheel
                     fcb       SS.DScrn
                     fdb       GrfMod+GSDScrn
                     fcb       SS.FntChar
@@ -1509,10 +1511,8 @@ GSDScrn             clra
                     std       R$Y,x
                     bra       StatOK
 
-* GetStat SS.Mouse - R$X/R$Y = position, R$A = buttons, R$U = wheel steps
-*   since the last call (signed; 0 without a wheel mouse).  Live terminal:
-*   the pointer's position, mousedrv's buttons and wheel count (read and
-*   cleared together, interrupts masked).  Not live: where the
+* GetStat SS.Mouse - R$X/R$Y = position, R$A = buttons.  Live terminal:
+*   the pointer's position and mousedrv's buttons.  Not live: where the
 *   pointer was when it went background (its gr.MsTbl row, saved by
 *   GFSwitch) and no buttons, so a background program sees nothing the user
 *   does on another terminal.  Y is free: StatDisp dispatched here with
@@ -1524,23 +1524,33 @@ GSMouse             lbsr      MsRow     ; y = this terminal's gr.MsTbl row
                     std       R$X,x
                     ldd       MS_YH
                     std       R$Y,x
-                    pshs      cc
-                    orcc      #IntMasks ; mousedrv adds to it from its interrupt
-                    ldb       >gr.MSWheel
-                    clr       >gr.MSWheel
-                    puls      cc
-                    sex
-                    std       R$U,x
                     lda       >gr.MSButtons
                     bra       RetA
 msbg@               ldd       MT.LastX,y
                     std       R$X,x
                     ldd       MT.LastY,y
                     std       R$Y,x
-                    clra                ; no buttons, no wheel
-                    clrb
-                    std       R$U,x
+                    clra                ; no buttons
                     bra       RetA
+
+* GetStat SS.MsWheel - R$X = the wheel steps since the last call, signed (0
+*   without a wheel mouse).  Live terminal: mousedrv's count, read and
+*   cleared with interrupts masked.  Not live: 0.  Its own call, not a
+*   register of SS.Mouse: SS.Mouse's callers keep their own values in the
+*   registers it does not return (BASIC09's wild keeps its parameter pointer
+*   in U).
+GSMsWheel           clra
+                    clrb
+                    tst       V.TermLive,u
+                    beq       whbg@
+                    pshs      cc
+                    orcc      #IntMasks ; mousedrv adds to it from its interrupt
+                    ldb       >gr.MSWheel
+                    clr       >gr.MSWheel
+                    puls      cc
+                    sex
+whbg@               std       R$X,x
+                    lbra      StatOK
 
 * GetStat SS.Joy - R$X = the mode (JY.* modes, wildbits.d; spec in joust
 *   docs/grfdrv256-api.md).  Above 6: E$IllArg.
