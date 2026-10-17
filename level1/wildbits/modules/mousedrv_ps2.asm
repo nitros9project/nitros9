@@ -19,8 +19,8 @@
 *
 *  5       2026/10/17 John Federico
 * The wheel: the IntelliMouse knock (rates 200, 100, 80) and ID 3 switch a
-* wheel mouse to 4-byte packets; the 4th byte goes to MD.Wheel (SS.Mouse
-* R$U).  A first byte without bit 3 is dropped (resync).  Sample rate 100.
+* wheel mouse to 4-byte packets; the 4th byte goes to MD.Wheel
+* (SS.MsWheel).  A first byte without bit 3 is dropped (resync).  Sample rate 100.
 * Only a packet that moves or changes a button shows the pointer and
 * restarts auto-hide.  The pointer image moves to grfdrv256 (GF.InitDisp),
 * one MsMove routine clamps X and Y, SetCh fills the channel from a table,

@@ -250,9 +250,11 @@ SS.BmBlk            equ       $E4                 GetStat: bitmap first block an
 SS.BmClear          equ       $E5                 R$Y = bitmap #, R$X low = fill value; GetStat: R$X = 1 while a fill is outstanding
 SS.BmDef            equ       $E6                 R$Y = mode/bitmap #, R$X = block (0 = clear), R$U = offset
 SS.BmLine           equ       $E7                 R$Y = bitmap #, R$X = 8-byte records, R$U = count in / drawn out; GetStat: R$X = pixels queued
+SS.MsWheel          equ       $E8                 GetStat: R$X = wheel steps since the last call, signed (0 without a wheel mouse)
 SS.BmKill           equ       $EA                 R$Y = bitmap #: undefine, and free if the driver allocated
 SS.BmCfg            equ       $ED                 R$Y = bitmap #, R$X = enable/CLUT, R$U = HIRES4/GROUP
-* $E8, $E9, $EB and $EC are free (user, 2026-09-20).  They were SS.BmOn,
+* $E9, $EB and $EC are free (user, 2026-09-20; $E8 is SS.MsWheel since
+* 2026-10-17).  They were SS.BmOn,
 * SS.BmOff, SS.BmLoad and SS.BmSave, and none ever had a handler.  On and
 * Off are two fields of SS.BmCfg, which can also leave every other field
 * alone, so a hide is one call and costs no more than a dedicated one would.

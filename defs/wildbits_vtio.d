@@ -435,7 +435,7 @@ MD.Byte1            rmb       1         ; packet byte 1 (X movement)
 MD.Byte2            rmb       1         ; packet byte 2 (Y movement)
 MD.ByteCnt          rmb       1         ; packet bytes received
 MD.PktLen           rmb       1         ; bytes per packet: 3, or 4 for a wheel mouse (IntelliMouse ID 3)
-MD.Wheel            rmb       1         ; wheel steps since the last live SS.Mouse, signed, held at -128/+127
+MD.Wheel            rmb       1         ; wheel steps since the last live SS.MsWheel, signed, held at -128/+127
 MD.Size             equ       .
 
                     org       $1100
