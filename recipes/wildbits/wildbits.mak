@@ -79,7 +79,7 @@ ifeq ($(FUJINET),1)
 LFLAGS += -lfuji
 CMDS_EXTRA += $(FUJINET_CMDS)
 endif
-FM_CMDS = fm 
+FM_CMDS = fm diag
 ifeq ($(FM),1)
 CMDS_EXTRA += $(FM_CMDS)
 endif
@@ -110,7 +110,7 @@ endif # K2-only RP2040 modules and command
 # (the fcb rows only, labels dropped) so its frame looks right whatever font or palette the tested system has.
 # The two generated files go in $(OBJDIR), not the recipe folder (2026-10-11): as bare names they were written
 # into the source tree on every make and left there; "make clean" removes $(OBJDIR) with them.
-CMDS += diag
+# In the FM category since 2026-10-17 (FM_CMDS above): built and installed only with FM=1.
 $(MODDIR)/diag: $(L1PCD)/diag.asm $(L1PCD)/diag_hw.asm $(OBJDIR)/diagfont.inc $(OBJDIR)/diagpal.inc | $(MODDIR)
 	$(AS) $(AFLAGS) -I$(OBJDIR) -I$(L1PCD) $< $(ASOUT)$@
 
