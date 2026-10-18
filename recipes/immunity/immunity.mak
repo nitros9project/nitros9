@@ -35,9 +35,40 @@ MEDIA ?= floppy
 # (display only; typed input is unchanged).
 VDG_T1 ?= 0
 UPPERCASE ?= 0
-# VDG_WINDOWS=n adds /V1../Vn, extra 32x16 screens (CLEAR/SHIFT-CLEAR
-# switch between them; start a shell with "shell i=/v1&"). 0 to 7.
+# HIRES=42 or HIRES=51: the console is 42x24 (Co42) or 51x24 (CoHR) text
+# drawn on PMODE 4 graphics screens instead of CoVDG's 32x16. Green on
+# black; HIRES_BUFF=1 for buff on black; HIRES_INVERSE=1 for black text on
+# green (or buff). On an NTSC TV, 42 columns reads
+# better (51 is best on a monochrome monitor or a CoCoDV).
+# HIRES_CODV=1 with a CoCoDV: monochrome (no artifact colours), green text
+# on a dark green background.
+HIRES ?= 0
+HIRES_BUFF ?= 0
+HIRES_INVERSE ?= 0
+HIRES_CODV ?= 0
+# VDG_WINDOWS=n adds /V1../Vn, extra screens (CLEAR/SHIFT-CLEAR switch
+# between them; start a shell with "shell i=/v1&"). 32x16, 0 to 7; with
+# HIRES, 0 to 4 (each takes one of the 5 VDG pool blocks).
+ifeq ($(HIRES),51)
+VDGCO = cohr.io
+AFLAGS_VDG = -DUSECOHR=1
+else ifeq ($(HIRES),42)
+VDGCO = co42.io
+AFLAGS_VDG = -DUSECO42=1
+else ifeq ($(HIRES),0)
+VDGCO = covdg.io
+AFLAGS_VDG =
+else
+$(error Unsupported HIRES "$(HIRES)"; use HIRES=0, 42 or 51)
+endif
+ifeq ($(HIRES),0)
 VDG_WINDOWS ?= 7
+else
+VDG_WINDOWS ?= 4
+ifneq ($(filter-out 0 1 2 3 4,$(VDG_WINDOWS)),)
+$(error VDG_WINDOWS=$(VDG_WINDOWS): HIRES allows 0 to 4)
+endif
+endif
 TRACKS ?= 40
 PwrLnFrq ?= 60
 
@@ -86,7 +117,7 @@ KERNEL_TRACK ?= $(REL) $(BOOTER) krn
 KERNELFILE = kerneltrack
 
 VDGWINS = $(foreach n,$(wordlist 1,$(VDG_WINDOWS),1 2 3 4 5 6 7),v$(n).dw)
-SCF ?= scf.mn vtio.dr snddrv_cc3.sb joydrv_joy.sb covdg.io term_vdg.dt $(VDGWINS)
+SCF ?= scf.mn vtio.dr snddrv_cc3.sb joydrv_joy.sb $(VDGCO) term_vdg.dt $(VDGWINS)
 PIPE ?= pipeman.mn piper.dr pipe.dd
 CLOCK ?= clock_$(PwrLnFrq)hz clock2_soft
 
@@ -97,7 +128,7 @@ BOOTMODS ?= krnp2 ioman init \
 	$(CLOCK) \
 	$(BOOTMODS_EXTRA)
 
-$(addprefix $(MODDIR)/,vtio.dr covdg.io): $(DEFSDIR)/cocovtio.d
+$(addprefix $(MODDIR)/,vtio.dr covdg.io cohr.io co42.io): $(DEFSDIR)/cocovtio.d
 
 # ---------------------------------------------------------------------------
 # Disk contents
@@ -171,6 +202,15 @@ run: $(DSKIMAGE)
 $(MODDIR)/vtio.dr: $(LEVEL2)/coco3/modules/vtio.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
+# Level 2 CoHR and Co42, from one source (level1/coco1/modules has the
+# Level 1 ones)
+HIRES_FLAGS = -DUSEBUFF=$(HIRES_BUFF) -DUSEINV=$(HIRES_INVERSE) \
+	-DUSECODV=$(HIRES_CODV)
+$(MODDIR)/cohr.io: $(L2PMD)/cohr.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(HIRES_FLAGS)
+$(MODDIR)/co42.io: $(L2PMD)/cohr.asm $(L2PMD)/co42font.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(HIRES_FLAGS) -DUSECO42=1
+
 # ---------------------------------------------------------------------------
 # Module variants
 
@@ -184,11 +224,11 @@ else
 TERM_VDG_FLAGS = -DPLAIN6847=1
 endif
 $(MODDIR)/term_vdg.dt: term_vdg.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(TERM_VDG_FLAGS)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(TERM_VDG_FLAGS) $(AFLAGS_VDG)
 
 # /V1-/V7 from one source (level2/immunity/modules/vdgwin.asm)
 $(MODDIR)/v%.dw: vdgwin.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(TERM_VDG_FLAGS) -DWNUM=$*
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(TERM_VDG_FLAGS) $(AFLAGS_VDG) -DWNUM=$*
 
 $(MODDIR)/rel_32: rel.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DWidth=32

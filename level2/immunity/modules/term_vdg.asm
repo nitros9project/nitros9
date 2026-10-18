@@ -26,8 +26,18 @@ atrv                set       ReEnt+rev
 rev                 set       $00
 
 * Window descriptor definitions
+                    ifne      USECOHR
+szx                 set       51        51x24 text on PMODE 4 (CoHR)
+szy                 set       24
+                    else
+                    ifne      USECO42
+szx                 set       42        42x24 text on PMODE 4 (Co42)
+szy                 set       24
+                    else
 szx                 set       32        number of columns for display
 szy                 set       16        number for rows for display
+                    endc
+                    endc
 wnum                set       0         window number
 sty                 set       1         window type
 cpx                 set       0         x cursor position
