@@ -16,6 +16,16 @@ Sources here override same-named files elsewhere on the recipe vpath
   `level1/coco1/modules/term_vdg.asm`.
 - `vdgwin.asm`: the `/V1`-`/V7` VDG window descriptors, one source assembled
   with `-DWNUM=1..7`.
+- `cohr.asm`: the hi-res text consoles, used instead of CoVDG with the recipe's
+  `HIRES` option, keeping the module name `CoVDG` so VTIO links it
+  unchanged. One source builds CoHR (51x24, 4x8 font in 5-pixel cells,
+  from the Level 1 CoHR) and, with `-DUSECO42=1`, Co42 (42x24, 5x8 font in
+  6-pixel cells). Each screen is a 6K PMODE 4 bitmap in one VDG pool block,
+  mapped into system slot 1 only while the module draws on it, with a text
+  copy after the bitmap for `SS.Cursr`. `USEBUFF`, `USEINV` and `USECODV`
+  pick buff, black on green, and a CoCoDV colour setup.
+- `co42font.asm`: Co42's 5x8 font, a byte per pixel line (`use`d by
+  `cohr.asm`).
 
 All the video modules are here except VTIO, which is the CoCo 3 port's. Both
 descriptors take `-DPLAIN6847=1` for a plain MC6847: CoVDG then uses its
@@ -53,7 +63,7 @@ the CoCo 3 GIME MMU (`$FF90`/`$FF91`, `$FFA0-$FFAF`), with these differences:
 | --- | --- | --- |
 | `$00` | i-MMU-nity | system globals (block map `$0200`, page map), as on the CoCo 3 |
 | `$01-$37`, `$40`+ | i-MMU-nity | OS9Boot and general RAM |
-| `$38-$3D` | motherboard `$0000-$BFFF` | VDG pool: `NotRAM` in the block map; CoVDG claims graphics screens by setting `RAMinUse` and maps one into system slot 1 only while a graphics call runs |
+| `$38-$3D` | motherboard `$0000-$BFFF` | VDG pool: `NotRAM` in the block map; CoVDG claims graphics screens (CoHR/Co42 their text screens) by setting `RAMinUse` and maps one into system slot 1 only while a graphics call runs |
 | `$3B` (`Bt.Block`) | motherboard `$6000-$7FFF` | text screens; in system slot 1 (`$2000`) except while a graphics call runs, pages `$20-$3F` reserved; `RAMinUse` in the block map |
 | `$3E` | motherboard `$C000-$DFFF` | reserved; `DAT.Free` maps unused slots here |
 | `$3F` (`KrnBlk`) | motherboard `$E000-$FFFF` | REL/BOOT/KRN at `$ED00-$FEFF`, as on the CoCo 3 |

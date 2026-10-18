@@ -31,6 +31,22 @@ Put options on the make command line or in a `recipe.mak`:
 - `VDG_WINDOWS=n` (0-7, default 7) adds `/V1` to `/Vn`, extra 32x16 screens.
   CLEAR and SHIFT-CLEAR switch between the screens that have a path open.
   Start a shell on one with `shell i=/v1&`.
+- `HIRES=42` or `HIRES=51` makes the console 42x24 (Co42) or 51x24 (CoHR)
+  text drawn on PMODE 4 graphics screens, instead of CoVDG's 32x16. Both
+  modules come from `level2/immunity/modules/cohr.asm` and keep the module
+  name `CoVDG`, so `mdir` lists them as CoVDG. Each screen takes one
+  of the 5 VDG pool blocks, so `VDG_WINDOWS` is 0-4 (default 4). The text is
+  green on black (`HIRES_BUFF=1`: buff on black; `HIRES_INVERSE=1`: black
+  text on green or buff), with true lower case,
+  `$1F $20`/`$21` (reverse on and off) and `$1F $22`/`$23` (underline on and
+  off). There are no VDG graphics display codes ($0F-$1D), and both are
+  slower than CoVDG.
+  - On an NTSC TV or composite monitor, thin vertical strokes come out in
+    artifact colours. Use 42 columns there: every character gets the same
+    colours. 51 columns is for a monochrome monitor, a PAL machine or a
+    CoCoDV, where it is sharp.
+  - `HIRES_CODV=1` is for a machine with a CoCoDV: the first screen sets it
+    to monochrome (no artifact colours) and green on dark green.
 - `PwrLnFrq=50` gives a 50Hz (PAL) clock.
 - `AFLAGS_EXTRA`, `BOOTMODS_EXTRA` and `CMDS_EXTRA` work as in the CoCo 3
   recipes. `RECIPE=name` changes the image name.
