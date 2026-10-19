@@ -17,11 +17,19 @@
 * entry table, control codes and VD.xxxx statics are CoVDG's:
 *   $01 home, $02 xx yy cursor X,Y, $03 erase line, $04 erase to end of
 *   line, $05 xx cursor off ($20)/on, $06 right, $08 left, $09 up,
-*   $0A down, $0B erase to end of screen, $0C clear screen, $0D return,
-*   $0E show this screen. The VDG graphics codes ($0F-$1D) are ignored.
+*   $0A down, $0B erase to end of screen (CoHR: home, see below),
+*   $0C clear screen, $0D return, $0E show this screen. The VDG graphics
+*   codes ($0F-$1D) are ignored.
 *   $1F $20/$21 reverse video on/off, $1F $22/$23 underline on/off (as on
-*   CoWin). The Level 1 driver's ESC A-J sequences are not supported:
-*   VTIO takes $1B for its own escape codes.
+*   CoWin).
+* CoHR (51x24) also supports the Dragon Data GO51 sequences, as the Level 1
+* driver does (VTIO passes $1B xx on to this module):
+*   $1B A xx yy cursor to column xx (0-50), row yy (0-23), raw bytes
+*   $1B B erase to end of line, C right, D up, E down
+*   $1B F/G reverse on/off, H/I underline on/off, J erase to end of screen
+* and GO51's $0B is cursor HOME, where COVDG's $0B erases to the end of
+* the screen (the Level 1 driver chose COVDG's). Co42 keeps COVDG's $0B;
+* in both, $1B J erases to the end of the screen.
 * Text is light on black: green, or buff with USEBUFF=1 (recipe flag
 * HIRES_BUFF=1). Reverse is dark on light. USEINV=1 (HIRES_INVERSE=1)
 * swaps them: black text on green (or buff), as the Level 1 drivers do. On NTSC, 1-pixel strokes in
@@ -266,7 +274,11 @@ DCodeTbl            fdb       NoOp-DCodeTbl $00 no-op
                     fdb       CurLeft-DCodeTbl $08 cursor left
                     fdb       CurUp-DCodeTbl $09 cursor up
                     fdb       CurDown-DCodeTbl $0A cursor down
-                    fdb       ErEOScrn-DCodeTbl $0B erase to end of screen
+                  IFNE    USECO42
+                    fdb       ErEOScrn-DCodeTbl $0B erase to end of screen (COVDG)
+                  ELSE
+                    fdb       CurHome-DCodeTbl $0B home cursor (GO51)
+                  ENDC
                     fdb       ClrScrn-DCodeTbl $0C clear screen
                     fdb       Retrn-DCodeTbl $0D carriage return
                     fdb       Do0E-DCodeTbl $0E show this screen
@@ -361,17 +373,55 @@ DoCurXY             lda       <VD.NChar,u
                     clrb
                     rts
 
-* $1B xx: VTIO has collected xx. $1B $31 rr cc (palette) takes 2 more
-* bytes; swallow them. Everything else is ignored.
+* $1B xx: VTIO has collected xx.
+*   $31 rr cc : palette, swallow 2 more bytes
+*   $41-$4A   : the Level 1 CoHR / GO51 ESC A-J sequences
+*   anything else is ignored
 Escape              lda       <VD.NChar,u
                     cmpa      #$31
-                    lbne      RtsOk
-                    ldb       #2
-                    leax      RtsOk,pcr
+                    beq       EscPal
+                    suba      #$41      ; ESC A..J = 0..9
+                    lbcs      RtsOk
+                    cmpa      #9
+                    lbhi      RtsOk
+                    leax      EscTbl,pcr
+                    lsla
+                    ldd       a,x
+                    jmp       d,x
+EscPal              leax      RtsOk,pcr
+                    bra       Get2
+* $1B A xx yy: ask VTIO for 2 more bytes
+EscGoto             leax      <EscGotoM,pcr
+Get2                ldb       #2
                     stb       <VD.NGChr,u
                     stx       <VD.RTAdd,u
                     clrb
                     rts
+* Called by VTIO when it has the two bytes, so map the screen here too
+EscGotoM            leax      <EscGoXY,pcr
+                    lbra      Enter
+* xx = column, yy = row, raw bytes, clamped as in the Level 1 DoGotoXY
+EscGoXY             lda       <VD.NChar,u
+                    cmpa      #Cols
+                    blo       EscGo1
+                    lda       #Cols-1
+EscGo1              ldb       <VD.NChr2,u
+                    cmpb      #Rows
+                    blo       EscGo2
+                    ldb       #Rows-1
+EscGo2              std       <CurX,u
+                    clrb
+                    rts
+EscTbl              fdb       EscGoto-EscTbl    A cursor to column, row
+                    fdb       ErEOLine-EscTbl   B erase to end of line
+                    fdb       CurRght-EscTbl    C cursor right
+                    fdb       CurUp-EscTbl      D cursor up
+                    fdb       CurDown-EscTbl    E cursor down
+                    fdb       RevOn-EscTbl      F reverse on
+                    fdb       RevOff-EscTbl     G reverse off
+                    fdb       UndOn-EscTbl      H underline on
+                    fdb       UndOff-EscTbl     I underline off
+                    fdb       ErEOScrn-EscTbl   J erase to end of screen
 
 * $1F xx: $20 reverse on, $21 reverse off, $22 underline on, $23 off
 DoAttr              lda       <VD.NChar,u
@@ -383,7 +433,8 @@ DoAttr              lda       <VD.NChar,u
                     beq       UndOn
                     deca
                     lbne      RtsOk
-                    clr       <UndrLn,u ; underline off
+UndOff              clr       <UndrLn,u ; underline off
+                    clrb
                     rts
 UndOn               lda       #$FF
                     sta       <UndrLn,u
