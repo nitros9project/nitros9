@@ -60,6 +60,9 @@ DAT.WrPr            EQU       0         write protect (not supported)
 DAT.WrEn            EQU       0         write enable (not supported)
 KrnBlk              SET       $FF       physical page number of the kernel
 
+* Start of protected upper memory (DAT RAM and I/O).
+UserMemLimit        equ       $FE00
+
 *
 * Virtual MC6850 ACIA — console (via Pico at $FFC4-$FFC5)
 *
