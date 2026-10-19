@@ -2396,9 +2396,6 @@ error_BG            leas      >stkdepth,s      eat temporary stack
 BMStatus            cmpb      #4               4 parameters?
                     lbne      ParamErr         no, exit with Parameter Error
                     pshs      u
-                    ldu       <mapaddr,s       u is address of mapped block
-                    ldb       #$01             clearing 1 block
-                    os9       F$ClrBlk         remove block from DAT Image
                     ldx       #VICKY_BLK             need to map in BM registers block
                     ldb       #$01
                     os9       F$MapBlk         Map in Bitmap registers
