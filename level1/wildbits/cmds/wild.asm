@@ -2401,7 +2401,6 @@ BMStatus            cmpb      #4               4 parameters?
                     os9       F$MapBlk         Map in Bitmap registers
                     lbcs      exiterr
                     stu       <mapaddr,s
-                    stu       <$20,u
                     puls      u
                     pshs      b
                     clrb                       
