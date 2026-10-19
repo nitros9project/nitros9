@@ -313,5 +313,8 @@ HW.Page             SET       $07                 Device descriptor hardware pag
 * For mc09 it is always $07.
 KrnBlk              SET       $07
 
+* Start of protected upper memory.
+UserMemLimit        equ       $FE00
+
                     ENDC
                     ENDC
