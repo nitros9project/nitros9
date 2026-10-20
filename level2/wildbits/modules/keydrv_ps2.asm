@@ -19,6 +19,18 @@
 *
 *  3        2024/06/17  Boisy G. Pitre (Waco, TX)
 * Added support for V.PAU.
+*
+*  4       2026/10/20  John Federico
+* F1-F8 send $A1-$A8, as on the K2 (F1/F2 were $B1/$B2, Shift $B3/$B4;
+* F3-F8 sent nothing).  Scan codes $80 and up no longer
+* index in front of the tables (F7 is $83; Pause's $E1 sequence is
+* swallowed).  Resync: the FIFO-empty bit is tested before every read; a
+* prefix whose next byte has not come within a tick is dropped (the next
+* byte is then read as a new key, not as the rest of a lost sequence);
+* overrun/error bytes ($00, $FF, $FC, $FD) and a hot-plug ($AA) clear the
+* held keys and modifiers.  Caps Lock no longer waits for the keyboard's
+* acknowledgement inside the interrupt (the LED byte follows its $FA),
+* keeps the LED state, and does not toggle again on its own key repeat.
 
                     use       defsfile
                     use       wildbits_vtio.d
@@ -26,7 +38,7 @@
 tylg                set       Systm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       3
+edition             set       4
 
 
 * We can use a different MMU slot if we want.
@@ -43,7 +55,15 @@ name                fcs       /keydrv/
                     fcb       edition
 
                     org       V.KeyDrvStat
-V.KCVect            rmb       2
+V.KCVect            rmb       2         the handler for the next byte (KCHandler = no prefix pending)
+V.PfxSec            rmb       1         D.Sec and D.Tick when the pending prefix arrived
+V.PfxTick           rmb       1
+V.Skip              rmb       1         bytes of the Pause key's sequence still to swallow
+V.LEDPend           rmb       1         1 = $ED sent; its $FA sends the LED byte
+V.CapsDn            rmb       1         Caps Lock is held (its key repeat does not toggle again)
+                    ifgt      .-V.KeyDrvStat-8
+                    error     keydrv statics overflow V.KeyDrvStat
+                    endc
 
 * keydrv has three 3-byte entry points:
 * - Init
@@ -171,13 +191,11 @@ hex2@               addb      #$37
 afterhex2@          rts
                   ENDC
 
-* Send a byte to the PS/2 keyboard.
+* Send a byte to the PS/2 keyboard and wait for its $FA (Init only: the
+* wait reads KBD_IN and would throw key bytes away in the interrupt).
 *
 * Entry: A = The byte to send to the keyboard.
-SendToPS2           sta       PS2_OUT   ; send the byte out to the keyboard
-                    lda       #K_WR     ; load the "write" bit
-                    sta       PS2_CTRL  ; send it to the control register
-                    clr       PS2_CTRL  ; then clear the bit in the control register
+SendToPS2           bsr       SendByte
                     lda       #$FA
 * Entry: A = Response to expect from the keyboard.
 * Destroys X.
@@ -196,6 +214,13 @@ l@                  ldx       1,s
 e@                  comb
                     puls      a,x,pc    ; return
 
+* SendByte - send A to the keyboard; do not wait for the reply.
+SendByte            sta       PS2_OUT   ; send the byte out to the keyboard
+                    lda       #K_WR     ; load the "write" bit
+                    sta       PS2_CTRL  ; send it to the control register
+                    clr       PS2_CTRL  ; then clear the bit in the control register
+                    rts
+
 IRQSvc              ldb       #INT_PS2_KBD ; get the PS/2 keyboard interrupt flag
                     stb       INT_PENDING_0 ; clear the interrupt
 * F$IRQ already passed U = registered vtio static. Use D.KbdSta only when
@@ -205,19 +230,46 @@ IRQSvc              ldb       #INT_PS2_KBD ; get the PS/2 keyboard interrupt fla
                     ldx       >D.KbdSta
                     beq       getcode
                     tfr       x,u
-getcode             lda       KBD_IN    ; get the key code
-                    beq       IRQExit   ; if it's a zero, ignore
-
-* These next two lines get around an issue where an interrupt occurs even after
-* clearing it and reading all data from the keyboard at initialization.
-* This may be a hardware issue.
-                    cmpa      #$FA      ; is it the acknowledge byte?
-                    beq       IRQExit   ; branch if so
-                    cmpa      #$AA      ; self-test passed (reset or hot-plug)?
-                    bne       notaa@    ; branch if not
-                    lbsr      KeyLiveClr ; no key can still be held
-                    bra       IRQExit
-notaa@
+* Read while the FIFO has bytes: testing KEMP first means an interrupt
+* with nothing queued reads nothing, so $00 and $FF are real bytes.
+getcode             lda       PS2_STAT
+                    bita      #KEMP     ; FIFO empty?
+                    lbne      IRQDone   ; yes - done
+                    lda       KBD_IN    ; get the key code
+* Resync.  PS/2 key codes carry no sync bit; what can be lost is the rest
+* of a sequence.  Its bytes come about 1 ms apart, so a prefix still
+* waiting a tick later lost its next byte: drop it, and read this byte as
+* a new key.
+                    lbsr      ChkStale
+* The keyboard's replies and error bytes are never keys.
+                    cmpa      #$FA      ; acknowledge
+                    lbeq      DoAck
+                    cmpa      #$FE      ; resend the last command
+                    lbeq      DoResend
+                    cmpa      #$AA      ; self-test passed (reset or hot-plug)
+                    lbeq      DoBAT
+                    cmpa      #$EE      ; echo
+                    lbeq      IRQExit
+                    tsta                ; $00: overrun / key detection error
+                    lbeq      DoErr
+                    cmpa      #$FF      ; overrun / key detection error
+                    lbeq      DoErr
+                    cmpa      #$FC      ; self-test failed
+                    lbeq      DoErr
+                    cmpa      #$FD
+                    lbeq      DoErr
+* Pause sends E1 14 77 E1 F0 14 F0 77 and no break: swallow it whole.
+                    tst       V.Skip,u
+                    beq       noskip@
+                    dec       V.Skip,u
+                    lbra      IRQExit
+noskip@             cmpa      #$E1
+                    bne       notp@
+                    ldb       #7
+                    stb       V.Skip,u
+                    lbsr      Stamp
+                    lbra      IRQExit
+notp@
 
                   IFNE    RAW_KEYBOARD
                     bsr       cvt2hex   ; convert the key code to hexadecimal
@@ -267,10 +319,83 @@ WakeIt              ldb       #S$Wake   ; get the wake signal
 noproc@             beq       IRQExit   ; branch if not
                     clr       V.WAKE,u  ; else clear the wake flag
 send@               os9       F$Send    ; and send the signal in B
-IRQExit             lsr       PS2_STAT  ; shift the PS/2 status bit 0 into the carry
-                    bcc       getcode   ; branch if the carry is 0 (meaning there's more key data to read)
-ex@                 clrb                ; else the clear carry
-ex2@                rts                 ; return
+IRQExit             lbra      getcode   ; more bytes queued?
+IRQDone             clrb                ; else the clear carry
+                    rts                 ; return
+
+* DoAck - $FA: if Caps Lock's $ED is waiting, send the LED byte now.
+DoAck               tst       V.LEDPend,u
+                    beq       IRQExit
+                    clr       V.LEDPend,u
+                    lda       V.LEDStates,u
+                    lbsr      SendByte
+                    bra       IRQExit
+* DoResend - $FE: the keyboard missed our last byte.
+DoResend            tst       V.LEDPend,u
+                    beq       IRQExit
+                    lda       #$ED
+                    lbsr      SendByte
+                    bra       IRQExit
+* DoBAT - $AA: the keyboard reset (hot-plug).  Nothing is held, and its
+* LEDs are off: send ours again.
+DoBAT               bsr       ResetKeys
+                    tst       V.LEDStates,u
+                    beq       IRQExit
+                    lbsr      SendLED
+                    bra       IRQExit
+* DoErr - an overrun or error byte: bytes were lost, so what is held is
+* unknown.  Start clean rather than leave a key or modifier stuck.
+DoErr               bsr       ResetKeys
+                    bra       IRQExit
+
+* ResetKeys - no prefix pending, nothing held: no modifiers, no arrows, an
+* empty gr.KeyLive.
+ResetKeys           clr       D.KySns
+                    clr       V.Skip,u
+                    clr       V.CapsDn,u
+                    lbsr      KeyLiveClr
+                    lbra      SetDefaultHandler
+
+* Stamp - note when a prefix (or the Pause swallow) started waiting.
+* Keeps all registers but CC.
+Stamp               pshs      a
+                    lda       >D.Sec
+                    sta       V.PfxSec,u
+                    lda       >D.Tick
+                    sta       V.PfxTick,u
+                    puls      a,pc
+
+* ChkStale - if a prefix or the Pause swallow is waiting and the clock has
+* moved more than one tick since it started, drop it.  D.Tick counts down
+* from TkPerSec to 1 and D.Sec counts up, so one tick on from (s,t) is
+* (s,t-1), or (s+1,TkPerSec) when t is 1.  Keeps A.
+ChkStale            pshs      a
+                    tst       V.Skip,u
+                    bne       chk@
+                    ldd       V.KCVect,u
+                    pshs      d
+                    leax      KCHandler,pcr
+                    cmpx      ,s++
+                    beq       fresh@    ; nothing waiting
+chk@                ldd       V.PfxSec,u ; a = second, b = tick it started
+                    cmpa      >D.Sec
+                    bne       next@
+                    cmpb      >D.Tick
+                    beq       fresh@    ; the same tick
+next@               decb                ; one tick on
+                    bne       cmp1@
+                    ldb       #TkPerSec ; t was 1: the next second
+                    inca
+                    cmpa      #60
+                    blo       cmp1@
+                    clra
+cmp1@               cmpa      >D.Sec
+                    bne       stale@
+                    cmpb      >D.Tick
+                    beq       fresh@
+stale@              clr       V.Skip,u
+                    lbsr      SetDefaultHandler
+fresh@              puls      a,pc
 
 * Check if we need to wrap around tail pointer to zero.
 IncNCheck           incb                ; increment the next character pointer
@@ -298,8 +423,14 @@ KCHandler
                     lbeq      DoRightShiftDown ; branch if so
                     cmpa      #$14      ; is this the Left Ctrl byte?
                     lbeq      DoLeftCtrlDown ; branch if so
+                    clr       V.CapsDn,u ; another key ends Caps Lock's repeat, so a lost Caps break cannot leave it stuck
+                    lbsr      MapHigh   ; F7's $83 to its slot; other $80+ to 0
                     lbsr      KeyLiveAdd ; record it as held (SS.LiveKeys $C6)
                     lda       a,y       ; else pull the key character from the scan code table
+                    bne       chr@
+                    comb                ; an unpopulated scan code: no character (never buffer a NUL)
+                    rts
+chr@                lbmi      BufferChar ; a function key: no Ctrl or Caps fold
                     cmpa      #C$SPAC   ; is this space key?
                     bne       ctrlck@
                     orb       #SPACEBIT
@@ -441,18 +572,39 @@ changewindowr       lda       #SW.Next  ; alt+Right = next terminal
                     rts
 
 
-DoCapsLockDown
-                    lda       #$ED      ; get the PS/2 keyboard LED command
-                    lbsr      SendToPS2 ; send it to the PS/2
-                    lda       V.LEDStates,u ; get the PS/2 LED flags in static memory
+* MapHigh - A = a make or break code.  The tables cover $00-$7F; F7 is
+* $83, so it gets the unused slot $02, and anything else from $80 up maps
+* to slot 0, which is empty.  Keeps B.
+MapHigh             tsta
+                    bpl       mh@
+                    cmpa      #$83      ; F7
+                    bne       mh0@
+                    lda       #$02
+                    rts
+mh0@                clra
+mh@                 rts
+
+* Caps Lock: toggle on the press, not on the key's own repeat, and set the
+* LED: $ED now, the LED byte when its $FA arrives (DoAck).
+DoCapsLockDown      tst       V.CapsDn,u
+                    bne       capx@     ; held: its repeat
+                    inc       V.CapsDn,u
+                    lda       V.LEDStates,u
+                    anda      #^$04     ; the CAPS Lock LED bit
                     com       V.CAPSLck,u ; complement the CAPS lock flag in our static memory
                     beq       ledoff@   ; branch if the result is 0 (LED should be turned off)
                     ora       #$04      ; set the CAPS Lock LED bit
-                    bra       send@     ; and send it to the keyboard
-ledoff@             anda      #^$04     ; clear the CAPS Lock LED bit
-send@               lbsr      SendToPS2 ; send the byte to the keyboard
-                    comb                ; clear the carry so that the read routine just returns
-                    rts                 ; return
+ledoff@             sta       V.LEDStates,u
+                    bsr       SendLED
+capx@               comb                ; no character
+                    rts
+
+* SendLED - send $ED; DoAck sends V.LEDStates when the keyboard acknowledges.
+SendLED             lda       #$ED
+                    lbsr      SendByte
+                    lda       #1
+                    sta       V.LEDPend,u
+                    rts
 
 DoLeftAltDown
 DoRightAltDown
@@ -474,6 +626,7 @@ ProcE0F0            leax      E0F0Handler,pcr ; get the $E0F0 handler routine
 
 ProcF0              leax      F0Handler,pcr ; get the $F0 handler routine
 StoreNEx            stx       V.KCVect,u ; store it in the vector
+                    lbsr      Stamp     ; a byte is now expected within a tick
                     comb                ; clear the carry so that the read routine handles other work
                     rts                 ; return
 
@@ -549,6 +702,11 @@ F0Handler
                     beq       DoLeftAltUp
                     cmpa      #$29      ; is this space key?
                     beq       DoSpaceUp ; if so, handle it
+                    cmpa      #$58      ; caps Lock up: the next press toggles again
+                    bne       f0key@
+                    clr       V.CapsDn,u
+                    bra       SetDefaultHandler
+f0key@              lbsr      MapHigh   ; F7's $83 to its slot
                     lbsr      KeyLiveDel ; it is no longer held
                     bra       SetDefaultHandler
 
@@ -600,7 +758,9 @@ SetDefaultHandler
 * These tables map PS/2 key codes to characters in both non-SHIFT and SHIFT cases.
 * If the high bit of a character is set, it is a special flag and therefore
 * is handled differently.
-ScanMap             fcb       0,0,0,0,0,$b1,$b2,0,0,0,0,0,0,0,'`,0
+* Row 0: F7 ($83) uses slot $02; F9-F12 ($01,$09,$78,$07) send nothing,
+* as the K2 has no such keys.  $A1-$A8 = F1-F8, with or without Shift.
+ScanMap             fcb       0,0,$A7,$A5,$A3,$A1,$A2,0,0,0,$A8,$A6,$A4,0,'`,0
                     fcb       0,0,0,0,0,'q,'1,0,0,0,'z,'s,'a,'w,'2,0
                     fcb       0,'c,'x,'d,'e,'4,'3,0,0,C$SPAC,'v,'f,'t,'r,'5,0
                     fcb       0,'n,'b,'h,'g,'y,'6,0,0,0,'m,'j,'u,'7,'8,0
@@ -609,7 +769,7 @@ ScanMap             fcb       0,0,0,0,0,$b1,$b2,0,0,0,0,0,0,0,'`,0
                     fcb       0,0,0,0,0,0,$8,0,0,'1,0,'4,'7,0,0,0
                     fcb       '0,'.,'2,'5,'6,'8,$05,0,0,'+,'3,'-,'*,'9,$17,0
 
-SHIFTScanMap        fcb       0,0,0,0,0,$b3,$b4,0,0,0,0,0,0,0,'~,0
+SHIFTScanMap        fcb       0,0,$A7,$A5,$A3,$A1,$A2,0,0,0,$A8,$A6,$A4,0,'~,0
                     fcb       0,0,0,0,0,'Q,'!,0,0,0,'Z,'S,'A,'W,'@,0
                     fcb       0,'C,'X,'D,'E,'$,'#,0,0,C$SPAC,'V,'F,'T,'R,'%,0
                     fcb       0,'N,'B,'H,'G,'Y,'^,0,0,0,'M,'J,'U,'&,'*,0
