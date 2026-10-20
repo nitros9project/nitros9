@@ -22,9 +22,10 @@
 *
 *  4       2026/10/20  John Federico
 * F1-F8 send $A1-$A8, as on the K2 (F1/F2 were $B1/$B2, Shift $B3/$B4;
-* F3-F8 sent nothing).  Scan codes $80 and up no longer
-* index in front of the tables (F7 is $83; Pause's $E1 sequence is
-* swallowed).  Resync: the FIFO-empty bit is tested before every read; a
+* F3-F8 sent nothing); Tab sends $09, as on the K2 (it buffered a $00).
+* Scan codes $80 and up no longer index in front of the tables (F7 is $83;
+* Pause's $E1 sequence is swallowed), and a scan code with no entry no
+* longer buffers a NUL.  Resync: the FIFO-empty bit is tested before every read; a
 * prefix whose next byte has not come within a tick is dropped (the next
 * byte is then read as a new key, not as the rest of a lost sequence);
 * overrun/error bytes ($00, $FF, $FC, $FD) and a hot-plug ($AA) clear the
@@ -760,7 +761,9 @@ SetDefaultHandler
 * is handled differently.
 * Row 0: F7 ($83) uses slot $02; F9-F12 ($01,$09,$78,$07) send nothing,
 * as the K2 has no such keys.  $A1-$A8 = F1-F8, with or without Shift.
-ScanMap             fcb       0,0,$A7,$A5,$A3,$A1,$A2,0,0,0,$A8,$A6,$A4,0,'`,0
+* Tab ($0D) is $09, as on the K2; a program tells it from Right arrow by
+* RIGHTBIT in D.KySns (te does).
+ScanMap             fcb       0,0,$A7,$A5,$A3,$A1,$A2,0,0,0,$A8,$A6,$A4,$09,'`,0
                     fcb       0,0,0,0,0,'q,'1,0,0,0,'z,'s,'a,'w,'2,0
                     fcb       0,'c,'x,'d,'e,'4,'3,0,0,C$SPAC,'v,'f,'t,'r,'5,0
                     fcb       0,'n,'b,'h,'g,'y,'6,0,0,0,'m,'j,'u,'7,'8,0
@@ -769,7 +772,7 @@ ScanMap             fcb       0,0,$A7,$A5,$A3,$A1,$A2,0,0,0,$A8,$A6,$A4,0,'`,0
                     fcb       0,0,0,0,0,0,$8,0,0,'1,0,'4,'7,0,0,0
                     fcb       '0,'.,'2,'5,'6,'8,$05,0,0,'+,'3,'-,'*,'9,$17,0
 
-SHIFTScanMap        fcb       0,0,$A7,$A5,$A3,$A1,$A2,0,0,0,$A8,$A6,$A4,0,'~,0
+SHIFTScanMap        fcb       0,0,$A7,$A5,$A3,$A1,$A2,0,0,0,$A8,$A6,$A4,$09,'~,0
                     fcb       0,0,0,0,0,'Q,'!,0,0,0,'Z,'S,'A,'W,'@,0
                     fcb       0,'C,'X,'D,'E,'$,'#,0,0,C$SPAC,'V,'F,'T,'R,'%,0
                     fcb       0,'N,'B,'H,'G,'Y,'^,0,0,0,'M,'J,'U,'&,'*,0
