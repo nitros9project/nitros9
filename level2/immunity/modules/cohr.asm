@@ -17,7 +17,7 @@
 * entry table, control codes and VD.xxxx statics are CoVDG's:
 *   $01 home, $02 xx yy cursor X,Y, $03 erase line, $04 erase to end of
 *   line, $05 xx cursor off ($20)/on, $06 right, $08 left, $09 up,
-*   $0A down, $0B erase to end of screen (CoHR: home, see below),
+*   $0A down, $0B erase to end of screen (Co51: home not implemented, see below),
 *   $0C clear screen, $0D return, $0E show this screen. The VDG graphics
 *   codes ($0F-$1D) are ignored.
 *   $1F $20/$21 reverse video on/off, $1F $22/$23 underline on/off (as on
@@ -28,7 +28,7 @@
 *   $1B B erase to end of line, C right, D up, E down
 *   $1B F/G reverse on/off, H/I underline on/off, J erase to end of screen
 * and GO51's $0B is cursor HOME, where COVDG's $0B erases to the end of
-* the screen (the Level 1 driver chose COVDG's). Co42 keeps COVDG's $0B;
+* the screen (the Level 1 driver chose COVDG's). We keep COVDG's $0B;
 * in both, $1B J erases to the end of the screen.
 * Text is light on black: green, or buff with USEBUFF=1 (recipe flag
 * HIRES_BUFF=1). Reverse is dark on light. USEINV=1 (HIRES_INVERSE=1)
@@ -274,11 +274,9 @@ DCodeTbl            fdb       NoOp-DCodeTbl $00 no-op
                     fdb       CurLeft-DCodeTbl $08 cursor left
                     fdb       CurUp-DCodeTbl $09 cursor up
                     fdb       CurDown-DCodeTbl $0A cursor down
-                  IFNE    USECO42
+* Since few applications use CoHR $0B, support COVDG $0B instead
                     fdb       ErEOScrn-DCodeTbl $0B erase to end of screen (COVDG)
-                  ELSE
-                    fdb       CurHome-DCodeTbl $0B home cursor (GO51)
-                  ENDC
+*                   fdb       CurHome-DCodeTbl $0B home cursor (GO51)
                     fdb       ClrScrn-DCodeTbl $0C clear screen
                     fdb       Retrn-DCodeTbl $0D carriage return
                     fdb       Do0E-DCodeTbl $0E show this screen
