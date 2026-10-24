@@ -15,16 +15,12 @@
                   IFNE    H6309   ; begin conditional assembly for H6309
 * F$CpyMem for NitrOS-9 Level Two
 * Notes:
-* We currently check to see if the end of the buffer we are
-* copying to will overflow past $FFFF, and exit if it does.
-* Should this be changed to check if it overflows past the
-* data area of a process, or at least into Vector page RAM
-* and I/O ($FE00-$FFFF)???
+* The port defines UserMemLimit as the start of protected upper memory.
 *
 FCpyMem             ldd       R$Y,u     ; get byte count
                     beq       FCpymemErrorExit ; nothing there so nothing to move, return
                     addd      R$U,u     ; add it caller's buffer start ptr.
-                    cmpa      #$FE      ; is it going to overwrite Vector or I/O pages?
+                    cmpa      #UserMemLimit/256 ; reaches protected upper memory?
                     bhs       FCpymemErrorExit ; yes, exit without error
                     leas      -$10,s    ; make a buffer for DAT image
                     leay      ,s        ; point to it
@@ -82,7 +78,7 @@ FCpyMem             ldd       R$Y,u     ; get # of bytes to copy
                     beq       FCpymemErrorExit ; if 0, exit
                     addd      R$U,u     ; plus dest buff
 * LCB - Added check to match 6309 version
-                    cmpa      #$FE      ; is it going to overwrite Vector or I/O pages?
+                    cmpa      #UserMemLimit/256 ; reaches protected upper memory?
                     bhs       FCpymemErrorExit ; yes, exit without error
                     leas      -$10,s    ; make room on stack for temp DAT image
                     leay      ,s        ; point to it

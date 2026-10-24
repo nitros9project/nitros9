@@ -253,6 +253,9 @@ HW.Page             SET       $07                 Device descriptor hardware pag
 * For the COCO GIME, it's always $3F.
 KrnBlk              SET       $3F
 
+* Start of protected upper memory (Vector RAM and I/O).
+UserMemLimit        equ       $FE00
+
                     ENDC
                     ENDC
 

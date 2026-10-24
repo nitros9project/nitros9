@@ -120,6 +120,9 @@ HW.Page             set       $7                  device descriptor hardware pag
 * $FFFF but $FD00-$FFFF is unusable by the user process.
 KrnBlk              set       $7
 
+* Start of protected upper memory (fixed shadow RAM, followed by I/O).
+UserMemLimit        equ       $FD00
+
                     endc
 
 ********************************************************************
