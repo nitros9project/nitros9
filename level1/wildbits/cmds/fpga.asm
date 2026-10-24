@@ -780,7 +780,14 @@ Program             leax ProgramSignal,pcr
                     cmpy #$7B5C
                     lbhi BadImage
                     lbra SizeOK
-CheckGzipSize       cmpx #$0020
+* Flash: a .gz from its 2 MiB slot to the end of the manager's flash, running on into the slots after its own:
+* up to 8, 6, 4 or 2 MiB for contexts 1-4, the size's high word (4 - Context) x $20.
+CheckGzipSize       ldb #4
+                    subb Context,u
+                    lda #$20
+                    mul
+                    pshs d
+                    cmpx ,s++
                     lbhi BadImage
                     lbne GzipMin
                     cmpy #0
@@ -818,7 +825,7 @@ ScanDone            lbsr ExactSize
                     lda Target,u
                     cmpa #2
                     lbne RewindImage
-* Check gzip header and trailer size before erasing a flash slot.
+* Check gzip header and trailer size before the manager erases flash.
                     lbsr SeekStart
                     lbcs Exit
                     lbsr ReadChunk
@@ -1231,7 +1238,7 @@ Accepted            fcc / bytes/
                     fcb 0
 Programmed          fcc /Image stored; size and CRC verified. Selection and running core unchanged./
                     fcb 0
-ImageError          fcc /Invalid image: SD needs a 9730652(+<=256)-byte .bin; flash needs .gz <=2 MiB./
+ImageError          fcc /Invalid image: SD needs a 9730652(+<=256)-byte .bin; flash needs .gz <=8, 6, 4 or 2 MiB in context 1, 2, 3 or 4./
                     fcb 0
 Changed             fcc /Image changed or truncated during transfer; not committed./
                     fcb 0
