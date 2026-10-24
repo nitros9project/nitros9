@@ -1,0 +1,14 @@
+{
+ "generator": "wildbits-buildkit/tools/texconv (TexConv)",
+ "source": "E:\\cygwin64\\home\\taylo\\wildbits-buildkit\\tools\\texconv\\images\\wblogo16s.png",
+ "materials_file": "E:\\cygwin64\\home\\taylo\\wildbits-buildkit\\tools\\texconv\\.\\..\\flightsim2\\aircraft\\materials.json",
+ "width": 64, "height": 32,
+ "bytes": 2048,
+ "id": 0, "base": 0,
+ "descriptor": [0, 0, 0, 211],
+ "clamp_u": true, "clamp_v": true,
+ "fit": "pad", "light_level": 20, "alpha": 128, "dither": false, "fill": 10,
+ "key": null, "key_tolerance": 24,
+ "transparent": 0,
+ "materials_used": {"2": 7, "9": 5, "10": 1687, "11": 8, "13": 24, "14": 317}
+}
