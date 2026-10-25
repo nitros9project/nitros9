@@ -9,12 +9,17 @@
 *   0 = PATA IDE (default)
 *   1 = DriveWire (auxiliary ACIA)
 *
+* CPUMode byte at Chunk+6 selects the CPU mode:
+*   0 = auto: 6309 native mode if an HD6309 is fitted (default)
+*   3 = 6309 native mode; boot fails on an MC6809
+*   8 = 6809 mode, which is emulation mode on an HD6309
+*
 * Boot sequence:
 *   1. Disable interrupts, set DP=0
 *   2. Set up DAT task 0 (identity map, KrnBlk in slot 7)
 *   3. Set up stack at STKADDR ($2000)
 *   4. Clear direct page
-*   5. Enable 6309 native mode (HD63C09) [if H6309]
+*   5. Enable 6309 native mode if CPUMode and the CPU allow it
 *   6. Install the boot debug output and crash handler
 *   7. Initialize IDE or DriveWire (per DrvWire flag)
 *   8. Print boot message with device type
@@ -28,7 +33,8 @@
 * This is the Wildbits boot (bootos9): the kernel adopts the
 * preloaded bootfile in place, so there is no boot module, no
 * F$Boot, no OS9Kernel file and no OS9Gen.  Nothing here
-* depends on the level, so one REL boots both.
+* depends on the level or the CPU, so one REL boots Level 1
+* and Level 2 bootfiles built for either the 6809 or the 6309.
 *
 * On entry there is no stack; step 3 sets one up at STKADDR.
 *
@@ -39,6 +45,8 @@
 *     2    2026/03/14 Unified L1/L2 with conditional assembly
 *     3    2026/09/29 Load the whole bootfile by name, as the Wildbits
 *                     does; choose the level from where Krn sits
+*     4    2026/10/25 Detect the CPU and choose 6309 native mode at
+*                     boot, so one REL serves the 6809 and the 6309
 
                   IFP1
                     use       defsfile
@@ -52,6 +60,7 @@ R.BtBug             equ       $5E       boot debug vector (3 bytes)
 R.CrashV            equ       $6B       crash handler vector (6 bytes)
 
 Chunk               equ       $0130     rel load address
+                    pragma    6809      refuse 6309 instructions outside the marked spots
                     org       Chunk
 
 *------------------------------------------------------------
@@ -62,7 +71,8 @@ Chunk               equ       $0130     rel load address
 *
 start               bra       start2
 DrvWire             fcb       0         0=ide, 1=drivewire (Chunk+2)
-RELVer              fcb       0,1,0     rel version major.minor.patch (Chunk+3)
+RELVer              fcb       0,2,0     rel version major.minor.patch (Chunk+3)
+CPUMode             fcb       0         0=auto, 3=6309 native, 8=6809 (Chunk+6)
 start2              orcc      #IntMasks disable all interrupts
                     clra
                     tfr       a,dp      set direct page to $0000
@@ -107,11 +117,25 @@ cpcrash@            lda       ,x+
                     decb
                     bne       cpcrash@
 
-* Enable 6309 native mode if building for 6309
-                  IFNE    H6309
-                    ldmd      #3        native mode, FIRQ saves all regs
-                    inc       <D.MDREG  set mode shadow register
-                  ENDC
+* Choose the CPU mode.  The kernels run in whatever mode REL leaves,
+* so native mode is for 6309 bootfiles only; a 6809 bootfile on an
+* HD6309 needs CPUMode 8.
+                    lda       CPUMode,pcr
+                    cmpa      #8        6809 mode asked for?
+                    beq       cpudn@    yes, leave the cpu in its reset mode
+                    lbsr      Is6309    is an hd6309 fitted?
+                    bne       native@   yes, switch it to native mode
+                    tsta                auto?
+                    beq       cpudn@    yes, an mc6809 boots in 6809 mode
+                    leax      No6309,pcr "6309 native mode needs an HD6309"
+                    lbra      BtHalt
+                    pragma    6309      allow the one 6309 instruction
+native@             ldmd      #3        native mode, FIRQ saves all regs
+                    pragma    6809      back to 6809 instructions only
+                    lbsr      TSTNM     check native mode took effect
+                    beq       cpudn@    no, carry on in emulation mode
+                    inc       CPUType,pcr record native mode
+cpudn@
 
 * Initialize storage device
                     tst       DrvWire,pcr
@@ -130,7 +154,11 @@ initdn@
                     bra       bootmsg@
 dwmsg@              leax      <MsgDW,pcr
 bootmsg@            lbsr      PHDATA
-                    lbsr      PCRLF
+                    tst       CPUType,pcr native mode?
+                    beq       cpumsg@   no, nothing to add
+                    leax      <MsgNat,pcr
+                    lbsr      PHDATA
+cpumsg@             lbsr      PCRLF
 
 * Check if device init failed
                     bcs       InitErr
@@ -169,6 +197,8 @@ btbusy@             ldb       >ACIA.Ctrl read ACIA status
 BootMsg             fcs       "NitrOS9 Boot "
 MsgIDE              fcs       "(IDE)"
 MsgDW               fcs       "(DriveWire)"
+MsgNat              fcs       " 6309 native mode"
+No6309              fcs       "6309 native mode needs an HD6309"
 BootFail            fcs       "Boot failed"
 InitFail            fcs       "Device init failed"
 CrashMsg            fcs       "Crash error $"
@@ -192,6 +222,54 @@ CrashHdl            pshs      b         save error code
                     lbsr      OUT2HX
                     lbsr      PCRLF
 hang@               bra       hang@     loop forever
+
+*------------------------------------------------------------
+* Is6309 - tell an HD6309 from an MC6809
+*
+* The 6809 has no W register: a TFR naming it writes nothing
+* and reads $FFFF, the same behaviour TSTNM relies on.  So a
+* zero passed through W comes back as zero only on a 6309.
+* W is not preserved on a 6309.
+*
+* Exit:  cc ne = HD6309, cc eq = MC6809
+*        all other registers preserved
+*
+Is6309              pshs      d         save D
+                    ldd       #0        the value to pass through W
+                    pragma    6309      allow the 6309 register W
+                    tfr       d,w       does nothing on a 6809
+                    tfr       w,d       D = 0 on a 6309, $FFFF on a 6809
+                    pragma    6809      back to 6809 instructions only
+                    comb                B = $FF on a 6309, 0 on a 6809
+                    puls      d,pc      restore D and return with the flags
+
+*------------------------------------------------------------
+* TSTNM - read the 6309's NM (native mode) bit
+*
+* The BITMD instruction cannot be used to test the state of the two
+* execution mode bits (NM and FM). The state of NM can be determined
+* programatically with the TSTNM subroutine listed below. Upon return,
+* accumulator A will contain the value of the NM bit. All other
+* registers are preserved. When run on a 6809 processor it will always
+* return with A = 0.
+*
+                    pragma    6309      tstnm uses the 6309 W register
+TSTNM               PSHS      U,Y,X,DP,CC ; Preserve Registers
+                    ORCC      #$D0      ; Mask interrupts and set E flag
+                    TFR       W,Y       ; Y=W (6309), Y=$FFFF (6809)
+                    LDA       #1        ; Set result for NM=1
+                    BSR       L1        ; Set return point for RTI when NM=1
+                    BEQ       L0        ; Skip next instruction if NM=0
+                    TFR       X,W       ; Restore W
+L0                  PULS      CC,DP,X,Y,U ; Restore other registers
+                    TSTA                ; Setup CC.Z to reflect result
+                    RTS
+L1                  BSR       L2        ; Set return point for RTI when NM=0
+                    CLRA
+                    RTS                 ; Set result for NM=0
+L2                  PSHS      U,Y,X,DP,D,CC ; Push emulation mode machine state
+                    RTI                 ; Return to one of the two BSR calls
+                    pragma    6809      back to 6809 instructions only
 
 *------------------------------------------------------------
 * OS-9 Disk Boot Routines
@@ -222,13 +300,9 @@ BTLOW               equ       $4000     lowest start for the bootfile
 L1VECT              equ       $0100     Level 1 kernel's RAM vector table
 * SWIStack ("REGISTER STACK" + $55) sits between the krn module's emod and
 * the 6 BRA vector stubs; we skip it to find the stubs. The HD6309 kernel
-* widens that text by two bytes ("REGISTER STACK63"), so the stub offset
-* must grow to match or the hardware vectors land two bytes short.
-                  IFNE    H6309
-SWIStkSz            equ       17        "REGISTER STACK63" + $55
-                  ELSE
-SWIStkSz            equ       15        "REGISTER STACK" + $55
-                  ENDC
+* widens that text by two bytes ("REGISTER STACK63"), so REL checks for
+* the "63" and skips it too, or the hardware vectors land two bytes short.
+SWIStkSz            equ       14        length of "REGISTER STACK"
 VCT.Ct              equ       6         number of BRA stubs (SWI3..NMI)
 VCT.Sz              equ       3         bytes per stub (BRA + offset + NOP)
 * The buffers sit below the stack, clear of the bootfile, which may
@@ -350,12 +424,17 @@ l1vec@              ldd       ,x++      next $0100-table entry address
                     blo       l1vec@
                     bra       jmpkr@
 * set up hardware vectors from krn BRA stubs
-* krn file layout after emod: [SWIStack 15 bytes] [6 x 3-byte BRA stubs]
+* krn file layout after emod: [SWIStack 15 or 17 bytes] [6 x 3-byte BRA stubs]
 * stubs: SWI3 SWI2 FIRQ IRQ SWI NMI (same order as $FFF2-$FFFC)
 lvl2@               leax      ,y        use krn address returned by FIND
                     ldd       M$Size,x  get krn module size (through emod)
                     leax      d,x       point past emod
-                    leax      SWIStkSz,x skip SWIStack
+                    leax      SWIStkSz,x skip "REGISTER STACK"
+                    ldd       ,x        the next two bytes
+                    cmpd      #'6*256+'3 a 6309 kernel's "63"?
+                    bne       swi55@    no, a 6809 kernel
+                    leax      2,x       skip the "63"
+swi55@              leax      1,x       skip the $55
 * x now points to first BRA stub (SWI3)
 * write 6 vector addresses to $FFF2-$FFFD
                     ldu       #$FFF2
@@ -1075,6 +1154,7 @@ FSizHi              fdb       0         file size bits 31-16
 BtStart             fdb       0         where os9boot is loaded
 BtSize              fdb       0         os9boot size in bytes
 IDEMode             fcb       0         ide device select byte (lba flag)
+CPUType             fcb       0         non-zero once in 6309 native mode
 * readcf working variables
 SegPtr              fdb       0         current position in segbuf
 CurLSN              fcb       0,0,0     current 3-byte lsn being read
