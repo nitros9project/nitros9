@@ -201,7 +201,7 @@ S$WinFg             equ       $82                 this terminal came forward
 * (grfdrv256).  Codes without a handler return E$UnkSvc.  The groups sit in
 * the free holes: $C7-$CB are VRN (os9.d), $D2 is sc16550's SS.DvrID, $E2 is
 * SS.Fuji (drivewire.d).
-* Spare: $D0 (was SS.KyDwn), $D4-$E0 (the sprite codes the registered table
+* Spare: $D0 (was SS.KyDwn), $D7-$E0 (the sprite codes the registered table
 * made unnecessary) and $FE-$FF.  $E1 is SS.WSig, above.
 * The sprite group is no longer contiguous, and that is the point: a code
 * with no handler is a promise nobody made.  The rest of the groups are
@@ -238,6 +238,53 @@ SS.SprReg           equ       $D3                 R$X = the table (auto: R$Y = 0
 * run past the end of one.
 SS.GfxAlloc         equ       $D4                 R$X = block count; returns R$X = first block
 SS.GfxFree          equ       $D5                 R$X = first block, R$U = count
+* The GPU call (user, 2026-10-23): one code, the function in R$X's high byte.  SetStat writes, GetStat reads.
+* The long pokes and peeks reach a byte, a word or a run of bytes at an offset in any block (R$X's low byte),
+* which the driver maps itself, so a program reaches device pages such as VICKY_BLK without mapping them into
+* its own space.  A word goes high byte first (std/ldd at the offset).  A run's byte i goes to (comes from)
+* offset + (i AND mask): mask 0 feeds one port (a FIFO), 1 a word port read high byte first, 7 an 8-byte
+* window, $FF 256 straight bytes; offset + mask stays inside the block.  GpuF.Scene copies a program's buffer
+* into the K2's SceneEngine RAM at the buffer's own address (the engine's RAM mirrors the program's: variables
+* $0000-$1FFF, scene $4000-$7FFF); the engine must be idle; the Jr2 has no SceneEngine: E$UnkSvc.  GpuF.SceneL
+* does the same for a list of ranges in one call.  GpuF.Rec sends 8-byte units to the K2 GPU's record port, each
+* after room for it in the FIFO.  GpuF.SeOut reads the K2 SceneEngine's OUT words while it runs.  The Jr2 has none
+* of the three: E$UnkSvc.  GpuF.FixN is GpuF.LPkN for VICKY's fixed registers at TXT.Base ($FFC0-$FFDF), so a
+* program sets the border, the background and the mode and reads the raster line through the driver too.  Every wait
+* inside the driver is bounded.
+SS.Gpu              equ       $D6                 R$X = function (high byte), block (low byte); R$Y, R$U below
+GpuF.LPk8           equ       0                   R$Y = offset $0000-$1FFF, R$U = the byte (low byte; GetStat returns it, high byte 0)
+GpuF.LPk16          equ       1                   R$Y = offset $0000-$1FFE, R$U = the word
+GpuF.LPkN           equ       2                   R$Y = request (offset word, mask, 0, then the bytes), R$U = bytes 1-$1FFC
+GpuF.Scene          equ       3                   SetStat only (K2): R$Y = the buffer, R$U = its length 1-$2000
+GpuF.Rec            equ       4                   SetStat only (K2): R$Y = 8-byte units, R$U = their count 1-1024, R$X low byte = GpuRec flags
+GpuF.SceneL         equ       5                   SetStat only (K2): R$Y = ranges (start, end past it; 1-$2000 bytes), an end of 0 last
+GpuF.SeOut          equ       6                   GetStat only (K2): R$Y = buffer, R$U = room in words 1-$1000, R$X low byte = a command
+*                                                 first (0 none); returns R$U = the words read, R$X = the engine's STATUS
+GpuF.FixN           equ       7                   as GpuF.LPkN, fixed registers for the block (R$X low byte): 0 VICKY's (TXT.Base:
+*                                                 offsets $00-$1F, R$U = bytes 1-32), 1 the K2 point pipeline's (GpuPp.Port: 0-7, 1-8)
+GpuF.Pp             equ       8                   GetStat only (K2): R$Y = items for the point pipeline, R$U = their length in bytes:
+*                                                 each a command (0 none), the port (0 G, 2 P, 4 Q), words in, words out, then the
+*                                                 words (the ones out read back over them from the first; 4 + 2 x the larger count)
+GpuF.List           equ       9                   R$Y = items (GpuL.*), R$U = their count 1-255: a series of these functions and
+*                                                 waits in one call, in order; the first that fails stops it: carry, B its
+*                                                 error, R$U = its number (0 the first)
+* GpuF.List's item: a single call's registers, 7 bytes: the kind (GpuK.*), then X, Y and U as that call takes them.
+* A GetStat's or a wait's R$U comes back in the item's U (a GetStat's R$X out is not kept). A list in a list: E$IllArg.
+GpuL.K              equ       0                   the kind
+GpuL.X              equ       1                   the function (a wait: GpuW.*), then its low byte (the block, flags, command)
+GpuL.Y              equ       3
+GpuL.U              equ       5
+GpuL.Size           equ       7
+GpuK.Set            equ       0                   a SetStat function
+GpuK.Get            equ       1                   a GetStat function
+GpuK.Wait           equ       2                   a wait, polled in the driver (65,536 times at most, then E$DevBsy)
+GpuK.None           equ       $FF                 passed over
+GpuW.Ras            equ       0                   VICKY's raster line below Y, or at U and on; U out = the line
+GpuW.Free           equ       1                   K2: the GPU's FIFO_FREE at Y or more; U out = it
+GpuPp.Port          equ       $FED8               the K2 point pipeline: G ground points, P 3D deltas, Q camera points (words)
+GpuPp.Cmd           equ       $FEDE               its command (write) / STATUS (read); $FEDF its control
+GpuRec.480         equ       %00000001           GpuF.Rec: LINE units (byte 7 = 0) are 240-row records on the 480-line view
+GpuRec.SeIdle       equ       %00000010           GpuF.Rec: the SceneEngine stopped first (its port shares the FIFO)
 * Bitmaps.  Two ways in, and the difference is who owns the memory:
 *   SS.BmDef   - the program allocated the blocks (SS.GfxAlloc or F$AllRAM)
 *                and says where the bitmap is.  The driver never frees them.
