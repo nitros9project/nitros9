@@ -136,6 +136,55 @@ CMDS += linetest
 $(MODDIR)/linetest: $(LEVEL2)/wildbits/tests/linetest.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
 
+# Flight Simulator II (wb/flightsim2, private: future disks for testing only, never deployed). fs and its overlays
+# f2, f3, f4 (F4 carries the FSD data module, as in the original package) in CMDS, its data files in fs2/. VRN and
+# FTDD (the /FTDD frame timer FS opens) are boot modules for now, until FS keeps time through the system clock.
+# VRN is the WildBits source (port/vrn.asm: the SP0250 speech feeder since edition 2, 2026-10-20).
+FS2_DIR = $(LEVEL2)/wildbits/flightsim2
+FS2_DATA = fd sf.standard sf.europe sf.japan sf.sd7 sf.sd11 sf.wildbits dash.bm ac.archer ac.gpu tower.lpc
+CMDS += fs f2 f3 f4 f5
+BOOTMODS_EXTRA += vrn ftdd
+RECIPE_DEPS += $(addprefix $(FS2_DIR)/,$(FS2_DATA))
+$(OBJDIR)/fs2_%: $(FS2_DIR)/port/%.asm $(wildcard $(FS2_DIR)/port/fs_*.asm) $(FS2_DIR)/port/fs_wb.d $(L2PD)/defsfile | $(OBJDIR)
+	$(AS) $(AFLAGS) -I$(L2PD) -I$(FS2_DIR)/port $< $(ASOUT)$@
+$(MODDIR)/vrn: $(FS2_DIR)/port/vrn.asm $(L2PD)/defsfile | $(MODDIR)
+	$(AS) $(AFLAGS) -I$(L2PD) $< $(ASOUT)$@
+$(MODDIR)/ftdd: $(LEVEL2)/coco3/modules/ftdd.asm $(L2PD)/defsfile | $(MODDIR)
+	$(AS) $(AFLAGS) -I$(L2PD) $< $(ASOUT)$@
+$(MODDIR)/fs: $(OBJDIR)/fs2_fs | $(MODDIR)
+	test $$(wc -c < $<) -le 23807 || { echo "FS exceeds 23807 bytes and reaches the I/O page"; exit 1; }
+	cp $< $@
+# f5: the airport menu (F4), its table port/f5_data.asm (wildbits-buildkit/tools/flightsim2/mkf5.py)
+$(OBJDIR)/fs2_f5: $(FS2_DIR)/port/f5_data.asm
+$(MODDIR)/f2 $(MODDIR)/f3 $(MODDIR)/f5: $(MODDIR)/f%: $(OBJDIR)/fs2_f% | $(MODDIR)
+	cp $< $@
+$(MODDIR)/f4: $(OBJDIR)/fs2_f4 $(OBJDIR)/fs2_fsd | $(MODDIR)
+	cat $(OBJDIR)/fs2_f4 $(OBJDIR)/fs2_fsd > $@
+# fsw: FS's WildBits drawing layer, a raw binary FS reads from fs2/ at startup
+$(OBJDIR)/fs2_fsw: $(FS2_DIR)/port/fsw.asm $(FS2_DIR)/port/fs_wb.d $(L2PD)/defsfile | $(OBJDIR)
+	$(AS) $(AFLAGS) --format=raw -I$(L2PD) -I$(FS2_DIR)/port $< $(ASOUT)$@
+RECIPE_DEPS += $(OBJDIR)/fs2_fsw
+# fswc: fsw's code block 1 (the Studio-9 way: code on no hot path in 8 KB blocks fsw maps in when it runs)
+$(OBJDIR)/fs2_fswc: $(FS2_DIR)/port/fswc.asm $(FS2_DIR)/port/twr.asm $(FS2_DIR)/port/twr_data.asm $(FS2_DIR)/port/twr_morse.asm $(FS2_DIR)/port/fs_wb.d $(L2PD)/defsfile | $(OBJDIR)
+	$(AS) $(AFLAGS) --format=raw -I$(L2PD) -I$(FS2_DIR)/port $< $(ASOUT)$@
+RECIPE_DEPS += $(OBJDIR)/fs2_fswc
+# fsx: the spot view (camera and the ST's Cessna), a raw binary fsw reads into a RAM block of its own; the K2's
+# with the traffic (WBTRAF: fst.asm, fst_plan.asm), as the drop builds it
+$(OBJDIR)/fs2_fsx: $(FS2_DIR)/port/fsx.asm $(FS2_DIR)/port/fsx_ac.asm $(FS2_DIR)/port/fsx_cessna.asm $(FS2_DIR)/port/fsx_gpu.d $(FS2_DIR)/port/fst.asm $(FS2_DIR)/port/fst_plan.asm $(FS2_DIR)/port/fs_wb.d $(L2PD)/defsfile | $(OBJDIR)
+	$(AS) $(AFLAGS) --format=raw -I$(L2PD) -I$(FS2_DIR)/port $(if $(filter k2,$(PLATFORM)),--define=WBTRAF --symbol-dump=$(OBJDIR)/fsx_k2.sym) $< $(ASOUT)$@
+RECIPE_DEPS += $(OBJDIR)/fs2_fsx
+# fscl: the K2's clouds, a raw binary of their own at $4000 that the K2's fsx loads (port/fscl.asm), linked to that
+# fsx by its symbol table (fsx_k2.sym, dumped with it); every symbol must resolve (no undefextern)
+ifeq ($(PLATFORM),k2)
+$(OBJDIR)/fs2_fscl: $(FS2_DIR)/port/fscl.asm $(OBJDIR)/fs2_fsx | $(OBJDIR)
+	lwasm --no-warn=ifp1 --6309 --format=raw --pragma=pcaspcr,nosymbolcase,dollarnotlocal,noforwardrefmax -I$(OBJDIR) $< -o$@
+RECIPE_DEPS += $(OBJDIR)/fs2_fscl
+endif
+# fsp: the dashboard (K2), a raw binary fsw reads into a RAM block of its own; its art is fs2/dash.bm
+$(OBJDIR)/fs2_fsp: $(FS2_DIR)/port/fsp.asm $(FS2_DIR)/port/fs_wb.d $(L2PD)/defsfile | $(OBJDIR)
+	$(AS) $(AFLAGS) --format=raw -I$(L2PD) -I$(FS2_DIR)/port $< $(ASOUT)$@
+RECIPE_DEPS += $(OBJDIR)/fs2_fsp
+
 $(OBJDIR)/play.o: $(L2PCD)/play.as | $(OBJDIR)
 	$(ASM) $(AFLAGS) $< $(ASOUT)$@
 
@@ -290,6 +339,17 @@ endif
 ifeq ($(LEVEL),2)
 	$(CPL) $(WIZFITOOL) $@,CMDS/wizfitool.b09
 	$(OS9ATTR_TEXT) $@,CMDS/wizfitool.b09
+	$(MAKDIR) $@,fs2
+	$(OS9COPY) $(addprefix $(FS2_DIR)/,$(FS2_DATA)) $@,fs2
+	$(OS9COPY) $(OBJDIR)/fs2_fsw $@,fs2/fsw
+	$(OS9COPY) $(OBJDIR)/fs2_fswc $@,fs2/fswc
+	$(OS9COPY) $(OBJDIR)/fs2_fsx $@,fs2/fsx
+	$(OS9COPY) $(OBJDIR)/fs2_fsp $@,fs2/fsp
+	$(OS9ATTR_TEXT) $(foreach file,$(FS2_DATA) fsw fsx,$@,fs2/$(file))
+ifeq ($(PLATFORM),k2)
+	$(OS9COPY) $(OBJDIR)/fs2_fscl $@,fs2/fscl
+	$(OS9ATTR_TEXT) $@,fs2/fscl
+endif
 endif
 	$(CPL) $(SYS_TEXT_FILES) $@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYS_TEXT_FILES)),$@,SYS/$(file))
