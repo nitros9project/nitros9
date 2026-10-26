@@ -3,9 +3,9 @@
 *
 * Proves the unified video console input model: one keyboard stream is
 * routed to the FOCUSED window, and the function keys switch focus - F1
-* to the root/panel (/V0), F2..F8 to the overlays /W1../W7.
+* to the root/panel (/W0), F2..F8 to the overlays /W1../W7.
 *
-* It opens /V0, /W1 and /W2, reads two characters from each in turn, and
+* It opens /W0, /W1 and /W2, reads two characters from each in turn, and
 * reports what each received on standard output (the serial console).
 * Feed it, cycle-scheduled, with:
 *
@@ -16,7 +16,7 @@
 * "ef".  A byte only reaches a window while that window is focused, so a
 * correct run prints:
 *
-*   V0 got: ab
+*   W0 got: ab
 *   W1 got: cd
 *   W2 got: ef
 *
@@ -40,7 +40,7 @@ edition             set       1
                     mod       eom,name,tylg,atrv,start,size
 
                     org       0
-path0               rmb       1         open path for /V0 (root)
+path0               rmb       1         open path for /W0 (root)
 path1               rmb       1         open path for /W1
 path2               rmb       1         open path for /W2
 buf                 rmb       2         two-character read buffer
@@ -50,10 +50,10 @@ size                equ       .
 name                fcs       /WRoute/
                     fcb       edition
 
-V0Name              fcs       "/V0"
+W0Name              fcs       "/W0"
 W1Name              fcs       "/W1"
 W2Name              fcs       "/W2"
-Msg0                fcc       "V0 got: "
+Msg0                fcc       "W0 got: "
 Msg0Ln              equ       *-Msg0
 Msg1                fcc       "W1 got: "
 Msg1Ln              equ       *-Msg1
@@ -61,7 +61,7 @@ Msg2                fcc       "W2 got: "
 Msg2Ln              equ       *-Msg2
 NL                  fcb       C$CR
 
-start               leax      V0Name,pcr ; open the root/panel for reading
+start               leax      W0Name,pcr ; open the root/panel for reading
                     lda       #READ.
                     os9       I$Open
                     lbcs      Exit

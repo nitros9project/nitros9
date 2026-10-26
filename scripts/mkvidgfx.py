@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the data tables for the Pico-Thing video demos wgfx and gemtest.
 
-Both programs drive the video pico through /V0 and carry large tables that
+Both programs drive the video pico through /W0 and carry large tables that
 are computed rather than typed: a 32x32 RGB332 gem image, a 16x16 weave
 pattern, and (for wgfx) every scene's command stream.  This script is the
 source of truth for those tables.  It writes them to

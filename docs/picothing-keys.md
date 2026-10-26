@@ -9,7 +9,7 @@ terminal sends. For the bytes each key sends, see the keyboard table in
 
 | Key | Action |
 |---|---|
-| F1 | show the root panel, `/V0`, and give it the keyboard |
+| F1 | show the root panel, `/W0`, and give it the keyboard |
 | F2–F8 | show `/W1`–`/W7` and give it the keyboard |
 | F9–F12 | nothing |
 

@@ -2,7 +2,7 @@
 * WDemo - Pico-Thing video multi-window demo
 *
 * Exercises the video pico's window model as it stands (M5.1 + the
-* Select/DWShow split) straight through /V0's transparent byte pipe -
+* Select/DWShow split) straight through /W0's transparent byte pipe -
 * no /W driver needed yet, since vcon forwards every byte verbatim.
 * It:
 *   - DWSets two full-screen windows (1 and 2)
@@ -47,7 +47,7 @@ size                equ       .
 name                fcs       /WDemo/
                     fcb       edition
 
-V0Name              fcs       "/V0"
+W0Name              fcs       "/W0"
 
 * Setup: define both windows, fill each, leave window 1 on screen.
 * DWSet id,type,x,y,sx,sy,fg,bg (full panel 128x30); Select id; DWShow id.
@@ -83,7 +83,7 @@ Cleanup             fcb       $1B,$21,$01,$1B,$24 Select 1, DWEnd
                     fcb       C$CR,C$LF
 CleanupLn           equ       *-Cleanup
 
-Msg                 fcc       "wdemo: watch /V0 flip between window 1 and 2"
+Msg                 fcc       "wdemo: watch /W0 flip between window 1 and 2"
                     fcb       C$CR
 MsgLn               equ       *-Msg
 
@@ -92,7 +92,7 @@ start               leax      Msg,pcr   ; tell the operator on stdout
                     ldy       #MsgLn
                     os9       I$Write
 
-                    leax      V0Name,pcr ; open the video console
+                    leax      W0Name,pcr ; open the video console
                     lda       #WRITE.
                     os9       I$Open
                     bcs       Exit

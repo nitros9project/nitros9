@@ -2,7 +2,7 @@
 * WGfx - Pico-Thing video graphics showcase (VID-017 acceptance)
 *
 * A paced, colourful tour of the video pico's graphics command set,
-* driven straight through /V0's transparent byte pipe so it exercises
+* driven straight through /W0's transparent byte pipe so it exercises
 * the firmware, not the driver.  Each scene holds a few seconds:
 *
 *   1  a sixteen-register palette drawn as filled colour bars
@@ -43,14 +43,14 @@ Hold                equ       200       ticks per scene (about 4 seconds)
                     mod       eom,name,tylg,atrv,start,size
 
                     org       0
-path                rmb       1         /V0 path
+path                rmb       1         /W0 path
                     rmb       300       working stack
 size                equ       .
 
 name                fcs       /WGfx/
                     fcb       edition
 
-V0Name              fcs       "/V0"
+W0Name              fcs       "/W0"
 
                     use       wgfxdat.asm ; the generated scene streams and images
 
@@ -63,7 +63,7 @@ start               leax      Msg,pcr   ; announce on stdout
                     ldy       #MsgLn
                     os9       I$Write
 
-                    leax      V0Name,pcr ; open the video console (transparent pipe)
+                    leax      W0Name,pcr ; open the video console (transparent pipe)
                     lda       #WRITE.
                     os9       I$Open
                     lbcs      Exit

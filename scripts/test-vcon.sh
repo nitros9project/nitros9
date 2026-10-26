@@ -1,10 +1,10 @@
 #!/bin/sh
-# test-vcon.sh - end-to-end test of the Pico-Thing /V0 video console.
+# test-vcon.sh - end-to-end test of the Pico-Thing /W0 video console.
 #
 # Builds the Level 2 IDE development image (which carries the vcon driver,
-# the /V0 descriptor and the gfxtest command), boots it headless under
+# the /W0 descriptor and the gfxtest command), boots it headless under
 # usim09pt, logs in over the serial console and runs "gfxtest", which
-# opens /V0 and draws a fixed test pattern.  usim09pt rasterises the real
+# opens /W0 and draws a fixed test pattern.  usim09pt rasterises the real
 # video-pico firmware, so the screenshot it writes is what the hardware
 # would show.  The test then samples the rendered panel with pngpix.py and
 # checks that each shape drew in its expected colour.
@@ -126,4 +126,4 @@ EOF
 
 [ "$fails" -eq 0 ] || fail "$fails shape(s) did not render in the expected colour"
 
-echo "PASS: /V0 rendered gfxtest's pattern correctly (yellow bar, grey bar, white box)."
+echo "PASS: /W0 rendered gfxtest's pattern correctly (yellow bar, grey bar, white box)."
