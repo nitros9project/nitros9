@@ -2,7 +2,7 @@
 * WShow - Pico-Thing video window showcase (VID-016 acceptance demo)
 *
 * A paced tour of the video pico's window model, driven straight through
-* /V0's transparent byte pipe so it exercises the firmware, not the
+* /W0's transparent byte pipe so it exercises the firmware, not the
 * driver.  Each scene holds for a few seconds so it can be watched:
 *
 *   1  M5.1  text confined to a full-panel window (wrap + scroll)
@@ -40,14 +40,14 @@ Hold                equ       200       ticks per scene (about 4 seconds)
                     mod       eom,name,tylg,atrv,start,size
 
                     org       0
-path                rmb       1         /V0 path
+path                rmb       1         /W0 path
                     rmb       300       working stack
 size                equ       .
 
 name                fcs       /WShow/
                     fcb       edition
 
-V0Name              fcs       "/V0"
+W0Name              fcs       "/W0"
 
 * ---- Scene 1: full-panel window, text confined, wraps and scrolls ----
 Sc1                 fcb       $1B,$20,$01,$00,$00,$00,$80,$1E,$00,$00 DWSet 1 full 128x30
@@ -147,7 +147,7 @@ start               leax      Msg,pcr   ; announce on stdout
                     ldy       #MsgLn
                     os9       I$Write
 
-                    leax      V0Name,pcr ; open the video console
+                    leax      W0Name,pcr ; open the video console
                     lda       #WRITE.
                     os9       I$Open
                     lbcs      Exit

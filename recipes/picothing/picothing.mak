@@ -110,12 +110,12 @@ SYSGO    = sysgo
 
 # Graphical console (loadable, not in the bootfile)
 GFX      = vtio_picothing.dr copico term_gfx.dd
-# Video console (M5 multi-window), one driver VConW serving /V0 (window 0
+# Video console (M5 multi-window), one driver VConW serving /W0 (window 0
 # = root/panel, the base console) and the overlays /W1../W7.  In the
 # bootfile, not loadable: attaching a runtime-loaded SCF device here fails
 # with E$NoRAM (F$SLink into the tight 64K L2 system map at I$Attach).  One
 # driver keeps a single owner of the pico's one keyboard stream.
-WIN      = vconw.dr v0_pt.dd \
+WIN      = vconw.dr w0_pt.dd \
            w1_pt.dd w2_pt.dd w3_pt.dd w4_pt.dd w5_pt.dd w6_pt.dd w7_pt.dd
 # Extra DriveWire descriptors (loadable)
 DW_EXTRA = ddx0.dd scdwv.dr term_scdwv.dt n_scdwv.dd \
@@ -220,8 +220,8 @@ $(MODDIR)/term_pt.dd: term_sc6850.asm | $(MODDIR)
 
 # Video window descriptors from one shared source (w_pt.asm), one per
 # window with -DWINNUM=n (IT.WND=n).  WINNUM 0 is the root/panel, named
-# /V0 (the base console); 1..7 are the overlays /W1../W7.
-$(MODDIR)/v0_pt.dd: w_pt.asm | $(MODDIR)
+# /W0 (the base console); 1..7 are the overlays /W1../W7.
+$(MODDIR)/w0_pt.dd: w_pt.asm | $(MODDIR)
 	$(AS) $(AFLAGS) -DWINNUM=0 $< $(ASOUT)$@
 $(MODDIR)/w1_pt.dd: w_pt.asm | $(MODDIR)
 	$(AS) $(AFLAGS) -DWINNUM=1 $< $(ASOUT)$@

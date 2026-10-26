@@ -37,10 +37,10 @@ Window sub-codes, all guest-issued through the transparent `/W` byte pipe:
 
 ## Components
 
-### 1. Descriptors `/W1`../`/W7` (+ base `/V0`)
+### 1. Descriptors `/W0`../`/W7`
 SCF descriptors in the `vconw` family, each carrying a **window-number byte**
 (as CoCo3's `w1.asm` does) plus size. Built from **one shared source**
-parameterised by window number (the `ptidedesc.asm` `-D` pattern). `/V0` stays
+parameterised by window number (the `ptidedesc.asm` `-D` pattern). `/W0` stays
 the base console (window 0 / root).
 
 ### 2. Driver `vconw` (new; plain `vcon` stays the simple base/fallback)
@@ -80,7 +80,7 @@ switching.
   (now safe), redundant-`Select` suppression edge cases.
 
 ## Decisions (settled)
-1. **Base console:** keep `/V0` as the base/root.
+1. **Base console:** window 0, `/W0`, is the base/root.
 2. **`D.CCMem`:** reuse it for the Pico-Thing window global (verified free on
    Pico-Thing before relying on it).
 3. **New `vconw`** driver — keeps the proven simple `vcon` intact as base/fallback.

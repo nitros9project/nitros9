@@ -1,16 +1,16 @@
 ********************************************************************
-* VConW - multi-window SCF driver for the Pico-Thing /W1../W7 video windows
+* VConW - multi-window SCF driver for the Pico-Thing /W0../W7 video windows
 *
 * The single video console driver for the M5 window model.  Each device
 * carries a window number in its descriptor (IT.WND) plus its geometry
 * (IT.CPX, IT.CPY, IT.COL, IT.ROW).  Window 0 is the root/panel and its
-* device is /V0 (the base console); windows 1..7 are the overlays /W1../W7.
+* device is /W0 (the base console); windows 1..7 are the overlays /W1../W7.
 * On the first write to an overlay window VConW defines it (DWSet from the
 * descriptor); before every write burst it makes the target window the
 * output target (Select) - both output-target-only ops, so a write to a
 * background window accumulates off-screen without stealing the display.
 * The root is predefined by the firmware, so window 0 is never DWSet.
-* One driver means one owner of the single keyboard stream: /V0 folds in
+* One driver means one owner of the single keyboard stream: /W0 folds in
 * here as window 0 rather than a separate vcon with its own input poll.
 *
 * State common to every device - the current output target, which windows
@@ -390,7 +390,7 @@ WTNext              leax      $02,x
 * WVIRQSvc - the ONE shared input poll, called by DoPoll each tick while a
 * key is waiting.  U = the global (set at F$IRQ).  Drain every waiting
 * byte: F1-F8 ($80-$87) switch the focused/displayed window to window
-* 0..7 - F1 is the root/panel (/V0), F2-F8 the overlay windows /W1../W7;
+* 0..7 - F1 is the root/panel (/W0), F2-F8 the overlay windows /W1../W7;
 * F9-F12 ($88-$8B) are reserved and dropped; anything else (including the
 * pound $9C and not-sign $AA the keyboard also emits) goes into the ring,
 * unless it was the focused window's interrupt or quit character, which

@@ -1,7 +1,7 @@
 ********************************************************************
 * GfxTest - Pico-Thing video console graphics smoke test
 *
-* Opens /V0 and writes a fixed sequence of graphics draw commands to
+* Opens /W0 and writes a fixed sequence of graphics draw commands to
 * the video pico: a solid yellow bar, a solid grey bar, a white box
 * outline, and a white diagonal line on the 1024x480 plane.  It is a
 * pure byte-pipe exercise with no graphics library, so it renders the
@@ -40,7 +40,7 @@ name                fcs       /GfxTest/
 
 * video console device name; the high bit on the last character marks
 * the end of the pathlist for I$Open
-V0Name              fcs       "/V0"
+W0Name              fcs       "/W0"
 
 * The draw program.  Each graphics command is $1B (escape) then a
 * sub-code then a fixed number of operands; coordinates are 16-bit
@@ -67,7 +67,7 @@ Draw                fcb       $0C       clear the screen
                     fcb       $1B,$44,$03,$20,$01,$68 line to 800,360
 DrawLen             equ       *-Draw
 
-start               leax      V0Name,pcr ; the video console device
+start               leax      W0Name,pcr ; the video console device
                     lda       #WRITE.   ; open it for output
                     os9       I$Open
                     bcs       Exit      ; give up if it will not open

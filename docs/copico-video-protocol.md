@@ -364,7 +364,7 @@ do not repeat. The input FIFO holds 256 bytes.
 | Ctrl + letter / `@[\]^_` | `$00`–`$1F` | C0 controls, as a terminal folds them |
 | Enter, keypad Enter | `$0D` | CR — the OS-9 line terminator |
 | Backspace / Tab / Esc | `$08` / `$09` / `$1B` | |
-| F1–F12 | `$80`–`$8B` | reserved for the guest; nothing else produces this range. VConW spends F1–F8 on window switching (`/V0`, `/W1`–`/W7`) and drops F9–F12 |
+| F1–F12 | `$80`–`$8B` | reserved for the guest; nothing else produces this range. VConW spends F1–F8 on window switching (`/W0`–`/W7`) and drops F9–F12 |
 | Up / Down / Left / Right | plain `$0C` / `$0A` / `$08` / `$09`; Shift `$1C` / `$1A` / `$18` / `$19`; Ctrl `$13` / `$12` / `$10` / `$11` | the CoCo keyboard's bytes (VTIO `KeyTbl`), which `minted` uses for page, delete and line-end moves; Shift wins over Ctrl, as in VTIO. Plain Left is Backspace's byte and plain Right is Tab's — indistinguishable. Shift+Left is Ctrl-X (SCF line-kill), Ctrl+Up/Right are XOFF/XON — all as on a CoCo |
 | Keypad, Num Lock on (default) | `0`–`9` `.` `/` `*` `-` `+` | same bytes as the main keys |
 | Keypad, Num Lock off | 8/2/4/6 → the arrows, Shift and Ctrl included | 7/1/9/3/0/. as the editing keys below; 5 sends nothing |

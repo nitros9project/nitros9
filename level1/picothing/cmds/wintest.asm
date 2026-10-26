@@ -1,7 +1,7 @@
 ********************************************************************
 * WinTest - Pico-Thing video window (M5.1) exercise
 *
-* Drives the video pico's window sub-codes through /V0 to check the
+* Drives the video pico's window sub-codes through /W0 to check the
 * M5.1 window model from the 6809 side: DWSet an inland device window
 * (id 1) at col 8, row 4, 48x12 cells, and write text into it so it
 * wraps at the window's right edge.  A screenshot shows the text
@@ -40,7 +40,7 @@ size                equ       .
 name                fcs       /WinTest/
                     fcb       edition
 
-V0Name              fcs       "/V0"
+W0Name              fcs       "/W0"
 
 * DWSet window 1: ESC $20, id, type, col, row, width, height, fg, bg
 DWSet1              fcb       $1B,$20,$01,$00,$08,$04,$30,$0C,$00,$00
@@ -53,7 +53,7 @@ Mark                fcc       "wt ok"
                     fcb       C$CR
 MarkLn              equ       *-Mark
 
-start               leax      V0Name,pcr ; the video console device
+start               leax      W0Name,pcr ; the video console device
                     lda       #WRITE.   ; open it for output
                     os9       I$Open
                     bcs       Exit      ; give up if it will not open

@@ -5,9 +5,9 @@
 * and /W2 as separate paths and writes distinct text to each, so the
 * driver itself does the DWSet (first write) and Select (output target)
 * for each window - unlike wdemo, which hand-emitted the sub-codes to
-* /V0.  It then reveals each window with DWShow (sent through /V0, since
+* /W0.  It then reveals each window with DWShow (sent through /W0, since
 * visibility is display-only), pausing on each so a screenshot catches
-* it, and finally restores the root as target and display so the /V0
+* it, and finally restores the root as target and display so the /W0
 * console survives.
 *
 * Proves: /W1 and /W2 are real devices, each write lands in its own
@@ -37,7 +37,7 @@ Naps                equ       400       ticks to hold each window (about 8s)
                     org       0
 pw1                 rmb       1         /W1 path
 pw2                 rmb       1         /W2 path
-pv0                 rmb       1         /V0 path (for DWShow)
+pw0                 rmb       1         /W0 path (for DWShow)
                     rmb       256       working stack
 size                equ       .
 
@@ -46,7 +46,7 @@ name                fcs       /WTest/
 
 W1Name              fcs       "/W1"
 W2Name              fcs       "/W2"
-V0Name              fcs       "/V0"
+W0Name              fcs       "/W0"
 
 Text1               fcc       "=====  /W1  window one  ====="
                     fcb       C$CR,C$LF
@@ -85,11 +85,11 @@ start               leax      Msg,pcr   ; announce on stdout
                     os9       I$Open
                     bcs       Exit
                     sta       <pw2
-                    leax      V0Name,pcr ; open /V0 for DWShow
+                    leax      W0Name,pcr ; open /W0 for DWShow
                     lda       #WRITE.
                     os9       I$Open
                     bcs       Exit
-                    sta       <pv0
+                    sta       <pw0
 
                     lda       <pw1      ; fill /W1 (driver DWSets+Selects 1)
                     leax      Text1,pcr
@@ -100,18 +100,18 @@ start               leax      Msg,pcr   ; announce on stdout
                     ldy       #Text2Ln
                     os9       I$Write
 
-                    lda       <pv0      ; show window 1
+                    lda       <pw0      ; show window 1
                     leax      Show1,pcr
                     ldy       #ShowLn
                     os9       I$Write
                     bsr       Nap
-                    lda       <pv0      ; show window 2
+                    lda       <pw0      ; show window 2
                     leax      Show2,pcr
                     ldy       #ShowLn
                     os9       I$Write
                     bsr       Nap
 
-                    lda       <pv0      ; restore root target + display
+                    lda       <pw0      ; restore root target + display
                     leax      Restore,pcr
                     ldy       #RestoreLn
                     os9       I$Write
@@ -120,7 +120,7 @@ start               leax      Msg,pcr   ; announce on stdout
                     os9       I$Close
                     lda       <pw2
                     os9       I$Close
-                    lda       <pv0
+                    lda       <pw0
                     os9       I$Close
                     clrb
 Exit                os9       F$Exit

@@ -4,7 +4,7 @@
 * One shared source for the video window devices, built once per window
 * with -DWINNUM=n (the recipe passes it): IT.WND carries the window
 * number the VConW driver Selects before it writes.  WINNUM 0 is the
-* root/panel and its device is /V0 (the base console); WINNUM 1..7 are
+* root/panel and its device is /W0 (the base console); WINNUM 1..7 are
 * the overlay windows /W1../W7.  Modelled on the CoCo3 window descriptor
 * fields already defined in scf.d (IT.WND/IT.CPX/IT.CPY), so these sit at
 * the same offsets the VConW driver reads.
@@ -81,15 +81,9 @@ rev                 set       $00
                     fcb       $00       IT.BDC border colour default
 initsize            equ       *
 
-* Window 0 is the root/panel, named /V0 (the base console); 1..7 are /Wn.
-name                equ       *
-                  IFEQ    WINNUM
-                    fcc       "V"
-                    fcb       '0'+$80   the "0" of /V0, high bit ends the name
-                  ELSE
-                    fcc       "W"
+* Window n is named /Wn; window 0 is the root/panel (the base console).
+name                fcc       "W"
                     fcb       WINNUM+'0'+$80 window digit, high bit ends the name
-                  ENDC
 
 mgrnam              fcs       /SCF/
 drvnam              fcs       /VConW/
