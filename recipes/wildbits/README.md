@@ -73,9 +73,9 @@ cd l1
 make
 ```
 
-Primary output:
+Primary outputs:
 
-- `l1_wildbitsk2.dsk` (or `l1_wildbitsjr2.dsk` when `PLATFORM=jr2`)
+- `l1_wildbitsk2.dsk` and `l1_wildbitsk2.src.zip` (or `PLATFORM=jr2` for `jr2` outputs)
 
 Useful targets:
 
@@ -89,9 +89,9 @@ cd l1dw
 make
 ```
 
-Primary output:
+Primary outputs:
 
-- `l1_wildbits_dwjr2.dsk` (or `l1_wildbits_dwk2.dsk`, etc.)
+- `l1_wildbits_dwjr2.dsk` and `l1_wildbits_dwjr2.src.zip` (or `l1_wildbits_dwk2.*`, etc.)
 
 ## Level 2 Build ([`wildbits/l2`](l2/))
 
@@ -100,9 +100,9 @@ cd l2
 make
 ```
 
-Primary output:
+Primary outputs:
 
-- `l2_wildbitsk2.dsk` (or `l2_wildbitsjr2.dsk` when `PLATFORM=jr2`)
+- `l2_wildbitsk2.dsk` and `l2_wildbitsk2.src.zip` (or `PLATFORM=jr2` for `jr2` outputs)
 
 Useful targets:
 
@@ -116,9 +116,9 @@ cd l2dw
 make
 ```
 
-Primary output:
+Primary outputs:
 
-- `l2_wildbits_dwjr2.dsk` (or `l2_wildbits_dwk2.dsk`, etc.)
+- `l2_wildbits_dwjr2.dsk` and `l2_wildbits_dwjr2.src.zip` (or `l2_wildbits_dwk2.*`, etc.)
 
 ## Mega Level 2 Builds
 
@@ -132,8 +132,8 @@ make
 
 Primary outputs:
 
-- `l2_wildbits_megajr2.dsk` for SD boot
-- `l2_wildbits_dw_megajr2.dsk` for DriveWire boot
+- `l2_wildbits_megajr2.dsk` and `l2_wildbits_megajr2.src.zip` for SD boot
+- `l2_wildbits_dw_megajr2.dsk` and `l2_wildbits_dw_megajr2.src.zip` for DriveWire boot
 
 Both mega images add the same expanded software collection as
 [`coco3/dw_mega`](../coco3/dw_mega/): the native C compiler, Forth09, the
