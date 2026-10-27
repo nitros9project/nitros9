@@ -4032,6 +4032,9 @@ GPU.STAT            equ       $6000+$1801 ; VICKY_BLK+$1801: GPU_STATUS
 GPU.Reset           equ       %00010000 ; GPU_CTRL b4
 GPU.IdleMask        equ       %11011000 ; GPU_STATUS: busy, swap pending, FIFO empty, idle
 GPU.Idle            equ       %00011000 ; not busy, no swap pending, the FIFO empty, idle
+GPU.Empty           equ       %00010000 ; GPU_STATUS b4: the FIFO empty
+GPU.Work            equ       %11010000 ; with b4 flipped: busy, a swap pending, units queued
+GpWRounds           equ       16        ; GpFreeW / GpSeW: rounds of 65,536 polls while the GPU works
 GpuPre
                   IFNE    jr2
                     andcc     #^Carry
@@ -4043,17 +4046,8 @@ GpuPre
                     bne       gpe1@
                     bita      #GPU.Reset
                     bne       gpe9@     ; a RESET goes in at once
-gpe1@               pshs      y
-                    ldy       #0        ; room for two units: 65,536 polls
-gpe2@               ldd       >GPU.FREE
-                    cmpd      #2
-                    bhs       gpe8@
-                    leay      -1,y
-                    bne       gpe2@
-                    puls      y
-                    orcc      #Carry
-                    rts
-gpe8@               puls      y
+gpe1@               ldd       #2        ; room for two units (carry: the wait ran out)
+                    lbra      GpFreeW
 gpe9@               andcc     #^Carry
                     rts
                   ENDC
@@ -4204,7 +4198,8 @@ gsl8@               lbra      LPkBad
 *                 cut the record short
 *   Each unit waits for room for two in the FIFO (GPU_FREE).  The units
 *   come in through slots 1-2 (MapCallBuf), VICKY_BLK through slot 3.
-*   Every wait is bounded (65,536 polls); one that runs out stops the
+*   Every wait is bounded (GpFreeW, GpSeW: 65,536 polls a round, more
+*   rounds while the GPU is still working); one that runs out stops the
 *   call with the units after it not sent.  The Jr2 has no GPU: E$UnkSvc.
 * Exit: B = 0, or carry + E$IllArg (a count of 0 or above 1024, units off
 *   the top of the caller's map) or E$DevBsy (a wait ran out).
@@ -4239,20 +4234,14 @@ SSGpuRec
                     lbsr      LineMapC0 ; VICKY_BLK through slot 3 (x clobbered)
                     bitb      #GpuRec.SeIdle
                     beq       gpr2@
-                    ldy       #0        ; the SceneEngine stopped: 65,536 polls
-gpr1@               lda       >SE.STAT
-                    bita      #SE.Busy
-                    beq       gpr2@
-                    leay      -1,y
-                    bne       gpr1@
-                    bra       gpr6@
-gpr2@               ldy       #0        ; room for two units: 65,536 polls
-gpr3@               ldd       >GPU.FREE
+                    lbsr      GpSeW     ; the SceneEngine stopped
+                    bcs       gpr6@
+gpr2@               ldd       >GPU.FREE ; room for two units
                     cmpd      #2
                     bhs       gpr4@
-                    leay      -1,y
-                    bne       gpr3@
-                    bra       gpr6@
+                    ldd       #2
+                    lbsr      GpFreeW
+                    bcs       gpr6@
 gpr4@               lda       >gr.b3
                     bita      #GpuRec.480
                     beq       gpr5@
@@ -4325,6 +4314,65 @@ gr4802@             std       >GPU.REC+2
                     lda       6,u       ; the color
                     ldb       >gr.b2    ; the op, last: it pushes the unit
                     std       >GPU.REC+6
+                    rts
+
+* GpFreeW - wait for GPU_FREE at D or more: 65,536 polls a round, and
+*   another round (GpWRounds in all, about 1 s at 20 Mhz) while the GPU
+*   is still working (GPU_STATUS: busy, a swap pending, or units in its
+*   FIFO).  One unit can keep the GPU from taking the next for longer
+*   than a round: a MESH draws a whole mesh.  Exit: carry clear, D =
+*   GPU_FREE; carry set, the wait ran out.  X, Y, U kept.
+GpFreeW             pshs      d,y       ; 1,s = the room wanted
+                    lda       #GpWRounds
+                    pshs      a         ; ,s = the rounds left
+gfw1@               ldy       #0
+gfw2@               ldd       >GPU.FREE
+                    cmpd      1,s
+                    bhs       gfw8@
+                    leay      -1,y
+                    bne       gfw2@
+                    bsr       GpWork
+                    beq       gfw9@     ; the GPU stopped: no room will come
+                    dec       ,s
+                    bne       gfw1@
+gfw9@               leas      3,s
+                    puls      y
+                    orcc      #Carry
+                    rts
+gfw8@               leas      3,s
+                    puls      y
+                    andcc     #^Carry
+                    rts
+* GpSeW - wait for the SceneEngine to stop (STATUS b6 clear), in
+*   GpFreeW's rounds: its units go into the GPU's FIFO, so a working GPU
+*   holds it back.  Carry set: the wait ran out.  D clobbered; X, Y, U
+*   kept.
+GpSeW               pshs      y
+                    lda       #GpWRounds
+                    pshs      a         ; ,s = the rounds left
+gsw1@               ldy       #0
+gsw2@               lda       >SE.STAT
+                    bita      #SE.Busy
+                    beq       gsw8@
+                    leay      -1,y
+                    bne       gsw2@
+                    bsr       GpWork
+                    beq       gsw9@     ; the GPU stopped: the engine is stuck
+                    dec       ,s
+                    bne       gsw1@
+gsw9@               leas      1,s
+                    puls      y
+                    orcc      #Carry
+                    rts
+gsw8@               leas      1,s
+                    puls      y
+                    andcc     #^Carry
+                    rts
+* GpWork - Z clear while the GPU is working: busy, a swap pending, or
+*   its FIFO not empty.  A clobbered.
+GpWork              lda       >GPU.STAT
+                    eora      #GPU.Empty
+                    bita      #GPU.Work
                     rts
                   ENDC
 
@@ -4570,12 +4618,9 @@ gwt2@
                     puls      x
                     deca
                     lbne      GpUnk
-                    ldy       #0        ; GpuW.Free: 65,536 polls
-gwt3@               ldd       >GPU.FREE
-                    cmpd      R$Y,x
-                    bhs       gwt8@
-                    leay      -1,y
-                    bne       gwt3@
+                    ldd       R$Y,x     ; GpuW.Free: GpFreeW's rounds
+                    lbsr      GpFreeW
+                    bcc       gwt8@     ; D = FIFO_FREE
                     bra       gwt9@
                   ENDC
 gwt8@               std       R$U,x
