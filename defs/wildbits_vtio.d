@@ -324,6 +324,13 @@ V.KSBuf             RMB       KBufSz
 V.WSigID            RMB       1         registrant's process ID, 0 = none
 V.WSigBg            RMB       1         signal code for going background
 V.WSigFg            RMB       1         signal code for coming forward
+* The text cursor (05 20-05 24).  The hardware holds one set ($FFD0,
+* $FFD2, $FFD3), so each terminal keeps its own here: vtio writes the
+* hardware only while the terminal is live, and grfdrv256's switch puts
+* the live terminal's back (CrsrPut).  GF.TermNew seeds the defaults.
+V.CrsrCtl           RMB       1         VKY_TXT_CURSOR_CTRL_REG: enable, flash rate
+V.CrsrChr           RMB       1         VKY_TXT_CURSOR_CHAR_REG
+V.CrsrCol           RMB       1         VKY_TXT_CURSOR_COLR_REG
                   ENDC
 * grfdrv256 SetBlkC2C3 maps the DSS through ONE MMU slot (slot 5).
 * Safe only while the whole area fits a single 256-byte page: F$SRqMem
@@ -572,6 +579,7 @@ gr.MSWheel          equ       gr.MsDrv+MD.Wheel
 * an rmb on it reserves nothing on pass 1 (checked where G.TermMax is).
 gr.MsTbl            rmb       72
 gr.MsSpeed          rmb       1         ; mouse speed 1-MS.SpdMax (SS.MsCfg high byte), 0 = no mouse
+gr.CrsrCol          rmb       1         ; the core's text cursor colour, read once by GF.InitDisp: every new terminal's default
                     ifgt      .-$1100
                     error     the mouse globals run past $10FF into GrfMem
                     endc

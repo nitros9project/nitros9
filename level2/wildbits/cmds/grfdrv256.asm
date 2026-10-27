@@ -1078,13 +1078,25 @@ wsfg@               puls      b
                     puls      a
                     sta       >gr.LiveTerm
 * Clamp V.CurRow and resync V.CurPos (a DWSet can leave the row past the
-* window), then put the hardware cursor there.
+* window), then put the hardware cursor there, with this terminal's
+* enable, flash rate, character and colour.
                     lbsr      GSCalcPos
-                    ldx       #TXT.Base
+                    bsr       CrsrPut
                     lda       V.CurCol,u
                     sta       VKY_TXT_CURSOR_X_REG_L,x
                     lda       V.CurRow,u
                     sta       VKY_TXT_CURSOR_Y_REG_L,x
+                    rts
+* CrsrPut - program the text cursor's control, character and colour
+* ($FFD0/$FFD2/$FFD3) from terminal U's copy (05 20-05 24).
+* Exit: X = TXT.Base.  Clobbers A.
+CrsrPut             ldx       #TXT.Base
+                    lda       V.CrsrCtl,u
+                    sta       VKY_TXT_CURSOR_CTRL_REG,x
+                    lda       V.CrsrChr,u
+                    sta       VKY_TXT_CURSOR_CHAR_REG,x
+                    lda       V.CrsrCol,u
+                    sta       VKY_TXT_CURSOR_COLR_REG,x
                     rts
 * GSTermPtrs - vtio's SetTermGrfPtrs: aim gr.TermBlk/VStaStorU/VBlk/U5
 * at one terminal.  Entry X = its gr.TermTbl entry.  Clobbers D.
@@ -3005,6 +3017,7 @@ gco8@               leas      1,s       ; drop the size bit
 GFInitDisp          lbsr      SetBlkC2C3 ; u = this terminal's statics
                     leax      DispRegs,pcr
                     leay      V.V_MCR,u
+                    pshs      u
                     ldu       #TXT.Base
                     ldb       #16
 seed@               lda       ,x+
@@ -3012,15 +3025,19 @@ seed@               lda       ,x+
                     sta       ,u+       ; register
                     decb
                     bne       seed@
+                    puls      u
                     ldx       #TXT.Base
-                    lda       #Vky_Cursor_Enable|Vky_Cursor_Flash_Rate0|Vky_Cursor_Flash_Rate1
-                    sta       VKY_TXT_CURSOR_CTRL_REG,x
                     clra
                     clrb
                     std       VKY_TXT_CURSOR_Y_REG_H,x
                     std       VKY_TXT_CURSOR_X_REG_H,x
-                    lda       #'_
-                    sta       VKY_TXT_CURSOR_CHAR_REG,x
+* The cursor colour is the core's own, read once: it is every terminal's
+* default (GF.TermNew).  Then the copy GF.TermNew seeded goes to the
+* hardware: on, flashing, '_'.
+                    lda       VKY_TXT_CURSOR_COLR_REG,x
+                    sta       >gr.CrsrCol
+                    sta       V.CrsrCol,u
+                    lbsr      CrsrPut
 * Every sprite record off, once, so gr.SprDirty's "they are all clear" is
 * true from the start rather than a guess about what the core left behind.
                     lbsr      SprMapC0  ; vicky_BLK in slot 1
@@ -3191,6 +3208,16 @@ tnms@               clr       ,y+
                     clr       V.LastCh,u
                     clr       V.Reverse,u
                     clr       V.ST,u
+* The text cursor starts on, flashing, '_', in the core's colour - not the
+* live terminal's, so a program that hid its cursor does not hide it on
+* terminals opened later.  (The first terminal's colour is read in
+* GF.InitDisp, after this.)
+                    lda       #Vky_Cursor_Enable|Vky_Cursor_Flash_Rate0|Vky_Cursor_Flash_Rate1
+                    sta       V.CrsrCtl,u
+                    lda       #'_
+                    sta       V.CrsrChr,u
+                    lda       >gr.CrsrCol
+                    sta       V.CrsrCol,u
 * The bitmap / CLUT-block / tile mirror starts "everything off" and is
 * never inherited: a new terminal has no bitmaps of its own, and pointing
 * it at another terminal's is the bug the mirror exists to prevent.
