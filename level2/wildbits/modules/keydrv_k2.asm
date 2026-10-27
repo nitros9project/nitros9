@@ -33,6 +33,10 @@
 * keyboard has its own interrupt (KBD_IRQSvc); vtio's AltISR no longer polls
 * it or times the repeat.  Based on Roger Taylor's
 * wb/k2_core_typematic_support.
+*
+*  7       2026/10/27   John A. Federico
+* Space sets SPACEBIT in D.KySns (the matrix had C$SPAC, not kSPACE, so it
+* never reached the arrow path), as on the Jr2; gr.KeyLive still holds $20.
 
 
                     use       defsfile
@@ -319,7 +323,8 @@ keybits             fcb       $80,$40,$20,$10,$08,$04,$02,$01
 * Called for EVERY row, changed or not - that is the point.  ProcessRow
 * sees only rows and bits that CHANGED, so a key still held but unmoved
 * this event is invisible there.  Modifiers ($F0-$F4) and arrows
-* ($E0-$E3) are skipped; they live in D.KySns.  WBKKeys (unshifted) is
+* ($E0-$E3) are skipped; they live in D.KySns.  Space (kSPACE) is in
+* both: SPACEBIT in D.KySns and C$SPAC here, as keydrv_ps2 does.  WBKKeys (unshifted) is
 * always used, so a key has one identity whatever Shift is doing.
 ********************************************************************
 AddRowLive          pshs      d,x,y
@@ -334,7 +339,10 @@ arlbit@             lsla                ; next column into the carry
                     pshs      a
                     lda       b,y       ; the key at this position
                     beq       arlskip@  ; an unpopulated position
-                    cmpa      #$DF      ; modifier or arrow?
+                    cmpa      #kSPACE   ; space is held as its character
+                    bne       arlmod@
+                    lda       #C$SPAC
+arlmod@             cmpa      #$DF      ; modifier or arrow?
                     bhi       arlskip@  ; yes - it is in D.KySns
                     bsr       AddKeyLive
 arlskip@            puls      a
@@ -661,7 +669,7 @@ WBKKeys
                     fcb       'n,'o,'k,'m,'0,'j,'i,'9
                     fcb       ',,'[,';,'.,CAPS,'l,'p,'-
                     fcb       '/,TAB,RALT,RSHIFT,$01,'','],'=
-                    fcb       BREAK,'q,META,C$SPAC,'2,LCTRL,BKSP,'1
+                    fcb       BREAK,'q,META,kSPACE,'2,LCTRL,BKSP,'1
                     fcb       0,kRIGHT,0,0,0,0,0,kDOWN
 
 WBKShiftKeys
@@ -672,7 +680,7 @@ WBKShiftKeys
                     fcb       'N,'O,'K,'M,'),'J,'I,'(
                     fcb       '<,'{,':,'>,CAPS,'L,'P,'_
                     fcb       '?,TAB,RALT,RSHIFT,$01,'",'},'+
-                    fcb       BREAK,'Q,META,C$SPAC,'@,LCTRL,$18,'!
+                    fcb       BREAK,'Q,META,kSPACE,'@,LCTRL,$18,'!
                     fcb       0,kRIGHT,0,0,0,0,0,kDOWN
 
                     emod

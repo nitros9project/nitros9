@@ -24,6 +24,10 @@
 * it or times the repeat.  A keyup stops the repeat by key position
 * (V.RptKey), as in the Level 2 driver.  Based on Roger Taylor's
 * wb/k2_core_typematic_support.
+*
+*  6       2026/10/27   John A. Federico
+* Space sets SPACEBIT in D.KySns (the matrix had C$SPAC, not kSPACE, so it
+* never reached the arrow path), as on the Jr2.
 
 
                     use       defsfile
@@ -551,7 +555,7 @@ WBKKeys
                     fcb       'n,'o,'k,'m,'0,'j,'i,'9
                     fcb       ',,'[,';,'.,CAPS,'l,'p,'-
                     fcb       '/,TAB,RALT,RSHIFT,$01,'','],'=
-                    fcb       BREAK,'q,META,C$SPAC,'2,LCTRL,BKSP,'1
+                    fcb       BREAK,'q,META,kSPACE,'2,LCTRL,BKSP,'1
                     fcb       0,kRIGHT,0,0,0,0,0,kDOWN
 
 WBKShiftKeys 
@@ -562,7 +566,7 @@ WBKShiftKeys
                     fcb       'N,'O,'K,'M,'),'J,'I,'(
                     fcb       '<,'{,':,'>,CAPS,'L,'P,'_
                     fcb       '?,TAB,RALT,RSHIFT,$01,'",'},'+               
-                    fcb       BREAK,'Q,META,C$SPAC,'@,LCTRL,$18,'!
+                    fcb       BREAK,'Q,META,kSPACE,'@,LCTRL,$18,'!
                     fcb       0,kRIGHT,0,0,0,0,0,kDOWN
 
                     emod
