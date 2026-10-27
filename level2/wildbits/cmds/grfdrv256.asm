@@ -1363,7 +1363,9 @@ StatUnk             comb
                     jmp       >GrfMod+SysRet
 
 * code, handler
-GetSttTbl           fcb       SS.ScSiz
+GetSttTbl           fcb       SS.Gpu    ; first: a program calls it every frame
+                    fdb       GrfMod+GSGpu
+                    fcb       SS.ScSiz
                     fdb       GrfMod+GSScSiz
                     fcb       SS.ScTyp
                     fdb       GrfMod+GSScTyp
@@ -1396,9 +1398,11 @@ GetSttTbl           fcb       SS.ScSiz
                     fcb       SS.MsCfg
                     fdb       GrfMod+GSMsCfg
                     fcb       0
-* The bitmap calls go first: StatDisp searches this table linearly, and a
+* SS.Gpu, then the bitmap calls go first: StatDisp searches this table linearly, and a
 * game's set-up walks all of them.
-SetSttTbl           fcb       SS.AScrn
+SetSttTbl           fcb       SS.Gpu    ; first: a program calls it every frame
+                    fdb       GrfMod+SSGpu
+                    fcb       SS.AScrn
                     fdb       GrfMod+GFAScrn
                     fcb       SS.BmAlloc
                     fdb       GrfMod+SSBmAlloc
@@ -3717,6 +3721,841 @@ SetBlkC2C3          pshs      cc,d,x
 
 
 
+
+
+*******************************************************************
+* SetStat / GetStat SS.Gpu - the GPU call (defs/wildbits.d): R$X = the
+*   function (high byte) and, where it takes one, the block (low byte).
+*   SetStat writes, GetStat reads:
+*   GpuF.LPk8   a byte: R$Y = the offset $0000-$1FFF, R$U = the byte
+*   GpuF.LPk16  a word, high byte first: R$Y = the offset $0000-$1FFE,
+*               R$U = the word
+*   GpuF.LPkN   a run: R$Y = the request (the offset word, the mask, 0,
+*               then the bytes), R$U = the bytes 1-$1FFC
+*   GpuF.Scene  SetStat only, the K2: R$Y = a buffer, R$U = its length
+*               1-$2000, to the SceneEngine at the buffer's own address
+*   GpuF.Rec    SetStat only, the K2: R$Y = 8-byte units, R$U = their
+*               count 1-1024, to the GPU's record port; R$X low byte =
+*               the flags (GpuRec.480, GpuRec.SeIdle)
+*   GpuF.SceneL SetStat only, the K2: R$Y = a list of ranges (a start
+*               and an end each, an end of 0 last), each to the
+*               SceneEngine at its own address
+*   GpuF.SeOut  GetStat only, the K2: R$Y = a buffer, R$U = its room in
+*               words 1-$1000, R$X low byte = a command for the engine
+*               first (0 none): the engine's OUT words into the buffer;
+*               returns R$U = the words, R$X = the engine's STATUS
+*   GpuF.FixN   a run as GpuF.LPkN's, VICKY's fixed registers in place
+*               of a block: offsets $00-$1F from TXT.Base, 1-32 bytes
+*   GpuF.List   a series of these functions and waits in one call (below)
+* Any other function, and a GetStat of a SetStat-only function or the
+* other way round: carry + E$UnkSvc.
+*******************************************************************
+SSGpu               bsr       SSGpuDo
+                    jmp       >GrfMod+SysRet
+GSGpu               bsr       GSGpuDo
+                    jmp       >GrfMod+SysRet
+* SSGpuDo / GSGpuDo: X = the caller's registers (gr.PDRGS, or GpuF.List's
+*   copy of an item), the function in R$X's high byte.  Every handler
+*   returns (rts): B = 0, or carry and B = the error.
+SSGpuDo             lda       R$X,x     ; the function
+                    lbeq      SSLPoke8
+                    deca
+                    lbeq      SSLPoke16
+                    deca
+                    lbeq      SSLPokeN
+                    deca
+                    lbeq      SSGpuScnCpy
+                    deca
+                    lbeq      SSGpuRec
+                    deca
+                    lbeq      SSGpuScnL
+                    cmpa      #GpuF.FixN-GpuF.SceneL
+                    lbeq      SSFixN
+                    cmpa      #GpuF.List-GpuF.SceneL
+                    lbeq      GpuList
+                    lbra      GpUnk
+GSGpuDo             lda       R$X,x     ; the function
+                    lbeq      GSLPeek8
+                    deca
+                    lbeq      GSLPeek16
+                    deca
+                    lbeq      GSLPeekN
+                    cmpa      #GpuF.SeOut-GpuF.LPkN
+                    lbeq      GSGpuSeOut
+                    cmpa      #GpuF.FixN-GpuF.LPkN
+                    lbeq      GSFixN
+                    cmpa      #GpuF.Pp-GpuF.LPkN
+                    lbeq      GSGpuPp
+                    cmpa      #GpuF.List-GpuF.LPkN
+                    lbeq      GpuList
+                    lbra      GpUnk
+
+*******************************************************************
+* GpuF.LPk8 / GpuF.LPk16 - a byte or a word at an offset in the block
+*   R$X names: R$Y = the offset, R$U = the value (a byte: its low byte);
+*   GetStat: R$U = the value read (a byte: high byte 0).  The block is
+*   mapped into slot 3 ($6000), scratch in a handler.
+*   K2 (2026-10-26): a write to the GPU's registers (VICKY_BLK $1800-$187F)
+*   first waits for room for two units in its FIFO, as GpuF.Rec does - most
+*   of them push a unit, and the core drops one that finds the FIFO full; a
+*   write to GPU_CTRL with RESET goes in at once, then waits until the GPU
+*   is idle, its FIFO empty (the core drops the units that arrive while it
+*   flushes after a RESET).  Each wait is bounded (65,536 polls).
+* Exit: B = 0, or carry + E$IllArg (an offset past the block) or E$DevBsy
+*   (a wait ran out: before the write, nothing written).
+*******************************************************************
+SSLPoke8            ldd       #$1FFF
+                    bsr       LPkMap    ; y = the byte through slot 3
+                    bcs       LPkBad
+                    lda       R$U+1,x
+                    lbsr      GpuPre    ; a GPU register: FIFO room first
+                    lbcs      GpBusy
+                    lda       R$U+1,x
+                    sta       ,y
+                    lbra      GpuPost   ; a RESET: the GPU idle after
+SSLPoke16           ldd       #$1FFE
+                    bsr       LPkMap
+                    bcs       LPkBad
+                    lda       R$U,x     ; the byte at the offset itself
+                    lbsr      GpuPre
+                    lbcs      GpBusy
+                    ldd       R$U,x
+                    std       ,y
+                    lda       R$U,x
+                    lbra      GpuPost
+GSLPeek8            ldd       #$1FFF
+                    bsr       LPkMap
+                    bcs       LPkBad
+                    clra
+                    ldb       ,y
+                    std       R$U,x
+                    bra       GpOK
+GSLPeek16           ldd       #$1FFE
+                    bsr       LPkMap
+                    bcs       LPkBad
+                    ldd       ,y
+                    std       R$U,x
+                    bra       GpOK
+* LPkBad / GpOK / GpUnk: the GPU handlers' returns (to SSGpu, GSGpu or
+*   GpuF.List)
+LPkBad              comb
+                    ldb       #E$IllArg
+                    rts
+GpOK                clrb
+                    rts
+GpUnk               comb
+                    ldb       #E$UnkSvc
+                    rts
+
+* LPkMap - the block (R$X low byte) into slot 3 ($6000), Y = R$Y through it.
+* Entry: X = gr.PDRGS, D = the highest offset the access allows.
+* Exit:  Y, carry clear; or carry set (the offset past the limit, nothing
+*        mapped).  D clobbered, X kept.
+LPkMap              cmpd      R$Y,x     ; carry: the offset is past the limit
+                    bcs       lpm9@
+                    ldb       R$X+1,x   ; the block
+                    pshs      cc
+                    orcc      #IntMasks ; irq return clears EDIT_LUT: select and write masked
+                    lda       #EDIT_LUT_1+ACT_LUT_1
+                    sta       MMU_MEM_CTRL
+                    stb       MMU_SLOT_3 ; $6000
+                    clra
+                    std       >gr.DATImg+6
+                    puls      cc
+                    ldd       R$Y,x
+                    addd      #$6000
+                    tfr       d,y
+                    andcc     #^Carry
+lpm9@               rts
+
+*******************************************************************
+* GpuF.LPkN - a run of bytes between the caller's request and the block
+*   R$X names.  R$Y = the request in the caller's map: the offset (2
+*   bytes), the mask (1), 0 (1), then the bytes; R$U = the bytes,
+*   1-$1FFC.  Byte i goes to (comes from) offset + (i AND mask); offset +
+*   mask stays inside the block.  The request comes in through slots 1-2
+*   (MapCallBuf), the block through slot 3 ($6000).
+* Exit: B = 0, or carry + E$IllArg (a count of 0 or above $1FFC, a
+*   request off the top of the caller's map, a window past the block).
+*******************************************************************
+SSLPokeN            bsr       LPkReq    ; u = the bytes, x = the target, y = the count, a = the mask
+                    bcs       LPkBad
+PokeRun             tsta
+                    bne       lpn2@
+lpn1@               lda       ,u+       ; mask 0: every byte to the one port
+                    sta       ,x
+                    leay      -1,y
+                    bne       lpn1@
+                    lbra      GpOK
+lpn2@               pshs      a         ; ,s = the mask
+                    clrb                ; b = i
+lpn3@               pshs      x,b
+                    andb      3,s       ; i AND mask
+                    abx                 ; unsigned: offsets up to $FF
+                    lda       ,u+
+                    sta       ,x
+                    puls      x,b
+                    incb
+                    leay      -1,y
+                    bne       lpn3@
+                    leas      1,s
+                    lbra      GpOK
+* GpuF.FixN - a run as GpuF.LPkN's, between the caller's request and
+*   fixed registers in place of a block (R$X low byte): 0 VICKY's
+*   (TXT.Base, $FFC0-$FFDF: offsets $00-$1F, 1-32 bytes), 1 the K2
+*   point pipeline's (GpuPp.Port, $FED8-$FEDF: offsets 0-7, 1-8 bytes).
+SSFixN              bsr       FixReq
+                    bcs       LPkBad
+                    bra       PokeRun
+GSFixN              bsr       FixReq
+                    bcs       LPkBad
+                    bra       PeekRun
+GSLPeekN            bsr       LPkReq
+                    bcs       LPkBad
+PeekRun             tsta
+                    bne       lgn2@
+lgn1@               lda       ,x        ; mask 0: every byte from the one port
+                    sta       ,u+
+                    leay      -1,y
+                    bne       lgn1@
+                    lbra      GpOK
+lgn2@               pshs      a         ; ,s = the mask
+                    clrb                ; b = i
+lgn3@               pshs      x,b
+                    andb      3,s       ; i AND mask
+                    abx
+                    lda       ,x
+                    sta       ,u+
+                    puls      x,b
+                    incb
+                    leay      -1,y
+                    bne       lgn3@
+                    leas      1,s
+                    lbra      GpOK
+
+* LPkReq / FixReq - map a GpuF.LPkN / GpuF.FixN request.
+* Entry: X = gr.PDRGS.
+* Exit:  U = the request's bytes (after its header) through slot 1,
+*        X = the target: $6000 + the offset (LPkReq: the block in slot
+*        3) or TXT.Base + the offset (FixReq), Y = the count, A = the
+*        mask, carry clear; or carry set (bad arguments).  B clobbered.
+FixReq              ldb       R$X+1,x   ; the registers: 0 VICKY's, 1 the point pipeline's
+                    cmpb      #1
+                    bls       fxr1@
+                    orcc      #Carry
+                    rts
+fxr1@               lda       #6
+                    mul
+                    leay      FixLim,pcr
+                    leay      d,y
+                    bra       PkReq
+LPkReq              leay      LPkLim,pcr
+PkReq               ldd       R$U,x     ; the count
+                    beq       lpr8@
+                    cmpd      ,y        ; the most bytes
+                    bhi       lpr8@
+                    pshs      y,d       ; ,s = the count, 2,s = the limits
+                    addd      #4
+                    tfr       d,y       ; y = the request's length
+                    ldd       R$Y,x     ; the request in the caller's map
+                    lbsr      MapCallBuf ; u = the request through slots 1-2 (D, X kept)
+                    bcs       lpr7@
+                    clra
+                    ldb       2,u       ; the mask
+                    addd      ,u        ; + the offset
+                    ldy       2,s
+                    cmpd      2,y
+                    bhi       lpr7@     ; the window runs past the block (the registers)
+                    ldd       4,y       ; the base: 0 = the block through slot 3
+                    bne       lpr1@
+                    ldb       R$X+1,x   ; the block
+                    pshs      cc
+                    orcc      #IntMasks ; irq return clears EDIT_LUT: select and write masked
+                    lda       #EDIT_LUT_1+ACT_LUT_1
+                    sta       MMU_MEM_CTRL
+                    stb       MMU_SLOT_3 ; $6000
+                    clra
+                    std       >gr.DATImg+6
+                    puls      cc
+                    ldd       #$6000
+lpr1@               addd      ,u        ; + the offset
+                    tfr       d,x       ; x = the target
+                    lda       2,u       ; a = the mask
+                    leau      4,u       ; u = the bytes
+                    puls      y         ; y = the count
+                    leas      2,s
+                    andcc     #^Carry
+                    rts
+lpr7@               leas      4,s
+lpr8@               orcc      #Carry
+                    rts
+* The requests' limits: the most bytes, the window's last offset, the base (0: the block in slot 3)
+LPkLim              fdb       $1FFC,$1FFF,0
+FixLim              fdb       32,$1F,TXT.Base
+                    fdb       8,$07,GpuPp.Port
+
+* GpuPre / GpuPost - SSLPoke8 / 16's GPU waits (K2).  Entry: X = gr.PDRGS,
+*   Y = the target through slot 3, A = the byte written at Y.  GpuPre:
+*   carry clear when the target is not a GPU register or the FIFO has room
+*   for two units (a RESET needs none); carry set when the wait ran out.
+*   GpuPost: the return (GpOK, or GpBusy when the wait after a RESET ran
+*   out).  X and Y kept; D clobbered.
+GPU.CTRL            equ       $6000+$1800 ; VICKY_BLK+$1800 in slot 3: GPU_CTRL (b4 RESET)
+GPU.STAT            equ       $6000+$1801 ; VICKY_BLK+$1801: GPU_STATUS
+GPU.Reset           equ       %00010000 ; GPU_CTRL b4
+GPU.IdleMask        equ       %11011000 ; GPU_STATUS: busy, swap pending, FIFO empty, idle
+GPU.Idle            equ       %00011000 ; not busy, no swap pending, the FIFO empty, idle
+GpuPre
+                  IFNE    jr2
+                    andcc     #^Carry
+                    rts
+                  ELSE
+                    bsr       GpuReg    ; Z: a GPU register
+                    bne       gpe9@
+                    cmpy      #GPU.CTRL
+                    bne       gpe1@
+                    bita      #GPU.Reset
+                    bne       gpe9@     ; a RESET goes in at once
+gpe1@               pshs      y
+                    ldy       #0        ; room for two units: 65,536 polls
+gpe2@               ldd       >GPU.FREE
+                    cmpd      #2
+                    bhs       gpe8@
+                    leay      -1,y
+                    bne       gpe2@
+                    puls      y
+                    orcc      #Carry
+                    rts
+gpe8@               puls      y
+gpe9@               andcc     #^Carry
+                    rts
+                  ENDC
+GpuPost
+                  IFNE    jr2
+                    lbra      GpOK
+                  ELSE
+                    cmpy      #GPU.CTRL
+                    lbne      GpOK
+                    bita      #GPU.Reset
+                    lbeq      GpOK
+                    bsr       GpuReg
+                    lbne      GpOK
+                    pshs      y
+                    ldy       #0        ; the GPU idle: 65,536 polls
+gpo1@               lda       >GPU.STAT
+                    anda      #GPU.IdleMask
+                    cmpa      #GPU.Idle
+                    beq       gpo8@
+                    leay      -1,y
+                    bne       gpo1@
+                    puls      y
+                    bra       GpBusy
+gpo8@               puls      y
+                    lbra      GpOK
+* GpuReg: Z set when the block is VICKY_BLK and Y is a GPU register
+*   ($1800-$187F through slot 3).  A kept, B clobbered.
+GpuReg              ldb       R$X+1,x
+                    cmpb      #VICKY_BLK
+                    bne       gpg9@
+                    cmpy      #GPU.CTRL
+                    blo       gpg8@
+                    cmpy      #$6000+$187F
+                    bhi       gpg8@
+                    orcc      #Zero
+                    rts
+gpg8@               andcc     #^Zero
+gpg9@               rts
+                  ENDC
+GpBusy              comb
+                    ldb       #E$DevBsy
+                    rts
+
+*******************************************************************
+* GpuF.Scene (SetStat) - the K2's SceneEngine RAM from the caller's
+*   buffer: R$Y = the buffer, R$U = its length, 1-$2000.  The engine
+*   address is the buffer's own address.  The
+*   buffer comes in through slots 1-2 (MapCallBuf), VICKY_BLK through
+*   slot 3; the engine's ADDR register, then each byte to its DATA port
+*   (ADDR counts up).  The engine must be idle: it refuses uploads while
+*   it runs.  The Jr2 has no SceneEngine: E$UnkSvc.
+* Exit: B = 0, or carry + E$IllArg (a length of 0 or above $2000, a
+*   buffer off the top of the caller's map).
+*******************************************************************
+SE.ADDR             equ       $6000+$1784 ; VICKY_BLK+$1784 in slot 3: the upload address
+SE.DATA             equ       $6000+$1786 ; VICKY_BLK+$1786: a byte at ADDR, ADDR + 1
+SSGpuScnCpy
+                  IFNE    jr2
+                    lbra      GpUnk
+                  ELSE
+                    ldd       R$U,x     ; the length
+                    beq       gsc8@
+                    cmpd      #$2000
+                    bhi       gsc8@
+                    tfr       d,y
+                    ldd       R$Y,x     ; the buffer in the caller's map
+                    lbsr      MapCallBuf ; u = it through slots 1-2 (D, X kept)
+                    bcs       gsc8@
+                    pshs      cc
+                    orcc      #IntMasks ; irq return clears EDIT_LUT: select and write masked
+                    lda       #EDIT_LUT_1+ACT_LUT_1
+                    sta       MMU_MEM_CTRL
+                    ldb       #VICKY_BLK
+                    stb       MMU_SLOT_3 ; $6000
+                    clra
+                    std       >gr.DATImg+6
+                    puls      cc
+                    ldd       R$Y,x     ; the engine address: the buffer's own
+                    std       >SE.ADDR
+gsc1@               lda       ,u+
+                    sta       >SE.DATA
+                    leay      -1,y
+                    bne       gsc1@
+                    lbra      GpOK
+gsc8@               lbra      LPkBad
+                  ENDC
+
+*******************************************************************
+* GpuF.SceneL (SetStat) - the K2's SceneEngine RAM from several ranges
+*   of the caller's map, each at its own address: R$Y = the list, 4
+*   bytes an entry, a start and an end (the byte past the last), 1-$2000
+*   bytes apart; an entry whose end is 0 ends the list.  Each entry, then
+*   its range, comes in through slots 1-2 (MapCallBuf), VICKY_BLK through
+*   slot 3; the engine's ADDR register, then each byte to its DATA port.
+*   The engine must be idle.  The Jr2 has no SceneEngine: E$UnkSvc.
+* Exit: B = 0, or carry + E$IllArg (a range of 0 or above $2000 bytes, an
+*   entry or a range off the top of the caller's map); the ranges before
+*   a bad entry are in.
+*******************************************************************
+SSGpuScnL
+                  IFNE    jr2
+                    lbra      GpUnk
+                  ELSE
+                    ldd       R$Y,x     ; the list in the caller's map
+                    std       >gr.d1    ; gr.d1 = the next entry
+gsl1@               ldd       >gr.d1
+                    ldy       #4
+                    lbsr      MapCallBuf ; u = the entry through slots 1-2
+                    bcs       gsl8@
+                    ldd       2,u       ; its end
+                    beq       gsl9@     ; 0: the list's end
+                    subd      ,u        ; the length
+                    beq       gsl8@
+                    cmpd      #$2000
+                    bhi       gsl8@     ; above $2000, or an end below the start
+                    tfr       d,y       ; y = the length
+                    ldd       ,u        ; the start
+                    std       >gr.d2
+                    lbsr      MapCallBuf ; u = the range through slots 1-2
+                    bcs       gsl8@
+                    lbsr      LineMapC0 ; VICKY_BLK through slot 3 (x clobbered)
+                    ldd       >gr.d2    ; the engine address: the range's own
+                    std       >SE.ADDR
+gsl2@               lda       ,u+
+                    sta       >SE.DATA
+                    leay      -1,y
+                    bne       gsl2@
+                    ldd       >gr.d1    ; the next entry
+                    addd      #4
+                    std       >gr.d1
+                    bra       gsl1@
+gsl9@               lbra      GpOK
+gsl8@               lbra      LPkBad
+                  ENDC
+
+*******************************************************************
+* GpuF.Rec (SetStat) - 8-byte units to the K2's GPU record port
+*   (VICKY_BLK+$1840): bytes 0-6, then byte 7, which pushes the unit into
+*   the GPU's FIFO.  R$Y = the units, R$U = their count, 1-1024.  R$X low
+*   byte, the flags:
+*   GpuRec.480    a LINE unit (byte 7 = 0) is a 240-row record drawn on
+*                 the 480-line view: its rows x 2, each row's bit 8 in
+*                 its X word's bit 15, the LINE twice (rows 2y, then
+*                 2y + 1), a one-row LINE one RECT ($02) over both rows;
+*                 any other unit goes as it is
+*   GpuRec.SeIdle the SceneEngine stopped first: its port feeds the same
+*                 FIFO unit by unit, and its units inside a record would
+*                 cut the record short
+*   Each unit waits for room for two in the FIFO (GPU_FREE).  The units
+*   come in through slots 1-2 (MapCallBuf), VICKY_BLK through slot 3.
+*   Every wait is bounded (65,536 polls); one that runs out stops the
+*   call with the units after it not sent.  The Jr2 has no GPU: E$UnkSvc.
+* Exit: B = 0, or carry + E$IllArg (a count of 0 or above 1024, units off
+*   the top of the caller's map) or E$DevBsy (a wait ran out).
+*******************************************************************
+GPU.FREE            equ       $6000+$1802 ; VICKY_BLK+$1802 in slot 3: FIFO_FREE, records
+GPU.REC             equ       $6000+$1840 ; VICKY_BLK+$1840: the record port, bytes 0-7
+SE.STAT             equ       $6000+$1782 ; VICKY_BLK+$1782: the SceneEngine's STATUS / command
+SE.CNT              equ       $6000+$1783 ; VICKY_BLK+$1783: R the OUT words there
+SE.OUT              equ       $6000+$1780 ; VICKY_BLK+$1780: R the OUT FIFO's head word (the read pops it)
+SE.Busy             equ       %01000000 ; STATUS b6: the engine runs
+SSGpuRec
+                  IFNE    jr2
+                    lbra      GpUnk
+                  ELSE
+                    ldd       R$U,x     ; the count
+                    lbeq      LPkBad
+                    cmpd      #1024
+                    lbhi      LPkBad
+                    pshs      d         ; ,s = the units left
+                    lslb
+                    rola
+                    lslb
+                    rola
+                    lslb
+                    rola                ; d = the bytes
+                    tfr       d,y
+                    ldd       R$Y,x     ; the units in the caller's map
+                    lbsr      MapCallBuf ; u = them through slots 1-2 (D, X kept)
+                    bcs       gpr7@
+                    ldb       R$X+1,x   ; the flags
+                    stb       >gr.b3
+                    lbsr      LineMapC0 ; VICKY_BLK through slot 3 (x clobbered)
+                    bitb      #GpuRec.SeIdle
+                    beq       gpr2@
+                    ldy       #0        ; the SceneEngine stopped: 65,536 polls
+gpr1@               lda       >SE.STAT
+                    bita      #SE.Busy
+                    beq       gpr2@
+                    leay      -1,y
+                    bne       gpr1@
+                    bra       gpr6@
+gpr2@               ldy       #0        ; room for two units: 65,536 polls
+gpr3@               ldd       >GPU.FREE
+                    cmpd      #2
+                    bhs       gpr4@
+                    leay      -1,y
+                    bne       gpr3@
+                    bra       gpr6@
+gpr4@               lda       >gr.b3
+                    bita      #GpuRec.480
+                    beq       gpr5@
+                    tst       7,u
+                    beq       gpr10@    ; a LINE on the 480-line view
+gpr5@               ldd       ,u        ; the unit as it is
+                    std       >GPU.REC
+                    ldd       2,u
+                    std       >GPU.REC+2
+                    ldd       4,u
+                    std       >GPU.REC+4
+                    ldd       6,u       ; byte 7 last: it pushes the unit
+                    std       >GPU.REC+6
+gpr9@               leau      8,u       ; the next unit
+                    ldd       ,s
+                    subd      #1
+                    std       ,s
+                    bne       gpr2@
+                    leas      2,s
+                    lbra      GpOK
+gpr6@               leas      2,s       ; a wait ran out
+                    comb
+                    ldb       #E$DevBsy
+                    rts
+gpr7@               leas      2,s
+                    lbra      LPkBad
+* 480 lines: gr.d1 = Y0 x 2, gr.d2 = Y1 x 2 (even: the second unit's + 1
+* never carries into bit 8), gr.b2 = the op
+gpr10@              clra
+                    ldb       4,u       ; Y0
+                    lslb
+                    rola
+                    std       >gr.d1
+                    clra
+                    ldb       5,u       ; Y1
+                    lslb
+                    rola
+                    std       >gr.d2
+                    clr       >gr.b2    ; LINE
+                    lda       4,u
+                    cmpa      5,u
+                    bne       gpr11@
+                    inc       >gr.d2+1  ; one row: a RECT over rows 2y and 2y + 1
+                    lda       #$02
+                    sta       >gr.b2
+gpr11@              bsr       GpRec480
+                    tst       >gr.b2
+                    bne       gpr9@     ; a RECT: one unit
+                    inc       >gr.d1+1  ; the LINE again one row down
+                    inc       >gr.d2+1
+                    bsr       GpRec480
+                    bra       gpr9@
+
+* GpRec480 - the LINE unit at U to the record port on the 480-line view:
+*   its X words with the rows' bit 8 (gr.d1, gr.d2 high bytes) in bit 15,
+*   the rows' low bytes, its color, the op gr.b2.  D clobbered, U kept.
+GpRec480            ldd       ,u        ; X0
+                    tst       >gr.d1
+                    beq       gr4801@
+                    ora       #$80
+gr4801@             std       >GPU.REC
+                    ldd       2,u       ; X1
+                    tst       >gr.d2
+                    beq       gr4802@
+                    ora       #$80
+gr4802@             std       >GPU.REC+2
+                    lda       >gr.d1+1
+                    ldb       >gr.d2+1
+                    std       >GPU.REC+4
+                    lda       6,u       ; the color
+                    ldb       >gr.b2    ; the op, last: it pushes the unit
+                    std       >GPU.REC+6
+                    rts
+                  ENDC
+
+*******************************************************************
+* GpuF.SeOut (GetStat) - the K2's SceneEngine OUT words into the
+*   caller's buffer: R$Y = the buffer, R$U = its room in words, 1-$1000;
+*   R$X low byte = a command written to the engine's STATUS register
+*   first (its GO or RESUME; 0: none).  A word is read (ldd: high byte
+*   first; the read pops it) whenever COUNT shows one, until the room is
+*   full, or the engine has stopped (STATUS b6 clear) and a last look at
+*   COUNT finds none.  While the engine runs with no word the wait is
+*   bounded (65,536 polls), so a stuck engine never holds the system:
+*   the call returns with what it has, and STATUS b6 set tells the caller
+*   to ask again.  The buffer comes in through slots 1-2 (MapCallBuf),
+*   VICKY_BLK through slot 3.  The Jr2 has no SceneEngine: E$UnkSvc.
+* Exit: R$U = the words read, R$X = STATUS as last read (high byte 0);
+*   B = 0, or carry + E$IllArg (a room of 0 or above $1000 words, a
+*   buffer off the top of the caller's map).
+*******************************************************************
+GSGpuSeOut
+                  IFNE    jr2
+                    lbra      GpUnk
+                  ELSE
+                    ldd       R$U,x     ; the room in words
+                    beq       gso8@
+                    cmpd      #$1000
+                    bhi       gso8@
+                    pshs      d,x       ; ,s = the room left, 2,s = the caller's registers
+                    lslb
+                    rola                ; d = the bytes
+                    tfr       d,y
+                    ldd       R$Y,x     ; the buffer in the caller's map
+                    lbsr      MapCallBuf ; u = it through slots 1-2 (D, X kept)
+                    bcs       gso7@
+                    ldb       R$X+1,x   ; the command
+                    lbsr      LineMapC0 ; VICKY_BLK through slot 3 (x clobbered, D kept)
+                    tstb
+                    beq       gso1@
+                    stb       >SE.STAT
+gso1@               ldx       #0        ; x = the words read
+gso2@               ldy       #0        ; the next word: 65,536 polls
+gso3@               ldb       >SE.CNT
+                    bne       gso5@     ; one there
+                    lda       >SE.STAT
+                    bita      #SE.Busy
+                    beq       gso4@     ; stopped
+                    leay      -1,y
+                    bne       gso3@
+                    bra       gso9@     ; runs, and none came: the caller asks again
+gso4@               ldb       >SE.CNT   ; stopped: a last look
+                    beq       gso9@
+gso5@               ldd       >SE.OUT   ; the word (the read pops it)
+                    std       ,u++
+                    leax      1,x
+                    ldd       ,s
+                    subd      #1
+                    std       ,s
+                    bne       gso2@
+gso9@               ldy       2,s       ; the caller's registers
+                    stx       R$U,y     ; the words read
+                    ldb       >SE.STAT  ; STATUS for the caller
+                    clra
+                    std       R$X,y
+                    leas      4,s
+                    lbra      GpOK
+gso7@               leas      4,s
+gso8@               lbra      LPkBad
+                  ENDC
+
+*******************************************************************
+* GpuF.Pp (GetStat) - the K2's point pipeline (GpuPp.Port) from the
+*   caller's buffer: R$Y = the buffer, R$U = its length in bytes,
+*   1-$1000.  Item after item: a command (0: none; else written to
+*   GpuPp.Cmd first), the port (0 G, 2 P, 4 Q: GpuPp.Port + it), the
+*   words in, the words out, then the words: the ones in are written to
+*   the port in order, then the ones out are read from it (each read
+*   pops a result) over the item's words from its first.  An item takes
+*   4 bytes and 2 x the larger count.  The buffer comes in through slots
+*   1-2 (MapCallBuf).  The Jr2 has no point pipeline: E$UnkSvc.
+* Exit: B = 0, or carry + E$IllArg (a length of 0 or above $1000, a
+*   buffer off the top of the caller's map).
+*******************************************************************
+GSGpuPp
+                  IFNE    jr2
+                    lbra      GpUnk
+                  ELSE
+                    ldd       R$U,x     ; the length
+                    beq       gpp8@
+                    cmpd      #$1000
+                    bhi       gpp8@
+                    tfr       d,y
+                    ldd       R$Y,x     ; the buffer in the caller's map
+                    lbsr      MapCallBuf ; u = it through slots 1-2 (D, X kept)
+                    bcs       gpp8@
+                    ldd       R$U,x
+                    leay      d,u
+                    pshs      y         ; ,s = the buffer's end
+gpp1@               cmpu      ,s
+                    bhs       gpp9@
+                    lda       ,u+       ; the command
+                    beq       gpp2@
+                    sta       >GpuPp.Cmd
+gpp2@               ldb       ,u+       ; the port
+                    andb      #$06
+                    ldx       #GpuPp.Port
+                    abx
+                    ldd       ,u++      ; a = the words in, b = the words out
+                    pshs      u         ; ,s = the item's words
+                    tsta
+                    beq       gpp4@
+gpp3@               ldy       ,u++      ; in
+                    sty       ,x
+                    deca
+                    bne       gpp3@
+gpp4@               pshs      u         ; ,s = past the words in, 2,s = the item's words
+                    ldu       2,s
+                    tstb
+                    beq       gpp6@
+gpp5@               ldy       ,x        ; out (the read pops it)
+                    sty       ,u++
+                    decb
+                    bne       gpp5@
+gpp6@               cmpu      ,s        ; the next item: past the larger count
+                    bhs       gpp7@
+                    ldu       ,s
+gpp7@               leas      4,s
+                    bra       gpp1@
+gpp9@               leas      2,s
+                    lbra      GpOK
+gpp8@               lbra      LPkBad
+                  ENDC
+
+*******************************************************************
+* GpuF.List - a series of GPU functions and waits in one call: R$Y = the
+*   items in the caller's map, R$U = their count, 1-255.  An item is a
+*   single call's registers (GpuL.*, 7 bytes): A the kind (GpuK.Set,
+*   GpuK.Get, GpuK.Wait; GpuK.None is passed over), then X, Y and U.  The
+*   items run in order; a GetStat's or a wait's R$U comes back in the
+*   item's U (a GetStat's R$X out is not kept).  A list in a list:
+*   E$IllArg.  Each item comes in through slots 1-2 (MapCallBuf) and is
+*   copied out first: its function maps its own buffer there.
+* Exit: B = 0; or carry, B = the error of the first item that failed (the
+*   items after it not run) and R$U = its number (0: the first).
+*******************************************************************
+GlPtr               equ       R$Size    ; the item in the caller's map (the frame: its registers first)
+GlLeft              equ       R$Size+2  ; the items left
+GlNum               equ       R$Size+3  ; the item's number
+GlRgs               equ       R$Size+4  ; the list call's registers
+GlFrame             equ       R$Size+6
+GpuList             ldd       R$U,x     ; the count
+                    lbeq      LPkBad
+                    cmpd      #255
+                    lbhi      LPkBad
+                    leas      -GlFrame,s
+                    stb       GlLeft,s
+                    clr       GlNum,s
+                    stx       GlRgs,s
+                    ldd       R$Y,x
+                    std       GlPtr,s
+gli1@               ldd       GlPtr,s   ; the item through slots 1-2
+                    ldy       #GpuL.Size
+                    lbsr      MapCallBuf
+                    bcs       gli7@
+                    leax      ,s        ; x = its registers (the frame's first bytes)
+                    lda       GpuL.K,u
+                    sta       R$A,x
+                    ldd       GpuL.X,u
+                    std       R$X,x
+                    ldd       GpuL.Y,u
+                    std       R$Y,x
+                    ldd       GpuL.U,u
+                    std       R$U,x
+                    lda       R$A,x
+                    cmpa      #GpuK.None
+                    beq       gli5@
+                    ldb       R$X,x     ; a list in a list: refused
+                    cmpb      #GpuF.List
+                    beq       gli7@
+                    tsta
+                    bne       gli2@
+                    lbsr      SSGpuDo   ; GpuK.Set
+                    bra       gli4@
+gli2@               deca
+                    bne       gli3@
+                    lbsr      GSGpuDo   ; GpuK.Get
+                    bra       gli4@
+gli3@               deca
+                    bne       gli7@
+                    bsr       GpWait    ; GpuK.Wait
+gli4@               bcs       gli6@
+                    lda       R$A,s     ; a GetStat's or a wait's R$U back into the item
+                    beq       gli5@
+                    ldd       GlPtr,s
+                    ldy       #GpuL.Size
+                    lbsr      MapCallBuf
+                    bcs       gli7@
+                    ldd       R$U,s
+                    std       GpuL.U,u
+gli5@               ldd       GlPtr,s   ; the next item
+                    addd      #GpuL.Size
+                    std       GlPtr,s
+                    inc       GlNum,s
+                    dec       GlLeft,s
+                    bne       gli1@
+                    leas      GlFrame,s
+                    lbra      GpOK
+gli7@               ldb       #E$IllArg
+gli6@               ldx       GlRgs,s   ; the item that failed
+                    lda       GlNum,s
+                    sta       R$U+1,x
+                    clr       R$U,x
+                    leas      GlFrame,s
+                    orcc      #Carry
+                    rts
+
+*******************************************************************
+* GpuF.List's waits (GpuK.Wait items), R$X high byte = the wait, each
+*   polled at most 65,536 times (one that runs out: carry, E$DevBsy):
+*   GpuW.Ras    VICKY's raster line (TXT.Base's VKY_LINE_Y_POS) below R$Y,
+*               or at R$U and on; R$U out = the line
+*   GpuW.Free   the K2 GPU's FIFO_FREE at R$Y or more; R$U out = it
+*   (GpuF.SeOut waits for the SceneEngine's OUT words itself.)  The Jr2
+*   has the raster wait only: GpuW.Free there is E$UnkSvc.
+*******************************************************************
+GpWait              lda       R$X,x     ; the wait
+                    bne       gwt2@
+                    ldy       #0        ; GpuW.Ras: 65,536 polls
+gwt1@               ldd       >TXT.Base+VKY_LINE_Y_POS_HI
+                    anda      #$0F
+                    cmpd      R$Y,x
+                    blo       gwt8@     ; below the window's start
+                    cmpd      R$U,x
+                    bhs       gwt8@     ; at its end and on
+                    leay      -1,y
+                    bne       gwt1@
+                    bra       gwt9@
+gwt2@
+                  IFNE    jr2
+                    lbra      GpUnk
+                  ELSE
+                    pshs      x
+                    lbsr      LineMapC0 ; VICKY_BLK through slot 3 (x clobbered)
+                    puls      x
+                    deca
+                    lbne      GpUnk
+                    ldy       #0        ; GpuW.Free: 65,536 polls
+gwt3@               ldd       >GPU.FREE
+                    cmpd      R$Y,x
+                    bhs       gwt8@
+                    leay      -1,y
+                    bne       gwt3@
+                    bra       gwt9@
+                  ENDC
+gwt8@               std       R$U,x
+                    lbra      GpOK
+gwt9@               comb
+                    ldb       #E$DevBsy
+                    rts
 
 
 * SetStat SS.TermSel - R$X = terminal id 0-8: show that terminal on the
