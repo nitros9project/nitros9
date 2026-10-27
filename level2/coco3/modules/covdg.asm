@@ -191,6 +191,8 @@ SetPals             pshs      u,y,x,d             puts palette data in.
                     beq       L00FF               0 = not active, exit without updating hardware
                     leax      <VD.Palet,u         point X to palette table
                     ldy       #$FFB0              point Y to palette register
+                    tst       >HRS.DGBuf,u        application screens use raw GIME palette values
+                    lbne      L00E6
                     lda       >WGlobal+G.MonTyp   Universal RGB/CMP 0 = CMP, 1 = RGB, 2 = MONO
                     bne       L00E6               if not composite, set U vector to not re-map colors
                     leau      <L00F6,pcr          else do re-map colors to composite
@@ -1575,6 +1577,10 @@ L092B               ldd       <VD.FFSPt,u         Get current FFill stack ptr
 * Entry: Y=Ptr to path descriptor
 *        A=GetStat code
 GetStat             ldx       PD.RGS,y            Get ptr to users stack
+                    IFGT      Level-1
+                    cmpa      #SS.AScrn           query application-screen ownership ABI
+                    beq       Rt.HiresABI
+                    ENDC
                     cmpa      #SS.AlfaS           Alfa Display Status?
                     beq       Rt.AlfaS
                     cmpa      #SS.ScSiz           Screen size?
@@ -1590,6 +1596,19 @@ GetStat             ldx       PD.RGS,y            Get ptr to users stack
                     comb                          Anything else, return with Unknown Service error
                     ldb       #E$UnkSvc
                     rts
+
+                    IFGT      Level-1
+Rt.HiresABI         ldd       >WGlobal+G.HRSEnt
+                    beq       HiresABIMissing
+                    ldd       #$FFFF              query without allocating a screen
+                    std       R$X,x
+                    ldx       >WGlobal+G.HRSEnt
+                    lda       #SS.AScrn
+                    jmp       H$SetStt,x
+HiresABIMissing     comb
+                    ldb       #E$UnkSvc
+                    rts
+                    ENDC
 
 * Returns window or screen size. Currently hardcoded 32x16 for Coco 3/level 2. Level 1 now
 * has CocoVGA support, so it uses the static mem values.
