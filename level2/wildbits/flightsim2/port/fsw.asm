@@ -1312,13 +1312,14 @@ pl8@                rts
 Dot                 pshs      d,x,y,u
                     ldx       #vEnd1X
                     lbsr      Proj
+                    bcs       dt9@                at the eye: no dot
                     lda       >FsLineCol
                     anda      #ColorNibble
                     bne       dtk@
                     lda       #FsBlack            FS's black (PFillA)
 dtk@                sta       PfCol
                     bsr       DotRec
-                    puls      d,x,y,u,pc
+dt9@                puls      d,x,y,u,pc
 * DotRec: the light at PX16, PY16 in color PfCol (Dot, the SceneEngine's DOT). Registers kept.
 DotRec              pshs      d,x,y
                     ldd       PX16
@@ -1721,17 +1722,19 @@ HzRight             fcb       0
 * sixteenths: x = 320 + 320 X/Z, y = CY - 82 Y/Z (CY FswPrCY, ViewCY's 82: 0-10239, 0 .. 2623; FS's clippers keep
 * |X|, |Y| <= Z, so the top 8 rows of FS's view lie above the bitmap).
 * |X|, |Y| and Z are scaled together until Z is 2048-4095; R = 2^24/Z on the math block's divider, a hex digit
-* at a time; |X| R and |Y| R on its multiplier give the offsets. X, Y kept.
-Proj                tst       HwPp
+* at a time; |X| R and |Y| R on its multiplier give the offsets. X, Y kept. Carry clear.
+* The near plane (#6): FS's four side cuts leave a point at or behind the eye only at the eye itself (Z <= 0, X =
+* Y = 0), which has no place on the screen: carry set, PX16/PY16 not touched. A cut at a near plane would put
+* that corner where its neighbors' rays meet the plane, on their own screen points, so the callers drop it: a
+* polygon's corner, a line (it shrinks to a dot), a light. Projected at the view's center, it pulled a building's
+* faces across the sky.
+Proj                ldd       4,x
+                    bgt       pj0@
+                    orcc      #Carry
+                    rts
+pj0@                tst       HwPp
                     lbne      PjPp
                     pshs      u
-                    ldd       4,x
-                    bgt       pj1@
-                    ldd       #CenterX16          Z <= 0 (X = Y = 0 there): the center
-                    std       PX16
-                    ldd       >FswPrCY
-                    std       PY16
-                    puls      u,pc
 pj1@                std       PrZ
                     ldd       ,x
                     sta       PrSx
@@ -1900,6 +1903,7 @@ py2@                cmpd      VMaxY               its last (signed: above the vi
                     ble       py3@                EdgeSet cut it there)
                     ldd       VMaxY
 py3@                std       PY16
+                    andcc     #^Carry
                     puls      u,pc
 * PrHi: D = the multiplier's product >> 12 (it is at most 2^24)
 PrHi                tst       >MATH_MUL_P
@@ -1926,7 +1930,9 @@ PVtx                inc       >vPolyVtxCount
                     clr       VCnt
 pv1@                ldx       #vEnd2X
                     lbsr      Proj
+                    bcs       pv2@                at the eye: the corner dropped (the near plane)
                     bsr       PvAdd
+pv2@                equ       *
                     ldd       #X16PerUnit         x16 / 40 = the view x
                     std       >MATH_DIV_SOR
                     ldd       PX16
@@ -2488,12 +2494,14 @@ l30@                sta       PfCol
                     bra       l32@
 l31@                ldx       #vEnd1X
                     lbsr      Proj
+                    bcs       l39@                an end at the eye: no line (it shrinks to a dot)
                     ldd       PX16
                     std       L3A
                     ldd       PY16
                     std       L3A+2
 l32@                ldx       #vEnd2X
                     lbsr      Proj
+                    bcs       l39@
                     ldd       PX16
                     std       L3B
                     ldd       PY16
@@ -2507,7 +2515,7 @@ l32@                ldx       #vEnd2X
                     ldx       #L3A
                     ldy       #L3B
                     lbsr      LRec
-                    puls      d,x,y,u,pc
+l39@                puls      d,x,y,u,pc
 
 ********************************************************************
 * The point pipeline's section: every use of the K2's point pipeline goes through grfdrv256's GPU call, one
@@ -2563,6 +2571,7 @@ PjPp                pshs      x,y,u
                     ldd       PqRq+6
                     std       PY16
                     ldd       PqRq+8              VU
+                    andcc     #^Carry             a point (Proj's carry)
                     puls      x,y,u,pc
 
 * GPtPp: GPt on the point pipeline: the eye (<$0C, <$0E, <$10) and the base sums (<$42-<$4A) loaded, then x, z
