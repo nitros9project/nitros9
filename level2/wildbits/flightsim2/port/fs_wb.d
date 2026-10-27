@@ -51,6 +51,7 @@ FswFrame            equ       FswBase+3           main loop: instruments, then t
 FswPresent          equ       FswBase+6           replaces CopyBackBufToScreen: the view's records drawn, bitmaps flipped
 FswRow80            equ       FswBase+9           FillRow80's entry
 FswHLine            equ       FswBase+12          DrawHLine's entry
+FswSky              equ       FswBase+15          DrawSkyGround without the horizon in view: the stars (sky_stars.asm)
 FswPlot             equ       FswBase+18          PlotPixel's entry
 FswLine             equ       FswBase+21          DrawLine's entry
 FswEdgePix          equ       FswBase+24          FillPolyEdgeEnd's end pixel
@@ -1027,6 +1028,7 @@ FsclInit            equ       $4000               fscl's ClInit (its block at $4
 WbWinStart          equ       $4000               the scenery window's start: where an overlay links (FS's data memory shrunk to it) and the data block loads
 FsclRun             equ       $4003               fscl's ClRun: a frame's clouds
 FsclGdRun           equ       $4006               fscl's GdRun: the textured ground (fst's GdDraw)
+FsclSky             equ       $4009               fscl's SkDraw: the stars at dusk and night (fst's GdDraw; sky_stars.asm)
 Q15One              equ       $7FFF               a full Q15 one (32767)
 WbPanelBlk          equ       $8000               the panel's block in the flight screen's map, $8000-$9FFF: FS's screen base + $1EF0, its row 99
 WbCourseEnd         equ       $9FF2               the course plotter's points' end: the screen block's end, after the panel

@@ -155,6 +155,7 @@ ShNear              equ       20                  map units (5 km): a shadow is 
                     jmp       ClInit              ClBase+0: the shapes, the slots free
                     jmp       ClRun               ClBase+3: a frame's clouds
                     jmp       GdRun               ClBase+6: the textured ground (fst's GdDraw)
+                    jmp       SkDraw              ClBase+9: the stars at dusk and night (fst's GdDraw; sky_stars.asm)
 
 ClOk                fcb       0                   1: the shapes are in the GPU
 ClSeed              fdb       0
@@ -1693,6 +1694,7 @@ sm1@                clra                          corners 0, k, k + 1 (words)
                     blo       sm1@
                     lbra      ClUpF
                     use       sh_sun.asm
+                    use       sky_stars.asm
 
 ClUpR               fdb       Gpu.UpDat           GpuF.LPkN's request: UP_DATA (mask 0), then ClUpB
                     fcb       0,0

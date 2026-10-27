@@ -173,7 +173,7 @@ $(OBJDIR)/fs2_fswc: $(FS2_DIR)/port/fswc.asm $(FS2_DIR)/port/twr.asm $(FS2_DIR)/
 RECIPE_DEPS += $(OBJDIR)/fs2_fswc
 # fsx: the spot view (camera and the ST's Cessna), a raw binary fsw reads into a RAM block of its own; the K2's
 # with the traffic (WBTRAF: fst.asm, fst_plan.asm), as the drop builds it
-$(OBJDIR)/fs2_fsx: $(FS2_DIR)/port/fsx.asm $(FS2_DIR)/port/fsx_ac.asm $(FS2_DIR)/port/fsx_cessna.asm $(FS2_DIR)/port/fsx_gpu.d $(FS2_DIR)/port/fst.asm $(FS2_DIR)/port/fst_plan.asm $(FS2_DIR)/port/fs_wb.d $(L2PD)/defsfile | $(OBJDIR)
+$(OBJDIR)/fs2_fsx: $(FS2_DIR)/port/fsx.asm $(FS2_DIR)/port/fsx_ac.asm $(FS2_DIR)/port/fsx_cessna.asm $(FS2_DIR)/port/fsx_gpu.d $(FS2_DIR)/port/fst.asm $(FS2_DIR)/port/fst_plan.asm $(FS2_DIR)/port/sky_stars.asm $(FS2_DIR)/port/sky_stars.d $(FS2_DIR)/port/fs_wb.d $(L2PD)/defsfile | $(OBJDIR)
 	$(AS) $(AFLAGS) --format=raw -I$(L2PD) -I$(FS2_DIR)/port $(if $(filter k2,$(PLATFORM)),--define=WBTRAF --symbol-dump=$(OBJDIR)/fsx_k2.sym) $< $(ASOUT)$@
 RECIPE_DEPS += $(OBJDIR)/fs2_fsx
 # fscl: the K2's clouds, a raw binary of their own at $4000 that the K2's fsx loads (port/fscl.asm), linked to that

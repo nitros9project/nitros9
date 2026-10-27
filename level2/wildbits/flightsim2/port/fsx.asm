@@ -1514,7 +1514,8 @@ ed9@                rts
                     ifdef     WBTRAF
                     use       fst.asm
                     else
-GdDraw              rts                           (the Jr2: no GPU, no textured ground)
+GdDraw              equ       SkDraw              the Jr2: no GPU, no textured ground; the stars (FsxGround)
+                    use       sky_stars.asm
                     endc
 
 AcFile              equ       *                   the aircraft file, then its work areas

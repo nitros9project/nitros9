@@ -57,6 +57,7 @@ GpKLowBase          equ       16                  GpLow: the shift count's base,
 GpKMax              equ       23                  GPt: the largest shift count (every value 0: 23)
 GpKStart            equ       -2                  GPt: the shift count's start, -2 (the leading zeros of A, less one)
 GpKStartLo          equ       6                   GPt with A 0: the shift count's start, 8 - 2 (8 + the leading zeros of B, less one)
+GdGround            equ       1                   GdCall's A after the GPU's split: the textured ground too (0: the stars alone)
 GpSumsEnd           equ       GpS+12              the end of GpS: three 32-bit sums of products
 GpuCtl256           equ       $02                 Gpu.Ctrl b1: the 320 x 256-color view, 480 lines (clear: 640 x 16)
 GpuCtlOff           equ       0                   Gpu.Ctrl with every bit clear: the GPU off
@@ -721,7 +722,7 @@ LcM                 rmb       2
                     jmp       Present
                     jmp       Row80
                     jmp       HLine
-                    zmb       3                   (FillSplitViewRow's entry: gone with FS's sloped-horizon fill)
+                    jmp       Sky                 FswSky (FillSplitViewRow's entry, gone with FS's sloped-horizon fill)
                     jmp       Plot
                     jmp       Line
                     jmp       EdgePix
@@ -3038,17 +3039,18 @@ hz11@               lda       SpY                 below
                     bhs       hz12@
                     lbsr      HzRow
                     bra       hz11@
-hz12@               lda       >FsLight            dusk and night: the horizon line in white over the split, from
-                    cmpa      #LightDay           the line's own ends (the CoCo's scenery drew it through $0192;
+hz12@               clra                          the CPU's split: no textured ground (HzGpu: A 1)
+hz12a@              ldb       >FsLight            dusk and night: the horizon line in white over the split, from
+                    cmpb      #LightDay           the line's own ends (the CoCo's scenery drew it through $0192;
                     beq       hz13@               the ST lists in sf.wildbits do not), the scenery drawn over it
-                    pshs      x,y
-                    lda       #FsWhite
-                    sta       PfCol
+                    pshs      a,x,y
+                    ldb       #FsWhite
+                    stb       PfCol
                     ldx       #L3A
                     ldy       #L3B
                     lbsr      LRec
-                    puls      x,y
-hz13@               rts
+                    puls      a,x,y
+hz13@               lbra      GdCall              then the textured ground and the stars (they reuse L3A, L3B)
 * HzSky (Horizon without the GPU): the sky is color 0, the bitmap's see-through nibble, which shows VICKY's
 * background: set to the RGB of FS's sky color (vSkyCol: day, dawn, dusk, night) whenever that changes (fswc's
 * HzBg, through grfdrv256's GPU call), then the band colors equal to it become 0. D, X, Y, U clobbered.
@@ -3136,21 +3138,26 @@ hg7@                std       10,u                color A (where s > 0), color B
                     sta       7,u
                     leau      16,u
 hg9@                stu       RecPtr
-                    lbsr      GdCall              the textured ground over the split (the K2's fsx)
-                    lbra      hz12@
-* GdCall (HzGpu, the sky and ground split in RecBuf): fsx's FsxGround, the textured ground over it, with the GPU's
-* meshes (HwGpu 2): the split fed first (the GPU draws in arrival order); FS's timer intercepted meanwhile, as for
-* the traffic (OvTrf: a tick while fsx sits in the panel's place would draw instruments into it). GdOn 0 (the
-* start, F8, F2's GROUND TEXTURE): none of it. Registers kept.
+                    lda       #GdGround           the textured ground over the split (the K2's fsx)
+                    lbra      hz12a@
+* GdCall (Horizon's end, A 1 after the GPU's split, 0 after the CPU's) and Sky (FswSky: DrawSkyGround without the
+* horizon in view): fsx's FsxGround: by day the textured ground over the GPU's split (A 1; its meshes: fst's
+* CbOn), GdOn 0 (the start, F8, F2's GROUND TEXTURE) none of it; at dusk and night the stars (sky_stars.asm: the
+* K2's fscl, the Jr2's fsx). The records so far fed first (the GPU draws in arrival order); FS's timer intercepted
+* meanwhile, as for the traffic (OvTrf: a tick while fsx sits in the panel's place would draw instruments into it).
+* Registers kept.
+Sky                 clra
 GdCall              pshs      d,x,y,u
-                    tst       GdOn
-                    beq       gc9@
                     ldx       XBlk
                     beq       gc9@
-                    lda       HwGpu
-                    cmpa      #HwGpuMeshes
-                    bne       gc9@
-                    lbsr      Feed
+                    ldb       >FsLight
+                    cmpb      #LightDay
+                    bne       gc1@                dusk and night: the stars
+                    tsta
+                    beq       gc9@
+                    tst       GdOn
+                    beq       gc9@
+gc1@                lbsr      Feed
                     ldx       #SpIcpt
                     swi2
                     fcb       F$Icpt

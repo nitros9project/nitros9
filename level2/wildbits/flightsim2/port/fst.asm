@@ -1359,13 +1359,15 @@ BdTab               fdb       194,859             O'Hare: the origin's map corne
                     fcb       0
 BdTabE              equ       *
 
-* GdDraw (FsxGround: fsw's GdCall, from HzGpu once the sky and ground split went to the GPU): the textured ground,
-* fscl's GdRun (fscl.asm), the clouds' block at $4000 meanwhile (CbIn, CbOut, as CbRun). Registers clobbered.
+* GdDraw (FsxGround: fsw's GdCall, at the end of Horizon and from Sky): the textured ground by day, fscl's GdRun
+* (fscl.asm), then the stars at dusk and night, fscl's SkDraw (sky_stars.asm), the clouds' block at $4000
+* meanwhile (CbIn, CbOut, as CbRun). Registers clobbered.
 GdDraw              tst       CbOn
                     beq       gd9@
                     lbsr      CbIn
                     bcs       gd8@
                     jsr       >FsclGdRun          GdRun
+                    jsr       >FsclSky            SkDraw
 gd8@                lbra      CbOut
 gd9@                rts
 

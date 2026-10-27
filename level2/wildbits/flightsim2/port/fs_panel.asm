@@ -609,9 +609,11 @@ DrawSkyGroundNoHorizon equ       *
 * WildBits: 127 view rows
                     fcb       $86,$7F
                     sta       <vFillRowCount
-                    jmp       >FillViewRows+ModBase
+                    jsr       >FillViewRows+ModBase
+* WildBits: then the stars (fsw's Sky; returns from DrawSkyGround)
+                    jmp       >FswSky
 * (TrackHorizonRowRange, gone: only the old horizon fill used it)
-                    zmb       14
+                    zmb       11
 * DrawSkyGroundVisible: sky/ground: horizon visible, computes the rows spanned by its endpoints
 DrawSkyGroundVisible equ       *
 * WildBits: the scenery's white horizon line (its op 9 call through $0192) only at dawn, dusk and night; the sky
