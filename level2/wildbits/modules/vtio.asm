@@ -26,7 +26,7 @@ edition             set       3
 PSG.Base            equ       PSG_BOTH_PORT
 
 * Level 2 VTIO. Level 1 is vtio_l1.asm (MAPSLOT 7, no grfdrv256).
-* Do not alias 1-byte D.Boot. D.KbdSta is the 2-byte overlay at $18
+* Do not alias 1-byte D.Boot. D.KbdSta is the 2-byte overlay at $1A
 * from wildbits_vtio.d.
 
 * System LUT 0 slot 2 home is SRAM $03. Glyph/erase/scroll/blank,
@@ -1705,6 +1705,7 @@ GetStat             cmpa      #SS.EOF   ; is this the EOF call?
 *
 SSReady             lda       V.IBufH,u ; else get get the buffer tail ptr
                     suba      V.IBufT,u ; a = the number of characters ready to read
+                    anda      #KBufSz-1 ; modulo the buffer size: the head may have wrapped past the tail
                     sta       R$B,x     ; save in the caller's B
                     beq       NotReady  ; if there's no data in keyboard buffer, return the "not ready" error
 SSEOF               clrb                ; clear the error code and carry

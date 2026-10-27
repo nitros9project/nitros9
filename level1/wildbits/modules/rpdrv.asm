@@ -193,8 +193,8 @@ Start               lda Cmd,u
                     lda Packet,u
                     cmpa #2
                     bne TimeoutReady
-* RP2040 erases the full flash slot in IMAGE_BEGIN, before replying.
-                    ldd #7200
+* RP2040 erases the full 4 MiB flash bank in IMAGE_BEGIN, before replying.
+                    ldd #14400
                     std ,s
                     bra TimeoutReady
 CommitTimeout       ldd #1800
@@ -244,7 +244,7 @@ ExecError           comb
                     ldb #E$Write
                     lbra ExecReturn
 * SleepTick reports elapsed ticks in TickDelta and updates LastTick.
-* 300 ticks normally, 1800 for commit, 7200 for flash erase; early wakes cost zero.
+* 300 ticks normally, 1800 for commit, 14400 for flash erase; early wakes cost zero.
 SleepTick           pshs x
                     ldx #1
                     pshs cc
