@@ -943,6 +943,8 @@ Esc05Tbl            fcb       $20,0
                     fdb       CurChar-Esc05Tbl set cursor character
                     fcb       $23,1
                     fdb       CurRate-Esc05Tbl set cursor flash rate
+                    fcb       $24,1
+                    fdb       CurCol-Esc05Tbl set cursor colour
                     fcb       $00
 
 Esc1FTbl            fcb       $20,0
@@ -1184,41 +1186,38 @@ ErEOLine            lbsr      SetThisTermGrfPtrs
 ***********************************************************************
 *** 05 20 - Cursor Off/Hide - Turns the Cursor Off
 ***
-CurOff              tst       V.TermLive,u
-                    beq       CurOffX
-                    ldx       #TXT.Base
-                    ldb       VKY_TXT_CURSOR_CTRL_REG,x
-                    andb      #~Vky_Cursor_Enable
-                    stb       VKY_TXT_CURSOR_CTRL_REG,x
-CurOffX             rts
+* The cursor settings (05 20-05 24) are per terminal: each updates this
+* terminal's copy (V.CrsrCtl/V.CrsrChr/V.CrsrCol) and writes the hardware
+* only while the terminal is live.  The hardware holds one set, so a
+* shadow terminal writing it would change the cursor of whatever is on
+* screen; grfdrv256's switch programs the copy when the terminal comes
+* forward (CrsrPut).
+CurOff              lda       V.CrsrCtl,u
+                    anda      #^Vky_Cursor_Enable
+                    bra       CurCtlSet
 
 ************************************************************************
 *** 05 21 - Cursor On/Show - Turns Cursor On
 ***
-CurOn               tst       V.TermLive,u
-                    beq       CurOnX
-                    ldx       #TXT.Base
-                    lda       VKY_TXT_CURSOR_CTRL_REG,x
+CurOn               lda       V.CrsrCtl,u
                     ora       #Vky_Cursor_Enable
+CurCtlSet           sta       V.CrsrCtl,u
+                    tst       V.TermLive,u
+                    beq       CurX
+                    ldx       #TXT.Base
                     sta       VKY_TXT_CURSOR_CTRL_REG,x
-CurOnX              rts
+CurX                rts
 
 ************************************************************************
 *** 05 22 - Set Cursor Character - 05 22 CHR
 ***
-* Guarded like CurOff/CurOn: a shadow terminal must not reach the live
-* cursor registers, or it changes the cursor of whatever is actually on
-* screen.  Unlike ChgFont0/1 below this can only DROP the request, not
-* defer it: PushBuf/PullBuf carry $FFC0-$FFCF (V.V_MCR + V.V_LayerCTL +
-* V.BordBack), and the cursor registers start at $FFD0, so there is no
-* per-terminal mirror to stage it in.  Cursor character, colour, enable
-* and flash rate are therefore global - see the doc's gap list.
-CurChar             tst       V.TermLive,u
-                    beq       CurCharX
+CurChar             lda       V.EscParms,u
+                    sta       V.CrsrChr,u
+                    tst       V.TermLive,u
+                    beq       CurX
                     ldx       #TXT.Base
-                    lda       V.EscParms,u
                     sta       VKY_TXT_CURSOR_CHAR_REG,x
-CurCharX            rts
+                    rts
 
 ************************************************************************
 *** 05 23 - Set Cursor Flash Rate
@@ -1230,20 +1229,25 @@ CurCharX            rts
 ***   XXXXX001 = .5 second flash interval
 ***   XXXXX010 = .25 second flash interval
 ***   XXXXX011 = .2 second flash interval
-* Guarded like CurChar/CurOff/CurOn: the cursor registers start at $FFD0,
-* past the 16 bytes PushBuf/PullBuf carry, so there is no per-terminal
-* mirror to defer into - a shadow terminal can only be stopped from
-* changing the live cursor's flash rate.
-CurRate             tst       V.TermLive,u
-                    beq       CurRateX
+CurRate             ldb       V.CrsrCtl,u
+                    andb      #Vky_Cursor_Enable ; preserve the cursor enable bit
+                    lda       V.EscParms,u
+                    lsla                ; the rate bits sit above the enable bit
+                    pshs      b
+                    ora       ,s+
+                    bra       CurCtlSet
+
+************************************************************************
+*** 05 24 - Set Cursor Colour - 05 24 COL
+***
+*** COL is VKY_TXT_CURSOR_COLR_REG's byte.
+CurCol              lda       V.EscParms,u
+                    sta       V.CrsrCol,u
+                    tst       V.TermLive,u
+                    beq       CurX
                     ldx       #TXT.Base
-                    ldb       VKY_TXT_CURSOR_CTRL_REG,x
-                    andb      #$01      ; preserve the cursor enable bit
-                    lsla                ; shift bits to the left
-                    pshs      a         ; save the value to OR in on the stack
-                    orb       ,s+       ; or it in with the contents of the register
-                    stb       VKY_TXT_CURSOR_CTRL_REG,x ; save it to the hardware
-CurRateX            rts
+                    sta       VKY_TXT_CURSOR_COLR_REG,x
+                    rts
 
 **********************************************************************
 * 06 - Cursor Right
