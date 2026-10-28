@@ -1319,9 +1319,11 @@ co9@                puls      x,pc
 * farmland (commented out 2026-10-24: none drawn), or meadow within one tile of an airport (GdAir, gd_air.asm; commented
 * out 2026-10-24 too: GdRun skips the tiles); then the clouds' shadows (ShOne), all GROUND TEXTURE 1 draws now. F_TEXTURED alone, no depth test or write: the
 * scenery's ground draws over it in list order, the 3D objects test against the cleared depth. M = C'^T (fst's BdMat)
-* with the eye and the view matrix the scenery has this frame (vPosX, vViewM: the spot eye's in a spot frame), T for
-* the block's first tile from TfTrans, then each tile's by adding C' rows x 2^10 (a tile is 2^17 1/64 m and
-* T = (d C') >> 7: exact). The meshes' projection (BdProj) first, GpFlush last. Registers clobbered.
+* with the eye the scenery has this frame (vPosX: the spot eye in a spot frame) and the view matrix as BdDraw's
+* (vViewM; fsx's SpM in a spot frame: vViewM's y column carries fsw's ViewGeo factor 82/120 there, which the
+* meshes' projection does not take), T for the block's first tile from TfTrans, then each tile's by adding C' rows
+* x 2^10 (a tile is 2^17 1/64 m and T = (d C') >> 7: exact). The meshes' projection (BdProj) first, GpFlush last.
+* Registers clobbered.
 GdRun               tst       GpOn
                     lbeq      gd9@
                     tst       >vMapView
@@ -1332,7 +1334,10 @@ GdRun               tst       GpOn
                     ldx       #vPosX
                     stx       TfEye
                     ldu       #vViewM
-                    lbsr      BdMat
+                    tst       >FswSpSwap          a spot frame: fsx's SpM
+                    beq       gdm@
+                    ldu       #SpM
+gdm@                lbsr      BdMat
                     lda       #GdScale            scale 4: 1/4 m units
                     sta       TfScale
                     ldx       #BdProj             the meshes' projection (480 lines: ProjU doubles FY and CY)

@@ -308,6 +308,7 @@ FswMatLoad          equ       FswLoad+3           jmp MatLoad: <$68-<$78 to the 
 SpPos               equ       FswLoad+6           the aircraft's position while the eye is in <$00-<$0B (12 bytes)
 SpNew               equ       FswLoad+18          nonzero: the first spot frame since S
 FswSpOn             equ       FswLoad+19          SpOn: the spot view chosen (fswc's DashSp: the dash hidden)
+FswSpSwap           equ       FswLoad+20          SpSwap: the spot eye in <$00-<$0B this frame, fsx's SpM built (fscl's GdRun)
 FsGPtOvZ            equ       $DA46               GroundPtOvZ: FS's dZ overflow path
 FsGPtOvX            equ       $DA53               GroundPtOvX: FS's dX overflow path
 FsDrawGlyph3        equ       $B350               DrawGlyph past its ldx #$14C0

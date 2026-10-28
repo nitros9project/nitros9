@@ -179,6 +179,9 @@ SpNewV              fcb       0                   SpNew: the first frame since S
 * mapped in the panel's place only meanwhile (XIn / XOut).
 SpOn                fcb       0                   the spot view chosen
 SpSwap              fcb       0                   the eye is in <$00-<$0B this frame
+                    ifne      SpSwap-FswSpSwap
+                    error     "fs_wb.d: FswSpSwap"
+                    endc
 SpLive              fcb       0                   this frame is the spot view's (Parts)
 XBlk                fdb       0                   fsx's RAM block (0: none, no spot view)
 SpTick              fcb       0                   timer signals that came while fsx was mapped (a count)

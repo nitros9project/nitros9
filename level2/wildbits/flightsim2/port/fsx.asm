@@ -68,7 +68,6 @@ EnvRqClrMask        equ       $FF-FswEnvRq        FswReq without its FswEnvRq bi
 EvenMask            equ       $FE                 bit 0 cleared: an even value (a whole word for the double-speed DMA, an even address)
 Fits2NegHi          equ       $FFFF               Fits2: the high word of a 32-bit value in -$10000..-1 (the low word then checked)
 FixOneByte          equ       1                   GpuF.FixN's U: one byte
-FyGrow240           equ       119                 the full-screen views' FY: + FY x 119/256 (x 375/256, 240/164 rows)
 GfxHires4Clr        equ       $FE                 VKY_GFX_MODE without GFX_HIRES4: the OS's bit cleared before Hr4 is put back
 GmItCount           equ       1                   GmIt's GpuF.List items: one, the FIFO_FREE wait
 GpCallGet           equ       1                   GpCall's A: not 0, its GetStat functions (0 its SetStat)
@@ -1094,7 +1093,11 @@ VsSeR               fdb       Se.VDat             GpuF.LPkN's request header (as
 VsSe                fdb       5120,0,1280,0,10239,0
 * ProjU: X = a SETPROJ record (14 bytes, 2 units) to the GPU, its CY (bytes 6-7) the view's center now (fsw's
 * FswPrCY); in 480 lines (the 256-color view, GPU_CTRL b1) its FY (bytes 2-3) and CY doubled, the rows being half
-* as tall (SE_YMUL scales only the SceneEngine's records). Registers clobbered.
+* as tall (SE_YMUL scales only the SceneEngine's records). The record's FY in every view: in the full-screen views
+* (240 rows) fsw's ViewGeo gives the scenery 120 rows a unit with the matrix's y column x 82/120, the cockpit's 82
+* rows a unit, and the meshes take their matrices without that factor (SpM, the cockpit's vViewM), so the cockpit's
+* FY keeps them on the runways; only the center moves (2026-10-28: FY x 240/164 put the spot view's buildings
+* above the horizon). Registers clobbered.
 ProjU               ldu       #PjBuf
                     ldb       #ProjRecBytes
 pu1@                lda       ,x+
@@ -1103,26 +1106,7 @@ pu1@                lda       ,x+
                     bne       pu1@
                     ldd       >FswPrCY            CY: the view's center (fsw's ViewGeo: 82 or 120 rows)
                     std       PjBuf+6
-* The full-screen views' 240 rows (the spot and the straight-down views, the dash hidden): FY x 240/164, the
-* scenery's own vertical scale there (fswc's ViewSet: the SceneEngine's rows x 2), so the meshes keep their height
-* against the runways (2026-10-22, #29: they were 68%). x 375/256 = 1.4648 for the exact 1.4634: FY + H x 119
-* + (L x 119) >> 8 with FY = H:L. The cockpit's 164 rows: the record's FY as it is.
-                    lda       >FswVRows
-                    cmpa      #ViewRows
-                    beq       pu2@
-                    lda       PjBuf+2             H x 119
-                    ldb       #FyGrow240
-                    mul
-                    pshs      d
-                    lda       PjBuf+3             (L x 119) >> 8
-                    ldb       #FyGrow240
-                    mul
-                    tfr       a,b
-                    clra
-                    addd      ,s++
-                    addd      PjBuf+2             + FY
-                    std       PjBuf+2
-pu2@                ldx       #PjBuf
+                    ldx       #PjBuf
                     lda       >FswGpCtl
                     bita      #GpuCtl256
                     beq       pu9@
