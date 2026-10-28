@@ -77,17 +77,46 @@ the pointer.
 
 | ESC | Name | Params (bytes) | Video-Pico action |
 |-----|------|----------------|--------------------|
-| `1B 20` | DWSet | 8: id, type, colStart, rowStart, width, height, foreClr, backClr | Create/redefine device window `id` of `type` (screen mode) at the char-grid position/size; set fore/back palette regs. A window that will not fit the panel is **clamped, not rejected**; the guest reads the actual geometry back (see below). |
+| `1B 20` | DWSet | 8: id, type, colStart, rowStart, width, height, foreClr, backClr | Create/redefine device window `id` of `type` (screen mode) at the char-grid position/size. The firmware uses only `id` and the rectangle: `type`, `foreClr` and `backClr` are framed and ignored. A window that will not fit the panel is **clamped, not rejected**; the guest reads the actual geometry back (see below). |
 | `1B 21` | Select | 1: id | Make window `id` the **output target** — where text and graphics go. It does NOT change what is on screen. `id 0` = root = the physical panel. |
 | `1B 26` | DWShow | 1: id | **Pico-Thing addition:** make window `id` the one **on screen**. |
-| `1B 22` | OWSet | 7: style, colStart, rowStart, width, height, foreClr, backClr | Open an overlay window. **Framed but currently inert.** |
+| `1B 22` | OWSet | 7: saveSw, colStart, rowStart, width, height, foreClr, backClr | Open an overlay window. **Framed but currently inert.** |
 | `1B 23` | OWEnd | 0 | Close the overlay. **Framed but currently inert.** |
 | `1B 24` | DWEnd | 0 | Close the target window; if it was on screen, the root is shown. |
 | `1B 25` | CWArea | 4: colStart, rowStart, width, height | Set the working area inside the window (reversible: `DWSet` restores the whole window). `VID.Info` reports it. |
 
-`type` selects the screen mode (CoCo3: 40/80-col text, 640×2, 320×4, 640×4,
-320×16). Define your own mode numbers for the Pico's richer modes; keep the
-CoCo values working for compatibility.
+`type` selects the screen mode. The CoCo3 values (CoWin's table at `L07F9`)
+are:
+
+| `type` | CoCo3 screen |
+|--------|--------------|
+| `$00`, `$FF` | the current screen |
+| `$01` | 40-column text |
+| `$02` | 80-column text |
+| `$03`, `$04` | invalid (*Illegal Window Definition*) |
+| `$05` | 640×200, 2 colours |
+| `$06` | 320×200, 4 colours |
+| `$07` | 640×200, 4 colours |
+| `$08` | 320×200, 16 colours |
+
+The firmware frames `type` but does not act on it yet: every window is a
+rectangle of the one text grid, over the one graphics plane. Define your own
+mode numbers for the Pico's richer modes; keep the CoCo values working for
+compatibility.
+
+**A program cannot send a CoCo3-format `DWSet`.** VConW sends the id-first form
+itself, from the window's descriptor, the first time `/W1`–`/W7` is written
+(`/W0`, the root, is predefined and never gets one). A
+CoCo3 `DWSet` written by a program (for example through GFX2) is passed through
+unchanged and misread: the firmware takes its `type` byte as the window id. The
+CoCo3 form is 7 bytes, plus an 8th, the border colour, that CoWin reads only
+when the window opens on a new screen. Without the border byte the firmware
+also swallows the byte that follows the command; with it the stream stays in
+step but every field is shifted by one.
+
+**`OWSet`'s first byte is a save switch**, not a style: non-zero asks CoWin to
+save the area under the overlay so that `OWEnd` can restore it. Unlike `DWSet`
+there is no screen type and no border; the overlay shares its parent's screen.
 
 **Window identity — Pico-Thing divergence from CoCo3 (deliberate).** On CoCo3
 window identity rides on the device path (`/w1`…`/w7`) and never reaches the byte
