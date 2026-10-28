@@ -5,8 +5,8 @@
 ;;; Entry:  A = The type/language byte.
 ;;;         B = Size of the optional data area (in pages).
 ;;;         X = Address of the module name or filename.
-;;;         Y = Size of the parameter area (in pages). The default is 0.
-;;;         U = Starting address of the parameter area. This must be at least one page.
+;;;         Y = Size of the parameter area in bytes. The default is 0.
+;;;         U = Starting address of the parameter area.
 ;;;
 ;;; Exit:   None.
 ;;;
@@ -102,9 +102,7 @@ cmpmem@             leay      ,u        ; Y = address of module
                     cmpd      M$Mem,y   ; compare passed memory to module's
                     bcc       alloc@    ; branch if requested amount is the same or greater than the module's memory
                     ldd       M$Mem,y   ; else load D with module's memory
-alloc@              addd      #$0000    ; is this needed??
-                    bne       allcmem@  ; and this???
-allcmem@            os9       F$Mem     ; allocate requested memory
+alloc@              os9       F$Mem     ; allocate requested memory
                     bcs       ex@       ; branch if error
                     subd      #R$Size   ; subtract registers
                     subd      R$Y,u     ; subtract parameter area
