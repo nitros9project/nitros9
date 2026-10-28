@@ -647,8 +647,8 @@ TxSmart             fcb       1                   smart taxi (FIX MODE page 1): 
 
 * ModeLd (OvEd, a mode load or save, $020C 1-3): FS's own placement (the mode's map squares, low words 0) through
 * FS's SwitchOverlay; then fswc's StartPos with the load's kind: a crash reset ($020C 1) goes back to the game's
-* start (fd: 9C, 120 m in, heading 090; fs_wb.d FsStart*), any load into the start's map square (FS's start, modes
-* 0, 2, 4) gets the start's low words. Returns SwitchOverlay's registers.
+* start (fd: 9C, 8 m in, heading 090; fs_wb.d FsStart*), any load into FS's modes' map square (FS's start, modes
+* 0, 2, 4) gets the start's position. Returns SwitchOverlay's registers.
 ModeLd              ldd       #ModeLoadLow
                     std       >vModeZLo
                     std       >vModeXLo

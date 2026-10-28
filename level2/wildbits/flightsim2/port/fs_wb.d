@@ -139,11 +139,13 @@ FgRibbon            equ       %00000001          the SceneEngine's line ribbons 
 SeLw                equ       256                the SceneEngine's line half width (rc26_gpu3 LW), 1/256 list units:
 *                                                256 = one unit each side of the line, a road 32 m wide at the area
 *                                                origins' 16 m units, a runway or taxiway line 2 m wide at their 1 m units
-* The game's start (fd, sf_wildbits.py start_position: 9C, 120 m in, heading 090): X and Z (32 bits, 1/256 m),
-* the heading byte. fsw's ModeLd puts the aircraft back there after a crash reset, fswc's SceneLoad after a load
-* of sf.wildbits.
-FsStartXHi          equ       $00BB
-FsStartXLo          equ       $5B00
+* The game's start (fd, sf_wildbits.py start_position: 9C, 8 m in, heading 090: its threshold bar and designator
+* ahead): X and Z (32 bits, 1/256 m), the heading byte. fsw's ModeLd puts the aircraft back there after a crash
+* reset, fswc's SceneLoad after a load of sf.wildbits.
+FsModeXHi           equ       $00BB              FS's own start and modes 0, 2, 4: their map square (X, Z high words;
+FsModeZHi           equ       $035F              fswc's StartPos moves a load there onto the start)
+FsStartXHi          equ       $00BA
+FsStartXLo          equ       $EB00
 FsStartZHi          equ       $035F
 FsStartZLo          equ       $6E00
 FsStartHdg          equ       $40

@@ -606,19 +606,23 @@ cr1@                rts
 
 * StartPos (FcStartPos, fsw's ModeLd after a mode load; A = its kind, $020C): a crash reset (1) puts the aircraft
 * on the game's start (fs_wb.d FsStart*: fd's start), level on the ground, heading along the runway, as SceneLoad
-* places it (the start spot, vStart*: fd's start until f5 or a scenery load moves it); any other load that left it in the start's map square (FS's own start and modes 0, 2 and 4, which
-* hold that square) gets the start's low words too, so it sits on the runway, not on the square's corner. D
-* clobbered.
+* places it (the start spot, vStart*: fd's start until f5 or a scenery load moves it); any other load that left it in
+* FS's modes' map square (FS's own start and modes 0, 2 and 4, FsMode*) gets the start's position too (the square
+* west of it since the start moved to 8 m in), so it sits on the runway, not on the square's corner. D clobbered.
 StartPos            ldb       #RealityOn          reality mode on after every mode load (Roger 2026-10-17: on from
                     stb       >vReality           the start; F2's demo start load, kind 3, had set it 0 - Roger 2026-10-22)
                     cmpa      #LoadKindCrash
                     beq       st1@
-                    ldd       >vPosX              the start's map square?
-                    cmpd      #FsStartXHi
+                    ldd       >vPosX              FS's modes' map square?
+                    cmpd      #FsModeXHi
                     bne       st9@
                     ldd       >vPosZ
-                    cmpd      #FsStartZHi
+                    cmpd      #FsModeZHi
                     bne       st9@
+                    ldd       #FsStartXHi
+                    std       >vPosX
+                    ldd       #FsStartZHi
+                    std       >vPosZ
                     ldd       #FsStartXLo
                     std       >vPosX+2
                     ldd       #FsStartZLo
@@ -715,7 +719,7 @@ SceneTab            fcc       /sf.standard/
                     fdb       1068                18/36, 3,899 ft
                     fcc       /sf.wildbits/
                     fcb       $0D
-                    fdb       FsStartXHi,FsStartZHi,FsStartXLo,FsStartZLo   O'Hare: the game's start (9C, 120 m in)
+                    fdb       FsStartXHi,FsStartZHi,FsStartXLo,FsStartZLo   O'Hare: the game's start (9C, 8 m in)
                     fcb       FsStartHdg          090
                     fdb       3084                9C, 11,245 ft
                     fcc       /sf.japan/

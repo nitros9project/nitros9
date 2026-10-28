@@ -8,6 +8,7 @@ GdAir               equ       *
                     fdb       25,106
                     fdb       23,108
                     fdb       23,107
+                    fdb       25,107
                     fdb       23,106
                     fdb       35,100
                     fdb       583,80
@@ -20,8 +21,9 @@ GdAir               equ       *
                     fdb       579,88
                     fdb       581,88
                     fdb       580,88
-                    fdb       6776,119
+                    fdb       6775,119
                     fdb       6777,119
+                    fdb       6776,119
                     fdb       6776,118
                     fdb       6872,8063
                     fdb       6873,8063
