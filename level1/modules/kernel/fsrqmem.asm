@@ -20,9 +20,14 @@
 **************************************************
 * F$SRqMem - Level 1 implementation
 *
+* Reject zero and sizes above $FF00: rounding those to zero pages would pass
+* an invalid zero count to AllocBit and overwrite memory beyond the bitmap.
 FSRqMem             ldd       R$D,u     ; get memory allocation size requested from the caller's D
                     addd      #$00FF    ; round it up to nearest 256 byte page (e.g. $1FF = $2FE)
+                    bcs       ex@       ; reject rounding overflow before clearing carry
                     clrb                ; just keep # of pages (e.g. $2FE = $200)
+                    tsta                ; a zero page count is not valid for AllocBit
+                    beq       ex@       ; reject a zero-byte request before touching the bitmap
                     std       R$D,u     ; save rounded version back to caller's D
 * Start searching from the top of free memory allocation bitmap down, searching for 'D' contiguous bits
                     ldx       <D.FMBM+2 ; get the pointer to the end of the free memory allocation bitmap
