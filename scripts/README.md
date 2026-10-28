@@ -10,11 +10,25 @@ source tree.
 | `dis6809.py` | Disassembles 6809 machine code for reverse-engineering work |
 | `os9dis.py` | Disassembles OS-9 modules and data structures |
 | `fcb2bin.py` | Converts assembly `fcb` byte declarations to binary data |
+| `test-level1-srqmem.py` | Runs the assembled Level 1 system allocator and bitmap code on an external usim CPU, checking rounding, exhaustion and bitmap bounds |
 | `mkvidgfx.py` | Generates the committed data tables (`wgfxdat.asm`, `gemtestdat.asm`) for the Pico-Thing video demos `wgfx` and `gemtest`; `--check` reports stale tables |
 | `debug/list2crc.pl` | Converts an `lwasm` listing into CRC-named listing files |
 | `debug/os9.gdb` | Defines GDB helpers that consume CRC-named listings |
 
 The debugging helpers are documented in [debug/README.md](debug/README.md).
+
+The allocator regression test needs LWASM, a C++20 compiler and a local
+[usim](https://github.com/raybellis/usim) checkout:
+
+```sh
+python3 scripts/test-level1-srqmem.py --usim-dir /path/to/usim --assembler lwasm
+```
+
+It builds only temporary test ROMs and a minimal RAM test board; it does not boot
+the complete OS or use a replacement kernel. Use `--baseline HEAD` to exercise
+the committed sources rather than working-tree edits. The pre-fix allocator
+fails the zero-size and rounding-overflow cases by writing past its bitmap.
+
 Historical distribution and publishing utilities are preserved under
 [`archive/scripts`](../archive/scripts/README.md); they are not part of the
 supported build.
