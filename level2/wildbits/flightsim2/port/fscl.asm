@@ -15,7 +15,8 @@
 * lowest sits on the layer and the top reaches 1.25 of it); a ring's cos and sin go through c (2 - |c|) (ClBl), so
 * its ends are blunt, not points. Each face carries its own normal (ClFn), and each corner's normal is the sum of its
 * faces' (ClNrm), so the Gouraud light follows the shape's real planes, a rock's, not a cotton ball's even puff. The
-* faces are screen-doored, white (material 1); a cloud's MESH overrides light gray (material 4) at random.
+* faces are screen-doored, flat white (material 18, the lamps' white: every dot white, the holes show what is
+* behind); a cloud's MESH override (ClMatG) is the same white since 2026-10-27.
 * ClRun (BdDraw, after the buildings, in their light and projection: the forward and spot views by daylight, while
 * vClouds bit 0 is on): the bubble, in map units (256 m) each way from the eye: a cloud past ClGone (24 km) goes;
 * while fewer than ClLive (TOTAL_CLOUDS) lie within ClOuter (18 km) one more is made each frame in a free slot, out of sight
@@ -126,7 +127,7 @@ ClGone              equ       94                  map units (24 km): past it a c
 *                                                 typical cloud, 4 km: Roger 2026-10-22)
 * a slot (ClRec bytes)
 ClShp               equ       0                   the shape 0-7 ($FF: the slot is free)
-ClCol               equ       1                   the color (MESH material override: 0 white, ClMatG light gray)
+ClCol               equ       1                   the color (MESH material override: 0 the shape's, else ClMatG)
 ClX                 equ       2                   X and Z, 32 bits each (1/256 m, as FS's positions): the wind moves them
 ClZ                 equ       6
 ClAlt               equ       10                  the altitude of its base (m)
@@ -137,8 +138,9 @@ ClAk                equ       17
 ClRad               equ       19                  its bounding radius in 4 m (0.6 of its length): the view culls by it
 ClRec               equ       21
 ClFlags             equ       %00010111           ZTEST, ZWRITE, GOURAUD, SCREENDOOR (gpu3_tri.v's flag bits)
-ClMatW              equ       1                   the white ramp (ac2gpu.py MATS)
-ClMatG              equ       4                   the light gray ramp
+ClMatW              equ       18                  white: the lamps' white (ac2gpu.py EMISSIVE: FS's white at every shade), so
+*                                                 the screen door shows white dots and holes (2026-10-27; was the white ramp, 1)
+ClMatG              equ       ClMatW              the "gray" clouds white too (was the light gray ramp, 4)
 * the clouds' shadows (GROUND TEXTURE 1: FswGdOn; GdRun, ShOne)
 ShFace              equ       GpCF+8*ClEnt        their faces, after the eight shapes
 ShNf                equ       5                   a fan over the rim's seven corners (each shape's corners 0-6)

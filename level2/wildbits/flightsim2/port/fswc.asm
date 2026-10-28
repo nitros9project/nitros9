@@ -25,6 +25,7 @@ ActPhLineUp         equ       7                   the actor's phase: lining up (
 ActPhPattern        equ       3                   the actor's phase: in its pattern (TwAct)
 ActPhRollout        equ       5                   the actor's phase: touchdown, rolling out (TwAct)
 ActPhTakeoff        equ       1                   the actor's phase: lined up, rolling for takeoff, rotating (TwAct)
+ActXHiEnds          equ       8                   ActX: ends 8-15 in a TwActX word's first byte, 0-7 in its second
 AdcCarryOnly        equ       0                   adc's operand 0: only the carry added (the low byte's carry into the high byte)
 AirRange            equ       18500               Near: the tower's reach in the air, meters east and north (10 nm)
 AirspeedOvfHi       equ       $64                 FS's airspeed after an overflow: $64 in its high byte (100 m/s; ComputeAeroAddSpeed's clamp)
@@ -81,9 +82,6 @@ DashBitmap          equ       2                   bitmap 2: the dash's (SS.BmCfg
 DashBitmapAlt       equ       1                   bitmap 1: the dash's second buffer while the GPU draws the view (SS.BmCfg's R$Y)
 DashLayer           equ       0                   SS.PScrn's X: layer 0, the top: the dash's
 DecBase             equ       10                  decimal: a number from 10 on takes two digits (Tens)
-Deg2Turn256         equ       182                 degrees to 1/256 turn: x 182 / 256 (256 / 360)
-DepConfRange        equ       100                 DepConf: the actor's farthest distance considered, FswTfDst's 100 m (10 km)
-DepPathHalfW        equ       1500                DepConf: the departure path's half width, meters from the centerline
 DewSpreadMax        equ       3                   SayTemp: the dew point's spread under a low ceiling, degrees C at most
 EngCutoffBase       equ       $10                 the engine noise's filter cutoff at rest (SID register $16; + the airspeed / 2)
 EscPalette          equ       $31                 the CoCo's palette escape code (ESC $31 pp cc)
@@ -194,10 +192,10 @@ SqRecheck           equ       10                  seconds after a matching squaw
 SqRemindRepeat      equ       60                  seconds after a wrong-squawk reminder before the next check (TwSqT)
 StepsPerSec         equ       5                   FS's timer steps a second
 StopRepeat          equ       6                   seconds before the next stop call (TwStT)
+TailMaxQ7           equ       10*128              DepEnd: the most tailwind for a takeoff, 10 knots, x 128 (SinQ7's one)
 StreamMax           equ       255                 TwStream: a read's most bytes
 StreamMinFree       equ       32                  TwStream: the least room (bytes) in VRN's buffer for another read this frame
 TenthsWhole         equ       10                  SayTemp, Blend: tenths in the whole day's fraction (TwF)
-TfDstMeters         equ       100                 FswTfDst's unit: meters
 TfNmPer100m         equ       54                  nautical miles in 100 m (FswTfDst's unit), x 1000
 TfNmRound           equ       500                 TrafAdv: half a mile in thousandths, the miles rounded
 TfNmScale           equ       1000                TrafAdv: thousandths in a nautical mile

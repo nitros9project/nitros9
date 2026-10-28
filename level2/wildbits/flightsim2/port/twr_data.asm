@@ -268,9 +268,9 @@ TwAct               equ       *
                     fcb       5,0                 36 touchdown
                     fcb       5,0                 37 rollout
                     fcb       5,0                 38 rollout, 20 kt
-                    fcb       0,0                 39 exit turn 1
-                    fcb       0,0                 40 exit turn 2
-                    fcb       0,0                 41 exit turn 3
+                    fcb       5,0                 39 exit turn 1
+                    fcb       5,0                 40 exit turn 2
+                    fcb       5,0                 41 exit turn 3
                     fcb       0,0                 42 exit
                     fcb       0,0                 43 onto N 1
                     fcb       0,0                 44 onto N 2
@@ -284,3 +284,64 @@ TwAct               equ       *
                     fcb       0,0                 52 hold short 10L
                     fcb       7,1                 53 line up 1
                     fcb       7,0                 54 line up 2
+
+* the ends whose departure path the actor flies over from a plan point within its leg or the 120 s after
+* (actor_conflicts: in the air below 900 m, the threshold to 6000 m past the far end, 1500 m either side):
+* ends 8-15, then 0-7, a bit an end; the points after TwActXN have none
+TwActXN             equ       55
+TwActX              equ       *
+                    fdb       $FD4E               0 22R 4R 22L 9C 9R 10L 28R 10C 28C 10R 28L
+                    fdb       $FD5F               1 4L 22R 4R 22L 9L 9C 9R 10L 28R 10C 28C 10R 28L
+                    fdb       $5D5D               2 4L 4R 22L 9L 9C 9R 10L 28R 10C 10R
+                    fdb       $FD4E               3 22R 4R 22L 9C 9R 10L 28R 10C 28C 10R 28L
+                    fdb       $FD4E               4 22R 4R 22L 9C 9R 10L 28R 10C 28C 10R 28L
+                    fdb       $FD5E               5 22R 4R 22L 9L 9C 9R 10L 28R 10C 28C 10R 28L
+                    fdb       $FD5F               6 4L 22R 4R 22L 9L 9C 9R 10L 28R 10C 28C 10R 28L
+                    fdb       $5D5D               7 4L 4R 22L 9L 9C 9R 10L 28R 10C 10R
+                    fdb       $5D5D               8 4L 4R 22L 9L 9C 9R 10L 28R 10C 10R
+                    fdb       $555D               9 4L 4R 22L 9L 9C 9R 10L 10C 10R
+                    fdb       $1555               10 4L 4R 9L 9C 9R 10L 10C
+                    fdb       $1555               11 4L 4R 9L 9C 9R 10L 10C
+                    fdb       $1555               12 4L 4R 9L 9C 9R 10L 10C
+                    fdb       $1575               13 4L 4R 9L 27R 9C 9R 10L 10C
+                    fdb       $0031               14 4L 9L 27R
+                    fdb       $0031               15 4L 9L 27R
+                    fdb       $0031               16 4L 9L 27R
+                    fdb       $0031               17 4L 9L 27R
+                    fdb       $0031               18 4L 9L 27R
+                    fdb       $0031               19 4L 9L 27R
+                    fdb       $2AB1               20 4L 9L 27R 27C 27L 28R 28C
+                    fdb       $2AA0               21 27R 27C 27L 28R 28C
+                    fdb       $2AA0               22 27R 27C 27L 28R 28C
+                    fdb       $2AA0               23 27R 27C 27L 28R 28C
+                    fdb       $AAA0               24 27R 27C 27L 28R 28C 28L
+                    fdb       $AAA0               25 27R 27C 27L 28R 28C 28L
+                    fdb       $AAA0               26 27R 27C 27L 28R 28C 28L
+                    fdb       $BEA2               27 22R 27R 27C 27L 10L 28R 10C 28C 28L
+                    fdb       $BE82               28 22R 27C 27L 10L 28R 10C 28C 28L
+                    fdb       $BE02               29 22R 27L 10L 28R 10C 28C 28L
+                    fdb       $BE02               30 22R 27L 10L 28R 10C 28C 28L
+                    fdb       $BE02               31 22R 27L 10L 28R 10C 28C 28L
+                    fdb       $BC02               32 22R 10L 28R 10C 28C 28L
+                    fdb       $BC02               33 22R 10L 28R 10C 28C 28L
+                    fdb       $BC02               34 22R 10L 28R 10C 28C 28L
+                    fdb       $BC02               35 22R 10L 28R 10C 28C 28L
+                    fdb       $0000               36 -
+                    fdb       $0000               37 -
+                    fdb       $0000               38 -
+                    fdb       $0000               39 -
+                    fdb       $0000               40 -
+                    fdb       $0000               41 -
+                    fdb       $0000               42 -
+                    fdb       $0000               43 -
+                    fdb       $0000               44 -
+                    fdb       $0000               45 -
+                    fdb       $0000               46 -
+                    fdb       $0000               47 -
+                    fdb       $0000               48 -
+                    fdb       $0000               49 -
+                    fdb       $0000               50 -
+                    fdb       $0000               51 -
+                    fdb       $0000               52 -
+                    fdb       $FC02               53 22R 10L 28R 10C 28C 10R 28L
+                    fdb       $FC0E               54 22R 4R 22L 10L 28R 10C 28C 10R 28L

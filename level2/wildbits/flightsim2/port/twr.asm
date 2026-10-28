@@ -948,6 +948,39 @@ ue8@                lda       TwPick
                     adda      15,u
                     puls      x,pc
 
+* DepEnd (TwTalk on the ground, U = the airport): TwRwy = the end the aircraft is lined up on when it is one of
+* this frequency's runways with 10 knots of tailwind or less (the pilot's runway, granted); else the end in use
+* (UseEnd), carry set when the aircraft sits on another end (lined up the wrong way for the wind).
+DepEnd              lbsr      RwyEnd              the end it is on, its heading along it
+                    cmpa      #TwNoEnd
+                    beq       de8@                on no runway: the end in use
+                    sta       TwRwy               the pilot's end, when granted
+                    lbsr      EndP                X = its record
+                    lda       TwMask
+                    sta       TwFm
+                    lbsr      InFm
+                    beq       de7@                not this frequency's
+                    lda       >FsWind+2           the wind's cosine off the end's heading: + head, - tail
+                    suba      4,x
+                    adda      #Angle8Quarter
+                    lbsr      SinQ7
+                    tsta
+                    bpl       de9@
+                    nega
+                    ldb       >FsWind
+                    andb      #WindKnotsMask
+                    mul
+                    cmpd      #TailMaxQ7
+                    bls       de9@
+de7@                lbsr      UseEnd              on another end: the end in use, carry set
+                    sta       TwRwy
+                    orcc      #Carry
+                    rts
+de8@                lbsr      UseEnd
+                    sta       TwRwy
+de9@                andcc     #^Carry
+                    rts
+
 * ActPh: A = the actor's phase (twr_data.asm), $FF when there is none
 ActPh               pshs      x
                     lda       >FswTfPt
@@ -959,9 +992,9 @@ ActPh               pshs      x
                     puls      x,pc
 ap8@                lda       #TwNoPhase
                     puls      x,pc
-* RwyBusy: A = a runway end, B nonzero (a departure): the actor on final counts too, and the actor in the air
-* anywhere in the end's departure path (DepConf: where it is now). Carry set when the actor holds that runway (on
-* it: lining up, rolling for takeoff or out after landing). Only O'Hare has the actor.
+* RwyBusy: A = a runway end, B nonzero (a departure): the actor on final counts too, and the actor flying over the
+* end's departure path in its plan's next two minutes (ActX). Carry set when the actor holds that runway (on it:
+* lining up, rolling for takeoff or out after landing, turning off). Only O'Hare has the actor.
 RwyBusy             pshs      a,b,x
                     tst       TwApt
                     bne       rb8@
@@ -981,98 +1014,37 @@ RwyBusy             pshs      a,b,x
                     beq       rb8@
                     cmpa      #ActPhFinal
                     beq       rb9@
-rb8@                tst       1,s                 a departure: the actor in its path?
+rb8@                tst       1,s                 a departure: the actor over its path soon?
                     beq       rb7@
                     lda       ,s
-                    lbsr      DepConf
+                    bsr       ActX
                     bcs       rb9@
 rb7@                andcc     #^Carry
                     puls      a,b,x,pc
 rb9@                orcc      #Carry
                     puls      a,b,x,pc
-* DepConf: A = a runway end: carry set when the actor is in the air (climbing out, in its pattern, going around)
-* inside that end's departure path: from the threshold to 6 km past the runway's far end, within 1.5 km of the
-* centerline. Where it is now: fst's bearing from the nose (FswTfBrg, degrees) and distance (FswTfDst, 100 m)
-* with the aircraft's heading and position (TwE, TwN), wherever the actor's plan has taken it. U kept.
-DepConf             pshs      a,b,x,y
-                    tst       TwApt               O'Hare only
-                    lbne      dc8@
-                    lbsr      ActPh
-                    cmpa      #ActPhClimb
-                    beq       dc1@
-                    cmpa      #ActPhPattern
-                    beq       dc1@
-                    cmpa      #ActPhGoAround
-                    lbne      dc8@
-dc1@                ldd       >FswTfDst           beyond 10 km: clear of any path here
-                    cmpd      #DepConfRange
-                    lbhs      dc8@
-                    lda       #TfDstMeters        its meters
-                    mul
-                    std       TwDm
-                    ldb       >FswTfBrg+1         its true bearing, 1/256 turn: the heading + the bearing x 182 / 256
-                    lda       #Deg2Turn256        (a bearing under 512: its high byte 0 or 1)
-                    mul
-                    sta       TwBa
-                    tst       >FswTfBrg
-                    beq       dc2@
-                    lda       #Deg2Turn256
-                    adda      TwBa
-                    sta       TwBa
-dc2@                lda       TwBa
-                    adda      >FsHdg
-                    sta       TwBa
-                    lbsr      SinQ7               east: TwE + d sin
-                    sta       TwM
-                    ldd       TwDm
-                    lbsr      MulS
-                    lbsr      Q7m
-                    addd      TwE
-                    pshs      d
-                    lda       TwBa                north: TwN + d cos
-                    adda      #Angle8Quarter
-                    lbsr      SinQ7
-                    sta       TwM
-                    ldd       TwDm
-                    lbsr      MulS
-                    lbsr      Q7m
-                    addd      TwN
-                    ldx       TwE                 the aircraft's position kept, the actor's taken for End
-                    ldy       TwN
-                    std       TwN
-                    puls      d
-                    std       TwE
-                    pshs      x,y
-                    lda       4,s                 the runway end (the caller's A)
-                    lbsr      EndP
-                    lbsr      End
-                    puls      d
-                    std       TwE
-                    puls      d
-                    std       TwN
-                    ldd       TwAl                along: the threshold to 6 km past the far end
-                    bmi       dc8@
-                    ldy       7,x                 the runway's length
-                    leay      6000,y
-                    pshs      y
-                    cmpd      ,s++
-                    bgt       dc8@
-                    ldd       TwCr                across: within 1.5 km
-                    bpl       dc3@
-                    coma
-                    comb
-                    addd      #NegCarry
-dc3@                cmpd      #DepPathHalfW
-                    bhs       dc8@
+* ActX (RwyBusy, a departure): A = a runway end (O'Hare's: its first is end 0): carry set when the actor's plan,
+* from its point (FswTfPt), takes it over that end's departure path within its leg or the two minutes after
+* (TwActX: mktower.py, from fst_plan.asm). A, B, X clobbered.
+ActX                ldb       >FswTfPt
+                    cmpb      #TwActXN
+                    bhs       ax8@
+                    lslb
+                    ldx       #TwActX
+                    abx                           its two bytes: ends 8-15, then 0-7
+                    cmpa      #ActXHiEnds
+                    bhs       ax1@
+                    leax      1,x
+                    bra       ax2@
+ax1@                suba      #ActXHiEnds
+ax2@                ldb       ,x
+                    ldx       #TwBits
+                    andb      a,x
+                    beq       ax8@
                     orcc      #Carry
-                    puls      a,b,x,y,pc
-dc8@                andcc     #^Carry
-                    puls      a,b,x,y,pc
-* Q7m: D = TwP (MulS's 24-bit product) >> 7. TwQ3 cleared.
-Q7m                 clr       TwQ3
-                    clr       TwQ3+1
-                    clr       TwQ3+2
-                    lbra      A24
+                    rts
+ax8@                andcc     #^Carry
+                    rts
 * SinQ7: A = an angle (256 a turn): A = its sine, signed Q7 (SinT: a quarter turn). B clobbered.
 SinQ7               pshs      x
                     ldx       #SinT
@@ -1126,9 +1098,15 @@ tk1@                lda       TwMode              ground control: the taxi clear
                     ldd       #FieldRange         on the ground at the field
                     lbsr      Near
                     bcs       tk9@
-                    lbsr      UseEnd
-                    sta       TwRwy
-                    ldb       #RwyBusyDep
+                    lbsr      DepEnd
+                    bcc       tk1a@
+                    lbsr      Head                lined up the wrong way for the wind: taxi to the end in use
+                    lda       #P_TAXI_TO
+                    lbsr      Say
+                    lbsr      SayRwy
+                    lda       #P_HOLD_SHORT
+                    lbra      Say
+tk1a@               ldb       #RwyBusyDep
                     lbsr      RwyBusy
                     bcc       tk3@
                     lbsr      Head                hold short
@@ -2332,8 +2310,6 @@ MoId                fdb       0                   Morse: the ident sent (in MoId
 MoCh                fcb       0                   its next letter
 MoBits              fcb       $80                 the letter's elements left ($80: none)
 MoCnt               fcb       3                   timer steps left in this element or gap
-TwDm                fdb       0                   DepConf: the actor's distance (m), its true bearing (1/256 turn)
-TwBa                fcb       0
 TwQuiet             fcb       $FF                 timer steps (5 a second) since speech last sounded (Say's pause)
 TwHold              fcb       TwHoldN             timer steps left with no air talk (the start; a crash: TwPurge)
 TwAudL              fcb       3                   TwStream: the COM buttons (FswAud b0-1) last frame
