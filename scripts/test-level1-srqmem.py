@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
 '''
 
 
-def program(size, full):
+def program(size, full, release_at=None):
     bitmap = bytearray(b'\xff'*4 + b'\x00'*12 + b'\xff'*16)
     if full:
         bitmap[:] = b'\xff'*32
@@ -79,6 +79,32 @@ def program(size, full):
         cmpd #$4567
         lbne Fail
 '''
+    operation = 'FSRqMem'
+    argument = 0x4567
+    if release_at is not None:
+        operation = 'FSRtMem'
+        argument = release_at
+        bitmap[:] = b'\xff'*32
+        expected = bitmap[:]
+        noop = size == 0 or release_at == 0
+        succeeds = noop or (rounded <= 0xFF00 and release_at % 256 == 0
+                            and release_at+rounded <= 0x10000)
+        if succeeds and not noop:
+            for page in range(release_at//256, (release_at+rounded)//256):
+                expected[page//8] &= ~(0x80 >> (page % 8))
+        check = f'''
+        {'lbcs' if succeeds else 'lbcc'} Fail
+'''
+        if not succeeds:
+            check += '''
+        cmpb #210
+        lbne Fail
+'''
+        check += f'''
+        ldd R$U,u
+        cmpd #{release_at}
+        lbne Fail
+'''
     return f'''
 Level   equ 1
         use os9.d
@@ -101,11 +127,11 @@ Copy    lda ,x+
         ldu #$1800
         ldd #{size}
         std R$D,u
-        ldd #$4567
+        ldd #{argument}
         std R$U,u
         lda #1
         sta >$0100
-        jsr FSRqMem
+        jsr {operation}
 {check}
         ldx #$0600
         leay Expected,pcr
@@ -135,6 +161,7 @@ def main():
     parser.add_argument('--cxx', default='c++')
     parser.add_argument('--usim-dir', required=True, type=Path)
     parser.add_argument('--baseline', help='Git revision to test instead of working sources')
+    parser.add_argument('--return-memory', action='store_true', help='Exercise F$SRtMem instead')
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     cpu = args.usim_dir.resolve()
@@ -153,15 +180,22 @@ def main():
         failures = 0
         cases = [(size,False) for size in (0,1,255,256,257,4097,0x6000,0x6001,0xFF00,0xFF01,0xFFFF)]
         cases += [(1,True)]
-        for size,full in cases:
-            (work/'test.asm').write_text(program(size,full))
+        if args.return_memory:
+            cases = [(0,page*256) for page in range(0x20,0x28)]
+            cases += [(0xFF01,0x2100),(0xFFFF,0x2100),(1,0x2100),
+                      (257,0x2100),(0xFF00,0x100),(256,0xFF00),
+                      (257,0xFF00),(256,0x2001),(0,0),(0xFFFF,0)]
+        for size,setting in cases:
+            source = program(size,False,setting) if args.return_memory else program(size,setting)
+            (work/'test.asm').write_text(source)
             subprocess.run([args.assembler,'--6809','--format=raw','--no-warn=ifp1',
                             '--pragma=nosymbolcase,condundefzero,undefextern,dollarnotlocal,noforwardrefmax',
                             '-DH6309=0',f'-I{source_root / "defs"}',
                             f'-I{source_root / "level1/modules/kernel"}',
                             str(work/'test.asm'),'-o'+str(work/'test.rom')],check=True,capture_output=True)
             result = subprocess.run([str(work/'board'),str(work/'test.rom')],capture_output=True,text=True)
-            label = f'size=${size:04X}, bitmap={"full" if full else "96 free pages"}'
+            label = (f'size=${size:04X}, address=${setting:04X}' if args.return_memory
+                     else f'size=${size:04X}, bitmap={"full" if setting else "96 free pages"}')
             print(f'{"FAIL" if result.returncode else "PASS"}: {label} {result.stderr.strip()}')
             failures += bool(result.returncode)
         print(f'{len(cases)-failures}/{len(cases)} cases passed')
