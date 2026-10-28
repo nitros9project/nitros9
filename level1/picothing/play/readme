@@ -30,7 +30,7 @@ Ideas for changing wstat:
   - Draw the bars sideways, one column per letter.
 
 Run vgfx (Level 2 mega images only: they carry BASIC09 and GFX2).
-Run it on a video window, /V0 or /W1-/W7, not the serial console:
+Run it on a video window, /W0-/W7, not the serial console:
 
   chd /dd/play
   basic09
@@ -44,3 +44,5 @@ the mega images): RUN GFX2("Line",x1,y1,x2,y2), "Circle", "Bar",
 "Color", "Palette" and the rest send the CoCo 3 window codes, which the
 video pico understands.  One difference from a CoCo 3: coordinates are
 the panel's own pixels, 0-1023 across and 0-479 down, not scaled.
+What GFX2 can and cannot do here is in docs/picothing-video-programming.md
+in the NitrOS-9 source.

@@ -1,8 +1,8 @@
 PROCEDURE vgfx
 REM vgfx - a BASIC09 tour of the Pico-Thing video graphics
 REM
-REM Run it on a video window (/V0, or /W1-/W7: F1-F8 switch
-REM between them).  It draws four scenes on the graphics plane,
+REM Run it on a video window (/W0-/W7: F1-F8 switch between
+REM them).  It draws four scenes on the graphics plane,
 REM waiting for Enter after each, then clears up.
 REM
 REM The drawing goes through GFX2, the CoCo 3 graphics package
