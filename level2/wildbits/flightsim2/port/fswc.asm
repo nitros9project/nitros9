@@ -46,7 +46,6 @@ BackBitmap          equ       1                   bitmap 1: the first back buffe
 BcdLoDigit          equ       $0F                 a BCD byte's low digit
 BcdMinusOne         equ       $99                 added to a BCD byte, then daa: the byte one less
 BcdPlusOne          equ       1                   added to a BCD byte, then daa: the byte one more
-BgRgbLen            equ       3                   GpuF.FixN's U: 3 bytes, the background's blue, green, red
 BmCfgHires4         equ       $0100               SS.BmCfg's R$U: HIRES4 on (high byte 1), palette group 0 (low byte)
 BmCfgKeep           equ       $FFFF               SS.BmCfg's X or U: both bytes $FF, both fields kept as they are
 BmCfgKeepField      equ       $FF                 SS.BmCfg: a byte $FF, that field kept as it is (here the CLUT)
@@ -111,7 +110,6 @@ GlyphStopBit        equ       $80                 the glyph word's stop bit (bit
 GlyphStopEnd        equ       1                   the glyph word with its five rows shifted out: only the stop bit left
 GoAroundRepeat      equ       6                   seconds before the next go-around call (TwGaT)
 GpuCtl256           equ       $02                 Gpu.Ctrl b1: the 320 x 256-color view, 480 lines (clear: 640 x 16)
-GpuFixVicky         equ       GpuF.FixN*256       SS.Gpu's X: GpuF.FixN (high byte) on VICKY's fixed registers (low byte 0)
 GpuOpRect           equ       $02                 the GPU record RECT's opcode: rows Y0-Y1, dots X0-X1, filled
 IbDotCount          equ       1                   SS.BmLine's U: one record, IbDot
 K2FKeyToFs          equ       $10                 the K2's F1/F2 ($A1/$A2) to FS's codes ($B1/$B2, as the PS/2 driver sends them)
@@ -162,7 +160,6 @@ OneSixteenth        equ       1                   one sixteenth of a row: the ro
 P_C_BASE            equ       P_C1-1              the piece before P_C1: + a clock hour (1-12), its o'clock piece
 P_MI_BASE           equ       P_MI1-1             the piece before P_MI1: + the miles (1-5), its miles piece
 P_U_C_BASE          equ       P_U_C1-1            the piece before P_U_C1: + a clock hour (1-12), its urgent o'clock piece
-PalRecLen           equ       4                   a palette record's bytes at WbPalRecs (ESC $31 pp cc; blue, green, red after WbPalette)
 PBarFailRow         equ       237                 the PFail bar's row in bitmap 2
 PBarLeftX           equ       0                   a PBar record's X0: the bar's left end, dot 0
 PBarRedLine         equ       $0200               a PBar record's bytes 6-7: color 2, red in the power-on text palette, and opcode 0, LINE
@@ -274,7 +271,6 @@ XRowBit8            equ       $80                 480 lines: a row's bit 8, in t
                     jmp       PBar                FcPBar
                     jmp       InitBm              FcInitBm
                     jmp       DashBm              FcDashBm
-                    jmp       HzBg                FcHzBg
 
 * KeyMap (FcKeyMap: fsw's KeyMap, the end of PollKeyRead, through CCall; moved from fsw 2026-10-21 for its room),
 * for FS and its overlays alike: the WildBits keyboards' codes made the ones FS2
@@ -1072,29 +1068,6 @@ BmStt               lda       >FsPath
                     swi2
                     fcb       I$SetStt
                     rts
-
-* HzBg (FcHzBg, fsw's HzSky when FS's sky color changed; moved from fsw 2026-10-24 for its room): VICKY's
-* background the RGB of FS's sky color A (WbPalette's entry: blue, green, red at WbGimePal-3 + 4 x the color),
-* through grfdrv256's GPU call (GpuF.FixN). D, X, Y, U clobbered.
-HzBg                ldb       #PalRecLen
-                    mul
-                    addd      #WbPalRecs
-                    tfr       d,x
-                    ldd       ,x
-                    std       HbRq+4
-                    lda       2,x
-                    sta       HbRq+6
-                    ldx       #GpuFixVicky
-                    ldy       #HbRq
-                    ldu       #BgRgbLen
-                    lda       >FsPath             grfdrv256's GPU call: SS.Gpu on FS's display path
-                    ldb       #SS.Gpu
-                    swi2
-                    fcb       I$SetStt
-                    rts
-HbRq                fdb       BACKGROUND_COLOR_B  GpuF.FixN's request: the offset, the mask, 0, then blue, green, red
-                    fcb       3,0
-                    rmb       3
 
                     use       twr.asm
 

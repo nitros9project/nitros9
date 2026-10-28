@@ -74,6 +74,7 @@ H3MinMag            equ       $2000               H3Pre: the deltas doubled unti
 Half16              equ       8                   half a dot or row in sixteenths: a row's center below its top
 HLineWholeRow       equ       $9F00               DrawHLine's A = 159, B = 0: the whole CoCo row (x 0-159)
 HwGpuMeshes         equ       2                   HwGpu 2: rc26's GPU draws the view and holds fst's meshes (fsx's GpInit)
+HzKeyLight          equ       16                  HzKeyOf: FS's light (1, 2, 4) in the high nibble, the season (1-4) in the low
 HzColors            equ       4                   Horizon's band colors: HzAbove, HzBelow, HzLeft, HzRight
 L3End               equ       L3B+4               the end of Line3's ends L3A, L3B (x16, y16: 4 bytes each)
 LastDot16           equ       10239               the view's last dot (639) in sixteenths, its last sixteenth (640 x 16 - 1)
@@ -769,7 +770,8 @@ FrontBm             fdb       0                   bitmap shown on layer 0
 BackBm              fdb       1                   bitmap the records go to
 FrontBlk            fcb       0                   its first block (the panel copy's destination)
 BackBlk             fcb       0
-                    zmb       2                   (RecPtr, now pinned at FswRecPtr: the variables after it keep their places)
+HzKey               fcb       0                   HzKeyOf's value the sky and ground colors were set for (0: none yet)
+                    zmb       1                   (RecPtr, now pinned at FswRecPtr: the variables after it keep their places)
 RecPtr              equ       FswRecPtr           the next record's place (pinned: fswc's text writes there too)
 SpRow               fcb       0                   Span's view row, left x, right x, color
 SpL                 fcb       0
@@ -778,7 +780,7 @@ SpC                 fcb       0
 SpY1                fcb       0
 SpX0                fdb       0                   Span's dots
 SpX1                fdb       0
-                    zmb       1                   (DrPlane, gone with Feed's own line engine path: the variables after it keep their places)
+HzSkyIx             fcb       0                   the color HzSky gives the sky's bands: 0 see-through, the K2's sky entry (fsx's SkyCol)
 GdOn                fcb       0                   1: the ground on, the clouds' shadows and the meadow (F8, F2's GROUND
 *                                                 TEXTURE); 0: GdCall skips it all
 HwPp                fcb       0                   1: the K2's point pipeline is there (rc26; Init's probe)
@@ -824,17 +826,23 @@ in8@                puls      cc
 in8c@               lbsr      PInit               the dash (fsp), the panel
 in8d@               puls      cc
 in9@                puls      d,x,y,u,pc
-* InitBmS, DashBmS, HzBgS: fswc's InitBm, DashBm and HzBg through CCall (entered with lbsr: CCall takes the
-* caller's X on the stack)
+* InitBmS, DashBmS: fswc's InitBm and DashBm through CCall; HzCol: fsx's SkyCol through XCall (entered with lbsr:
+* CCall and XCall take the caller's X on the stack)
 InitBmS             pshs      x
                     ldx       #FcInitBm
                     lbra      CCall
 DashBmS             pshs      x
                     ldx       #FcDashBm
                     lbra      CCall
-HzBgS               pshs      x
-                    ldx       #FcHzBg
-                    lbra      CCall
+HzCol               pshs      x
+                    ldx       #FsxSkyCol
+                    lbra      XCall
+* HzKeyOf (Horizon): B = FS's light x 16 + its season, which the sky and ground colors follow (HzKey). A = 0.
+HzKeyOf             lda       >FsLight
+                    ldb       #HzKeyLight
+                    mul
+                    orb       >vSeason
+                    rts
 
 * SetStt: B = code on the display path
 SetStt              lda       >FsPath
@@ -1234,7 +1242,10 @@ Row80               cmpu      #ViewTop
                     sta       SpR
                     lda       >FsFill+1
                     anda      #ColorNibble
-                    sta       SpC
+                    cmpa      HzSkyNow            the sky (DrawSkyGround without the horizon in view): HzSkyIx
+                    bne       r81@
+                    lda       HzSkyIx
+r81@                sta       SpC
                     lbsr      Span
                     puls      d
                     leau      -80,u
@@ -2955,7 +2966,12 @@ Horizon             lda       >FsLight
                     bra       hz2@
 hz1@                ldd       #vHorizonList
 hz2@                std       >FsHorizonList
-                    lda       >vPatAboveHz+1      the two colors: A = <$D9's, B = <$D7's
+                    lbsr      HzKeyOf             the sky and ground colors (fsx's SkyCol) when the light or the
+                    cmpb      HzKey               season moved
+                    beq       hz2a@
+                    stb       HzKey
+                    lbsr      HzCol
+hz2a@               lda       >vPatAboveHz+1      the two colors: A = <$D9's, B = <$D7's
                     anda      #ColorNibble
                     ldb       >vPatBelowHz+1
                     andb      #ColorNibble
@@ -2985,9 +3001,9 @@ hz5@                lda       ,s
                     lda       1,s
                     sta       HzLeft
 hz6@                leas      2,s
+                    lbsr      HzSky               the sky's bands in HzSkyIx
                     tst       HwGpu               the GPU: one HSPLIT for the whole view
                     lbne      HzGpu
-                    lbsr      HzSky
                     ldx       #L3A
                     ldy       #L3B
                     ldu       #HzEdge
@@ -3051,26 +3067,25 @@ hz12a@              ldb       >FsLight            dusk and night: the horizon li
                     lbsr      LRec
                     puls      a,x,y
 hz13@               lbra      GdCall              then the textured ground and the stars (they reuse L3A, L3B)
-* HzSky (Horizon without the GPU): the sky is color 0, the bitmap's see-through nibble, which shows VICKY's
-* background: set to the RGB of FS's sky color (vSkyCol: day, dawn, dusk, night) whenever that changes (fswc's
-* HzBg, through grfdrv256's GPU call), then the band colors equal to it become 0. D, X, Y, U clobbered.
+* HzSky (Horizon): the band colors equal to FS's sky color (vSkyCol: day, dawn, dusk, night) become HzSkyIx, the
+* sky's color for the season and light (fsx's SkyCol): 0, the bitmap's see-through nibble, which shows VICKY's
+* background (the Jr2); the K2 GPU's sky entry in its 256-color view; FS's sky color itself in its 640 x 16 view.
+* D, X clobbered.
 HzSky               lda       >vSkyCol
                     anda      #ColorNibble
-                    cmpa      HzSkyNow
-                    beq       hk1@
                     sta       HzSkyNow
-                    lbsr      HzBgS
-hk1@                ldx       #HzAbove
+                    ldx       #HzAbove
                     ldb       #HzColors
 hk2@                lda       ,x
                     cmpa      HzSkyNow
                     bne       hk3@
-                    clr       ,x
+                    lda       HzSkyIx
+                    sta       ,x
 hk3@                leax      1,x
                     decb
                     bne       hk2@
                     rts
-HzSkyNow            fcb       $FF                 the sky color the background holds ($FF: none yet)
+HzSkyNow            fcb       $FF                 FS's sky color this frame (Row80's sky too)
 * HzGpu (Horizon, with the GPU): sky and ground in one record, the GPU's HSPLIT ($04): every view row filled with
 * two colors split by the line A-B (the horizon's ends, L3A and L3B), at the row's center; the high nibble's color
 * where s = 2dy (x - X0) - dx (2y + 1 - 2 Y0) > 0: right of a line running down the screen, left of one running up,
@@ -3322,6 +3337,9 @@ SidW                ora       #SID_SELECT_BOTH
                     endc
                     ifne      EnDot-FswDot
                     error     "fs_wb.d: FswDot"
+                    endc
+                    ifne      HzSkyIx-FswHzSkyIx
+                    error     "fs_wb.d: FswHzSkyIx"
                     endc
                     ifne      GdOn-FswGdOn
                     error     "fs_wb.d: FswGdOn"

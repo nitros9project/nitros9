@@ -113,12 +113,12 @@ FcRect              equ       FsxBase+30          FillRect on FS's own view rows
 FcPBar              equ       FsxBase+33          A = PFail, B = PStep: the dash's red failure bars (fsw's PBar)
 FcInitBm            equ       FsxBase+36          bitmap 1, the first back buffer (fsw's Init): B = its first block
 FcDashBm            equ       FsxBase+39          bitmap 2, the dash's, on layer 0 (fsw's Init): A = its first block
-FcHzBg              equ       FsxBase+42          A = FS's sky color: VICKY's background its RGB (fsw's HzSky)
 * fsw part 1 after PBlk (2026-10-19, taxi mode): FS's patches and its J/K/L keys call these (fsw.asm checks them)
 FswFuelKey          equ       $1F7A               Ctrl+F: the fuel tanks alternated (fsw's FuelKey, part 1)
 FswReq              equ       $3EE7               fsw's request to fsx at the next frame (fsw.asm's ReqOn; 0 none)
 FswEnvRq            equ       $40                 FswReq's bit 6: fsx.asm's EnvDef at the first frame (the start as a crash reset: mode 0 through CMDS/f2)
 FsxReq              equ       FsxBase+24          fsx.asm's EnvDef (fsw's Frame while FswReq)
+FsxSkyCol           equ       FsxBase+27          the sky and ground colors for FS's season and light (fsw's Horizon; sky_cols.asm)
 FswTaxiSpd          equ       $1F85              D = the step -> D = the new airspeed (stub: fswc's TaxiSpd)
 FswTaxiYaw          equ       $1F8D               the ground turn rate into $076D (stub: fswc's TaxiYaw)
 FswBrakeL           equ       $1F95               key J: the left brake
@@ -197,6 +197,7 @@ FswClipIn           equ       $3EB4              fsw's ClipIn: FS's four clip-pl
 FswRecPtr           equ       $3EEB              fsw's RecPtr: the next record's place in RecBuf (fswc's text)
 FswFeed             equ       $29A4        Feed: the records so far to the GPU (fsx: the model's go after the scenery's)
 FswHwPp             equ       $27C5              HwPp: the K2's point pipeline is there (fsx's probe)
+FswHzSkyIx          equ       $27C3              HzSkyIx: the color fsw's HzSky gives the sky's bands (fsx's SkyCol sets it)
 FswGdOn             equ       $27C4              GdOn: 1 the ground on: the clouds' shadows (fscl ShOne) and the meadow near the
 *                                                airports; 0 off (the start; F8, fswc's KeyMap; F2's GROUND TEXTURE)
 FswPpOk             equ       $27DA              PpOk: the pipeline's eye and base sums are PpEye / PpBase
@@ -542,7 +543,8 @@ vIlsCourse          equ       $0154               the ILS localizer's course, 1/
 vScaledAlts         equ       $015E               7 altitude words from $015E: m in flight, ft while F2 runs (ConvertWindTables)
 vBombTarget         equ       $0174               Europe 1917: the points of the target under the aircraft (10, 20; the scenery sets the word): a bomb's landing scores them (UpdateBombs), then cleared
 vFillPat            equ       $0178               the fill pattern word, the color in each nibble (SetFillColor; FillRow80, DrawHLine, the polygon fill)
-vGndCol             equ       $0184               FS's ground color (both nibbles; the scenery sets it): DrawSkyGround fills the view from its bottom with it
+vGndCol             equ       $0184               FS's ground color (both nibbles; the scenery sets it); DrawSkyGround draws the ground in FsGndCol instead
+FsGndCol            equ       11                  FS's green: the ground at every light (DrawSkyGround), its RGB by season and light (fsx's SkyCol)
 vSeasonBit          equ       $0187               the season's bit: 1 winter, 2 spring, 4 summer, 8 fall (UpdateDaylight); the scenery tests it (the word $0186)
 vSceneMode          equ       $0189               the mode number for the scenery's tests (the word $0188: modes 8, 9): vUserModeFld, copied at F2's exit (ApplyClouds)
 vHorizonPtr         equ       $0192               the horizon line's display list pointer: op $09 calls it when not 0 (vHorizonList at dawn, dusk and night, fsw's Horizon); DrawSkyGround clears it while the horizon is out of view

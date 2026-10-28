@@ -581,7 +581,8 @@ DrawSkyGround               ldd       <vDispListPtr
                     ldu       >vViewScr
 * WildBits: the view bottom, 127 rows of 80
                     fcb       $33,$C9,$27,$B0
-                    lda       >vGndCol
+* WildBits: the ground always in FS's green, its RGB by season and light (fsx's SkyCol)
+                    lda       #FsGndCol
                     ldy       #TblColorPattern+ModBase
                     anda      #ColorNibble
                     asla
@@ -613,7 +614,7 @@ DrawSkyGroundNoHorizon equ       *
 * WildBits: then the stars (fsw's Sky; returns from DrawSkyGround)
                     jmp       >FswSky
 * (TrackHorizonRowRange, gone: only the old horizon fill used it)
-                    zmb       11
+                    zmb       12
 * DrawSkyGroundVisible: sky/ground: horizon visible, computes the rows spanned by its endpoints
 DrawSkyGroundVisible equ       *
 * WildBits: the scenery's white horizon line (its op 9 call through $0192) only at dawn, dusk and night; the sky

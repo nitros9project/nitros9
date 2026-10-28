@@ -187,6 +187,7 @@ YAspectInvFrac      equ       $077A               1/0.4858 less 2 in Q15 (0.0584
                     jmp       GpView              FsxGpView
                     jmp       GdDraw              FsxGround
                     jmp       EnvDef              FsxReq
+                    jmp       SkyCol              FsxSkyCol (sky_cols.asm)
 
 * Variables
 SpDir               fdb       $8000               behind (the ST's second 3D window; its main one has $4000)
@@ -992,7 +993,8 @@ vk0a@               lbsr      VkModeW
                     ldx       #PrbX
 vk1@                tfr       x,d
                     ldx       #GpuPrbDot          (fsp's state strip shows the new mode)
-                    lbra      GpW16
+                    lbsr      GpW16
+                    lbra      SkyCol              the sky's color for the new mode (sky_cols.asm)
 vk9@                rts
 
 * GfxKey (FsxGfxKey, fsw's keys D, E through its XCall; B = the key x 2, FS's DispatchKey): D the dither, E the
@@ -1510,6 +1512,8 @@ EnvDef              lda       >FswReq
                     sta       >vLoadKind
                     sta       >vOvlReq
 ed9@                rts
+
+                    use       sky_cols.asm
 
                     ifdef     WBTRAF
                     use       fst.asm
