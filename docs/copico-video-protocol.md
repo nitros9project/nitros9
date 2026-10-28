@@ -3,7 +3,9 @@
 The messages the 6809 sends to the Video Pico, and what it reads back. The
 command stream is the CoCo3 windowing display codes (the protocol Basic09 GFX2
 emits), so matching them makes GFX2 and `minted`/`ded` work unmodified.
-Reference implementation to match is `level2/cmds/grfdrv.asm`.
+Reference implementation to match is `level2/cmds/grfdrv.asm`. For what a
+program can and cannot do with the console today, see
+[picothing-video-programming.md](picothing-video-programming.md).
 
 The shipped guest driver is the standalone **`vcon`** (`vconw.asm`). Passages
 naming **`copico`** describe the deferred co-module design and are kept as
@@ -145,7 +147,9 @@ request stood. After `Select`, the `VID.Info` register (`$FF13`) reports the
 current window's working area in the same 6-byte block used for the panel (width
 hi/lo, height hi/lo, text cols, text rows, big-endian, pixels first;
 write-homes-the-index). The driver answers `SS.ScSiz` straight from that, so a
-program's screen size *is* its window; `Select 0` reports the panel. This one
+program's screen size *is* its window; `Select 0` reports the panel. *(The
+shipped `vcon` does not do this yet: it answers `SS.ScSiz` from the window's
+descriptor, 128×30 for every window, so a `CWArea` is not reflected.)* This one
 read-back is the whole window read-back channel — no error channel and no
 allocated-id read-back are needed, and the guest's window rectangle can never
 silently diverge from what the firmware built (which is what keeps guest-side
@@ -462,9 +466,10 @@ in cost order:
 
 *(This tier describes the deferred `copico` co-module design, kept as reference.
 The **shipped** standalone `vcon` driver holds no per-window shadow; it answers
-`SS.ScSiz` by reading the window-relative `VID.Info` register directly — see
-"Read-back keeps the guest's model truthful" under Window lifecycle. The rest of
-this tier applies only if the co-module is ever revived.)*
+`SS.ScSiz` from the window's descriptor and `SS.ScTyp` as type 2, and fails
+the rest with `E$UnkSvc`. The rest of this tier applies only if the co-module
+is ever revived. What a program can rely on today is in
+[picothing-video-programming.md](picothing-video-programming.md).)*
 
 | SS code | Returns | Shadow source |
 |---------|---------|---------------|
