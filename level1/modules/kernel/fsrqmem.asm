@@ -91,16 +91,23 @@ ex@                 comb                ; set carry
 ;;;
 ;;; F$SRtMem returns memory allocated by F$SRqMem to the system.
 
-FSRtMem             ldd       R$D,u     ; get the memory allocation size requested from the caller's D
+FSRtMem             ldd       R$U,u     ; a null address is always ignored
+                    beq       okex      ; preserve the existing null-address no-op
+                    ldd       R$D,u     ; get the memory allocation size requested from the caller's D
+                    beq       okex      ; zero bytes must not reach DelBit with a zero count
                     addd      #$00FF    ; round it up to nearest 256 byte page (e.g. $1FF = $2FE)
+                    bcs       badaddr@  ; reject rounding overflow before clearing carry
                     tfr       a,b       ; put MSB into B
                     clra                ; now D reflects number of 256 byte pages to return
                     tfr       d,y       ; put the 16 bit page count into Y
+                    addb      R$U,u     ; add starting page to page count
+                    bcc       inrange@  ; end below page 256 is representable
+                    bne       badaddr@  ; carry with nonzero result extends beyond page 256
+inrange@            equ       *         ; an end exactly at $10000 is also valid
                     ldd       R$U,u     ; get the address of memory to free from the caller's U
-                    beq       okex      ; if user passed 0, ignore
                     tstb                ; check for B = 0 (it should!)
                     beq       returnmem@ ; it does... return it to the system
-                    comb                ; the user has passed B<>0 for the address
+badaddr@            comb                ; reject an unaligned address or invalid extent
                     ldb       #E$BPAddr ; the error is bad page address
                     rts                 ; return to the caller
 returnmem@          exg       a,b       ; swap A/B
