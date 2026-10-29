@@ -463,7 +463,7 @@ PLAY_FILES = $(PLAY_DIR)/readme $(PLAY_DIR)/sample.txt $(PLAY_DIR)/wstat.c \
 
 # ---- disk image ----------------------------------------------------------
 
-DSK_PREREQS = bootfile $(REL) helpmsg $(RECIPE_DEPS) $(PLAY_FILES) \
+DSK_PREREQS = bootfile $(REL) helpmsg inetd.conf $(RECIPE_DEPS) $(PLAY_FILES) \
               $(addprefix $(MODDIR)/,$(SYSGO) $(CMDS_DISK) $(LOADMODS))
 
 ifeq ($(LEVEL),2)
@@ -526,7 +526,7 @@ HELPFILES = asm.hp attr.hp backup.hp binex.hp build.hp chd.hp chx.hp cmp.hp \
             setpr.hp shell.hp sleep.hp smap.hp tee.hp tmode.hp touch.hp \
             tsmon.hp unlink.hp verify.hp xmode.hp
 SYS_TEXT_FILES = $(L2D)/sys/motd helpmsg $(L1D)/sys/errmsg \
-                 $(L1D)/sys/inetd.conf $(L1D)/sys/password
+                 inetd.conf $(L1D)/sys/password
 vpath %.hp $(L2D)/sys:$(L1D)/sys
 else
 HELPFILES = asm.hp attr.hp backup.hp binex.hp build.hp chd.hp chx.hp cmp.hp \
@@ -540,16 +540,24 @@ HELPFILES = asm.hp attr.hp backup.hp binex.hp build.hp chd.hp chx.hp cmp.hp \
             rename.hp save.hp setime.hp setpr.hp shell.hp sleep.hp tee.hp \
             tmode.hp touch.hp tsmon.hp tuneport.hp unlink.hp verify.hp xmode.hp
 SYS_TEXT_FILES = $(L1D)/sys/errmsg $(L1D)/sys/motd $(L1D)/sys/password \
-                 $(L1D)/sys/inetd.conf helpmsg
+                 inetd.conf helpmsg
 vpath %.hp $(L1D)/sys
 endif
 
 helpmsg: $(HELPFILES)
 	$(MERGE) $^ > $@
 
+# inetd's configuration with its listen ports filled in.  The DriveWire
+# server binds these on the host, so they must be 1024 or above.
+TELNET_PORT ?= 6809
+HTTPD_PORT ?= 8809
+inetd.conf: $(L1D)/sys/inetd.conf
+	sed -e 's/%TELNET_PORT%/$(TELNET_PORT)/' \
+	    -e 's/%HTTPD_PORT%/$(HTTPD_PORT)/' $< > $@
+
 clean:
 	$(RM) *.list *.map bootfile krnslot $(REL) $(REL).srec
-	$(RM) *.dsk buildinfo helpmsg
+	$(RM) *.dsk buildinfo helpmsg inetd.conf
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR)
 
 .PHONY: all clean libs bootfile
