@@ -15,10 +15,10 @@ Build and run wstat (Level 2 mega images only: they carry the C
 compiler, with its headers in /dd/DEFS and its library in /dd/LIB):
 
   chd /dd/play
-  cc2 wstat.c
+  cc1 wstat.c
   wstat sample.txt
 
-cc2 puts the finished program in your execution directory (/dd/cmds),
+cc1 puts the finished program in your execution directory (/dd/cmds),
 so wstat runs from anywhere, and leaves behind c.com, the command file
 it ran; delete it when you like.
 
