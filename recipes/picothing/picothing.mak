@@ -117,9 +117,24 @@ GFX      = vtio_picothing.dr copico term_gfx.dd
 # driver keeps a single owner of the pico's one keyboard stream.
 WIN      = vconw.dr w0_pt.dd \
            w1_pt.dd w2_pt.dd w3_pt.dd w4_pt.dd w5_pt.dd w6_pt.dd w7_pt.dd
-# Extra DriveWire descriptors (loadable)
+# Extra DriveWire descriptors (loadable).  The mega images instead build
+# every DriveWire virtual channel into the bootfile, where it can be
+# attached: the wildcard /N, /N1-/N13, /MIDI and the virtual windows
+# /Z1-/Z7.  The DriveWire /Term stays loadable, as it would clash with
+# the console's /Term.
+ifeq ($(MEGA),1)
+DW_EXTRA = ddx0.dd term_scdwv.dt clock2_dw
+DW      += scdwv.dr n_scdwv.dd \
+           n1_scdwv.dd n2_scdwv.dd n3_scdwv.dd n4_scdwv.dd \
+           n5_scdwv.dd n6_scdwv.dd n7_scdwv.dd n8_scdwv.dd \
+           n9_scdwv.dd n10_scdwv.dd n11_scdwv.dd n12_scdwv.dd \
+           n13_scdwv.dd midi_scdwv.dd \
+           z1_scdwv.dd z2_scdwv.dd z3_scdwv.dd z4_scdwv.dd \
+           z5_scdwv.dd z6_scdwv.dd z7_scdwv.dd
+else
 DW_EXTRA = ddx0.dd scdwv.dr term_scdwv.dt n_scdwv.dd \
            n1_scdwv.dd n2_scdwv.dd n3_scdwv.dd n4_scdwv.dd clock2_dw
+endif
 
 ifeq ($(LEVEL),2)
 CLOCK    = clock clock2_ds12885
@@ -325,6 +340,41 @@ $(MODDIR)/n3_scdwv.dd: scdwvdesc.asm | $(MODDIR)
 	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=3
 $(MODDIR)/n4_scdwv.dd: scdwvdesc.asm | $(MODDIR)
 	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=4
+$(MODDIR)/n5_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=5
+$(MODDIR)/n6_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=6
+$(MODDIR)/n7_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=7
+$(MODDIR)/n8_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=8
+$(MODDIR)/n9_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=9
+$(MODDIR)/n10_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=10
+$(MODDIR)/n11_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=11
+$(MODDIR)/n12_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=12
+$(MODDIR)/n13_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=13
+$(MODDIR)/midi_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=14
+# The virtual windows /Z1-/Z7 are channels 17-23
+$(MODDIR)/z1_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=17
+$(MODDIR)/z2_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=18
+$(MODDIR)/z3_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=19
+$(MODDIR)/z4_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=20
+$(MODDIR)/z5_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=21
+$(MODDIR)/z6_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=22
+$(MODDIR)/z7_scdwv.dd: scdwvdesc.asm | $(MODDIR)
+	$(AS) $< $(ASOUT)$@ $(AFLAGS) -DAddr=23
 
 # ---- command build rules that need non-default flags ---------------------
 
