@@ -33,6 +33,31 @@ Example:
 export NITROS9DIR=/Users/boisy/Projects/coco-shelf/nitros9
 ```
 
+## Reproducible Builds
+
+Set `SOURCE_DATE_EPOCH` to a Unix timestamp to use a fixed UTC build date:
+
+```sh
+export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+make -C recipes/coco3/floppy -j1
+```
+
+The shared rules export the epoch to ToolShed and recursive builds, and set
+`TZ=UTC` and `LC_ALL=C`. Build-info modules, the FEU startup date banner,
+and FEU zip member timestamps use that epoch. This requires a ToolShed
+version that supports `SOURCE_DATE_EPOCH`; use the same tool versions when
+comparing images byte for byte, since padding can differ between versions.
+ZIP member timestamps have two-second resolution.
+
+Without `SOURCE_DATE_EPOCH`, build-info modules retain the last commit date
+and the FEU banner uses the current date. The date helper supports both GNU
+and BSD `date`.
+
+Rebuild existing images and packaged dependencies when changing the epoch;
+make does not track environment-variable changes for every output. FEU
+startup files are regenerated on each build, and Wildbits startup generation
+overwrites the file rather than appending duplicate commands.
+
 ## Build Artifact Layout
 
 Object and library intermediates are now isolated per build directory:

@@ -13,6 +13,8 @@
 
 # NitrOS-9 version
 
+include $(NITROS9DIR)/recipes/support/epoch.mak
+
 #################### DO NOT CHANGE ANYTHING BELOW THIS LINE ####################
 
 CC		= c3
@@ -184,7 +186,11 @@ default: all
 init: buildinfo
 
 buildinfo:
-	@BUILDDATE="$$(git log -1 --format=%as)"; \
+	@if test -n "$$SOURCE_DATE_EPOCH"; then \
+		BUILDDATE="$$( $(BUILD_DATE) +%Y-%m-%d)" || exit 1; \
+	else \
+		BUILDDATE="$$(git log -1 --format=%as)"; \
+	fi; \
 	COMMITHASH="$$(git rev-parse --short HEAD)"; \
 	BRANCHNAME="$$(git branch --show-current)"; \
 	echo " fcc !$${BUILDDATE} ($${COMMITHASH} - $${BRANCHNAME})!" > "$(NITROS9DIR)/defs/buildinfo";
