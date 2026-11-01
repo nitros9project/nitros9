@@ -255,7 +255,7 @@ wildbits-sys-assets:
 	$(MAKE) -C $(BACKGROUND_DIR) -f $(NITROS9DIR)/recipes/support/wildbits-backgrounds.mak
 
 $(FEU_STARTUP): FORCE
-	echo "bootos9 /s0/OS9Boot" >> $@
+	echo "bootos9 /s0/OS9Boot" > $@
 
 FORCE: ;
 
@@ -592,4 +592,4 @@ clean:
 	$(RM) *.list *.map bootfile *.dsk buildinfo feu.startup $(CLEAN_EXTRA)
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR) $(CLEAN_DIRS)
 
-.PHONY: all clean libs
+.PHONY: all clean libs FORCE
