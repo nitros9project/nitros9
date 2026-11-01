@@ -769,12 +769,17 @@ T.FLUT              rmb       64        ; foreground LUT
 T.BLUT              rmb       64        ; background LUT
 * T.SPRITE0 (512 bytes) was here.  Sprite records are no longer shadowed
 * per terminal: the program owns the only copy and registers it
-* (gr.SprTbl above).  The 512 bytes are free at the end of the buffer.
+* (gr.SprTbl above).  Half of the 512 bytes is now T.MSPTR.
 T.FONT0             rmb       2048
 T.CLUT0             rmb       1024      ; CLUT 0 Copy
 T.CLUT1             rmb       1024      ; CLUT 1 Copy
 T.CLUT2             rmb       1024      ; CLUT 2 Copy
 T.CLUT3             rmb       1024      ; CLUT 3 Copy
+* The terminal's mouse pointer, 16x16 at 8 bits: what PullBuf copies to
+* VICKY_BLK+$0C00.  GF.TermNew draws the default arrow here and
+* SS.MsPtr replaces it; nothing reads the pointer memory back.  The
+* last 256 bytes of the buffer are free.
+T.MSPTR             rmb       256       ; mouse pointer image
 
 * SS.KySns bit locations
 SHIFTBIT            equ       %00000001
