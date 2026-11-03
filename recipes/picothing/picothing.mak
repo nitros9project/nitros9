@@ -211,7 +211,7 @@ DSKIMAGE ?= $(DISTROVER).dsk
 RECIPE_DEPS ?=
 BASIC09_SAMPLES ?=
 
-all: libs $(DSKIMAGE)
+all: libs $(DSKIMAGE) $(REL).srec
 
 include ../../libs.mak
 
