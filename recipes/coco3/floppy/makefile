@@ -18,10 +18,4 @@ ifneq ($(KEYRPT),)
 	echo "keyrpt $(KEYRPT_ARGS)</1" >> $@
 endif
 
-$(MODDIR)/basic09: $(LANGUAGES)/basic09/basic09_$(CPU) | $(MODDIR)
-	$(CP) $< $@
-
-$(LANGUAGES)/basic09/basic09_$(CPU):
-	$(MAKE) -C $(LANGUAGES)/basic09 basic09_$(CPU)
-
 .PHONY: run startup.minimal
