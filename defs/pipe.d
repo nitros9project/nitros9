@@ -24,7 +24,7 @@ NameMax             SET       29                  ;Maximum length of a file name
 *
 *   Device Driver Static Storage Layout
 *
-                    ORG       V.User
+                    ORG       V.USER
 V.List              RMB       2                   ;Pointer to 1st pipe's pipe buffer
 PManMem             EQU       .                   ;Device driver memory (drive table equivalent)
 
