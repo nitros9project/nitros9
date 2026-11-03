@@ -544,8 +544,9 @@ SYS_TEXT_FILES = $(L1D)/sys/errmsg $(L1D)/sys/motd $(L1D)/sys/password \
 vpath %.hp $(L1D)/sys
 endif
 
+# dsave has no -b option on the Pico-Thing, so its help leaves it out.
 helpmsg: $(HELPFILES)
-	$(MERGE) $^ > $@
+	$(MERGE) $^ | sed -e '/^@DSAVE/,/^@/{' -e '/^  -b/d' -e '}' > $@
 
 # inetd's configuration with its listen ports filled in.  The DriveWire
 # server binds these on the host, so they must be 1024 or above.

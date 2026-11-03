@@ -46,7 +46,9 @@ dirlevel            rmb       1                   current directory level (0 = t
 *doexec   rmb   1	execute flag
 errcode             rmb       1                   error code storage
 plistcnt            rmb       1                   command line pathlist count
+                    ifeq      picothing
 doboot              rmb       1
+                    endc
 indent              rmb       1
 onelevel            rmb       1
 nomakdir            rmb       1
@@ -65,7 +67,9 @@ srcptr              rmb       2
 dotdotfd            rmb       3                   LSN of ..
 dotfd               rmb       3                   LSN of .
 ddcopy              rmb       3
+                    ifeq      picothing
 bbuff               rmb       64                  -b= buffer
+                    endc
 dentry              rmb       DIR.SZ*2
 srcpath             rmb       128
 buffend             rmb       1
@@ -129,10 +133,14 @@ Unlink              fcc       "unlink"
 Copy                fcc       "copy"
                     fcb       C$CR
 
+* The Pico-Thing has no os9gen and no boot track: its REL finds OS9Boot by
+* name, so there is no -b option and OS9Boot is copied like any other file.
+                    ifeq      picothing
 OS9Gen              fcc       "os9gen"
                     fcb       C$CR
 
 OS9Boot             fcs       "OS9Boot"
+                    endc
 
 DotDot              fcc       "."
 Dot                 fcc       "."
@@ -211,6 +219,7 @@ GetDash             lda       #C$SPAC             get a space char
                     sta       -1,x                and wipe out the dash from the cmd line
 GetDash2            ldd       ,x+                 load option char and char following
                     ora       #$20                make lowercase
+                    ifeq      picothing
 IsItB               cmpa      #'b                 is it this option?
                     bne       IsItE               branch if not
                     sta       <doboot
@@ -254,6 +263,7 @@ IsItBLp             sta       ,-x
                     clrb                          so FixCmdLn will not look for more opts
 IsItBEx             puls      x
                     bra       FixCmdLn
+                    endc
 IsItE               equ       *
 *         cmpa  #'e		is it this option?
 *         bne   IsItI		branch if not
@@ -450,7 +460,9 @@ ItsADir2            ldx       3,s
                     bra       FileLoop
 
 * Here, we know that the file we just opened and closed was NOT a directory
-ItsAFile            tst       <dirlevel           are we at root level?
+ItsAFile
+                    ifeq      picothing
+                    tst       <dirlevel           are we at root level?
                     bne       ItsAFile2           no, don't even do os9boot test
                     ldx       1,s                 else get ptr to current filename
                     lbsr      BootCmp             is it os9boot?
@@ -462,6 +474,7 @@ ItsAFile            tst       <dirlevel           are we at root level?
 * We must os9gen the sucker
                     lbsr      BuildOS9Gen
                     bra       FileLoop
+                    endc
 
 ItsAFile2
                     ldx       1,s
@@ -486,6 +499,7 @@ ShowHelp            equ       *
 ExitOk              clrb                          clear carry
 Exit                os9       F$Exit              and exit
 
+                    ifeq      picothing
 * This routine counts the number of non-whitespace characters
 * starting at X
 *
@@ -504,6 +518,7 @@ StrLenLp            lda       ,x+
                     leay      1,y
                     bra       StrLenLp
 StrLenEx            puls      a,pc
+                    endc
 
 * This routine copies a string of text from X to Y until
 * a CR or hi bit char is encountered
@@ -529,6 +544,7 @@ CopyFnLp            lda       ,x+
 CopyFnEx            tfr       u,d
                     puls      u,pc
 
+                    ifeq      picothing
 * Works like StrCpy, but stops if a space is encountered
 ParmCpy             pshs      u
                     ldu       #$0000
@@ -543,7 +559,9 @@ ParmFnLp            lda       ,x+
                     bpl       ParmFnLp
 ParmFnEx            tfr       u,d
                     puls      u,pc
+                    endc
 
+                    ifeq      picothing
 * Compare two filenames to see if they match
 * X = filename to compare against OS9boot
 BootCmp             pshs      y,x
@@ -553,6 +571,7 @@ BootCmp             pshs      y,x
                     leay      OS9Boot,pcr
                     os9       F$CmpNam
                     puls      y,pc
+                    endc
 
 MakeUp              cmpa      #'a
                     blt       MakeUpEx
@@ -753,6 +772,7 @@ DoUnlinkCopy
                     lbra      WriteIt
 *         bra   ExecCmd
 
+                    ifeq      picothing
 BuildOS9Gen
                     pshs      x
                     leax      OS9Gen,pcr
@@ -769,6 +789,7 @@ BuildOS9Gen
                     leax      CR,pc
                     lbsr      WriteIt
                     puls      x,pc
+                    endc
 
 BuildCmp            pshs      x
                     leax      Cmp,pcr
