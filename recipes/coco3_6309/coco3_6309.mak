@@ -68,7 +68,11 @@ CMDS_BASE ?= $(STDCMDS) grfdrv shell utilpak1
 CMDS += $(CMDS_BASE) hirestest \
 	$(CMDS_EXTRA)
 
-all: libs $(DSKIMAGE)
+# The libraries come first: modules link against them, and under make -j
+# nothing else orders the two.
+all:
+	$(MAKE) libs
+	$(MAKE) $(DSKIMAGE)
 
 LIB_NAMES = libnos96309l2.a libnet.a libalib.a libcoco3_6309.a
 include ../../libs.mak

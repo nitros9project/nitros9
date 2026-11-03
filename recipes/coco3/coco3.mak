@@ -116,7 +116,11 @@ BASIC09_SAMPLES ?=
 RECIPE_DEPS ?=
 
 RECIPE_OUTPUTS ?= $(DSKIMAGE)
-all: libs $(RECIPE_OUTPUTS)
+# The libraries come first: modules link against them, and under make -j
+# nothing else orders the two.
+all:
+	$(MAKE) libs
+	$(MAKE) $(RECIPE_OUTPUTS)
 
 LIB_NAMES = $(NOS9_LIB) libnet.a libalib.a $(COCO3_LIB)
 ifeq ($(FUJINET),1)
