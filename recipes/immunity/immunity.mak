@@ -173,7 +173,11 @@ UTILPAK1 = attr build copy del deldir dir display list makdir mdir merge mfree p
 CMDS_BASE ?= $(STDCMDS) shell utilpak1 mmap pmap reboot
 CMDS += $(CMDS_BASE) $(CMDS_EXTRA)
 
-all: libs $(DSKIMAGE)
+# The libraries come first: modules link against them, and under make -j
+# nothing else orders the two.
+all:
+	$(MAKE) libs
+	$(MAKE) $(DSKIMAGE)
 
 LIB_NAMES = $(NOS9_LIB) libnet.a libalib.a $(COCO3_LIB)
 include $(NITROS9DIR)/recipes/libs.mak

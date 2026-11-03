@@ -73,7 +73,11 @@ F0_CMDS = attr \
 		setime sleep \
 		tmode
 
-all: libs bootfile booter
+# The libraries come first: modules link against them, and under make -j
+# nothing else orders the two.
+all:
+	$(MAKE) libs
+	$(MAKE) bootfile booter
 
 LIB_NAMES = libwildbitsl$(LEVEL).a libnet.a libalib.a
 include ../../libs.mak

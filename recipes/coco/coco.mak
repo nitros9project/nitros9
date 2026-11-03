@@ -56,7 +56,11 @@ CMDS_BASE ?= $(STDCMDS)
 CMDS += $(CMDS_BASE) \
 	$(CMDS_EXTRA)
 
-all: libs $(DSKIMAGE)
+# The libraries come first: modules link against them, and under make -j
+# nothing else orders the two.
+all:
+	$(MAKE) libs
+	$(MAKE) $(DSKIMAGE)
 
 LIB_NAMES = libnos96809l1.a libnet.a libalib.a libcoco.a
 include ../../libs.mak

@@ -211,7 +211,11 @@ DSKIMAGE ?= $(DISTROVER).dsk
 RECIPE_DEPS ?=
 BASIC09_SAMPLES ?=
 
-all: libs $(DSKIMAGE) $(REL).srec
+# The libraries come first: modules link against them, and under make -j
+# nothing else orders the two.
+all:
+	$(MAKE) libs
+	$(MAKE) $(DSKIMAGE) $(REL).srec
 
 include ../../libs.mak
 

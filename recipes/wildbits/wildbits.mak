@@ -233,7 +233,11 @@ CMDS += w6100eth w6100recv w6100send w6100tel lcdload
 SYS_TEXT_FILES += $(LEVEL1)/wildbits/sys/w6100ipconfig
 endif
 
-all: libs $(DSKIMAGE)
+# The libraries come first: modules link against them, and under make -j
+# nothing else orders the two.
+all:
+	$(MAKE) libs
+	$(MAKE) $(DSKIMAGE)
 
 LIB_NAMES = libwildbitsl$(LEVEL).a libnet.a libalib.a
 ifeq ($(FUJINET),1)
