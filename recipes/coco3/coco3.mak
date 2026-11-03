@@ -192,6 +192,12 @@ $(MODDIR)/xmode: xmode.asm | $(MODDIR)
 $(MODDIR)/tmode: xmode.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DTMODE=1
 
+$(MODDIR)/basic09: $(LANGUAGES)/basic09/basic09_$(CPU) | $(MODDIR)
+	$(CP) $< $@
+
+$(LANGUAGES)/basic09/basic09_$(CPU):
+	$(MAKE) -C $(LANGUAGES)/basic09 basic09_$(CPU)
+
 $(MODDIR)/runb: $(LANGUAGES)/basic09/runb_$(CPU) | $(MODDIR)
 	$(CP) $< $@
 
