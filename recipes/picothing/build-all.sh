@@ -29,6 +29,7 @@ logdir="$script_dir/build-logs"
 # --- options ----------------------------------------------------------------
 
 clean_first=1
+jobs="$(sysctl -n hw.ncpu 2>/dev/null || nproc)"
 
 usage() {
     sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
@@ -88,7 +89,7 @@ for v in "${variants[@]}"; do
         make -C "$dir" clean >/dev/null 2>&1
     fi
 
-    if make -C "$dir" >"$log" 2>&1; then
+    if make -j"$jobs" -C "$dir" >"$log" 2>&1; then
         dsk="$(ls -1 "$dir"/*.dsk 2>/dev/null | head -1)"
         printf 'PASS  %s\n' "${dsk:+$(basename "$dsk")}"
         results+=("$v|PASS")
