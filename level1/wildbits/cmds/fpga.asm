@@ -40,7 +40,7 @@ Line                rmb 512
 MemSize             equ .
                     mod eom,name,Prgrm+Objct,ReEnt+1,Start,MemSize
 name                fcs /fpga/
-                    fcb 3
+                    fcb 4
 Start               lda #$FF
                     sta Path,u
                     sta FilePath,u
@@ -770,24 +770,15 @@ Program             leax ProgramSignal,pcr
                     lda Target,u
                     cmpa #2
                     lbeq CheckGzipSize
-* 2026-09-26 (user): a raw image may carry up to 256 padding bytes past the 9,730,652-byte bitstream - extra
-* configuration clocks for the FPGA's startup phases after the last real word (a slave-mode load that stops
-* clocking at the last byte can leave DONE high but the outputs tri-stated). $947A5C <= size <= $947B5C.
+* SD: exactly the 9,730,652-byte bitstream ($947A5C); the manager's IMAGE_BEGIN refuses any other size.
                     cmpx #$0094
                     lbne BadImage
                     cmpy #$7A5C
-                    lblo BadImage
-                    cmpy #$7B5C
-                    lbhi BadImage
+                    lbne BadImage
                     lbra SizeOK
-* Flash: a .gz from its 2 MiB slot to the end of the manager's flash, running on into the slots after its own:
-* up to 8, 6, 4 or 2 MiB for contexts 1-4, the size's high word (4 - Context) x $20.
-CheckGzipSize       ldb #4
-                    subb Context,u
-                    lda #$20
-                    mul
-                    pshs d
-                    cmpx ,s++
+* Flash: a .gz of up to 8 MiB in any context: firmware 1.17's four images share an 8 MiB pool of 64 KiB blocks, and
+* the manager checks for free blocks in IMAGE_BEGIN (see below).
+CheckGzipSize       cmpx #$0080
                     lbhi BadImage
                     lbne GzipMin
                     cmpy #0
@@ -861,13 +852,11 @@ ScanDone            lbsr ExactSize
                     lbcs Exit
                     cmpy #4
                     lbne BadImage
-* the trailer's ISIZE is little-endian: $947A5C..$947B5C accepted (the padded raw image, see above)
+* the trailer's ISIZE is little-endian: exactly $947A5C, or the manager's IMAGE_END refuses the upload
                     lda Tx+3,u
                     ldb Tx+2,u
                     cmpd #$7A5C
-                    lblo BadImage
-                    cmpd #$7B5C
-                    lbhi BadImage
+                    lbne BadImage
                     ldd Tx+4,u
                     cmpd #$9400
                     lbne BadImage
@@ -904,7 +893,22 @@ RewindImage         lbsr SeekStart
                     inc UploadStarted,u
                     tst RxLength,u
                     lbne BadReply
-                    leay Line,u
+* IMAGE_BEGIN answers with no data, refused or not: a refusal is only in the latched error byte, and then no upload
+* is running to abort. The manager checks for free blocks before it erases anything, so $31 (no room in its flash
+* pool) leaves every stored core as it was.
+                    lda Path,u
+                    ldb #$C0
+                    os9 I$GetStt
+                    lbcs Exit
+                    tfr x,d
+                    tstb
+                    beq BeginOK
+                    clr UploadStarted,u
+                    cmpb #$31
+                    lbeq NoFlashRoom
+                    ldb #E$Write
+                    lbra RemoteFail
+BeginOK             leay Line,u
                     leax Sending,pcr
                     lbsr Text
                     lbsr Print
@@ -984,8 +988,9 @@ AbortUpload         lda #5
                     lbsr Text
                     lbsr Print
                     lbra Done
-* Wipe (2026-09-27): fwipe = CLEAR_FLASH $0D (nonce, context): the manager erases the slot's header sector, verifies it
-* reads erased and clears the slot's metadata - the slot is invalid until the next flash. pwipe = DELETE_SD_IMAGE $13
+* Wipe (2026-09-27): fwipe = CLEAR_FLASH $0D (nonce, context): the manager gives the context's blocks back to its flash
+* pool and a saved Flash selection of that context goes back to Automatic (firmware 1.17); no image until the next flash.
+* pwipe = DELETE_SD_IMAGE $13
 * (nonce, context, length, path): the manager unlinks that catalogued SD image (its own SD card) and resets a saved
 * selection that pointed at it to Automatic. Both answer nonce + context.
 Wipe                lda Context,u
@@ -1093,6 +1098,12 @@ RemoteFail          pshs b
                     lbsr Hex
 RfPrint             lbsr Print
                     puls b
+                    lbra Exit
+NoFlashRoom         leay Line,u
+                    leax NoRoomTxt,pcr
+                    lbsr Text
+                    lbsr Print
+                    ldb #E$Full
                     lbra Exit
 BadImage            leay Line,u
                     leax ImageError,pcr
@@ -1238,7 +1249,9 @@ Accepted            fcc / bytes/
                     fcb 0
 Programmed          fcc /Image stored; size and CRC verified. Selection and running core unchanged./
                     fcb 0
-ImageError          fcc /Invalid image: SD needs a 9730652(+<=256)-byte .bin; flash needs .gz <=8, 6, 4 or 2 MiB in context 1, 2, 3 or 4./
+ImageError          fcc /Invalid image: SD needs a 9730652-byte .bin; flash needs a .gz of 8 MiB or less./
+                    fcb 0
+NoRoomTxt           fcc /Not enough free flash: the 4 contexts share 8 MiB, and a replaced core stays until the new one is stored. Free one with fwipe N./
                     fcb 0
 Changed             fcc /Image changed or truncated during transfer; not committed./
                     fcb 0

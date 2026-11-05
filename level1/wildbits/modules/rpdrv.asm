@@ -27,7 +27,7 @@ entry               lbra Init
                     lbra SetStat
                     lbra Term
 name                fcs /RPDrv/
-                    fcb 2
+                    fcb 3
 Init                clra
                     clrb
                     std Owner,u
@@ -188,12 +188,16 @@ Start               lda Cmd,u
                     lda Cmd,u
                     cmpa #4
                     beq CommitTimeout
+* CLEAR_FLASH: the first flash change on firmware 1.17 can scan all four old slots first, several seconds.
+                    cmpa #$0D
+                    beq CommitTimeout
                     cmpa #2
                     bne TimeoutReady
                     lda Packet,u
                     cmpa #2
                     bne TimeoutReady
-* RP2040 erases the full 4 MiB flash bank in IMAGE_BEGIN, before replying.
+* In IMAGE_BEGIN, before replying, the RP2040 erases the image's flash blocks (up to 8 MiB); the first flash change on
+* firmware 1.17 also scans all four old slots.
                     ldd #14400
                     std ,s
                     bra TimeoutReady
@@ -244,7 +248,7 @@ ExecError           comb
                     ldb #E$Write
                     lbra ExecReturn
 * SleepTick reports elapsed ticks in TickDelta and updates LastTick.
-* 300 ticks normally, 1800 for commit, 14400 for flash erase; early wakes cost zero.
+* 300 ticks normally, 1800 for commit and CLEAR_FLASH, 14400 for flash erase; early wakes cost zero.
 SleepTick           pshs x
                     ldx #1
                     pshs cc
