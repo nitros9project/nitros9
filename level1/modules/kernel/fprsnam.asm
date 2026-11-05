@@ -33,10 +33,11 @@
 ;;;          X	     Y              B = 2
 
 
+FPrsNam             equ       *         ; define assembler symbol
                   IFGT    Level-1 ; begin conditional assembly for Level-1
-
-FPrsNam             ldx       <D.Proc   ; get the process descriptor
+                    ldx       <D.Proc   ; get the process descriptor
                     leay      <P$DATImg,x ; and the DAT image pointer in it
+                  ENDC
                     ldx       R$X,u     ; get the pathlist from the caller's X
                     bsr       ParseNam  ; parse the pathlist
                     std       R$D,u     ; D contains the length of the name; store it in the caller's D
@@ -48,13 +49,19 @@ FPrsnamHasEndName   stx       R$Y,u     ; X contains the end of the name plus on
 
 * Parse name
 ParseNam            equ       *         ; define assembler symbol
+                  IFGT    Level-1 ; begin conditional assembly for Level-1
                     pshs      y         ; save the DAT image pointer on the stack
                     lbsr      AdjBlk0   ; go find the map block
+                  ENDC
                     pshs      x,y       ; save the offset within the block (X) and the block pointer (Y)
                     bsr       GoGetAXY  ; get the byte at X in block Y
                     cmpa      #'.       ; is the first character a period?
                     bne       IsSlash   ; no, do proper first character checking
+                  IFGT    Level-1 ; begin conditional assembly for Level-1
                     lbsr      FLdMMUBlockData ; do a LDAXY, without changing X or Y
+                  ELSE
+                    lda       ,x        ; get the next character without moving past it
+                  ENDC
                     bsr       ChkFirst  ; is the next character non-period?
                     lda       #'.       ; restore the period character the LDAXY destroyed
                     bcc       Do.Loop   ; if it's a non-period character, skip first character checks
@@ -77,7 +84,13 @@ LastChar            andcc     #^Carry   ; else set the carry to indicate an erro
 GetChar
                     stx       2,s       ; save the current offset over the old offset
                     sty       4,s       ; save the current block pointer over the old block pointer
-GoGetAXY            lbra      LDAXY     ; get the byte at X in block Y in A, then return
+GoGetAXY            equ       *         ; define assembler symbol
+                  IFGT    Level-1 ; begin conditional assembly for Level-1
+                    lbra      LDAXY     ; get the byte at X in block Y in A, then return
+                  ELSE
+                    lda       ,x+       ; get the byte at X and move past it
+                    rts                 ; return to the caller
+                  ENDC
 
 NextLoop            bsr       GetChar   ; get the next character
 NotValid            cmpa      #',       ; is it a comma?
@@ -88,7 +101,15 @@ NotValid            cmpa      #',       ; is it a comma?
                     ldb       #E$BNam   ; 'Bad Name' error
 RtnValid            equ       *         ; define assembler symbol
                     puls      x,y       ; recover tje offset & pointer
+                  IFGT    Level-1 ; begin conditional assembly for Level-1
                     bra       FFmodulChar ; do a similar exit routine
+                  ELSE
+                    tfr       x,y       ; on an error Y is the first character that is not a separator
+                    bcs       PrsNamEx  ; branch if an error occurred
+                    abx                 ; add the length in B to X
+                    exg       x,y       ; X is the start of the name and Y is the end of the name plus one
+PrsNamEx            rts                 ; return to the caller
+                  ENDC
 
 ChkFirst            pshs      a         ; save the character
                     anda      #$7F      ; drop the most significant bit
@@ -119,64 +140,3 @@ ChkRst              cmpa      #'z       ; is it greater than "z"?
                     beq       ValidChr  ; yes, return a valid character
 InvalidC            coma                ; else it's an invalid character; set the carry bit to indicate error
 ValidChr            puls      a,pc      ; return to the caller
-
-                  ELSE
-
-FPrsNam             ldx       R$X,u     ; get pathlist pointer from caller
-                    bsr       ParseNam  ; do the parsing of the name
-                    std       R$D,u     ; save the length
-                    bcs       ex@       ; branch if the carry is set
-                    stx       R$X,u     ; save the updated pathlist pointer
-ex@                 sty       R$Y,u     ; and the Y
-                    rts                 ; return to the caller
-
-ParseNam            lda       ,x        ; get the first character
-                    cmpa      #PDELIM   ; is it the pathlist character?
-                    bne       next@     ; branch if not
-                    leax      1,x       ; else go past it
-next@               leay      ,x        ; point Y to X
-                    clrb                ; clear B
-                    lda       ,y+       ; get the next character
-                    anda      #$7F      ; mask out the high bit
-                    bsr       chkrest@  ; go check the rest
-                    bcs       comma@    ; branch if the carry is set
-loop@               incb                ; increment B
-                    lda       -1,y      ; get the previous character
-                    bmi       ex@       ; if high bit is set on this character, we're done
-                    lda       ,y+       ; else get the next character
-                    anda      #$7F      ; clear the high bit
-                    bsr       chkfirst@ ; and check first
-                    bcc       loop@     ; branch if the carry is clear
-                    lda       ,-y       ; else get the previous character
-ex@                 andcc     #^Carry   ; clear the carry
-                    rts                 ; return to the caller
-comma@              cmpa      #C$COMA   ; is it a comma?
-                    bne       space@    ; branch if not
-skip@               lda       ,y+       ; else get the next character
-space@              cmpa      #C$SPAC   ; is it a space?
-                    beq       skip@     ; branch if so
-                    lda       ,-y       ; else get the previous character
-                    comb                ; set the carry
-                    ldb       #E$BNam   ; indicate a bad pathname error
-                    rts                 ; and return to the caller
-* Check for legal characters in a pathlist
-chkfirst@           cmpa      #C$PERD   ; is the character a period?
-                    beq       Match     ; branch if so
-chkrest@            cmpa      #'0       ; is it zero?
-                    bcs       errex@    ; branch if less than
-                    cmpa      #'9       ; is it a number?
-                    bls       Match     ; branch if it is between 0-9
-                    cmpa      #'_       ; is it an underscore?
-                    beq       Match     ; branch if so
-                    cmpa      #'A       ; is it A?
-                    bcs       errex@    ; branch if less than
-                    cmpa      #'Z       ; is it Z?
-                    bls       Match     ; branch if less than or equal (A-Z)
-                    cmpa      #'a       ; is it a?
-                    bcs       errex@    ; branch if less than
-                    cmpa      #'z       ; is it z?
-                    bls       Match     ; branch if less than or equal (a-z)
-errex@              orcc      #Carry    ; set the carry
-                    rts                 ; return to the caller
-
-                  ENDC
