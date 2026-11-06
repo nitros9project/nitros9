@@ -258,11 +258,13 @@ HaveSize            sta       <Rows               ; save the rows
                     lbsr      SetDesc             ; set the size in the descriptor
                     bcs       Exit                ; return the error if it failed
 
-* Print the size as columns x rows
+* Print the size as columns x rows, for example 128 x 30
 Report              leax      OutBuf,u            ; point to the output buffer
                     lda       <Cols               ; get the columns
                     lbsr      Decimal             ; put them in the buffer
-                    lda       #'x                 ; get the separator
+                    ldd       #C$SPAC*256+'x      ; get a space and the separator
+                    std       ,x++                ; put them in the buffer
+                    lda       #C$SPAC             ; get the space after the separator
                     sta       ,x+                 ; put it in the buffer
                     lda       <Rows               ; get the rows
                     lbsr      Decimal             ; put them in the buffer
