@@ -60,3 +60,20 @@ renames/deletion and server restart recovery are not provided by this change.
 The rfmfork guest test sleeps the child before its first remote access while
 the parent changes both directories. It checks inherited data and execution
 paths, then changes the child's directories and checks the parent's paths.
+
+DriveWire IRQ serialization
+--------------------------
+Every request, payload and reply is one atomic wire transaction. Masking only
+inside DWRead/DWWrite leaves a gap where DWIO's IRQ poller can consume RFM
+reply bytes as virtual-channel data and write through a bogus device pointer.
+RFM restores the caller's masks between transfer chunks, after the complete
+reply has arrived and before copying it to the caller. F$Move itself can enable
+IRQs, so outgoing copies must finish before taking ownership of the wire.
+Seek, GetStat and Close similarly hold the masks through the reply, preserving
+result flags and restoring the caller's original interrupt masks afterward.
+
+The instruction tests track every instruction between packet and reply,
+reject unmasked transport entry, and emulate F$Move enabling interrupts.
+They check all four combinations of caller I/F masks. The pre-fix source fails
+these checks. The MAME recipe's TEST_IRQ_STRESS=1 mode exercises the real DWIO
+IRQ handler concurrently with remote directory and console operations.

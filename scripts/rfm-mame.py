@@ -58,6 +58,7 @@ def prepare(root, commands, suite, executable, child):
     shutil.copyfile(executable.parent / 'rfmfork', share / 'rfmfork')
     lines += [
         'echo RFM directory and execution checks',
+        'dir /y0/rfmtest',
         '/y0/rfmtest/rfmfork >/y0/rfmtest/forkcheck',
         'dir /y0/rfmtest >/y0/rfmtest/listabs',
         'dir -e /y0/rfmtest >/y0/rfmtest/listext',
@@ -92,6 +93,7 @@ def prepare(root, commands, suite, executable, child):
         'list marker >/y0/rfmtest/separate',
         'chd /dd',
         'chx /dd/cmds',
+        'dir /y0/rfmtest',
         'echo RFM commands finished - host must verify every output',
         'echo RFMTESTDONE >/y0/rfmtest/done']
     walk = []
@@ -116,6 +118,8 @@ class Fixture:
         self.nodes = {}
         self.lsns = {}
         self.operations = []
+        self.protocol_version = 3
+        self.irq_polls = 0
 
     def event(self, **event):
         event["time"] = time.monotonic()
@@ -212,8 +216,13 @@ class Fixture:
                     continue
                 if opcode == 0x5a:  # DWIO initialization; version 3 needs no polling.
                     self.receive(conn, 1)
-                    conn.sendall(b'\x03')
+                    conn.sendall(bytes([self.protocol_version]))
                     self.event(wire=opcode)
+                    continue
+                if opcode == 0x43:  # OP_SERREAD from DWIO's IRQ poller
+                    self.irq_polls += 1
+                    self.event(wire=opcode)
+                    conn.sendall(b'\x00\x00')
                     continue
                 if opcode != 0xd6:
                     raise ValueError(f'unsupported wire opcode ${opcode:02x}')
@@ -409,7 +418,7 @@ def run(args):
     share = root / 'share'
     for size in SIZES:
         (share / 'rfmtest' / f'out{size}').unlink(missing_ok=True)
-    for name in ('done', 'listabs', 'listext', 'listrel', 'listrele', 'listempty',
+    for name in ('forkcheck', 'done', 'listabs', 'listext', 'listrel', 'listrele', 'listempty',
                  'listexec', 'listexece', 'listexecchild',
                  'dataok', 'childok', 'parentok', 'afterfail', 'createok', 'separate',
                  'execok', 'execchild', 'execparent', 'execafterfail'):
@@ -430,6 +439,20 @@ def run(args):
     auto_command = '' if args.interactive or args.input_probe else 'shell </dd/rfmauto\n'
     probe_commands = {2700: 'load utilpak1\n', 3600: 'chd /y0/rfmtest/data\n',
                       4200: 'd', 4500: 'ir\n', 4800: 'echo AFTER\n'} if args.input_probe else {}
+    irq_lua = '''
+  -- Make the existing DWIO VIRQ due every frame, while RFM is doing I/O.
+  local ram = emu.item(manager.machine.devices[":ram"].items["0/m_pointer"])
+  local mmu = emu.item(manager.machine.devices[":gime"].items["0/m_mmu"])
+  local stat = ram:read(0x0e)*256 + ram:read(0x0f)
+  if frames >= 2700 and stat ~= 0 then
+    local phys = (mmu:read(stat >> 13) & 63)*8192 + (stat & 8191)
+    if phys+0x24 < ram.count then
+    ram:write(phys+0x20,1) -- Vi.Cnt low
+    ram:write(phys+0x22,1) -- Vi.Rst low
+    ram:write(phys+0x23,ram:read(phys+0x23)|1) -- Vi.IFlag
+    end
+  end
+''' if args.irq_stress else ''
     probe_lua = '\n'.join(f'  if frames == {frame} then emu.keypost({json.dumps(command)}) end'
                           for frame, command in probe_commands.items())
     lua.write_text(f"""emu.keypost({json.dumps('DOS' + chr(10))})
@@ -437,6 +460,7 @@ local frames = 0
 emu.register_frame_done(function()
   frames = frames + 1
 {probe_lua}
+{irq_lua}
   if frames == 2700 then
     emu.keypost({json.dumps(auto_command)})
   end
@@ -454,6 +478,8 @@ end)
         listener.listen(1)
         listener.settimeout(1)
         fixture = Fixture(share, protocol)
+        if args.irq_stress:
+            fixture.protocol_version = 0xff
         stopping = threading.Event()
         def serve():
             while not stopping.is_set():
@@ -488,8 +514,12 @@ end)
                 if fixture.root / 'rfmtest/done' in fixture.closed and not fixture.verified(expected):
                     raise RuntimeError('Guest completed, but host assertions failed; inspect returned files and protocol.jsonl')
                 if not passed and fixture.verified(expected):
+                    if args.irq_stress and fixture.irq_polls == 0:
+                        raise RuntimeError("IRQ stress did not exercise the DWIO poller")
                     passed = True
                     print(f'PASS: {len(expected)} binary roundtrips; chd/chx, relative paths, dir/dir -e, remote execution, errors and cleanup', flush=True)
+                    if args.irq_stress:
+                        print(f"IRQ polls serviced: {fixture.irq_polls}", flush=True)
                     if not args.interactive:
                         break
                 time.sleep(.2)
@@ -527,6 +557,7 @@ if __name__ == '__main__':
     launch.add_argument('--seconds', type=int, default=180)
     launch.add_argument('--interactive', action='store_true')
     launch.add_argument('--input-probe', action='store_true')
+    launch.add_argument('--irq-stress', action='store_true', help='enable DWIO virtual-channel IRQ polling every frame')
     args = parser.parse_args()
     if args.action == 'prepare':prepare(args.root, args.commands, args.suite, args.executable, args.child)
     else:run(args)

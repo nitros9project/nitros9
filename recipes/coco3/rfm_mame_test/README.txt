@@ -9,6 +9,16 @@ For just the directory/execution checks (about a minute):
 
     make check TEST_SUITE=directories
 
+To exercise RFM while DWIO's virtual-channel IRQ poller runs every frame:
+
+    make check TEST_SUITE=directories TEST_IRQ_STRESS=1
+
+This advertises the DriveWire 4 capability, answers virtual-channel polls,
+and forces the registered DWIO VIRQ due every frame. The guest also lists
+remote directories directly to the console, rather than redirecting every
+listing. This reproduces the timing window where a poller could consume an
+RFM response and misinterpret it as serial data.
+
 For the visible CoCo 3 window:
 
     make run
