@@ -2,6 +2,9 @@ LEVEL = 2
 
 include ../coco3.mak
 
+# RFM boot source is shared with CoCo 1, rather than the CoCo 3 module tree.
+vpath %.asm $(NITROS9DIR)/level1/coco1/modules
+
 MAME_BINARY  ?= mame
 MAME_MACHINE ?= coco3
 MAME_FLAGS   ?= -window -skip_gameinfo

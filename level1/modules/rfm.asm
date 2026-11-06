@@ -77,7 +77,9 @@ create1
                     pshs      x,y,u               ; save all on stack
                     stb       V.DWCMD,x
 
-* TODO lets not create multiple buffers when multiple open/create on same path
+                    clr       PD.BUF,y
+                    clr       PD.BUF+1,y
+* One transfer buffer belongs to each system path (Dup shares the path).
 * get system mem
                     ldd       #256
                     os9       F$SRqMem            ; ask for D bytes (# bytes server said is coming)
@@ -133,12 +135,18 @@ prsloop
                     beq       prsdone             ; '@' entire device
                     leax      1,x
                     leay      1,y
+                    cmpy      #255
+                    lbhi      BadPath
                     bra       prsloop
 prslastchar
                     leax      1,x
                     anda      #$7F                ; strip high bit
                     leay      1,y
 prsdone
+                    cmpy      #0
+                    lbeq      BadPath
+                    cmpy      #255
+                    lbhi      BadPath
                     ldu       4,s                 ; get caller's registers
                     stx       R$X,u
                     ldx       ,s                  ; get device memory pointer
@@ -146,58 +154,6 @@ prsdone
 
 * put the mode byte on the stack
                     pshs      cc
-                    ldy       3,s                 ; get path descriptor pointer
-                    lda       PD.MOD,y            ; get mode saved by IOMan
-                    pshs      a
-
-* push parent process ID, then process ID
-                    ifgt      Level-1
-                    ldx       <D.Proc
-                    else
-                    ldx       >D.Proc
-                    endc
-                    lda       P$PID,x             ; parent process ID
-                    ldu       2,s                 ; get device memory pointer
-                    tst       V.RELFLG,u           ; relative path?
-                    beq       pidparent           ; no, keep true parent process ID
-                    ldb       ,s                  ; get request mode
-                    bitb      #PEXEC.+EXEC.       ; execution directory request?
-                    beq       piddata             ; no, use data directory context
-                    ldb       P$DIO+9,x           ; get saved execution directory owner
-                    bra       pidcheck
-piddata             ldb       P$DIO+3,x           ; get saved data directory owner
-pidcheck            beq       pidparent           ; no saved context, keep true parent
-                    tfr       b,a                 ; use saved directory owner as context
-pidparent
-                    pshs      a
-                    lda       P$ID,x              ; process ID
-                    pshs      a
-* reload vstat ptr (trashed by D.Proc access)
-                    ldx       4,s
-
-* put command byte & path # on stack
-                    lda       V.DWCMD,x
-                    ldy       6,s
-                    ldb       PD.PD,y
-                    pshs      d                   ; p# PD.PD Regs
-
-* put rfm op and DW op on stack
-                    lda       #OP_VFM
-                    pshs      a                   ; DWOP RFMOP p# PD.PD Regs
-
-                    leax      ,s                  ; point X to stack
-                    ldy       #6                  ; 6 bytes to send
-
-                    ifgt      Level-1
-                    ldu       <D.DWSubAddr
-                    else
-                    ldu       >D.DWSubAddr
-                    endc
-
-                    orcc      #IntMasks
-                    jsr       6,u
-                    leas      6,s                 ;clean stack   PD.PD Regs
-
                     ifgt      Level-1
 * now send path string
 * move from caller to our mem
@@ -209,29 +165,95 @@ pidparent
                     endc
 
                     ldx       1,s                 ; get device mem ptr
-                    ifgt      Level-1
-                    ldu       3,s                 ; get path descriptor pointer
-                    ldu       PD.BUF,u            ; get destination pointer in U
-                    endc
+                    ldu       3,s
+                    ldu       PD.BUF,u
                     ldy       V.PATHNAMELEN,x     ; get count in Y
                     ldx       V.PATHNAME,x        ; get source in X
 
                     ifgt      Level-1
-*  F$Move the bytes (seems to work)
+* Copy pathname into owned system storage before starting the transaction.
                     os9       F$Move
-                    bcs       moverr
+                    lbcs      moverr
                     endc
 
 * Add carriage return
                     ifgt      Level-1
                     tfr       u,x
                     else
-                    tfr       x,u
+                    pshs      y,u
+copyname            lda       ,x+
+                    sta       ,u+
+                    leay      -1,y
+                    bne       copyname
+                    puls      y,u
+                    tfr       u,x
                     endc
                     tfr       y,d
                     leau      d,u
-                    lda       #C$CR
+                    cmpy      #0
+                    beq       pathnamecr
+                    lda       -1,u
+                    anda      #$7F
+                    sta       -1,u
+pathnamecr          lda       #C$CR
                     sta       ,u
+                    leay      1,y
+
+                    ldy       3,s                 ; get path descriptor pointer
+                    lda       PD.MOD,y            ; get mode saved by IOMan
+                    pshs      a
+
+* Stable 24-bit directory cookie is copied with P$DIO by F$Fork.
+                    ldx       <D.Proc
+                    ldu       2,s                 ; device statics
+                    clra
+                    clrb
+                    pshs      d                   ; cookie low word, initially zero
+                    clra
+                    pshs      a                   ; cookie high byte
+                    tst       V.RELFLG,u
+                    beq       contextready
+                    leau      P$DIO+2,x
+                    ldb       3,s                 ; request mode
+                    bitb      #PEXEC.+EXEC.
+                    beq       contextdata
+                    leau      6,u
+contextdata         lda       ,u
+                    sta       ,s
+                    ldd       1,u
+                    std       1,s
+contextready        lda       P$ID,x
+                    pshs      a
+                    ldx       6,s                 ; device statics
+
+* put command byte & path # on stack
+                    lda       V.DWCMD,x
+                    ora       #DW.Context         ; context-aware path protocol
+                    ldy       8,s
+                    ldb       PD.PD,y
+                    pshs      d                   ; p# PD.PD Regs
+
+* put rfm op and DW op on stack
+                    lda       #OP_VFM
+                    pshs      a                   ; DWOP RFMOP p# PD.PD Regs
+
+                    leax      ,s                  ; point X to stack
+                    ldy       #8                  ; extended path header
+
+                    ifgt      Level-1
+                    ldu       <D.DWSubAddr
+                    else
+                    ldu       >D.DWSubAddr
+                    endc
+
+                    orcc      #IntMasks
+                    lbsr      Send
+                    leas      8,s                 ;clean stack   PD.PD Regs
+
+                    ldx       3,s
+                    ldx       PD.BUF,x
+                    ldy       1,s
+                    ldy       V.PATHNAMELEN,y
                     leay      1,y
 
 * send to server
@@ -240,16 +262,32 @@ pidparent
                     else
                     ldu       >D.DWSubAddr
                     endc
-                    jsr       6,u
+                    lbsr      Send
 
 * read response from server -> B
                     clr       ,-s
                     leax      ,s
                     ldy       #1
-                    jsr       3,u
+                    lbsr      Receive
 
 * pull server's response into B
-                    puls      b                   ; PD.PD Regs
+                    bcc       OpenResponse
+                    leas      1,s
+                    bra       moverr
+OpenResponse        puls      b                   ; PD.PD Regs
+                    tstb
+                    bne       moverr
+                    ldx       1,s                 ; device statics
+                    lda       V.DWCMD,x
+                    cmpa      #DW.ChgDir
+                    bne       moverr
+* Success returns an immutable cookie. Commit it only after all bytes arrive.
+                    ldx       3,s
+                    ldx       PD.BUF,x
+                    ldy       #3
+                    lbsr      Receive
+                    bcs       moverr
+                    clrb
 moverr              puls      cc
                     tstb
                     beq       openok
@@ -265,7 +303,7 @@ openerr             coma                          ; set error
                     clr       PD.BUF+1,y
 openerrnofree
                     puls      b
-                    coma                          ; restore error condition
+                    orcc      #1                  ; retain failure after cleanup
                     bra       open2ret
 
 openok              ldx       ,s                  ; get device memory pointer
@@ -282,14 +320,21 @@ openok              ldx       ,s                  ; get device memory pointer
                     else
                     ldu       >D.Proc
                     endc
-                    lda       P$ID,u              ; save server-side directory owner
+                    ldx       PD.BUF,y            ; returned immutable directory cookie
                     ldb       PD.MOD,y            ; get resolved mode bits
                     bitb      #PWRIT.+PREAD.+UPDAT. ; data directory request?
                     beq       chgexec             ; no, test execution directory
-                    sta       P$DIO+3,u           ; remember CWD owner context
+                    lda       ,x
+                    sta       P$DIO+2,u
+                    ldd       1,x
+                    std       P$DIO+3,u
+                    ldb       PD.MOD,y
 chgexec             bitb      #PEXEC.+EXEC.       ; execution directory request?
                     beq       openokfree          ; no, just free temporary buffer
-                    sta       P$DIO+9,u           ; remember CXD owner context
+                    lda       ,x
+                    sta       P$DIO+8,u
+                    ldd       1,x
+                    std       P$DIO+9,u
 openokfree
                     ldy       2,s                 ; get path descriptor pointer
                     ldu       PD.BUF,y
@@ -301,7 +346,9 @@ openokfree
 openoknofree        clrb
                     bra       open2ret
 
-open2               bra       openerr
+BadPath             ldb       #E$BPNam
+                    lbra      openerr
+open2               lbra      openerr
 open2ret            puls      x,y,u,pc
 
 
@@ -378,15 +425,19 @@ seek                pshs      y,u
                     endc
 
 * send dw op, rfm op, path #
-                    jsr       6,u
+                    lbsr      Send
                     leas      6,s                 ;clean stack - PD.PD Regs
 
 * read response from server
                     leax      ,s
                     ldy       #1
-                    jsr       3,u
+                    lbsr      Receive
 
-                    puls      b
+                    bcc       response@
+                    leas      1,s
+                    orcc      #1
+                    puls      y,u,pc
+response@           puls      b
                     tstb
                     beq       ok@
                     coma
@@ -405,251 +456,208 @@ notok@              puls      y,u,pc
 * Exit:  CC.Carry = 0 (no error), 1 (error)
 *        B = error code (if CC.Carry == 1)
 *
-read                ldb       #DW.read
-                    bra       read1               ; join readln routine
-
-
-
-******************************
-*
-* Write - writes data to a file on the remote device
-*
-* Entry: Y = Path descriptor pointer
-*        U = Callers register stack pointer
-*
-* Exit:  CC.Carry = 0 (no error), 1 (error)
-*        B = error code (if CC.Carry == 1)
-*
-write               ldb       #DW.write
-                    lbra      write1
-
-
-
-******************************
-*
-* ReadLn - reads a line of data from a file on the remote device
-*
-* Entry: Y = Path descriptor pointer
-*        U = Callers register stack pointer
-*
-* Exit:  CC.Carry = 0 (no error), 1 (error)
-*        B = error code (if CC.Carry == 1)
-*
-readln              ldb       #DW.readln
-read1               ldx       PD.DEV,y            ; to our static storage
-                    ldx       V$STAT,x
-                    pshs      x,y,u
-
-* put path # on stack
-                    lda       PD.PD,y
-                    pshs      cc
-                    pshs      a                   ; p# PD.PD Regs
-
-* put rfm op and DW op on stack
-
-                    lda       #OP_VFM
-                    pshs      d                   ; DWOP RFMOP p# PD.PD Regs
-
-                    leax      ,s                  ; point X to stack
-                    ldy       #3                  ; 3 bytes to send
-
-* set U to dwsub
-                    ifgt      Level-1
-                    ldu       <D.DWSubAddr
-                    else
-                    ldu       >D.DWSubAddr
-                    endc
-
-* send dw op, rfm op, path #
-                    orcc      #IntMasks
-                    jsr       6,u
-                    leas      3,s                 ;clean stack - PD.PD Regs
-
-* put caller's Y on stack (maximum allowed bytes)
-                    ldx       5,s
-                    ldx       R$Y,x
+* Transfer stack: opcode, remaining, completed, caller pointer, PD, regs, CC.
+T.Op                equ       0
+T.Left              equ       1
+T.Done              equ       3
+T.Ptr               equ       5
+T.PD                equ       7
+T.Regs              equ       9
+T.CC                equ       11
+T.Size              equ       12
+read                ldb       #DW.Read
+                    bra       Transfer
+readln              ldb       #DW.ReadLn
+                    bra       Transfer
+write               ldb       #DW.Write
+                    bra       Transfer
+writln              ldb       #DW.WritLn
+Transfer            pshs      cc,y,u
+                    ldx       R$X,u
                     pshs      x
-
-* send 2 bytes from stack
-                    leax      ,s
-                    ldy       #2
-                    jsr       6,u
-
-*                    leas      -2,s                ; leave 2 bytes for server response
-
-* read # bytes coming (0 = eof) from server — 2-byte big-endian count
-                    leax      ,s
-                    ldy       #2
-                    jsr       3,u
-
-* store size
-                    puls      d                   ; D = byte count from server
-
-
-* check for 0
-                    cmpd      #0
-                    beq       readln1             ; 0 bytes = EOF
-
-* read the data from server if > 0
-go_on               pshs      d                   ;xfersz PD.PD Regs
-
-* load data from server into mem block
-                    ifgt      Level-1
-                    ldx       5,s                 ; path descriptor
+                    ldx       #0
+                    pshs      x
+                    ldx       R$Y,u
+                    pshs      x
+                    pshs      b
+* Rearrange saved tail: pshs cc,y,u places CC, PD, regs after locals.
+* Tail offsets are CC=7, PD=8, regs=10 until normalized below.
+                    lda       7,s
+                    ldy       8,s
+                    ldu       10,s
+                    sta       T.CC,s
+                    sty       T.PD,s
+                    stu       T.Regs,s
+TransferNext        ldd       T.Left,s
+                    lbeq      TransferOK
+                    cmpd      #256
+                    bls       TransferCount
+                    ldd       #256
+TransferCount       pshs      d                   ; chunk length
+* Stage outgoing bytes before emitting any packet.
+                    ldb       T.Op+2,s
+                    cmpb      #DW.Write
+                    beq       TransferStage
+                    cmpb      #DW.WritLn
+                    bne       TransferPacket
+TransferStage       ldy       ,s
+                    ldx       T.Ptr+2,s
+                    ldu       T.PD+2,s
+                    ldu       PD.BUF,u
+                    lbsr      FromCaller
+                    lbcs      TransferChunkError
+* WritLn stops after the first CR, including CR in returned count.
+                    ldb       T.Op+2,s
+                    cmpb      #DW.WritLn
+                    bne       TransferPacket
+                    ldx       T.PD+2,s
                     ldx       PD.BUF,x
-                    else
-                    ldx       7,s                 ; caller regs
-                    std       R$Y,x
-                    ldx       R$X,x
-                    endc
-                    ldy       ,s                  ;xfersz
-                    jsr       3,u
-
-* F$Move
-* a = my task #
-* b = caller's task #
-* X = source ptr
-* Y = byte count
-* U = dest ptr
-
-* move from our mem to caller
-
-                    puls      y                   ;Y = byte count (already set?)    -  PD.PD Regs
-                    puls      cc
-
-                    ifgt      Level-1
-                    ldx       4,s
-                    ldu       R$X,x               ; U = caller's X = dest ptr
-                    sty       R$Y,x
-
-                    lda       <D.SysTsk           ; A = system task #
-
-                    ldx       <D.Proc             get calling proc desc
-                    ldb       P$Task,x            ; B = callers task #
-
-                    ldx       2,s                 ; path descriptor
-                    ldx       PD.BUF,x
-
-*  F$Move the bytes (seems to work)
-                    os9       F$Move
-                    endc
-* assume everything worked (not good)
-                    clrb
-                    bra       readln2
-
-readln1
-                    puls      cc
-                    comb
-                    ldb       #E$EOF
-readln2             puls      x,y,u,pc
-
-
-
-
-******************************
-*
-* WritLn - writes a line of data to a file on the remote device
-*
-* Entry: Y = Path descriptor pointer
-*        U = Callers register stack pointer
-*
-* Exit:  CC.Carry = 0 (no error), 1 (error)
-*        B = error code (if CC.Carry == 1)
-*
-writln              ldb       #DW.writln
-
-write1              ldx       PD.DEV,y            ; to our static storage
-                    ldx       V$STAT,x
-                    pshs      x,y,u               ; Vstat pd regs
-
-* put path # on stack
+                    ldy       ,s
+TransferCR
+                    lda       ,x+
+                    cmpa      #C$CR
+                    beq       TransferCRFound
+                    leay      -1,y
+                    bne       TransferCR
+                    bra       TransferPacket
+TransferCRFound     lda       T.Op+2,s
+                    ora       #$80
+                    sta       T.Op+2,s
+                    tfr       x,d
+                    ldx       T.PD+2,s
+                    subd      PD.BUF,x
+                    std       ,s
+TransferPacket      ldy       T.PD+2,s
                     lda       PD.PD,y
-                    pshs      cc                  ; cc vstat pd regs
-                    pshs      a                   ; p# cc vstat PD Regs
-
-* put rfm op and DW op on stack
-
+                    ldb       T.Op+2,s
+                    andb      #$7F
+                    exg       a,b                 ; opcode,path
+                    pshs      d
                     lda       #OP_VFM
-                    pshs      d                   ; DWOP RFMOP p# cc vstat PD.PD Regs
-
-                    leax      ,s                  ; point X to stack
-                    ldy       #3                  ; 3 bytes to send
-
-* set U to dwsub
-                    ifgt      Level-1
-                    ldu       <D.DWSubAddr
-                    else
-                    ldu       >D.DWSubAddr
-                    endc
-
-* send dw op, rfm op, path #
-                    orcc      #IntMasks
-                    jsr       6,u
-                    leas      3,s                 ;clean stack - cc vstat PD.PD Regs
-
-* put caller's Y on stack (maximum allowed bytes)
-                    ldx       5,s
-                    ldx       R$Y,x
-                    pshs      x                   ;bytes cc vstat PD.PD Regs
-
-* send 2 bytes from stack
+                    pshs      a
+                    leax      ,s
+                    ldy       #5                  ; header and chunk length
+                    lbsr      Send
+                    leas      3,s
+                    ldb       T.Op+2,s
+                    cmpb      #DW.Read
+                    beq       TransferRead
+                    cmpb      #DW.ReadLn
+                    beq       TransferRead
+                    ldx       T.PD+2,s
+                    ldx       PD.BUF,x
+                    ldy       ,s
+                    lbsr      Send
+                    lbra      TransferCommit
+TransferRead        leas      -2,s                ; returned count
                     leax      ,s
                     ldy       #2
-                    jsr       6,u
-
-* move caller's data into our buf
-
-* F$Move
-* a = my task #
-* b = caller's task #
-* X = source ptr
-* Y = byte count
-* U = dest ptr
-
-                    puls      y                   ;Y = byte count (already set?)  cc vstat PD.PD Regs
-
-                    ifgt      Level-1
-
-                    ldb       <D.SysTsk           ; dst B = us
-
-                    pshs      u                   ; dwsub  cc vstat PD.PD Regs
-                    ldx       5,s
-                    ldu       PD.BUF,x            ; dst U = our path buffer
-
-                    ldx       <D.Proc             get calling proc desc
-                    lda       P$Task,x            ; src A = callers task #
-
-                    ldx       7,s                 ; orig U
-                    ldx       R$X,x               ; src = caller's X
-
-
-*  F$Move the bytes
-                    os9       F$Move
-
-                    *         send                v.buf to server
-
-                    puls      u                   ;      cc vstat PD.PD Regs
-                    ldx       3,s
+                    lbsr      Receive
+                    lbcs      TransferCountError
+                    ldd       ,s
+                    cmpd      2,s
+                    lbhi      TransferBadCount
+                    std       2,s
+                    leas      2,s
+                    cmpd      #0
+                    lbeq      TransferEOF
+                    tfr       d,y
+                    ldx       T.PD+2,s
                     ldx       PD.BUF,x
+                    lbsr      Receive
+                    lbcs      TransferChunkError
+                    ldx       T.PD+2,s
+                    ldx       PD.BUF,x
+                    ldu       T.Ptr+2,s
+                    ldy       ,s
+                    ldb       T.Op+2,s
+                    cmpb      #DW.ReadLn
+                    bne       TransferCopyRead
+                    pshs      x
+                    tfr       y,d
+                    leax      d,x
+                    lda       -1,x
+                    cmpa      #C$CR
+                    puls      x
+                    bne       TransferCopyRead
+                    lda       T.Op+2,s
+                    ora       #$80
+                    sta       T.Op+2,s
+TransferCopyRead    lbsr      ToCaller
+                    lbcs      TransferChunkError
+TransferCommit      puls      d
+                    pshs      d
+                    addd      T.Done+2,s
+                    std       T.Done+2,s
+                    puls      d
+                    addd      T.Ptr,s
+                    std       T.Ptr,s
+* Left is recomputed from original request to avoid cumulative subtraction.
+                    ldu       T.Regs,s
+                    ldd       R$Y,u
+                    subd      T.Done,s
+                    std       T.Left,s
+* Continue binary reads to the requested count; line reads stop at CR.
+                    tst       T.Op,s
+                    lbmi      TransferOK
+                    lbra      TransferNext
+TransferBadCount    ldb       #E$Read
+TransferCountError  leas      2,s
+TransferChunkError  leas      2,s
+                    bra       TransferError
+TransferEOF         leas      2,s
+                    ldd       T.Done,s
+                    lbne      TransferOK
+                    ldb       #E$EOF
+TransferError       lda       T.CC,s
+                    tfr       a,cc
+                    orcc      #1
+                    bra       TransferReturn
+TransferOK          lda       T.CC,s
+                    tfr       a,cc
+                    clrb
+TransferReturn      ldu       T.Regs,s
+                    ldy       T.Done,s
+                    sty       R$Y,u
+                    ldy       T.PD,s
+                    leas      T.Size,s
+                    rts
+
+* X source, U destination, Y count. Never rely on DWRead's checksum as count.
+FromCaller
+                    ifgt      Level-1
+                    ldd       <D.Proc
+                    pshs      x
+                    tfr       d,x
+                    lda       P$Task,x
+                    ldb       <D.SysTsk
+                    puls      x
+                    os9       F$Move
                     else
-                    ldx       5,s
-                    ldx       R$X,x
+                    lbsr      CopyBytes
                     endc
-
-                    jsr       6,u
-
-                    puls      cc                  ; vstat PD.PD Regs
-                    bra       writln2
-* error exit?
-
-writln2             puls      x,y,u,pc
-
-
-
-
-
-
-
+                    rts
+ToCaller
+                    ifgt      Level-1
+                    pshs      x
+                    ldx       <D.Proc
+                    ldb       P$Task,x
+                    lda       <D.SysTsk
+                    puls      x
+                    os9       F$Move
+                    else
+                    lbsr      CopyBytes
+                    endc
+                    rts
+CopyBytes           pshs      x,y,u
+                    cmpy      #0
+                    beq       CopyDone
+CopyLoop            lda       ,x+
+                    sta       ,u+
+                    leay      -1,y
+                    bne       CopyLoop
+CopyDone            andcc     #$FE
+                    puls      x,y,u,pc
 
 ******************************
 *
@@ -661,433 +669,128 @@ writln2             puls      x,y,u,pc
 * Exit:  CC.Carry = 0 (no error), 1 (error)
 *        B = error code (if CC.Carry == 1)
 *
-getstt
-                    lda       PD.PD,y
-                    lbsr      sendgstt
-
-                    ldb       R$B,u               get function code
-                    beq       GstOPT
-                    cmpb      #SS.EOF
-                    beq       GstEOF
+getstt              ldb       R$B,u
+                    lbeq      StatusOptions
                     cmpb      #SS.Ready
-                    beq       GstReady
+                    beq       StatusReady
+                    cmpb      #SS.EOF
+                    beq       StatusGet
                     cmpb      #SS.Size
-                    beq       GstSize
+                    beq       StatusGet
                     cmpb      #SS.Pos
-                    beq       GstPos
+                    beq       StatusGet
                     cmpb      #SS.FD
-                    beq       GstFD
+                    beq       StatusBuffer
                     cmpb      #SS.FDInf
-                    lbeq       GstFDInf
-                    cmpb      #SS.DirEnt
-                    lbeq       GstDirEnt
-*               comb
-*               ldb       #E$UnkSvc
+                    beq       StatusGet
+                    bra       StatusUnsupported
+StatusBuffer        ldx       R$Y,u
+                    cmpx      #256
+                    bhi       StatusBadSize
+StatusGet           lda       PD.PD,y
+                    lbsr      sendgstt
+                    ldb       R$B,u
+                    cmpb      #SS.EOF
+                    beq       StatusEOF
+                    cmpb      #SS.Size
+                    beq       StatusWord
+                    cmpb      #SS.Pos
+                    beq       StatusWord
+                    cmpb      #SS.FDInf
+                    lbeq      StatusFDInf
+                    lbra      StatusBytes
+StatusBadSize       ldb       #E$BPNam
+                    orcc      #1
+                    rts
+* Options are the local path packet, not a server request. copy uses its
+* device-type byte to decide whether RBF-only metadata setters are applicable.
+StatusOptions       pshs      x,y,u
+                    leax      PD.OPT,y
+                    ldu       R$X,u
+                    ldy       #32
+                    lbsr      ToCaller
+                    bcs       StatusOptionsDone
+                    clrb
+StatusOptionsDone   puls      x,y,u,pc
+StatusReady         clr       R$B,u
                     clrb
                     rts
-
-* SS.OPT
-* RFM does nothing here, so we do nothing
-GstOPT
+StatusUnsupported   ldb       #E$UnkSvc
+                    orcc      #1
                     rts
-
-* SS.EOF
-* Entry A = path
-*       B = SS.EOF
-* Exit  CC.Carry = 0 if not at EOF, 1 if at EOF
-*       B = E$EOF if at EOF, 0 otherwise
-* Server returns 1 byte: 0 = not at EOF, non-zero = at EOF
-GstEOF
-                    ldx       PD.DEV,y
-                    ldx       V$STAT,x
-                    pshs      x,y,u
-
-                    clr       ,-s                 ; 1-byte receive buffer
+StatusEOF           pshs      x,y,u
+                    leas      -1,s
                     leax      ,s
                     ldy       #1
-                    ifgt      Level-1
-                    ldu       <D.DWSubAddr
-                    else
-                    ldu       >D.DWSubAddr
-                    endc
-                    jsr       3,u                 ; recv 1 byte from server
-                    puls      b                   ; B = 0 (not EOF) or non-zero (EOF)
-                    tstb
-                    bne       gsteof_e
-                    clrb
+                    lbsr      Receive
+                    bcs       StatusEOFError
+                    ldb       ,s
+                    beq       StatusEOFSuccess
+                    ldb       #E$EOF
+                    orcc      #1
+                    bra       StatusEOFError
+StatusEOFSuccess    clrb
+StatusEOFError      leas      1,s
                     puls      x,y,u,pc
-gsteof_e            ldb       #E$EOF
-                    coma                          ; set carry = error
-                    puls      x,y,u,pc
-
-* SS.Ready - Check for data available on path
-* Entry A = path
-*       B = SS.Ready
-GstReady
-                    clr       R$B,u               always mark no data ready
-                    rts
-
-* SS.Size - Return size of file opened on path
-* Entry A = path
-*       B = SS.SIZ
-* Exit  X = msw of files size
-*       U = lsw of files size
-* Server returns 4 bytes big-endian: [MSW_hi, MSW_lo, LSW_hi, LSW_lo]
-GstSize
-                    ldx       PD.DEV,y
-                    ldx       V$STAT,x
-                    pshs      x,y,u
-
-                    leas      -4,s                ; 4-byte receive buffer
+StatusWord          pshs      x,y,u
+                    leas      -4,s
                     leax      ,s
                     ldy       #4
-                    ifgt      Level-1
-                    ldu       <D.DWSubAddr
-                    else
-                    ldu       >D.DWSubAddr
-                    endc
-                    jsr       3,u                 ; recv 4 bytes
-                    ldd       ,s                  ; D = MSW
-                    ldu       2,s                 ; U = LSW
-                    leas      4,s                 ; free buffer
-                    ldx       4,s                 ; X = caller register stack
-                    std       R$X,x               ; R$X = MSW of size
-                    stu       R$U,x               ; R$U = LSW of size
+                    lbsr      Receive
+                    bcs       StatusWordDone
+                    ldu       8,s
+                    ldd       ,s
+                    std       R$X,u
+                    ldd       2,s
+                    std       R$U,u
                     clrb
+StatusWordDone      leas      4,s
                     puls      x,y,u,pc
-
-* SS.Pos - Return the current position in the file
-* Entry A = path
-*       B = SS.Pos
-* Exit  X = msw of pos
-*       U = lsw of pos
-* Server returns 4 bytes big-endian: [MSW_hi, MSW_lo, LSW_hi, LSW_lo]
-GstPOS
-                    ldx       PD.DEV,y
-                    ldx       V$STAT,x
-                    pshs      x,y,u
-
-                    leas      -4,s                ; 4-byte receive buffer
-                    leax      ,s
-                    ldy       #4
-                    ifgt      Level-1
-                    ldu       <D.DWSubAddr
-                    else
-                    ldu       >D.DWSubAddr
-                    endc
-                    jsr       3,u                 ; recv 4 bytes
-                    ldd       ,s                  ; D = MSW
-                    ldu       2,s                 ; U = LSW
-                    leas      4,s                 ; free buffer
-                    ldx       4,s                 ; X = caller register stack
-                    std       R$X,x               ; R$X = MSW of position
-                    stu       R$U,x               ; R$U = LSW of position
-                    clrb
-                    puls      x,y,u,pc
-
-* SS.FD - Return file descriptor sector
-* Entry: A = path
-*        B = SS.FD
-*        X = ptr to 256 byte buffer
-*        Y = # of bytes of FD required
-
-* path # and SS.FD already sent to server, so
-* send Y, recv Y bytes, get them into caller at X
-* Y and U here are still as at entry
-GstFD
-                    ldx       PD.DEV,y
-                    ldx       V$STAT,x
-                    pshs      x,y,u
-
-                    *         send                caller's Y (do we really need this to be 16bit?  X points to 256byte buff?
+* Variable-size FD response; count stays on stack across transport.
+StatusBytes         pshs      x,y,u
                     ldx       R$Y,u
                     pshs      x
                     leax      ,s
                     ldy       #2
-
-                    *         set                 U to dwsub
-                    ifgt      Level-1
-                    ldu       <D.DWSubAddr
-                    else
-                    ldu       >D.DWSubAddr
-                    endc
-
-                    jsr       6,u
-
-                    *         recv                bytes into path buffer
-                    puls      y
-                    ldx       2,s                 ; path descriptor
-                    ldx       PD.BUF,x
-
-                    ifgt      Level-1
-                    pshs      x
-                    endc
-
-                    jsr       3,u
-
-                    ifgt      Level-1
-                    *         move                path buffer into caller
-
-                    ldx       4,s
-                    ldu       R$X,x               ; U = caller's X = dest ptr
-                    sty       R$Y,x               ; do we need to set this for caller?
-
-                    lda       <D.SysTsk           ; A = system task #
-
-                    ldx       <D.Proc             get calling proc desc
-                    ldb       P$Task,x            ; B = callers task #
-
-                    puls      x                   ; PD.BUF from earlier
-
-*  F$Move the bytes (seems to work)
-                    os9       F$Move
-
-                    else
-                    endc
-
-* assume everything worked (not good)
-                    clrb
-
-                    puls      x,y,u,pc
-
-
-* SS.FDInf -
-* Entry: A = path
-*        B = SS.FDInf
-*        X = ptr to 256 byte buffer
-*        Y = msb - Length of read
-*              lsb - MSB of LSN
-*        U = LSW of LSN
-*
-* sendgstt already sent [OP_VFM, DW.getstt, path#, SS.FDInf].
-* Now send R$Y + R$U (4 bytes: len, LSN[0], LSN[1], LSN[2]),
-* receive 256 bytes into PD.BUF, then F$Move to caller's X buffer.
-GstFDInf
-                    ldx       PD.DEV,y
-                    ldx       V$STAT,x
-                    pshs      x,y,u               ; [S+0..1]=V$STAT, [S+2..3]=path_desc, [S+4..5]=caller_regs
-
-* build 4-byte send packet: [Y_hi=len, Y_lo=LSN_MSB, U_hi=LSN_mid, U_lo=LSN_lo]
-                    ldy       R$U,u               ; Y = caller's U (LSN_LSW)
-                    pshs      y                   ; push U (2 bytes)
-                    ldx       R$Y,u               ; X = caller's Y (len|LSN_MSB)
-                    pshs      x                   ; push Y (2 bytes): stack=[Y_hi,Y_lo,U_hi,U_lo,...]
-
+                    lbsr      Send
+                    ldy       ,s
+                    bra       StatusReceive
+StatusFDInf         pshs      x,y,u
+                    ldd       R$U,u
+                    pshs      d
+                    ldd       R$Y,u
+                    pshs      d
                     leax      ,s
                     ldy       #4
-
-                    ifgt      Level-1
-                    ldu       <D.DWSubAddr
-                    else
-                    ldu       >D.DWSubAddr
-                    endc
-
-                    jsr       6,u                 ; send 4 bytes
-                    leas      4,s                 ; clean stack
-
-* receive 256 bytes into PD.BUF
-                    ldx       2,s                 ; path descriptor
+                    lbsr      Send
+                    leas      4,s
+                    ldd       #256
+                    pshs      d
+                    tfr       d,y
+StatusReceive       ldx       4,s                 ; PD
                     ldx       PD.BUF,x
-                    ldy       #256
-
-                    ifgt      Level-1
-                    pshs      x                   ; save PD.BUF ptr for F$Move
-                    endc
-
-                    jsr       3,u                 ; recv 256 bytes
-
-                    ifgt      Level-1
-* F$Move 256 bytes from PD.BUF (system task) to caller's X (caller's task)
-                    ldx       6,s                 ; caller_regs
-                    ldu       R$X,x               ; U = caller's X = dest buffer
-                    sty       R$Y,x               ; update caller's Y
-
-                    lda       <D.SysTsk           ; A = system task (source)
-                    ldx       <D.Proc
-                    ldb       P$Task,x            ; B = caller's task (dest)
-                    puls      x                   ; X = PD.BUF
-                    ldy       #256
-                    os9       F$Move
-                    else
-                    endc
-
-                    clrb
-                    puls      x,y,u,pc
-
-* SS.DirEnt -
-* Entry: A = path
-*        B = SS.DirEnt
-*        X = ptr to 64 byte buffer
-GstDirEnt
-                    ldx       PD.DEV,y
-                    ldx       V$STAT,x
-                    pshs      x,y,u
-
-                    *         send                caller's Y (do we really need this to be 16bit?  X points to 256byte buff?
-                    ldx       R$Y,u
-                    pshs      x
-                    leax      ,s
-                    ldy       #2
-
-                    *         set                 U to dwsub
-                    ifgt      Level-1
-                    ldu       <D.DWSubAddr
-                    else
-                    ldu       >D.DWSubAddr
-                    endc
-
-                    jsr       6,u
-
-                    *         recv                bytes into path buffer
-                    puls      y
-                    ldx       2,s                 ; path descriptor
-                    ldx       PD.BUF,x
-
-                    ifgt      Level-1
-                    pshs      x
-                    endc
-
-                    jsr       3,u
-
-                    ifgt      Level-1
-                    *         move                path buffer into caller
-
-                    ldx       4,s
-                    ldu       R$X,x               ; U = caller's X = dest ptr
-                    sty       R$Y,x               ; do we need to set this for caller?
-
-                    lda       <D.SysTsk           ; A = system task #
-
-                    ldx       <D.Proc             get calling proc desc
-                    ldb       P$Task,x            ; B = callers task #
-
-                    puls      x                   ; PD.BUF from earlier
-
-*  F$Move the bytes (seems to work)
-                    os9       F$Move
-
-                    else
-                    endc
-
-* assume everything worked (not good)
-                    clrb
-
-                    puls      x,y,u,pc
-
-
-
-
-******************************
-*
-* SetStat - change status of file on the remote device
-*
-* Entry: Y = Path descriptor pointer
-*        U = Callers register stack pointer
-*
-* Exit:  CC.Carry = 0 (no error), 1 (error)
-*        B = error code (if CC.Carry == 1)
-*
-setstt
-                    lda       #DW.setstt
-                    lbsr      sendit
-
+                    lbsr      Receive
+                    bcs       StatusBytesDone
+                    ldu       6,s                 ; caller register frame
+                    ldy       ,s
+* FDInf still consumes the existing fixed 256-byte wire reply. Application
+* R$Y is LSN high byte / requested length (the layout used by dir -e).
                     ldb       R$B,u
-                    beq       SstOpt
-                    cmpb      #SS.Size
-                    beq       SstSize
-                    cmpb      #SS.FD
-                    beq       SstFD
-                    cmpb      #SS.Lock
-                    beq       SstLock
-                    cmpb      #SS.RsBit
-                    beq       SstRsBit
-                    cmpb      #SS.Attr
-                    beq       SstAttr
-                    cmpb      #SS.FSig
-                    beq       SstFSig
-                    comb
-                    ldb       #E$UnkSvc
-                    rts
-
-SstOpt
-SstSize
-                    rts
-
-* Entry: A = path
-*        B = SS.FD
-*        X = ptr to 256 byte buffer
-*        Y = # of bytes of FD to write
-
-* path # and SS.FD already sent to server, so
-* send Y, recv Y bytes, get them into caller at X
-* Y and U here are still as at entry
-SstFD
-                    ldx       PD.DEV,y
-                    ldx       V$STAT,x
-                    pshs      x,y,u
-
-                    *         send                caller's Y (do we really need this to be 16bit?  X points to 256byte buff?
-                    ldx       R$Y,u
-                    pshs      x
-                    leax      ,s
-                    ldy       #2
-
-                    *         set                 U to dwsub
-                    ifgt      Level-1
-                    ldu       <D.DWSubAddr
-                    else
-                    ldu       >D.DWSubAddr
-                    endc
-                    jsr       6,u
-
-                    ifgt      Level-1
-* move caller bytes into path buffer
-
-                    puls      y                   ; get number of bytes pushed earlier
-                    ldx       4,s
-                    ldx       R$X,x               ; U = caller's X = dest ptr
-                    ldu       2,s
-                    ldu       PD.BUF,u
-
-                    ldx       <D.Proc             get calling proc desc
-                    lda       P$Task,x            ; A = callers task #
-
-                    ldb       <D.SysTsk           ; B = system task #
-
-
-*  F$Move the bytes (seems to work)
-                    os9       F$Move
-
-* write bytes from path buffer
-                    tfr       u,x
-
-                    ifgt      Level-1
-                    ldu       <D.DWSubAddr
-                    else
-                    ldu       >D.DWSubAddr
-                    endc
-
-                    else
-                    puls      y
-                    ldx       4,s
-                    ldx       R$X,x
-                    endc
-
-
-                    jsr       6,u
-
-* assume everything worked (not good)
+                    cmpb      #SS.FDInf
+                    bne       StatusCopy
+                    clra
+                    ldb       R$Y+1,u
+                    tfr       d,y
+StatusCopy          ldu       R$X,u
+                    lbsr      ToCaller
+                    bcs       StatusBytesDone
                     clrb
-
+StatusBytesDone     leas      2,s
                     puls      x,y,u,pc
 
-
-SstLock
-SstRsBit
-SstAttr
-SstFSig
-                    rts
-
+* Unimplemented setters fail before sending anything to the server. The old
+* two-byte request omitted path and status and could desynchronize the stream.
+setstt              lbra      StatusUnsupported
 
 ******************************
 *
@@ -1099,48 +802,42 @@ SstFSig
 * Exit:  CC.Carry = 0 (no error), 1 (error)
 *        B = error code (if CC.Carry == 1)
 *
-close
-                    pshs      y,u
-
-* put path # on stack
+close               tst       PD.CNT,y
+                    beq       CloseFinal
+                    clrb
+                    rts
+CloseFinal          pshs      cc,x,y,u
                     lda       PD.PD,y
-                    pshs      a
-
-* put rfm op and DW op on stack
-                    ldb       #DW.close
-                    lda       #OP_VFM
+                    ldb       #DW.Close
+                    exg       a,b
                     pshs      d
-
-                    leax      ,s                  ; point X to stack
-                    ldy       #3                  ; 3 bytes to send
-                    ifgt      Level-1
-                    ldu       <D.DWSubAddr
-                    else
-                    ldu       >D.DWSubAddr
-                    endc
-
-                    jsr       6,u
-                    leas      2,s                 ;clean stack (leave 1 byte)
-
-* read server response
+                    lda       #OP_VFM
+                    pshs      a
+                    leax      ,s
+                    ldy       #3
+                    lbsr      Send
+                    leas      2,s
                     leax      ,s
                     ldy       #1
-                    jsr       3,u
-
-* free system mem
-                    ldd       #256
-                    ldx       1,s                 ; orig Y
+                    lbsr      Receive
+                    bcs       CloseResult
+                    ldb       ,s
+CloseResult         stb       ,s
+                    ldx       4,s                 ; saved PD
                     ldu       PD.BUF,x
-                    beq       closememdone
+                    pshs      cc
+                    clr       PD.BUF,x
+                    clr       PD.BUF+1,x
+                    puls      cc
+                    beq       CloseFreed
+                    ldd       #256
                     os9       F$SRtMem
-closememdone
-
-                    puls      b                   ; server sends result code
+CloseFreed          puls      b
+                    puls      cc,x,y,u
                     tstb
-                    beq       close1
-                    coma                          ; set error flag if != 0
-close1              puls      u,y,pc
-
+                    beq       CloseReturn
+                    orcc      #1
+CloseReturn         rts
 
 * send dwop, rfmop, path, set/getstat op   (path is in A)
 sendgstt            pshs      x,y,u
@@ -1159,7 +856,7 @@ sendgstt            pshs      x,y,u
                     ldu       >D.DWSubAddr
                     endc
 
-                    jsr       6,u
+                    lbsr      Send
                     leas      4,s                 ;clean stack
 
                     clrb
@@ -1169,24 +866,36 @@ sendgstt            pshs      x,y,u
 
 
 
-* just send OP_VMF + vfmop
-sendit              pshs      a,x,y,u
-
-                    lda       #OP_VFM             ; load command
-                    pshs      a                   ; command store on stack
-                    leax      ,s                  ; point X to stack
-                    ldy       #2                  ; 2 byte to send
+* Transport entry points preserve the requested count and caller mask state.
+* Receive translates the documented DWRead C/Z result to an OS-9 error.
+Send                pshs      cc,y,u
+                    cmpy      #0
+                    beq       SendDone
                     ifgt      Level-1
                     ldu       <D.DWSubAddr
                     else
                     ldu       >D.DWSubAddr
                     endc
-
                     jsr       6,u
-                    leas      2,s                 ;clean stack
-
-                    clrb
-                    puls      x,y,u,pc
+SendDone            puls      cc,y,u,pc
+Receive             pshs      cc,y,u
+                    cmpy      #0
+                    beq       ReceiveOK
+                    ifgt      Level-1
+                    ldu       <D.DWSubAddr
+                    else
+                    ldu       >D.DWSubAddr
+                    endc
+                    jsr       3,u
+                    bcs       ReceiveFailed
+                    bne       ReceiveFailed
+ReceiveOK           puls      cc,y,u
+                    andcc     #$FE
+                    rts
+ReceiveFailed       puls      cc,y,u
+                    ldb       #E$Read
+                    orcc      #1
+                    rts
 
                     emod
 eom                 equ       *

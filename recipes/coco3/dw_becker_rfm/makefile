@@ -33,6 +33,9 @@ endif
 
 include ../coco3.mak
 
+# RFM boot source is shared with CoCo 1, rather than the CoCo 3 module tree.
+vpath %.asm $(NITROS9DIR)/level1/coco1/modules
+
 copy-sysgo-root:
 	$(OS9COPY) $(MODDIR)/sysgo_dd $(DSKIMAGE),sysgo
 	$(OS9ATTR_EXEC) $(DSKIMAGE),sysgo

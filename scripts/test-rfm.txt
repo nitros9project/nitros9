@@ -1,0 +1,62 @@
+RFM regression checks
+=====================
+
+From the repository root:
+
+    python3 -m venv /tmp/rfm-tests
+    /tmp/rfm-tests/bin/pip install MC6809==0.7.2
+    LWASM=lwasm /tmp/rfm-tests/bin/python scripts/test-rfm.py
+
+The tests assemble the current sources, execute 6809 instructions, and replace
+only OS services and transport endpoints with deterministic fixtures. They cover
+Level 1/2 transfers, full-count binary reads, 256-byte boundaries, multi-chunk
+line operations, partial
+counts, local option packets, pathname staging/limits, transport and allocation failures, FD status
+copying, Dup/final Close, and boot size/count/EOF validation. Actual Becker
+receive/write instructions are also exercised with simulated hardware callbacks,
+including empty requests, partial timeout, checksum and interrupt-mask state.
+The MC6809 emulator is a test dependency; it is not included in OS modules.
+
+RFM now returns E$UnkSvc for unimplemented status requests before sending any
+packet. In particular, the former SetStat stubs no longer claim success or send
+a malformed two-byte packet. Implementing setters needs the matching server's
+packet and response contracts. Existing binary writes have no acknowledgement
+in the reviewed client protocol; successful submission is not proof of durable
+server storage. FDInf retains its existing fixed 256-byte wire reply, copying
+only the requested low-byte length into application storage (as used by dir -e).
+
+A framing/timeout error ends the operation; this does not establish automatic
+stream resynchronization or reconnect. The bounded Becker poll prevents an
+infinite wait, but its wall-clock duration depends on CPU speed. Directory cookies are valid for one server session; reconnect/restart recovery
+and host permissions/locking remain outside these checks. Boot failure never returns a
+partial image as successful; recovery of boot allocations/open server paths
+following a failed boot is not implemented here.
+
+Both RFM recipes locate the shared CoCo 1 boot source explicitly. When building
+from a separate worktree, override any NITROS9DIR in the shell so make uses this
+checkout. Both Level 2 boot variants retain the fixed $1D0-byte module extent.
+
+Directory context wire extension
+-------------------------------
+Runtime RFM now requires a server implementing path operations $11-$15.
+These correspond to legacy Create/Open/MakDir/ChgDir/Delete $01-$05.
+Request: $D6, operation, system-path byte, PID byte, directory-cookie[3],
+mode byte, CR-terminated pathname. Cookies are big endian. Absolute paths
+ignore the cookie; relative paths require a valid nonzero cookie. ChgDir
+success replies with $00 followed by a three-byte cookie; other replies and
+errors remain one byte. Existing transfer/status/Close packets are unchanged.
+The Swift server retains legacy operations for older clients and bootfiles.
+There is no automatic downgrade: an older server cannot provide correct fork
+inheritance and must be updated with the client.
+
+RFM stores cookies at P$DIO+2..4 (data) and P$DIO+8..10 (execution). F$Fork
+already copies these fields. Successful ChgDir replaces only the selected
+record(s), after receiving the entire reply. Errors leave both records intact.
+The server reuses its stable synthetic directory LSN registry, retaining IDs
+until the connection/session resets; parent changes and PID reuse do not alter
+an existing ID. This is path identity, not an open directory inode: host-side
+renames/deletion and server restart recovery are not provided by this change.
+
+The rfmfork guest test sleeps the child before its first remote access while
+the parent changes both directories. It checks inherited data and execution
+paths, then changes the child's directories and checks the parent's paths.

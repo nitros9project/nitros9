@@ -21,6 +21,9 @@ DW.GetStt           EQU       $0B
 DW.SetStt           EQU       $0C
 DW.Close            EQU       $0D
 
+* Path operations $11-$15 use immutable 24-bit directory cookies.
+DW.Context          EQU       $10
+
 DWSS.GetDir         EQU       $10
 
 ********************
