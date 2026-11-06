@@ -170,7 +170,6 @@ ReadChunk           pshs      x
                     puls      x
                     bcs       BootReadError                 D = byte count (0 = EOF) and write pointer
                     ldd       response,u
-                    cmpd      #0
                     beq       ReadDone
                     cmpd      #CHUNKSIZE
                     bhi       BootReadError
@@ -187,6 +186,10 @@ ReadChunk           pshs      x
                     ldd       bootleft,u
                     subd      response,u
                     std       bootleft,u
+                    ifgt      Level-1
+                    lda       #'.                 one dot per received boot chunk
+                    jsr       <D.BtBug
+                    endc
                     bra       ReadChunk
 
 ReadDone            ldd       bootleft,u

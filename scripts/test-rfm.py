@@ -249,12 +249,14 @@ def boot_tests(tmp):
             ([b'\x00',b'\x00\x00\x01\x01',b'\x01\x01'],True),
             ([b'\x00',b'\x00\x00\x00\x01',b'\x00\x02'],True)]
         for responses,error in cases:
-            m,c=cpu_fixture((tmp/'boot').read_bytes());rx=list(responses)
+            m,c=cpu_fixture((tmp/'boot').read_bytes());rx=list(responses);dots=[];chunks=[]
             def ret():
                 sp=c.system_stack_pointer.value;c.program_counter.set(m.read_word(sp));c.system_stack_pointer.set(sp+2)
             def hook():
                 pc=c.program_counter.value
-                if pc in (BASE+sy['DWInit'],sy.get('D.BtBug',-1)):
+                if pc==sy.get('D.BtBug',-1):
+                    dots.append(c.accu_a.value);ret();return True
+                if pc==BASE+sy['DWInit']:
                     ret();return True
                 if pc==BASE+sy['DWWrite']:
                     c.index_x.set(c.index_x.value+c.index_y.value);c.index_y.set(0);ret();return True
@@ -263,6 +265,7 @@ def boot_tests(tmp):
                     if response is None:c.C=1;c.Z=0
                     else:
                         assert len(response)==c.index_y.value
+                        if DATA<=c.index_x.value<DATA+257:chunks.append(response)
                         m.load(c.index_x.value,response);c.index_y.set(sum(response)&65535);c.C=0;c.Z=1
                     ret();return True
                 if m.read_byte(pc)==0x10 and m.read_byte(pc+1)==0x3f:
@@ -271,6 +274,7 @@ def boot_tests(tmp):
                 return False
             c.program_counter.set(BASE+sy['start']);run_until_return(c,hook)
             assert c.C==int(error),(level,error,c.C)
+            assert dots==([ord('.')] * len(chunks) if level==2 else []),(level,dots,len(chunks))
             if not error:
                 assert c.index_x.value==DATA and c.accu_d.value==257
                 assert bytes(m.read_byte(DATA+i) for i in range(257))==b'a'*256+b'b'
