@@ -83,7 +83,7 @@ L00D4               clr       ,-u
 
 L00FF               tfr       x,d
                     cmpb      #40                 compare against 51
-                    bgt       higher              if greater or equal, go on
+                    bhi       higher              if greater or equal, go on
                     inc       <narrow             else set narrow flag
                     lda       #10
                     fcb       $8C
