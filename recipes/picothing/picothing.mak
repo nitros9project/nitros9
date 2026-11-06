@@ -171,7 +171,7 @@ CMDS = asm attr backup bawk binex build cmp copy \
        display dmem dmode dsave dump dw echo edit error exbin \
        format free gfxtest grep help httpd ident inetd iniz irqs link list load login \
        makdir mdir megaread merge mfree minted mmap modpatch more padrom park \
-       pmap proc procs printerr prompt pwd pxd rename save setime \
+       pmap proc procs printerr prompt pwd pxd rename resize save setime \
        sleep smap tee telnet tmode touch tsmon unlink verify vidbusy vidload vlink \
        wdemo wintest wtest wshow wroute wgfx gemtest keytest xmode \
        $(CMDS_EXTRA)
@@ -183,7 +183,7 @@ CMDS = asm attr backup bawk binex build cmp copy cputype \
        display dmode dsave dump dw echo edit error exbin format \
        free grep help httpd ident inetd iniz irqs link list load login makdir \
        megaread mdir merge mfree minted more padrom park printerr procs prompt \
-       pwd pxd rename save setime shellplus shell_21 sleep \
+       pwd pxd rename resize save setime shellplus shell_21 sleep \
        tee telnet tmode touch tsmon unlink verify xmode \
        $(CMDS_EXTRA)
 CMDS_MERGED = utilpak1
