@@ -1,0 +1,8 @@
+# Generated host files. Keep guest-created files visible to git status.
+.rfm-host/
+OS9Boot
+CMDS/
+SYS/
+DD
+sysgo
+startup
