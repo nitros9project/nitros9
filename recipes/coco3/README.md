@@ -37,8 +37,14 @@ From the repository root, ensure:
 
 - [`floppy/`](floppy/) builds CoCo 3 Level 2 double-sided floppy disk images
 - [`dw/`](dw/) builds a CoCo 3 DriveWire-oriented disk image
-- [`rfm/`](rfm/) builds an RFM-only system with host files in the recipe folder and a serial DriveWire bootstrap
+- [`dw_bitbanger_rfm/`](dw_bitbanger_rfm/) boots an RFM-only system through the CoCo serial port
+- [`dw_becker_rfm/`](dw_becker_rfm/) boots the same host-file layout through the Becker TCP port
 - [`dw_mega/`](dw_mega/) builds an expanded CoCo 3 DriveWire image with third-party software
+
+Automated RFM test recipes are separate from the normal transport recipes:
+
+- [`rfm_boot_test/`](rfm_boot_test/) checks remote boot and an RFM-only `/DD` against a real DriveWire server.
+- [`rfm_mame_test/`](rfm_mame_test/) checks transfers, directory inheritance, errors, and IRQ contention against a deterministic protocol fixture.
 
 Each build directory keeps intermediate artifacts local:
 
