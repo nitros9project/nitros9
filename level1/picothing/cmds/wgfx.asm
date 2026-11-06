@@ -1,9 +1,12 @@
 ********************************************************************
 * WGfx - Pico-Thing video graphics showcase (VID-017 acceptance)
 *
+* Usage: wgfx [/<window>]
+*
 * A paced, colourful tour of the video pico's graphics command set,
-* driven straight through /W0's transparent byte pipe so it exercises
-* the firmware, not the driver.  Each scene holds a few seconds:
+* driven straight through the window's transparent byte pipe (/W0 if
+* none is named) so it exercises the firmware, not the driver.  Each
+* scene holds a few seconds:
 *
 *   1  a sixteen-register palette drawn as filled colour bars
 *   2  nested filled ellipses, a white line fan and circle accents
@@ -25,6 +28,8 @@
 * Comment
 * ------------------------------------------------------------------
 *     1    2026       Created as the VID-017 graphics acceptance demo
+*     2    2026/11/06 Mark Murray
+* Takes the window to draw on as an argument.
 
                     nam       WGfx
                     ttl       video graphics showcase
@@ -36,21 +41,21 @@
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       1
+edition             set       2
 
 Hold                equ       200       ticks per scene (about 4 seconds)
 
                     mod       eom,name,tylg,atrv,start,size
 
                     org       0
-path                rmb       1         /W0 path
+path                rmb       1         video window path
                     rmb       300       working stack
 size                equ       .
 
 name                fcs       /WGfx/
                     fcb       edition
 
-W0Name              fcs       "/W0"
+W0Name              fcs       "/W0"        default video window
 
                     use       wgfxdat.asm ; the generated scene streams and images
 
@@ -58,12 +63,20 @@ Msg                 fcc       "wgfx: watch the video screen - 7 colourful scenes
                     fcb       C$CR
 MsgLn               equ       *-Msg
 
-start               leax      Msg,pcr   ; announce on stdout
+start               lda       ,x+       ; get a character of the arguments
+                    cmpa      #C$SPAC   ; a space?
+                    beq       start     ; yes, skip it
+                    leax      -1,x      ; point back at the first other character
+                    cmpa      #C$CR     ; was a window named?
+                    bne       Named     ; yes, keep its name
+                    leax      W0Name,pcr ; no, use the base video console window
+Named               pshs      x         ; save the window name
+                    leax      Msg,pcr   ; announce on stdout
                     lda       #$01
                     ldy       #MsgLn
                     os9       I$Write
 
-                    leax      W0Name,pcr ; open the video console (transparent pipe)
+                    puls      x         ; open the window (transparent pipe)
                     lda       #WRITE.
                     os9       I$Open
                     lbcs      Exit
