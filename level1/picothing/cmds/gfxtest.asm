@@ -1,8 +1,11 @@
 ********************************************************************
 * GfxTest - Pico-Thing video console graphics smoke test
 *
-* Opens /W0 and writes a fixed sequence of graphics draw commands to
-* the video pico: a solid yellow bar, a solid grey bar, a white box
+* Usage: gfxtest [/<window>]
+*
+* Opens the window named, or /W0 if none is, and writes a fixed sequence
+* of graphics draw commands to the video pico: a solid yellow bar, a
+* solid grey bar, a white box
 * outline, and a white diagonal line on the 1024x480 plane.  It is a
 * pure byte-pipe exercise with no graphics library, so it renders the
 * same on the real board (type gfxtest at the shell) and headless under
@@ -15,6 +18,8 @@
 * Comment
 * ------------------------------------------------------------------
 *     1    2026       Created as the committed video console draw test
+*     2    2026/11/06 Mark Murray
+* Takes the window to draw on as an argument.
 
                     nam       GfxTest
                     ttl       video console graphics smoke test
@@ -26,7 +31,7 @@
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       1
+edition             set       2
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -38,8 +43,8 @@ size                equ       .
 name                fcs       /GfxTest/
                     fcb       edition
 
-* video console device name; the high bit on the last character marks
-* the end of the pathlist for I$Open
+* default video console device name; the high bit on the last character
+* marks the end of the pathlist for I$Open
 W0Name              fcs       "/W0"
 
 * The draw program.  Each graphics command is $1B (escape) then a
@@ -67,8 +72,14 @@ Draw                fcb       $0C       clear the screen
                     fcb       $1B,$44,$03,$20,$01,$68 line to 800,360
 DrawLen             equ       *-Draw
 
-start               leax      W0Name,pcr ; the video console device
-                    lda       #WRITE.   ; open it for output
+start               lda       ,x+       ; get a character of the arguments
+                    cmpa      #C$SPAC   ; a space?
+                    beq       start     ; yes, skip it
+                    leax      -1,x      ; point back at the first other character
+                    cmpa      #C$CR     ; was a window named?
+                    bne       Open      ; yes, open that window
+                    leax      W0Name,pcr ; no, use the base video console window
+Open                lda       #WRITE.   ; open it for output
                     os9       I$Open
                     bcs       Exit      ; give up if it will not open
                     sta       <path     ; remember the path number
