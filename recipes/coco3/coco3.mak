@@ -157,8 +157,10 @@ ifneq ($(strip $(BASIC09_SAMPLES)),)
 endif
 	$(OS9COPY) $(MODDIR)/sysgo_dd $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
+ifneq ($(strip $(STARTUP)),)
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
+endif
 	$(call RECIPE_INSTALL,$@)
 
 # /TERM window descriptors — column count and colors controlled by TERM_COLS and TERM_ALTCOLOR
