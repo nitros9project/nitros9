@@ -111,7 +111,7 @@ start               leay      <linebuff,u         get ptr to line buffer
 * there's no point in checking.
 L0120               tfr       x,d
                     cmpb      #51
-                    bgt       higher
+                    bhi       higher
                     inc       <narrow
                     lda       #10
                     fcb       $8C
