@@ -37,6 +37,7 @@ From the repository root, ensure:
 
 - [`floppy/`](floppy/) builds CoCo 3 Level 2 double-sided floppy disk images
 - [`dw/`](dw/) builds a CoCo 3 DriveWire-oriented disk image
+- [`rfm/`](rfm/) builds an RFM-only system with host files in the recipe folder and a serial DriveWire bootstrap
 - [`dw_mega/`](dw_mega/) builds an expanded CoCo 3 DriveWire image with third-party software
 
 Each build directory keeps intermediate artifacts local:
