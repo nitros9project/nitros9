@@ -115,8 +115,7 @@ CMDS += $(CMDS_BASE) hirestest \
 BASIC09_SAMPLES ?=
 RECIPE_DEPS ?=
 
-RECIPE_OUTPUTS ?= $(DSKIMAGE)
-all: libs $(RECIPE_OUTPUTS)
+all: libs $(DSKIMAGE)
 
 LIB_NAMES = $(NOS9_LIB) libnet.a libalib.a $(COCO3_LIB)
 ifeq ($(FUJINET),1)
