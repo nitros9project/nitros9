@@ -33,9 +33,7 @@ FChain              bsr       DoChain   ; do the F$Chain
                     ldb       P$State,x ; get process state
                     andb      #^SysState ; turn off system state
                     stb       P$State,x ; save new state
-resched@            ldu       <P$PModul,x ; get pointer to the module for the current process
-                    os9       F$Unlink  ; unlink it
-                    os9       F$AProc   ; add it to active process queue
+resched@            os9       F$AProc   ; add it to active process queue
                     os9       F$NProc   ; activate it
 * F$Chain system state entry point.
 SFChain             bsr       DoChain   ; do the F$Chain
@@ -51,9 +49,25 @@ chainerr@           pshs      b         ; save off B for now
                     puls      pc,b      ; return error
 DoChain             pshs      u         ; save off caller's SP
                     ldx       <D.Proc   ; get current process descriptor
-                    ldu       ,s        ; get saved caller's SP
-                    bsr       SetupPrc  ; create new child process
+                    ldu       <P$PModul,x ; get the old primary module
+                    pshs      u         ; save it until the new module is in place
+                    ldu       2,s       ; get saved caller's SP
+                    bsr       SetupPrc  ; set up the new primary module
+                    puls      u         ; recover the old primary module
+                    bcs       failed@   ; branch if error
+                    os9       F$UnLink  ; unlink the old primary module
+                    clrb                ; clear the carry to indicate success
                     puls      pc,u      ; recover U and return
+failed@             pshs      b         ; save the error code
+                    cmpu      <P$PModul,x ; is the old module still the primary module?
+                    beq       ret@      ; branch if so
+                    pshs      u         ; save the old primary module
+                    ldu       <P$PModul,x ; get the new module that was linked
+                    os9       F$UnLink  ; unlink it
+                    puls      u         ; recover the old primary module
+                    stu       <P$PModul,x ; and make it the primary module again
+ret@                comb                ; set the carry to indicate an error
+                    puls      pc,u,b    ; recover the error code and U and return
 
 SetupPrc            ldx       <D.Proc   ; get current process descriptor
                     pshs      u,x       ; save off
