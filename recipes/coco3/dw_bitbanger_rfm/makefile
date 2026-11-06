@@ -1,27 +1,18 @@
 LEVEL = 2
-
 include ../coco3.mak
+include ../rfm-common.mak
 
-# RFM boot source is shared with CoCo 1, rather than the CoCo 3 module tree.
-vpath %.asm $(NITROS9DIR)/level1/coco1/modules
+serve: prepare
+	@test -n "$(SERIAL_PORT)" || { echo "Set SERIAL_PORT to the CoCo adapter path"; exit 1; }
+	"$(DRIVEWIRE_SERVER)" --serial-port "$(SERIAL_PORT)" --baud $(BAUD) --disk0 "$(CURDIR)/$(BOOTSTRAP)" --rfm-root "$(CURDIR)"
 
-MAME_BINARY  ?= mame
+MAME_BINARY ?= mame
 MAME_MACHINE ?= coco3
-MAME_FLAGS   ?= -window -skip_gameinfo
-DW_PORT      ?= 65400
+MAME_FLAGS ?= -window -skip_gameinfo
+DW_PORT ?= 65400
 
-copy-sysgo-root:
-	$(OS9COPY) $(MODDIR)/sysgo_dd $(DSKIMAGE),sysgo
-	$(OS9ATTR_EXEC) $(DSKIMAGE),sysgo
+# For an emulator TCP-to-bitbanger setup, start its matching server separately.
+run: prepare
+	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) -bitbanger socket.127.0.0.1:$(DW_PORT)
 
-$(MODDIR)/y0: rfmdesc.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=0
-
-$(MODDIR)/boot_rfm: boot_rfm.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@
-
-run: $(DSKIMAGE)
-	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) \
-		-bitbanger socket.127.0.0.1:$(DW_PORT)
-
-.PHONY: copy-sysgo-root run
+.PHONY: serve run

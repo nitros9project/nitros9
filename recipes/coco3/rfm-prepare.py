@@ -5,12 +5,13 @@ from pathlib import Path
 import shutil
 
 parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--recipe', type=Path, required=True)
 parser.add_argument('--commands', nargs='+', required=True)
 parser.add_argument('--sys-binary', nargs='+', required=True)
 parser.add_argument('--sys-text', nargs='+', required=True)
 parser.add_argument('--startup', type=Path, required=True)
 args = parser.parse_args()
-root = Path(__file__).resolve().parent
+root = args.recipe.resolve()
 
 # Keep the export root at the recipe directory, but expose only runtime files
 # through /DD. System files remain at the recipe top level as build outputs.

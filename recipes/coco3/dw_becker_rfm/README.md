@@ -1,6 +1,6 @@
-# CoCo 3 RFM system
+# CoCo 3 Becker RFM system
 
-`make` builds a serial DriveWire bootstrap and installs the operating system
+`make` builds a Becker-port DriveWire bootstrap and installs the operating system
 as plain host files directly in this recipe folder:
 
 - `bootstrap.dsk`: kernel bootstrap track only, for HDB-DOS `DOS`
@@ -21,20 +21,21 @@ From this directory, with the NitrOS-9 toolchain on PATH:
 
 ```sh
 make
-make serve SERIAL_PORT=/dev/cu.usbserial-FTVCW8GB0 \
-  DRIVEWIRE_SERVER=/path/to/drivewire-server
+make serve DRIVEWIRE_SERVER=/path/to/drivewire-server
 ```
 
-Substitute your serial adapter. `BAUD` defaults to 115200. The server's RFM root
+`DW_BIND` defaults to 127.0.0.1 and `DW_PORT` to 65504. The server's RFM root
 is **this recipe folder**, not a subdirectory. Equivalent server invocation:
 
 ```sh
-drivewire-server --serial-port /dev/cu.usbserial-FTVCW8GB0 --baud 115200 \
+drivewire-server --bind 127.0.0.1 --tcp-port 65504 \
   --disk0 "$PWD/bootstrap.dsk" --rfm-root "$PWD"
 ```
 
-Use the portable server with the RFM receive-boundary pacing fix. Unmodified
-v0.2.0-rc.1 can lose replies between separate bitbanger receive calls (error 244).
+Use a server implementing context-aware RFM ($11-$15). TCP requires no
+bitbanger receive-boundary pacing. `make run` launches MAME; set `MAME_ROMPATH`
+and `HDBDOS_ROM` for your installation and enable its Becker port. Start the
+server separately before launching MAME.
 
 Boot using `DOS` in DriveWire HDB-DOS. At the NitrOS-9 prompt:
 
@@ -48,8 +49,7 @@ list /dd/rfm-check.txt
 
 `rfm-check.txt` appears in this recipe folder's `DD/` directory. RFM writes modify host
 files immediately. Rebuilding refreshes generated system files but does not
-remove guest-created files. The previous disk-backed `l2_coco3_rfm.dsk` and
-`.rfm-host/` layout are obsolete; do not use them for this recipe.
+remove guest-created files. Previous disk-backed images are obsolete; use `bootstrap.dsk`.
 
 ## Regression checks
 
