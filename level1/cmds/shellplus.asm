@@ -1620,7 +1620,7 @@ L0AC7               cmpa      #'$                 Current working directory want
                     sta       <u003D
                     lbsr      L176D               Go figure out current working directory
                     tstb
-                    bne       L0AF2
+                    lbne      L0A86               Skip failed expansion; A may be a control code
                     pshs      y                   Save prompt string ptr
                     ldy       <u002A              Get pointer to current working directory
 * Copy string: Y=source string ptr, X=prompt buffer ptr
