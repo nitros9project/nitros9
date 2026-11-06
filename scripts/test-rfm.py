@@ -26,6 +26,7 @@ class Peer:
     def __init__(self, binary, syms):
         cfg=TestCfg({'trace':False,'verbosity':0}); self.m=Memory(cfg); self.c=CPU(self.m,cfg); self.sy=syms
         self.m.load(BASE, binary); self.tx=[]; self.rx=[]; self.freed=[]; self.fail_move=False; self.fail_alloc=False; self.move_count=0; self.fail_move_at=0
+        self.wire_active=False; self.wire_op=0; self.wire_phase=0; self.wire_count=0; self.gaps=[]
         self.setw(PD+syms['PD.BUF'],BUF); self.setw(PD+syms['PD.DEV'],0x800)
         self.setw(0x800+syms['V$STAT'],0x900)
         self.m.write_byte(PD+syms['PD.PD'],7)
@@ -39,20 +40,42 @@ class Peer:
     def ret(self):
         s=self.c.system_stack_pointer.value
         self.c.program_counter.set(self.word(s));self.c.system_stack_pointer.set(s+2)
-    def run(self,name,n=0,status=0,data=b'',responses=()):
+    def run(self,name,n=0,status=0,data=b'',responses=(),initial_cc=0):
         c=self.c;s=self.sy;self.tx=[];self.rx=list(responses)
         self.m.load(DATA,data or b'\x00'); self.setw(REGS+s['R$X'],DATA)
         self.setw(REGS+s['R$Y'],n);self.m.write_byte(REGS+s['R$B'],status)
         c.index_y.set(PD);c.user_stack_pointer.set(REGS);c.system_stack_pointer.set(0x7000)
-        self.setw(0x7000,0x1fff);c.program_counter.set(BASE+s[name]);c.set_cc(0x00)
+        self.setw(0x7000,0x1fff);c.program_counter.set(BASE+s[name]);c.set_cc(initial_cc)
         for _ in range(300000):
             pc=c.program_counter.value
+            if self.wire_active and (c.get_cc_value() & 0x50) != 0x50:
+                self.gaps.append(pc)
             if pc==0x1fff:break
             if pc==0x1806:
-                self.tx.append(self.get(c.index_x.value,c.index_y.value))
+                packet=self.get(c.index_x.value,c.index_y.value)
+                self.tx.append(packet)
+                assert c.get_cc_value() & 0x50 == 0x50, ('unmasked DriveWire send',name,hex(pc))
+                if not self.wire_active:
+                    assert packet[0]==0xd6,packet
+                    self.wire_op=packet[1];self.wire_phase=0
+                    self.wire_count=int.from_bytes(packet[3:5],'big') if self.wire_op in (7,8,9,10) else 0
+                    self.wire_active=not (self.wire_op in (8,10) and self.wire_count==0)
+                elif self.wire_op in (8,10):
+                    self.wire_active=False
                 c.index_x.set((c.index_x.value+c.index_y.value)&65535);c.index_y.set(0);self.ret()
             elif pc==0x1803:
+                assert c.get_cc_value() & 0x50 == 0x50, ('unmasked DriveWire receive',name,hex(pc))
                 response=self.rx.pop(0) if self.rx else None
+                if response is None:
+                    self.wire_active=False
+                elif self.wire_op in (7,9) and self.wire_phase==0:
+                    count=int.from_bytes(response,'big')
+                    self.wire_active=0<count<=self.wire_count
+                    self.wire_phase=1
+                elif self.wire_op==0x14 and self.wire_phase==0 and response==b'\x00':
+                    self.wire_phase=1
+                else:
+                    self.wire_active=False
                 if response is None:c.C=1;c.Z=0
                 else:
                     assert len(response)==c.index_y.value,(len(response),c.index_y.value,name)
@@ -64,6 +87,7 @@ class Peer:
                     self.move_count+=1
                     if self.fail_move or self.move_count==self.fail_move_at:c.accu_b.set(s['E$IBA']);c.C=1
                     else:self.m.load(c.user_stack_pointer.value,self.get(c.index_x.value,c.index_y.value));c.C=0
+                    c.I=0;c.F=0 # Real Level 2 F$Move permits IRQs after restoring MMU slots.
                 elif op==s['F$SRtMem']:self.freed.append(c.user_stack_pointer.value);c.C=0
                 elif op==s['F$SRqMem']:
                     if self.fail_alloc:c.accu_b.set(s['E$MemFul']);c.C=1
@@ -73,12 +97,26 @@ class Peer:
                 c.program_counter.set(pc+3)
             else:c.get_and_call_next_op()
         else:raise AssertionError(('did not return',name,hex(c.program_counter.value)))
+        assert c.get_cc_value() & 0x50 == initial_cc & 0x50, ('caller interrupt masks changed',name)
+        assert not self.gaps, ('IRQ poller can steal an RFM reply',name,[hex(pc) for pc in self.gaps[:5]])
         assert c.system_stack_pointer.value==0x7002,hex(c.system_stack_pointer.value)
         assert c.index_y.value==PD and c.user_stack_pointer.value==REGS
         return c.C,c.accu_b.value,self.word(REGS+s['R$Y'])
 
 def tests(binary,s,level):
     def peer():return Peer(binary,s)
+    for cc in (0,0x10,0x40,0x50):
+        for operation,n,status,responses in (
+                ('read',1,0,[b'\x00\x01',b'x']),
+                ('write',1,0,[]),('seek',0,0,[b'\x00']),
+                ('close',0,0,[b'\x00']),
+                ('getstt',0,s['SS.Size'],[b'\x00'*4]),
+                ('getstt',1,s['SS.FD'],[b'x']),
+                ('getstt',0,s['SS.Opt'],[]),
+                ('open',0,0,[b'\x00']),
+                ('chgdir',0,0,[b'\x00',b'\x60\x00\x01'])):
+            p=peer()
+            assert p.run(operation,n,status,data=b'/y0/file\r',responses=responses,initial_cc=cc)[0]==0
     for n in (0,1,255,256,257,513,1024):
         p=peer();payload=bytes(i%251 for i in range(n))
         assert p.run('write',n,data=payload)==(0,0,n)

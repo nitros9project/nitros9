@@ -17,6 +17,8 @@ DW_PORT ?= 65504
 TEST_SECONDS ?= 600
 TEST_ROOT ?= .rfm-test
 TEST_SUITE ?= all
+TEST_IRQ_STRESS ?= 0
+IRQ_STRESS_FLAG = $(if $(filter 1,$(TEST_IRQ_STRESS)),--irq-stress,)
 
 $(MODDIR)/y0: rfmdesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DDNum=0
@@ -41,12 +43,12 @@ prepare: $(DSKIMAGE)
 run: $(DSKIMAGE)
 	$(PYTHON) $(NITROS9DIR)/scripts/rfm-mame.py run --root $(TEST_ROOT) \
 		--disk $(DSKIMAGE) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" \
-		--port $(DW_PORT) --seconds $(TEST_SECONDS) --interactive
+		--port $(DW_PORT) --seconds $(TEST_SECONDS) $(IRQ_STRESS_FLAG) --interactive
 
 # Same guest commands, no display; succeeds only after host byte verification.
 check: $(DSKIMAGE)
 	$(PYTHON) $(NITROS9DIR)/scripts/rfm-mame.py run --root $(TEST_ROOT) \
 		--disk $(DSKIMAGE) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" \
-		--port $(DW_PORT) --seconds $(TEST_SECONDS)
+		--port $(DW_PORT) --seconds $(TEST_SECONDS) $(IRQ_STRESS_FLAG)
 
 .PHONY: prepare run check

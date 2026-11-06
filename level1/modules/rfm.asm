@@ -403,7 +403,13 @@ delete              ldb       #DW.delete
 *        B = error code (if CC.Carry == 1)
 *
 * seek = send dwop, rfmop, path, caller's X + U
-seek                pshs      y,u
+* DWIO can poll virtual channels from IRQ context. Mask the entire request /
+* reply, not just individual Read/Write calls, so it cannot consume RFM bytes.
+seek                pshs      cc
+                    orcc      #IntMasks
+                    lbsr      SeekTransaction
+                    bra       BusReturn
+SeekTransaction     pshs      y,u
 
                     ldx       R$U,u
                     pshs      x
@@ -444,6 +450,16 @@ response@           puls      b
                     bra       notok@
 ok@                 clrb
 notok@              puls      y,u,pc
+
+BusReturn           pshs      cc                  ; result condition codes
+                    lda       1,s                 ; caller's original masks
+                    anda      #IntMasks
+                    sta       1,s
+                    puls      a
+                    anda      #^IntMasks
+                    ora       ,s+
+                    tfr       a,cc
+                    rts
 
 
 ******************************
@@ -527,7 +543,8 @@ TransferCRFound     lda       T.Op+2,s
                     ldx       T.PD+2,s
                     subd      PD.BUF,x
                     std       ,s
-TransferPacket      ldy       T.PD+2,s
+TransferPacket      orcc      #IntMasks           ; own the wire through the reply
+                    ldy       T.PD+2,s
                     lda       PD.PD,y
                     ldb       T.Op+2,s
                     andb      #$7F
@@ -583,9 +600,15 @@ TransferRead        leas      -2,s                ; returned count
                     lda       T.Op+2,s
                     ora       #$80
                     sta       T.Op+2,s
-TransferCopyRead    lbsr      ToCaller
+TransferCopyRead    lda       T.CC+2,s           ; reply fully consumed; allow IRQs
+                    anda      #IntMasks
+                    tfr       a,cc
+                    lbsr      ToCaller
                     lbcs      TransferChunkError
-TransferCommit      puls      d
+TransferCommit      lda       T.CC+2,s           ; release wire between chunks
+                    anda      #IntMasks
+                    tfr       a,cc
+                    puls      d
                     pshs      d
                     addd      T.Done+2,s
                     std       T.Done+2,s
@@ -669,7 +692,11 @@ CopyDone            andcc     #$FE
 * Exit:  CC.Carry = 0 (no error), 1 (error)
 *        B = error code (if CC.Carry == 1)
 *
-getstt              ldb       R$B,u
+getstt              pshs      cc
+                    orcc      #IntMasks
+                    lbsr      GetStatus
+                    lbra      BusReturn
+GetStatus           ldb       R$B,u
                     lbeq      StatusOptions
                     cmpb      #SS.Ready
                     beq       StatusReady
@@ -802,7 +829,11 @@ setstt              lbra      StatusUnsupported
 * Exit:  CC.Carry = 0 (no error), 1 (error)
 *        B = error code (if CC.Carry == 1)
 *
-close               tst       PD.CNT,y
+close               pshs      cc
+                    orcc      #IntMasks
+                    lbsr      CloseTransaction
+                    lbra      BusReturn
+CloseTransaction    tst       PD.CNT,y
                     beq       CloseFinal
                     clrb
                     rts

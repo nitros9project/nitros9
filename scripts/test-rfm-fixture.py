@@ -50,6 +50,22 @@ class Paths(unittest.TestCase):
                 self.assertEqual(peer.pathname(Input('marker'), cookie, mode, context=True), old/'marker')
             self.assertEqual(peer.lsn(old), cookie)
 
+    def test_drivewire4_capability_and_irq_poll(self):
+        class Wire:
+            def __init__(self):
+                self.input=io.BytesIO(b'\x5a\x01\x43')
+                self.output=bytearray()
+            def recv(self,count):return self.input.read(count)
+            def sendall(self,data):self.output.extend(data)
+        with tempfile.TemporaryDirectory() as directory:
+            peer=rfm.Fixture(Path(directory),io.StringIO())
+            peer.protocol_version=0xff
+            wire=Wire()
+            peer.handle(wire)
+            self.assertEqual(wire.output,b'\xff\x00\x00')
+            self.assertEqual(peer.irq_polls,1)
+            self.assertFalse(peer.errors)
+
     def test_parent_record_precedes_current_record(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
