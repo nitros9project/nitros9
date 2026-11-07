@@ -5,8 +5,8 @@
 #   2) Copy this file to myrecipe/recipe.mak.
 #   3) Edit only what you need.
 
-# Used in output name: l<LEVEL>_<RECIPE><PLATFORM>.dsk
-# Example: l1_mykitk2.dsk
+# Used in output name: l<LEVEL>_<RECIPE><PLATFORM>.dsk (and .src.zip)
+# Example: l1_mykitk2.dsk and l1_mykitk2.src.zip
 RECIPE ?= wildbits
 
 # Append additional compiler/linker flags
