@@ -1,0 +1,8 @@
+* Explicit test setup; never executed at boot.
+link shell
+load utilpak1
+load cmp
+keyrpt 0 0</1
+echo RFM MAME checks starting
+shell </dd/rfmcheck
+echo RFM command sequence ended - check host results

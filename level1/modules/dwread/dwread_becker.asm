@@ -1,30 +1,36 @@
                     ifndef    BECKBASE
-BECKBASE            equ       $FF41               ; Set base address for future use
+BECKBASE            equ       $FF41
                     endc
-* NOTE: There is no timeout currently on here...
-DWRead              clra                          ; clear Carry (no framing error)
-                    deca                          ; clear Z flag, A = timeout msb ($ff)
-                    tfr       cc,b
-                    pshs      u,x,dp,b,a          ; preserve registers, push timeout msb
+* X=destination, Y=count; return checksum in Y, C clear/Z set on success.
+* A bounded per-byte poll also works with IRQs masked (no timer dependency).
+DWRead              pshs      cc,u,x
                     leau      ,x
-                    ldx       #$0000
+                    ldx       #0
+                    cmpy      #0
+                    beq       done@
                     ifeq      NOINTMASK
                     orcc      #IntMasks
                     endc
-loop@               ldb       BECKBASE
-                    bitb      #$02
-                    beq       loop@
+next@               pshs      x
+                    ldx       #$8000
+poll@               ldb       BECKBASE
+                    bitb      #2
+                    bne       ready@
+                    leax      -1,x
+                    bne       poll@
+                    puls      x
+                    puls      cc,x,u
+                    andcc     #$FB
+                    orcc      #1
+                    rts
+ready@              puls      x
                     ldb       BECKBASE+1
                     stb       ,u+
                     abx
-                    leay      ,-y
-                    bne       loop@
-                    tfr       x,y
-                    ldb       #0
-                    lda       #3
-                    leas      1,s                 ; remove timeout msb from stack
-                    inca                          ; A = status to be returned in C and Z
-                    ora       ,s                  ; place status information into the..
-                    sta       ,s                  ; ..C and Z bits of the preserved CC
-                    leay      ,x                  ; return checksum in Y
-                    puls      cc,dp,x,u,pc        ; restore registers and return
+                    leay      -1,y
+                    bne       next@
+done@               leay      ,x
+                    puls      cc,x,u
+                    andcc     #$FE
+                    orcc      #4
+                    rts

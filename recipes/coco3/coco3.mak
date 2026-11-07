@@ -109,13 +109,14 @@ LFLAGS += -lfuji
 CMDS_EXTRA += $(FUJINET_CMDS)
 endif
 
-CMDS_BASE ?= $(STDCMDS) grfdrv shell utilpak1
+CMDS_BASE ?= $(STDCMDS) grfdrv shell utilpak1 pmap dmem smap mmap
 CMDS += $(CMDS_BASE) hirestest \
 	$(CMDS_EXTRA)
 BASIC09_SAMPLES ?=
 RECIPE_DEPS ?=
 
-all: libs $(DSKIMAGE)
+RECIPE_OUTPUTS ?= $(DSKIMAGE)
+all: libs $(RECIPE_OUTPUTS)
 
 LIB_NAMES = $(NOS9_LIB) libnet.a libalib.a $(COCO3_LIB)
 ifeq ($(FUJINET),1)
@@ -157,8 +158,10 @@ ifneq ($(strip $(BASIC09_SAMPLES)),)
 endif
 	$(OS9COPY) $(MODDIR)/sysgo_dd $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
+ifneq ($(strip $(STARTUP)),)
 	$(CPL) $(STARTUP) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
+endif
 	$(call RECIPE_INSTALL,$@)
 
 # /TERM window descriptors — column count and colors controlled by TERM_COLS and TERM_ALTCOLOR
@@ -290,7 +293,7 @@ $(MODDIR)/n5_scdwv.dd: scdwvdesc.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DAddr=5
 
 clean:
-	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo $(CLEAN_EXTRA)
+	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo startup.mame $(CLEAN_EXTRA)
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR) $(CLEAN_DIRS)
 
 FORCE:
