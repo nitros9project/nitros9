@@ -1,3 +1,6 @@
 @RENAME
 Syntax: Rename <pathlist> <filename>
 Usage : Gives the file or directory a new name
+        Requires write permission on the parent directory.
+        The new name must be a single filename; existing names are not replaced.
+        Uses SS.Rename on RBF and RFM (matching server required for RFM).

@@ -387,6 +387,9 @@ SS.Open             RMB       1                   SetStat to tell driver a path 
 SS.Close            RMB       1                   SetStat to tell driver a path was closed
 SS.HngUp            RMB       1                   SetStat to tell driver to hangup phone
 SS.FSig             RMB       1                   New signal for temp locked files
+* Rename within an open parent directory. X -> two zero-padded 30-byte
+* names (old, new), Y=60. Each name is 1..29 bytes. Requires parent WRITE.
+SS.Rename           EQU       $2D
 SS.DSize            EQU       SS.ScSiz            Return disk size (RBF GetStat)
 SS.VarSect          EQU       SS.DStat            Variable Sector Size (RBF GetStat)
 
