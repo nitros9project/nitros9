@@ -1686,6 +1686,8 @@ ok@
                     lbsr      GtDvcNam            go parse it
                     sta       ,s                  save last character
                     lbcs      L090D               error in parse, return
+                    lbsr      ChkDvEnd            is the device name followed by a legal character?
+                    lbcs      L090D               no, return the error
                     leax      ,y                  point X to last character
                     ldy       $06,s               get path descriptor pointer
                     bra       Sst81E              skip ahead
@@ -1758,7 +1760,7 @@ Sst87B              lbsr      L0A2A               check if directory is busy
                     lda       PD.MOD,y            get file mode
                     ora       #DIR.               mask in directory bit
                     lbsr      ChkAttrs            can user access directory?
-                    bcs       L090D               no, return
+                    lbcs      L090D               no, return
                     lbsr      Open1CE             setup path descriptor & start scan
                     ldx       $08,s               get pathname pointer
                     leax      $01,x               bump to next character
@@ -1768,6 +1770,8 @@ Sst87B              lbsr      L0A2A               check if directory is busy
                     sty       $08,s
                     ldy       $06,s               get path descriptor pointer
                     bcs       L090D               error in pathname, return
+                    lbsr      ChkEnd              is the name followed by a legal character?
+                    bcs       L090D               no, return the error
                     ifgt      Level-1
                     pshs      u,y
                     ldu       PD.Exten,y          get pointer to path extension
@@ -1897,6 +1901,32 @@ L097F               pshs      u,x,b
                     os9       F$LDABX
                     puls      pc,u,x,b
                     endc
+
+* Check the character that follows a name in a pathlist
+* Entry: A = the character after the name
+* Exit:  Carry clear if it is a slash or ends the pathlist (B is kept)
+*        Carry set and B = E$BPNam if it is any other character
+ChkDvEnd            pshs      a                   save the character
+                    anda      #$7F                drop the most significant bit
+                    cmpa      #PENTIR             does a device name end with the entire device flag?
+                    puls      a                   restore the character
+                    beq       ChkEndOK            yes, that is legal after a device name
+ChkEnd              tsta                          did the name end on its own last character?
+                    bmi       ChkEndOK            yes, nothing follows the name
+                    beq       ChkEndOK            a NUL ends the pathlist
+                    cmpa      #PDELIM             is it a slash?
+                    beq       ChkEndOK            yes, another name follows
+                    cmpa      #C$CR               is it a carriage return?
+                    beq       ChkEndOK            yes, it ends the pathlist
+                    cmpa      #C$SPAC             is it a space?
+                    beq       ChkEndOK            yes, it ends the pathlist
+                    cmpa      #',                 is it a comma?
+                    beq       ChkEndOK            yes, it ends the pathlist
+                    comb                          set the carry to indicate an error
+                    ldb       #E$BPNam            the name ends on an illegal character
+                    rts                           return the error
+ChkEndOK            andcc     #^Carry             clear the carry to indicate success
+                    rts                           return with the length still in B
 
 GtDvcNam            os9       F$PrsNam            parse the filename
                     pshs      x                   preserve pointer to name
